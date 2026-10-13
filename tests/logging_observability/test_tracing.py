@@ -3,7 +3,7 @@
 # ==============================================================================
 
 import pytest
-from logging_observability.tracing import (
+from monika.core.telemetry.tracing import (
     cycle_span,
     node_span,
     llm_span,
@@ -60,7 +60,7 @@ def test_trace_spans_and_hierarchy():
 def test_span_context_manager_protocols_and_typing():
     """Verify that span helpers implement context manager protocol and proper generator typing."""
     import typing
-    from logging_observability.tracing.tracer import Span
+    from monika.core.telemetry.tracing.tracer import Span
 
     # Check return type annotations
     for fn in (cycle_span, node_span, llm_span, tool_span):

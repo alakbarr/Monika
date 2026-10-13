@@ -25,7 +25,7 @@ import argparse
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from utils import clock
+from monika.core.primitives import clock
 
 
 # ==============================================================================
@@ -91,7 +91,7 @@ def test_macro_preprocessor_deterministic_sha256():
 # ==============================================================================
 def test_pydantic_coerce_int_strict_regex():
     """Verify coerce_int strictly matches integer strings and safely returns None for invalid strings."""
-    from analysis.schemas.pydantic_schemas import coerce_int
+    from monika.application.analysis.schemas.pydantic_schemas import coerce_int
 
     assert coerce_int(42) == 42
     assert coerce_int("42") == 42
@@ -107,7 +107,7 @@ def test_pydantic_coerce_int_strict_regex():
 
 def test_pydantic_coerce_string_list_comma_splitting():
     """Verify coerce_string_list splits comma-separated string inputs."""
-    from analysis.schemas.pydantic_schemas import coerce_string_list
+    from monika.application.analysis.schemas.pydantic_schemas import coerce_string_list
 
     res = coerce_string_list("EURUSD, GBPUSD, USDJPY")
     assert res == ["EURUSD", "GBPUSD", "USDJPY"]
@@ -122,7 +122,7 @@ def test_pydantic_coerce_string_list_comma_splitting():
 @pytest.mark.asyncio
 async def test_cli_cmd_kill_non_interactive_guard():
     """Verify _cmd_kill requires interactive terminal or explicit --yes flag."""
-    from cli.main import _cmd_kill
+    from monika.interfaces.cli.main import _cmd_kill
 
     args = argparse.Namespace(yes=False)
     with patch("sys.stdin.isatty", return_value=False):
@@ -155,7 +155,7 @@ async def test_main_shutdown_mt5_bounded_timeout():
 def test_dynamic_correlation_crypto_static_fallback_warning(caplog):
     """Verify a warning is logged when static fallback correlation is used for crypto."""
     import logging
-    from utils.market.dynamic_correlation import _static_fallback
+    from monika.domain.market.dynamic_correlation import _static_fallback
 
     with caplog.at_level(logging.WARNING):
         corr = _static_fallback("BTCUSD", "ETHUSD")
@@ -168,8 +168,8 @@ def test_dynamic_correlation_crypto_static_fallback_warning(caplog):
 @pytest.mark.asyncio
 async def test_risk_gate_decoupled_backtest_simulation():
     """Verify RiskGate.check with is_backtest=True respects simulated parameters without live DB queries."""
-    from risk.risk_gate import RiskGate
-    from risk.position_sizing import SizingResult
+    from monika.domain.risk.risk_gate import RiskGate
+    from monika.domain.risk.position_sizing import SizingResult
 
     settings = {
         "trading": {
@@ -229,8 +229,8 @@ async def test_risk_gate_decoupled_backtest_simulation():
 @pytest.mark.asyncio
 async def test_risk_gate_decoupled_backtest_simulation_max_positions_rejection():
     """Verify RiskGate.check rejects when simulated positions reach max_concurrent."""
-    from risk.risk_gate import RiskGate
-    from risk.position_sizing import SizingResult
+    from monika.domain.risk.risk_gate import RiskGate
+    from monika.domain.risk.position_sizing import SizingResult
 
     settings = {
         "trading": {
@@ -289,7 +289,7 @@ async def test_risk_gate_decoupled_backtest_simulation_max_positions_rejection()
 @pytest.mark.asyncio
 async def test_scraper_runner_consecutive_timeout_pool_recycle():
     """Verify ScraperRunner handles repeated timeouts without exhausting thread pool."""
-    from scheduler.scraper_runner import ScraperRunner
+    from monika.application.scheduler.scraper_runner import ScraperRunner
 
     runner = ScraperRunner(settings={})
 

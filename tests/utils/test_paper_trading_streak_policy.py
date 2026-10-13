@@ -14,9 +14,9 @@ from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from tests.conftest import create_mock_async_session
-from database.models import PaperTradeRecord, SystemConfig
-from utils.analytics.paper_tracker import PaperTracker
-from risk.risk_gate import RiskGate
+from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
+from monika.core.analytics.paper_tracker import PaperTracker
+from monika.domain.risk.risk_gate import RiskGate
 
 
 @pytest.mark.asyncio
@@ -240,7 +240,7 @@ async def test_unsuspend_symbol_and_all():
 @pytest.mark.asyncio
 async def test_position_synchronizer_bypasses_daily_sl_pause_in_paper():
     """Verify position_synchronizer does not pause trading globally when daily SL hit limit is reached in paper mode."""
-    from execution.service.position_synchronizer import PositionSynchronizerMixin
+    from monika.application.execution.service.position_synchronizer import PositionSynchronizerMixin
 
     settings = {
         "trading": {
@@ -277,7 +277,7 @@ async def test_position_synchronizer_bypasses_daily_sl_pause_in_paper():
     mock_pos.mt5_ticket = 12345
     mock_pos.pnl = -50.0
 
-    with patch("utils.infra.notifier.AgentNotifier.send_warning", AsyncMock()):
+    with patch("monika.infrastructure.infra.notifier.AgentNotifier.send_warning", AsyncMock()):
         await sync._handle_stop_loss_hit(mock_session, mock_pos)
 
     # pause_trading should NOT have been called because pause_system_on_daily_sl_limit is False
@@ -287,8 +287,8 @@ async def test_position_synchronizer_bypasses_daily_sl_pause_in_paper():
 @pytest.mark.asyncio
 async def test_telegram_unsuspend_command():
     """Verify Telegram /unsuspend handler clears symbols and responds."""
-    from telegram_bot.bot import TelegramBot
-    from telegram_bot.command_router import CommandRouter
+    from monika.interfaces.telegram.bot import TelegramBot
+    from monika.interfaces.telegram.command_router import CommandRouter
 
     settings = {
         "trading": {
@@ -308,8 +308,8 @@ async def test_telegram_unsuspend_command():
     mock_ctx.args = ["EURUSD"]
 
     with (
-        patch("utils.analytics.paper_tracker.PaperTracker.unsuspend_symbol", AsyncMock(return_value=True)),
-        patch("database.db.get_session") as mock_get_sess,
+        patch("monika.core.analytics.paper_tracker.PaperTracker.unsuspend_symbol", AsyncMock(return_value=True)),
+        patch("monika.infrastructure.database.db.get_session") as mock_get_sess,
     ):
         mock_sess = AsyncMock()
         mock_get_sess.return_value.__aenter__.return_value = mock_sess

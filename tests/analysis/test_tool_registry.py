@@ -1,5 +1,5 @@
 import pytest
-from analysis.tools.tool_registry import ProgressiveToolRegistry, default_registry
+from monika.application.analysis.tools.tool_registry import ProgressiveToolRegistry, default_registry
 
 
 def test_registry_init_and_get_tool():

@@ -6,16 +6,16 @@ import os
 import pytest
 from pathlib import Path
 
-from security.terminal_guard import (
+from monika.core.security.terminal_guard import (
     assert_safe_read_path,
     assert_safe_write_path,
     is_secret_credential_file,
     SecurityViolationError,
     CommandSecurityViolationError,
 )
-from security.ssrf_guard import SSRFViolationError
-from analysis.tools.environments.tier2_kernel import Tier2HostKernelEnvironment
-from analysis.tools.unified_registry import unified_tool_registry
+from monika.core.security.ssrf_guard import SSRFViolationError
+from monika.application.analysis.tools.environments.tier2_kernel import Tier2HostKernelEnvironment
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
 
 
 def test_is_secret_credential_file():

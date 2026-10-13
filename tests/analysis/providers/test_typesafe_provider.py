@@ -5,8 +5,8 @@ Tests schema translation, choice/score/noul answers, confidence gating, and prov
 
 import pytest
 import unittest.mock as mock
-from analysis.providers.typesafe_provider import TypeSafeProvider
-from utils.typesafe.jev_primitives import (
+from monika.infrastructure.providers.typesafe_provider import TypeSafeProvider
+from monika.core.primitives.jev_primitives import (
     schema_to_jev_questions,
     parse_jev_response_to_dict,
     build_news_classification_questions,
@@ -200,7 +200,7 @@ async def test_typesafe_provider_classify_json_rejects_array_schema(dummy_provid
 
 @pytest.mark.asyncio
 async def test_classify_news_batch_with_jev_supports_fallback_wrapper():
-    from utils.typesafe.jev_primitives import classify_news_batch_with_jev
+    from monika.core.primitives.jev_primitives import classify_news_batch_with_jev
     from datetime import datetime, timezone
 
     class MockItem:
@@ -250,7 +250,7 @@ async def test_classify_news_batch_with_jev_supports_fallback_wrapper():
 @pytest.mark.asyncio
 async def test_jev_option_c_asset_bias_and_sentiments():
     """Verify Option C dynamic probing extracts directional biases, CB stance, and inflation tags."""
-    from utils.typesafe.jev_primitives import classify_news_batch_with_jev
+    from monika.core.primitives.jev_primitives import classify_news_batch_with_jev
     from datetime import datetime, timezone
 
     class MockItem:
@@ -328,7 +328,7 @@ async def test_jev_option_c_asset_bias_and_sentiments():
 @pytest.mark.asyncio
 async def test_jev_option_c_data_point_empty_on_none_surprise():
     """Verify key_data_point remains empty when surprise_magnitude is none."""
-    from utils.typesafe.jev_primitives import classify_news_batch_with_jev
+    from monika.core.primitives.jev_primitives import classify_news_batch_with_jev
     from datetime import datetime, timezone
 
     class MockItem:
@@ -373,7 +373,7 @@ async def test_jev_option_c_data_point_empty_on_none_surprise():
 @pytest.mark.asyncio
 async def test_jev_option_c_partial_gather_triage():
     """Verify non-blocking partial gather: items with low confidence are omitted for Gemini micro-retry."""
-    from utils.typesafe.jev_primitives import classify_news_batch_with_jev
+    from monika.core.primitives.jev_primitives import classify_news_batch_with_jev
     from datetime import datetime, timezone
 
     class MockItem:
@@ -432,7 +432,7 @@ async def test_jev_option_c_partial_gather_triage():
 @pytest.mark.asyncio
 async def test_jev_option_c_all_fail_returns_none():
     """Verify that if all items fail or fall below min_confidence, returns None to trigger full LLM fallback."""
-    from utils.typesafe.jev_primitives import classify_news_batch_with_jev
+    from monika.core.primitives.jev_primitives import classify_news_batch_with_jev
     from datetime import datetime, timezone
 
     class MockItem:
@@ -456,7 +456,7 @@ async def test_jev_option_c_all_fail_returns_none():
 
 def test_jev_questions_to_schema_synthesis():
     """Verify that jev_questions_to_schema synthesizes valid JSON Schema from Jev primitives."""
-    from utils.typesafe.jev_primitives import (
+    from monika.core.primitives.jev_primitives import (
         jev_questions_to_schema,
         build_risk_gate_conservative_questions,
         build_risk_gate_aggressive_questions,
@@ -501,8 +501,8 @@ def test_jev_questions_to_schema_synthesis():
 @pytest.mark.asyncio
 async def test_conservative_and_aggressive_risk_llm_jev_mapping():
     """Verify that conservative and aggressive risk LLM helpers correctly map Jev outputs."""
-    from analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
-    from analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
+    from monika.application.analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
+    from monika.application.analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
 
     class MockJevClient:
         def __init__(self, mock_return):
@@ -566,8 +566,8 @@ async def test_conservative_and_aggressive_risk_llm_jev_mapping():
 @pytest.mark.asyncio
 async def test_context_verifier_jev_mapping():
     """Verify that PatternContextVerifier correctly processes Jev System One responses."""
-    from indicators.pattern_similarity.context_verifier import PatternContextVerifier, ContextVerdict
-    from indicators.pattern_similarity.models import PatternMatch, MarketContext
+    from monika.domain.indicators.pattern_similarity.context_verifier import PatternContextVerifier, ContextVerdict
+    from monika.domain.indicators.pattern_similarity.models import PatternMatch, MarketContext
     from datetime import datetime, timezone
 
     verifier = PatternContextVerifier()
@@ -619,7 +619,7 @@ async def test_context_verifier_jev_mapping():
 @pytest.mark.asyncio
 async def test_fallback_wrapper_jev_adaptation():
     """Verify FallbackClientWrapper synthesizes schema and normalizes metadata for generative fallbacks."""
-    from analysis.providers.llm_factory import FallbackClientWrapper, LLMFactory
+    from monika.infrastructure.providers.llm_factory import FallbackClientWrapper, LLMFactory
     from typesafe_sdk import Noul, Choice
 
     captured_kwargs = {}
@@ -707,13 +707,13 @@ def test_llm_factory_and_registry_openrouter_routing(monkeypatch):
     monkeypatch.setenv("TYPESAFE_API_KEY", "typesafe_secret_123")
     monkeypatch.setenv("OPENROUTER_API_KEY", "openrouter_secret_456")
 
-    from utils.api.credential_pool import get_credential_pool
+    from monika.infrastructure.api.credential_pool import get_credential_pool
 
     pool = get_credential_pool()
     pool._pools.clear()
     pool._initialize_from_env()
 
-    from analysis.providers.llm_factory import LLMFactory
+    from monika.infrastructure.providers.llm_factory import LLMFactory
 
     settings = {
         "model_catalog": {
@@ -753,7 +753,7 @@ def test_llm_factory_and_registry_openrouter_routing(monkeypatch):
 @pytest.mark.asyncio
 async def test_fallback_wrapper_skips_typesafe_on_array_schema():
     """Verify FallbackClientWrapper skips TypeSafe models when classify_json receives an array schema."""
-    from analysis.providers.llm_factory import LLMFactory, FallbackClientWrapper
+    from monika.infrastructure.providers.llm_factory import LLMFactory, FallbackClientWrapper
 
     settings = {
         "model_catalog": {

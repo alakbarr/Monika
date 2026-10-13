@@ -3,9 +3,13 @@ from tests.conftest import create_mock_async_session
 """Unit tests for MyFxBook and FXSSI sentiment scrapers and FRED series integration."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
-from scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
-from data_sources.fred_treasury_yield import FREDDataFetcher, SERIES_TO_TENOR, TENOR_SERIES
+from monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
+from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
+from monika.infrastructure.data_ingestion.sources.fred_treasury_yield import (
+    FREDDataFetcher,
+    SERIES_TO_TENOR,
+    TENOR_SERIES,
+)
 
 
 def test_myfxbook_parse_html_multi_asset():
@@ -126,7 +130,7 @@ async def test_fred_series_mapping():
 
 def test_base_scraper_is_cloudflare_challenge_multilingual():
     """Test BaseScraper._is_cloudflare_challenge recognizes Indonesian and English titles."""
-    from scrapers.base_scraper import BaseScraper
+    from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 
     scraper = BaseScraper.__new__(BaseScraper)
     scraper.page = MagicMock()

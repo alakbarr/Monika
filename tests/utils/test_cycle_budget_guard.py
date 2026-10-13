@@ -1,5 +1,5 @@
 import pytest
-from utils.llm.cycle_budget_guard import CycleBudgetGuard, get_cycle_budget_guard
+from monika.infrastructure.llm.cycle_budget_guard import CycleBudgetGuard, get_cycle_budget_guard
 
 
 def test_cycle_budget_guard_defaults():

@@ -1,5 +1,5 @@
 import pytest
-from analysis.tools.tools_definitions import (
+from monika.application.analysis.tools.tools_definitions import (
     _tool,
     ALL_TOOLS,
     STAGE1_TOOLS,

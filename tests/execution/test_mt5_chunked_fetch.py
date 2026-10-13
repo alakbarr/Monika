@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from execution.mt5_client import MT5Client
+from monika.infrastructure.brokers.mt5_client import MT5Client
 
 
 def _make_dummy_rates(start_ts: int, count: int):

@@ -7,9 +7,9 @@ import time
 import pytest
 from pathlib import Path
 
-from evals.hostile_market_probe import HostileMarketProbe, HostileTickScenario
-from logging_observability.dashboard.pty_bridge import PtyBridgeManager, PtySession
-from cli.width_budget import compute_progressive_width_budget, ColumnSpec
+from monika.application.evals.hostile_market_probe import HostileMarketProbe, HostileTickScenario
+from monika.interfaces.dashboard.pty_bridge import PtyBridgeManager, PtySession
+from monika.interfaces.cli.width_budget import compute_progressive_width_budget, ColumnSpec
 
 
 def test_hostile_market_probe_generation_and_resilience():

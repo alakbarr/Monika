@@ -6,10 +6,10 @@ import json
 import os
 import tempfile
 import pytest
-from skills.skills_hub import SkillsHub
-from scheduler.universal_cron_scheduler import UniversalCronScheduler, CronJob
-from gateway.acp_server import AcpServer
-from gateway.omnichannel_router import (
+from monika.application.skills.skills_hub import SkillsHub
+from monika.application.scheduler.universal_cron_scheduler import UniversalCronScheduler, CronJob
+from monika.interfaces.gateway.acp_server import AcpServer
+from monika.interfaces.gateway.omnichannel_router import (
     OmnichannelRouter,
     MessageEvent,
     SessionSource,

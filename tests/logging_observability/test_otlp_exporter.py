@@ -1,5 +1,5 @@
 import pytest
-from logging_observability.tracing.otlp_exporter import OTLPSpanExporter
+from monika.core.telemetry.tracing.otlp_exporter import OTLPSpanExporter
 
 
 def test_otlp_exporter_disabled_by_default():

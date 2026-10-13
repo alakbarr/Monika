@@ -1,5 +1,5 @@
 import pytest
-from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
 
 def test_wrap_system_tiers():

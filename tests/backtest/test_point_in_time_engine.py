@@ -3,8 +3,8 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
 
-from backtest.point_in_time_engine import PointInTimeBacktestEngine
-from database.models import AssetAnalysis
+from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine
+from monika.infrastructure.database.models import AssetAnalysis
 
 
 @pytest.mark.asyncio

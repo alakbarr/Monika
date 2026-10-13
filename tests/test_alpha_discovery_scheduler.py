@@ -9,12 +9,12 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
 
-from scheduler.alpha_discovery_scheduler import (
+from monika.application.scheduler.alpha_discovery_scheduler import (
     AlphaDiscoveryScheduler,
     AlphaHypothesis,
     CandidateAlphaProposal,
 )
-from backtest.walk_forward_engine import WalkForwardResult, WalkForwardFold
+from monika.application.backtest.walk_forward_engine import WalkForwardResult, WalkForwardFold
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 import pytest
-from utils.llm.context_compaction import ContextCompactionEngine
-from utils.llm.prompt_tiers import TieredSystemPrompt
-from utils.llm.prompt_assembler import PromptAssembler
+from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
+from monika.infrastructure.llm.prompt_tiers import TieredSystemPrompt
+from monika.infrastructure.llm.prompt_assembler import PromptAssembler
 
 
 def test_snap_tool_boundary():

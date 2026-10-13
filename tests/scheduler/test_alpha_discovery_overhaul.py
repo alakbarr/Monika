@@ -3,12 +3,12 @@ import pytest
 import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
 
-from analysis.calculators.quant_plateau_optimizer import PlateauOptimizationResult
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-from analysis.strategies.registry import StrategyRegistry
-from analysis.strategies.tsm_momentum import TimeSeriesMomentum, TrendTrailingMomentum
-from analysis.strategies.btc_donchian_breakout import BTCDonchianBreakout, DonchianBreakoutStrategy
-from scheduler.edge_strategy_runner import EdgeStrategyRunner
+from monika.application.analysis.calculators.quant_plateau_optimizer import PlateauOptimizationResult
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.application.analysis.strategies.tsm_momentum import TimeSeriesMomentum, TrendTrailingMomentum
+from monika.application.analysis.strategies.btc_donchian_breakout import BTCDonchianBreakout, DonchianBreakoutStrategy
+from monika.application.scheduler.edge_strategy_runner import EdgeStrategyRunner
 
 
 def test_plateau_optimizer_best_parameters_property():
@@ -29,7 +29,7 @@ def test_plateau_optimizer_best_parameters_property():
 
 def test_strategy_aliases_registered():
     """Verify alias registrations exist in StrategyRegistry."""
-    import analysis.strategies  # trigger full module registrations if needed
+    import monika.application.analysis.strategies  # trigger full module registrations if needed
 
     if StrategyRegistry.get_strategy("trend_trailing") is None:
         StrategyRegistry.register(TrendTrailingMomentum)
@@ -71,7 +71,7 @@ async def test_tsm_momentum_dynamic_config():
 @pytest.mark.asyncio
 async def test_pardo_wfe_zero_on_non_positive_is():
     """Verify Pardo WFE does not inflate on negative or zero IS Sharpe."""
-    from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+    from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
 
     harness = IsolatedStrategyBacktestHarness(
         strategy_cls=DonchianBreakoutStrategy,
@@ -96,7 +96,7 @@ async def test_pardo_wfe_zero_on_non_positive_is():
 
 def test_signal_integrity_in_synthesis_scheduler():
     """Verify synthesis scheduler rejects or invalidates valid=True without direction."""
-    from scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
+    from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
 
     sched = StrategySynthesisScheduler({})
     # Code that returns valid=True but direction=None

@@ -1,5 +1,5 @@
 import pytest
-from utils.protocol.cross_agent_sync import CrossAgentSynchronizer
+from monika.application.protocol.cross_agent_sync import CrossAgentSynchronizer
 
 
 @pytest.mark.asyncio

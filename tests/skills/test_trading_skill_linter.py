@@ -6,7 +6,7 @@ conversational bloat detection, and directory scanning.
 
 import pytest
 from pathlib import Path
-from skills.trading_skill_linter import TradingSkillLinter, LintIssue
+from monika.application.skills.trading_skill_linter import TradingSkillLinter, LintIssue
 
 
 def test_valid_skill_passes():

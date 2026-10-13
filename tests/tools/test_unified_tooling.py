@@ -13,20 +13,20 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from analysis.tools.core.definition import (
+from monika.application.analysis.tools.core.definition import (
     ExecutionTier,
     ToolCategory,
     ToolDefinition,
     ToolParameter,
 )
-from analysis.tools.core.coercion import coerce_arguments, coerce_value
-from analysis.tools.core.decorator import monika_tool
-from analysis.tools.core.toolset_registry import ToolsetRegistry
-from analysis.tools.core.dispatcher import ToolDispatcher
-from analysis.tools.environments.tier1_inprocess import Tier1InProcessEnvironment
-from analysis.tools.environments.tier2_kernel import Tier2HostKernelEnvironment
-from analysis.tools.environments.tier3_docker import Tier3DockerEnvironment
-from database.session_db_wal import SessionDbWal
+from monika.application.analysis.tools.core.coercion import coerce_arguments, coerce_value
+from monika.application.analysis.tools.core.decorator import monika_tool
+from monika.application.analysis.tools.core.toolset_registry import ToolsetRegistry
+from monika.application.analysis.tools.core.dispatcher import ToolDispatcher
+from monika.application.analysis.tools.environments.tier1_inprocess import Tier1InProcessEnvironment
+from monika.application.analysis.tools.environments.tier2_kernel import Tier2HostKernelEnvironment
+from monika.application.analysis.tools.environments.tier3_docker import Tier3DockerEnvironment
+from monika.infrastructure.database.session_db_wal import SessionDbWal
 
 
 # ==============================================================================

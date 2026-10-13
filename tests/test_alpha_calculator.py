@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
-from analysis.memory.alpha_calculator import AlphaCalculator
+from monika.application.analysis.memory.alpha_calculator import AlphaCalculator
 
 
 @pytest.mark.asyncio

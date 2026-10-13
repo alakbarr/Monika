@@ -4,11 +4,11 @@
 
 import pytest
 import os
-from config.settings import get_installation_tier
-from config.schemas import TradingAgentConfig
-from cli.subcommands.upgrade import UpgradeSubcommand
-from cli.setup_wizard import SetupWizard
-from cli.doctor import SystemDoctor
+from monika.core.config.settings import get_installation_tier
+from monika.core.config.schemas import TradingAgentConfig
+from monika.interfaces.cli.subcommands.upgrade import UpgradeSubcommand
+from monika.interfaces.cli.setup_wizard import SetupWizard
+from monika.interfaces.cli.doctor import SystemDoctor
 
 
 def test_schema_installation_tier():

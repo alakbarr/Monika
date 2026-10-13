@@ -1,5 +1,5 @@
 import pytest
-from utils.streaming.stream_scrubber import StatefulStreamScrubber
+from monika.core.streaming.stream_scrubber import StatefulStreamScrubber
 
 
 def test_scrubber_clean_text():

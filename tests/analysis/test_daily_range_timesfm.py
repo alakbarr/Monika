@@ -1,10 +1,10 @@
 import pytest
 from datetime import datetime, timezone, timedelta
-from database.models import PriceOHLCV, TechnicalIndicator, TimesFMForecast
-from analysis.calculators.daily_range_calculator import compute_daily_range_context
-from analysis.calculators.intraday_level_optimizer import compute_optimal_levels
-from indicators.timesfm_engine import TimesFMEngine
-import utils.clock as clock
+from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator, TimesFMForecast
+from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
+from monika.application.analysis.calculators.intraday_level_optimizer import compute_optimal_levels
+from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
+import monika.core.primitives.clock as clock
 
 
 @pytest.mark.asyncio
@@ -89,7 +89,7 @@ async def test_intraday_level_optimizer_with_timesfm_reachability(db_session):
     engine = TimesFMEngine()
     await engine.save_forecast(db_session, tfm_fc)
 
-    from database.models import OrderBlock
+    from monika.infrastructure.database.models import OrderBlock
 
     # In-reach order block (2635.0 <= Q90 of 2640.0)
     ob1 = OrderBlock(

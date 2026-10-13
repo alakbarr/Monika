@@ -1,7 +1,7 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from analysis.tools.tool_executor import ToolExecutor
+from monika.application.analysis.tools.tool_executor import ToolExecutor
 
 
 @pytest.mark.asyncio

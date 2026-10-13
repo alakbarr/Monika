@@ -3,10 +3,10 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
 
-from analysis.debate.macro_bull_analyst import run_bull_analyst, MACRO_BULL_SCHEMA
-from analysis.debate.macro_bear_analyst import run_bear_analyst, MACRO_BEAR_SCHEMA
-from analysis.debate.macro_judge import run_macro_judge, JUDGE_SCHEMA
-from analysis.debate.macro_debate_validator import (
+from monika.application.analysis.debate.macro_bull_analyst import run_bull_analyst, MACRO_BULL_SCHEMA
+from monika.application.analysis.debate.macro_bear_analyst import run_bear_analyst, MACRO_BEAR_SCHEMA
+from monika.application.analysis.debate.macro_judge import run_macro_judge, JUDGE_SCHEMA
+from monika.application.analysis.debate.macro_debate_validator import (
     validate_macro_judge_output,
     normalize_winner,
 )
@@ -148,7 +148,7 @@ async def test_run_bull_analyst_success():
         "evidence_cited": ["10Y Yield=4.05%", "FedWatch=82% cut"],
         "primary_catalysts": ["Dovish pivot", "Global disinflation"],
     }
-    with patch("analysis.debate.macro_bull_analyst.get_client_for_task", return_value=mock_client):
+    with patch("monika.application.analysis.debate.macro_bull_analyst.get_client_for_task", return_value=mock_client):
         res = await run_bull_analyst("Test context", {})
         assert res["strength_score"] == 8
         assert len(res["evidence_cited"]) == 2
@@ -160,7 +160,7 @@ async def test_run_bull_analyst_fallback():
     mock_client = AsyncMock()
     mock_client.classify_json.side_effect = Exception("Schema parse failed")
     mock_client.generate.return_value = "Fallback raw text thesis."
-    with patch("analysis.debate.macro_bull_analyst.get_client_for_task", return_value=mock_client):
+    with patch("monika.application.analysis.debate.macro_bull_analyst.get_client_for_task", return_value=mock_client):
         res = await run_bull_analyst("Test context", {})
         assert res["strength_score"] == 5
         assert "Fallback raw text thesis" in res["bull_thesis"]
@@ -175,7 +175,7 @@ async def test_run_bear_analyst_success():
         "evidence_cited": ["10Y Yield=4.50%", "VIX=26.0"],
         "primary_risks": ["Hawkish surprise", "Liquidity shock"],
     }
-    with patch("analysis.debate.macro_bear_analyst.get_client_for_task", return_value=mock_client):
+    with patch("monika.application.analysis.debate.macro_bear_analyst.get_client_for_task", return_value=mock_client):
         res = await run_bear_analyst("Test context", {})
         assert res["strength_score"] == 9
         assert len(res["evidence_cited"]) == 2
@@ -194,7 +194,7 @@ async def test_run_macro_judge_success():
         "rationale": "Clear macro divergence favors risk assets.",
         "escalation_required": False,
     }
-    with patch("analysis.debate.macro_judge.get_client_for_task", return_value=mock_client):
+    with patch("monika.application.analysis.debate.macro_judge.get_client_for_task", return_value=mock_client):
         res = await run_macro_judge({"bull_thesis": "..."}, {"bear_thesis": "..."}, "Context", {})
         assert res["winner"] == "RISK_ON_USD_BEAR"
         assert res["dxy_bias"] == "BEARISH"
@@ -208,8 +208,8 @@ async def test_run_macro_judge_success():
 
 @pytest.mark.asyncio
 async def test_run_macro_debate_in_fundamental_stage():
-    from analysis.stages.fundamental_stage import FundamentalStage
-    from database.models import FundamentalBrief
+    from monika.application.analysis.stages.fundamental_stage import FundamentalStage
+    from monika.infrastructure.database.models import FundamentalBrief
     import datetime
 
     mock_session = create_mock_async_session()
@@ -249,9 +249,9 @@ async def test_run_macro_debate_in_fundamental_stage():
     }
 
     with (
-        patch("analysis.debate.macro_bull_analyst.run_bull_analyst", return_value=mock_bull_res),
-        patch("analysis.debate.macro_bear_analyst.run_bear_analyst", return_value=mock_bear_res),
-        patch("analysis.debate.macro_judge.run_macro_judge", return_value=mock_judge_res),
+        patch("monika.application.analysis.debate.macro_bull_analyst.run_bull_analyst", return_value=mock_bull_res),
+        patch("monika.application.analysis.debate.macro_bear_analyst.run_bear_analyst", return_value=mock_bear_res),
+        patch("monika.application.analysis.debate.macro_judge.run_macro_judge", return_value=mock_judge_res),
     ):
         outcome = await stage._run_macro_debate(mock_session, brief)
 

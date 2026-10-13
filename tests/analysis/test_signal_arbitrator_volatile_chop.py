@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 from tests.conftest import create_mock_async_session
-from analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
-from analysis.strategies.base_strategy import EdgeSignal
+from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
+from monika.application.analysis.strategies.base_strategy import EdgeSignal
 
 
 @pytest.mark.asyncio
@@ -105,7 +105,7 @@ async def test_signal_arbitrator_linear_opinion_pool_concordant():
         "rationale": "Bullish momentum aligned",
     }
 
-    with patch("utils.calibration.confidence_calibrator.get_calibrated_confidence", AsyncMock(return_value=0.70)):
+    with patch("monika.core.calibration.confidence_calibrator.get_calibrated_confidence", AsyncMock(return_value=0.70)):
         result = await arbitrator.arbitrate(
             session=mock_session,
             symbol="XAUUSD",

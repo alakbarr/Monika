@@ -1,5 +1,5 @@
 import pytest
-from scrapers.news.rss_marketwatch import MarketwatchRssScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_marketwatch import MarketwatchRssScraper
 
 
 def test_init():

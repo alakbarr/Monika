@@ -1,8 +1,8 @@
 """Unit tests for ToolRegistry and modular tool handlers (Phase 5)."""
 
 import pytest
-from analysis.tools.registry import ToolRegistry, ToolDefinition, default_tool_registry
-import analysis.tools.handlers  # triggers self-registration
+from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition, default_tool_registry
+import monika.application.analysis.tools.handlers  # triggers self-registration
 
 
 def test_tool_registry_singleton():

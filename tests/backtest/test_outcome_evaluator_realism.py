@@ -4,8 +4,8 @@ Unit Tests for OutcomeEvaluator Realistic Friction and Dollar PnL.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from database.models import BacktestTrade
-from backtest.outcome_evaluator import OutcomeEvaluator
+from monika.infrastructure.database.models import BacktestTrade
+from monika.application.backtest.outcome_evaluator import OutcomeEvaluator
 
 
 def test_outcome_evaluator_gold_friction_and_dollar_pnl():

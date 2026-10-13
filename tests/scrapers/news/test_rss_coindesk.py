@@ -1,5 +1,5 @@
 import pytest
-from scrapers.news.rss_coindesk import CoindeskRssScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_coindesk import CoindeskRssScraper
 
 
 def test_init():

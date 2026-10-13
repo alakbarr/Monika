@@ -4,7 +4,7 @@ Unit Tests for Daily Rollover Hour Calculation (NY Close 21:00 UTC) in RiskGate.
 
 import pytest
 from datetime import datetime, timezone
-from risk.risk_gate import get_trading_day_start
+from monika.domain.risk.risk_gate import get_trading_day_start
 
 
 def test_get_trading_day_start_post_rollover():

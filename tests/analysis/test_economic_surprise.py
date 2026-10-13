@@ -1,8 +1,8 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.calculators.economic_surprise import _parse_numeric, compute_surprise_scores
-from database.models import EconomicCalendar
+from monika.application.analysis.calculators.economic_surprise import _parse_numeric, compute_surprise_scores
+from monika.infrastructure.database.models import EconomicCalendar
 
 
 class TestEconomicSurprise:

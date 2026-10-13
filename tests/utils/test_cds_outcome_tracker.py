@@ -1,5 +1,5 @@
 import pytest
-from utils.analytics.cds_outcome_tracker import compute_cds_outcome_correlation
+from monika.core.analytics.cds_outcome_tracker import compute_cds_outcome_correlation
 
 
 @pytest.mark.asyncio

@@ -2,8 +2,8 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone, timedelta
-from analysis.tools.handlers.analytical_query_builder import handle_run_analytical_query
-from analysis.calculators.rolling_correlation_calculator import compute_rolling_correlation
+from monika.application.analysis.tools.handlers.analytical_query_builder import handle_run_analytical_query
+from monika.application.analysis.calculators.rolling_correlation_calculator import compute_rolling_correlation
 
 
 @pytest.mark.asyncio

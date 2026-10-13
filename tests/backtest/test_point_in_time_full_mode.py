@@ -6,9 +6,9 @@ Unit Tests for PointInTimeBacktestEngine Full Mode Step Execution.
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, patch, MagicMock
-from database.models import PriceOHLCV, BacktestRun, BacktestTrade
-from backtest.point_in_time_engine import PointInTimeBacktestEngine
-from risk.position_sizing import SizingResult
+from monika.infrastructure.database.models import PriceOHLCV, BacktestRun, BacktestTrade
+from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine
+from monika.domain.risk.position_sizing import SizingResult
 
 
 @pytest.mark.asyncio
@@ -69,19 +69,19 @@ async def test_point_in_time_full_mode_step_execution():
         mock_get_session.return_value = mock_ctx
 
         with patch(
-            "analysis.calculators.confluence_calculator.calculate_confluence",
+            "monika.application.analysis.calculators.confluence_calculator.calculate_confluence",
             AsyncMock(return_value={"buy_potential_score": 8, "sell_potential_score": 4}),
         ):
             with patch(
-                "analysis.calculators.unified_threshold_calculator.compute_unified_confluence_threshold",
+                "monika.application.analysis.calculators.unified_threshold_calculator.compute_unified_confluence_threshold",
                 AsyncMock(return_value=(7, "base")),
             ):
                 with patch(
-                    "analysis.calculators.regime_classifier.classify_market_regime",
+                    "monika.application.analysis.calculators.regime_classifier.classify_market_regime",
                     AsyncMock(return_value={"regime": "TREND", "volatility_chop": {"chop_block": False}}),
                 ):
                     with patch(
-                        "analysis.calculators.daily_range_calculator.compute_daily_range_context",
+                        "monika.application.analysis.calculators.daily_range_calculator.compute_daily_range_context",
                         AsyncMock(return_value={"adr": 0.0080}),
                     ):
                         with patch.object(engine.sizer, "calculate_with_session", AsyncMock(return_value=mock_sizing)):

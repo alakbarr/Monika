@@ -2,10 +2,10 @@ from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.stages.per_asset_stage import PerAssetStage
-from analysis.stages.fundamental_stage import FundamentalStage
-from main import run_startup_checks
-from config.settings import load_all_config
+from monika.application.analysis.stages.per_asset_stage import PerAssetStage
+from monika.application.analysis.stages.fundamental_stage import FundamentalStage
+from monika.application.main import run_startup_checks
+from monika.core.config.settings import load_all_config
 
 
 @pytest.mark.asyncio
@@ -16,7 +16,7 @@ async def test_per_asset_preflight_gate_skips_turn_zero_tokens():
 
     # Force time during rollover window (22:30 UTC)
     rollover_time = datetime(2026, 9, 4, 22, 30, tzinfo=timezone.utc)
-    with patch("analysis.stages.per_asset_stage.clock.now", return_value=rollover_time):
+    with patch("monika.application.analysis.stages.per_asset_stage.clock.now", return_value=rollover_time):
         res = await stage.run_one(mock_session, "EURUSD", skip_cooldown=True)
 
     assert res["success"] is True
@@ -36,10 +36,10 @@ async def test_per_asset_stage_mt5_client_injection():
 
 @pytest.mark.asyncio
 @patch("anthropic.AsyncAnthropic")
-@patch("database.db.AsyncSessionLocal")
+@patch("monika.infrastructure.database.db.AsyncSessionLocal")
 @patch("sqlalchemy.ext.asyncio.AsyncEngine.connect")
 async def test_main_startup_checks_with_preflight(mock_connect, mock_session_local, mock_anthropic):
-    from database.models import Base
+    from monika.infrastructure.database.models import Base
 
     all_tables = [(table.name,) for table in Base.metadata.sorted_tables]
     all_cols = []

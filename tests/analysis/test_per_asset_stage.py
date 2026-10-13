@@ -2,12 +2,12 @@ import pytest
 from datetime import datetime, timezone, date, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from analysis.stages.per_asset_stage import PerAssetStage
-from database.models import AssetAnalysis, ActivityLog
+from monika.application.analysis.stages.per_asset_stage import PerAssetStage
+from monika.infrastructure.database.models import AssetAnalysis, ActivityLog
 
 
 def get_test_settings():
-    from config.settings import load_all_config
+    from monika.core.config.settings import load_all_config
 
     s = load_all_config()
     s.setdefault("analysis", {})["enable_preflight_gate"] = False
@@ -49,11 +49,11 @@ class TestPerAssetStage:
 
     @pytest.mark.asyncio
     @patch(
-        "analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+        "monika.application.analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
         new_callable=AsyncMock,
         return_value=(7.0, "default"),
     )
-    @patch("analysis.providers.llm_factory.FallbackClientWrapper.run_agent", new_callable=AsyncMock)
+    @patch("monika.infrastructure.providers.llm_factory.FallbackClientWrapper.run_agent", new_callable=AsyncMock)
     async def test_run_one_success(self, mock_run_agent, mock_threshold):
         stage = PerAssetStage(get_test_settings())
         mock_session = create_mock_async_session()
@@ -112,11 +112,11 @@ class TestPerAssetStage:
 
     @pytest.mark.asyncio
     @patch(
-        "analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+        "monika.application.analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
         new_callable=AsyncMock,
         return_value=(7.0, "default"),
     )
-    @patch("analysis.providers.llm_factory.FallbackClientWrapper.run_agent", new_callable=AsyncMock)
+    @patch("monika.infrastructure.providers.llm_factory.FallbackClientWrapper.run_agent", new_callable=AsyncMock)
     async def test_run_one_failure(self, mock_run_agent, mock_threshold):
         stage = PerAssetStage(get_test_settings())
         mock_session = create_mock_async_session()
@@ -158,14 +158,16 @@ class TestPerAssetStage:
         assert kwargs.get("category") == "error"
 
     @pytest.mark.asyncio
-    @patch("utils.clock.now", return_value=datetime(2026, 8, 19, 14, 0, 0, tzinfo=timezone.utc))
-    @patch("utils.api.claude_rate_limiter.ClaudeRateLimiter.acquire_session_slot", new_callable=AsyncMock)
+    @patch("monika.core.primitives.clock.now", return_value=datetime(2026, 8, 19, 14, 0, 0, tzinfo=timezone.utc))
     @patch(
-        "analysis.prefetch.stage2_prefetcher.Stage2DataBundler.fetch_bundle",
+        "monika.infrastructure.api.claude_rate_limiter.ClaudeRateLimiter.acquire_session_slot", new_callable=AsyncMock
+    )
+    @patch(
+        "monika.application.analysis.prefetch.stage2_prefetcher.Stage2DataBundler.fetch_bundle",
         new_callable=AsyncMock,
         return_value=("", {}),
     )
-    @patch("analysis.providers.llm_factory.FallbackClientWrapper.run_agent", new_callable=AsyncMock)
+    @patch("monika.infrastructure.providers.llm_factory.FallbackClientWrapper.run_agent", new_callable=AsyncMock)
     async def test_run_one_success_no_analysis(self, mock_run_agent, mock_fetch_bundle, mock_rate_limit, mock_clock):
         settings = get_test_settings()
         if "specialist_decomposition" in settings:
@@ -214,7 +216,7 @@ class TestPerAssetStage:
         assert res["decision"] == "wait"
 
     @pytest.mark.asyncio
-    @patch("analysis.stages.per_asset_stage.asyncio.sleep", new_callable=AsyncMock)
+    @patch("monika.application.analysis.stages.per_asset_stage.asyncio.sleep", new_callable=AsyncMock)
     async def test_run_all_parallel(self, mock_sleep):
         stage = PerAssetStage(get_test_settings())
         stage.run_parallel = True
@@ -237,7 +239,7 @@ class TestPerAssetStage:
         assert stage.run_one.call_count == 2
 
     @pytest.mark.asyncio
-    @patch("analysis.stages.per_asset_stage.asyncio.sleep", new_callable=AsyncMock)
+    @patch("monika.application.analysis.stages.per_asset_stage.asyncio.sleep", new_callable=AsyncMock)
     async def test_run_all_sequential(self, mock_sleep):
         stage = PerAssetStage(get_test_settings())
         stage.run_parallel = False
@@ -288,9 +290,10 @@ class TestPerAssetStage:
 
     @pytest.mark.asyncio
     @patch(
-        "analysis.stages.per_asset_stage.clock.now", return_value=datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc)
+        "monika.application.analysis.stages.per_asset_stage.clock.now",
+        return_value=datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc),
     )
-    @patch("utils.validation.data_validator.check_data_coherence", new_callable=AsyncMock)
+    @patch("monika.core.validation.data_validator.check_data_coherence", new_callable=AsyncMock)
     async def test_check_data_coherence_for_analysis_success(self, mock_coherence, mock_clock):
         stage = PerAssetStage(get_test_settings())
         mock_session = create_mock_async_session()
@@ -322,9 +325,10 @@ class TestPerAssetStage:
 
     @pytest.mark.asyncio
     @patch(
-        "analysis.stages.per_asset_stage.clock.now", return_value=datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc)
+        "monika.application.analysis.stages.per_asset_stage.clock.now",
+        return_value=datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc),
     )
-    @patch("utils.validation.data_validator.check_data_coherence", new_callable=AsyncMock)
+    @patch("monika.core.validation.data_validator.check_data_coherence", new_callable=AsyncMock)
     async def test_check_data_coherence_for_analysis_vix_date_object(self, mock_coherence, mock_clock):
         stage = PerAssetStage(get_test_settings())
         mock_session = create_mock_async_session()
@@ -355,9 +359,10 @@ class TestPerAssetStage:
 
     @pytest.mark.asyncio
     @patch(
-        "analysis.stages.per_asset_stage.clock.now", return_value=datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc)
+        "monika.application.analysis.stages.per_asset_stage.clock.now",
+        return_value=datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc),
     )
-    @patch("utils.validation.data_validator.check_data_coherence", new_callable=AsyncMock)
+    @patch("monika.core.validation.data_validator.check_data_coherence", new_callable=AsyncMock)
     async def test_check_data_coherence_for_analysis_vix_stale(self, mock_coherence, mock_clock):
         stage = PerAssetStage(get_test_settings())
         mock_session = create_mock_async_session()
@@ -388,9 +393,10 @@ class TestPerAssetStage:
 
     @pytest.mark.asyncio
     @patch(
-        "analysis.stages.per_asset_stage.clock.now", return_value=datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc)
+        "monika.application.analysis.stages.per_asset_stage.clock.now",
+        return_value=datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc),
     )
-    @patch("utils.validation.data_validator.check_data_coherence", new_callable=AsyncMock)
+    @patch("monika.core.validation.data_validator.check_data_coherence", new_callable=AsyncMock)
     async def test_check_data_coherence_for_analysis_missing_vix(self, mock_coherence, mock_clock):
         stage = PerAssetStage(get_test_settings())
         mock_session = create_mock_async_session()

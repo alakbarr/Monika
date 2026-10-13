@@ -6,14 +6,20 @@
 import pytest
 from typing import Any, Dict
 
-from security.prompt_injection_scanner import PromptInjectionScanner, PromptInjectionThreatDetected
-from utils.security.threat_scanner import scan_content, sanitize_or_block
-from utils.security.threat_detector import ThreatDetector
-from analysis.memory.trajectory_compressor import DatasetTrajectoryCompressor, TrajectoryCompressor as MemoryCompressor
-from agent.trajectory_compressor import InvariantTrajectoryCompressor, TrajectoryCompressor as AgentCompressor
-from utils.llm.prompt_compressor import PromptBundleCompressor, ContextCompressor as BundleCompressor
-from graph.team_compiler import TeamCompiler, DeskConfig, DeskRole
-import analysis.tools as tools_pkg
+from monika.core.security.prompt_injection_scanner import PromptInjectionScanner, PromptInjectionThreatDetected
+from monika.core.security.threat_scanner import scan_content, sanitize_or_block
+from monika.core.security.threat_detector import ThreatDetector
+from monika.application.analysis.memory.trajectory_compressor import (
+    DatasetTrajectoryCompressor,
+    TrajectoryCompressor as MemoryCompressor,
+)
+from monika.application.agent.trajectory_compressor import (
+    InvariantTrajectoryCompressor,
+    TrajectoryCompressor as AgentCompressor,
+)
+from monika.infrastructure.llm.prompt_compressor import PromptBundleCompressor, ContextCompressor as BundleCompressor
+from monika.application.graph.team_compiler import TeamCompiler, DeskConfig, DeskRole
+import monika.application.analysis.tools as tools_pkg
 
 
 def test_security_scanner_unified_shield():

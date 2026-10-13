@@ -1,5 +1,5 @@
 import pytest
-from analysis.tools.loop_guard import ToolLoopGuard, canonical_tool_hash
+from monika.application.analysis.tools.loop_guard import ToolLoopGuard, canonical_tool_hash
 
 
 def test_canonical_tool_hash_argument_invariance():

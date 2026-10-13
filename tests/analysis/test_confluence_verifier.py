@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from database.models import AssetAnalysis
+from monika.infrastructure.database.models import AssetAnalysis
 import json
-from analysis.validators.confluence_verifier import verify_confluence
+from monika.application.analysis.validators.confluence_verifier import verify_confluence
 
 
 @pytest.fixture
@@ -15,7 +15,7 @@ async def test_verify_no_scorecard(mock_session):
     analysis = AssetAnalysis(symbol="BTCUSD", confluence_factors_json="[]")
     settings = {}
     with patch(
-        "analysis.validators.confluence_verifier.calculate_confluence",
+        "monika.application.analysis.validators.confluence_verifier.calculate_confluence",
         return_value={"computed_score": 0, "blocking_issues": []},
     ):
         result = await verify_confluence(mock_session, analysis, settings)
@@ -33,7 +33,7 @@ async def test_verify_all_ok(mock_session):
     analysis.confluence_factors_json = json.dumps(factors)
     settings = {}
     with patch(
-        "analysis.validators.confluence_verifier.calculate_confluence",
+        "monika.application.analysis.validators.confluence_verifier.calculate_confluence",
         return_value={"computed_score": 2, "blocking_issues": []},
     ):
         result = await verify_confluence(mock_session, analysis, settings)
@@ -52,7 +52,7 @@ async def test_verify_discrepancy(mock_session):
     analysis.confluence_factors_json = json.dumps(factors)
     settings = {}
     with patch(
-        "analysis.validators.confluence_verifier.calculate_confluence",
+        "monika.application.analysis.validators.confluence_verifier.calculate_confluence",
         return_value={"computed_score": 1, "blocking_issues": []},
     ):
         result = await verify_confluence(mock_session, analysis, settings)
@@ -71,7 +71,7 @@ async def test_verify_discrepancy_tolerance_boundary(mock_session):
     analysis.confluence_factors_json = json.dumps(factors)
     settings = {}
     with patch(
-        "analysis.validators.confluence_verifier.calculate_confluence",
+        "monika.application.analysis.validators.confluence_verifier.calculate_confluence",
         return_value={"computed_score": 1, "blocking_issues": []},
     ):
         result = await verify_confluence(mock_session, analysis, settings)

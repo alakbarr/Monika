@@ -1,6 +1,6 @@
 import pytest
-from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
-from analysis.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
 
 def test_find_completed_transaction_endpoints():

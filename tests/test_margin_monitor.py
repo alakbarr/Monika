@@ -5,7 +5,7 @@ Unit tests for MarginGuardian (MarginMonitor).
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from agent.monitors.margin_monitor import run_margin_monitor
+from monika.application.agent.monitors.margin_monitor import run_margin_monitor
 
 
 @pytest.mark.asyncio
@@ -28,7 +28,7 @@ async def test_margin_monitor_emits_warning_under_threshold():
     mock_exec_service.mt5 = None
     mock_agent.execution_service = mock_exec_service
 
-    with patch("agent.monitors.margin_monitor.AgentNotifier") as MockNotifier:
+    with patch("monika.application.agent.monitors.margin_monitor.AgentNotifier") as MockNotifier:
         mock_notifier_instance = AsyncMock()
         MockNotifier.return_value = mock_notifier_instance
 
@@ -66,7 +66,7 @@ async def test_margin_monitor_healthy_no_alert():
     mock_exec_service.mt5 = None
     mock_agent.execution_service = mock_exec_service
 
-    with patch("agent.monitors.margin_monitor.AgentNotifier") as MockNotifier:
+    with patch("monika.application.agent.monitors.margin_monitor.AgentNotifier") as MockNotifier:
         mock_notifier_instance = AsyncMock()
         MockNotifier.return_value = mock_notifier_instance
 

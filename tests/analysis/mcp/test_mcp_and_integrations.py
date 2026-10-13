@@ -8,11 +8,11 @@ import os
 import tempfile
 import pytest
 
-from analysis.mcp.mcp_death_supervisor import McpDeathSupervisor
-from analysis.mcp.mcp_schema_cache import McpSchemaCache
-from analysis.mcp.client import McpServerProcess
-from data_sources.web_search import SearchMemo
-from analysis.tools.domain.multimodal_tools import (
+from monika.application.analysis.mcp.mcp_death_supervisor import McpDeathSupervisor
+from monika.application.analysis.mcp.mcp_schema_cache import McpSchemaCache
+from monika.application.analysis.mcp.client import McpServerProcess
+from monika.infrastructure.data_ingestion.sources.web_search import SearchMemo
+from monika.application.analysis.tools.domain.multimodal_tools import (
     VisionImageProcessor,
     ChartVisionInput,
     handle_chart_vision_analyze,

@@ -5,7 +5,7 @@ Unit tests for indicators/technical.py (Yang-Zhang volatility, AC1 autocorrelati
 import numpy as np
 import pandas as pd
 import pytest
-from indicators.technical import (
+from monika.domain.indicators.technical import (
     compute_yang_zhang_volatility,
     compute_lag1_autocorrelation,
     TechnicalIndicatorCalculator,

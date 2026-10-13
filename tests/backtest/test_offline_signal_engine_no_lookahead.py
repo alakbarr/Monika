@@ -5,7 +5,7 @@ Unit tests for backtest/offline_signal_engine.py verifying zero look-ahead bias 
 import pytest
 import pandas as pd
 import numpy as np
-from backtest.offline_signal_engine import OfflineSignalEngine
+from monika.application.backtest.offline_signal_engine import OfflineSignalEngine
 
 
 def test_offline_signal_engine_column_casing():

@@ -1,5 +1,5 @@
 import pytest
-from analysis.calculators.stage1_priced_in import calculate_stage1_priced_in_baseline
+from monika.application.analysis.calculators.stage1_priced_in import calculate_stage1_priced_in_baseline
 
 
 def test_stage1_priced_in_baseline_eurusd_extreme():

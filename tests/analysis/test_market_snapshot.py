@@ -7,7 +7,7 @@ import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone
-from analysis.validators.market_snapshot import VerifiedMarketSnapshot
+from monika.application.analysis.validators.market_snapshot import VerifiedMarketSnapshot
 
 
 @pytest.mark.asyncio

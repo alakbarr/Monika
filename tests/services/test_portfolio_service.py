@@ -5,8 +5,8 @@ from tests.conftest import create_mock_async_session
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from services.portfolio_service import PortfolioService
-from database.models import Position, Order
+from monika.application.services.portfolio_service import PortfolioService
+from monika.infrastructure.database.models import Position, Order
 
 
 @pytest.mark.asyncio
@@ -72,8 +72,8 @@ async def test_portfolio_service_get_closed_and_orders():
 
 
 def test_domain_facades_importable():
-    from execution.paper_tracker import PaperTracker
-    from agent.chat_agent import ChatAgent
+    from monika.infrastructure.brokers.paper_tracker import PaperTracker
+    from monika.application.agent.chat_agent import ChatAgent
 
     assert PaperTracker is not None
     assert ChatAgent is not None

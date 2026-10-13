@@ -1,7 +1,7 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.memory.skill_crystallizer import SkillCrystallizer
+from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
 
 
 @pytest.mark.asyncio

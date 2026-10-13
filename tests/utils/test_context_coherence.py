@@ -1,5 +1,8 @@
 import pytest
-from utils.protocol.context_coherence import compute_bundle_coherence_issues, compute_cross_pair_contradictions
+from monika.application.protocol.context_coherence import (
+    compute_bundle_coherence_issues,
+    compute_cross_pair_contradictions,
+)
 
 
 def test_compute_bundle_coherence_issues():

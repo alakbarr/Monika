@@ -5,7 +5,7 @@ verifying 100% compliance across SMC geometry, risk constraints, and trade disci
 """
 
 import pytest
-from evals.runner import OfflineEvalRunner
+from monika.application.evals.runner import OfflineEvalRunner
 
 
 def test_offline_oracle_fixture_loading():

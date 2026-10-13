@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
-from database.adapters import parse_timestamp
+from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
+from monika.infrastructure.database.adapters import parse_timestamp
 
 
 class TestForexFactoryCalendarScraper:

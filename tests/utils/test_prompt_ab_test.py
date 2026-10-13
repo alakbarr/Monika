@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from utils.llm.prompt_ab_test import PromptABTest, OfflinePromptOptimizer
+from monika.infrastructure.llm.prompt_ab_test import PromptABTest, OfflinePromptOptimizer
 
 
 class TestPromptABTest:

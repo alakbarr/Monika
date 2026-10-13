@@ -1,5 +1,5 @@
 import pytest
-from scrapers.news.rss_bloomberg import BloombergRssScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_bloomberg import BloombergRssScraper
 
 
 def test_init():

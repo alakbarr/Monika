@@ -3,7 +3,7 @@ Unit tests for TokenBudgetManager in logging_observability/token_budgeter.py.
 """
 
 import pytest
-from logging_observability.token_budgeter import TokenBudgetManager, get_token_budgeter
+from monika.core.telemetry.token_budgeter import TokenBudgetManager, get_token_budgeter
 
 
 def test_token_budgeter_singleton():

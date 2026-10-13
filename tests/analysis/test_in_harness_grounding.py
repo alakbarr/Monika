@@ -1,5 +1,5 @@
 import pytest
-from analysis.validators.in_harness_grounding import InHarnessGroundingValidator
+from monika.application.analysis.validators.in_harness_grounding import InHarnessGroundingValidator
 
 
 def test_grounding_valid_setup():

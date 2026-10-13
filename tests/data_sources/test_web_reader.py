@@ -4,7 +4,7 @@ Unit tests for WebReader SSRF protection and body stream limit (H-16, H-17).
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from data_sources.web_reader import WebReader, is_prohibited_ip, validate_url_ip
+from monika.infrastructure.data_ingestion.sources.web_reader import WebReader, is_prohibited_ip, validate_url_ip
 
 
 def test_is_prohibited_ip():

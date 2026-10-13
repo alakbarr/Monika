@@ -1,5 +1,5 @@
 import unittest
-from skills.loader import load_skill, compose_system_prompt, list_skills
+from monika.application.skills.loader import load_skill, compose_system_prompt, list_skills
 
 
 class TestCentralBanksFramework(unittest.TestCase):

@@ -4,7 +4,7 @@
 # ==============================================================================
 
 import pytest
-from cli.busy_input import BusyInputBuffer, InputDelivery
+from monika.interfaces.cli.busy_input import BusyInputBuffer, InputDelivery
 
 
 def test_busy_input_buffer_submit_and_pop():

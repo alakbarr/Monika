@@ -6,9 +6,9 @@ Unit tests for SMCFairValueGapStrategy and BBVolumeProfileMeanReversion.
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.strategies.smc_fvg import SMCFairValueGapStrategy
-from analysis.strategies.bb_volume_profile import BBVolumeProfileMeanReversion
-from analysis.strategies.registry import StrategyRegistry
+from monika.application.analysis.strategies.smc_fvg import SMCFairValueGapStrategy
+from monika.application.analysis.strategies.bb_volume_profile import BBVolumeProfileMeanReversion
+from monika.application.analysis.strategies.registry import StrategyRegistry
 
 
 def test_strategy_registry_includes_smc_and_bb():

@@ -4,10 +4,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pytest
-from telegram_bot.chat_tool_router import ChatToolRouter
-from analysis.tools.tools_definitions import ALL_TOOLS
-import analysis.tools.handlers
-from analysis.tools.registry import default_tool_registry
+from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
+from monika.application.analysis.tools.tools_definitions import ALL_TOOLS
+import monika.application.analysis.tools.handlers
+from monika.application.analysis.tools.registry import default_tool_registry
 
 
 def test_execution_tools_registered():

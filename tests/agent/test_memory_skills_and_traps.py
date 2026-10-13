@@ -17,11 +17,11 @@ import time
 from pathlib import Path
 import pytest
 
-from agent.trajectory_compressor import TrajectoryCompressor
-from cli.doctor import SystemDoctor
-from database.repair_ledger import RepairLedger
-from database.session_db_wal import FileLockGuard, SessionDbWal
-from evals.oracles.tool_safety_oracle import ToolSafetyOracle
+from monika.application.agent.trajectory_compressor import TrajectoryCompressor
+from monika.interfaces.cli.doctor import SystemDoctor
+from monika.infrastructure.database.repair_ledger import RepairLedger
+from monika.infrastructure.database.session_db_wal import FileLockGuard, SessionDbWal
+from monika.application.evals.oracles.tool_safety_oracle import ToolSafetyOracle
 
 
 @pytest.fixture

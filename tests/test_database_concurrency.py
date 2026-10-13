@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select, func
 
-import database.db as db_mod
-from database.db import get_session, get_write_session, init_db, close_db
-from database.models import Base, Trade, ActivityLog
-from logging_observability.activity_logger import ActivityLogger
+import monika.infrastructure.database.db as db_mod
+from monika.infrastructure.database.db import get_session, get_write_session, init_db, close_db
+from monika.infrastructure.database.models import Base, Trade, ActivityLog
+from monika.core.telemetry.activity_logger import ActivityLogger
 
 
 @pytest.fixture

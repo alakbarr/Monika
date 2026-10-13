@@ -1,5 +1,5 @@
 import pytest
-from utils.llm.caveman_compressor import compress_tool_payload
+from monika.infrastructure.llm.caveman_compressor import compress_tool_payload
 
 
 def test_compress_tool_payload():

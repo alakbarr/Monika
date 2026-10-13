@@ -22,19 +22,19 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 
 load_dotenv()
 
-from database.models import (
+from monika.infrastructure.database.models import (
     Base,
     EconomicReportDecomposition,
     CentralBankDocument,
     MacroLiquidityCreditMetric,
 )
-from data_sources.market_stress_auction_fetcher import MarketStressAuctionFetcher
-from data_sources.fed_liquidity_h41_fetcher import FedLiquidityH41Fetcher
-from scrapers.macro.generic_gov_stats_fetcher import GenericGovStatsFetcher
-from scrapers.macro.central_bank_doc_scraper import CentralBankDocScraper
-from analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
-from analysis.calculators.universal_cb_differ import UniversalCentralBankDiffer
-from analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
+from monika.infrastructure.data_ingestion.sources.market_stress_auction_fetcher import MarketStressAuctionFetcher
+from monika.infrastructure.data_ingestion.sources.fed_liquidity_h41_fetcher import FedLiquidityH41Fetcher
+from monika.infrastructure.data_ingestion.scrapers.macro.generic_gov_stats_fetcher import GenericGovStatsFetcher
+from monika.infrastructure.data_ingestion.scrapers.macro.central_bank_doc_scraper import CentralBankDocScraper
+from monika.application.analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
+from monika.application.analysis.calculators.universal_cb_differ import UniversalCentralBankDiffer
+from monika.application.analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
 
 
 import pytest_asyncio

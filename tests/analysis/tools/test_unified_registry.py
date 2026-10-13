@@ -5,7 +5,7 @@
 
 import pytest
 from pydantic import BaseModel, Field
-from analysis.tools.unified_registry import UnifiedToolRegistry, ToolEntry
+from monika.application.analysis.tools.unified_registry import UnifiedToolRegistry, ToolEntry
 
 
 class SampleArgs(BaseModel):

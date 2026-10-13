@@ -22,7 +22,7 @@ class TestSkillLoader(unittest.TestCase):
 
     def _make_loader(self):
         """Import loader with patched _SKILLS_DIR pointing to temp dir."""
-        import skills.loader as loader_mod
+        import monika.application.skills.loader as loader_mod
 
         loader_mod.load_skill.cache_clear()  # clear LRU cache
         original = loader_mod._SKILLS_DIR
@@ -35,7 +35,7 @@ class TestSkillLoader(unittest.TestCase):
 
     def test_load_skill_basic(self):
         self._write_skill("test_skill", "Hello World")
-        import skills.loader as loader_mod
+        import monika.application.skills.loader as loader_mod
 
         loader_mod.load_skill.cache_clear()
         original_dir = loader_mod._SKILLS_DIR
@@ -48,7 +48,7 @@ class TestSkillLoader(unittest.TestCase):
             loader_mod.load_skill.cache_clear()
 
     def test_load_skill_not_found_raises(self):
-        import skills.loader as loader_mod
+        import monika.application.skills.loader as loader_mod
 
         loader_mod.load_skill.cache_clear()
         original_dir = loader_mod._SKILLS_DIR
@@ -62,7 +62,7 @@ class TestSkillLoader(unittest.TestCase):
 
     def test_compose_system_prompt_single(self):
         self._write_skill("alpha", "Alpha content")
-        import skills.loader as loader_mod
+        import monika.application.skills.loader as loader_mod
 
         loader_mod.load_skill.cache_clear()
         original_dir = loader_mod._SKILLS_DIR
@@ -77,7 +77,7 @@ class TestSkillLoader(unittest.TestCase):
     def test_compose_system_prompt_multi(self):
         self._write_skill("part1", "Part One")
         self._write_skill("part2", "Part Two")
-        import skills.loader as loader_mod
+        import monika.application.skills.loader as loader_mod
 
         loader_mod.load_skill.cache_clear()
         original_dir = loader_mod._SKILLS_DIR
@@ -92,7 +92,7 @@ class TestSkillLoader(unittest.TestCase):
 
     def test_compose_template_substitution(self):
         self._write_skill("tmpl", "Analyze {{symbol}} with COT {{cot_code}}")
-        import skills.loader as loader_mod
+        import monika.application.skills.loader as loader_mod
 
         loader_mod.load_skill.cache_clear()
         original_dir = loader_mod._SKILLS_DIR
@@ -108,7 +108,7 @@ class TestSkillLoader(unittest.TestCase):
     def test_compose_missing_skill_is_skipped_gracefully(self):
         """Missing skill in compose should be skipped, not crash."""
         self._write_skill("present", "Present content")
-        import skills.loader as loader_mod
+        import monika.application.skills.loader as loader_mod
 
         loader_mod.load_skill.cache_clear()
         original_dir = loader_mod._SKILLS_DIR
@@ -124,7 +124,7 @@ class TestSkillLoader(unittest.TestCase):
     def test_list_skills(self):
         self._write_skill("skill_a", "A")
         self._write_skill("skill_b", "B")
-        import skills.loader as loader_mod
+        import monika.application.skills.loader as loader_mod
 
         original_dir = loader_mod._SKILLS_DIR
         loader_mod._SKILLS_DIR = self.trading_dir
@@ -137,7 +137,7 @@ class TestSkillLoader(unittest.TestCase):
 
     def test_safe_dict_leaves_unknown_placeholder(self):
         """_SafeDict should leave unknown {keys} in place instead of raising KeyError."""
-        from skills.loader import _SafeDict
+        from monika.application.skills.loader import _SafeDict
 
         template = "Hello {name}, your code is {code}"
         result = template.format_map(_SafeDict({"name": "Alice"}))
@@ -145,7 +145,7 @@ class TestSkillLoader(unittest.TestCase):
 
     def test_load_real_lessons_learned(self):
         """Verify that lessons_learned exists in the actual trading skills directory."""
-        from skills.loader import load_skill, list_skills
+        from monika.application.skills.loader import load_skill, list_skills
 
         skills = list_skills()
         self.assertIn("lessons_learned", skills)

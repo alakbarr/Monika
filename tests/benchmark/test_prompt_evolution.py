@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from benchmark.prompt_evolution import GEPALiteEvolver
-from benchmark.judge import JUDGE_PERSONAS, judge_output_ensemble
+from monika.application.benchmark.prompt_evolution import GEPALiteEvolver
+from monika.application.benchmark.judge import JUDGE_PERSONAS, judge_output_ensemble
 
 
 @pytest.mark.asyncio
@@ -23,7 +23,7 @@ async def test_judge_ensemble_supports_4_personas():
     settings = {"benchmark": {"default_judges": ["claude_sonnet", "gemini_flash", "deepseek_v3", "gpt_4o"]}}
     # Check that ensemble assigns 4 distinct personas
     # (Mocking judge_output)
-    from benchmark import judge
+    from monika.application.benchmark import judge
 
     orig_judge_output = judge.judge_output
     judge.judge_output = AsyncMock(

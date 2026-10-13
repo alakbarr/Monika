@@ -10,11 +10,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 
 from tests.conftest import create_mock_async_session
-from logging_observability.dashboard.api import app, set_dashboard_dependencies
-from logging_observability.dashboard.rbac import Role
-from execution.service.trade_confirm import TradeConfirmManager
-from risk.approval_hub import ApprovalHub
-from telegram_bot.bot import TelegramBot
+from monika.interfaces.dashboard.api import app, set_dashboard_dependencies
+from monika.interfaces.dashboard.rbac import Role
+from monika.application.execution.service.trade_confirm import TradeConfirmManager
+from monika.domain.risk.approval_hub import ApprovalHub
+from monika.interfaces.telegram.bot import TelegramBot
 
 
 @pytest.fixture
@@ -127,7 +127,7 @@ def test_telegram_dead_commands_registered():
         assert cmd in registered_cmds, f"Command '{cmd}' not found in registered Telegram handlers"
 
 
-@patch("database.db.AsyncSessionLocal")
+@patch("monika.infrastructure.database.db.AsyncSessionLocal")
 def test_get_risk_enriched_fields(mock_session_local, client):
     """Verify that /api/risk returns enriched metrics."""
     mock_session = create_mock_async_session()

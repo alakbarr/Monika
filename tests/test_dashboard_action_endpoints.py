@@ -11,7 +11,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 
-from logging_observability.dashboard.api import (
+from monika.interfaces.dashboard.api import (
     app,
     set_dashboard_dependencies,
     _dependencies,
@@ -37,7 +37,7 @@ def test_trigger_cycle_success(client):
 
     set_dashboard_dependencies(cycle_scheduler=mock_cycle_sched)
 
-    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
@@ -73,7 +73,7 @@ def test_override_risk_parameters(client):
     settings = {"trading": {"risk": {"risk_percent_per_trade": 1.0}}}
     set_dashboard_dependencies(settings=settings)
 
-    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
@@ -110,7 +110,7 @@ def test_close_position_by_ticket(client):
     mock_exec_svc.close_position_by_ticket = AsyncMock(return_value={"success": True, "profit": 150.0})
     set_dashboard_dependencies(execution_service=mock_exec_svc)
 
-    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
@@ -134,7 +134,7 @@ def test_close_position_missing_identifier(client):
 
 def test_approve_trade_trigger(client):
     """Verify POST/PUT /api/actions/approve-trade/{id} approves a TradeTrigger."""
-    from database.models import TradeTrigger
+    from monika.infrastructure.database.models import TradeTrigger
 
     mock_trigger = TradeTrigger(
         id=99,
@@ -143,7 +143,7 @@ def test_approve_trade_trigger(client):
         status="pending",
     )
 
-    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
@@ -162,7 +162,7 @@ def test_approve_trade_trigger(client):
 
 def test_approve_trade_not_found(client):
     """Verify POST /api/actions/approve-trade/{id} returns 404 if ID does not match any record."""
-    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
@@ -225,7 +225,7 @@ def test_manual_order_submit(client):
 
     set_dashboard_dependencies(mt5_client=mock_mt5, risk_gate=mock_risk_gate)
 
-    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
@@ -262,7 +262,7 @@ def test_manual_order_submit_paper(client):
 
     set_dashboard_dependencies(mt5_client=mock_mt5, risk_gate=mock_risk_gate)
 
-    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
@@ -301,7 +301,7 @@ def test_market_candles_endpoint(client):
 
 def test_market_structure_with_timesfm(client):
     """Verify GET /api/market/structure/{symbol} returns structure levels and timesfm cone."""
-    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_exec_res = MagicMock()
         mock_exec_res.scalars.return_value.all.return_value = []
@@ -324,7 +324,7 @@ def test_market_structure_with_timesfm(client):
 
 def test_decision_dossier_endpoint(client):
     """Verify GET /api/analysis/decision-dossier/{analysis_id} returns 5-stage audit lineage."""
-    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 

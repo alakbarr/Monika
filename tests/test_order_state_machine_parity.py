@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database.models import (
+from monika.infrastructure.database.models import (
     Base,
     OrderStatus,
     Order,
@@ -33,16 +33,16 @@ from database.models import (
     BacktestTrade,
     InvalidOrderStateTransitionError,
 )
-from execution.broker_adapter import (
+from monika.infrastructure.brokers.broker_adapter import (
     BrokerAdapter,
     MT5LiveAdapter,
     SimulatedBrokerAdapter,
     _get_pip_size,
     _get_contract_size,
 )
-from execution.execution_service import ExecutionService, ExecutionResult
-from utils.protocol.event_bus import get_event_bus, reset_event_bus, OrderStateChangedEvent
-import utils.clock as clock
+from monika.application.execution.execution_service import ExecutionService, ExecutionResult
+from monika.application.protocol.event_bus import get_event_bus, reset_event_bus, OrderStateChangedEvent
+import monika.core.primitives.clock as clock
 
 
 # ==============================================================================
@@ -539,7 +539,9 @@ class TestExecutionServiceOrderLifecycle:
         await session.commit()
 
         # Execute
-        with patch("analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock) as mock_adv:
+        with patch(
+            "monika.application.analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock
+        ) as mock_adv:
             mock_adv.return_value = {"approve": True, "hard_block": False}
             res = await svc.execute_analysis(session, analysis)
 
@@ -642,7 +644,7 @@ class TestPointInTimeBacktestParity:
         Verify PointInTimeBacktestEngine with use_execution_service=True executes
         trades through ExecutionService with SimulatedBrokerAdapter (100% parity).
         """
-        from backtest.point_in_time_engine import PointInTimeBacktestEngine
+        from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine
 
         session = async_sqlite_session
         start = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -1059,7 +1061,7 @@ class TestOrderStateMachineEdgeCasesAndRobustness:
     @pytest.mark.asyncio
     async def test_crypto_and_oil_pip_sizing_in_parity_engine(self, async_sqlite_session):
         """Verify crypto (BTCUSD) and oil (USOUSD) pip sizes operate correctly in parity engine."""
-        from backtest.point_in_time_engine import PointInTimeBacktestEngine
+        from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine
 
         session = async_sqlite_session
         start = datetime(2026, 1, 1, tzinfo=timezone.utc)

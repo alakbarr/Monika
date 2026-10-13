@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
+from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
 
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_signal_arbitrator_bayesian_pooling_concordant():
     session = create_mock_async_session()
 
     # Mock confidence calibrator to return raw score
-    with patch("utils.calibration.confidence_calibrator.get_calibrated_confidence", side_effect=lambda s, c: c):
+    with patch("monika.core.calibration.confidence_calibrator.get_calibrated_confidence", side_effect=lambda s, c: c):
         res = await arbitrator.arbitrate(
             session=session,
             symbol="EURUSD",

@@ -10,7 +10,7 @@ from io import StringIO
 import pytest
 from unittest.mock import MagicMock, patch
 
-from security.credential_vault import (
+from monika.core.security.credential_vault import (
     CredentialVault,
     SensitiveMaskingFilter,
     get_secret,

@@ -1,8 +1,8 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.memory.layered_memory import LayeredMemoryManager
-from utils.llm.prompt_compressor import estimate_tokens
+from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,7 @@ from datetime import datetime, timezone, timedelta
 
 pytest.importorskip("matplotlib")
 pytest.importorskip("mplfinance")
-from utils.chart_generator import generate_candlestick_chart
+from monika.core.analytics.chart_generator import generate_candlestick_chart
 
 
 def test_generate_candlestick_chart_valid():

@@ -12,8 +12,8 @@ All stress test scenarios execute as full assertion tests verifying 100% routing
 """
 
 import pytest
-from telegram_bot.chat_tool_router import ChatToolRouter
-from analysis.tools.tools_definitions import TELEGRAM_TOOLS
+from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
+from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
 
 
 @pytest.fixture(scope="module")

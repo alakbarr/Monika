@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from analysis.calculators.intraday_level_optimizer import compute_optimal_levels
-from analysis.strategies.liquidity_sweep_edge import LiquiditySweepStructuralShift
+from monika.application.analysis.calculators.intraday_level_optimizer import compute_optimal_levels
+from monika.application.analysis.strategies.liquidity_sweep_edge import LiquiditySweepStructuralShift
 
 
 @pytest.mark.asyncio
@@ -24,12 +24,18 @@ async def test_compute_optimal_levels_rr_pairing():
 
     with (
         patch(
-            "analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock
+            "monika.application.analysis.calculators.intraday_level_optimizer.compute_daily_range_context",
+            new_callable=AsyncMock,
         ) as m_adr,
-        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr,
-        patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones,
         patch(
-            "analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock
+            "monika.application.analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock
+        ) as m_atr,
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock
+        ) as m_zones,
+        patch(
+            "monika.application.analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep",
+            new_callable=AsyncMock,
         ) as m_sweep,
     ):
         m_adr.return_value = mock_adr_ctx
@@ -74,12 +80,18 @@ async def test_compute_optimal_levels_synthetic_tp():
 
     with (
         patch(
-            "analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock
+            "monika.application.analysis.calculators.intraday_level_optimizer.compute_daily_range_context",
+            new_callable=AsyncMock,
         ) as m_adr,
-        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr,
-        patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones,
         patch(
-            "analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock
+            "monika.application.analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock
+        ) as m_atr,
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock
+        ) as m_zones,
+        patch(
+            "monika.application.analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep",
+            new_callable=AsyncMock,
         ) as m_sweep,
     ):
         m_adr.return_value = mock_adr_ctx
@@ -123,12 +135,18 @@ async def test_compute_optimal_levels_insufficient_adr_room():
 
     with (
         patch(
-            "analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock
+            "monika.application.analysis.calculators.intraday_level_optimizer.compute_daily_range_context",
+            new_callable=AsyncMock,
         ) as m_adr,
-        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr,
-        patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones,
         patch(
-            "analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock
+            "monika.application.analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock
+        ) as m_atr,
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock
+        ) as m_zones,
+        patch(
+            "monika.application.analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep",
+            new_callable=AsyncMock,
         ) as m_sweep,
     ):
         m_adr.return_value = mock_adr_ctx
@@ -164,12 +182,18 @@ async def test_compute_optimal_levels_with_existing_sl():
 
     with (
         patch(
-            "analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock
+            "monika.application.analysis.calculators.intraday_level_optimizer.compute_daily_range_context",
+            new_callable=AsyncMock,
         ) as m_adr,
-        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr,
-        patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones,
         patch(
-            "analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock
+            "monika.application.analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock
+        ) as m_atr,
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock
+        ) as m_zones,
+        patch(
+            "monika.application.analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep",
+            new_callable=AsyncMock,
         ) as m_sweep,
     ):
         m_adr.return_value = mock_adr_ctx
@@ -200,8 +224,12 @@ async def test_liquidity_sweep_computes_invalidation_stop_loss():
     session = create_mock_async_session()
 
     with (
-        patch("analysis.strategies.liquidity_sweep_edge.detect_liquidity_sweep", new_callable=AsyncMock) as m_detect,
-        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr,
+        patch(
+            "monika.application.analysis.strategies.liquidity_sweep_edge.detect_liquidity_sweep", new_callable=AsyncMock
+        ) as m_detect,
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock
+        ) as m_atr,
     ):
         m_atr.return_value = 10.0
 

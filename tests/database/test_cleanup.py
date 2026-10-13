@@ -1,13 +1,13 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from database.cleanup import cleanup_old_data
+from monika.infrastructure.database.cleanup import cleanup_old_data
 from sqlalchemy import delete
 
 
 class TestCleanup:
     @pytest.mark.asyncio
-    @patch("database.cleanup.datetime")
+    @patch("monika.infrastructure.database.cleanup.datetime")
     async def test_cleanup_old_data_success(self, mock_datetime):
         from datetime import datetime, timezone, timedelta
 
@@ -27,7 +27,7 @@ class TestCleanup:
         assert mock_session.commit.call_count == 1
 
     @pytest.mark.asyncio
-    @patch("database.cleanup.datetime")
+    @patch("monika.infrastructure.database.cleanup.datetime")
     async def test_cleanup_old_data_exception(self, mock_datetime):
         from datetime import datetime, timezone, timedelta
 
@@ -45,7 +45,7 @@ class TestCleanup:
         mock_session.rollback.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("database.cleanup.datetime")
+    @patch("monika.infrastructure.database.cleanup.datetime")
     async def test_cleanup_with_custom_settings(self, mock_datetime):
         """Test that per-timeframe retention settings are respected."""
         from datetime import datetime, timezone, timezone, timedelta
@@ -81,7 +81,7 @@ class TestCleanup:
         assert mock_session.commit.call_count == 1
 
     @pytest.mark.asyncio
-    @patch("database.cleanup.datetime")
+    @patch("monika.infrastructure.database.cleanup.datetime")
     async def test_d1_retention_never_below_400(self, mock_datetime):
         """D1 retention must be at least 400 days regardless of config."""
         from datetime import datetime, timezone, timedelta
@@ -105,7 +105,7 @@ class TestCleanup:
     @pytest.mark.asyncio
     async def test_reset_paper_trading_history_success(self, tmp_path):
         """Test reset_paper_trading_history runs cleanly, creates backup, and commits."""
-        from database.cleanup import reset_paper_trading_history
+        from monika.infrastructure.database.cleanup import reset_paper_trading_history
 
         mock_session = create_mock_async_session()
         mock_result = MagicMock()
@@ -129,7 +129,7 @@ class TestCleanup:
     @pytest.mark.asyncio
     async def test_reset_paper_trading_history_rollback(self, tmp_path):
         """Test reset_paper_trading_history rolls back on database exception."""
-        from database.cleanup import reset_paper_trading_history
+        from monika.infrastructure.database.cleanup import reset_paper_trading_history
 
         mock_session = create_mock_async_session()
         mock_session.execute.side_effect = Exception("DB Connection Lost")
@@ -148,8 +148,8 @@ class TestCleanup:
     async def test_reset_paper_trading_history_with_signals_and_positions(self, tmp_path):
         """Test reset_paper_trading_history when positions and tickets exist, exercising signal_conds."""
         from datetime import datetime, timezone
-        from database.cleanup import reset_paper_trading_history
-        from database.models import PaperTradeRecord, Position, MT5Signal
+        from monika.infrastructure.database.cleanup import reset_paper_trading_history
+        from monika.infrastructure.database.models import PaperTradeRecord, Position, MT5Signal
 
         mock_session = create_mock_async_session()
 

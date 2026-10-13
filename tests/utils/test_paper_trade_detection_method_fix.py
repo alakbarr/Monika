@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
 import sqlalchemy as sa
 
-from database.models import PaperTradeRecord, AssetAnalysis, Position, PriceOHLCV
-from utils.analytics.paper_tracker import PaperTracker
+from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, Position, PriceOHLCV
+from monika.core.analytics.paper_tracker import PaperTracker
 
 
 def test_papertraderecord_model_column_lengths():

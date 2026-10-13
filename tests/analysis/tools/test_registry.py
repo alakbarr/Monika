@@ -6,9 +6,9 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from analysis.tools.registry import default_tool_registry, ToolRegistry, register_tool
-from analysis.tools.base_handler import ToolHandler
-from analysis.tools.executor import ToolExecutor
+from monika.application.analysis.tools.registry import default_tool_registry, ToolRegistry, register_tool
+from monika.application.analysis.tools.base_handler import ToolHandler
+from monika.application.analysis.tools.executor import ToolExecutor
 
 
 def test_registry_registration_and_aliases():
@@ -82,7 +82,7 @@ async def test_tool_executor_verified_snapshot():
 @pytest.mark.asyncio
 async def test_legacy_tool_executor_dispatches_via_registry():
     """Verify analysis.tools.tool_executor.ToolExecutor dispatches seamlessly to default_tool_registry handlers."""
-    from analysis.tools.tool_executor import ToolExecutor as LegacyToolExecutor
+    from monika.application.analysis.tools.tool_executor import ToolExecutor as LegacyToolExecutor
 
     @default_tool_registry.register
     class CustomDynamicHandler(ToolHandler):

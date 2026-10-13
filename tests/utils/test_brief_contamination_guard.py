@@ -1,5 +1,5 @@
 import pytest
-from utils.protocol.brief_contamination_guard import BriefContaminationGuard
+from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
 
 
 @pytest.fixture

@@ -4,9 +4,9 @@
 
 import pytest
 import os
-from config.settings import load_settings
-from analysis.providers.llm_factory import LLMFactory
-from analysis.providers.openrouter_provider import OPENROUTER_MODEL_ALIASES
+from monika.core.config.settings import load_settings
+from monika.infrastructure.providers.llm_factory import LLMFactory
+from monika.infrastructure.providers.openrouter_provider import OPENROUTER_MODEL_ALIASES
 
 
 def test_task_roles_uniform_routing():
@@ -198,7 +198,7 @@ def test_openrouter_free_models_registered_in_catalog():
 
 def test_summarizer_task_role_and_factory():
     """Memastikan role summarizer terkonfigurasi dengan max_tokens 2048 dan get_client_for_task berfungsi."""
-    from analysis.providers.llm_factory import get_client_for_task
+    from monika.infrastructure.providers.llm_factory import get_client_for_task
 
     settings = load_settings()
     task_roles = settings.get("llm", {}).get("task_roles", {})

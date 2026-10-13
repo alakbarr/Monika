@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from datetime import datetime, timezone
-from backtest.time_machine import TimeMachine, get_virtual_now, is_backtest_mode
+from monika.application.backtest.time_machine import TimeMachine, get_virtual_now, is_backtest_mode
 
 
 @pytest.mark.asyncio

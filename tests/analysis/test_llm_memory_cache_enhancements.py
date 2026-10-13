@@ -4,10 +4,10 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timedelta, timezone
 from tests.conftest import create_mock_async_session
 
-from analysis.providers.gemini_provider import GeminiProvider
-from analysis.stages.per_asset_stage import SPECIALIST_PROMPTS
-from analysis.debate.fact_sheet import build_fact_sheet
-from database.models import AssetAnalysis, Position, FundamentalBrief
+from monika.infrastructure.providers.gemini_provider import GeminiProvider
+from monika.application.analysis.stages.per_asset_stage import SPECIALIST_PROMPTS
+from monika.application.analysis.debate.fact_sheet import build_fact_sheet
+from monika.infrastructure.database.models import AssetAnalysis, Position, FundamentalBrief
 
 
 class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
@@ -28,9 +28,11 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         provider.thinking_level = "none"
 
         with (
-            patch("analysis.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock) as mock_fetch,
-            patch("analysis.providers.gemini_provider.get_session"),
-            patch("analysis.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True),
+            patch(
+                "monika.infrastructure.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock
+            ) as mock_fetch,
+            patch("monika.infrastructure.providers.gemini_provider.get_session"),
+            patch("monika.infrastructure.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True),
         ):
             mock_fetch.return_value = {
                 "candidates": [{"content": {"parts": [{"text": '{"result": "success"}'}]}, "finishReason": "STOP"}]
@@ -44,7 +46,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
 
     async def test_chronicle_writer_preserves_structural_events(self):
         """Event struktural (geopolitical, institutional, regime_shift) tidak di-resolve otomatis."""
-        from analysis.memory.chronicle_writer import ChronicleWriter
+        from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
 
         writer = ChronicleWriter()
 
@@ -108,7 +110,8 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         mock_session.execute.return_value = mock_exec_result
 
         with patch(
-            "analysis.memory.layered_memory.LayeredMemoryManager.get_core_memory", new_callable=AsyncMock
+            "monika.application.analysis.memory.layered_memory.LayeredMemoryManager.get_core_memory",
+            new_callable=AsyncMock,
         ) as mock_get_core:
             mock_get_core.return_value = "=== REGIME: RISK_ON ===\nLessons: Avoid counter-trend breakout."
 
@@ -121,7 +124,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
 
     async def test_chronicle_writer_bootstrap_seeding(self):
         """Pastikan seed_bootstrap_chronicles_if_empty membuat 5 seed struktural terverifikasi 2026 saat tabel kosong."""
-        from analysis.memory.chronicle_writer import ChronicleWriter
+        from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
 
         writer = ChronicleWriter()
 
@@ -138,7 +141,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
 
     async def test_anthropic_generate_builds_system_blocks_and_adaptive_efforts(self):
         """Pastikan Anthropic generate() memanggil _build_system_blocks dan mendukung level xhigh/max."""
-        from analysis.providers.anthropic_provider import AnthropicProvider
+        from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
 
         provider = AnthropicProvider(model="claude-sonnet-4-6", settings=self.settings, thinking_level="xhigh")
         provider.client = AsyncMock()
@@ -149,7 +152,10 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
             patch.object(
                 provider, "_consume_anthropic_stream", return_value=mock_stream.get_final_message.return_value
             ),
-            patch("utils.api.claude_rate_limiter.ClaudeRateLimiter.acquire_session_slot", new_callable=AsyncMock),
+            patch(
+                "monika.infrastructure.api.claude_rate_limiter.ClaudeRateLimiter.acquire_session_slot",
+                new_callable=AsyncMock,
+            ),
         ):
             await provider.generate("hello", system="System instruction for cache")
             call_kwargs = provider._consume_anthropic_stream.call_args[0][0]
@@ -164,7 +170,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
 
     async def test_ollama_generate_appends_human_message(self):
         """Pastikan Ollama generate() menyertakan messages yang sesuai ke dalam client chat.completions."""
-        from analysis.providers.ollama_provider import OllamaProvider
+        from monika.infrastructure.providers.ollama_provider import OllamaProvider
 
         provider = OllamaProvider(model_name="qwen2.5-coder:7b", settings=self.settings)
         mock_client = AsyncMock()
@@ -188,7 +194,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
 
     def test_openai_dynamic_headroom(self):
         """Pastikan OpenAI provider menerapkan headroom dinamis bertingkat sesuai thinking level."""
-        from analysis.providers.openai_provider import OpenAIProvider
+        from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
         provider = OpenAIProvider(model="o3-mini", max_tokens=4096, thinking_level="high", settings=self.settings)
         kwargs = {"max_tokens": 4096}
@@ -200,8 +206,8 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
 
     async def test_debate_analysts_prompt_caching_isolation(self):
         """Pastikan Bull dan Bear analyst tidak membakar symbol ke dalam system prompt."""
-        from analysis.debate.bull_analyst import generate_bull_advocacy
-        from analysis.debate.bear_analyst import generate_bear_dissent
+        from monika.application.analysis.debate.bull_analyst import generate_bull_advocacy
+        from monika.application.analysis.debate.bear_analyst import generate_bear_dissent
 
         mock_client = AsyncMock()
         mock_client.generate_content.return_value = (
@@ -227,7 +233,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
 
     def test_cache_breakpoint_manager_skips_short_prompts_and_pads_near_threshold(self):
         """Pastikan CacheBreakpointManager tidak membuang token pada prompt pendek, tapi pad saat dekat threshold."""
-        from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
         # 1. Prompt pendek (< 10.000 char) tidak boleh dipad
         short_prompt = "You are a classifier."
@@ -241,8 +247,8 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
 
     async def test_layered_memory_detect_regime_fuses_vix_dxy_macro_brief(self):
         """Pastikan LayeredMemoryManager._detect_regime memadukan VIX, DXY, dan FundamentalBrief."""
-        from analysis.memory.layered_memory import LayeredMemoryManager
-        from database.models import DXYData, VIXData, FundamentalBrief
+        from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+        from monika.infrastructure.database.models import DXYData, VIXData, FundamentalBrief
 
         mgr = LayeredMemoryManager(self.settings)
         mock_session = create_mock_async_session()
@@ -274,8 +280,8 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
 
     async def test_prompt_cache_invariance_and_hit_rate_simulation(self):
         """Simulasikan beberapa query berturut-turut dan ukur cache hit rate prefix invariance."""
-        from telegram_bot.chat_agent import ChatAgent
-        from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+        from monika.interfaces.telegram.chat_agent import ChatAgent
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
         agent = ChatAgent(self.settings, user_id=12345)
         mock_session = create_mock_async_session()

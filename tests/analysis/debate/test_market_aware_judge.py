@@ -1,7 +1,11 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock
-from analysis.debate.investment_judge import evaluate_debate, resolve_regime_weights, REGIME_WEIGHT_MATRIX
+from monika.application.analysis.debate.investment_judge import (
+    evaluate_debate,
+    resolve_regime_weights,
+    REGIME_WEIGHT_MATRIX,
+)
 
 
 def test_resolve_regime_weights_trending():

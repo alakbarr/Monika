@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from logging_observability.dashboard.api import app
-from database.models import BacktestRun, BacktestTrade
+from monika.interfaces.dashboard.api import app
+from monika.infrastructure.database.models import BacktestRun, BacktestTrade
 
 client = TestClient(app)
 

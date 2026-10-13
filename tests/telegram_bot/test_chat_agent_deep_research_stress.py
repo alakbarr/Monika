@@ -13,13 +13,13 @@ Areas Tested:
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from telegram_bot.chat_agent import ChatAgent, PendingAction
-from analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
+from monika.interfaces.telegram.chat_agent import ChatAgent, PendingAction
+from monika.application.analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
 
 
 @pytest.fixture(autouse=True)
 def mock_chat_agent_db_session():
-    with patch("telegram_bot.chat_agent.get_session") as mock_get_session:
+    with patch("monika.interfaces.telegram.chat_agent.get_session") as mock_get_session:
         mock_sess = create_mock_async_session()
         mock_get_session.return_value.__aenter__.return_value = mock_sess
         yield mock_sess
@@ -36,7 +36,7 @@ class TestInjectMacroPlaybooksIdempotency:
     def test_idempotency_string_prompt_repeated_calls(self):
         """Calling _inject_macro_playbooks multiple times on a string prompt should not duplicate playbooks."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
 
         base_prompt = "You are Monika Trading Agent with strict risk management."
@@ -58,7 +58,7 @@ class TestInjectMacroPlaybooksIdempotency:
     def test_idempotency_tuple_prompt_repeated_calls(self):
         """Calling _inject_macro_playbooks multiple times on a tuple prompt should not duplicate playbooks."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
 
         base_tuple = ("Static Base Prompt Anchor", "Dynamic Tail: Balance=5000, Drawdown=0.0")
@@ -85,7 +85,7 @@ class TestInjectMacroPlaybooksIdempotency:
         Checks whether the idempotency guard prevents unbounded growth of market_dynamics_framework.
         """
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
 
         def mock_load_skill(name):
@@ -124,7 +124,7 @@ class TestPromptTypePolymorphism:
     def test_inject_returns_exact_type_and_structure(self):
         """Prompt type must match input type exactly: str -> str, tuple -> tuple(str, str)."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
 
         # 1. Plain string
@@ -154,7 +154,7 @@ class TestPromptTypePolymorphism:
     async def test_run_tier_deep_research_with_tuple_and_string_prompts(self):
         """Verify _run_tier_deep_research correctly unwraps both tuple and string prompts."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_client.model = "test-model"
             mock_client.model_name = "test-model"
@@ -216,7 +216,7 @@ class TestLoadSkillGracefulDegradation:
     def test_inject_degrades_gracefully_when_both_skills_raise(self):
         """When both skills raise exceptions, prompt is returned intact without crashing."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
 
         with patch("skills.loader.load_skill", side_effect=RuntimeError("Disk failure")):
@@ -231,7 +231,7 @@ class TestLoadSkillGracefulDegradation:
     def test_inject_degrades_gracefully_when_only_one_skill_fails(self):
         """When one skill fails and the other succeeds, the surviving skill is injected."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
 
         # Event playbook fails, market dynamics succeeds
@@ -263,7 +263,7 @@ class TestLoadSkillGracefulDegradation:
     def test_inject_handles_empty_or_none_returns_from_load_skill(self):
         """When load_skill returns empty string or None, headers should not be injected."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
 
         with patch("skills.loader.load_skill", return_value=""):
@@ -278,7 +278,7 @@ class TestLoadSkillGracefulDegradation:
     async def test_deep_research_completes_when_skill_loading_fails(self):
         """_run_tier_deep_research must complete and return an authoritative brief even if skill loading fails."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_client.model = "test-model"
             mock_client.model_name = "test-model"
@@ -322,7 +322,7 @@ class TestSynthesizerToolWiringAndPropagation:
     async def test_synthesizer_wiring_when_tool_executor_is_provided(self):
         """When tool_executor is provided, it is forwarded to both subagent pool and Synthesizer."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_client.model = "test-model"
             mock_client.model_name = "test-model"
@@ -377,7 +377,7 @@ class TestSynthesizerToolWiringAndPropagation:
     async def test_synthesizer_wiring_when_tool_executor_is_none(self):
         """When tool_executor is None, Synthesizer still receives tools and propagates proposed_action."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_client.model = "test-model"
             mock_client.model_name = "test-model"
@@ -425,7 +425,7 @@ class TestSynthesizerToolWiringAndPropagation:
     def test_create_pending_action_accepts_save_market_intelligence(self):
         """Verify _create_pending_action processes save_market_intelligence proposals correctly."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
 
         proposed = {
@@ -451,7 +451,7 @@ class TestSynthesizerToolWiringAndPropagation:
     def test_create_pending_action_rejects_unknown_action_type(self):
         """Verify _create_pending_action safely rejects unregistered action types from Synthesizer."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
 
         proposed_malformed = {
@@ -464,7 +464,7 @@ class TestSynthesizerToolWiringAndPropagation:
     def test_create_pending_action_respects_circuit_breaker(self):
         """When denial circuit breaker is tripped (_proposals_paused=True), proposals are suppressed."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
         agent._proposals_paused = True
 
@@ -479,7 +479,7 @@ class TestSynthesizerToolWiringAndPropagation:
     async def test_deep_research_resilience_to_status_callback_exceptions(self):
         """Verify _run_tier_deep_research does not crash if status_callback raises an exception."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_client.model = "test-model"
             mock_client.model_name = "test-model"
@@ -508,13 +508,13 @@ class TestSynthesizerToolWiringAndPropagation:
     async def test_deep_research_resilience_when_specialist_workers_fail(self):
         """When specialist workers fail in DynamicSubagentPool, Synthesizer still consolidates report."""
         settings = {}
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_client.model = "test-model"
             mock_client.model_name = "test-model"
 
             # 3 workers raise exceptions or return failure, Synthesizer still runs
-            from analysis.subagent_spawner import SubagentResult
+            from monika.application.analysis.subagent_spawner import SubagentResult
 
             failing_pool = MagicMock()
             failing_pool.decompose_research_query.return_value = [
@@ -565,7 +565,7 @@ class TestSynthesizerToolWiringAndPropagation:
             }
             mock_get_client.return_value = mock_client
 
-            with patch("analysis.subagent_spawner.DynamicSubagentPool", return_value=failing_pool):
+            with patch("monika.application.analysis.subagent_spawner.DynamicSubagentPool", return_value=failing_pool):
                 agent = ChatAgent(settings, 12345)
                 res = await agent._run_tier_deep_research(
                     system_prompt="Base system prompt",

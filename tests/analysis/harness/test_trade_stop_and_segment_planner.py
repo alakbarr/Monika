@@ -1,7 +1,7 @@
 import pytest
-from analysis.harness.verification_evidence_ledger import VerificationEvidenceLedger
-from analysis.harness.trade_stop_gates import TradeStopGate
-from analysis.harness.symbol_segment_planner import SymbolSegmentPlanner
+from monika.application.analysis.harness.verification_evidence_ledger import VerificationEvidenceLedger
+from monika.application.analysis.harness.trade_stop_gates import TradeStopGate
+from monika.application.analysis.harness.symbol_segment_planner import SymbolSegmentPlanner
 
 
 def test_verification_evidence_ledger():

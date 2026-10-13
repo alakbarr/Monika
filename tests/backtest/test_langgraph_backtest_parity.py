@@ -6,10 +6,10 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from backtest.point_in_time_engine import PointInTimeBacktestEngine
+from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine
 
 pytest.importorskip("langgraph")
-import graph.workflow
+import monika.application.graph.workflow
 
 
 @pytest.mark.asyncio

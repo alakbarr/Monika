@@ -7,9 +7,9 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import MagicMock, AsyncMock
 
-from risk.position_sizing import get_instrument_spec
-from analysis.memory.outcome_linker import OutcomeLinker
-from database.models import PriceOHLCV
+from monika.domain.risk.position_sizing import get_instrument_spec
+from monika.application.analysis.memory.outcome_linker import OutcomeLinker
+from monika.infrastructure.database.models import PriceOHLCV
 
 
 def test_get_instrument_spec_precision():
@@ -225,7 +225,7 @@ async def test_path_dependent_timeframe_h1_filter():
 @pytest.mark.asyncio
 async def test_process_paper_whatifs_timeframe_h1_filter():
     """Verify that process_paper_whatifs queries PriceOHLCV strictly with timeframe == 'H1'."""
-    from database.models import DecisionReflection, AssetAnalysis
+    from monika.infrastructure.database.models import DecisionReflection, AssetAnalysis
     from unittest.mock import patch
 
     linker = OutcomeLinker()
@@ -272,7 +272,7 @@ async def test_process_paper_whatifs_timeframe_h1_filter():
 
     with (
         patch.object(linker, "_check_path_dependent_outcome", new_callable=AsyncMock, return_value=(False, True)),
-        patch("analysis.memory.outcome_linker.AlphaCalculator") as mock_calc_cls,
+        patch("monika.application.analysis.memory.outcome_linker.AlphaCalculator") as mock_calc_cls,
         patch.object(linker.reflector, "reflect_on_trade", new_callable=AsyncMock),
     ):
         mock_calc = MagicMock()

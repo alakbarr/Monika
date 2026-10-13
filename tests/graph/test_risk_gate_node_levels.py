@@ -2,8 +2,8 @@ from tests.conftest import create_mock_async_session
 import pytest
 import math
 from unittest.mock import AsyncMock, MagicMock, patch
-from database.models import AssetAnalysis
-from graph.nodes.risk_gate_node import _safe_num, risk_gate_node
+from monika.infrastructure.database.models import AssetAnalysis
+from monika.application.graph.nodes.risk_gate_node import _safe_num, risk_gate_node
 
 
 def test_safe_num():
@@ -67,23 +67,23 @@ async def test_quant_promoted_trade_synthesizes_levels():
     mock_session.execute.return_value = mock_db_res
 
     with (
-        patch("database.db.get_session") as mock_get_sess,
+        patch("monika.infrastructure.database.db.get_session") as mock_get_sess,
         patch(
-            "analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate",
+            "monika.application.analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate",
             new=AsyncMock(return_value=mock_arb_res),
         ),
         patch(
-            "analysis.strategies.registry.StrategyRegistry.evaluate_all",
+            "monika.application.analysis.strategies.registry.StrategyRegistry.evaluate_all",
             new=AsyncMock(return_value=[mock_quant_signal]),
         ),
-        patch("analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_decay,
+        patch("monika.application.analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_decay,
         patch(
-            "analysis.calculators.regime_classifier.classify_market_regime",
+            "monika.application.analysis.calculators.regime_classifier.classify_market_regime",
             new=AsyncMock(return_value={"regime": "trending"}),
         ),
-        patch("risk.risk_gate.RiskGate") as mock_rg_class,
+        patch("monika.domain.risk.risk_gate.RiskGate") as mock_rg_class,
         patch(
-            "analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
+            "monika.application.analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
             new=AsyncMock(return_value=(True, [])),
         ),
     ):
@@ -164,23 +164,23 @@ async def test_risk_gate_node_persists_to_asset_analysis_without_setter_error():
     mock_session.execute.return_value = mock_db_res
 
     with (
-        patch("database.db.get_session") as mock_get_sess,
+        patch("monika.infrastructure.database.db.get_session") as mock_get_sess,
         patch(
-            "analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate",
+            "monika.application.analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate",
             new=AsyncMock(return_value=mock_arb_res),
         ),
         patch(
-            "analysis.strategies.registry.StrategyRegistry.evaluate_all",
+            "monika.application.analysis.strategies.registry.StrategyRegistry.evaluate_all",
             new=AsyncMock(return_value=[mock_quant_signal]),
         ),
-        patch("analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_decay,
+        patch("monika.application.analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_decay,
         patch(
-            "analysis.calculators.regime_classifier.classify_market_regime",
+            "monika.application.analysis.calculators.regime_classifier.classify_market_regime",
             new=AsyncMock(return_value={"regime": "trending"}),
         ),
-        patch("risk.risk_gate.RiskGate") as mock_rg_class,
+        patch("monika.domain.risk.risk_gate.RiskGate") as mock_rg_class,
         patch(
-            "analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
+            "monika.application.analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
             new=AsyncMock(return_value=(True, [])),
         ),
     ):

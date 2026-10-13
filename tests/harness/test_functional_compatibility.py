@@ -10,17 +10,17 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Any
 
-from harness.contract import PluginCategory
-from harness.context import PluginContext
-from harness.engine import PluginEngine, FunctionalPluginAdapter
-from harness.adapters.functional_adapter import (
+from monika.application.harness.contract import PluginCategory
+from monika.application.harness.context import PluginContext
+from monika.application.harness.engine import PluginEngine, FunctionalPluginAdapter
+from monika.application.harness.adapters.functional_adapter import (
     FunctionalPluginBridge,
     script_constants,
     tools,
 )
-from utils.infra.container import ServiceContainer
-from utils.protocol.event_bus import EventBus
-from analysis.prompt_sections import prompt_section_registry
+from monika.infrastructure.infra.container import ServiceContainer
+from monika.application.protocol.event_bus import EventBus
+from monika.application.analysis.prompt_sections import prompt_section_registry
 
 
 @pytest.fixture

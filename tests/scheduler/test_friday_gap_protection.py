@@ -6,9 +6,9 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from scheduler.position_guardian import PositionGuardian
-from database.models import Position
-from utils import clock
+from monika.application.scheduler.position_guardian import PositionGuardian
+from monika.infrastructure.database.models import Position
+from monika.core.primitives import clock
 
 
 @pytest.mark.asyncio
@@ -37,7 +37,7 @@ async def test_friday_close_protection_triggers_auto_close():
     with (
         clock.frozen_time(friday_time),
         patch("scheduler.position_guardian.get_session") as mock_get_session,
-        patch("utils.infra.notifier.AgentNotifier.send_info", new_callable=AsyncMock) as mock_notify,
+        patch("monika.infrastructure.infra.notifier.AgentNotifier.send_info", new_callable=AsyncMock) as mock_notify,
     ):
         mock_session = create_mock_async_session()
         mock_exec = MagicMock()

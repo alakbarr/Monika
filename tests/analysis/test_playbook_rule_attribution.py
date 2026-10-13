@@ -2,9 +2,9 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from tests.conftest import create_mock_async_session
-from database.models import PlaybookRuleAttribution, DecisionReflection
-from analysis.memory.lesson_consolidator import record_playbook_rule_outcome
-from analysis.memory.session_search import SessionSearchEngine
+from monika.infrastructure.database.models import PlaybookRuleAttribution, DecisionReflection
+from monika.application.analysis.memory.lesson_consolidator import record_playbook_rule_outcome
+from monika.application.analysis.memory.session_search import SessionSearchEngine
 
 
 @pytest.mark.asyncio

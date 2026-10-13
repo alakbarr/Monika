@@ -6,7 +6,7 @@ import asyncio
 import pytest
 from pathlib import Path
 
-from harness.lifecycle import (
+from monika.application.harness.lifecycle import (
     ReplacementCoordinator,
     ReplacementLease,
     ReplacementTimeoutError,

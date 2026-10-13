@@ -3,8 +3,12 @@
 # ==============================================================================
 
 import pytest
-from analysis.harness.tool_batch_planner import ToolBatchPlanner
-from analysis.harness.tool_repair import repair_tool_name, repair_tool_arguments, coerce_tool_arguments
+from monika.application.analysis.harness.tool_batch_planner import ToolBatchPlanner
+from monika.application.analysis.harness.tool_repair import (
+    repair_tool_name,
+    repair_tool_arguments,
+    coerce_tool_arguments,
+)
 
 
 def test_tool_name_auto_repair():

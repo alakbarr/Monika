@@ -4,7 +4,7 @@
 # ==============================================================================
 
 import pytest
-from cli.theme import THEMES, get_theme, ThemePack, build_tui_css, build_chat_css
+from monika.interfaces.cli.theme import THEMES, get_theme, ThemePack, build_tui_css, build_chat_css
 
 
 def test_theme_presets_exist():
@@ -41,7 +41,7 @@ def test_theme_tui_css_custom():
 def test_persist_theme_to_settings(tmp_path):
     """Verify persisting theme to yaml updates ui.theme (Q3)."""
     import yaml
-    from cli.theme import persist_theme_to_settings
+    from monika.interfaces.cli.theme import persist_theme_to_settings
 
     dummy_cfg = tmp_path / "settings.yaml"
     dummy_cfg.write_text("app_name: Monika\nui:\n  theme: retro_vintage\n", encoding="utf-8")

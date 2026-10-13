@@ -3,7 +3,7 @@ from unittest import mock
 from datetime import datetime, timezone
 
 from typesafe_sdk import SystemOneResponse, ChoiceAnswer, NoulAnswer, ScoreAnswer, Usage
-from utils.typesafe.jev_primitives import (
+from monika.core.primitives.jev_primitives import (
     parse_jev_response_to_dict,
     build_fundamental_verifier_questions,
     build_news_classification_verify_questions,
@@ -151,7 +151,7 @@ async def test_classify_news_batch_with_key_asset_classes():
 @pytest.mark.asyncio
 async def test_position_guardian_jev_threat():
     """Verify PositionGuardian evaluate_position_threat_with_jev evaluates threat without errors."""
-    from scheduler.position_guardian import PositionGuardian
+    from monika.application.scheduler.position_guardian import PositionGuardian
 
     settings = {
         "llm": {
@@ -173,7 +173,7 @@ async def test_position_guardian_jev_threat():
     mock_pos.tp = 2680.0
     mock_pos.volume = 0.1
 
-    with mock.patch("analysis.providers.llm_factory.get_client_for_task") as mock_factory:
+    with mock.patch("monika.infrastructure.providers.llm_factory.get_client_for_task") as mock_factory:
         mock_client = mock.AsyncMock()
         mock_client.classify_json.return_value = {
             "adverse_momentum": False,

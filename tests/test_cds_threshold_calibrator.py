@@ -7,7 +7,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from utils.calibration.cds_threshold_calibrator import run_calibration_if_due
+from monika.core.calibration.cds_threshold_calibrator import run_calibration_if_due
 
 
 @pytest.mark.asyncio

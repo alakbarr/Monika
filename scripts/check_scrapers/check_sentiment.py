@@ -23,13 +23,6 @@ _src_dir = os.path.join(_repo_dir, "src")
 sys.path.insert(0, _repo_dir)
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
-
 # Muat environment variables dari file .env
 try:
     from dotenv import load_dotenv
@@ -66,7 +59,7 @@ def print_ratios_table(source_name: str, ratios: dict):
 def check_fxssi(headless: bool = False, pause: int = 3) -> dict:
     """Menguji FXSSISentimentFetcher (DrissionPage browser)."""
     logger.info(f"==> Menguji FXSSISentimentFetcher (Headless: {headless})")
-    from scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
+    from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
 
     start_time = time.time()
     try:
@@ -100,7 +93,7 @@ def check_fxssi(headless: bool = False, pause: int = 3) -> dict:
 def check_myfxbook(headless: bool = False, pause: int = 3) -> dict:
     """Menguji MyFxBookSentimentFetcher (DrissionPage browser)."""
     logger.info(f"==> Menguji MyFxBookSentimentFetcher (Headless: {headless})")
-    from scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
+    from monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
 
     start_time = time.time()
     try:
@@ -134,7 +127,7 @@ def check_myfxbook(headless: bool = False, pause: int = 3) -> dict:
 async def check_binance() -> dict:
     """Menguji BinanceSentimentFetcher (REST API)."""
     logger.info("==> Menguji BinanceSentimentFetcher (REST API)")
-    from scrapers.sentiment.binance_sentiment import BinanceSentimentFetcher
+    from monika.infrastructure.data_ingestion.scrapers.sentiment.binance_sentiment import BinanceSentimentFetcher
 
     start_time = time.time()
     try:

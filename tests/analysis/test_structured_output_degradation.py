@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from pydantic import BaseModel
-from analysis.providers.structured_fallback import (
+from monika.infrastructure.providers.structured_fallback import (
     extract_key_values_by_regex,
     parse_structured_output,
     invoke_structured_or_freetext,

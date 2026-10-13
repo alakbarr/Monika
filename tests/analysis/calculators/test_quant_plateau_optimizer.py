@@ -5,7 +5,7 @@ Verifies ParameterSpec sampling & perturbation, Plateau stability scoring, and D
 
 import pytest
 import math
-from analysis.calculators.quant_plateau_optimizer import (
+from monika.application.analysis.calculators.quant_plateau_optimizer import (
     ParameterSpec,
     QuantPlateauOptimizer,
     PlateauOptimizationResult,

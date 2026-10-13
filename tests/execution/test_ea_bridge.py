@@ -3,7 +3,7 @@ import time
 import pytest
 import asyncio
 from datetime import datetime
-from execution.ea_bridge.heartbeat_writer import HeartbeatManager, HEARTBEAT_INTERVAL_SECONDS
+from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager, HEARTBEAT_INTERVAL_SECONDS
 
 
 class TestHeartbeatManager:

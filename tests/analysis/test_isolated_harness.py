@@ -5,8 +5,8 @@ Unit tests for Isolated Subagent Harness (H3).
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
-from analysis.subagent.isolated_harness import IsolatedSubagentRunner
-from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
+from monika.application.analysis.subagent.isolated_harness import IsolatedSubagentRunner
+from monika.infrastructure.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
 
 
 class DummySubagentClient(BaseLLMClient):

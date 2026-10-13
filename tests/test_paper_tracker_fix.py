@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 
 @pytest.mark.asyncio
 async def test_paper_trade_detection(db_session):
-    from utils.analytics.paper_tracker import PaperTracker
-    from database.models import PaperTradeRecord
+    from monika.core.analytics.paper_tracker import PaperTracker
+    from monika.infrastructure.database.models import PaperTradeRecord
     from sqlalchemy import select
 
     # 1. Check for active open paper trades in isolated test DB

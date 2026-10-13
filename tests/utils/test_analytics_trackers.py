@@ -1,10 +1,10 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from utils.analytics.edge_tracker import is_trade_win
-from utils.analytics.specialist_tracker import compute_specialist_reliability
-from utils.analytics.adversarial_outcome_tracker import compute_adversarial_check_correlation
-from utils.analytics.trade_autopsy import run_trade_autopsy
+from monika.core.analytics.edge_tracker import is_trade_win
+from monika.core.analytics.specialist_tracker import compute_specialist_reliability
+from monika.core.analytics.adversarial_outcome_tracker import compute_adversarial_check_correlation
+from monika.core.analytics.trade_autopsy import run_trade_autopsy
 
 
 def test_is_trade_win_variations():
@@ -51,7 +51,7 @@ def test_is_trade_win_variations():
 
 
 def test_package_level_analytics_exports():
-    import utils.analytics as ua
+    import monika.core.analytics as ua
 
     assert hasattr(ua, "is_trade_win")
     assert hasattr(ua, "compute_edge_status")

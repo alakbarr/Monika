@@ -7,9 +7,9 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from pydantic import BaseModel, Field
 
-from provider.error_taxonomy import FailoverReason as CanonicalFailoverReason
-from analysis.providers.provider_failover_classifier import FailoverReason as AnalysisFailoverReason
-from agent.error_classifier import FailoverReason as AgentFailoverReason
+from monika.infrastructure.credentials.error_taxonomy import FailoverReason as CanonicalFailoverReason
+from monika.infrastructure.providers.provider_failover_classifier import FailoverReason as AnalysisFailoverReason
+from monika.application.agent.error_classifier import FailoverReason as AgentFailoverReason
 
 
 def test_failover_reason_unification():
@@ -36,9 +36,9 @@ def test_failover_reason_unification():
 @pytest.mark.asyncio
 async def test_tool_registry_bridging_and_execution():
     """Verify tools registered in unified_tool_registry are discoverable and executable by ToolExecutor."""
-    from analysis.tools.unified_registry import unified_tool_registry, ToolEntry
-    from analysis.tools.registry import ToolRegistry
-    from analysis.tools.executor import ToolExecutor
+    from monika.application.analysis.tools.unified_registry import unified_tool_registry, ToolEntry
+    from monika.application.analysis.tools.registry import ToolRegistry
+    from monika.application.analysis.tools.executor import ToolExecutor
 
     # Define a test tool model and handler
     class MockCustomInput(BaseModel):

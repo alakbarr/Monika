@@ -11,7 +11,7 @@ Verifies:
 
 import pytest
 from sqlalchemy import inspect
-from database.models import (
+from monika.infrastructure.database.models import (
     Base,
     AssetAnalysis,
     TradeTrigger,

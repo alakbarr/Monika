@@ -5,9 +5,9 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from graph.state import TradingState
-from graph.nodes.debate.subgraph import build_debate_subgraph
-from graph.nodes.debate.round_robin_risk_nodes import (
+from monika.application.graph.state import TradingState
+from monika.application.graph.nodes.debate.subgraph import build_debate_subgraph
+from monika.application.graph.nodes.debate.round_robin_risk_nodes import (
     conservative_risk_node,
     aggressive_risk_node,
     neutral_risk_node,
@@ -37,7 +37,7 @@ async def test_debate_subgraph_nodes_presence():
 @pytest.mark.asyncio
 async def test_debate_convergence_conditions():
     """Verify should_continue_debate logic: divergence > 0.40 & turn < 3."""
-    from graph.nodes.debate.subgraph import should_continue_debate
+    from monika.application.graph.nodes.debate.subgraph import should_continue_debate
 
     # Case 1: High divergence, turn 1 -> needs rebuttal
     state_divergent = {

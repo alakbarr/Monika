@@ -6,7 +6,7 @@ Verifies list-then-load pattern, token budget savings, setup-specific expansion,
 import pytest
 from unittest.mock import MagicMock, patch
 
-from skills.loader import (
+from monika.application.skills.loader import (
     compose_system_prompt,
     get_progressive_playbook_index,
     is_playbook_eligible,
@@ -55,7 +55,7 @@ def test_demoted_playbook_pruned_via_ledger():
     mock_meta = MagicMock()
     mock_meta.status = "demoted"
 
-    with patch("analysis.memory.playbook_lifecycle.PlaybookLifecycleManager") as MockMgr:
+    with patch("monika.application.analysis.memory.playbook_lifecycle.PlaybookLifecycleManager") as MockMgr:
         instance = MockMgr.return_value
         instance.get_metadata.return_value = mock_meta
 

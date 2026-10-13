@@ -7,9 +7,9 @@ import pytest
 import json
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.tools.tool_executor import ToolExecutor
-from analysis.tools.tools_definitions import TELEGRAM_TOOLS, ALL_TOOLS
-from database.models import (
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS, ALL_TOOLS
+from monika.infrastructure.database.models import (
     PaperTradeRecord,
     Position,
     TradeTrigger,
@@ -61,12 +61,14 @@ class TestTelegramToolsIntegration:
         executor = ToolExecutor(mock_session, settings={"paper_trading": {"enabled": True}})
 
         with (
-            patch("utils.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock) as mock_stats,
             patch(
-                "utils.analytics.paper_tracker.PaperTracker.simulate_equity_curve", new_callable=AsyncMock
+                "monika.core.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock
+            ) as mock_stats,
+            patch(
+                "monika.core.analytics.paper_tracker.PaperTracker.simulate_equity_curve", new_callable=AsyncMock
             ) as mock_curve,
             patch(
-                "utils.analytics.paper_tracker.PaperTracker.get_suspended_symbols", new_callable=AsyncMock
+                "monika.core.analytics.paper_tracker.PaperTracker.get_suspended_symbols", new_callable=AsyncMock
             ) as mock_susp,
         ):
             mock_stats.return_value = {
@@ -257,7 +259,7 @@ class TestTelegramToolsIntegration:
 
         mock_cg = MagicMock()
         mock_cg.generate_candlestick_chart.return_value = io.BytesIO(b"fake_png_bytes")
-        with patch.dict(sys.modules, {"utils.chart_generator": mock_cg}):
+        with patch.dict(sys.modules, {"monika.core.analytics.chart_generator": mock_cg}):
             res = await executor.execute("get_chart", {"symbol": "EURUSD", "timeframe": "H4", "candles": 20})
         assert "chart_id" in res
         assert res["symbol"] == "EURUSD"
@@ -275,7 +277,7 @@ class TestTelegramToolsIntegration:
         )
         mock_session.execute = AsyncMock(return_value=m_bar)
 
-        with patch("execution.mt5_client.get_mt5_client", return_value=None):
+        with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client", return_value=None):
             res = await executor.execute("get_spread_snapshot", {"symbols": ["EURUSD", "XAUUSD"]})
             assert "spreads" in res
             assert "EURUSD" in res["spreads"]

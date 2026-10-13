@@ -2,8 +2,8 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from tests.conftest import create_mock_async_session
-from analysis.harness.agent_harness import AgentHarness
-from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
+from monika.application.analysis.harness.agent_harness import AgentHarness
+from monika.infrastructure.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
 
 
 class DummyLLMClient(BaseLLMClient):
@@ -347,7 +347,7 @@ async def test_harness_prompt_cache_hardening_with_tuple(mock_session, dummy_cli
 
 @pytest.mark.asyncio
 async def test_harness_prompt_cache_hardening_with_tiered_prompt(mock_session, dummy_client):
-    from utils.llm.prompt_tiers import TieredSystemPrompt
+    from monika.infrastructure.llm.prompt_tiers import TieredSystemPrompt
 
     dummy_client.provider_name = "anthropic"
     dummy_client.mock_run_tool_agent.return_value = MockResponse(

@@ -10,7 +10,7 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analysis.subagent_spawner import (
+from monika.application.analysis.subagent_spawner import (
     SubagentSpec,
     SubagentResult,
     SubagentWorker,
@@ -259,7 +259,7 @@ async def test_macro_specialist_receives_full_macro_toolset_and_checklist():
 @pytest.mark.asyncio
 async def test_fedwatch_probabilities_web_search_fallback():
     """Verify handle_get_fedwatch_probabilities returns web_search fallback on missing session or empty data."""
-    from analysis.tools.handlers.macro_tools import handle_get_fedwatch_probabilities
+    from monika.application.analysis.tools.handlers.macro_tools import handle_get_fedwatch_probabilities
 
     # 1. Without session
     res_no_session = await handle_get_fedwatch_probabilities({})

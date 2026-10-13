@@ -5,8 +5,8 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from telegram_bot.bot import TelegramBot
-from telegram_bot.command_router import CommandRouter, CommandType
+from monika.interfaces.telegram.bot import TelegramBot
+from monika.interfaces.telegram.command_router import CommandRouter, CommandType
 
 
 def test_command_router_plugin_commands():

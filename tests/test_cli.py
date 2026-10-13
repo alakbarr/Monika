@@ -6,7 +6,7 @@ import pytest
 import yaml
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from cli.main import parse_args, _acli_run
+from monika.interfaces.cli.main import parse_args, _acli_run
 
 
 def test_cli_parse_args_defaults():
@@ -74,7 +74,7 @@ async def test_acli_run_live_mode():
 @pytest.mark.asyncio
 async def test_cli_subcommand_status(capsys):
     """Verify _cmd_status prints system configs and open position counts."""
-    from cli.main import _cmd_status
+    from monika.interfaces.cli.main import _cmd_status
 
     args = parse_args(["status"])
 
@@ -97,7 +97,7 @@ async def test_cli_subcommand_status(capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_pause(capsys):
     """Verify _cmd_pause sets system_paused = true in database."""
-    from cli.main import _cmd_pause
+    from monika.interfaces.cli.main import _cmd_pause
 
     args = parse_args(["pause"])
 
@@ -121,7 +121,7 @@ async def test_cli_subcommand_pause(capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_resume_with_yes(capsys):
     """Verify _cmd_resume with -y clears pause flags without interactive prompt."""
-    from cli.main import _cmd_resume
+    from monika.interfaces.cli.main import _cmd_resume
 
     args = parse_args(["resume", "-y"])
 
@@ -144,7 +144,7 @@ async def test_cli_subcommand_resume_with_yes(capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_kill(capsys):
     """Verify _cmd_kill with -y sets kill_switch = true."""
-    from cli.main import _cmd_kill
+    from monika.interfaces.cli.main import _cmd_kill
 
     args = parse_args(["kill", "-y"])
 
@@ -181,7 +181,7 @@ async def test_cli_subcommand_kill(capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_positions(capsys):
     """Verify _cmd_positions prints real and paper positions."""
-    from cli.main import _cmd_positions
+    from monika.interfaces.cli.main import _cmd_positions
 
     args = parse_args(["positions"])
 
@@ -257,7 +257,7 @@ def test_cli_parse_args_logs():
 @pytest.mark.asyncio
 async def test_cli_subcommand_config_show(capsys):
     """Verify _cmd_config_show prints configuration sections."""
-    from cli.main import _cmd_config_show
+    from monika.interfaces.cli.main import _cmd_config_show
 
     args = parse_args(["config", "show", "trading.risk"])
 
@@ -281,7 +281,7 @@ async def test_cli_subcommand_config_show(capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_config_show_missing_section(capsys):
     """Verify _cmd_config_show handles non-existent section gracefully."""
-    from cli.main import _cmd_config_show
+    from monika.interfaces.cli.main import _cmd_config_show
 
     args = parse_args(["config", "show", "nonexistent.section"])
 
@@ -295,7 +295,7 @@ async def test_cli_subcommand_config_show_missing_section(capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_config_set_validation(tmp_path, capsys):
     """Verify _cmd_config_set validates configuration schema before writing."""
-    from cli.main import _cmd_config_set
+    from monika.interfaces.cli.main import _cmd_config_set
 
     args = parse_args(["config", "set", "invalid_assignment_without_equals"])
     await _cmd_config_set(args)
@@ -306,7 +306,7 @@ async def test_cli_subcommand_config_set_validation(tmp_path, capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_config_set_local_success(tmp_path, capsys):
     """Verify _cmd_config_set updates configuration file and creates backup."""
-    from cli.main import _cmd_config_set
+    from monika.interfaces.cli.main import _cmd_config_set
     from unittest.mock import mock_open
 
     dummy_settings = {
@@ -345,7 +345,7 @@ async def test_cli_subcommand_config_set_local_success(tmp_path, capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_sessions(capsys):
     """Verify _cmd_sessions formats and prints active sessions."""
-    from cli.main import _cmd_sessions
+    from monika.interfaces.cli.main import _cmd_sessions
 
     args = parse_args(["sessions", "--source", "all"])
 
@@ -375,7 +375,7 @@ async def test_cli_subcommand_sessions(capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_logs(capsys):
     """Verify _cmd_logs fetches and renders activity entries."""
-    from cli.main import _cmd_logs
+    from monika.interfaces.cli.main import _cmd_logs
 
     args = parse_args(["logs", "-n", "5"])
 
@@ -404,7 +404,7 @@ async def test_cli_subcommand_logs(capsys):
 @pytest.mark.asyncio
 async def test_tui_dashboard_mount():
     """Verify TradingDashboard mounts cleanly in headless mode."""
-    from cli.tui import TradingDashboard, LiveTickerBanner, StatusBar
+    from monika.interfaces.cli.tui import TradingDashboard, LiveTickerBanner, StatusBar
     from textual.widgets import DataTable, RichLog, Input
 
     mock_db_data = {
@@ -441,7 +441,7 @@ async def test_tui_dashboard_mount():
 @pytest.mark.asyncio
 async def test_tui_chat_screen_actions():
     """Verify ChatScreen mounts and actions work properly."""
-    from cli.tui_chat import ChatScreen
+    from monika.interfaces.cli.tui_chat import ChatScreen
     from textual.app import App, ComposeResult
     from textual.widgets import RichLog, Static
 
@@ -465,7 +465,7 @@ async def test_tui_chat_screen_actions():
 @pytest.mark.asyncio
 async def test_cli_subcommand_config_set_api_permission_error(capsys):
     """Verify _cmd_config_set halts on 401/403 API response and does not touch local files."""
-    from cli.main import _cmd_config_set
+    from monika.interfaces.cli.main import _cmd_config_set
 
     args = parse_args(["config", "set", "trading.risk.max_concurrent_positions=10", "--token", "viewer_token"])
 
@@ -488,7 +488,7 @@ async def test_cli_subcommand_config_set_api_permission_error(capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_config_set_json_list(tmp_path, capsys):
     """Verify _cmd_config_set parses JSON arrays for settings like symbols."""
-    from cli.main import _cmd_config_set
+    from monika.interfaces.cli.main import _cmd_config_set
     from unittest.mock import mock_open
 
     dummy_settings = {
@@ -524,7 +524,7 @@ async def test_cli_subcommand_config_set_json_list(tmp_path, capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_sessions_source_cli(capsys):
     """Verify _cmd_sessions correctly filters for CLI sessions with source='cli'."""
-    from cli.main import _cmd_sessions
+    from monika.interfaces.cli.main import _cmd_sessions
 
     args = parse_args(["sessions", "--source", "cli"])
 
@@ -554,7 +554,7 @@ async def test_cli_subcommand_sessions_source_cli(capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_sessions_source_telegram(capsys):
     """Verify _cmd_sessions excludes dashboard and CLI sessions when source='telegram'."""
-    from cli.main import _cmd_sessions
+    from monika.interfaces.cli.main import _cmd_sessions
 
     args = parse_args(["sessions", "--source", "telegram"])
 
@@ -583,7 +583,7 @@ async def test_cli_subcommand_sessions_source_telegram(capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_logs_with_severity(capsys):
     """Verify _cmd_logs filters by severity level when provided."""
-    from cli.main import _cmd_logs
+    from monika.interfaces.cli.main import _cmd_logs
 
     args = parse_args(["logs", "-n", "10", "--level", "error"])
 
@@ -611,7 +611,7 @@ async def test_cli_subcommand_logs_with_severity(capsys):
 @pytest.mark.asyncio
 async def test_cli_subcommand_chat_invocation():
     """Verify _cmd_chat passes arguments to run_cli_chat."""
-    from cli.main import _cmd_chat
+    from monika.interfaces.cli.main import _cmd_chat
 
     args = parse_args(["chat", "--model", "fast", "--offline", "--session-id", "sess_abc"])
 
@@ -629,7 +629,7 @@ async def test_cli_subcommand_chat_invocation():
 @pytest.mark.asyncio
 async def test_tui_command_bar_autocomplete_and_commands():
     """Verify TUI command bar has autocomplete suggester and handles config, sessions, logs commands."""
-    from cli.tui import TradingDashboard, LiveTickerBanner, StatusBar
+    from monika.interfaces.cli.tui import TradingDashboard, LiveTickerBanner, StatusBar
     from textual.widgets import Input, RichLog, DataTable
 
     mock_db_data = {
@@ -666,7 +666,7 @@ async def test_tui_command_bar_autocomplete_and_commands():
             await pilot.pause(0.1)
 
             # 4. Test sessions command in TUI
-            with patch("database.db.get_session") as mock_get_sess:
+            with patch("monika.infrastructure.database.db.get_session") as mock_get_sess:
                 mock_sess = AsyncMock()
                 mock_res = MagicMock()
                 mock_res.all.return_value = []
@@ -686,7 +686,7 @@ async def test_tui_command_bar_autocomplete_and_commands():
 @pytest.mark.asyncio
 async def test_tui_ws_event_tick_preserves_position_counts():
     """Verify _handle_ws_event with tick updates quotes and preserves real/paper position counts."""
-    from cli.tui import TradingDashboard, LiveTickerBanner
+    from monika.interfaces.cli.tui import TradingDashboard, LiveTickerBanner
 
     mock_db_data = {
         "source": "mock",
@@ -725,7 +725,7 @@ async def test_tui_ws_event_tick_preserves_position_counts():
 @pytest.mark.asyncio
 async def test_tui_chat_screen_streaming():
     """Verify ChatScreen token streaming updates streaming_output widget and finalizes to transcript."""
-    from cli.tui_chat import ChatScreen
+    from monika.interfaces.cli.tui_chat import ChatScreen
     from textual.app import App, ComposeResult
     from textual.widgets import RichLog, Static
 
@@ -760,8 +760,8 @@ async def test_tui_chat_screen_streaming():
 @pytest.mark.asyncio
 async def test_run_cli_chat_fallback_on_ws_disconnect(capsys):
     """Verify run_cli_chat lazily instantiates local_agent when WebSocket drops mid-session."""
-    from cli.tui_chat import run_cli_chat
-    from cli.chat.prompt import ChatPromptManager
+    from monika.interfaces.cli.tui_chat import run_cli_chat
+    from monika.interfaces.cli.chat.prompt import ChatPromptManager
 
     mock_agent = MagicMock()
     mock_agent.handle = AsyncMock(return_value=("Fallback response from local agent", None))
@@ -770,7 +770,7 @@ async def test_run_cli_chat_fallback_on_ws_disconnect(capsys):
 
     with (
         patch.object(ChatPromptManager, "prompt_async", AsyncMock(side_effect=inputs)),
-        patch("telegram_bot.chat_agent.ChatAgent", return_value=mock_agent),
+        patch("monika.interfaces.telegram.chat_agent.ChatAgent", return_value=mock_agent),
         patch("config.settings.load_settings", return_value={}),
     ):
         # Run with offline=True to trigger local engine directly
@@ -781,7 +781,7 @@ async def test_run_cli_chat_fallback_on_ws_disconnect(capsys):
 
 def test_is_ws_alive():
     """Verify is_ws_alive handles None, closed, closing transport, and open transport."""
-    from cli.tui_chat import is_ws_alive
+    from monika.interfaces.cli.tui_chat import is_ws_alive
 
     # 1. None
     assert is_ws_alive(None) is False
@@ -808,7 +808,7 @@ def test_is_ws_alive():
 @pytest.mark.asyncio
 async def test_tui_chat_auto_reconnect_on_stale_ws():
     """Verify ChatScreen automatically reconnects when sending on a stale/closing WebSocket."""
-    from cli.tui_chat import ChatScreen
+    from monika.interfaces.cli.tui_chat import ChatScreen
     import aiohttp
 
     chat_screen = ChatScreen(api_url="http://127.0.0.1:8000")
@@ -855,7 +855,7 @@ async def test_tui_chat_auto_reconnect_on_stale_ws():
 @pytest.mark.asyncio
 async def test_tui_chat_fallback_to_local_on_ws_error():
     """Verify ChatScreen falls back to local execution if WebSocket connection permanently fails."""
-    from cli.tui_chat import ChatScreen
+    from monika.interfaces.cli.tui_chat import ChatScreen
 
     chat_screen = ChatScreen(api_url="http://127.0.0.1:8000")
     chat_screen._ws = None
@@ -875,7 +875,7 @@ async def test_tui_chat_fallback_to_local_on_ws_error():
 @pytest.mark.asyncio
 async def test_tui_chat_action_interrupt_via_ws():
     """Verify action_interrupt sends interrupt JSON signal through active WebSocket."""
-    from cli.tui_chat import ChatScreen
+    from monika.interfaces.cli.tui_chat import ChatScreen
 
     chat_screen = ChatScreen(api_url="http://127.0.0.1:8000")
     mock_ws = MagicMock()
@@ -898,7 +898,7 @@ async def test_tui_chat_action_interrupt_via_ws():
 @pytest.mark.asyncio
 async def test_tui_chat_action_interrupt_local_fallback():
     """Verify action_interrupt interrupts local agent when WebSocket is inactive."""
-    from cli.tui_chat import ChatScreen
+    from monika.interfaces.cli.tui_chat import ChatScreen
 
     chat_screen = ChatScreen(api_url="http://127.0.0.1:8000")
     chat_screen._ws = None
@@ -917,7 +917,7 @@ async def test_tui_chat_action_interrupt_local_fallback():
 @pytest.mark.asyncio
 async def test_tui_chat_handle_approval_decision_via_ws():
     """Verify _handle_approval_decision sends approval response payload through active WebSocket."""
-    from cli.tui_chat import ChatScreen
+    from monika.interfaces.cli.tui_chat import ChatScreen
 
     chat_screen = ChatScreen(api_url="http://127.0.0.1:8000")
     mock_ws = MagicMock()
@@ -946,7 +946,7 @@ async def test_tui_chat_handle_approval_decision_via_ws():
 
 def test_clean_terminal_input():
     """Verify clean_terminal_input strips bracketed-paste sequences."""
-    from cli.setup_wizard import clean_terminal_input
+    from monika.interfaces.cli.setup_wizard import clean_terminal_input
 
     assert clean_terminal_input("\x1b[200~my_secret_key\x1b[201~") == "my_secret_key"
     assert clean_terminal_input("  normal_text  ") == "normal_text"
@@ -955,7 +955,7 @@ def test_clean_terminal_input():
 
 def test_cli_parse_args_query_flag():
     """Verify -q / --query flag sets command to 'ask' with question list."""
-    from cli.main import parse_args
+    from monika.interfaces.cli.main import parse_args
 
     args = parse_args(["-q", "Analyze XAUUSD market structure"])
     assert args.command == "ask"
@@ -965,7 +965,7 @@ def test_cli_parse_args_query_flag():
 @pytest.mark.asyncio
 async def test_cli_cmd_ask_one_shot_with_json_output(tmp_path):
     """Verify _cmd_ask executes agent inquiry and writes output-json."""
-    from cli.main import _cmd_ask
+    from monika.interfaces.cli.main import _cmd_ask
 
     out_file = str(tmp_path / "result.json")
 
@@ -975,7 +975,7 @@ async def test_cli_cmd_ask_one_shot_with_json_output(tmp_path):
     mock_args.output_json = out_file
 
     with (
-        patch("telegram_bot.chat_agent.ChatAgent.handle", new_callable=AsyncMock) as mock_handle,
+        patch("monika.interfaces.telegram.chat_agent.ChatAgent.handle", new_callable=AsyncMock) as mock_handle,
         patch("config.settings.load_all_config", return_value={}),
     ):
         mock_handle.return_value = ("pong response", None)
@@ -1013,7 +1013,7 @@ def test_cli_parse_args_stop_and_no_daemon():
 
 def test_is_daemon_running(monkeypatch):
     """Verify is_daemon_running detects active PID and falls back properly."""
-    from cli.main import is_daemon_running
+    from monika.interfaces.cli.main import is_daemon_running
 
     # Case 1: PID is None and API fails -> False
     monkeypatch.setattr("cli.main.get_daemon_pid", lambda: None)
@@ -1027,7 +1027,7 @@ def test_is_daemon_running(monkeypatch):
 
 def test_ensure_daemon_running_bypasses(monkeypatch):
     """Verify ensure_daemon_running respects bypass flags."""
-    from cli.main import ensure_daemon_running
+    from monika.interfaces.cli.main import ensure_daemon_running
 
     args = MagicMock()
     args.no_daemon = True
@@ -1040,7 +1040,7 @@ def test_ensure_daemon_running_bypasses(monkeypatch):
 
 def test_ensure_daemon_running_when_already_running(monkeypatch):
     """Verify ensure_daemon_running returns True immediately if daemon is already up."""
-    from cli.main import ensure_daemon_running
+    from monika.interfaces.cli.main import ensure_daemon_running
 
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     monkeypatch.setattr("cli.main.is_daemon_running", lambda url=None: True)
@@ -1054,10 +1054,10 @@ def test_ensure_daemon_running_when_already_running(monkeypatch):
 
 def test_ensure_daemon_running_spawns_process(monkeypatch):
     """Verify ensure_daemon_running triggers spawn when daemon is down."""
-    from cli.main import ensure_daemon_running
+    from monika.interfaces.cli.main import ensure_daemon_running
 
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-    monkeypatch.setattr("utils.infra.env_file_manager.EnvFileManager.is_configured", lambda: True)
+    monkeypatch.setattr("monika.infrastructure.infra.env_file_manager.EnvFileManager.is_configured", lambda: True)
     states = [False, True]
     monkeypatch.setattr("cli.main.is_daemon_running", lambda url=None: states.pop(0) if states else True)
     monkeypatch.setattr("cli.main.spawn_daemon_background", MagicMock(return_value=99999))
@@ -1078,7 +1078,7 @@ def test_ensure_daemon_running_spawns_process(monkeypatch):
 @pytest.mark.asyncio
 async def test_cmd_stop_when_no_daemon(monkeypatch):
     """Verify _cmd_stop handles when no daemon is active."""
-    from cli.main import _cmd_stop
+    from monika.interfaces.cli.main import _cmd_stop
 
     monkeypatch.setattr("cli.main.get_daemon_pid", lambda: None)
     mock_console = MagicMock()
@@ -1093,7 +1093,7 @@ async def test_cmd_stop_when_no_daemon(monkeypatch):
 @pytest.mark.asyncio
 async def test_cmd_stop_terminates_process(monkeypatch, tmp_path):
     """Verify _cmd_stop terminates the active process and cleans PID file."""
-    from cli.main import _cmd_stop
+    from monika.interfaces.cli.main import _cmd_stop
 
     pid_file = str(tmp_path / "trading_agent.pid")
     with open(pid_file, "w", encoding="utf-8") as f:

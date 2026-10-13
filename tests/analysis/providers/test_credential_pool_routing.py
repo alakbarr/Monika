@@ -4,8 +4,8 @@ Test suite for APICredentialPool hot-path zero-wait, header-aware cooldowns, and
 
 import time
 import pytest
-from utils.api.credential_pool import APICredentialPool, KeyHealth
-from analysis.providers.openrouter_provider import OpenRouterProvider
+from monika.infrastructure.api.credential_pool import APICredentialPool, KeyHealth
+from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
 
 
 def test_credential_pool_hot_path_zero_wait():

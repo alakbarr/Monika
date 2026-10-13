@@ -3,8 +3,8 @@ import time
 from unittest.mock import MagicMock, patch
 import pytest
 
-from execution.mt5_client import MT5Client
-from utils.protocol.event_bus import EventBus, TickPriceEvent
+from monika.infrastructure.brokers.mt5_client import MT5Client
+from monika.application.protocol.event_bus import EventBus, TickPriceEvent
 
 
 @pytest.fixture
@@ -57,7 +57,7 @@ def test_tick_poller_lifecycle_and_deduplication(mock_settings):
         else:
             return mock_tick3
 
-    with patch("execution.mt5_client._get_last_tick", side_effect=fake_get_last_tick):
+    with patch("monika.infrastructure.brokers.mt5_client._get_last_tick", side_effect=fake_get_last_tick):
         # Start poller with 50ms interval
         client.start_tick_poller(
             symbols=["EURUSD"],
@@ -108,7 +108,7 @@ async def test_tick_poller_threadsafe_async(mock_settings):
 
     loop = asyncio.get_running_loop()
 
-    with patch("execution.mt5_client._get_last_tick", return_value=mock_tick):
+    with patch("monika.infrastructure.brokers.mt5_client._get_last_tick", return_value=mock_tick):
         client.start_tick_poller(
             symbols=["XAUUSD"],
             interval_seconds=0.05,

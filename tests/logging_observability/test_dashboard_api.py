@@ -3,15 +3,15 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch, MagicMock
-from logging_observability.dashboard.api import app, _safe_json, set_dashboard_dependencies, _dependencies
-from logging_observability.dashboard.rbac import Role, resolve_role
+from monika.interfaces.dashboard.api import app, _safe_json, set_dashboard_dependencies, _dependencies
+from monika.interfaces.dashboard.rbac import Role, resolve_role
 import datetime
 
 client = TestClient(app)
 
 
 class TestDashboardAPI:
-    @patch("database.db.engine")
+    @patch("monika.infrastructure.database.db.engine")
     def test_get_health(self, mock_engine):
         mock_conn = AsyncMock()
         mock_engine.connect.return_value.__aenter__.return_value = mock_conn
@@ -26,7 +26,7 @@ class TestDashboardAPI:
         assert "status" in data
         assert data["status"] == "ok"
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_overview(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -41,7 +41,7 @@ class TestDashboardAPI:
         data = response.json()
         assert "agent_status" in data
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_positions(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -71,7 +71,7 @@ class TestDashboardAPI:
         assert len(data) == 1
         assert data[0]["symbol"] == "XAUUSD"
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_activity(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -95,7 +95,7 @@ class TestDashboardAPI:
         assert len(data) == 1
         assert data[0]["category"] == "trading"
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_analysis(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -123,7 +123,7 @@ class TestDashboardAPI:
         assert len(data) == 1
         assert data[0]["symbol"] == "XAUUSD"
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_orders(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -149,7 +149,7 @@ class TestDashboardAPI:
         assert len(data) == 1
         assert data[0]["action"] == "place"
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_risk(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -171,9 +171,9 @@ class TestDashboardAPI:
         data = response.json()
         assert data["daily_pnl"] == 100.0
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_risk_with_real_model(self, mock_session_local):
-        from database.models import RiskState
+        from monika.infrastructure.database.models import RiskState
 
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -203,7 +203,7 @@ class TestDashboardAPI:
         data2 = response2.json()
         assert data2["daily_pnl_pct"] == 5.0
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_vix(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -223,7 +223,7 @@ class TestDashboardAPI:
         assert len(data) == 1
         assert data[0]["close"] == 15.0
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_brief(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -274,7 +274,7 @@ class TestDashboardAPI:
                 assert init_msg["type"] == "connection_established"
 
     def test_trace_endpoints(self):
-        from logging_observability.tracing.exporters import global_trace_store, TraceRecord
+        from monika.core.telemetry.tracing.exporters import global_trace_store, TraceRecord
 
         rec = TraceRecord(
             trace_id="test_trc_001",
@@ -308,7 +308,7 @@ class TestDashboardAPI:
         assert cycle_data["cycle_id"] == "test_cycle_001"
         assert len(cycle_data["spans"]) >= 1
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_debate_outcomes(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
@@ -344,7 +344,7 @@ class TestDashboardAPI:
         assert item["debate_bull_thesis"] == {"thesis": "Strong labor market supports EUR"}
         assert item["debate_bear_dissent"] == {"dissent": "ECB rate cuts may accelerate"}
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_mt5_signals(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
@@ -371,7 +371,7 @@ class TestDashboardAPI:
         assert data["items"][0]["symbol"] == "GBPUSD"
         assert data["items"][0]["mt5_ticket"] == 998877
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_trade_triggers(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
@@ -395,11 +395,11 @@ class TestDashboardAPI:
         assert data["total"] == 1
         assert data["items"][0]["condition"] == {"level": 1.0850}
 
-    @patch("utils.analytics.token_auditor.TokenAuditor.get_summary")
-    @patch("utils.analytics.token_auditor.TokenAuditor.get_role_breakdown")
-    @patch("utils.analytics.token_auditor.TokenAuditor.get_subsystem_breakdown")
-    @patch("utils.analytics.token_auditor.TokenAuditor.get_symbol_breakdown")
-    @patch("utils.analytics.token_auditor.TokenAuditor.get_recent_logs")
+    @patch("monika.core.analytics.token_auditor.TokenAuditor.get_summary")
+    @patch("monika.core.analytics.token_auditor.TokenAuditor.get_role_breakdown")
+    @patch("monika.core.analytics.token_auditor.TokenAuditor.get_subsystem_breakdown")
+    @patch("monika.core.analytics.token_auditor.TokenAuditor.get_symbol_breakdown")
+    @patch("monika.core.analytics.token_auditor.TokenAuditor.get_recent_logs")
     def test_get_tokens_endpoints(self, mock_logs, mock_syms, mock_subs, mock_roles, mock_sum):
         mock_sum.return_value = {"total_calls": 5, "total_cost_usd": 0.05}
         mock_roles.return_value = [{"task_role": "market_analyst", "sum_total": 1200}]
@@ -543,7 +543,7 @@ class TestDashboardAPI:
 
         with patch.dict(os.environ, {"DASHBOARD_API_KEY": "test_adm_key"}):
             with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
-                with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+                with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
                     mock_session = create_mock_async_session()
                     mock_session.add = MagicMock()
                     mock_session_ctx.return_value.__aenter__.return_value = mock_session
@@ -578,7 +578,7 @@ class TestDashboardAPI:
     # Phase 2: Sessions & Transcript Tests
     # -----------------------------------------------------------------------
     def test_list_sessions(self):
-        with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+        with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
             mock_session = create_mock_async_session()
             mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
@@ -606,7 +606,7 @@ class TestDashboardAPI:
             assert items[0]["last_message"] == "Hello agent"
 
     def test_get_session_messages(self):
-        with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+        with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
             mock_session = create_mock_async_session()
             mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
@@ -678,7 +678,7 @@ class TestDashboardAPI:
         }
         with patch.dict(os.environ, {"DASHBOARD_API_KEY": "test_adm_key"}):
             with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
-                with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+                with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
                     mock_session = create_mock_async_session()
                     mock_session.add = MagicMock()
                     mock_session_ctx.return_value.__aenter__.return_value = mock_session
@@ -762,7 +762,7 @@ class TestDashboardAPI:
 
     def test_get_graph_state_with_real_spans(self):
         """Test that real spans in global_trace_store accurately reflect in graph state."""
-        from logging_observability.tracing.exporters import global_trace_store, TraceRecord
+        from monika.core.telemetry.tracing.exporters import global_trace_store, TraceRecord
 
         test_cycle = "cycle-test-live-100"
         # 1. Successful node span
@@ -862,7 +862,7 @@ class TestDashboardAPI:
 
     def test_get_graph_state_llm_span_disambiguation(self):
         """Test that LLM spans (e.g. llm:debate_bull) are not falsely captured as node spans."""
-        from logging_observability.tracing.exporters import global_trace_store, TraceRecord
+        from monika.core.telemetry.tracing.exporters import global_trace_store, TraceRecord
 
         test_cycle = "cycle-llm-disambig-test"
         # LLM span containing 'debate' in name
@@ -912,7 +912,7 @@ class TestDashboardAPI:
 
     def test_get_graph_state_per_symbol_filtering(self):
         """Test GET /api/observability/graph-state with symbol parameter."""
-        from logging_observability.tracing.exporters import global_trace_store, TraceRecord
+        from monika.core.telemetry.tracing.exporters import global_trace_store, TraceRecord
 
         test_cycle = "cycle-symbol-filter-test"
         asset_span = TraceRecord(
@@ -965,7 +965,7 @@ class TestDashboardAPI:
 
     def test_get_graph_state_skipped_debate_when_cycle_completed(self):
         """Test that unexecuted debate nodes are marked as skipped when cycle completes."""
-        from logging_observability.tracing.exporters import global_trace_store, TraceRecord
+        from monika.core.telemetry.tracing.exporters import global_trace_store, TraceRecord
 
         test_cycle = "cycle-skipped-debate-test"
         cycle_span = TraceRecord(

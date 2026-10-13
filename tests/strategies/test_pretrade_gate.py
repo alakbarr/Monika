@@ -1,7 +1,7 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch
-from analysis.strategies.pretrade_gate import evaluate_pretrade_gate
+from monika.application.analysis.strategies.pretrade_gate import evaluate_pretrade_gate
 
 
 @pytest.mark.asyncio
@@ -10,9 +10,16 @@ async def test_pretrade_gate():
     settings = {"trading": {"edge_strategy": {"min_adx_for_trend": 20}}}
 
     with (
-        patch("analysis.strategies.pretrade_gate.compute_bollinger_donchian_chop", new_callable=AsyncMock) as mock_chop,
-        patch("analysis.strategies.pretrade_gate.compute_volume_profile", new_callable=AsyncMock) as mock_vp,
-        patch("analysis.strategies.pretrade_gate.classify_market_regime", new_callable=AsyncMock) as mock_regime,
+        patch(
+            "monika.application.analysis.strategies.pretrade_gate.compute_bollinger_donchian_chop",
+            new_callable=AsyncMock,
+        ) as mock_chop,
+        patch(
+            "monika.application.analysis.strategies.pretrade_gate.compute_volume_profile", new_callable=AsyncMock
+        ) as mock_vp,
+        patch(
+            "monika.application.analysis.strategies.pretrade_gate.classify_market_regime", new_callable=AsyncMock
+        ) as mock_regime,
     ):
         # Chop blocks trend
         mock_chop.return_value = {"chop_block": True, "reason": "choppy"}

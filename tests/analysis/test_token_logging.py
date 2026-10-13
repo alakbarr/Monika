@@ -5,7 +5,7 @@ Unit test untuk verifikasi pencatatan komprehensif token_usage_log.
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from analysis.providers.base_provider import BaseLLMClient
+from monika.infrastructure.providers.base_provider import BaseLLMClient
 
 
 class DummyClient(BaseLLMClient):
@@ -62,8 +62,8 @@ async def test_save_token_usage_records_comprehensive_fields():
     mock_session = create_mock_async_session()
 
     with (
-        patch("database.models.TokenUsageLog") as MockTokenUsageLog,
-        patch("utils.analytics.pricing.cost_usd", return_value=0.005) as mock_cost,
+        patch("monika.infrastructure.database.models.TokenUsageLog") as MockTokenUsageLog,
+        patch("monika.core.analytics.pricing.cost_usd", return_value=0.005) as mock_cost,
     ):
         await client._save_token_usage(
             model_name="claude-sonnet-5",

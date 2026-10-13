@@ -6,7 +6,7 @@ Unit Tests for Extended Macro Data Freshness in data_validator.py.
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock
-from utils.validation.data_validator import validate_data_freshness
+from monika.core.validation.data_validator import validate_data_freshness
 
 
 @pytest.mark.asyncio

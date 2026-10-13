@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 import datetime
 from unittest.mock import AsyncMock, MagicMock
-from analysis.validators.core_data_validator import CoreDataValidator
+from monika.application.analysis.validators.core_data_validator import CoreDataValidator
 
 
 @pytest.mark.asyncio

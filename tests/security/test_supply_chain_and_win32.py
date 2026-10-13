@@ -13,7 +13,7 @@ import tempfile
 import pytest
 from datetime import datetime, timezone, timedelta
 
-from utils.security.supply_chain_quarantine import (
+from monika.core.security.supply_chain_quarantine import (
     SupplyChainQuarantine,
     QuarantineVerdict,
 )

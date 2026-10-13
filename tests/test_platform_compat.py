@@ -6,14 +6,14 @@ from tests.conftest import create_mock_async_session
 import sys
 import pytest
 from pathlib import Path
-from utils.infra.platform_compat import (
+from monika.infrastructure.infra.platform_compat import (
     IS_WINDOWS,
     IS_LINUX,
     configure_event_loop,
     safe_subprocess_run,
     normalize_path,
 )
-from execution.broker_adapter import MT5RemoteGatewayAdapter
+from monika.infrastructure.brokers.broker_adapter import MT5RemoteGatewayAdapter
 
 
 def test_platform_detection_and_event_loop_factory():
@@ -58,7 +58,7 @@ def test_mt5_remote_gateway_adapter_initialization():
 async def test_trading_agent_remote_gateway_wiring_and_shutdown():
     """Verify TradingAgent dynamically wires MT5RemoteGatewayAdapter and stops components cleanly."""
     from unittest.mock import MagicMock, AsyncMock, patch
-    from main import TradingAgent
+    from monika.application.main import TradingAgent
 
     custom_settings = {
         "execution": {
@@ -76,7 +76,7 @@ async def test_trading_agent_remote_gateway_wiring_and_shutdown():
     assert agent.alpha_discovery_scheduler is None
     assert agent.post_release_analyzer is None
 
-    with patch("execution.mt5_client.MT5Client"):
+    with patch("monika.infrastructure.brokers.mt5_client.MT5Client"):
         agent._init_components()
 
     assert agent.execution_service is not None
@@ -109,7 +109,10 @@ async def test_trading_agent_remote_gateway_wiring_and_shutdown():
     mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)
     mock_ctx.__aexit__ = AsyncMock(return_value=None)
 
-    with patch("database.db.get_session", return_value=mock_ctx), patch("main.close_db", new_callable=AsyncMock):
+    with (
+        patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
+        patch("main.close_db", new_callable=AsyncMock),
+    ):
         await agent._shutdown()
 
     mock_post_release.stop.assert_awaited_once()
@@ -159,7 +162,7 @@ class _MockClientSession:
 async def test_mt5_remote_gateway_rpc_methods():
     """Verify all MT5RemoteGatewayAdapter RPC operations (ensure_connected, get_tick, submit_order, close, positions)."""
     from unittest.mock import patch
-    from database.models import Order
+    from monika.infrastructure.database.models import Order
 
     adapter = MT5RemoteGatewayAdapter(gateway_url="http://127.0.0.1:8080", api_token="sec_token")
 
@@ -240,7 +243,7 @@ async def test_mt5_remote_gateway_rpc_methods():
 async def test_trading_agent_start_connects_remote_gateway():
     """Verify TradingAgent.start() verifies remote gateway connectivity via adapter.ensure_connected()."""
     from unittest.mock import MagicMock, AsyncMock, patch
-    from main import TradingAgent
+    from monika.application.main import TradingAgent
 
     custom_settings = {
         "execution": {
@@ -252,7 +255,7 @@ async def test_trading_agent_start_connects_remote_gateway():
         "trading": {"asset_universe": ["EURUSD"]},
     }
     agent = TradingAgent(settings=custom_settings, dry_run=True)
-    with patch("execution.mt5_client.MT5Client"):
+    with patch("monika.infrastructure.brokers.mt5_client.MT5Client"):
         agent._init_components()
 
     # Mock ensure_connected on the wired remote adapter
@@ -267,7 +270,7 @@ async def test_trading_agent_start_connects_remote_gateway():
         mock_act.system = AsyncMock()
 
         # Call the connection block of start()
-        from execution.broker_adapter import MT5LiveAdapter
+        from monika.infrastructure.brokers.broker_adapter import MT5LiveAdapter
 
         custom_adapter = getattr(agent.execution_service, "broker_adapter", None)
         assert custom_adapter is not None

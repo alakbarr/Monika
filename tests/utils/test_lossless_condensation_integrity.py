@@ -1,6 +1,6 @@
 import json
-from utils.llm.context_compaction import ContextCompactionEngine
-from analysis.tools.tools_definitions import minify_tool_definitions, make_strict_tool_definitions
+from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
+from monika.application.analysis.tools.tools_definitions import minify_tool_definitions, make_strict_tool_definitions
 
 
 def test_micro_prune_large_json_preserves_structure():

@@ -3,7 +3,7 @@ Unit Tests for Retro-Vintage CLI Theme (cli/theme.py).
 """
 
 import pytest
-from cli.theme import (
+from monika.interfaces.cli.theme import (
     PHOSPHOR_AMBER,
     BRASS,
     BULL_PROFIT,

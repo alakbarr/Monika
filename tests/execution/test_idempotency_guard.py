@@ -9,13 +9,13 @@ import time
 from unittest.mock import AsyncMock, MagicMock
 from tests.conftest import create_mock_async_session
 
-from execution.idempotency_guard import (
+from monika.infrastructure.brokers.idempotency_guard import (
     IdempotencyGuard,
     IdempotencyState,
     get_idempotency_guard,
 )
-from risk.trade_proposal import TradeProposal
-from execution.service.order_executor import ExecutionResult
+from monika.domain.risk.trade_proposal import TradeProposal
+from monika.application.execution.service.order_executor import ExecutionResult
 
 
 @pytest.mark.asyncio
@@ -95,7 +95,7 @@ async def test_reconcile_with_broker_matches_ticket():
 @pytest.mark.asyncio
 async def test_execute_proposal_duplicate_blocked():
     # Test execute_proposal using mock service
-    from execution.service.order_executor import OrderExecutorMixin
+    from monika.application.execution.service.order_executor import OrderExecutorMixin
 
     class MockExecutionService(OrderExecutorMixin):
         def __init__(self):

@@ -13,10 +13,10 @@ import os
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 
-from logging_observability.metrics_exporter import metrics
-from logging_observability.token_budgeter import TokenBudgetManager
-from logging_observability.dashboard.pty_bridge import PtySession
-from logging_observability.dashboard.rbac import ENDPOINT_ROLES, Role
+from monika.core.telemetry.metrics_exporter import metrics
+from monika.core.telemetry.token_budgeter import TokenBudgetManager
+from monika.interfaces.dashboard.pty_bridge import PtySession
+from monika.interfaces.dashboard.rbac import ENDPOINT_ROLES, Role
 
 
 def test_pty_environment_whitelisting_blocks_secrets():
@@ -84,7 +84,7 @@ def test_token_budget_records_prometheus_metrics():
 @pytest.mark.asyncio
 async def test_telegram_bot_error_handler_handles_conflict():
     """Verify TelegramBot error handler handles Conflict error with backoff without raising."""
-    from telegram_bot.bot import TelegramBot
+    from monika.interfaces.telegram.bot import TelegramBot
     from telegram.error import Conflict
 
     bot = TelegramBot({"telegram": {"bot_token": "mock_token"}})

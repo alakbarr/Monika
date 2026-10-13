@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy import select
 
-from database.models import (
+from monika.infrastructure.database.models import (
     Base,
     TradeOutcome,
     AssetAnalysis,
@@ -25,7 +25,7 @@ from database.models import (
     PrescreenLog,
     CandidateLesson,
 )
-import benchmark.db_models
+import monika.application.benchmark.db_models
 
 
 def _ensure_mock_alembic():

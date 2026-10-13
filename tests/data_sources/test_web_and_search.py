@@ -7,10 +7,15 @@ import json
 import pytest
 from pathlib import Path
 
-from utils.content_distiller import ContentDistiller
-from data_sources.web_search import SearchMemo, WebSearchService
-from analysis.tools.unified_registry import unified_tool_registry
-from analysis.tools.domain.web_tools import handle_web_search, handle_web_fetch, WebSearchInput, WebFetchInput
+from monika.core.primitives.content_distiller import ContentDistiller
+from monika.infrastructure.data_ingestion.sources.web_search import SearchMemo, WebSearchService
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
+from monika.application.analysis.tools.domain.web_tools import (
+    handle_web_search,
+    handle_web_fetch,
+    WebSearchInput,
+    WebFetchInput,
+)
 
 
 def test_content_distiller_base64_defuse():
@@ -88,7 +93,7 @@ async def test_web_tools_unified_registry_and_fetch(monkeypatch, tmp_path):
     assert fetch_tool is not None
 
     # Mock web reader response
-    from analysis.tools.domain import web_tools
+    from monika.application.analysis.tools.domain import web_tools
 
     distiller = ContentDistiller(max_chars=2000, spill_dir=tmp_path)
     monkeypatch.setattr(web_tools, "_content_distiller", distiller)

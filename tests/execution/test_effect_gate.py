@@ -4,7 +4,7 @@
 
 import asyncio
 import pytest
-from execution.effect_gate import EffectGate, AbortRequested
+from monika.application.execution.effect_gate import EffectGate, AbortRequested
 
 
 @pytest.mark.asyncio

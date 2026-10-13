@@ -1,7 +1,7 @@
 import pytest
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
-from data_sources.web_search import WebSearchService, get_web_search_service
+from monika.infrastructure.data_ingestion.sources.web_search import WebSearchService, get_web_search_service
 
 
 def _build_mock_session_and_resp(status=200, json_data=None, text_data=None):
@@ -203,7 +203,7 @@ class TestWebSearchService:
         svc = WebSearchService(settings={"search": {"max_cache_size": 3}})
         assert svc._max_cache_size == 3
 
-        import utils.clock as clock
+        import monika.core.primitives.clock as clock
 
         t0 = clock.now()
         svc._put_cache("k1", (t0, {"q": 1}))

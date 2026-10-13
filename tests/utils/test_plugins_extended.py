@@ -10,9 +10,9 @@ import yaml
 from pydantic import BaseModel, Field
 from typing import Dict, Any
 
-from utils.plugins.manager import PluginManager, PluginHook, BasePlugin
-from utils.plugins.extension_loader import load_single_plugin, teardown_single_plugin
-from analysis.tools.unified_registry import unified_tool_registry
+from monika.application.plugins.manager.manager import PluginManager, PluginHook, BasePlugin
+from monika.application.plugins.manager.extension_loader import load_single_plugin, teardown_single_plugin
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
 
 
 class SampleIndicatorInput(BaseModel):
@@ -260,7 +260,7 @@ async def test_emit_waterfall_veto_and_cascade():
 
 def test_disposers_and_core_tool_shadowing():
     """Verify registration disposers and core tool shadowing protection."""
-    from analysis.tools.registry import ToolRegistry, ToolDefinition
+    from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition
 
     registry = ToolRegistry()
 

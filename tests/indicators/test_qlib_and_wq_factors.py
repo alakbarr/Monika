@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from indicators.alpha_zoo.qlib158 import _calc_resi_rsqr
-from indicators.alpha_zoo.factors.worldquant_101.wq_alpha_002 import compute as compute_alpha_002
+from monika.domain.indicators.alpha_zoo.qlib158 import _calc_resi_rsqr
+from monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_002 import compute as compute_alpha_002
 
 
 def test_qlib158_resi_rsqr_perfect_linear():

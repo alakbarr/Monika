@@ -4,7 +4,7 @@ Tests provider failover reasons, trading domain exceptions, and actionable prope
 """
 
 import pytest
-from provider.error_taxonomy import (
+from monika.infrastructure.credentials.error_taxonomy import (
     FailoverReason,
     ErrorCategory,
     RecoveryAction,

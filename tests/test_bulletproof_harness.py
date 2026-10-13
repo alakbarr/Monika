@@ -7,12 +7,12 @@ import pytest
 from datetime import datetime, timezone
 from pydantic import ValidationError
 
-from analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
-from analysis.stages.fundamental_stage_recovery import recover_fundamental_brief_from_text
-from benchmark.db_access import BenchmarkFixtureDispatcher, guarded_tool_executor
-from analysis.tools.tool_executor import ToolExecutor
-from analysis.tools.tools_definitions import STAGE1_TOOLS
-from analysis.prefetch.stage1_prefetcher import CORE_STAGE1_PREFETCH_TOOLS, prune_stage1_tools
+from monika.application.analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
+from monika.application.analysis.stages.fundamental_stage_recovery import recover_fundamental_brief_from_text
+from monika.application.benchmark.db_access import BenchmarkFixtureDispatcher, guarded_tool_executor
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS
+from monika.application.analysis.prefetch.stage1_prefetcher import CORE_STAGE1_PREFETCH_TOOLS, prune_stage1_tools
 
 
 def test_fundamental_brief_schema_auto_healing():

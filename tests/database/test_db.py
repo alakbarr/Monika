@@ -1,13 +1,13 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from database.db import init_db, get_db, get_session, close_db
+from monika.infrastructure.database.db import init_db, get_db, get_session, close_db
 
 
 class TestDB:
     @pytest.mark.asyncio
-    @patch("database.db.engine")
-    @patch("database.db.Base")
+    @patch("monika.infrastructure.database.db.engine")
+    @patch("monika.infrastructure.database.db.Base")
     async def test_init_db_success(self, mock_base, mock_engine):
         mock_conn = AsyncMock()
         mock_ctx = AsyncMock()
@@ -20,7 +20,7 @@ class TestDB:
         mock_conn.run_sync.assert_awaited_once_with(mock_base.metadata.create_all)
 
     @pytest.mark.asyncio
-    @patch("database.db.engine")
+    @patch("monika.infrastructure.database.db.engine")
     async def test_init_db_error(self, mock_engine):
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.side_effect = Exception("DB Init Error")
@@ -30,7 +30,7 @@ class TestDB:
             await init_db()
 
     @pytest.mark.asyncio
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     async def test_get_db(self, mock_sessionmaker):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -47,7 +47,7 @@ class TestDB:
             await anext(gen)
 
     @pytest.mark.asyncio
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     async def test_get_session_success(self, mock_sessionmaker):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -59,7 +59,7 @@ class TestDB:
             assert session is mock_session
 
     @pytest.mark.asyncio
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     async def test_get_session_error(self, mock_sessionmaker):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -74,7 +74,7 @@ class TestDB:
         mock_session.rollback.assert_awaited_once()
 
     @pytest.mark.asyncio
-    @patch("database.db.engine")
+    @patch("monika.infrastructure.database.db.engine")
     async def test_close_db(self, mock_engine):
         mock_engine.dispose = AsyncMock()
 
@@ -84,16 +84,16 @@ class TestDB:
 
     @pytest.mark.asyncio
     async def test_async_session_local_proxy_callable(self):
-        from database.db import AsyncSessionLocal
+        from monika.infrastructure.database.db import AsyncSessionLocal
 
         assert callable(AsyncSessionLocal)
         assert bool(AsyncSessionLocal) is True
 
     @pytest.mark.asyncio
     async def test_async_session_local_remains_callable_after_close_db(self):
-        from database.db import AsyncSessionLocal, close_db
+        from monika.infrastructure.database.db import AsyncSessionLocal, close_db
 
-        with patch("database.db.engine") as mock_engine:
+        with patch("monika.infrastructure.database.db.engine") as mock_engine:
             mock_engine.dispose = AsyncMock()
             await close_db()
             assert callable(AsyncSessionLocal)
@@ -101,9 +101,9 @@ class TestDB:
 
     @pytest.mark.asyncio
     async def test_async_session_local_proxy_forwards_to_mock(self):
-        from database.db import AsyncSessionLocal
+        from monika.infrastructure.database.db import AsyncSessionLocal
 
-        with patch("database.db.AsyncSessionLocal") as mock_sessionmaker:
+        with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_sessionmaker:
             mock_session = create_mock_async_session()
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__.return_value = mock_session

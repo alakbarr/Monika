@@ -14,17 +14,17 @@ import tempfile
 import pytest
 from pathlib import Path
 
-from agent.moa_alternation import (
+from monika.application.agent.moa_alternation import (
     destination_key,
     merge_same_role_messages,
     is_role_alternation_rejection,
 )
-from agent.moa_trace import (
+from monika.application.agent.moa_trace import (
     save_moa_turn,
     get_trace_history,
     slot_metrics,
 )
-from agent.moa_loop import (
+from monika.application.agent.moa_loop import (
     MoARuntime,
     MOA_PRESETS,
     MoAResult,

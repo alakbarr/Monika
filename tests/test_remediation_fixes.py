@@ -1,9 +1,9 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from graph.nodes.reflection_node import reflection_node
-from analysis.providers.openai_provider import OpenAIProvider
-from scheduler.edge_strategy_runner import EdgeStrategyRunner
-from analysis.strategies.base_strategy import EdgeSignal
+from monika.application.graph.nodes.reflection_node import reflection_node
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
+from monika.application.scheduler.edge_strategy_runner import EdgeStrategyRunner
+from monika.application.analysis.strategies.base_strategy import EdgeSignal
 
 
 @pytest.mark.asyncio

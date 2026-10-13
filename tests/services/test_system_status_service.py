@@ -4,9 +4,9 @@
 
 import pytest
 from unittest.mock import MagicMock
-from services.system_status_service import SystemStatusService
-from services.market_data_service import MarketDataService
-from utils.infra.container import ServiceContainer
+from monika.application.services.system_status_service import SystemStatusService
+from monika.application.services.market_data_service import MarketDataService
+from monika.infrastructure.infra.container import ServiceContainer
 
 
 def test_system_status_service_health():

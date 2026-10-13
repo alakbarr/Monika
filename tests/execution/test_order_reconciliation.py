@@ -29,12 +29,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database.models import Base, Order, OrderStatus, OrderEvent, Position, TradeOutcome, AssetAnalysis
-from execution.broker_adapter import SimulatedBrokerAdapter, MT5LiveAdapter
-from execution.execution_service import ExecutionService, ExecutionResult
-from scheduler.order_reconciler import OrderReconciler
-from utils.protocol.event_bus import get_event_bus, reset_event_bus, OrderStateChangedEvent
-import utils.clock as clock
+from monika.infrastructure.database.models import (
+    Base,
+    Order,
+    OrderStatus,
+    OrderEvent,
+    Position,
+    TradeOutcome,
+    AssetAnalysis,
+)
+from monika.infrastructure.brokers.broker_adapter import SimulatedBrokerAdapter, MT5LiveAdapter
+from monika.application.execution.execution_service import ExecutionService, ExecutionResult
+from monika.application.scheduler.order_reconciler import OrderReconciler
+from monika.application.protocol.event_bus import get_event_bus, reset_event_bus, OrderStateChangedEvent
+import monika.core.primitives.clock as clock
 
 
 @pytest.fixture
@@ -635,7 +643,7 @@ class TestMainOrchestrationIntegration:
 
     def test_trading_agent_initializes_order_reconciler(self, clean_event_bus):
         """Verify TradingAgent creates OrderReconciler attribute in _init_components."""
-        from main import TradingAgent
+        from monika.application.main import TradingAgent
 
         settings = {
             "trading": {"dry_run": True},
@@ -647,25 +655,25 @@ class TestMainOrchestrationIntegration:
 
         # Call _init_components with mocked dependencies
         with (
-            patch("execution.mt5_client.MT5Client"),
-            patch("execution.execution_service.ExecutionService"),
-            patch("execution.ea_bridge.heartbeat_writer.HeartbeatManager"),
+            patch("monika.infrastructure.brokers.mt5_client.MT5Client"),
+            patch("monika.application.execution.execution_service.ExecutionService"),
+            patch("monika.infrastructure.brokers.ea_bridge.heartbeat_writer.HeartbeatManager"),
             patch("scheduler.graph_cycle_scheduler.GraphCycleScheduler"),
             patch("scheduler.news_watcher.NewsWatcher"),
-            patch("telegram_bot.bot.TelegramBot"),
-            patch("analysis.stages.fundamental_stage.FundamentalStage"),
-            patch("analysis.stages.per_asset_stage.PerAssetStage"),
+            patch("monika.interfaces.telegram.bot.TelegramBot"),
+            patch("monika.application.analysis.stages.fundamental_stage.FundamentalStage"),
+            patch("monika.application.analysis.stages.per_asset_stage.PerAssetStage"),
             patch("scheduler.market_data_scheduler.MarketDataScheduler"),
             patch("scheduler.macro_data_scheduler.MacroDataScheduler"),
             patch("scheduler.trigger_checker.TriggerChecker"),
             patch("scheduler.digest_slice_scheduler.DigestSliceScheduler"),
             patch("harness.engine.PluginEngine"),
-            patch("analysis.memory.background_review.BackgroundReviewEngine"),
+            patch("monika.application.analysis.memory.background_review.BackgroundReviewEngine"),
             patch("scheduler.universal_cron_scheduler.UniversalCronScheduler"),
             patch("scheduler.alpha_discovery_scheduler.AlphaDiscoveryScheduler"),
             patch("scheduler.strategy_synthesis_scheduler.StrategySynthesisScheduler"),
             patch("scheduler.playbook_curator.PlaybookCurator"),
-            patch("utils.infra.notifier.AgentNotifier"),
+            patch("monika.infrastructure.infra.notifier.AgentNotifier"),
         ):
             agent._init_components()
 
@@ -679,7 +687,7 @@ class TestReconcilerHardenedEdgeCases:
 
     def test_mt5_remote_gateway_adapter_instantiation_and_get_orders(self):
         """Verify MT5RemoteGatewayAdapter can be instantiated without TypeError."""
-        from execution.broker_adapter import MT5RemoteGatewayAdapter
+        from monika.infrastructure.brokers.broker_adapter import MT5RemoteGatewayAdapter
 
         adapter = MT5RemoteGatewayAdapter(gateway_url="http://localhost:8080")
         assert hasattr(adapter, "get_orders")

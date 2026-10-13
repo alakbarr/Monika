@@ -2,10 +2,10 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
-from analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
-from analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
-from analysis.debate.portfolio_manager import make_portfolio_decision
+from monika.application.analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
+from monika.application.analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
+from monika.application.analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
+from monika.application.analysis.debate.portfolio_manager import make_portfolio_decision
 
 
 @pytest.fixture

@@ -7,10 +7,10 @@ import yaml
 import tempfile
 import pytest
 from unittest.mock import MagicMock
-from config.settings import load_settings, _deep_merge
-from config.migrations import CURRENT_CONFIG_VERSION, migrate_config, migrate_settings, DEFAULT_SUBSETS
-from harness.contract import PluginCategory, PluginMetadata, TradingPlugin
-from harness.engine import PluginEngine
+from monika.core.config.settings import load_settings, _deep_merge
+from monika.core.config.migrations import CURRENT_CONFIG_VERSION, migrate_config, migrate_settings, DEFAULT_SUBSETS
+from monika.application.harness.contract import PluginCategory, PluginMetadata, TradingPlugin
+from monika.application.harness.engine import PluginEngine
 
 
 def test_load_settings_scans_plugins_directory():

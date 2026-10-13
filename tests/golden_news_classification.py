@@ -12,8 +12,8 @@ import sys
 # Tambahkan trading-agent ke sys.path agar impor modul berhasil
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from analysis.prefetch.news_digest import NEWS_CLASSIFICATION_SCHEMA, NewsDigestProcessor
-from config.settings import load_settings
+from monika.application.analysis.prefetch.news_digest import NEWS_CLASSIFICATION_SCHEMA, NewsDigestProcessor
+from monika.core.config.settings import load_settings
 
 GOLDEN_SET = [
     {

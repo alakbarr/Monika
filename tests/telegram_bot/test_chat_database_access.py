@@ -11,16 +11,16 @@ guardrail enforcement for immutable tables, and two-phase mutation lifecycle.
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.tools.handlers.db_tools import (
+from monika.application.analysis.tools.handlers.db_tools import (
     handle_inspect_database_schema,
     handle_read_database_records,
     get_table_model_map,
 )
-from analysis.tools.tool_guardrails import (
+from monika.application.analysis.tools.tool_guardrails import (
     ToolGuardrailController,
     DATABASE_IMMUTABLE_TABLES,
 )
-from telegram_bot.chat_agent import ChatAgent, PendingAction
+from monika.interfaces.telegram.chat_agent import ChatAgent, PendingAction
 
 
 class DummyExecutor:

@@ -7,7 +7,7 @@ import time
 import pytest
 from unittest.mock import AsyncMock
 
-from risk.pending_action import (
+from monika.domain.risk.pending_action import (
     PendingActionManager,
     PendingActionStatus,
 )

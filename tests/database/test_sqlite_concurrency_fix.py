@@ -9,8 +9,8 @@ import pytest
 from sqlalchemy import text, select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
-from database.models import Base, SystemConfig, PriceOHLCV
-from database.safe_ops import safe_commit, safe_db_op
+from monika.infrastructure.database.models import Base, SystemConfig, PriceOHLCV
+from monika.infrastructure.database.safe_ops import safe_commit, safe_db_op
 
 
 @pytest.mark.asyncio
@@ -114,7 +114,7 @@ async def test_fetch_and_save_all_resilient_to_pair_failure():
     Verify that if saving one pair fails in MT5Client.fetch_and_save_all,
     the session is cleanly rolled back and remaining pairs succeed.
     """
-    from execution.mt5_client import MT5Client
+    from monika.infrastructure.brokers.mt5_client import MT5Client
     import pandas as pd
 
     client = MT5Client({})
@@ -159,7 +159,7 @@ async def test_technical_indicators_resilient_to_pair_failure():
     Verify that if computing one pair fails in TechnicalIndicatorCalculator,
     the session is cleaned and remaining pairs continue.
     """
-    from indicators.technical import TechnicalIndicatorCalculator
+    from monika.domain.indicators.technical import TechnicalIndicatorCalculator
 
     mock_session = AsyncMock(spec=AsyncSession)
     mock_session.rollback = AsyncMock()
@@ -191,8 +191,8 @@ async def test_startup_checks_sqlite_no_deadlock(tmp_path):
     Verify that StartupChecker._check_db_schema runs without database is locked errors
     on an active SQLite database where tables are initialized.
     """
-    from agent.startup_checks import StartupChecker
-    from database import db
+    from monika.application.agent.startup_checks import StartupChecker
+    from monika.infrastructure.database import db
 
     test_db_path = tmp_path / "test_startup.db"
     test_db_url = f"sqlite+aiosqlite:///{test_db_path.as_posix()}"
@@ -225,9 +225,9 @@ async def test_startup_checks_sqlite_no_deadlock(tmp_path):
 
     checker = StartupChecker({"paper_trading": {"enabled": True}}, db_engine=engine)
     with (
-        patch("database.db.AsyncSessionLocal", sm),
-        patch("database.db.get_engine", return_value=engine),
-        patch("database.db.engine", engine),
+        patch("monika.infrastructure.database.db.AsyncSessionLocal", sm),
+        patch("monika.infrastructure.database.db.get_engine", return_value=engine),
+        patch("monika.infrastructure.database.db.engine", engine),
     ):
         ok, warnings = await checker._check_db_schema()
 

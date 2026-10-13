@@ -5,15 +5,22 @@ import json
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from indicators.technical import TechnicalIndicatorCalculator
-from indicators.structure import MarketStructureAnalyzer
-from analysis.calculators.confluence_calculator import (
+from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+from monika.domain.indicators.structure import MarketStructureAnalyzer
+from monika.application.analysis.calculators.confluence_calculator import (
     calculate_priced_in_subscores,
     SYMBOL_TO_COT_CODE,
 )
-from analysis.prefetch.stage2_prefetcher import Stage2DataBundler, SYMBOL_FETCH_TASKS
-from analysis.tools.tool_executor import ToolExecutor
-from database.models import TechnicalIndicator, SwingPoint, FVGZone, OrderBlock, StructureBreak, PriceOHLCV
+from monika.application.analysis.prefetch.stage2_prefetcher import Stage2DataBundler, SYMBOL_FETCH_TASKS
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.infrastructure.database.models import (
+    TechnicalIndicator,
+    SwingPoint,
+    FVGZone,
+    OrderBlock,
+    StructureBreak,
+    PriceOHLCV,
+)
 
 
 class TestTechnicalAnalysisImprovements:
@@ -74,7 +81,7 @@ class TestTechnicalAnalysisImprovements:
     @pytest.mark.asyncio
     async def test_priced_in_subscores_usdjpy_cot(self):
         mock_session = create_mock_async_session()
-        from database.models import COTReport
+        from monika.infrastructure.database.models import COTReport
 
         cot_row = COTReport(
             market_code="097741",

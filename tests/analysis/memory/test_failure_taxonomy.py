@@ -1,5 +1,5 @@
 import pytest
-from analysis.memory.failure_taxonomy import (
+from monika.application.analysis.memory.failure_taxonomy import (
     FailureCategory,
     ReasoningFailureRecord,
     FailureClassifier,

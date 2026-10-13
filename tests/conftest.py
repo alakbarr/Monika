@@ -7,9 +7,6 @@ if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
 import monika
-from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-install_legacy_compat()
 
 import os
 
@@ -136,7 +133,7 @@ def protect_live_db_from_test_activity_logs(monkeypatch):
     Jika test membutuhkan pengujian save ActivityLog, test tersebut harus menyediakan db_session / mock_session.
     """
     try:
-        from analysis.harness.agent_harness import AgentHarness
+        from monika.application.analysis.harness.agent_harness import AgentHarness
 
         orig_log = AgentHarness._log_tool_call
 
@@ -151,13 +148,13 @@ def protect_live_db_from_test_activity_logs(monkeypatch):
 
     try:
         from unittest.mock import Mock
-        import database.db
-        from analysis.providers.base_provider import BaseLLMClient
+        import monika.infrastructure.database.db as database_db
+        from monika.infrastructure.providers.base_provider import BaseLLMClient
 
         orig_llm_log = BaseLLMClient._log_tool_call
 
         async def guarded_llm_log(self, session, *args, **kwargs):
-            if not isinstance(database.db.get_session, Mock):
+            if not isinstance(database_db.get_session, Mock):
                 return None
             return await orig_llm_log(self, session, *args, **kwargs)
 
@@ -173,7 +170,7 @@ def protect_live_db_from_test_token_logs(monkeypatch):
     Jika test membutuhkan pengujian save_token_usage, test tersebut harus menyediakan mock_session.
     """
     try:
-        from analysis.providers.base_provider import BaseLLMClient
+        from monika.infrastructure.providers.base_provider import BaseLLMClient
 
         orig_save = BaseLLMClient._save_token_usage
 
@@ -206,7 +203,7 @@ def protect_llm_provider_network_and_pools(monkeypatch):
     dan membersihkan client pool antar pengujian untuk mencegah kebocoran socket / transport unclosed.
     """
     try:
-        from analysis.providers.openrouter_provider import OpenRouterProvider
+        from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
 
         OpenRouterProvider._client_pool.clear()
     except Exception:
@@ -230,7 +227,7 @@ def protect_llm_provider_network_and_pools(monkeypatch):
     yield
 
     try:
-        from analysis.providers.openrouter_provider import OpenRouterProvider
+        from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
 
         OpenRouterProvider._client_pool.clear()
     except Exception:
@@ -287,7 +284,7 @@ import pytest_asyncio
 async def db_session():
     """Async database session fixture using in-memory SQLite."""
     from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-    from database.models import Base
+    from monika.infrastructure.database.models import Base
 
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
     async with engine.begin() as conn:
@@ -359,18 +356,18 @@ def protect_live_database_in_tests(monkeypatch, request):
         return
 
     try:
-        import database.db
+        import monika.infrastructure.database.db as database_db
 
         def make_mock_session(*args, **kwargs):
             return create_mock_async_session()
 
         def safe_get_sessionmaker():
-            sm = getattr(database.db, "AsyncSessionLocal", None)
-            if sm is not None and not isinstance(sm, database.db._AsyncSessionLocalProxy):
+            sm = getattr(database_db, "AsyncSessionLocal", None)
+            if sm is not None and not isinstance(sm, database_db._AsyncSessionLocalProxy):
                 return sm
             return make_mock_session
 
-        monkeypatch.setattr(database.db, "get_sessionmaker", safe_get_sessionmaker)
+        monkeypatch.setattr(database_db, "get_sessionmaker", safe_get_sessionmaker)
     except Exception:
         pass
 

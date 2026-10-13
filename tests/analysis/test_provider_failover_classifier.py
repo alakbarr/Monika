@@ -1,10 +1,10 @@
 import pytest
-from analysis.providers.provider_failover_classifier import (
+from monika.infrastructure.providers.provider_failover_classifier import (
     FailoverReason,
     classify_error,
 )
-from utils.api.streaming import StreamWriterFence
-from utils.plugins.manager import PluginHook
+from monika.infrastructure.api.streaming import StreamWriterFence
+from monika.application.plugins.manager.manager import PluginHook
 
 
 def test_overflow_variants():
@@ -61,7 +61,7 @@ def test_plugin_hook_on_llm_error():
 def test_provider_circuit_breaker():
     """Verify ProviderCircuitBreaker transitions CLOSED -> OPEN -> HALF_OPEN -> CLOSED."""
     import time
-    from analysis.providers.llm_factory import ProviderCircuitBreaker
+    from monika.infrastructure.providers.llm_factory import ProviderCircuitBreaker
 
     ProviderCircuitBreaker.reset()
     provider = "test_prov"
@@ -94,7 +94,7 @@ def test_provider_circuit_breaker():
 def test_capability_blacklist():
     """Verify model blacklisting with expiration."""
     import time
-    from analysis.providers.llm_factory import ProviderCircuitBreaker
+    from monika.infrastructure.providers.llm_factory import ProviderCircuitBreaker
 
     ProviderCircuitBreaker.reset()
     provider = "openrouter"
@@ -112,7 +112,7 @@ def test_capability_blacklist():
 
 def test_failover_reason_hot_path_eager():
     """Verify RATE_LIMIT_API enables immediate failover when is_hot_path is True."""
-    from analysis.providers.provider_failover_classifier import FailoverReason
+    from monika.infrastructure.providers.provider_failover_classifier import FailoverReason
 
     # In background mode: should_failover is False (retries)
     assert FailoverReason.RATE_LIMIT_API.should_failover is False
@@ -126,7 +126,7 @@ def test_failover_reason_hot_path_eager():
 async def test_streaming_heartbeat_monitor():
     """Verify StreamingHeartbeatMonitor emits pulses and stops cleanly."""
     import asyncio
-    from utils.api.streaming import StreamingHeartbeatMonitor
+    from monika.infrastructure.api.streaming import StreamingHeartbeatMonitor
 
     pulse_count = 0
 

@@ -4,7 +4,7 @@ Unit tests for Platt Scaling, Isotonic PAV, and Statistical Confidence Calibrati
 
 import pytest
 import math
-from utils.calibration.confidence_calibrator import fit_platt_scaling, fit_isotonic_pav, calibrate_probability
+from monika.core.calibration.confidence_calibrator import fit_platt_scaling, fit_isotonic_pav, calibrate_probability
 
 
 def test_fit_platt_scaling_monotone_positive():

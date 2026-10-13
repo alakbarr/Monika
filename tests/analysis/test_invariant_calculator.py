@@ -1,5 +1,5 @@
 import pytest
-from analysis.calculators.invariant_calculator import (
+from monika.application.analysis.calculators.invariant_calculator import (
     compute_trade_invariants,
     format_invariants_for_prompt,
     extract_price_precision,

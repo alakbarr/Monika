@@ -13,14 +13,14 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
 
-from utils.analytics.paper_tracker import _group_by_symbol, _group_by_symbol_direction, PaperTracker
-from utils.analytics.analysis_tracker import (
+from monika.core.analytics.paper_tracker import _group_by_symbol, _group_by_symbol_direction, PaperTracker
+from monika.core.analytics.analysis_tracker import (
     compute_analysis_quality_report,
     get_adaptive_threshold_hints,
     get_per_asset_bias_report,
     get_direction_accuracy_report,
 )
-from database.models import SystemConfig
+from monika.infrastructure.database.models import SystemConfig
 
 
 def test_group_by_symbol_and_direction_schema():
@@ -110,7 +110,9 @@ async def test_compute_analysis_quality_report_no_key_error():
         },
     }
 
-    with patch("utils.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock) as mock_get_stats:
+    with patch(
+        "monika.core.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock
+    ) as mock_get_stats:
         mock_get_stats.return_value = sample_stats
 
         report = await compute_analysis_quality_report(mock_session, days_back=30)

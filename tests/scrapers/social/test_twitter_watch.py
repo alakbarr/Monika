@@ -2,7 +2,7 @@ import pytest
 import json
 from unittest.mock import MagicMock, patch
 from pathlib import Path
-from scrapers.social.twitter_watch import TwitterWatchScraper
+from monika.infrastructure.data_ingestion.scrapers.social.twitter_watch import TwitterWatchScraper
 from datetime import datetime, timezone, timedelta
 
 

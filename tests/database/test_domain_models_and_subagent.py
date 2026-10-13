@@ -1,7 +1,7 @@
 """Unit tests for domain models packaging (Phase 7)."""
 
 import pytest
-import database.domain_models as dm
+import monika.infrastructure.database.domain_models as dm
 
 
 def test_domain_models_imports():

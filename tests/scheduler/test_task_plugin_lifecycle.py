@@ -6,10 +6,10 @@ import asyncio
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 
-from harness.contract import PluginMetadata, PluginCategory, PluginOrigin
-from utils.infra.container import ServiceContainer
-from agent.task_registry import TaskRegistry
-from scheduler.task_plugin import (
+from monika.application.harness.contract import PluginMetadata, PluginCategory, PluginOrigin
+from monika.infrastructure.infra.container import ServiceContainer
+from monika.application.agent.task_registry import TaskRegistry
+from monika.application.scheduler.task_plugin import (
     TaskPlugin,
     LegacySchedulerWrapper,
     TriggerType,

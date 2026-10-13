@@ -4,10 +4,10 @@ from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 import json
 
-from risk.risk_gate import RiskGate
-from database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
-from scheduler.graph_cycle_scheduler import GraphCycleScheduler
-from graph.nodes.risk_gate_node import risk_gate_node
+from monika.domain.risk.risk_gate import RiskGate
+from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
+from monika.application.scheduler.graph_cycle_scheduler import GraphCycleScheduler
+from monika.application.graph.nodes.risk_gate_node import risk_gate_node
 
 
 @pytest.mark.asyncio
@@ -21,7 +21,9 @@ async def test_consecutive_losses_lookback_cutoff():
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    with patch("utils.analytics.paper_tracker.PaperTracker.get_suspended_symbols", new=AsyncMock(return_value=[])):
+    with patch(
+        "monika.core.analytics.paper_tracker.PaperTracker.get_suspended_symbols", new=AsyncMock(return_value=[])
+    ):
         allowed, reason = await gate._check_consecutive_losses(mock_session, "EURUSD")
         assert allowed is True
         assert "suspended" not in reason
@@ -122,26 +124,29 @@ async def test_risk_gate_node_evaluates_quant_on_wait_trade_and_persists():
             pass
 
     with (
-        patch("database.db.get_session", side_effect=MockSession),
+        patch("monika.infrastructure.database.db.get_session", side_effect=MockSession),
         patch(
-            "analysis.calculators.regime_classifier.classify_market_regime",
+            "monika.application.analysis.calculators.regime_classifier.classify_market_regime",
             new=AsyncMock(return_value={"regime": "trending"}),
         ),
-        patch("analysis.strategies.registry.StrategyRegistry.evaluate_all", new=AsyncMock(return_value=[mock_sig])),
-        patch("analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_dm,
         patch(
-            "analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate",
+            "monika.application.analysis.strategies.registry.StrategyRegistry.evaluate_all",
+            new=AsyncMock(return_value=[mock_sig]),
+        ),
+        patch("monika.application.analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_dm,
+        patch(
+            "monika.application.analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate",
             new=AsyncMock(return_value=mock_arb_res),
         ),
         patch(
-            "risk.portfolio_correlation_gate.filter_correlated_proposals",
+            "monika.domain.risk.portfolio_correlation_gate.filter_correlated_proposals",
             new=AsyncMock(return_value=([("EURUSD", {"analysis_id": 999, "decision": "buy", "confidence": 0.85})], [])),
         ),
         patch(
-            "analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
+            "monika.application.analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
             new=AsyncMock(return_value=(True, [])),
         ),
-        patch("utils.infra.notifier.AgentNotifier.send_info", new=AsyncMock()),
+        patch("monika.infrastructure.infra.notifier.AgentNotifier.send_info", new=AsyncMock()),
     ):
         mock_dm.return_value.is_live_ready.return_value = True
 
@@ -200,18 +205,18 @@ async def test_risk_gate_node_proposal_error_fails_closed():
             pass
 
     with (
-        patch("database.db.get_session", side_effect=MockSession),
+        patch("monika.infrastructure.database.db.get_session", side_effect=MockSession),
         patch(
-            "risk.portfolio_correlation_gate.filter_correlated_proposals",
+            "monika.domain.risk.portfolio_correlation_gate.filter_correlated_proposals",
             new=AsyncMock(
                 return_value=([("BTCUSD", {"analysis_id": 888, "decision": "sell", "confidence": 0.70})], [])
             ),
         ),
         patch(
-            "risk.trade_proposal.TradeProposal.from_analysis",
+            "monika.domain.risk.trade_proposal.TradeProposal.from_analysis",
             side_effect=ValueError("Simulated proposal validation crash"),
         ),
-        patch("utils.infra.notifier.AgentNotifier.send_info", new=AsyncMock()),
+        patch("monika.infrastructure.infra.notifier.AgentNotifier.send_info", new=AsyncMock()),
     ):
         res = await risk_gate_node(state, config)
         # STRICT FAIL-CLOSED: The trade must NOT be approved
@@ -273,17 +278,17 @@ async def test_risk_gate_node_safe_num_uses_math_and_strips_formatting():
     mock_verdict.rejection_reasons = []
 
     with (
-        patch("database.db.get_session", side_effect=MockSession),
+        patch("monika.infrastructure.database.db.get_session", side_effect=MockSession),
         patch(
-            "risk.portfolio_correlation_gate.filter_correlated_proposals",
+            "monika.domain.risk.portfolio_correlation_gate.filter_correlated_proposals",
             new=AsyncMock(return_value=(state["actionable_trades"], [])),
         ),
-        patch("risk.risk_gate.RiskGate.evaluate_proposal", new=AsyncMock(return_value=mock_verdict)),
+        patch("monika.domain.risk.risk_gate.RiskGate.evaluate_proposal", new=AsyncMock(return_value=mock_verdict)),
         patch(
-            "analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
+            "monika.application.analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
             new=AsyncMock(return_value=(True, [])),
         ),
-        patch("utils.infra.notifier.AgentNotifier.send_info", new=AsyncMock()),
+        patch("monika.infrastructure.infra.notifier.AgentNotifier.send_info", new=AsyncMock()),
     ):
         res = await risk_gate_node(state, config)
         assert len(res["approved_trades"]) == 1

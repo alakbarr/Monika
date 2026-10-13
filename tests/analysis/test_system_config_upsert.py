@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from database.models import Base, SystemConfig
+from monika.infrastructure.database.models import Base, SystemConfig
 
 
 @pytest_asyncio.fixture
@@ -131,7 +131,7 @@ async def test_debate_node_context_drift_query_updated_at(test_db_session):
 def test_system_config_pg_upsert_compilation():
     """Verify that PostgreSQL atomic UPSERT constructs valid ON CONFLICT DO UPDATE statement."""
     from sqlalchemy.dialects.postgresql import insert as pg_insert, dialect as pg_dialect
-    from database.models import SystemConfig
+    from monika.infrastructure.database.models import SystemConfig
     from datetime import datetime, timezone
 
     stmt = (

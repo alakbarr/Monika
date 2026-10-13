@@ -4,7 +4,7 @@ import os
 import time
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from execution.ea_bridge.heartbeat_writer import (
+from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import (
     HeartbeatManager,
     HEARTBEAT_INTERVAL_SECONDS,
     EA_STALE_THRESHOLD_SECONDS,

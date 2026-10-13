@@ -13,12 +13,12 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 
-from logging_observability.dashboard.api import (
+from monika.interfaces.dashboard.api import (
     app,
     set_dashboard_dependencies,
     _dependencies,
 )
-from logging_observability.dashboard.rbac import Role, resolve_role, ROLE_HIERARCHY
+from monika.interfaces.dashboard.rbac import Role, resolve_role, ROLE_HIERARCHY
 
 
 @pytest.fixture
@@ -95,7 +95,7 @@ def test_rbac_endpoint_enforcement(client):
         assert "admin" in res.json()["detail"].lower()
 
         # 4. Admin trying admin action -> allowed through RBAC
-        with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+        with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
             mock_session = create_mock_async_session()
             mock_session.add = MagicMock()
             mock_res = MagicMock()
@@ -180,7 +180,7 @@ def test_put_config_settings_success(client, tmp_path):
     env = {"DASHBOARD_API_KEYS": "admin:adm_key", "DASHBOARD_API_KEY": ""}
     with patch.dict(os.environ, env):
         with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
-            with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+            with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
                 mock_session = create_mock_async_session()
                 mock_session.add = MagicMock()
                 mock_session_ctx.return_value.__aenter__.return_value = mock_session
@@ -208,7 +208,7 @@ def test_put_config_settings_role_forbidden(client):
 
 def test_list_sessions(client):
     """Verify GET /api/sessions queries and formats sessions properly."""
-    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
@@ -238,7 +238,7 @@ def test_list_sessions(client):
 
 def test_get_session_messages(client):
     """Verify GET /api/sessions/{session_id}/messages returns transcript."""
-    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 

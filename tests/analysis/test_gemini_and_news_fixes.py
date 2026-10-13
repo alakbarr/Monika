@@ -1,10 +1,10 @@
 import pytest
 import unittest
 from unittest.mock import AsyncMock, patch, MagicMock
-from analysis.providers.gemini_provider import GeminiProvider
-from analysis.prefetch.news_digest import _keyword_fallback_classify
-from utils.market.news_impact_keywords import SHOCK_KEYWORDS, HIGH_IMPACT_KEYWORDS
-from analysis.stages.per_asset_stage import PerAssetStage
+from monika.infrastructure.providers.gemini_provider import GeminiProvider
+from monika.application.analysis.prefetch.news_digest import _keyword_fallback_classify
+from monika.domain.market.news_impact_keywords import SHOCK_KEYWORDS, HIGH_IMPACT_KEYWORDS
+from monika.application.analysis.stages.per_asset_stage import PerAssetStage
 
 
 class TestGeminiAndNewsFixes(unittest.IsolatedAsyncioTestCase):
@@ -63,9 +63,11 @@ class TestGeminiAndNewsFixes(unittest.IsolatedAsyncioTestCase):
         ]
 
         with (
-            patch("analysis.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock) as mock_fetch,
-            patch("analysis.providers.gemini_provider.get_session"),
-            patch("analysis.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True),
+            patch(
+                "monika.infrastructure.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock
+            ) as mock_fetch,
+            patch("monika.infrastructure.providers.gemini_provider.get_session"),
+            patch("monika.infrastructure.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True),
         ):
             mock_fetch.return_value = {
                 "candidates": [{"content": {"parts": [{"text": "Analysis complete."}]}, "finishReason": "STOP"}]

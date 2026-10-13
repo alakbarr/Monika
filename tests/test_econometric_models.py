@@ -5,11 +5,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 import pandas as pd
-from analysis.calculators.leading_indicator_mapper import LeadingIndicatorMapper
-from analysis.calculators.garch_volatility import GarchVolatilityEngine
-from analysis.calculators.taylor_rule import TaylorRuleCalculator
-from analysis.calculators.timesfm_residual_validator import TimesFMResidualValidator
-from data_sources.fred_treasury_yield import TENOR_SERIES, SERIES_TO_TENOR
+from monika.application.analysis.calculators.leading_indicator_mapper import LeadingIndicatorMapper
+from monika.application.analysis.calculators.garch_volatility import GarchVolatilityEngine
+from monika.application.analysis.calculators.taylor_rule import TaylorRuleCalculator
+from monika.application.analysis.calculators.timesfm_residual_validator import TimesFMResidualValidator
+from monika.infrastructure.data_ingestion.sources.fred_treasury_yield import TENOR_SERIES, SERIES_TO_TENOR
 
 
 def test_leading_indicator_mapper():

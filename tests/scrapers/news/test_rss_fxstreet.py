@@ -1,5 +1,5 @@
 import pytest
-from scrapers.news.rss_fxstreet import FxstreetRssScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_fxstreet import FxstreetRssScraper
 
 
 def test_init():

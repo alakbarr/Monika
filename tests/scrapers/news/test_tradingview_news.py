@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from scrapers.news.tradingview_news import TradingViewNewsScraper
+from monika.infrastructure.data_ingestion.scrapers.news.tradingview_news import TradingViewNewsScraper
 
 
 class TestTradingViewNewsScraper:

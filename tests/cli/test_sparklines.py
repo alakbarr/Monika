@@ -4,7 +4,7 @@
 # ==============================================================================
 
 import pytest
-from cli.sparklines import braille_sparkline, bar_gauge, BRAILLE_BASE
+from monika.interfaces.cli.sparklines import braille_sparkline, bar_gauge, BRAILLE_BASE
 
 
 def test_braille_sparkline_empty():

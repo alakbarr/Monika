@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.grounding.provenance_tagger import (
+from monika.application.analysis.grounding.provenance_tagger import (
     ProvenanceLedger,
     AutomatedFigureRedactionGate,
 )
-from analysis.debate.investment_judge import evaluate_debate
+from monika.application.analysis.debate.investment_judge import evaluate_debate
 
 
 def test_redact_unprovenanced_figures():

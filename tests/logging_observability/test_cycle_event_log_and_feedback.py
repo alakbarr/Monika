@@ -6,11 +6,11 @@ and Operator Feedback Capture (Phase 7.5).
 import tempfile
 from pathlib import Path
 import pytest
-from logging_observability.trading_cycle_event_log import (
+from monika.core.telemetry.trading_cycle_event_log import (
     TradingCycleEventLog,
     CycleEventType,
 )
-from logging_observability.operator_feedback import OperatorFeedbackManager
+from monika.core.telemetry.operator_feedback import OperatorFeedbackManager
 
 
 def test_monotonic_cycle_event_log_and_lineage():
@@ -133,7 +133,7 @@ def test_hash_chain_tamper_detection():
         # Tamper with the payload of the first event in memory
         events[0].payload["phase"] = "tampered_value"
 
-        from logging_observability.trading_cycle_event_log import verify_chain_integrity
+        from monika.core.telemetry.trading_cycle_event_log import verify_chain_integrity
 
         is_valid, reason = verify_chain_integrity(events)
         assert is_valid is False

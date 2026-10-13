@@ -2,7 +2,7 @@ import pytest
 import os
 import shutil
 import tempfile
-from logging_observability.report_writer import ReportWriter
+from monika.core.telemetry.report_writer import ReportWriter
 
 
 @pytest.mark.asyncio

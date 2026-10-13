@@ -1,5 +1,5 @@
 import pytest
-from scrapers.news.rss_ft import FinancialTimesRssScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_ft import FinancialTimesRssScraper
 
 
 def test_init():

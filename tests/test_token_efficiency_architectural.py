@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 # 1. Compaction Threshold Tests
 def test_compaction_thresholds():
-    from utils.llm.context_compaction import ContextCompactionEngine
+    from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
 
     engine = ContextCompactionEngine()
     assert hasattr(engine, "SYNTHESIS_THRESHOLD_ABSOLUTE")
@@ -35,7 +35,7 @@ def test_compaction_thresholds():
 
 # 2. Tool Minification Tests
 def test_minify_tool_definitions():
-    from analysis.tools.tools_definitions import minify_tool_definitions
+    from monika.application.analysis.tools.tools_definitions import minify_tool_definitions
 
     raw_tools = [
         {
@@ -60,7 +60,7 @@ def test_minify_tool_definitions():
 
 # 3. Conditional Anchor Injection Tests
 def test_should_inject_anchor():
-    from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+    from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
     # Ollama/local should never inject anchor
     assert not CacheBreakpointManager.should_inject_anchor(
@@ -78,7 +78,10 @@ def test_should_inject_anchor():
 
 # 4. Adaptive Thinking Cap Tests
 def test_adaptive_thinking_caps():
-    from utils.llm.adaptive_thinking import QuantizedThinkingAllocator, PerSymbolAdaptiveThinkingAllocator
+    from monika.infrastructure.llm.adaptive_thinking import (
+        QuantizedThinkingAllocator,
+        PerSymbolAdaptiveThinkingAllocator,
+    )
 
     assert QuantizedThinkingAllocator.BUCKETS["MAX"] == 16000
     assert QuantizedThinkingAllocator.quantize(16000) == 16000
@@ -92,7 +95,7 @@ def test_adaptive_thinking_caps():
 
 # 5. Initial Bundle Distillation Tests
 def test_distill_initial_bundle_after_turn_1():
-    from analysis.harness.context_compressor import ContextCompressor
+    from monika.application.analysis.harness.context_compressor import ContextCompressor
 
     messages = [
         {
@@ -111,7 +114,7 @@ def test_distill_initial_bundle_after_turn_1():
 
 # 6. S2-MAD Debate Blackboard Tests
 def test_debate_blackboard():
-    from analysis.debate.blackboard import DebateBlackboard
+    from monika.application.analysis.debate.blackboard import DebateBlackboard
 
     bb = DebateBlackboard(symbol="XAUUSD")
     bb.add_bull_thesis(
@@ -128,7 +131,7 @@ def test_debate_blackboard():
 
 # 7. Retrieval-Augmented Tool Selection (RATS) Tests
 def test_rat_tool_selector():
-    from analysis.tools.tool_selector import RAToolSelector
+    from monika.application.analysis.tools.tool_selector import RAToolSelector
 
     tools = [
         {"name": "calculate_position_size", "description": "Calculates lot size."},
@@ -148,7 +151,7 @@ def test_rat_tool_selector():
 
 # 8. Semantic Cache Guardrail Tests
 def test_semantic_cache_guardrails():
-    from utils.llm.semantic_cache import TradingSemanticCache
+    from monika.infrastructure.llm.semantic_cache import TradingSemanticCache
 
     cache = TradingSemanticCache.get_instance()
 
@@ -165,7 +168,7 @@ def test_semantic_cache_guardrails():
 
 # 9. Adaptive LLMLingua-2 Device Detection Tests
 def test_llmlingua_device_and_heuristic():
-    from utils.llm.llmlingua_compressor import AdaptiveLLMLinguaCompressor
+    from monika.infrastructure.llm.llmlingua_compressor import AdaptiveLLMLinguaCompressor
     from unittest.mock import MagicMock
 
     device = AdaptiveLLMLinguaCompressor.detect_device()
@@ -201,7 +204,7 @@ def test_llmlingua_device_and_heuristic():
 
 # 10. OpenRouter Claude Cache Control Passthrough Tests
 def test_openrouter_claude_cache_control():
-    from analysis.providers.openai_provider import OpenAIProvider
+    from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
     provider = OpenAIProvider(model="anthropic/claude-3.5-sonnet", api_key="sk-or-test")
     provider.provider_name = "openrouter"
@@ -219,7 +222,7 @@ def test_openrouter_claude_cache_control():
 
 # 11. OpenRouter Provider Sticky Routing Tests
 def test_openrouter_sticky_routing():
-    from analysis.providers.openrouter_provider import OpenRouterProvider
+    from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
 
     provider = OpenRouterProvider(model="deepseek/deepseek-chat", api_key="sk-or-test")
     kwargs = {}
@@ -233,7 +236,7 @@ def test_openrouter_sticky_routing():
 
 # 12. Ollama Keep-Alive Tests
 def test_ollama_keep_alive():
-    from analysis.providers.ollama_provider import OllamaProvider
+    from monika.infrastructure.providers.ollama_provider import OllamaProvider
 
     provider = OllamaProvider(model="llama3")
     kwargs = {}

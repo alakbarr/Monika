@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import MagicMock
-from analysis.harness.agent_harness import AgentHarness
-from analysis.providers.openai_provider import _canonicalize_schema
-from analysis.providers.base_provider import BaseLLMClient
+from monika.application.analysis.harness.agent_harness import AgentHarness
+from monika.infrastructure.providers.openai_provider import _canonicalize_schema
+from monika.infrastructure.providers.base_provider import BaseLLMClient
 
 
 class DummyProvider(BaseLLMClient):
@@ -19,7 +19,7 @@ class DummyProvider(BaseLLMClient):
                 "system_prompt": system_prompt,
             }
         )
-        from analysis.providers.base_provider import MockResponse, MockBlock
+        from monika.infrastructure.providers.base_provider import MockResponse, MockBlock
 
         return MockResponse(
             content=[MockBlock("text", text="All analysis done.")],

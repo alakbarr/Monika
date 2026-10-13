@@ -6,7 +6,7 @@ from tests.conftest import create_mock_async_session
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.debate.adjustment_validator import validate_and_apply_judge_adjustments
+from monika.application.analysis.debate.adjustment_validator import validate_and_apply_judge_adjustments
 
 
 class DummyAnalysis:

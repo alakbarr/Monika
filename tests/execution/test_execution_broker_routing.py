@@ -17,7 +17,7 @@ from tests.conftest import create_mock_async_session
 # ------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_db13_atomic_in_memory_locks():
-    from database.db import transactional_advisory_lock, _IN_MEMORY_EXECUTION_LOCKS
+    from monika.infrastructure.database.db import transactional_advisory_lock, _IN_MEMORY_EXECUTION_LOCKS
 
     mock_session = create_mock_async_session()
     # Mock engine without postgresql dialect to exercise in-memory path
@@ -46,7 +46,7 @@ async def test_db13_atomic_in_memory_locks():
 # ------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_sc1_position_sync_order_reconciler_exclusion():
-    from main import TradingAgent
+    from monika.application.main import TradingAgent
 
     settings = {"trading": {"symbols": ["EURUSD"]}}
     agent = TradingAgent(settings=settings, dry_run=True)
@@ -64,7 +64,7 @@ async def test_sc1_position_sync_order_reconciler_exclusion():
 # ------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_sc3_session_trigger_loop_flag_and_stop():
-    from scheduler.graph_cycle_scheduler import GraphCycleScheduler
+    from monika.application.scheduler.graph_cycle_scheduler import GraphCycleScheduler
 
     settings = {"trading": {"symbols": ["EURUSD"]}, "execution": {"session_triggers": {"enabled": True}}}
     cycle_sched = GraphCycleScheduler(settings=settings)
@@ -93,10 +93,10 @@ async def test_sc3_session_trigger_loop_flag_and_stop():
 # ------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_cw3_recovery_event_waiting():
-    from scheduler.trigger_checker import TriggerChecker
-    from scheduler.position_exit_reviewer import PositionExitReviewer
-    from scheduler.trailing_stop_manager import TrailingStopManager
-    from scheduler.order_reconciler import OrderReconciler
+    from monika.application.scheduler.trigger_checker import TriggerChecker
+    from monika.application.scheduler.position_exit_reviewer import PositionExitReviewer
+    from monika.application.scheduler.trailing_stop_manager import TrailingStopManager
+    from monika.application.scheduler.order_reconciler import OrderReconciler
 
     settings = {"trading": {"symbols": ["EURUSD"], "risk": {"max_concurrent_positions": 5}}}
     recovery_event = asyncio.Event()
@@ -134,7 +134,7 @@ async def test_cw3_recovery_event_waiting():
 @pytest.mark.asyncio
 async def test_post_restart_recovery_sets_event_before_market_warmup():
     """Verify that _post_restart_recovery sets _recovery_complete immediately after position sync."""
-    from main import TradingAgent
+    from monika.application.main import TradingAgent
 
     agent = TradingAgent.__new__(TradingAgent)
     agent.settings = {"environment": "test", "trading": {"schedule": {"catch_up_missed_cycles": False}}}
@@ -161,9 +161,9 @@ async def test_post_restart_recovery_sets_event_before_market_warmup():
     agent.market_data_scheduler = MagicMock()
     agent.market_data_scheduler.sync_now = AsyncMock(side_effect=slow_sync)
 
-    with patch("database.db.get_session") as mock_sess:
+    with patch("monika.infrastructure.database.db.get_session") as mock_sess:
         mock_sess.return_value.__aenter__.return_value = create_mock_async_session()
-        with patch("analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_dm:
+        with patch("monika.application.analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_dm:
             mock_dm.return_value.load_from_db = AsyncMock()
             await agent._post_restart_recovery()
 
@@ -176,7 +176,7 @@ async def test_post_restart_recovery_sets_event_before_market_warmup():
 # ------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_sc6_sc7_news_watcher_concurrency_and_cycle_lock():
-    from scheduler.news_watcher import NewsWatcher
+    from monika.application.scheduler.news_watcher import NewsWatcher
 
     settings = {"trading": {"symbols": ["EURUSD"]}}
     nw = NewsWatcher(settings)
@@ -200,8 +200,8 @@ async def test_sc6_sc7_news_watcher_concurrency_and_cycle_lock():
 # ------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_sc8_duplicate_position_close_prevention():
-    from execution.service.emergency_manager import EmergencyManagerMixin
-    from database.models import Position
+    from monika.application.execution.service.emergency_manager import EmergencyManagerMixin
+    from monika.infrastructure.database.models import Position
 
     class DummyExecution(EmergencyManagerMixin):
         def __init__(self):
@@ -226,7 +226,7 @@ async def test_sc8_duplicate_position_close_prevention():
     mock_result.scalar_one_or_none.return_value = mock_pos
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("execution.service.emergency_manager.get_session") as mock_gs:
+    with patch("monika.application.execution.service.emergency_manager.get_session") as mock_gs:
         mock_gs.return_value.__aenter__.return_value = mock_session
         res = await em.close_position_by_ticket(ticket, reason="Test concurrent close")
 
@@ -241,8 +241,8 @@ async def test_sc8_duplicate_position_close_prevention():
 # ------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_sc9_background_tasks_cancellation():
-    from scheduler.news_watcher import NewsWatcher
-    from scheduler.trigger_checker import TriggerChecker
+    from monika.application.scheduler.news_watcher import NewsWatcher
+    from monika.application.scheduler.trigger_checker import TriggerChecker
 
     settings = {"trading": {"symbols": ["EURUSD"], "risk": {"max_concurrent_positions": 5}}}
     nw = NewsWatcher(settings)
@@ -273,7 +273,7 @@ async def test_sc9_background_tasks_cancellation():
 # ------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_cw5_graceful_shutdown_order():
-    from main import TradingAgent
+    from monika.application.main import TradingAgent
 
     settings = {"trading": {"symbols": ["EURUSD"]}}
     agent = TradingAgent(settings=settings, dry_run=True)
@@ -312,7 +312,7 @@ async def test_cw5_graceful_shutdown_order():
 # 9. CW-6: Release Single Instance Lock
 # ------------------------------------------------------------------------------
 def test_cw6_pid_lock_release_helper(tmp_path):
-    import main as main_mod
+    import monika.application.main as main_mod
 
     test_lock_file = str(tmp_path / "trading_agent.pid")
     with open(test_lock_file, "w") as f:
@@ -333,7 +333,7 @@ def test_cw6_pid_lock_release_helper(tmp_path):
 # ------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_db14_risk_gate_daily_trade_count_paper_vs_live():
-    from risk.risk_gate import RiskGate
+    from monika.domain.risk.risk_gate import RiskGate
 
     settings = {
         "trading": {
@@ -377,8 +377,8 @@ async def test_db14_risk_gate_daily_trade_count_paper_vs_live():
 # ------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_db15_risk_gate_no_duplicate_pair_group():
-    from risk.risk_gate import RiskGate
-    from database.models import Position
+    from monika.domain.risk.risk_gate import RiskGate
+    from monika.infrastructure.database.models import Position
 
     settings = {"trading": {"risk": {"max_concurrent_positions": 5}}}
     gate = RiskGate(settings)
@@ -425,11 +425,11 @@ async def test_db15_risk_gate_no_duplicate_pair_group():
 # ------------------------------------------------------------------------------
 def test_m8_prune_executed_analysis_ids_ttl_and_resilience():
     import time
-    from execution.service.order_executor import (
+    from monika.application.execution.service.order_executor import (
         _EXECUTED_ANALYSIS_IDS,
         _prune_executed_analysis_ids,
     )
-    import execution.service.order_executor as oe
+    import monika.application.execution.service.order_executor as oe
 
     now = time.time()
     oe._LAST_CLEANUP_TIME = 0.0  # Force cleanup check

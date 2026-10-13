@@ -2,9 +2,9 @@ import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from analysis.providers.anthropic_provider import AnthropicProvider
-from analysis.providers.gemini_provider import GeminiProvider
-from analysis.providers.base_provider import MockBlock, MockResponse
+from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
+from monika.infrastructure.providers.gemini_provider import GeminiProvider
+from monika.infrastructure.providers.base_provider import MockBlock, MockResponse
 
 
 @pytest.mark.asyncio
@@ -27,8 +27,8 @@ async def test_anthropic_provider_generate(mock_anthropic):
 
 
 @pytest.mark.asyncio
-@patch("analysis.providers.gemini_provider.fetch_with_retry")
-@patch("analysis.providers.gemini_provider.GeminiRateLimiter")
+@patch("monika.infrastructure.providers.gemini_provider.fetch_with_retry")
+@patch("monika.infrastructure.providers.gemini_provider.GeminiRateLimiter")
 async def test_gemini_provider_generate(mock_limiter, mock_fetch):
     mock_limiter_instance = AsyncMock()
     mock_limiter_instance.try_acquire.return_value = True
@@ -63,7 +63,7 @@ async def test_mock_block_and_response():
 def test_gemini_handle_rate_limit_classification():
     """Memverifikasi presisi klasifikasi rate limit Gemini (RPM/TPM/Generic vs RPD vs dynamic Retry-After)."""
     import time
-    from utils.api.http_retry import RateLimitError
+    from monika.infrastructure.api.http_retry import RateLimitError
 
     GeminiProvider._key_cooldowns.clear()
 
@@ -105,7 +105,7 @@ def test_gemini_handle_rate_limit_classification():
 
 def test_gemini_block_detection():
     """Memverifikasi deteksi safety block dan blockReason pada respons Gemini."""
-    from analysis.providers.gemini_provider import _check_gemini_block
+    from monika.infrastructure.providers.gemini_provider import _check_gemini_block
 
     # 1. Normal response -> None
     normal_data = {"candidates": [{"content": {"parts": [{"text": "Hello"}]}, "finishReason": "STOP"}]}
@@ -155,8 +155,8 @@ async def test_anthropic_billing_error_classification():
 
 
 @pytest.mark.asyncio
-@patch("analysis.providers.gemini_provider.fetch_with_retry")
-@patch("analysis.providers.gemini_provider.GeminiRateLimiter")
+@patch("monika.infrastructure.providers.gemini_provider.fetch_with_retry")
+@patch("monika.infrastructure.providers.gemini_provider.GeminiRateLimiter")
 async def test_gemini_token_allocation_with_thinking(mock_limiter, mock_fetch):
     """Memverifikasi bahwa maxOutputTokens disetel ke 65536 dan thinkingLevel dimetakan ke enum resmi Gemini 3."""
     mock_limiter_instance = AsyncMock()
@@ -200,8 +200,8 @@ async def test_gemini_token_allocation_with_thinking(mock_limiter, mock_fetch):
 
 
 @pytest.mark.asyncio
-@patch("analysis.providers.gemini_provider.fetch_with_retry")
-@patch("analysis.providers.gemini_provider.GeminiRateLimiter")
+@patch("monika.infrastructure.providers.gemini_provider.fetch_with_retry")
+@patch("monika.infrastructure.providers.gemini_provider.GeminiRateLimiter")
 async def test_gemini_run_tool_agent_max_tokens_stop_reason(mock_limiter, mock_fetch):
     """Memverifikasi bahwa run_tool_agent menghasilkan stop_reason='max_tokens' saat finishReason='MAX_TOKENS'."""
     mock_limiter_instance = AsyncMock()
@@ -224,10 +224,10 @@ async def test_gemini_run_tool_agent_max_tokens_stop_reason(mock_limiter, mock_f
 
 
 @pytest.mark.asyncio
-@patch("analysis.providers.anthropic_provider.ClaudeRateLimiter.acquire_session_slot")
+@patch("monika.infrastructure.providers.anthropic_provider.ClaudeRateLimiter.acquire_session_slot")
 async def test_anthropic_thinking_and_64k_tokens(mock_limiter):
     """Memverifikasi bahwa AnthropicProvider menyetel max_tokens 64000 dan thinking config yang tepat."""
-    from analysis.providers.anthropic_provider import AnthropicProvider
+    from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
 
     mock_limiter.return_value = True
 
@@ -257,8 +257,8 @@ async def test_anthropic_thinking_and_64k_tokens(mock_limiter):
 @pytest.mark.asyncio
 async def test_groq_and_openrouter_token_floors():
     """Memverifikasi token ceiling untuk Groq (32768) dan OpenRouter floor (65536)."""
-    from analysis.providers.groq_provider import GroqProvider
-    from analysis.providers.openrouter_provider import OpenRouterProvider
+    from monika.infrastructure.providers.groq_provider import GroqProvider
+    from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
 
     # 1. GroqProvider reasoning params
     groq_provider = GroqProvider(
@@ -278,8 +278,8 @@ async def test_groq_and_openrouter_token_floors():
 
 
 @pytest.mark.asyncio
-@patch("analysis.providers.gemini_provider.fetch_with_retry")
-@patch("analysis.providers.gemini_provider.GeminiRateLimiter")
+@patch("monika.infrastructure.providers.gemini_provider.fetch_with_retry")
+@patch("monika.infrastructure.providers.gemini_provider.GeminiRateLimiter")
 async def test_gemini_auto_recovery_on_max_tokens(mock_limiter, mock_fetch):
     """Memverifikasi bahwa GeminiProvider melakukan auto-recovery saat MAX_TOKENS dengan thoughts > 10000."""
     mock_limiter_instance = AsyncMock()
@@ -366,7 +366,7 @@ async def test_anthropic_run_tool_agent_anti_oscillation_hashlib(mock_anthropic)
     provider._save_token_usage = AsyncMock()
     provider._log_tool_call = AsyncMock()
 
-    with patch("analysis.providers.anthropic_provider.ToolExecutor") as mock_executor_cls:
+    with patch("monika.infrastructure.providers.anthropic_provider.ToolExecutor") as mock_executor_cls:
         mock_executor = AsyncMock()
         mock_executor.execute = AsyncMock(return_value={"bars": [1, 2, 3]})
         mock_executor_cls.return_value = mock_executor
@@ -386,7 +386,7 @@ async def test_anthropic_run_tool_agent_anti_oscillation_hashlib(mock_anthropic)
 
 def test_format_api_error_summary():
     """Memverifikasi pembersihan format error API menjadi single-line yang rapi."""
-    from utils.api.http_retry import format_api_error_summary
+    from monika.infrastructure.api.http_retry import format_api_error_summary
 
     # 1. Google Gemini 503 High Demand JSON
     gemini_body = json.dumps(
@@ -421,8 +421,8 @@ def test_format_api_error_summary():
 def test_gemini_503_high_demand_transient_handling():
     """Memverifikasi penanganan elegan HTTP 503 High Demand pada GeminiProvider."""
     import time
-    from utils.api.http_retry import APIStatusError
-    from analysis.providers.provider_failover_classifier import classify_error, FailoverReason
+    from monika.infrastructure.api.http_retry import APIStatusError
+    from monika.infrastructure.providers.provider_failover_classifier import classify_error, FailoverReason
 
     GeminiProvider._key_cooldowns.clear()
 
@@ -457,7 +457,7 @@ def test_gemini_503_high_demand_transient_handling():
 @pytest.mark.asyncio
 async def test_gemini_generate_rotates_key_on_503():
     """Memverifikasi bahwa saat attempt 1 gagal HTTP 503, generate otomatis mencoba key berikutnya yang sehat."""
-    from utils.api.http_retry import APIStatusError
+    from monika.infrastructure.api.http_retry import APIStatusError
 
     gemini_503_body = json.dumps(
         {
@@ -491,9 +491,9 @@ async def test_gemini_generate_rotates_key_on_503():
             return mock_success_res
 
         with (
-            patch("analysis.providers.gemini_provider.streaming_request", side_effect=mock_stream_req),
-            patch("analysis.providers.gemini_provider.get_session") as mock_db_sess,
-            patch("analysis.providers.gemini_provider.GeminiRateLimiter") as mock_rl,
+            patch("monika.infrastructure.providers.gemini_provider.streaming_request", side_effect=mock_stream_req),
+            patch("monika.infrastructure.providers.gemini_provider.get_session") as mock_db_sess,
+            patch("monika.infrastructure.providers.gemini_provider.GeminiRateLimiter") as mock_rl,
         ):
             mock_rl.return_value.try_acquire = AsyncMock(return_value=True)
 

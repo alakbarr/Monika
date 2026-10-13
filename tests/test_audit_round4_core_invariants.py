@@ -27,7 +27,7 @@ import re
 import json
 from unittest.mock import MagicMock, AsyncMock, patch
 from datetime import datetime, timezone, timedelta
-from utils import clock
+from monika.core.primitives import clock
 
 
 # =========================================================================
@@ -35,7 +35,7 @@ from utils import clock
 # =========================================================================
 @pytest.mark.asyncio
 async def test_cost_tracker_daily_spend_circuit_breaker_key_compatibility():
-    from utils.analytics.cost_tracker import CostTracker
+    from monika.core.analytics.cost_tracker import CostTracker
 
     current_day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
@@ -137,8 +137,8 @@ async def test_dashboard_api_trusted_proxy_spoofing_defense():
 # 3. OPS-01: Rate Limiter State File Separation
 # =========================================================================
 def test_rate_limiter_state_files_separation():
-    from utils.api.groq_rate_limiter import _STATE_FILE as GROQ_STATE_FILE
-    from utils.api.openrouter_rate_limiter import _STATE_FILE as OR_STATE_FILE
+    from monika.infrastructure.api.groq_rate_limiter import _STATE_FILE as GROQ_STATE_FILE
+    from monika.infrastructure.api.openrouter_rate_limiter import _STATE_FILE as OR_STATE_FILE
 
     assert "groq_rate_limit_state.json" in str(GROQ_STATE_FILE)
     assert "openrouter_rate_limit_state.json" in str(OR_STATE_FILE)
@@ -214,8 +214,8 @@ def test_news_digest_punctuation_aware_token_sanitization():
 # =========================================================================
 @pytest.mark.asyncio
 async def test_risk_gate_consecutive_losses_evaluates_pnl():
-    from risk.risk_gate import RiskGate
-    from database.models import PaperTradeRecord
+    from monika.domain.risk.risk_gate import RiskGate
+    from monika.infrastructure.database.models import PaperTradeRecord
 
     # Mock 3 closed trades: 2 losses (pnl_pct < 0) and 1 profit exit via trailing stop
     t1 = MagicMock(spec=PaperTradeRecord)
@@ -271,7 +271,7 @@ def test_decision_log_next_trade_adjustment_retrieval():
 # 9. DEC-01: Specialist Adjudication Coercion Defaults to cancel_setup
 # =========================================================================
 def test_specialist_adjudication_string_coercion_defaults_to_cancel():
-    from analysis.schemas.pydantic_schemas import SpecialistAdjudication
+    from monika.application.analysis.schemas.pydantic_schemas import SpecialistAdjudication
 
     raw_str = "H1 SMC conflicts with D1 hawkish macro bias"
     obj = SpecialistAdjudication.model_validate(raw_str)
@@ -285,7 +285,7 @@ def test_specialist_adjudication_string_coercion_defaults_to_cancel():
 # 10. TST-01: OutcomeEvaluator XAUUSD Spread Calibration
 # =========================================================================
 def test_outcome_evaluator_xauusd_spread_calibration():
-    from backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
+    from monika.application.backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
 
     gold_profile = ASSET_FRICTION_PROFILE.get("XAUUSD")
     assert gold_profile is not None
@@ -298,8 +298,8 @@ def test_outcome_evaluator_xauusd_spread_calibration():
 # =========================================================================
 @pytest.mark.asyncio
 async def test_lookahead_subcalculators_as_of_gating():
-    from analysis.calculators.macro_bias_filter import evaluate_macro_alignment
-    from database.models import TreasuryYield, InterestRate, VIXData
+    from monika.application.analysis.calculators.macro_bias_filter import evaluate_macro_alignment
+    from monika.infrastructure.database.models import TreasuryYield, InterestRate, VIXData
 
     session = create_mock_async_session()
     # Mock queries to check that as_of date is properly handled
@@ -307,7 +307,7 @@ async def test_lookahead_subcalculators_as_of_gating():
     settings = {"trading": {"edge_strategy": {"macro_bias": {"enabled": True}}}}
 
     with patch(
-        "analysis.calculators.macro_bias_filter.compute_currency_macro_score", new_callable=AsyncMock
+        "monika.application.analysis.calculators.macro_bias_filter.compute_currency_macro_score", new_callable=AsyncMock
     ) as mock_ccy:
         mock_ccy.return_value = {
             "currency": "USD",
@@ -345,7 +345,7 @@ def test_lesson_consolidator_filters_sound_process_normal_variance():
 # =========================================================================
 @pytest.mark.asyncio
 async def test_notifier_flush_outbox_loop_executes_without_name_error():
-    from utils.infra.notifier import AgentNotifier
+    from monika.infrastructure.infra.notifier import AgentNotifier
 
     notifier = AgentNotifier()
     with patch.object(notifier, "flush_outbox", new_callable=AsyncMock) as mock_flush:

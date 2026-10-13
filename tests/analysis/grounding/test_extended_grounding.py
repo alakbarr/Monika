@@ -3,8 +3,8 @@
 # ==============================================================================
 
 import pytest
-from analysis.grounding.provenance_tagger import ProvenanceLedger
-from analysis.validators.in_harness_grounding import InHarnessGroundingValidator
+from monika.application.analysis.grounding.provenance_tagger import ProvenanceLedger
+from monika.application.analysis.validators.in_harness_grounding import InHarnessGroundingValidator
 
 
 def test_lot_size_grounding_valid():

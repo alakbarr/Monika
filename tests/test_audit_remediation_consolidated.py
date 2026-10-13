@@ -31,7 +31,7 @@ def test_settings_yaml_single_execution_block():
 
 @pytest.mark.asyncio
 async def test_adhoc_scheduler_proxy_interface():
-    from agent.agent_loop import AdHocSchedulerProxy
+    from monika.application.agent.agent_loop import AdHocSchedulerProxy
 
     proxy = AdHocSchedulerProxy(settings={}, symbols=["EURUSD"], dry_run=True)
     should_skip, reason = await proxy._should_skip_full_cycle()
@@ -43,20 +43,20 @@ async def test_adhoc_scheduler_proxy_interface():
 
 
 def test_valid_order_transitions_submitted_to_expired():
-    from database.models import OrderStatus, VALID_ORDER_TRANSITIONS
+    from monika.infrastructure.database.models import OrderStatus, VALID_ORDER_TRANSITIONS
 
     assert OrderStatus.EXPIRED in VALID_ORDER_TRANSITIONS[OrderStatus.SUBMITTED]
 
 
 @pytest.mark.asyncio
 async def test_trigger_circuit_breaker_exists():
-    from execution.service.emergency_manager import EmergencyManagerMixin
+    from monika.application.execution.service.emergency_manager import EmergencyManagerMixin
     from tests.conftest import create_mock_async_session
 
     mixin = EmergencyManagerMixin()
     mixin.gate = MagicMock()
     mixin.gate.pause_trading = AsyncMock()
-    with patch("execution.service.emergency_manager.get_session") as mock_gs:
+    with patch("monika.application.execution.service.emergency_manager.get_session") as mock_gs:
         mock_sess = create_mock_async_session()
         mock_gs.return_value.__aenter__.return_value = mock_sess
         res = await mixin.trigger_circuit_breaker("Test crash", cooldown_seconds=60)
@@ -65,7 +65,7 @@ async def test_trigger_circuit_breaker_exists():
 
 
 def test_gemini_provider_generate_accepts_kwargs():
-    from analysis.providers.gemini_provider import GeminiProvider
+    from monika.infrastructure.providers.gemini_provider import GeminiProvider
     import inspect
 
     sig = inspect.signature(GeminiProvider.generate)
@@ -74,7 +74,7 @@ def test_gemini_provider_generate_accepts_kwargs():
 
 
 def test_openrouter_provider_generate_content_accepts_kwargs():
-    from analysis.providers.openrouter_provider import OpenRouterProvider
+    from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
     import inspect
 
     sig = inspect.signature(OpenRouterProvider.generate_content)
@@ -84,7 +84,7 @@ def test_openrouter_provider_generate_content_accepts_kwargs():
 
 @pytest.mark.asyncio
 async def test_mt5_live_adapter_close_position_contract():
-    from execution.broker_adapter import MT5LiveAdapter
+    from monika.infrastructure.brokers.broker_adapter import MT5LiveAdapter
 
     mock_mt5 = MagicMock()
     mock_mt5.close_position = AsyncMock(return_value={"success": True, "profit": 25.5, "price": 1.0850})
@@ -97,7 +97,7 @@ async def test_mt5_live_adapter_close_position_contract():
 
 
 def test_core_trading_tasks_includes_critical_schedulers():
-    from agent.task_registry import CORE_TRADING_TASKS
+    from monika.application.agent.task_registry import CORE_TRADING_TASKS
 
     assert "TickStream" in CORE_TRADING_TASKS
     assert "PositionSync" in CORE_TRADING_TASKS
@@ -105,7 +105,7 @@ def test_core_trading_tasks_includes_critical_schedulers():
 
 
 def test_model_capabilities_registered_models():
-    from utils.llm.model_capabilities import get_capabilities
+    from monika.infrastructure.llm.model_capabilities import get_capabilities
 
     cap = get_capabilities("gemini-3.6-flash")
     assert cap.prompt_cache_strategy == "gemini_context"
@@ -113,7 +113,7 @@ def test_model_capabilities_registered_models():
 
 
 def test_workflow_has_execution_to_end_edge():
-    from graph.workflow import build_trading_graph
+    from monika.application.graph.workflow import build_trading_graph
 
     graph = build_trading_graph()
     assert graph is not None

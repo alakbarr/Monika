@@ -12,12 +12,12 @@ import json
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from database.models import BacktestTrade, PaperTradeRecord, CandidateLesson, SystemConfig
-from backtest.outcome_evaluator import OutcomeEvaluator
-from backtest.walk_forward_engine import WalkForwardEngine, WalkForwardFold, WalkForwardResult
-from utils.llm.prompt_ab_test import PromptABTest
-from analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
-from utils.analytics.performance_reviewer import evaluate_candidate_lessons
+from monika.infrastructure.database.models import BacktestTrade, PaperTradeRecord, CandidateLesson, SystemConfig
+from monika.application.backtest.outcome_evaluator import OutcomeEvaluator
+from monika.application.backtest.walk_forward_engine import WalkForwardEngine, WalkForwardFold, WalkForwardResult
+from monika.infrastructure.llm.prompt_ab_test import PromptABTest
+from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
+from monika.core.analytics.performance_reviewer import evaluate_candidate_lessons
 
 
 # ============================================================================
@@ -323,7 +323,7 @@ async def test_performance_reviewer_structured_confluence_tag_matching():
     mock_session.execute.side_effect = [mock_exec1, mock_exec2, mock_exec3]
 
     with patch(
-        "analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock
+        "monika.application.analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock
     ) as mock_promote:
         summary = await evaluate_candidate_lessons(mock_session)
         assert summary["promoted"] == 1

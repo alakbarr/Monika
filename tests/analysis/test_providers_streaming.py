@@ -9,11 +9,11 @@ import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
 from types import SimpleNamespace
 
-from analysis.providers.gemini_provider import GeminiProvider
-from analysis.providers.anthropic_provider import AnthropicProvider
-from analysis.providers.openai_provider import OpenAIProvider
-from analysis.providers.llm_factory import LLMFactory
-from utils.api.streaming import StreamTimeoutError, StreamConfig, StreamResult
+from monika.infrastructure.providers.gemini_provider import GeminiProvider
+from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.providers.llm_factory import LLMFactory
+from monika.infrastructure.api.streaming import StreamTimeoutError, StreamConfig, StreamResult
 
 
 SAMPLE_SETTINGS = {
@@ -124,11 +124,15 @@ async def test_gemini_generate_calls_streaming_request():
         text='{"verdict": "BULLISH"}', finish_reason="STOP", usage={"promptTokenCount": 50, "candidatesTokenCount": 20}
     )
 
-    with patch("analysis.providers.gemini_provider.streaming_request", new_callable=AsyncMock) as mock_stream_req:
+    with patch(
+        "monika.infrastructure.providers.gemini_provider.streaming_request", new_callable=AsyncMock
+    ) as mock_stream_req:
         mock_stream_req.return_value = mock_result
         with patch.object(provider, "_save_token_usage", new_callable=AsyncMock):
-            with patch("analysis.providers.gemini_provider.get_session"):
-                with patch("analysis.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True):
+            with patch("monika.infrastructure.providers.gemini_provider.get_session"):
+                with patch(
+                    "monika.infrastructure.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True
+                ):
                     res = await provider.generate("Evaluate macro conditions")
 
                     assert res == '{"verdict": "BULLISH"}'
@@ -177,15 +181,22 @@ async def test_gemini_generate_streaming_timeout_fallback_to_non_streaming():
         "usageMetadata": {"promptTokenCount": 30, "candidatesTokenCount": 15},
     }
 
-    with patch("analysis.providers.gemini_provider.streaming_request", new_callable=AsyncMock) as mock_stream:
+    with patch(
+        "monika.infrastructure.providers.gemini_provider.streaming_request", new_callable=AsyncMock
+    ) as mock_stream:
         mock_stream.side_effect = StreamTimeoutError(
             "Streaming idle timeout (45s) after 47 chunks", idle_seconds=45.0, chunks_received=47
         )
-        with patch("analysis.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock) as mock_fetch:
+        with patch(
+            "monika.infrastructure.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock
+        ) as mock_fetch:
             mock_fetch.return_value = mock_resp_dict
             with patch.object(provider, "_save_token_usage", new_callable=AsyncMock):
-                with patch("analysis.providers.gemini_provider.get_session"):
-                    with patch("analysis.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True):
+                with patch("monika.infrastructure.providers.gemini_provider.get_session"):
+                    with patch(
+                        "monika.infrastructure.providers.gemini_provider.GeminiRateLimiter.try_acquire",
+                        return_value=True,
+                    ):
                         res = await provider.generate("Test prompt")
                         assert res == "Non-streaming fallback response"
                         assert mock_stream.called

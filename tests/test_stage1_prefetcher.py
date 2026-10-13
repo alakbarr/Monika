@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
-from analysis.prefetch.stage1_prefetcher import Stage1DataBundler
+from monika.application.analysis.prefetch.stage1_prefetcher import Stage1DataBundler
 
 
 @pytest.mark.asyncio
@@ -11,8 +11,8 @@ async def test_stage1_data_bundler():
     settings = {}
 
     with (
-        patch("analysis.prefetch.stage1_prefetcher.ToolExecutor") as MockExecutor,
-        patch("analysis.prefetch.stage1_prefetcher.compress_tool_payload") as mock_compress,
+        patch("monika.application.analysis.prefetch.stage1_prefetcher.ToolExecutor") as MockExecutor,
+        patch("monika.application.analysis.prefetch.stage1_prefetcher.compress_tool_payload") as mock_compress,
     ):
         # Setup mocks
         mock_executor_instance = MockExecutor.return_value

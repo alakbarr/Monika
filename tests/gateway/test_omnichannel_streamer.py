@@ -5,12 +5,12 @@
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from gateway.omnichannel_streamer import (
+from monika.interfaces.gateway.omnichannel_streamer import (
     OmnichannelStreamer,
     scrub_thinking_tokens,
     balance_code_fences,
 )
-from gateway.turn_lease import TurnLeaseManager
+from monika.interfaces.gateway.turn_lease import TurnLeaseManager
 
 
 def test_scrub_thinking_tokens():

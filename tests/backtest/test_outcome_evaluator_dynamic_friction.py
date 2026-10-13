@@ -2,8 +2,8 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from backtest.outcome_evaluator import OutcomeEvaluator
-from database.models import BacktestTrade, PriceOHLCV
+from monika.application.backtest.outcome_evaluator import OutcomeEvaluator
+from monika.infrastructure.database.models import BacktestTrade, PriceOHLCV
 
 
 @pytest.mark.asyncio

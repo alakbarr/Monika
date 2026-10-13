@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
 import json
 
-from scheduler.trigger_checker import TriggerChecker
-from database.models import TradeTrigger, AssetAnalysis, PriceOHLCV, TechnicalIndicator
+from monika.application.scheduler.trigger_checker import TriggerChecker
+from monika.infrastructure.database.models import TradeTrigger, AssetAnalysis, PriceOHLCV, TechnicalIndicator
 
 
 class TestTriggerChecker:

@@ -13,13 +13,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _src_dir = REPO_ROOT / "src"
 if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
-
 from monika.interfaces.cli.tui import TradingDashboard
 from textual.widgets import TabbedContent
 

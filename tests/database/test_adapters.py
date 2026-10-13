@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
-from database.adapters import (
+from monika.infrastructure.database.adapters import (
     extract_currency_tags,
     parse_timestamp,
     scraped_news_to_model,
@@ -14,8 +14,14 @@ from database.adapters import (
     batch_save_tweets,
     batch_save_fedwatch,
 )
-from scrapers.models import ScrapedNews, CalendarEvent, ScrapedTweet, FedMeeting, FedProbability
-from database.models import NewsItem, EconomicCalendar, FedWatchProbability
+from monika.infrastructure.data_ingestion.scrapers.models import (
+    ScrapedNews,
+    CalendarEvent,
+    ScrapedTweet,
+    FedMeeting,
+    FedProbability,
+)
+from monika.infrastructure.database.models import NewsItem, EconomicCalendar, FedWatchProbability
 
 
 def test_extract_currency_tags():

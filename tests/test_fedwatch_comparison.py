@@ -17,15 +17,15 @@ from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from analysis.tools.handlers.macro_tools import (
+from monika.application.analysis.tools.handlers.macro_tools import (
     handle_get_fedwatch_probabilities,
     handle_get_central_bank_expectations,
     handle_get_economic_calendar,
 )
-from analysis.tools.handlers.news_tools import handle_get_news_items
-from analysis.tools.handlers.market_data_tools import handle_get_price_history
-from telegram_bot.chat_tool_router import ChatToolRouter
-from analysis.tools.tools_definitions import TELEGRAM_TOOLS
+from monika.application.analysis.tools.handlers.news_tools import handle_get_news_items
+from monika.application.analysis.tools.handlers.market_data_tools import handle_get_price_history
+from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
+from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
 
 
 class MockFedRow:
@@ -106,7 +106,7 @@ async def test_fedwatch_compare_hours_ago():
     mock_result.scalars.return_value = mock_scalars
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("utils.clock.now", return_value=now_utc):
+    with patch("monika.core.primitives.clock.now", return_value=now_utc):
         res = await handle_get_fedwatch_probabilities(
             {"meeting_date": "2026-10-28", "compare_hours_ago": 2},
             session=mock_session,
@@ -158,7 +158,7 @@ async def test_fedwatch_event_time_comparison():
     mock_result.scalars.return_value = mock_scalars
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("utils.clock.now", return_value=now_utc):
+    with patch("monika.core.primitives.clock.now", return_value=now_utc):
         # Event was at 12:30:00 UTC (Core PCE release)
         res = await handle_get_fedwatch_probabilities(
             {"event_time": "2026-09-30T12:30:00Z"},
@@ -264,7 +264,7 @@ async def test_central_bank_expectations_comparison():
     mock_result.scalars.return_value = mock_scalars
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("utils.clock.now", return_value=now_utc):
+    with patch("monika.core.primitives.clock.now", return_value=now_utc):
         res = await handle_get_central_bank_expectations(
             {"bank": "FED", "compare_hours_ago": 2},
             session=mock_session,
@@ -297,7 +297,7 @@ async def test_economic_calendar_event_name_filter():
     mock_result.scalars.return_value = mock_scalars
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("utils.clock.now", return_value=now_utc):
+    with patch("monika.core.primitives.clock.now", return_value=now_utc):
         res = await handle_get_economic_calendar(
             {"event_name": "PCE"},
             session=mock_session,
@@ -327,7 +327,7 @@ async def test_news_items_query_filter():
     mock_result.scalars.return_value = mock_scalars
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("utils.clock.now", return_value=now_utc):
+    with patch("monika.core.primitives.clock.now", return_value=now_utc):
         res = await handle_get_news_items(
             {"query": "Fed rate"},
             session=mock_session,
@@ -394,7 +394,7 @@ def test_chat_tool_router_macro_tools():
 @pytest.mark.asyncio
 async def test_classify_query_complexity_macro_heuristics():
     """Verify macro queries route to deep_research."""
-    from telegram_bot.chat_agent import ChatAgent
+    from monika.interfaces.telegram.chat_agent import ChatAgent
 
     agent = ChatAgent(user_id=12345, settings={})
 
@@ -424,7 +424,7 @@ async def test_classify_query_complexity_macro_heuristics():
 @pytest.mark.asyncio
 async def test_stage1_databundler_correlates_recent_usd_event():
     """Verify Stage1DataBundler automatically detects recent past USD events and queries FedWatch comparison."""
-    from analysis.prefetch.stage1_prefetcher import Stage1DataBundler
+    from monika.application.analysis.prefetch.stage1_prefetcher import Stage1DataBundler
 
     mock_session = create_mock_async_session()
     settings = {"trading": {"asset_universe": ["EURUSD", "XAUUSD"]}}
@@ -481,7 +481,7 @@ async def test_stage1_databundler_correlates_recent_usd_event():
                 )
             ),
         ),
-        patch("utils.validation.data_validator.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+        patch("monika.core.validation.data_validator.validate_data_freshness", AsyncMock(return_value={"ready": True})),
     ):
         compressed_json, satisfied, bundled_data = await bundler.prefetch_all_data()
 
@@ -498,7 +498,7 @@ async def test_stage1_databundler_correlates_recent_usd_event():
 @pytest.mark.asyncio
 async def test_stage1_databundler_multi_event_correlation():
     """Verify Stage1DataBundler tracks multiple USD events occurring at different hours of the day (19:30, 20:45, 21:00, 01:00)."""
-    from analysis.prefetch.stage1_prefetcher import Stage1DataBundler
+    from monika.application.analysis.prefetch.stage1_prefetcher import Stage1DataBundler
 
     mock_session = create_mock_async_session()
     bundler = Stage1DataBundler(session=mock_session, settings={"trading": {"asset_universe": ["XAUUSD"]}})
@@ -581,7 +581,7 @@ async def test_stage1_databundler_multi_event_correlation():
                 )
             ),
         ),
-        patch("utils.validation.data_validator.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+        patch("monika.core.validation.data_validator.validate_data_freshness", AsyncMock(return_value={"ready": True})),
     ):
         _, _, bundled_data = await bundler.prefetch_all_data()
 
@@ -605,7 +605,7 @@ async def test_stage1_databundler_multi_event_correlation():
 
 def test_stage1_priced_in_baseline_repricing_delta():
     """Verify calculate_stage1_priced_in_baseline factors in fedwatch_repricing_delta >= 10.0%."""
-    from analysis.calculators.stage1_priced_in import calculate_stage1_priced_in_baseline
+    from monika.application.analysis.calculators.stage1_priced_in import calculate_stage1_priced_in_baseline
 
     # Base case without repricing delta: score = 0
     res_base = calculate_stage1_priced_in_baseline(
@@ -635,7 +635,7 @@ def test_stage1_priced_in_baseline_repricing_delta():
 
 def test_submit_fundamental_brief_schema_fedwatch_shift():
     """Verify SubmitFundamentalBriefSchema accepts fedwatch_shift_summary and fedwatch_repricing_delta_pct."""
-    from analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
+    from monika.application.analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
 
     valid_payload = {
         "checklist": {
@@ -696,8 +696,8 @@ def test_submit_fundamental_brief_schema_fedwatch_shift():
 @pytest.mark.asyncio
 async def test_stage1_to_stage2_repricing_inheritance():
     """Verify Stage 2's get_fundamental_brief preserves and returns FedWatch repricing shift fields."""
-    from analysis.tools.executor import ToolExecutor
-    from database.models import FundamentalBrief
+    from monika.application.analysis.tools.executor import ToolExecutor
+    from monika.infrastructure.database.models import FundamentalBrief
 
     now = datetime(2026, 9, 30, 16, 0, 0, tzinfo=timezone.utc)
     mock_brief_row = FundamentalBrief(

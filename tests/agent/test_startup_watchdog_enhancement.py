@@ -7,7 +7,7 @@ import time
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from agent.monitors.startup_watchdog import (
+from monika.application.agent.monitors.startup_watchdog import (
     verify_broker_ping,
     verify_data_feed_freshness,
     run_cold_start_preflight,

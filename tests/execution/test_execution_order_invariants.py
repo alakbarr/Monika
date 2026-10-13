@@ -24,14 +24,14 @@ import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
 from decimal import Decimal
 
-from utils.market.direction import normalize_direction, is_valid_direction
-from execution.mt5_client import MT5Client, _place_order, _close_position
-from execution.broker_adapter import MT5LiveAdapter
-from analysis.validators.precommit_gate import TradePreCommitGate
-from execution.execution_service import ExecutionService
-from execution.verification_engine import EvidenceFirstVerifier
-from risk.position_sizing import PositionSizer
-from database.event_store import TradingEventStore
+from monika.domain.market.direction import normalize_direction, is_valid_direction
+from monika.infrastructure.brokers.mt5_client import MT5Client, _place_order, _close_position
+from monika.infrastructure.brokers.broker_adapter import MT5LiveAdapter
+from monika.application.analysis.validators.precommit_gate import TradePreCommitGate
+from monika.application.execution.execution_service import ExecutionService
+from monika.domain.execution.verification_engine import EvidenceFirstVerifier
+from monika.domain.risk.position_sizing import PositionSizer
+from monika.infrastructure.database.event_store import TradingEventStore
 from tests.conftest import create_mock_async_session
 
 
@@ -268,11 +268,11 @@ async def test_evidence_verifier_assert_9_with_rationale_fallback():
 
 @pytest.mark.asyncio
 async def test_provider_max_tokens_and_kwargs_signatures():
-    from analysis.providers.anthropic_provider import AnthropicProvider
-    from analysis.providers.openai_provider import OpenAIProvider
-    from analysis.providers.openrouter_provider import OpenRouterProvider
-    from analysis.providers.groq_provider import GroqProvider
-    from analysis.providers.ollama_provider import OllamaProvider
+    from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
+    from monika.infrastructure.providers.openai_provider import OpenAIProvider
+    from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
+    from monika.infrastructure.providers.groq_provider import GroqProvider
+    from monika.infrastructure.providers.ollama_provider import OllamaProvider
 
     with patch("anthropic.AsyncAnthropic"), patch("openai.AsyncOpenAI"):
         providers = [
@@ -305,7 +305,7 @@ async def test_provider_max_tokens_and_kwargs_signatures():
 
 @pytest.mark.asyncio
 async def test_telegram_cmd_interrupt_synchronous():
-    from telegram_bot.bot import TelegramBot
+    from monika.interfaces.telegram.bot import TelegramBot
 
     bot = TelegramBot(settings={})
     bot._is_authorized = MagicMock(return_value=True)

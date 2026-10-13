@@ -2,12 +2,12 @@
 Unit tests for fuzzy configuration key validation.
 """
 
-from config.key_validator import validate_config_key
+from monika.core.config.key_validator import validate_config_key
 
 
 def test_validate_config_key_valid():
     assert validate_config_key("trading.cost_mode") is None
-    assert validate_config_key("risk.max_daily_drawdown_percent") is None
+    assert validate_config_key("monika.domain.risk.max_daily_drawdown_percent") is None
     assert validate_config_key("llm.providers") is None
     assert validate_config_key("scheduler.cycle_interval_hours") is None
 

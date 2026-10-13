@@ -1,5 +1,5 @@
 import pytest
-from analysis.memory.working_scratchpad import WorkingScratchpad
+from monika.application.analysis.memory.working_scratchpad import WorkingScratchpad
 
 
 def test_working_scratchpad_lifecycle():

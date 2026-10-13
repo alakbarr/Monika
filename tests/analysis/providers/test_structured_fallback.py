@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.providers.structured_fallback import (
+from monika.infrastructure.providers.structured_fallback import (
     extract_and_parse_json,
     invoke_structured_or_freetext,
 )

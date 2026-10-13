@@ -2,7 +2,7 @@ import pytest
 import tempfile
 import os
 import json
-from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
 
 
 def test_trade_trajectory_logger():

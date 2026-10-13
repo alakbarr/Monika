@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from scheduler.scraper_runner import ScraperRunner
+from monika.application.scheduler.scraper_runner import ScraperRunner
 
 
 class TestScraperRunner:
@@ -148,7 +148,7 @@ class TestScraperRunner:
         async def mock_warn(msg):
             notified.append(msg)
 
-        with patch("utils.infra.notifier.AgentNotifier") as mock_notifier_cls:
+        with patch("monika.infrastructure.infra.notifier.AgentNotifier") as mock_notifier_cls:
             mock_notifier = mock_notifier_cls.return_value
             mock_notifier.send_warning = AsyncMock(side_effect=mock_warn)
 
@@ -213,7 +213,7 @@ class TestScraperRunner:
     @pytest.mark.asyncio
     async def test_scraper_custom_timeouts(self, settings):
         runner = ScraperRunner(settings)
-        from scheduler.scraper_runner import DEFAULT_SCRAPER_TIMEOUTS
+        from monika.application.scheduler.scraper_runner import DEFAULT_SCRAPER_TIMEOUTS
 
         assert DEFAULT_SCRAPER_TIMEOUTS["calendar"] == 180.0
         assert DEFAULT_SCRAPER_TIMEOUTS["fedwatch"] == 120.0

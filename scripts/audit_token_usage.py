@@ -27,7 +27,7 @@ import asyncio
 
 import argparse
 import json
-from utils.analytics.token_auditor import TokenAuditor
+from monika.core.analytics.token_auditor import TokenAuditor
 
 
 async def run_audit(args):

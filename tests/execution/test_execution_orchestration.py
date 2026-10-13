@@ -9,18 +9,18 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
 
-from config.schemas import TradingAgentConfig, PaperTradingConfig
-from agent.task_registry import TaskRegistry, TaskDefinition, CORE_TRADING_TASKS
-from utils.protocol.event_bus import EventBus, AppEvent, CircuitBreakerEvent
-from utils.scheduling.wall_clock import sleep_until_next
-from scheduler.order_reconciler import OrderReconciler
-from execution.service.position_synchronizer import PositionSynchronizerMixin
-from execution.order_emulator import ClientOrderEmulator, TrackedPosition
-from database.models import SystemConfig, PriceOHLCV
-from database.safe_ops import safe_db_op, safe_commit
-from utils.api.claude_rate_limiter import ClaudeRateLimiter
-from analysis.harness.agent_harness import calculate_turn_cost_usd
-from analysis.validators.market_snapshot import VerifiedMarketSnapshot
+from monika.core.config.schemas import TradingAgentConfig, PaperTradingConfig
+from monika.application.agent.task_registry import TaskRegistry, TaskDefinition, CORE_TRADING_TASKS
+from monika.application.protocol.event_bus import EventBus, AppEvent, CircuitBreakerEvent
+from monika.application.scheduler.wall_clock import sleep_until_next
+from monika.application.scheduler.order_reconciler import OrderReconciler
+from monika.application.execution.service.position_synchronizer import PositionSynchronizerMixin
+from monika.domain.execution.order_emulator import ClientOrderEmulator, TrackedPosition
+from monika.infrastructure.database.models import SystemConfig, PriceOHLCV
+from monika.infrastructure.database.safe_ops import safe_db_op, safe_commit
+from monika.infrastructure.api.claude_rate_limiter import ClaudeRateLimiter
+from monika.application.analysis.harness.agent_harness import calculate_turn_cost_usd
+from monika.application.analysis.validators.market_snapshot import VerifiedMarketSnapshot
 
 
 @pytest.mark.asyncio

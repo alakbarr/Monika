@@ -5,7 +5,7 @@ Unit tests for the retry_decorator utility.
 import asyncio
 import pytest
 from unittest.mock import MagicMock
-from utils.retry_decorator import retryable, _calculate_delay
+from monika.core.primitives.retry import retryable, _calculate_delay
 
 
 def test_calculate_delay_exponential_and_max():

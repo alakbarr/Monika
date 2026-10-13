@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
-from analysis.stages.preflight_gate import PreFlightTurnGate, EMPIRICAL_ACTIVE_MEDIANS
+from monika.application.analysis.stages.preflight_gate import PreFlightTurnGate, EMPIRICAL_ACTIVE_MEDIANS
 
 
 @pytest.mark.asyncio

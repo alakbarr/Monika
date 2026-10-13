@@ -6,8 +6,8 @@ Unit Tests for Consecutive SL Query Fix in UnifiedThresholdCalculator.
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
-from database.models import PaperTradeRecord
-from analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
+from monika.infrastructure.database.models import PaperTradeRecord
+from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
 
 
 @pytest.mark.asyncio
@@ -31,7 +31,7 @@ async def test_consecutive_sl_penalty_triggered_only_when_all_three_are_sl():
     mock_session.execute.return_value = mock_res
 
     with patch(
-        "analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+        "monika.application.analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
         AsyncMock(return_value=(6, "base")),
     ):
         threshold, reason = await compute_unified_confluence_threshold(
@@ -63,7 +63,7 @@ async def test_consecutive_sl_penalty_not_triggered_when_recent_win_exists():
     mock_session.execute.return_value = mock_res
 
     with patch(
-        "analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+        "monika.application.analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
         AsyncMock(return_value=(7, "base")),
     ):
         threshold, reason = await compute_unified_confluence_threshold(

@@ -1,8 +1,8 @@
 import pytest
-from utils.llm.adaptive_thinking import QuantizedThinkingAllocator, PerSymbolAdaptiveThinkingAllocator
-from analysis.providers.anthropic_provider import AnthropicProvider
-from analysis.providers.gemini_provider import GeminiProvider
-from analysis.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.llm.adaptive_thinking import QuantizedThinkingAllocator, PerSymbolAdaptiveThinkingAllocator
+from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
+from monika.infrastructure.providers.gemini_provider import GeminiProvider
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
 
 def test_quantized_thinking_allocator_buckets():

@@ -590,8 +590,7 @@ Monika/
 │       │   │   │   │   │   ├── alpha_xtiusd_9ffd6d.cpython-314.pyc
 │       │   │   │   │   │   ├── alpha_xtiusd_dae3f9.cpython-314.pyc
 │       │   │   │   │   │   ├── alpha_xtiusd_f30ff5.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_fd5506.cpython-314.pyc
-│       │   │   │   │   │   └── mock_pass.cpython-314.pyc
+│       │   │   │   │   │   └── alpha_xtiusd_fd5506.cpython-314.pyc
 │       │   │   │   │   ├── quarantine
 │       │   │   │   │   │   └── alpha_btcusd_467904.py
 │       │   │   │   │   ├── __init__.py
@@ -703,8 +702,7 @@ Monika/
 │       │   │   │   │   ├── alpha_xtiusd_9ffd6d.py
 │       │   │   │   │   ├── alpha_xtiusd_dae3f9.py
 │       │   │   │   │   ├── alpha_xtiusd_f30ff5.py
-│       │   │   │   │   ├── alpha_xtiusd_fd5506.py
-│       │   │   │   │   └── mock_pass.py
+│       │   │   │   │   └── alpha_xtiusd_fd5506.py
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base_strategy.py
 │       │   │   │   ├── bb_volume_profile.py

@@ -7,8 +7,8 @@ from datetime import datetime, timezone, timedelta
 import numpy as np
 import pytest
 
-from backtest.walk_forward_engine import WalkForwardEngine
-from backtest.statistical_tests import (
+from monika.application.backtest.walk_forward_engine import WalkForwardEngine
+from monika.application.backtest.statistical_tests import (
     benjamini_hochberg_adjusted_p,
     probability_of_backtest_overfitting,
 )

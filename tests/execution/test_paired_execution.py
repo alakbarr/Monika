@@ -12,9 +12,9 @@ import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from execution.service.order_executor import OrderExecutorMixin
-from database.models import Order, OrderStatus, Position, AssetAnalysis
-from execution.effect_gate import EffectGate, AbortRequested
+from monika.application.execution.service.order_executor import OrderExecutorMixin
+from monika.infrastructure.database.models import Order, OrderStatus, Position, AssetAnalysis
+from monika.application.execution.effect_gate import EffectGate, AbortRequested
 
 
 class DummyExecutor(OrderExecutorMixin):
@@ -113,8 +113,8 @@ async def test_paired_order_success(mock_session, base_analyses):
     executor._save_position = AsyncMock()
 
     with (
-        patch("execution.service.order_executor.safe_commit", new_callable=AsyncMock),
-        patch("execution.service.order_executor.transactional_advisory_lock") as mock_lock,
+        patch("monika.application.execution.service.order_executor.safe_commit", new_callable=AsyncMock),
+        patch("monika.application.execution.service.order_executor.transactional_advisory_lock") as mock_lock,
     ):
         from contextlib import asynccontextmanager
 
@@ -171,8 +171,8 @@ async def test_paired_order_hedge_failure_rollback(mock_session, base_analyses):
     executor._count_open_positions = AsyncMock(return_value=0)
 
     with (
-        patch("execution.service.order_executor.safe_commit", new_callable=AsyncMock),
-        patch("execution.service.order_executor.transactional_advisory_lock") as mock_lock,
+        patch("monika.application.execution.service.order_executor.safe_commit", new_callable=AsyncMock),
+        patch("monika.application.execution.service.order_executor.transactional_advisory_lock") as mock_lock,
     ):
         from contextlib import asynccontextmanager
 

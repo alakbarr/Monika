@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from analysis.stages.per_asset_stage import PerAssetStage
+from monika.application.analysis.stages.per_asset_stage import PerAssetStage
 
 
 def test_stage2_system_prompt_cache_stability_across_symbols():

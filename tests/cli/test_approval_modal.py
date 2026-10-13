@@ -4,7 +4,7 @@
 # ==============================================================================
 
 import pytest
-from cli.overlays.approval_modal import ApprovalModalScreen
+from monika.interfaces.cli.overlays.approval_modal import ApprovalModalScreen
 
 
 def test_approval_modal_initialization():

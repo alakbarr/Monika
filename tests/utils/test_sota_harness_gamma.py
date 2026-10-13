@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 
-from analysis.memory.reflector import TradeReflector
-from utils.llm.prompt_compressor import truncate_to_budget, estimate_tokens
-from analysis.tools.tool_registry import ProgressiveToolRegistry
-from utils.llm.prompt_ab_test import OfflinePromptOptimizer
+from monika.application.analysis.memory.reflector import TradeReflector
+from monika.infrastructure.llm.prompt_compressor import truncate_to_budget, estimate_tokens
+from monika.application.analysis.tools.tool_registry import ProgressiveToolRegistry
+from monika.infrastructure.llm.prompt_ab_test import OfflinePromptOptimizer
 
 
 def test_reflector_critique_gate_platitudes():

@@ -6,12 +6,12 @@ Unit & Regression Tests for Remediation Phase 0 & Phase 1.
 import pytest
 import numpy as np
 from unittest.mock import AsyncMock, MagicMock
-from database.models import BacktestRun, BacktestTrade, PaperTradeRecord, AssetAnalysis
-from backtest.report_generator import ReportGenerator
-from backtest.outcome_evaluator import OutcomeEvaluator
-from utils.calibration.confidence_calibrator import compute_confidence_calibration, apply_calibration_correction
-from analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
-from risk.position_sizing import PositionSizer, InstrumentSpec
+from monika.infrastructure.database.models import BacktestRun, BacktestTrade, PaperTradeRecord, AssetAnalysis
+from monika.application.backtest.report_generator import ReportGenerator
+from monika.application.backtest.outcome_evaluator import OutcomeEvaluator
+from monika.core.calibration.confidence_calibrator import compute_confidence_calibration, apply_calibration_correction
+from monika.application.analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
+from monika.domain.risk.position_sizing import PositionSizer, InstrumentSpec
 
 
 def test_sharpe_ratio_annualization_sqrt_252():

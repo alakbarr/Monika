@@ -1,7 +1,7 @@
 import pytest
 import os
 from unittest.mock import patch, mock_open
-from config.settings import load_settings, load_all_config
+from monika.core.config.settings import load_settings, load_all_config
 
 
 class TestSettings:

@@ -3,13 +3,13 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-from database.models import Base, Order, OrderStatus, AssetAnalysis
-from risk.position_sizing import SizingResult
-from execution.service.state_machine import OrderStateMachine
-from execution.service.order_creator import OrderCreator
-from execution.service.sizing_calculator import SizingCalculator
-from execution.service.audit_logger import TradeAuditLogger
-from execution.service.reconciliation import ReconciliationHelper
+from monika.infrastructure.database.models import Base, Order, OrderStatus, AssetAnalysis
+from monika.domain.risk.position_sizing import SizingResult
+from monika.domain.execution.state_machine import OrderStateMachine
+from monika.domain.execution.order_creator import OrderCreator
+from monika.domain.execution.sizing_calculator import SizingCalculator
+from monika.infrastructure.brokers.audit_logger import TradeAuditLogger
+from monika.application.execution.service.reconciliation import ReconciliationHelper
 
 
 @pytest.fixture

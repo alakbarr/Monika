@@ -6,13 +6,13 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from analysis.pipeline_plugin import AnalysisPipelinePlugin
-from harness.contract import PluginCategory
-from plugins.analysis_pipelines.macro_to_asset.macro_to_asset_pipeline import MacroToAssetPipeline
-from plugins.analysis_pipelines.technical_scalping.scalping_pipeline import TechnicalScalpingPipeline
-from harness.engine import PluginEngine
-from utils.infra.container import ServiceContainer
-from utils.protocol.event_bus import EventBus
+from monika.application.analysis.pipeline_plugin import AnalysisPipelinePlugin
+from monika.application.harness.contract import PluginCategory
+from monika.application.plugins.analysis_pipelines.macro_to_asset.macro_to_asset_pipeline import MacroToAssetPipeline
+from monika.application.plugins.analysis_pipelines.technical_scalping.scalping_pipeline import TechnicalScalpingPipeline
+from monika.application.harness.engine import PluginEngine
+from monika.infrastructure.infra.container import ServiceContainer
+from monika.application.protocol.event_bus import EventBus
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,7 @@ Unit tests for config schema versioning, migration ladder, and fail-closed valid
 
 import pytest
 from pathlib import Path
-from config.migrations import (
+from monika.core.config.migrations import (
     CURRENT_CONFIG_VERSION,
     SUPPORT_FLOOR_VERSION,
     get_config_version,
@@ -35,7 +35,7 @@ def test_migrate_config_ladder():
         return cfg
 
     # Temporarily adjust CURRENT_CONFIG_VERSION for test
-    import config.migrations as m
+    import monika.core.config.migrations as m
 
     old_cur = m.CURRENT_CONFIG_VERSION
     try:

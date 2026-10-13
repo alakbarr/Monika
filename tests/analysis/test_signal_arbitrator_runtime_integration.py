@@ -6,8 +6,8 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 from tests.conftest import create_mock_async_session
-from analysis.arbitration.signal_arbitrator import SignalArbitrator
-from analysis.strategies.base_strategy import EdgeSignal
+from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator
+from monika.application.analysis.strategies.base_strategy import EdgeSignal
 
 
 @pytest.mark.asyncio
@@ -67,7 +67,7 @@ async def test_signal_arbitrator_concordant_boost_runtime():
 
     from unittest.mock import patch
 
-    with patch("utils.calibration.confidence_calibrator.get_calibrated_confidence", AsyncMock(return_value=0.80)):
+    with patch("monika.core.calibration.confidence_calibrator.get_calibrated_confidence", AsyncMock(return_value=0.80)):
         res = await arbitrator.arbitrate(
             session=mock_session,
             symbol="EURUSD",

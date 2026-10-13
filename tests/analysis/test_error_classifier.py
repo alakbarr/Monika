@@ -3,11 +3,14 @@ Unit tests for structured error classification (C4).
 """
 
 import pytest
-from analysis.providers.provider_failover_classifier import FailoverReason, classify_error
+from monika.infrastructure.providers.provider_failover_classifier import FailoverReason, classify_error
 
 
 def test_backward_compatibility_shim():
-    from analysis.providers.error_classifier import FailoverReason as ShimReason, classify_error as shim_classify
+    from monika.infrastructure.providers.error_classifier import (
+        FailoverReason as ShimReason,
+        classify_error as shim_classify,
+    )
 
     assert ShimReason is FailoverReason
     assert shim_classify is classify_error

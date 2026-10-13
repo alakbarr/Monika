@@ -1,7 +1,7 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
-from utils.validation.data_validator import (
+from monika.core.validation.data_validator import (
     validate_data_freshness,
     check_data_coherence,
     is_crypto_symbol,
@@ -17,7 +17,7 @@ class TestDataValidator:
         mock_session.add = MagicMock()
         now = datetime(2026, 8, 25, 0, 0, 43, tzinfo=timezone.utc)  # Tuesday
 
-        with patch("utils.clock.now", return_value=now):
+        with patch("monika.core.primitives.clock.now", return_value=now):
             # OHLCV 5.0h old (from 19:00 previous day)
             # 1st call = OHLCV, 2nd call = Indicator, 3rd call = News
             def side_effect(*args, **kwargs):
@@ -37,7 +37,7 @@ class TestDataValidator:
         mock_session.add = MagicMock()
         now = datetime(2026, 8, 25, 0, 0, 43, tzinfo=timezone.utc)  # Tuesday
 
-        with patch("utils.clock.now", return_value=now):
+        with patch("monika.core.primitives.clock.now", return_value=now):
 
             def side_effect(*args, **kwargs):
                 mock_result = MagicMock()
@@ -58,7 +58,7 @@ class TestDataValidator:
         # Saturday noon UTC
         weekend_now = datetime(2026, 8, 22, 12, 0, 0, tzinfo=timezone.utc)
 
-        with patch("utils.clock.now", return_value=weekend_now):
+        with patch("monika.core.primitives.clock.now", return_value=weekend_now):
             # Friday close data (16 hours old on Saturday noon)
             def side_effect(*args, **kwargs):
                 mock_result = MagicMock()
@@ -83,7 +83,7 @@ class TestDataValidator:
         mock_session.add = MagicMock()
         now = datetime(2026, 8, 25, 0, 0, 43, tzinfo=timezone.utc)
 
-        with patch("utils.clock.now", return_value=now):
+        with patch("monika.core.primitives.clock.now", return_value=now):
 
             def side_effect(*args, **kwargs):
                 mock_result = MagicMock()
@@ -128,7 +128,7 @@ class TestDataValidator:
 
         mock_session.execute.side_effect = side_effect
 
-        with patch("utils.clock.now", return_value=now):
+        with patch("monika.core.primitives.clock.now", return_value=now):
             res = await check_data_coherence(mock_session, "XBRUSD")
             assert res["coherent"] is True
             assert len(res["issues"]) == 0
@@ -154,7 +154,7 @@ class TestDataValidator:
 
         mock_session.execute.side_effect = side_effect
 
-        with patch("utils.clock.now", return_value=now):
+        with patch("monika.core.primitives.clock.now", return_value=now):
             res = await check_data_coherence(mock_session, "XAUUSD")
             assert res["coherent"] is True
             assert len(res["issues"]) == 0
@@ -179,7 +179,7 @@ class TestDataValidator:
 
         mock_session.execute.side_effect = side_effect
 
-        with patch("utils.clock.now", return_value=now):
+        with patch("monika.core.primitives.clock.now", return_value=now):
             res = await check_data_coherence(mock_session, "XBRUSD")
             assert res["coherent"] is False
             assert any("D1: OHLCV is 52.0h old" in i for i in res["issues"])
@@ -204,7 +204,7 @@ class TestDataValidator:
 
         mock_session.execute.side_effect = side_effect
 
-        with patch("utils.clock.now", return_value=now):
+        with patch("monika.core.primitives.clock.now", return_value=now):
             res = await check_data_coherence(mock_session, "EURUSD")
             assert res["coherent"] is False
             assert any("differs from OHLCV" in i for i in res["issues"])
@@ -231,7 +231,7 @@ class TestDataValidator:
         ]
         mock_session.execute.side_effect = execute_side_effects
 
-        with patch("utils.clock.now", return_value=monday_morning):
+        with patch("monika.core.primitives.clock.now", return_value=monday_morning):
             res = await validate_data_freshness(mock_session, ["EURUSD"], ["H1"])
             assert res["ready"] is True
             assert len(res["warnings"]) == 0
@@ -257,7 +257,7 @@ class TestDataValidator:
         ]
         mock_session.execute.side_effect = execute_side_effects
 
-        with patch("utils.clock.now", return_value=wednesday):
+        with patch("monika.core.primitives.clock.now", return_value=wednesday):
             res = await validate_data_freshness(mock_session, ["EURUSD"], ["H1"])
             warnings_str = " ".join(res["warnings"])
             assert "VIX data is 5.5 days old (stale)" in warnings_str
@@ -286,7 +286,7 @@ class TestDataValidator:
         ]
         mock_session.execute.side_effect = execute_side_effects
 
-        with patch("utils.clock.now", return_value=friday_now):
+        with patch("monika.core.primitives.clock.now", return_value=friday_now):
             res = await validate_data_freshness(mock_session, ["XAUUSD"], ["W1"])
             assert res["ready"] is True
             assert len(res["errors"]) == 0

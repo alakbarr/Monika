@@ -3,8 +3,8 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
-from scheduler.strategy_synthesis_scheduler import (
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
+from monika.application.scheduler.strategy_synthesis_scheduler import (
     StrategySynthesisScheduler,
     HistoricalSliceSession,
 )

@@ -6,13 +6,13 @@ from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from tests.conftest import create_mock_async_session
-from database.models import AssetAnalysis, Position, TradeTrigger, PriceOHLCV, TechnicalIndicator
-from execution.execution_service import ExecutionService, ExecutionResult
-from indicators.timesfm_engine import TimesFMEngine
-from scheduler.trigger_checker import TriggerChecker
-from skills.loader import get_dynamic_micro_skills, load_skill, compose_system_prompt, _SKILLS_DIR
-from utils.llm.prompt_assembler import PromptAssembler
-from analysis.stages.per_asset_stage import PerAssetStage
+from monika.infrastructure.database.models import AssetAnalysis, Position, TradeTrigger, PriceOHLCV, TechnicalIndicator
+from monika.application.execution.execution_service import ExecutionService, ExecutionResult
+from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
+from monika.application.scheduler.trigger_checker import TriggerChecker
+from monika.application.skills.loader import get_dynamic_micro_skills, load_skill, compose_system_prompt, _SKILLS_DIR
+from monika.infrastructure.llm.prompt_assembler import PromptAssembler
+from monika.application.analysis.stages.per_asset_stage import PerAssetStage
 
 
 # ==============================================================================

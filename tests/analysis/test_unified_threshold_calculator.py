@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 from collections import namedtuple
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
+from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
 
 TradeStats = namedtuple("TradeStats", ["total_trades", "winning_trades"])
 

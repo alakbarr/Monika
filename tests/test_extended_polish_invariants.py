@@ -5,9 +5,9 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from risk.correlation_matrix import DynamicCorrelationMatrix
-from scheduler.position_supervisor import PositionSupervisor
-from utils.llm.credential_pool import CredentialPool, CredentialState
+from monika.domain.risk.correlation_matrix import DynamicCorrelationMatrix
+from monika.application.scheduler.position_supervisor import PositionSupervisor
+from monika.infrastructure.llm.credential_pool import CredentialPool, CredentialState
 
 
 def test_dynamic_correlation_matrix_pearson():
@@ -79,7 +79,7 @@ async def test_credential_pool_rotation_and_cooldown():
 
 @pytest.mark.asyncio
 async def test_risk_gate_check_correlation_exposure():
-    from risk.risk_gate import RiskGate
+    from monika.domain.risk.risk_gate import RiskGate
 
     mock_settings = {
         "trading": {

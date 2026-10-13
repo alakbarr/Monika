@@ -19,12 +19,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _src_dir = REPO_ROOT / "src"
 if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
 os.chdir(str(REPO_ROOT))
 
 # Ensure stdout handles UTF-8 on Windows
@@ -35,15 +29,19 @@ if sys.stdout.encoding != "utf-8":
     except Exception:
         pass
 
-from config.settings import load_all_config
-from database.db import init_db, get_session
-from benchmark.task_specs import _stage1_system_prompt, STAGE1_USER_MESSAGE_TEXT
-from benchmark.fixture_loader import get_synthetic_stage1_bundle
-from analysis.tools.tools_definitions import STAGE1_TOOLS
-from analysis.prefetch.stage1_prefetcher import PREFETCH_KEY_TO_TOOL, CORE_STAGE1_PREFETCH_TOOLS, prune_stage1_tools
-from benchmark.db_access import guarded_tool_executor
-from analysis.providers.openrouter_provider import OpenRouterProvider
-from utils.analytics.pricing import cost_usd
+from monika.core.config.settings import load_all_config
+from monika.infrastructure.database.db import init_db, get_session
+from monika.application.benchmark.task_specs import _stage1_system_prompt, STAGE1_USER_MESSAGE_TEXT
+from monika.application.benchmark.fixture_loader import get_synthetic_stage1_bundle
+from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS
+from monika.application.analysis.prefetch.stage1_prefetcher import (
+    PREFETCH_KEY_TO_TOOL,
+    CORE_STAGE1_PREFETCH_TOOLS,
+    prune_stage1_tools,
+)
+from monika.application.benchmark.db_access import guarded_tool_executor
+from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
+from monika.core.analytics.pricing import cost_usd
 
 MODELS_TO_BENCHMARK = [
     {
@@ -410,7 +408,7 @@ async def main():
     settings["stall_warning_threshold"] = 30
 
     # Freeze simulated clock to benchmark evaluation scenario time
-    import utils.clock as clock
+    import monika.core.primitives.clock as clock
 
     clock.set_simulated_now(datetime(2026, 10, 4, 19, 0, 0, tzinfo=timezone.utc))
 
@@ -563,7 +561,9 @@ async def main():
                     model_result["captured_payload"] = captured["payload"]
                     model_result["success"] = True
                 elif model_result["final_text"]:
-                    from analysis.stages.fundamental_stage_recovery import recover_fundamental_brief_from_text
+                    from monika.application.analysis.stages.fundamental_stage_recovery import (
+                        recover_fundamental_brief_from_text,
+                    )
 
                     recovered = recover_fundamental_brief_from_text(model_result["final_text"])
                     if recovered:

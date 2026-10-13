@@ -6,8 +6,8 @@ from tests.conftest import create_mock_async_session
 import time
 import pytest
 from unittest.mock import MagicMock, AsyncMock
-from risk.approval_hub import ApprovalHub, BoundedMandate
-from logging_observability.run_card import RunCardGenerator, generate_run_card, verify_run_card
+from monika.domain.risk.approval_hub import ApprovalHub, BoundedMandate
+from monika.core.telemetry.run_card import RunCardGenerator, generate_run_card, verify_run_card
 
 
 def test_bounded_mandate_lifecycle_and_validation():
@@ -111,9 +111,9 @@ def test_runcard_generation_and_tamper_detection(tmp_path):
 
 @pytest.mark.asyncio
 async def test_risk_gate_bounded_mandate_integration():
-    from risk.risk_gate import RiskGate
-    from risk.approval_hub import ApprovalHub
-    from risk.position_sizing import SizingResult
+    from monika.domain.risk.risk_gate import RiskGate
+    from monika.domain.risk.approval_hub import ApprovalHub
+    from monika.domain.risk.position_sizing import SizingResult
 
     hub = ApprovalHub.get_instance()
     hub._mandates.clear()

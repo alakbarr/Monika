@@ -1,8 +1,8 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone, timedelta
-from backtest.outcome_evaluator import OutcomeEvaluator
-from database.models import BacktestTrade, PriceOHLCV
+from monika.application.backtest.outcome_evaluator import OutcomeEvaluator
+from monika.infrastructure.database.models import BacktestTrade, PriceOHLCV
 from unittest.mock import AsyncMock, patch, MagicMock
 
 

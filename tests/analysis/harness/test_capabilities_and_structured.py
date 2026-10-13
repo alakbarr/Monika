@@ -4,8 +4,8 @@ import pytest
 from pydantic import BaseModel, Field
 from unittest.mock import AsyncMock, MagicMock
 
-from utils.llm.model_capabilities import ModelCapabilities, get_capabilities
-from analysis.harness.structured_output import invoke_structured_or_freetext
+from monika.infrastructure.llm.model_capabilities import ModelCapabilities, get_capabilities
+from monika.application.analysis.harness.structured_output import invoke_structured_or_freetext
 
 
 class SampleDecision(BaseModel):

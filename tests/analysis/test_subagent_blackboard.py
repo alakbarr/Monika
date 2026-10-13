@@ -1,5 +1,5 @@
 import pytest
-from analysis.subagent_blackboard import SubagentBlackboard
+from monika.application.analysis.subagent_blackboard import SubagentBlackboard
 
 
 def test_subagent_blackboard_slots():

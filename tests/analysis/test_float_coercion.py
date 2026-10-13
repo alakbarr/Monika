@@ -1,5 +1,5 @@
 import pytest
-from analysis.validators.float_coercion import coerce_float, coerce_optional_float
+from monika.application.analysis.validators.float_coercion import coerce_float, coerce_optional_float
 
 
 def test_coerce_optional_float_none_and_empty():

@@ -2,8 +2,8 @@ import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from database.models import DecisionReflection
-from analysis.memory.reflector import TradeReflector
+from monika.infrastructure.database.models import DecisionReflection
+from monika.application.analysis.memory.reflector import TradeReflector
 
 
 @pytest.mark.asyncio
@@ -12,8 +12,8 @@ async def test_reflector_includes_alpha():
     settings = {}
 
     with (
-        patch("analysis.memory.reflector.get_client_for_task") as mock_get_client,
-        patch("analysis.memory.skill_crystallizer.SkillCrystallizer") as mock_cryst,
+        patch("monika.application.analysis.memory.reflector.get_client_for_task") as mock_get_client,
+        patch("monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer") as mock_cryst,
     ):
         mock_cryst.return_value.evaluate_and_crystallize = AsyncMock()
         mock_client = AsyncMock()
@@ -56,8 +56,8 @@ async def test_reflector_includes_alpha():
 
 @pytest.mark.asyncio
 async def test_stage2_prefetcher_alpha_lessons_none_safe():
-    from database.models import DecisionReflection
-    from analysis.prefetch.stage2_prefetcher import Stage2DataBundler
+    from monika.infrastructure.database.models import DecisionReflection
+    from monika.application.analysis.prefetch.stage2_prefetcher import Stage2DataBundler
 
     # Mock executor & session
     mock_executor = MagicMock()

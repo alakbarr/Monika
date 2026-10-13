@@ -4,7 +4,7 @@ Unit tests for plugin_kernel namespace re-export bridge.
 
 
 def test_plugin_kernel_exports():
-    import plugin_kernel as pk
+    import monika.application.plugins.kernel as pk
 
     assert hasattr(pk, "TradingPlugin")
     assert hasattr(pk, "PluginMetadata")
@@ -23,7 +23,7 @@ def test_plugin_kernel_exports():
 
 
 def test_plugin_kernel_instantiation():
-    from plugin_kernel import PluginMetadata, PluginCategory, PluginOrigin, PluginState
+    from monika.application.plugins.kernel import PluginMetadata, PluginCategory, PluginOrigin, PluginState
 
     meta = PluginMetadata(
         id="test_kernel_plugin",

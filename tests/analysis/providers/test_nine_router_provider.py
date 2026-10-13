@@ -6,15 +6,15 @@ capabilities, dynamic discovery, and factory integration.
 
 import pytest
 import unittest.mock as mock
-from analysis.providers.nine_router_provider import (
+from monika.infrastructure.providers.nine_router_provider import (
     NineRouterProvider,
     normalize_9router_model_name,
     FREE_TIER_MODELS_9ROUTER,
 )
-from analysis.providers.provider_registry import ProviderRegistry
-from analysis.providers.llm_factory import LLMFactory
-from analysis.providers.capabilities import get_model_capabilities, resolve_effective_context_window
-from utils.analytics.pricing import is_free_tier, infer_provider_from_model
+from monika.infrastructure.providers.provider_registry import ProviderRegistry
+from monika.infrastructure.providers.llm_factory import LLMFactory
+from monika.infrastructure.providers.capabilities import get_model_capabilities, resolve_effective_context_window
+from monika.core.analytics.pricing import is_free_tier, infer_provider_from_model
 
 
 @pytest.fixture
@@ -269,7 +269,7 @@ def test_llm_factory_create_client_instance_ninerouter_alias(mock_settings):
 @pytest.mark.asyncio
 async def test_startup_checker_ninerouter_ping_finds_model(mock_settings):
     """Test that StartupChecker._check_api_keys finds model for 'ninerouter' provider without warning."""
-    from agent.startup_checks import StartupChecker
+    from monika.application.agent.startup_checks import StartupChecker
 
     checker = StartupChecker(mock_settings)
 
@@ -278,9 +278,13 @@ async def test_startup_checker_ninerouter_ping_finds_model(mock_settings):
     mock_client.last_served_model = "kr/claude-sonnet-4.5"
 
     with (
-        mock.patch("analysis.providers.nine_router_provider.NineRouterProvider.ensure_running", return_value=True),
-        mock.patch("analysis.providers.llm_factory.LLMFactory._create_client_instance", return_value=mock_client),
-        mock.patch("agent.startup_checks.logger.warning") as mock_warn,
+        mock.patch(
+            "monika.infrastructure.providers.nine_router_provider.NineRouterProvider.ensure_running", return_value=True
+        ),
+        mock.patch(
+            "monika.infrastructure.providers.llm_factory.LLMFactory._create_client_instance", return_value=mock_client
+        ),
+        mock.patch("monika.application.agent.startup_checks.logger.warning") as mock_warn,
     ):
         ok, warns = await checker._check_api_keys()
         assert ok is True

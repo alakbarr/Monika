@@ -1,7 +1,7 @@
-
 from monika.application.analysis.strategies.base_strategy import EdgeSignal, EdgeStrategy
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
+
 
 class MockPassStrategy(EdgeStrategy):
     strategy_id: str = "mock_pass"
@@ -17,5 +17,5 @@ class MockPassStrategy(EdgeStrategy):
             valid=True,
             confidence=0.8,
             stop_loss=1.09,
-            take_profit=1.12
+            take_profit=1.12,
         )

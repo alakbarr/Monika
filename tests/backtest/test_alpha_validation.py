@@ -3,7 +3,7 @@ Unit tests for backtest/alpha_validation.py (directional balance, half-consisten
 """
 
 import pytest
-from backtest.alpha_validation import validate_alpha, _calculate_sortino
+from monika.application.backtest.alpha_validation import validate_alpha, _calculate_sortino
 
 
 def test_calculate_sortino():
@@ -71,7 +71,7 @@ def test_validate_alpha_cost_stress_fail():
 
 def test_validate_alpha_backtest_trade_objects_dollar_consistency():
     """Verify BacktestTrade objects (which have pnl_pct but not pnl) convert correctly to USD."""
-    from database.models import BacktestTrade
+    from monika.infrastructure.database.models import BacktestTrade
     from datetime import datetime, timezone
 
     t1 = BacktestTrade(

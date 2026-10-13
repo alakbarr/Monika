@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timezone, time as dtime
-from utils.scheduling.wall_clock import next_occurrence, previous_occurrence, parse_time_list, get_tzinfo
+from monika.application.scheduler.wall_clock import next_occurrence, previous_occurrence, parse_time_list, get_tzinfo
 
 
 def test_parse_time_list():

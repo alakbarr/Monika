@@ -1,5 +1,5 @@
 import pytest
-from utils.security.threat_detector import ThreatDetector, threat_detector
+from monika.core.security.threat_detector import ThreatDetector, threat_detector
 
 
 def test_threat_detector_clean_financial_text():

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.harness.stall_guard import StallGuard
-from analysis.harness.agent_harness import AgentHarness
+from monika.application.analysis.harness.stall_guard import StallGuard
+from monika.application.analysis.harness.agent_harness import AgentHarness
 
 
 def test_stall_guard_read_only_classification():

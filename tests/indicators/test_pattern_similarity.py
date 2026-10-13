@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 import numpy as np
 import pytest
 
-from indicators.pattern_similarity.models import (
+from monika.domain.indicators.pattern_similarity.models import (
     PatternMatch,
     MarketContext,
     SingleTimeframeResult,
@@ -21,12 +21,12 @@ from indicators.pattern_similarity.models import (
     OutcomeStatistics,
     PatternOutcome,
 )
-from indicators.pattern_similarity.normalizer import PriceNormalizer
-from indicators.pattern_similarity.feature_extractor import FeatureExtractor
-from indicators.pattern_similarity.scanner import SimilarityScanner
-from indicators.pattern_similarity.outcome_analyzer import OutcomeAnalyzer
-from indicators.pattern_similarity.context_scorer import ContextScorer
-from indicators.pattern_similarity.engine import PatternSimilarityEngine
+from monika.domain.indicators.pattern_similarity.normalizer import PriceNormalizer
+from monika.domain.indicators.pattern_similarity.feature_extractor import FeatureExtractor
+from monika.domain.indicators.pattern_similarity.scanner import SimilarityScanner
+from monika.domain.indicators.pattern_similarity.outcome_analyzer import OutcomeAnalyzer
+from monika.domain.indicators.pattern_similarity.context_scorer import ContextScorer
+from monika.domain.indicators.pattern_similarity.engine import PatternSimilarityEngine
 
 
 def generate_synthetic_ohlcv(

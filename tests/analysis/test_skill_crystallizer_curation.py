@@ -3,8 +3,8 @@ import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock
 from pathlib import Path
-from analysis.memory.skill_crystallizer import SkillCrystallizer
-from database.models import DecisionReflection, SystemConfig
+from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
+from monika.infrastructure.database.models import DecisionReflection, SystemConfig
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,12 @@ from tests.conftest import create_mock_async_session
 import pytest
 import datetime
 from unittest.mock import AsyncMock, MagicMock
-from utils.protocol.enhanced_cds import compute_spatial_cds, compute_task_cds, get_cds_thresholds, get_signal_threshold
+from monika.application.protocol.enhanced_cds import (
+    compute_spatial_cds,
+    compute_task_cds,
+    get_cds_thresholds,
+    get_signal_threshold,
+)
 
 
 @pytest.mark.asyncio

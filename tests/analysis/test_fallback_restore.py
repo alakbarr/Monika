@@ -1,7 +1,7 @@
 import pytest
 import time
 from unittest.mock import MagicMock
-from analysis.providers.llm_factory import LLMFactory, FallbackClientWrapper
+from monika.infrastructure.providers.llm_factory import LLMFactory, FallbackClientWrapper
 
 
 @pytest.fixture

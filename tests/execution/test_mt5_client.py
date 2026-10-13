@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from execution.mt5_client import MT5Client
+from monika.infrastructure.brokers.mt5_client import MT5Client
 
 
 class TestMT5Client:
@@ -219,7 +219,7 @@ class TestMT5Client:
     @pytest.mark.asyncio
     async def test_get_latest_tick(self, client):
         mock_tick = MagicMock(bid=2000.5, ask=2001.0, last=2000.75, spread=50, time=1704067200)
-        with patch("execution.mt5_client._get_last_tick", return_value=mock_tick):
+        with patch("monika.infrastructure.brokers.mt5_client._get_last_tick", return_value=mock_tick):
             res = await client.get_latest_tick("XAUUSD")
             assert res.bid == 2000.5
             assert res.spread == 50
@@ -253,20 +253,20 @@ class TestMT5Client:
         real_client.ensure_connected = AsyncMock(return_value=True)
         real_client._connected = True
 
-        with patch("execution.mt5_client._market_book_add", return_value=True):
+        with patch("monika.infrastructure.brokers.mt5_client._market_book_add", return_value=True):
             assert await real_client.market_book_add("EURUSD") is True
 
         mock_book = [{"type": 2, "price": 1.1000, "volume": 100}]
-        with patch("execution.mt5_client._market_book_get", return_value=mock_book):
+        with patch("monika.infrastructure.brokers.mt5_client._market_book_get", return_value=mock_book):
             assert await real_client.market_book_get("EURUSD") == mock_book
 
-        with patch("execution.mt5_client._market_book_release", return_value=True):
+        with patch("monika.infrastructure.brokers.mt5_client._market_book_release", return_value=True):
             assert await real_client.market_book_release("EURUSD") is True
 
     @pytest.mark.asyncio
     async def test_priority_resolution_defaults(self):
         """Verify automatic mapping of MT5 functions to priority levels."""
-        from execution.mt5_client import (
+        from monika.infrastructure.brokers.mt5_client import (
             PRIORITY_CRITICAL,
             PRIORITY_STANDARD,
             PRIORITY_BACKGROUND,
@@ -300,7 +300,7 @@ class TestMT5Client:
     async def test_priority_queue_execution_order(self):
         """Verify that Priority 0 (Critical) tasks preempt Priority 10 (Background) in the queue."""
         import time
-        from execution.mt5_client import PRIORITY_CRITICAL, PRIORITY_BACKGROUND
+        from monika.infrastructure.brokers.mt5_client import PRIORITY_CRITICAL, PRIORITY_BACKGROUND
 
         client = MT5Client()
         execution_order = []
@@ -350,7 +350,7 @@ class TestMT5Client:
     @pytest.mark.asyncio
     async def test_get_broker_utc_offset_configured(self):
         """Verifikasi offset broker menggunakan konfigurasi settings.yaml jika tersedia."""
-        from execution.mt5_client import MT5Client
+        from monika.infrastructure.brokers.mt5_client import MT5Client
 
         client = MT5Client(settings={"trading": {"mt5": {"broker_utc_offset_hours": 3}}})
         offset = await client.get_broker_utc_offset_seconds()

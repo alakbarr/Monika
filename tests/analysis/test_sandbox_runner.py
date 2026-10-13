@@ -3,11 +3,11 @@ Unit tests for SandboxedKernel and secure code execution.
 """
 
 import pytest
-from analysis.tools.kernel.sandbox_runner import (
+from monika.application.analysis.tools.kernel.sandbox_runner import (
     SandboxedKernel,
     validate_code_ast,
 )
-from analysis.tools.kernel.persistent_kernel import PersistentCodeKernel
+from monika.application.analysis.tools.kernel.persistent_kernel import PersistentCodeKernel
 
 
 def test_validate_code_ast_clean():

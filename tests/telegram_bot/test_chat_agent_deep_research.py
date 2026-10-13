@@ -2,13 +2,13 @@ from tests.conftest import create_mock_async_session
 import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from telegram_bot.chat_agent import ChatAgent
-from analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
+from monika.interfaces.telegram.chat_agent import ChatAgent
+from monika.application.analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
 
 
 @pytest.fixture(autouse=True)
 def mock_chat_agent_db_session():
-    with patch("telegram_bot.chat_agent.get_session") as mock_get_session:
+    with patch("monika.interfaces.telegram.chat_agent.get_session") as mock_get_session:
         mock_sess = create_mock_async_session()
         mock_get_session.return_value.__aenter__.return_value = mock_sess
         yield mock_sess
@@ -17,7 +17,7 @@ def mock_chat_agent_db_session():
 @pytest.mark.asyncio
 async def test_run_tier_deep_research_parallel_workers():
     settings = {}
-    with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+    with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
         mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.model_name = "test-model"
@@ -72,7 +72,7 @@ async def test_run_tier_deep_research_parallel_workers():
 async def test_classify_query_complexity_macro_events():
     """Verify macro event probability queries (including contoh_pertanyaan.md) route to deep_research."""
     settings = {}
-    with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+    with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
         agent = ChatAgent(settings, 12345)
@@ -135,7 +135,7 @@ async def test_classify_query_complexity_macro_events():
 async def test_is_macro_event_query_and_inject_macro_playbooks():
     """Verify _is_macro_event_query detection and dynamic playbook injection into system prompt."""
     settings = {}
-    with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+    with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
         agent = ChatAgent(settings, 12345)
@@ -181,7 +181,7 @@ async def test_is_macro_event_query_and_inject_macro_playbooks():
 async def test_run_tier_deep_research_synthesizer_tools_and_trading_plan():
     """Verify _run_tier_deep_research injects playbooks, passes tools to Synthesizer, and mandates 3-scenario plan."""
     settings = {}
-    with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+    with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
         mock_client = AsyncMock()
         mock_client.model = "test-model"
         mock_client.model_name = "test-model"
@@ -275,7 +275,7 @@ async def test_run_tier_deep_research_synthesizer_tools_and_trading_plan():
 async def test_system_prompt_relaxed_character_limit():
     """Verify _build_system_prompt relaxes <= 3000 chars restriction for deep research / macro event investigations."""
     settings = {}
-    with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+    with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
         agent = ChatAgent(settings, 12345)

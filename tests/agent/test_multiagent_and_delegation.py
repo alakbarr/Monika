@@ -7,15 +7,15 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from utils.worktree import SubagentWorktree
-from logging_observability.delegation_live_log import LiveTranscriptWriter
-from analysis.tools.domain.delegate_tool import handle_delegate_task, DelegateTaskInput
-from agent.moa_loop import (
+from monika.core.primitives.worktree import SubagentWorktree
+from monika.core.telemetry.delegation_live_log import LiveTranscriptWriter
+from monika.application.analysis.tools.domain.delegate_tool import handle_delegate_task, DelegateTaskInput
+from monika.application.agent.moa_loop import (
     MoARuntime,
     MoAChatCompletions,
     trim_head_tail_context,
 )
-from analysis.debate.discussion_engine import DiscussionCouncil, DiscussionOutcome
+from monika.application.analysis.debate.discussion_engine import DiscussionCouncil, DiscussionOutcome
 
 
 def test_subagent_worktree_lifecycle(tmp_path: Path):

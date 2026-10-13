@@ -37,8 +37,8 @@ def test_chat_agent_domain_layer_isolation():
     from monika.application.agent.chat_agent import ChatAgent as CoreChatAgent, PendingAction
 
     # Ensure CoreChatAgent is defined in monika.application.agent.chat_agent, not re-exported from telegram
-    assert CoreChatAgent.__module__ in ("monika.application.agent.chat_agent", "agent.chat_agent")
-    assert PendingAction.__module__ in ("monika.application.agent.chat_agent", "agent.chat_agent")
+    assert CoreChatAgent.__module__ in ("monika.application.agent.chat_agent", "monika.application.agent.chat_agent")
+    assert PendingAction.__module__ in ("monika.application.agent.chat_agent", "monika.application.agent.chat_agent")
 
     # CoreChatAgent must have all conversational methods
     assert hasattr(CoreChatAgent, "handle")

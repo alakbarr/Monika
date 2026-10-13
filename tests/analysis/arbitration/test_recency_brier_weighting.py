@@ -2,11 +2,11 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from analysis.arbitration.signal_arbitrator import (
+from monika.application.analysis.arbitration.signal_arbitrator import (
     compute_empirical_arbitrator_weights,
     SignalArbitrator,
 )
-from database.models import PaperTradeRecord, AssetAnalysis
+from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis
 
 
 @pytest.mark.asyncio

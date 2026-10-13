@@ -8,8 +8,8 @@ reflections, and regime context.
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
-from analysis.memory.failure_taxonomy import FailureCategory
+from monika.application.analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
+from monika.application.analysis.memory.failure_taxonomy import FailureCategory
 
 
 @pytest.mark.asyncio

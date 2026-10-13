@@ -3,11 +3,11 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
 from tests.conftest import create_mock_async_session
-from analysis.tools.tool_executor import ToolExecutor
-from analysis.prefetch.stage1_prefetcher import Stage1DataBundler
-from utils.llm.prompt_compressor import ContextCompressor
-from utils.llm.caveman_compressor import compress_tool_payload
-from database.models import DXYData
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.application.analysis.prefetch.stage1_prefetcher import Stage1DataBundler
+from monika.infrastructure.llm.prompt_compressor import ContextCompressor
+from monika.infrastructure.llm.caveman_compressor import compress_tool_payload
+from monika.infrastructure.database.models import DXYData
 
 
 @pytest.mark.asyncio
@@ -16,7 +16,7 @@ async def test_stage1_prefetch_tuple_and_satisfied_tools():
     settings = {}
 
     with (
-        patch("analysis.prefetch.stage1_prefetcher.ToolExecutor") as MockExecutor,
+        patch("monika.application.analysis.prefetch.stage1_prefetcher.ToolExecutor") as MockExecutor,
         patch(
             "data_sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads",
             new_callable=AsyncMock,
@@ -106,7 +106,7 @@ async def test_tool_get_dxy_tier3_synthetic_proxy_fallback():
     mock_empty.scalars().all.return_value = []
     session.execute = AsyncMock(return_value=mock_empty)
 
-    with patch("utils.market.usd_strength_proxy.compute_usd_strength_proxy") as mock_proxy:
+    with patch("monika.domain.market.usd_strength_proxy.compute_usd_strength_proxy") as mock_proxy:
         mock_proxy.return_value = {
             "weighted_usd_change_pct": 0.35,
             "direction": "strengthening",

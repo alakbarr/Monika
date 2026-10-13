@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.harness.agent_harness import AgentHarness
-from analysis.harness.harness_state import HarnessState, SteeringMessage
+from monika.application.analysis.harness.agent_harness import AgentHarness
+from monika.application.analysis.harness.harness_state import HarnessState, SteeringMessage
 
 
 @pytest.mark.asyncio

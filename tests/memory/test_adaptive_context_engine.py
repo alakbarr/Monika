@@ -10,9 +10,9 @@ and Lossless State Archiving Pruner.
 
 import pytest
 
-from analysis.memory.mechanical_anchor_index import MechanicalAnchorIndex
-from analysis.memory.context_engine import ContextEngine
-from graph.nodes.state_pruner import prune_after_fundamental, prune_after_debate
+from monika.application.analysis.memory.mechanical_anchor_index import MechanicalAnchorIndex
+from monika.application.analysis.memory.context_engine import ContextEngine
+from monika.application.graph.nodes.state_pruner import prune_after_fundamental, prune_after_debate
 
 
 # ==============================================================================

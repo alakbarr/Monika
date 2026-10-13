@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from indicators.alpha_zoo.vector_factor_engine import (
+from monika.domain.indicators.alpha_zoo.vector_factor_engine import (
     VectorFactorEngine,
     VectorFactorResult,
     FactorSignal,

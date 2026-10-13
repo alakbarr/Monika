@@ -2,7 +2,7 @@ import time
 import pytest
 from unittest.mock import patch, MagicMock
 
-from data_sources.circuit_breaker import (
+from monika.infrastructure.data_ingestion.sources.circuit_breaker import (
     DataFeedCircuitBreaker,
     FeedStatus,
     get_data_feed_circuit_breaker,

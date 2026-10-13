@@ -1,5 +1,5 @@
 import pytest
-from scrapers.news.rss_cnbc import CnbcRssScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_cnbc import CnbcRssScraper
 
 
 def test_init():

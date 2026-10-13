@@ -6,7 +6,7 @@
 from decimal import Decimal
 import pytest
 
-from analysis.debate.exact_decimal_math import (
+from monika.application.analysis.debate.exact_decimal_math import (
     to_exact_decimal,
     safe_evaluate_math_expression,
     exact_rr_ratio,

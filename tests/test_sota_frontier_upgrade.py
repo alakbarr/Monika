@@ -14,16 +14,19 @@ import numpy as np
 import pandas as pd
 
 # 1. Alpha Zoo & Quant Library
-import indicators.alpha_zoo
-from indicators.alpha_zoo.registry import FactorRegistry
-from indicators.alpha_zoo.qlib158 import qlib_kmid, qlib_klen
-from indicators.alpha_zoo.alpha101 import wq_alpha_001, wq_alpha_006, wq_alpha_012, wq_alpha_101
-from analysis.calculators.factor_ic import calculate_spearman_rank_ic, evaluate_factor_predictive_power
-from analysis.calculators.evt_tail_calculator import fit_evt_peaks_over_threshold
-from analysis.calculators.cointegration import test_cointegration_ou
+import monika.domain.indicators.alpha_zoo
+from monika.domain.indicators.alpha_zoo.registry import FactorRegistry
+from monika.domain.indicators.alpha_zoo.qlib158 import qlib_kmid, qlib_klen
+from monika.domain.indicators.alpha_zoo.alpha101 import wq_alpha_001, wq_alpha_006, wq_alpha_012, wq_alpha_101
+from monika.application.analysis.calculators.factor_ic import (
+    calculate_spearman_rank_ic,
+    evaluate_factor_predictive_power,
+)
+from monika.application.analysis.calculators.evt_tail_calculator import fit_evt_peaks_over_threshold
+from monika.application.analysis.calculators.cointegration import test_cointegration_ou
 
 test_cointegration_ou.__test__ = False
-from indicators.microstructure import (
+from monika.domain.indicators.microstructure import (
     calculate_vpin_fractional,
     calculate_roll_effective_spread,
     calculate_kyles_lambda_ols,
@@ -31,42 +34,42 @@ from indicators.microstructure import (
 )
 
 # 2. Portfolio Optimization & Tamper-Evident Ledger
-from risk.portfolio_optimizer import (
+from monika.domain.risk.portfolio_optimizer import (
     PortfolioOptimizer,
     DEFAULT_GROUP_MAP,
     DEFAULT_GROUP_CAPS,
 )
-from risk.crypto_audit_ledger import CryptoAuditLedger, LedgerTamperedError
-from risk.position_sizing import PositionSizer, DEFAULT_INSTRUMENTS
-from risk.portfolio_correlation_gate import _get_usd_directional_delta, GROUP_POSITION_LIMITS
+from monika.domain.risk.crypto_audit_ledger import CryptoAuditLedger, LedgerTamperedError
+from monika.domain.risk.position_sizing import PositionSizer, DEFAULT_INSTRUMENTS
+from monika.domain.risk.portfolio_correlation_gate import _get_usd_directional_delta, GROUP_POSITION_LIMITS
 
 # 3. Execution & Reconciliation
-from execution.mt5_client import _resolve_broker_symbol
-from scheduler.order_reconciler import ReconciliationDeltaType
+from monika.infrastructure.brokers.mt5_client import _resolve_broker_symbol
+from monika.application.scheduler.order_reconciler import ReconciliationDeltaType
 
 # 4. Grounding & Security
-from analysis.grounding.provenance_tagger import ProvenanceLedger
-from analysis.grounding.declared_figures import (
+from monika.application.analysis.grounding.provenance_tagger import ProvenanceLedger
+from monika.application.analysis.grounding.declared_figures import (
     FigureRole,
     DeclaredFigure,
     DeclaredFiguresBlock,
     StructuralShapeFilter,
     verify_declared_figures,
 )
-from analysis.grounding.surgical_redaction import redacted_release, repair_provenance
-from security.prompt_injection_scanner import PromptInjectionScanner, PromptInjectionThreatDetected
-from security.ssrf_guard import is_url_safe, validate_request_url, SSRFViolationError
+from monika.application.analysis.grounding.surgical_redaction import redacted_release, repair_provenance
+from monika.core.security.prompt_injection_scanner import PromptInjectionScanner, PromptInjectionThreatDetected
+from monika.core.security.ssrf_guard import is_url_safe, validate_request_url, SSRFViolationError
 
 # 5. Cognitive & Harness
-from agent.three_part_context_compressor import ThreePartContextCompressor
-from agent.readonly_replay_cache import ReadOnlyReplayCache
-from analysis.debate.blackboard import DebateBlackboard
-from analysis.debate.portfolio_manager import evaluate_portfolio_impact
+from monika.application.agent.three_part_context_compressor import ThreePartContextCompressor
+from monika.application.agent.readonly_replay_cache import ReadOnlyReplayCache
+from monika.application.analysis.debate.blackboard import DebateBlackboard
+from monika.application.analysis.debate.portfolio_manager import evaluate_portfolio_impact
 
 # 6. Backtest Run Card & Memory Lifecycle
-from backtest.run_card import RunCard, CostAssumptions, QuantitativeMetrics
-from analysis.memory.memory_lifecycle_gc import MemoryLifecycleGC, MemoryNode
-from analysis.memory.playbook_lifecycle import PlaybookLifecycleFSM, PlaybookState
+from monika.application.backtest.run_card import RunCard, CostAssumptions, QuantitativeMetrics
+from monika.application.analysis.memory.memory_lifecycle_gc import MemoryLifecycleGC, MemoryNode
+from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleFSM, PlaybookState
 
 
 def _make_dummy_ohlcv(n: int = 120) -> pd.DataFrame:

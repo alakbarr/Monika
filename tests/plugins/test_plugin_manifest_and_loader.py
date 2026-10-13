@@ -8,8 +8,8 @@ import yaml
 import pytest
 from pydantic import ValidationError
 
-from plugins.manifest import PluginManifest, SUPPORTED_HOOKS
-from plugins.loader import (
+from monika.application.plugins.manifest import PluginManifest, SUPPORTED_HOOKS
+from monika.application.plugins.loader import (
     PluginLoader,
     PluginDependencyError,
     CircularDependencyError,
@@ -17,7 +17,7 @@ from plugins.loader import (
     topological_sort_plugins,
     load_manifest_file,
 )
-from utils.plugins.manager import PluginManager
+from monika.application.plugins.manager.manager import PluginManager
 
 
 def test_plugin_manifest_valid():

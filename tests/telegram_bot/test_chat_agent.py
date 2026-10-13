@@ -1,13 +1,18 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
-from telegram_bot.chat_agent import ChatAgent, PendingAction, _sanitize_telegram_format, SESSION_TIMEOUT_HOURS
+from monika.interfaces.telegram.chat_agent import (
+    ChatAgent,
+    PendingAction,
+    _sanitize_telegram_format,
+    SESSION_TIMEOUT_HOURS,
+)
 from datetime import datetime, timezone, timedelta
 
 
 class TestChatAgent:
     @pytest.mark.asyncio
-    @patch("telegram_bot.chat_agent.get_client_for_task")
+    @patch("monika.interfaces.telegram.chat_agent.get_client_for_task")
     async def test_init(self, mock_get_client):
         settings = {}
         agent = ChatAgent(settings, 123)
@@ -29,8 +34,8 @@ class TestChatAgent:
         assert action.is_expired()
 
     @pytest.mark.asyncio
-    @patch("telegram_bot.chat_agent.get_session")
-    @patch("telegram_bot.chat_agent.get_client_for_task")
+    @patch("monika.interfaces.telegram.chat_agent.get_session")
+    @patch("monika.interfaces.telegram.chat_agent.get_client_for_task")
     async def test_handle_success(self, mock_get_client, mock_get_session):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -69,8 +74,8 @@ class TestChatAgent:
         assert agent._save_message.call_count == 2  # user and assistant
 
     @pytest.mark.asyncio
-    @patch("execution.execution_service.ExecutionService")
-    @patch("telegram_bot.chat_agent.get_session")
+    @patch("monika.application.execution.execution_service.ExecutionService")
+    @patch("monika.interfaces.telegram.chat_agent.get_session")
     async def test_confirm_action_success(self, mock_get_session, mock_exec_cls):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -102,7 +107,7 @@ class TestChatAgent:
         assert "expired" in msg
 
     @pytest.mark.asyncio
-    @patch("telegram_bot.chat_agent.get_session")
+    @patch("monika.interfaces.telegram.chat_agent.get_session")
     async def test_reject_action(self, mock_get_session):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -119,8 +124,8 @@ class TestChatAgent:
         assert "act1" not in agent._pending_actions
 
     @pytest.mark.asyncio
-    @patch("database.models.SystemConfig.upsert", new_callable=AsyncMock)
-    @patch("telegram_bot.chat_agent.get_session")
+    @patch("monika.infrastructure.database.models.SystemConfig.upsert", new_callable=AsyncMock)
+    @patch("monika.interfaces.telegram.chat_agent.get_session")
     async def test_pending_action_persistence_and_restore(self, mock_get_session, mock_upsert):
         mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
@@ -230,7 +235,7 @@ class TestChatAgentHistoryMemory:
 
 
 @pytest.mark.asyncio
-@patch("telegram_bot.chat_agent.get_session")
+@patch("monika.interfaces.telegram.chat_agent.get_session")
 async def test_chat_agent_adhoc_pipeline_routing(mock_get_session):
     mock_session = create_mock_async_session()
     mock_ctx = AsyncMock()
@@ -247,7 +252,9 @@ async def test_chat_agent_adhoc_pipeline_routing(mock_get_session):
         "formatted_summary": "[TARGET] *HASIL ANALISIS AD-HOC: XAUUSD*\n• *Keputusan*: `BUY`",
     }
 
-    with patch("agent.agent_loop.SystemAgentLoop.execute_ad_hoc_analysis", new_callable=AsyncMock) as mock_adhoc:
+    with patch(
+        "monika.application.agent.agent_loop.SystemAgentLoop.execute_ad_hoc_analysis", new_callable=AsyncMock
+    ) as mock_adhoc:
         mock_adhoc.return_value = mock_adhoc_result
 
         reply, pending = await agent.handle("Tolong analisa XAUUSD sekarang")

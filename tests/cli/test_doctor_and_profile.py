@@ -2,9 +2,9 @@ import pytest
 import os
 import tempfile
 import shutil
-from cli.doctor import SystemDoctor
-from cli.profile_manager import ProfileManager
-from config.settings import load_settings
+from monika.interfaces.cli.doctor import SystemDoctor
+from monika.interfaces.cli.profile_manager import ProfileManager
+from monika.core.config.settings import load_settings
 
 
 @pytest.mark.asyncio

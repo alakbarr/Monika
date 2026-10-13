@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from logging_observability.dashboard.routes.websocket import TokenCoalescingBuffer
-from utils.streaming.stream_scrubber import StatefulStreamScrubber
+from monika.interfaces.dashboard.routes.websocket import TokenCoalescingBuffer
+from monika.core.streaming.stream_scrubber import StatefulStreamScrubber
 
 
 @pytest.mark.asyncio
@@ -69,7 +69,7 @@ def test_scrub_text_classmethod():
 @pytest.mark.asyncio
 async def test_pty_bridge_session_persistence_and_resize():
     """Verify PtyBridgeManager get_or_create_session preserves session state and handles resize."""
-    from logging_observability.dashboard.pty_bridge import PtyBridgeManager
+    from monika.interfaces.dashboard.pty_bridge import PtyBridgeManager
 
     mgr = PtyBridgeManager()
     sid = "test-persistent-session-123"

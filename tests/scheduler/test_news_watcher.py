@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
 from tests.conftest import create_mock_async_session
-from scheduler.news_watcher import NewsWatcher
-from database.models import NewsItem
+from monika.application.scheduler.news_watcher import NewsWatcher
+from monika.infrastructure.database.models import NewsItem
 
 
 class TestNewsWatcher:
@@ -32,7 +32,7 @@ class TestNewsWatcher:
     @pytest.mark.asyncio
     @pytest.mark.asyncio
     @patch("scheduler.news_watcher.get_session")
-    @patch("analysis.prefetch.news_digest.NewsDigestProcessor")
+    @patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor")
     async def test_run_once_no_news(self, mock_processor, mock_get_session, settings):
         watcher = NewsWatcher(settings)
         watcher._fetch_new_news = AsyncMock(return_value=[])
@@ -49,7 +49,7 @@ class TestNewsWatcher:
 
     @pytest.mark.asyncio
     @patch("scheduler.news_watcher.get_session")
-    @patch("analysis.prefetch.news_digest.NewsDigestProcessor")
+    @patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor")
     async def test_run_once_with_news_fallback(self, mock_processor, mock_get_session, settings):
         watcher = NewsWatcher(settings)
 
@@ -82,7 +82,7 @@ class TestNewsWatcher:
 
     @pytest.mark.asyncio
     @patch("scheduler.news_watcher.get_session")
-    @patch("analysis.prefetch.news_digest.NewsDigestProcessor")
+    @patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor")
     async def test_run_once_with_gemini(self, mock_processor, mock_get_session, settings):
         watcher = NewsWatcher(settings)
 
@@ -191,7 +191,7 @@ class TestNewsWatcher:
 
     @pytest.mark.asyncio
     @patch("scheduler.news_watcher.get_session")
-    @patch("analysis.prefetch.news_digest.NewsDigestProcessor")
+    @patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor")
     async def test_run_once_narrative_exhaustion_suppressed(self, mock_processor, mock_get_session, settings):
         watcher = NewsWatcher(settings)
 

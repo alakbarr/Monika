@@ -3,18 +3,18 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from analysis.stages.per_asset_stage import PerAssetStage
-from database.models import AssetAnalysis, FundamentalBrief
+from monika.application.analysis.stages.per_asset_stage import PerAssetStage
+from monika.infrastructure.database.models import AssetAnalysis, FundamentalBrief
 
 
 class TestPerAssetStageRecovery(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self._patchers = [
-            patch("analysis.stages.per_asset.runner.get_client_for_task"),
-            patch("analysis.stages.per_asset.runner.create_client"),
-            patch("analysis.stages.per_asset.specialist_pipeline.get_client_for_task"),
-            patch("analysis.providers.llm_factory.get_client_for_task"),
-            patch("analysis.providers.llm_factory.create_client"),
+            patch("monika.application.analysis.stages.per_asset.runner.get_client_for_task"),
+            patch("monika.application.analysis.stages.per_asset.runner.create_client"),
+            patch("monika.application.analysis.stages.per_asset.specialist_pipeline.get_client_for_task"),
+            patch("monika.infrastructure.providers.llm_factory.get_client_for_task"),
+            patch("monika.infrastructure.providers.llm_factory.create_client"),
         ]
         self.mock_clients = []
         mock_c = MagicMock()
@@ -112,10 +112,11 @@ class TestPerAssetStageRecovery(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "analysis.prefetch.stage2_prefetcher.Stage2DataBundler.fetch_bundle", new_callable=AsyncMock
+                "monika.application.analysis.prefetch.stage2_prefetcher.Stage2DataBundler.fetch_bundle",
+                new_callable=AsyncMock,
             ) as mock_bundle,
             patch(
-                "analysis.tools.tool_executor.ToolExecutor._tool_submit_asset_analysis",
+                "monika.application.analysis.tools.tool_executor.ToolExecutor._tool_submit_asset_analysis",
                 new_callable=AsyncMock,
                 side_effect=on_submit,
             ) as mock_submit,
@@ -130,16 +131,19 @@ class TestPerAssetStageRecovery(unittest.IsolatedAsyncioTestCase):
             patch.object(stage, "_get_specialist_reliability_cached", new_callable=AsyncMock, return_value={}),
             patch.object(stage, "_run_second_opinion_check", new_callable=AsyncMock, return_value={"agree": True}),
             patch(
-                "analysis.validators.output_verifier.OutputVerifier.verify_and_correct",
+                "monika.application.analysis.validators.output_verifier.OutputVerifier.verify_and_correct",
                 new_callable=AsyncMock,
                 return_value=({"decision": "buy"}, []),
             ),
             patch(
-                "analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+                "monika.application.analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
                 new_callable=AsyncMock,
                 return_value=(7, "default"),
             ),
-            patch("utils.api.claude_rate_limiter.ClaudeRateLimiter.acquire_session_slot", new_callable=AsyncMock),
+            patch(
+                "monika.infrastructure.api.claude_rate_limiter.ClaudeRateLimiter.acquire_session_slot",
+                new_callable=AsyncMock,
+            ),
         ):
             mock_bundle.return_value = ("A" * 600, {"EURUSD": {}})
 
@@ -190,7 +194,8 @@ class TestPerAssetStageRecovery(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "analysis.prefetch.stage2_prefetcher.Stage2DataBundler.fetch_bundle", new_callable=AsyncMock
+                "monika.application.analysis.prefetch.stage2_prefetcher.Stage2DataBundler.fetch_bundle",
+                new_callable=AsyncMock,
             ) as mock_bundle,
             patch.object(stage, "_check_minimum_data_quality", new_callable=AsyncMock, return_value=(True, "ok")),
             patch.object(
@@ -202,11 +207,14 @@ class TestPerAssetStageRecovery(unittest.IsolatedAsyncioTestCase):
             patch.object(stage, "_get_specialist_trust_weights", new_callable=AsyncMock, return_value={}),
             patch.object(stage, "_get_specialist_reliability_cached", new_callable=AsyncMock, return_value={}),
             patch(
-                "analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+                "monika.application.analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
                 new_callable=AsyncMock,
                 return_value=(7, "default"),
             ),
-            patch("utils.api.claude_rate_limiter.ClaudeRateLimiter.acquire_session_slot", new_callable=AsyncMock),
+            patch(
+                "monika.infrastructure.api.claude_rate_limiter.ClaudeRateLimiter.acquire_session_slot",
+                new_callable=AsyncMock,
+            ),
         ):
             mock_bundle.return_value = ("A" * 600, {"EURUSD": {}})
 

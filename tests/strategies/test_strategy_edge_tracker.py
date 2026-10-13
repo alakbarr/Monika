@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from tests.conftest import create_mock_async_session
-from utils.analytics.strategy_edge_tracker import compute_strategy_pair_stats, apply_disable_flags
+from monika.core.analytics.strategy_edge_tracker import compute_strategy_pair_stats, apply_disable_flags
 
 
 @pytest.mark.asyncio

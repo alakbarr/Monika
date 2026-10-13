@@ -6,8 +6,8 @@
 from unittest.mock import MagicMock, patch
 import pytest
 
-from execution.mt5_client import _connect, _is_connected, MT5ProfileMismatchError, MT5Client
-from risk.pending_action import PendingActionStatus, PendingActionManager
+from monika.infrastructure.brokers.mt5_client import _connect, _is_connected, MT5ProfileMismatchError, MT5Client
+from monika.domain.risk.pending_action import PendingActionStatus, PendingActionManager
 
 
 def test_connect_login_pinning_mismatch():

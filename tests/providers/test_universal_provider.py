@@ -11,14 +11,14 @@ Streaming Think Scrubber, Decimal Pricing Accounting, and Trajectory Compression
 from types import SimpleNamespace
 import pytest
 
-from analysis.providers.backend_identity import (
+from monika.infrastructure.providers.backend_identity import (
     BackendIdentity,
     FailoverCandidateSkipper,
     FailureScope,
 )
-from analysis.providers.streaming_think_scrubber import StreamingThinkScrubber
-from analysis.providers.trajectory_compressor import TrajectoryCompressor
-from utils.analytics.pricing import (
+from monika.infrastructure.providers.streaming_think_scrubber import StreamingThinkScrubber
+from monika.infrastructure.providers.trajectory_compressor import TrajectoryCompressor
+from monika.core.analytics.pricing import (
     CanonicalUsage,
     cost_usd,
     cost_from_canonical,

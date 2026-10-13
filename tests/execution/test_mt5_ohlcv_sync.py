@@ -3,8 +3,8 @@ import pandas as pd
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from tests.conftest import create_mock_async_session
-from execution.mt5_client import MT5Client
-from database.models import PriceOHLCV
+from monika.infrastructure.brokers.mt5_client import MT5Client
+from monika.infrastructure.database.models import PriceOHLCV
 
 
 class TestMT5OHLCVSync:

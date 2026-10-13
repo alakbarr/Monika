@@ -4,8 +4,8 @@ Unit tests for skill usage tracker and curator lifecycle transitions.
 
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from skills.usage_tracker import SkillUsageTracker
-from skills.curator import SkillCurator
+from monika.application.skills.usage_tracker import SkillUsageTracker
+from monika.application.skills.curator import SkillCurator
 
 
 def test_usage_tracker(tmp_path: Path):

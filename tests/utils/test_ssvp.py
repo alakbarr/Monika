@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 import datetime
 from unittest.mock import AsyncMock, MagicMock
-from utils.protocol.context_snapshot import compute_context_snapshot_id, detect_context_version_split
+from monika.application.protocol.context_snapshot import compute_context_snapshot_id, detect_context_version_split
 
 
 @pytest.mark.asyncio

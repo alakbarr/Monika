@@ -6,9 +6,9 @@ Verifies slippage calculation, partial fill detection, and Position model persis
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from tests.conftest import create_mock_async_session
-from database.models import Position, PaperTradeRecord
-from execution.service.audit_logger import TradeAuditLogger
-from risk.position_sizing import SizingResult
+from monika.infrastructure.database.models import Position, PaperTradeRecord
+from monika.infrastructure.brokers.audit_logger import TradeAuditLogger
+from monika.domain.risk.position_sizing import SizingResult
 
 
 def test_position_model_partial_fill_and_slippage_columns():

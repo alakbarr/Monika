@@ -3,7 +3,7 @@ import threading
 import time
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from execution.mt5_client import (
+from monika.infrastructure.brokers.mt5_client import (
     MT5Client,
     PRIORITY_CRITICAL,
     PRIORITY_STANDARD,
@@ -72,7 +72,7 @@ async def test_mt5_disconnect_drains_pending_futures():
     t_pending = asyncio.create_task(client._run(pending_task, priority=PRIORITY_BACKGROUND))
 
     # Trigger disconnect while pending_task is guaranteed in queue
-    with patch("execution.mt5_client._disconnect", return_value=None):
+    with patch("monika.infrastructure.brokers.mt5_client._disconnect", return_value=None):
         await client.disconnect()
     await t_block
 

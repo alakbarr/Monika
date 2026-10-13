@@ -1,7 +1,7 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from scheduler.cycle_scheduler import CycleScheduler
+from monika.application.scheduler.cycle_scheduler import CycleScheduler
 
 
 class TestCycleScheduler:
@@ -43,7 +43,7 @@ class TestCycleScheduler:
 
     @pytest.mark.asyncio
     @patch("scheduler.graph_cycle_scheduler.build_trading_graph")
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     @patch("scheduler.cycle_scheduler.get_session")
     async def test_run_once_success(
         self,
@@ -55,7 +55,7 @@ class TestCycleScheduler:
         mock_fundamental,
         mock_per_asset,
     ):
-        from scheduler.graph_cycle_scheduler import GraphCycleScheduler
+        from monika.application.scheduler.graph_cycle_scheduler import GraphCycleScheduler
 
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -115,7 +115,7 @@ class TestCycleScheduler:
 
     @pytest.mark.asyncio
     @patch("scheduler.graph_cycle_scheduler.build_trading_graph")
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     @patch("scheduler.cycle_scheduler.get_session")
     async def test_run_once_fundamental_failure(
         self,
@@ -127,7 +127,7 @@ class TestCycleScheduler:
         mock_fundamental,
         mock_per_asset,
     ):
-        from scheduler.graph_cycle_scheduler import GraphCycleScheduler
+        from monika.application.scheduler.graph_cycle_scheduler import GraphCycleScheduler
 
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -173,7 +173,7 @@ class TestCycleScheduler:
     @pytest.mark.asyncio
     @patch("data_sources.central_bank_watch.CentralBankWatchFetcher")
     @patch("data_sources.bond_yields_fetcher.BondYieldFetcher")
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     @patch("scheduler.macro_data_scheduler.get_session")
     @patch("scheduler.cycle_scheduler.get_session")
     @patch("data_sources.coinglass_funding.CoinglasFundingFetcher")
@@ -186,7 +186,7 @@ class TestCycleScheduler:
     @patch("data_sources.fred_treasury_yield.FREDDataFetcher")
     @patch("data_sources.cftc_cot.CFTCCOTFetcher")
     @patch("data_sources.dxy_yfinance.DXYFetcher")
-    @patch("utils.analytics.paper_tracker.PaperTracker")
+    @patch("monika.core.analytics.paper_tracker.PaperTracker")
     async def test_refresh_data_sources(
         self,
         mock_paper_tracker,
@@ -242,7 +242,7 @@ class TestCycleScheduler:
 
     @pytest.mark.asyncio
     @patch("scheduler.graph_cycle_scheduler.build_trading_graph")
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     @patch("scheduler.cycle_scheduler.get_session")
     async def test_run_once_data_stale(
         self,
@@ -254,7 +254,7 @@ class TestCycleScheduler:
         mock_fundamental,
         mock_per_asset,
     ):
-        from scheduler.graph_cycle_scheduler import GraphCycleScheduler
+        from monika.application.scheduler.graph_cycle_scheduler import GraphCycleScheduler
 
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -282,22 +282,24 @@ class TestCycleScheduler:
         assert summary["reason"] == "stale_data"
 
     @pytest.mark.asyncio
-    @patch("database.db.get_session")
-    @patch("utils.analytics.strategy_edge_tracker.apply_disable_flags", side_effect=Exception("Strategy DB Error"))
+    @patch("monika.infrastructure.database.db.get_session")
     @patch(
-        "utils.calibration.cds_threshold_calibrator.run_calibration_if_due",
+        "monika.core.analytics.strategy_edge_tracker.apply_disable_flags", side_effect=Exception("Strategy DB Error")
+    )
+    @patch(
+        "monika.core.calibration.cds_threshold_calibrator.run_calibration_if_due",
         return_value={"status": "calibrated", "recommendations": ["tighten"]},
     )
     @patch(
-        "utils.analytics.adversarial_outcome_tracker.compute_adversarial_check_correlation",
+        "monika.core.analytics.adversarial_outcome_tracker.compute_adversarial_check_correlation",
         side_effect=ImportError("Mock import error"),
     )
     @patch(
-        "utils.analytics.news_classification_tracker.compute_news_classification_calibration",
+        "monika.core.analytics.news_classification_tracker.compute_news_classification_calibration",
         return_value={"over_classification_suspected": False},
     )
-    @patch("utils.calibration.confidence_calibrator.apply_calibration_correction", return_value=None)
-    @patch("analysis.memory.lesson_consolidator.consolidate_lessons_to_playbook", return_value=None)
+    @patch("monika.core.calibration.confidence_calibrator.apply_calibration_correction", return_value=None)
+    @patch("monika.application.analysis.memory.lesson_consolidator.consolidate_lessons_to_playbook", return_value=None)
     async def test_run_daily_calibrations_fault_tolerance(
         self, mock_consolidate, mock_confidence, mock_news, mock_adv, mock_cds, mock_strategy, mock_db_session, settings
     ):
@@ -333,7 +335,7 @@ class TestCycleScheduler:
         mock_result = MagicMock()
 
         # Mock 20 records: 15 wins (tp_hit), 5 losses (sl_hit)
-        from database.models import PaperTradeRecord
+        from monika.infrastructure.database.models import PaperTradeRecord
 
         records = [
             PaperTradeRecord(symbol="XAUUSD", status="closed", exit_reason="tp_hit" if i < 15 else "sl_hit")

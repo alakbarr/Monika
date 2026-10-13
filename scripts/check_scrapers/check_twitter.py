@@ -24,13 +24,6 @@ _src_dir = os.path.join(_repo_dir, "src")
 sys.path.insert(0, _repo_dir)
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
-
 # Muat environment variables dari file .env
 try:
     from dotenv import load_dotenv
@@ -44,7 +37,7 @@ try:
 except Exception:
     pass
 
-from scrapers.models import ScrapedTweet
+from monika.infrastructure.data_ingestion.scrapers.models import ScrapedTweet
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("CheckTwitter")
@@ -88,7 +81,7 @@ def check_twitter_sessions(session_dir: Path):
 def check_twitter(headless: bool = False, list_url: str = None, max_age: int = 1440, pause: int = 3) -> dict:
     """Menguji TwitterWatchScraper."""
     logger.info(f"==> Menguji TwitterWatchScraper (Headless: {headless}, Max Age: {max_age}m)")
-    from scrapers.social.twitter_watch import TwitterWatchScraper
+    from monika.infrastructure.data_ingestion.scrapers.social.twitter_watch import TwitterWatchScraper
 
     scraper = None
     start_time = time.time()

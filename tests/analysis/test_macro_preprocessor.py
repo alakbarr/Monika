@@ -2,15 +2,20 @@ from tests.conftest import create_mock_async_session
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.prefetch.macro_preprocessor import MacroPreprocessor, _check_cache, _set_cache, _PREPROCESSOR_CACHE
-from database.models import COTReport, TechnicalIndicator, EconomicCalendar, SystemConfig
+from monika.application.analysis.prefetch.macro_preprocessor import (
+    MacroPreprocessor,
+    _check_cache,
+    _set_cache,
+    _PREPROCESSOR_CACHE,
+)
+from monika.infrastructure.database.models import COTReport, TechnicalIndicator, EconomicCalendar, SystemConfig
 from datetime import datetime, timezone, timedelta
 
 
 class TestMacroPreprocessor:
     @pytest.fixture
     def preprocessor(self):
-        from config.settings import load_all_config
+        from monika.core.config.settings import load_all_config
 
         settings = load_all_config()
         return MacroPreprocessor(api_key="test_key", settings=settings)
@@ -123,7 +128,7 @@ class TestMacroPreprocessor:
         assert res["USD"]["trend"] == "positive"
 
     @pytest.mark.asyncio
-    @patch("analysis.prefetch.macro_preprocessor.datetime")
+    @patch("monika.application.analysis.prefetch.macro_preprocessor.datetime")
     async def _ignore_test_run_all_and_save_insert(self, mock_datetime, preprocessor):
         mock_now = MagicMock()
         mock_now.isoformat.return_value = "2023-01-01T00:00:00Z"

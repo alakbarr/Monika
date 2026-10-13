@@ -1,8 +1,8 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock
-from analysis.debate.bull_analyst import generate_bull_rebuttal
-from analysis.debate.investment_judge import evaluate_debate
+from monika.application.analysis.debate.bull_analyst import generate_bull_rebuttal
+from monika.application.analysis.debate.investment_judge import evaluate_debate
 
 
 @pytest.mark.asyncio

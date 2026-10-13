@@ -6,10 +6,14 @@ import json
 import pytest
 from pathlib import Path
 
-from skills.curator import SkillCurator
-from skills.skill_manager import SkillManager
-from skills.skills_hub import SkillsHub
-from analysis.tools.domain.skill_tools import handle_skill_manage, SkillManageInput, handle_skills_list
+from monika.application.skills.curator import SkillCurator
+from monika.application.skills.skill_manager import SkillManager
+from monika.application.skills.skills_hub import SkillsHub
+from monika.application.analysis.tools.domain.skill_tools import (
+    handle_skill_manage,
+    SkillManageInput,
+    handle_skills_list,
+)
 
 
 @pytest.fixture
@@ -116,7 +120,7 @@ def test_skill_manager_protected_immunity_and_archival(temp_skills_dir):
 @pytest.mark.asyncio
 async def test_handle_skill_manage_tool_workflow(temp_skills_dir, monkeypatch):
     hub = SkillsHub(search_directories=[str(temp_skills_dir)])
-    from analysis.tools.domain import skill_tools
+    from monika.application.analysis.tools.domain import skill_tools
 
     monkeypatch.setattr(skill_tools, "_SKILLS_HUB", hub)
 

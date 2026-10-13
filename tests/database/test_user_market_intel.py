@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timezone, timedelta
-from database.models import UserMarketIntel, _utcnow
+from monika.infrastructure.database.models import UserMarketIntel, _utcnow
 
 
 def test_user_market_intel_instantiation():

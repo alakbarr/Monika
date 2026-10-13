@@ -12,8 +12,8 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from scheduler.cron_nlp_parser import parse_natural_schedule
-from scheduler.detached_cron_worker import DetachedCronWorker
+from monika.application.scheduler.cron_nlp_parser import parse_natural_schedule
+from monika.application.scheduler.detached_cron_worker import DetachedCronWorker
 
 
 # ==============================================================================

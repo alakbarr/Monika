@@ -18,12 +18,12 @@ import time
 from pathlib import Path
 import pytest
 
-from database.session_db_wal import SessionDbWal
-from database.fts5_cjk import Fts5SessionSearch
+from monika.infrastructure.database.session_db_wal import SessionDbWal
+from monika.infrastructure.database.fts5_cjk import Fts5SessionSearch
 
-from database.session_lifecycle import SessionLifecycleManager
-from database.repair_ledger import RepairLedger
-from analysis.providers.trajectory_compressor import TrajectoryCompressor
+from monika.infrastructure.database.session_lifecycle import SessionLifecycleManager
+from monika.infrastructure.database.repair_ledger import RepairLedger
+from monika.infrastructure.providers.trajectory_compressor import TrajectoryCompressor
 
 
 @pytest.fixture

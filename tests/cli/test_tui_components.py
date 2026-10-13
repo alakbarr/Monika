@@ -4,7 +4,7 @@
 # ==============================================================================
 
 import pytest
-from cli.tui import LiveTickerBanner
+from monika.interfaces.cli.tui import LiveTickerBanner
 
 
 def test_live_ticker_banner_empty_quotes():
@@ -80,7 +80,7 @@ def test_live_ticker_banner_trend_arrows():
 def test_tab_activation_handler():
     """Verify on_tabbed_content_tab_activated sets _tabs_mounted and triggers notify on tab switch."""
     from unittest.mock import MagicMock
-    from cli.tui import TradingDashboard
+    from monika.interfaces.cli.tui import TradingDashboard
 
     app = TradingDashboard()
     app.notify = MagicMock()
@@ -105,7 +105,7 @@ def test_tab_activation_handler():
 def test_market_tab_activation():
     """Verify Market tab activation triggers appropriate notification."""
     from unittest.mock import MagicMock
-    from cli.tui import TradingDashboard
+    from monika.interfaces.cli.tui import TradingDashboard
 
     app = TradingDashboard()
     app.notify = MagicMock()

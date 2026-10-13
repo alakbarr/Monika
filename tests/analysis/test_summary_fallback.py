@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
-from analysis.prefetch.news_digest import (
+from monika.application.analysis.prefetch.news_digest import (
     generate_deterministic_macro_summary,
     generate_deterministic_currency_summary,
 )

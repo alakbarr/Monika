@@ -4,7 +4,7 @@ import tempfile
 import pytest
 from unittest.mock import patch, MagicMock
 
-from analysis.memory.playbook_ledger import (
+from monika.application.analysis.memory.playbook_ledger import (
     PlaybookLedger,
     PlaybookState,
     PlaybookStatus,
@@ -12,7 +12,7 @@ from analysis.memory.playbook_ledger import (
     PlaybookLifecycleFSM,
     PlaybookLifecycleManager,
 )
-from analysis.memory.layered_memory import LayeredMemoryManager
+from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
 
 
 @pytest.fixture
@@ -153,8 +153,8 @@ async def test_layered_memory_gating_excludes_stale_and_archived():
 
     # Mock PlaybookLifecycleFSM and ProgressiveMemoryLoader
     with (
-        patch("analysis.memory.playbook_lifecycle.PlaybookLifecycleFSM") as MockFSM,
-        patch("analysis.memory.progressive_loader.ProgressiveMemoryLoader") as MockLoader,
+        patch("monika.application.analysis.memory.playbook_lifecycle.PlaybookLifecycleFSM") as MockFSM,
+        patch("monika.application.analysis.memory.progressive_loader.ProgressiveMemoryLoader") as MockLoader,
     ):
         mock_fsm = MagicMock()
         mock_fsm.get_status.return_value = PlaybookState.STALE

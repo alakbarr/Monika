@@ -5,15 +5,15 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 from tests.conftest import create_mock_async_session
-from risk.position_sizing import SizingResult
-from risk.risk_rule_plugin import (
+from monika.domain.risk.position_sizing import SizingResult
+from monika.domain.risk.risk_rule_plugin import (
     IRiskRulePlugin,
     IDynamicSizingPlugin,
     ModularRiskRegistry,
     RiskRuleVerdict,
 )
-from harness.contract import PluginMetadata, PluginCategory, PluginOrigin
-from risk.risk_gate import RiskGate, RiskVerdict
+from monika.application.harness.contract import PluginMetadata, PluginCategory, PluginOrigin
+from monika.domain.risk.risk_gate import RiskGate, RiskVerdict
 
 
 class AllowedSymbolsRule(IRiskRulePlugin):

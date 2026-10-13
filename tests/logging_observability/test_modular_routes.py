@@ -10,8 +10,8 @@ from fastapi.testclient import TestClient
 
 from tests.conftest import create_mock_async_session
 
-from logging_observability.dashboard.api import app
-from logging_observability.dashboard.routes import (
+from monika.interfaces.dashboard.api import app
+from monika.interfaces.dashboard.routes import (
     all_routers,
     system_router,
     tokens_router,
@@ -110,7 +110,7 @@ def test_steer_endpoint():
     """Verify /api/actions/steer accepts SteerRequest and records directive."""
     client = TestClient(app, headers={"X-API-Key": "test_adm_key"})
     with patch.dict(os.environ, {"DASHBOARD_API_KEYS": "admin:test_adm_key"}):
-        with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
+        with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_sess_cls:
             mock_session = create_mock_async_session()
             mock_sess_cls.return_value.__aenter__.return_value = mock_session
             response = client.post(
@@ -165,7 +165,7 @@ def test_modify_position_endpoint():
     """Verify POST /api/positions/{ticket}/modify updates position SL/TP."""
     client = TestClient(app, headers={"X-API-Key": "test_adm_key"})
     with patch.dict(os.environ, {"DASHBOARD_API_KEYS": "admin:test_adm_key"}):
-        with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
+        with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_sess_cls:
             mock_session = create_mock_async_session()
             mock_sess_cls.return_value.__aenter__.return_value = mock_session
 
@@ -194,7 +194,7 @@ def test_modify_position_endpoint():
 def test_market_indicators_endpoint():
     """Verify GET /api/market/indicators/{symbol} returns snapshot."""
     client = TestClient(app)
-    with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_sess_cls:
         mock_session = create_mock_async_session()
         mock_sess_cls.return_value.__aenter__.return_value = mock_session
 
@@ -214,7 +214,7 @@ def test_market_indicators_endpoint():
 def test_market_structure_endpoint():
     """Verify GET /api/market/structure/{symbol} returns structure levels."""
     client = TestClient(app)
-    with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
+    with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_sess_cls:
         mock_session = create_mock_async_session()
         mock_sess_cls.return_value.__aenter__.return_value = mock_session
 
@@ -276,7 +276,7 @@ def test_cycle_decision_lineage_endpoint():
 def test_parse_iso_datetime_helper():
     """Verify _parse_iso_datetime handles strings, dates, datetimes, and None safely."""
     from datetime import datetime, timezone, date
-    from logging_observability.dashboard.routes.system import _parse_iso_datetime
+    from monika.interfaces.dashboard.routes.system import _parse_iso_datetime
 
     assert _parse_iso_datetime(None) is None
     assert _parse_iso_datetime("invalid-date") is None
@@ -308,7 +308,7 @@ def test_parse_iso_datetime_helper():
 @pytest.mark.asyncio
 async def test_health_diagnostics_with_raw_string_timestamps():
     """Verify get_health_diagnostics succeeds without AttributeError when DB returns raw strings."""
-    from logging_observability.dashboard.routes.system import get_health_diagnostics
+    from monika.interfaces.dashboard.routes.system import get_health_diagnostics
 
     # Mock engine.connect to return string timestamps like SQLite does
     mock_conn = AsyncMock()
@@ -343,7 +343,7 @@ async def test_health_diagnostics_with_raw_string_timestamps():
     mock_engine = MagicMock()
     mock_engine.connect.return_value.__aenter__.return_value = mock_conn
 
-    with patch("database.db.get_engine", return_value=mock_engine):
+    with patch("monika.infrastructure.database.db.get_engine", return_value=mock_engine):
         diag = await get_health_diagnostics()
         assert diag["status"] == "ok"
         assert diag["last_analysis_cycle"] is not None

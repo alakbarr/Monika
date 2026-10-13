@@ -11,9 +11,9 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from database.session_db_wal import SessionDbWal
-from database.fts5_cjk import tokenize_cjk_bigram, Fts5SessionSearch
-from agent.state_rewind import (
+from monika.infrastructure.database.session_db_wal import SessionDbWal
+from monika.infrastructure.database.fts5_cjk import tokenize_cjk_bigram, Fts5SessionSearch
+from monika.application.agent.state_rewind import (
     StateRewindManager,
     RewindTargetUnavailableError,
     CARRIER_SIDE_EFFECT_PERSISTED,

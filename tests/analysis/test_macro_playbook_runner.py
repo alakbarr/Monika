@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from analysis.research.macro_playbook_runner import (
+from monika.application.analysis.research.macro_playbook_runner import (
     MacroPlaybookRunner,
     PlaybookMetadata,
     SymbolVerdict,

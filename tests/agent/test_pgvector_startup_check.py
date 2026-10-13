@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from agent.startup_checks import StartupChecker
-from database.models import Base
+from monika.application.agent.startup_checks import StartupChecker
+from monika.infrastructure.database.models import Base
 
 
 @pytest.mark.asyncio
@@ -46,14 +46,17 @@ async def test_startup_check_pgvector_present():
     mock_session_factory.return_value.__aenter__.return_value = mock_session
 
     checker = StartupChecker(settings, db_engine=mock_engine)
-    with patch("agent.startup_checks._get_env", return_value="postgresql+asyncpg://user:pass@localhost/db"):
-        with patch("database.db.AsyncSessionLocal", mock_session_factory):
+    with patch(
+        "monika.application.agent.startup_checks._get_env", return_value="postgresql+asyncpg://user:pass@localhost/db"
+    ):
+        with patch("monika.infrastructure.database.db.AsyncSessionLocal", mock_session_factory):
             with (
                 patch(
-                    "utils.analytics.cost_tracker.CostTracker.check_and_update_budget_status", new_callable=AsyncMock
+                    "monika.core.analytics.cost_tracker.CostTracker.check_and_update_budget_status",
+                    new_callable=AsyncMock,
                 ) as mock_budget,
                 patch(
-                    "analysis.memory.chronicle_writer.ChronicleWriter.sync_macro_reality_from_file",
+                    "monika.application.analysis.memory.chronicle_writer.ChronicleWriter.sync_macro_reality_from_file",
                     new_callable=AsyncMock,
                 ) as mock_sync,
             ):
@@ -112,8 +115,10 @@ async def test_startup_check_pgvector_missing_in_live_fails():
     mock_session_factory.return_value.__aenter__.return_value = mock_session
 
     checker = StartupChecker(settings, db_engine=mock_engine)
-    with patch("agent.startup_checks._get_env", return_value="postgresql+asyncpg://user:pass@localhost/db"):
-        with patch("database.db.AsyncSessionLocal", mock_session_factory):
+    with patch(
+        "monika.application.agent.startup_checks._get_env", return_value="postgresql+asyncpg://user:pass@localhost/db"
+    ):
+        with patch("monika.infrastructure.database.db.AsyncSessionLocal", mock_session_factory):
             ok, warnings = await checker._check_db_schema()
 
     assert ok is False  # Must fail in live environment!

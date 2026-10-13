@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from scrapers.news.rss_base import RssBaseScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
 
 class TestRssBaseScraper:

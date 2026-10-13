@@ -6,7 +6,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone, timedelta
-from risk.approval_hub import ApprovalHub, ApprovalRequest
+from monika.domain.risk.approval_hub import ApprovalHub, ApprovalRequest
 
 
 @pytest.fixture(autouse=True)

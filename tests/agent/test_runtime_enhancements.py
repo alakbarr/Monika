@@ -10,12 +10,12 @@ import time
 from pathlib import Path
 import pytest
 
-from bootstrap import race_dual_stack_socket, bootstrap_runtime
-from agent.monitors.startup_watchdog import StartupWatchdog
-from backtest.batch_scenario_runner import BatchScenarioRunner, MarketScenario, ScenarioResult
-from cli.subcommands import AVAILABLE_SUBCOMMANDS
-from cli.subcommands.daemon import DaemonSubcommand
-from cli.subcommands.simulation import SimulationSubcommand
+from monika.application.bootstrap import race_dual_stack_socket, bootstrap_runtime
+from monika.application.agent.monitors.startup_watchdog import StartupWatchdog
+from monika.application.backtest.batch_scenario_runner import BatchScenarioRunner, MarketScenario, ScenarioResult
+from monika.interfaces.cli.subcommands import AVAILABLE_SUBCOMMANDS
+from monika.interfaces.cli.subcommands.daemon import DaemonSubcommand
+from monika.interfaces.cli.subcommands.simulation import SimulationSubcommand
 
 
 class TestBootstrapAndSocketRacer:

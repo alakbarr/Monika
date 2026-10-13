@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
-from risk.risk_gate import RiskGate, SizingResult
-from execution.mt5_client import _calculate_dom_vwap
+from monika.domain.risk.risk_gate import RiskGate, SizingResult
+from monika.infrastructure.brokers.mt5_client import _calculate_dom_vwap
 
 
 def test_dom_ladder_walk_vwap():
@@ -170,7 +170,7 @@ async def test_risk_gate_evidence_gate():
     mock_analysis.market_regime = "ranging"
 
     with patch(
-        "analysis.strategies.evidence_store.EvidenceStore.validate_strategy_for_trade",
+        "monika.application.analysis.strategies.evidence_store.EvidenceStore.validate_strategy_for_trade",
         return_value=(False, "Negative expectancy -0.22"),
     ):
         ok, reason = await rg._check_evidence_gate(session, "EURUSD", analysis=mock_analysis)
@@ -178,7 +178,8 @@ async def test_risk_gate_evidence_gate():
         assert "Negative expectancy" in reason
 
     with patch(
-        "analysis.strategies.evidence_store.EvidenceStore.validate_strategy_for_trade", return_value=(True, "Approved")
+        "monika.application.analysis.strategies.evidence_store.EvidenceStore.validate_strategy_for_trade",
+        return_value=(True, "Approved"),
     ):
         ok, reason = await rg._check_evidence_gate(session, "EURUSD", analysis=mock_analysis)
         assert ok is True

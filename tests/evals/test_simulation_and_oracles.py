@@ -6,9 +6,9 @@
 import pytest
 from datetime import datetime, timezone, timedelta
 
-from evals.simulation_clock import SimulationClock, MarketStep, MarketStepSimulator
-from evals.oracles.macro_regime_oracle import evaluate_macro_regime
-from benchmark.token_drift_tracker import TokenDriftTracker, PromptSnapshot
+from monika.application.evals.simulation_clock import SimulationClock, MarketStep, MarketStepSimulator
+from monika.application.evals.oracles.macro_regime_oracle import evaluate_macro_regime
+from monika.application.benchmark.token_drift_tracker import TokenDriftTracker, PromptSnapshot
 
 
 def test_simulation_clock_advance_and_freeze():

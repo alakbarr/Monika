@@ -2,8 +2,8 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
-from analysis.tools.tool_executor import ToolExecutor
-from database.models import UserMarketIntel, MarketChronicle
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.infrastructure.database.models import UserMarketIntel, MarketChronicle
 
 
 class TestMarketIntelligenceTools:

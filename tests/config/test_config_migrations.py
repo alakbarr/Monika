@@ -1,5 +1,5 @@
 import pytest
-from config.config_migrations import migrate_settings, CURRENT_CONFIG_VERSION
+from monika.core.config.config_migrations import migrate_settings, CURRENT_CONFIG_VERSION
 
 
 def test_migrate_settings_backfills_sections():

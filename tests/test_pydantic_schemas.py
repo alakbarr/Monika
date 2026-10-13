@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from analysis.schemas.pydantic_schemas import FundamentalBriefSchema, TradeDirection, ConfidenceLevel
+from monika.application.analysis.schemas.pydantic_schemas import FundamentalBriefSchema, TradeDirection, ConfidenceLevel
 
 
 def test_fundamental_brief_schema_valid():
@@ -19,7 +19,7 @@ def test_fundamental_brief_schema_valid():
 
 
 def test_submit_asset_analysis_trade_validation():
-    from analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema, EntryCondition
+    from monika.application.analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema, EntryCondition
 
     # 1. Buy without stop_loss should fail
     with pytest.raises(ValidationError):
@@ -83,7 +83,7 @@ def test_submit_asset_analysis_trade_validation():
 
 
 def test_submit_asset_analysis_symbol_aliases_and_normalization():
-    from analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema
+    from monika.application.analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema
 
     # Test alias resolution
     for alias_key in ("asset", "pair", "ticker", "instrument", "symbol_name", "target_asset", "currency_pair"):
@@ -111,7 +111,7 @@ def test_submit_asset_analysis_symbol_aliases_and_normalization():
 
 
 def test_coerce_float_and_coerce_int_helpers():
-    from analysis.schemas.pydantic_schemas import coerce_float, coerce_int
+    from monika.application.analysis.schemas.pydantic_schemas import coerce_float, coerce_int
 
     # Float coercion
     assert coerce_float(58.4) == 58.4
@@ -141,7 +141,7 @@ def test_coerce_float_and_coerce_int_helpers():
 
 
 def test_key_data_points_used_string_and_percentage_coercion():
-    from analysis.schemas.pydantic_schemas import KeyDataPointsUsed
+    from monika.application.analysis.schemas.pydantic_schemas import KeyDataPointsUsed
 
     # 1. String with %, N/A, and +/-
     kdp = KeyDataPointsUsed.model_validate(
@@ -175,7 +175,7 @@ def test_key_data_points_used_string_and_percentage_coercion():
 
 
 def test_priced_in_assessment_coercion():
-    from analysis.schemas.pydantic_schemas import PricedInAssessment
+    from monika.application.analysis.schemas.pydantic_schemas import PricedInAssessment
 
     pi = PricedInAssessment.model_validate(
         {
@@ -192,7 +192,7 @@ def test_priced_in_assessment_coercion():
 
 
 def test_submit_fundamental_brief_full_coercion():
-    from analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
+    from monika.application.analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
 
     payload = {
         "checklist": {"bias_vs_narrative_match": True, "contradiction_existed": False},
@@ -237,7 +237,7 @@ def test_submit_fundamental_brief_full_coercion():
 
 
 def test_coerce_string_list_and_str_helpers():
-    from analysis.schemas.pydantic_schemas import coerce_str, coerce_string_list
+    from monika.application.analysis.schemas.pydantic_schemas import coerce_str, coerce_string_list
 
     # 1. coerce_str
     assert coerce_str("  plain text  ") == "plain text"
@@ -272,7 +272,7 @@ def test_coerce_string_list_and_str_helpers():
 
 def test_submit_asset_analysis_key_news_events_considered_dict_at_index_5():
     """Exact reproduction test for the reported log warning: dictionary at index 5."""
-    from analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema, EntryCondition
+    from monika.application.analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema, EntryCondition
 
     payload = {
         "symbol": "XAUUSD",
@@ -310,7 +310,7 @@ def test_submit_asset_analysis_key_news_events_considered_dict_at_index_5():
 
 
 def test_upcoming_risk_events_coercion_robustness():
-    from analysis.schemas.pydantic_schemas import UpcomingRiskEvent
+    from monika.application.analysis.schemas.pydantic_schemas import UpcomingRiskEvent
 
     # 1. Plain string
     evt1 = UpcomingRiskEvent.model_validate("US CPI Release (high impact)")
@@ -327,7 +327,7 @@ def test_upcoming_risk_events_coercion_robustness():
 
 def test_inline_refs_preserves_nullable_numbers_for_gemini_tools():
     import jsonschema
-    from analysis.schemas.schemas import SubmitFundamentalBriefSchema, _inline_refs
+    from monika.application.analysis.schemas.schemas import SubmitFundamentalBriefSchema, _inline_refs
 
     raw_schema = SubmitFundamentalBriefSchema.model_json_schema()
     inlined = _inline_refs(raw_schema)
@@ -374,7 +374,11 @@ def test_inline_refs_preserves_nullable_numbers_for_gemini_tools():
 
 
 def test_reevaluation_trigger_and_entry_condition_xml_and_string_coercion():
-    from analysis.schemas.pydantic_schemas import ReevaluationTrigger, EntryCondition, SubmitAssetAnalysisSchema
+    from monika.application.analysis.schemas.pydantic_schemas import (
+        ReevaluationTrigger,
+        EntryCondition,
+        SubmitAssetAnalysisSchema,
+    )
 
     # 1. XML parameter string in ReevaluationTrigger
     xml_trig = '<parameter name="type">\nprice_level</parameter>\n<parameter name="detail">Wait until price breaks above 2450</parameter>'
@@ -407,7 +411,7 @@ def test_reevaluation_trigger_and_entry_condition_xml_and_string_coercion():
 
 
 def test_submit_fundamental_brief_checklist_resilience():
-    from analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
+    from monika.application.analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
 
     base_payload = {
         "macro_narrative": "Comprehensive US disinflation narrative with solid labor conditions.",

@@ -5,8 +5,8 @@ Tests list-based fallback configuration, deduplication, and max_cost_per_call gu
 
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
-from analysis.providers.llm_factory import LLMFactory, FallbackClientWrapper
-from config.schemas import TaskRoleConfig
+from monika.infrastructure.providers.llm_factory import LLMFactory, FallbackClientWrapper
+from monika.core.config.schemas import TaskRoleConfig
 
 
 def test_task_role_config_schema_validation():

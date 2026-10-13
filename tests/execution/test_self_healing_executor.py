@@ -1,7 +1,7 @@
 import pytest
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
-from execution.service.self_healing_executor import MT5SelfHealingExecutor
+from monika.application.execution.service.self_healing_executor import MT5SelfHealingExecutor
 
 
 @pytest.mark.asyncio

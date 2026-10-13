@@ -7,11 +7,11 @@ import shutil
 import tempfile
 import pytest
 
-from skills.skills_guard import SkillsGuard
-from skills.skills_hub import SkillsHub
-from skills.continuous_learning import ContinuousLearner, handle_learn_skill, LearnSkillInput
-from analysis.tools.domain.todo_tool import handle_manage_todo, TodoActionInput, TodoTracker
-from analysis.tools.domain.cron_tool import handle_manage_cron, CronActionInput, CronRegistry
+from monika.application.skills.skills_guard import SkillsGuard
+from monika.application.skills.skills_hub import SkillsHub
+from monika.application.skills.continuous_learning import ContinuousLearner, handle_learn_skill, LearnSkillInput
+from monika.application.analysis.tools.domain.todo_tool import handle_manage_todo, TodoActionInput, TodoTracker
+from monika.application.analysis.tools.domain.cron_tool import handle_manage_cron, CronActionInput, CronRegistry
 
 
 def test_skills_guard_ast_audit():

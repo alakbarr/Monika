@@ -2,8 +2,8 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
-from analysis.prefetch.digest_slice_generator import DigestSliceGenerator
-from database.models import NewsItem, NewsDigestSlice
+from monika.application.analysis.prefetch.digest_slice_generator import DigestSliceGenerator
+from monika.infrastructure.database.models import NewsItem, NewsDigestSlice
 
 
 class TestDigestSliceGenerator:

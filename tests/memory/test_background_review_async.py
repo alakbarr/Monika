@@ -5,8 +5,8 @@ Unit tests for async background review and ReadBeforeWriteGuard.
 import asyncio
 import pytest
 from pathlib import Path
-from analysis.memory.background_review import BackgroundReviewEngine
-from analysis.memory.skill_crystallizer import ReadBeforeWriteGuard
+from monika.application.analysis.memory.background_review import BackgroundReviewEngine
+from monika.application.analysis.memory.skill_crystallizer import ReadBeforeWriteGuard
 
 
 @pytest.mark.asyncio

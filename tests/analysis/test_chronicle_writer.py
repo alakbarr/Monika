@@ -2,8 +2,8 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone
-from analysis.memory.chronicle_writer import ChronicleWriter
-from database.models import NewsItem, FundamentalBrief, MarketChronicle
+from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+from monika.infrastructure.database.models import NewsItem, FundamentalBrief, MarketChronicle
 
 
 class TestChronicleWriter:

@@ -8,8 +8,8 @@ from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from telegram_bot.chat_agent import ChatAgent, PendingAction
-from telegram_bot.command_router import CommandRouter
+from monika.interfaces.telegram.chat_agent import ChatAgent, PendingAction
+from monika.interfaces.telegram.command_router import CommandRouter
 
 
 def test_command_router_3_tier_buttons():
@@ -59,7 +59,7 @@ async def test_chat_agent_session_approval_expiry():
 
 
 @pytest.mark.asyncio
-@patch("telegram_bot.chat_agent.get_session")
+@patch("monika.interfaces.telegram.chat_agent.get_session")
 async def test_chat_agent_approve_for_session(mock_get_session):
     mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
@@ -87,8 +87,8 @@ async def test_chat_agent_approve_for_session(mock_get_session):
 
 
 @pytest.mark.asyncio
-@patch("telegram_bot.chat_agent.get_client_for_task")
-@patch("telegram_bot.chat_agent.get_session")
+@patch("monika.interfaces.telegram.chat_agent.get_client_for_task")
+@patch("monika.interfaces.telegram.chat_agent.get_session")
 async def test_chat_agent_auto_execute_when_session_approved(mock_get_session, mock_get_client):
     mock_session = create_mock_async_session()
     mock_session.add = MagicMock()

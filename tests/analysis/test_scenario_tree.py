@@ -1,6 +1,6 @@
 import pytest
 import json
-from analysis.scenario_tree import ScenarioTreeEngine, ScenarioTree, ScenarioNode
+from monika.application.analysis.scenario_tree import ScenarioTreeEngine, ScenarioTree, ScenarioNode
 
 
 def test_scenario_tree_generation_bullish():

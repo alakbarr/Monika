@@ -6,10 +6,10 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import MagicMock, patch, AsyncMock
 
-from utils.clock import ensure_utc
-from database.models import Base, SystemConfig, NewsItem
-from scheduler.unified_cron_engine import UnifiedCronEngine
-from scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
+from monika.core.primitives.clock import ensure_utc
+from monika.infrastructure.database.models import Base, SystemConfig, NewsItem
+from monika.application.scheduler.unified_cron_engine import UnifiedCronEngine
+from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy import select
 
@@ -109,7 +109,7 @@ def test_fxssi_sentiment_fetch_clean_read_phase_order():
     guaranteeing that Query-invoked autoflush is impossible.
     """
     import inspect
-    from scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
+    from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
 
     source = inspect.getsource(FXSSISentimentFetcher.fetch)
     pos_select_cfg = source.find("select(SystemConfig).where(SystemConfig.key == cfg_key)")

@@ -8,22 +8,22 @@ import time
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from agent.repetition_guard import (
+from monika.application.agent.repetition_guard import (
     is_runaway_repetition,
     is_repetition_dominated,
     sanitize_repetition_in_transcript,
     REPETITION_LOOP_INTERRUPTED,
 )
-from agent.empty_response_guard import (
+from monika.application.agent.empty_response_guard import (
     EmptyResponseGuard,
     MAX_CONSECUTIVE_EMPTY_FOR_FAILOVER,
 )
-from agent.scratchpad_guard import (
+from monika.application.agent.scratchpad_guard import (
     has_incomplete_scratchpad,
     extract_reasoning_and_content,
     close_dangling_scratchpad,
 )
-from agent.estop import (
+from monika.application.agent.estop import (
     arm_estop,
     disarm_estop,
     is_estop_active,
@@ -31,22 +31,22 @@ from agent.estop import (
     ESTOPActiveError,
     get_estop_details,
 )
-from agent.turn_preflight_gate import (
+from monika.application.agent.turn_preflight_gate import (
     WallClockBudgetManager,
     TurnPreflightGate,
     RUN_BUDGET_WRAPUP_NOTICE,
 )
-from agent.turn_tool_round import (
+from monika.application.agent.turn_tool_round import (
     TurnToolRoundCoordinator,
     ToolCallSpec,
 )
-from provider.credential_pool import (
+from monika.infrastructure.credentials.credential_pool import (
     CredentialPool,
     CredentialStatus,
     KeyHealth,
 )
-from utils.llm.prompt_caching import PromptCacheManager
-from analysis.providers.capabilities import get_model_capabilities
+from monika.infrastructure.llm.prompt_caching import PromptCacheManager
+from monika.infrastructure.providers.capabilities import get_model_capabilities
 
 
 # ==============================================================================

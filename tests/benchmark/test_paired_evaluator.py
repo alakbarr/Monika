@@ -3,7 +3,7 @@ Unit tests for A/B Paired Strategy Evaluator (Phase 5.3).
 """
 
 import pytest
-from benchmark.paired_evaluator import PairedStrategyEvaluator, StrategyMetrics
+from monika.application.benchmark.paired_evaluator import PairedStrategyEvaluator, StrategyMetrics
 
 
 def test_paired_evaluator_metrics_calculation():

@@ -16,25 +16,25 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from analysis.tools.kernel.code_execution_rpc import (
+from monika.application.analysis.tools.kernel.code_execution_rpc import (
     CodeExecutionRpcServer,
     generate_monika_tools_client_code,
 )
-from analysis.tools.kernel.persistent_session_kernel import PersistentSessionKernel
-from analysis.tools.domain.code_execution_tool import (
+from monika.application.analysis.tools.kernel.persistent_session_kernel import PersistentSessionKernel
+from monika.application.analysis.tools.domain.code_execution_tool import (
     ExecuteCodeInput,
     handle_execute_code,
 )
-from execution.backends.local_backend import LocalTerminalBackend
-from analysis.mcp.oauth_handler import (
+from monika.infrastructure.sandboxes.local_backend import LocalTerminalBackend
+from monika.application.analysis.mcp.oauth_handler import (
     generate_pkce_pair,
     OAuthTokenStorage,
 )
-from analysis.mcp.mcp_serve import McpServerDispatcher
-from analysis.tools.domain.clarify_tool import ClarifyInput, handle_clarify_with_user
-from analysis.tools.domain.kanban_tools import KanbanBoardInput, handle_manage_kanban_board
-from analysis.tools.domain.computer_use_tool import ComputerUseInput, handle_computer_use
-from analysis.tools.unified_registry import unified_tool_registry
+from monika.application.analysis.mcp.mcp_serve import McpServerDispatcher
+from monika.application.analysis.tools.domain.clarify_tool import ClarifyInput, handle_clarify_with_user
+from monika.application.analysis.tools.domain.kanban_tools import KanbanBoardInput, handle_manage_kanban_board
+from monika.application.analysis.tools.domain.computer_use_tool import ComputerUseInput, handle_computer_use
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
 
 
 # ==============================================================================
@@ -157,7 +157,7 @@ print(f"CELL2_SUM={result}")
 
 @pytest.mark.asyncio
 async def test_handle_execute_code_domain_tool():
-    from analysis.tools.domain.code_execution_tool import shutdown_all_kernels
+    from monika.application.analysis.tools.domain.code_execution_tool import shutdown_all_kernels
 
     try:
         input_params = ExecuteCodeInput(

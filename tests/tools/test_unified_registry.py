@@ -1,9 +1,9 @@
 import pytest
 from pydantic import BaseModel, Field
 
-from analysis.tools.unified_registry import UnifiedToolRegistry
-from analysis.tools.kernel.env_sanitizer import sanitize_environment
-from analysis.tools.kernel.output_spiller import truncate_and_spill_output
+from monika.application.analysis.tools.unified_registry import UnifiedToolRegistry
+from monika.application.analysis.tools.kernel.env_sanitizer import sanitize_environment
+from monika.application.analysis.tools.kernel.output_spiller import truncate_and_spill_output
 
 
 class MockQuoteArgs(BaseModel):

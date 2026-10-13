@@ -3,14 +3,14 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
 from tests.conftest import create_mock_async_session
-from database.models import UserMarketIntel, ActivityLog, FundamentalBrief
-import utils.clock as clock
+from monika.infrastructure.database.models import UserMarketIntel, ActivityLog, FundamentalBrief
+import monika.core.primitives.clock as clock
 
 
 class TestUserIntelCycleInjection:
     @pytest.mark.asyncio
     async def test_data_node_populates_user_market_intel(self):
-        from graph.nodes.data_node import fetch_data_node
+        from monika.application.graph.nodes.data_node import fetch_data_node
 
         now = clock.now()
         mock_intel = UserMarketIntel(
@@ -46,13 +46,16 @@ class TestUserIntelCycleInjection:
         with patch("graph.nodes.data_node.get_session") as mock_gs:
             mock_gs.return_value.__aenter__.return_value = mock_session
             with (
-                patch("analysis.calculators.economic_surprise.compute_surprise_scores", new=AsyncMock(return_value=0)),
-                patch("analysis.prefetch.news_digest.NewsDigestProcessor") as mock_nd,
-                patch("analysis.prefetch.macro_preprocessor.MacroPreprocessor") as mock_mp,
+                patch(
+                    "monika.application.analysis.calculators.economic_surprise.compute_surprise_scores",
+                    new=AsyncMock(return_value=0),
+                ),
+                patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor") as mock_nd,
+                patch("monika.application.analysis.prefetch.macro_preprocessor.MacroPreprocessor") as mock_mp,
                 patch("indicators.technical.TechnicalIndicatorCalculator") as mock_calc,
                 patch("indicators.structure.MarketStructureAnalyzer") as mock_analyzer,
                 patch(
-                    "utils.validation.data_validator.validate_data_freshness",
+                    "monika.core.validation.data_validator.validate_data_freshness",
                     new=AsyncMock(return_value={"errors": [], "warnings": []}),
                 ),
             ):
@@ -71,14 +74,14 @@ class TestUserIntelCycleInjection:
 
     @pytest.mark.asyncio
     async def test_fundamental_stage_injects_intel_to_user_message(self):
-        from analysis.stages.fundamental_stage import FundamentalStage
+        from monika.application.analysis.stages.fundamental_stage import FundamentalStage
 
         mock_client = MagicMock()
         mock_client.run_agent = AsyncMock(return_value={"success": True, "brief_id": 1})
 
         with (
-            patch("analysis.providers.llm_factory.get_client_for_task", return_value=mock_client),
-            patch("analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_client),
+            patch("monika.infrastructure.providers.llm_factory.get_client_for_task", return_value=mock_client),
+            patch("monika.application.analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_client),
         ):
             stage = FundamentalStage(settings={"claude": {}, "trading": {}})
             stage.client = mock_client
@@ -114,9 +117,9 @@ class TestUserIntelCycleInjection:
             patch.object(stage, "_log", new=AsyncMock()),
             patch.object(stage, "_run_macro_debate", new=AsyncMock(return_value={"ran": False})),
             patch.object(stage, "_generate_deterministic_fallback_brief", new=AsyncMock(return_value=mock_brief)),
-            patch("analysis.memory.chronicle_writer.get_client_for_task", return_value=mock_client),
-            patch("analysis.memory.chronicle_writer.ChronicleWriter") as mock_cw,
-            patch("analysis.stages.fundamental_stage.Stage1DataBundler") as mock_bundler_cls,
+            patch("monika.application.analysis.memory.chronicle_writer.get_client_for_task", return_value=mock_client),
+            patch("monika.application.analysis.memory.chronicle_writer.ChronicleWriter") as mock_cw,
+            patch("monika.application.analysis.stages.fundamental_stage.Stage1DataBundler") as mock_bundler_cls,
         ):
             mock_cw.return_value.get_chronicle_context = AsyncMock(return_value="")
             mock_cw.return_value.get_condensed_chronicle_bullets = AsyncMock(return_value="")
@@ -212,7 +215,7 @@ class TestUserIntelCycleInjection:
 
     @pytest.mark.asyncio
     async def test_post_cycle_cleanup_consumed_and_expired(self):
-        from scheduler.graph_cycle_scheduler import GraphCycleScheduler
+        from monika.application.scheduler.graph_cycle_scheduler import GraphCycleScheduler
 
         now = clock.now()
         item_next_cycle = UserMarketIntel(
@@ -289,7 +292,7 @@ class TestUserIntelCycleInjection:
     @pytest.mark.asyncio
     async def test_per_asset_stage_bundle_intel_with_string_symbols(self):
         """Verify PerAssetStage specialist view includes user_market_intel with string affected_symbols."""
-        from analysis.stages.per_asset_stage import PerAssetStage
+        from monika.application.analysis.stages.per_asset_stage import PerAssetStage
 
         stage = PerAssetStage(settings={"trading": {}, "claude": {}})
         raw_bundle = {}

@@ -5,7 +5,7 @@
 
 import time
 import pytest
-from scheduler.unified_cron_engine import (
+from monika.application.scheduler.unified_cron_engine import (
     UnifiedCronEngine,
     DeliveryStatus,
     UnifiedCronJob,

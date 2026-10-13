@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
-from scheduler.market_data_scheduler import MarketDataScheduler
+from monika.application.scheduler.market_data_scheduler import MarketDataScheduler
 
 
 class TestMarketDataScheduler:

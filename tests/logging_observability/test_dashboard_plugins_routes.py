@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 
-from logging_observability.dashboard.api import app
+from monika.interfaces.dashboard.api import app
 
 
 @pytest.fixture

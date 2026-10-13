@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analysis.memory.skill_curator import SkillCurator
+from monika.application.analysis.memory.skill_curator import SkillCurator
 
 
 def test_calculate_similarity():
