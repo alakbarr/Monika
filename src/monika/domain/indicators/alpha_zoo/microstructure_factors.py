@@ -100,10 +100,12 @@ def microstructure_range_dispersion(df: pd.DataFrame) -> pd.Series:
     )
 )
 def microstructure_volume_weighted_momentum(df: pd.DataFrame) -> pd.Series:
-    pv = df["close"] * df["volume"]
-    vwap_fast = safe_div(pv.rolling(5).sum(), df["volume"].rolling(5).sum())
-    vwap_slow = safe_div(pv.rolling(14).sum(), df["volume"].rolling(14).sum())
-    return safe_div(vwap_fast - vwap_slow, vwap_slow)
+    close = pd.Series(df["close"])
+    vol = pd.Series(df["volume"])
+    pv = close * vol
+    vwap_fast = pd.Series(safe_div(pv.rolling(5).sum(), vol.rolling(5).sum()))
+    vwap_slow = pd.Series(safe_div(pv.rolling(14).sum(), vol.rolling(14).sum()))
+    return pd.Series(safe_div(vwap_fast - vwap_slow, vwap_slow))
 
 
 # ==============================================================================

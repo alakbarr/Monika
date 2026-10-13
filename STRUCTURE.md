@@ -38,6 +38,8 @@ Monika/
 │   ├── ROADMAP_SRC_MONIKA.md
 │   ├── SETUP_GUIDE.md
 │   ├── images
+│   ├── quality
+│   │   └── baseline.json
 │   └── ux-audit
 │       ├── COVERAGE.md
 │       ├── DECISIONS.md

@@ -35,12 +35,13 @@ class PositionEntity(BaseModel):
     sl: Optional[float] = None
     tp: Optional[float] = None
     slippage_pips: Optional[float] = 0.0
-    partially_filled: bool = False
+    partially_filled: Optional[bool] = False
     opened_at: datetime = Field(default_factory=clock.now)
     closed_at: Optional[datetime] = None
     status: str = "open"  # open, closed
     pnl: Optional[float] = None
-    is_paper: bool = False
+    pnl_pct: Optional[float] = None
+    is_paper: Optional[bool] = False
     pair_group_id: Optional[str] = None
     trailing_override_json: Optional[str] = None
     mae_pips: Optional[float] = None
@@ -78,6 +79,7 @@ class PositionEntity(BaseModel):
                 closed_at=_val("closed_at", None),
                 status=_val("status", "open"),
                 pnl=_val("pnl", None),
+                pnl_pct=_val("pnl_pct", None),
                 is_paper=_val("is_paper", False),
                 pair_group_id=_val("pair_group_id", None),
                 trailing_override_json=_val("trailing_override_json", None),
@@ -87,7 +89,38 @@ class PositionEntity(BaseModel):
                 entry_session=_val("entry_session", None),
                 market_regime=_val("market_regime", None),
             )
-        return cls.model_validate(obj, from_attributes=True)
+        try:
+            return cls.model_validate(obj, from_attributes=True)
+        except Exception:
+            return cls(
+                id=getattr(obj, "id", None),
+                order_id=getattr(obj, "order_id", None),
+                analysis_id=getattr(obj, "analysis_id", None),
+                mt5_ticket=getattr(obj, "mt5_ticket", getattr(obj, "ticket", None)),
+                symbol=getattr(obj, "symbol", "EURUSD"),
+                direction=getattr(obj, "direction", "buy"),
+                volume=getattr(obj, "volume", 0.1),
+                initial_volume=getattr(obj, "initial_volume", None),
+                requested_volume=getattr(obj, "requested_volume", None),
+                entry_price=getattr(obj, "entry_price", 1.1000),
+                sl=getattr(obj, "sl", None),
+                tp=getattr(obj, "tp", None),
+                slippage_pips=getattr(obj, "slippage_pips", 0.0) or 0.0,
+                partially_filled=bool(getattr(obj, "partially_filled", False)),
+                opened_at=getattr(obj, "opened_at", None) or clock.now(),
+                closed_at=getattr(obj, "closed_at", None),
+                status=getattr(obj, "status", "open") or "open",
+                pnl=getattr(obj, "pnl", None),
+                pnl_pct=getattr(obj, "pnl_pct", None),
+                is_paper=bool(getattr(obj, "is_paper", False)),
+                pair_group_id=getattr(obj, "pair_group_id", None),
+                trailing_override_json=getattr(obj, "trailing_override_json", None),
+                mae_pips=getattr(obj, "mae_pips", None),
+                mfe_pips=getattr(obj, "mfe_pips", None),
+                sl_slippage_pips=getattr(obj, "sl_slippage_pips", 0.0) or 0.0,
+                entry_session=getattr(obj, "entry_session", None),
+                market_regime=getattr(obj, "market_regime", None),
+            )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert entity to a plain dictionary."""

@@ -19,7 +19,7 @@
   "stubPath": "typings",
   "venvPath": ".",
   "venv": "venv",
-  "extraPaths": ["src", "."],
+  "extraPaths": ["src"],
   "typeCheckingMode": "standard",
   "reportMissingTypeStubs": false,
   "reportMissingImports": false,

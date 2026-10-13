@@ -385,12 +385,13 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
         timeframe: str = "H1",
         max_age_hours: float = 8.0,
         session: Optional[Any] = None,
+        as_of: Optional[datetime] = None,
     ) -> Optional[Dict[str, Any]]:
         sess: Optional[AsyncSession] = session or self.session
         if sess is not None:
-            return await self._query_timesfm_forecast(sess, symbol, timeframe, max_age_hours)
+            return await self._query_timesfm_forecast(sess, symbol, timeframe, max_age_hours, as_of=as_of)
         async with get_session() as new_session:
-            return await self._query_timesfm_forecast(new_session, symbol, timeframe, max_age_hours)
+            return await self._query_timesfm_forecast(new_session, symbol, timeframe, max_age_hours, as_of=as_of)
 
     async def _query_timesfm_forecast(
         self,
@@ -398,17 +399,20 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
         symbol: str,
         timeframe: str,
         max_age_hours: float,
+        as_of: Optional[datetime] = None,
     ) -> Optional[Dict[str, Any]]:
         import json
         from datetime import timedelta
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+        cutoff_base = as_of if as_of is not None else datetime.now(timezone.utc)
+        cutoff = cutoff_base - timedelta(hours=max_age_hours)
         stmt = (
             select(TimesFMForecast)
             .where(TimesFMForecast.symbol == symbol, TimesFMForecast.timeframe == timeframe)
             .where(TimesFMForecast.generated_at >= cutoff)
-            .order_by(desc(TimesFMForecast.generated_at))
-            .limit(1)
         )
+        if as_of is not None:
+            stmt = stmt.where(TimesFMForecast.generated_at <= as_of)
+        stmt = stmt.order_by(desc(TimesFMForecast.generated_at)).limit(1)
         res = await session.execute(stmt)
         rec = res.scalar_one_or_none()
         if rec and rec.quantiles_json:

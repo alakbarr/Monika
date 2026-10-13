@@ -1118,7 +1118,7 @@ async def handle_run_monte_carlo_simulation(
         for p in closed:
             if p.pnl is not None and initial_equity > 0:
                 returns.append(float(p.pnl) / initial_equity)
-            elif getattr(p, "pnl_pct", None) is not None:
+            elif p.pnl_pct is not None:
                 returns.append(float(p.pnl_pct) / 100.0)
 
         # Fallback to PaperTradeRecord if live closed positions are insufficient

@@ -255,8 +255,13 @@ class TestTimesFMAlphaIntegration:
             }
         }
 
+        mock_provider = MagicMock()
+        mock_provider.get_latest_timesfm_forecast = AsyncMock(return_value=mock_fc)
+        mock_provider.get_loss_streak = AsyncMock(return_value=0)
+
         with patch.object(sizer, "_get_instrument_spec_dynamic", new=AsyncMock(return_value=mock_spec)), \
              patch.object(sizer, "_get_regime_size_multiplier", new=AsyncMock(return_value=1.0)), \
+             patch("monika.domain.risk.ports.get_default_risk_data_provider", return_value=mock_provider), \
              patch("indicators.timesfm_engine.TimesFMEngine.get_latest_forecast", new=AsyncMock(return_value=mock_fc)):
 
             # BUY order should receive 1.15x multiplier

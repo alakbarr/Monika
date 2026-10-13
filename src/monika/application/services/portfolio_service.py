@@ -15,7 +15,8 @@ import logging
 from typing import Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import Position, Order
+from monika.domain.entities.position import PositionEntity
+from monika.domain.entities.order import OrderEntity
 from monika.infrastructure.database.repositories.position_repository import PositionRepository
 
 logger = logging.getLogger("Monika.Application.PortfolioService")
@@ -29,7 +30,7 @@ class PortfolioService:
         session: AsyncSession,
         symbol: Optional[str] = None,
         is_paper: Optional[bool] = None,
-    ) -> List[Position]:
+    ) -> List[PositionEntity]:
         """Fetch all currently open positions with optional symbol and paper filter."""
         repo = PositionRepository(session)
         return list(await repo.get_open_positions(symbol=symbol, is_paper=is_paper))
@@ -40,7 +41,7 @@ class PortfolioService:
         limit: int = 50,
         symbol: Optional[str] = None,
         is_paper: Optional[bool] = None,
-    ) -> List[Position]:
+    ) -> List[PositionEntity]:
         """Fetch recently closed positions with pagination and filters."""
         repo = PositionRepository(session)
         return list(await repo.get_closed_positions(limit=limit, symbol=symbol, is_paper=is_paper))
@@ -59,7 +60,7 @@ class PortfolioService:
         session: AsyncSession,
         symbol: Optional[str] = None,
         limit: int = 50,
-    ) -> List[Order]:
+    ) -> List[OrderEntity]:
         """Fetch pending or in-flight orders."""
         repo = PositionRepository(session)
         return list(await repo.get_active_orders(symbol=symbol, limit=limit))

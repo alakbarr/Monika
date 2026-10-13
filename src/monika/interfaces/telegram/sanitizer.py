@@ -51,6 +51,19 @@ def sanitize_telegram_html(text: str) -> str:
 
     content = re.sub(r"`([^`\n]+)`", _save_code, content)
 
+    # Step 2.5: Protect existing valid Telegram HTML tags before escaping raw HTML
+    valid_tags: list[str] = []
+    tag_pattern = re.compile(
+        r"</?(?:b|strong|i|em|u|ins|s|strike|del|span|tg-spoiler|code|pre|blockquote)(?:\s+[^>]*)?>|</?a(?:\s+href=['\"][^'\"]*['\"])?>",
+        re.IGNORECASE,
+    )
+
+    def _save_tag(match: re.Match) -> str:
+        valid_tags.append(match.group(0))
+        return f"___TGTAG_{len(valid_tags)-1}___"
+
+    content = tag_pattern.sub(_save_tag, content)
+
     # Step 3: Escape raw HTML characters in the body (&, <, >)
     content = html.escape(content, quote=False)
 
@@ -76,5 +89,9 @@ def sanitize_telegram_html(text: str) -> str:
     for i, pre_text in enumerate(pre_blocks):
         escaped_pre = html.escape(pre_text.strip(), quote=False)
         content = content.replace(f"___PRE_BLOCK_{i}___", f"<pre>{escaped_pre}</pre>")
+
+    # Step 10: Restore valid Telegram HTML tags
+    for i, tag_str in enumerate(valid_tags):
+        content = content.replace(f"___TGTAG_{i}___", tag_str)
 
     return content.strip()

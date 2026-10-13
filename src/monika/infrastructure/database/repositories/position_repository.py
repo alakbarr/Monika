@@ -110,6 +110,7 @@ class PositionRepository:
             order_id=order_id,
             analysis_id=analysis_id,
             pair_group_id=pair_group_id,
+            partially_filled=False,
             status="open",
             opened_at=datetime.now(timezone.utc),
         )

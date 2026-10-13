@@ -21,7 +21,9 @@ from logging_observability.dashboard.api import (
 def client():
     # Clear and prepare dependencies
     _dependencies.clear()
-    return TestClient(app)
+    import os
+    with patch.dict(os.environ, {"DASHBOARD_API_KEY": "test_admin_key"}):
+        yield TestClient(app, headers={"X-API-Key": "test_admin_key"})
 
 
 def test_trigger_cycle_success(client):
