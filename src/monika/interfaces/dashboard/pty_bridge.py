@@ -12,8 +12,8 @@ Preserves full backward compatibility for existing dashboard callers.
 from __future__ import annotations
 
 from monika.infrastructure.sandboxes.pty_bridge import (
-    PtySession,
     PtyBridgeManager,
+    PtySession,
     get_pty_bridge_manager,
 )
 

@@ -2,7 +2,7 @@
 Mendukung pemuatan dinamis dari settings.yaml (benchmark.tiers, benchmark.candidates, benchmark.router_matrix).
 """
 
-from typing import Optional, Dict, List, Any
+from typing import Any, Dict, List, Optional
 
 CANDIDATE_MODELS: list[str] = [
     # Anthropic

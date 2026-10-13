@@ -3,15 +3,15 @@ import asyncio
 import logging
 import sys
 
-from monika.application.benchmark.task_specs import TASKS
 from monika.application.benchmark.model_registry import (
     CANDIDATE_MODELS,
     get_candidate_models,
-    get_tier_models,
     get_router_matrix,
+    get_tier_models,
 )
-from monika.application.benchmark.runner import run_benchmark
 from monika.application.benchmark.report import build_report
+from monika.application.benchmark.runner import run_benchmark
+from monika.application.benchmark.task_specs import TASKS
 from monika.core.config.settings import load_all_config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -155,9 +155,11 @@ async def main():
         tournament = AlphaArenaTournament()
         print("\n=== ALPHA ARENA HEAD-TO-HEAD TOURNAMENT ===")
         import itertools
-        from monika.infrastructure.database.db import get_session
+
         from sqlalchemy import select
+
         from monika.application.benchmark.db_models import BenchmarkResult
+        from monika.infrastructure.database.db import get_session
 
         try:
             async with get_session() as sess:

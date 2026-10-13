@@ -6,14 +6,15 @@ before granting 'active' production status in PlaybookLifecycleManager.
 """
 
 import logging
-from typing import Dict, Any, Optional
 from datetime import datetime, timezone
-from sqlalchemy import select, desc
+from typing import Any, Dict, Optional
+
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import PaperTradeRecord, DecisionReflection
-from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
 from monika.application.analysis.memory.playbook_ledger import PlaybookLedger
+from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
+from monika.infrastructure.database.models import DecisionReflection, PaperTradeRecord
 
 logger = logging.getLogger("TradingAgent.Memory.CounterfactualSimulator")
 

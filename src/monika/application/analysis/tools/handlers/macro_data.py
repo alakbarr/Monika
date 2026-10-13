@@ -8,34 +8,35 @@ Direct execution without circular trampolines.
 """
 
 from typing import Any, Dict, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.base_handler import ToolHandler
-from monika.application.analysis.tools.registry import register_tool
 from monika.application.analysis.tools.handlers.macro_tools import (
+    handle_diff_central_bank_documents,
     handle_get_bond_yield_spreads,
-    handle_get_fedwatch_probabilities,
-    handle_get_funding_rate,
-    handle_get_eia_oil_inventory,
-    handle_get_treasury_yields,
-    handle_get_interest_rates,
     handle_get_cot_report,
-    handle_get_vix,
     handle_get_dxy,
-    handle_get_fear_greed_index,
+    handle_get_ecb_qt_progress,
     handle_get_economic_calendar,
     handle_get_economic_surprise,
+    handle_get_eia_oil_inventory,
+    handle_get_fear_greed_index,
+    handle_get_fed_net_liquidity_and_stress,
+    handle_get_fedwatch_probabilities,
+    handle_get_funding_rate,
+    handle_get_g10_macro_divergence,
+    handle_get_global_pmi_trend,
+    handle_get_interest_rates,
+    handle_get_macro_cross_report_synthesis,
     handle_get_precomputed_cot_signals,
     handle_get_surprise_summary,
-    handle_inspect_economic_report,
-    handle_diff_central_bank_documents,
-    handle_get_macro_cross_report_synthesis,
-    handle_get_g10_macro_divergence,
-    handle_get_fed_net_liquidity_and_stress,
     handle_get_treasury_auction_results,
-    handle_get_ecb_qt_progress,
-    handle_get_global_pmi_trend,
+    handle_get_treasury_yields,
+    handle_get_vix,
+    handle_inspect_economic_report,
 )
+from monika.application.analysis.tools.registry import register_tool
 
 
 @register_tool(

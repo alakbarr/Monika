@@ -1,7 +1,8 @@
 """Technical domain tool handlers (OHLCV, Indicators, SMC, Fibonacci, ATR)."""
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.TechnicalHandlers")
@@ -51,8 +52,9 @@ class TechnicalToolHandlers:
         self, symbol: str, timeframe: str = "H4", session: Optional[AsyncSession] = None, **kwargs
     ) -> Dict[str, Any]:
         if session:
-            from monika.infrastructure.database.models import SRZone, OrderBlock, FVGZone
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import FVGZone, OrderBlock, SRZone
 
             sr_rows = (
                 (
@@ -121,8 +123,9 @@ class TechnicalToolHandlers:
         self, symbol: str, timeframe: str = "H4", session: Optional[AsyncSession] = None, **kwargs
     ) -> Dict[str, Any]:
         if session:
-            from monika.infrastructure.database.models import StructureBreak
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import StructureBreak
 
             breaks = (
                 (

@@ -3,14 +3,13 @@ Example News Scraper Reference Plugin for Monika.
 Demonstrates external news/data ingestion source plugin without altering core scrapers.
 """
 
-from typing import Dict, Any, Optional
-
+from typing import Any, Dict, Optional
 
 from monika.application.harness.contract import (
-    TradingPlugin,
-    PluginMetadata,
     PluginCategory,
+    PluginMetadata,
     PluginOrigin,
+    TradingPlugin,
 )
 
 

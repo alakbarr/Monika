@@ -22,14 +22,15 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
-from monika.application.analysis.strategies.registry import StrategyRegistry
-from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
 from monika.application.analysis.calculators.intraday_level_optimizer import compute_optimal_levels
+from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
+from monika.application.analysis.strategies.base_strategy import CandleDict, EdgeSignal, EdgeStrategy
+from monika.application.analysis.strategies.registry import StrategyRegistry
 from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
 
 logger = logging.getLogger("TradingAgent.TriConvergentAlpha")

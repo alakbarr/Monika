@@ -21,8 +21,7 @@ import pandas as pd
 
 from monika.domain.indicators.alpha_zoo.meta import AlphaMeta
 from monika.domain.indicators.alpha_zoo.registry import FactorRegistry
-from monika.domain.indicators.factor_primitives import safe_div, ts_mean, ts_std, ts_min, ts_max
-
+from monika.domain.indicators.factor_primitives import safe_div, ts_max, ts_mean, ts_min, ts_std
 
 # ==============================================================================
 # CANDLESTICK STRUCTURE RATIOS

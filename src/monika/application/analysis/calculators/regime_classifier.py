@@ -1,10 +1,12 @@
 import json
 import logging
 from datetime import datetime, timezone
-import monika.core.primitives.clock as clock
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import TechnicalIndicator, VIXData, PriceOHLCV
+
+import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator, VIXData
 
 logger = logging.getLogger("TradingAgent.RegimeClassifier")
 
@@ -188,6 +190,7 @@ async def compute_bollinger_donchian_chop(
     session, symbol: str, timeframe: str, settings: dict, as_of: Optional[datetime] = None
 ) -> dict:
     import json
+
     from monika.core.validation.indicator_sanitizer import safe_float
 
     cfg = settings.get("trading", {}).get("edge_strategy", {}).get("volatility_regime", {})

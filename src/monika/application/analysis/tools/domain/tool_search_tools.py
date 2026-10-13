@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import logging
 from typing import Any, Optional
+
 from pydantic import BaseModel, Field
 
 from monika.application.analysis.tools.tool_search_engine import ToolSearchEngine

@@ -10,20 +10,20 @@ Exports the enterprise factor registry, schema metadata, and automatically regis
 quantitative factors for MetaTrader 5 markets.
 """
 
-from monika.domain.indicators.alpha_zoo.meta import AlphaCategory, AlphaDirection, AlphaMeta
-from monika.domain.indicators.alpha_zoo.registry import FactorRegistry, RegistryError, load_alpha_meta_from_py
-from monika.domain.indicators.alpha_zoo.vector_factor_engine import (
-    VectorFactorEngine,
-    VectorFactorResult,
-    FactorSignal,
-)
+import monika.domain.indicators.alpha_zoo.academic_factors  # noqa: F401
+import monika.domain.indicators.alpha_zoo.alpha101  # noqa: F401
+import monika.domain.indicators.alpha_zoo.fundamental_factors  # noqa: F401
+import monika.domain.indicators.alpha_zoo.microstructure_factors  # noqa: F401
 
 # Auto-register standard formulations
 import monika.domain.indicators.alpha_zoo.qlib158  # noqa: F401
-import monika.domain.indicators.alpha_zoo.alpha101  # noqa: F401
-import monika.domain.indicators.alpha_zoo.academic_factors  # noqa: F401
-import monika.domain.indicators.alpha_zoo.microstructure_factors  # noqa: F401
-import monika.domain.indicators.alpha_zoo.fundamental_factors  # noqa: F401
+from monika.domain.indicators.alpha_zoo.meta import AlphaCategory, AlphaDirection, AlphaMeta
+from monika.domain.indicators.alpha_zoo.registry import FactorRegistry, RegistryError, load_alpha_meta_from_py
+from monika.domain.indicators.alpha_zoo.vector_factor_engine import (
+    FactorSignal,
+    VectorFactorEngine,
+    VectorFactorResult,
+)
 
 __all__ = [
     "AlphaCategory",

@@ -1,11 +1,13 @@
 import logging
-import monika.core.primitives.clock as clock
-from typing import Dict, Any, Optional
-from monika.application.graph.state import TradingState
-from langchain_core.runnables.config import RunnableConfig
-from monika.infrastructure.database.db import get_session
 from datetime import datetime, timezone
+from typing import Any, Dict, Optional
+
+from langchain_core.runnables.config import RunnableConfig
 from sqlalchemy import select
+
+import monika.core.primitives.clock as clock
+from monika.application.graph.state import TradingState
+from monika.infrastructure.database.db import get_session
 
 logger = logging.getLogger("TradingAgent.Graph.ExecutionNode")
 
@@ -144,8 +146,9 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
 
                     if ana:
                         if scheduler.settings.get("adversarial_check", {}).get("enabled", True):
-                            from monika.infrastructure.database.models import SystemConfig
                             import json
+
+                            from monika.infrastructure.database.models import SystemConfig
 
                             cached = (
                                 await session.execute(

@@ -4,14 +4,14 @@ Re-exports unified taxonomy from `provider.error_taxonomy`.
 """
 
 from monika.infrastructure.credentials.error_taxonomy import (
-    FailoverReason,
-    ErrorCategory,
-    RecoveryAction,
     ClassifiedError,
+    ErrorCategory,
     ErrorClassifier,
-    sanitize_unicode_surrogates,
-    fallback_multimodal_to_text,
+    FailoverReason,
+    RecoveryAction,
     _extract_retry_after,
+    fallback_multimodal_to_text,
+    sanitize_unicode_surrogates,
 )
 
 __all__ = [

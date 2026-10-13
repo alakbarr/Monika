@@ -4,10 +4,10 @@ Groq memiliki limit sangat ketat: RPM 30, RPD 250-1000.
 """
 
 import asyncio
-import time
 import logging
 import os
-from collections import deque, defaultdict
+import time
+from collections import defaultdict, deque
 from typing import ClassVar, Optional
 
 logger = logging.getLogger("TradingAgent.GroqRateLimiter")

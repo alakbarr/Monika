@@ -21,7 +21,7 @@ import json
 import logging
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger("TradingAgent.ToolGuardrails")
 

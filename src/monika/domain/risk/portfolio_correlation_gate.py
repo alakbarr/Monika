@@ -1,9 +1,11 @@
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
 import logging
 import math
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.domain.market.dynamic_correlation import get_rolling_correlation, _static_fallback
+
+from monika.domain.market.dynamic_correlation import _static_fallback, get_rolling_correlation
 
 logger = logging.getLogger("TradingAgent.PortfolioCorrelationGate")
 

@@ -9,10 +9,11 @@ free-text generation + resilient JSON extraction when schema constraints fail.
 """
 
 import json
-import re
 import logging
+import re
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, Union, List, Type, cast
+from typing import Any, Dict, List, Optional, Type, Union, cast
+
 from pydantic import BaseModel, ValidationError
 
 logger = logging.getLogger("TradingAgent.Providers.StructuredFallback")

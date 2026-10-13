@@ -7,12 +7,14 @@ Detects when Stage 1 FundamentalBrief diverges from actual market state,
 triggering explicit reconciliation before Stage 2 joint reasoning proceeds.
 """
 
-import logging
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.domain.market.bias_utils import normalize_bias
 
 logger = logging.getLogger("TradingAgent.ContextCoherence")

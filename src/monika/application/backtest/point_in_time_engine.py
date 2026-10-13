@@ -2,25 +2,25 @@
 Point-in-Time Backtest Engine with Real Pipeline Parity and Zero Lookahead Bias.
 """
 
-import logging
 import asyncio
-from datetime import datetime, timezone, timedelta
-from typing import Literal, List, Dict, Any, Optional
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Literal, Optional
 
-from sqlalchemy import select, func
-from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import (
-    BacktestRun,
-    BacktestTrade,
-    AssetAnalysis,
-    PriceOHLCV,
-    TechnicalIndicator,
-)
+from sqlalchemy import func, select
 
 import monika.core.primitives.clock as clock
 from monika.application.backtest.outcome_evaluator import OutcomeEvaluator
 from monika.application.backtest.report_generator import ReportGenerator
 from monika.domain.risk.position_sizing import PositionSizer
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import (
+    AssetAnalysis,
+    BacktestRun,
+    BacktestTrade,
+    PriceOHLCV,
+    TechnicalIndicator,
+)
 
 logger = logging.getLogger("TradingAgent.PointInTimeBacktest")
 
@@ -302,11 +302,11 @@ class PointInTimeBacktestEngine:
         )
 
         from monika.application.analysis.calculators.confluence_calculator import calculate_confluence
+        from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
+        from monika.application.analysis.calculators.regime_classifier import classify_market_regime
         from monika.application.analysis.calculators.unified_threshold_calculator import (
             compute_unified_confluence_threshold,
         )
-        from monika.application.analysis.calculators.regime_classifier import classify_market_regime
-        from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
         current_time = self.start_date
         active_positions: Dict[str, datetime] = {}
@@ -390,8 +390,8 @@ class PointInTimeBacktestEngine:
                             pass
 
                         if confluence_score >= req_threshold:
-                            from monika.domain.risk.domain.instruments import DEFAULT_INSTRUMENTS
                             from monika.application.backtest.outcome_evaluator import DEFAULT_FRICTION_PROFILE
+                            from monika.domain.risk.domain.instruments import DEFAULT_INSTRUMENTS
 
                             spec = DEFAULT_INSTRUMENTS.get(symbol)
                             if spec:

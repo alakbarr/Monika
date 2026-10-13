@@ -18,9 +18,9 @@ import io
 import logging
 import math
 import os
-from datetime import datetime, timezone, date
+from datetime import date, datetime, timezone
 from inspect import isawaitable
-from typing import Optional, Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -28,8 +28,8 @@ import yfinance as yf
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import VIXData
 from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import VIXData
 
 logger = logging.getLogger("TradingAgent.VIX")
 
@@ -468,6 +468,7 @@ class VIXFetcher:
 
 async def _test():
     from dotenv import load_dotenv
+
     from monika.infrastructure.database.db import get_session, init_db
 
     load_dotenv()

@@ -6,21 +6,22 @@
 import asyncio
 import logging
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Request, HTTPException
+
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from monika.interfaces.dashboard.rbac import Role, require_role
-from monika.interfaces.dashboard.routes.common import (
-    broadcast_live_event,
-    _get_settings_path,
-)
 from monika.application.harness.installer import (
-    validate_package_spec,
+    get_community_catalog,
+    list_all_plugins_status,
     run_pip_install,
     run_pip_uninstall,
-    get_community_catalog,
     toggle_plugin_state,
-    list_all_plugins_status,
+    validate_package_spec,
+)
+from monika.interfaces.dashboard.rbac import Role, require_role
+from monika.interfaces.dashboard.routes.common import (
+    _get_settings_path,
+    broadcast_live_event,
 )
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Plugins")

@@ -22,7 +22,7 @@ import sys
 from typing import Any, Optional, Union
 
 try:
-    from telegram.error import RetryAfter, BadRequest
+    from telegram.error import BadRequest, RetryAfter
 except ImportError:
 
     class _FallbackRetryAfter(Exception):
@@ -34,17 +34,19 @@ except ImportError:
     RetryAfter = _FallbackRetryAfter
     BadRequest = _FallbackBadRequest
 
+from monika.application.agent import chat_agent as _core_agent
 from monika.application.agent.chat_agent import (
-    ChatAgent as CoreChatAgent,
-    PendingAction,
     HISTORY_WINDOW,
     MAX_HISTORY_CHARS,
     SESSION_TIMEOUT_HOURS,
+    PendingAction,
     _sanitize_chat_format,
     get_client_for_task,
     get_session,
 )
-from monika.application.agent import chat_agent as _core_agent
+from monika.application.agent.chat_agent import (
+    ChatAgent as CoreChatAgent,
+)
 
 logger = logging.getLogger("TradingAgent.TelegramChatAgent")
 

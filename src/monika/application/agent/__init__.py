@@ -6,17 +6,17 @@ Decomposed agent core modules: startup checks, task registry, and background mon
 try:
     from monika.application.agent.startup_checks import StartupChecker, run_startup_checks
     from monika.application.agent.task_registry import (
+        CORE_TRADING_TASKS,
         TaskDefinition,
         TaskRegistry,
-        CORE_TRADING_TASKS,
         _run_with_restart,
     )
 except ImportError:
     from monika.application.agent.startup_checks import StartupChecker, run_startup_checks
     from monika.application.agent.task_registry import (
+        CORE_TRADING_TASKS,
         TaskDefinition,
         TaskRegistry,
-        CORE_TRADING_TASKS,
         _run_with_restart,
     )
 

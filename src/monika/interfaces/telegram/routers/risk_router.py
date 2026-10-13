@@ -6,8 +6,9 @@ Handles /risk, /margin, /kill, /resume, /drawdown, /exposure.
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
-from monika.application.services.trading_service import TradingService
+
 from monika.application.services.portfolio_service import PortfolioService
+from monika.application.services.trading_service import TradingService
 
 
 class RiskRouter:

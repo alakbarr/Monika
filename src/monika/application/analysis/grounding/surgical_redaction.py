@@ -20,7 +20,7 @@ import re
 from typing import List, Tuple, Union
 
 from monika.application.analysis.grounding.declared_figures import DeclaredFigure
-from monika.application.analysis.grounding.provenance_tagger import ProvenanceLedger, ObservedFact
+from monika.application.analysis.grounding.provenance_tagger import ObservedFact, ProvenanceLedger
 
 logger = logging.getLogger("TradingAgent.Grounding.SurgicalRedaction")
 

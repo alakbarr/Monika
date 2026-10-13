@@ -1,23 +1,27 @@
-import asyncio, json, logging, time
+import asyncio
+import json
+import logging
+import time
+from datetime import timedelta, timezone
 from typing import Optional
-from datetime import timedelta
+
 from sqlalchemy import select
+
+import monika.core.primitives.clock as clock
+from monika.application.analysis.strategies.base_strategy import EdgeSignal
+from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+from monika.application.analysis.strategies.pretrade_gate import evaluate_pretrade_gate
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.core.validation.data_validator import validate_data_freshness
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import (
     AssetAnalysis,
-    Position,
     PaperTradeRecord,
+    Position,
+    PriceOHLCV,
     SystemConfig,
     TradeTrigger,
-    PriceOHLCV,
 )
-from monika.application.analysis.strategies.base_strategy import EdgeSignal
-from monika.application.analysis.strategies.registry import StrategyRegistry
-from monika.application.analysis.strategies.pretrade_gate import evaluate_pretrade_gate
-from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
-import monika.core.primitives.clock as clock
-from monika.core.validation.data_validator import validate_data_freshness
-from datetime import timezone
 
 logger = logging.getLogger("TradingAgent.EdgeStrategyRunner")
 
@@ -489,9 +493,10 @@ class EdgeStrategyRunner:
                 return
 
         # Arbitrase dengan sinyal LLM terkini via SignalArbitrator
+        from sqlalchemy import or_
+
         from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator
         from monika.infrastructure.database.models import VIXData
-        from sqlalchemy import or_
 
         arbitrator = SignalArbitrator(self.settings)
 

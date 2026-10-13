@@ -1,11 +1,11 @@
-from pathlib import Path
-from monika.infrastructure.infra.paths import resolve_config_path
-
-import logging
 import json
-from typing import Optional, Any
-from monika.infrastructure.providers.llm_factory import get_client_for_task
+import logging
+from pathlib import Path
+from typing import Any, Optional
+
 import monika.core.primitives.clock as clock
+from monika.infrastructure.infra.paths import resolve_config_path
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.TradeReflector")
 
@@ -126,8 +126,9 @@ class TradeReflector:
             logger.debug(f"AssetAnalysis enrichment fetch failed: {e}")
 
         try:
-            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import SystemConfig
 
             position_id = getattr(reflection, "position_id", None)
             if position_id:
@@ -140,8 +141,9 @@ class TradeReflector:
             logger.debug(f"Autopsy fetch failed: {e}")
 
         try:
-            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import SystemConfig
 
             adv_key = f"adversarial_outcome_{reflection.analysis_id}"
             adv_cfg = (
@@ -158,8 +160,9 @@ class TradeReflector:
             logger.debug(f"Adversarial verdict fetch for reflection failed (non-fatal): {e}")
 
         try:
-            from monika.infrastructure.database.models import VIXData
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import VIXData
 
             vix_res = await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))
             vix_row = vix_res.scalar_one_or_none() if hasattr(vix_res, "scalar_one_or_none") else None
@@ -410,8 +413,9 @@ class TradeReflector:
         else:
             # Branch B: Loss -> Negative Constraint Generation & Storage
             try:
-                from monika.infrastructure.database.models import SystemConfig
                 import time
+
+                from monika.infrastructure.database.models import SystemConfig
 
                 lesson_str = getattr(reflection, "specific_lesson", "") or "unspecified execution failure"
                 tags = json.loads(getattr(reflection, "lesson_tags", "[]") or "[]")

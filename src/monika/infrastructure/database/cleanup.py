@@ -3,31 +3,33 @@
 # ==============================================================================
 
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import delete, and_, or_
+
+from sqlalchemy import and_, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.infrastructure.database.models import (
-    PriceOHLCV,
-    AssetAnalysis,
-    FundamentalBrief,
     ActivityLog,
-    OrderLog,
-    NewsItem,
-    EconomicCalendar,
-    VIXData,
-    RiskState,
-    TechnicalIndicator,
+    AssetAnalysis,
     ConfluenceFactorOutcome,
-    SwingPoint,
-    LiquidityZone,
+    EconomicCalendar,
+    FundamentalBrief,
     FVGZone,
-    OrderBlock,
-    StructureBreak,
-    TokenUsageLog,
-    PrescreenLog,
+    LiquidityZone,
     NewsDigest,
+    NewsItem,
+    OrderBlock,
+    OrderLog,
+    PrescreenLog,
+    PriceOHLCV,
+    RiskState,
+    StructureBreak,
+    SwingPoint,
+    TechnicalIndicator,
+    TokenUsageLog,
     TradingEvent,
+    VIXData,
 )
 
 logger = logging.getLogger("TradingAgent.DBCleanup")
@@ -144,8 +146,9 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
 
             # Fix FK violation: Delete dependent NewsClassificationOutcomes first
             if model == NewsItem:
-                from monika.infrastructure.database.models import NewsClassificationOutcome
                 from sqlalchemy import select
+
+                from monika.infrastructure.database.models import NewsClassificationOutcome
 
                 await session.execute(
                     delete(NewsClassificationOutcome).where(
@@ -155,17 +158,18 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
                     )
                 )
             elif model == AssetAnalysis:
+                from sqlalchemy import select, update
+
                 from monika.infrastructure.database.models import (
-                    TradeTrigger,
+                    DecisionReflection,
                     MT5Signal,
-                    TradeOutcome,
+                    Order,
                     PaperTradeRecord,
                     Position,
-                    DecisionReflection,
-                    Order,
+                    TradeOutcome,
                     TradePlan,
+                    TradeTrigger,
                 )
-                from sqlalchemy import select, update
 
                 expired_analysis_ids = select(AssetAnalysis.id).where(AssetAnalysis.generated_at < cutoff)
                 # Preserve long-term memory: nullify analysis_id instead of purging reflections
@@ -352,17 +356,19 @@ async def reset_paper_trading_history(
     Returns:
         dict ringkasan operasi pembersihan dan backup.
     """
-    import os
     import json
+    import os
+
     from sqlalchemy import select, update
+
     from monika.infrastructure.database.models import (
+        ConfluenceFactorOutcome,
+        DecisionReflection,
+        MT5Signal,
         PaperTradeRecord,
         Position,
-        MT5Signal,
-        DecisionReflection,
-        ConfluenceFactorOutcome,
-        SystemConfig,
         RiskState,
+        SystemConfig,
         TradeOutcome,
         TradePlanLeg,
     )

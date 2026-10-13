@@ -6,10 +6,11 @@ Implements anti-contamination measures per SSVP research.
 
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
-from datetime import datetime, timezone, timedelta
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import DXYData, VIXData
 
@@ -312,8 +313,9 @@ class BriefContaminationGuard:
 
         A brief from 2 hours ago may be stale if XAUUSD moved 0.5%.
         """
-        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import PriceOHLCV
 
         # Get thresholds from settings
         default_threshold = 0.35

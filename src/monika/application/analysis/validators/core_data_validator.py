@@ -1,9 +1,10 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Tuple, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional, Tuple
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.CoreDataValidator")
 

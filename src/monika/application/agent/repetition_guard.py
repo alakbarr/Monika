@@ -17,8 +17,8 @@ loop text with REPETITION_LOOP_INTERRUPTED marker.
 from __future__ import annotations
 
 import logging
-import re
 import math
+import re
 from collections import Counter
 from typing import Optional
 

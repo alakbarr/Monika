@@ -17,13 +17,14 @@ Fungsi:
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Any
+from typing import Any, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.db import get_session
-from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+from monika.core.validation.data_validator import is_crypto_symbol, is_forex_market_closed
 from monika.domain.indicators.structure import MarketStructureAnalyzer
-from monika.core.validation.data_validator import is_forex_market_closed, is_crypto_symbol
+from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+from monika.infrastructure.database.db import get_session
 
 logger = logging.getLogger("TradingAgent.MarketDataScheduler")
 
@@ -194,9 +195,10 @@ class MarketDataScheduler:
         }
 
         async def _run_bootstrap(sess: AsyncSession) -> dict:
-            from sqlalchemy import select, func
-            from monika.infrastructure.database.models import PriceOHLCV, VIXData, DXYData
+            from sqlalchemy import func, select
+
             from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+            from monika.infrastructure.database.models import DXYData, PriceOHLCV, VIXData
 
             report = {"ohlcv_bulk": {}, "vix": 0, "dxy": 0, "milestones": 0}
 

@@ -12,10 +12,12 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import SystemConfig
+
 from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import SystemConfig
 
 logger = logging.getLogger("TradingAgent.EIAOil")
 

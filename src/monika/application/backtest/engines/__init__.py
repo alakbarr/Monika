@@ -3,10 +3,10 @@
 # Monika Multi-Market Simulation Engines
 # ==============================================================================
 
-from monika.application.backtest.engines.forex_engine import ForexEngine, ForexMarketRules
 from monika.application.backtest.engines.crypto_engine import CryptoEngine, CryptoMarketRules
 from monika.application.backtest.engines.equity_engine import EquityEngine, EquityMarketRules
-from monika.application.backtest.engines.futures_engine import FuturesEngine, FuturesContractSpec
+from monika.application.backtest.engines.forex_engine import ForexEngine, ForexMarketRules
+from monika.application.backtest.engines.futures_engine import FuturesContractSpec, FuturesEngine
 
 __all__ = [
     "ForexEngine",

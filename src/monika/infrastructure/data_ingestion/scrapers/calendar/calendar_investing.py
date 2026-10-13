@@ -5,9 +5,10 @@
 import logging
 import re
 import time
-from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
-from typing import List, Any, Optional
+from typing import Any, List, Optional
+
+from bs4 import BeautifulSoup
 
 from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent

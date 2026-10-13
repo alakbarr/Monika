@@ -8,7 +8,7 @@ This class is maintained for backward compatibility with Anthropic/Gemini provid
 """
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.CacheBreakpointManager")
 

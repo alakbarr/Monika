@@ -7,17 +7,17 @@ against typed questions (Choice, Score, Noul) returning deterministic decisions 
 calibrated probabilities in sub-100ms without prose hallucinations.
 """
 
+import logging
 import os
 import time
-import logging
-from typing import Optional, Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
-from monika.infrastructure.providers.base_provider import BaseLLMClient
 from monika.core.primitives.jev_primitives import (
-    schema_to_jev_questions,
     list_to_jev_questions,
     parse_jev_response_to_dict,
+    schema_to_jev_questions,
 )
+from monika.infrastructure.providers.base_provider import BaseLLMClient
 
 logger = logging.getLogger("TradingAgent.TypeSafeProvider")
 

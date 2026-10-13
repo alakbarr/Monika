@@ -2,25 +2,26 @@
 # File: graph/nodes/debate/helpers.py
 # ==============================================================================
 
-import sys
-import re
+import asyncio
 import json
 import logging
-import asyncio
+import re
+import sys
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import monika.core.primitives.clock as clock
 from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import AssetAnalysis, RiskState, Position, SystemConfig
+from monika.infrastructure.database.models import AssetAnalysis, Position, RiskState, SystemConfig
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.Graph.Debate.Helpers")
 
 
 async def _get_recent_sl_streak(session, symbol: str) -> int:
-    from monika.infrastructure.database.models import PaperTradeRecord
     from sqlalchemy import select
+
+    from monika.infrastructure.database.models import PaperTradeRecord
 
     recent = (
         (
@@ -46,9 +47,10 @@ async def _get_recent_sl_streak(session, symbol: str) -> int:
 
 
 async def _get_correlated_exposure_summary(session, symbol: str) -> List[str]:
-    from monika.infrastructure.database.models import Position
-    from monika.domain.market.dynamic_correlation import get_rolling_correlation
     from sqlalchemy import select
+
+    from monika.domain.market.dynamic_correlation import get_rolling_correlation
+    from monika.infrastructure.database.models import Position
 
     open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
     summary = []
@@ -321,8 +323,9 @@ async def inject_telemetry_reliability_into_fact_sheet(session, fact_sheet: dict
 
     # 2. News Classification Directives & Accuracy
     try:
-        from monika.infrastructure.database.models import SystemConfig
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import SystemConfig
 
         cfg = (
             await session.execute(select(SystemConfig).where(SystemConfig.key == "news_tier_calibration_directives"))

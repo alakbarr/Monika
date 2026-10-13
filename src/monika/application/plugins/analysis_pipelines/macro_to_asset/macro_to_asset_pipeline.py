@@ -8,13 +8,14 @@ The default institutional analysis style in Monika.
 Executes Macro Fundamentals (Stage 1) -> Per-Asset Reasoning & Debate (Stage 2) -> Proposals.
 """
 
-import os
 import logging
-from typing import Dict, Any, List, Optional
+import os
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.pipeline_plugin import AnalysisPipelinePlugin
-from monika.application.harness.contract import PluginMetadata, PluginCategory, PluginOrigin
+from monika.application.harness.contract import PluginCategory, PluginMetadata, PluginOrigin
 from monika.domain.risk.trade_proposal import TradeProposal
 
 logger = logging.getLogger("TradingAgent.Plugins.MacroToAssetPipeline")

@@ -7,11 +7,11 @@ Pluggable LLM Tool Plugin Interface (Phase 3e).
 Enables swappable custom toolsets to be packaged as TradingPlugins and dispatched via ToolRegistry.
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Callable, Optional, Union
 import logging
+from abc import ABC, abstractmethod
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from monika.application.harness.contract import TradingPlugin, PluginCategory, PluginMetadata
+from monika.application.harness.contract import PluginCategory, PluginMetadata, TradingPlugin
 
 logger = logging.getLogger("TradingAgent.ToolPlugin")
 

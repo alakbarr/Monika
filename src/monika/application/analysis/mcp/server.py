@@ -5,19 +5,19 @@
 # to external AI assistants (Claude, Cursor, Antigravity) over standard stdio JSON-RPC.
 # ==============================================================================
 
-import sys
-import json
 import asyncio
+import json
 import logging
+import sys
 from typing import Any, Dict, List, Optional
 
 from monika.application.analysis.mcp.protocol import (
-    PARSE_ERROR,
-    INVALID_REQUEST,
-    METHOD_NOT_FOUND,
-    INVALID_PARAMS,
     INTERNAL_ERROR,
+    INVALID_PARAMS,
+    INVALID_REQUEST,
     LATEST_PROTOCOL_VERSION,
+    METHOD_NOT_FOUND,
+    PARSE_ERROR,
     make_error_response,
     make_result_response,
 )
@@ -139,9 +139,10 @@ class MonikaMcpServer:
     async def handle_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Dispatches an MCP tool call to Monika's internal services."""
         if tool_name == "monika_get_status":
-            from monika.infrastructure.database.db import get_session
-            from monika.infrastructure.database.models import SystemConfig, Position, PaperTradeRecord
             from sqlalchemy import select
+
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import PaperTradeRecord, Position, SystemConfig
 
             try:
                 async with get_session() as session:
@@ -177,9 +178,10 @@ class MonikaMcpServer:
                 }
 
         elif tool_name == "monika_get_open_positions":
-            from monika.infrastructure.database.db import get_session
-            from monika.infrastructure.database.models import Position, PaperTradeRecord
             from sqlalchemy import select
+
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import PaperTradeRecord, Position
 
             mode = arguments.get("mode", "all")
             positions_data = []
@@ -226,8 +228,8 @@ class MonikaMcpServer:
             return {"count": len(positions_data), "positions": positions_data}
 
         elif tool_name == "monika_get_macro_regime":
-            from monika.infrastructure.database.db import get_session
             from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+            from monika.infrastructure.database.db import get_session
 
             async with get_session() as session:
                 mgr = LayeredMemoryManager(self.settings)
@@ -253,8 +255,8 @@ class MonikaMcpServer:
             return await handle_skill_view({"skill_name": arguments.get("name", "")})
 
         elif tool_name == "monika_search_session_memory":
-            from monika.infrastructure.database.session_db_wal import SessionDbWal
             from monika.infrastructure.database.fts5_cjk import Fts5SessionSearch
+            from monika.infrastructure.database.session_db_wal import SessionDbWal
 
             wal = SessionDbWal()
             try:

@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from monika.infrastructure.infra.paths import get_skills_dir
 
 # ==============================================================================
@@ -14,11 +15,11 @@ Implements 3-tier Progressive Disclosure for trading playbooks and institutional
   Loaded dynamically via tool query when specific market conditions emerge.
 """
 
+import logging
 import os
 import re
-import logging
-from typing import Dict, List, Any, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.Memory.ProgressiveLoader")
 

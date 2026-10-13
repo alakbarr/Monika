@@ -1,15 +1,15 @@
 """System, event store, and telemetry models (Phase 7)."""
 
 from monika.infrastructure.database.models import (
-    TradingEvent,
-    TokenUsageLog,
-    SystemConfig,
     ActivityLog,
+    RiskState,
+    SystemConfig,
     TelegramConversation,
     TelegramTopicBinding,
-    RiskState,
-    UserPreference,
+    TokenUsageLog,
+    TradingEvent,
     UserJournalEntry,
+    UserPreference,
 )
 
 __all__ = [

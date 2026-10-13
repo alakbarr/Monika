@@ -2,12 +2,14 @@
 # File: utils/cost_tracker.py
 # ==============================================================================
 
-import logging
 import json
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any, List
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+
 from monika.infrastructure.database.models import SystemConfig
 from monika.infrastructure.infra.notifier import AgentNotifier
 
@@ -155,8 +157,9 @@ class CostTracker:
 
         # 1. Query SSOT dari TokenUsageLog untuk MTD, Daily Cost, dan Daily Token Usage per Provider
         try:
+            from unittest.mock import AsyncMock, MagicMock
+
             from monika.infrastructure.database.models import TokenUsageLog
-            from unittest.mock import MagicMock, AsyncMock
 
             def _extract_scalar(res: Any, default: float = 0.0) -> float:
                 if hasattr(res, "scalar_one") and callable(res.scalar_one):

@@ -22,11 +22,11 @@ from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.safe_ops import safe_commit
 
-from monika.infrastructure.database.models import BondYieldData, CentralBankRateExpectation, InterestRate
-from monika.infrastructure.api.http_retry import fetch_with_retry
 from monika.core.primitives import clock
+from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import BondYieldData, CentralBankRateExpectation, InterestRate
+from monika.infrastructure.database.safe_ops import safe_commit
 
 logger = logging.getLogger("TradingAgent.CentralBankWatch")
 

@@ -14,10 +14,10 @@ Provides two distinct queues during active agent processing:
 Default steer delivery mode is 'one-at-a-time' for trading safety.
 """
 
+import threading
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
-import threading
 from typing import Deque, List, Optional
 
 

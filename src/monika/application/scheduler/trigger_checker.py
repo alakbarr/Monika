@@ -14,17 +14,16 @@ dan barulah re-analisis (Stage 2) dipicu untuk aset tersebut.
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.safe_ops import safe_commit
-from monika.infrastructure.database.models import TradeTrigger, AssetAnalysis, TechnicalIndicator, ActivityLog
-
 import monika.core.primitives.clock as clock
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import ActivityLog, AssetAnalysis, TechnicalIndicator, TradeTrigger
+from monika.infrastructure.database.safe_ops import safe_commit
 
 logger = logging.getLogger("TradingAgent.TriggerChecker")
 
@@ -333,8 +332,9 @@ class TriggerChecker:
         }
 
     async def check_invalidation_conditions(self) -> list[dict]:
-        from monika.infrastructure.database.models import Position, AssetAnalysis, PriceOHLCV, SystemConfig
         from sqlalchemy import select as _select
+
+        from monika.infrastructure.database.models import AssetAnalysis, Position, PriceOHLCV, SystemConfig
 
         alerts = []
 
@@ -610,7 +610,7 @@ class TriggerChecker:
 
     async def _handle_cancel_pending_order(self, trigger: TradeTrigger) -> None:
         """Batalkan pending live order atau pending paper trade yang telah melewati TTL."""
-        from monika.infrastructure.database.models import Position, PaperTradeRecord
+        from monika.infrastructure.database.models import PaperTradeRecord, Position
 
         async with get_session() as session:
             # 1. Batalkan pending live order
@@ -993,8 +993,9 @@ class TriggerChecker:
         using TypeSafe Jev System One decision primitives.
         """
         try:
-            from monika.infrastructure.providers.llm_factory import get_client_for_task
             from typesafe_sdk import Noul, Score
+
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
 
             client = get_client_for_task("jev_trigger_validator", self.settings)
 

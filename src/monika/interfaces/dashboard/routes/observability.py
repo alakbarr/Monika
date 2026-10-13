@@ -432,9 +432,10 @@ async def get_playbook_tree():
     Visualisasi grafik pohon turunan playbook dari MicroPlaybookCompiler.
     Menggabungkan playbook di database (PlaybookRuleAttribution) dan file sistem (skills/trading/playbooks/).
     """
+    from sqlalchemy import select
+
     from monika.infrastructure.database.db import get_session
     from monika.infrastructure.database.models import PlaybookRuleAttribution
-    from sqlalchemy import select
 
     root = {"name": "Trading Playbooks", "type": "root", "children": []}
     symbols_map: Dict[str, Dict[str, Any]] = {}
@@ -523,9 +524,10 @@ async def get_prompt_cache_metrics(limit: int = Query(20, ge=1, le=100)):
     Grafik metrik prompt cache hit rate vs miss rate per siklus.
     Mengambil data dari TokenUsageLog.
     """
+    from sqlalchemy import desc, select
+
     from monika.infrastructure.database.db import get_session
     from monika.infrastructure.database.models import TokenUsageLog
-    from sqlalchemy import select, desc
 
     cycles: List[Dict[str, Any]] = []
     total_cached = 0

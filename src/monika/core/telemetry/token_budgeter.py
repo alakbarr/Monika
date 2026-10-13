@@ -14,10 +14,10 @@ Provides real-time quota checks and dynamic degradation tier routing:
 - 'degraded'   (>= 90% used): Fast/cheaper tier fallback, skip non-essential runs
 """
 
-import threading
 import logging
-from typing import Optional, Dict, Any
+import threading
 from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.TokenBudgeter")
 

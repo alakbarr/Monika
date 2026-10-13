@@ -14,7 +14,9 @@ import inspect
 import json
 import logging
 from typing import Any, Callable, Dict, List, Optional, Set, Type, Union
+
 from pydantic import BaseModel
+
 from monika.application.analysis.tools.kernel.output_spiller import truncate_and_spill_output
 
 logger = logging.getLogger("TradingAgent.Tools.UnifiedRegistry")
@@ -380,7 +382,7 @@ class UnifiedToolRegistry:
 
         # Stage 3: Terminal Guard
         try:
-            from monika.core.security.terminal_guard import is_hardline_blocked_command, CommandSecurityViolationError
+            from monika.core.security.terminal_guard import CommandSecurityViolationError, is_hardline_blocked_command
 
             for k, v in arguments.items():
                 if isinstance(v, str) and k in ("command", "cmd", "exec_cmd"):
@@ -393,8 +395,8 @@ class UnifiedToolRegistry:
 
         # Stage 4: Path Read / Write Guard
         try:
-            from monika.core.security.terminal_guard import assert_safe_read_path, assert_safe_write_path
             from monika.core.security.nt_guard import SecurityViolationError
+            from monika.core.security.terminal_guard import assert_safe_read_path, assert_safe_write_path
 
             for k, v in arguments.items():
                 if isinstance(v, str) and k in ("path", "file_path", "filepath", "source_path", "target_path"):

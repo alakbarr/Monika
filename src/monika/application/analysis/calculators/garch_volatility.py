@@ -9,10 +9,11 @@ volatility, compute volatility persistence (alpha + beta), half-life of volatili
 and detect high-volatility regimes.
 """
 
-import math
 import logging
+import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional, Union
+
 import numpy as np
 import pandas as pd
 

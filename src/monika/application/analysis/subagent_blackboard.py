@@ -14,9 +14,10 @@ Prevents prompt ballooning by allowing subagents to query specific typed slots
 instead of dumping massive raw unparsed text histories into subsequent turns.
 """
 
-from typing import Dict, Any, Optional, List
 import json
 import logging
+from typing import Any, Dict, List, Optional
+
 from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
 
 logger = logging.getLogger("TradingAgent.SubagentBlackboard")

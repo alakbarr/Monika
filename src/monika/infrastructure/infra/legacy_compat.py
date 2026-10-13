@@ -7,12 +7,12 @@ without requiring the legacy `trading-agent` directory in filesystem or pythonpa
 
 from __future__ import annotations
 
-import sys
-import types
 import importlib
 import importlib.util
+import sys
+import types
 from collections.abc import Sequence
-from importlib.abc import MetaPathFinder, Loader
+from importlib.abc import Loader, MetaPathFinder
 from importlib.machinery import ModuleSpec
 
 # Pre-compiled mapping from legacy module paths to canonical monika paths

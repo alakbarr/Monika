@@ -55,10 +55,11 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
                     else:
                         equity = balance
                     try:
+                        from sqlalchemy import select as _sel
+
                         from monika.infrastructure.database.db import get_session
                         from monika.infrastructure.database.models import SystemConfig
                         from monika.infrastructure.database.safe_ops import safe_commit
-                        from sqlalchemy import select as _sel
 
                         now_utc = datetime.now(timezone.utc)
                         today_str = now_utc.strftime("%Y-%m-%d")

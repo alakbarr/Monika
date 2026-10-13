@@ -19,6 +19,8 @@ from pydantic import BaseModel, Field
 from monika.interfaces.dashboard.rbac import Role, require_role
 from monika.interfaces.dashboard.routes.common import (
     _get_settings_path as default_get_settings_path,
+)
+from monika.interfaces.dashboard.routes.common import (
     broadcast_live_event,
     get_dashboard_dependency,
 )
@@ -238,7 +240,7 @@ async def get_plugin_config_schema(plugin_id: str, request: Request):
 @require_role(Role.ADMIN)
 async def update_config_settings(payload: ConfigUpdateRequest, request: Request):
     """Validate payload, create .bak backup, write settings.yaml, trigger hot-reload, and log."""
-    from monika.core.config.settings import validate_config, _deep_merge
+    from monika.core.config.settings import _deep_merge, validate_config
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import ActivityLog
 

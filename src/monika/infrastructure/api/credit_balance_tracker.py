@@ -8,14 +8,14 @@ Fitur:
 4. Anthropic & OpenAI Monthly Expense Aggregator (Database)
 """
 
-import os
-import logging
 import asyncio
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any, List
+import logging
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
 import aiohttp
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import TokenUsageLog
@@ -35,7 +35,7 @@ class CreditBalanceTracker:
           - GET https://openrouter.ai/api/v1/credits
           - GET https://openrouter.ai/api/v1/key
         """
-        from monika.infrastructure.api.openrouter_rate_limiter import get_paid_key, get_free_keys
+        from monika.infrastructure.api.openrouter_rate_limiter import get_free_keys, get_paid_key
 
         paid_key = api_key or get_paid_key()
         free_keys = get_free_keys()

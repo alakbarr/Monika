@@ -8,7 +8,7 @@ Normalizes JSON schemas for constrained decoding.
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.ConstrainedSampling")
 

@@ -5,11 +5,12 @@
 import logging
 import os
 import time
+from typing import Any, List, Optional
+
 from bs4 import BeautifulSoup
-from typing import List, Optional, Any
 
 from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
-from monika.infrastructure.data_ingestion.scrapers.models import FedProbability, FedMeeting
+from monika.infrastructure.data_ingestion.scrapers.models import FedMeeting, FedProbability
 
 logger = logging.getLogger("TradingAgent.FedWatchScraper")
 
@@ -128,9 +129,10 @@ class FedWatchScraper(BaseScraper):
 
         # 1. Try DB
         try:
+            from sqlalchemy import desc, select
+
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.models import InterestRate, SystemConfig
-            from sqlalchemy import select, desc
 
             async def _query():
                 async with get_session() as session:

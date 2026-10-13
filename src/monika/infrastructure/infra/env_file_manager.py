@@ -4,11 +4,11 @@ Safely reads and updates key-value pairs in environment configuration files
 while preserving existing comments, whitespace, and ordering without corrupting formatting.
 """
 
+import logging
 import os
 import re
 import tempfile
-import logging
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.Utils.EnvFileManager")
 

@@ -6,6 +6,7 @@ Encapsulates database access for audit activity logging.
 
 from datetime import datetime, timezone
 from typing import Optional, Sequence
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 

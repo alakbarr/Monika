@@ -12,12 +12,12 @@ Modular architecture with decomposed sub-routers under routes/.
 import asyncio
 import logging
 import os
+import secrets
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import secrets
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
@@ -27,7 +27,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from monika.interfaces.dashboard.rbac import Role, resolve_role, require_role
+from monika.interfaces.dashboard.rbac import Role, require_role, resolve_role
 from monika.interfaces.dashboard.routes import (
     ClosePositionRequest,
     OverrideRiskRequest,
@@ -35,7 +35,6 @@ from monika.interfaces.dashboard.routes import (
     _active_websockets,
     _build_graph_state_for_cycle,
     _dependencies,
-    _get_settings_path as _default_get_settings_path,
     _safe_json,
     _start_time,
     all_routers,
@@ -48,6 +47,9 @@ from monika.interfaces.dashboard.routes import (
     tokens_router,
     trading_router,
     websocket_router,
+)
+from monika.interfaces.dashboard.routes import (
+    _get_settings_path as _default_get_settings_path,
 )
 from monika.interfaces.dashboard.routes.config import (
     get_config_schema,
@@ -292,9 +294,9 @@ async def submit_setup_configuration(request: Request):
         return JSONResponse(status_code=400, content={"status": "error", "message": "Invalid JSON payload"})
 
     try:
-        from monika.infrastructure.infra.env_file_manager import EnvFileManager
-        from monika.core.config.profile_applicator import ProfileApplicator
         from monika.core.config.atomic_writer import AtomicConfigWriter
+        from monika.core.config.profile_applicator import ProfileApplicator
+        from monika.infrastructure.infra.env_file_manager import EnvFileManager
 
         env_updates: Dict[str, str] = {}
 

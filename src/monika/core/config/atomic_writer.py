@@ -2,10 +2,10 @@
 Atomic YAML configuration writer with comment preservation, fsync, and automatic backups.
 """
 
+import logging
 import os
 import re
 import shutil
-import logging
 import tempfile
 from datetime import datetime
 from pathlib import Path

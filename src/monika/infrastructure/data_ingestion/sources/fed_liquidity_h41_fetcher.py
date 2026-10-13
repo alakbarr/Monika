@@ -12,7 +12,7 @@ Persists records to `macro_liquidity_credit_metrics` table.
 import json
 import logging
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import aiohttp
@@ -20,9 +20,9 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.core.primitives import clock
 from monika.infrastructure.database.models import MacroLiquidityCreditMetric
 from monika.infrastructure.database.safe_ops import safe_commit
-from monika.core.primitives import clock
 
 logger = logging.getLogger("TradingAgent.FedLiquidityH41Fetcher")
 

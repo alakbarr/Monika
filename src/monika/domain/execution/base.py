@@ -12,14 +12,15 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 if TYPE_CHECKING:
     import asyncio
-    from monika.domain.entities.order_status import OrderStatus
-    from monika.domain.entities.order import OrderEntity as Order
-    from monika.domain.entities.position import PositionEntity as Position
-    from monika.domain.risk.position_sizing import PositionSizer, SizingResult
-    from monika.domain.risk.risk_gate import RiskGate
-    from monika.domain.execution.verification_engine import EvidenceFirstVerifier
+
     from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
     from monika.application.execution.effect_gate import EffectGate
+    from monika.domain.entities.order import OrderEntity as Order
+    from monika.domain.entities.order_status import OrderStatus
+    from monika.domain.entities.position import PositionEntity as Position
+    from monika.domain.execution.verification_engine import EvidenceFirstVerifier
+    from monika.domain.risk.position_sizing import PositionSizer, SizingResult
+    from monika.domain.risk.risk_gate import RiskGate
 
     AssetAnalysis = Any
     MT5Client = Any

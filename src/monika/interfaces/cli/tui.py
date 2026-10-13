@@ -24,7 +24,7 @@ import os
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, ClassVar
+from typing import Any, ClassVar, Dict, List, Optional
 
 import aiohttp
 from textual import events
@@ -47,26 +47,26 @@ from textual.widgets import (
 )
 
 from monika.core.config.settings import load_settings
-from monika.interfaces.cli.sparklines import braille_sparkline, bar_gauge
 from monika.interfaces.cli.analysis_tree import AnalysisCycleTree
 from monika.interfaces.cli.busy_input import BusyInputBuffer, InputDelivery
-from monika.interfaces.cli.width_budget import compute_progressive_width_budget, ColumnSpec
+from monika.interfaces.cli.sparklines import bar_gauge, braille_sparkline
 from monika.interfaces.cli.theme import (
-    get_theme,
-    ThemePack,
-    THEMES,
-    build_tui_css,
-    PHOSPHOR_AMBER,
+    BEAR_LOSS,
     BRASS,
     BULL_PROFIT,
-    BEAR_LOSS,
     MUTED,
     PAPER,
-    stamp_ok,
+    PHOSPHOR_AMBER,
+    THEMES,
+    ThemePack,
+    build_tui_css,
+    get_theme,
     stamp_err,
-    stamp_warn,
     stamp_exec,
+    stamp_ok,
+    stamp_warn,
 )
+from monika.interfaces.cli.width_budget import ColumnSpec, compute_progressive_width_budget
 
 logger = logging.getLogger("TradingAgent.TUI")
 
@@ -738,9 +738,10 @@ class TradingDashboard(App):
         try:
             bench_table = self.query_one("#benchmark_table", DataTable)
             if self.standalone:
-                from monika.application.benchmark.db_models import BenchmarkRun, BenchmarkResult
+                from sqlalchemy import desc, select
+
+                from monika.application.benchmark.db_models import BenchmarkResult, BenchmarkRun
                 from monika.infrastructure.database.db import get_session
-                from sqlalchemy import select, desc
 
                 async with get_session() as session:
                     latest = (
@@ -947,7 +948,8 @@ class TradingDashboard(App):
         if not dispatched:
             try:
                 from monika.infrastructure.database.db import get_session
-                from monika.infrastructure.database.models import UserMarketIntel, ActivityLog as DBLog, _utcnow
+                from monika.infrastructure.database.models import ActivityLog as DBLog
+                from monika.infrastructure.database.models import UserMarketIntel, _utcnow
 
                 async with get_session() as session:
                     session.add(
@@ -1051,18 +1053,19 @@ class TradingDashboard(App):
 
     async def _fetch_data_from_db(self) -> Dict[str, Any]:
         """Query PostgreSQL directly for positions, configs, activity logs, and tokens."""
+        from sqlalchemy import desc, func, select
+
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import (
-            Position,
-            PaperTradeRecord,
-            SystemConfig,
-            RiskState,
             ActivityLog,
+            AssetAnalysis,
+            PaperTradeRecord,
+            Position,
+            RiskState,
+            SystemConfig,
             TokenUsageLog,
             VIXData,
-            AssetAnalysis,
         )
-        from sqlalchemy import select, desc, func
 
         res_data: Dict[str, Any] = {
             "source": "db",
@@ -1247,8 +1250,9 @@ class TradingDashboard(App):
 
                 # 10. Economic Calendar
                 try:
-                    from monika.infrastructure.database.models import EconomicCalendar
                     from datetime import timedelta
+
+                    from monika.infrastructure.database.models import EconomicCalendar
 
                     now_utc = datetime.now(timezone.utc)
                     cal_q = (
@@ -2059,9 +2063,10 @@ class TradingDashboard(App):
                 activity_log.write(f"[red]Failed reading config: {e}[/]")
         elif cmd == "sessions":
             try:
+                from sqlalchemy import desc, func, select
+
                 from monika.infrastructure.database.db import get_session
                 from monika.infrastructure.database.models import TelegramConversation
-                from sqlalchemy import select, func, desc
 
                 async with get_session() as session:
                     rows = (

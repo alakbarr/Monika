@@ -1,6 +1,7 @@
 import asyncio
-import yfinance as yf
 from datetime import datetime, timezone
+
+import yfinance as yf
 
 
 async def get_brent_price() -> float | None:

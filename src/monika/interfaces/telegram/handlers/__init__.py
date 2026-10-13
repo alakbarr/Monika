@@ -3,18 +3,18 @@ Telegram Bot Handlers Package.
 Provides modular command descriptors, categories, and routing maps.
 """
 
-from monika.interfaces.telegram.handlers.trading_commands import (
-    CommandDescriptor,
-    TRADING_COMMAND_DESCRIPTORS,
-    execute_trading_command,
-)
 from monika.interfaces.telegram.handlers.market_commands import (
-    MarketCommandDescriptor,
     MARKET_COMMAND_DESCRIPTORS,
+    MarketCommandDescriptor,
 )
 from monika.interfaces.telegram.handlers.system_commands import (
-    SystemCommandDescriptor,
     SYSTEM_COMMAND_DESCRIPTORS,
+    SystemCommandDescriptor,
+)
+from monika.interfaces.telegram.handlers.trading_commands import (
+    TRADING_COMMAND_DESCRIPTORS,
+    CommandDescriptor,
+    execute_trading_command,
 )
 
 __all__ = [

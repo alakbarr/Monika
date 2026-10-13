@@ -9,15 +9,15 @@ Core safety invariants (kill-switch, hard SL, max lot cap, max drawdown <= 5%) r
 hardcoded in RiskGate and cannot be bypassed.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.application.harness.contract import TradingPlugin, PluginMetadata, PluginCategory, PluginOrigin
+from monika.application.harness.contract import PluginCategory, PluginMetadata, PluginOrigin, TradingPlugin
 from monika.domain.risk.position_sizing import SizingResult
 
 logger = logging.getLogger("TradingAgent.Risk.Plugin")

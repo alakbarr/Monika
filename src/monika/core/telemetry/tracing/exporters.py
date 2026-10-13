@@ -2,12 +2,12 @@
 # File: logging_observability/tracing/exporters.py
 # ==============================================================================
 
-from collections import deque
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
-import logging
-from typing import Any, Dict, List, Optional
 import json
+import logging
+from collections import deque
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.Tracing.Exporters")
 

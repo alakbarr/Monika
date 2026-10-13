@@ -1,7 +1,9 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import select
-from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord, SystemConfig
+
 from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
+from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord, SystemConfig
 
 
 async def compute_strategy_pair_stats(session, settings: dict) -> dict:

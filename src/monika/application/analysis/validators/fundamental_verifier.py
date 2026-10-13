@@ -1,6 +1,8 @@
 import json
 import logging
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.infrastructure.database.models import FundamentalBrief
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 

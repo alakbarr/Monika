@@ -15,12 +15,11 @@ from typing import Callable, Optional
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import HTML, FormattedText
 from prompt_toolkit.history import FileHistory
-
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
 
 from monika.interfaces.cli.chat.completer import ChatCommandCompleter
-from monika.interfaces.cli.chat.theme import ChatPalette, get_chat_palette, GLYPH_USER
+from monika.interfaces.cli.chat.theme import GLYPH_USER, ChatPalette, get_chat_palette
 
 
 def _install_key_sequence_patches():

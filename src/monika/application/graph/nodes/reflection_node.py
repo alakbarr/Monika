@@ -1,8 +1,10 @@
-import logging
 import json
-from typing import Dict, Any, Optional
-from monika.application.graph.state import TradingState
+import logging
+from typing import Any, Dict, Optional
+
 from langchain_core.runnables.config import RunnableConfig
+
+from monika.application.graph.state import TradingState
 
 logger = logging.getLogger("TradingAgent.Graph.ReflectionNode")
 
@@ -109,9 +111,10 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
     # constraining trade concurrency to 1 trade under fail-safe posture.
     vix_value = None
     try:
+        from sqlalchemy import select
+
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import VIXData
-        from sqlalchemy import select
 
         async with get_session() as session:
             vix_row = (
@@ -163,9 +166,10 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
         "ETHUSD": ("ETH", "USD"),
     }
     try:
+        from sqlalchemy import select
+
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import FundamentalBrief
-        from sqlalchemy import select
 
         async with get_session() as session:
             brief_row = (

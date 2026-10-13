@@ -1,4 +1,5 @@
-import math, logging
+import logging
+import math
 
 logger = logging.getLogger("TradingAgent.IndicatorSanitizer")
 

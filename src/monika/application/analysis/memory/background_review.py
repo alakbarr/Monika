@@ -5,7 +5,7 @@ Runs on the main asyncio event loop without raw OS threads to preserve asyncpg p
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional, Set, FrozenSet, Protocol
+from typing import Any, Dict, FrozenSet, Optional, Protocol, Set
 
 logger = logging.getLogger("TradingAgent.BackgroundReview")
 
@@ -47,8 +47,8 @@ class BackgroundReviewEngine:
         self.reflector = reflector
         if self.reflector is None:
             try:
-                from monika.infrastructure.providers.llm_factory import get_client_for_task
                 from monika.application.analysis.memory.reflector import TradeReflector
+                from monika.infrastructure.providers.llm_factory import get_client_for_task
 
                 aux_client = get_client_for_task("trade_reflection", self.settings)
                 if aux_client:

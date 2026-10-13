@@ -2,9 +2,10 @@
 Schmitt-Trigger Regime Detector: Stateful hysteresis-based market regime classification.
 """
 
-from enum import Enum
 import logging
+from enum import Enum
 from typing import Optional
+
 import numpy as np
 import pandas as pd
 

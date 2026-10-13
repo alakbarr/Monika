@@ -5,6 +5,7 @@ Encapsulates database access for dynamic runtime configurations and safety flags
 """
 
 from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

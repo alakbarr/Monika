@@ -9,19 +9,19 @@ abstracted from MT5 client or historical data providers, with automatic
 cascade across MT5, Database cache, and Yahoo Finance.
 """
 
-from typing import Dict, Any, Optional, List
 import asyncio
-from datetime import datetime, timezone
 import logging
 import math
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.infra.container import ServiceContainer, get_container
 from monika.domain.market.instrument_identity import resolve_instrument_identity
+from monika.infrastructure.infra.container import ServiceContainer, get_container
 
 logger = logging.getLogger("TradingAgent.Services.MarketData")
 
@@ -196,8 +196,8 @@ class MarketDataService:
 
         # 3. Try yfinance fallback (runs in executor to avoid blocking event loop)
         try:
-            import yfinance as yf
             import pandas as pd
+            import yfinance as yf
 
             yf_symbol = _to_yfinance_symbol(sym)
             interval = _tf_to_yfinance_interval(timeframe)

@@ -8,32 +8,33 @@ Interactive, step-by-step upgrade from Monika Trial Package to Full Package.
 Handles PostgreSQL transition, Web Dashboard compilation, 9Router, and TimesFM.
 """
 
+import argparse
 import asyncio
 import os
-import sys
 import shutil
 import subprocess
-import argparse
-from typing import Optional, Dict, Any
+import sys
+from typing import Any, Dict, Optional
 
+from rich.prompt import Confirm, Prompt
+from rich.table import Table
+
+from monika.core.config.atomic_writer import AtomicConfigWriter
+from monika.core.config.settings import get_installation_tier, load_settings
+from monika.infrastructure.infra.env_file_manager import EnvFileManager
 from monika.interfaces.cli.subcommands.base import Subcommand
 from monika.interfaces.cli.theme import (
-    get_console,
-    stamp_ok,
-    stamp_err,
-    stamp_warn,
-    stamp_info,
-    PHOSPHOR_AMBER,
     BRASS,
+    LEDGER_BOX,
     MUTED,
     PAPER,
-    LEDGER_BOX,
+    PHOSPHOR_AMBER,
+    get_console,
+    stamp_err,
+    stamp_info,
+    stamp_ok,
+    stamp_warn,
 )
-from rich.table import Table
-from rich.prompt import Confirm, Prompt
-from monika.core.config.settings import load_settings, get_installation_tier
-from monika.core.config.atomic_writer import AtomicConfigWriter
-from monika.infrastructure.infra.env_file_manager import EnvFileManager
 
 
 class UpgradeSubcommand(Subcommand):

@@ -8,10 +8,11 @@ Decouples the complete analysis cycle / trading style into swappable plugins.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.application.harness.contract import TradingPlugin, PluginCategory, PluginMetadata
+from monika.application.harness.contract import PluginCategory, PluginMetadata, TradingPlugin
 from monika.domain.risk.trade_proposal import TradeProposal
 
 

@@ -3,8 +3,9 @@ TimesFM Quantile Asymmetry Skew Alpha Calculator.
 Computes directional expansion probability and risk sizing multipliers from TimesFM 3.0 probability density.
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
 import logging
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 
 logger = logging.getLogger("TradingAgent.TimesFMAlpha")

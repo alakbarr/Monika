@@ -9,6 +9,7 @@ Self-registering modular handler with direct execution (no circular trampoline).
 
 import logging
 from typing import Any, Dict, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.base_handler import ToolHandler

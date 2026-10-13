@@ -6,9 +6,8 @@
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional, Literal
-
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
@@ -43,10 +42,11 @@ trading_router = APIRouter()
 @trading_router.get("/api/overview", tags=["Dashboard"])
 async def get_overview():
     """Data metrik ringkas untuk highlight kartu dashboard."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import RiskState, VIXData, AssetAnalysis
-    from monika.infrastructure.database.repositories import PositionRepository, SystemConfigRepository
     from sqlalchemy import select
+
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import AssetAnalysis, RiskState, VIXData
+    from monika.infrastructure.database.repositories import PositionRepository, SystemConfigRepository
 
     async with AsyncSessionLocal() as session:
         pos_repo = PositionRepository(session)
@@ -110,8 +110,8 @@ async def get_overview():
 @trading_router.get("/api/paper-trading", tags=["Performance"])
 async def get_paper_trading_stats():
     """Rangkuman PnL paper trading, win rate & detail performa."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.core.analytics.paper_tracker import PaperTracker
+    from monika.infrastructure.database.db import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
         tracker = PaperTracker()
@@ -236,9 +236,10 @@ async def get_analysis(
     symbol: Optional[str] = Query(default=None),
 ):
     """Riwayat analisis Stage 2 AI per aset."""
+    from sqlalchemy import select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import AssetAnalysis
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
         q = select(AssetAnalysis).order_by(AssetAnalysis.generated_at.desc()).limit(limit)
@@ -288,17 +289,18 @@ async def get_decision_dossier(
     - Stage 4: RiskGate Mechanical Fortress (22 rules scorecard, execution notes)
     - Stage 5: Execution Telemetry & Hash Lineage (Signals, Position, SHA-256 verification)
     """
+    from sqlalchemy import or_, select
+
+    from monika.core.telemetry.trading_cycle_event_log import get_cycle_event_log
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import (
         AssetAnalysis,
         FundamentalBrief,
-        TradeTrigger,
         MT5Signal,
-        Position,
         PaperTradeRecord,
+        Position,
+        TradeTrigger,
     )
-    from monika.core.telemetry.trading_cycle_event_log import get_cycle_event_log
-    from sqlalchemy import select, or_
 
     async with AsyncSessionLocal() as session:
         # 1. Resolve AssetAnalysis
@@ -576,8 +578,8 @@ async def get_decision_dossier(
 @trading_router.get("/api/factor-analysis", tags=["Performance"])
 async def get_factor_analysis():
     """Mengukur seberapa akurat confluence factor vs PnL sesungguhnya."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.core.analytics.analysis_tracker import compute_factor_effectiveness
+    from monika.infrastructure.database.db import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
         result = await compute_factor_effectiveness(session, days_back=60)
@@ -595,9 +597,10 @@ async def get_orders(
     action: Optional[str] = Query(default=None, description="Filter: place, modify, close"),
 ):
     """Audit trail percobaan order (sukses & gagal/tolak)."""
+    from sqlalchemy import select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import OrderLog
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
         q = select(OrderLog).order_by(OrderLog.timestamp.desc()).limit(limit)
@@ -629,9 +632,10 @@ async def get_orders(
 @trading_router.get("/api/risk", tags=["Risk"])
 async def get_risk():
     """State PnL hari ini, status auto-trading (paused/active), margin, dan parameter risiko."""
+    from sqlalchemy import desc, select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import RiskState, PaperTradeRecord, Position
-    from sqlalchemy import select, desc
+    from monika.infrastructure.database.models import PaperTradeRecord, Position, RiskState
 
     settings = get_dashboard_dependency("settings") or {}
     trading_risk = settings.get("trading", {}).get("risk", {}) if isinstance(settings, dict) else {}
@@ -760,9 +764,9 @@ async def get_risk_scorecard(
     symbol: str = Query(default="EURUSD", description="Asset symbol to evaluate against risk gate"),
 ):
     """Evaluate 22-point deterministic Risk Gate rules scorecard for live telemetry."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.domain.risk.risk_gate import RiskGate
     from monika.core.config.settings import load_settings
+    from monika.domain.risk.risk_gate import RiskGate
+    from monika.infrastructure.database.db import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
         settings = load_settings()
@@ -774,10 +778,11 @@ async def get_risk_scorecard(
 @require_role(Role.VIEWER)
 async def get_risk_correlation_matrix():
     """Compute rolling cross-asset correlation matrix and aggregate portfolio heat score."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.domain.risk.correlation_matrix import DynamicCorrelationMatrix
-    from monika.infrastructure.database.models import Position
     from sqlalchemy import select
+
+    from monika.domain.risk.correlation_matrix import DynamicCorrelationMatrix
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import Position
 
     async with AsyncSessionLocal() as session:
         open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
@@ -817,9 +822,10 @@ async def get_edge_metrics():
     Key metrics untuk monitoring apakah sistem masih memiliki edge positif.
     Ini adalah dashboard paling penting untuk trading system health.
     """
-    from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis
     from sqlalchemy import select
+
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord
 
     async with AsyncSessionLocal() as session:
         now = datetime.now(timezone.utc)
@@ -884,9 +890,10 @@ async def get_edge_metrics():
 
 @trading_router.get("/api/decision-distribution", tags=["Analysis"])
 async def get_decision_distribution():
+    from sqlalchemy import func, select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import AssetAnalysis
-    from sqlalchemy import select, func
 
     async with AsyncSessionLocal() as session:
         since = datetime.now(timezone.utc) - timedelta(days=30)
@@ -917,9 +924,10 @@ async def get_decision_distribution():
 @trading_router.get("/api/analysis-quality-realtime", tags=["Performance"])
 async def get_analysis_quality_realtime():
     """Real-time analysis quality metrics for monitoring dashboard."""
+    from sqlalchemy import or_, select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord
-    from sqlalchemy import select, or_
 
     async with AsyncSessionLocal() as session:
         now = datetime.now(timezone.utc)
@@ -990,9 +998,10 @@ async def get_analysis_quality_realtime():
 @trading_router.get("/api/ssvp-health", tags=["SSVP"])
 async def get_ssvp_health():
     """Monitor metric performa SSVP."""
+    from sqlalchemy import select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import SystemConfig
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
         cfg_calib = (
@@ -1036,9 +1045,10 @@ async def get_ssvp_health():
 @trading_router.get("/api/debate-outcomes", tags=["Analysis"])
 async def get_debate_outcomes(limit: int = Query(default=20, ge=1, le=100)):
     """Ambil ringkasan hasil debate bull/bear & adjudikasi spesialis (M-4)."""
+    from sqlalchemy import select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import AssetAnalysis
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
         rows = (
@@ -1109,9 +1119,10 @@ async def get_debate_outcomes(limit: int = Query(default=20, ge=1, le=100)):
 @trading_router.get("/api/mt5/signals", tags=["Execution"], include_in_schema=False)
 async def get_mt5_signals(limit: int = Query(default=50, ge=1, le=200)):
     """Ambil riwayat sinyal dan korelasi eksekusi MT5 yang diperkaya dengan analisis AI (M-4)."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import MT5Signal, AssetAnalysis
     from sqlalchemy import select
+
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import AssetAnalysis, MT5Signal
 
     async with AsyncSessionLocal() as session:
         stmt = (
@@ -1346,7 +1357,7 @@ async def action_steer(body: SteerRequest, request: Request):
 async def action_override_risk(payload: OverrideRiskRequest, request: Request):
     """Update dynamic risk parameters in SystemConfig and runtime settings with duration support."""
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.repositories import SystemConfigRepository, ActivityLogRepository
+    from monika.infrastructure.database.repositories import ActivityLogRepository, SystemConfigRepository
 
     updated_fields = {}
     if payload.risk_percent_per_trade is not None:
@@ -1425,9 +1436,10 @@ async def action_override_risk(payload: OverrideRiskRequest, request: Request):
 @require_role(Role.OPERATOR)
 async def action_close_position(payload: ClosePositionRequest, request: Request):
     """Close floating position in MT5/broker or synthetic paper trade (full or partial)."""
+    from sqlalchemy import select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import Position
-    from sqlalchemy import select
 
     exec_svc = get_dashboard_dependency("execution_service")
     mt5_client = get_dashboard_dependency("mt5_client")
@@ -1530,9 +1542,10 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
 @require_role(Role.OPERATOR)
 async def action_position_breakeven(ticket: int, request: Request):
     """Move Stop Loss to Entry Price (Breakeven) for a single open position."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import Position, ActivityLog
     from sqlalchemy import select
+
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import ActivityLog, Position
 
     exec_svc = get_dashboard_dependency("execution_service")
     mt5_client = get_dashboard_dependency("mt5_client")
@@ -1616,9 +1629,10 @@ async def action_bulk_breakeven(payload: BulkBreakevenRequest, request: Request)
             requested_by="dashboard_bulk_be",
         )
     else:
-        from monika.infrastructure.database.db import AsyncSessionLocal
-        from monika.infrastructure.database.models import Position, ActivityLog
         from sqlalchemy import select
+
+        from monika.infrastructure.database.db import AsyncSessionLocal
+        from monika.infrastructure.database.models import ActivityLog, Position
 
         async with AsyncSessionLocal() as session:
             stmt = select(Position).where(Position.status == "open")
@@ -1654,9 +1668,10 @@ async def action_bulk_breakeven(payload: BulkBreakevenRequest, request: Request)
 @require_role(Role.OPERATOR)
 async def action_trailing_override(ticket: int, payload: TrailingOverrideRequest, request: Request):
     """Set dynamic or static trailing stop override per position ticket."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import Position, ActivityLog
     from sqlalchemy import select
+
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import ActivityLog, Position
 
     async with AsyncSessionLocal() as session:
         pos = (await session.execute(select(Position).where(Position.mt5_ticket == ticket))).scalar_one_or_none()
@@ -1721,9 +1736,10 @@ async def action_kill_symbol(symbol: str, request: Request):
             reason=f"Emergency liquidation for symbol {sym}",
         )
     else:
-        from monika.infrastructure.database.db import AsyncSessionLocal
-        from monika.infrastructure.database.models import Position, ActivityLog
         from sqlalchemy import select
+
+        from monika.infrastructure.database.db import AsyncSessionLocal
+        from monika.infrastructure.database.models import ActivityLog, Position
 
         async with AsyncSessionLocal() as session:
             positions = (
@@ -1762,9 +1778,10 @@ async def action_close_batch(payload: BatchCloseRequest, request: Request):
     """Close multiple positions selectively in a single batch request."""
     tickets = list(payload.tickets or [])
     if not tickets:
+        from sqlalchemy import select
+
         from monika.infrastructure.database.db import AsyncSessionLocal
         from monika.infrastructure.database.models import Position
-        from sqlalchemy import select
 
         async with AsyncSessionLocal() as session:
             q = select(Position).where(Position.status == "open")
@@ -1785,9 +1802,10 @@ async def action_close_batch(payload: BatchCloseRequest, request: Request):
             reason=payload.reason or "Batch close via Dashboard",
         )
     else:
-        from monika.infrastructure.database.db import AsyncSessionLocal
-        from monika.infrastructure.database.models import Position, ActivityLog
         from sqlalchemy import select
+
+        from monika.infrastructure.database.db import AsyncSessionLocal
+        from monika.infrastructure.database.models import ActivityLog, Position
 
         async with AsyncSessionLocal() as session:
             positions = (
@@ -1924,9 +1942,9 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
         except Exception:
             settings = {}
 
-    from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import Position, ActivityLog
     from monika.domain.risk.trade_proposal import TradeProposal
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import ActivityLog, Position
 
     risk_gate = get_dashboard_dependency("risk_gate")
     if not risk_gate:
@@ -2044,7 +2062,7 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
 async def action_emergency_kill(request: Request):
     """Trigger emergency kill switch and position liquidation safely via daemon."""
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.repositories import SystemConfigRepository, ActivityLogRepository
+    from monika.infrastructure.database.repositories import ActivityLogRepository, SystemConfigRepository
 
     async with AsyncSessionLocal() as session:
         cfg_repo = SystemConfigRepository(session)
@@ -2137,8 +2155,8 @@ async def action_pause_trading(request: Request):
 @require_role(Role.ADMIN)
 async def action_unsuspend_symbols(request: Request):
     """Lift trading suspension on all instruments or specific symbol."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.core.analytics.paper_tracker import PaperTracker
+    from monika.infrastructure.database.db import AsyncSessionLocal
 
     try:
         body = await request.json()
@@ -2170,9 +2188,10 @@ async def action_unsuspend_symbols(request: Request):
 @require_role(Role.OPERATOR)
 async def action_approve_trade(trade_id: int, request: Request):
     """Approve a pending trade trigger or asset analysis for order execution."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import AssetAnalysis, TradeTrigger, ActivityLog
     from sqlalchemy import select
+
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import ActivityLog, AssetAnalysis, TradeTrigger
 
     exec_svc = get_dashboard_dependency("execution_service")
 
@@ -2273,9 +2292,10 @@ async def action_approve_trade(trade_id: int, request: Request):
 @require_role(Role.OPERATOR)
 async def modify_position(ticket: int, payload: ModifyPositionRequest, request: Request):
     """Modify Stop Loss and Take Profit levels of an active position."""
+    from sqlalchemy import select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import Position
-    from sqlalchemy import select
 
     exec_svc = get_dashboard_dependency("execution_service")
     mt5_client = get_dashboard_dependency("mt5_client")
@@ -2338,9 +2358,10 @@ async def get_technical_indicators_snapshot(
     timeframe: str = Query(default="H1", description="Timeframe e.g. M15, H1, H4, D1"),
 ):
     """Retrieve computed technical indicators (MA, RSI, MACD, BB, ATR) for a symbol."""
+    from sqlalchemy import select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import TechnicalIndicator
-    from sqlalchemy import select
 
     sym = symbol.strip().upper().replace("/", "")
 
@@ -2373,8 +2394,8 @@ async def get_technical_indicators_snapshot(
 
         if not indicators_map:
             try:
-                from monika.domain.indicators.technical import TechnicalIndicatorCalculator
                 from monika.core.config.settings import load_settings
+                from monika.domain.indicators.technical import TechnicalIndicatorCalculator
 
                 settings = load_settings() or {}
                 calc = TechnicalIndicatorCalculator(session, settings)
@@ -2400,9 +2421,10 @@ async def get_market_structure_levels(
     timeframe: str = Query(default="H4", description="Timeframe e.g. M15, H1, H4, D1"),
 ):
     """Retrieve SMC market structure levels: Order Blocks, FVGs, and Structure Breaks."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import OrderBlock, StructureBreak, FVGZone
     from sqlalchemy import select
+
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import FVGZone, OrderBlock, StructureBreak
 
     sym = symbol.strip().upper().replace("/", "")
 
@@ -2539,7 +2561,8 @@ async def get_market_candles(
             logger.debug(f"Live candle fetch for {sym} failed: {e}")
 
     if not candles:
-        import math, time
+        import math
+        import time
 
         now_ts = int(time.time())
         step_map = {"M1": 60, "M5": 300, "M15": 900, "M30": 1800, "H1": 3600, "H4": 14400, "D1": 86400}

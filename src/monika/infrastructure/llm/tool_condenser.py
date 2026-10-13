@@ -13,7 +13,8 @@ Intercepts raw tool outputs before they enter the LLM context window:
 
 import json
 import logging
-from typing import Optional, Dict, Any, Union
+from typing import Any, Dict, Optional, Union
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget

@@ -4,6 +4,7 @@
 
 import logging
 from typing import Any, Dict, List, Tuple
+
 from monika.application.analysis.tools.registry import default_tool_registry
 
 logger = logging.getLogger("TradingAgent.ToolBatchPlanner")

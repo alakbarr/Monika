@@ -11,9 +11,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
-from monika.application.harness.contract import TradingPlugin, PluginCategory, PluginMetadata
+from monika.application.harness.contract import PluginCategory, PluginMetadata, TradingPlugin
 
 
 class ExitReason(str, Enum):

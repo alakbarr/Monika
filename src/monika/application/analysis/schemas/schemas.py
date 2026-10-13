@@ -1,5 +1,6 @@
+from typing import Any, Dict, List, Literal, Optional
+
 from pydantic import BaseModel, Field
-from typing import Optional, Literal, Any, Dict, List
 
 
 def _inline_refs(schema, defs=None):
@@ -68,10 +69,10 @@ def get_tool_schema(pydantic_model: type[BaseModel]) -> dict:
 
 from monika.application.analysis.schemas.pydantic_schemas import (
     EntryCondition,
-    ReevaluationTrigger,
-    PricedInOverrideJustification,
-    UpcomingRiskEvent,
     PricedInAssessment,
+    PricedInOverrideJustification,
+    ReevaluationTrigger,
     SubmitAssetAnalysisSchema,
     SubmitFundamentalBriefSchema,
+    UpcomingRiskEvent,
 )

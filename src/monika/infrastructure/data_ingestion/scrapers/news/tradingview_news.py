@@ -4,7 +4,7 @@
 
 import logging
 import time
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 
 from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 from monika.infrastructure.data_ingestion.scrapers.models import ScrapedNews
@@ -44,7 +44,8 @@ class TradingViewNewsScraper(BaseScraper):
             return
         try:
             page_obj: Any = self.page
-            import json, os
+            import json
+            import os
 
             session_path = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),

@@ -9,14 +9,14 @@ high latency, and cache invalidation), this registry provides:
 """
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from monika.application.analysis.tools.tools_definitions import (
     ALL_TOOLS,
+    GET_MARKET_QUOTE,
     STAGE1_TOOLS,
     STAGE2_TOOLS,
     TELEGRAM_TOOLS,
-    GET_MARKET_QUOTE,
     _tool,
 )
 

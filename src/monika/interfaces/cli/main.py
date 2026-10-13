@@ -53,29 +53,29 @@ from monika.interfaces.cli.platform_compat import apply_platform_fixes
 apply_platform_fixes()
 
 from typing import Any, Dict, List, Optional
+
 import aiohttp
-from monika.core.config.settings import load_all_config, load_settings
-from monika.infrastructure.database.db import init_db, get_session, close_db
-from monika.infrastructure.database.models import Position, PaperTradeRecord, SystemConfig, RiskState
 from sqlalchemy import select
 
+from monika.application import main as _root_main
+from monika.core.config.settings import load_all_config, load_settings
+from monika.infrastructure.database.db import close_db, get_session, init_db
+from monika.infrastructure.database.models import PaperTradeRecord, Position, RiskState, SystemConfig
 from monika.interfaces.cli.theme import (
-    get_console,
-    LEDGER_BOX,
-    PHOSPHOR_AMBER,
+    BEAR_LOSS,
     BRASS,
     BULL_PROFIT,
-    BEAR_LOSS,
+    LEDGER_BOX,
     MUTED,
     PAPER,
-    stamp_ok,
+    PHOSPHOR_AMBER,
+    get_console,
     stamp_err,
-    stamp_warn,
-    stamp_info,
     stamp_exec,
+    stamp_info,
+    stamp_ok,
+    stamp_warn,
 )
-
-from monika.application import main as _root_main
 
 TradingAgent: Any = getattr(_root_main, "TradingAgent", None)
 acquire_single_instance_lock: Any = getattr(_root_main, "acquire_single_instance_lock", None)
@@ -725,8 +725,8 @@ async def _cmd_chat(args):
 
 async def _cmd_config_show(args):
     """Show system configuration or section."""
-    from rich.syntax import Syntax
     import yaml
+    from rich.syntax import Syntax
 
     console = get_console()
 
@@ -869,8 +869,10 @@ async def _cmd_config_set(args):
 
     if not api_success:
         import shutil
+
         import yaml
-        from monika.core.config.settings import validate_config, _deep_merge
+
+        from monika.core.config.settings import _deep_merge, validate_config
         from monika.infrastructure.database.models import ActivityLog
 
         settings_path = getattr(args, "config", None)
@@ -955,8 +957,8 @@ async def _cmd_config_unset(args):
         console.print(f"{stamp_warn('CONFIG')} No configuration key specified.")
         return
 
-    from monika.core.config.settings import load_settings, validate_config
     from monika.core.config.atomic_writer import AtomicConfigWriter
+    from monika.core.config.settings import load_settings, validate_config
 
     settings_path = getattr(args, "config", None) or "config/settings.yaml"
     settings = load_settings(settings_path)
@@ -984,6 +986,7 @@ async def _cmd_config_unset(args):
 async def _cmd_config_edit(args):
     """Open settings.yaml or plugin config in default editor and validate upon close."""
     import subprocess
+
     import yaml
 
     console = get_console()
@@ -1090,8 +1093,9 @@ async def _cmd_sessions(args):
             sessions_data = None
 
     if sessions_data is None:
+        from sqlalchemy import desc, func
+
         from monika.infrastructure.database.models import TelegramConversation
-        from sqlalchemy import func, desc
 
         await init_db()
         async with get_session() as session:
@@ -1285,20 +1289,21 @@ async def _cmd_setup(args):
 
 
 async def _cmd_profile(args):
+    from rich.table import Table
+
     from monika.interfaces.cli.profile_manager import ProfileManager
     from monika.interfaces.cli.theme import (
-        get_console,
-        stamp_ok,
-        stamp_err,
-        stamp_info,
-        stamp_warn,
-        PHOSPHOR_AMBER,
         BRASS,
         LEDGER_BOX,
-        PAPER,
         MUTED,
+        PAPER,
+        PHOSPHOR_AMBER,
+        get_console,
+        stamp_err,
+        stamp_info,
+        stamp_ok,
+        stamp_warn,
     )
-    from rich.table import Table
 
     pm = ProfileManager()
     console = get_console()
@@ -1432,11 +1437,12 @@ async def _cmd_analyze(args):
 
 async def _cmd_backtest(args):
     console = get_console()
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
+
+    from monika.application.backtest.point_in_time_engine import BacktestMode, PointInTimeBacktestEngine
+    from monika.application.backtest.walk_forward_engine import WalkForwardEngine
     from monika.core.config.settings import load_all_config
     from monika.infrastructure.database.db import init_db
-    from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine, BacktestMode
-    from monika.application.backtest.walk_forward_engine import WalkForwardEngine
 
     await init_db()
     settings = load_all_config()
@@ -1509,10 +1515,10 @@ async def _cmd_backtest(args):
 
 async def _cmd_benchmark_run(args):
     console = get_console()
-    from monika.application.benchmark.task_specs import TASKS
-    from monika.application.benchmark.model_registry import get_candidate_models, get_tier_models, get_router_matrix
-    from monika.application.benchmark.runner import run_benchmark
+    from monika.application.benchmark.model_registry import get_candidate_models, get_router_matrix, get_tier_models
     from monika.application.benchmark.report import build_report
+    from monika.application.benchmark.runner import run_benchmark
+    from monika.application.benchmark.task_specs import TASKS
 
     settings = load_all_config()
     bench_cfg = settings.get("benchmark", {})
@@ -1542,8 +1548,9 @@ async def _cmd_benchmark_run(args):
         tasks = list(TASKS.keys())
 
     if getattr(args, "mode", "standard") == "arena":
-        from monika.application.benchmark.alpha_arena import AlphaArenaTournament
         from rich.table import Table
+
+        from monika.application.benchmark.alpha_arena import AlphaArenaTournament
 
         arena = AlphaArenaTournament()
         console.print(
@@ -1632,8 +1639,9 @@ async def _cmd_benchmark_run(args):
 async def _cmd_benchmark_leaderboard(args):
     console = get_console()
     from rich.table import Table
-    from sqlalchemy import select, desc
-    from monika.application.benchmark.db_models import BenchmarkRun, BenchmarkResult
+    from sqlalchemy import desc, select
+
+    from monika.application.benchmark.db_models import BenchmarkResult, BenchmarkRun
 
     await init_db()
     run_id = getattr(args, "run_id", None)
@@ -1715,10 +1723,12 @@ async def _cmd_benchmark_leaderboard(args):
 
 async def _cmd_benchmark_history(args):
     console = get_console()
-    from rich.table import Table
-    from sqlalchemy import select, desc
-    from monika.application.benchmark.db_models import BenchmarkRun
     import json as _json
+
+    from rich.table import Table
+    from sqlalchemy import desc, select
+
+    from monika.application.benchmark.db_models import BenchmarkRun
 
     await init_db()
     limit = getattr(args, "limit", 15)
@@ -1769,6 +1779,7 @@ async def _cmd_benchmark_history(args):
 async def _cmd_benchmark_tasks(args):
     console = get_console()
     from rich.table import Table
+
     from monika.application.benchmark.task_specs import TASKS
 
     tbl = Table(
@@ -1792,6 +1803,7 @@ async def _cmd_benchmark_tasks(args):
 async def _cmd_benchmark_models(args):
     console = get_console()
     from rich.table import Table
+
     from monika.application.benchmark.model_registry import get_candidate_models, get_router_matrix
 
     settings = load_all_config()
@@ -1840,6 +1852,7 @@ async def _cmd_benchmark(args):
 
 async def _cmd_stress_test(args):
     import time
+
     from monika.application.evals.hostile_market_probe import HostileMarketProbe
 
     sym = getattr(args, "symbol", "EURUSD").upper()
@@ -1877,8 +1890,8 @@ async def _cmd_stress_test(args):
 
 
 async def _cmd_backup(args):
-    from monika.infrastructure.infra.db_backup import create_backup
     from monika.core.config.settings import load_all_config
+    from monika.infrastructure.infra.db_backup import create_backup
 
     cfg = load_all_config()
     dest = getattr(args, "dest", None)
@@ -2375,6 +2388,7 @@ async def _dispatch_cli(args):
             if not EnvFileManager.is_configured():
                 if sys.stdin and hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
                     from rich.prompt import Confirm
+
                     from monika.interfaces.cli.theme import get_console, stamp_warn
 
                     console = get_console()

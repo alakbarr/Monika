@@ -4,17 +4,18 @@ Executes parameterized aggregations on historical trade performance,
 regime expectancy, holding times, session win rates, MAE/MFE distributions, and slippage.
 """
 
-from datetime import datetime, timezone, timedelta
 import logging
 import math
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
+
 import numpy as np
-from sqlalchemy import select, and_, func, desc
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import Position, PaperTradeRecord, TradeOutcome, OrderLog, AssetAnalysis
-from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition
 import monika.core.primitives.clock as clock
+from monika.application.analysis.tools.registry import ToolDefinition, ToolRegistry
+from monika.infrastructure.database.models import AssetAnalysis, OrderLog, PaperTradeRecord, Position, TradeOutcome
 
 logger = logging.getLogger("TradingAgent.Tools.AnalyticalQuery")
 

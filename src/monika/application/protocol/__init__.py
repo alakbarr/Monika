@@ -1,11 +1,11 @@
 from .event_bus import (
     AppEvent,
-    TickPriceEvent,
     BarClosedEvent,
-    OrderStateChangedEvent,
-    RiskBreachEvent,
     CircuitBreakerEvent,
     EventBus,
+    OrderStateChangedEvent,
+    RiskBreachEvent,
+    TickPriceEvent,
     get_event_bus,
     reset_event_bus,
 )

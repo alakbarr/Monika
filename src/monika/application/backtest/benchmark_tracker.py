@@ -4,8 +4,9 @@ Calculates institutional benchmark-relative metrics:
 Alpha, Beta, Information Ratio, Tracking Error, Up/Down Capture Ratio.
 """
 
-from dataclasses import dataclass, asdict
-from typing import Sequence, Dict, Any
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, Sequence
+
 import numpy as np
 
 

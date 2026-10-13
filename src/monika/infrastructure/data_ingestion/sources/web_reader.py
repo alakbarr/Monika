@@ -11,12 +11,13 @@ Useful for deep research, earnings calls, economic reports, and news verificatio
 """
 
 import asyncio
+import ipaddress
 import logging
 import re
-from typing import Dict, Any, Optional
-import ipaddress
 import socket
-from urllib.parse import urlparse, urljoin
+from typing import Any, Dict, Optional
+from urllib.parse import urljoin, urlparse
+
 import aiohttp
 from bs4 import BeautifulSoup
 
@@ -216,6 +217,7 @@ class WebReader:
         """Extracts clean text from binary PDF payload using pypdf."""
         try:
             import io
+
             from pypdf import PdfReader
 
             reader = PdfReader(io.BytesIO(raw_bytes))

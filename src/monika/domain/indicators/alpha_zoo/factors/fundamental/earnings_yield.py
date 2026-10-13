@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from monika.domain.indicators.factor_primitives import safe_div
-from monika.domain.indicators.factor_primitives import zscore
+from monika.domain.indicators.factor_primitives import safe_div, zscore
 
 __alpha_meta__ = {
     "id": "fund_earnings_yield",

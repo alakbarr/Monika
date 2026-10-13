@@ -192,7 +192,7 @@ class TerminalProcessEngine:
         command = rewrite_sudo_command(command)
 
         # Validate command security
-        from monika.core.security.terminal_guard import validate_command, CommandSecurityViolationError
+        from monika.core.security.terminal_guard import CommandSecurityViolationError, validate_command
 
         try:
             validate_command(command)

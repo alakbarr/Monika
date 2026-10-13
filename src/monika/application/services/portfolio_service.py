@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, List, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.domain.entities.position import PositionEntity
 from monika.domain.entities.order import OrderEntity
+from monika.domain.entities.position import PositionEntity
 from monika.infrastructure.database.repositories.position_repository import PositionRepository
 
 logger = logging.getLogger("Monika.Application.PortfolioService")

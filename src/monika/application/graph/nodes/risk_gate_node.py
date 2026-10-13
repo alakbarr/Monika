@@ -21,17 +21,20 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, List, Optional
+
 from langchain_core.runnables.config import RunnableConfig
 
-from monika.application.graph.state import TradingState
 from monika.application.graph.nodes.risk.level_synthesizer import _safe_num, resolve_and_repair_levels
 from monika.application.graph.nodes.risk.portfolio_synthesis import (
     ai_portfolio_synthesis as _ai_portfolio_synthesis,
+)
+from monika.application.graph.nodes.risk.portfolio_synthesis import (
     apply_portfolio_synthesis_reduction,
 )
 from monika.application.graph.nodes.risk.proposal_notifier import send_proposal_notifications
 from monika.application.graph.nodes.risk.quant_arbitration import run_quant_arbitration
 from monika.application.graph.nodes.risk.rejection_auditor import audit_trade_rejection
+from monika.application.graph.state import TradingState
 
 logger = logging.getLogger("TradingAgent.Graph.RiskGateNode")
 
@@ -76,8 +79,8 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
 
     # 2. Deterministic Portfolio Correlation Gating
     try:
-        from monika.infrastructure.database.db import get_session
         from monika.domain.risk.portfolio_correlation_gate import filter_correlated_proposals
+        from monika.infrastructure.database.db import get_session
 
         async with get_session() as session:
             kept_actionable, rejected_actionable = await filter_correlated_proposals(session, actionable)
@@ -105,10 +108,10 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
     # 4. Institutional 22-Check Risk Gate Evaluation
     if actionable:
         try:
-            from monika.infrastructure.database.db import get_session as _gs_rg
-            from monika.infrastructure.database.models import AssetAnalysis
             from monika.domain.risk.risk_gate import RiskGate
             from monika.domain.risk.trade_proposal import TradeProposal
+            from monika.infrastructure.database.db import get_session as _gs_rg
+            from monika.infrastructure.database.models import AssetAnalysis
 
             risk_gate = getattr(scheduler, "risk_gate", None) or RiskGate(
                 scheduler.settings, mt5_client=getattr(scheduler, "mt5", None)

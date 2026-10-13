@@ -14,15 +14,15 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 
-from monika.interfaces.dashboard.rbac import Role, resolve_role, require_role, ROLE_HIERARCHY
+from monika.core.streaming.stream_scrubber import StatefulStreamScrubber
+from monika.interfaces.dashboard.rbac import ROLE_HIERARCHY, Role, require_role, resolve_role
 from monika.interfaces.dashboard.routes.common import (
     _active_websockets,
     _client_queues,
-    get_dashboard_dependency,
-    get_current_stream_seq,
     get_buffered_events_since,
+    get_current_stream_seq,
+    get_dashboard_dependency,
 )
-from monika.core.streaming.stream_scrubber import StatefulStreamScrubber
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.WebSocket")
 
@@ -747,9 +747,10 @@ async def list_sessions(
     limit: int = Query(default=50, ge=1, le=200),
 ):
     """List conversation sessions with message counts, activity times, and preview."""
+    from sqlalchemy import desc, func, select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import TelegramConversation
-    from sqlalchemy import select, func, desc
 
     async with AsyncSessionLocal() as session:
         query = (
@@ -805,9 +806,10 @@ async def get_session_messages(
     limit: int = Query(default=100, ge=1, le=500),
 ):
     """Retrieve conversation transcript for a given session."""
+    from sqlalchemy import select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import TelegramConversation
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
         stmt = (

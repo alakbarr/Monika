@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from monika.infrastructure.infra.paths import get_skills_dir
 
 """
@@ -16,17 +17,18 @@ Key Capabilities:
 4. Dynamically mountable by PromptAssembler and dynamic micro-skill loaders.
 """
 
-import os
 import json
 import logging
-from pathlib import Path
-from typing import Dict, Any, Optional, List, Union
+import os
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import DecisionReflection, PaperTradeRecord, SystemConfig, AssetAnalysis
+
 from monika.application.skills.loader import invalidate_cache
+from monika.infrastructure.database.models import AssetAnalysis, DecisionReflection, PaperTradeRecord, SystemConfig
 
 logger = logging.getLogger("TradingAgent.SkillCrystallizer")
 

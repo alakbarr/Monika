@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import pandas as pd
+
 from monika.domain.indicators.factor_primitives import safe_div, ts_mean
 
 __alpha_meta__ = {

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Optional
+
 from pydantic import BaseModel, Field
 
 from monika.application.analysis.tools.file_patch_engine import FilePatchEngine

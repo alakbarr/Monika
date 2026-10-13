@@ -7,9 +7,9 @@ Log Redaction Utility (H7).
 Strips API keys, tokens, passwords, and sensitive URLs from log strings.
 """
 
-import re
 import logging
-from typing import List, Tuple, Any
+import re
+from typing import Any, List, Tuple
 
 # Pre-compiled redaction patterns
 REDACTION_PATTERNS: List[Tuple[re.Pattern, str]] = [

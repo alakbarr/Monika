@@ -3,7 +3,7 @@
 # Description: Programmatic Oracle for SMC Structural & Geometric Validation
 # ==============================================================================
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 
 def evaluate_smc_geometry(fixture: Dict[str, Any], decision_data: Dict[str, Any]) -> Dict[str, Any]:

@@ -1,9 +1,11 @@
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis
+
 from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
+from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord
 
 logger = logging.getLogger("TradingAgent.CoherenceFlagTracker")
 

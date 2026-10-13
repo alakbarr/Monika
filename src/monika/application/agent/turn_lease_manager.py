@@ -9,7 +9,7 @@ active analysis turn's steering queue without restarting the analysis cycle.
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.TurnLeaseManager")

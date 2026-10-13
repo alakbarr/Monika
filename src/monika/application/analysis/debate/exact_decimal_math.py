@@ -14,7 +14,7 @@ risk/reward ratios, slippage calculations, and geometric constraints.
 from __future__ import annotations
 
 import ast
-from decimal import Context, Decimal, InvalidOperation, ROUND_HALF_EVEN
+from decimal import ROUND_HALF_EVEN, Context, Decimal, InvalidOperation
 from typing import Any, Union
 
 _CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)

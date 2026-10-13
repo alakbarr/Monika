@@ -7,10 +7,10 @@ Renamed in Phase 4 Polish (L-6).
 """
 
 from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import (
-    BondYieldFetcher,
     ECB_AAA_YIELD_URL,
     FRED_BASE_URL,
     FRED_BOND_SERIES,
+    BondYieldFetcher,
     logger,
 )
 

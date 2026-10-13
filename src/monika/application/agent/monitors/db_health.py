@@ -14,8 +14,9 @@ async def run_db_health_check(agent: Any) -> None:
     """Monitor Database connection pool health."""
     while not agent.shutdown_event.is_set():
         try:
-            from monika.infrastructure.database.db import get_engine
             from sqlalchemy import text
+
+            from monika.infrastructure.database.db import get_engine
 
             eng = get_engine()
             async with eng.connect() as conn:

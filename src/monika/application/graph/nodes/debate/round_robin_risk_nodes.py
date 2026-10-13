@@ -12,34 +12,35 @@ Menerapkan musyawarah konsensus berantai (round-robin) antar persona risiko:
 4. Portfolio Judge Node: Mengadili konsensus ketiga persona & menetapkan risk clamp final.
 """
 
+import asyncio
 import json
 import logging
-import asyncio
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from monika.application.graph.state import TradingState
 from langchain_core.runnables.config import RunnableConfig
-from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import AssetAnalysis
-from monika.infrastructure.providers.llm_factory import get_client_for_task
-from monika.application.analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
+
 from monika.application.analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
-from monika.application.analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
-from monika.application.analysis.debate.portfolio_manager import make_portfolio_decision
+from monika.application.analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
 from monika.application.analysis.debate.deterministic_risk import (
-    analyze_risk_conservative,
     analyze_risk_aggressive,
+    analyze_risk_conservative,
     analyze_risk_neutral,
     make_portfolio_decision_deterministic,
 )
+from monika.application.analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
+from monika.application.analysis.debate.portfolio_manager import make_portfolio_decision
 from monika.application.analysis.memory.decision_log import DecisionLogger
 from monika.application.graph.nodes.debate.helpers import (
-    compute_actual_risk_state,
-    _get_recent_sl_streak,
-    _get_correlated_exposure_summary,
     _apply_deterministic_risk_clamp,
+    _get_correlated_exposure_summary,
+    _get_recent_sl_streak,
+    compute_actual_risk_state,
     sync_facade_patches,
 )
+from monika.application.graph.state import TradingState
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import AssetAnalysis
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.Graph.Debate.RoundRobinRisk")
 

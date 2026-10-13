@@ -12,7 +12,7 @@ by safely merging consecutive same-role messages without mutating inputs in-plac
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 

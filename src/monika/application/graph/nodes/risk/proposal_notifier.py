@@ -24,9 +24,10 @@ async def send_proposal_notifications(actionable: List[Tuple[str, Dict[str, Any]
         return
 
     try:
+        from sqlalchemy import select
+
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import AssetAnalysis
-        from sqlalchemy import select
         from monika.infrastructure.infra.notifier import AgentNotifier
 
         notifier = AgentNotifier()

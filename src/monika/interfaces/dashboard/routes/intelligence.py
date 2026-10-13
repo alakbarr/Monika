@@ -5,35 +5,35 @@
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Query, HTTPException, Request
-from sqlalchemy import select, desc
+from fastapi import APIRouter, HTTPException, Query, Request
+from sqlalchemy import desc, select
 
+from monika.application.plugins.loader import load_manifest_file
+from monika.application.skills.loader import get_skill_metadata, list_skills
+from monika.core.telemetry.reporting.tearsheet_generator import QuantTearsheetGenerator
 from monika.infrastructure.database.db import AsyncSessionLocal
 from monika.infrastructure.database.models import (
-    EconomicCalendar,
-    COTReport,
-    NewsItem,
-    PaperTradeRecord,
-    TradeOutcome,
-    FedWatchProbability,
-    TreasuryYield,
     BondYieldData,
     CentralBankRateExpectation,
+    COTReport,
+    EconomicCalendar,
+    FedWatchProbability,
+    NewsItem,
+    PaperTradeRecord,
     SystemConfig,
+    TradeOutcome,
+    TreasuryYield,
 )
-from monika.interfaces.dashboard.rbac import require_role, Role
+from monika.interfaces.dashboard.rbac import Role, require_role
 from monika.interfaces.dashboard.routes.common import (
-    broadcast_live_event,
-    DeprecateSkillRequest,
     CrystallizeSkillRequest,
+    DeprecateSkillRequest,
+    broadcast_live_event,
 )
-from monika.application.skills.loader import list_skills, get_skill_metadata
-from monika.application.plugins.loader import load_manifest_file
-from monika.core.telemetry.reporting.tearsheet_generator import QuantTearsheetGenerator
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Intelligence")
 
@@ -534,8 +534,9 @@ async def get_market_sentiment_composite():
 @require_role(Role.VIEWER)
 async def get_crystallized_skills():
     """Retrieve all autonomously crystallized skills with attribution & win-rate metrics."""
-    from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
     import yaml
+
+    from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
 
     crystallizer = SkillCrystallizer()
     skills_dir = crystallizer.SKILLS_DIR

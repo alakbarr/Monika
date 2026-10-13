@@ -6,15 +6,16 @@ leaving only an exact, decisive state receipt and pointer in the active context 
 Prevents O(N) context window degradation and saves thousands of tokens per large tool call.
 """
 
-import uuid
 import logging
-from typing import Optional, Dict, Any
+import uuid
+from typing import Any, Dict, Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import ContextSpillBlob
-from monika.infrastructure.llm.prompt_compressor import estimate_tokens
 from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens
 
 logger = logging.getLogger("TradingAgent.PostgresSpillSubsystem")
 

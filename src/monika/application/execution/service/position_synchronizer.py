@@ -6,38 +6,38 @@ import asyncio
 import json
 import logging
 import math
-import uuid
-import time
 import sys
+import time
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock
 
-from sqlalchemy import select, func, desc, update
+from sqlalchemy import desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-import monika.core.primitives.clock as clock
 
+import monika.core.primitives.clock as clock
 import monika.infrastructure.database.db as _db_mod
-from monika.infrastructure.database.safe_ops import safe_commit
-from monika.infrastructure.database.models import (
-    AssetAnalysis,
-    Position,
-    OrderLog,
-    ActivityLog,
-    RiskState,
-    SystemConfig,
-    Order,
-    OrderStatus,
-    OrderEvent,
-    PaperTradeRecord,
-)
-from monika.infrastructure.brokers.mt5_client import MT5Client
-from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
+from monika.application.execution.service.order_lifecycle_service import OrderLifecycleService
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult
 from monika.domain.risk.risk_gate import RiskGate
+from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
+from monika.infrastructure.brokers.mt5_client import MT5Client
+from monika.infrastructure.database.models import (
+    ActivityLog,
+    AssetAnalysis,
+    Order,
+    OrderEvent,
+    OrderLog,
+    OrderStatus,
+    PaperTradeRecord,
+    Position,
+    RiskState,
+    SystemConfig,
+)
+from monika.infrastructure.database.safe_ops import safe_commit
 from monika.infrastructure.infra.notifier import AgentNotifier
-from monika.application.execution.service.order_lifecycle_service import OrderLifecycleService
 
 
 def get_session(*args, **kwargs):
@@ -283,8 +283,9 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
 
         # Cek berapa SL hits hari ini (live + paper)
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
-        from monika.infrastructure.database.models import TradeOutcome, PaperTradeRecord
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
+        from monika.infrastructure.database.models import PaperTradeRecord, TradeOutcome
 
         paper_sl_hits = (
             await session.execute(

@@ -4,8 +4,8 @@ Partitions batches of tool calls into parallel and sequential execution segments
 based on asset symbol conflicts to prevent race conditions on MT5 terminal bindings.
 """
 
-from typing import List, Dict, Any, Tuple, Set
 import logging
+from typing import Any, Dict, List, Set, Tuple
 
 logger = logging.getLogger("TradingAgent.Harness.SymbolSegmentPlanner")
 

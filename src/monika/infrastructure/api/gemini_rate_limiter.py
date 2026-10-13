@@ -10,7 +10,7 @@ import asyncio
 import json
 import logging
 import time
-from collections import deque, defaultdict
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 from typing import ClassVar
 
@@ -74,6 +74,7 @@ class GeminiRateLimiter:
 
         try:
             from sqlalchemy import select
+
             from monika.infrastructure.database.models import SystemConfig
 
             # We will lazy-load counts per model as they are encountered instead of pre-loading all possible models here.

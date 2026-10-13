@@ -1,6 +1,7 @@
 import logging
-from typing import Dict, Any
-from monika.application.analysis.schemas.pydantic_schemas import SentimentAnalysisSchema, SentimentBand, ConfidenceLevel
+from typing import Any, Dict
+
+from monika.application.analysis.schemas.pydantic_schemas import ConfidenceLevel, SentimentAnalysisSchema, SentimentBand
 
 logger = logging.getLogger("TradingAgent.SentimentAggregator")
 

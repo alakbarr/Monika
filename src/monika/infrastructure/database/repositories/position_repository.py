@@ -6,12 +6,13 @@ Encapsulates database access for trading positions and order records.
 
 from datetime import datetime, timezone
 from typing import Optional, Sequence
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import Position, Order, OrderLog
-from monika.domain.entities.position import PositionEntity
 from monika.domain.entities.order import OrderEntity
+from monika.domain.entities.position import PositionEntity
+from monika.infrastructure.database.models import Order, OrderLog, Position
 
 
 class PositionRepository:

@@ -4,8 +4,9 @@ SignalArbitrator: Arbitrase Sinyal Terpusat antara Quant Strategies dan LLM Deba
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
 from datetime import datetime, timezone
+from typing import Any, Dict, Optional
+
 import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.SignalArbitrator")
@@ -622,8 +623,9 @@ class SignalArbitrator:
             return default_mult
 
         try:
-            from monika.infrastructure.database.models import PaperTradeRecord, TradeOutcome
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import PaperTradeRecord, TradeOutcome
 
             # Query up to 30 recent concordant closed trades
             stmt = (
@@ -687,8 +689,9 @@ async def compute_empirical_arbitrator_weights(
     if not session:
         return default_quant, default_llm
     try:
-        from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord
 
         stmt = (
             select(PaperTradeRecord, AssetAnalysis)

@@ -8,8 +8,9 @@ Menyediakan simulasi bootstrap permutasi trade, stress-test lonjakan slippage & 
 analisis klaster drawdown, serta estimasi probabilitas kebangkrutan (Probability of Ruin).
 """
 
+from typing import Any, Dict, List, Optional
+
 import numpy as np
-from typing import List, Dict, Any, Optional
 
 
 class MonteCarloStressTester:

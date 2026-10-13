@@ -8,7 +8,7 @@ Fitur:
 """
 
 import logging
-from typing import Optional, Dict, Any, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.CycleBudgetGuard")
 

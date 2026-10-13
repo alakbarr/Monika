@@ -590,8 +590,8 @@ class UnifiedCronEngine:
             elif not job.no_agent and job.prompt:
                 # Default headless ChatAgent execution for conversational / analytical tasks
                 try:
-                    from monika.core.config.settings import load_settings
                     from monika.application.agent.chat_agent import ChatAgent
+                    from monika.core.config.settings import load_settings
 
                     settings = load_settings()
                     agent = ChatAgent(settings, user_id=job.target_destination or "cron_scheduler", is_admin=True)

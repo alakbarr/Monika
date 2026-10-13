@@ -5,16 +5,17 @@ Semua komponen WAJIB menggunakan factory ini.
 claude_client.py dan gemini_client.py SUDAH DIHAPUS.
 """
 
-import logging
-import json
-import copy
 import asyncio
+import copy
 import inspect
+import json
+import logging
 import os
 import time
-from typing import Optional, Any, Dict
-from monika.infrastructure.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
-from monika.infrastructure.api.streaming import StreamTimeoutError, StreamSafetyTimeoutError
+from typing import Any, Dict, Optional
+
+from monika.infrastructure.api.streaming import StreamSafetyTimeoutError, StreamTimeoutError
+from monika.infrastructure.providers.base_provider import BaseLLMClient, MockBlock, MockResponse
 
 logger = logging.getLogger("TradingAgent.LLMFactory")
 
@@ -965,8 +966,8 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     # ── C4: STRUCTURED ERROR CLASSIFICATION ──
                     from monika.infrastructure.providers.provider_failover_classifier import (
-                        classify_error,
                         FailoverReason,
+                        classify_error,
                     )
 
                     reason, detail = classify_error(e)

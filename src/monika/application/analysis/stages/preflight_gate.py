@@ -12,11 +12,13 @@ Supervises environment preconditions BEFORE invoking LLM analysis turns:
 Consumes 0 LLM tokens when preconditions are not met.
 """
 
-from typing import Tuple, Optional, Any, cast
-from datetime import datetime, timezone, timedelta
 import logging
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional, Tuple, cast
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.PreFlightGate")
@@ -70,8 +72,8 @@ class PreFlightTurnGate:
     ) -> Tuple[bool, Optional[str]]:
         """Checks if symbol's constituent currencies have high-impact news within +-buffer_minutes."""
         try:
-            from monika.infrastructure.database.models import EconomicCalendar
             from monika.domain.market.currency_utils import get_symbol_currencies
+            from monika.infrastructure.database.models import EconomicCalendar
 
             sym_clean = symbol.replace("/", "").replace("_", "").replace(".", "").upper()
             currencies = SYMBOL_CURRENCIES.get(sym_clean)

@@ -1,11 +1,11 @@
-from pathlib import Path
-from monika.infrastructure.infra.paths import get_skills_dir
-
-import re
 import logging
+import re
 from collections import Counter
-from typing import List, Dict, Any, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 import monika.core.primitives.clock as clock
+from monika.infrastructure.infra.paths import get_skills_dir
 
 logger = logging.getLogger("TradingAgent.LessonConsolidator")
 
@@ -118,11 +118,13 @@ def cluster_lessons_semantically(
 
 
 async def consolidate_lessons_to_playbook(session, settings, auto_propose_only: bool = True) -> str | None:
-    from monika.infrastructure.database.models import DecisionReflection, CandidateLesson
-    from monika.infrastructure.providers.llm_factory import get_client_for_task
-    from sqlalchemy import select
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
     from pathlib import Path
+
+    from sqlalchemy import select
+
+    from monika.infrastructure.database.models import CandidateLesson, DecisionReflection
+    from monika.infrastructure.providers.llm_factory import get_client_for_task
 
     now = clock.now()
     since = now - timedelta(days=60)
@@ -279,8 +281,8 @@ def enforce_declarative_memory_rule(text: str) -> str:
 
 async def promote_lesson_to_playbook(content: str) -> None:
     """Selectively appends or updates verified candidate lessons in lessons_learned.md per symbol."""
-    from pathlib import Path
     import re
+    from pathlib import Path
 
     now = clock.now()
     base_skills = get_skills_dir() / "trading"
@@ -340,9 +342,10 @@ async def auto_promote_high_confidence_rules(session, settings: Optional[Dict[st
     Rejects if:
     Evaluated trades >= 5 and win_rate_delta <= -0.08
     """
+    from sqlalchemy import select
+
     from monika.infrastructure.database.models import CandidateLesson
     from monika.infrastructure.database.safe_ops import safe_commit
-    from sqlalchemy import select
 
     min_eval = (settings or {}).get("trading", {}).get("memory", {}).get("min_eval_trades_promote", 3)
     min_corrob = (settings or {}).get("trading", {}).get("memory", {}).get("min_corroboration_promote", 3)
@@ -402,9 +405,11 @@ async def record_playbook_rule_outcome(
     and marking high-performing rules (>=65% win rate) as 'golden'.
     """
     import hashlib
+
+    from sqlalchemy import select
+
     from monika.infrastructure.database.models import PlaybookRuleAttribution
     from monika.infrastructure.database.safe_ops import safe_commit
-    from sqlalchemy import select
 
     clean_text = rule_text.strip()
     rule_hash = hashlib.sha256(clean_text.encode("utf-8")).hexdigest()[:16]

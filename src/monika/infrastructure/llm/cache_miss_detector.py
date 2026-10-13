@@ -6,7 +6,7 @@ Tracks prompt cache hit rates and cost deltas.
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.CacheMissDetector")
 

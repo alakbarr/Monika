@@ -105,7 +105,7 @@ class TeamCompiler:
             raise ValueError(f"Unknown desk preset: {desk_id}")
 
         try:
-            from langgraph.graph import StateGraph, END
+            from langgraph.graph import END, StateGraph
         except ImportError:
             logger.warning("LangGraph not installed; returning declarative configuration.")
             return cfg

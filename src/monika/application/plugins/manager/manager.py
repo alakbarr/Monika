@@ -12,7 +12,7 @@ import asyncio
 import inspect
 import logging
 from collections import defaultdict
-from typing import Callable, Dict, List, Any, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.PluginManager")
 
@@ -223,7 +223,7 @@ class PluginManager:
         Returns a disposer function that unregisters the tool when called.
         """
         try:
-            from monika.application.analysis.tools.unified_registry import unified_tool_registry, ToolEntry
+            from monika.application.analysis.tools.unified_registry import ToolEntry, unified_tool_registry
 
             desc = description or (getattr(input_model, "__doc__", None) or getattr(handler, "__doc__", "")).strip()
             is_async = inspect.iscoroutinefunction(handler)

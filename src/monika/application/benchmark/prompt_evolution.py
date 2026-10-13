@@ -10,7 +10,8 @@ Evolves trading system prompts offline using multi-objective Pareto optimization
 
 import json
 import logging
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 from monika.infrastructure.llm.prompt_compressor import estimate_tokens
 
 logger = logging.getLogger("TradingAgent.GEPA")

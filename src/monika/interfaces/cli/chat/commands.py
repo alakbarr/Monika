@@ -518,9 +518,9 @@ class ChatCommandRouter:
 
         try:
             from monika.application.analysis.tools.domain.cron_tool import (
-                CronRegistry,
                 DEFAULT_CRON_FILE,
                 CronJobRecord,
+                CronRegistry,
             )
 
             registry = CronRegistry(DEFAULT_CRON_FILE)

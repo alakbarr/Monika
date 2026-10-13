@@ -22,9 +22,9 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple, Awaitable
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
-from monika.application.agent.estop import is_estop_active, get_estop_details
+from monika.application.agent.estop import get_estop_details, is_estop_active
 
 logger = logging.getLogger("TradingAgent.Agent.TurnToolRound")
 

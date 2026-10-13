@@ -10,12 +10,13 @@ as an operational AnalysisPipelinePlugin for the modular trading harness.
 
 import inspect
 import logging
-from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.application.harness.contract import PluginCategory, PluginMetadata
 from monika.application.analysis.pipeline_plugin import AnalysisPipelinePlugin
+from monika.application.harness.contract import PluginCategory, PluginMetadata
 from monika.domain.risk.trade_proposal import TradeProposal
 
 logger = logging.getLogger("TradingAgent.MacroPipeline")

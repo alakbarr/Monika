@@ -12,9 +12,10 @@ Tier 4 (VOLATILE): Real-time market quotes, volatile data bundle, dynamic timest
 """
 
 import logging
-from typing import Optional, Tuple, Dict, Any, List
 from datetime import datetime, timezone
-from monika.application.skills.loader import compose_system_prompt, load_skill, get_dynamic_micro_skills
+from typing import Any, Dict, List, Optional, Tuple
+
+from monika.application.skills.loader import compose_system_prompt, get_dynamic_micro_skills, load_skill
 
 logger = logging.getLogger("TradingAgent.PromptAssembler")
 
@@ -136,8 +137,8 @@ class PromptAssembler:
         Returns structured 3 system tiers (Tier 1, Tier 2, Tier 3) for cache breakpoint injection.
         Guarantees Tier 1 begins with CANONICAL_TIER0_ANCHOR (>= 4,150 tokens) for universal KV-cache hits.
         """
-        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
         from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
         from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
 
         soul_identity = LayeredMemoryManager(self.settings).get_identity()
@@ -289,8 +290,8 @@ class PromptAssembler:
         Returns structured 3 system tiers for Stage 2 per-asset analysis.
         Guarantees Tier 1 begins with CANONICAL_TIER0_ANCHOR (>= 4,150 tokens) only when caching threshold dictates.
         """
-        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
         from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
         from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
 
         soul_identity = LayeredMemoryManager(self.settings).get_identity()
@@ -444,8 +445,8 @@ class PromptAssembler:
         Returns (static_system_prompt, dynamic_target_note) for Stage 2.
         Enables cross-symbol KV-cache reuse by keeping the static system prompt invariant.
         """
-        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
         from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
         soul_identity = LayeredMemoryManager(self.settings).get_identity()
         soul_prefix = f"{soul_identity}\n\n---\n\n" if soul_identity else ""

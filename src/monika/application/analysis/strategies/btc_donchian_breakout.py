@@ -1,9 +1,11 @@
 import statistics
+
 from sqlalchemy import select
-from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+
+import monika.core.primitives.clock as clock
+from monika.application.analysis.strategies.base_strategy import EdgeSignal, EdgeStrategy
 from monika.application.analysis.strategies.registry import StrategyRegistry
 from monika.infrastructure.database.models import PriceOHLCV
-import monika.core.primitives.clock as clock
 
 
 @StrategyRegistry.register

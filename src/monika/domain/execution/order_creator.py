@@ -7,9 +7,10 @@ Order creation and parameter validation module.
 Constructs validated Order entities before submission to broker adapter.
 """
 
-import uuid
 import logging
-from typing import Optional, Tuple, Any
+import uuid
+from typing import Any, Optional, Tuple
+
 import monika.core.primitives.clock as clock
 from monika.domain.entities.order_status import OrderStatus
 

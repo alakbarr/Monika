@@ -8,6 +8,7 @@ Exposes Monika trading capabilities to external MCP clients (Cursor, Claude Desk
 """
 
 import argparse
+
 from monika.interfaces.cli.subcommands.base import Subcommand
 
 

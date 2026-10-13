@@ -3,12 +3,14 @@ Confluence Verifier — Deterministik layer untuk memvalidasi AI confluence scor
 Checks factual conditions independently dari model's judgment.
 """
 
-import logging
 import json
-from datetime import datetime, timezone, timedelta
+import logging
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import AssetAnalysis
+
 from monika.application.analysis.calculators.confluence_calculator import calculate_confluence
+from monika.infrastructure.database.models import AssetAnalysis
 
 logger = logging.getLogger("TradingAgent.ConfluenceVerifier")
 

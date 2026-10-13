@@ -5,11 +5,13 @@
 """Validator Data — Cek kebaruan (freshness) data di DB sebelum analisis."""
 
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import PriceOHLCV, NewsItem, FundamentalBrief
+
+from monika.infrastructure.database.models import FundamentalBrief, NewsItem, PriceOHLCV
 
 logger = logging.getLogger("TradingAgent.DataValidator")
 
@@ -192,15 +194,16 @@ async def validate_data_freshness(
             warnings.append(f"Latest news is {news_age:.1f}h old")
 
     # Check macro data freshness
-    from monika.infrastructure.database.models import (
-        EconomicCalendar,
-        VIXData,
-        TreasuryYield,
-        DXYData,
-        COTReport,
-        FedWatchProbability,
-    )
     from datetime import date
+
+    from monika.infrastructure.database.models import (
+        COTReport,
+        DXYData,
+        EconomicCalendar,
+        FedWatchProbability,
+        TreasuryYield,
+        VIXData,
+    )
 
     cal_max_days = 2.0 if require_macro_data else (max_calendar_age_hours / 24.0)
     latest_cal = (await session.execute(select(func.max(EconomicCalendar.event_time)))).scalar_one_or_none()
@@ -387,9 +390,10 @@ async def check_data_coherence(
     memiliki timestamp yang coherent (tidak ada yang terlalu stale)
     dengan batas usia berbasis timeframe (D1: 32h, H4: 8h).
     """
-    from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
     from sqlalchemy import select
+
     from monika.core.primitives.clock import now as get_clock_now
+    from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
 
     now = get_clock_now()
     if now.tzinfo is None:

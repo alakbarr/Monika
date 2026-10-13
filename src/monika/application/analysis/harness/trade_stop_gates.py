@@ -5,10 +5,11 @@ Enforces the Verification Invariant: any directional trade recommendation
 MUST be backed by verified risk/sizing evidence from VerificationEvidenceLedger.
 """
 
+import logging
+import re
 from dataclasses import dataclass
 from typing import Optional
-import re
-import logging
+
 from monika.application.analysis.harness.verification_evidence_ledger import VerificationEvidenceLedger
 
 logger = logging.getLogger("TradingAgent.Harness.TradeStopGate")

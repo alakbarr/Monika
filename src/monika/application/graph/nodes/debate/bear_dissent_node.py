@@ -2,15 +2,16 @@
 # File: graph/nodes/debate/bear_dissent_node.py
 # ==============================================================================
 
-import logging
 import asyncio
-from typing import Dict, Any, Optional
+import logging
+from typing import Any, Dict, Optional
 
-from monika.application.graph.state import TradingState
 from langchain_core.runnables.config import RunnableConfig
-from monika.infrastructure.providers.llm_factory import get_client_for_task
+
 from monika.application.analysis.debate.bear_analyst import generate_bear_dissent
 from monika.application.graph.nodes.debate.helpers import _is_grounded, sync_facade_patches
+from monika.application.graph.state import TradingState
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.Graph.Debate.BearDissentNode")
 

@@ -18,20 +18,20 @@ import shutil
 import subprocess
 import symtable
 import uuid
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone, timedelta
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Type, cast, Callable
+from typing import Any, Callable, Dict, List, Optional, Type, cast
 
 import numpy as np
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.application.analysis.strategies.base_strategy import EdgeSignal, EdgeStrategy
 from monika.application.analysis.strategies.hypothesis_registry import HypothesisRegistry, HypothesisStatus
+from monika.application.analysis.strategies.registry import StrategyRegistry
 from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import SystemConfig, ActivityLog
+from monika.infrastructure.database.models import ActivityLog, SystemConfig
 
 logger = logging.getLogger("TradingAgent.StrategySynthesisScheduler")
 
@@ -742,8 +742,8 @@ class StrategySynthesisScheduler:
 
         safe_builtins["__import__"] = safe_import
 
-        import logging as _logging
         import decimal as _decimal
+        import logging as _logging
 
         namespace: Dict[str, Any] = {
             "__builtins__": safe_builtins,
@@ -1243,8 +1243,9 @@ class StrategySynthesisScheduler:
             test_instance = strat_cls(self.settings)
             assert test_instance is not None
             # Execute canary evaluate on dummy slice session to ensure runtime stability
-            from monika.infrastructure.database.models import PriceOHLCV
             import datetime
+
+            from monika.infrastructure.database.models import PriceOHLCV
 
             now_dt = datetime.datetime.now(datetime.timezone.utc)
             mock_candles = [

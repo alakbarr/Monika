@@ -6,6 +6,7 @@ Handles /quote, /factors, /calendar, /chart, /news, /macro, /vix.
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+
 from monika.application.services.market_intel_service import MarketIntelService
 
 

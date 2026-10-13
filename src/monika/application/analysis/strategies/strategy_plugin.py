@@ -7,12 +7,12 @@ Strategy Plugin Specification for Monika Trading Harness (Phase 3c).
 Enables swappable quantitative alpha strategies packaged as TradingPlugins.
 """
 
-from abc import ABC, abstractmethod
-from typing import Type, Optional, Dict, Any, List
 import logging
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Type
 
-from monika.application.harness.contract import TradingPlugin, PluginCategory, PluginMetadata
 from monika.application.analysis.strategies.base_strategy import EdgeStrategy
+from monika.application.harness.contract import PluginCategory, PluginMetadata, TradingPlugin
 
 logger = logging.getLogger("TradingAgent.StrategyPlugin")
 

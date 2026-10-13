@@ -11,10 +11,10 @@ directly against the empirical data prefetch snapshot:
 Rejects or corrects hallucinations BEFORE the output is accepted by the stage orchestrator.
 """
 
-from typing import Dict, Any, List, Tuple, Optional
 import logging
-import re
 import math
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.InHarnessGrounding")
 

@@ -1,7 +1,8 @@
 """Execution and sizing domain tool handlers."""
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.ExecutionHandlers")

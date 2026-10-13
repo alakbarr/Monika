@@ -7,9 +7,9 @@ Create Date: 2026-10-05 12:50:00.000000
 """
 
 from typing import Sequence, Union
-from alembic import op
-import sqlalchemy as sa
 
+import sqlalchemy as sa
+from alembic import op
 
 revision: str = "0003_benchmark_cache_cost"
 down_revision: Union[str, Sequence[str], None] = "c83c5e451412"

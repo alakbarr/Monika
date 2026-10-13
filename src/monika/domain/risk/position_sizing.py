@@ -16,10 +16,11 @@ Menggunakan fallback tabel instrumen jika MT5 tidak aktif.
 
 import logging
 import math
-from decimal import Decimal, ROUND_HALF_UP, ROUND_FLOOR
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Any
+from datetime import datetime, timedelta, timezone
+from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
+from typing import Any, Optional
+
 import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.PositionSizing")
@@ -30,8 +31,7 @@ logger = logging.getLogger("TradingAgent.PositionSizing")
 # Dipindahkan ke risk.domain.instruments untuk memutus siklus import
 # ---------------------------------------------------------------------------
 
-from monika.domain.risk.instruments.instruments import InstrumentSpec, DEFAULT_INSTRUMENTS  # noqa: F401 (re-exported)
-
+from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS, InstrumentSpec  # noqa: F401 (re-exported)
 
 # ---------------------------------------------------------------------------
 # Result dataclass
@@ -241,8 +241,8 @@ class PositionSizer:
 
         # TimesFM 3.0 Dispersion / Tail-Risk Sizing Adjustment
         try:
-            from monika.domain.risk.ports import get_default_risk_data_provider
             from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
+            from monika.domain.risk.ports import get_default_risk_data_provider
 
             provider = get_default_risk_data_provider(session=session)
             tfm_fc = await provider.get_latest_timesfm_forecast(
@@ -621,7 +621,8 @@ class PositionSizer:
         if symbol == "USDJPY" and self._mt5 is None:
             # Coba ambil dari cache terakhir
             try:
-                import asyncio, json
+                import asyncio
+                import json
 
                 # Gunakan class variable untuk cache sederhana
                 cached_rate = getattr(PositionSizer, "_usdjpy_rate_cache", None)

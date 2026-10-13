@@ -8,7 +8,7 @@ Provides centralized registry for core system services and lifecycle resources.
 """
 
 import logging
-from typing import Dict, Any, Callable, Optional, TypeVar, Type
+from typing import Any, Callable, Dict, Optional, Type, TypeVar
 
 logger = logging.getLogger("TradingAgent.Container")
 T = TypeVar("T")

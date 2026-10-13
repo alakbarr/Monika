@@ -3,14 +3,15 @@
 # ==============================================================================
 
 import asyncio
-import logging
 import json
+import logging
 import sys
 from datetime import datetime, timezone
-from typing import Optional, Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 import monika.core.primitives.clock as clock
 
 
@@ -22,16 +23,16 @@ def _get_clock():
 
 
 from monika.application.analysis.tools.tools_definitions import (
-    STAGE2_TOOLS,
-    STAGE2_EXPANDED_TOOLS,
-    STAGE2_PRESCREEN_TOOLS,
     STAGE2_ESSENTIAL_TOOLS,
+    STAGE2_EXPANDED_TOOLS,
     STAGE2_FROZEN_TOOLS,
+    STAGE2_PRESCREEN_TOOLS,
+    STAGE2_TOOLS,
 )
 
 try:
+    from monika.application.skills.loader import SafeDict, get_dynamic_micro_skills
     from monika.application.skills.loader import compose_system_prompt as _compose_skill
-    from monika.application.skills.loader import get_dynamic_micro_skills, SafeDict
 except ImportError:
     _compose_skill = None
     get_dynamic_micro_skills = None
@@ -432,9 +433,11 @@ class ContextBuilderMixin:
             logger.warning(f"Failed to fetch dynamic factor weights for {symbol}: {e}")
 
         try:
-            from monika.infrastructure.database.models import SystemConfig
-            from sqlalchemy import select as _sel
             import json as _j
+
+            from sqlalchemy import select as _sel
+
+            from monika.infrastructure.database.models import SystemConfig
 
             if session is not None:
                 infl_cfg = (
@@ -620,8 +623,8 @@ class ContextBuilderMixin:
         # H5: Quant Active Strategy Signals (System Edge Intelligence)
         quant_regime: Optional[str] = None
         try:
-            from monika.application.analysis.strategies.registry import StrategyRegistry
             from monika.application.analysis.calculators.regime_classifier import classify_market_regime
+            from monika.application.analysis.strategies.registry import StrategyRegistry
 
             try:
                 regime_info = await classify_market_regime(session, symbol, self.settings)
@@ -662,6 +665,7 @@ class ContextBuilderMixin:
         # H6: Institutional Vector Alpha Factor Engine
         try:
             import pandas as pd
+
             from monika.domain.indicators.alpha_zoo.vector_factor_engine import VectorFactorEngine
             from monika.infrastructure.database.models import PriceOHLCV
 
@@ -708,8 +712,9 @@ class ContextBuilderMixin:
         Retrieves top 2-3 vetted dynamic micro-lessons from CandidateLesson table.
         Avoids static prompt prefix mutation, keeping Tier 0 KV-cache 100% warm.
         """
+        from sqlalchemy import desc, or_, select
+
         from monika.infrastructure.database.models import CandidateLesson
-        from sqlalchemy import select, or_, desc
 
         stmt = (
             select(CandidateLesson)
@@ -731,8 +736,9 @@ class ContextBuilderMixin:
         return "\n".join(lines)
 
     async def _fetch_previous_analysis(self, session: AsyncSession, symbol: str) -> str:
+        from datetime import datetime, timedelta, timezone
+
         from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord
-        from datetime import datetime, timezone, timedelta
 
         # Get recent analyses
         recent = (
@@ -858,6 +864,7 @@ class ContextBuilderMixin:
     async def _fetch_precomputed_data(self, session: AsyncSession, symbol: str) -> str:
         """Memuat kesimpulan pra-komputasi makro/COT untuk diinjeksi sebagai referensi konteks."""
         import json
+
         from monika.infrastructure.database.models import SystemConfig
 
         lines = []
@@ -952,8 +959,9 @@ class ContextBuilderMixin:
                         lines.append(f"[WASPADA] Moderate performance. Apply standard threshold but be selective.")
 
             # NEW: Check consecutive losses for this symbol
-            from monika.infrastructure.database.models import PaperTradeRecord
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import PaperTradeRecord
 
             recent_sym_trades = (
                 (

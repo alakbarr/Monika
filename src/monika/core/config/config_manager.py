@@ -5,12 +5,13 @@ Allows zero-downtime reconfiguration of risk parameters, LLM model roles,
 scheduler intervals, and scraping sources across all 18+ async background tasks.
 """
 
-import os
-import yaml
-import logging
 import asyncio
-from typing import Dict, Any, Callable, List, Optional, Set
+import logging
+import os
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Set
+
+import yaml
 
 logger = logging.getLogger("TradingAgent.ConfigManager")
 

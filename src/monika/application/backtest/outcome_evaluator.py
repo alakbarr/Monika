@@ -4,12 +4,14 @@ Includes realistic asset-specific dynamic spreads, slippage, and lot-sized swap 
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional
+
 from sqlalchemy import select
-from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import PriceOHLCV, BacktestTrade
+
 from monika.domain.risk.position_sizing import DEFAULT_INSTRUMENTS
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import BacktestTrade, PriceOHLCV
 
 logger = logging.getLogger("TradingAgent.OutcomeEvaluator")
 
@@ -86,9 +88,10 @@ class OutcomeEvaluator:
         Calculates empirical average slippage and spread per symbol.
         Supports as_of parameter to prevent future slippage leakage in backtests.
         """
-        from monika.infrastructure.database.models import PaperTradeRecord
         from sqlalchemy import select
+
         import monika.core.primitives.clock as clock
+        from monika.infrastructure.database.models import PaperTradeRecord
 
         now = as_of if as_of is not None else clock.now()
         since = now - timedelta(days=lookback_days)

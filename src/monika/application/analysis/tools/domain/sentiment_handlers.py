@@ -1,8 +1,10 @@
 """Sentiment domain tool handlers (News, Fear/Greed, Retail Sentiment, Funding Rates)."""
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.core.primitives.retry import retryable
 
 logger = logging.getLogger("TradingAgent.SentimentHandlers")
@@ -24,10 +26,12 @@ class SentimentToolHandlers:
     ) -> Dict[str, Any]:
         if session:
             try:
-                from monika.infrastructure.database.models import NewsItem
-                from sqlalchemy import select, or_
                 from datetime import timedelta
+
+                from sqlalchemy import or_, select
+
                 import monika.core.primitives.clock as clock
+                from monika.infrastructure.database.models import NewsItem
 
                 hours_back = kwargs.get("hours_back", 24)
                 since = clock.now() - timedelta(hours=hours_back)
@@ -77,9 +81,11 @@ class SentimentToolHandlers:
             try:
                 import json
                 from datetime import datetime, timezone
+
+                from sqlalchemy import select
+
                 import monika.core.primitives.clock as clock
                 from monika.infrastructure.database.models import SystemConfig
-                from sqlalchemy import select
 
                 cache_keys = [
                     f"sentiment_{target_symbol}",
@@ -145,6 +151,7 @@ class SentimentToolHandlers:
         self, symbol: str = "BTCUSD", session: Optional[AsyncSession] = None, **kwargs
     ) -> Dict[str, Any]:
         from unittest.mock import Mock
+
         from monika.infrastructure.api.http_retry import fetch_with_retry
 
         if isinstance(fetch_with_retry, Mock):

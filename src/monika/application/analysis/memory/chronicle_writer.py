@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from monika.infrastructure.infra.paths import resolve_config_path
 
 # ==============================================================================
@@ -18,15 +19,15 @@ Tujuan:
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional, List
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import MarketChronicle, NewsItem, FundamentalBrief
-from monika.infrastructure.providers.llm_factory import get_client_for_task
 import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import FundamentalBrief, MarketChronicle, NewsItem
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.ChronicleWriter")
 

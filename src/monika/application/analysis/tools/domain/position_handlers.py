@@ -1,9 +1,10 @@
 """Position, portfolio, and risk inspection tool handlers."""
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
 logger = logging.getLogger("TradingAgent.PositionHandlers")
 
@@ -28,7 +29,7 @@ class PositionToolHandlers:
 
         if not positions and session:
             try:
-                from monika.infrastructure.database.models import Position, PaperTradeRecord
+                from monika.infrastructure.database.models import PaperTradeRecord, Position
 
                 db_pos = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
                 if db_pos:

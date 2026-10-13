@@ -14,13 +14,13 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from monika.application.analysis.harness.context_compressor import (
-    ContextCompressor,
     TRADING_SUMMARY_SECTIONS,
+    ContextCompressor,
+    offload_historical_charts,
     prune_oversized_tool_results,
     prune_tool_result_content,
     safe_unicode_slice,
     safe_unicode_tail,
-    offload_historical_charts,
 )
 
 logger = logging.getLogger("TradingAgent.Utils.LLM.ContextCompressor")

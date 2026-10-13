@@ -7,6 +7,7 @@ Simulation & Backtesting Subcommands (backtest, scenario-stress, benchmark).
 """
 
 import argparse
+
 from monika.interfaces.cli.subcommands.base import Subcommand
 from monika.interfaces.cli.theme import get_console, stamp_info, stamp_ok
 

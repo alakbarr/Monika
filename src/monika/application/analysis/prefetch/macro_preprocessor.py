@@ -13,14 +13,15 @@ import collections
 import hashlib
 import json
 import logging
-from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, func
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.providers.llm_factory import get_client_for_task
-from monika.infrastructure.database.models import COTReport, TechnicalIndicator, EconomicCalendar, SystemConfig
 import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import COTReport, EconomicCalendar, SystemConfig, TechnicalIndicator
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.MacroPreprocessor")
 
@@ -94,8 +95,9 @@ class MacroPreprocessor:
         If COT says 'bullish' but 5-day price change is strongly bearish,
         mark the signal as LOW CONFIDENCE rather than blocking it entirely.
         """
-        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import PriceOHLCV
 
         validated = {}
         SIGNIFICANT_MOVE_PCT = 0.005  # 0.5% move over 5 days = significant
@@ -184,8 +186,9 @@ class MacroPreprocessor:
 
     async def compute_cot_signals(self, session: AsyncSession) -> dict:
         """Menghitung posisi net COT secara deterministik."""
-        from sqlalchemy import select, desc
         from collections import defaultdict
+
+        from sqlalchemy import desc, select
 
         q = select(COTReport).order_by(COTReport.market_code, desc(COTReport.report_date))
         reports = (await session.execute(q)).scalars().all()

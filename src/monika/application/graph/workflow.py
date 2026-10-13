@@ -13,27 +13,28 @@ except ImportError:
     END = "END"
     MemorySaver: Any = None
 
-from monika.application.graph.state import TradingState
-from monika.application.graph.nodes.data_node import fetch_data_node
-from monika.application.graph.nodes.fundamental_node import fundamental_analysis_node
-from monika.application.graph.nodes.per_asset_node import per_asset_analysis_node
-from monika.application.graph.nodes.debate_node import debate_node
-from monika.application.graph.nodes.debate.subgraph import build_debate_subgraph
-from monika.application.graph.nodes.risk_gate_node import risk_gate_node
-from monika.application.graph.nodes.execution_node import execution_node
-from monika.application.graph.nodes.reflection_node import reflection_node
-from monika.application.graph.nodes.plan_refinement_node import plan_refinement_node
 import asyncio
 import functools
 import inspect
+import time
+
+from monika.application.analysis.event_broadcaster import emit_analysis_event
+from monika.application.graph.nodes.data_node import fetch_data_node
+from monika.application.graph.nodes.debate.subgraph import build_debate_subgraph
+from monika.application.graph.nodes.debate_node import debate_node
+from monika.application.graph.nodes.execution_node import execution_node
+from monika.application.graph.nodes.fundamental_node import fundamental_analysis_node
+from monika.application.graph.nodes.per_asset_node import per_asset_analysis_node
+from monika.application.graph.nodes.plan_refinement_node import plan_refinement_node
+from monika.application.graph.nodes.reflection_node import reflection_node
+from monika.application.graph.nodes.risk_gate_node import risk_gate_node
 from monika.application.graph.nodes.state_pruner import (
-    prune_after_fundamental,
     prune_after_debate,
+    prune_after_fundamental,
     prune_before_execution,
 )
+from monika.application.graph.state import TradingState
 from monika.core.telemetry.tracing.spans import node_span
-import time
-from monika.application.analysis.event_broadcaster import emit_analysis_event
 
 
 def _extract_tokens_from_result(node_name: str, res: Any) -> tuple[int, int]:
@@ -158,7 +159,7 @@ def _record_cycle_event(
     if not cycle_id:
         return
     try:
-        from monika.core.telemetry.trading_cycle_event_log import get_cycle_event_log, CycleEventType
+        from monika.core.telemetry.trading_cycle_event_log import CycleEventType, get_cycle_event_log
 
         event_log = get_cycle_event_log()
         payload = _build_node_payload_summary(node_name, res, state) or {}

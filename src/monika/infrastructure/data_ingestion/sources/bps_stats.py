@@ -16,7 +16,7 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.DataSources.BPS")
 

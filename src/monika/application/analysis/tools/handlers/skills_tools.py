@@ -5,13 +5,14 @@
 
 import logging
 import re
-from typing import Any, Dict, Optional, List
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
-from monika.application.skills.loader import list_skills, load_skill, _SKILLS_DIR
+from monika.application.skills.loader import _SKILLS_DIR, list_skills, load_skill
 
 logger = logging.getLogger("TradingAgent.Tools.Skills")
 
@@ -32,8 +33,8 @@ def _extract_summary(skill_name: str) -> str:
     return f"Playbook for {skill_name.replace('_', ' ').title()}"
 
 
-from monika.application.skills.usage_tracker import SkillUsageTracker
 from monika.application.skills.loader import get_skill_metadata
+from monika.application.skills.usage_tracker import SkillUsageTracker
 
 
 async def handle_skills_list(args: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:

@@ -1,12 +1,14 @@
 """Macro domain tool handlers (FRED, COT, Yields, Calendar, Session)."""
 
-import logging
 import html as _html
-from typing import Dict, Any, Optional
-from datetime import datetime, timezone, timedelta
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional
 from zoneinfo import ZoneInfo
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.MacroHandlers")
@@ -169,6 +171,7 @@ class MacroToolHandlers:
             return {"events": [], "count": 0, "source": "db_only"}
         try:
             import asyncio
+
             from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import (
                 InvestingCalendarScraper,
             )
@@ -186,8 +189,9 @@ class MacroToolHandlers:
             return {"events": [], "count": 0, "error": str(e)}
 
     async def get_cot_report(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
-        from monika.infrastructure.data_ingestion.sources.cftc_cot import CFTCCOTFetcher
         from unittest.mock import Mock
+
+        from monika.infrastructure.data_ingestion.sources.cftc_cot import CFTCCOTFetcher
 
         if kwargs.get("fetch") or isinstance(getattr(CFTCCOTFetcher, "fetch_all", None), Mock):
             if session:
@@ -203,8 +207,9 @@ class MacroToolHandlers:
         return await handle_get_cot_report(kwargs, session=session, settings=self.settings)
 
     async def get_bond_yield_spreads(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
-        from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import BondYieldFetcher
         from unittest.mock import Mock
+
+        from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import BondYieldFetcher
 
         if kwargs.get("fetch") or isinstance(getattr(BondYieldFetcher, "fetch", None), Mock):
             if session:
@@ -220,8 +225,9 @@ class MacroToolHandlers:
         return await handle_get_bond_yield_spreads(kwargs, session=session, settings=self.settings)
 
     async def get_vix(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
-        from monika.infrastructure.data_ingestion.sources.vix_yfinance import VIXFetcher
         from unittest.mock import Mock
+
+        from monika.infrastructure.data_ingestion.sources.vix_yfinance import VIXFetcher
 
         if kwargs.get("fetch") or isinstance(getattr(VIXFetcher, "fetch", None), Mock):
             if session:
@@ -237,8 +243,9 @@ class MacroToolHandlers:
         return await handle_get_vix(kwargs, session=session, settings=self.settings)
 
     async def get_dxy(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
-        from monika.infrastructure.data_ingestion.sources.dxy_yfinance import DXYFetcher
         from unittest.mock import Mock
+
+        from monika.infrastructure.data_ingestion.sources.dxy_yfinance import DXYFetcher
 
         if kwargs.get("fetch") or isinstance(getattr(DXYFetcher, "fetch", None), Mock):
             if session:

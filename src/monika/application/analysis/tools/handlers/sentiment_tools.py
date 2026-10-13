@@ -7,10 +7,11 @@ Direct execution without circular trampolines.
 import json
 import logging
 from typing import Any, Dict, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.domain.sentiment_handlers import SentimentToolHandlers
-from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition
+from monika.application.analysis.tools.registry import ToolDefinition, ToolRegistry
 
 logger = logging.getLogger("TradingAgent.Tools.Sentiment")
 

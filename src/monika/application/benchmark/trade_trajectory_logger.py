@@ -9,10 +9,10 @@ import json
 import logging
 import os
 import sys
-from pathlib import Path
-from typing import Dict, Any, Optional, List
-from datetime import datetime, timezone
 from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.TradeTrajectoryLogger")
 

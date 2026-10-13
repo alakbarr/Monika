@@ -5,9 +5,9 @@ tanpa kehilangan informasi kritis untuk keputusan trading.
 Token estimation: ~4 chars per token (industry standard).
 """
 
-import logging
 import json
-from typing import Any, List, Dict, Union, Optional
+import logging
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger("TradingAgent.PromptCompressor")
 

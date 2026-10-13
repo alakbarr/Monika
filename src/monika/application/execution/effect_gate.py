@@ -12,7 +12,7 @@ queued or mid-execution.
 
 import asyncio
 import logging
-from typing import Callable, Any, Optional, TypeVar, Coroutine
+from typing import Any, Callable, Coroutine, Optional, TypeVar
 
 logger = logging.getLogger("TradingAgent.Execution.EffectGate")
 

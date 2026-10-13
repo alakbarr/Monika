@@ -29,8 +29,8 @@ import aiohttp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import TreasuryYield, InterestRate
 from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import InterestRate, TreasuryYield
 
 logger = logging.getLogger("TradingAgent.FRED")
 
@@ -317,7 +317,9 @@ class FREDDataFetcher:
 
 async def _test():
     import os
+
     from dotenv import load_dotenv
+
     from monika.infrastructure.database.db import get_session, init_db
 
     load_dotenv()

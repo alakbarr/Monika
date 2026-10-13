@@ -8,14 +8,14 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from monika.core.telemetry.tracing.context import (
-    generate_id,
-    generate_trace_id,
-    get_current_trace_id,
-    get_current_span_id,
-    get_current_cycle_id,
+    _current_cycle_id,
     _current_span_id,
     _current_trace_id,
-    _current_cycle_id,
+    generate_id,
+    generate_trace_id,
+    get_current_cycle_id,
+    get_current_span_id,
+    get_current_trace_id,
 )
 from monika.core.telemetry.tracing.exporters import (
     TraceRecord,

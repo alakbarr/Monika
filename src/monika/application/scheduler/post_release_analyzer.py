@@ -14,8 +14,9 @@ This component:
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
+
 import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.PostReleaseAnalyzer")
@@ -147,9 +148,10 @@ class PostReleaseAnalyzer:
 
     async def _check_releases(self):
         """Check for recently-released high-impact events and trigger re-analysis."""
+        from sqlalchemy import select
+
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import EconomicCalendar
-        from sqlalchemy import select
 
         now = clock.now()
         if now.tzinfo is None:
@@ -415,8 +417,9 @@ class PostReleaseAnalyzer:
                         except Exception:
                             pass
 
-                        from monika.infrastructure.database.models import AssetAnalysis
                         from sqlalchemy import select
+
+                        from monika.infrastructure.database.models import AssetAnalysis
 
                         for sym, r in actionable:
                             async with _gs() as session:

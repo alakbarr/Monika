@@ -2,14 +2,15 @@
 # File: scrapers/social/twitter_watch.py
 # ==============================================================================
 
-import logging
-import json
-import random
 import hashlib
+import json
+import logging
+import random
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Optional, Dict, Any, Union
+from typing import Any, Dict, List, Optional, Union
+
 from bs4 import BeautifulSoup
 
 from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper

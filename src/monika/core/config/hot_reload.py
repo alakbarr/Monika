@@ -1,8 +1,9 @@
-import os
-import yaml
 import asyncio
 import logging
-from typing import Optional, Any
+import os
+from typing import Any, Optional
+
+import yaml
 
 logger = logging.getLogger("TradingAgent.ConfigHotReload")
 
@@ -128,8 +129,8 @@ class AtomicConfigWriter:
         self.config_path = config_path
 
     def update_setting(self, dot_key: str, value: Any) -> bool:
-        import tempfile
         import shutil
+        import tempfile
 
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         target_path = (

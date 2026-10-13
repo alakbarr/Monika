@@ -8,14 +8,14 @@ Provides microkernel architecture, universal plugin contracts, and topological e
 """
 
 from monika.application.harness.contract import (
-    PluginCategory,
-    PluginOrigin,
-    PluginMetadata,
-    PluginState,
-    TradingPlugin,
-    TaskRegistryProtocol,
     EventBusProtocol,
+    PluginCategory,
+    PluginMetadata,
+    PluginOrigin,
+    PluginState,
     ServiceContainerProtocol,
+    TaskRegistryProtocol,
+    TradingPlugin,
 )
 from monika.application.harness.engine import PluginEngine
 

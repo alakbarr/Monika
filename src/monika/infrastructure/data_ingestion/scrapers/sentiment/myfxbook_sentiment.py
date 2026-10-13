@@ -7,17 +7,19 @@ MyFxBook Community Outlook — Data posisi trader ritel untuk Forex & Metals.
 Menggunakan DrissionPage melalui BaseScraper.
 """
 
-import logging
+import asyncio
 import json
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
+
 from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import SystemConfig
+
 from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
-import asyncio
+from monika.infrastructure.database.models import SystemConfig
 
 logger = logging.getLogger("TradingAgent.MyFxBookSentiment")
 

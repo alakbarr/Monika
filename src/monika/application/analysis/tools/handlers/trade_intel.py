@@ -11,22 +11,23 @@ import asyncio
 import json
 import logging
 import os
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, Optional, List
-from sqlalchemy import select, desc, or_, func, case
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import case, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import (
-    AssetAnalysis,
-    PaperTradeRecord,
-    TradeTrigger,
-    TelegramConversation,
-    DecisionReflection,
-    ActivityLog,
-)
 import monika.core.primitives.clock as clock
 from monika.application.analysis.tools.base_handler import ToolHandler
-from monika.application.analysis.tools.registry import register_tool, ToolRegistry, ToolDefinition
+from monika.application.analysis.tools.registry import ToolDefinition, ToolRegistry, register_tool
+from monika.infrastructure.database.models import (
+    ActivityLog,
+    AssetAnalysis,
+    DecisionReflection,
+    PaperTradeRecord,
+    TelegramConversation,
+    TradeTrigger,
+)
 
 logger = logging.getLogger("TradingAgent.TradeIntel")
 
@@ -323,8 +324,9 @@ async def handle_get_paper_trading_performance(
     mode = str(args.get("mode", "paper")).lower()
 
     if mode in ("live", "all"):
-        from monika.infrastructure.database.models import Position
         from datetime import timedelta
+
+        from monika.infrastructure.database.models import Position
 
         q = select(Position).where(Position.status == "closed")
         if mode == "live":
@@ -426,9 +428,9 @@ async def handle_get_market_correlations(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Calculates rolling cross-asset return correlations across market symbols."""
-    from monika.infrastructure.database.db import get_session
-    from monika.domain.risk.correlation_matrix import DynamicCorrelationMatrix
     import monika.core.primitives.clock as clock
+    from monika.domain.risk.correlation_matrix import DynamicCorrelationMatrix
+    from monika.infrastructure.database.db import get_session
 
     symbols = args.get("symbols")
     if isinstance(symbols, str):
@@ -631,8 +633,9 @@ async def handle_get_asset_analysis(
             pass
     elif hours_back:
         try:
-            import monika.core.primitives.clock as clock
             from datetime import timedelta
+
+            import monika.core.primitives.clock as clock
 
             cutoff = clock.now() - timedelta(hours=float(hours_back))
             stmt = stmt.where(AssetAnalysis.generated_at >= cutoff)
@@ -756,10 +759,11 @@ async def handle_get_debate_statistics(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Aggregates debate outcomes (Bull vs Bear wins) over a specified time window."""
+    from datetime import timedelta
+
+    import monika.core.primitives.clock as clock
     from monika.infrastructure.database.db import get_session
     from monika.infrastructure.database.models import AssetAnalysis
-    from datetime import timedelta
-    import monika.core.primitives.clock as clock
 
     days = int(args.get("days", 30))
     cutoff = clock.now() - timedelta(days=days)
@@ -835,9 +839,10 @@ async def handle_get_rejection_history(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Retrieves history of orders rejected by RiskGate or preflight safety checks."""
+    import json
+
     from monika.infrastructure.database.db import get_session
     from monika.infrastructure.database.models import OrderLog
-    import json
 
     limit = int(args.get("limit", 20))
     symbol = args.get("symbol")
@@ -936,10 +941,11 @@ async def handle_get_market_chronicle(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Retrieve market chronicles and macro structural milestones for a given month, timeframe, or category."""
+    import calendar
+    from datetime import datetime, timezone
+
     from monika.infrastructure.database.db import get_session
     from monika.infrastructure.database.models import MarketChronicle
-    from datetime import datetime, timezone
-    import calendar
 
     month = args.get("month")
     year = int(args.get("year", datetime.now(timezone.utc).year))
@@ -1206,8 +1212,9 @@ async def handle_query_signal_performance(
     days_back = int(args.get("days_back", 30))
     limit = min(100, int(args.get("limit", 20)))
 
-    import monika.core.primitives.clock as clock
     from datetime import timedelta
+
+    import monika.core.primitives.clock as clock
 
     cutoff = clock.now() - timedelta(days=days_back)
 
@@ -1347,8 +1354,9 @@ async def handle_export_debate_transcripts(
     symbol = (args.get("symbol") or "").upper().strip().replace("/", "")
     limit = min(500, int(args.get("limit", 100)))
 
-    import monika.core.primitives.clock as clock
     from datetime import timedelta
+
+    import monika.core.primitives.clock as clock
 
     cutoff = clock.now() - timedelta(days=days_back)
 
@@ -1422,13 +1430,15 @@ async def handle_trigger_learning_cycle(
     days_back = int(args.get("days_back", 7))
 
     try:
-        from monika.application.analysis.memory.reflector import TradeReflector
-        from monika.application.analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
-        from monika.application.analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook
-        from monika.infrastructure.database.models import DecisionReflection
-        from sqlalchemy import select
         from datetime import timedelta
+
+        from sqlalchemy import select
+
         import monika.core.primitives.clock as clock
+        from monika.application.analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook
+        from monika.application.analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
+        from monika.application.analysis.memory.reflector import TradeReflector
+        from monika.infrastructure.database.models import DecisionReflection
 
         reflector = TradeReflector(settings)
         since = clock.now() - timedelta(days=days_back)
@@ -1499,8 +1509,9 @@ async def handle_trigger_market_scan(
     if isinstance(symbols, str):
         symbols = [s.strip() for s in symbols.split(",")]
 
-    from monika.infrastructure.database.models import FundamentalBrief, AssetAnalysis
     import json
+
+    from monika.infrastructure.database.models import AssetAnalysis, FundamentalBrief
 
     latest_brief = (
         await effective_session.execute(select(FundamentalBrief).order_by(desc(FundamentalBrief.generated_at)).limit(1))
@@ -1590,8 +1601,8 @@ async def handle_run_strategy_backtest(
     strategy_name = str(args.get("strategy") or "smc_fvg").lower()
 
     try:
-        from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
         from monika.application.analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
+        from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
 
         # Resolve strategy class or fallback to base
         strategy_cls = None
@@ -1615,8 +1626,9 @@ async def handle_run_strategy_backtest(
             settings=settings,
         )
 
+        from datetime import datetime, timedelta, timezone
+
         import monika.core.primitives.clock as clock
-        from datetime import timedelta, datetime, timezone
 
         raw_start = args.get("start_date")
         raw_end = args.get("end_date")
@@ -1701,10 +1713,12 @@ async def handle_get_pnl_summary(
     if not effective_session:
         return {"error": "Database session required for get_pnl_summary"}
 
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import func, select
+
     import monika.core.primitives.clock as clock
-    from datetime import datetime, timezone, timedelta
-    from sqlalchemy import select, func
-    from monika.infrastructure.database.models import Position, PaperTradeRecord
+    from monika.infrastructure.database.models import PaperTradeRecord, Position
 
     now = clock.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1794,9 +1808,9 @@ async def handle_run_adhoc_symbol_debate(
     settings = getattr(executor, "settings", {}) or {}
     symbol = (args.get("symbol") or getattr(executor, "symbol", "EURUSD") or "EURUSD").upper().strip().replace("/", "")
 
-    from monika.infrastructure.database.db import get_session
     from monika.application.analysis.debate.debate_orchestrator import DebateOrchestrator
     from monika.application.analysis.prefetch.pipeline import prefetch_pipeline
+    from monika.infrastructure.database.db import get_session
 
     async def _do_debate(sess):
         market_data = await prefetch_pipeline.get_market_context(symbol, session=sess)
@@ -1913,9 +1927,11 @@ async def handle_export_trades_to_excel(
 ) -> dict:
     """Exports trading history (live positions and paper trades) to an Excel (.xlsx) file."""
     import os
-    import pandas as pd
     from datetime import datetime, timezone
-    from monika.infrastructure.database.models import Position, PaperTradeRecord
+
+    import pandas as pd
+
+    from monika.infrastructure.database.models import PaperTradeRecord, Position
 
     out_dir = args.get("output_dir") or "data/exports"
     os.makedirs(out_dir, exist_ok=True)
@@ -2057,7 +2073,7 @@ async def handle_generate_docx_report(args: dict, session: Optional[AsyncSession
     """Generates an institutional Microsoft Word (.docx) portfolio performance report."""
     from monika.core.telemetry.reporting.docx_report_generator import DocxReportGenerator
     from monika.core.telemetry.reporting.tearsheet_generator import QuantTearsheetGenerator
-    from monika.infrastructure.database.models import Position, PaperTradeRecord
+    from monika.infrastructure.database.models import PaperTradeRecord, Position
 
     trades = []
     if session:
@@ -2222,9 +2238,9 @@ async def handle_cancel_stale_pending_orders(args: dict, **kwargs) -> dict:
 
         if is_paper:
             # Paper mode: update pending orders in database
+            from monika.domain.entities.order_status import OrderStatus
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.models import Order
-            from monika.domain.entities.order_status import OrderStatus
 
             cutoff_ts = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
             async with get_session() as s:
@@ -2322,8 +2338,9 @@ async def handle_close_positions_batch(
 
         if is_paper:
             # Paper trading simulation: close open paper positions in database
-            from monika.infrastructure.database.models import Position
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import Position
 
             closed_count = 0
 
@@ -2416,8 +2433,8 @@ async def handle_run_walk_forward_analysis(
     test_months = int(args.get("test_months", 1))
 
     try:
-        from monika.application.backtest.walk_forward_engine import WalkForwardEngine
         from monika.application.analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
+        from monika.application.backtest.walk_forward_engine import WalkForwardEngine
 
         strategy_cls = None
         for k, v in STRATEGY_REGISTRY.items():
@@ -2429,8 +2446,9 @@ async def handle_run_walk_forward_analysis(
                 (v for v in STRATEGY_REGISTRY.values() if isinstance(v, type) and issubclass(v, EdgeStrategy)), None
             )
 
-        import monika.core.primitives.clock as clock
         from datetime import timedelta
+
+        import monika.core.primitives.clock as clock
 
         end_date = clock.now()
         total_days = max(120, n_folds * (train_months + test_months) * 30)
@@ -2504,11 +2522,12 @@ async def handle_run_parameter_plateau_optimization(
     settings = getattr(executor, "settings", {}) or {}
 
     try:
-        from monika.application.analysis.calculators.quant_plateau_optimizer import QuantPlateauOptimizer, ParameterSpec
-        from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
-        from monika.application.analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
-        import monika.core.primitives.clock as clock
         from datetime import timedelta
+
+        import monika.core.primitives.clock as clock
+        from monika.application.analysis.calculators.quant_plateau_optimizer import ParameterSpec, QuantPlateauOptimizer
+        from monika.application.analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
+        from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
 
         # Resolve strategy class
         strategy_cls = None
@@ -2712,7 +2731,8 @@ async def handle_export_dataset_file(args: dict, session: Optional[AsyncSession]
         return {"error": "Database session required for export_dataset_file"}
 
     import pandas as pd
-    from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, MarketChronicle
+
+    from monika.infrastructure.database.models import AssetAnalysis, MarketChronicle, PaperTradeRecord
 
     model_map = {
         "paper_trades": PaperTradeRecord,
@@ -3158,8 +3178,9 @@ async def handle_get_broker_expenses_summary(
     days = int(args.get("days", 30))
     symbol_filter = str(args.get("symbol") or "").upper().strip()
 
-    import monika.core.primitives.clock as clock
     from datetime import timedelta
+
+    import monika.core.primitives.clock as clock
 
     now = clock.now()
     since = now - timedelta(days=days)

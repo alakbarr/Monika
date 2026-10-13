@@ -4,9 +4,9 @@ Evaluates competitors on identical historical tick/candle windows using Elo rati
 Evaluates multi-model alpha arena tournaments.
 """
 
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-import math
 from typing import Any, Dict, List, Optional, Tuple
 
 

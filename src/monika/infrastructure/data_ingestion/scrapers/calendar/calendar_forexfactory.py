@@ -1,14 +1,15 @@
-import logging
 import json
+import logging
 import os
 import time
 import urllib.request
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, List, Optional
 from zoneinfo import ZoneInfo
-from dateutil import parser as dateutil_parser
+
 from bs4 import BeautifulSoup
-from typing import List, Any, Optional
+from dateutil import parser as dateutil_parser
 
 from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
@@ -260,6 +261,7 @@ class ForexFactoryCalendarScraper(BaseScraper):
                 # Konversi waktu ForexFactory (US Eastern Time) ke UTC ISO format
                 from datetime import timezone
                 from zoneinfo import ZoneInfo
+
                 from dateutil import parser as dateutil_parser
 
                 eastern_tz = ZoneInfo("America/New_York")

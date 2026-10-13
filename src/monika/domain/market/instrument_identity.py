@@ -2,9 +2,9 @@
 # File: utils/market/instrument_identity.py
 # ==============================================================================
 
-from dataclasses import dataclass
 import functools
 import logging
+from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.InstrumentIdentity")

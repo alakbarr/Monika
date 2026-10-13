@@ -4,7 +4,8 @@ Thin facade delegating to the unified security scanner: security.prompt_injectio
 """
 
 from typing import Any, Dict, List, Set
-from monika.core.security.prompt_injection_scanner import PromptInjectionScanner, INVISIBLE_CHARS
+
+from monika.core.security.prompt_injection_scanner import INVISIBLE_CHARS, PromptInjectionScanner
 
 # Re-export patterns for backward compatibility with existing tests
 INJECTION_PATTERNS = [

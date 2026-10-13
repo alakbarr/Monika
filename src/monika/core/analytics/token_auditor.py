@@ -4,9 +4,10 @@ Menyediakan agregasi per task role, subsystem, symbol, model/provider, dan cycle
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any, List
-from sqlalchemy import select, func, desc, case
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import case, desc, func, select
 
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import TokenUsageLog

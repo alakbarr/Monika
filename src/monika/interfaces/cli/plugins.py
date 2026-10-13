@@ -8,25 +8,26 @@ Handles 'monika plugin list', 'monika plugin install', 'monika plugin uninstall'
 and 'monika plugin info' commands.
 """
 
-import sys
-import subprocess
 import logging
-from typing import List, Dict, Any, Optional
+import subprocess
+import sys
+from typing import Any, Dict, List, Optional
+
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 
 from monika.application.harness.contract import PluginCategory, PluginOrigin
 from monika.application.harness.engine import PluginEngine
 from monika.core.config.settings import load_all_config
 from monika.interfaces.cli.theme import (
-    get_console,
-    PHOSPHOR_AMBER,
     BRASS,
-    PAPER,
     LEDGER_BOX,
-    stamp_ok,
+    PAPER,
+    PHOSPHOR_AMBER,
+    get_console,
     stamp_err,
+    stamp_ok,
     stamp_warn,
 )
 

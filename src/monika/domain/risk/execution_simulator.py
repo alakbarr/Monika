@@ -16,7 +16,8 @@ negative mathematical expectancy in wide-spread or low-liquidity environments.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
 

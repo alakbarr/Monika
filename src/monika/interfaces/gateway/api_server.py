@@ -19,7 +19,8 @@ import logging
 import os
 import secrets
 import time
-from typing import Any, AsyncGenerator, Dict, List, Optional, Callable, Awaitable
+from typing import Any, AsyncGenerator, Awaitable, Callable, Dict, List, Optional
+
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -168,8 +169,8 @@ def get_default_chat_agent():
     """Lazily load and cache the default ChatAgent instance."""
     global _agent_instance
     if _agent_instance is None:
-        from monika.core.config.settings import load_settings
         from monika.application.agent.chat_agent import ChatAgent
+        from monika.core.config.settings import load_settings
 
         settings = load_settings()
         _agent_instance = ChatAgent(settings=settings, user_id="api_client", is_admin=True)
@@ -298,7 +299,7 @@ async def tradingview_webhook(request: Request):
     Ingress point for TradingView Webhook Alerts.
     Normalizes Pine Script alerts and routes to the internal event pipeline.
     """
-    from monika.interfaces.gateway.webhook_ingress import normalize_tradingview_payload, get_webhook_router
+    from monika.interfaces.gateway.webhook_ingress import get_webhook_router, normalize_tradingview_payload
 
     try:
         raw_body = await request.body()

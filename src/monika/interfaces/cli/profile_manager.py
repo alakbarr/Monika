@@ -4,11 +4,11 @@ Multi-profile environment manager for Monika (MT5 Trading Agent).
 Enables seamless isolation of trading accounts, prop firm rules, and paper/live environments.
 """
 
+import logging
 import os
 import shutil
-import logging
-from typing import List, Dict, Optional
 from dataclasses import dataclass
+from typing import Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.CLI.Profile")
 

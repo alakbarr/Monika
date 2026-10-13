@@ -8,9 +8,10 @@ PostgreSQL database (Single Source of Truth) without SQLite dual-write overhead.
 import logging
 import math
 import re
-from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
-from sqlalchemy import select, desc, or_
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import DecisionReflection

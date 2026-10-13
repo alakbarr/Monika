@@ -2,19 +2,20 @@
 # File: graph/nodes/debate/bull_advocate_node.py
 # ==============================================================================
 
+import asyncio
 import json
 import logging
-import asyncio
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
-from monika.application.graph.state import TradingState
 from langchain_core.runnables.config import RunnableConfig
+
+from monika.application.analysis.debate.bull_analyst import generate_bull_advocacy
+from monika.application.analysis.debate.fact_sheet import build_fact_sheet
+from monika.application.graph.nodes.debate.helpers import _is_grounded, inject_coherence_and_intel, sync_facade_patches
+from monika.application.graph.state import TradingState
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import AssetAnalysis
 from monika.infrastructure.providers.llm_factory import get_client_for_task
-from monika.application.analysis.debate.bull_analyst import generate_bull_advocacy
-from monika.application.analysis.debate.fact_sheet import build_fact_sheet
-from monika.application.graph.nodes.debate.helpers import inject_coherence_and_intel, _is_grounded, sync_facade_patches
 
 logger = logging.getLogger("TradingAgent.Graph.Debate.BullAdvocateNode")
 

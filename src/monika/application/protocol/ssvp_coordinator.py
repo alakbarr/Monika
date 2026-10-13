@@ -13,6 +13,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,8 +57,8 @@ class SSVPCoordinator:
         Note: Even if should_proceed=True, individual symbols may still have
         high CDS and need ContextMerge. Use compute_per_symbol_safety() for that.
         """
-        from monika.infrastructure.database.models import FundamentalBrief
         from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
+        from monika.infrastructure.database.models import FundamentalBrief
 
         # Get latest brief
         brief = (
@@ -237,8 +238,8 @@ class SSVPCoordinator:
             return ""
 
         from monika.application.protocol.brief_contamination_guard import (
-            _build_warning_context,
             _build_contextmerge_prompt,
+            _build_warning_context,
         )
 
         if cds < self.sync_threshold:

@@ -1,103 +1,104 @@
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Awaitable, Any
+from typing import Any, Awaitable, Callable, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("Benchmark.TaskSpecs")
 
-from monika.application.skills.loader import compose_system_prompt
+from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
+from monika.application.analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
+from monika.application.analysis.debate.bear_analyst import generate_bear_dissent
+from monika.application.analysis.debate.bull_analyst import generate_bull_advocacy
+from monika.application.analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
+from monika.application.analysis.debate.deterministic_risk import (
+    analyze_risk_aggressive,
+    analyze_risk_conservative,
+    analyze_risk_neutral,
+)
+from monika.application.analysis.debate.fact_sheet import build_fact_sheet
+from monika.application.analysis.debate.investment_judge import evaluate_debate
+from monika.application.analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
+from monika.application.analysis.debate.portfolio_manager import make_portfolio_decision
+from monika.application.analysis.memory.reflector import REFLECTION_SCHEMA, TradeReflector
+from monika.application.analysis.prefetch.macro_preprocessor import MacroPreprocessor
+from monika.application.analysis.prefetch.news_digest import (
+    DIGEST_CONSISTENCY_SCHEMA,
+    NEWS_CLASSIFICATION_SCHEMA,
+    NewsDigestProcessor,
+)
 from monika.application.analysis.prefetch.stage1_prefetcher import Stage1DataBundler
 from monika.application.analysis.prefetch.stage2_prefetcher import Stage2DataBundler
+from monika.application.analysis.schemas.schemas import SubmitFundamentalBriefSchema, get_tool_schema
 from monika.application.analysis.stages.fundamental_stage import USER_MESSAGE as STAGE1_USER_MESSAGE_TEXT
 from monika.application.analysis.stages.per_asset_stage import (
     SPECIALIST_PROMPTS,
     SYMBOL_TO_COT,
-    _render_specialist_prompt,
     PerAssetStage,
+    _render_specialist_prompt,
 )
-from monika.application.analysis.schemas.schemas import get_tool_schema, SubmitFundamentalBriefSchema
 from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE2_TOOLS, TELEGRAM_TOOLS
-from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
-from monika.application.analysis.debate.fact_sheet import build_fact_sheet
-from monika.application.analysis.debate.bull_analyst import generate_bull_advocacy
-from monika.application.analysis.debate.bear_analyst import generate_bear_dissent
-from monika.application.analysis.debate.investment_judge import evaluate_debate
-from monika.application.analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
-from monika.application.analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
-from monika.application.analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
-from monika.application.analysis.debate.portfolio_manager import make_portfolio_decision
-from monika.application.analysis.debate.deterministic_risk import (
-    analyze_risk_conservative,
-    analyze_risk_aggressive,
-    analyze_risk_neutral,
-)
 from monika.application.analysis.validators.fundamental_verifier import (
-    VERIFIER_SCHEMA,
     FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT,
+    VERIFIER_SCHEMA,
 )
-from monika.application.analysis.memory.reflector import REFLECTION_SCHEMA, TradeReflector
-from monika.application.analysis.prefetch.news_digest import (
-    NEWS_CLASSIFICATION_SCHEMA,
-    DIGEST_CONSISTENCY_SCHEMA,
-    NewsDigestProcessor,
-)
-from monika.application.analysis.prefetch.macro_preprocessor import MacroPreprocessor
 from monika.application.protocol.context_coherence import get_base_quote_tags
+from monika.application.skills.loader import compose_system_prompt
 
 from .db_access import (
-    pick_asset_analysis,
+    BenchmarkToolExecutor,
+    entry_context,
     latest_brief,
     latest_digest,
+    latest_user_message,
+    pick_asset_analysis,
     recent_news,
     resolved_reflection,
-    latest_user_message,
-    entry_context,
-    BenchmarkToolExecutor,
 )
-from .invoker import make_client
 from .fixture_loader import (
-    load_fixture_json,
-    get_synthetic_market_snapshot,
-    get_synthetic_stage1_bundle,
-    get_synthetic_stage2_bundle,
+    get_golden_adjudication_case,
+    get_golden_adversarial_case,
+    get_golden_asset_bundle,
+    get_golden_breaking_news,
+    get_golden_concurrent_orders,
+    get_golden_debate_case,
+    get_golden_escalation_crisis,
+    get_golden_jev_confluence,
+    get_golden_jev_debate_clash,
+    get_golden_jev_reflexes,
+    get_golden_jev_timing,
+    get_golden_macro_stage1,
+    get_golden_news_batch,
+    get_golden_news_digest,
+    get_golden_pattern_case,
+    get_golden_prescreen_matrix,
+    get_golden_reasoning_prompts,
+    get_golden_risk_state,
+    get_golden_sentiment_matrix,
+    get_golden_shadow_check_audit,
+    get_golden_technical_indicators,
+    get_golden_telegram_dialogues,
+    get_golden_trade_reflection,
+    get_golden_voice_transcripts,
+    get_production_decision_reflections,
+    get_production_news_1000,
+    get_synthetic_compaction_payload,
+    get_synthetic_debate_claims,
+    get_synthetic_fomc_transcript_payload,
     get_synthetic_fundamental_brief,
+    get_synthetic_macro_anomaly_payload,
+    get_synthetic_market_snapshot,
+    get_synthetic_news_digest,
     get_synthetic_news_items,
     get_synthetic_risk_context,
-    get_synthetic_debate_claims,
-    get_synthetic_compaction_payload,
-    get_synthetic_session_reports_payload,
-    get_synthetic_fomc_transcript_payload,
-    get_synthetic_macro_anomaly_payload,
     get_synthetic_sentiment_feed_payload,
-    get_golden_macro_stage1,
-    get_golden_escalation_crisis,
-    get_golden_shadow_check_audit,
-    get_golden_asset_bundle,
-    get_golden_prescreen_matrix,
-    get_golden_technical_indicators,
-    get_golden_sentiment_matrix,
-    get_golden_pattern_case,
-    get_golden_debate_case,
-    get_golden_adjudication_case,
-    get_golden_jev_debate_clash,
-    get_golden_risk_state,
-    get_golden_adversarial_case,
-    get_golden_trade_reflection,
-    get_production_decision_reflections,
-    get_golden_concurrent_orders,
-    get_golden_news_batch,
-    get_golden_breaking_news,
-    get_golden_news_digest,
-    get_synthetic_news_digest,
-    get_production_news_1000,
-    get_golden_jev_reflexes,
-    get_golden_jev_confluence,
-    get_golden_jev_timing,
-    get_golden_telegram_dialogues,
-    get_golden_voice_transcripts,
-    get_golden_reasoning_prompts,
+    get_synthetic_session_reports_payload,
+    get_synthetic_stage1_bundle,
+    get_synthetic_stage2_bundle,
+    load_fixture_json,
 )
+from .invoker import make_client
 
 
 @dataclass
@@ -375,8 +376,9 @@ async def _build_stage2_case(session, settings, symbol: str, stage_tag: str) -> 
     bundle_text = None
     if not use_fixtures and session:
         try:
-            from monika.infrastructure.database.models import FundamentalBrief
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import FundamentalBrief
 
             b_row = (
                 await session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))
@@ -893,6 +895,7 @@ async def _case_portfolio_synthesis(session, settings, ex) -> BenchmarkCase:
     if not use_fixtures and session:
         try:
             from sqlalchemy import select as _sel
+
             from monika.infrastructure.database.models import AssetAnalysis as _AA
 
             rows = (

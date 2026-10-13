@@ -21,7 +21,7 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, Callable, Awaitable, List, Union, Sequence
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence, Union
 
 from monika.application.graph.workflow import build_trading_graph
 

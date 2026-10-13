@@ -1,9 +1,11 @@
 import json
 import logging
-from typing import Any
 from datetime import datetime, timezone
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.infrastructure.database.models import AssetAnalysis, SystemConfig
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
@@ -280,8 +282,9 @@ recommend_block=true for significant, non-fatal risk factors.
 
         # Alert admin that adversarial check had an error (fail-open)
         try:
-            from monika.infrastructure.infra.notifier import AgentNotifier
             import asyncio
+
+            from monika.infrastructure.infra.notifier import AgentNotifier
 
             asyncio.create_task(
                 AgentNotifier().send_warning(

@@ -9,14 +9,14 @@ Pure NumPy and SQLAlchemy queries with zero external package dependencies.
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional, List, Dict, Tuple, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import PatternMatch, MarketContext, ContextAnnotation
+from .models import ContextAnnotation, MarketContext, PatternMatch
 
 logger = logging.getLogger("TradingAgent.PatternContext")
 

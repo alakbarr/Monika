@@ -9,23 +9,23 @@ LegacySchedulerWrapper for 100% backward-compatible modular background tasks.
 """
 
 import asyncio
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-import logging
 from typing import Any, Callable, Coroutine, Dict, List, Optional
 
+from monika.application.agent.task_registry import TaskDefinition, TaskRegistry
 from monika.application.harness.contract import (
-    TradingPlugin,
-    PluginMetadata,
     PluginCategory,
+    PluginMetadata,
     PluginOrigin,
     ServiceContainerProtocol,
     TaskRegistryProtocol,
+    TradingPlugin,
 )
 from monika.infrastructure.infra.container import ServiceContainer
-from monika.application.agent.task_registry import TaskRegistry, TaskDefinition
 
 logger = logging.getLogger("TradingAgent.Scheduler.TaskPlugin")
 

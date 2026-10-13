@@ -10,10 +10,10 @@ Slide 5: Multi-Asset Execution & SMC Edge
 Slide 6: Conclusion & Research Disclaimer
 """
 
-import os
 import logging
+import os
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.PptxDeckGenerator")
 
@@ -39,10 +39,10 @@ class PptxDeckGenerator:
         try:
             import pptx
             from pptx import Presentation
-            from pptx.util import Inches, Pt
             from pptx.dml.color import RGBColor
-            from pptx.enum.text import PP_ALIGN
             from pptx.enum.shapes import MSO_SHAPE
+            from pptx.enum.text import PP_ALIGN
+            from pptx.util import Inches, Pt
         except ImportError as e:
             logger.error(f"python-pptx is not installed: {e}")
             raise ImportError(
@@ -202,8 +202,8 @@ class PptxDeckGenerator:
         return os.path.abspath(filepath)
 
     def _add_slide_header(self, slide, title_text, navy_color, gold_color):
-        from pptx.util import Inches, Pt
         from pptx.dml.color import RGBColor
+        from pptx.util import Inches, Pt
 
         header_box = slide.shapes.add_textbox(Inches(1.0), Inches(0.6), Inches(11.333), Inches(1.0))
         tf = header_box.text_frame
@@ -215,9 +215,9 @@ class PptxDeckGenerator:
         p.font.name = "Calibri"
 
     def _add_bullet_cards(self, slide, items, slide_width, navy_color, dark_gray):
-        from pptx.util import Inches, Pt
-        from pptx.enum.shapes import MSO_SHAPE
         from pptx.dml.color import RGBColor
+        from pptx.enum.shapes import MSO_SHAPE
+        from pptx.util import Inches, Pt
 
         card_width = Inches(5.4)
         card_height = Inches(2.2)
@@ -259,9 +259,9 @@ class PptxDeckGenerator:
             p_desc.space_before = Pt(8)
 
     def _add_metric_grid(self, slide, metrics, slide_width, navy_color, gold_color):
-        from pptx.util import Inches, Pt
         from pptx.dml.color import RGBColor
         from pptx.enum.shapes import MSO_SHAPE
+        from pptx.util import Inches, Pt
 
         card_width = Inches(3.5)
         card_height = Inches(2.2)

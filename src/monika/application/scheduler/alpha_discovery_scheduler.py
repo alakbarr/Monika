@@ -11,22 +11,23 @@ import asyncio
 import json
 import logging
 import uuid
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List, Optional
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select, update
-from monika.application.backtest.walk_forward_engine import WalkForwardEngine, WalkForwardResult
-from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
-from monika.application.analysis.strategies.registry import StrategyRegistry
+
 import monika.application.analysis.strategies
 from monika.application.analysis.calculators.quant_plateau_optimizer import (
-    QuantPlateauOptimizer,
     ParameterSpec,
     PlateauOptimizationResult,
+    QuantPlateauOptimizer,
 )
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+from monika.application.backtest.walk_forward_engine import WalkForwardEngine, WalkForwardResult
 from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import SystemConfig, ActivityLog
+from monika.infrastructure.database.models import ActivityLog, SystemConfig
 
 logger = logging.getLogger("TradingAgent.AlphaDiscoveryScheduler")
 

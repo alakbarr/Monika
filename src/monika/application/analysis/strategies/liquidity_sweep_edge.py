@@ -1,6 +1,6 @@
-from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-from monika.application.analysis.strategies.registry import StrategyRegistry
 from monika.application.analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
+from monika.application.analysis.strategies.base_strategy import EdgeSignal, EdgeStrategy
+from monika.application.analysis.strategies.registry import StrategyRegistry
 
 
 @StrategyRegistry.register

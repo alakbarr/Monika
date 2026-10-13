@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Mapping
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from monika.application.graph.nodes.risk.rejection_auditor import audit_trade_rejection
 
@@ -30,10 +30,11 @@ async def ai_portfolio_synthesis(
     """
     Executes AI portfolio-level synthesis when multiple trades are proposed simultaneously.
     """
-    from monika.infrastructure.providers.llm_factory import get_client_for_task
-    from monika.infrastructure.database.models import FundamentalBrief, VIXData
     from sqlalchemy import select
+
     from monika.domain.market.dynamic_correlation import get_rolling_correlation
+    from monika.infrastructure.database.models import FundamentalBrief, VIXData
+    from monika.infrastructure.providers.llm_factory import get_client_for_task
 
     trade_summaries = []
     proposed_trades = []

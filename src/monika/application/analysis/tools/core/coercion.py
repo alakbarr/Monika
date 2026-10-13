@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 from typing import Any, Dict, List, Optional
+
 from monika.application.analysis.tools.core.definition import ToolParameter
 
 logger = logging.getLogger("TradingAgent.Analysis.Tools.Coercion")

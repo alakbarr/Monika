@@ -47,8 +47,9 @@ async def resolve_and_repair_levels(
     and falls back to ATR percentage heuristics if necessary.
     Synchronizes results back into `r` dictionary and `ana` DB record.
     """
-    from monika.infrastructure.database.models import PriceOHLCV
     from sqlalchemy import select
+
+    from monika.infrastructure.database.models import PriceOHLCV
 
     dec_u = str(r.get("decision", "")).upper()
     entry_p = _safe_num(r.get("entry_price"))

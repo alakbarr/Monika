@@ -1,6 +1,7 @@
 import os
-import yaml
 import re
+
+import yaml
 
 
 def flatten_dict(d, parent_key="", sep="."):

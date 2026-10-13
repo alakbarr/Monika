@@ -13,13 +13,14 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional, Union
+
 from pydantic import BaseModel, ConfigDict, Field
 
-from monika.domain.entities.order_status import (
-    OrderStatus,
-    InvalidOrderStateTransitionError,
-)
 import monika.core.primitives.clock as clock
+from monika.domain.entities.order_status import (
+    InvalidOrderStateTransitionError,
+    OrderStatus,
+)
 
 
 class OrderEntity(BaseModel):

@@ -4,8 +4,10 @@ Solves gap: querying slow or failed LLM calls with granular filters.
 """
 
 import logging
-from fastapi import APIRouter, Query
 from typing import Optional
+
+from fastapi import APIRouter, Query
+
 from monika.core.telemetry.tracing.exporters import global_trace_store
 
 logger = logging.getLogger("TradingAgent.Dashboard.TraceSearch")

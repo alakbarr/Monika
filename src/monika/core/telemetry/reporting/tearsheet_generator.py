@@ -10,11 +10,12 @@ Computes comprehensive quantitative performance and risk metrics from historical
 6. Multi-Format Rendering (Interactive Markdown & Telegram HTML)
 """
 
-import math
 import logging
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any, Optional, Union, Sequence
+import math
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Sequence, Union
+
 import numpy as np
 
 logger = logging.getLogger("TradingAgent.QuantTearsheetGenerator")

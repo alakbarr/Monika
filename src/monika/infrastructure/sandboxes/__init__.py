@@ -3,8 +3,8 @@
 # ==============================================================================
 
 from monika.infrastructure.sandboxes.base import BaseTerminalBackend
-from monika.infrastructure.sandboxes.local_backend import LocalTerminalBackend
 from monika.infrastructure.sandboxes.docker_backend import DockerTerminalBackend
+from monika.infrastructure.sandboxes.local_backend import LocalTerminalBackend
 
 __all__ = [
     "BaseTerminalBackend",

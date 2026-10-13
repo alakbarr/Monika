@@ -10,11 +10,12 @@ across multiple turns in an analysis cycle without sub-process cold-start overhe
 """
 
 import io
+import logging
 import sys
 import time
-import logging
 import traceback
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
+
 from monika.application.analysis.tools.kernel.env_sanitizer import get_sanitized_environment
 from monika.application.analysis.tools.kernel.output_spiller import truncate_and_spill_output
 from monika.application.analysis.tools.kernel.sandbox_runner import SandboxedKernel

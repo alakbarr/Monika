@@ -206,6 +206,7 @@ def probability_of_backtest_overfitting(
           - n_combinations: Number of CSCV combinations evaluated
     """
     import itertools
+
     import numpy as np
 
     arr = np.asarray(matrix_returns, dtype=np.float64)

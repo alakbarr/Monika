@@ -1,10 +1,12 @@
 import logging
-from typing import Dict, Any, Optional
-from monika.application.graph.state import TradingState
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional
+
 from langchain_core.runnables.config import RunnableConfig
-from monika.infrastructure.database.db import get_session
-from datetime import datetime, timezone, timedelta
+
 import monika.core.primitives.clock as clock
+from monika.application.graph.state import TradingState
+from monika.infrastructure.database.db import get_session
 
 logger = logging.getLogger("TradingAgent.Graph.DataNode")
 
@@ -53,7 +55,9 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
 
     # Cek freshness kalender
     try:
-        from sqlalchemy import func, select as _sel
+        from sqlalchemy import func
+        from sqlalchemy import select as _sel
+
         from monika.infrastructure.database.models import EconomicCalendar, SystemConfig
 
         async with get_session() as session:
@@ -126,9 +130,10 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
 
         # Health report and auto-tightening
         async with get_session() as session:
+            from sqlalchemy import select
+
             from monika.application.analysis.prefetch.news_digest import get_classification_health_report
             from monika.infrastructure.database.models import SystemConfig
-            from sqlalchemy import select
 
             health = await get_classification_health_report(session)
             if health.get("anomaly_alert"):
@@ -251,16 +256,17 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                 should_regen, reason = False, "no_paper_tracker"
 
             from monika.core.analytics.performance_reviewer import (
-                should_regenerate_fundamental_notes,
                 generate_fundamental_performance_review,
+                should_regenerate_fundamental_notes,
             )
 
             should_regen_fund, fund_reason = await should_regenerate_fundamental_notes(session)
             if should_regen_fund and not should_regen:
                 fund_content = await generate_fundamental_performance_review(session)
                 if fund_content:
-                    from monika.infrastructure.database.models import SystemConfig
                     from sqlalchemy import select
+
+                    from monika.infrastructure.database.models import SystemConfig
 
                     cfg = (
                         await session.execute(
@@ -285,9 +291,11 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                 fund_content = await generate_fundamental_performance_review(session)
 
                 if review_content:
-                    from monika.infrastructure.database.models import SystemConfig
-                    from sqlalchemy import select
                     import json
+
+                    from sqlalchemy import select
+
+                    from monika.infrastructure.database.models import SystemConfig
 
                     last_gen_key = "performance_notes_last_gen"
                     stats = (await tracker.get_statistics(session)) if tracker is not None else {}
@@ -319,10 +327,12 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Step 5.7: Score Inflation Detection
     logger.info("[Step 5.7/7] Running score inflation drift check (lightweight, every cycle)...")
     try:
+        import json as _json_infl
+
+        from sqlalchemy import select as _sel_infl
+
         from monika.core.analytics.analysis_tracker import detect_score_inflation
         from monika.infrastructure.database.models import SystemConfig
-        from sqlalchemy import select as _sel_infl
-        import json as _json_infl
 
         async with get_session() as session:
             inflation_data = await detect_score_inflation(session, days_back=14)
@@ -431,8 +441,9 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
 
     # === VIX SYSTEM HALT CHECK ===
     try:
-        from monika.infrastructure.database.models import VIXData
         from sqlalchemy import select as _sel2
+
+        from monika.infrastructure.database.models import VIXData
 
         async with get_session() as vix_check_session:
             vix_latest = (
@@ -470,8 +481,9 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     vix_latest_close = None
 
     try:
-        from monika.infrastructure.database.models import VIXData, DXYData
         from sqlalchemy import select as _sel3
+
+        from monika.infrastructure.database.models import DXYData, VIXData
 
         async with get_session() as session:
             vix_row = (
@@ -508,8 +520,10 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Fetch Active User Market Intelligence & Directives
     active_user_intel = []
     try:
+        from sqlalchemy import or_ as _or_intel
+        from sqlalchemy import select as _sel_intel
+
         from monika.infrastructure.database.models import UserMarketIntel
-        from sqlalchemy import select as _sel_intel, or_ as _or_intel
 
         async with get_session() as session:
             now_intel = clock.now()

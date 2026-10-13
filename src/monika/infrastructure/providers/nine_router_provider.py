@@ -9,7 +9,8 @@ Base URL default: http://localhost:20128/v1
 import logging
 import os
 import time
-from typing import Optional, Dict, Any, List, ClassVar
+from typing import Any, ClassVar, Dict, List, Optional
+
 from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
 logger = logging.getLogger("TradingAgent.NineRouterProvider")

@@ -28,8 +28,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from monika.application.skills.curator import SkillCurator
-from monika.application.skills.skills_guard import SkillsGuard, AuditReport
-from monika.application.skills.skills_hub import SkillsHub, SkillMetadata
+from monika.application.skills.skills_guard import AuditReport, SkillsGuard
+from monika.application.skills.skills_hub import SkillMetadata, SkillsHub
 
 logger = logging.getLogger("TradingAgent.Skills.SkillManager")
 

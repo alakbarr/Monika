@@ -4,8 +4,9 @@ Asserts that open position count does not breach maximum account limits.
 """
 
 from typing import Any, Dict, List, Optional
-from .risk_gate_invariant import InvariantViolationError
+
 from .registry import InvariantResult, InvariantStatus
+from .risk_gate_invariant import InvariantViolationError
 
 
 def assert_position_count_invariant(

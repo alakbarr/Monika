@@ -10,7 +10,7 @@ Detects when a model becomes stuck repeating identical sentence or paragraph fra
 """
 
 import logging
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Harness.RepetitionGuard")
 

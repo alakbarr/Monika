@@ -11,11 +11,11 @@ Supports:
 """
 
 import asyncio
+import inspect
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Set, Type, TypeVar, Union
-import inspect
 
 logger = logging.getLogger("TradingAgent.EventBus")
 

@@ -3,7 +3,7 @@
 # Description: Programmatic Oracle for Binary Risk Gate & Policy Compliance
 # ==============================================================================
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 
 def evaluate_risk_compliance(fixture: Dict[str, Any], decision_data: Dict[str, Any]) -> Dict[str, Any]:

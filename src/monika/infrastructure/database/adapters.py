@@ -16,8 +16,8 @@ from typing import List, Optional
 
 from dateutil import parser as dateutil_parser
 
-from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent, ScrapedNews, ScrapedTweet, FedMeeting
-from monika.infrastructure.database.models import NewsItem, EconomicCalendar, FedWatchProbability, SystemConfig
+from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent, FedMeeting, ScrapedNews, ScrapedTweet
+from monika.infrastructure.database.models import EconomicCalendar, FedWatchProbability, NewsItem, SystemConfig
 from monika.infrastructure.database.safe_ops import safe_commit
 
 logger = logging.getLogger("TradingAgent.Adapters")
@@ -244,6 +244,7 @@ def fed_meeting_to_models(meeting: FedMeeting) -> List[FedWatchProbability]:
 async def batch_save_news(session, news_list: List[ScrapedNews]) -> int:
     """Konversi dan simpan berita secara batch, lewati duplikat berdasarkan URL."""
     from sqlalchemy import select
+
     from monika.infrastructure.database.models import VIXData
 
     # Ambil VIX terbaru
@@ -290,8 +291,9 @@ async def batch_save_news(session, news_list: List[ScrapedNews]) -> int:
 
 async def batch_save_calendar(session, events: List[CalendarEvent]) -> int:
     """Konversi dan simpan event kalender secara batch dengan deduplikasi (mata uang, event, waktu)."""
-    from sqlalchemy import select
     from datetime import timedelta
+
+    from sqlalchemy import select
 
     saved = 0
     updated = 0

@@ -7,11 +7,11 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone, date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Query, Request, HTTPException
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
 
 from monika.interfaces.dashboard.rbac import Role
@@ -221,8 +221,8 @@ async def get_health_diagnostics():
 @router.get("/api/gemini-quota", tags=["System"])
 async def get_gemini_quota():
     """Cek kuota rate limiter API Gemini (harian)."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
+    from monika.infrastructure.database.db import AsyncSessionLocal
 
     try:
         async with AsyncSessionLocal() as session:
@@ -249,9 +249,10 @@ async def get_gemini_quota():
 @router.get("/api/vix", tags=["Market Data"])
 async def get_vix(limit: int = Query(default=30, ge=1, le=90)):
     """Data historis VIX untuk chart sparkline."""
+    from sqlalchemy import select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import VIXData
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
         rows = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(limit))).scalars().all()
@@ -272,9 +273,10 @@ async def get_vix(limit: int = Query(default=30, ge=1, le=90)):
 @router.get("/api/brief", tags=["Analysis"])
 async def get_brief():
     """Ringkasan Stage 1 (Fundamental Brief) paling baru."""
+    from sqlalchemy import select
+
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.infrastructure.database.models import FundamentalBrief
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
         brief = (
@@ -317,6 +319,7 @@ async def get_auth_role(request: Request):
 async def shutdown_system(request: Request):
     """Gracefully request system/daemon shutdown."""
     import asyncio
+
     from monika.application.agent.task_registry import mark_clean_shutdown
 
     logger.info("Shutdown requested via /api/actions/shutdown")
