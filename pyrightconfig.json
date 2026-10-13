@@ -22,6 +22,6 @@
   "extraPaths": ["src"],
   "typeCheckingMode": "standard",
   "reportMissingTypeStubs": false,
-  "reportMissingImports": false,
+  "reportMissingImports": true,
   "reportMissingModuleSource": false
 }
