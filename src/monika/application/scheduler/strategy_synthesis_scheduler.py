@@ -144,6 +144,7 @@ class StrategySynthesisScheduler:
         "datetime",
         "typing",
         "dataclasses",
+        "monika",
         "analysis",
         "sqlalchemy",
         "logging",

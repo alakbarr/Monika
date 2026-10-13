@@ -26,7 +26,7 @@ def test_code_safety_validation(scheduler):
     safe_code = """
 import logging
 from decimal import Decimal
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
@@ -62,7 +62,7 @@ def test_strategy_compilation(scheduler):
     code = """
 import logging
 from decimal import Decimal
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
@@ -92,7 +92,7 @@ class CompiledTestStrategy(EdgeStrategy):
 def test_sandbox_backtest_metrics(scheduler):
     """Verifies accurate calculation of Sharpe, Max DD, Win Rate in sandbox."""
     code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
@@ -121,7 +121,7 @@ class SandboxTestStrat(EdgeStrategy):
 async def test_evaluate_and_register_qualified_candidate(scheduler, tmp_path):
     """Verifies that candidates passing quant criteria are registered into StrategyRegistry and saved."""
     code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
@@ -191,7 +191,7 @@ class HighAlphaStrategy(EdgeStrategy):
 async def test_reject_sub_threshold_candidate(scheduler):
     """Verifies that candidates failing Sharpe (>1.5) or Max DD (<10%) are rejected."""
     code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
@@ -245,7 +245,7 @@ def test_ast_security_blocks_indirect_builtins_and_exploits(scheduler):
 async def test_walk_forward_gating_blocks_overfitted_candidate(scheduler):
     """Verifies that an overfitted strategy (great in-sample, poor out-of-sample) is blocked by walk-forward gating."""
     code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
@@ -286,7 +286,7 @@ def test_safe_getattr_allowed_and_dangerous_rejected(scheduler):
     """Verifies that literal safe getattr calls are permitted while dangerous/dynamic ones are rejected."""
     # Safe literal getattr
     safe_code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
@@ -321,7 +321,7 @@ def test_compile_strategy_auto_injects_strategy_id_and_safe_init(scheduler):
     """Verifies that compiled strategies are robust against missing strategy_id and kwargs-only __init__."""
     # Strategy without class-level strategy_id and with kwargs-only __init__
     code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
@@ -479,7 +479,7 @@ async def test_synthesized_strategies_with_candle_dict():
 def test_validate_code_safety_rejects_undefined_symbols(scheduler):
     """Verifies that symtable/lint check rejects code referencing undefined variables (e.g. F821)."""
     code_with_undefined = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
@@ -498,7 +498,7 @@ class BrokenSymbolStrategy(EdgeStrategy):
 def test_validate_code_safety_accepts_utf8_characters(scheduler):
     """Verifies that validate_code_safety and ruff linting safely process code with non-ASCII UTF-8 characters."""
     code_with_utf8 = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
@@ -517,7 +517,7 @@ class Utf8Strategy(EdgeStrategy):
 def test_validate_code_safety_rejects_missing_returns(scheduler):
     """Verifies that EdgeStrategy evaluate() without return statement is rejected."""
     code_no_return = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
@@ -574,7 +574,7 @@ async def test_run_historical_simulation_disqualifies_on_eval_error(scheduler):
 async def test_canary_evaluation_failure_blocks_registration(scheduler):
     """Verifies that canary evaluation returning error tag blocks candidate registration."""
     code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 

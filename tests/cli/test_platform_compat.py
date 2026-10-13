@@ -37,10 +37,13 @@ def test_unicode_support_detection():
 
 def test_ensure_utf8_streams_safe():
     """ensure_utf8_streams runs safely without raising exceptions."""
-    ensure_utf8_streams()
+    result = ensure_utf8_streams()
+    assert result is None
 
 
 def test_apply_platform_fixes_idempotent():
     """apply_platform_fixes can be called repeatedly."""
-    apply_platform_fixes()
-    apply_platform_fixes()
+    res1 = apply_platform_fixes()
+    res2 = apply_platform_fixes()
+    assert res1 is None
+    assert res2 is None

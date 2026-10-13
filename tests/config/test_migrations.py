@@ -52,7 +52,8 @@ def test_migrate_config_ladder():
 def test_require_parseable_config_valid(tmp_path: Path):
     cfg_file = tmp_path / "valid.yaml"
     cfg_file.write_text("app_name: Monika\n", encoding="utf-8")
-    require_parseable_config(cfg_file)  # Should not raise
+    result = require_parseable_config(cfg_file)
+    assert result is None
 
 
 def test_require_parseable_config_invalid_syntax(tmp_path: Path):
