@@ -36,14 +36,14 @@ from agent.task_registry import TaskRegistry, CORE_TRADING_TASKS
 # FASE 1: Strategy Registry, Calmar Ratio, & Isolated Backtest Harness
 # ==============================================================================
 
-def test_fase1_strategy_registry_alias():
+def test_strategy_registry_alias():
     assert STRATEGY_REGISTRY is not None
     assert isinstance(STRATEGY_REGISTRY, dict)
     assert "smc_fvg" in StrategyRegistry._registry or "SMCFairValueGapStrategy" in StrategyRegistry._registry
     assert "bb_volume_profile" in StrategyRegistry._registry or "BBVolumeProfileMeanReversion" in StrategyRegistry._registry
 
 
-def test_fase1_calmar_ratio_in_harness_metrics():
+def test_calmar_ratio_in_harness_metrics():
     metrics = HarnessMetrics(
         total_trades=10,
         win_rate_pct=70.0,
@@ -60,10 +60,10 @@ def test_fase1_calmar_ratio_in_harness_metrics():
 
 
 # ==============================================================================
-# FASE 2: Margin Monitor, Pending Orders, & PnL Summary
+# Margin Monitor, Pending Orders, & PnL Summary
 # ==============================================================================
 
-def test_fase2_task_registry_margin_guardian():
+def test_task_registry_margin_guardian():
     assert "MarginGuardian" in CORE_TRADING_TASKS or "MarginMonitor" in CORE_TRADING_TASKS
     import asyncio
     reg = TaskRegistry(asyncio.Event())
@@ -76,7 +76,7 @@ def test_fase2_task_registry_margin_guardian():
 
 
 @pytest.mark.asyncio
-async def test_fase2_pnl_summary_handler():
+async def test_pnl_summary_handler():
     mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.one_or_none.return_value = (150.0, 5, 4)
@@ -93,10 +93,10 @@ async def test_fase2_pnl_summary_handler():
 
 
 # ==============================================================================
-# FASE 3: Candlestick Patterns, SMC Visual Charting, ADR & Level Optimizer
+# Candlestick Patterns, SMC Visual Charting, ADR & Level Optimizer
 # ==============================================================================
 
-def test_fase3_candlestick_pattern_detection():
+def test_candlestick_pattern_detection():
     # Build sample OHLCV DataFrame
     df = pd.DataFrame([
         # Regular candle
@@ -119,7 +119,7 @@ def test_fase3_candlestick_pattern_detection():
 
 
 @pytest.mark.asyncio
-async def test_fase3_anchored_vwap_modes():
+async def test_anchored_vwap_modes():
     mock_session = create_mock_async_session()
     mock_bar = MagicMock(open=100.0, high=105.0, low=98.0, close=102.0, volume=500.0)
     mock_result = MagicMock()
@@ -133,7 +133,7 @@ async def test_fase3_anchored_vwap_modes():
 
 
 @pytest.mark.asyncio
-async def test_fase3_optimal_levels_trade_style():
+async def test_optimal_levels_trade_style():
     mock_session = create_mock_async_session()
     with patch("analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock) as mock_adr, \
          patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as mock_atr, \
@@ -164,11 +164,11 @@ async def test_fase3_optimal_levels_trade_style():
 
 
 # ==============================================================================
-# FASE 4: Quant Strategies, Counterfactual Trailing Stop, Debate & Stress Test
+# Quant Strategies, Counterfactual Trailing Stop, Debate & Stress Test
 # ==============================================================================
 
 @pytest.mark.asyncio
-async def test_fase4_smc_fvg_strategy_evaluation():
+async def test_smc_fvg_strategy_evaluation():
     strat = SMCFairValueGapStrategy()
     mock_session = create_mock_async_session()
 
@@ -192,7 +192,7 @@ async def test_fase4_smc_fvg_strategy_evaluation():
 
 
 @pytest.mark.asyncio
-async def test_fase4_bb_volume_profile_strategy_evaluation():
+async def test_bb_volume_profile_strategy_evaluation():
     strat = BBVolumeProfileMeanReversion()
     mock_session = create_mock_async_session()
 
@@ -208,7 +208,7 @@ async def test_fase4_bb_volume_profile_strategy_evaluation():
 
 
 @pytest.mark.asyncio
-async def test_fase4_counterfactual_trailing_stop():
+async def test_counterfactual_trailing_stop():
     sim = CounterfactualSimulator()
     mock_session = create_mock_async_session()
 
@@ -239,7 +239,7 @@ async def test_fase4_counterfactual_trailing_stop():
 
 
 @pytest.mark.asyncio
-async def test_fase4_hostile_stress_test():
+async def test_hostile_stress_test():
     res = await handle_run_hostile_stress_test({"symbol": "EURUSD"})
     assert res["status"] == "success"
     assert res["all_resilient"] is True
@@ -247,11 +247,11 @@ async def test_fase4_hostile_stress_test():
 
 
 # ==============================================================================
-# FASE 5: Macro Correlation, Coinglass OI, Database Operators, & Socket Guard
+# Macro Correlation, Coinglass OI, Database Operators, & Socket Guard
 # ==============================================================================
 
 @pytest.mark.asyncio
-async def test_fase5_cross_asset_macro_correlation():
+async def test_cross_asset_macro_correlation():
     mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.all.return_value = [
@@ -266,7 +266,7 @@ async def test_fase5_cross_asset_macro_correlation():
     assert "yield_curve_10y_2y" in res
 
 
-def test_fase5_socket_guard_diagnostics():
+def test_socket_guard_diagnostics():
     diag = get_socket_guard_diagnostics()
     assert diag["status"] == "healthy"
     assert "graveyard_size" in diag
