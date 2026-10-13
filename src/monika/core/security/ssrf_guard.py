@@ -80,7 +80,7 @@ def is_ip_private_or_reserved(ip_str: str) -> bool:
         return True
 
 
-def validate_request_url(url: str, allowed_ports: Optional[Set[int]] = None) -> str:
+def validate_request_url(url: str, allowed_ports: set[int] | None = None) -> str:
     """
     Validates that a URL is safe for outbound requests.
     Resolves domain DNS and blocks private/metadata destinations.

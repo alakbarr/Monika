@@ -25,17 +25,17 @@ HAS_REPORTLAB: bool = importlib.util.find_spec("reportlab") is not None
 class PDFReportGenerator:
     """Compiles automated trading desk performance tear-sheets into PDF documents."""
 
-    def __init__(self, output_dir: Optional[str] = None):
+    def __init__(self, output_dir: str | None = None):
         self.output_dir = Path(output_dir or "data/reports")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_performance_pdf(
         self,
-        metrics: Dict[str, Any],
+        metrics: dict[str, Any],
         report_title: str = "Weekly Performance Tear-Sheet",
-        period_label: Optional[str] = None,
-        chart_png_path: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        period_label: str | None = None,
+        chart_png_path: str | None = None,
+    ) -> dict[str, Any]:
         """
         Builds institutional PDF tear-sheet.
         metrics: {

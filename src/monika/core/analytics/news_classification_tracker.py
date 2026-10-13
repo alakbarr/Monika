@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,7 +46,7 @@ async def snapshot_classification_for_tracking(session: AsyncSession, news_item:
                 news_item_id=news_item.id,
                 symbol_checked=symbol,
                 classified_impact=news_item.impact,
-                classified_at=datetime.now(timezone.utc),
+                classified_at=datetime.now(UTC),
                 price_at_classification=last_bar.close,
             )
         )
@@ -109,7 +109,7 @@ async def _get_dynamic_move_threshold_pct(session: AsyncSession, symbol: str, im
 
 
 async def resolve_pending_news_outcomes(session: AsyncSession, min_age_hours: float = 2.0) -> int:
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=min_age_hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=min_age_hours)
     pending = (
         (
             await session.execute(
@@ -142,7 +142,7 @@ async def resolve_pending_news_outcomes(session: AsyncSession, min_age_hours: fl
         rec.move_pct_2h = round(move_pct, 4)
         threshold = await _get_dynamic_move_threshold_pct(session, rec.symbol_checked, rec.classified_impact)
         rec.outcome_matched_classification = move_pct >= threshold
-        rec.checked_at = datetime.now(timezone.utc)
+        rec.checked_at = datetime.now(UTC)
         resolved += 1
     if resolved:
         await session.commit()
@@ -157,7 +157,7 @@ async def compute_and_apply_tier_calibration(session: AsyncSession, days_back: i
     """
     from sqlalchemy import select
 
-    since = datetime.now(timezone.utc) - timedelta(days=days_back)
+    since = datetime.now(UTC) - timedelta(days=days_back)
     rows = (
         (
             await session.execute(
@@ -190,7 +190,7 @@ async def compute_and_apply_tier_calibration(session: AsyncSession, days_back: i
         "by_impact": by_impact,
         "over_classification_suspected": over_classification_suspected,
         "recommendation": "Tinjau kriteria BREAKING" if over_classification_suspected else "OK",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
     directives = []
@@ -214,7 +214,7 @@ async def compute_and_apply_tier_calibration(session: AsyncSession, days_back: i
     from monika.infrastructure.database.models import SystemConfig
 
     key = "news_tier_calibration_directives"
-    payload = json.dumps({"directives": directives, "computed_at": datetime.now(timezone.utc).isoformat()})
+    payload = json.dumps({"directives": directives, "computed_at": datetime.now(UTC).isoformat()})
     cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
     if cfg:
         cfg.value = payload

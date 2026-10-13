@@ -70,10 +70,10 @@ DEFAULT_MONTHLY_BUDGET_USD = 100.0
 
 logger = logging.getLogger("TradingAgent.Config")
 
-_LKG_SETTINGS_CACHE: Dict[str, Any] = {}
+_LKG_SETTINGS_CACHE: dict[str, Any] = {}
 
 
-def _deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
+def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge overlay dict into base dict."""
     merged = dict(base)
     for key, value in overlay.items():
@@ -84,7 +84,7 @@ def _deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]
     return merged
 
 
-def validate_config(settings: Dict[str, Any]) -> TradingAgentConfig:
+def validate_config(settings: dict[str, Any]) -> TradingAgentConfig:
     """Validate settings dict against TradingAgentConfig schema and return strongly-typed model."""
     try:
         validated = TradingAgentConfig.model_validate(settings)
@@ -96,21 +96,21 @@ def validate_config(settings: Dict[str, Any]) -> TradingAgentConfig:
 
 @overload
 def load_settings(
-    path: Union[str, Dict[str, Any], None] = None, validate: bool = False, *, return_model: Literal[True]
+    path: Union[str, dict[str, Any], None] = None, validate: bool = False, *, return_model: Literal[True]
 ) -> TradingAgentConfig: ...
 @overload
 def load_settings(
-    path: Union[str, Dict[str, Any], None] = None, validate: bool = False, return_model: Literal[False] = False
-) -> Dict[str, Any]: ...
+    path: Union[str, dict[str, Any], None] = None, validate: bool = False, return_model: Literal[False] = False
+) -> dict[str, Any]: ...
 @overload
 def load_settings(
-    path: Union[str, Dict[str, Any], None] = None, validate: bool = False, return_model: bool = False
-) -> Union[Dict[str, Any], TradingAgentConfig]: ...
+    path: Union[str, dict[str, Any], None] = None, validate: bool = False, return_model: bool = False
+) -> Union[dict[str, Any], TradingAgentConfig]: ...
 def load_settings(
-    path: Union[str, Dict[str, Any], None] = None, validate: bool = False, return_model: bool = False
-) -> Union[Dict[str, Any], TradingAgentConfig]:
+    path: Union[str, dict[str, Any], None] = None, validate: bool = False, return_model: bool = False
+) -> Union[dict[str, Any], TradingAgentConfig]:
     """Memuat pengaturan utama dari file YAML beserta file split modular jika ada."""
-    settings: Dict[str, Any]
+    settings: dict[str, Any]
     if isinstance(path, dict):
         settings = dict(path)
     else:
@@ -119,7 +119,7 @@ def load_settings(
             active_profile_path = None
             if os.path.exists("profiles/active_profile"):
                 try:
-                    with open("profiles/active_profile", "r", encoding="utf-8") as pf:
+                    with open("profiles/active_profile", encoding="utf-8") as pf:
                         p_name = pf.read().strip()
                         if p_name and p_name != "default":
                             cand_cfg = f"profiles/{p_name}/settings.yaml"
@@ -137,7 +137,7 @@ def load_settings(
 
         good_backup_path = f"{path}.good"
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 raw_loaded = yaml.safe_load(f)
                 settings = dict(raw_loaded) if isinstance(raw_loaded, dict) else {}
             # Update last-known-good disk backup on successful load
@@ -161,7 +161,7 @@ def load_settings(
                 pass
             if os.path.exists(good_backup_path):
                 logger.warning(f"Recovering from last-known-good disk backup: {good_backup_path}")
-                with open(good_backup_path, "r", encoding="utf-8") as gf:
+                with open(good_backup_path, encoding="utf-8") as gf:
                     raw_loaded = yaml.safe_load(gf)
                     settings = dict(raw_loaded) if isinstance(raw_loaded, dict) else {}
             else:
@@ -180,9 +180,9 @@ def load_settings(
             split_path = os.path.join(config_dir, filename)
             if os.path.exists(split_path):
                 try:
-                    with open(split_path, "r", encoding="utf-8") as sf:
+                    with open(split_path, encoding="utf-8") as sf:
                         raw_split = yaml.safe_load(sf)
-                        split_data: Dict[str, Any] = dict(raw_split) if isinstance(raw_split, dict) else {}
+                        split_data: dict[str, Any] = dict(raw_split) if isinstance(raw_split, dict) else {}
                     if section == "risk":
                         trading_val = settings.get("trading")
                         if isinstance(trading_val, dict) and isinstance(trading_val.get("risk"), dict):
@@ -207,7 +207,7 @@ def load_settings(
                 if fname.endswith((".yaml", ".yml")) and os.path.isfile(fpath):
                     plugin_id = os.path.splitext(fname)[0]
                     try:
-                        with open(fpath, "r", encoding="utf-8") as pf:
+                        with open(fpath, encoding="utf-8") as pf:
                             p_data = yaml.safe_load(pf) or {}
                         if isinstance(p_data, dict):
                             settings["plugins"][plugin_id] = _deep_merge(settings["plugins"].get(plugin_id, {}), p_data)
@@ -359,10 +359,10 @@ def load_settings(
 
 
 def load_settings_with_lkg(
-    path: Union[str, Dict[str, Any], None] = None,
+    path: Union[str, dict[str, Any], None] = None,
     validate: bool = False,
     return_model: bool = False,
-) -> Union[Dict[str, Any], TradingAgentConfig]:
+) -> Union[dict[str, Any], TradingAgentConfig]:
     """
     Resilient settings loader: attempts normal load_settings, but falls back to
     _LKG_SETTINGS_CACHE if reading or parsing encounters runtime file errors.
@@ -380,7 +380,7 @@ def load_settings_with_lkg(
         raise
 
 
-def load_all_config(settings_path: str | None = None, validate: bool = True) -> Dict[str, Any]:
+def load_all_config(settings_path: str | None = None, validate: bool = True) -> dict[str, Any]:
     """Memuat pengaturan utama dari file YAML (settings.yaml)."""
     settings = load_settings(settings_path, validate=validate)
 
@@ -396,7 +396,7 @@ def load_all_config(settings_path: str | None = None, validate: bool = True) -> 
 get_settings = load_settings
 
 
-def get_installation_tier(settings_or_path: Union[Dict[str, Any], str, None] = None) -> str:
+def get_installation_tier(settings_or_path: Union[dict[str, Any], str, None] = None) -> str:
     """
     Return the configured installation tier ('trial', 'full', or 'unconfigured').
     Adheres strictly to standard configuration cascade hierarchy:

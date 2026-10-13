@@ -8,7 +8,7 @@ from typing import Any, List, Tuple
 from monika.core.security.prompt_injection_scanner import PromptInjectionScanner
 
 # Re-export patterns for backward compatibility with existing tests
-THREAT_PATTERNS: List[Tuple[Any, str]] = [
+THREAT_PATTERNS: list[tuple[Any, str]] = [
     (p, label)
     for p, _, label in (
         PromptInjectionScanner.OVERRIDE_PATTERNS
@@ -19,7 +19,7 @@ THREAT_PATTERNS: List[Tuple[Any, str]] = [
 ]
 
 
-def scan_content(text: str) -> List[Tuple[str, str]]:
+def scan_content(text: str) -> list[tuple[str, str]]:
     """
     Scans input text for prompt injection and trade manipulation patterns.
     Returns list of (threat_type, matched_snippet).
@@ -27,7 +27,7 @@ def scan_content(text: str) -> List[Tuple[str, str]]:
     if not text or not isinstance(text, str):
         return []
 
-    findings: List[Tuple[str, str]] = []
+    findings: list[tuple[str, str]] = []
     for pattern, name in THREAT_PATTERNS:
         match = pattern.search(text)
         if match:

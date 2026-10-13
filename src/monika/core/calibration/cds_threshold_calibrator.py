@@ -8,7 +8,7 @@ If CDS is not predictive, a flag is raised for manual review.
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,8 +35,8 @@ async def run_calibration_if_due(session: AsyncSession, settings: dict) -> dict:
             data = json.loads(cfg.value)
             last_run = datetime.fromisoformat(data.get("last_run", "2020-01-01"))
             if last_run.tzinfo is None:
-                last_run = last_run.replace(tzinfo=timezone.utc)
-            hours_since = (datetime.now(timezone.utc) - last_run).total_seconds() / 3600
+                last_run = last_run.replace(tzinfo=UTC)
+            hours_since = (datetime.now(UTC) - last_run).total_seconds() / 3600
             if hours_since < CALIBRATION_INTERVAL_HOURS:
                 return {"status": "skipped", "reason": f"Last calibration {hours_since:.1f}h ago"}
         except Exception:
@@ -46,7 +46,7 @@ async def run_calibration_if_due(session: AsyncSession, settings: dict) -> dict:
     result = await _compute_cds_calibration(session, settings)
 
     # Save result
-    save_data = {"last_run": datetime.now(timezone.utc).isoformat(), "result": result}
+    save_data = {"last_run": datetime.now(UTC).isoformat(), "result": result}
     if cfg:
         cfg.value = json.dumps(save_data)
     else:
@@ -73,7 +73,7 @@ async def _compute_cds_calibration(session: AsyncSession, settings: dict) -> dic
     Analyzes relationship between CDS at time of analysis and trade outcomes.
     Adjusts thresholds if CDS is strongly predictive.
     """
-    since = datetime.now(timezone.utc) - timedelta(days=60)
+    since = datetime.now(UTC) - timedelta(days=60)
 
     records = (
         await session.execute(
@@ -176,7 +176,7 @@ async def _compute_cds_calibration(session: AsyncSession, settings: dict) -> dic
         "current_thresholds": current_thresholds,
         "new_thresholds": new_thresholds,
         "recommendations": recommendations,
-        "computed_at": datetime.now(timezone.utc).isoformat(),
+        "computed_at": datetime.now(UTC).isoformat(),
     }
 
     if recommendations:

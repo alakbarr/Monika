@@ -6,7 +6,8 @@ Coordinates runtime checks, guarantees failure attribution, and enforces non-neg
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+from collections.abc import Callable
 
 from .risk_gate_invariant import InvariantViolationError
 
@@ -24,7 +25,7 @@ class InvariantResult:
     name: str
     status: InvariantStatus
     message: str = ""
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
     package_name: str = "monika.domain.risk.invariants"
 
     @property
@@ -39,13 +40,13 @@ class InvariantResult:
 class InvariantRegistry:
     """Registry coordinating non-negotiable quantitative and runtime invariants."""
 
-    _instance: Optional["InvariantRegistry"] = None
+    _instance: InvariantRegistry | None = None
 
     def __init__(self):
-        self._invariants: Dict[str, Callable[[Dict[str, Any]], InvariantResult]] = {}
+        self._invariants: dict[str, Callable[[dict[str, Any]], InvariantResult]] = {}
 
     @classmethod
-    def get_instance(cls, with_defaults: bool = False) -> "InvariantRegistry":
+    def get_instance(cls, with_defaults: bool = False) -> InvariantRegistry:
         if cls._instance is None:
             cls._instance = cls()
             if with_defaults:
@@ -71,7 +72,7 @@ class InvariantRegistry:
     def register(
         self,
         name: str,
-        check_fn: Callable[[Dict[str, Any]], InvariantResult],
+        check_fn: Callable[[dict[str, Any]], InvariantResult],
     ) -> None:
         """Register an invariant evaluation callable."""
         if name in self._invariants:
@@ -83,15 +84,15 @@ class InvariantRegistry:
         """Remove a registered invariant."""
         self._invariants.pop(name, None)
 
-    def list_invariants(self) -> List[str]:
+    def list_invariants(self) -> list[str]:
         """Return list of registered invariant names."""
         return list(self._invariants.keys())
 
     def run_all(
         self,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         fail_fast: bool = False,
-    ) -> List[InvariantResult]:
+    ) -> list[InvariantResult]:
         """
         Execute all registered invariants against provided runtime context.
 
@@ -99,7 +100,7 @@ class InvariantRegistry:
             context: Dictionary containing state to validate (e.g. proposal, positions, drawdown).
             fail_fast: If True, immediately raises InvariantViolationError on first failure.
         """
-        results: List[InvariantResult] = []
+        results: list[InvariantResult] = []
 
         for name, fn in self._invariants.items():
             try:
@@ -127,7 +128,7 @@ class InvariantRegistry:
 
         return results
 
-    def assert_all(self, context: Dict[str, Any]) -> None:
+    def assert_all(self, context: dict[str, Any]) -> None:
         """Runs all invariants and raises InvariantViolationError if any fail."""
         results = self.run_all(context, fail_fast=False)
         failures = [r for r in results if r.failed]

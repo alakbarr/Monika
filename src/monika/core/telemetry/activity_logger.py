@@ -15,7 +15,7 @@ import logging
 import logging.handlers
 import os
 import queue
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -39,7 +39,7 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 from monika.core.security.credential_vault import SensitiveMaskingFilter
 from monika.infrastructure.infra.log_redactor import RedactingFormatter
 
-_queue_listener: Optional[logging.handlers.QueueListener] = None
+_queue_listener: logging.handlers.QueueListener | None = None
 
 
 def _close_and_clear_handlers(logger: logging.Logger) -> None:
@@ -191,10 +191,10 @@ class ActivityLogger:
         self,
         category: str,
         description: str,
-        related_id: Optional[int] = None,
+        related_id: int | None = None,
         actor: str = "system",
         session=None,
-    ) -> Optional[int]:
+    ) -> int | None:
         """Catat satu entri aktivitas ke DB."""
         if category not in CATEGORIES:
             self._logger.warning(f"Unknown activity category: {category}")
@@ -225,7 +225,7 @@ class ActivityLogger:
 
             if session:
                 entry = ActivityLog(
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     category=category,
                     description=description[:2000],  # Safety truncation
                     related_id=related_id,
@@ -239,7 +239,7 @@ class ActivityLogger:
                     try:
                         async with get_write_session() as new_session:
                             entry = ActivityLog(
-                                timestamp=datetime.now(timezone.utc),
+                                timestamp=datetime.now(UTC),
                                 category=category,
                                 description=description[:2000],  # Safety truncation
                                 related_id=related_id,
@@ -259,38 +259,38 @@ class ActivityLogger:
 
     # Category shortcuts
     async def trading(
-        self, description: str, related_id: Optional[int] = None, actor: str = "system", session=None
-    ) -> Optional[int]:
+        self, description: str, related_id: int | None = None, actor: str = "system", session=None
+    ) -> int | None:
         self._logger.info(f"[TRADING] {description}")
         return await self.log("trading", description, related_id, actor, session=session)
 
     async def analysis(
-        self, description: str, related_id: Optional[int] = None, actor: str = "ai_agent", session=None
-    ) -> Optional[int]:
+        self, description: str, related_id: int | None = None, actor: str = "ai_agent", session=None
+    ) -> int | None:
         self._logger.info(f"[ANALYSIS] {description}")
         return await self.log("analysis", description, related_id, actor, session=session)
 
     async def risk(
-        self, description: str, related_id: Optional[int] = None, actor: str = "risk_gate", session=None
-    ) -> Optional[int]:
+        self, description: str, related_id: int | None = None, actor: str = "risk_gate", session=None
+    ) -> int | None:
         self._logger.warning(f"[RISK] {description}")
         return await self.log("risk", description, related_id, actor, session=session)
 
     async def system(
-        self, description: str, related_id: Optional[int] = None, actor: str = "system", session=None
-    ) -> Optional[int]:
+        self, description: str, related_id: int | None = None, actor: str = "system", session=None
+    ) -> int | None:
         self._logger.info(f"[SYSTEM] {description}")
         return await self.log("system", description, related_id, actor, session=session)
 
     async def scraping(
-        self, description: str, related_id: Optional[int] = None, actor: str = "scraper", session=None
-    ) -> Optional[int]:
+        self, description: str, related_id: int | None = None, actor: str = "scraper", session=None
+    ) -> int | None:
         self._logger.debug(f"[SCRAPING] {description}")
         return await self.log("scraping", description, related_id, actor, session=session)
 
     async def telegram(
-        self, description: str, related_id: Optional[int] = None, actor: str = "telegram", session=None
-    ) -> Optional[int]:
+        self, description: str, related_id: int | None = None, actor: str = "telegram", session=None
+    ) -> int | None:
         self._logger.info(f"[TELEGRAM] {description}")
         return await self.log("telegram", description, related_id, actor, session=session)
 
@@ -302,9 +302,9 @@ class ActivityLogger:
         to_slot: str,
         to_model: str,
         reason: str,
-        cycle_id: Optional[str] = None,
+        cycle_id: str | None = None,
         session=None,
-    ) -> Optional[int]:
+    ) -> int | None:
         """
         Catat peristiwa failover/fallback LLM ke ActivityLog DB dan file logger.
         Menyediakan audit trail waktu-nyata untuk degradasi keandalan provider.
@@ -344,7 +344,7 @@ class ActivityLogger:
                         cat = "system"
                     sess.add(
                         ActivityLog(
-                            timestamp=datetime.now(timezone.utc),
+                            timestamp=datetime.now(UTC),
                             category=cat,
                             description=e.get("description", "")[:2000],
                             related_id=e.get("related_id"),
@@ -374,7 +374,7 @@ class ActivityLogger:
 
 
 # Module-level singleton for convenience
-_default_logger: Optional[ActivityLogger] = None
+_default_logger: ActivityLogger | None = None
 
 
 def get_activity_logger() -> ActivityLogger:

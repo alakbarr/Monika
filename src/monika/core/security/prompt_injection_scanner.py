@@ -46,13 +46,13 @@ class PromptInjectionThreatDetected(ValueError):
 class InjectionScanResult:
     is_safe: bool
     threat_score: float
-    detected_patterns: List[str] = field(default_factory=list)
+    detected_patterns: list[str] = field(default_factory=list)
     sanitized_text: str = ""
     rejection_reason: str = ""
 
 
 # Invisible Unicode, Zero-Width Characters, and BiDi Overrides
-INVISIBLE_CHARS: Set[int] = (
+INVISIBLE_CHARS: set[int] = (
     set(range(0x200B, 0x200F))  # ZWS, ZWNJ, ZWJ, LRM, RLM
     | set(range(0x202A, 0x202F))  # LRE, RLE, PDF, LRO, RLO
     | {0xFEFF, 0x2060, 0x00AD}  # BOM, Word Joiner, Soft Hyphen

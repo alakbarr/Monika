@@ -6,7 +6,7 @@ import json
 import logging
 from collections import deque
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.Tracing.Exporters")
@@ -16,15 +16,15 @@ logger = logging.getLogger("TradingAgent.Tracing.Exporters")
 class TraceRecord:
     trace_id: str
     span_id: str
-    parent_span_id: Optional[str]
+    parent_span_id: str | None
     name: str
     kind: str  # "cycle", "node", "llm", "tool"
     start_time: str
-    end_time: Optional[str] = None
+    end_time: str | None = None
     duration_ms: float = 0.0
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    attributes: dict[str, Any] = field(default_factory=dict)
     status: str = "OK"  # "OK", "ERROR"
-    error: Optional[str] = None
+    error: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -36,7 +36,7 @@ class InMemoryTraceStore:
     def __init__(self, capacity: int = 2000, evicted_flush_batch: int = 20):
         self._capacity = capacity
         self._spans: deque[TraceRecord] = deque(maxlen=capacity)
-        self._evicted_buffer: List[TraceRecord] = []
+        self._evicted_buffer: list[TraceRecord] = []
         self._evicted_flush_batch = evicted_flush_batch
 
     def record_span(self, record: TraceRecord):
@@ -92,7 +92,7 @@ class InMemoryTraceStore:
                         causation_id=span.parent_span_id,
                         payload=span.to_dict(),
                         actor="trace_store",
-                        ts_created=datetime.now(timezone.utc),
+                        ts_created=datetime.now(UTC),
                     )
                     session.add(event)
                     count += 1
@@ -108,13 +108,13 @@ class InMemoryTraceStore:
 
     def search_spans(
         self,
-        kind: Optional[str] = None,
-        min_duration_ms: Optional[float] = None,
-        status: Optional[str] = None,
-        provider: Optional[str] = None,
-        model: Optional[str] = None,
+        kind: str | None = None,
+        min_duration_ms: float | None = None,
+        status: str | None = None,
+        provider: str | None = None,
+        model: str | None = None,
         limit: int = 50,
-    ) -> List[TraceRecord]:
+    ) -> list[TraceRecord]:
         """Search in-memory spans with performance and error filters (newest first)."""
         results = []
         for span in reversed(self._spans):
@@ -140,10 +140,10 @@ class InMemoryTraceStore:
     def get_spans(
         self,
         limit: int = 100,
-        trace_id: Optional[str] = None,
-        cycle_id: Optional[str] = None,
-        kind: Optional[str] = None,
-    ) -> List[dict]:
+        trace_id: str | None = None,
+        cycle_id: str | None = None,
+        kind: str | None = None,
+    ) -> list[dict]:
         """Filter spans by criteria and return as dicts (newest first)."""
         results = []
         for span in reversed(self._spans):
@@ -158,7 +158,7 @@ class InMemoryTraceStore:
                 break
         return results
 
-    def get_trace_tree(self, trace_id: str) -> List[dict]:
+    def get_trace_tree(self, trace_id: str) -> list[dict]:
         """Reconstruct hierarchical call tree for a given trace_id."""
         matching = [s.to_dict() for s in self._spans if s.trace_id == trace_id]
         if not matching:
@@ -184,8 +184,8 @@ class InMemoryTraceStore:
         total_in_tokens = 0
         total_out_tokens = 0
         total_cost_usd = 0.0
-        tool_counts: Dict[str, int] = {}
-        node_durations: Dict[str, float] = {}
+        tool_counts: dict[str, int] = {}
+        node_durations: dict[str, float] = {}
 
         for s in matching:
             if s.kind == "llm":

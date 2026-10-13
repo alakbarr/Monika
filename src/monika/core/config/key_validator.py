@@ -7,7 +7,7 @@ from typing import Optional, Set
 
 from monika.core.config.schemas import TradingAgentConfig
 
-KNOWN_TOP_LEVEL_KEYS: Set[str] = set(TradingAgentConfig.model_fields.keys()) | {
+KNOWN_TOP_LEVEL_KEYS: set[str] = set(TradingAgentConfig.model_fields.keys()) | {
     "app_name",
     "environment",
     "trading",
@@ -25,7 +25,7 @@ KNOWN_TOP_LEVEL_KEYS: Set[str] = set(TradingAgentConfig.model_fields.keys()) | {
     "_config_version",
 }
 
-DYNAMIC_KEYS: Set[str] = {
+DYNAMIC_KEYS: set[str] = {
     "trading.symbols",
     "trading.lot_size",
     "trading.asset_universe",
@@ -43,7 +43,7 @@ DYNAMIC_KEYS: Set[str] = {
 }
 
 
-def validate_config_key(key: str, known_keys: Optional[Set[str]] = None) -> Optional[str]:
+def validate_config_key(key: str, known_keys: set[str] | None = None) -> str | None:
     """
     Validates dot-separated configuration keys.
     Returns None if valid or recognized open structure; returns error string with close suggestions if typo detected.

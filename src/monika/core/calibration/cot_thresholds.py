@@ -1,7 +1,7 @@
 from typing import Optional
 
 
-def get_cot_extreme_thresholds(symbol: str, history_percentiles: Optional[list] = None) -> dict:
+def get_cot_extreme_thresholds(symbol: str, history_percentiles: list | None = None) -> dict:
     """Single source of truth for COT extreme thresholds (using long % of total leveraged positions)."""
     if "JPY" in symbol or "EUR" in symbol:
         base_long = 80.0
@@ -24,7 +24,7 @@ def get_cot_extreme_thresholds(symbol: str, history_percentiles: Optional[list] 
     return {"extreme_long": base_long, "extreme_short": base_short}
 
 
-def cot_extreme_score(symbol: str, current_percentile: float, history_percentiles: Optional[list] = None) -> int:
+def cot_extreme_score(symbol: str, current_percentile: float, history_percentiles: list | None = None) -> int:
     """Returns +1 if extreme short (bullish for asset), -1 if extreme long (bearish), 0 if neutral"""
     if current_percentile is None:
         return 0

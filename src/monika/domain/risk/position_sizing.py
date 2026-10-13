@@ -17,7 +17,7 @@ Menggunakan fallback tabel instrumen jika MT5 tidak aktif.
 import logging
 import math
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
 from typing import Any, Optional
 
@@ -46,7 +46,7 @@ class SizingResult:
     direction: str  # "buy" or "sell"
     entry_price: float
     stop_loss: float
-    take_profit: Optional[float]
+    take_profit: float | None
 
     # Inputs
     account_equity: float
@@ -61,7 +61,7 @@ class SizingResult:
     recommended_lots: float  # rounded to lot_step, clamped to [min, max_lot]
 
     # Risk/reward
-    rr_ratio: Optional[float]  # take_profit distance / stop_loss distance
+    rr_ratio: float | None  # take_profit distance / stop_loss distance
 
     # Status
     is_valid: bool  # False if any constraint violated
@@ -111,9 +111,9 @@ class PositionSizer:
 
     @classmethod
     def update_usdjpy_cache(cls, rate: float):
-        cls._usdjpy_rate_cache = {"rate": rate, "ts": datetime.now(timezone.utc)}
+        cls._usdjpy_rate_cache = {"rate": rate, "ts": datetime.now(UTC)}
 
-    async def _get_regime_size_multiplier(self, session, symbol: str, as_of: Optional[datetime] = None) -> float:
+    async def _get_regime_size_multiplier(self, session, symbol: str, as_of: datetime | None = None) -> float:
         try:
             from monika.application.analysis.calculators.regime_classifier import classify_market_regime
 
@@ -135,12 +135,12 @@ class PositionSizer:
         symbol: str,
         direction: str,
         entry_price: float,
-        stop_loss: Optional[float] = None,
-        take_profit: Optional[float] = None,
-        account_equity: Optional[float] = None,
-        risk_percent_override: Optional[float] = None,
-        vix_level: Optional[float] = None,
-        as_of: Optional[datetime] = None,
+        stop_loss: float | None = None,
+        take_profit: float | None = None,
+        account_equity: float | None = None,
+        risk_percent_override: float | None = None,
+        vix_level: float | None = None,
+        as_of: datetime | None = None,
         **kwargs,
     ) -> SizingResult:
         """Version baru dengan akses DB untuk pip value dinamis."""
@@ -494,7 +494,7 @@ class PositionSizer:
                     recommended_lots = capped_lots
 
         # 6. R:R ratio check
-        rr_ratio: Optional[float] = None
+        rr_ratio: float | None = None
         if take_profit is not None:
             tp_distance = abs(take_profit - entry_price)
             rr_ratio = tp_distance / sl_distance_price if sl_distance_price > 0 else None
@@ -538,10 +538,10 @@ class PositionSizer:
         direction: str,
         entry_price: float,
         stop_loss: float,
-        take_profit: Optional[float],
+        take_profit: float | None,
         account_equity: float,
-        risk_percent_override: Optional[float] = None,
-        vix_level: Optional[float] = None,
+        risk_percent_override: float | None = None,
+        vix_level: float | None = None,
         is_backtest: bool = False,
         **kwargs,
     ) -> SizingResult:
@@ -814,7 +814,7 @@ class PositionSizer:
                     recommended_lots = capped_lots
 
         # 6. R:R ratio check
-        rr_ratio: Optional[float] = None
+        rr_ratio: float | None = None
         if take_profit is not None:
             tp_distance = abs(take_profit - entry_price)
             rr_ratio = tp_distance / sl_distance_price if sl_distance_price > 0 else None
@@ -857,8 +857,8 @@ class PositionSizer:
     # ------------------------------------------------------------------
 
     async def _get_instrument_spec_dynamic(
-        self, session, symbol: str, as_of: Optional[datetime] = None
-    ) -> Optional[InstrumentSpec]:
+        self, session, symbol: str, as_of: datetime | None = None
+    ) -> InstrumentSpec | None:
         """Dapatkan spec dengan pip value USDJPY dihitung dari harga terkini."""
         # Try MT5 live data
         if self._mt5 is not None:
@@ -916,7 +916,7 @@ class PositionSizer:
         logger.error(f"Unknown symbol {symbol} — no MT5 or default instrument specification available.")
         return None
 
-    def _get_instrument_spec(self, symbol: str) -> Optional[InstrumentSpec]:
+    def _get_instrument_spec(self, symbol: str) -> InstrumentSpec | None:
         """Dapatkan spesifikasi instrumen dari MT5 (live) atau gunakan default fallback."""
         # Try MT5 live data (sync call is OK here — sizing is called from sync context)
         if self._mt5 is not None:
@@ -1005,7 +1005,7 @@ class PositionSizer:
         symbol: str,
         account_equity: float,
         avg_atr: float,
-        risk_percent: Optional[float] = None,
+        risk_percent: float | None = None,
         atr_multiplier: float = 1.5,
     ) -> float:
         """
@@ -1027,7 +1027,7 @@ class PositionSizer:
         return spec.min_lot if spec else 0.01
 
     @staticmethod
-    def _invalid(symbol, direction, entry, sl, tp, equity, risk_pct, reasons) -> "SizingResult":
+    def _invalid(symbol, direction, entry, sl, tp, equity, risk_pct, reasons) -> SizingResult:
         """Pintasan untuk langsung mengembalikan hasil invalid."""
         return SizingResult(
             symbol=symbol,
@@ -1054,11 +1054,11 @@ async def calculate_lot_size(
     entry_price: float,
     stop_loss: float,
     risk_pct: float = 1.0,
-    direction: Optional[str] = None,
-    session: Optional[Any] = None,
-    settings: Optional[dict] = None,
-    mt5_client: Optional[Any] = None,
-    account_equity: Optional[float] = None,
+    direction: str | None = None,
+    session: Any | None = None,
+    settings: dict | None = None,
+    mt5_client: Any | None = None,
+    account_equity: float | None = None,
     **kwargs,
 ) -> dict:
     """Helper fungsi publik untuk perhitungan lot size deterministik."""

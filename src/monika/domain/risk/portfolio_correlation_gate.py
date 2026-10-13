@@ -11,10 +11,10 @@ logger = logging.getLogger("TradingAgent.PortfolioCorrelationGate")
 
 
 async def compute_portfolio_correlation_matrix(
-    session: AsyncSession, symbols: List[str], as_of: Optional[datetime] = None
-) -> Dict[str, Dict[str, float]]:
+    session: AsyncSession, symbols: list[str], as_of: datetime | None = None
+) -> dict[str, dict[str, float]]:
     """Menghitung matriks korelasi penuh N x N antar instrumen portofolio aktif."""
-    matrix: Dict[str, Dict[str, float]] = {s: {} for s in symbols}
+    matrix: dict[str, dict[str, float]] = {s: {} for s in symbols}
     for i, s1 in enumerate(symbols):
         matrix[s1][s1] = 1.0
         for s2 in symbols[i + 1 :]:
@@ -24,7 +24,7 @@ async def compute_portfolio_correlation_matrix(
     return matrix
 
 
-GROUP_POSITION_LIMITS: Dict[str, int] = {
+GROUP_POSITION_LIMITS: dict[str, int] = {
     "USD_MAJORS": 3,
     "METALS": 2,
     "ENERGY": 1,
@@ -52,11 +52,11 @@ def _get_usd_directional_delta(symbol: str, direction: str) -> int:
 
 
 async def filter_correlated_proposals(
-    session: Optional[AsyncSession],
+    session: AsyncSession | None,
     actionable_trades: list,
     threshold: float = 0.65,
     max_usd_exposure: int = 3,
-    as_of: Optional[datetime] = None,
+    as_of: datetime | None = None,
 ) -> tuple[list, list]:
     """
     Menyaring proposal trade yang berkorelasi tinggi atau menumpuk risiko sistemik USD agregat,
@@ -66,7 +66,7 @@ async def filter_correlated_proposals(
         return ([], [])
 
     # 0. Query existing open positions to enforce true portfolio risk
-    open_positions: List[Any] = []
+    open_positions: list[Any] = []
     if session is not None:
         try:
             from monika.domain.risk.ports import get_default_risk_data_provider
@@ -89,7 +89,7 @@ async def filter_correlated_proposals(
     }
 
     net_usd_exposure = 0
-    group_counts: Dict[str, int] = {k: 0 for k in GROUP_POSITION_LIMITS}
+    group_counts: dict[str, int] = {k: 0 for k in GROUP_POSITION_LIMITS}
     for pos in open_positions:
         p_dir = str(
             getattr(pos, "direction", None) or (pos.get("direction") if isinstance(pos, dict) else "") or ""

@@ -9,7 +9,8 @@ import asyncio
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
+from collections.abc import Callable
 
 import yaml
 
@@ -19,15 +20,15 @@ logger = logging.getLogger("TradingAgent.ConfigManager")
 class ConfigManager:
     """Central configuration event bus and hot-reload supervisor."""
 
-    _instance: Optional["ConfigManager"] = None
-    _subscribers: Dict[str, List[Callable[[Dict[str, Any]], None]]] = {}
-    _last_mtimes: Dict[str, float] = {}
+    _instance: ConfigManager | None = None
+    _subscribers: dict[str, list[Callable[[dict[str, Any]], None]]] = {}
+    _last_mtimes: dict[str, float] = {}
     _is_watching: bool = False
-    _watch_task: Optional[asyncio.Task] = None
+    _watch_task: asyncio.Task | None = None
 
-    def __init__(self, config_paths: Optional[List[str]] = None):
+    def __init__(self, config_paths: list[str] | None = None):
         if config_paths is None:
-            resolved_paths: List[str] = []
+            resolved_paths: list[str] = []
             for cand in ["config/settings.yaml"]:
                 if os.path.exists(cand):
                     resolved_paths.append(cand)
@@ -40,7 +41,7 @@ class ConfigManager:
         self._record_mtimes()
 
     @classmethod
-    def get_instance(cls, config_paths: Optional[List[str]] = None) -> "ConfigManager":
+    def get_instance(cls, config_paths: list[str] | None = None) -> ConfigManager:
         if cls._instance is None:
             cls._instance = ConfigManager(config_paths)
         return cls._instance
@@ -54,13 +55,13 @@ class ConfigManager:
                     pass
 
     @classmethod
-    def subscribe(cls, topic: str, callback: Callable[[Dict[str, Any]], None]) -> None:
+    def subscribe(cls, topic: str, callback: Callable[[dict[str, Any]], None]) -> None:
         """Subscribes a subsystem callback to a config topic (e.g. 'risk', 'llm', 'scheduler')."""
         cls._subscribers.setdefault(topic, []).append(callback)
         logger.debug(f"Subscribed callback to config topic: {topic}")
 
     @classmethod
-    def publish(cls, topic: str, payload: Dict[str, Any]) -> None:
+    def publish(cls, topic: str, payload: dict[str, Any]) -> None:
         """Notifies all subscribers of a configuration change."""
         subscribers = cls._subscribers.get(topic, [])
         for cb in subscribers:
@@ -69,7 +70,7 @@ class ConfigManager:
             except Exception as err:
                 logger.error(f"Error in config subscriber ({topic}): {err}", exc_info=True)
 
-    def check_for_updates(self) -> Dict[str, Any]:
+    def check_for_updates(self) -> dict[str, Any]:
         """Checks if any configuration files were modified, reloads, and publishes diffs."""
         from monika.core.config.settings import load_settings
 
@@ -138,7 +139,7 @@ class ConfigManager:
                     logger.debug(f"Config watcher loop error: {e}")
                 try:
                     await asyncio.wait_for(self._stop_event.wait(), timeout=interval_seconds)
-                except asyncio.TimeoutError, TimeoutError:
+                except TimeoutError:
                     pass
         except asyncio.CancelledError:
             pass

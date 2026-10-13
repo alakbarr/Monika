@@ -4,7 +4,8 @@ Configuration Protocols and Decoupled Extensibility Hooks.
 
 from __future__ import annotations
 
-from typing import Any, Callable, List, Optional, Protocol, runtime_checkable
+from typing import Any, List, Optional, Protocol, runtime_checkable
+from collections.abc import Callable
 
 
 @runtime_checkable
@@ -16,7 +17,7 @@ class CredentialResolver(Protocol):
 
 
 # Registry for decoupled configuration lifecycle listeners
-_CONFIG_LISTENERS: List[Callable[[dict[str, Any]], None]] = []
+_CONFIG_LISTENERS: list[Callable[[dict[str, Any]], None]] = []
 
 
 def register_config_listener(listener: Callable[[dict[str, Any]], None]) -> None:

@@ -6,7 +6,7 @@ Per research: validates SSVP effectiveness empirically.
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +24,7 @@ async def compute_cds_outcome_correlation(session: AsyncSession, days_back: int 
     from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
     from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord
 
-    since = datetime.now(timezone.utc) - timedelta(days=days_back)
+    since = datetime.now(UTC) - timedelta(days=days_back)
 
     records = (
         await session.execute(
@@ -86,7 +86,7 @@ async def compute_cds_outcome_correlation(session: AsyncSession, days_back: int 
             if is_predictive
             else "CDS not yet predictive — needs more data or threshold calibration"
         ),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(

@@ -20,17 +20,17 @@ logger = logging.getLogger("TradingAgent.TurnMarker")
 class TurnMarker:
     session_id: str
     task_type: str  # recurring_cycle, adhoc_analysis, chat_turn
-    symbol: Optional[str]
+    symbol: str | None
     stage: str
     started_at: float
-    context: Optional[Dict[str, Any]] = None
+    context: dict[str, Any] | None = None
     attempts: int = 1
 
 
 class TurnMarkerManager:
     """Manages creation, clearing, and recovery of interrupted execution markers."""
 
-    def __init__(self, marker_dir: Optional[Path] = None):
+    def __init__(self, marker_dir: Path | None = None):
         if marker_dir:
             self.marker_dir = Path(marker_dir)
         else:
@@ -64,7 +64,7 @@ class TurnMarkerManager:
             except Exception as e:
                 logger.warning(f"Failed to clear turn marker: {e}")
 
-    def check_interrupted(self, max_age_seconds: float = 900.0) -> Optional[TurnMarker]:
+    def check_interrupted(self, max_age_seconds: float = 900.0) -> TurnMarker | None:
         """Checks if an interrupted turn exists and is within the freshness window.
 
         Args:
@@ -74,7 +74,7 @@ class TurnMarkerManager:
             return None
 
         try:
-            with open(self.marker_file, "r", encoding="utf-8") as f:
+            with open(self.marker_file, encoding="utf-8") as f:
                 data = json.load(f)
             marker = TurnMarker(**data)
             age = time.time() - marker.started_at

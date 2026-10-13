@@ -12,8 +12,8 @@ class MonikaError(Exception):
     def __init__(
         self,
         message: str,
-        code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -25,7 +25,7 @@ class MonikaError(Exception):
             return f"[{self.code}] {self.message} | Details: {self.details}"
         return f"[{self.code}] {self.message}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to structured dict for API responses and telemetry logs."""
         return {
             "error": self.__class__.__name__,

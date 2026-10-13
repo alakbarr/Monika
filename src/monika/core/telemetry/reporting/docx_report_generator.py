@@ -11,7 +11,7 @@ Generates beautifully structured Microsoft Word documents containing:
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.DocxReportGenerator")
@@ -26,11 +26,11 @@ class DocxReportGenerator:
 
     def generate_report(
         self,
-        metrics: Dict[str, Any],
-        narrative_synthesis: Optional[str] = None,
-        recommendations: Optional[List[str]] = None,
+        metrics: dict[str, Any],
+        narrative_synthesis: str | None = None,
+        recommendations: list[str] | None = None,
         title: str = "Monika Quantitative Portfolio Performance Report",
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> str:
         """
         Builds and saves a styled Word document.
@@ -72,7 +72,7 @@ class DocxReportGenerator:
         # Subtitle / Metadata
         sub_p = doc.add_paragraph()
         sub_p.paragraph_format.space_after = Pt(18)
-        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        now_str = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
         run_sub = sub_p.add_run(f"System: Monika MT5 Autonomous Agent Harness | Generated: {now_str}")
         run_sub.font.name = "Calibri"
         run_sub.font.size = Pt(10)
@@ -172,7 +172,7 @@ class DocxReportGenerator:
 
         # Save File
         if not filename:
-            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             filename = f"monika_performance_report_{timestamp}.docx"
         filepath = os.path.join(self.output_dir, filename)
         doc.save(filepath)

@@ -7,10 +7,10 @@ import uuid
 from typing import Any, Dict, Optional
 
 # Context variables for distributed tracing across async tasks
-_current_trace_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("current_trace_id", default=None)
-_current_span_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("current_span_id", default=None)
-_current_cycle_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("current_cycle_id", default=None)
-_trace_baggage: contextvars.ContextVar[Optional[Dict[str, Any]]] = contextvars.ContextVar("trace_baggage", default=None)
+_current_trace_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("current_trace_id", default=None)
+_current_span_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("current_span_id", default=None)
+_current_cycle_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("current_cycle_id", default=None)
+_trace_baggage: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar("trace_baggage", default=None)
 
 
 def generate_id() -> str:
@@ -31,15 +31,15 @@ def get_current_trace_id() -> str:
     return tid
 
 
-def get_current_span_id() -> Optional[str]:
+def get_current_span_id() -> str | None:
     return _current_span_id.get()
 
 
-def get_current_cycle_id() -> Optional[str]:
+def get_current_cycle_id() -> str | None:
     return _current_cycle_id.get()
 
 
-def set_trace_context(trace_id: Optional[str] = None, span_id: Optional[str] = None, cycle_id: Optional[str] = None):
+def set_trace_context(trace_id: str | None = None, span_id: str | None = None, cycle_id: str | None = None):
     if trace_id:
         _current_trace_id.set(trace_id)
     if span_id:

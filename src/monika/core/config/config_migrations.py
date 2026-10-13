@@ -14,7 +14,7 @@ logger = logging.getLogger("TradingAgent.ConfigMigrations")
 
 CURRENT_CONFIG_VERSION = 3
 
-DEFAULT_SUBSETS: Dict[str, Any] = {
+DEFAULT_SUBSETS: dict[str, Any] = {
     "_config_version": CURRENT_CONFIG_VERSION,
     "token_budget": {
         "monthly_limit_usd": 150.0,
@@ -52,7 +52,7 @@ DEFAULT_SUBSETS: Dict[str, Any] = {
 }
 
 
-def migrate_settings(raw_settings: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
+def migrate_settings(raw_settings: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     """
     Applies schema migrations to in-memory settings dictionary.
 
@@ -60,7 +60,7 @@ def migrate_settings(raw_settings: Dict[str, Any]) -> Tuple[Dict[str, Any], List
         (migrated_settings, list_of_applied_migrations)
     """
     settings = copy.deepcopy(raw_settings)
-    applied: List[str] = []
+    applied: list[str] = []
 
     version = settings.get("_config_version", 1)
 
@@ -112,7 +112,7 @@ def check_and_migrate_file(config_path: str) -> bool:
     import yaml
 
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
 
         if not isinstance(data, dict):

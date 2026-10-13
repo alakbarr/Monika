@@ -23,7 +23,8 @@ import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
+from collections.abc import Awaitable, Callable
 
 from monika.domain.risk.approval_transport import ApprovalTransport
 
@@ -45,17 +46,17 @@ class ApprovalRequest:
     level: int = 1
     action_type: str = ""
     description: str = ""
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
     requested_at: float = field(default_factory=time.time)
     expires_at: float = 0.0
     status: Union[ApprovalStatus, str] = ApprovalStatus.PENDING
-    decided_by: Optional[str] = None
-    decided_at: Optional[float] = None
-    decision_reason: Optional[str] = None
+    decided_by: str | None = None
+    decided_at: float | None = None
+    decision_reason: str | None = None
     symbol: str = "ALL"
     request_type: str = "trade_proposal"
-    request_digest: Optional[str] = None
-    decision_digest: Optional[str] = None
+    request_digest: str | None = None
+    decision_digest: str | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.status, str):
@@ -88,19 +89,19 @@ class ApprovalRequest:
         return self.requested_at
 
     @property
-    def operator(self) -> Optional[str]:
+    def operator(self) -> str | None:
         return self.decided_by
 
     @operator.setter
-    def operator(self, val: Optional[str]) -> None:
+    def operator(self, val: str | None) -> None:
         self.decided_by = val
 
     @property
-    def rejection_reason(self) -> Optional[str]:
+    def rejection_reason(self) -> str | None:
         return self.decision_reason
 
     @rejection_reason.setter
-    def rejection_reason(self, val: Optional[str]) -> None:
+    def rejection_reason(self, val: str | None) -> None:
         self.decision_reason = val
 
     @property
@@ -121,7 +122,7 @@ class BoundedMandate:
 
     mandate_id: str
     operator: str
-    authorized_symbols: List[str] = field(default_factory=lambda: ["ALL"])
+    authorized_symbols: list[str] = field(default_factory=lambda: ["ALL"])
     max_risk_per_trade_pct: float = 2.0
     max_daily_drawdown_pct: float = 5.0
     max_open_positions: int = 5
@@ -130,7 +131,7 @@ class BoundedMandate:
     expires_at: float = 0.0
     status: str = "active"  # "active", "expired", "revoked"
     signature: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.expires_at == 0.0:
@@ -171,7 +172,7 @@ class ApprovalHub:
     Provides singleton access and cross-surface event broadcast.
     """
 
-    _instance: Optional[ApprovalHub] = None
+    _instance: ApprovalHub | None = None
 
     @classmethod
     def get_instance(cls) -> ApprovalHub:
@@ -185,20 +186,20 @@ class ApprovalHub:
 
     def __init__(self, default_ttl: float = DEFAULT_APPROVAL_TTL):
         self.default_ttl = default_ttl
-        self._requests: Dict[str, ApprovalRequest] = {}
-        self._mandates: Dict[str, BoundedMandate] = {}
-        self._active_mandate_id: Optional[str] = None
-        self._pending_futures: Dict[str, asyncio.Future] = {}
-        self._listeners: List[Callable[[str, Dict[str, Any]], Awaitable[None]]] = []
-        self._steer_history: List[Dict[str, Any]] = []
+        self._requests: dict[str, ApprovalRequest] = {}
+        self._mandates: dict[str, BoundedMandate] = {}
+        self._active_mandate_id: str | None = None
+        self._pending_futures: dict[str, asyncio.Future] = {}
+        self._listeners: list[Callable[[str, dict[str, Any]], Awaitable[None]]] = []
+        self._steer_history: list[dict[str, Any]] = []
         self._lock = asyncio.Lock()
 
-    def register_listener(self, listener: Callable[[str, Dict[str, Any]], Awaitable[None]]) -> None:
+    def register_listener(self, listener: Callable[[str, dict[str, Any]], Awaitable[None]]) -> None:
         """Registers a cross-surface listener callback."""
         if listener not in self._listeners:
             self._listeners.append(listener)
 
-    async def _emit_event(self, event_type: str, data: Dict[str, Any]) -> None:
+    async def _emit_event(self, event_type: str, data: dict[str, Any]) -> None:
         """Broadcasts event to all registered listeners asynchronously."""
         for listener in list(self._listeners):
             try:
@@ -214,11 +215,11 @@ class ApprovalHub:
         symbol: str = "ALL",
         action: str = "TRADE",
         request_type: str = "trade_proposal",
-        details: Optional[Dict[str, Any]] = None,
-        ttl_minutes: Optional[float] = None,
-        ttl_seconds: Optional[float] = None,
+        details: dict[str, Any] | None = None,
+        ttl_minutes: float | None = None,
+        ttl_seconds: float | None = None,
         level: int = 2,
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> ApprovalRequest:
         """
         Creates and registers a cross-surface trade confirmation or intervention request.
@@ -270,8 +271,8 @@ class ApprovalHub:
         action_type: str,
         level: int,
         description: str,
-        details: Optional[Dict[str, Any]] = None,
-        ttl_seconds: Optional[float] = None,
+        details: dict[str, Any] | None = None,
+        ttl_seconds: float | None = None,
     ) -> ApprovalRequest:
         """
         Creates a new approval request. For Level 0 and 1, automatically approves.
@@ -344,8 +345,8 @@ class ApprovalHub:
         self,
         request_id: str,
         operator: str = "admin",
-        reason: Optional[str] = None,
-    ) -> Tuple[bool, str]:
+        reason: str | None = None,
+    ) -> tuple[bool, str]:
         """
         Approves an open request with full cross-surface synchronization.
         """
@@ -413,8 +414,8 @@ class ApprovalHub:
         self,
         request_id: str,
         operator: str = "admin",
-        reason: Optional[str] = None,
-    ) -> Tuple[bool, str]:
+        reason: str | None = None,
+    ) -> tuple[bool, str]:
         """
         Rejects an open request with full cross-surface synchronization.
         """
@@ -476,7 +477,7 @@ class ApprovalHub:
         )
         return True, msg
 
-    async def steer(self, symbol: str, instruction: str, operator: str = "admin") -> Dict[str, Any]:
+    async def steer(self, symbol: str, instruction: str, operator: str = "admin") -> dict[str, Any]:
         """
         Injects a dynamic steering directive for an asset or system wide.
         """
@@ -491,26 +492,26 @@ class ApprovalHub:
         await self._emit_event("steer_injected", payload)
         return payload
 
-    def get_open_requests(self) -> List[ApprovalRequest]:
+    def get_open_requests(self) -> list[ApprovalRequest]:
         """Returns active, non-expired pending requests."""
         now = time.time()
         return [
             req for req in self._requests.values() if req.status == ApprovalStatus.PENDING and now <= req.expires_at
         ]
 
-    def get_pending_requests(self) -> List[ApprovalRequest]:
+    def get_pending_requests(self) -> list[ApprovalRequest]:
         """Alias for get_open_requests."""
         return self.get_open_requests()
 
-    def get_request(self, request_id: str) -> Optional[ApprovalRequest]:
+    def get_request(self, request_id: str) -> ApprovalRequest | None:
         """Retrieves an approval request by its token/ID."""
         return self._requests.get(request_id)
 
     async def await_decision(
         self,
         token: str,
-        timeout_seconds: Optional[float] = None,
-    ) -> Tuple[bool, str]:
+        timeout_seconds: float | None = None,
+    ) -> tuple[bool, str]:
         """
         Asynchronously waits for human operator approval or rejection.
         """
@@ -535,7 +536,7 @@ class ApprovalHub:
         try:
             result = await asyncio.wait_for(fut, timeout=wait_timeout)
             return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             async with self._lock:
                 self._pending_futures.pop(token, None)
             req.status = ApprovalStatus.EXPIRED
@@ -548,7 +549,7 @@ class ApprovalHub:
         token: str,
         approved: bool,
         user_id: str,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> bool:
         """
         Synchronously resolves a pending approval card with operator decision.
@@ -602,7 +603,7 @@ class ApprovalHub:
 
         return True
 
-    def verify_request_binding(self, token: str) -> Tuple[bool, str]:
+    def verify_request_binding(self, token: str) -> tuple[bool, str]:
         """Validates cryptographic integrity and binding between request and decision."""
         req = self._requests.get(token)
         if not req:
@@ -660,7 +661,7 @@ class ApprovalHub:
         lines.append(f"*Reply with `/approve {req.token}` or `/reject {req.token}`*")
         return "\n".join(lines)
 
-    def format_telegram_inline_keyboard(self, token: str) -> List[List[Dict[str, str]]]:
+    def format_telegram_inline_keyboard(self, token: str) -> list[list[dict[str, str]]]:
         """Generates inline keyboard markup buttons for Telegram bot."""
         return [
             [
@@ -672,13 +673,13 @@ class ApprovalHub:
     def issue_mandate(
         self,
         operator: str,
-        authorized_symbols: Optional[List[str]] = None,
+        authorized_symbols: list[str] | None = None,
         max_risk_pct: float = 2.0,
         max_daily_dd_pct: float = 5.0,
         max_open_positions: int = 5,
         max_leverage: float = 30.0,
         ttl_days: float = 30.0,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         secret: str = "monika_mandate_sec",
     ) -> BoundedMandate:
         """
@@ -719,10 +720,10 @@ class ApprovalHub:
         risk_pct: float,
         current_positions: int = 0,
         leverage: float = 1.0,
-        mandate_id: Optional[str] = None,
-        as_of: Optional[float] = None,
+        mandate_id: str | None = None,
+        as_of: float | None = None,
         secret: str = "monika_mandate_sec",
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Validates trade execution against the active Bounded Mandate Contract.
         Strictly rejects trades if mandate has expired, been revoked, or breached.
@@ -782,7 +783,7 @@ class ApprovalHub:
 
         return True, f"Trade complies with Bounded Mandate '{target_id}'."
 
-    def revoke_mandate(self, mandate_id: str, operator: str = "admin", reason: str = "") -> Tuple[bool, str]:
+    def revoke_mandate(self, mandate_id: str, operator: str = "admin", reason: str = "") -> tuple[bool, str]:
         """Revokes an active mandate immediately."""
         mandate = self._mandates.get(mandate_id)
         if not mandate:
@@ -799,7 +800,7 @@ class ApprovalHub:
         logger.warning(f"[ApprovalHub] Mandate '{mandate_id}' revoked by {operator}: {reason}")
         return True, f"Mandate '{mandate_id}' successfully revoked."
 
-    def get_active_mandate(self, mandate_id: Optional[str] = None) -> Optional[BoundedMandate]:
+    def get_active_mandate(self, mandate_id: str | None = None) -> BoundedMandate | None:
         """Retrieves active mandate, verifying non-expiry."""
         target_id = mandate_id or self._active_mandate_id
         if not target_id or target_id not in self._mandates:
@@ -812,7 +813,7 @@ class ApprovalHub:
             return None
         return mandate
 
-    def list_mandates(self) -> List[BoundedMandate]:
+    def list_mandates(self) -> list[BoundedMandate]:
         """Lists all registered mandates with refreshed expiry status."""
         now = time.time()
         for m in self._mandates.values():
@@ -821,7 +822,7 @@ class ApprovalHub:
         return list(self._mandates.values())
 
 
-_global_approval_hub: Optional[ApprovalHub] = None
+_global_approval_hub: ApprovalHub | None = None
 
 
 def get_approval_hub() -> ApprovalHub:

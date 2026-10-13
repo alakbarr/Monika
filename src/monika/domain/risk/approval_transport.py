@@ -61,7 +61,7 @@ class ApprovalRequestPayload:
     action_type: str
     level: int
     description: str
-    details: Dict[str, Any]
+    details: dict[str, Any]
     requested_at: float
     expires_at: float
     request_digest: str = ""
@@ -87,7 +87,7 @@ class ApprovalRequestPayload:
         """Verifies if request_digest matches current payload content."""
         return self.request_digest == self.compute_digest()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -98,7 +98,7 @@ class ApprovalDecisionPayload:
     approved: bool
     decided_by: str
     decided_at: float
-    reason: Optional[str] = None
+    reason: str | None = None
     decision_digest: str = ""
 
     def __post_init__(self) -> None:
@@ -121,7 +121,7 @@ class ApprovalDecisionPayload:
         """Verifies if decision_digest matches current decision payload."""
         return self.decision_digest == self.compute_digest()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -136,7 +136,7 @@ class ApprovalTransport:
         action_type: str,
         level: int,
         description: str,
-        details: Dict[str, Any],
+        details: dict[str, Any],
         requested_at: float,
         expires_at: float,
     ) -> ApprovalRequestPayload:
@@ -157,7 +157,7 @@ class ApprovalTransport:
         approved: bool,
         decided_by: str,
         decided_at: float,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> ApprovalDecisionPayload:
         """Creates an approval decision cryptographically bound to request's digest."""
         if not request.verify_integrity():
@@ -176,8 +176,8 @@ class ApprovalTransport:
     def verify_binding(
         request: ApprovalRequestPayload,
         decision: ApprovalDecisionPayload,
-        now: Optional[float] = None,
-    ) -> Tuple[bool, str]:
+        now: float | None = None,
+    ) -> tuple[bool, str]:
         """
         Validates cryptographic integrity and tamper-proof binding between request and decision:
         1. Request digest integrity

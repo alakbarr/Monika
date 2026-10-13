@@ -10,7 +10,7 @@ dan mensimulasikan hasil jika harga mengenai SL atau TP.
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
@@ -31,7 +31,7 @@ class PaperTracker:
     Dipanggil setiap siklus oleh CycleScheduler.
     """
 
-    def __init__(self, settings: Optional[dict] = None):
+    def __init__(self, settings: dict | None = None):
         if settings is None:
             try:
                 import os
@@ -39,7 +39,7 @@ class PaperTracker:
                 import yaml
 
                 base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                with open(os.path.join(base_dir, "config", "settings.yaml"), "r") as f:
+                with open(os.path.join(base_dir, "config", "settings.yaml")) as f:
                     self.settings = yaml.safe_load(f)
             except Exception:
                 self.settings = {}
@@ -77,7 +77,7 @@ class PaperTracker:
         ).scalar_one_or_none()
         if pos:
             pos.status = "closed"
-            pos.closed_at = trade.closed_at or datetime.now(timezone.utc)
+            pos.closed_at = trade.closed_at or datetime.now(UTC)
             logger.debug(f"[PAPER] Linked Position id={pos.id} closed with PaperTradeRecord {trade.id}")
 
     # -------------------------------------------------------------------------
@@ -257,7 +257,7 @@ class PaperTracker:
 
     async def _check_sl_tp(
         self, session: AsyncSession, trade: PaperTradeRecord, bars, timeframe: str = "H4"
-    ) -> Optional[dict]:
+    ) -> dict | None:
         SLIPPAGE_MODEL = {
             "XAUUSD": {"normal": 0.3, "news": 4.0, "weekend_open": 8.0, "off_peak": 1.0},
             "EURUSD": {"normal": 0.00012, "news": 0.0010, "weekend_open": 0.0020, "off_peak": 0.0003},
@@ -1017,7 +1017,7 @@ class PaperTracker:
         }
 
     async def get_statistics(
-        self, session: AsyncSession, days_back: Optional[int] = None, symbol: Optional[str] = None
+        self, session: AsyncSession, days_back: int | None = None, symbol: str | None = None
     ) -> dict:
         """Hitung win rate dan statistik performa komprehensif."""
         from datetime import datetime, timedelta, timezone
@@ -1358,7 +1358,7 @@ class PaperTracker:
         try:
             last_gen_time = datetime.fromisoformat(last_gen_time_str)
             if last_gen_time.tzinfo is None:
-                last_gen_time = last_gen_time.replace(tzinfo=timezone.utc)
+                last_gen_time = last_gen_time.replace(tzinfo=UTC)
         except ValueError:
             last_gen_time = clock.now() - timedelta(days=8)
 

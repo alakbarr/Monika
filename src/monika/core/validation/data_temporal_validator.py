@@ -5,7 +5,7 @@ timestamp antar data sources dalam analysis chain.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +30,7 @@ class DataTemporalValidator:
         """
         from monika.infrastructure.database.models import COTReport, FundamentalBrief, PriceOHLCV, VIXData
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         gaps = []
         timestamps = {}
 
@@ -117,7 +117,7 @@ class DataTemporalValidator:
 
         # Ensure reference is timezone-aware
         if hasattr(reference, "tzinfo") and reference.tzinfo is None:
-            reference = reference.replace(tzinfo=timezone.utc)
+            reference = reference.replace(tzinfo=UTC)
 
         h4_age_hours = (now - reference).total_seconds() / 3600
 
@@ -126,11 +126,7 @@ class DataTemporalValidator:
             cot_aware = (
                 cot_ts
                 if (hasattr(cot_ts, "tzinfo") and cot_ts.tzinfo)
-                else (
-                    datetime(cot_ts.year, cot_ts.month, cot_ts.day, tzinfo=timezone.utc)
-                    if hasattr(cot_ts, "year")
-                    else None
-                )
+                else (datetime(cot_ts.year, cot_ts.month, cot_ts.day, tzinfo=UTC) if hasattr(cot_ts, "year") else None)
             )
             if cot_aware:
                 cot_age_days = (reference - cot_aware).total_seconds() / 86400
@@ -142,7 +138,7 @@ class DataTemporalValidator:
         # Fundamental brief: should be fresher than 2x H4 age
         if brief_ts:
             brief_aware = (
-                brief_ts if (hasattr(brief_ts, "tzinfo") and brief_ts.tzinfo) else brief_ts.replace(tzinfo=timezone.utc)
+                brief_ts if (hasattr(brief_ts, "tzinfo") and brief_ts.tzinfo) else brief_ts.replace(tzinfo=UTC)
             )
             brief_age_hours = (now - brief_aware).total_seconds() / 3600
             if brief_age_hours > max(h4_age_hours * 2, 6.0):

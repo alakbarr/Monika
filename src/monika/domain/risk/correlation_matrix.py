@@ -25,7 +25,7 @@ class DynamicCorrelationMatrix:
         self.correlation_threshold = correlation_threshold
 
     @staticmethod
-    def calculate_pearson_correlation(series_a: List[float], series_b: List[float]) -> float:
+    def calculate_pearson_correlation(series_a: list[float], series_b: list[float]) -> float:
         """Calculate Pearson correlation coefficient between two equal-length return series."""
         if not series_a or not series_b or len(series_a) != len(series_b) or len(series_a) < 2:
             return 0.0
@@ -51,9 +51,9 @@ class DynamicCorrelationMatrix:
     async def get_matrix(
         self,
         session: Any,
-        symbols: List[str],
-        as_of: Optional[datetime] = None,
-    ) -> Dict[str, Dict[str, float]]:
+        symbols: list[str],
+        as_of: datetime | None = None,
+    ) -> dict[str, dict[str, float]]:
         """Compute full N x N correlation matrix for the given active instruments."""
         if not symbols:
             return {}
@@ -61,9 +61,9 @@ class DynamicCorrelationMatrix:
 
     def calculate_portfolio_heat(
         self,
-        positions: List[Dict[str, Any]],
-        correlation_matrix: Dict[str, Dict[str, float]],
-    ) -> Dict[str, Any]:
+        positions: list[dict[str, Any]],
+        correlation_matrix: dict[str, dict[str, float]],
+    ) -> dict[str, Any]:
         """Compute aggregate correlated exposure and concentration score for open positions."""
         if not positions:
             return {"portfolio_heat": 0.0, "correlated_pairs": [], "status": "safe"}

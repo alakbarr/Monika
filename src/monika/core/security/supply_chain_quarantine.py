@@ -18,13 +18,13 @@ import difflib
 import hashlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
 # Institutional core libraries protected from typosquatting
-CRITICAL_CORE_LIBRARIES: Set[str] = {
+CRITICAL_CORE_LIBRARIES: set[str] = {
     "metatrader5",
     "anthropic",
     "openai",
@@ -57,8 +57,8 @@ class QuarantineVerdict:
     allowed: bool
     status: str  # "CLEAN", "QUARANTINED", "TYPOSQUAT_SUSPECT", "HASH_MISMATCH", "ALLOWLISTED"
     reason: str
-    release_age_days: Optional[float] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    release_age_days: float | None = None
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 class SupplyChainQuarantine:
@@ -69,14 +69,14 @@ class SupplyChainQuarantine:
     def __init__(
         self,
         quarantine_days: int = DEFAULT_QUARANTINE_DAYS,
-        allowlist: Optional[Set[str]] = None,
-        critical_libraries: Optional[Set[str]] = None,
+        allowlist: set[str] | None = None,
+        critical_libraries: set[str] | None = None,
     ):
         self.quarantine_days = quarantine_days
         self.allowlist = {pkg.lower() for pkg in (allowlist or set())}
         self.critical_libraries = {pkg.lower() for pkg in (critical_libraries or CRITICAL_CORE_LIBRARIES)}
 
-    def check_typosquatting(self, package_name: str) -> Optional[Tuple[str, float]]:
+    def check_typosquatting(self, package_name: str) -> tuple[str, float] | None:
         """
         Calculates string similarity against core libraries.
         Returns (target_library, similarity_ratio) if suspicious typosquat is detected.
@@ -96,9 +96,9 @@ class SupplyChainQuarantine:
         self,
         package_name: str,
         version: str,
-        release_date: Optional[datetime | str] = None,
-        package_bytes: Optional[bytes] = None,
-        expected_sha256: Optional[str] = None,
+        release_date: datetime | str | None = None,
+        package_bytes: bytes | None = None,
+        expected_sha256: str | None = None,
     ) -> QuarantineVerdict:
         """
         Evaluates a package against quarantine rules, hash integrity, and typosquatting.
@@ -157,8 +157,8 @@ class SupplyChainQuarantine:
 
             if rel_dt is not None:
                 if rel_dt.tzinfo is None:
-                    rel_dt = rel_dt.replace(tzinfo=timezone.utc)
-                now_dt = datetime.now(timezone.utc)
+                    rel_dt = rel_dt.replace(tzinfo=UTC)
+                now_dt = datetime.now(UTC)
                 age_delta = now_dt - rel_dt
                 age_days = max(0.0, age_delta.total_seconds() / 86400.0)
 

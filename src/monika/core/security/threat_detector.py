@@ -26,7 +26,7 @@ class ThreatDetector:
     MAX_SCAN_CHARS: int = PromptInjectionScanner.MAX_SCAN_CHARS
 
     @classmethod
-    def scan(cls, text: str, scope: str = "all") -> List[Dict[str, Any]]:
+    def scan(cls, text: str, scope: str = "all") -> list[dict[str, Any]]:
         """
         Scan text for prompt injections, secret exfiltration, and unicode obfuscation.
         Returns a list of detected threats. An empty list signifies clean text.
@@ -35,7 +35,7 @@ class ThreatDetector:
             return []
 
         result = PromptInjectionScanner.scan(text, threshold=0.70)
-        findings: List[Dict[str, Any]] = []
+        findings: list[dict[str, Any]] = []
 
         for p_label in result.detected_patterns:
             if "invisible_unicode" in p_label:

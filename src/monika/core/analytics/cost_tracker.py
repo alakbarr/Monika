@@ -4,7 +4,7 @@
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func, select
@@ -27,8 +27,8 @@ class CostTracker:
         stage1_output: int,
         stage2_input: int,
         stage2_output: int,
-        settings: Optional[dict] = None,
-        cycle_id: Optional[str] = None,
+        settings: dict | None = None,
+        cycle_id: str | None = None,
     ) -> float:
         """
         Mencatat biaya API dari satu siklus analisis dan mengeceknya terhadap anggaran.
@@ -50,7 +50,7 @@ class CostTracker:
             task_roles.get("stage2_per_asset_primary", {}).get("primary") or analysis_cfg.get("model") or def_model
         )
 
-        calculated_cost: Optional[float] = None
+        calculated_cost: float | None = None
 
         # 1. Coba agregasikan biaya riil dari TokenUsageLog jika cycle_id ada
         if cycle_id:
@@ -80,7 +80,7 @@ class CostTracker:
             calculated_cost = round(cost_stage1 + cost_stage2, 4)
 
         entry = {
-            "cycle_date": datetime.now(timezone.utc).isoformat(),
+            "cycle_date": datetime.now(UTC).isoformat(),
             "cycle_id": cycle_id,
             "stage1_tokens": stage1_input + stage1_output,
             "stage2_tokens": stage2_input + stage2_output,
@@ -128,7 +128,7 @@ class CostTracker:
     async def check_and_update_budget_status(
         session: AsyncSession,
         settings: dict,
-        history: Optional[list] = None,
+        history: list | None = None,
         latest_cost: float = 0.0,
     ) -> dict:
         """
@@ -149,7 +149,7 @@ class CostTracker:
         limit_anthropic = int(cost_cfg.get("daily_anthropic_limit", 10_000_000))
         limit_gemini = int(cost_cfg.get("daily_gemini_limit", cost_cfg.get("daily_token_limit", 4_000_000)))
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         current_month = now.strftime("%Y-%m")
         current_day = now.strftime("%Y-%m-%d")
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -367,14 +367,14 @@ class CostTracker:
     @staticmethod
     async def is_budget_paused(
         session: AsyncSession,
-        settings: Optional[dict] = None,
+        settings: dict | None = None,
         force_recheck: bool = False,
     ) -> bool:
         """
         Mengembalikan True jika anggaran terlampaui (AI calls akan dihentikan).
         Jika settings disediakan atau cache kedaluwarsa, melakukan re-evaluasi dinamis.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Jika settings disediakan dan (dipaksa atau cache kadaluwarsa > 60s), re-evaluasi dinamis
         if settings is not None:
@@ -413,13 +413,13 @@ class CostTracker:
             session.add(SystemConfig(key="budget_pause", value="false"))
         await session.commit()
         CostTracker._cached_pause_state = False
-        CostTracker._cached_pause_time = datetime.now(timezone.utc)
+        CostTracker._cached_pause_time = datetime.now(UTC)
         logger.info("Budget pause cleared.")
 
     @staticmethod
     async def get_rolling_7day_cost(session: AsyncSession) -> dict:
         """Mengembalikan metrik pengeluaran 7 hari terakhir berbasis TokenUsageLog (SSOT)."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         seven_days_ago = now - timedelta(days=7)
 
         try:

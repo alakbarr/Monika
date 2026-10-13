@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +12,7 @@ logger = logging.getLogger("TradingAgent.SpecialistTracker")
 
 
 async def compute_specialist_reliability(session: AsyncSession, days_back: int = 45) -> dict:
-    since = datetime.now(timezone.utc) - timedelta(days=days_back)
+    since = datetime.now(UTC) - timedelta(days=days_back)
     rows = (
         await session.execute(
             select(AssetAnalysis, PaperTradeRecord)
@@ -70,7 +70,7 @@ async def compute_specialist_reliability(session: AsyncSession, days_back: int =
                 "trust_weight": max(0.05 if chronically_unreliable else 0.1, min(ceiling, weight_base)),
                 "chronically_unreliable": chronically_unreliable,
             }
-    return {"days_analyzed": days_back, "specialists": out, "generated_at": datetime.now(timezone.utc).isoformat()}
+    return {"days_analyzed": days_back, "specialists": out, "generated_at": datetime.now(UTC).isoformat()}
 
 
 async def check_specialist_model_quality(session: AsyncSession, settings: dict) -> dict:

@@ -27,8 +27,8 @@ logger = logging.getLogger("TradingAgent.Risk.Plugin")
 class RiskRuleVerdict:
     rule_id: str
     passed: bool
-    rejection_reason: Optional[str] = None
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    rejection_reason: str | None = None
+    metrics: dict[str, Any] = field(default_factory=dict)
 
 
 class IRiskRulePlugin(TradingPlugin, ABC):
@@ -46,7 +46,7 @@ class IRiskRulePlugin(TradingPlugin, ABC):
         symbol: str,
         direction: str,
         sizing: SizingResult,
-        account_equity: Optional[float] = None,
+        account_equity: float | None = None,
         **kwargs: Any,
     ) -> RiskRuleVerdict:
         """Evaluate pre-order parameters against the custom risk rule."""
@@ -84,7 +84,7 @@ class IPostTradeInspectionPlugin(TradingPlugin, ABC):
     async def inspect_post_trade(
         self,
         session: AsyncSession,
-        deal_data: Dict[str, Any],
+        deal_data: dict[str, Any],
     ) -> None:
         """Process post-trade execution metrics and audit fills."""
         pass
@@ -96,15 +96,15 @@ class ModularRiskRegistry:
     Integrated into RiskGate to extend validation while preserving core safety invariants.
     """
 
-    _instance: Optional["ModularRiskRegistry"] = None
+    _instance: ModularRiskRegistry | None = None
 
     def __init__(self):
-        self._rules: Dict[str, IRiskRulePlugin] = {}
-        self._sizing_plugins: Dict[str, IDynamicSizingPlugin] = {}
-        self._post_trade_plugins: Dict[str, IPostTradeInspectionPlugin] = {}
+        self._rules: dict[str, IRiskRulePlugin] = {}
+        self._sizing_plugins: dict[str, IDynamicSizingPlugin] = {}
+        self._post_trade_plugins: dict[str, IPostTradeInspectionPlugin] = {}
 
     @classmethod
-    def get_instance(cls) -> "ModularRiskRegistry":
+    def get_instance(cls) -> ModularRiskRegistry:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -130,10 +130,10 @@ class ModularRiskRegistry:
         plugin_id = plugin.metadata.id if hasattr(plugin, "metadata") else type(plugin).__name__
         self._post_trade_plugins[plugin_id] = plugin
 
-    def get_rules(self) -> List[IRiskRulePlugin]:
+    def get_rules(self) -> list[IRiskRulePlugin]:
         return [r for r in self._rules.values() if getattr(r, "is_enabled", True)]
 
-    def get_sizing_plugins(self) -> List[IDynamicSizingPlugin]:
+    def get_sizing_plugins(self) -> list[IDynamicSizingPlugin]:
         return [s for s in self._sizing_plugins.values() if getattr(s, "is_enabled", True)]
 
     async def evaluate_modular_rules(
@@ -142,17 +142,17 @@ class ModularRiskRegistry:
         symbol: str,
         direction: str,
         sizing: SizingResult,
-        account_equity: Optional[float] = None,
+        account_equity: float | None = None,
         **kwargs: Any,
-    ) -> Tuple[bool, List[str], List[str], List[str]]:
+    ) -> tuple[bool, list[str], list[str], list[str]]:
         """
         Runs all active modular risk rules.
         Returns: (all_passed, checks_passed, checks_failed, rejection_reasons)
         """
         all_passed = True
-        checks_passed: List[str] = []
-        checks_failed: List[str] = []
-        rejection_reasons: List[str] = []
+        checks_passed: list[str] = []
+        checks_failed: list[str] = []
+        rejection_reasons: list[str] = []
 
         for rule in self.get_rules():
             rule_id = rule.metadata.id if hasattr(rule, "metadata") else type(rule).__name__

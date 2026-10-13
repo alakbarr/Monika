@@ -8,14 +8,14 @@ and Plane 2 (Financial Fortress: RiskGate, Invariants, and Execution).
 import hashlib
 import math
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class TradeProposal(BaseModel):
@@ -35,14 +35,14 @@ class TradeProposal(BaseModel):
     take_profit: float = Field(default=0.0)
     lot_size: float = Field(default=0.0)
     confluence_score: float = Field(default=50.0, ge=0.0, le=100.0)
-    confidence_override: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    confidence_override: float | None = Field(default=None, ge=0.0, le=1.0)
     reasoning_hash: str = Field(default="")
     provenance_verified: bool = Field(default=False)
-    account_equity: Optional[float] = None
-    free_margin: Optional[float] = None
-    spread_pips: Optional[float] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    analysis: Optional[Any] = Field(default=None, exclude=True)
+    account_equity: float | None = None
+    free_margin: float | None = None
+    spread_pips: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    analysis: Any | None = Field(default=None, exclude=True)
 
     @field_validator("symbol")
     @classmethod
@@ -61,7 +61,7 @@ class TradeProposal(BaseModel):
         return s
 
     @model_validator(mode="after")
-    def validate_geometry_and_numerics(self) -> "TradeProposal":
+    def validate_geometry_and_numerics(self) -> TradeProposal:
         # Check for NaN / Inf
         for f_name in ("entry_price", "stop_loss", "take_profit", "lot_size", "confluence_score"):
             val = getattr(self, f_name)
@@ -128,15 +128,15 @@ class TradeProposal(BaseModel):
         take_profit: float = 0.0,
         lot_size: float = 0.0,
         confluence_score: float = 50.0,
-        confidence_override: Optional[float] = None,
+        confidence_override: float | None = None,
         reasoning_text: str = "",
         provenance_verified: bool = False,
-        account_equity: Optional[float] = None,
-        free_margin: Optional[float] = None,
-        spread_pips: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        analysis: Optional[Any] = None,
-    ) -> "TradeProposal":
+        account_equity: float | None = None,
+        free_margin: float | None = None,
+        spread_pips: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        analysis: Any | None = None,
+    ) -> TradeProposal:
         """Factory helper creating a validated TradeProposal with automated reasoning hash."""
         r_hash = cls.compute_reasoning_hash(reasoning_text)
         norm_dir = decision.strip().upper()
@@ -178,7 +178,7 @@ class FortressAdmissionValidator:
         require_provenance: bool = False,
         is_backtest: bool = False,
         min_rr_ratio: float = 1.3,
-    ) -> tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         Validates that a proposal satisfies Financial Fortress admission rules:
         1. Proposal timestamp freshness (anti-replay / anti-staleness).
@@ -186,7 +186,7 @@ class FortressAdmissionValidator:
         3. Mandatory provenance verification (if required by security settings).
         4. Geometry and risk-reward ratio sanity.
         """
-        rejections: List[str] = []
+        rejections: list[str] = []
 
         # 1. Staleness check (skip in backtest)
         is_bt = is_backtest or bool(proposal.metadata.get("is_backtest"))
@@ -194,7 +194,7 @@ class FortressAdmissionValidator:
             now = _utcnow()
             proposal_time = proposal.timestamp
             if proposal_time.tzinfo is None:
-                proposal_time = proposal_time.replace(tzinfo=timezone.utc)
+                proposal_time = proposal_time.replace(tzinfo=UTC)
             age = (now - proposal_time).total_seconds()
             if age > max_age_seconds:
                 rejections.append(f"Proposal expired: age {age:.1f}s exceeds limit {max_age_seconds:.1f}s")

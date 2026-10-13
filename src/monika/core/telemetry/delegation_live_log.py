@@ -32,7 +32,7 @@ class LiveTranscriptWriter:
     Always flushes immediately to ensure live tailing works reliably.
     """
 
-    def __init__(self, subagent_id: str, log_dir: Optional[Path] = None):
+    def __init__(self, subagent_id: str, log_dir: Path | None = None):
         self.subagent_id = subagent_id
         self.log_dir = Path(log_dir or DEFAULT_LOG_DIR).resolve()
         self.log_dir.mkdir(parents=True, exist_ok=True)
@@ -44,7 +44,7 @@ class LiveTranscriptWriter:
         self,
         event_type: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Record a structured event: 'start', 'thought', 'tool_call', 'tool_result', 'chunk', 'finish', 'error'.
@@ -62,13 +62,13 @@ class LiveTranscriptWriter:
                 self._file.write(line)
                 self._file.flush()
 
-    def get_recent_events(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_recent_events(self, limit: int = 50) -> list[dict[str, Any]]:
         """Read the most recent events from the log file."""
         if not self.log_path.exists():
             return []
         events = []
         try:
-            with open(self.log_path, "r", encoding="utf-8") as f:
+            with open(self.log_path, encoding="utf-8") as f:
                 lines = f.readlines()
                 for line in lines[-limit:]:
                     line = line.strip()

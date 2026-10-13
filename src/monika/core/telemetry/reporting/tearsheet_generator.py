@@ -13,8 +13,9 @@ Computes comprehensive quantitative performance and risk metrics from historical
 import logging
 import math
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Sequence, Union
+from datetime import datetime, timedelta, timezone, UTC
+from typing import Any, Dict, List, Optional, Union
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -56,11 +57,11 @@ class TearsheetResult:
     cagr_pct: float = 0.0
     var_95_pct: float = 0.0
     cvar_95_pct: float = 0.0
-    equity_curve: List[Dict[str, Any]] = field(default_factory=list)
-    by_symbol: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    generated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    equity_curve: list[dict[str, Any]] = field(default_factory=list)
+    by_symbol: dict[str, dict[str, Any]] = field(default_factory=dict)
+    generated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     def to_markdown(self) -> str:
@@ -281,13 +282,13 @@ class TearsheetResult:
 </body>
 </html>"""
 
-    def export_report(self, filepath: Optional[str] = None) -> str:
+    def export_report(self, filepath: str | None = None) -> str:
         """Saves standalone HTML report to disk for viewing or browser print-to-PDF."""
         import os
 
         if not filepath:
             os.makedirs("reports", exist_ok=True)
-            ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             filepath = os.path.join("reports", f"tearsheet_{ts}.html")
         html_content = self.to_standalone_html()
         with open(filepath, "w", encoding="utf-8") as f:
@@ -305,8 +306,8 @@ class QuantTearsheetGenerator:
         cls,
         trades: Sequence[Any],
         initial_equity: float = 10000.0,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
     ) -> TearsheetResult:
         """
         Generates comprehensive TearsheetResult from a collection of trades.
@@ -345,7 +346,7 @@ class QuantTearsheetGenerator:
             )
 
         # Standardize trade records
-        parsed_trades: List[Dict[str, Any]] = []
+        parsed_trades: list[dict[str, Any]] = []
         for t in trades:
             if isinstance(t, dict):
                 pnl_val = t.get("pnl_usd")
@@ -389,13 +390,13 @@ class QuantTearsheetGenerator:
             )
 
         # Sort chronologically
-        parsed_trades.sort(key=lambda x: x["closed_at"] or datetime.min.replace(tzinfo=timezone.utc))
+        parsed_trades.sort(key=lambda x: x["closed_at"] or datetime.min.replace(tzinfo=UTC))
 
         # 1. Equity Curve & Compounding
         running_equity = initial_equity
         equity_curve = [
             {
-                "timestamp": (parsed_trades[0]["closed_at"] or datetime.now(timezone.utc)).isoformat(),
+                "timestamp": (parsed_trades[0]["closed_at"] or datetime.now(UTC)).isoformat(),
                 "equity": initial_equity,
                 "drawdown_pct": 0.0,
             }
@@ -480,7 +481,7 @@ class QuantTearsheetGenerator:
         worst_trade_pct = round(min(all_pcts), 2) if all_pcts else 0.0
 
         # 3. Daily Resampled Returns & Distribution
-        daily_pnl: Dict[str, float] = {}
+        daily_pnl: dict[str, float] = {}
         for t in parsed_trades:
             dt = t["closed_at"]
             d_key = dt.strftime("%Y-%m-%d") if dt else "unknown"
@@ -564,7 +565,7 @@ class QuantTearsheetGenerator:
         gain_to_pain = round(pos_sum / neg_sum, 2) if neg_sum > 0 else (99.0 if pos_sum > 0 else 0.0)
 
         # 5. Asset breakdown
-        by_sym: Dict[str, Dict[str, Any]] = {}
+        by_sym: dict[str, dict[str, Any]] = {}
         for t in parsed_trades:
             s = t["symbol"]
             st = by_sym.setdefault(s, {"trades": 0, "wins": 0, "losses": 0, "net_pnl": 0.0})

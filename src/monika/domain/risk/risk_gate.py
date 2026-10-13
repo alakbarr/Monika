@@ -23,7 +23,7 @@ import json
 import logging
 import math
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
@@ -119,7 +119,7 @@ class RiskVerdict:
         return f"RiskGate [{status}] {self.symbol} {self.proposed_lots}lots{reasons}"
 
 
-def get_trading_day_start(settings: dict, now: Optional[datetime] = None) -> datetime:
+def get_trading_day_start(settings: dict, now: datetime | None = None) -> datetime:
     """
     Menghitung waktu mulai hari perdagangan berdasarkan broker daily rollover.
     Default: 21:00 UTC (17:00 New York / NY Close), aware terhadap Daylight Saving Time.
@@ -129,7 +129,7 @@ def get_trading_day_start(settings: dict, now: Optional[datetime] = None) -> dat
 
         now = get_clock_now()
     if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+        now = now.replace(tzinfo=UTC)
 
     risk_cfg = (settings or {}).get("trading", {}).get("risk", {})
     rollover_hour_cfg = risk_cfg.get("daily_rollover_utc_hour")
@@ -155,7 +155,7 @@ def get_trading_day_start(settings: dict, now: Optional[datetime] = None) -> dat
             tz_start = (now_tz - timedelta(days=1)).replace(
                 hour=broker_rollover_hour, minute=0, second=0, microsecond=0
             )
-        return tz_start.astimezone(timezone.utc)
+        return tz_start.astimezone(UTC)
     except Exception:
         rollover_hour = int(rollover_hour_cfg if rollover_hour_cfg is not None else 21)
         if now.hour >= rollover_hour:
@@ -185,7 +185,7 @@ class RiskGate:
         settings: dict,
         mt5_client=None,
         flash_crash_detector=None,
-        data_provider: Optional[Any] = None,
+        data_provider: Any | None = None,
     ):
         """
         Args:
@@ -265,15 +265,15 @@ class RiskGate:
         symbol: str,
         direction: str,
         sizing: SizingResult,
-        account_equity: Optional[float] = None,
-        analysis: Optional["AssetAnalysis"] = None,
-        as_of: Optional[datetime] = None,
-        simulated_positions: Optional[list] = None,
-        simulated_equity: Optional[float] = None,
-        simulated_daily_pnl: Optional[float] = None,
+        account_equity: float | None = None,
+        analysis: AssetAnalysis | None = None,
+        as_of: datetime | None = None,
+        simulated_positions: list | None = None,
+        simulated_equity: float | None = None,
+        simulated_daily_pnl: float | None = None,
         is_backtest: bool = False,
-        pair_group_id: Optional[str] = None,
-        is_paper: Optional[bool] = None,
+        pair_group_id: str | None = None,
+        is_paper: bool | None = None,
     ) -> RiskVerdict:
         """
         Memvalidasi semua aturan risiko pra-eksekusi.
@@ -544,11 +544,11 @@ class RiskGate:
         self,
         session: AsyncSession,
         proposal: Any,
-        account_equity: Optional[float] = None,
-        analysis: Optional[Any] = None,
-        as_of: Optional[datetime] = None,
+        account_equity: float | None = None,
+        analysis: Any | None = None,
+        as_of: datetime | None = None,
         is_backtest: bool = False,
-        is_paper: Optional[bool] = None,
+        is_paper: bool | None = None,
     ) -> RiskVerdict:
         """
         PR-14: Financial Fortress entrypoint validating an immutable TradeProposal.
@@ -677,7 +677,7 @@ class RiskGate:
             is_paper=is_paper,
         )
 
-    async def _get_risk_state(self, session: AsyncSession) -> Optional[Any]:
+    async def _get_risk_state(self, session: AsyncSession) -> Any | None:
         """Fetch current RiskState from DB."""
         if not session:
             return None
@@ -696,7 +696,7 @@ class RiskGate:
     # ------------------------------------------------------------------
 
     async def _check_data_freshness(
-        self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False
+        self, session: AsyncSession, symbol: str, as_of: datetime | None = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """Tolak order jika data pasar (OHLCV/Indikator) basi atau tidak segar (hard gate)."""
         if is_backtest:
@@ -725,7 +725,7 @@ class RiskGate:
         direction: str,
         sizing: SizingResult,
         is_backtest: bool = False,
-        proposal: Optional[Any] = None,
+        proposal: Any | None = None,
     ) -> tuple[bool, str]:
         """Validasi ekspektansi probabilistik menggunakan kuantil TimesFM 3.0 tanpa dependensi ML engine."""
         tfm_cfg = self.settings.get("timesfm", {})
@@ -733,7 +733,7 @@ class RiskGate:
             return True, "TimesFM expectancy gate disabled"
 
         try:
-            q: Optional[Dict[str, Any]] = None
+            q: dict[str, Any] | None = None
             if proposal and hasattr(proposal, "metadata") and isinstance(proposal.metadata, dict):
                 q = proposal.metadata.get("timesfm_quantiles") or proposal.metadata.get("timesfm_forecast", {}).get(
                     "quantiles"
@@ -747,7 +747,7 @@ class RiskGate:
                 from sqlalchemy import desc, select
 
                 max_age = float(tfm_cfg.get("cache_ttl_hours", 8.0))
-                cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age)
+                cutoff = datetime.now(UTC) - timedelta(hours=max_age)
                 stmt = (
                     select(TimesFMForecast)
                     .where(TimesFMForecast.symbol == symbol, TimesFMForecast.timeframe == "H1")
@@ -809,7 +809,7 @@ class RiskGate:
         return True, "flash_crash_not_active"
 
     async def _check_analysis_quality_scores(
-        self, analysis: "AssetAnalysis", session: Optional[AsyncSession] = None
+        self, analysis: AssetAnalysis, session: AsyncSession | None = None
     ) -> tuple[bool, str]:
         """Validate that analysis has required quality scores before execution."""
         if analysis is None:
@@ -867,8 +867,8 @@ class RiskGate:
     async def _check_strategy_factor_exposure(
         self,
         session: AsyncSession,
-        analysis: "AssetAnalysis",
-        simulated_positions: Optional[list] = None,
+        analysis: AssetAnalysis,
+        simulated_positions: list | None = None,
     ) -> tuple[bool, str]:
         """Limits portfolio concentration across strategy factor families (trend, mean_reversion, stat_arb, breakout)."""
         strat_id = getattr(analysis, "source_strategy_id", None)
@@ -1061,7 +1061,7 @@ class RiskGate:
         self,
         session: AsyncSession,
         is_backtest: bool = False,
-        is_paper: Optional[bool] = None,
+        is_paper: bool | None = None,
     ) -> tuple[bool, str]:
         """Hard limit: max N trades per day regardless of other conditions"""
         if is_backtest:
@@ -1164,7 +1164,7 @@ class RiskGate:
         return True, f"rr_ratio={rr:.2f} >= {min_rr:.2f} (valid)"
 
     async def _check_max_spread(
-        self, session: AsyncSession, symbol: str, is_backtest: bool = False, is_paper: Optional[bool] = None
+        self, session: AsyncSession, symbol: str, is_backtest: bool = False, is_paper: bool | None = None
     ) -> tuple[bool, str]:
         """Validasi batas spread pasar tidak sedang melebar (FR-4.1)."""
         if is_backtest:
@@ -1216,9 +1216,9 @@ class RiskGate:
     async def _check_weekly_drawdown(
         self,
         session: AsyncSession,
-        equity: Optional[float] = None,
+        equity: float | None = None,
         is_backtest: bool = False,
-        is_paper: Optional[bool] = None,
+        is_paper: bool | None = None,
     ) -> tuple[bool, str]:
         if is_backtest:
             return True, "weekly_drawdown_backtest_ok"
@@ -1281,8 +1281,8 @@ class RiskGate:
     async def _check_daily_drawdown(
         self,
         session: AsyncSession,
-        equity: Optional[float] = None,
-        simulated_daily_pnl: Optional[float] = None,
+        equity: float | None = None,
+        simulated_daily_pnl: float | None = None,
         is_backtest: bool = False,
     ) -> tuple[bool, str]:
         """Periksa apakah drawdown hari ini (realized + unrealized loss) belum melampaui batas."""
@@ -1393,8 +1393,8 @@ class RiskGate:
     async def _check_max_positions(
         self,
         session: AsyncSession,
-        simulated_positions: Optional[list] = None,
-        is_paper: Optional[bool] = None,
+        simulated_positions: list | None = None,
+        is_paper: bool | None = None,
     ) -> tuple[bool, str]:
         """Pastikan batas maksimal posisi terbuka (concurrent) belum terlewati."""
         if simulated_positions is not None:
@@ -1433,9 +1433,9 @@ class RiskGate:
         self,
         session: AsyncSession,
         symbol: str,
-        simulated_positions: Optional[list] = None,
-        pair_group_id: Optional[str] = None,
-        is_paper: Optional[bool] = None,
+        simulated_positions: list | None = None,
+        pair_group_id: str | None = None,
+        is_paper: bool | None = None,
     ) -> tuple[bool, str]:
         """Pastikan hanya ada SATU posisi terbuka untuk simbol ini (kecuali multi-leg/tranche dengan pair_group_id)."""
         if simulated_positions is not None:
@@ -1506,7 +1506,7 @@ class RiskGate:
         return True, "no duplicate"
 
     async def _check_vix_threshold(
-        self, session: AsyncSession, as_of: Optional[datetime] = None, is_backtest: bool = False
+        self, session: AsyncSession, as_of: datetime | None = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """Block new positions when VIX exceeds the configured pause threshold."""
         if is_backtest:
@@ -1529,11 +1529,11 @@ class RiskGate:
             vix_str_info = f"defaulting to {defensive_threshold} (Defensive Fail-Safe)"
         else:
             vix_close = vix_row.close
-            now_dt = now if (hasattr(now, "tzinfo") and now.tzinfo) else now.replace(tzinfo=timezone.utc)
+            now_dt = now if (hasattr(now, "tzinfo") and now.tzinfo) else now.replace(tzinfo=UTC)
             row_dt = (
                 vix_row.date
                 if (hasattr(vix_row.date, "tzinfo") and vix_row.date.tzinfo)
-                else vix_row.date.replace(tzinfo=timezone.utc)
+                else vix_row.date.replace(tzinfo=UTC)
             )
             vix_age_days = (now_dt - row_dt).total_seconds() / 86400
             vix_str_info = f"{vix_age_days:.1f} days old"
@@ -1558,7 +1558,7 @@ class RiskGate:
         return True, f"VIX={vix_close:.1f} ({vix_str_info} - below threshold {pause_threshold})"
 
     async def assess_weekend_gap_risk(
-        self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None
+        self, session: AsyncSession, symbol: str, as_of: datetime | None = None
     ) -> tuple[bool, str]:
         """Blokir entri saat akhir pekan untuk aset non-24/7 (menghindari risiko gap)."""
         weekend_cfg = self.settings.get("trading", {}).get("weekend_management", {})
@@ -1592,7 +1592,7 @@ class RiskGate:
     # Alias for naming consistency with internal _check_* validators
     _check_weekend_gap_risk = assess_weekend_gap_risk
 
-    async def _check_rollover_window(self, symbol: str, as_of: Optional[datetime] = None) -> tuple[bool, str]:
+    async def _check_rollover_window(self, symbol: str, as_of: datetime | None = None) -> tuple[bool, str]:
         """Blokir entri saat jeda rollover harian (spread membesar). BTCUSD & ETHUSD kebal."""
         sym_clean = symbol.upper().split(".")[0].rstrip("m").rstrip("+")
         if (
@@ -1604,7 +1604,7 @@ class RiskGate:
 
         now = as_of or clock.now()
         if now.tzinfo is None:
-            now = now.replace(tzinfo=timezone.utc)
+            now = now.replace(tzinfo=UTC)
 
         try:
             import zoneinfo
@@ -1620,8 +1620,8 @@ class RiskGate:
             if is_rollover:
                 window_start = today_close - timedelta(minutes=5)
                 window_end = today_close + timedelta(minutes=30)
-                start_utc = window_start.astimezone(timezone.utc).strftime("%H:%M")
-                end_utc = window_end.astimezone(timezone.utc).strftime("%H:%M UTC")
+                start_utc = window_start.astimezone(UTC).strftime("%H:%M")
+                end_utc = window_end.astimezone(UTC).strftime("%H:%M UTC")
                 return False, (
                     f"Daily rollover window ({start_utc}-{end_utc}). Spreads are currently elevated. "
                     f"Current time: {now.strftime('%H:%M UTC')}. "
@@ -1644,7 +1644,7 @@ class RiskGate:
         self,
         session: AsyncSession,
         symbol: str,
-        as_of: Optional[datetime] = None,
+        as_of: datetime | None = None,
         is_backtest: bool = False,
         is_paper: bool = True,
     ) -> tuple[bool, str]:
@@ -1655,7 +1655,7 @@ class RiskGate:
         window = timedelta(minutes=self.news_window_minutes)
 
         # 1. Check calendar data freshness via SystemConfig metadata first
-        latest_calendar_fetch: Optional[datetime] = None
+        latest_calendar_fetch: datetime | None = None
         try:
             latest_fetch_cfg = (
                 await session.execute(select(SystemConfig).where(SystemConfig.key == "last_calendar_fetch_at"))
@@ -1663,7 +1663,7 @@ class RiskGate:
             if latest_fetch_cfg and latest_fetch_cfg.value:
                 dt = datetime.fromisoformat(latest_fetch_cfg.value)
                 if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
+                    dt = dt.replace(tzinfo=UTC)
                 latest_calendar_fetch = dt
         except Exception as e:
             logger.debug(f"Could not read last_calendar_fetch_at from SystemConfig: {e}")
@@ -1673,7 +1673,7 @@ class RiskGate:
             max_fetched = (await session.execute(select(func.max(EconomicCalendar.fetched_at)))).scalar_one_or_none()
             if max_fetched is not None:
                 if max_fetched.tzinfo is None:
-                    max_fetched = max_fetched.replace(tzinfo=timezone.utc)
+                    max_fetched = max_fetched.replace(tzinfo=UTC)
                 latest_calendar_fetch = max_fetched
 
         # Check if any calendar rows exist in DB at all
@@ -1793,10 +1793,10 @@ class RiskGate:
         session: AsyncSession,
         symbol: str,
         direction: str,
-        simulated_positions: Optional[list] = None,
-        as_of: Optional[datetime] = None,
-        open_positions: Optional[list] = None,
-        volume: Optional[float] = None,
+        simulated_positions: list | None = None,
+        as_of: datetime | None = None,
+        open_positions: list | None = None,
+        volume: float | None = None,
     ) -> tuple[bool, str]:
         """Pastikan trade ini tidak melewati batas korelasi paparan mata uang / heat limit menggunakan DynamicCorrelationMatrix."""
         if open_positions is None:
@@ -1883,9 +1883,9 @@ class RiskGate:
         session: AsyncSession,
         symbol: str,
         direction: str,
-        simulated_positions: Optional[list] = None,
-        as_of: Optional[datetime] = None,
-        volume: Optional[float] = None,
+        simulated_positions: list | None = None,
+        as_of: datetime | None = None,
+        volume: float | None = None,
     ) -> tuple[bool, str]:
         """Pastikan trade ini tidak melewati batas korelasi paparan mata uang."""
         return await self.check_correlation_exposure(
@@ -1898,7 +1898,7 @@ class RiskGate:
         )
 
     async def _get_dynamic_correlation(
-        self, session: AsyncSession, symbol1: str, symbol2: str, as_of: Optional[datetime] = None
+        self, session: AsyncSession, symbol1: str, symbol2: str, as_of: datetime | None = None
     ) -> tuple[float, float]:
         """Hitung korelasi harian secara dinamis berdasar PriceOHLCV, return (corr, std_dev2)."""
         import pandas as pd
@@ -1938,8 +1938,8 @@ class RiskGate:
         self,
         session: AsyncSession,
         proposed_sizing: SizingResult,
-        equity: Optional[float] = None,
-        simulated_positions: Optional[list] = None,
+        equity: float | None = None,
+        simulated_positions: list | None = None,
     ) -> tuple[bool, str]:
         heat_cfg = self.settings.get("trading", {}).get("risk", {})
         max_heat_pct = float(heat_cfg.get("max_portfolio_heat_pct", 4.0))
@@ -2090,7 +2090,7 @@ class RiskGate:
         self,
         session: AsyncSession,
         pnl_delta: float,
-        equity: Optional[float] = None,
+        equity: float | None = None,
     ) -> None:
         """Update RiskState harian setelah posisi tertutup. Trigger auto-pause jika lewat batas."""
         today_start = get_trading_day_start(self.settings)
@@ -2145,7 +2145,7 @@ class RiskGate:
             f"paused={state.trading_paused}"
         )
 
-    async def pause_trading(self, session: AsyncSession, reason: str, duration_hours: Optional[float] = None) -> None:
+    async def pause_trading(self, session: AsyncSession, reason: str, duration_hours: float | None = None) -> None:
         """Pause sistem trading secara manual dengan opsi durasi auto-unpause."""
         from datetime import timedelta
 
@@ -2238,7 +2238,7 @@ class RiskGate:
         )
 
     async def _check_post_loss_cooldown(
-        self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False
+        self, session: AsyncSession, symbol: str, as_of: datetime | None = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """Blokir re-entry pada simbol yang sama selama N jam jika baru saja terkena Stop Loss."""
         if is_backtest:
@@ -2288,7 +2288,7 @@ class RiskGate:
         return True, "no recent SL hits"
 
     async def _check_schmitt_regime(
-        self, session: AsyncSession, symbol: str, simulated_positions: Optional[list] = None, is_backtest: bool = False
+        self, session: AsyncSession, symbol: str, simulated_positions: list | None = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """
         Check systemic correlation regime via Schmitt trigger.
@@ -2317,7 +2317,7 @@ class RiskGate:
             return False, f"schmitt_regime_check_failed: {e}"
 
     async def _check_vpin_toxicity(
-        self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False
+        self, session: AsyncSession, symbol: str, as_of: datetime | None = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """
         Check VPIN order flow toxicity for high-volatility assets (BTCUSD, XAUUSD).
@@ -2358,7 +2358,7 @@ class RiskGate:
         session: AsyncSession,
         symbol: str,
         sizing: SizingResult,
-        as_of: Optional[datetime] = None,
+        as_of: datetime | None = None,
         is_backtest: bool = False,
     ) -> tuple[bool, str]:
         """
@@ -2407,8 +2407,8 @@ class RiskGate:
         self,
         session: AsyncSession,
         symbol: str,
-        simulated_positions: Optional[list] = None,
-        as_of: Optional[datetime] = None,
+        simulated_positions: list | None = None,
+        as_of: datetime | None = None,
         is_backtest: bool = False,
     ) -> tuple[bool, str]:
         """
@@ -2483,7 +2483,7 @@ class RiskGate:
         self,
         session: AsyncSession,
         symbol: str,
-        analysis: Optional["AssetAnalysis"] = None,
+        analysis: AssetAnalysis | None = None,
         is_backtest: bool = False,
     ) -> tuple[bool, str]:
         """
@@ -2515,8 +2515,8 @@ class RiskGate:
         session: Any,
         symbol: str,
         sizing: Any,
-        as_of: Optional[Any] = None,
-        simulated_positions: Optional[List[Any]] = None,
+        as_of: Any | None = None,
+        simulated_positions: list[Any] | None = None,
     ) -> tuple[bool, str]:
         """
         Subsystem 7: Bounded Mandate Contract Gate.
@@ -2560,7 +2560,7 @@ class RiskGate:
         self,
         session: AsyncSession,
         symbol: str = "EURUSD",
-        equity: Optional[float] = None,
+        equity: float | None = None,
     ) -> dict[str, Any]:
         """Menghasilkan evaluasi scorecard 22-poin Risk Gate saat ini untuk status inspeksi."""
         fallback_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
@@ -2638,11 +2638,11 @@ class RiskGate:
             "checks_passed": passed,
             "checks_failed": failed,
             "checks": checks_data,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
 
-async def get_current_risk_state(session: Optional[AsyncSession] = None, settings: Optional[dict] = None) -> dict:
+async def get_current_risk_state(session: AsyncSession | None = None, settings: dict | None = None) -> dict:
     """Mengambil snapshot status risiko portofolio & drawdown saat ini."""
     if not session:
         try:

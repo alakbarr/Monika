@@ -15,27 +15,27 @@ class TelemetrySink(Protocol):
         self,
         category: str,
         description: str,
-        related_id: Optional[int] = None,
+        related_id: int | None = None,
         actor: str = "system",
         session: Any = None,
-    ) -> Optional[int]:
+    ) -> int | None:
         """Persist an activity log entry."""
         ...
 
-    async def persist_spans(self, spans: List[Any]) -> None:
+    async def persist_spans(self, spans: list[Any]) -> None:
         """Persist evicted tracing spans."""
         ...
 
 
-_DEFAULT_SINK: Optional[TelemetrySink] = None
+_DEFAULT_SINK: TelemetrySink | None = None
 
 
-def set_telemetry_sink(sink: Optional[TelemetrySink]) -> None:
+def set_telemetry_sink(sink: TelemetrySink | None) -> None:
     """Set the active global telemetry sink."""
     global _DEFAULT_SINK
     _DEFAULT_SINK = sink
 
 
-def get_telemetry_sink() -> Optional[TelemetrySink]:
+def get_telemetry_sink() -> TelemetrySink | None:
     """Get the active global telemetry sink, or None."""
     return _DEFAULT_SINK

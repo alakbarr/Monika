@@ -3,7 +3,8 @@
 # ==============================================================================
 
 from contextlib import contextmanager
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, List, Optional
+from collections.abc import Generator
 
 from monika.core.telemetry.tracing.context import (
     _current_cycle_id,
@@ -15,7 +16,7 @@ from monika.core.telemetry.tracing.tracer import Span, get_tracer
 
 
 @contextmanager
-def cycle_span(cycle_id: str, symbols: Optional[List[str]] = None, **attrs) -> Generator[Span, None, None]:
+def cycle_span(cycle_id: str, symbols: list[str] | None = None, **attrs) -> Generator[Span, None, None]:
     """Root span for an 8h cycle or analysis session."""
     tracer = get_tracer()
     trace_id = generate_trace_id()
@@ -33,7 +34,7 @@ def cycle_span(cycle_id: str, symbols: Optional[List[str]] = None, **attrs) -> G
 
 
 @contextmanager
-def node_span(node_name: str, cycle_id: Optional[str] = None, **attrs) -> Generator[Span, None, None]:
+def node_span(node_name: str, cycle_id: str | None = None, **attrs) -> Generator[Span, None, None]:
     """Span for a LangGraph workflow node (e.g. fundamental, per_asset, debate, risk_gate)."""
     tracer = get_tracer()
     span_attrs = {"node_name": node_name, **attrs}
@@ -45,7 +46,7 @@ def node_span(node_name: str, cycle_id: Optional[str] = None, **attrs) -> Genera
 
 
 @contextmanager
-def llm_span(provider: str, model: str, task_role: Optional[str] = None, **attrs) -> Generator[Span, None, None]:
+def llm_span(provider: str, model: str, task_role: str | None = None, **attrs) -> Generator[Span, None, None]:
     """Span for an individual LLM invocation, tracking tokens, cost, and latency."""
     tracer = get_tracer()
     span_attrs = {
@@ -64,7 +65,7 @@ def llm_span(provider: str, model: str, task_role: Optional[str] = None, **attrs
 
 
 @contextmanager
-def tool_span(tool_name: str, symbol: Optional[str] = None, **attrs) -> Generator[Span, None, None]:
+def tool_span(tool_name: str, symbol: str | None = None, **attrs) -> Generator[Span, None, None]:
     """Span for an individual tool execution."""
     tracer = get_tracer()
     span_attrs = {"tool.name": tool_name, "tool_name": tool_name, **attrs}
@@ -79,11 +80,11 @@ def tool_span(tool_name: str, symbol: Optional[str] = None, **attrs) -> Generato
 def trade_span(
     symbol: str,
     action: str,
-    ticket: Optional[int] = None,
-    lot_size: Optional[float] = None,
-    slippage_points: Optional[float] = None,
-    mae_points: Optional[float] = None,
-    mfe_points: Optional[float] = None,
+    ticket: int | None = None,
+    lot_size: float | None = None,
+    slippage_points: float | None = None,
+    mae_points: float | None = None,
+    mfe_points: float | None = None,
     **attrs,
 ) -> Generator[Span, None, None]:
     """Span for trade order execution and lifecycle tracking with slippage, MAE, and MFE."""

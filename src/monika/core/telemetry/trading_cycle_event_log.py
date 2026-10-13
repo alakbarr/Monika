@@ -8,7 +8,7 @@ import hashlib
 import json
 import logging
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -33,8 +33,8 @@ def compute_event_hash(
     cycle_id: str,
     event_type: str,
     timestamp: str,
-    payload: Dict[str, Any],
-    source_event_seqs: List[int],
+    payload: dict[str, Any],
+    source_event_seqs: list[int],
 ) -> str:
     """Computes deterministic SHA-256 hash chaining previous event with current event payload."""
     try:
@@ -52,31 +52,31 @@ class CycleEvent:
     cycle_id: str
     event_type: str
     timestamp: str
-    payload: Dict[str, Any] = field(default_factory=dict)
-    source_event_seqs: List[int] = field(default_factory=list)  # Lineage tracing pointers (Phase 7.2)
-    prev_hash: Optional[str] = None
-    chain_hash: Optional[str] = None
+    payload: dict[str, Any] = field(default_factory=dict)
+    source_event_seqs: list[int] = field(default_factory=list)  # Lineage tracing pointers (Phase 7.2)
+    prev_hash: str | None = None
+    chain_hash: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
 class TradingCycleEventLog:
     """Append-only monotonic event-sourced store for trading cycles."""
 
-    def __init__(self, storage_dir: Optional[Path] = None):
+    def __init__(self, storage_dir: Path | None = None):
         self.storage_dir = Path(storage_dir) if storage_dir else Path("data/cycle_events")
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         # In-memory index: cycle_id -> list of CycleEvent
-        self._cycle_stores: Dict[str, List[CycleEvent]] = {}
-        self._cycle_counters: Dict[str, int] = {}
+        self._cycle_stores: dict[str, list[CycleEvent]] = {}
+        self._cycle_counters: dict[str, int] = {}
 
     def record_event(
         self,
         cycle_id: str,
         event_type: str,
-        payload: Dict[str, Any],
-        source_event_seqs: Optional[List[int]] = None,
+        payload: dict[str, Any],
+        source_event_seqs: list[int] | None = None,
     ) -> CycleEvent:
         """Record an event with contiguous monotonic sequence numbering for the cycle."""
         cid = str(cycle_id or "default_cycle")
@@ -95,7 +95,7 @@ class TradingCycleEventLog:
         if not prev_hash:
             prev_hash = hashlib.sha256(f"genesis:{cid}".encode("utf-8")).hexdigest()
 
-        ts = datetime.now(timezone.utc).isoformat()
+        ts = datetime.now(UTC).isoformat()
         chain_hash = compute_event_hash(
             prev_hash=prev_hash,
             seq=seq,
@@ -128,7 +128,7 @@ class TradingCycleEventLog:
 
         return event
 
-    def get_events_for_cycle(self, cycle_id: str) -> List[CycleEvent]:
+    def get_events_for_cycle(self, cycle_id: str) -> list[CycleEvent]:
         """Return all contiguous events for a given cycle."""
         cid = str(cycle_id)
         if cid in self._cycle_stores:
@@ -139,7 +139,7 @@ class TradingCycleEventLog:
         events = []
         if log_file.exists():
             try:
-                with open(log_file, "r", encoding="utf-8") as f:
+                with open(log_file, encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
                         if line:
@@ -151,7 +151,7 @@ class TradingCycleEventLog:
             self._cycle_counters[cid] = len(events)
         return events
 
-    def trace_decision_lineage(self, cycle_id: str, target_seq: int) -> List[CycleEvent]:
+    def trace_decision_lineage(self, cycle_id: str, target_seq: int) -> list[CycleEvent]:
         """
         Recursively trace ancestor events that influenced target_seq (Phase 7.2 Provenance).
         Answers: 'Which signal or debate argument triggered this order?'
@@ -162,8 +162,8 @@ class TradingCycleEventLog:
         if target_seq not in seq_map:
             return []
 
-        lineage: List[CycleEvent] = []
-        visited: Set[int] = set()
+        lineage: list[CycleEvent] = []
+        visited: set[int] = set()
 
         def _traverse(seq: int):
             if seq in visited or seq not in seq_map:
@@ -178,7 +178,7 @@ class TradingCycleEventLog:
         lineage.sort(key=lambda x: x.seq)
         return lineage
 
-    def reconstruct_cycle(self, cycle_id: str) -> Dict[str, Any]:
+    def reconstruct_cycle(self, cycle_id: str) -> dict[str, Any]:
         """Replay full cycle state from origin sequence."""
         events = self.get_events_for_cycle(cycle_id)
         return {
@@ -189,7 +189,7 @@ class TradingCycleEventLog:
             "end_time": events[-1].timestamp if events else None,
         }
 
-    def verify_cycle_integrity(self, cycle_id: str) -> Tuple[bool, Optional[str]]:
+    def verify_cycle_integrity(self, cycle_id: str) -> tuple[bool, str | None]:
         """
         Verify cryptographic SHA-256 chain integrity for all events in a cycle.
         Returns (True, None) if unbroken and valid, or (False, error_reason).
@@ -198,7 +198,7 @@ class TradingCycleEventLog:
         return verify_chain_integrity(events)
 
 
-def verify_chain_integrity(events: List[CycleEvent]) -> Tuple[bool, Optional[str]]:
+def verify_chain_integrity(events: list[CycleEvent]) -> tuple[bool, str | None]:
     """
     Verifies that an event stream forms an unbroken, untampered SHA-256 cryptographic hash chain.
     Returns (True, None) if valid, or (False, reason) if tampered/corrupted.
@@ -237,7 +237,7 @@ def verify_chain_integrity(events: List[CycleEvent]) -> Tuple[bool, Optional[str
 
 
 # Global default instance
-_default_event_log: Optional[TradingCycleEventLog] = None
+_default_event_log: TradingCycleEventLog | None = None
 
 
 def get_cycle_event_log() -> TradingCycleEventLog:

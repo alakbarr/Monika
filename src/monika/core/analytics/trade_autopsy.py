@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -104,7 +104,7 @@ async def run_trade_autopsy(session: AsyncSession, trade: PaperTradeRecord) -> d
                     "patterns": patterns,
                     "outcome": trade.exit_reason,
                     "pnl_pct": trade.pnl_pct,
-                    "analyzed_at": datetime.now(timezone.utc).isoformat(),
+                    "analyzed_at": datetime.now(UTC).isoformat(),
                 }
             ),
         )
@@ -151,7 +151,7 @@ async def summarize_recent_patterns(session: AsyncSession, hours_back: int = 24)
 
     from monika.infrastructure.database.models import SystemConfig
 
-    since = datetime.now(timezone.utc) - timedelta(hours=hours_back)
+    since = datetime.now(UTC) - timedelta(hours=hours_back)
     has_critical = False
     patterns_found = []
 
@@ -180,7 +180,7 @@ async def summarize_recent_patterns(session: AsyncSession, hours_back: int = 24)
                     continue
                 analyzed_at = datetime.fromisoformat(analyzed_at_str)
                 if analyzed_at.tzinfo is None:
-                    analyzed_at = analyzed_at.replace(tzinfo=timezone.utc)
+                    analyzed_at = analyzed_at.replace(tzinfo=UTC)
                 if analyzed_at < since:
                     continue
 

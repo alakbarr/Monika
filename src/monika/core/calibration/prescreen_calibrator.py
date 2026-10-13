@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from sqlalchemy import select
 
@@ -9,7 +9,7 @@ logger = logging.getLogger("TradingAgent.PrescreenCalibrator")
 
 
 async def resolve_pending_prescreen_logs(session) -> int:
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=4)
+    cutoff = datetime.now(UTC) - timedelta(hours=4)
     pending = (
         (
             await session.execute(

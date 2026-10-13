@@ -44,16 +44,16 @@ class PendingAction:
     symbol: str
     action: str  # buy, sell, modify, close
     volume: float
-    price: Optional[float] = None
-    sl: Optional[float] = None
-    tp: Optional[float] = None
+    price: float | None = None
+    sl: float | None = None
+    tp: float | None = None
     order_type: str = "market"
     comment: str = ""
     timestamp: float = 0.0
     nonce: str = ""
     status: PendingActionStatus = PendingActionStatus.DISPATCHING
-    broker_ticket: Optional[int] = None
-    error_message: Optional[str] = None
+    broker_ticket: int | None = None
+    error_message: str | None = None
     updated_at: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
@@ -120,12 +120,12 @@ class PendingActionManager:
         symbol: str,
         action: str,
         volume: float,
-        price: Optional[float] = None,
-        sl: Optional[float] = None,
-        tp: Optional[float] = None,
+        price: float | None = None,
+        sl: float | None = None,
+        tp: float | None = None,
         order_type: str = "market",
         comment: str = "",
-        client_order_id: Optional[str] = None,
+        client_order_id: str | None = None,
     ) -> PendingAction:
         """
         Phase 1: Writes pre-dispatch action to persistent disk before sending order over network socket.
@@ -156,7 +156,7 @@ class PendingActionManager:
         )
         return pending
 
-    def commit_action(self, client_order_id: str, broker_ticket: Optional[int] = None) -> Optional[PendingAction]:
+    def commit_action(self, client_order_id: str, broker_ticket: int | None = None) -> PendingAction | None:
         """Phase 2: Confirms broker filled / placed the order successfully."""
         action = self.get_action(client_order_id)
         if not action:
@@ -170,7 +170,7 @@ class PendingActionManager:
         logger.info(f"Phase 2 Order Commit Confirmed: [{client_order_id}] Ticket={broker_ticket}")
         return action
 
-    def fail_action(self, client_order_id: str, error_message: str) -> Optional[PendingAction]:
+    def fail_action(self, client_order_id: str, error_message: str) -> PendingAction | None:
         """Phase 2: Marks order as rejected by broker."""
         action = self.get_action(client_order_id)
         if not action:
@@ -183,7 +183,7 @@ class PendingActionManager:
         logger.warning(f"Phase 2 Order Rejected: [{client_order_id}] Reason={error_message}")
         return action
 
-    def mark_unconfirmed(self, client_order_id: str, error_message: str) -> Optional[PendingAction]:
+    def mark_unconfirmed(self, client_order_id: str, error_message: str) -> PendingAction | None:
         """Phase 2: Marks order as in-flight / unconfirmed due to socket timeout or connection drop."""
         action = self.get_action(client_order_id)
         if not action:
@@ -196,12 +196,12 @@ class PendingActionManager:
         logger.critical(f"Phase 2 Order UNCONFIRMED: [{client_order_id}] Disconnect/Timeout: {error_message}")
         return action
 
-    def get_action(self, client_order_id: str) -> Optional[PendingAction]:
+    def get_action(self, client_order_id: str) -> PendingAction | None:
         path = self._file_path(client_order_id)
         if not path.is_file():
             return None
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             return PendingAction.from_dict(data)
         except Exception as e:
@@ -215,7 +215,7 @@ class PendingActionManager:
         unconfirmed = []
         for p in self.base_dir.glob("pending_action_*.json"):
             try:
-                with open(p, "r", encoding="utf-8") as f:
+                with open(p, encoding="utf-8") as f:
                     data = json.load(f)
                 action = PendingAction.from_dict(data)
                 if action.status in (PendingActionStatus.DISPATCHING, PendingActionStatus.UNCONFIRMED_DISPATCH):
@@ -232,7 +232,7 @@ class PendingActionManager:
         now = time.time()
         for p in self.base_dir.glob("pending_action_*.json"):
             try:
-                with open(p, "r", encoding="utf-8") as f:
+                with open(p, encoding="utf-8") as f:
                     data = json.load(f)
                 action = PendingAction.from_dict(data)
                 if action.status in (PendingActionStatus.COMMITTED, PendingActionStatus.FAILED):
