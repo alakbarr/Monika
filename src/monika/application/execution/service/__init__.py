@@ -12,6 +12,7 @@ from monika.application.execution.service.risk_evaluator import RiskEvaluatorMix
 from monika.application.execution.service.position_synchronizer import PositionSynchronizerMixin
 from monika.application.execution.service.emergency_manager import EmergencyManagerMixin
 from monika.domain.execution.state_machine import OrderStateMachine
+from monika.application.execution.service.order_lifecycle_service import OrderLifecycleService
 from monika.infrastructure.brokers.audit_logger import TradeAuditLogger
 from monika.application.execution.service.reconciliation import ReconciliationHelper
 from monika.domain.execution.sizing_calculator import SizingCalculator
@@ -25,6 +26,7 @@ __all__ = [
     "PositionSynchronizerMixin",
     "EmergencyManagerMixin",
     "OrderStateMachine",
+    "OrderLifecycleService",
     "TradeAuditLogger",
     "ReconciliationHelper",
     "SizingCalculator",

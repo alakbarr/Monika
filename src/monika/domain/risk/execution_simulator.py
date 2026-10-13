@@ -88,8 +88,8 @@ class ExecutionSimulator:
         # 2. Fallback: Reconstruct micro-ticks from recent OHLCV bars via repository
         if session is not None:
             try:
-                from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
-                repo = SqlAlchemyRiskRepository(session=session)
+                from monika.domain.risk.ports import get_default_risk_data_provider
+                repo = get_default_risk_data_provider(session=session)
                 bars = await repo.get_recent_price_bars(symbol=symbol, timeframe="M15", limit=20, session=session)
                 if bars:
                     close_p = float(bars[-1]["close"])

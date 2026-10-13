@@ -37,7 +37,7 @@ from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveA
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult
 from monika.domain.risk.risk_gate import RiskGate
 from monika.infrastructure.infra.notifier import AgentNotifier
-from monika.domain.execution.state_machine import OrderStateMachine
+from monika.application.execution.service.order_lifecycle_service import OrderLifecycleService
 
 
 def get_session(*args, **kwargs):
@@ -579,7 +579,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                         f"[Recovery] In-flight order {order.client_order_id} ({order.symbol}) "
                         f"MATCHED broker position ticket={ticket} price={fill_price}. Settling as FILLED."
                     )
-                    await OrderStateMachine.transition_order_state(
+                    await OrderLifecycleService.transition_order_state(
                         session=session,
                         order=order,
                         new_status=OrderStatus.FILLED,
@@ -670,7 +670,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                             f"[Recovery] In-flight order {order.client_order_id} ({order.symbol}) "
                             f"NOT found at broker. Marking as INTERRUPTED (replay_policy='never')."
                         )
-                        await OrderStateMachine.transition_order_state(
+                        await OrderLifecycleService.transition_order_state(
                             session=session,
                             order=order,
                             new_status=OrderStatus.INTERRUPTED,

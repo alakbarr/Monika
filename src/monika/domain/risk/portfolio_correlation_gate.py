@@ -68,9 +68,10 @@ async def filter_correlated_proposals(
     open_positions: List[Any] = []
     if session is not None:
         try:
-            from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
-            repo = SqlAlchemyRiskRepository(session=session)
-            open_positions = await repo.get_open_positions(is_paper=False, session=session)
+            from monika.domain.risk.ports import get_default_risk_data_provider
+            repo = get_default_risk_data_provider(session=session)
+            if repo is not None:
+                open_positions = await repo.get_open_positions(is_paper=False, session=session)
         except Exception as e:
             logger.warning(f"Correlation Gate: Failed to query open positions from repository: {e}")
 

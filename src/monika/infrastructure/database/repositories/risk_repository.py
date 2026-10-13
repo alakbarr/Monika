@@ -21,12 +21,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from monika.domain.risk.ports import RiskDataProviderProtocol
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import (
+    EconomicCalendar,
     EquityDrawdownSnapshot,
     Order,
     PaperTradeRecord,
     Position,
     PriceOHLCV,
+    RiskState,
     SystemConfig,
+    TimesFMForecast,
     TradeOutcome,
     UserPreference,
     VIXData,
@@ -333,3 +336,266 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
             else:
                 break
         return streak
+
+    async def get_economic_calendar_events(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        currencies: Optional[List[str]] = None,
+        session: Optional[Any] = None,
+    ) -> List[Dict[str, Any]]:
+        sess: Optional[AsyncSession] = session or self.session
+        if sess is not None:
+            return await self._query_calendar_events(sess, start_time, end_time, currencies)
+        async with get_session() as new_session:
+            return await self._query_calendar_events(new_session, start_time, end_time, currencies)
+
+    async def _query_calendar_events(
+        self,
+        session: AsyncSession,
+        start_time: datetime,
+        end_time: datetime,
+        currencies: Optional[List[str]],
+    ) -> List[Dict[str, Any]]:
+        stmt = (
+            select(EconomicCalendar)
+            .where(EconomicCalendar.event_time >= start_time, EconomicCalendar.event_time <= end_time)
+            .order_by(EconomicCalendar.event_time.asc())
+        )
+        if currencies:
+            curr_upper = [c.upper() for c in currencies]
+            stmt = stmt.where(EconomicCalendar.currency.in_(curr_upper))
+        res = await session.execute(stmt)
+        events: List[Dict[str, Any]] = []
+        for row in res.scalars().all():
+            events.append({
+                "id": row.id,
+                "title": getattr(row, "event_name", None) or getattr(row, "title", "") or "",
+                "currency": row.currency,
+                "impact": row.impact,
+                "event_time": row.event_time,
+                "forecast": row.forecast,
+                "previous": row.previous,
+            })
+        return events
+
+    async def get_latest_timesfm_forecast(
+        self,
+        symbol: str,
+        timeframe: str = "H1",
+        max_age_hours: float = 8.0,
+        session: Optional[Any] = None,
+    ) -> Optional[Dict[str, Any]]:
+        sess: Optional[AsyncSession] = session or self.session
+        if sess is not None:
+            return await self._query_timesfm_forecast(sess, symbol, timeframe, max_age_hours)
+        async with get_session() as new_session:
+            return await self._query_timesfm_forecast(new_session, symbol, timeframe, max_age_hours)
+
+    async def _query_timesfm_forecast(
+        self,
+        session: AsyncSession,
+        symbol: str,
+        timeframe: str,
+        max_age_hours: float,
+    ) -> Optional[Dict[str, Any]]:
+        import json
+        from datetime import timedelta
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+        stmt = (
+            select(TimesFMForecast)
+            .where(TimesFMForecast.symbol == symbol, TimesFMForecast.timeframe == timeframe)
+            .where(TimesFMForecast.generated_at >= cutoff)
+            .order_by(desc(TimesFMForecast.generated_at))
+            .limit(1)
+        )
+        res = await session.execute(stmt)
+        rec = res.scalar_one_or_none()
+        if rec and rec.quantiles_json:
+            try:
+                return json.loads(rec.quantiles_json)
+            except Exception:
+                return None
+        return None
+
+    async def get_latest_risk_state(
+        self,
+        session: Optional[Any] = None,
+    ) -> Optional[Dict[str, Any]]:
+        sess: Optional[AsyncSession] = session or self.session
+        if sess is not None:
+            return await self._query_risk_state(sess)
+        async with get_session() as new_session:
+            return await self._query_risk_state(new_session)
+
+    async def _query_risk_state(self, session: AsyncSession) -> Optional[Dict[str, Any]]:
+        stmt = select(RiskState).order_by(desc(RiskState.date)).limit(1)
+        res = await session.execute(stmt)
+        st = res.scalar_one_or_none()
+        if not st:
+            return None
+        return {
+            "id": getattr(st, "id", None),
+            "date": getattr(st, "date", None),
+            "trading_paused": getattr(st, "trading_paused", False),
+            "circuit_breaker_active": getattr(st, "circuit_breaker_active", False),
+            "daily_drawdown_pct": getattr(st, "daily_drawdown_pct", 0.0),
+            "active_positions_count": getattr(st, "active_positions_count", 0),
+            "loss_streak_count": getattr(st, "loss_streak_count", 0),
+        }
+
+    async def record_risk_state(
+        self,
+        payload: Dict[str, Any],
+        session: Optional[Any] = None,
+    ) -> None:
+        sess: Optional[AsyncSession] = session or self.session
+        if sess is not None:
+            await self._insert_or_update_risk_state(sess, payload)
+        else:
+            async with get_session() as new_session:
+                await self._insert_or_update_risk_state(new_session, payload)
+                await new_session.commit()
+
+    async def _insert_or_update_risk_state(
+        self,
+        session: AsyncSession,
+        payload: Dict[str, Any],
+    ) -> None:
+        now_date = payload.get("date") or datetime.now(timezone.utc)
+        stmt = select(RiskState).order_by(desc(RiskState.date)).limit(1)
+        res = await session.execute(stmt)
+        existing = res.scalar_one_or_none()
+        if existing:
+            for k, v in payload.items():
+                if hasattr(existing, k) and k != "id":
+                    setattr(existing, k, v)
+        else:
+            state = RiskState(
+                date=now_date,
+                **{k: v for k, v in payload.items() if hasattr(RiskState, k) and k not in ("id", "date")}
+            )
+            session.add(state)
+        await session.flush()
+
+    async def set_system_config_value(
+        self,
+        key: str,
+        value: Any,
+        session: Optional[Any] = None,
+    ) -> None:
+        sess: Optional[AsyncSession] = session or self.session
+        if sess is not None:
+            await self._set_sys_config(sess, key, value)
+        else:
+            async with get_session() as new_session:
+                await self._set_sys_config(new_session, key, value)
+                await new_session.commit()
+
+    async def _set_sys_config(self, session: AsyncSession, key: str, value: Any) -> None:
+        stmt = select(SystemConfig).where(SystemConfig.key == key)
+        res = await session.execute(stmt)
+        cfg = res.scalar_one_or_none()
+        if cfg:
+            cfg.value = value
+            cfg.updated_at = datetime.now(timezone.utc)
+        else:
+            cfg = SystemConfig(key=key, value=value, updated_at=datetime.now(timezone.utc))
+            session.add(cfg)
+        await session.flush()
+
+    async def get_conflicting_order(
+        self,
+        symbol: str,
+        session: Optional[Any] = None,
+    ) -> Optional[Dict[str, Any]]:
+        sess: Optional[AsyncSession] = session or self.session
+        if sess is not None:
+            return await self._query_conflicting_order(sess, symbol)
+        async with get_session() as new_session:
+            return await self._query_conflicting_order(new_session, symbol)
+
+    async def _query_conflicting_order(self, session: AsyncSession, symbol: str) -> Optional[Dict[str, Any]]:
+        stmt = (
+            select(Order)
+            .where(Order.symbol == symbol.upper().strip())
+            .where(Order.status.in_(["pending_submit", "intent_committed", "submitted"]))
+            .limit(1)
+        )
+        res = await session.execute(stmt)
+        ord_row = res.scalar_one_or_none()
+        if not ord_row:
+            return None
+        return {
+            "id": ord_row.id,
+            "symbol": ord_row.symbol,
+            "status": str(ord_row.status),
+            "direction": ord_row.direction,
+            "volume": float(ord_row.requested_volume),
+        }
+
+    async def get_recent_stop_losses(
+        self,
+        symbol: str,
+        window_minutes: int = 60,
+        session: Optional[Any] = None,
+    ) -> int:
+        sess: Optional[AsyncSession] = session or self.session
+        if sess is not None:
+            return await self._query_recent_stop_losses(sess, symbol, window_minutes)
+        async with get_session() as new_session:
+            return await self._query_recent_stop_losses(new_session, symbol, window_minutes)
+
+    async def _query_recent_stop_losses(self, session: AsyncSession, symbol: str, window_minutes: int) -> int:
+        from datetime import timedelta
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
+        stmt = (
+            select(func.count(TradeOutcome.id))
+            .where(TradeOutcome.symbol == symbol.upper().strip())
+            .where(TradeOutcome.closed_at >= cutoff)
+            .where(TradeOutcome.exit_reason.ilike("%sl%"))
+        )
+        res = await session.execute(stmt)
+        return int(res.scalar() or 0)
+
+    async def get_symbol_closes(
+        self,
+        symbols: List[str],
+        timeframe: str = "H1",
+        limit: int = 100,
+        session: Optional[Any] = None,
+    ) -> Dict[str, List[float]]:
+        sess: Optional[AsyncSession] = session or self.session
+        if sess is not None:
+            return await self._query_symbol_closes(sess, symbols, timeframe, limit)
+        async with get_session() as new_session:
+            return await self._query_symbol_closes(new_session, symbols, timeframe, limit)
+
+    async def _query_symbol_closes(
+        self,
+        session: AsyncSession,
+        symbols: List[str],
+        timeframe: str,
+        limit: int,
+    ) -> Dict[str, List[float]]:
+        result: Dict[str, List[float]] = {}
+        for sym in symbols:
+            stmt = (
+                select(PriceOHLCV.close)
+                .where(PriceOHLCV.symbol == sym.upper().strip(), PriceOHLCV.timeframe == timeframe)
+                .order_by(desc(PriceOHLCV.timestamp))
+                .limit(limit)
+            )
+            res = await session.execute(stmt)
+            closes = [float(c) for c in reversed(res.scalars().all())]
+            result[sym] = closes
+        return result
+
+
+# Auto-register concrete repository with domain risk port
+from monika.domain.risk.ports import register_risk_data_provider_factory
+
+register_risk_data_provider_factory(
+    lambda session=None, settings=None: SqlAlchemyRiskRepository(session=session, settings=settings)
+)
+

@@ -222,10 +222,16 @@ class PositionSizer:
 
         # TimesFM 3.0 Dispersion / Tail-Risk Sizing Adjustment
         try:
-            from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
+            from monika.domain.risk.ports import get_default_risk_data_provider
             from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
-            tfm_engine = TimesFMEngine(self.settings)
-            tfm_fc = await tfm_engine.get_latest_forecast(session, symbol, timeframe='H1', max_age_hours=8.0, as_of=as_of)
+            provider = get_default_risk_data_provider(session=session)
+            tfm_fc = await provider.get_latest_timesfm_forecast(
+                symbol=symbol,
+                timeframe='H1',
+                max_age_hours=8.0,
+                as_of=as_of,
+                session=session
+            )
             if tfm_fc:
                 vol_ratio = float(tfm_fc.get('volatility_expansion_ratio', 1.0))
                 if vol_ratio >= 1.40:
@@ -253,8 +259,8 @@ class PositionSizer:
             paper_cfg = getattr(self, "settings", {}).get("trading", {}).get("paper_trading", {}) if isinstance(getattr(self, "settings", None), dict) else {}
             streak_policy = paper_cfg.get("streak_loss_policy", "warn_and_scale")
             if streak_policy == "warn_and_scale":
-                from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
-                repo = SqlAlchemyRiskRepository(session=session)
+                from monika.domain.risk.ports import get_default_risk_data_provider
+                repo = get_default_risk_data_provider(session=session)
                 streak_count = await repo.get_loss_streak(is_paper=True, session=session)
                 if streak_count >= 3:
                     scale_mult = float(paper_cfg.get("streak_risk_scale_factor", 0.5))
@@ -265,8 +271,8 @@ class PositionSizer:
 
         # Turnover-Aware Churn Penalty: Dampen sizing if recent trades indicate high churn
         try:
-            from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
-            repo = SqlAlchemyRiskRepository(session=session)
+            from monika.domain.risk.ports import get_default_risk_data_provider
+            repo = get_default_risk_data_provider(session=session)
             recent_count = await repo.get_daily_trades_count(symbol=symbol, is_paper=False, session=session)
             if recent_count >= 3:
                 churn_mult = max(0.4, 1.0 / (1.0 + 0.15 * float(recent_count - 2)))
@@ -812,8 +818,8 @@ class PositionSizer:
             
             # Update USD-base pip value berdasarkan harga terkini dari DB
             if symbol in ("USDJPY", "USDCAD", "USDCHF"):
-                from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
-                repo = SqlAlchemyRiskRepository(session=session)
+                from monika.domain.risk.ports import get_default_risk_data_provider
+                repo = get_default_risk_data_provider(session=session)
                 bars = await repo.get_recent_price_bars(symbol=symbol, timeframe="H4", limit=1, session=session)
                 if bars and bars[-1].get("close", 0) > 0:
                     dynamic_pip_value = (spec.contract_size * spec.pip_size) / float(bars[-1]["close"])
@@ -967,8 +973,11 @@ async def calculate_lot_size(
 
     if mt5_client is None and settings:
         try:
-            from monika.infrastructure.brokers.mt5_client import get_mt5_client
-            mt5_client = get_mt5_client(settings)
+            import importlib
+            broker_mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
+            get_client_fn = getattr(broker_mod, "get_mt5_client", None)
+            if callable(get_client_fn):
+                mt5_client = get_client_fn(settings)
         except Exception:
             mt5_client = None
 
