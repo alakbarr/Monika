@@ -82,9 +82,6 @@ class TestPositionSizing:
 
     def test_mt5_live_spec(self, settings, monkeypatch):
         mock_mt5_client = MagicMock()
-        sizer = PositionSizer(settings, mt5_client=mock_mt5_client)
-
-        mock_mt5 = MagicMock()
         mock_info = MagicMock()
         mock_info.digits = 5
         mock_info.point = 0.00001
@@ -95,11 +92,9 @@ class TestPositionSizing:
         mock_info.volume_max = 100.0
         mock_info.volume_step = 0.01
         mock_info.trade_stops_level = 10
-        mock_mt5.symbol_info.return_value = mock_info
+        mock_mt5_client.symbol_info.return_value = mock_info
 
-        import sys
-
-        sys.modules["MetaTrader5"] = mock_mt5
+        sizer = PositionSizer(settings, mt5_client=mock_mt5_client)
 
         res = sizer._get_instrument_spec("TESTEURUSD")
         assert res.symbol == "TESTEURUSD"

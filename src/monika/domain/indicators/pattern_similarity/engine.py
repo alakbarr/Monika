@@ -15,8 +15,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-from sqlalchemy import desc, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from .context_scorer import ContextScorer
 from .context_verifier import PatternContextVerifier
@@ -45,7 +43,7 @@ class PatternSimilarityEngine:
     DEFAULT_LOOKBACK_YEARS = {"D1": 4.0, "H4": 3.0, "H1": 1.5}
     TF_WEIGHTS = {"D1": 0.40, "H4": 0.35, "H1": 0.25}
 
-    def __init__(self, session: AsyncSession, settings: Optional[dict] = None):
+    def __init__(self, session: Any, settings: Optional[dict] = None):
         self.session = session
         self.settings = settings or {}
 
@@ -115,8 +113,11 @@ class PatternSimilarityEngine:
         import numpy as np
         from dateutil import parser
         from sqlalchemy import select
+        from monika.domain.models_resolver import resolve_model
 
-        from monika.infrastructure.database.models import PriceOHLCV
+        PriceOHLCV = resolve_model("PriceOHLCV")
+        if not PriceOHLCV:
+            return "Error: Database models unavailable."
 
         try:
             target_dt = parser.parse(target_date_str)
@@ -331,9 +332,11 @@ class PatternSimilarityEngine:
         """Invokes LLM context verifier on top matches."""
         if not llm_client:
             try:
-                from monika.infrastructure.providers.llm_factory import get_client_for_task
-
-                llm_client = get_client_for_task("pattern_context_verifier", self.settings)
+                import importlib
+                mod = importlib.import_module("monika.infrastructure.providers.llm_factory")
+                get_client = getattr(mod, "get_client_for_task", None)
+                if get_client:
+                    llm_client = get_client("pattern_context_verifier", self.settings)
             except Exception:
                 return
 
@@ -355,7 +358,12 @@ class PatternSimilarityEngine:
 
     async def _fetch_recent_bars(self, symbol: str, timeframe: str, count: int) -> Optional[np.ndarray]:
         """Fetches recent closed bars from DB or MT5."""
-        from monika.infrastructure.database.models import PriceOHLCV
+        from sqlalchemy import desc, select
+        from monika.domain.models_resolver import resolve_model
+
+        PriceOHLCV = resolve_model("PriceOHLCV")
+        if not PriceOHLCV:
+            return None
 
         stmt = (
             select(PriceOHLCV)
@@ -379,7 +387,12 @@ class PatternSimilarityEngine:
 
     async def _fetch_historical_bars(self, symbol: str, timeframe: str, lookback_years: float) -> Optional[np.ndarray]:
         """Fetches historical price bars up to lookback_years."""
-        from monika.infrastructure.database.models import PriceOHLCV
+        from sqlalchemy import select
+        from monika.domain.models_resolver import resolve_model
+
+        PriceOHLCV = resolve_model("PriceOHLCV")
+        if not PriceOHLCV:
+            return None
 
         since = datetime.now(timezone.utc) - timedelta(days=int(lookback_years * 365))
         stmt = (

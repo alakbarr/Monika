@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import monika.core.primitives.clock as clock
 from monika.application.execution.effect_gate import AbortRequested
 from monika.core.validation.data_validator import is_spread_acceptable
-from monika.domain.execution.base import _ExecutionServiceMixinBase
+from monika.application.execution.service.base import _ExecutionServiceMixinBase
 from monika.domain.execution.order_creator import OrderCreator
 from monika.domain.execution.sizing_calculator import SizingCalculator
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult, get_instrument_spec

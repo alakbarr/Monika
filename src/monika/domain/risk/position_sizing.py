@@ -14,12 +14,13 @@ Semua perhitungan bersifat deterministik (tanpa AI) dan disimpan di orders_log.
 Menggunakan fallback tabel instrumen jika MT5 tidak aktif.
 """
 
+import inspect
 import logging
 import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone, UTC
 from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import monika.core.primitives.clock as clock
 
@@ -113,18 +114,27 @@ class PositionSizer:
     def update_usdjpy_cache(cls, rate: float):
         cls._usdjpy_rate_cache = {"rate": rate, "ts": datetime.now(UTC)}
 
-    async def _get_regime_size_multiplier(self, session, symbol: str, as_of: datetime | None = None) -> float:
+    async def _get_regime_size_multiplier(
+        self, session, symbol: str, as_of: datetime | None = None, override_mult: float | None = None
+    ) -> float:
+        if override_mult is not None:
+            return float(override_mult)
         try:
-            from monika.application.analysis.calculators.regime_classifier import classify_market_regime
+            from monika.domain.risk.ports import get_default_regime_classifier
 
-            regime = await classify_market_regime(session, symbol, self.settings, as_of=as_of)
-            mult = regime.get("size_multiplier", 1.0)
-            if mult < 1.0:
-                logger.info(
-                    f"[{symbol}] Regime-based size reduction: {mult:.2f}x "
-                    f"(regime={regime['regime']}, quality={regime['composite_quality']:.2f})"
-                )
-            return mult
+            classifier_fn: Callable[..., Any] | None = get_default_regime_classifier()
+            if classifier_fn is not None and callable(classifier_fn):
+                res: Any = classifier_fn(session, symbol, self.settings, as_of=as_of)
+                regime = (await res) if inspect.isawaitable(res) else res
+                if isinstance(regime, dict):
+                    mult = float(regime.get("size_multiplier", 1.0))
+                    if mult < 1.0:
+                        logger.info(
+                            f"[{symbol}] Regime-based size reduction: {mult:.2f}x "
+                            f"(regime={regime.get('regime')}, quality={float(regime.get('composite_quality', 1.0)):.2f})"
+                        )
+                    return mult
+            return 1.0
         except Exception as e:
             logger.debug(f"Regime classification failed for sizing, defaulting to 1.0: {e}")
             return 1.0
@@ -241,12 +251,18 @@ class PositionSizer:
 
         # TimesFM 3.0 Dispersion / Tail-Risk Sizing Adjustment
         try:
-            from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
-            from monika.domain.risk.ports import get_default_risk_data_provider
+            from monika.domain.risk.ports import (
+                get_default_risk_data_provider,
+                get_default_timesfm_alpha_calculator,
+            )
 
             provider = get_default_risk_data_provider(session=session)
-            tfm_fc = await provider.get_latest_timesfm_forecast(
-                symbol=symbol, timeframe="H1", max_age_hours=8.0, as_of=as_of, session=session
+            tfm_fc = (
+                await provider.get_latest_timesfm_forecast(
+                    symbol=symbol, timeframe="H1", max_age_hours=8.0, as_of=as_of, session=session
+                )
+                if provider
+                else None
             )
             if tfm_fc:
                 vol_ratio = float(tfm_fc.get("volatility_expansion_ratio", 1.0))
@@ -258,11 +274,12 @@ class PositionSizer:
 
                 # Quantile Asymmetry directional skew sizing multiplier
                 quantiles = tfm_fc.get("quantiles", {})
-                if quantiles:
-                    skew_alpha = TimesFMAlphaCalculator.calculate_skew_from_quantiles(
+                tfm_calc = get_default_timesfm_alpha_calculator()
+                if quantiles and tfm_calc is not None:
+                    skew_alpha = tfm_calc.calculate_skew_from_quantiles(
                         quantiles, current_price=entry_price
                     )
-                    skew_mult = TimesFMAlphaCalculator.get_sizing_multiplier(skew_alpha, direction=direction)
+                    skew_mult = tfm_calc.get_sizing_multiplier(skew_alpha, direction=direction)
                     if skew_mult != 1.0:
                         risk_pct *= skew_mult
                         logger.info(
@@ -917,30 +934,51 @@ class PositionSizer:
         return None
 
     def _get_instrument_spec(self, symbol: str) -> InstrumentSpec | None:
-        """Dapatkan spesifikasi instrumen dari MT5 (live) atau gunakan default fallback."""
-        # Try MT5 live data (sync call is OK here — sizing is called from sync context)
+        """Dapatkan spesifikasi instrumen dari broker client (live) atau gunakan default fallback."""
+        # Try live broker client / instrument spec provider (sync call from injected adapter)
         if self._mt5 is not None:
             try:
-                import MetaTrader5 as mt5
+                info: Any = None
+                if hasattr(self._mt5, "symbol_info") and callable(self._mt5.symbol_info):
+                    info = self._mt5.symbol_info(symbol)
+                elif hasattr(self._mt5, "get_symbol_info_sync") and callable(self._mt5.get_symbol_info_sync):
+                    info = self._mt5.get_symbol_info_sync(symbol)
+                elif hasattr(self._mt5, "get_instrument_spec") and callable(self._mt5.get_instrument_spec):
+                    spec = self._mt5.get_instrument_spec(symbol)
+                    if isinstance(spec, InstrumentSpec):
+                        return spec
+                    elif isinstance(spec, dict):
+                        info = spec
 
-                mt5_symbol_info: Any = getattr(mt5, "symbol_info", None)
-                info: Any = mt5_symbol_info(symbol) if callable(mt5_symbol_info) else None
                 if info is not None:
-                    digits = int(getattr(info, "digits", 5))
-                    point = float(getattr(info, "point", 0.00001))
+                    if isinstance(info, dict):
+                        digits = int(info.get("digits", 5))
+                        point = float(info.get("point", 0.00001))
+                        stops_pts = float(info.get("stops_level", 0) or info.get("trade_stops_level", 0) or 0)
+                        tick_size = float(info.get("tick_size", 0.00001) or info.get("trade_tick_size", 0.00001) or 0.00001)
+                        tick_value = float(info.get("tick_value", 1.0) or info.get("trade_tick_value", 1.0) or 1.0)
+                        contract_size = float(
+                            info.get("contract_size", 100_000) or info.get("trade_contract_size", 100_000) or 100_000
+                        )
+                        min_lot = float(info.get("volume_min", 0.01) or 0.01)
+                        max_lot = float(info.get("volume_max", 100.0) or 100.0)
+                        lot_step = float(info.get("volume_step", 0.01) or 0.01)
+                    else:
+                        digits = int(getattr(info, "digits", 5))
+                        point = float(getattr(info, "point", 0.00001))
+                        stops_pts = float(getattr(info, "trade_stops_level", 0) or getattr(info, "stops_level", 0) or 0)
+                        tick_size = float(getattr(info, "trade_tick_size", 0.00001) or getattr(info, "tick_size", 0.00001) or 0.00001)
+                        tick_value = float(getattr(info, "trade_tick_value", 1.0) or getattr(info, "tick_value", 1.0) or 1.0)
+                        contract_size = float(
+                            getattr(info, "trade_contract_size", 100_000) or getattr(info, "contract_size", 100_000) or 100_000
+                        )
+                        min_lot = float(getattr(info, "volume_min", 0.01) or 0.01)
+                        max_lot = float(getattr(info, "volume_max", 100.0) or 100.0)
+                        lot_step = float(getattr(info, "volume_step", 0.01) or 0.01)
+
                     point_multiplier = 10 if digits in (5, 3) else 1
                     pip_size = point * point_multiplier
-
-                    # stops_level is usually in points
-                    stops_pts = float(getattr(info, "trade_stops_level", 0) or 0)
                     stops_pips = (stops_pts * point) / pip_size if stops_pts > 0 and pip_size > 0 else 0.0
-
-                    tick_size = float(getattr(info, "trade_tick_size", 0.00001) or 0.00001)
-                    tick_value = float(getattr(info, "trade_tick_value", 1.0) or 1.0)
-                    contract_size = float(getattr(info, "trade_contract_size", 100_000) or 100_000)
-                    min_lot = float(getattr(info, "volume_min", 0.01) or 0.01)
-                    max_lot = float(getattr(info, "volume_max", 100.0) or 100.0)
-                    lot_step = float(getattr(info, "volume_step", 0.01) or 0.01)
 
                     spec = InstrumentSpec(
                         symbol=symbol,
@@ -956,7 +994,7 @@ class PositionSizer:
                     )
                     return spec
             except Exception as e:
-                logger.debug(f"MT5 symbol info unavailable for {symbol}: {e}")
+                logger.debug(f"Broker symbol info unavailable for {symbol}: {e}")
 
         # Fallback
         if symbol in DEFAULT_INSTRUMENTS:
@@ -1071,15 +1109,9 @@ async def calculate_lot_size(
         direction = "buy" if stop_loss < entry_price else "sell"
 
     if mt5_client is None and settings:
-        try:
-            import importlib
+        from monika.domain.risk.ports import get_default_broker_client
 
-            broker_mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
-            get_client_fn = getattr(broker_mod, "get_mt5_client", None)
-            if callable(get_client_fn):
-                mt5_client = get_client_fn(settings)
-        except Exception:
-            mt5_client = None
+        mt5_client = get_default_broker_client(settings)
 
     equity = account_equity
     if equity is None or equity <= 0:

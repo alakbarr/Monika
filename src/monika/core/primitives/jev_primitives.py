@@ -1074,9 +1074,13 @@ async def classify_news_batch_with_jev(
     import unittest.mock as _mock
 
     try:
-        from monika.infrastructure.database.adapters import extract_currency_tags
-    except ImportError:
-        from monika.infrastructure.database.adapters import extract_currency_tags
+        import importlib
+
+        adapters_mod = importlib.import_module("monika.infrastructure.database.adapters")
+        extract_currency_tags = getattr(adapters_mod, "extract_currency_tags")
+    except Exception:
+        def extract_currency_tags(text: str) -> str | None:
+            return None
 
     calendar_priors = calendar_priors or {}
 

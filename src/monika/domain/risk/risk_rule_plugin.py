@@ -15,9 +15,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from monika.application.harness.contract import PluginCategory, PluginMetadata, PluginOrigin, TradingPlugin
+from monika.core.contracts.plugin import PluginCategory, PluginMetadata, PluginOrigin, TradingPlugin
 from monika.domain.risk.position_sizing import SizingResult
 
 logger = logging.getLogger("TradingAgent.Risk.Plugin")
@@ -42,7 +40,7 @@ class IRiskRulePlugin(TradingPlugin, ABC):
     @abstractmethod
     async def validate_pre_order(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         direction: str,
         sizing: SizingResult,
@@ -64,7 +62,7 @@ class IDynamicSizingPlugin(TradingPlugin, ABC):
     @abstractmethod
     async def adjust_sizing(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         base_lots: float,
         account_equity: float,
@@ -83,7 +81,7 @@ class IPostTradeInspectionPlugin(TradingPlugin, ABC):
     @abstractmethod
     async def inspect_post_trade(
         self,
-        session: AsyncSession,
+        session: Any,
         deal_data: dict[str, Any],
     ) -> None:
         """Process post-trade execution metrics and audit fills."""
@@ -138,7 +136,7 @@ class ModularRiskRegistry:
 
     async def evaluate_modular_rules(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         direction: str,
         sizing: SizingResult,
@@ -187,7 +185,7 @@ class ModularRiskRegistry:
 
     async def apply_dynamic_sizing(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         base_lots: float,
         account_equity: float,

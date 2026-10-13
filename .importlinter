@@ -9,7 +9,7 @@ source_modules =
 forbidden_modules =
     monika.interfaces
 ignore_imports =
-    monika.infrastructure.infra.notifier -> monika.interfaces.telegram.sanitizer
+    monika.infrastructure.notifications.telegram_notifier -> monika.interfaces.telegram.sanitizer
     monika.core.telemetry.doctor -> monika.interfaces.cli.doctor
 
 [importlinter:contract:2]
@@ -19,5 +19,5 @@ source_modules =
     monika.domain
 forbidden_modules =
     monika.interfaces
-ignore_imports =
-    monika.infrastructure.infra.notifier -> monika.interfaces.telegram.sanitizer
+    monika.application
+    monika.infrastructure

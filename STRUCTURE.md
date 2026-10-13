@@ -1048,6 +1048,7 @@ Monika/
 │       │   │   ├── health_check.py
 │       │   │   └── service
 │       │   │       ├── __init__.py
+│       │   │       ├── base.py
 │       │   │       ├── emergency_manager.py
 │       │   │       ├── executors
 │       │   │       │   ├── __init__.py
@@ -1168,6 +1169,9 @@ Monika/
 │       │   ├── __init__.py
 │       │   ├── exceptions.py
 │       │   ├── paths.py
+│       │   ├── contracts
+│       │   │   ├── __init__.py
+│       │   │   └── plugin.py
 │       │   ├── analytics
 │       │   │   ├── __init__.py
 │       │   │   ├── adversarial_outcome_tracker.py
@@ -1283,6 +1287,7 @@ Monika/
 │       │       └── trading_cycle_event_log.py
 │       ├── domain
 │       │   ├── __init__.py
+│       │   ├── models_resolver.py
 │       │   ├── entities
 │       │   │   ├── __init__.py
 │       │   │   ├── order.py

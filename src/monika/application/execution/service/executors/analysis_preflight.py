@@ -23,7 +23,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
-from monika.domain.execution.base import _ExecutionServiceMixinBase
+from monika.application.execution.service.base import _ExecutionServiceMixinBase
 from monika.domain.execution.sizing_calculator import SizingCalculator
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult
 from monika.infrastructure.brokers.broker_adapter import MT5LiveAdapter

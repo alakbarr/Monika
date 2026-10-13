@@ -21,7 +21,7 @@ from sqlalchemy import desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.execution.effect_gate import AbortRequested
-from monika.domain.execution.base import _ExecutionServiceMixinBase
+from monika.application.execution.service.base import _ExecutionServiceMixinBase
 from monika.domain.execution.order_creator import OrderCreator
 from monika.domain.execution.sizing_calculator import SizingCalculator
 from monika.domain.risk.position_sizing import PositionSizer

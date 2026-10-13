@@ -12,7 +12,7 @@ from monika.application.execution.service.order_lifecycle_service import OrderLi
 from monika.application.execution.service.position_synchronizer import PositionSynchronizerMixin
 from monika.application.execution.service.reconciliation import ReconciliationHelper
 from monika.application.execution.service.risk_evaluator import RiskEvaluatorMixin
-from monika.domain.execution.base import _ExecutionServiceMixinBase
+from monika.application.execution.service.base import _ExecutionServiceMixinBase
 from monika.domain.execution.order_creator import OrderCreator
 from monika.domain.execution.sizing_calculator import SizingCalculator
 from monika.domain.execution.state_machine import OrderStateMachine

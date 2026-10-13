@@ -15,9 +15,6 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, List, Optional
 
-from sqlalchemy import desc, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from .models import ContextVerdict, MarketContext, MultiTimeframeScreeningResult, PatternMatch
 
 logger = logging.getLogger("TradingAgent.PatternContextVerifier")
@@ -71,7 +68,7 @@ INSTRUCTIONS:
         symbol: str,
         result: MultiTimeframeScreeningResult,
         current_context: MarketContext,
-        session: AsyncSession,
+        session: Any,
         llm_client: Any,
         web_search_enabled: bool = True,
         limit: int = 3,
@@ -111,7 +108,7 @@ INSTRUCTIONS:
         timeframe: str,
         symbol: str,
         current_context: MarketContext,
-        session: AsyncSession,
+        session: Any,
         llm_client: Any,
         web_search_enabled: bool,
     ) -> ContextVerdict:
@@ -188,10 +185,17 @@ INSTRUCTIONS:
                 adjustment_factor=0.75,
             )
 
-    async def _get_chronicle_text(self, session: AsyncSession, match_dt: datetime) -> str:
+    async def _get_chronicle_text(self, session: Any, match_dt: datetime) -> str:
         """Pulls recorded chronicle headlines near match date."""
         try:
-            from monika.infrastructure.database.models import MarketChronicle
+            import importlib
+            sa = importlib.import_module("sqlalchemy")
+            select = sa.select
+            desc = sa.desc
+            db_models = importlib.import_module("monika.infrastructure.database.models")
+            MarketChronicle = getattr(db_models, "MarketChronicle", None)
+            if not MarketChronicle:
+                return ""
 
             window_start = match_dt - timedelta(days=10)
             window_end = match_dt + timedelta(days=10)
@@ -211,13 +215,21 @@ INSTRUCTIONS:
             pass
         return ""
 
-    async def _search_and_cache_chronicle(self, session: AsyncSession, symbol: str, match_dt: datetime) -> str:
+    async def _search_and_cache_chronicle(self, session: Any, symbol: str, match_dt: datetime) -> str:
         """On-demand web search fallback with self-caching to MarketChronicle."""
         try:
-            from monika.infrastructure.data_ingestion.sources.web_search import get_web_search_service
-            from monika.infrastructure.database.models import MarketChronicle
+            import importlib
+            search_service = None
+            try:
+                mod = importlib.import_module("monika.infrastructure.data_ingestion.sources.web_search")
+                get_svc = getattr(mod, "get_web_search_service", None)
+                if get_svc:
+                    search_service = get_svc(self.settings)
+            except Exception:
+                pass
+            if not search_service:
+                return ""
 
-            search_service = get_web_search_service(self.settings)
             query = f"{symbol} major financial news market drivers {match_dt.strftime('%B %Y')}"
 
             search_res = await asyncio.wait_for(
@@ -237,18 +249,27 @@ INSTRUCTIONS:
 
             if joined:
                 # Save permanently so this date is never queried again
-                entry = MarketChronicle(
-                    event_date=match_dt,
-                    category="policy_change",
-                    headline=f"Historical Archive ({match_dt.strftime('%Y-%m')}): {joined[:250]}",
-                    narrative=f"Auto-curated for pattern similarity context on {symbol}: {joined}",
-                    currencies_affected=symbol[:3],
-                    severity="medium",
-                    is_ongoing=False,
-                    created_at=datetime.now(timezone.utc),
-                )
-                session.add(entry)
-                await session.commit()
+                MarketChronicle: Any = None
+                try:
+                    import importlib
+                    db_models = importlib.import_module("monika.infrastructure.database.models")
+                    MarketChronicle = getattr(db_models, "MarketChronicle", None)
+                except Exception:
+                    pass
+
+                if MarketChronicle:
+                    entry = MarketChronicle(
+                        event_date=match_dt,
+                        category="policy_change",
+                        headline=f"Historical Archive ({match_dt.strftime('%Y-%m')}): {joined[:250]}",
+                        narrative=f"Auto-curated for pattern similarity context on {symbol}: {joined}",
+                        currencies_affected=symbol[:3],
+                        severity="medium",
+                        is_ongoing=False,
+                        created_at=datetime.now(timezone.utc),
+                    )
+                    session.add(entry)
+                    await session.commit()
                 return joined
         except Exception as e:
             logger.debug(f"Web search chronicle fallback skipped: {e}")

@@ -1,9 +1,8 @@
+from __future__ import annotations
+
 import logging
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from monika.infrastructure.database.models import DXYData, PriceOHLCV
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -16,47 +15,72 @@ _DXY_PROXY_WEIGHTS = {"EURUSD": 0.686, "USDJPY": 0.162, "GBPUSD": 0.152}
 _DXY_PROXY_INVERT = {"EURUSD": True, "GBPUSD": True, "USDJPY": False}
 
 
-from datetime import datetime
-from typing import Optional
-
-
 async def _get_pct_change(
-    session: AsyncSession, symbol: str, timeframe: str, lookback_bars: int, as_of: Optional[datetime] = None
+    session: Any,
+    symbol: str,
+    timeframe: str,
+    lookback_bars: int,
+    as_of: Optional[datetime] = None,
 ) -> float | None:
-    stmt = select(PriceOHLCV.close).where(PriceOHLCV.symbol == symbol).where(PriceOHLCV.timeframe == timeframe)
-    if as_of:
-        stmt = stmt.where(PriceOHLCV.timestamp <= as_of)
-    stmt = stmt.order_by(PriceOHLCV.timestamp.desc()).limit(lookback_bars)
-    rows = (await session.execute(stmt)).scalars().all()
-    if len(rows) < 2:
+    try:
+        from monika.domain.risk.ports import get_default_risk_data_provider
+
+        provider = get_default_risk_data_provider(session=session)
+        if provider:
+            bars = await provider.get_recent_price_bars(
+                symbol=symbol, timeframe=timeframe, limit=lookback_bars, session=session
+            )
+            if bars and len(bars) >= 2:
+                recent = float(bars[-1].get("close", 0))
+                old = float(bars[0].get("close", 0))
+                if old > 0:
+                    return (recent - old) / old * 100
+    except Exception:
+        pass
+
+    if session is None:
         return None
-    recent = rows[0]
-    old = rows[-1]
-    if not old:
+
+    try:
+        import importlib
+
+        mod = importlib.import_module("monika.infrastructure.database.models")
+        PriceOHLCV = getattr(mod, "PriceOHLCV")
+        from sqlalchemy import select
+
+        stmt = select(PriceOHLCV.close).where(PriceOHLCV.symbol == symbol).where(PriceOHLCV.timeframe == timeframe)
+        if as_of:
+            stmt = stmt.where(PriceOHLCV.timestamp <= as_of)
+        stmt = stmt.order_by(PriceOHLCV.timestamp.desc()).limit(lookback_bars)
+        rows = (await session.execute(stmt)).scalars().all()
+        if len(rows) < 2:
+            return None
+        recent = rows[0]
+        old = rows[-1]
+        if not old:
+            return None
+        return float((recent - old) / old * 100)
+    except Exception:
         return None
-    return (recent - old) / old * 100
 
 
 async def compute_usd_strength_proxy(
-    session: AsyncSession, lookback_bars: int = 20, timeframe: str = "H4", as_of: Optional[datetime] = None
-) -> dict:
+    session: Any = None,
+    lookback_bars: int = 20,
+    timeframe: str = "H4",
+    as_of: Optional[datetime] = None,
+) -> dict[str, Any]:
     """
     Menghitung proxy kekuatan USD dari basket EURUSD/GBPUSD/USDJPY pada
     resolusi H4/H1 (sesuai `timeframe` yang diminta caller), karena tabel
     DXYData di sistem ini hanya diperbarui pada resolusi HARIAN (feed
     yfinance D1) sehingga terlalu basi untuk penilaian priced-in/momentum
     intraday di Stage 1 dan Stage 2.
-
-    FIX (P0): implementasi lama mengabaikan parameter `timeframe` sepenuhnya
-    dan hanya membaca DXYData harian, meski dinamai dan dipanggil sebagai
-    "weighted proxy" H4. Fungsi ini sekarang benar-benar menghitung basket
-    berbobot dari data multi-pair pada timeframe yang diminta, dengan
-    fallback ke DXYData harian hanya jika data intraday tidak cukup.
     """
     try:
         weighted_change = 0.0
         total_weight_used = 0.0
-        components = {}
+        components: Dict[str, float] = {}
         for symbol, weight in _DXY_PROXY_WEIGHTS.items():
             pct = await _get_pct_change(session, symbol, timeframe, lookback_bars, as_of=as_of)
             if pct is None:
@@ -67,7 +91,13 @@ async def compute_usd_strength_proxy(
             components[symbol] = round(pct, 4)
         if total_weight_used >= 0.5:
             normalized_change = weighted_change / total_weight_used
-            direction = "strengthening" if normalized_change > 0 else "weakening" if normalized_change < 0 else "flat"
+            direction = (
+                "strengthening"
+                if normalized_change > 0
+                else "weakening"
+                if normalized_change < 0
+                else "flat"
+            )
             return {
                 "weighted_usd_change_pct": round(normalized_change, 4),
                 "direction": direction,
@@ -83,9 +113,24 @@ async def compute_usd_strength_proxy(
     except Exception as e:
         logger.error(f"Error menghitung basket USD strength proxy: {e}. Fallback ke DXYData harian.")
 
+    if session is None:
+        return {
+            "weighted_usd_change_pct": 0.0,
+            "direction": "flat",
+            "method": "dxy_daily_fallback_no_session",
+        }
+
     try:
+        import importlib
+
+        mod = importlib.import_module("monika.infrastructure.database.models")
+        DXYData = getattr(mod, "DXYData")
+        from sqlalchemy import select
+
         rows = (
-            (await session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(lookback_bars))).scalars().all()
+            (await session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(lookback_bars)))
+            .scalars()
+            .all()
         )
         if not rows or len(rows) < 2:
             return {

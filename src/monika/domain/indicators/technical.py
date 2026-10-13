@@ -27,11 +27,9 @@ import ta.momentum
 import ta.trend
 import ta.volatility
 import ta.volume
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
-from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
+from monika.domain.models_resolver import resolve_model
 
 logger = logging.getLogger("TradingAgent.Indicators")
 _WARNED_INSUFFICIENT_BARS: set[str] = set()
@@ -103,7 +101,7 @@ class TechnicalIndicatorCalculator:
         await calc.compute_and_save("XAUUSD", "H1")
     """
 
-    def __init__(self, session: AsyncSession, settings: dict):
+    def __init__(self, session: Any, settings: dict):
         """
         Args:
             session: Async SQLAlchemy session.
@@ -182,6 +180,10 @@ class TechnicalIndicatorCalculator:
         try:
             from monika.domain.indicators.order_flow import OrderFlowEngine
 
+            TechnicalIndicator = resolve_model("TechnicalIndicator")
+            if not TechnicalIndicator:
+                return saved
+
             of_engine = OrderFlowEngine(mt5_client=getattr(self, "mt5_client", None))
             of_snapshot = await of_engine.analyze_order_flow(self.session, symbol, df=df)
             bar_ts = df.index[-1] if not df.empty else clock.now()
@@ -219,9 +221,12 @@ class TechnicalIndicatorCalculator:
                     if hasattr(self.session, "rollback"):
                         try:
                             await self.session.rollback()
-                            from monika.infrastructure.database.safe_ops import _safe_expunge_all
+                            import importlib
 
-                            await _safe_expunge_all(self.session)
+                            safe_ops = importlib.import_module("monika.infrastructure.database.safe_ops")
+                            _safe_expunge_all = getattr(safe_ops, "_safe_expunge_all", None)
+                            if _safe_expunge_all:
+                                await _safe_expunge_all(self.session)
                         except Exception:
                             pass
                     results[key] = 0
@@ -236,6 +241,12 @@ class TechnicalIndicatorCalculator:
     async def _load_ohlcv(self, symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
         """Memuat OHLCV secara descending, lalu dibalik menjadi kronologis untuk kalkulasi."""
         fetch_limit = 1000 if timeframe.upper() in ("D1", "H4") else 500
+        from sqlalchemy import select
+
+        PriceOHLCV = resolve_model("PriceOHLCV")
+        if not PriceOHLCV:
+            return None
+
         result = await self.session.execute(
             select(PriceOHLCV)
             .where(PriceOHLCV.symbol == symbol)
@@ -542,6 +553,12 @@ class TechnicalIndicatorCalculator:
         if len(timestamps) > 100:
             timestamps = timestamps[-100:]
 
+        from sqlalchemy import delete
+
+        TechnicalIndicator = resolve_model("TechnicalIndicator")
+        if not TechnicalIndicator:
+            return 0
+
         await self.session.execute(
             delete(TechnicalIndicator)
             .where(TechnicalIndicator.symbol == symbol)
@@ -572,6 +589,12 @@ class TechnicalIndicatorCalculator:
 
     async def get_latest(self, symbol: str, timeframe: str, indicator_name: str) -> Optional[dict]:
         """Mengambil metrik indikator terbaru untuk suatu symbol/timeframe."""
+        from sqlalchemy import select
+
+        TechnicalIndicator = resolve_model("TechnicalIndicator")
+        if not TechnicalIndicator:
+            return None
+
         result = await self.session.execute(
             select(TechnicalIndicator)
             .where(TechnicalIndicator.symbol == symbol)
@@ -591,6 +614,12 @@ class TechnicalIndicatorCalculator:
         Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta dan arah.
         Berguna untuk ringkasan data yang diumpankan ke agent.
         """
+        from sqlalchemy import select
+
+        TechnicalIndicator = resolve_model("TechnicalIndicator")
+        if not TechnicalIndicator:
+            return {}
+
         recent_ts_result = await self.session.execute(
             select(TechnicalIndicator.timestamp)
             .where(TechnicalIndicator.symbol == symbol)

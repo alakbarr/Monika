@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from monika.application.harness.contract import PluginCategory, PluginMetadata, TradingPlugin
+from monika.core.contracts.plugin import PluginCategory, PluginMetadata, TradingPlugin
 
 
 class ExitReason(str, Enum):

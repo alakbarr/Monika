@@ -15,32 +15,18 @@ import zoneinfo
 from datetime import datetime, timedelta, timezone, UTC
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 import monika.core.primitives.clock as clock
 from monika.domain.market.currency_utils import get_symbol_currencies
 from monika.domain.risk.evaluators.base import _RiskGateMixinBase, resolve_model
 from monika.domain.risk.position_sizing import SizingResult
 
-if TYPE_CHECKING:
-    from monika.infrastructure.database.models import (
-        EconomicCalendar,
-        Position,
-        PriceOHLCV,
-        SystemConfig,
-        TechnicalIndicator,
-        UserPreference,
-        VIXData,
-    )
-else:
-    Position = resolve_model("Position")
-    EconomicCalendar = resolve_model("EconomicCalendar")
-    PriceOHLCV = resolve_model("PriceOHLCV")
-    VIXData = resolve_model("VIXData")
-    UserPreference = resolve_model("UserPreference")
-    TechnicalIndicator = resolve_model("TechnicalIndicator")
-    SystemConfig = resolve_model("SystemConfig")
+Position: Any = resolve_model("Position")
+EconomicCalendar: Any = resolve_model("EconomicCalendar")
+PriceOHLCV: Any = resolve_model("PriceOHLCV")
+VIXData: Any = resolve_model("VIXData")
+UserPreference: Any = resolve_model("UserPreference")
+TechnicalIndicator: Any = resolve_model("TechnicalIndicator")
+SystemConfig: Any = resolve_model("SystemConfig")
 
 logger = logging.getLogger("TradingAgent.RiskGate")
 
@@ -49,13 +35,16 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
     """Market condition, VIX, news event, and liquidity risk validation mixin."""
 
     async def _check_data_freshness(
-        self, session: AsyncSession, symbol: str, as_of: datetime | None = None, is_backtest: bool = False
+        self, session: Any, symbol: str, as_of: datetime | None = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """Tolak order jika data pasar (OHLCV/Indikator) basi atau tidak segar (hard gate)."""
         if is_backtest:
             return True, "backtest_freshness_ok"
         try:
-            from monika.core.validation.data_validator import validate_data_freshness
+            import importlib
+
+            val_mod = importlib.import_module("monika.core.validation.data_validator")
+            validate_data_freshness = getattr(val_mod, "validate_data_freshness")
 
             tfs = (
                 self.settings.get("trading", {}).get("timeframes", ["M15", "H1", "H4", "D1"])
@@ -78,7 +67,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         return True, "flash_crash_not_active"
 
     async def _check_vix_threshold(
-        self, session: AsyncSession, as_of: datetime | None = None, is_backtest: bool = False
+        self, session: Any, as_of: datetime | None = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """Block new positions when VIX exceeds the configured pause threshold."""
         if is_backtest:
@@ -130,7 +119,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         return True, f"VIX={vix_close:.1f} ({vix_str_info} - below threshold {pause_threshold})"
 
     async def assess_weekend_gap_risk(
-        self, session: AsyncSession, symbol: str, as_of: datetime | None = None
+        self, session: Any, symbol: str, as_of: datetime | None = None
     ) -> tuple[bool, str]:
         """Blokir entri saat akhir pekan untuk aset non-24/7 (menghindari risiko gap)."""
         weekend_cfg = self.settings.get("trading", {}).get("weekend_management", {})
@@ -211,7 +200,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
 
     async def _check_news_window(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         as_of: datetime | None = None,
         is_backtest: bool = False,
@@ -222,6 +211,8 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         currencies = get_symbol_currencies(symbol)
         now = as_of or clock.now()
         window = timedelta(minutes=self.news_window_minutes)
+
+        from sqlalchemy import func, select
 
         # 1. Check calendar data freshness via SystemConfig metadata first
         latest_calendar_fetch: datetime | None = None
@@ -358,7 +349,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         return True, f"no high-impact events in window{stale_warning}"
 
     async def _check_schmitt_regime(
-        self, session: AsyncSession, symbol: str, simulated_positions: list | None = None, is_backtest: bool = False
+        self, session: Any, symbol: str, simulated_positions: list | None = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """
         Check systemic correlation regime via Schmitt trigger.
@@ -367,6 +358,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         if is_backtest:
             return True, "schmitt_regime_backtest_exempt"
         try:
+            from sqlalchemy import func, select
             from monika.domain.indicators.regime_detector import RegimeState, get_schmitt_regime_detector
 
             detector = get_schmitt_regime_detector()
@@ -387,7 +379,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
             return False, f"schmitt_regime_check_failed: {e}"
 
     async def _check_vpin_toxicity(
-        self, session: AsyncSession, symbol: str, as_of: datetime | None = None, is_backtest: bool = False
+        self, session: Any, symbol: str, as_of: datetime | None = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """
         Check VPIN order flow toxicity for high-volatility assets (BTCUSD, XAUUSD).
@@ -396,6 +388,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         if is_backtest and as_of is None:
             return True, "vpin_check_backtest_exempt"
         try:
+            from sqlalchemy import select
             from monika.domain.indicators.microstructure import VPIN_SYMBOLS
 
             if symbol.upper() not in VPIN_SYMBOLS:
@@ -425,7 +418,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
 
     async def _check_adv_liquidity(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         sizing: SizingResult,
         as_of: datetime | None = None,
@@ -447,6 +440,8 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
                 )
 
         try:
+            from sqlalchemy import select
+
             cutoff = now - timedelta(days=30)
             stmt = (
                 select(PriceOHLCV.volume)

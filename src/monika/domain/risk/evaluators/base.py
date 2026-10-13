@@ -15,20 +15,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 
 
-def resolve_model(name: str) -> Any:
-    """Dynamic resolver for database models to decouple domain from static infrastructure imports."""
-    import sys
-
-    mod = sys.modules.get("monika.infrastructure.database.models")
-    if mod and hasattr(mod, name):
-        return getattr(mod, name)
-    try:
-        import importlib
-
-        mod = importlib.import_module("monika.infrastructure.database.models")
-        return getattr(mod, name)
-    except Exception:
-        return None
+from monika.domain.models_resolver import resolve_model
 
 
 def get_trading_day_start(settings: dict, now: datetime | None = None) -> datetime:

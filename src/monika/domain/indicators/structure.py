@@ -22,18 +22,8 @@ from typing import Any, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import (
-    FVGZone,
-    LiquidityZone,
-    OrderBlock,
-    PriceOHLCV,
-    SRZone,
-    StructureBreak,
-    SwingPoint,
-)
+from monika.domain.models_resolver import resolve_model
 
 logger = logging.getLogger("TradingAgent.Structure")
 
@@ -104,7 +94,7 @@ class MarketStructureAnalyzer:
         await analyzer.analyze("XAUUSD", "H4")
     """
 
-    def __init__(self, session: AsyncSession, settings: dict):
+    def __init__(self, session: Any, settings: dict):
         """
         Args:
             session: Async SQLAlchemy session.
@@ -143,6 +133,13 @@ class MarketStructureAnalyzer:
                     "order_blocks": 0,
                     "struct_breaks": 0,
                 }
+
+            from sqlalchemy import select
+
+            FVGZone = resolve_model("FVGZone")
+            OrderBlock = resolve_model("OrderBlock")
+            if not FVGZone or not OrderBlock:
+                return {}
 
             # Fetch existing unfilled FVGs as DTOs (decoupled from session/thread)
             raw_fvgs = (
@@ -278,6 +275,13 @@ class MarketStructureAnalyzer:
 
         cutoff = datetime.now(timezone.utc) - timedelta(days=90)
         try:
+            from sqlalchemy import delete
+
+            LiquidityZone = resolve_model("LiquidityZone")
+            SwingPoint = resolve_model("SwingPoint")
+            if not LiquidityZone or not SwingPoint:
+                return
+
             await self.session.execute(
                 delete(SwingPoint)
                 .where(SwingPoint.symbol == symbol)
@@ -299,6 +303,12 @@ class MarketStructureAnalyzer:
 
     async def _load_ohlcv(self, symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
         """Memuat OHLCV dari DB, diurutkan secara kronologis (terlama ke terbaru)."""
+        from sqlalchemy import select
+
+        PriceOHLCV = resolve_model("PriceOHLCV")
+        if not PriceOHLCV:
+            return None
+
         result = await self.session.execute(
             select(PriceOHLCV)
             .where(PriceOHLCV.symbol == symbol)
@@ -851,6 +861,12 @@ class MarketStructureAnalyzer:
         lows: pd.DataFrame,
     ) -> int:
         """Mengganti data swing points lama dengan yang baru."""
+        from sqlalchemy import delete
+
+        SwingPoint = resolve_model("SwingPoint")
+        if not SwingPoint:
+            return 0
+
         await self.session.execute(
             delete(SwingPoint).where(SwingPoint.symbol == symbol).where(SwingPoint.timeframe == timeframe)
         )
@@ -884,6 +900,12 @@ class MarketStructureAnalyzer:
 
     async def _save_sr_zones(self, symbol: str, timeframe: str, zones: list[dict]) -> int:
         """Mengganti S/R zones lama dengan yang baru."""
+        from sqlalchemy import delete
+
+        SRZone = resolve_model("SRZone")
+        if not SRZone:
+            return 0
+
         await self.session.execute(delete(SRZone).where(SRZone.symbol == symbol).where(SRZone.timeframe == timeframe))
 
         for zone in zones:
@@ -905,6 +927,12 @@ class MarketStructureAnalyzer:
         """
         Persist newly identified liquidity zones (replaces existing zones per cycle).
         """
+        from sqlalchemy import delete
+
+        LiquidityZone = resolve_model("LiquidityZone")
+        if not LiquidityZone:
+            return 0
+
         await self.session.execute(
             delete(LiquidityZone).where(LiquidityZone.symbol == symbol).where(LiquidityZone.timeframe == timeframe)
         )
@@ -972,6 +1000,13 @@ class MarketStructureAnalyzer:
         target_zones = bullish_zones + bearish_zones + filled_zones
 
         cutoff_fvg = datetime.now(timezone.utc) - timedelta(days=30)
+        from sqlalchemy import delete, select
+
+        FVGZone = resolve_model("FVGZone")
+        PriceOHLCV = resolve_model("PriceOHLCV")
+        if not FVGZone or not PriceOHLCV:
+            return 0
+
         await self.session.execute(
             delete(FVGZone)
             .where(FVGZone.symbol == sym)
@@ -1104,6 +1139,12 @@ class MarketStructureAnalyzer:
             return 0
 
         cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+        from sqlalchemy import delete, select
+
+        OrderBlock = resolve_model("OrderBlock")
+        if not OrderBlock:
+            return 0
+
         await self.session.execute(
             delete(OrderBlock)
             .where(OrderBlock.symbol == symbol)
@@ -1157,6 +1198,12 @@ class MarketStructureAnalyzer:
         return saved
 
     async def _save_structure_breaks(self, symbol: str, timeframe: str, breaks: list[Any]) -> int:
+        from sqlalchemy import delete
+
+        StructureBreak = resolve_model("StructureBreak")
+        if not StructureBreak:
+            return 0
+
         await self.session.execute(
             delete(StructureBreak).where(StructureBreak.symbol == symbol).where(StructureBreak.timeframe == timeframe)
         )
@@ -1184,6 +1231,17 @@ class MarketStructureAnalyzer:
         Snapshot ringkas struktur pasar (Swings, S/R, FVG, dll).
         Digunakan oleh agent untuk tahap analisis per aset.
         """
+        from sqlalchemy import select
+
+        FVGZone = resolve_model("FVGZone")
+        LiquidityZone = resolve_model("LiquidityZone")
+        OrderBlock = resolve_model("OrderBlock")
+        SRZone = resolve_model("SRZone")
+        StructureBreak = resolve_model("StructureBreak")
+        SwingPoint = resolve_model("SwingPoint")
+        if not all([FVGZone, LiquidityZone, OrderBlock, SRZone, StructureBreak, SwingPoint]):
+            return {}
+
         # Swing points (last 10 highs and lows)
         highs_q = await self.session.execute(
             select(SwingPoint)

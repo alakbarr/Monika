@@ -57,7 +57,7 @@ def transactional_advisory_lock(*args, **kwargs):
     return _db_mod.transactional_advisory_lock(*args, **kwargs)
 
 
-from monika.domain.execution.base import _ExecutionServiceMixinBase
+from monika.application.execution.service.base import _ExecutionServiceMixinBase
 
 logger = logging.getLogger("TradingAgent.ExecutionService.RiskEvaluator")
 

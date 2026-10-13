@@ -10,7 +10,11 @@ import sys
 def test_import_linter_contracts():
     """Verify that all architectural layer contracts defined in .importlinter pass."""
     result = subprocess.run(
-        [sys.executable, "-m", "importlinter.cli"],
+        [
+            sys.executable,
+            "-c",
+            "import sys; from importlinter.cli import lint_imports_command; sys.exit(lint_imports_command())",
+        ],
         capture_output=True,
         text=True,
     )
