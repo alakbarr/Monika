@@ -139,24 +139,66 @@ class MT5Client:
     """Pembungkus async untuk library MetaTrader5 Python dengan dukungan Redundant Secondary Failover Gateway."""
 
     def __init__(self, settings: Optional[dict] = None):
-        self.account = int(os.getenv("MT5_ACCOUNT", 0))
-        self.password = os.getenv("MT5_PASSWORD", "")
-        self.server = os.getenv("MT5_SERVER", "")
-        self.path = os.getenv(
-            "MT5_PATH",
-            "C:/Program Files/MetaTrader 5/terminal64.exe"
+        self.settings = settings or {}
+
+        # Centralized credential resolution: settings -> CredentialVault -> os.getenv
+        from monika.core.security.credential_vault import vault
+
+        def _resolve_cred(setting_path: list[str], env_var: str, default: Any = "") -> Any:
+            # 1. settings dict lookup by nested key path
+            cur: Any = self.settings
+            for key in setting_path:
+                if isinstance(cur, dict) and key in cur:
+                    cur = cur[key]
+                else:
+                    cur = None
+                    break
+            if cur is not None and cur != "":
+                return cur
+            # 2. CredentialVault lookup (handles OS vault, encrypted file vault, env)
+            vault_val = vault.get_secret(env_var)
+            if vault_val is not None and vault_val != "":
+                return vault_val
+            # 3. Fallback to os.getenv
+            return os.getenv(env_var, default)
+
+        raw_acc = _resolve_cred(["execution", "mt5_account"], "MT5_ACCOUNT", 0)
+        try:
+            self.account = int(raw_acc)
+        except (ValueError, TypeError):
+            self.account = 0
+
+        self.password = str(_resolve_cred(["execution", "mt5_password"], "MT5_PASSWORD", ""))
+        self.server = str(_resolve_cred(["execution", "mt5_server"], "MT5_SERVER", ""))
+        self.path = str(
+            _resolve_cred(
+                ["execution", "mt5_path"],
+                "MT5_PATH",
+                "C:/Program Files/MetaTrader 5/terminal64.exe",
+            )
         )
+
         # Secondary Gateway Configuration
-        self.secondary_account = int(os.getenv("MT5_SECONDARY_ACCOUNT", 0))
-        self.secondary_password = os.getenv("MT5_SECONDARY_PASSWORD", "")
-        self.secondary_server = os.getenv("MT5_SECONDARY_SERVER", "")
-        self.secondary_path = os.getenv("MT5_SECONDARY_PATH", "")
+        raw_sec_acc = _resolve_cred(["execution", "mt5_secondary_account"], "MT5_SECONDARY_ACCOUNT", 0)
+        try:
+            self.secondary_account = int(raw_sec_acc)
+        except (ValueError, TypeError):
+            self.secondary_account = 0
+
+        self.secondary_password = str(
+            _resolve_cred(["execution", "mt5_secondary_password"], "MT5_SECONDARY_PASSWORD", "")
+        )
+        self.secondary_server = str(
+            _resolve_cred(["execution", "mt5_secondary_server"], "MT5_SECONDARY_SERVER", "")
+        )
+        self.secondary_path = str(
+            _resolve_cred(["execution", "mt5_secondary_path"], "MT5_SECONDARY_PATH", "")
+        )
         self.active_gateway: str = "primary"  # "primary" or "secondary"
         self.notifier: Optional[Any] = None
 
         self._connected = False
         self._timeframe_map: dict[str, int] = {}
-        self.settings = settings or {}
         self.paper_trading = self.settings.get("paper_trading", {}).get("enabled", False)
         # Dedicated single-thread executor for thread-affine MetaTrader5 COM API calls
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="MT5Worker")

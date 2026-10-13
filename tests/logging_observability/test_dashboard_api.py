@@ -456,7 +456,7 @@ class TestDashboardAPI:
             "DASHBOARD_API_KEY": "",
         }
         with patch.dict(os.environ, env):
-            assert resolve_role("", is_localhost=True) == Role.ADMIN
+            assert resolve_role("", is_localhost=True) == Role.VIEWER
             with pytest.raises(PermissionError):
                 resolve_role("", is_localhost=False)
 
@@ -553,18 +553,23 @@ class TestDashboardAPI:
             "reason": "Adjust drawdown limits"
         }
 
-        with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
-            with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-                mock_session = create_mock_async_session()
-                mock_session.add = MagicMock()
-                mock_session_ctx.return_value.__aenter__.return_value = mock_session
+        with patch.dict(os.environ, {"DASHBOARD_API_KEY": "test_adm_key"}):
+            with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
+                with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+                    mock_session = create_mock_async_session()
+                    mock_session.add = MagicMock()
+                    mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
-                res = client.put("/api/config/settings", json=valid_payload)
-                assert res.status_code == 200
-                data = res.json()
-                assert data["status"] == "success"
-                assert data["reloaded"] is True
-                assert os.path.exists(str(dummy_yaml) + ".bak")
+                    res = client.put(
+                        "/api/config/settings",
+                        headers={"X-API-Key": "test_adm_key"},
+                        json=valid_payload,
+                    )
+                    assert res.status_code == 200
+                    data = res.json()
+                    assert data["status"] == "success"
+                    assert data["reloaded"] is True
+                    assert os.path.exists(str(dummy_yaml) + ".bak")
 
     def test_put_config_settings_role_forbidden(self):
         env = {"DASHBOARD_API_KEYS": "admin:adm_key,operator:ops_key,viewer:view_key"}
@@ -693,14 +698,19 @@ class TestDashboardAPI:
             },
             "reason": "Update risk limit only"
         }
-        with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
-            with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-                mock_session = create_mock_async_session()
-                mock_session.add = MagicMock()
-                mock_session_ctx.return_value.__aenter__.return_value = mock_session
+        with patch.dict(os.environ, {"DASHBOARD_API_KEY": "test_adm_key"}):
+            with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
+                with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+                    mock_session = create_mock_async_session()
+                    mock_session.add = MagicMock()
+                    mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
-                res = client.put("/api/config/settings", json=partial_payload)
-                assert res.status_code == 200
+                    res = client.put(
+                        "/api/config/settings",
+                        headers={"X-API-Key": "test_adm_key"},
+                        json=partial_payload,
+                    )
+                    assert res.status_code == 200
                 import yaml
                 with open(dummy_yaml, "r", encoding="utf-8") as f:
                     saved_data = yaml.safe_load(f)

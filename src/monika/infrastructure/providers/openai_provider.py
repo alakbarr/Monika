@@ -128,7 +128,8 @@ class OpenAIProvider(BaseLLMClient):
         super().__init__(model, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
                          thinking_level=thinking_level, settings=settings, temperature=temperature, **kwargs)
         self.provider_name = "openai"
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        from monika.core.security.credential_vault import vault
+        self.api_key = api_key or vault.get_secret("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
         self.role = kwargs.get("role", getattr(self, "role", model))
         self.kwargs = kwargs
         self.last_served_model: Optional[str] = None

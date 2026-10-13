@@ -2,6 +2,7 @@ from tests.conftest import create_mock_async_session
 """
 Unit tests for Backtest Dashboard API endpoints (/api/backtest/*).
 """
+import os
 import pytest
 from datetime import datetime, timezone
 from fastapi.testclient import TestClient
@@ -104,12 +105,14 @@ def test_get_backtest_run_details():
 
 def test_trigger_backtest_run():
     """Verify POST /api/backtest/run queues a background backtest execution."""
-    with patch("logging_observability.dashboard.routes.backtest._execute_background_backtest"):
-        resp = client.post(
-            "/api/backtest/run",
-            json={"days": 14, "mode": "full", "initial_equity": 20000.0, "step_hours": 4},
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["status"] == "queued"
-        assert "14 days" in data["message"]
+    with patch.dict(os.environ, {"DASHBOARD_API_KEYS": "admin:test_adm_key"}):
+        with patch("logging_observability.dashboard.routes.backtest._execute_background_backtest"):
+            resp = client.post(
+                "/api/backtest/run",
+                headers={"X-API-Key": "test_adm_key"},
+                json={"days": 14, "mode": "full", "initial_equity": 20000.0, "step_hours": 4},
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["status"] == "queued"
+            assert "14 days" in data["message"]

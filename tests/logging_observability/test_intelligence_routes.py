@@ -13,8 +13,9 @@ from logging_observability.dashboard.routes.intelligence import intelligence_rou
 
 
 @pytest.fixture
-def client():
-    return TestClient(app)
+def client(monkeypatch):
+    monkeypatch.setenv("DASHBOARD_API_KEYS", "admin:test_adm_key")
+    return TestClient(app, headers={"X-API-Key": "test_adm_key"})
 
 
 def test_intelligence_router_routes_registered():

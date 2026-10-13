@@ -64,7 +64,9 @@ class AnthropicProvider(BaseLLMClient):
                  thinking_level: str = "none", settings: Optional[dict] = None, temperature: float = 0.0, **kwargs):
         super().__init__(model, max_tokens, max_tool_turns, thinking_level, settings, temperature, **kwargs)
         self.provider_name = "anthropic"
-        api_key = kwargs.get("api_key") or os.getenv("ANTHROPIC_API_KEY", "")
+        from monika.core.security.credential_vault import vault
+
+        api_key = kwargs.get("api_key") or vault.get_secret("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY", "")
         if not api_key and hasattr(anthropic, "AsyncAnthropic") and "unittest.mock" in type(anthropic.AsyncAnthropic).__module__:
             api_key = "mock_key"
 

@@ -11,8 +11,9 @@ from logging_observability.dashboard.api import app
 
 
 @pytest.fixture
-def client():
-    with TestClient(app) as c:
+def client(monkeypatch):
+    monkeypatch.setenv("DASHBOARD_API_KEYS", "admin:test_adm_key")
+    with TestClient(app, headers={"X-API-Key": "test_adm_key"}) as c:
         yield c
 
 

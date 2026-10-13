@@ -95,7 +95,7 @@ def resolve_role(api_key: str, is_localhost: bool = False) -> Role:
 
     # 3. Localhost fallback if no keys configured
     if not multi_keys and not single_key and is_localhost:
-        return Role.ADMIN
+        return Role.VIEWER
 
     raise PermissionError("Invalid or missing API key")
 

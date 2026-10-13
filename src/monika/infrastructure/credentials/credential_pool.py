@@ -238,7 +238,9 @@ class CredentialPool:
             self._initialize_from_env()
 
     def _initialize_from_env(self) -> None:
-        """Populate initial keys from environment variables across all supported providers."""
+        """Populate initial keys from environment variables and CredentialVault across all supported providers."""
+        from monika.core.security.credential_vault import vault
+
         provider_env_map = {
             "gemini": ["GEMINI_API_KEYS", "GEMINI_PAID_API_KEY", "GEMINI_API_KEY"],
             "anthropic": ["ANTHROPIC_API_KEYS", "ANTHROPIC_API_KEY"],
@@ -251,7 +253,12 @@ class CredentialPool:
 
         for prov, env_vars in provider_env_map.items():
             for var in env_vars:
-                val = os.getenv(var, "").strip()
+                # Query CredentialVault first (Windows Credential Manager / Encrypted File Vault / env)
+                val = vault.get_secret(var)
+                if val is None or not val.strip():
+                    val = os.getenv(var, "").strip()
+                else:
+                    val = val.strip()
                 if val:
                     for k in [k.strip() for k in val.split(",") if k.strip()]:
                         self.add_key(prov, k)
@@ -265,6 +272,13 @@ class CredentialPool:
         for kh in self._pools[prov]:
             if kh.key == key:
                 return
+
+        # Register secret in CredentialVault for dynamic exact-byte log redaction
+        try:
+            from monika.core.security.credential_vault import vault
+            vault.register_secret(key)
+        except Exception:
+            pass
 
         self._pools[prov].append(KeyHealth(key=key, provider=prov))
         masked = key[:6] + "..." + key[-4:] if len(key) > 12 else "***"

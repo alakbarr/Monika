@@ -193,7 +193,7 @@ async def verify_api_key(request: Request, call_next):
                 status_code=403,
                 content={"detail": "Forbidden: DASHBOARD_API_KEY must be configured for remote network access."}
             )
-        request.state.role = Role.ADMIN
+        request.state.role = Role.VIEWER
         request.state.is_localhost = True
         return await call_next(request)
 
@@ -301,7 +301,6 @@ async def submit_setup_configuration(request: Request):
             db_url = data.get("db_url") or "postgresql+asyncpg://postgres:postgres@localhost:5432/monika_trading"
 
         env_updates["DATABASE_URL"] = db_url
-        os.environ["DATABASE_URL"] = db_url
 
         # 2. AI Keys
         gemini_keys = str(data.get("gemini_keys", "")).strip()
