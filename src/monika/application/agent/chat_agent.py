@@ -23,6 +23,9 @@ from monika.application.agent.chat import prompt_builder as prompt_builder
 from monika.application.agent.chat import streaming as streaming
 from monika.application.agent.chat import tiers as tiers
 
+ChatAgent.__module__ = "monika.application.agent.chat_agent"
+PendingAction.__module__ = "monika.application.agent.chat_agent"
+
 import sys
 from typing import Any
 

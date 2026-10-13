@@ -72,10 +72,10 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `src/monika/infrastructure/storage`](#folder-srcmonikainfrastructurestorage) - Line 1154
     - [Folder: `src/monika/interfaces`](#folder-srcmonikainterfaces) - Line 1159
       - [Folder: `src/monika/interfaces/cli`](#folder-srcmonikainterfacescli) - Line 1163
-      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1171
-      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1178
-      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1186
-      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1197
+      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1172
+      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1179
+      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1187
+      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1198
 
 ## Root Directory: `Monika/`
 
@@ -1162,7 +1162,8 @@ This document provides an exhaustive structural index of all directories, files,
 
 ##### Folder: `src/monika/interfaces/cli`
 - **Modules**:
-  - `main.py`: Canonical entrypoint (`monika` CLI) dispatching daemon, doctor, chat, tui, and admin subcommands.
+  - `main.py`: Streamlined entrypoint (`monika` CLI) dispatching daemon, doctor, chat, tui, and admin subcommands.
+  - `commands/`: Modular command implementations and argument parser (`parser.py`, `daemon_ctrl.py`, `config_ctrl.py`, `inspect_ctrl.py`, `analysis_ctrl.py`, `benchmark_ctrl.py`).
   - `tui.py`: Terminal User Interface built with Textual for live monitoring and manual trading operations.
   - `doctor.py`: Offline/online environment health check diagnostics.
   - `chat/`: Interactive conversational trading assistant (`prompt.py`, `renderer.py`, `session.py`, `completer.py`).
