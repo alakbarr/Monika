@@ -79,26 +79,22 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
 
             # Reconcile partial close volume / lots
             try:
+                from monika.infrastructure.database.repositories.position_repository import PositionRepository
+
+                pos_repo = PositionRepository(session)
                 open_positions = await self.mt5.get_open_positions() if hasattr(self.mt5, "get_open_positions") else []
                 mt5_by_ticket = {p.get("ticket"): p for p in open_positions if isinstance(p, dict) and "ticket" in p}
-                db_open = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+                db_open = await pos_repo.get_open_positions(is_paper=False)
                 for db_pos in db_open:
-                    if getattr(db_pos, "is_paper", False):
-                        continue
-                    if db_pos.mt5_ticket in mt5_by_ticket:
+                    if db_pos.mt5_ticket and db_pos.mt5_ticket in mt5_by_ticket:
                         raw_p = mt5_by_ticket[db_pos.mt5_ticket]
-
-                        class _MT5Pos:
-                            def __init__(self, p):
-                                self.volume = float(
-                                    p.get("volume", 0.0) if isinstance(p, dict) else getattr(p, "volume", 0.0)
-                                )
-
-                        mt5_pos = _MT5Pos(raw_p)
-                        if mt5_pos.volume != db_pos.lots:
-                            db_pos.lots = mt5_pos.volume
-                            if mt5_pos.volume == 0:
-                                db_pos.status = "closed"
+                        mt5_vol = float(
+                            raw_p.get("volume", 0.0) if isinstance(raw_p, dict) else getattr(raw_p, "volume", 0.0)
+                        )
+                        current_vol = float(getattr(db_pos, "volume", 0.0) or 0.0)
+                        if mt5_vol != current_vol:
+                            new_status = "closed" if mt5_vol == 0 else None
+                            await pos_repo.update_volume(ticket=db_pos.mt5_ticket, volume=mt5_vol, status=new_status)
                 await session.commit()
             except Exception as e:
                 logger.warning(f"Error checking partial close volumes: {e}")

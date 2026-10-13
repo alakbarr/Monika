@@ -18,13 +18,13 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.domain.ports import UnitOfWorkPort
 from monika.domain.risk.position_sizing import get_instrument_spec
 from monika.domain.risk.trade_proposal import TradeProposal
-from monika.infrastructure.database.models import Position
 from monika.infrastructure.database.repositories.activity_log_repository import ActivityLogRepository
 from monika.infrastructure.database.repositories.position_repository import PositionRepository
 from monika.infrastructure.database.repositories.system_config_repository import SystemConfigRepository
@@ -245,11 +245,16 @@ class TradingService:
                 )
 
         now = datetime.now(timezone.utc)
-        pos_repo = PositionRepository(session)
-        activity_repo = ActivityLogRepository(session)
+        if isinstance(session, UnitOfWorkPort):
+            pos_repo = session.positions
+            activity_repo = session.activity_logs
+            cfg_repo = session.system_config
+        else:
+            pos_repo = PositionRepository(session)
+            activity_repo = ActivityLogRepository(session)
+            cfg_repo = SystemConfigRepository(session)
 
         # 2. Check kill switch status
-        cfg_repo = SystemConfigRepository(session)
         is_kill_active = await cfg_repo.is_kill_switch_active()
         if not is_kill_active:
             emergency_kill = await cfg_repo.get("emergency_kill_active")
@@ -366,15 +371,19 @@ class TradingService:
     @classmethod
     async def close_position(
         cls,
-        session: AsyncSession,
+        session: Union[AsyncSession, UnitOfWorkPort],
         ticket: int,
         reason: str = "manual_close",
         actor: str = "operator",
         broker_adapter: Any = None,
     ) -> bool:
         """Close open position and record realization in repository."""
-        pos_repo = PositionRepository(session)
-        activity_repo = ActivityLogRepository(session)
+        if isinstance(session, UnitOfWorkPort):
+            pos_repo = session.positions
+            activity_repo = session.activity_logs
+        else:
+            pos_repo = PositionRepository(session)
+            activity_repo = ActivityLogRepository(session)
 
         pos = await pos_repo.get_by_ticket(ticket)
         if not pos:
@@ -404,13 +413,17 @@ class TradingService:
     @classmethod
     async def emergency_kill(
         cls,
-        session: AsyncSession,
+        session: Union[AsyncSession, UnitOfWorkPort],
         reason: str = "Emergency stop requested",
         actor: str = "operator",
     ) -> Dict[str, Any]:
         """Activate global emergency kill switch and persist state to database."""
-        cfg_repo = SystemConfigRepository(session)
-        activity_repo = ActivityLogRepository(session)
+        if isinstance(session, UnitOfWorkPort):
+            cfg_repo = session.system_config
+            activity_repo = session.activity_logs
+        else:
+            cfg_repo = SystemConfigRepository(session)
+            activity_repo = ActivityLogRepository(session)
 
         await cfg_repo.set_kill_switch(True)
         await cfg_repo.set("emergency_kill_active", "true")

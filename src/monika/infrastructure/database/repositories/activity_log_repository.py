@@ -10,10 +10,11 @@ from typing import Optional, Sequence
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.domain.ports.repository import ActivityLogRepositoryPort
 from monika.infrastructure.database.models import ActivityLog
 
 
-class ActivityLogRepository:
+class ActivityLogRepository(ActivityLogRepositoryPort):
     """Repository managing ActivityLog audit entities."""
 
     def __init__(self, session: AsyncSession) -> None:
