@@ -82,13 +82,30 @@ class SqliteCheckpointSaver(InMemorySaver):
             conn.close()
         self._load_from_sqlite()
 
+    def _prune_memory_cache(self, max_threads: int = 50) -> None:
+        """Limit in-memory cache to the most recent active threads to prevent memory leak."""
+        if len(self.storage) > max_threads:
+            excess = len(self.storage) - max_threads
+            threads_to_evict = list(self.storage.keys())[:excess]
+            for t_id in threads_to_evict:
+                self.storage.pop(t_id, None)
+                write_keys = [k for k in self.writes if k[0] == t_id]
+                for wk in write_keys:
+                    self.writes.pop(wk, None)
+
     def _load_from_sqlite(self):
-        """Restore previous checkpoints and writes into memory state."""
+        """Restore previous checkpoints and writes into memory state (capped at 50 threads)."""
         try:
             conn = self._get_connection()
             try:
                 cursor = conn.cursor()
-                cursor.execute("SELECT thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob FROM checkpoints")
+                cursor.execute("""
+                    SELECT thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob 
+                    FROM checkpoints
+                    WHERE thread_id IN (
+                        SELECT DISTINCT thread_id FROM checkpoints ORDER BY rowid DESC LIMIT 50
+                    )
+                """)
                 rows = cursor.fetchall()
                 for t_id, ns, c_id, p_id, c_type, c_blob, m_type, m_blob in rows:
                     if t_id not in self.storage:
@@ -103,7 +120,13 @@ class SqliteCheckpointSaver(InMemorySaver):
                     )
                 logger.debug(f"[SqliteCheckpointer] Loaded {len(rows)} persistent checkpoints from {self.db_path}")
 
-                cursor.execute("SELECT thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, value_type, value_blob FROM writes")
+                cursor.execute("""
+                    SELECT thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, value_type, value_blob 
+                    FROM writes
+                    WHERE thread_id IN (
+                        SELECT DISTINCT thread_id FROM checkpoints ORDER BY rowid DESC LIMIT 50
+                    )
+                """)
                 write_rows = cursor.fetchall()
                 for t_id, ns, c_id, task_id, idx, channel, v_type, v_blob in write_rows:
                     outer_key = (t_id, ns, c_id)
@@ -130,6 +153,7 @@ class SqliteCheckpointSaver(InMemorySaver):
     ) -> RunnableConfig:
         versions: ChannelVersions = new_versions or {}
         res = super().put(config, checkpoint, metadata, new_versions=versions)
+        self._prune_memory_cache(50)
         try:
             cfg: Dict[str, Any] = getattr(config, "get", lambda k, d=None: {})("configurable", {}) or {}
             thread_id = cfg.get("thread_id", "")
@@ -174,6 +198,7 @@ class SqliteCheckpointSaver(InMemorySaver):
     ) -> RunnableConfig:
         versions: ChannelVersions = new_versions or {}
         res = super().put(config, checkpoint, metadata, new_versions=versions)
+        self._prune_memory_cache(50)
         try:
             cfg: Dict[str, Any] = getattr(config, "get", lambda k, d=None: {})("configurable", {}) or {}
             thread_id = cfg.get("thread_id", "")

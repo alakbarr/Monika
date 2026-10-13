@@ -918,7 +918,7 @@ class RiskGate:
         """Validasi bahwa Risk-to-Reward ratio proposal memenuhi batas minimum (FR-4.1)."""
         rr = getattr(sizing, "rr_ratio", None)
         if rr is None or rr <= 0:
-            return True, "No R:R ratio specified; skipped"
+            return False, "Risk-to-reward ratio missing or zero; rejected by FR-4.1 fail-closed protection"
         min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3))
         if rr < min_rr:
             return False, f"Risk-to-reward ratio {rr:.2f} is below minimum requirement {min_rr:.2f}"
