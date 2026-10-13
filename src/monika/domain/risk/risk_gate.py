@@ -27,65 +27,24 @@ from datetime import datetime, timedelta, timezone, UTC
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 import monika.core.primitives.clock as clock
 from monika.domain.entities.order_status import OrderStatus
+from monika.domain.risk.evaluators.base import resolve_model
 
-if TYPE_CHECKING:
-    from monika.infrastructure.database.models import (
-        AssetAnalysis,
-        EconomicCalendar,
-        Order,
-        OrderLog,
-        PaperTradeRecord,
-        Position,
-        PriceOHLCV,
-        RiskState,
-        SystemConfig,
-        TechnicalIndicator,
-        TimesFMForecast,
-        TradeOutcome,
-        UserPreference,
-        VIXData,
-    )
-else:
-
-    def _resolve_model(name: str) -> Any:
-        """Dynamic resolver for database models to decouple domain from static infrastructure imports."""
-        import sys
-
-        mod = sys.modules.get("monika.infrastructure.database.models")
-        if mod and hasattr(mod, name):
-            return getattr(mod, name)
-        try:
-            import importlib
-
-            mod = importlib.import_module("monika.infrastructure.database.models")
-            return getattr(mod, name)
-        except Exception:
-            return None
-
-    # Decoupled dynamic registration: populate module globals at runtime
-    # to eliminate static compile-time import coupling to infrastructure models.
-    for _model_name in (
-        "Position",
-        "RiskState",
-        "EconomicCalendar",
-        "OrderLog",
-        "TradeOutcome",
-        "PaperTradeRecord",
-        "AssetAnalysis",
-        "SystemConfig",
-        "Order",
-        "PriceOHLCV",
-        "VIXData",
-        "UserPreference",
-        "TechnicalIndicator",
-        "TimesFMForecast",
-    ):
-        globals()[_model_name] = _resolve_model(_model_name)
+Position: Any = resolve_model("Position")
+RiskState: Any = resolve_model("RiskState")
+EconomicCalendar: Any = resolve_model("EconomicCalendar")
+OrderLog: Any = resolve_model("OrderLog")
+TradeOutcome: Any = resolve_model("TradeOutcome")
+PaperTradeRecord: Any = resolve_model("PaperTradeRecord")
+AssetAnalysis: Any = resolve_model("AssetAnalysis")
+SystemConfig: Any = resolve_model("SystemConfig")
+Order: Any = resolve_model("Order")
+PriceOHLCV: Any = resolve_model("PriceOHLCV")
+VIXData: Any = resolve_model("VIXData")
+UserPreference: Any = resolve_model("UserPreference")
+TechnicalIndicator: Any = resolve_model("TechnicalIndicator")
+TimesFMForecast: Any = resolve_model("TimesFMForecast")
 
 
 from monika.domain.risk.position_sizing import SizingResult
@@ -271,12 +230,12 @@ class RiskGate(
 
     async def evaluate(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         direction: str,
         sizing: SizingResult,
         account_equity: float | None = None,
-        analysis: AssetAnalysis | None = None,
+        analysis: Any | None = None,
         as_of: datetime | None = None,
         simulated_positions: list | None = None,
         simulated_equity: float | None = None,
@@ -336,10 +295,10 @@ class RiskGate(
             )
 
         try:
-            from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
+            from monika.domain.risk.ports import emit_risk_hook
 
-            await get_plugin_manager().emit(
-                PluginHook.PRE_RISK_GATE,
+            await emit_risk_hook(
+                "PRE_RISK_GATE",
                 symbol=symbol,
                 direction=direction,
                 sizing=sizing,
@@ -549,7 +508,7 @@ class RiskGate(
 
     async def evaluate_proposal(
         self,
-        session: AsyncSession,
+        session: Any,
         proposal: Any,
         account_equity: float | None = None,
         analysis: Any | None = None,
@@ -689,25 +648,31 @@ class RiskGate(
     check_proposal = evaluate_proposal
     _check_weekend_gap_risk = RiskMarketChecksMixin.assess_weekend_gap_risk
 
-    async def _get_risk_state(self, session: AsyncSession) -> Any | None:
+    async def _get_risk_state(self, session: Any) -> Any | None:
         """Fetch current RiskState from DB."""
         if not session:
             return None
         try:
             from sqlalchemy import desc, select
 
-            stmt = select(RiskState).order_by(desc(RiskState.date)).limit(1)
+            risk_model = RiskState or resolve_model("RiskState")
+            if risk_model is None:
+                return None
+            stmt = select(risk_model).order_by(desc(risk_model.date)).limit(1)
             return (await session.execute(stmt)).scalar_one_or_none()
         except Exception:
             return None
 
     async def _log_verdict(
-        self, session: AsyncSession, symbol: str, direction: str, sizing: SizingResult, verdict: RiskVerdict
+        self, session: Any, symbol: str, direction: str, sizing: SizingResult, verdict: RiskVerdict
     ) -> None:
         """Catat keputusan risk gate ke tabel orders_log."""
         import json
 
-        record = OrderLog(
+        log_model = OrderLog or resolve_model("OrderLog")
+        if log_model is None:
+            return
+        record = log_model(
             action="risk_check",
             symbol=symbol,
             params_json=json.dumps(
@@ -736,20 +701,23 @@ class RiskGate(
 
     async def update_risk_state(
         self,
-        session: AsyncSession,
+        session: Any,
         pnl_delta: float,
         equity: float | None = None,
     ) -> None:
         """Update RiskState harian setelah posisi tertutup. Trigger auto-pause jika lewat batas."""
+        from sqlalchemy import select
+
+        risk_model = RiskState or resolve_model("RiskState")
         today_start = get_trading_day_start(self.settings)
         state = (
             await session.execute(
-                select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
+                select(risk_model).where(risk_model.date >= today_start).order_by(risk_model.date.desc()).limit(1)
             )
         ).scalar_one_or_none()
 
         if state is None:
-            state = RiskState(
+            state = risk_model(
                 date=clock.now(),
                 daily_pnl=0.0,
                 current_drawdown=0.0,
@@ -793,20 +761,23 @@ class RiskGate(
             f"paused={state.trading_paused}"
         )
 
-    async def pause_trading(self, session: AsyncSession, reason: str, duration_hours: float | None = None) -> None:
+    async def pause_trading(self, session: Any, reason: str, duration_hours: float | None = None) -> None:
         """Pause sistem trading secara manual dengan opsi durasi auto-unpause."""
         from datetime import timedelta
+        from sqlalchemy import select
 
+        risk_model = RiskState or resolve_model("RiskState")
+        sys_model = SystemConfig or resolve_model("SystemConfig")
         today_start = get_trading_day_start(self.settings)
         state = (
-            await session.execute(select(RiskState).where(RiskState.date >= today_start).limit(1))
+            await session.execute(select(risk_model).where(risk_model.date >= today_start).limit(1))
         ).scalar_one_or_none()
 
         now = clock.now()
         unpause_at = (now + timedelta(hours=duration_hours)) if duration_hours and duration_hours > 0 else None
 
         if state is None:
-            state = RiskState(date=now, daily_pnl=0, current_drawdown=0)
+            state = risk_model(date=now, daily_pnl=0, current_drawdown=0)
             session.add(state)
 
         state.trading_paused = True
@@ -819,30 +790,37 @@ class RiskGate(
             cfg_val += f"|unpause_at:{unpause_at.isoformat()}"
 
         cfg = (
-            await session.execute(select(SystemConfig).where(SystemConfig.key == "manual_trading_paused"))
+            await session.execute(select(sys_model).where(sys_model.key == "manual_trading_paused"))
         ).scalar_one_or_none()
         if cfg:
             cfg.value = cfg_val
         else:
-            session.add(SystemConfig(key="manual_trading_paused", value=cfg_val))
+            session.add(sys_model(key="manual_trading_paused", value=cfg_val))
 
         await session.commit()
         unpause_info = f" (auto-unpause at {unpause_at.strftime('%Y-%m-%d %H:%M UTC')})" if unpause_at else ""
         logger.warning(f"Trading manually PAUSED: {reason}{unpause_info}")
 
-    async def clear_edge_status_pause(self, session: AsyncSession) -> None:
+    async def clear_edge_status_pause(self, session: Any) -> None:
+        from sqlalchemy import select
+
+        sys_model = SystemConfig or resolve_model("SystemConfig")
         cfg = (
-            await session.execute(select(SystemConfig).where(SystemConfig.key == "trading_paused"))
+            await session.execute(select(sys_model).where(sys_model.key == "trading_paused"))
         ).scalar_one_or_none()
         if cfg and cfg.value:
             cfg.value = "false"
             logger.info("Edge-status auto-pause cleared.")
 
-    async def resume_trading(self, session: AsyncSession) -> None:
+    async def resume_trading(self, session: Any) -> None:
         """Lanjutkan (resume) trading secara manual."""
+        from sqlalchemy import select
+
+        risk_model = RiskState or resolve_model("RiskState")
+        sys_model = SystemConfig or resolve_model("SystemConfig")
         today_start = get_trading_day_start(self.settings)
         state = (
-            await session.execute(select(RiskState).where(RiskState.date >= today_start).limit(1))
+            await session.execute(select(risk_model).where(risk_model.date >= today_start).limit(1))
         ).scalar_one_or_none()
 
         if state:
@@ -851,7 +829,7 @@ class RiskGate(
             state.unpause_at = None
 
         for key in ("manual_trading_paused", "kill_switch", "trading_paused", "system_paused"):
-            cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
+            cfg = (await session.execute(select(sys_model).where(sys_model.key == key))).scalar_one_or_none()
             if cfg:
                 cfg.value = "false"
 
@@ -859,9 +837,11 @@ class RiskGate(
 
         # Bersihkan juga suspended symbols saat resume trading dipanggil
         try:
-            from monika.core.analytics.paper_tracker import PaperTracker
+            import importlib
 
-            await PaperTracker(self.settings).unsuspend_all(session)
+            tracker_mod = importlib.import_module("monika.core.analytics.paper_tracker")
+            tracker_cls = getattr(tracker_mod, "PaperTracker")
+            await tracker_cls(self.settings).unsuspend_all(session)
         except Exception as e:
             logger.debug(f"Failed to clear suspended symbols on resume: {e}")
 
@@ -872,7 +852,7 @@ class RiskGate(
 
     async def get_current_scorecard(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str = "EURUSD",
         equity: float | None = None,
     ) -> dict[str, Any]:
@@ -956,7 +936,7 @@ class RiskGate(
         }
 
 
-async def get_current_risk_state(session: AsyncSession | None = None, settings: dict | None = None) -> dict:
+async def get_current_risk_state(session: Any | None = None, settings: dict | None = None) -> dict:
     """Mengambil snapshot status risiko portofolio & drawdown saat ini."""
     if not session:
         try:
@@ -968,21 +948,27 @@ async def get_current_risk_state(session: AsyncSession | None = None, settings: 
                 return await get_current_risk_state(session=sess, settings=settings)
         except Exception:
             return {"status": "unavailable", "message": "No active DB session"}
+
+    from sqlalchemy import func, select
+
+    risk_model = RiskState or resolve_model("RiskState")
+    pos_model = Position or resolve_model("Position")
+
     today_start = get_daily_risk_cutoff(clock.now(), (settings or {}).get("trading", {}).get("risk", {}))
     exec_res = await session.execute(
-        select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
+        select(risk_model).where(risk_model.date >= today_start).order_by(risk_model.date.desc()).limit(1)
     )
     risk_row = exec_res.scalar_one_or_none()
     if asyncio.iscoroutine(risk_row):
         risk_row = await risk_row
 
     if not risk_row:
-        exec_res2 = await session.execute(select(RiskState).order_by(RiskState.date.desc()).limit(1))
+        exec_res2 = await session.execute(select(risk_model).order_by(risk_model.date.desc()).limit(1))
         risk_row = exec_res2.scalar_one_or_none()
         if asyncio.iscoroutine(risk_row):
             risk_row = await risk_row
 
-    pos_exec = await session.execute(select(func.count(Position.id)).where(Position.status == "open"))
+    pos_exec = await session.execute(select(func.count(pos_model.id)).where(pos_model.status == "open"))
     pos_count = pos_exec.scalar()
     if asyncio.iscoroutine(pos_count):
         pos_count = await pos_count

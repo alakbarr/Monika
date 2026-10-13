@@ -13,8 +13,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-from sqlalchemy import desc, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import ContextAnnotation, MarketContext, PatternMatch
 
@@ -41,7 +39,7 @@ class ContextScorer:
         "elevated": 34.0,
     }
 
-    def __init__(self, session: AsyncSession, settings: Optional[dict] = None):
+    def __init__(self, session: Any, settings: Optional[dict] = None):
         self.session = session
         self.settings = settings or {}
         self._current_context: Optional[MarketContext] = None
@@ -133,7 +131,12 @@ class ContextScorer:
     ) -> Tuple[float, str]:
         """Fetches VIX from DB or falls back to Yang-Zhang Realized Volatility."""
         try:
-            from monika.infrastructure.database.models import VIXData
+            from sqlalchemy import desc, select
+            from monika.domain.models_resolver import resolve_model
+
+            VIXData = resolve_model("VIXData")
+            if not VIXData:
+                return 0.0, "missing"
 
             stmt = select(VIXData)
             if match_date:
@@ -171,7 +174,12 @@ class ContextScorer:
     async def _get_dxy_trend_or_proxy(self, match_date: Optional[datetime]) -> Tuple[str, str]:
         """Fetches DXY trend from DB or falls back to compute_usd_strength_proxy."""
         try:
-            from monika.infrastructure.database.models import DXYData
+            from sqlalchemy import desc, select
+            from monika.domain.models_resolver import resolve_model
+
+            DXYData = resolve_model("DXYData")
+            if not DXYData:
+                raise ValueError("DXYData model unavailable")
 
             stmt = select(DXYData)
             if match_date:
@@ -211,7 +219,12 @@ class ContextScorer:
     async def _get_rate_cycle(self, match_date: Optional[datetime]) -> Tuple[str, str]:
         """Determines monetary policy cycle from interest_rates table."""
         try:
-            from monika.infrastructure.database.models import InterestRate
+            from sqlalchemy import desc, select
+            from monika.domain.models_resolver import resolve_model
+
+            InterestRate = resolve_model("InterestRate")
+            if not InterestRate:
+                return "unknown", "missing"
 
             stmt = select(InterestRate).where(InterestRate.bank == "FED")
             if match_date:
@@ -389,7 +402,12 @@ class ContextScorer:
 
     async def annotate_top_matches(self, matches: List[PatternMatch], limit: int = 5) -> List[ContextAnnotation]:
         """Tier 2: Annotates top matches with historical narrative from MarketChronicle."""
-        from monika.infrastructure.database.models import MarketChronicle
+        from sqlalchemy import desc, select
+        from monika.domain.models_resolver import resolve_model
+
+        MarketChronicle = resolve_model("MarketChronicle")
+        if not MarketChronicle:
+            return []
 
         annotations: List[ContextAnnotation] = []
         top_slice = sorted(matches, key=lambda m: m.similarity, reverse=True)[:limit]

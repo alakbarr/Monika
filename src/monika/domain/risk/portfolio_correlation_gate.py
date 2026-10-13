@@ -3,15 +3,13 @@ import math
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from monika.domain.market.dynamic_correlation import _static_fallback, get_rolling_correlation
 
 logger = logging.getLogger("TradingAgent.PortfolioCorrelationGate")
 
 
 async def compute_portfolio_correlation_matrix(
-    session: AsyncSession, symbols: list[str], as_of: datetime | None = None
+    session: Any, symbols: list[str], as_of: datetime | None = None
 ) -> dict[str, dict[str, float]]:
     """Menghitung matriks korelasi penuh N x N antar instrumen portofolio aktif."""
     matrix: dict[str, dict[str, float]] = {s: {} for s in symbols}
@@ -52,7 +50,7 @@ def _get_usd_directional_delta(symbol: str, direction: str) -> int:
 
 
 async def filter_correlated_proposals(
-    session: AsyncSession | None,
+    session: Any | None,
     actionable_trades: list,
     threshold: float = 0.65,
     max_usd_exposure: int = 3,

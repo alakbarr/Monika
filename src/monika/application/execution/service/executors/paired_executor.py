@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.execution.effect_gate import AbortRequested
-from monika.domain.execution.base import _ExecutionServiceMixinBase
+from monika.application.execution.service.base import _ExecutionServiceMixinBase
 from monika.domain.execution.order_creator import OrderCreator
 from monika.domain.risk.position_sizing import PositionSizer
 from monika.infrastructure.brokers.broker_adapter import MT5LiveAdapter

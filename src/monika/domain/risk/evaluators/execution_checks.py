@@ -15,30 +15,17 @@ import math
 from datetime import datetime, timedelta, timezone, UTC
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 import monika.core.primitives.clock as clock
 from monika.domain.entities.order_status import OrderStatus
 from monika.domain.risk.evaluators.base import _RiskGateMixinBase, get_trading_day_start, resolve_model
 from monika.domain.risk.position_sizing import SizingResult
 
-if TYPE_CHECKING:
-    from monika.infrastructure.database.models import (
-        Order,
-        PaperTradeRecord,
-        Position,
-        RiskState,
-        SystemConfig,
-        TradeOutcome,
-    )
-else:
-    Position = resolve_model("Position")
-    RiskState = resolve_model("RiskState")
-    TradeOutcome = resolve_model("TradeOutcome")
-    PaperTradeRecord = resolve_model("PaperTradeRecord")
-    SystemConfig = resolve_model("SystemConfig")
-    Order = resolve_model("Order")
+Position: Any = resolve_model("Position")
+RiskState: Any = resolve_model("RiskState")
+TradeOutcome: Any = resolve_model("TradeOutcome")
+PaperTradeRecord: Any = resolve_model("PaperTradeRecord")
+SystemConfig: Any = resolve_model("SystemConfig")
+Order: Any = resolve_model("Order")
 
 logger = logging.getLogger("TradingAgent.RiskGate")
 
@@ -47,11 +34,13 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
     """Execution, order size, spread, duplicate, and loss streak validation mixin."""
 
     async def _check_consecutive_losses(
-        self, session: AsyncSession, symbol: str, is_backtest: bool = False
+        self, session: Any, symbol: str, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """Check apakah symbol ini sedang dalam losing streak yang berbahaya."""
         if is_backtest:
             return (True, "consecutive_losses_backtest_ok")
+
+        from sqlalchemy import select
 
         auto_execute = self.settings.get("trading", {}).get("auto_execute", False)
         paper_cfg = self.settings.get("trading", {}).get("paper_trading", {})
@@ -97,9 +86,11 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
                 return (True, f"consecutive_losses_paper_ok({consecutive_losses}/{max_consecutive})")
 
         # Mode strict / Live Trading:
-        from monika.core.analytics.paper_tracker import PaperTracker
+        import importlib
 
-        suspended = await PaperTracker(self.settings).get_suspended_symbols(session)
+        tracker_mod = importlib.import_module("monika.core.analytics.paper_tracker")
+        tracker_cls = getattr(tracker_mod, "PaperTracker")
+        suspended = await tracker_cls(self.settings).get_suspended_symbols(session)
         if symbol in suspended:
             return (False, f"{symbol} is suspended due to consecutive losses")
 
@@ -112,10 +103,13 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
 
         return (True, f"consecutive_losses={consecutive_losses}/{max_consecutive}")
 
-    async def _check_not_paused(self, session: AsyncSession, is_backtest: bool = False) -> tuple[bool, str]:
+    async def _check_not_paused(self, session: Any, is_backtest: bool = False) -> tuple[bool, str]:
         """Periksa bahwa trading belum di-pause manual."""
         if is_backtest:
             return (True, "ok")
+
+        from sqlalchemy import select
+
         # Check persistent SystemConfig manual pause & emergency kill switch (persists across midnight rollover)
         pause_configs = (
             (
@@ -171,7 +165,7 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
 
     async def _check_daily_trade_count(
         self,
-        session: AsyncSession,
+        session: Any,
         is_backtest: bool = False,
         is_paper: bool | None = None,
     ) -> tuple[bool, str]:
@@ -180,6 +174,7 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
             return (True, "daily_trades_backtest_ok")
         today_start = get_trading_day_start(self.settings)
         from datetime import timedelta
+        from sqlalchemy import func, select
 
         today_end = today_start + timedelta(days=1)
         # Count from positions opened today (separating live vs paper positions)
@@ -276,7 +271,7 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
         return True, f"rr_ratio={rr:.2f} >= {min_rr:.2f} (valid)"
 
     async def _check_max_spread(
-        self, session: AsyncSession, symbol: str, is_backtest: bool = False, is_paper: bool | None = None
+        self, session: Any, symbol: str, is_backtest: bool = False, is_paper: bool | None = None
     ) -> tuple[bool, str]:
         """Validasi batas spread pasar tidak sedang melebar (FR-4.1)."""
         if is_backtest:
@@ -327,7 +322,7 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
 
     async def _check_max_positions(
         self,
-        session: AsyncSession,
+        session: Any,
         simulated_positions: list | None = None,
         is_paper: bool | None = None,
     ) -> tuple[bool, str]:
@@ -337,6 +332,8 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
             if count >= self.max_concurrent:
                 return False, f"Max concurrent positions reached (simulated): {count}/{self.max_concurrent}"
             return True, f"open_positions={count}/{self.max_concurrent}"
+
+        from sqlalchemy import func, select
 
         stmt = select(func.count(Position.id)).where(Position.status == "open")
         if is_paper is not None:
@@ -366,7 +363,7 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
 
     async def _check_no_duplicate(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         simulated_positions: list | None = None,
         pair_group_id: str | None = None,
@@ -384,6 +381,8 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
                         continue
                     return False, f"Already have an open simulated position for {symbol}"
             return True, "no duplicate (simulated)"
+
+        from sqlalchemy import func, select
 
         # Check pending/in-flight orders for this symbol first
         pending_stmt = select(Order.id).where(
@@ -441,7 +440,7 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
         return True, "no duplicate"
 
     async def _check_post_loss_cooldown(
-        self, session: AsyncSession, symbol: str, as_of: datetime | None = None, is_backtest: bool = False
+        self, session: Any, symbol: str, as_of: datetime | None = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """Blokir re-entry pada simbol yang sama selama N jam jika baru saja terkena Stop Loss."""
         if is_backtest:
@@ -449,6 +448,8 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
         cooldown_hours = self.settings.get("trading", {}).get("risk", {}).get("post_sl_cooldown_hours", 6)
         if cooldown_hours <= 0:
             return True, "cooldown disabled"
+
+        from sqlalchemy import select
 
         now = as_of or clock.now()
         since = now - timedelta(hours=cooldown_hours)

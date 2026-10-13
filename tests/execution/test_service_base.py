@@ -3,7 +3,7 @@
 # ==============================================================================
 
 import pytest
-from monika.domain.execution.base import _ExecutionServiceMixinBase
+from monika.application.execution.service.base import _ExecutionServiceMixinBase
 from monika.application.execution.service.emergency_manager import EmergencyManagerMixin
 from monika.application.execution.service.position_synchronizer import PositionSynchronizerMixin
 from monika.application.execution.service.order_executor import OrderExecutorMixin

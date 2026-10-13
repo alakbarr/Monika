@@ -14,24 +14,13 @@ import logging
 from datetime import datetime, timedelta, timezone, UTC
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import desc, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from monika.domain.risk.evaluators.base import _RiskGateMixinBase, resolve_model
 from monika.domain.risk.position_sizing import SizingResult
 
-if TYPE_CHECKING:
-    from monika.infrastructure.database.models import (
-        AssetAnalysis,
-        Position,
-        SystemConfig,
-        TimesFMForecast,
-    )
-else:
-    Position = resolve_model("Position")
-    AssetAnalysis = resolve_model("AssetAnalysis")
-    SystemConfig = resolve_model("SystemConfig")
-    TimesFMForecast = resolve_model("TimesFMForecast")
+Position: Any = resolve_model("Position")
+AssetAnalysis: Any = resolve_model("AssetAnalysis")
+SystemConfig: Any = resolve_model("SystemConfig")
+TimesFMForecast: Any = resolve_model("TimesFMForecast")
 
 logger = logging.getLogger("TradingAgent.RiskGate")
 
@@ -41,7 +30,7 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
 
     async def _check_timesfm_expectancy(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         direction: str,
         sizing: SizingResult,
@@ -124,7 +113,7 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
             return False, f"TimesFM expectancy check failed (fail-closed): {e}"
 
     async def _check_analysis_quality_scores(
-        self, analysis: AssetAnalysis, session: AsyncSession | None = None
+        self, analysis: Any, session: Any | None = None
     ) -> tuple[bool, str]:
         """Validate that analysis has required quality scores before execution."""
         if analysis is None:
@@ -159,12 +148,13 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
         min_confluence = self.settings.get("trading", {}).get("auto_execute_min_confluence", 7)
         if session and getattr(analysis, "symbol", None):
             try:
-                from monika.application.analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
+                from monika.domain.risk.ports import get_default_adaptive_risk_policy
 
-                policy = AdaptiveRiskPolicy(self.settings)
-                eff_thresh, reason = await policy.get_effective_threshold(session, analysis.symbol)
-                min_confluence = eff_thresh
-                logger.debug(f"[{analysis.symbol}] RiskGate adaptive threshold: {eff_thresh} ({reason})")
+                policy = get_default_adaptive_risk_policy(self.settings)
+                if policy is not None:
+                    eff_thresh, reason = await policy.get_effective_threshold(session, analysis.symbol)
+                    min_confluence = eff_thresh
+                    logger.debug(f"[{analysis.symbol}] RiskGate adaptive threshold: {eff_thresh} ({reason})")
             except Exception as e:
                 logger.debug(f"AdaptiveRiskPolicy lookup in RiskGate non-fatal: {e}")
 
@@ -179,9 +169,12 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
             f"quality_scores_ok(confluence={analysis.confluence_score}, priced_in={analysis.priced_in_score}, threshold={min_confluence})",
         )
 
-    async def _check_edge_status_not_paused(self, session: AsyncSession, is_backtest: bool = False) -> tuple[bool, str]:
+    async def _check_edge_status_not_paused(self, session: Any, is_backtest: bool = False) -> tuple[bool, str]:
         if is_backtest:
             return (True, "ok")
+
+        from sqlalchemy import select
+
         cfg = (
             await session.execute(select(SystemConfig).where(SystemConfig.key == "trading_paused"))
         ).scalar_one_or_none()
@@ -196,9 +189,9 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
 
     async def _check_evidence_gate(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
-        analysis: AssetAnalysis | None = None,
+        analysis: Any | None = None,
         is_backtest: bool = False,
     ) -> tuple[bool, str]:
         """
@@ -210,15 +203,16 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
             return True, "Evidence gate skipped for backtest or missing analysis"
 
         try:
-            from monika.application.analysis.strategies.evidence_store import EvidenceStore
+            from monika.domain.risk.ports import get_default_evidence_store
 
             strat_id = getattr(analysis, "strategy_id", None) or "general"
             regime = getattr(analysis, "market_regime", "UNKNOWN") or "UNKNOWN"
 
-            ev_store = EvidenceStore()
-            is_valid, reason = ev_store.validate_strategy_for_trade(strat_id, regime)
-            if not is_valid:
-                return False, f"EvidenceStore rejected trade: {reason}"
+            ev_store = get_default_evidence_store()
+            if ev_store is not None:
+                is_valid, reason = ev_store.validate_strategy_for_trade(strat_id, regime)
+                if not is_valid:
+                    return False, f"EvidenceStore rejected trade: {reason}"
         except Exception as e:
             logger.warning(f"[{symbol}] Evidence gate check failed: {e}")
             return False, f"evidence_gate_check_failed: {e}"

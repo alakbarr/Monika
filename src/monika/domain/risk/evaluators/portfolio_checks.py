@@ -14,30 +14,17 @@ from datetime import datetime, timedelta, timezone, UTC
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 import monika.core.primitives.clock as clock
 from monika.domain.market.currency_utils import get_symbol_currencies
 from monika.domain.risk.evaluators.base import _RiskGateMixinBase, get_trading_day_start, resolve_model
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult
 
-if TYPE_CHECKING:
-    from monika.infrastructure.database.models import (
-        AssetAnalysis,
-        PaperTradeRecord,
-        Position,
-        PriceOHLCV,
-        RiskState,
-        TradeOutcome,
-    )
-else:
-    Position = resolve_model("Position")
-    RiskState = resolve_model("RiskState")
-    TradeOutcome = resolve_model("TradeOutcome")
-    PaperTradeRecord = resolve_model("PaperTradeRecord")
-    AssetAnalysis = resolve_model("AssetAnalysis")
-    PriceOHLCV = resolve_model("PriceOHLCV")
+Position: Any = resolve_model("Position")
+RiskState: Any = resolve_model("RiskState")
+TradeOutcome: Any = resolve_model("TradeOutcome")
+PaperTradeRecord: Any = resolve_model("PaperTradeRecord")
+AssetAnalysis: Any = resolve_model("AssetAnalysis")
+PriceOHLCV: Any = resolve_model("PriceOHLCV")
 
 logger = logging.getLogger("TradingAgent.RiskGate")
 
@@ -47,8 +34,8 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
     async def _check_strategy_factor_exposure(
         self,
-        session: AsyncSession,
-        analysis: AssetAnalysis,
+        session: Any,
+        analysis: Any,
         simulated_positions: list | None = None,
     ) -> tuple[bool, str]:
         """Limits portfolio concentration across strategy factor families (trend, mean_reversion, stat_arb, breakout)."""
@@ -61,11 +48,10 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
         if not strat_id and not factor_family:
             return True, "factor_exposure_na"
 
-        from monika.application.analysis.strategies.registry import StrategyRegistry
+        from monika.domain.risk.ports import get_strategy_factor_family
 
         if not factor_family:
-            strat_cls = StrategyRegistry.get_strategy(strat_id) if strat_id else None
-            factor_family = getattr(strat_cls, "factor_family", "trend") if strat_cls else "trend"
+            factor_family = get_strategy_factor_family(strat_id)
 
         risk_cfg = self.settings.get("trading", {}).get("risk", {})
         limit_val = risk_cfg.get("max_positions_per_factor_family", 3)
@@ -80,30 +66,28 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
                 p_fam = None
                 p_strat = getattr(p, "source_strategy_id", None)
                 if p_strat:
-                    p_cls = StrategyRegistry.get_strategy(str(p_strat))
-                    p_fam = getattr(p_cls, "factor_family", None) if p_cls else None
+                    p_fam = get_strategy_factor_family(str(p_strat))
                 elif getattr(p, "analysis_id", None):
                     p_ana = await session.get(AssetAnalysis, p.analysis_id)
                     ana_strat = getattr(p_ana, "source_strategy_id", None) if p_ana else None
                     if p_ana and ana_strat:
-                        p_cls = StrategyRegistry.get_strategy(str(ana_strat))
-                        p_fam = getattr(p_cls, "factor_family", None) if p_cls else None
+                        p_fam = get_strategy_factor_family(str(ana_strat))
                 if p_fam == factor_family:
                     current_count += 1
         else:
+            from sqlalchemy import select
+
             open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
             for pos in open_positions:
                 pos_fam = None
                 pos_strat = getattr(pos, "source_strategy_id", None)
                 if pos_strat:
-                    pos_cls = StrategyRegistry.get_strategy(str(pos_strat))
-                    pos_fam = getattr(pos_cls, "factor_family", None) if pos_cls else None
+                    pos_fam = get_strategy_factor_family(str(pos_strat))
                 elif getattr(pos, "analysis_id", None):
                     pos_ana = await session.get(AssetAnalysis, pos.analysis_id)
                     ana_strat = getattr(pos_ana, "source_strategy_id", None) if pos_ana else None
                     if pos_ana and ana_strat:
-                        pos_cls = StrategyRegistry.get_strategy(str(ana_strat))
-                        pos_fam = getattr(pos_cls, "factor_family", None) if pos_cls else None
+                        pos_fam = get_strategy_factor_family(str(ana_strat))
                 if pos_fam == factor_family:
                     current_count += 1
 
@@ -117,7 +101,7 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
     async def _check_weekly_drawdown(
         self,
-        session: AsyncSession,
+        session: Any,
         equity: float | None = None,
         is_backtest: bool = False,
         is_paper: bool | None = None,
@@ -125,6 +109,7 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
         if is_backtest:
             return True, "weekly_drawdown_backtest_ok"
         from datetime import timedelta
+        from sqlalchemy import select
 
         now = clock.now()
         week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -182,7 +167,7 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
     async def _check_daily_drawdown(
         self,
-        session: AsyncSession,
+        session: Any,
         equity: float | None = None,
         simulated_daily_pnl: float | None = None,
         is_backtest: bool = False,
@@ -198,6 +183,8 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
                     )
                 return True, f"simulated_drawdown={drawdown_pct:.2f}%"
             return True, "backtest_mode_dd_ok"
+
+        from sqlalchemy import select
 
         today_start = get_trading_day_start(self.settings)
         state = (
@@ -294,7 +281,7 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
     async def check_correlation_exposure(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         direction: str,
         simulated_positions: list | None = None,
@@ -303,6 +290,8 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
         volume: float | None = None,
     ) -> tuple[bool, str]:
         """Pastikan trade ini tidak melewati batas korelasi paparan mata uang / heat limit menggunakan DynamicCorrelationMatrix."""
+        from sqlalchemy import select
+
         if open_positions is None:
             if simulated_positions is not None:
                 open_positions = simulated_positions
@@ -384,7 +373,7 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
     async def _check_correlation(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         direction: str,
         simulated_positions: list | None = None,
@@ -402,7 +391,7 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
         )
 
     async def _get_dynamic_correlation(
-        self, session: AsyncSession, symbol1: str, symbol2: str, as_of: datetime | None = None
+        self, session: Any, symbol1: str, symbol2: str, as_of: datetime | None = None
     ) -> tuple[float, float]:
         """Hitung korelasi harian secara dinamis berdasar PriceOHLCV, return (corr, std_dev2)."""
         import pandas as pd
@@ -440,11 +429,13 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
     async def _check_total_portfolio_heat(
         self,
-        session: AsyncSession,
+        session: Any,
         proposed_sizing: SizingResult,
         equity: float | None = None,
         simulated_positions: list | None = None,
     ) -> tuple[bool, str]:
+        from sqlalchemy import select
+
         heat_cfg = self.settings.get("trading", {}).get("risk", {})
         max_heat_pct = float(heat_cfg.get("max_portfolio_heat_pct", 4.0))
         eff_equity = (
@@ -551,7 +542,7 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
     async def _check_copula_tail_risk(
         self,
-        session: AsyncSession,
+        session: Any,
         symbol: str,
         simulated_positions: list | None = None,
         as_of: datetime | None = None,
@@ -563,6 +554,8 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
         If tail risk lambda > 0.40, enforces caution or rejection to protect against market crash contagion.
         """
         try:
+            from sqlalchemy import select
+
             if simulated_positions is not None:
                 active_symbols = list(
                     {p.get("symbol") for p in simulated_positions if isinstance(p, dict) and p.get("symbol") != symbol}
@@ -578,7 +571,11 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
             import numpy as np
 
-            from monika.application.analysis.calculators.copula_tail_risk import fit_clayton_copula
+            from monika.domain.risk.ports import get_default_copula_tail_risk_fitter
+
+            fit_clayton_copula = get_default_copula_tail_risk_fitter()
+            if not callable(fit_clayton_copula):
+                return True, "Copula fitter unavailable"
 
             now = as_of or clock.now()
             cutoff = now - timedelta(days=60)
@@ -611,7 +608,7 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
                 min_len = min(len(c_returns), len(o_returns))
                 fit_res = fit_clayton_copula(c_returns[-min_len:], o_returns[-min_len:])
-                lower_tail = fit_res.get("lower_tail_dependence", 0.0)
+                lower_tail = float(fit_res.get("lower_tail_dependence", 0.0)) if isinstance(fit_res, dict) else 0.0
 
                 if lower_tail > 0.40:
                     return (

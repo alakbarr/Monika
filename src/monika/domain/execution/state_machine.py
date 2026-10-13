@@ -102,9 +102,18 @@ class OrderStateMachine:
         Backward-compatibility facade method.
         Delegates persistence and event orchestration to OrderLifecycleService.
         """
-        from monika.application.execution.service.order_lifecycle_service import OrderLifecycleService
+        import sys
 
-        return await OrderLifecycleService.transition_order_state(
+        mod = sys.modules.get("monika.application.execution.service.order_lifecycle_service")
+        if mod and hasattr(mod, "OrderLifecycleService"):
+            svc = mod.OrderLifecycleService
+        else:
+            import importlib
+
+            mod = importlib.import_module("monika.application.execution.service.order_lifecycle_service")
+            svc = getattr(mod, "OrderLifecycleService")
+
+        return await svc.transition_order_state(
             session=session,
             order=order,
             new_status=new_status,

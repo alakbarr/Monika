@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.execution.service.executors.analysis_preflight import AnalysisPreflightMixin
 from monika.application.execution.service.executors.analysis_submission import AnalysisSubmissionMixin
-from monika.domain.execution.base import _ExecutionServiceMixinBase
+from monika.application.execution.service.base import _ExecutionServiceMixinBase
 from monika.domain.risk.position_sizing import SizingResult
 from monika.infrastructure.database.models import AssetAnalysis, Order, OrderStatus
 

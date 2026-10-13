@@ -19,7 +19,6 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.Risk.ExecutionSimulator")
 
@@ -58,7 +57,7 @@ class ExecutionSimulator:
         self.mt5_client = mt5_client
 
     async def fetch_recent_ticks(
-        self, symbol: str, count: int = 100, session: AsyncSession | None = None
+        self, symbol: str, count: int = 100, session: Any | None = None
     ) -> list[dict[str, float]]:
         """
         Retrieves up to `count` recent price ticks.
@@ -118,7 +117,7 @@ class ExecutionSimulator:
         take_profit: float,
         volume: float = 0.1,
         ticks: list[dict[str, float]] | None = None,
-        session: AsyncSession | None = None,
+        session: Any | None = None,
     ) -> ExecutionSimulationResult:
         """
         Runs tick-level market replay and stress tests across 3 slippage scenarios.

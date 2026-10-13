@@ -11,8 +11,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 logger = logging.getLogger("TradingAgent.EvidenceVerifier")
 
 
@@ -30,7 +28,7 @@ class EvidenceFirstVerifier:
     def record_evidence(
         self,
         decision_payload: Dict[str, Any],
-        session: Optional[AsyncSession] = None,
+        session: Optional[Any] = None,
         extra_metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
@@ -51,7 +49,7 @@ class EvidenceFirstVerifier:
         return evidence_record
 
     async def pre_trade_assertions(
-        self, signal: Dict[str, Any], session: Optional[AsyncSession] = None
+        self, signal: Dict[str, Any], session: Optional[Any] = None
     ) -> Tuple[bool, List[str]]:
         """
         Phase 1: 10-point deterministic assertions BEFORE sending to MT5 / RiskGate.
@@ -152,7 +150,7 @@ class EvidenceFirstVerifier:
         return all_passed, violations
 
     async def post_execution_reconciliation(
-        self, order_result: Dict[str, Any], mt5_client: Optional[Any] = None, session: Optional[AsyncSession] = None
+        self, order_result: Dict[str, Any], mt5_client: Optional[Any] = None, session: Optional[Any] = None
     ) -> Dict[str, Any]:
         """
         Phase 2: Zero-trust post-execution reconciliation.

@@ -8,10 +8,7 @@ import logging
 import math
 
 import pandas as pd
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from monika.infrastructure.database.models import DXYData, PriceOHLCV, TreasuryYield
+from monika.domain.models_resolver import resolve_model
 
 logger = logging.getLogger("TradingAgent.DynamicCorrelation")
 
@@ -102,11 +99,11 @@ def _static_fallback(sym1: str, sym2: str) -> float:
 
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 
 async def get_rolling_correlation(
-    session: AsyncSession,
+    session: Any,
     symbol1: str,
     symbol2: str,
     lookback_bars: int = 60,
@@ -121,7 +118,13 @@ async def get_rolling_correlation(
     if symbol1 == symbol2:
         return (1.0, "identity")
     try:
-        from monika.infrastructure.database.models import TreasuryYield
+        from sqlalchemy import select
+
+        DXYData = resolve_model("DXYData")
+        PriceOHLCV = resolve_model("PriceOHLCV")
+        TreasuryYield = resolve_model("TreasuryYield")
+        if not all([DXYData, PriceOHLCV, TreasuryYield]):
+            return (0.0, "models_unavailable")
 
         def _build_stmt(sym: str):
             sym_clean = (sym or "").upper().replace("/", "")
@@ -194,7 +197,7 @@ async def get_rolling_correlation(
 
 
 async def compute_cross_asset_macro_correlation(
-    session: AsyncSession,
+    session: Any,
     lookback_days: int = 60,
 ) -> dict:
     """
@@ -205,11 +208,15 @@ async def compute_cross_asset_macro_correlation(
 
     import numpy as np
 
-    from monika.infrastructure.database.models import PriceOHLCV, TreasuryYield
-
     cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days + 30)
 
     try:
+        from sqlalchemy import select
+
+        PriceOHLCV = resolve_model("PriceOHLCV")
+        TreasuryYield = resolve_model("TreasuryYield")
+        if not PriceOHLCV or not TreasuryYield:
+            return {}
         # 1. Fetch 10Y and 2Y yields
         stmt_10y = (
             select(TreasuryYield.date, TreasuryYield.yield_percent)

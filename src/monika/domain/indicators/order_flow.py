@@ -17,8 +17,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.OrderFlow")
 
@@ -132,7 +130,7 @@ class OrderFlowEngine:
 
     async def _compute_tick_rule_cvd_snapshot(
         self,
-        session: Optional[AsyncSession] = None,
+        session: Optional[Any] = None,
         symbol: str = "",
         lookback: int = 200,
         df: Any = None,
@@ -158,25 +156,28 @@ class OrderFlowEngine:
 
         if len(prices) < 2 and session is not None:
             try:
-                from monika.infrastructure.database.models import PriceOHLCV
+                from sqlalchemy import select
+                from monika.domain.models_resolver import resolve_model
 
-                stmt = (
-                    select(PriceOHLCV)
-                    .where(PriceOHLCV.symbol == symbol)
-                    .where(PriceOHLCV.timeframe == timeframe)
-                    .order_by(PriceOHLCV.timestamp.desc())
-                    .limit(lookback)
-                )
-                res = await session.execute(stmt)
-                rows = res.scalars().all()
-                if rows and len(rows) >= 2:
-                    bars = list(reversed(rows))
-                    prices = [
-                        float(b.close)
-                        for b in bars
-                        if hasattr(b, "close") and isinstance(getattr(b, "close", None), (int, float))
-                    ]
-                    volumes = [float(b.volume or 1.0) for b in bars if hasattr(b, "volume")]
+                PriceOHLCV = resolve_model("PriceOHLCV")
+                if PriceOHLCV:
+                    stmt = (
+                        select(PriceOHLCV)
+                        .where(PriceOHLCV.symbol == symbol)
+                        .where(PriceOHLCV.timeframe == timeframe)
+                        .order_by(PriceOHLCV.timestamp.desc())
+                        .limit(lookback)
+                    )
+                    res = await session.execute(stmt)
+                    rows = res.scalars().all()
+                    if rows and len(rows) >= 2:
+                        bars = list(reversed(rows))
+                        prices = [
+                            float(b.close)
+                            for b in bars
+                            if hasattr(b, "close") and isinstance(getattr(b, "close", None), (int, float))
+                        ]
+                        volumes = [float(b.volume or 1.0) for b in bars if hasattr(b, "volume")]
             except Exception as db_err:
                 logger.debug(f"Error loading OHLCV for CVD: {db_err}")
 
@@ -258,7 +259,7 @@ class OrderFlowEngine:
 
     async def analyze_order_flow(
         self,
-        session: Optional[AsyncSession] = None,
+        session: Optional[Any] = None,
         symbol: str = "",
         lookback: int = 200,
         df: Any = None,
@@ -271,19 +272,26 @@ class OrderFlowEngine:
         return await self._compute_tick_rule_cvd_snapshot(session, symbol, lookback, df=df, timeframe=timeframe)
 
 
-async def fetch_latest_order_flow(session: AsyncSession, symbol: str) -> OrderFlowSnapshot:
+async def fetch_latest_order_flow(session: Any, symbol: str) -> OrderFlowSnapshot:
     """Ambil snapshot order flow terbaru dari database atau hitung on-the-fly."""
-    from monika.infrastructure.database.models import TechnicalIndicator
+    row = None
+    try:
+        from sqlalchemy import select
+        from monika.domain.models_resolver import resolve_model
 
-    row = (
-        await session.execute(
-            select(TechnicalIndicator)
-            .where(TechnicalIndicator.symbol == symbol)
-            .where(TechnicalIndicator.indicator_name == "ORDER_FLOW_SNAPSHOT")
-            .order_by(TechnicalIndicator.timestamp.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
+        TechnicalIndicator = resolve_model("TechnicalIndicator")
+        if TechnicalIndicator:
+            row = (
+                await session.execute(
+                    select(TechnicalIndicator)
+                    .where(TechnicalIndicator.symbol == symbol)
+                    .where(TechnicalIndicator.indicator_name == "ORDER_FLOW_SNAPSHOT")
+                    .order_by(TechnicalIndicator.timestamp.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+    except Exception as exc:
+        logger.debug(f"Error fetching cached order flow for {symbol}: {exc}")
 
     if row and row.value_json:
         try:

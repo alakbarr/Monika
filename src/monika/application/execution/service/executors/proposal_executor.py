@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
-from monika.domain.execution.base import _ExecutionServiceMixinBase
+from monika.application.execution.service.base import _ExecutionServiceMixinBase
 
 if TYPE_CHECKING:
     from monika.application.execution.service.order_executor import ExecutionResult

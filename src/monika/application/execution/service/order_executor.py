@@ -23,7 +23,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 import monika.infrastructure.database.db as _db_mod
-from monika.domain.execution.base import _ExecutionServiceMixinBase
+from monika.application.execution.service.base import _ExecutionServiceMixinBase
 from monika.domain.risk.position_sizing import SizingResult
 from monika.infrastructure.database.safe_ops import safe_commit
 from monika.infrastructure.infra.notifier import AgentNotifier
