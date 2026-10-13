@@ -314,3 +314,27 @@ async def test_computer_use_safeguards():
     resp = await handle_computer_use(params)
     # Either pyautogui missing error or coordinate bounds error
     assert ("out of screen bounds" in resp.lower() or "gui automation unavailable" in resp.lower())
+
+
+def test_persistent_session_kernel_ast_sandbox_blocks_restricted_code():
+    """Verify PersistentSessionKernel statically blocks restricted modules and calls via AST."""
+    kernel = PersistentSessionKernel(session_id="test_security_sandbox", timeout_seconds=10.0)
+    try:
+        # 1. Prohibited module: subprocess
+        out_sub, ok_sub = kernel.execute("import subprocess\nsubprocess.run(['dir'])")
+        assert not ok_sub
+        assert "Security Violation" in out_sub
+        assert "subprocess" in out_sub
+
+        # 2. Prohibited module: socket
+        out_sock, ok_sock = kernel.execute("import socket\ns = socket.socket()")
+        assert not ok_sock
+        assert "Security Violation" in out_sock
+        assert "socket" in out_sock
+
+        # 3. Prohibited call: eval / exec / open
+        out_eval, ok_eval = kernel.execute("eval('1 + 1')")
+        assert not ok_eval
+        assert "Security Violation" in out_eval
+    finally:
+        kernel.terminate()

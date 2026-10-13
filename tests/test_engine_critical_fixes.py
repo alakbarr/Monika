@@ -81,6 +81,24 @@ async def test_rbac_enforces_role_hierarchy():
     assert res == {"action": "executed"}
 
 
+@pytest.mark.asyncio
+async def test_rbac_rejects_unauthenticated_localhost():
+    """Verify unauthenticated localhost requests (role is None) are rejected with 401."""
+    @require_role(Role.ADMIN)
+    async def admin_action(request: Request):
+        return {"action": "admin_granted"}
+
+    mock_request = MagicMock(spec=Request)
+    mock_request.state = MagicMock()
+    mock_request.state.role = None
+    mock_request.state.is_localhost = True
+
+    with pytest.raises(HTTPException) as exc_info:
+        await admin_action(request=mock_request)
+    assert exc_info.value.status_code == 401
+    assert "Unauthorized" in exc_info.value.detail
+
+
 def test_chat_agent_last_streamed_tracking():
     """Verify ChatAgent tracks streaming state correctly."""
     mock_settings = {"telegram": {"admin_id": 123}}

@@ -38,6 +38,7 @@ from monika.application.analysis.tools.kernel.code_execution_rpc import (
 )
 from monika.application.analysis.tools.kernel.env_sanitizer import get_sanitized_environment
 from monika.application.analysis.tools.kernel.output_spiller import truncate_and_spill_output
+from monika.application.analysis.tools.kernel.sandbox_runner import validate_code_ast
 
 logger = logging.getLogger("TradingAgent.Tools.PersistentSessionKernel")
 
@@ -127,6 +128,22 @@ def run_cell(code):
     out_buf, err_buf = io.StringIO(), io.StringIO()
     status, trace = "ok", ""
     try:
+        import ast
+        tree = ast.parse(code)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    mod_root = alias.name.split(".")[0].lower()
+                    if mod_root in ("ctypes", "subprocess", "socket", "metatrader5", "winreg", "_winapi", "shutil"):
+                        raise PermissionError(f"Restricted module '{mod_root}' blocked by AST sandbox")
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    mod_root = node.module.split(".")[0].lower()
+                    if mod_root in ("ctypes", "subprocess", "socket", "metatrader5", "winreg", "_winapi", "shutil"):
+                        raise PermissionError(f"Restricted module '{mod_root}' blocked by AST sandbox")
+            elif isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Attribute) and node.func.attr in ("order_send", "place_order", "close_position"):
+                    raise PermissionError(f"Restricted broker call '{node.func.attr}' blocked by AST sandbox")
         with contextlib.redirect_stdout(out_buf), contextlib.redirect_stderr(err_buf):
             compiled = compile(code, "<monika_cell>", "exec")
             exec(compiled, GLOBALS)
@@ -279,6 +296,10 @@ class PersistentSessionKernel:
         Send code cell to persistent kernel, wait for framed sentinel response.
         Returns: (formatted_output, is_success)
         """
+        is_safe, sec_err = validate_code_ast(code_str)
+        if not is_safe:
+            return f"Security Violation: {sec_err}", False
+
         timeout = timeout_seconds or self.timeout_seconds
         with self.lock:
             self._ensure_started()

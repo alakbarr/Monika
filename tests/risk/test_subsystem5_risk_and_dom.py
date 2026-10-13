@@ -89,6 +89,71 @@ async def test_risk_gate_adv_liquidity_floor():
 
 
 @pytest.mark.asyncio
+async def test_risk_gate_adv_liquidity_fail_closed_on_error():
+    """Verify ADV liquidity check fails closed on database exception in operational mode."""
+    settings = {"trading": {"risk": {}}}
+    rg = RiskGate(settings)
+
+    session = MagicMock()
+    session.execute.side_effect = RuntimeError("Database connection lost")
+
+    sizing = SizingResult(
+        symbol="EURUSD",
+        direction="buy",
+        entry_price=1.1000,
+        stop_loss=1.0950,
+        take_profit=1.1100,
+        account_equity=10000.0,
+        risk_percent=1.0,
+        risk_amount_usd=100.0,
+        sl_distance_price=0.0050,
+        sl_distance_pips=50.0,
+        pip_value_per_lot=10.0,
+        raw_lots=1.0,
+        recommended_lots=1.0,
+        rr_ratio=2.0,
+        is_valid=True,
+    )
+
+    ok, reason = await rg._check_adv_liquidity(session, "EURUSD", sizing, is_backtest=False)
+    assert ok is False
+    assert "fail-closed" in reason
+
+
+@pytest.mark.asyncio
+async def test_risk_gate_rejects_nan_lots_and_prices():
+    """Verify NaN values in sizing, prices, or lots are rejected fail-closed."""
+    settings = {"trading": {"risk": {}}}
+    rg = RiskGate(settings)
+
+    nan_sizing = SizingResult(
+        symbol="EURUSD",
+        direction="buy",
+        entry_price=1.1000,
+        stop_loss=1.0950,
+        take_profit=1.1100,
+        account_equity=10000.0,
+        risk_percent=1.0,
+        risk_amount_usd=100.0,
+        sl_distance_price=0.0050,
+        sl_distance_pips=50.0,
+        pip_value_per_lot=10.0,
+        raw_lots=float("nan"),
+        recommended_lots=float("nan"),
+        rr_ratio=2.0,
+        is_valid=True,
+    )
+
+    ok_valid, msg_valid = await rg._check_sizing_valid(nan_sizing)
+    assert ok_valid is False
+    assert "non-finite" in msg_valid
+
+    ok_lot, msg_lot = await rg._check_lot_size(nan_sizing)
+    assert ok_lot is False
+    assert "non-finite" in msg_lot
+
+
+@pytest.mark.asyncio
 async def test_risk_gate_evidence_gate():
     settings = {"trading": {"risk": {}}}
     rg = RiskGate(settings)

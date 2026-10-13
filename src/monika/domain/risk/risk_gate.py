@@ -921,14 +921,16 @@ class RiskGate:
         """Validasi bahwa position sizing sebelumnya (engine) telah sukses."""
         if not sizing.is_valid:
             return False, f"Invalid sizing: {'; '.join(sizing.rejection_reasons)}"
-        if sizing.recommended_lots <= 0:
-            return False, "Recommended lots is zero or negative"
+        if sizing.recommended_lots is None or not math.isfinite(sizing.recommended_lots) or sizing.recommended_lots <= 0:
+            return False, "Recommended lots is zero, negative, or non-finite"
+        if not math.isfinite(sizing.entry_price) or not math.isfinite(sizing.stop_loss):
+            return False, "Entry price or stop loss is non-finite"
         return True, "ok"
 
     async def _check_lot_size(self, sizing: SizingResult) -> tuple[bool, str]:
         """Validasi bahwa ukuran lot berada dalam batas aman."""
-        if sizing.recommended_lots <= 0:
-            return False, "Lot size is zero or negative"
+        if sizing.recommended_lots is None or not math.isfinite(sizing.recommended_lots) or sizing.recommended_lots <= 0:
+            return False, "Lot size is non-finite, zero, or negative"
         
         # Check against max_lot from instrument spec
         # (Position sizing already handles this, but double-check here)
@@ -947,8 +949,8 @@ class RiskGate:
     async def _check_min_rr_ratio(self, sizing: SizingResult) -> tuple[bool, str]:
         """Validasi bahwa Risk-to-Reward ratio proposal memenuhi batas minimum (FR-4.1)."""
         rr = getattr(sizing, "rr_ratio", None)
-        if rr is None or rr <= 0:
-            return False, "Risk-to-reward ratio missing or zero; rejected by FR-4.1 fail-closed protection"
+        if rr is None or not math.isfinite(rr) or rr <= 0:
+            return False, "Risk-to-reward ratio missing, non-finite, or non-positive; rejected by FR-4.1 fail-closed protection"
         min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3))
         if rr < min_rr:
             return False, f"Risk-to-reward ratio {rr:.2f} is below minimum requirement {min_rr:.2f}"
@@ -2054,10 +2056,14 @@ class RiskGate:
             rows = (await session.execute(stmt)).scalars().all()
             if rows and len(rows) >= 5:
                 adv = float(sum(rows)) / len(rows)
-                if adv > 0 and (sizing.recommended_lots > (adv * 0.01)):
+                if not math.isfinite(adv) or adv <= 0:
+                    return False, f"Non-finite or invalid ADV volume calculated for {symbol}: {adv}"
+                if sizing.recommended_lots > (adv * 0.01):
                     return False, f"Proposed volume {sizing.recommended_lots} lots exceeds 1.0% of 20-day ADV ({adv:.0f} units)"
         except Exception as e:
-            logger.debug(f"[{symbol}] ADV calculation non-fatal: {e}")
+            logger.error(f"[{symbol}] ADV calculation failed: {e}")
+            if not is_backtest:
+                return False, f"ADV liquidity evaluation failed (fail-closed): {e}"
 
         return True, "ADV liquidity floor satisfied"
 
