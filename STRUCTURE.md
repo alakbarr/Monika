@@ -961,6 +961,16 @@ Monika/
 │       │   │   └── service
 │       │   │       ├── __init__.py
 │       │   │       ├── emergency_manager.py
+│       │   │       ├── executors
+│       │   │       │   ├── __init__.py
+│       │   │       │   ├── analysis_executor.py
+│       │   │       │   ├── analysis_preflight.py
+│       │   │       │   ├── analysis_submission.py
+│       │   │       │   ├── base.py
+│       │   │       │   ├── paired_executor.py
+│       │   │       │   ├── preplanned_executor.py
+│       │   │       │   ├── proposal_executor.py
+│       │   │       │   └── tranche_executor.py
 │       │   │       ├── multi_account_adapter.py
 │       │   │       ├── order_executor.py
 │       │   │       ├── order_lifecycle_service.py
