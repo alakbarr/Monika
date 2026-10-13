@@ -93,12 +93,18 @@ class SchmittRegimeDetector:
 
         return self._state
 
+    _instance: Optional["SchmittRegimeDetector"] = None
 
-_GLOBAL_SCHMITT_DETECTOR: Optional[SchmittRegimeDetector] = None
+    @classmethod
+    def get_instance(cls) -> "SchmittRegimeDetector":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_schmitt_regime_detector() -> SchmittRegimeDetector:
-    global _GLOBAL_SCHMITT_DETECTOR
-    if _GLOBAL_SCHMITT_DETECTOR is None:
-        _GLOBAL_SCHMITT_DETECTOR = SchmittRegimeDetector()
-    return _GLOBAL_SCHMITT_DETECTOR
+    return SchmittRegimeDetector.get_instance()

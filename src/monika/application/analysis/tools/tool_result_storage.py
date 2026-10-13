@@ -75,12 +75,18 @@ class ToolResultStorage:
             logger.warning(f"[ToolResultStorage] Spillover error for '{tool_name}': {e}")
             return raw_result, False
 
+    _instance: Optional["ToolResultStorage"] = None
 
-_global_storage: Optional[ToolResultStorage] = None
+    @classmethod
+    def get_instance(cls) -> "ToolResultStorage":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_tool_result_storage() -> ToolResultStorage:
-    global _global_storage
-    if _global_storage is None:
-        _global_storage = ToolResultStorage()
-    return _global_storage
+    return ToolResultStorage.get_instance()

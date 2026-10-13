@@ -17,6 +17,7 @@ import logging
 import os
 import secrets
 import string
+import sys
 import threading
 import time
 from dataclasses import asdict, dataclass, field
@@ -61,6 +62,26 @@ class PairingManager:
     Prevents unauthorized strangers on public messaging platforms from controlling
     the trading agent or issuing arbitrary execution commands.
     """
+
+    _instance: Optional[PairingManager] = None
+
+    @classmethod
+    def get_instance(cls, store_path: str = DEFAULT_PAIRED_USERS_STORE) -> PairingManager:
+        mod = sys.modules.get(__name__)
+        if mod and getattr(mod, "_GLOBAL_PAIRING_MANAGER", None) is not None:
+            return getattr(mod, "_GLOBAL_PAIRING_MANAGER")
+        if cls._instance is None:
+            cls._instance = cls(store_path=store_path)
+            if mod:
+                setattr(mod, "_GLOBAL_PAIRING_MANAGER", cls._instance)
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
+        mod = sys.modules.get(__name__)
+        if mod:
+            setattr(mod, "_GLOBAL_PAIRING_MANAGER", None)
 
     def __init__(self, store_path: str = DEFAULT_PAIRED_USERS_STORE):
         self.store_path = store_path
@@ -256,13 +277,9 @@ _GLOBAL_PAIRING_MANAGER: Optional[PairingManager] = None
 
 def get_pairing_manager(store_path: str = DEFAULT_PAIRED_USERS_STORE) -> PairingManager:
     """Returns global singleton PairingManager."""
-    global _GLOBAL_PAIRING_MANAGER
-    if _GLOBAL_PAIRING_MANAGER is None:
-        _GLOBAL_PAIRING_MANAGER = PairingManager(store_path=store_path)
-    return _GLOBAL_PAIRING_MANAGER
+    return PairingManager.get_instance(store_path=store_path)
 
 
 def reset_pairing_manager() -> None:
     """Resets global singleton for testing purposes."""
-    global _GLOBAL_PAIRING_MANAGER
-    _GLOBAL_PAIRING_MANAGER = None
+    PairingManager.reset()

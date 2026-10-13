@@ -22,14 +22,26 @@ mcp_router = APIRouter(prefix="/api/mcp", tags=["Model Context Protocol"])
 
 # Session queue store for active SSE client connections
 _active_mcp_sessions: Dict[str, asyncio.Queue] = {}
-_dispatcher: Optional[MonikaMcpDispatcher] = None
+
+
+class McpDispatcherRuntime:
+    """Manages lazy singleton lifecycle for MonikaMcpDispatcher."""
+
+    _dispatcher: Optional[MonikaMcpDispatcher] = None
+
+    @classmethod
+    def get(cls) -> MonikaMcpDispatcher:
+        if cls._dispatcher is None:
+            cls._dispatcher = MonikaMcpDispatcher()
+        return cls._dispatcher
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._dispatcher = None
 
 
 def get_dispatcher() -> MonikaMcpDispatcher:
-    global _dispatcher
-    if _dispatcher is None:
-        _dispatcher = MonikaMcpDispatcher()
-    return _dispatcher
+    return McpDispatcherRuntime.get()
 
 
 @mcp_router.get("/tools")

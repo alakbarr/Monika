@@ -16,36 +16,50 @@ from monika.domain.entities.order_status import OrderStatus
 
 logger = logging.getLogger("TradingAgent.ExecutionService.OrderCreator")
 
-_order_model_class: Optional[Any] = None
-
-
 def get_order_class() -> Any:
     """Dynamically resolves order class without static infrastructure coupling."""
-    global _order_model_class
-    if _order_model_class is None:
-        import sys
-
-        models = sys.modules.get("monika.infrastructure.database.models")
-        if models and hasattr(models, "Order"):
-            _order_model_class = getattr(models, "Order")
-        else:
-            try:
-                import importlib
-
-                mod = importlib.import_module("monika.infrastructure.database.models")
-                _order_model_class = getattr(mod, "Order")
-            except Exception:
-                from monika.domain.entities.order import OrderEntity
-
-                _order_model_class = OrderEntity
-    return _order_model_class
+    return OrderCreator.get_order_class()
 
 
 class OrderCreator:
     """Helper for constructing and validating Order instances."""
 
-    @staticmethod
+    _order_class: Optional[Any] = None
+
+    @classmethod
+    def get_order_class(cls) -> Any:
+        """Dynamically resolves order class without static infrastructure coupling."""
+        if cls._order_class is None:
+            import sys
+
+            models = sys.modules.get("monika.infrastructure.database.models")
+            if models and hasattr(models, "Order"):
+                cls._order_class = getattr(models, "Order")
+            else:
+                try:
+                    import importlib
+
+                    mod = importlib.import_module("monika.infrastructure.database.models")
+                    cls._order_class = getattr(mod, "Order")
+                except Exception:
+                    from monika.domain.entities.order import OrderEntity
+
+                    cls._order_class = OrderEntity
+        return cls._order_class
+
+    @classmethod
+    def set_order_class(cls, order_cls: Optional[Any]) -> None:
+        """Explicitly set or override order model/entity class."""
+        cls._order_class = order_cls
+
+    @classmethod
+    def reset(cls) -> None:
+        """Reset cached order class to None (for test isolation)."""
+        cls._order_class = None
+
+    @classmethod
     def create_order(
+        cls,
         symbol: str,
         order_type: str,
         direction: str,
@@ -56,7 +70,7 @@ class OrderCreator:
     ) -> Any:
         """Instantiates an Order record with PENDING_SUBMIT status."""
         c_id = client_order_id or f"ORD_{uuid.uuid4().hex[:12]}"
-        order_cls = get_order_class()
+        order_cls = cls.get_order_class()
         return order_cls(
             id=str(uuid.uuid4()),
             client_order_id=c_id,

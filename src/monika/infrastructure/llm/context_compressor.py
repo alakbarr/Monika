@@ -26,7 +26,20 @@ from monika.application.agent.harness.context_compressor import (
 logger = logging.getLogger("TradingAgent.Utils.LLM.ContextCompressor")
 
 
-_GLOBAL_COMPRESSOR: Optional[ContextCompressor] = None
+class ContextCompressorRuntime:
+    """Manages process singleton ContextCompressor instance."""
+
+    compressor: Optional[ContextCompressor] = None
+
+    @classmethod
+    def get(cls, settings: Optional[Dict[str, Any]] = None, aux_client: Optional[Any] = None) -> ContextCompressor:
+        if cls.compressor is None:
+            cls.compressor = ContextCompressor(settings=settings, aux_client=aux_client)
+        return cls.compressor
+
+    @classmethod
+    def reset(cls) -> None:
+        cls.compressor = None
 
 
 def get_context_compressor(
@@ -34,10 +47,7 @@ def get_context_compressor(
     aux_client: Optional[Any] = None,
 ) -> ContextCompressor:
     """Return process singleton or configured ContextCompressor instance."""
-    global _GLOBAL_COMPRESSOR
-    if _GLOBAL_COMPRESSOR is None:
-        _GLOBAL_COMPRESSOR = ContextCompressor(settings=settings, aux_client=aux_client)
-    return _GLOBAL_COMPRESSOR
+    return ContextCompressorRuntime.get(settings=settings, aux_client=aux_client)
 
 
 async def compress_context(

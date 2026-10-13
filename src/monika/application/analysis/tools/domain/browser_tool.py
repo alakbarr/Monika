@@ -30,30 +30,43 @@ from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScrap
 
 logger = logging.getLogger("TradingAgent.Tools.Browser")
 
-_ACTIVE_BROWSER_SCRAPER: Optional[BaseScraper] = None
+class BrowserSessionManager:
+    """Manages active browser scraper session lifetime."""
+
+    active_scraper: Optional[BaseScraper] = None
+
+    @classmethod
+    def get_or_create(cls, headless: bool = True) -> BaseScraper:
+        if cls.active_scraper is not None:
+            try:
+                if cls.active_scraper.page:
+                    return cls.active_scraper
+            except Exception:
+                cls.active_scraper = None
+
+        cls.active_scraper = BaseScraper(headless=headless, profile_name="monika_browser_tool")
+        return cls.active_scraper
+
+    @classmethod
+    def close(cls) -> None:
+        if cls.active_scraper is not None:
+            try:
+                cls.active_scraper.close()
+            except Exception:
+                pass
+            cls.active_scraper = None
+
+    @classmethod
+    def reset(cls) -> None:
+        cls.close()
 
 
 def _get_or_create_browser(headless: bool = True) -> BaseScraper:
-    global _ACTIVE_BROWSER_SCRAPER
-    if _ACTIVE_BROWSER_SCRAPER is not None:
-        try:
-            if _ACTIVE_BROWSER_SCRAPER.page:
-                return _ACTIVE_BROWSER_SCRAPER
-        except Exception:
-            _ACTIVE_BROWSER_SCRAPER = None
-
-    _ACTIVE_BROWSER_SCRAPER = BaseScraper(headless=headless, profile_name="monika_browser_tool")
-    return _ACTIVE_BROWSER_SCRAPER
+    return BrowserSessionManager.get_or_create(headless=headless)
 
 
 def _close_browser() -> None:
-    global _ACTIVE_BROWSER_SCRAPER
-    if _ACTIVE_BROWSER_SCRAPER is not None:
-        try:
-            _ACTIVE_BROWSER_SCRAPER.close()
-        except Exception:
-            pass
-        _ACTIVE_BROWSER_SCRAPER = None
+    BrowserSessionManager.close()
 
 
 class BrowserActionInput(BaseModel):

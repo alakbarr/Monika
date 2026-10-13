@@ -41,7 +41,7 @@ def test_get_calendar_events_mocked(client):
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/calendar/events?days_ahead=7")
         assert response.status_code == 200
@@ -56,7 +56,7 @@ def test_get_upcoming_calendar_mocked(client):
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/calendar/upcoming?hours_ahead=24")
         assert response.status_code == 200
@@ -71,7 +71,7 @@ def test_get_cot_data_mocked(client):
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/market/cot?symbol=EURUSD")
         assert response.status_code == 200
@@ -86,7 +86,7 @@ def test_get_classified_news_mocked(client):
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/news/classified?limit=10")
         assert response.status_code == 200
@@ -101,7 +101,7 @@ def test_get_news_sentiment_mocked(client):
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/news/sentiment?hours=24")
         assert response.status_code == 200
@@ -137,7 +137,7 @@ def test_get_latest_tearsheet_mocked(client):
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/reports/tearsheet/latest")
         assert response.status_code == 200
@@ -154,7 +154,7 @@ def test_get_market_fedwatch_mocked(client):
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/market/fedwatch")
         assert response.status_code == 200
@@ -172,7 +172,7 @@ def test_get_market_yields_mocked(client):
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/market/yields")
         assert response.status_code == 200
@@ -191,7 +191,7 @@ def test_get_market_fear_greed_mocked(client):
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/market/fear-greed")
         assert response.status_code == 200
@@ -208,7 +208,7 @@ def test_get_market_sentiment_composite_mocked(client):
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/market/sentiment-composite")
         assert response.status_code == 200
@@ -227,7 +227,7 @@ def test_get_crystallized_skills_endpoint(client):
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/skills/crystallized")
         assert response.status_code == 200
@@ -244,7 +244,7 @@ def test_get_skill_stats_endpoint(client):
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         response = client.get("/api/skills/eurusd_trend/stats")
         assert response.status_code == 200
@@ -257,7 +257,7 @@ def test_get_skill_stats_endpoint(client):
 def test_curate_skills_endpoint(client):
     """Test POST /api/skills/curate endpoint."""
     mock_session = create_mock_async_session()
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         with patch(
             "monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer.curate_and_prune_skills",
@@ -278,7 +278,7 @@ def test_deprecate_skill_endpoint(client):
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
 
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         with patch(
             "monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer.deprecate_skill", return_value=True
@@ -293,7 +293,7 @@ def test_deprecate_skill_endpoint(client):
 def test_crystallize_skills_now_endpoint(client):
     """Test POST /api/skills/crystallize endpoint."""
     mock_session = create_mock_async_session()
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         with patch(
             "monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer.evaluate_and_crystallize",

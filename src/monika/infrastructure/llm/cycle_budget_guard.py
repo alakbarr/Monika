@@ -116,13 +116,19 @@ class CycleBudgetGuard:
         self._cost_usd_used = 0.0
         logger.debug("[CycleBudgetGuard] Budget counters reset for new cycle.")
 
+    _instance: Optional["CycleBudgetGuard"] = None
 
-_global_guard: Optional[CycleBudgetGuard] = None
+    @classmethod
+    def get_instance(cls, settings: Optional[dict] = None) -> "CycleBudgetGuard":
+        if cls._instance is None:
+            cls._instance = cls.from_settings(settings)
+        return cls._instance
+
+    @classmethod
+    def reset_instance(cls) -> None:
+        cls._instance = None
 
 
 def get_cycle_budget_guard(settings: Optional[dict] = None) -> CycleBudgetGuard:
     """Mengambil atau menginisialisasi singleton instance CycleBudgetGuard."""
-    global _global_guard
-    if _global_guard is None:
-        _global_guard = CycleBudgetGuard.from_settings(settings)
-    return _global_guard
+    return CycleBudgetGuard.get_instance(settings)

@@ -539,12 +539,22 @@ def build_reactive_graph(checkpointer: Optional[Any] = None) -> Any:
     return workflow.compile(checkpointer=checkpointer)
 
 
-_REACTIVE_GRAPH_INSTANCE = None
+class ReactiveGraphRuntime:
+    """Manages compiled ReactiveGraph process singleton lifecycle."""
+
+    graph_instance: Optional[Any] = None
+
+    @classmethod
+    def get_or_build(cls, checkpointer: Optional[Any] = None) -> Any:
+        if cls.graph_instance is None:
+            cls.graph_instance = build_reactive_graph(checkpointer=checkpointer)
+        return cls.graph_instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls.graph_instance = None
 
 
 def get_reactive_graph(checkpointer: Optional[Any] = None) -> Any:
     """Retrieve or build the global singleton reactive graph instance."""
-    global _REACTIVE_GRAPH_INSTANCE
-    if _REACTIVE_GRAPH_INSTANCE is None:
-        _REACTIVE_GRAPH_INSTANCE = build_reactive_graph(checkpointer=checkpointer)
-    return _REACTIVE_GRAPH_INSTANCE
+    return ReactiveGraphRuntime.get_or_build(checkpointer=checkpointer)

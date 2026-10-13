@@ -126,7 +126,7 @@ def test_steer_endpoint():
 def test_calendar_upcoming_endpoint():
     """Verify /api/calendar/upcoming responds with event list."""
     client = TestClient(app)
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_sess_cls:
+    with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_sess_cls:
         mock_session = create_mock_async_session()
         mock_sess_cls.return_value.__aenter__.return_value = mock_session
         mock_result = MagicMock()
@@ -141,9 +141,9 @@ def test_calendar_upcoming_endpoint():
 def test_skills_catalog_endpoint():
     """Verify /api/skills responds with skills list."""
     client = TestClient(app)
-    with patch("monika.core.telemetry.dashboard.routes.intelligence.list_skills", return_value=["test_skill"]):
+    with patch("monika.interfaces.dashboard.routes.intelligence.list_skills", return_value=["test_skill"]):
         with patch(
-            "monika.core.telemetry.dashboard.routes.intelligence.get_skill_metadata",
+            "monika.interfaces.dashboard.routes.intelligence.get_skill_metadata",
             return_value={"description": "Test"},
         ):
             response = client.get("/api/skills")

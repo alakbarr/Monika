@@ -39,8 +39,6 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 from monika.core.security.credential_vault import SensitiveMaskingFilter
 from monika.core.security.log_redactor import RedactingFormatter
 
-_queue_listener: logging.handlers.QueueListener | None = None
-
 
 def _close_and_clear_handlers(logger: logging.Logger) -> None:
     for h in list(logger.handlers):
@@ -51,15 +49,24 @@ def _close_and_clear_handlers(logger: logging.Logger) -> None:
     logger.handlers.clear()
 
 
+class LoggingRuntime:
+    """Manages process logging worker runtime and background thread listeners."""
+
+    queue_listener: logging.handlers.QueueListener | None = None
+
+    @classmethod
+    def stop_listener(cls) -> None:
+        if cls.queue_listener is not None:
+            try:
+                cls.queue_listener.stop()
+            except Exception:
+                pass
+            cls.queue_listener = None
+
+
 def shutdown_logging() -> None:
     """Stop the background QueueListener worker thread cleanly."""
-    global _queue_listener
-    if _queue_listener is not None:
-        try:
-            _queue_listener.stop()
-        except Exception:
-            pass
-        _queue_listener = None
+    LoggingRuntime.stop_listener()
     _close_and_clear_handlers(logging.getLogger())
     _close_and_clear_handlers(logging.getLogger("TradingAgent"))
 
@@ -86,7 +93,6 @@ def setup_logging(
     Setup root logger with non-blocking QueueHandler and RedactingFormatter.
     Dipanggil sekali saat aplikasi startup.
     """
-    global _queue_listener
     import sys
 
     is_pytest = "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ
@@ -159,10 +165,10 @@ def setup_logging(
         root.addHandler(queue_handler)
         root_logger.addHandler(queue_handler)
 
-        _queue_listener = logging.handlers.QueueListener(
+        LoggingRuntime.queue_listener = logging.handlers.QueueListener(
             log_queue, file_handler, error_handler, console, respect_handler_level=True
         )
-        _queue_listener.start()
+        LoggingRuntime.queue_listener.start()
 
     # Mute noisy third-party loggers to eliminate polling log spam
     if not is_pytest:
@@ -183,6 +189,18 @@ class ActivityLogger:
     Penulis log asinkron ke DB `activity_log`.
     Didesain non-blocking, exception di-handle internal agar tidak mengganggu logika utama.
     """
+
+    _instance: Optional["ActivityLogger"] = None
+
+    @classmethod
+    def get_instance(cls) -> "ActivityLogger":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
     def __init__(self):
         self._logger = logging.getLogger("TradingAgent.ActivityLogger")
@@ -373,13 +391,6 @@ class ActivityLogger:
             return 0
 
 
-# Module-level singleton for convenience
-_default_logger: ActivityLogger | None = None
-
-
 def get_activity_logger() -> ActivityLogger:
     """Mendapatkan singleton instance `ActivityLogger`."""
-    global _default_logger
-    if _default_logger is None:
-        _default_logger = ActivityLogger()
-    return _default_logger
+    return ActivityLogger.get_instance()

@@ -298,12 +298,18 @@ class StrategyDecayMonitor:
         except Exception as e:
             logger.debug(f"[StrategyDecay] Failed to load decay state from DB: {e}")
 
+    _instance: Optional["StrategyDecayMonitor"] = None
 
-_GLOBAL_DECAY_MONITOR: Optional[StrategyDecayMonitor] = None
+    @classmethod
+    def get_instance(cls) -> "StrategyDecayMonitor":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_strategy_decay_monitor() -> StrategyDecayMonitor:
-    global _GLOBAL_DECAY_MONITOR
-    if _GLOBAL_DECAY_MONITOR is None:
-        _GLOBAL_DECAY_MONITOR = StrategyDecayMonitor()
-    return _GLOBAL_DECAY_MONITOR
+    return StrategyDecayMonitor.get_instance()

@@ -202,13 +202,18 @@ class IdempotencyGuard:
         for k in to_delete:
             del self._records[k]
 
+    _instance: Optional["IdempotencyGuard"] = None
 
-# Global singleton instance
-_GLOBAL_IDEMPOTENCY_GUARD: Optional[IdempotencyGuard] = None
+    @classmethod
+    def get_instance(cls) -> "IdempotencyGuard":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_idempotency_guard() -> IdempotencyGuard:
-    global _GLOBAL_IDEMPOTENCY_GUARD
-    if _GLOBAL_IDEMPOTENCY_GUARD is None:
-        _GLOBAL_IDEMPOTENCY_GUARD = IdempotencyGuard()
-    return _GLOBAL_IDEMPOTENCY_GUARD
+    return IdempotencyGuard.get_instance()

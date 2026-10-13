@@ -948,21 +948,34 @@ class BaseLLMClient(LlmPort, ABC):
             logger.debug(f"Failed to log token usage: {e}")
 
 
-_token_usage_queue: Optional[asyncio.Queue] = None
-_token_flush_task: Optional[asyncio.Task] = None
+class TokenFlushWorkerRuntime:
+    """Manages background token usage queue and flush task."""
+
+    _queue: Optional[asyncio.Queue] = None
+    _flush_task: Optional[asyncio.Task] = None
+
+    @classmethod
+    def get_queue(cls) -> asyncio.Queue:
+        if cls._queue is None:
+            cls._queue = asyncio.Queue(maxsize=5000)
+        if cls._flush_task is None or cls._flush_task.done():
+            try:
+                loop = asyncio.get_running_loop()
+                cls._flush_task = loop.create_task(_flush_token_usage_worker())
+            except RuntimeError:
+                pass
+        return cls._queue
+
+    @classmethod
+    def reset(cls) -> None:
+        if cls._flush_task and not cls._flush_task.done():
+            cls._flush_task.cancel()
+        cls._flush_task = None
+        cls._queue = None
 
 
 def _get_token_usage_queue() -> asyncio.Queue:
-    global _token_usage_queue, _token_flush_task
-    if _token_usage_queue is None:
-        _token_usage_queue = asyncio.Queue(maxsize=5000)
-    if _token_flush_task is None or _token_flush_task.done():
-        try:
-            loop = asyncio.get_running_loop()
-            _token_flush_task = loop.create_task(_flush_token_usage_worker())
-        except RuntimeError:
-            pass
-    return _token_usage_queue
+    return TokenFlushWorkerRuntime.get_queue()
 
 
 async def _flush_token_usage_worker():

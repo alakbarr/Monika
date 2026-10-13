@@ -201,14 +201,19 @@ class FrozenSnapshotManager:
             active_playbooks=active_playbooks,
         )
 
+    _instance: Optional["FrozenSnapshotManager"] = None
 
-# Global singleton instance
-_GLOBAL_SNAPSHOT_MANAGER: Optional[FrozenSnapshotManager] = None
+    @classmethod
+    def get_instance(cls, settings: Optional[dict] = None) -> "FrozenSnapshotManager":
+        if cls._instance is None:
+            cls._instance = cls(settings)
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_frozen_snapshot_manager(settings: Optional[dict] = None) -> FrozenSnapshotManager:
     """Get or initialize global FrozenSnapshotManager instance."""
-    global _GLOBAL_SNAPSHOT_MANAGER
-    if _GLOBAL_SNAPSHOT_MANAGER is None:
-        _GLOBAL_SNAPSHOT_MANAGER = FrozenSnapshotManager(settings)
-    return _GLOBAL_SNAPSHOT_MANAGER
+    return FrozenSnapshotManager.get_instance(settings)

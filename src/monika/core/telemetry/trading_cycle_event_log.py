@@ -64,6 +64,18 @@ class CycleEvent:
 class TradingCycleEventLog:
     """Append-only monotonic event-sourced store for trading cycles."""
 
+    _instance: Optional["TradingCycleEventLog"] = None
+
+    @classmethod
+    def get_instance(cls) -> "TradingCycleEventLog":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
+
     def __init__(self, storage_dir: Path | None = None):
         self.storage_dir = Path(storage_dir) if storage_dir else Path("data/cycle_events")
         self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -236,13 +248,6 @@ def verify_chain_integrity(events: list[CycleEvent]) -> tuple[bool, str | None]:
     return True, None
 
 
-# Global default instance
-_default_event_log: TradingCycleEventLog | None = None
-
-
 def get_cycle_event_log() -> TradingCycleEventLog:
     """Singleton getter for TradingCycleEventLog."""
-    global _default_event_log
-    if _default_event_log is None:
-        _default_event_log = TradingCycleEventLog()
-    return _default_event_log
+    return TradingCycleEventLog.get_instance()

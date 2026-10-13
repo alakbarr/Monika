@@ -24,28 +24,52 @@ _active_websockets: set[WebSocket] = set()
 _client_queues: Dict[WebSocket, asyncio.Queue] = {}
 
 # WebSocket Monotonic Sequence Watermark & Replay Buffer (Phase 7.3)
-_stream_seq: int = 0
-_live_event_buffer: deque = deque(maxlen=500)
+class StreamSequenceManager:
+    """Manages monotonic sequence counter and ring buffer for live websocket stream events."""
+
+    _seq: int = 0
+    _buffer: deque = deque(maxlen=500)
+
+    @classmethod
+    def get_seq(cls) -> int:
+        return cls._seq
+
+    @classmethod
+    def next_seq(cls) -> int:
+        cls._seq += 1
+        return cls._seq
+
+    @classmethod
+    def record_event(cls, message: dict) -> dict:
+        seq = cls.next_seq()
+        message["seq"] = seq
+        message["as_of_seq"] = seq
+        cls._buffer.append(dict(message))
+        return message
+
+    @classmethod
+    def get_events_since(cls, since_seq: int) -> List[dict]:
+        return [ev for ev in list(cls._buffer) if ev.get("seq", 0) > since_seq]
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._seq = 0
+        cls._buffer.clear()
 
 
 def get_current_stream_seq() -> int:
     """Return latest monotonic WebSocket event sequence number."""
-    return _stream_seq
+    return StreamSequenceManager.get_seq()
 
 
 def get_buffered_events_since(since_seq: int) -> List[dict]:
     """Retrieve buffered events strictly newer than since_seq for reconnect replay."""
-    return [ev for ev in list(_live_event_buffer) if ev.get("seq", 0) > since_seq]
+    return StreamSequenceManager.get_events_since(since_seq)
 
 
 def record_stream_event(message: dict) -> dict:
     """Stamp message with monotonic seq and as_of_seq and append to ring buffer."""
-    global _stream_seq
-    _stream_seq += 1
-    message["seq"] = _stream_seq
-    message["as_of_seq"] = _stream_seq
-    _live_event_buffer.append(dict(message))
-    return message
+    return StreamSequenceManager.record_event(message)
 
 
 def set_dashboard_dependencies(**kwargs) -> None:

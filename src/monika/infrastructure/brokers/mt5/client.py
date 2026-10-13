@@ -12,15 +12,19 @@ from .market_data import MT5MarketDataMixin
 class MT5Client(MT5ConnectionMixin, MT5MarketDataMixin, MT5ExecutionMixin):
     """Pembungkus async untuk library MetaTrader5 Python dengan dukungan Redundant Secondary Failover Gateway."""
 
-    pass
+    _instance: Optional["MT5Client"] = None
 
+    @classmethod
+    def get_instance(cls, settings: Optional[dict[str, Any]] = None) -> "MT5Client":
+        if cls._instance is None:
+            cls._instance = cls(settings=settings or {})
+        return cls._instance
 
-_default_mt5_client: Optional[MT5Client] = None
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_mt5_client(settings: Optional[dict[str, Any]] = None) -> MT5Client:
     """Singleton getter untuk instance MT5Client."""
-    global _default_mt5_client
-    if _default_mt5_client is None:
-        _default_mt5_client = MT5Client(settings=settings or {})
-    return _default_mt5_client
+    return MT5Client.get_instance(settings=settings)

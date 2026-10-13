@@ -509,6 +509,33 @@ class MT5FallbackModule:
 _active_mt5_module: Optional[Any] = None
 
 
+class MT5ModuleRegistry:
+    """Manages active MetaTrader 5 module resolution and instances."""
+
+    _module: Optional[Any] = None
+
+    @classmethod
+    def get(cls) -> Optional[Any]:
+        mod = sys.modules.get(__name__)
+        if mod and hasattr(mod, "_active_mt5_module"):
+            return getattr(mod, "_active_mt5_module")
+        return cls._module
+
+    @classmethod
+    def set(cls, module_obj: Any) -> None:
+        cls._module = module_obj
+        mod = sys.modules.get(__name__)
+        if mod:
+            setattr(mod, "_active_mt5_module", module_obj)
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._module = None
+        mod = sys.modules.get(__name__)
+        if mod:
+            setattr(mod, "_active_mt5_module", None)
+
+
 def get_mt5_module(host: Optional[str] = None, port: Optional[int] = None) -> Any:
     """
     Mengembalikan instance atau modul MetaTrader5 yang tepat sesuai lingkungan runtime:
@@ -516,33 +543,35 @@ def get_mt5_module(host: Optional[str] = None, port: Optional[int] = None) -> An
       - Linux / Bridge: MT5BridgeProxy (menggunakan mt5linux)
       - Fallback: MT5FallbackModule
     """
-    global _active_mt5_module
-    if _active_mt5_module is not None:
-        return _active_mt5_module
+    cached = MT5ModuleRegistry.get()
+    if cached is not None:
+        return cached
 
     # 1. Native Windows
     if is_native_mt5_available():
         try:
             import MetaTrader5 as native_mt5
 
-            _active_mt5_module = native_mt5
+            MT5ModuleRegistry.set(native_mt5)
             logger.info("[MT5Compat] Using native MetaTrader5 C-extension on Windows.")
-            return _active_mt5_module
+            return native_mt5
         except Exception as e:
             logger.warning(f"[MT5Compat] Failed to load native MetaTrader5: {e}")
 
     # 2. Linux VPS Bridge (mt5linux)
     if is_mt5linux_available():
-        _active_mt5_module = MT5BridgeProxy(host=host, port=port)
+        bridge = MT5BridgeProxy(host=host, port=port)
+        MT5ModuleRegistry.set(bridge)
         logger.info(
-            f"[MT5Compat] Using mt5linux RPC bridge proxy ({_active_mt5_module.host}:{_active_mt5_module.port})."
+            f"[MT5Compat] Using mt5linux RPC bridge proxy ({bridge.host}:{bridge.port})."
         )
-        return _active_mt5_module
+        return bridge
 
     # 3. Fallback Module
-    _active_mt5_module = MT5FallbackModule()
+    fallback = MT5FallbackModule()
+    MT5ModuleRegistry.set(fallback)
     logger.info("[MT5Compat] Native MetaTrader5 and mt5linux unavailable. Using MT5FallbackModule.")
-    return _active_mt5_module
+    return fallback
 
 
 def ensure_mt5_module(host: Optional[str] = None, port: Optional[int] = None) -> Any:
