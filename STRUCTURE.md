@@ -836,6 +836,15 @@ Monika/
 │       │   │       │   ├── smc_tools.py
 │       │   │       │   ├── system_info.py
 │       │   │       │   ├── timesfm.py
+│       │   │       │   ├── trade_intel
+│       │   │       │   │   ├── __init__.py
+│       │   │       │   │   ├── base.py
+│       │   │       │   │   ├── debate.py
+│       │   │       │   │   ├── operations.py
+│       │   │       │   │   ├── performance.py
+│       │   │       │   │   ├── registry.py
+│       │   │       │   │   ├── reporting.py
+│       │   │       │   │   └── simulation.py
 │       │   │       │   ├── trade_intel.py
 │       │   │       │   ├── trading_tools.py
 │       │   │       │   └── verified_snapshot.py
