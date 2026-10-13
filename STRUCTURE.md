@@ -1357,6 +1357,16 @@ Monika/
 │       │   │   │   └── watchdog.py
 │       │   │   ├── ibkr_adapter.py
 │       │   │   ├── idempotency_guard.py
+│       │   │   ├── mt5
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── base.py
+│       │   │   │   ├── client.py
+│       │   │   │   ├── connection.py
+│       │   │   │   ├── constants.py
+│       │   │   │   ├── execution.py
+│       │   │   │   ├── market_data.py
+│       │   │   │   ├── order_ops.py
+│       │   │   │   └── primitives.py
 │       │   │   ├── mt5_client.py
 │       │   │   ├── mt5_compat.py
 │       │   │   ├── paper_tracker.py
