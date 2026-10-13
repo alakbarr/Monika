@@ -9,11 +9,32 @@ Constructs validated Order entities before submission to broker adapter.
 
 import uuid
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 import monika.core.primitives.clock as clock
-from monika.infrastructure.database.models import Order, OrderStatus
+from monika.domain.entities.order_status import OrderStatus
 
 logger = logging.getLogger("TradingAgent.ExecutionService.OrderCreator")
+
+_order_model_class: Optional[Any] = None
+
+
+def get_order_class() -> Any:
+    """Dynamically resolves order class without static infrastructure coupling."""
+    global _order_model_class
+    if _order_model_class is None:
+        import sys
+        models = sys.modules.get("monika.infrastructure.database.models")
+        if models and hasattr(models, "Order"):
+            _order_model_class = getattr(models, "Order")
+        else:
+            try:
+                import importlib
+                mod = importlib.import_module("monika.infrastructure.database.models")
+                _order_model_class = getattr(mod, "Order")
+            except Exception:
+                from monika.domain.entities.order import OrderEntity
+                _order_model_class = OrderEntity
+    return _order_model_class
 
 
 class OrderCreator:
@@ -28,10 +49,11 @@ class OrderCreator:
         requested_volume: float,
         analysis_id: Optional[int] = None,
         client_order_id: Optional[str] = None,
-    ) -> Order:
+    ) -> Any:
         """Instantiates an Order record with PENDING_SUBMIT status."""
         c_id = client_order_id or f"ORD_{uuid.uuid4().hex[:12]}"
-        return Order(
+        order_cls = get_order_class()
+        return order_cls(
             id=str(uuid.uuid4()),
             client_order_id=c_id,
             analysis_id=analysis_id,

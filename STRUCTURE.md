@@ -946,6 +946,7 @@ Monika/
 │       │   │       ├── emergency_manager.py
 │       │   │       ├── multi_account_adapter.py
 │       │   │       ├── order_executor.py
+│       │   │       ├── order_lifecycle_service.py
 │       │   │       ├── position_synchronizer.py
 │       │   │       ├── reconciliation.py
 │       │   │       ├── risk_evaluator.py
@@ -1148,6 +1149,13 @@ Monika/
 │       │       └── trading_cycle_event_log.py
 │       ├── domain
 │       │   ├── __init__.py
+│       │   ├── entities
+│       │   │   ├── __init__.py
+│       │   │   ├── order.py
+│       │   │   ├── order_status.py
+│       │   │   ├── position.py
+│       │   │   ├── snapshots.py
+│       │   │   └── trade_trigger.py
 │       │   ├── execution
 │       │   │   ├── __init__.py
 │       │   │   ├── base.py
@@ -1222,6 +1230,7 @@ Monika/
 │       │       ├── pending_action.py
 │       │       ├── portfolio_correlation_gate.py
 │       │       ├── portfolio_optimizer.py
+│       │       ├── ports.py
 │       │       ├── position_sizing.py
 │       │       ├── risk_gate.py
 │       │       ├── risk_rule_plugin.py

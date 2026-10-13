@@ -157,9 +157,9 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         Record order state transition in DB (Order + OrderEvent audit trail)
         and broadcast OrderStateChangedEvent on EventBus via OrderStateMachine.
         """
-        from monika.domain.execution.state_machine import OrderStateMachine
+        from monika.application.execution.service.order_lifecycle_service import OrderLifecycleService
 
-        await OrderStateMachine.transition_order_state(
+        await OrderLifecycleService.transition_order_state(
             session=session,
             order=order,
             new_status=new_status,
@@ -915,6 +915,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                     )
 
             try:
+                if self.broker_adapter is None:
+                    raise RuntimeError("Broker adapter is not initialized")
                 if hasattr(self, "effect_gate") and self.effect_gate is not None:
                     mt5_result = await self.effect_gate.admit(
                         lambda: self.broker_adapter.submit_order(
@@ -3233,6 +3235,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
                 # Submit order to broker adapter under EffectGate admission
                 try:
+                    if self.broker_adapter is None:
+                        raise RuntimeError("Broker adapter is not initialized")
                     if hasattr(self, "effect_gate") and self.effect_gate is not None:
                         mt5_result = await self.effect_gate.admit(
                             lambda: self.broker_adapter.submit_order(

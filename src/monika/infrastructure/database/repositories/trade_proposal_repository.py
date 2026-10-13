@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import TradeTrigger, MT5Signal
+from monika.domain.entities.trade_trigger import TradeTriggerEntity
 
 
 class TradeProposalRepository:
@@ -18,24 +19,25 @@ class TradeProposalRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_trigger_by_id(self, trigger_id: int) -> Optional[TradeTrigger]:
-        """Fetch a conditional trade trigger by ID."""
+    async def get_trigger_by_id(self, trigger_id: int) -> Optional[TradeTriggerEntity]:
+        """Fetch a conditional trade trigger by ID as domain entity."""
         stmt = select(TradeTrigger).where(TradeTrigger.id == trigger_id)
         res = await self.session.execute(stmt)
-        return res.scalar_one_or_none()
+        row = res.scalar_one_or_none()
+        return TradeTriggerEntity.from_orm(row) if row else None
 
     async def get_recent_triggers(
         self,
         limit: int = 50,
         status: Optional[str] = None,
-    ) -> Sequence[TradeTrigger]:
-        """Fetch recent trade triggers ordered by creation time."""
+    ) -> Sequence[TradeTriggerEntity]:
+        """Fetch recent trade triggers ordered by creation time as domain entities."""
         stmt = select(TradeTrigger)
         if status:
             stmt = stmt.where(TradeTrigger.status == status)
         stmt = stmt.order_by(TradeTrigger.created_at.desc()).limit(limit)
         res = await self.session.execute(stmt)
-        return res.scalars().all()
+        return [TradeTriggerEntity.from_orm(t) for t in res.scalars().all()]
 
     async def create_trigger(
         self,
@@ -43,8 +45,8 @@ class TradeProposalRepository:
         condition_json: str,
         asset_analysis_id: Optional[int] = None,
         status: str = "pending",
-    ) -> TradeTrigger:
-        """Create and persist a new conditional trade trigger."""
+    ) -> TradeTriggerEntity:
+        """Create, persist, and return a new conditional trade trigger domain entity."""
         trigger = TradeTrigger(
             trigger_type=trigger_type,
             condition_json=condition_json,
@@ -54,23 +56,25 @@ class TradeProposalRepository:
         )
         self.session.add(trigger)
         await self.session.flush()
-        return trigger
+        return TradeTriggerEntity.from_orm(trigger)
 
     async def update_trigger_status(
         self,
         trigger_id: int,
         status: str,
         fired_at: Optional[datetime] = None,
-    ) -> Optional[TradeTrigger]:
-        """Update trigger lifecycle status."""
-        trigger = await self.get_trigger_by_id(trigger_id)
+    ) -> Optional[TradeTriggerEntity]:
+        """Update trigger lifecycle status and return domain entity."""
+        stmt = select(TradeTrigger).where(TradeTrigger.id == trigger_id)
+        res = await self.session.execute(stmt)
+        trigger = res.scalar_one_or_none()
         if not trigger:
             return None
         trigger.status = status
         if status == "fired":
             trigger.fired_at = fired_at or datetime.now(timezone.utc)
         await self.session.flush()
-        return trigger
+        return TradeTriggerEntity.from_orm(trigger)
 
     async def get_recent_signals(self, limit: int = 50) -> Sequence[MT5Signal]:
         """Fetch latest MT5 execution signals."""

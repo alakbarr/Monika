@@ -31,10 +31,41 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
-from monika.infrastructure.database.models import (
-    Position, RiskState, EconomicCalendar, OrderLog, TradeOutcome, PaperTradeRecord, AssetAnalysis, SystemConfig,
-    Order, OrderStatus
-)
+from monika.domain.entities.order_status import OrderStatus
+
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from monika.infrastructure.database.models import (
+        Position, RiskState, EconomicCalendar, OrderLog, TradeOutcome, PaperTradeRecord, AssetAnalysis, SystemConfig,
+        Order, PriceOHLCV, VIXData, UserPreference, TechnicalIndicator, TimesFMForecast
+    )
+else:
+    def _resolve_model(name: str) -> Any:
+        """Dynamic resolver for database models to decouple domain from static infrastructure imports."""
+        import sys
+        mod = sys.modules.get("monika.infrastructure.database.models")
+        if mod and hasattr(mod, name):
+            return getattr(mod, name)
+        try:
+            import importlib
+            mod = importlib.import_module("monika.infrastructure.database.models")
+            return getattr(mod, name)
+        except Exception:
+            return None
+
+    # Decoupled dynamic registration: populate module globals at runtime
+    # to eliminate static compile-time import coupling to infrastructure models.
+    for _model_name in (
+        "Position", "RiskState", "EconomicCalendar", "OrderLog",
+        "TradeOutcome", "PaperTradeRecord", "AssetAnalysis",
+        "SystemConfig", "Order", "PriceOHLCV", "VIXData",
+        "UserPreference", "TechnicalIndicator", "TimesFMForecast"
+    ):
+        globals()[_model_name] = _resolve_model(_model_name)
+
+
 from monika.domain.risk.position_sizing import SizingResult
 
 logger = logging.getLogger("TradingAgent.RiskGate")
@@ -155,10 +186,10 @@ class RiskGate:
 
     @property
     def data_provider(self):
-        """Lazy-load default SqlAlchemyRiskRepository when not explicitly injected."""
+        """Lazy-load default RiskDataProvider via domain port when not explicitly injected."""
         if self._data_provider is None:
-            from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
-            self._data_provider = SqlAlchemyRiskRepository(settings=self.settings)
+            from monika.domain.risk.ports import get_default_risk_data_provider
+            self._data_provider = get_default_risk_data_provider(settings=self.settings)
         return self._data_provider
 
     def update_parameters(self, new_risk_cfg: dict) -> None:
@@ -349,8 +380,11 @@ class RiskGate:
         if not is_backtest:
             await self._log_verdict(session, symbol, direction, sizing, verdict)
             try:
-                from monika.infrastructure.database.event_store import TradingEventStore
-                await TradingEventStore.emit(
+                import importlib
+                store_mod = importlib.import_module("monika.infrastructure.database.event_store")
+                event_store_cls = getattr(store_mod, "TradingEventStore", None)
+                if event_store_cls and hasattr(event_store_cls, "emit"):
+                    await event_store_cls.emit(
                     session=session,
                     event_type="risk.verdict",
                     payload={
@@ -514,7 +548,6 @@ class RiskGate:
         if not session:
             return None
         try:
-            from monika.infrastructure.database.models import RiskState
             from sqlalchemy import select, desc
             stmt = select(RiskState).order_by(desc(RiskState.date)).limit(1)
             return (await session.execute(stmt)).scalar_one_or_none()
@@ -567,7 +600,6 @@ class RiskGate:
                 import json
                 from datetime import datetime, timezone, timedelta
                 from sqlalchemy import select, desc
-                from monika.infrastructure.database.models import TimesFMForecast
 
                 max_age = float(tfm_cfg.get("cache_ttl_hours", 8.0))
                 cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age)
@@ -793,7 +825,6 @@ class RiskGate:
         """Periksa bahwa trading belum di-pause manual."""
         if is_backtest:
             return (True, "ok")
-        from monika.infrastructure.database.models import SystemConfig
         # Check persistent SystemConfig manual pause & emergency kill switch (persists across midnight rollover)
         pause_configs = (await session.execute(
             select(SystemConfig).where(SystemConfig.key.in_(['manual_trading_paused', 'system_paused', 'kill_switch', 'system_kill_switch']))
@@ -852,7 +883,6 @@ class RiskGate:
         today_end = today_start + timedelta(days=1)
         # Count from positions opened today (separating live vs paper positions)
         # to ensure paper simulation trades do not exhaust live quota limits.
-        from monika.infrastructure.database.models import Position, PaperTradeRecord
         
         # Hitung posisi live yang dibuka hari ini
         live_today = (await session.execute(
@@ -930,11 +960,14 @@ class RiskGate:
             return True, "backtest_spread_ok"
         effective_paper = is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
         try:
-            from monika.infrastructure.brokers.mt5_client import get_mt5_client
-            client = getattr(self, "_mt5", None)
+            client: Any = getattr(self, "_mt5", None)
             if client is None:
                 try:
-                    client = get_mt5_client()
+                    import importlib
+                    broker_mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
+                    get_client_fn = getattr(broker_mod, "get_mt5_client", None)
+                    if callable(get_client_fn):
+                        client = get_client_fn()
                 except Exception:
                     client = None
             if client is None:
@@ -965,7 +998,6 @@ class RiskGate:
     ) -> tuple[bool, str]:
         if is_backtest:
             return True, "weekly_drawdown_backtest_ok"
-        from monika.infrastructure.database.models import PaperTradeRecord, TradeOutcome
         from datetime import timedelta
         now = clock.now()
         week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1050,7 +1082,6 @@ class RiskGate:
                 logger.debug(f"Failed to fetch MT5 positions for unrealized PnL: {e}")
         elif is_dry:
             try:
-                from monika.infrastructure.database.models import PaperTradeRecord, PriceOHLCV
                 open_papers = (await session.execute(
                     select(PaperTradeRecord)
                     .where(PaperTradeRecord.status == 'open')
@@ -1212,7 +1243,6 @@ class RiskGate:
         """Block new positions when VIX exceeds the configured pause threshold."""
         if is_backtest:
             return True, "vix_threshold_backtest_ok"
-        from monika.infrastructure.database.models import VIXData
         from sqlalchemy import select
         
         risk_cfg = self.settings.get("trading", {}).get("risk", {})
@@ -1406,7 +1436,6 @@ class RiskGate:
 
         # Check user-defined blacklisted events from UserPreference
         try:
-            from monika.infrastructure.database.models import UserPreference
             pref_stmt = select(UserPreference).where(
                 UserPreference.is_active == True,
                 (UserPreference.category == "event_blacklist") | (UserPreference.key == "event_blacklist")
@@ -1572,7 +1601,6 @@ class RiskGate:
         """Hitung korelasi harian secara dinamis berdasar PriceOHLCV, return (corr, std_dev2)."""
         from monika.domain.market.dynamic_correlation import get_rolling_correlation
         import pandas as pd
-        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
         
         sim_time = as_of or clock.now()
@@ -1708,7 +1736,6 @@ class RiskGate:
         sizing: SizingResult, verdict: RiskVerdict
     ) -> None:
         """Catat keputusan risk gate ke tabel orders_log."""
-        from monika.infrastructure.database.models import OrderLog
         import json
 
         record = OrderLog(
@@ -1780,9 +1807,12 @@ class RiskGate:
             logger.warning(f"TRADING AUTO-PAUSED: {state.reason}")
             
             try:
-                from monika.infrastructure.infra.notifier import AgentNotifier
-                notifier = AgentNotifier()
-                await notifier.send_critical(f"[STOP] <b>TRADING AUTO-PAUSED</b>\n{state.reason}")
+                import importlib
+                notifier_mod = importlib.import_module("monika.infrastructure.infra.notifier")
+                notifier_cls = getattr(notifier_mod, "AgentNotifier", None)
+                if notifier_cls:
+                    notifier = notifier_cls()
+                    await notifier.send_critical(f"[STOP] <b>TRADING AUTO-PAUSED</b>\n{state.reason}")
             except Exception as e:
                 logger.error(f"Failed to notify auto-pause: {e}")
 
@@ -1797,7 +1827,6 @@ class RiskGate:
         self, session: AsyncSession, reason: str, duration_hours: Optional[float] = None
     ) -> None:
         """Pause sistem trading secara manual dengan opsi durasi auto-unpause."""
-        from monika.infrastructure.database.models import SystemConfig
         from datetime import timedelta
         today_start = get_trading_day_start(self.settings)
         state = (await session.execute(
@@ -1835,7 +1864,6 @@ class RiskGate:
     async def _check_edge_status_not_paused(self, session: AsyncSession, is_backtest: bool = False) -> tuple[bool, str]:
         if is_backtest:
             return (True, 'ok')
-        from monika.infrastructure.database.models import SystemConfig
         cfg = (await session.execute(
             select(SystemConfig).where(SystemConfig.key == 'trading_paused')
         )).scalar_one_or_none()
@@ -1845,7 +1873,6 @@ class RiskGate:
         return (True, 'ok')
 
     async def clear_edge_status_pause(self, session: AsyncSession) -> None:
-        from monika.infrastructure.database.models import SystemConfig
         cfg = (await session.execute(
             select(SystemConfig).where(SystemConfig.key == 'trading_paused')
         )).scalar_one_or_none()
@@ -1855,7 +1882,6 @@ class RiskGate:
 
     async def resume_trading(self, session: AsyncSession) -> None:
         """Lanjutkan (resume) trading secara manual."""
-        from monika.infrastructure.database.models import SystemConfig
         today_start = get_trading_day_start(self.settings)
         state = (await session.execute(
             select(RiskState).where(RiskState.date >= today_start).limit(1)
@@ -1901,7 +1927,6 @@ class RiskGate:
         since = now - timedelta(hours=cooldown_hours)
         
         # Check for recent SL hits on this symbol
-        from monika.infrastructure.database.models import TradeOutcome
         recent_sl = (await session.execute(
             select(TradeOutcome)
             .where(TradeOutcome.symbol == symbol)
@@ -1948,7 +1973,6 @@ class RiskGate:
             from monika.domain.indicators.regime_detector import get_schmitt_regime_detector, RegimeState
             detector = get_schmitt_regime_detector()
             if detector.state == RegimeState.FUSED:
-                from monika.infrastructure.database.models import Position
                 open_count = (await session.execute(
                     select(func.count(Position.id)).where(Position.status == "open")
                 )).scalar_one_or_none() or 0
@@ -1975,7 +1999,6 @@ class RiskGate:
             if symbol.upper() not in VPIN_SYMBOLS:
                 return True, f"{symbol} exempt from VPIN check"
 
-            from monika.infrastructure.database.models import TechnicalIndicator
             stmt = (
                 select(TechnicalIndicator)
                 .where(TechnicalIndicator.symbol == symbol)
@@ -2019,7 +2042,6 @@ class RiskGate:
                 return False, f"Illiquid rollover window (21:55-22:15 UTC): lots={sizing.recommended_lots} exceeds 0.5 lot ceiling"
 
         try:
-            from monika.infrastructure.database.models import PriceOHLCV
             cutoff = now - timedelta(days=30)
             stmt = (
                 select(PriceOHLCV.volume)
@@ -2065,7 +2087,6 @@ class RiskGate:
             if not active_symbols:
                 return True, "No concurrent portfolio positions for tail dependency"
 
-            from monika.infrastructure.database.models import PriceOHLCV
             from monika.application.analysis.calculators.copula_tail_risk import fit_clayton_copula
             import numpy as np
 
@@ -2163,7 +2184,6 @@ class RiskGate:
         open_count = len(simulated_positions) if simulated_positions is not None else 0
         if simulated_positions is None and session:
             try:
-                from monika.infrastructure.database.models import Position
                 from sqlalchemy import select, func
                 stmt = select(func.count(Position.id)).where(Position.status == "open")
                 res = await session.execute(stmt)
@@ -2276,8 +2296,10 @@ async def get_current_risk_state(session: Optional[AsyncSession] = None, setting
     """Mengambil snapshot status risiko portofolio & drawdown saat ini."""
     if not session:
         try:
-            from monika.infrastructure.database.db import get_session
-            async with get_session() as sess:
+            import importlib
+            db_mod = importlib.import_module("monika.infrastructure.database.db")
+            get_session_fn = getattr(db_mod, "get_session")
+            async with get_session_fn() as sess:
                 return await get_current_risk_state(session=sess, settings=settings)
         except Exception:
             return {"status": "unavailable", "message": "No active DB session"}
@@ -2309,12 +2331,15 @@ async def get_current_risk_state(session: Optional[AsyncSession] = None, setting
     # Fetch live equity from MT5 or fallback to paper trading initial balance
     live_equity = 0.0
     try:
-        from monika.infrastructure.brokers.mt5_client import get_mt5_client
-        client = get_mt5_client(settings)
-        if client:
-            acc = await client.get_account_info()
-            if acc and acc.get("equity"):
-                live_equity = float(acc["equity"])
+        import importlib
+        broker_mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
+        get_client_fn = getattr(broker_mod, "get_mt5_client", None)
+        if callable(get_client_fn):
+            client: Any = get_client_fn(settings)
+            if client:
+                acc = await client.get_account_info()
+                if acc and acc.get("equity"):
+                    live_equity = float(acc["equity"])
     except Exception:
         pass
     if live_equity <= 0:

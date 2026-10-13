@@ -10,6 +10,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import Position, Order, OrderLog
+from monika.domain.entities.position import PositionEntity
+from monika.domain.entities.order import OrderEntity
 
 
 class PositionRepository:
@@ -22,8 +24,8 @@ class PositionRepository:
         self,
         symbol: Optional[str] = None,
         is_paper: Optional[bool] = None,
-    ) -> Sequence[Position]:
-        """Fetch all currently open positions, optionally filtered by symbol and paper mode."""
+    ) -> Sequence[PositionEntity]:
+        """Fetch all currently open positions as domain entities."""
         stmt = select(Position).where(Position.status == "open")
         if symbol:
             stmt = stmt.where(Position.symbol == symbol)
@@ -31,7 +33,7 @@ class PositionRepository:
             stmt = stmt.where(Position.is_paper == is_paper)
         stmt = stmt.order_by(Position.opened_at.desc())
         res = await self.session.execute(stmt)
-        return res.scalars().all()
+        return [PositionEntity.from_orm(p) for p in res.scalars().all()]
 
     async def count_open_positions(self) -> int:
         """Count the total number of open positions."""
@@ -39,37 +41,39 @@ class PositionRepository:
         res = await self.session.execute(stmt)
         return int(res.scalar() or 0)
 
-    async def get_by_ticket(self, ticket: int, open_only: bool = False) -> Optional[Position]:
-        """Fetch a position by its MT5 ticket number."""
+    async def get_by_ticket(self, ticket: int, open_only: bool = False) -> Optional[PositionEntity]:
+        """Fetch a position by its MT5 ticket number as domain entity."""
         stmt = select(Position).where(Position.mt5_ticket == ticket)
         if open_only:
             stmt = stmt.where(Position.status == "open")
         res = await self.session.execute(stmt)
-        return res.scalar_one_or_none()
+        row = res.scalar_one_or_none()
+        return PositionEntity.from_orm(row) if row else None
 
-    async def get_by_id(self, position_id: int) -> Optional[Position]:
-        """Fetch a position by primary key ID."""
+    async def get_by_id(self, position_id: int) -> Optional[PositionEntity]:
+        """Fetch a position by primary key ID as domain entity."""
         stmt = select(Position).where(Position.id == position_id)
         res = await self.session.execute(stmt)
-        return res.scalar_one_or_none()
+        row = res.scalar_one_or_none()
+        return PositionEntity.from_orm(row) if row else None
 
-    async def get_by_tickets(self, tickets: Sequence[int], open_only: bool = True) -> Sequence[Position]:
-        """Fetch positions matching a list of tickets."""
+    async def get_by_tickets(self, tickets: Sequence[int], open_only: bool = True) -> Sequence[PositionEntity]:
+        """Fetch positions matching a list of tickets as domain entities."""
         if not tickets:
             return []
         stmt = select(Position).where(Position.mt5_ticket.in_(tickets))
         if open_only:
             stmt = stmt.where(Position.status == "open")
         res = await self.session.execute(stmt)
-        return res.scalars().all()
+        return [PositionEntity.from_orm(p) for p in res.scalars().all()]
 
     async def get_recent_positions(
         self,
         limit: int = 50,
         symbol: Optional[str] = None,
         status: Optional[str] = None,
-    ) -> Sequence[Position]:
-        """Fetch most recent positions ordered by opening timestamp."""
+    ) -> Sequence[PositionEntity]:
+        """Fetch most recent positions as domain entities."""
         stmt = select(Position)
         if symbol:
             stmt = stmt.where(Position.symbol == symbol)
@@ -77,7 +81,7 @@ class PositionRepository:
             stmt = stmt.where(Position.status == status)
         stmt = stmt.order_by(Position.opened_at.desc()).limit(limit)
         res = await self.session.execute(stmt)
-        return res.scalars().all()
+        return [PositionEntity.from_orm(p) for p in res.scalars().all()]
 
     async def create_position(
         self,
@@ -92,8 +96,8 @@ class PositionRepository:
         order_id: Optional[str] = None,
         analysis_id: Optional[int] = None,
         pair_group_id: Optional[str] = None,
-    ) -> Position:
-        """Create and persist a new trading position."""
+    ) -> PositionEntity:
+        """Create, persist, and return a new trading position domain entity."""
         pos = Position(
             symbol=symbol,
             direction=direction,
@@ -111,23 +115,25 @@ class PositionRepository:
         )
         self.session.add(pos)
         await self.session.flush()
-        return pos
+        return PositionEntity.from_orm(pos)
 
     async def close_position(
         self,
         ticket: int,
         pnl: Optional[float] = None,
         closed_at: Optional[datetime] = None,
-    ) -> Optional[Position]:
-        """Close an existing position by MT5 ticket."""
-        pos = await self.get_by_ticket(ticket, open_only=True)
+    ) -> Optional[PositionEntity]:
+        """Close an existing position by MT5 ticket and return domain entity."""
+        stmt = select(Position).where(Position.mt5_ticket == ticket, Position.status == "open")
+        res = await self.session.execute(stmt)
+        pos = res.scalar_one_or_none()
         if not pos:
             return None
         pos.status = "closed"
         pos.pnl = pnl
         pos.closed_at = closed_at or datetime.now(timezone.utc)
         await self.session.flush()
-        return pos
+        return PositionEntity.from_orm(pos)
 
     async def get_recent_order_logs(self, limit: int = 50) -> Sequence[OrderLog]:
         """Fetch latest raw broker order audit logs."""
@@ -140,8 +146,8 @@ class PositionRepository:
         limit: int = 50,
         symbol: Optional[str] = None,
         is_paper: Optional[bool] = None,
-    ) -> Sequence[Position]:
-        """Fetch recently closed positions with pagination and filters."""
+    ) -> Sequence[PositionEntity]:
+        """Fetch recently closed positions as domain entities."""
         stmt = select(Position).where(Position.status == "closed")
         if symbol:
             stmt = stmt.where(Position.symbol == symbol.upper())
@@ -149,20 +155,20 @@ class PositionRepository:
             stmt = stmt.where(Position.is_paper == is_paper)
         stmt = stmt.order_by(Position.closed_at.desc()).limit(limit)
         res = await self.session.execute(stmt)
-        return res.scalars().all()
+        return [PositionEntity.from_orm(p) for p in res.scalars().all()]
 
     async def get_active_orders(
         self,
         symbol: Optional[str] = None,
         limit: int = 50,
-    ) -> Sequence[Order]:
-        """Fetch pending or in-flight orders."""
-        stmt = select(Order).where(Order.status.in_(["pending", "executing", "submitted"]))
+    ) -> Sequence[OrderEntity]:
+        """Fetch pending or in-flight orders as domain entities."""
+        stmt = select(Order).where(Order.status.in_(["pending_submit", "intent_committed", "submitted", "accepted"]))
         if symbol:
             stmt = stmt.where(Order.symbol == symbol.upper())
         stmt = stmt.order_by(Order.created_at.desc()).limit(limit)
         res = await self.session.execute(stmt)
-        return res.scalars().all()
+        return [OrderEntity.from_orm(o) for o in res.scalars().all()]
 
     @staticmethod
     def _empty_metrics() -> dict:
