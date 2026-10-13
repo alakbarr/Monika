@@ -1,0 +1,3 @@
+from logging.handlers import RotatingFileHandler
+
+class ConcurrentRotatingFileHandler(RotatingFileHandler): ...
