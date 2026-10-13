@@ -114,7 +114,7 @@ To run Monika natively on a Linux host without Docker:
    ```
 2. **Install Python Dependencies**:
    ```bash
-   pip install -r trading-agent/requirements.txt
+   pip install -r requirements.txt
    ```
    *(Automatically installs `mt5linux` and `rpyc` on Linux).*
 
@@ -135,7 +135,7 @@ To run Monika natively on a Linux host without Docker:
    ```bash
    export MT5_LINUX_HOST=127.0.0.1
    export MT5_LINUX_PORT=18812
-   bash trading-agent/start_agent.sh
+   ./start_monika.sh
    ```
 
 ---

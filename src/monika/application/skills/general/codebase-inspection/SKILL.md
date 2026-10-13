@@ -41,6 +41,6 @@ D:\Monika\trading-agent\
   3. Verify registration in `analysis/tools/executor.py` or `analysis/tools/tools_registry.py`.
 
 ## 4. Invariant Verification & Health Checks
-- **Automated Health Check**: Run `python -m cli.main doctor` to verify database connectivity, MT5 IPC status, and configuration validity.
+- **Automated Health Check**: Run `python -m monika.interfaces.cli.main doctor` to verify database connectivity, MT5 IPC status, and configuration validity.
 - **Test Suite Verification**: Run `pytest tests/ -x -q` to verify zero regression across all core subsystems.
 - **Skill Linting**: Run `python -m trading_agent.skills.trading_skill_linter` or execute skill curator verification before committing modifications to `skills/`.

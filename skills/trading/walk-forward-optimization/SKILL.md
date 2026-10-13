@@ -37,5 +37,5 @@ $$DSR = \Phi\left(\frac{(SR - SR^*)\sqrt{T-1}}{\sqrt{1 - \gamma_3 SR + \frac{\ga
 ## 3. CLI Simulation Execution
 Execute walk-forward alpha testing via terminal:
 ```bash
-python -m cli.main simulate --walk-forward --symbol EURUSD --folds 4 --wfe-min 0.60
+python -m monika.interfaces.cli.main simulate --walk-forward --symbol EURUSD --folds 4 --wfe-min 0.60
 ```

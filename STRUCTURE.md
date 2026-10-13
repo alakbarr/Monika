@@ -5,6 +5,7 @@
 Monika/
 ├── .dockerignore
 ├── .env.example
+├── .gitattributes
 ├── .github
 │   ├── ISSUE_TEMPLATE
 │   │   ├── bug_report.md
@@ -38,9 +39,21 @@ Monika/
 │   ├── ROADMAP_SRC_MONIKA.md
 │   ├── SETUP_GUIDE.md
 │   ├── images
+│   │   ├── 02_trading_desk_signals.png
+│   │   ├── 03_trading_desk_market.png
+│   │   ├── 04_market_intelligence_pipeline_dag.png
+│   │   ├── 05_market_intelligence_macro_brief.png
+│   │   ├── 06_ledger_risk_limits.png
+│   │   ├── 07_ledger_llm_token_audit.png
+│   │   ├── 08_telegraph_desk_console_chat.png
+│   │   ├── 09_system_configuration.png
+│   │   ├── 10_terminal_ui_tui.png
+│   │   ├── 10_terminal_ui_tui.svg
+│   │   └── dashboard
 │   ├── quality
 │   │   └── baseline.json
 │   └── ux-audit
+│       ├── AUDIT.md
 │       ├── COVERAGE.md
 │       ├── DECISIONS.md
 │       ├── FINDINGS.md
@@ -48,43 +61,20 @@ Monika/
 │       ├── STATE.md
 │       ├── SURFACES.md
 │       ├── SYSTEM-MAP.md
+│       ├── evidence
 │       ├── iterations
 │       │   ├── 01
 │       │   │   └── summary.md
 │       │   └── 02
 │       │       └── summary.md
 │       └── surfaces
-│       ├── 01_trading_desk_overview.png
-│       ├── 02_trading_desk_positions.png
-│       ├── 03_trading_desk_signals.png
-│       ├── 04_trading_desk_market.png
-│       ├── 05_market_intel_pipeline_dag.png
-│       ├── 06_market_intel_debate_arbitration.png
-│       ├── 07_market_intel_market_analysis.png
-│       ├── 08_market_intel_macro_brief.png
-│       ├── 09_market_intel_memory_vault.png
-│       ├── 10_market_intel_crystallized_skills.png
-│       ├── 11_market_intel_benchmark_lab.png
-│       ├── 12_ledger_risk_pnl_performance.png
-│       ├── 13_ledger_risk_edge_expectancy.png
-│       ├── 14_ledger_risk_limits_fortress.png
-│       ├── 15_ledger_risk_token_audit.png
-│       ├── 16_ledger_risk_historical_backtest.png
-│       ├── 17_telegraph_desk_agent_chat.png
-│       ├── 18_telegraph_desk_terminal_pty.png
-│       ├── 19_telegraph_desk_session_history.png
-│       ├── 20_telegraph_desk_dispatch_audit_log.png
-│       ├── 21_system_config_settings.png
-│       ├── 22_system_config_plugin_marketplace.png
-│       ├── 23_system_config_host_diagnostics.png
-│       ├── 24_setup_onboarding_wizard.png
-│       ├── 25_overlay_command_palette.png
-│       ├── 26_modal_decision_dossier.png
-│       ├── 27_theme_dark_crt_overview.png
-│       ├── 28_overlay_boot_sequence.png
-│       ├── 10_terminal_ui_tui.png
-│       ├── 10_terminal_ui_tui.svg
-│       └── dashboard
+│           ├── TUI-DASH-OVERVIEW.md
+│           ├── WEB-DLG-DOSSIER.md
+│           ├── WEB-SHELL-HEADER.md
+│           ├── WEB-SHELL-STATUSBAR.md
+│           ├── WEB-TRD-OVERVIEW.md
+│           ├── WEB-TRD-POSITIONS.md
+│           └── WEB-TRD-SIGNALS.md
 ├── frontend
 │   ├── .env.example
 │   ├── .gitignore
@@ -139,9 +129,7 @@ Monika/
 │   ├── generate_full_benchmark_dashboard.py
 │   ├── generate_model_quadrant.py
 │   ├── heal_kill_switch_state.py
-│   ├── install.ps1
-│   ├── install.sh
-│   ├── install_uv_managed.ps1
+│   ├── migrate_runtime_home.py
 │   ├── reset_paper_trades.py
 │   ├── run_tests.bat
 │   ├── run_tests.sh
@@ -149,9 +137,6 @@ Monika/
 │   ├── update_economic_calendar.py
 │   ├── update_index_toc.py
 │   └── ux_audit_baseline_scan.py
-├── setup.bat
-├── setup.ps1
-├── setup.sh
 ├── skills-lock.json
 ├── start_monika.bat
 ├── start_monika.sh
@@ -1036,6 +1021,7 @@ Monika/
 │       ├── core
 │       │   ├── __init__.py
 │       │   ├── exceptions.py
+│       │   ├── paths.py
 │       │   ├── analytics
 │       │   │   ├── __init__.py
 │       │   │   ├── adversarial_outcome_tracker.py

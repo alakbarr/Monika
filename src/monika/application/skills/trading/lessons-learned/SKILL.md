@@ -44,6 +44,6 @@ tags: [lessons_learned, execution, post_sl, liquidity, risk_heuristics]
 
 ## 7. Operational Diagnostics for Excess Inaction
 Excessive `WAIT` outputs across all universe assets indicate operational friction rather than prudence:
-- Run system diagnostics: `python -m cli.main doctor` to check database, broker IPC, and tool registries.
+- Run system diagnostics: `python -m monika.interfaces.cli.main doctor` to check database, broker IPC, and tool registries.
 - Verify tool execution integrity via `get_volatility_regime` and `get_daily_range_context`.
 - Audit whether thresholds are artificially suppressed by high VIX or priced-in penalties.

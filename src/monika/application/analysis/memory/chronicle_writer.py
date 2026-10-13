@@ -1,7 +1,5 @@
 from pathlib import Path
-def _get_trading_agent_dir() -> Path:
-    from monika.infrastructure.infra.paths import TRADING_AGENT_DIR
-    return TRADING_AGENT_DIR
+from monika.infrastructure.infra.paths import resolve_config_path
 
 # ==============================================================================
 # File: analysis/memory/chronicle_writer.py
@@ -222,9 +220,8 @@ class ChronicleWriter:
         Reads config/MACRO_REALITY.md (or specified file) and idempotently synchronizes
         verified structural macro regimes into the MarketChronicle table.
         """
-        from pathlib import Path
         if not file_path:
-            file_path = str(_get_trading_agent_dir() / "config" / "MACRO_REALITY.md")
+            file_path = str(resolve_config_path("MACRO_REALITY.md"))
 
         now = clock.now()
         verified_regimes = [
@@ -327,11 +324,7 @@ class ChronicleWriter:
 
     async def seed_historical_macro_milestones(self, session: AsyncSession) -> int:
         """Seed comprehensive 2022-2026 macro milestones on cold start."""
-        from pathlib import Path
-        milestones_path = (
-            _get_trading_agent_dir()
-            / "config" / "historical_macro_milestones.json"
-        )
+        milestones_path = resolve_config_path("historical_macro_milestones.json")
         if not milestones_path.exists():
             return 0
 

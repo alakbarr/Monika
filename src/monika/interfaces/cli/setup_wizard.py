@@ -411,7 +411,7 @@ class SetupWizard:
                     env_updates["DATABASE_URL"] = sqlite_url
                     console.print(f"  {stamp_ok('DATABASE')} [bold green]Zero-Config SQLite[/] selected for Trial Package.")
                     console.print(f"  [{MUTED}]Storage path: [bold]{db_file}[/][/]")
-                    console.print(f"  [{MUTED}]No PostgreSQL server installation needed. Upgrade anytime via `python -m cli.main upgrade`.[/]\n")
+                    console.print(f"  [{MUTED}]No PostgreSQL server installation needed. Upgrade anytime via `python -m monika.interfaces.cli.main upgrade`.[/]\n")
                     current_step += 1
                     continue
 
@@ -835,10 +835,10 @@ class SetupWizard:
         console.print(f"\n[{PHOSPHOR_AMBER}]══════════════════════════════════════════════════════════════[/]")
         console.print(f"{stamp_ok('SETUP COMPLETED')} Monika successfully configured ({installed_tier.upper()} Package)!")
         console.print(f"[{MUTED}]Next Recommended Steps:[/]")
-        console.print(f"  1. System Diagnostics: [bold {BRASS}]python -m cli.main doctor[/]")
-        console.print(f"  2. Trader Personality: [bold {BRASS}]python -m cli.main onboarding[/]")
-        console.print(f"  3. Launch Monika:      [bold {BRASS}]python -m cli.main run[/] (or use the launcher)")
+        console.print(f"  1. System Diagnostics: [bold {BRASS}]python -m monika.interfaces.cli.main doctor[/]")
+        console.print(f"  2. Trader Personality: [bold {BRASS}]python -m monika.interfaces.cli.main onboarding[/]")
+        console.print(f"  3. Launch Monika:      [bold {BRASS}]python -m monika.interfaces.cli.main run[/] (or use the launcher)")
         if installed_tier == "trial":
-            console.print(f"  4. Upgrade to Full:    [bold cyan]python -m cli.main upgrade[/]")
+            console.print(f"  4. Upgrade to Full:    [bold cyan]python -m monika.interfaces.cli.main upgrade[/]")
         console.print(f"[{PHOSPHOR_AMBER}]══════════════════════════════════════════════════════════════[/]\n")
         return True

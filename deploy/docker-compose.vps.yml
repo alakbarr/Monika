@@ -67,7 +67,7 @@ services:
       - ../.env
     environment:
       - PYTHONUNBUFFERED=1
-      - PYTHONPATH=/app/trading-agent
+      - PYTHONPATH=/app/src
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-monika}:${POSTGRES_PASSWORD:-monika_vps_secure_password_2026}@db:5432/${POSTGRES_DB:-monika_trading}
       - DASHBOARD_HOST=0.0.0.0
       - DASHBOARD_PORT=8000
@@ -75,9 +75,9 @@ services:
       - MT5_LINUX_HOST=mt5-wine
       - MT5_LINUX_PORT=18812
     volumes:
-      - ../trading-agent/config/settings.yaml:/app/trading-agent/config/settings.yaml:ro
-      - vps_agent_logs:/app/trading-agent/logs
-      - vps_agent_data:/app/trading-agent/data
+      - ../config/settings.yaml:/app/config/settings.yaml:ro
+      - vps_agent_logs:/app/logs
+      - vps_agent_data:/app/data
       - vps_mt5_bridge:/shared/mt5_bridge
     ports:
       - "127.0.0.1:8000:8000"

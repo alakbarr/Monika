@@ -27,7 +27,7 @@ tags: [debugging, root_cause, logging, telemetry, errors, failure_patterns]
 
 | Failure Symptom | Likely Root Cause | Diagnostic & Resolution SOP |
 |:---|:---|:---|
-| **Stale H4 Indicator Rejection** | MT5 terminal disconnected or historical bar fetch failed | Check `heartbeat.txt` and MT5 terminal IPC connection. Run `python -m cli.main doctor`. |
+| **Stale H4 Indicator Rejection** | MT5 terminal disconnected or historical bar fetch failed | Check `heartbeat.txt` and MT5 terminal IPC connection. Run `python -m monika.interfaces.cli.main doctor`. |
 | **Broker Error 10004 (REQUOTE)** | Market moved beyond price deviation during volatility spike | Apply `mt5_slippage_defense` protocol (`ORDER_FILLING_IOC` with `deviation = 50`). |
 | **Priced-In Score $\ge 8$ Hard Block** | Market has fully anticipated scheduled catalyst | Normal system safety behavior. Verify `macro_priced_in_calculator.py` outputs. Do not bypass RiskGate. |
 | **Tool JSON Decode Error** | LLM output included conversational markdown wrappers around JSON | Use `extract_and_parse_json()` from `analysis/providers/base_provider.py` which scrubs thinking tags and code fences. |
@@ -36,7 +36,7 @@ tags: [debugging, root_cause, logging, telemetry, errors, failure_patterns]
 ## 3. Diagnostic Commands Reference
 ```bash
 # 1. Full system health audit
-python -m cli.main doctor
+python -m monika.interfaces.cli.main doctor
 
 # 2. Re-run failed test in verbose mode
 pytest tests/path/to/test_file.py -vv -s
