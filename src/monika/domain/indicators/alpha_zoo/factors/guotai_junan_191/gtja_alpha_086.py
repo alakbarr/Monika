@@ -47,7 +47,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     diff = a - b
     last = -1.0 * (c - c.shift(1))
     out = pd.DataFrame(np.where(0.25 < diff, -1.0,
-                                np.where(diff < 0, 1.0, last.to_numpy())),
+                                np.where(diff < 0, 1.0, np.asarray(last))),
                        index=c.index, columns=c.columns)
     # NaN comparisons are False, not NaN, so a gap that leaves diff
     # undefined (warmup, or a halt inside the 10/20-day lookback) would

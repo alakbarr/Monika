@@ -7,6 +7,7 @@ Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 27.
 
 from __future__ import annotations
 
+from typing import Any
 import numpy as np
 import pandas as pd
 
@@ -46,35 +47,47 @@ __alpha_meta__ = {
 }
 
 
-def _rolling_sum(df: pd.DataFrame, n: int) -> pd.DataFrame:
+def _rolling_sum(df: Any, n: int) -> Any:
     """Rolling window sum; warmup -> NaN."""
+    if n < 1:
+        raise ValueError("rolling_sum requires n >= 1")
     return df.rolling(window=n, min_periods=n).sum()
 
 
-def _make_one(ref: pd.DataFrame) -> pd.DataFrame:
-    """A DataFrame of 1.0 with the same shape/index/columns as ``ref``."""
-    return pd.DataFrame(1.0, index=ref.index, columns=ref.columns)
+def _make_one(ref: Any) -> Any:
+    """A Series or DataFrame of 1.0 with the same shape/index as ref."""
+    if isinstance(ref, pd.Series):
+        return pd.Series(1.0, index=ref.index, name=ref.name)
+    if isinstance(ref, pd.DataFrame):
+        return pd.DataFrame(1.0, index=ref.index, columns=ref.columns)
+    return np.ones_like(ref, dtype=np.float64)
 
 
-def _where_ternary(cond, a, b):
-    """Vectorised ternary `(cond ? a : b)` returning a DataFrame.
-
-    ``cond`` is a boolean DataFrame; ``a`` / ``b`` may be DataFrame or scalar.
-    """
-    if isinstance(a, (int, float)):
-        a_arr = np.full_like(cond.to_numpy(dtype=np.float64), float(a))
-    else:
-        a_arr = a.to_numpy(dtype=np.float64, na_value=np.nan)
-    if isinstance(b, (int, float)):
-        b_arr = np.full_like(cond.to_numpy(dtype=np.float64), float(b))
-    else:
-        b_arr = b.to_numpy(dtype=np.float64, na_value=np.nan)
+def _where_ternary(cond: Any, a: Any, b: Any) -> Any:
+    """Vectorised ternary `(cond ? a : b)` returning DataFrame or Series."""
     cond_arr = cond.to_numpy(dtype=bool, na_value=False) if hasattr(cond, "to_numpy") else np.asarray(cond, dtype=bool)
+    if isinstance(a, (int, float)):
+        a_arr = np.full_like(cond_arr, float(a), dtype=np.float64)
+    elif hasattr(a, "to_numpy"):
+        a_arr = a.to_numpy(dtype=np.float64, na_value=np.nan)
+    else:
+        a_arr = np.asarray(a, dtype=np.float64)
+
+    if isinstance(b, (int, float)):
+        b_arr = np.full_like(cond_arr, float(b), dtype=np.float64)
+    elif hasattr(b, "to_numpy"):
+        b_arr = b.to_numpy(dtype=np.float64, na_value=np.nan)
+    else:
+        b_arr = np.asarray(b, dtype=np.float64)
+
     out = np.where(cond_arr, a_arr, b_arr)
     out = np.where(np.isfinite(out), out, np.nan)
-    idx = cond.index if hasattr(cond, "index") else a.index
-    cols = cond.columns if hasattr(cond, "columns") else a.columns
-    return pd.DataFrame(out, index=idx, columns=cols)
+    target = cond if hasattr(cond, "index") else (a if hasattr(a, "index") else b)
+    if isinstance(target, pd.Series):
+        return pd.Series(out, index=target.index, name=target.name)
+    if isinstance(target, pd.DataFrame):
+        return pd.DataFrame(out, index=target.index, columns=target.columns)
+    return out
 
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:

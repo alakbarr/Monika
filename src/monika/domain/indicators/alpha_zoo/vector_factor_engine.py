@@ -189,10 +189,10 @@ class VectorFactorEngine:
                     continue
 
                 # Compute rolling z-score of the latest value
-                latest_val = float(clean_series.iloc[-1])
+                latest_val = float(np.asarray(clean_series.iloc[-1]).item())
                 recent_window = clean_series.tail(lookback_window)
-                mean_val = float(recent_window.mean())
-                std_val = float(recent_window.std())
+                mean_val = float(np.asarray(recent_window.mean()).item())
+                std_val = float(np.asarray(recent_window.std()).item())
 
                 if std_val > 1e-8:
                     z_score = float(np.clip((latest_val - mean_val) / std_val, -3.0, 3.0))

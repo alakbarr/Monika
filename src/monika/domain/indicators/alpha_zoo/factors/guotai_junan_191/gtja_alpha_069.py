@@ -56,7 +56,6 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     res = pd.DataFrame(np.where(sd > sb, (safe_div(sd - sb, sd)).to_numpy(),
                                 np.where(sd < sb, (safe_div(sd - sb, sb)).to_numpy(), 0.0)),
                        index=o.index, columns=o.columns)
-    # NaN comparisons are False, not NaN, so a gap in sd/sb's 20-day
-    # window (a halt inside the lookback, not just series warmup) would
-    # otherwise fall through to the tie branch's hard-coded 0.0.
-    return res.where(sd.notna() & sb.notna())
+    sd_df = pd.DataFrame(sd, index=o.index, columns=o.columns)
+    sb_df = pd.DataFrame(sb, index=o.index, columns=o.columns)
+    return res.where(sd_df.notna() & sb_df.notna())

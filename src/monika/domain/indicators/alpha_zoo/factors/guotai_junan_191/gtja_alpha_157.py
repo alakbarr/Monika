@@ -58,7 +58,8 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     ret = safe_div(c, c.shift(1)) - 1.0
     inner = -1.0 * rank(delta(c - 1.0, 5))
     inner2 = rank(rank(inner))
-    inner3 = ts_min(inner2, 2).rolling(1).sum()
+    tmin = ts_min(inner2, 2)
+    inner3 = pd.DataFrame(tmin) if isinstance(tmin, pd.DataFrame) else pd.Series(tmin)
     inner4 = np.log(inner3.replace(0.0, np.nan))
     left = ts_min(rank(rank(inner4)), 5)
     right = ts_rank((-1.0 * ret).shift(6), 5)

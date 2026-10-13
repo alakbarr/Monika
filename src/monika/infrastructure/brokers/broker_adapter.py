@@ -994,8 +994,8 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
         timeout: float = 10.0,
     ):
         self.gateway_url = gateway_url.rstrip("/")
-        if hasattr(api_token, "get_secret_value"):
-            self.api_token = api_token.get_secret_value()
+        if api_token is not None and callable(getattr(api_token, "get_secret_value", None)):
+            self.api_token = str(getattr(api_token, "get_secret_value")())
         else:
             self.api_token = str(api_token) if api_token is not None else None
         self.timeout = timeout

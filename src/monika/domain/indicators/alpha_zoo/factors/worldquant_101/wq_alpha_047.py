@@ -7,6 +7,7 @@ Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 47.
 
 from __future__ import annotations
 
+from typing import Any
 import numpy as np
 import pandas as pd
 
@@ -46,21 +47,27 @@ __alpha_meta__ = {
 }
 
 
-def _rolling_sum(df: pd.DataFrame, n: int) -> pd.DataFrame:
+def _rolling_sum(df: Any, n: int) -> Any:
     """Rolling window sum; warmup -> NaN."""
+    if n < 1:
+        raise ValueError("rolling_sum requires n >= 1")
     return df.rolling(window=n, min_periods=n).sum()
 
 
-def _delay(df: pd.DataFrame, n: int) -> pd.DataFrame:
+def _delay(df: Any, n: int) -> Any:
     """Backward shift by n (lookahead-safe; n>=1 required)."""
     if n < 1:
         raise ValueError("delay requires n >= 1 (lookahead ban)")
     return df.shift(n)
 
 
-def _make_one(ref: pd.DataFrame) -> pd.DataFrame:
-    """A DataFrame of 1.0 with the same shape/index/columns as ``ref``."""
-    return pd.DataFrame(1.0, index=ref.index, columns=ref.columns)
+def _make_one(ref: Any) -> Any:
+    """A Series or DataFrame of 1.0 with the same shape/index as ref."""
+    if isinstance(ref, pd.Series):
+        return pd.Series(1.0, index=ref.index, name=ref.name)
+    if isinstance(ref, pd.DataFrame):
+        return pd.DataFrame(1.0, index=ref.index, columns=ref.columns)
+    return np.ones_like(ref, dtype=np.float64)
 
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:

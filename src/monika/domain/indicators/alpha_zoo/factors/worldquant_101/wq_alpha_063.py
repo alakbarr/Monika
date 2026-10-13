@@ -7,6 +7,7 @@ Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 63.
 
 from __future__ import annotations
 
+from typing import Any
 import numpy as np
 import pandas as pd
 
@@ -46,12 +47,14 @@ __alpha_meta__ = {
 }
 
 
-def _rolling_sum(df: pd.DataFrame, n: int) -> pd.DataFrame:
+def _rolling_sum(df: Any, n: int) -> Any:
     """Rolling window sum; warmup -> NaN."""
+    if n < 1:
+        raise ValueError("rolling_sum requires n >= 1")
     return df.rolling(window=n, min_periods=n).sum()
 
 
-def _ind_neutralize(x: pd.DataFrame, panel: dict) -> pd.DataFrame:
+def _ind_neutralize(x: Any, panel: Any) -> Any:
     """Industry/sector neutralize: subtract the row-wise sector group mean.
 
     If panel has a 'sector' DataFrame (same shape as close), subtract the

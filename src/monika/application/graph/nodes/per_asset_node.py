@@ -1,3 +1,4 @@
+import inspect
 import logging
 import monika.core.primitives.clock as clock
 from typing import Dict, Any, Optional
@@ -23,13 +24,22 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     
     logger.info("[Step 7/7] Running Per-Asset Stage (Stage 2 — Per-Asset Analysis)...")
     
-    paper_tracker = getattr(scheduler, "paper_tracker", getattr(scheduler, "_paper_tracker", None))
+    suspended_symbols: list[str] = []
+    paper_tracker = getattr(scheduler, "_paper_tracker", getattr(scheduler, "paper_tracker", None))
     if paper_tracker is not None:
         async with get_session() as session:
-            await paper_tracker.check_and_suspend_poor_performers(session, scheduler.settings)
-            suspended_symbols = await paper_tracker.get_suspended_symbols(session)
-    else:
-        suspended_symbols = []
+            check_fn = getattr(paper_tracker, "check_and_suspend_poor_performers", None)
+            if callable(check_fn):
+                check_res = check_fn(session, scheduler.settings)
+                if inspect.isawaitable(check_res):
+                    await check_res
+            get_fn = getattr(paper_tracker, "get_suspended_symbols", None)
+            if callable(get_fn):
+                raw_suspended = get_fn(session)
+                if inspect.isawaitable(raw_suspended):
+                    raw_suspended = await raw_suspended
+                if isinstance(raw_suspended, (list, tuple, set)):
+                    suspended_symbols = [str(s) for s in raw_suspended]
 
     now = clock.now()
     hour = now.hour
@@ -100,18 +110,24 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     if ssvp_context or per_symbol_contexts:
         logger.info(f"[SSVP] Injecting reconciliation context into {len(symbols_to_analyze)} Stage 2 analyses")
 
-    per_asset_stage = getattr(scheduler, "per_asset_stage", getattr(scheduler, "_per_asset", None))
+    pa_results: dict[str, Any] = {}
+    per_asset_stage = getattr(scheduler, "_per_asset", getattr(scheduler, "per_asset_stage", None))
     if per_asset_stage is not None:
-        pa_results = await per_asset_stage.run_all(
-            session_factory=_gs,
-            symbols=symbols_to_analyze,
-            extra_context=f"Market Regime: {state.get('market_regime', 'normal')}",
-            per_symbol_contexts=per_symbol_contexts,
-            user_market_intel=state.get('user_market_intel'),
-        )
+        run_all_fn = getattr(per_asset_stage, "run_all", None)
+        if callable(run_all_fn):
+            raw_res = run_all_fn(
+                session_factory=_gs,
+                symbols=symbols_to_analyze,
+                extra_context=f"Market Regime: {state.get('market_regime', 'normal')}",
+                per_symbol_contexts=per_symbol_contexts,
+                user_market_intel=state.get('user_market_intel'),
+            )
+            if inspect.isawaitable(raw_res):
+                raw_res = await raw_res
+            if isinstance(raw_res, dict):
+                pa_results = raw_res
     else:
         logger.warning("Per-asset stage not available on scheduler")
-        pa_results = {}
     
     # ============================================================
     # SSVP: CROSS-AGENT SELECTIVE SYNCHRONIZATION

@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from monika.domain.indicators.factor_primitives import safe_div
+from monika.domain.indicators.factor_primitives import safe_div, zscore
 
 __alpha_meta__ = {
     'id': 'academic_retskew',
@@ -38,8 +38,10 @@ __alpha_meta__ = {
 }
 
 
-def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
+def _cross_sectional_zscore(df: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
     """Per-row z-score: (x - row_mean) / row_std. Supports single-asset time-series (axis=0) when shape[1] == 1."""
+    if isinstance(df, pd.Series):
+        return zscore(df)
     if df.shape[1] == 1:
         mean = df.mean(axis=0, skipna=True)
         std = df.std(axis=0, ddof=1, skipna=True)

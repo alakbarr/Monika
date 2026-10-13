@@ -42,7 +42,9 @@ from monika.domain.indicators.factor_primitives import safe_div, ts_mean, ts_std
     )
 )
 def qlib_kmid(df: pd.DataFrame) -> pd.Series:
-    return safe_div(df["close"] - df["open"], df["open"])
+    c = pd.Series(df["close"])
+    o = pd.Series(df["open"])
+    return safe_div(c - o, o)
 
 
 @FactorRegistry.register(
@@ -59,7 +61,10 @@ def qlib_kmid(df: pd.DataFrame) -> pd.Series:
     )
 )
 def qlib_klen(df: pd.DataFrame) -> pd.Series:
-    return safe_div(df["high"] - df["low"], df["open"])
+    h = pd.Series(df["high"])
+    l = pd.Series(df["low"])
+    o = pd.Series(df["open"])
+    return safe_div(h - l, o)
 
 
 @FactorRegistry.register(
@@ -76,8 +81,11 @@ def qlib_klen(df: pd.DataFrame) -> pd.Series:
     )
 )
 def qlib_kup(df: pd.DataFrame) -> pd.Series:
-    top = np.maximum(df["open"].values, df["close"].values)
-    return safe_div(df["high"] - top, df["open"])
+    o = pd.Series(df["open"])
+    c = pd.Series(df["close"])
+    h = pd.Series(df["high"])
+    top = pd.Series(np.maximum(np.asarray(o, dtype=np.float64), np.asarray(c, dtype=np.float64)), index=df.index)
+    return safe_div(h - top, o)
 
 
 @FactorRegistry.register(
@@ -94,8 +102,11 @@ def qlib_kup(df: pd.DataFrame) -> pd.Series:
     )
 )
 def qlib_klow(df: pd.DataFrame) -> pd.Series:
-    bot = np.minimum(df["open"].values, df["close"].values)
-    return safe_div(bot - df["low"], df["open"])
+    o = pd.Series(df["open"])
+    c = pd.Series(df["close"])
+    l = pd.Series(df["low"])
+    bot = pd.Series(np.minimum(np.asarray(o, dtype=np.float64), np.asarray(c, dtype=np.float64)), index=df.index)
+    return safe_div(bot - l, o)
 
 
 @FactorRegistry.register(
@@ -112,8 +123,12 @@ def qlib_klow(df: pd.DataFrame) -> pd.Series:
     )
 )
 def qlib_ksft(df: pd.DataFrame) -> pd.Series:
-    num = 2.0 * df["close"] - df["open"] - df["high"] - df["low"]
-    den = df["high"] - df["low"]
+    c = pd.Series(df["close"])
+    o = pd.Series(df["open"])
+    h = pd.Series(df["high"])
+    l = pd.Series(df["low"])
+    num = 2.0 * c - o - h - l
+    den = h - l
     return safe_div(num, den)
 
 
@@ -122,11 +137,12 @@ def qlib_ksft(df: pd.DataFrame) -> pd.Series:
 # ==============================================================================
 
 def _calc_wvma(df: pd.DataFrame, window: int) -> pd.Series:
-    ret = df["close"].pct_change()
-    abs_vol = ret.abs() * df["volume"].astype(float)
-    vol_series = pd.Series(abs_vol, index=df.index)
-    std_val = vol_series.rolling(window, min_periods=window).std()
-    mean_val = vol_series.rolling(window, min_periods=window).mean()
+    c = pd.Series(df["close"])
+    v = pd.Series(df["volume"], dtype=float)
+    ret = c.pct_change()
+    abs_vol = pd.Series(ret.abs() * v, index=df.index)
+    std_val = pd.Series(abs_vol.rolling(window, min_periods=window).std())
+    mean_val = pd.Series(abs_vol.rolling(window, min_periods=window).mean())
     return safe_div(std_val, mean_val)
 
 

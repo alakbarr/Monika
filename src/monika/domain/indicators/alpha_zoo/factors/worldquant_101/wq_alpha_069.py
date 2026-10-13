@@ -7,6 +7,7 @@ Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 69.
 
 from __future__ import annotations
 
+from typing import Any
 import numpy as np
 import pandas as pd
 
@@ -46,7 +47,7 @@ __alpha_meta__ = {
 }
 
 
-def _ind_neutralize(x: pd.DataFrame, panel: dict) -> pd.DataFrame:
+def _ind_neutralize(x: Any, panel: Any) -> Any:
     """Industry/sector neutralize: subtract the row-wise sector group mean.
 
     If panel has a 'sector' DataFrame (same shape as close), subtract the
