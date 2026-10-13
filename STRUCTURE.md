@@ -1245,6 +1245,13 @@ Monika/
 │       │       ├── approval_hub.py
 │       │       ├── correlation_matrix.py
 │       │       ├── crypto_audit_ledger.py
+│       │       ├── evaluators
+│       │       │   ├── __init__.py
+│       │       │   ├── base.py
+│       │       │   ├── execution_checks.py
+│       │       │   ├── intelligence_checks.py
+│       │       │   ├── market_checks.py
+│       │       │   └── portfolio_checks.py
 │       │       ├── execution_simulator.py
 │       │       ├── instruments
 │       │       │   ├── __init__.py
