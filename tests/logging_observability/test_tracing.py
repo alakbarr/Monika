@@ -78,4 +78,3 @@ def test_span_context_manager_protocols_and_typing():
         assert isinstance(span_obj, Span)
         assert span_obj.attributes["llm.provider"] == "gemini"
         assert span_obj.attributes["llm.model"] == "gemini-2.5-flash"
-

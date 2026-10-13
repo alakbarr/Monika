@@ -8,6 +8,7 @@ from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBl
 
 class DummyLLMClient(BaseLLMClient):
     """Minimal test client subclassing BaseLLMClient."""
+
     def __init__(self, model="dummy-model", **kwargs):
         super().__init__(model=model, max_tokens=4096, **kwargs)
         self.provider_name = "dummy"
@@ -59,6 +60,7 @@ def test_harness_mandatory_tool_detection():
 
 def test_harness_error_classification():
     """Verify transient error and billing error classifiers."""
+
     class ErrWithCode(Exception):
         def __init__(self, msg, code):
             super().__init__(msg)
@@ -94,8 +96,8 @@ def test_harness_normalize_response_anthropic(dummy_client):
         cached_tokens=20,
     )
 
-    blocks, stop_reason, reasoning, in_tok, out_tok, cached_tok, thinking_tok = (
-        harness._normalize_response_content(mock_resp)
+    blocks, stop_reason, reasoning, in_tok, out_tok, cached_tok, thinking_tok = harness._normalize_response_content(
+        mock_resp
     )
 
     assert stop_reason == "tool_use"
@@ -138,8 +140,8 @@ def test_harness_normalize_response_openai(dummy_client):
         choices = [OpenAIChoice()]
         usage = OpenAIUsage()
 
-    blocks, stop_reason, reasoning, in_tok, out_tok, cached_tok, thinking_tok = (
-        harness._normalize_response_content(OpenAIResponse())
+    blocks, stop_reason, reasoning, in_tok, out_tok, cached_tok, thinking_tok = harness._normalize_response_content(
+        OpenAIResponse()
     )
 
     assert stop_reason == "tool_calls"
@@ -203,9 +205,11 @@ async def test_harness_anti_oscillation_suppresses_repeated_calls(dummy_client, 
 
     # Verify context_messages received the suppression payload
     tool_results = [
-        b["content"] for m in result["context_messages"]
+        b["content"]
+        for m in result["context_messages"]
         if m["role"] == "user" and isinstance(m["content"], list)
-        for b in m["content"] if b.get("type") == "tool_result"
+        for b in m["content"]
+        if b.get("type") == "tool_result"
     ]
     # One of the tool results must contain "already_executed"
     assert any("already_executed" in str(c) for c in tool_results)
@@ -214,22 +218,16 @@ async def test_harness_anti_oscillation_suppresses_repeated_calls(dummy_client, 
 @pytest.mark.asyncio
 async def test_harness_tool_family_quota_suppression(dummy_client, mock_session):
     """Verify that exceeding tool family quota triggers suppression notice."""
-    settings = {
-        "analysis": {
-            "compaction": {
-                "tool_quotas": {
-                    "price_action": 1
-                }
-            }
-        }
-    }
+    settings = {"analysis": {"compaction": {"tool_quotas": {"price_action": 1}}}}
     harness = AgentHarness(dummy_client, settings=settings, max_tool_turns=4)
 
     mock_executor = AsyncMock()
     mock_executor.execute = AsyncMock(return_value={"price": 1.1000})
 
     # We mock compactor check_tool_family_quota: first call allowed, second call denied
-    harness.compactor.check_tool_family_quota = MagicMock(side_effect=[(True, None), (False, "Quota of 1 reached for price_action")])
+    harness.compactor.check_tool_family_quota = MagicMock(
+        side_effect=[(True, None), (False, "Quota of 1 reached for price_action")]
+    )
 
     resp1 = MockResponse(
         content=[MockBlock("tool_use", name="get_ohlcv", input={"count": 10}, id="c1")],
@@ -265,9 +263,11 @@ async def test_harness_tool_family_quota_suppression(dummy_client, mock_session)
     assert mock_executor.execute.call_count == 1
 
     tool_results = [
-        b["content"] for m in result["context_messages"]
+        b["content"]
+        for m in result["context_messages"]
         if m["role"] == "user" and isinstance(m["content"], list)
-        for b in m["content"] if b.get("type") == "tool_result"
+        for b in m["content"]
+        if b.get("type") == "tool_result"
     ]
     assert any("quota_exceeded" in str(c) for c in tool_results)
 
@@ -280,16 +280,17 @@ def test_harness_state_preservation_truncation(dummy_client):
     messages = [
         {"role": "user", "content": "First instruction"},
         {"role": "assistant", "content": "Calling tool..."},
-        {"role": "user", "content": [
-            {
-                "type": "tool_result",
-                "content": json.dumps({
-                    "atr_14": 0.0045,
-                    "latest": {"close": 1.0850, "date": "2026-09-05"},
-                    "trend_5d": "bullish"
-                })
-            }
-        ]},
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "content": json.dumps(
+                        {"atr_14": 0.0045, "latest": {"close": 1.0850, "date": "2026-09-05"}, "trend_5d": "bullish"}
+                    ),
+                }
+            ],
+        },
         {"role": "assistant", "content": "Tool processed"},
         {"role": "user", "content": "Next step"},
         {"role": "assistant", "content": "A" * 150},
@@ -398,4 +399,3 @@ async def test_harness_prompt_cache_hardening_with_plain_string(mock_session, du
     assert result["success"] is True
     called_sys = dummy_client.mock_run_tool_agent.call_args[0][2]
     assert called_sys == "Simple plain prompt"
-

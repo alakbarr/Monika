@@ -25,9 +25,9 @@ logger = logging.getLogger("TradingAgent.Providers.BackendIdentity")
 
 
 class FailureScope(str, Enum):
-    MODEL = "model"            # Issue specific to this model name (e.g. 404 Model Not Found)
+    MODEL = "model"  # Issue specific to this model name (e.g. 404 Model Not Found)
     CREDENTIAL = "credential"  # Issue invalidates the API key (e.g. 401 Invalid Key, 402 Billing)
-    ENDPOINT = "endpoint"      # Issue invalidates the entire base URL (e.g. 503 DNS / Host unreachable)
+    ENDPOINT = "endpoint"  # Issue invalidates the entire base URL (e.g. 503 DNS / Host unreachable)
 
 
 @dataclass(frozen=True)
@@ -64,9 +64,9 @@ class FailoverCandidateSkipper:
 
     def __init__(self, ttl_seconds: float = 300.0):
         self.ttl_seconds = ttl_seconds
-        self._failed_models: Dict[str, float] = {}       # model_key -> expiry_time
+        self._failed_models: Dict[str, float] = {}  # model_key -> expiry_time
         self._failed_credentials: Dict[str, float] = {}  # cred_hash -> expiry_time
-        self._failed_endpoints: Dict[str, float] = {}    # endpoint_url -> expiry_time
+        self._failed_endpoints: Dict[str, float] = {}  # endpoint_url -> expiry_time
 
     def _clean_expired(self) -> None:
         now = time.time()

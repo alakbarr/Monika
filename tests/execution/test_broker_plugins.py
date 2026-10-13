@@ -75,9 +75,24 @@ async def test_mt5_local_broker_plugin_mocked():
     mock_client.connect.return_value = True
     mock_client.is_connected.return_value = True
     mock_client.get_current_price.return_value = {"bid": 2650.0, "ask": 2650.5, "last": 2650.25}
-    mock_client.get_account_info.return_value = {"balance": 50000.0, "equity": 50500.0, "margin": 1000.0, "margin_free": 49500.0, "leverage": 100.0}
+    mock_client.get_account_info.return_value = {
+        "balance": 50000.0,
+        "equity": 50500.0,
+        "margin": 1000.0,
+        "margin_free": 49500.0,
+        "leverage": 100.0,
+    }
     mock_client.get_open_positions.return_value = [
-        {"ticket": 12345, "symbol": "XAUUSD", "type": 0, "volume": 0.2, "price_open": 2640.0, "sl": 2630.0, "tp": 2660.0, "profit": 200.0}
+        {
+            "ticket": 12345,
+            "symbol": "XAUUSD",
+            "type": 0,
+            "volume": 0.2,
+            "price_open": 2640.0,
+            "sl": 2630.0,
+            "tp": 2660.0,
+            "profit": 200.0,
+        }
     ]
 
     broker.mt5_client = mock_client

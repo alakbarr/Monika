@@ -73,15 +73,17 @@ class VoiceHandler:
 
             # ── Deterministic Voice Safety Gate ──
             from monika.interfaces.telegram.voice_safety_gate import VoiceSafetyGate
+
             proposal = VoiceSafetyGate.extract_trade_intent(transcript)
             if proposal.is_trade_command:
                 if proposal.error:
                     if status_msg:
-                        await status_msg.edit_text(f"[SUARA] \"{transcript}\"\n\n[PERINGATAN] {proposal.error}")
+                        await status_msg.edit_text(f'[SUARA] "{transcript}"\n\n[PERINGATAN] {proposal.error}')
                     return
 
                 from monika.domain.risk.approval_hub import ApprovalHub
                 import uuid
+
                 req_id = f"voice_{uuid.uuid4().hex[:8]}"
                 hub = ApprovalHub.get_instance()
                 req = hub.create_request(
@@ -99,17 +101,23 @@ class VoiceHandler:
                 )
                 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
                 from telegram.constants import ParseMode
+
                 sl_str = f" | SL: `{proposal.stop_loss}`" if proposal.stop_loss else ""
                 tp_str = f" | TP: `{proposal.take_profit}`" if proposal.take_profit else ""
-                kb = InlineKeyboardMarkup([
+                kb = InlineKeyboardMarkup(
                     [
-                        InlineKeyboardButton(f"[EKSEKUSI] {proposal.action} {proposal.lots} {proposal.symbol}", callback_data=f"confirm:{req_id}"),
-                        InlineKeyboardButton("[BATALKAN]", callback_data=f"reject:{req_id}"),
+                        [
+                            InlineKeyboardButton(
+                                f"[EKSEKUSI] {proposal.action} {proposal.lots} {proposal.symbol}",
+                                callback_data=f"confirm:{req_id}",
+                            ),
+                            InlineKeyboardButton("[BATALKAN]", callback_data=f"reject:{req_id}"),
+                        ]
                     ]
-                ])
+                )
                 card_text = (
                     f"*Perintah Suara Terdeteksi*\n"
-                    f"• *Transkrip*: \"{transcript}\"\n"
+                    f'• *Transkrip*: "{transcript}"\n'
                     f"• *Tindakan*: `{proposal.action}` *{proposal.symbol}*\n"
                     f"• *Volume*: `{proposal.lots} Lot`{sl_str}{tp_str}\n\n"
                     f"*Konfirmasi*: Tekan tombol di bawah untuk menyetujui atau membatalkan eksekusi order."
@@ -121,7 +129,7 @@ class VoiceHandler:
                 return
 
             # Brief transcription acknowledgment for conversational text
-            ack_text = f"[SUARA] \"{transcript}\""
+            ack_text = f'[SUARA] "{transcript}"'
             if status_msg:
                 try:
                     await status_msg.edit_text(ack_text)
@@ -133,8 +141,10 @@ class VoiceHandler:
             session_id = None
             if self.bot:
                 thread_id = getattr(update.message, "message_thread_id", None)
-                chat_id = update.effective_chat.id if update.effective_chat else (
-                    update.effective_user.id if update.effective_user else 0
+                chat_id = (
+                    update.effective_chat.id
+                    if update.effective_chat
+                    else (update.effective_user.id if update.effective_user else 0)
                 )
                 if isinstance(thread_id, int) and hasattr(self.bot, "topic_manager") and self.bot.topic_manager:
                     session_id = await self.bot.topic_manager.get_session_for_topic(chat_id, thread_id)
@@ -149,6 +159,7 @@ class VoiceHandler:
                 if hasattr(self.bot, "_chat_agents"):
                     if agent_key not in self.bot._chat_agents:
                         from monika.interfaces.telegram.chat_agent import ChatAgent
+
                         self.bot._chat_agents[agent_key] = ChatAgent(self.bot.settings, agent_key)
                     agent = self.bot._chat_agents[agent_key]
                 elif hasattr(self.bot, "chat_agent"):
@@ -172,6 +183,7 @@ class VoiceHandler:
                     if not is_streaming and reply:
                         from monika.interfaces.telegram.sanitizer import sanitize_telegram_html
                         from telegram.constants import ParseMode
+
                         chunks = [reply]
                         if self.bot and hasattr(self.bot, "_chunk_text"):
                             chunks = self.bot._chunk_text(reply)
@@ -193,10 +205,10 @@ class VoiceHandler:
                     if pending:
                         from monika.interfaces.telegram.command_router import CommandRouter
                         from telegram.constants import ParseMode
+
                         keyboard = CommandRouter.build_confirm_keyboard(pending.action_id)
                         await update.message.reply_text(
-                            f"*AI Mengusulkan Tindakan:*\n\n{pending.description}\n\n"
-                            f"_Berlaku selama 90 detik._",
+                            f"*AI Mengusulkan Tindakan:*\n\n{pending.description}\n\n_Berlaku selama 90 detik._",
                             parse_mode=ParseMode.MARKDOWN,
                             reply_markup=keyboard,
                         )
@@ -219,6 +231,7 @@ class VoiceHandler:
         # 1. Try via LLM provider factory
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
+
             task_roles = (self.settings or {}).get("llm", {}).get("task_roles", {})
             if "voice_transcription" in task_roles:
                 client = get_client_for_task("voice_transcription", self.settings)
@@ -276,28 +289,21 @@ class VoiceHandler:
                     candidate_models.append(live_m)
 
         # Resolve API keys
-        openrouter_key = (
-            self.settings.get("api_keys", {}).get("openrouter")
-            or os.getenv("OPENROUTER_API_KEY")
-        )
+        openrouter_key = self.settings.get("api_keys", {}).get("openrouter") or os.getenv("OPENROUTER_API_KEY")
         if not openrouter_key:
             from monika.infrastructure.api.openrouter_rate_limiter import get_paid_key, get_free_keys
+
             openrouter_key = get_paid_key() or (get_free_keys()[0] if get_free_keys() else None)
 
-        groq_key = (
-            self.settings.get("api_keys", {}).get("groq")
-            or os.getenv("GROQ_API_KEY")
-        )
+        groq_key = self.settings.get("api_keys", {}).get("groq") or os.getenv("GROQ_API_KEY")
         if not groq_key:
             from monika.infrastructure.api.groq_rate_limiter import get_api_keys
+
             g_keys = get_api_keys()
             if g_keys:
                 groq_key = g_keys[0]
 
-        gemini_key = (
-            self.settings.get("api_keys", {}).get("gemini")
-            or os.getenv("GEMINI_API_KEY")
-        )
+        gemini_key = self.settings.get("api_keys", {}).get("gemini") or os.getenv("GEMINI_API_KEY")
         if not gemini_key:
             keys = os.getenv("GEMINI_API_KEYS", "")
             if keys:
@@ -305,6 +311,7 @@ class VoiceHandler:
 
         try:
             import aiohttp
+
             async with aiohttp.ClientSession() as http_session:
                 for model_name in candidate_models:
                     m_lower = model_name.lower()
@@ -315,14 +322,16 @@ class VoiceHandler:
                             continue
                         clean_model = model_name
                         if clean_model.startswith("openrouter/"):
-                            clean_model = clean_model[len("openrouter/"):]
+                            clean_model = clean_model[len("openrouter/") :]
                         try:
                             form = aiohttp.FormData()
                             form.add_field("file", audio, filename="audio.ogg", content_type=mime_type)
                             form.add_field("model", clean_model)
                             headers = {"Authorization": f"Bearer {openrouter_key}"}
                             url = "https://openrouter.ai/api/v1/audio/transcriptions"
-                            async with http_session.post(url, data=form, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                            async with http_session.post(
+                                url, data=form, headers=headers, timeout=aiohttp.ClientTimeout(total=30)
+                            ) as resp:
                                 if resp.status == 200:
                                     data = await resp.json()
                                     text = data.get("text", "")
@@ -330,7 +339,9 @@ class VoiceHandler:
                                         return str(text).strip()
                                 else:
                                     err_body = await resp.text()
-                                    logger.warning(f"[VoiceHandler] OpenRouter transcription ({clean_model}) status {resp.status}: {err_body}")
+                                    logger.warning(
+                                        f"[VoiceHandler] OpenRouter transcription ({clean_model}) status {resp.status}: {err_body}"
+                                    )
                         except Exception as e:
                             logger.warning(f"[VoiceHandler] OpenRouter transcription failed for {clean_model}: {e}")
 
@@ -344,7 +355,9 @@ class VoiceHandler:
                             form.add_field("model", model_name)
                             headers = {"Authorization": f"Bearer {groq_key}"}
                             url = "https://api.groq.com/openai/v1/audio/transcriptions"
-                            async with http_session.post(url, data=form, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                            async with http_session.post(
+                                url, data=form, headers=headers, timeout=aiohttp.ClientTimeout(total=30)
+                            ) as resp:
                                 if resp.status == 200:
                                     data = await resp.json()
                                     text = data.get("text", "")
@@ -352,7 +365,9 @@ class VoiceHandler:
                                         return str(text).strip()
                                 else:
                                     err_body = await resp.text()
-                                    logger.warning(f"[VoiceHandler] Groq transcription ({model_name}) status {resp.status}: {err_body}")
+                                    logger.warning(
+                                        f"[VoiceHandler] Groq transcription ({model_name}) status {resp.status}: {err_body}"
+                                    )
                         except Exception as e:
                             logger.warning(f"[VoiceHandler] Groq transcription failed for {model_name}: {e}")
 
@@ -362,29 +377,35 @@ class VoiceHandler:
                             continue
                         clean_gemini_model = model_name
                         if clean_gemini_model.startswith("google/"):
-                            clean_gemini_model = clean_gemini_model[len("google/"):]
-                        b64_audio = base64.b64encode(audio).decode("utf-8") if isinstance(audio, (bytes, bytearray)) else audio
+                            clean_gemini_model = clean_gemini_model[len("google/") :]
+                        b64_audio = (
+                            base64.b64encode(audio).decode("utf-8") if isinstance(audio, (bytes, bytearray)) else audio
+                        )
                         headers = {
                             "x-goog-api-key": gemini_key,
                             "Content-Type": "application/json",
                         }
                         payload = {
-                            "contents": [{
-                                "role": "user",
-                                "parts": [
-                                    {"text": prompt},
-                                    {
-                                        "inlineData": {
-                                            "mimeType": mime_type,
-                                            "data": b64_audio,
-                                        }
-                                    }
-                                ]
-                            }]
+                            "contents": [
+                                {
+                                    "role": "user",
+                                    "parts": [
+                                        {"text": prompt},
+                                        {
+                                            "inlineData": {
+                                                "mimeType": mime_type,
+                                                "data": b64_audio,
+                                            }
+                                        },
+                                    ],
+                                }
+                            ]
                         }
                         url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_gemini_model}:generateContent"
                         try:
-                            async with http_session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                            async with http_session.post(
+                                url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=30)
+                            ) as resp:
                                 if resp.status == 200:
                                     data = await resp.json()
                                     candidates = data.get("candidates", [])
@@ -395,9 +416,13 @@ class VoiceHandler:
                                             return text.strip()
                                 else:
                                     err_body = await resp.text()
-                                    logger.warning(f"[VoiceHandler] Direct Gemini transcription ({clean_gemini_model}) status {resp.status}: {err_body}")
+                                    logger.warning(
+                                        f"[VoiceHandler] Direct Gemini transcription ({clean_gemini_model}) status {resp.status}: {err_body}"
+                                    )
                         except Exception as e:
-                            logger.warning(f"[VoiceHandler] Direct Gemini transcription failed for {clean_gemini_model}: {e}")
+                            logger.warning(
+                                f"[VoiceHandler] Direct Gemini transcription failed for {clean_gemini_model}: {e}"
+                            )
         except Exception as e:
             logger.warning(f"[VoiceHandler] Transcription execution failed: {e}")
 

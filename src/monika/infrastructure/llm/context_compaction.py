@@ -18,10 +18,7 @@ logger = logging.getLogger("TradingAgent.ContextCompaction")
 
 
 def spill_tool_output(
-    tool_output: str,
-    tool_name: str = "tool",
-    threshold_chars: int = 5000,
-    spill_dir: str = "data/tool_spill"
+    tool_output: str, tool_name: str = "tool", threshold_chars: int = 5000, spill_dir: str = "data/tool_spill"
 ) -> str:
     """
     Spill oversized tool outputs to disk, replacing with a preview and file reference (I6).
@@ -72,7 +69,7 @@ def spill_tool_output(
                 "preview": preview_data,
                 "full_output_file": filepath,
                 "total_characters": len(tool_output),
-                "notice": f"Tool output exceeded {threshold_chars} characters and was spilled to disk. Full data: {filepath}"
+                "notice": f"Tool output exceeded {threshold_chars} characters and was spilled to disk. Full data: {filepath}",
             }
             return json.dumps(payload)
 
@@ -92,27 +89,40 @@ class ContextCompactionEngine:
 
     SYNTHESIS_THRESHOLD = 0.50  # 50% of context window -> Layer 2 synthesis
     EMERGENCY_THRESHOLD = 0.85  # 85% of context window -> Layer 3 emergency guard
-    SYNTHESIS_THRESHOLD_ABSOLUTE = 28000  # Layer 2 synthesis trigger regardless of huge context windows (e.g. Gemini 1M)
+    SYNTHESIS_THRESHOLD_ABSOLUTE = (
+        28000  # Layer 2 synthesis trigger regardless of huge context windows (e.g. Gemini 1M)
+    )
     EMERGENCY_THRESHOLD_ABSOLUTE = 45000  # Layer 3 emergency hard truncation trigger
-
 
     TOOL_FAMILIES = {
         "price_history": [
-            "get_price_history", "get_technical_indicators", "get_atr",
-            "get_swing_points", "get_structure_breaks", "get_smc_zones",
-            "get_fibonacci_levels", "get_optimal_intraday_levels", "get_daily_range_context"
+            "get_price_history",
+            "get_technical_indicators",
+            "get_atr",
+            "get_swing_points",
+            "get_structure_breaks",
+            "get_smc_zones",
+            "get_fibonacci_levels",
+            "get_optimal_intraday_levels",
+            "get_daily_range_context",
         ],
-        "news": [
-            "get_news_items", "get_news_digest"
-        ],
+        "news": ["get_news_items", "get_news_digest"],
         "sentiment": [
-            "get_retail_sentiment", "get_funding_rate", "get_fear_greed_index",
-            "get_forex_sentiment", "get_fxssi_sentiment", "get_structured_sentiment"
+            "get_retail_sentiment",
+            "get_funding_rate",
+            "get_fear_greed_index",
+            "get_forex_sentiment",
+            "get_fxssi_sentiment",
+            "get_structured_sentiment",
         ],
         "macro": [
-            "get_dxy", "get_vix", "get_fedwatch_probabilities",
-            "get_yield_data", "get_cot_report", "get_economic_calendar"
-        ]
+            "get_dxy",
+            "get_vix",
+            "get_fedwatch_probabilities",
+            "get_yield_data",
+            "get_cot_report",
+            "get_economic_calendar",
+        ],
     }
     FAMILY_QUOTAS = {
         "price_history": 5,
@@ -124,10 +134,7 @@ class ContextCompactionEngine:
 
     @classmethod
     def check_tool_family_quota(
-        cls,
-        tool_name: str,
-        session_calls: List[str],
-        max_quota: Optional[int] = None
+        cls, tool_name: str, session_calls: List[str], max_quota: Optional[int] = None
     ) -> tuple[bool, Optional[str]]:
         """
         Guards against parameter-variant oscillation loops within the same tool family.
@@ -232,14 +239,26 @@ class ContextCompactionEngine:
 
         return spill_tool_output(res, tool_name=tool_name)
 
-
     def _prune_order_response(self, text: str) -> str:
         """Extracts decisive fields from order/position JSON response."""
         try:
             data = json.loads(text)
             if isinstance(data, dict):
                 compact = {}
-                for k in ("ticket", "order", "status", "retcode", "price", "price_open", "sl", "tp", "volume", "profit", "comment", "symbol"):
+                for k in (
+                    "ticket",
+                    "order",
+                    "status",
+                    "retcode",
+                    "price",
+                    "price_open",
+                    "sl",
+                    "tp",
+                    "volume",
+                    "profit",
+                    "comment",
+                    "symbol",
+                ):
                     if k in data:
                         compact[k] = data[k]
                 if compact:
@@ -248,10 +267,13 @@ class ContextCompactionEngine:
                 compact_list = []
                 for item in data[:10]:
                     if isinstance(item, dict):
-                        compact_list.append({
-                            k: item[k] for k in ("ticket", "symbol", "type", "volume", "price_open", "sl", "tp", "profit")
-                            if k in item
-                        })
+                        compact_list.append(
+                            {
+                                k: item[k]
+                                for k in ("ticket", "symbol", "type", "volume", "price_open", "sl", "tp", "profit")
+                                if k in item
+                            }
+                        )
                 return json.dumps(compact_list)
         except Exception:
             pass
@@ -275,16 +297,20 @@ class ContextCompactionEngine:
 
             if isinstance(bars, list) and len(bars) > 15:
                 highs: list[float] = [
-                    float(v) for b in bars if isinstance(b, dict)
+                    float(v)
+                    for b in bars
+                    if isinstance(b, dict)
                     for v in [b.get("high") if b.get("high") is not None else b.get("h")]
                     if v is not None
                 ]
                 lows: list[float] = [
-                    float(v) for b in bars if isinstance(b, dict)
+                    float(v)
+                    for b in bars
+                    if isinstance(b, dict)
                     for v in [b.get("low") if b.get("low") is not None else b.get("l")]
                     if v is not None
                 ]
-                
+
                 raw_high = max(highs) if highs else None
                 raw_low = min(lows) if lows else None
                 period_high = round(raw_high, 5) if raw_high is not None else None
@@ -294,11 +320,21 @@ class ContextCompactionEngine:
                 raw_close = bars[-1].get("close") or bars[-1].get("c") if isinstance(bars[-1], dict) else None
                 period_open = round(raw_open, 5) if raw_open is not None else None
                 period_close = round(raw_close, 5) if raw_close is not None else None
-                
-                high_time = next((b.get("time") for b in bars if isinstance(b, dict) and (b.get("high") or b.get("h")) == raw_high), None)
-                low_time = next((b.get("time") for b in bars if isinstance(b, dict) and (b.get("low") or b.get("l")) == raw_low), None)
-                
-                net_change = round(period_close - period_open, 5) if (period_close is not None and period_open is not None) else None
+
+                high_time = next(
+                    (b.get("time") for b in bars if isinstance(b, dict) and (b.get("high") or b.get("h")) == raw_high),
+                    None,
+                )
+                low_time = next(
+                    (b.get("time") for b in bars if isinstance(b, dict) and (b.get("low") or b.get("l")) == raw_low),
+                    None,
+                )
+
+                net_change = (
+                    round(period_close - period_open, 5)
+                    if (period_close is not None and period_open is not None)
+                    else None
+                )
 
                 summary = {
                     "symbol": symbol,
@@ -310,10 +346,10 @@ class ContextCompactionEngine:
                         "low_time": low_time,
                         "open": period_open,
                         "close": period_close,
-                        "net_change": net_change
+                        "net_change": net_change,
                     },
                     "summary_note": f"Lossless Structural Pruning active: preserved extrema across all {len(bars)} bars; showing last 10 bars in full detail.",
-                    "recent_bars": bars[-10:]
+                    "recent_bars": bars[-10:],
                 }
                 return json.dumps(summary)
         except Exception:
@@ -344,13 +380,15 @@ class ContextCompactionEngine:
                 compact_items = []
                 for item in data[:8]:
                     if isinstance(item, dict):
-                        compact_items.append({
-                            "title": item.get("title", ""),
-                            "source": item.get("source", ""),
-                            "timestamp": item.get("timestamp", ""),
-                            "sentiment": item.get("sentiment", ""),
-                            "summary": (item.get("summary") or item.get("content") or "")[:200]
-                        })
+                        compact_items.append(
+                            {
+                                "title": item.get("title", ""),
+                                "source": item.get("source", ""),
+                                "timestamp": item.get("timestamp", ""),
+                                "sentiment": item.get("sentiment", ""),
+                                "summary": (item.get("summary") or item.get("content") or "")[:200],
+                            }
+                        )
                 return json.dumps(compact_items)
         except Exception:
             pass
@@ -379,11 +417,7 @@ class ContextCompactionEngine:
                         total += estimate_tokens(block["text"])
         return total
 
-    def emergency_guard(
-        self,
-        messages: List[Dict[str, Any]],
-        context_window: int = 128000
-    ) -> List[Dict[str, Any]]:
+    def emergency_guard(self, messages: List[Dict[str, Any]], context_window: int = 128000) -> List[Dict[str, Any]]:
         """
         Layer 3: Hard deterministic truncation at >=85% capacity.
         Preserves system prompt + first user task + last 3 turns.
@@ -407,7 +441,7 @@ class ContextCompactionEngine:
         middle_turns = non_system_msgs[1:-3]
         summarized_placeholder = {
             "role": "user",
-            "content": f"[SYSTEM NOTE: {len(middle_turns)} intermediate reasoning/tool turns compacted to prevent context overflow. Active focus: current state and last 3 turns.]"
+            "content": f"[SYSTEM NOTE: {len(middle_turns)} intermediate reasoning/tool turns compacted to prevent context overflow. Active focus: current state and last 3 turns.]",
         }
 
         compacted = system_msgs + [first_turn, summarized_placeholder] + recent_turns
@@ -421,8 +455,22 @@ class ContextCompactionEngine:
             if isinstance(data, dict):
                 parts = []
                 # 1. Daily Range / ADR & Optimal Levels
-                if "daily_range" in t_lower or "adr" in t_lower or "target_tp_min_distance" in data or "optimal" in t_lower:
-                    for k in ("adr", "target_tp_min_distance", "target_tp_max_distance", "target_sl_max_distance", "optimal_entry", "optimal_sl", "optimal_tp", "rr_ratio"):
+                if (
+                    "daily_range" in t_lower
+                    or "adr" in t_lower
+                    or "target_tp_min_distance" in data
+                    or "optimal" in t_lower
+                ):
+                    for k in (
+                        "adr",
+                        "target_tp_min_distance",
+                        "target_tp_max_distance",
+                        "target_sl_max_distance",
+                        "optimal_entry",
+                        "optimal_sl",
+                        "optimal_tp",
+                        "rr_ratio",
+                    ):
                         if k in data and data[k] is not None:
                             parts.append(f"{k}={data[k]}")
                 # 2. ATR
@@ -445,7 +493,14 @@ class ContextCompactionEngine:
                             if hist is not None:
                                 parts.append(f"macd_hist={hist}")
                 # 4. SMC Zones (Order Blocks, FVGs, Liquidity Sweeps)
-                elif "smc" in t_lower or "order_block" in t_lower or "fvg" in t_lower or "order_blocks" in data or "fvg_zones" in data or "sweep" in t_lower:
+                elif (
+                    "smc" in t_lower
+                    or "order_block" in t_lower
+                    or "fvg" in t_lower
+                    or "order_blocks" in data
+                    or "fvg_zones" in data
+                    or "sweep" in t_lower
+                ):
                     obs = data.get("order_blocks") or []
                     if isinstance(obs, list) and obs:
                         parts.append(f"unmitigated_OBs={len(obs)}")
@@ -514,10 +569,7 @@ class ContextCompactionEngine:
         return "data verified and incorporated into working analysis"
 
     def mask_aged_observations(
-        self,
-        messages: List[Dict[str, Any]],
-        keep_recent_turns: int = 2,
-        turns_to_keep: Optional[int] = None
+        self, messages: List[Dict[str, Any]], keep_recent_turns: int = 2, turns_to_keep: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Observation Masking / Turn Aging.
@@ -530,9 +582,12 @@ class ContextCompactionEngine:
             return messages
 
         IMMUTABLE_TOOLS = {
-            "submit_asset_analysis", "submit_fundamental_brief",
-            "calculate_position_size", "propose_action",
-            "update_scratchpad", "read_scratchpad"
+            "submit_asset_analysis",
+            "submit_fundamental_brief",
+            "calculate_position_size",
+            "propose_action",
+            "update_scratchpad",
+            "read_scratchpad",
         }
 
         # Build tool_id -> tool_name map across conversation history
@@ -575,10 +630,9 @@ class ContextCompactionEngine:
                 if tool_name not in IMMUTABLE_TOOLS and isinstance(content, str) and len(content) > 250:
                     pruned_msg = dict(msg)
                     state_summary = self._extract_decisive_state(tool_name, content)
-                    pruned_msg["content"] = json.dumps({
-                        "status": "completed",
-                        "summary": f"[Observation: {tool_name} {state_summary}]"
-                    })
+                    pruned_msg["content"] = json.dumps(
+                        {"status": "completed", "summary": f"[Observation: {tool_name} {state_summary}]"}
+                    )
                     updated.append(pruned_msg)
                     continue
 
@@ -595,22 +649,25 @@ class ContextCompactionEngine:
                     for block in blocks:
                         b_type = block.get("type") if isinstance(block, dict) else getattr(block, "type", None)
                         if b_type == "tool_result":
-                            tool_id = block.get("tool_use_id") if isinstance(block, dict) else getattr(block, "tool_use_id", "")
-                            raw_content = block.get("content") if isinstance(block, dict) else getattr(block, "content", "")
+                            tool_id = (
+                                block.get("tool_use_id")
+                                if isinstance(block, dict)
+                                else getattr(block, "tool_use_id", "")
+                            )
+                            raw_content = (
+                                block.get("content") if isinstance(block, dict) else getattr(block, "content", "")
+                            )
                             resolved_tool_name = tool_id_to_name.get(str(tool_id), "")
-                            
-                            is_immutable = resolved_tool_name in IMMUTABLE_TOOLS or any(im in str(raw_content).lower() for im in ("decision", "stop_loss", "confluence_score"))
+
+                            is_immutable = resolved_tool_name in IMMUTABLE_TOOLS or any(
+                                im in str(raw_content).lower() for im in ("decision", "stop_loss", "confluence_score")
+                            )
                             if not is_immutable and len(str(raw_content)) > 250:
                                 state_summary = self._extract_decisive_state(resolved_tool_name, raw_content)
-                                receipt = json.dumps({
-                                    "status": "completed",
-                                    "summary": f"[Prior tool output observed: {state_summary}]"
-                                })
-                                new_blocks.append({
-                                    "type": "tool_result",
-                                    "tool_use_id": tool_id,
-                                    "content": receipt
-                                })
+                                receipt = json.dumps(
+                                    {"status": "completed", "summary": f"[Prior tool output observed: {state_summary}]"}
+                                )
+                                new_blocks.append({"type": "tool_result", "tool_use_id": tool_id, "content": receipt})
                                 continue
                         new_blocks.append(block)
                     updated.append({"role": "user", "content": new_blocks})
@@ -620,11 +677,7 @@ class ContextCompactionEngine:
 
         return updated
 
-    def check_and_compact(
-        self,
-        messages: List[Dict[str, Any]],
-        context_window: int = 128000
-    ) -> List[Dict[str, Any]]:
+    def check_and_compact(self, messages: List[Dict[str, Any]], context_window: int = 128000) -> List[Dict[str, Any]]:
         """
         Evaluates context pressure and applies Layer 1/2/3 defense.
         Preserves KV-cache prefix during normal turns by triggering masking
@@ -648,17 +701,12 @@ class ContextCompactionEngine:
 
         return messages
 
-    def _snap_tool_boundary(
-        self,
-        messages: List[Dict[str, Any]],
-        target_idx: int,
-        min_idx: int,
-        max_idx: int
-    ) -> int:
+    def _snap_tool_boundary(self, messages: List[Dict[str, Any]], target_idx: int, min_idx: int, max_idx: int) -> int:
         """
         Snap cut point forward past orphan tool results or tool call pairs.
         Ensures a tool call and its response are never split across the compaction boundary.
         """
+
         def is_clean_boundary(i: int) -> bool:
             if i >= len(messages):
                 return True
@@ -680,7 +728,7 @@ class ContextCompactionEngine:
             forward += 1
         if is_clean_boundary(forward):
             return forward
-            
+
         backward = target_idx
         while backward > min_idx and not is_clean_boundary(backward):
             backward -= 1
@@ -715,10 +763,7 @@ class ContextCompactionEngine:
         raw_tail_count = min(raw_tail_count, len(messages) - 1)  # Leave room for first msg
 
         tail_start_idx = self._snap_tool_boundary(
-            messages,
-            target_idx=len(messages) - raw_tail_count,
-            min_idx=1,
-            max_idx=len(messages) - 1
+            messages, target_idx=len(messages) - raw_tail_count, min_idx=1, max_idx=len(messages) - 1
         )
         keep_tail_count = len(messages) - tail_start_idx
         keep_tail_count = max(1, keep_tail_count)
@@ -806,8 +851,9 @@ class ContextCompactionEngine:
 
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
+
             cfg = settings or self.settings or {}
-            client = get_client_for_task('context_compaction', cfg)
+            client = get_client_for_task("context_compaction", cfg)
             if client:
                 system_msgs = [m for m in messages if m.get("role") in ("system", "developer")]
                 non_sys = [m for m in messages if m.get("role") not in ("system", "developer")]
@@ -859,10 +905,7 @@ class ContextCompactionEngine:
                         clean_summary = summary.strip()
                         if "<compacted-summary>" not in clean_summary:
                             clean_summary = f"<compacted-summary>\n{clean_summary}\n</compacted-summary>"
-                        summary_msg = {
-                            "role": "user",
-                            "content": clean_summary
-                        }
+                        summary_msg = {"role": "user", "content": clean_summary}
                         return system_msgs + [first_turn, summary_msg] + recent_turns
         except Exception as e:
             logger.debug(f"Context compaction offload non-fatal error: {e}")

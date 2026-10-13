@@ -1,4 +1,3 @@
-
 """GTJA Alpha #16.
 
 Formula: (-1 * TSMAX(RANK(CORR(RANK(VOLUME), RANK(VWAP), 5)), 5))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_016",
-    "theme": ['volume', 'microstructure'],
-    "formula_latex": '(-1 * TSMAX(RANK(CORR(RANK(VOLUME), RANK(VWAP), 5)), 5))',
-    "columns_required": ['volume', 'amount'],
+    "theme": ["volume", "microstructure"],
+    "formula_latex": "(-1 * TSMAX(RANK(CORR(RANK(VOLUME), RANK(VWAP), 5)), 5))",
+    "columns_required": ["volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 5,
     "min_warmup_bars": 11,
-    "notes": 'Max over 5d of rank of rolling rank-volume vs rank-vwap correlation.',
+    "notes": "Max over 5d of rank of rolling rank-volume vs rank-vwap correlation.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     v = panel["volume"]

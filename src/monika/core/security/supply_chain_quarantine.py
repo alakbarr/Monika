@@ -51,6 +51,7 @@ DEFAULT_QUARANTINE_DAYS: int = 14
 @dataclass
 class QuarantineVerdict:
     """Outcome of supply chain dependency quarantine assessment."""
+
     package_name: str
     version: str
     allowed: bool
@@ -73,9 +74,7 @@ class SupplyChainQuarantine:
     ):
         self.quarantine_days = quarantine_days
         self.allowlist = {pkg.lower() for pkg in (allowlist or set())}
-        self.critical_libraries = {
-            pkg.lower() for pkg in (critical_libraries or CRITICAL_CORE_LIBRARIES)
-        }
+        self.critical_libraries = {pkg.lower() for pkg in (critical_libraries or CRITICAL_CORE_LIBRARIES)}
 
     def check_typosquatting(self, package_name: str) -> Optional[Tuple[str, float]]:
         """

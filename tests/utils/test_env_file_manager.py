@@ -17,7 +17,7 @@ def test_update_env_values_preserves_comments_and_updates():
             "\n"
             "# MT5 Settings\n"
             "MT5_ACCOUNT=12345\n"
-            "MT5_SERVER=\"MetaQuotes-Demo\"\n"
+            'MT5_SERVER="MetaQuotes-Demo"\n'
         )
         with open(test_env, "w", encoding="utf-8") as f:
             f.write(initial_content)
@@ -37,7 +37,7 @@ def test_update_env_values_preserves_comments_and_updates():
         assert "# Core Database Configuration" in content
         assert "DATABASE_URL=postgresql://localhost/db" in content
         assert "MT5_ACCOUNT=67890" in content
-        assert "MT5_SERVER=\"MetaQuotes-Demo\"" in content
+        assert 'MT5_SERVER="MetaQuotes-Demo"' in content
         assert "GEMINI_API_KEY=AIzaSyTestKey" in content
         assert 'SPACED_VALUE="Hello World with spaces"' in content
 

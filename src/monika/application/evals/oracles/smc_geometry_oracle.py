@@ -9,7 +9,7 @@ from typing import Dict, Any, List
 def evaluate_smc_geometry(fixture: Dict[str, Any], decision_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Zero-LLM mechanical verification of SMC price geometry and risk-to-reward metrics.
-    
+
     Checks:
     1. Direction and Level Alignment (BUY: TP > Entry > SL; SELL: TP < Entry < SL)
     2. R:R calculation must meet or exceed fixture.expected_outcome.min_rr (default 1.3)
@@ -18,10 +18,10 @@ def evaluate_smc_geometry(fixture: Dict[str, Any], decision_data: Dict[str, Any]
     """
     violations: List[str] = []
     checks_passed: List[str] = []
-    
+
     decision = str(decision_data.get("decision", "")).upper()
     expected_decisions = [d.upper() for d in fixture.get("expected_outcome", {}).get("valid_decisions", [])]
-    
+
     if decision not in expected_decisions:
         violations.append(f"Decision '{decision}' not in allowed set {expected_decisions}")
         return {
@@ -29,7 +29,7 @@ def evaluate_smc_geometry(fixture: Dict[str, Any], decision_data: Dict[str, Any]
             "violations": violations,
             "checks_passed": checks_passed,
         }
-        
+
     # If decision is WAIT/AVOID/REJECT, geometry checks do not apply
     if decision in ("WAIT", "AVOID", "REJECT"):
         checks_passed.append(f"Correctly chose defensive decision: {decision}")

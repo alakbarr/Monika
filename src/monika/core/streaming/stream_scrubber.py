@@ -13,7 +13,12 @@ from typing import List, Optional, Set
 from monika.core.streaming.sanitizer import ASCII_EMOTICON_PATTERN, EMOJI_PATTERN
 
 SECRET_PATTERNS = [
-    (re.compile(r"(?:api[_-]?key|token|secret|password|bearer)\s*[:=]\s*['\"]?([A-Za-z0-9_\-\.]{12,})['\"]?", re.IGNORECASE), "[REDACTED_SECRET]"),
+    (
+        re.compile(
+            r"(?:api[_-]?key|token|secret|password|bearer)\s*[:=]\s*['\"]?([A-Za-z0-9_\-\.]{12,})['\"]?", re.IGNORECASE
+        ),
+        "[REDACTED_SECRET]",
+    ),
     (re.compile(r"bot\d{8,12}:[A-Za-z0-9_-]{35,}", re.IGNORECASE), "[REDACTED_TELEGRAM_TOKEN]"),
     (re.compile(r"sk-[A-Za-z0-9_\-]{20,}", re.IGNORECASE), "[REDACTED_API_KEY]"),
 ]
@@ -56,10 +61,9 @@ class StatefulStreamScrubber:
         if self.strip_thinking:
             self._target_tags.update(["think", "thought"])
         if self.strip_internal_tags:
-            self._target_tags.update([
-                "memory-context", "market-memory-context",
-                "untrusted_external_content", "volatile_overlay"
-            ])
+            self._target_tags.update(
+                ["memory-context", "market-memory-context", "untrusted_external_content", "volatile_overlay"]
+            )
 
     @property
     def accumulated_thinking(self) -> str:
@@ -83,8 +87,8 @@ class StatefulStreamScrubber:
                 close_match = re.search(r"</\s*(?:think|thought)\s*>", self._buffer, re.IGNORECASE)
                 if close_match:
                     # Capture thinking content before close
-                    self._accumulated_thinking.append(self._buffer[:close_match.start()])
-                    self._buffer = self._buffer[close_match.end():]
+                    self._accumulated_thinking.append(self._buffer[: close_match.start()])
+                    self._buffer = self._buffer[close_match.end() :]
                     self._in_think = False
                 else:
                     # Still inside thinking block; save thinking and check boundary
@@ -102,7 +106,7 @@ class StatefulStreamScrubber:
                 tag_name = re.escape(self._in_internal_tag)
                 close_match = re.search(rf"</\s*{tag_name}\s*>", self._buffer, re.IGNORECASE)
                 if close_match:
-                    self._buffer = self._buffer[close_match.end():]
+                    self._buffer = self._buffer[close_match.end() :]
                     self._in_internal_tag = None
                 else:
                     if "</" in self._buffer:
@@ -119,11 +123,11 @@ class StatefulStreamScrubber:
                     tag_candidate = match.group(1).lower()
                     if tag_candidate in self._target_tags:
                         # Emit text prior to tag
-                        prior_text = self._buffer[:match.start()]
+                        prior_text = self._buffer[: match.start()]
                         if prior_text:
                             output_chunks.append(prior_text)
 
-                        self._buffer = self._buffer[match.end():]
+                        self._buffer = self._buffer[match.end() :]
                         if tag_candidate in ("think", "thought"):
                             self._in_think = True
                         else:
@@ -131,8 +135,8 @@ class StatefulStreamScrubber:
                         continue
                     else:
                         # Legitimate tag (or HTML/markdown), emit up to tag end
-                        output_chunks.append(self._buffer[:match.end()])
-                        self._buffer = self._buffer[match.end():]
+                        output_chunks.append(self._buffer[: match.end()])
+                        self._buffer = self._buffer[match.end() :]
                         continue
                 else:
                     # No complete opening tag found. Check if trailing text contains an incomplete '<'
@@ -200,4 +204,3 @@ class StatefulStreamScrubber:
         emitted = scrubber.process_delta(text)
         flushed = scrubber.flush()
         return (emitted + flushed).strip()
-

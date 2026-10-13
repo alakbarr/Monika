@@ -138,9 +138,9 @@ class TechnicalIndicatorCalculator:
         if df is None:
             logger.warning(f"No OHLCV data for {symbol}/{timeframe}")
             return 0
-            
+
         min_bars = max(self.ma_periods) if self.ma_periods else 30
-        
+
         if len(df) < min_bars:
             warn_key = f"{symbol}/{timeframe}"
             if warn_key not in _WARNED_INSUFFICIENT_BARS:
@@ -151,48 +151,51 @@ class TechnicalIndicatorCalculator:
                     f"{'SMA_200 requires ~200 D1 bars — wait for more history.' if timeframe == 'D1' else 'Fetch more price history.'}"
                 )
             else:
-                logger.debug(
-                    f"Insufficient OHLCV bars for {symbol}/{timeframe}: have {len(df)}, need {min_bars}."
-                )
+                logger.debug(f"Insufficient OHLCV bars for {symbol}/{timeframe}: have {len(df)}, need {min_bars}.")
             # Tetap hitung indikator yang memungkinkan dengan data terbatas
             # Lewati sepenuhnya jika data terlalu sedikit bahkan untuk RSI
             if len(df) < 20:
                 return 0
-                
+
             # Sesuaikan ma_periods hanya untuk yang bisa dihitung (SMA_p membutuhkan p bar)
             computable_periods = [p for p in self.ma_periods if p <= len(df)]
             if not computable_periods:
                 return 0
-                
+
             original_periods = self.ma_periods
             self.ma_periods = computable_periods
-            
+
             try:
                 import asyncio
+
                 indicators = await asyncio.to_thread(self._compute_all, df)
                 saved = await self._save(symbol, timeframe, indicators)
             finally:
                 self.ma_periods = original_periods
         else:
             import asyncio
+
             indicators = await asyncio.to_thread(self._compute_all, df)
             saved = await self._save(symbol, timeframe, indicators)
-            
+
         # Wire OrderFlow snapshot calculation
         try:
             from monika.domain.indicators.order_flow import OrderFlowEngine
-            of_engine = OrderFlowEngine(mt5_client=getattr(self, 'mt5_client', None))
+
+            of_engine = OrderFlowEngine(mt5_client=getattr(self, "mt5_client", None))
             of_snapshot = await of_engine.analyze_order_flow(self.session, symbol, df=df)
             bar_ts = df.index[-1] if not df.empty else clock.now()
             if isinstance(bar_ts, pd.Timestamp):
                 bar_ts = bar_ts.to_pydatetime()
-            add_res: Any = self.session.add(TechnicalIndicator(
-                symbol=symbol,
-                timeframe=timeframe,
-                indicator_name="ORDER_FLOW_SNAPSHOT",
-                value_json=json.dumps(of_snapshot.to_dict()),
-                timestamp=bar_ts,
-            ))
+            add_res: Any = self.session.add(
+                TechnicalIndicator(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    indicator_name="ORDER_FLOW_SNAPSHOT",
+                    value_json=json.dumps(of_snapshot.to_dict()),
+                    timestamp=bar_ts,
+                )
+            )
             if inspect.isawaitable(add_res):
                 await cast(Any, add_res)
             await self.session.commit()
@@ -202,9 +205,7 @@ class TechnicalIndicatorCalculator:
         logger.debug(f"Saved {saved} indicator rows for {symbol}/{timeframe}")
         return saved
 
-    async def compute_all_symbols(
-        self, symbols: list[str], timeframes: list[str]
-    ) -> dict[str, int]:
+    async def compute_all_symbols(self, symbols: list[str], timeframes: list[str]) -> dict[str, int]:
         """Menjalankan komputasi untuk semua aset dan timeframe."""
         results = {}
         for symbol in symbols:
@@ -219,6 +220,7 @@ class TechnicalIndicatorCalculator:
                         try:
                             await self.session.rollback()
                             from monika.infrastructure.database.safe_ops import _safe_expunge_all
+
                             await _safe_expunge_all(self.session)
                         except Exception:
                             pass
@@ -249,25 +251,27 @@ class TechnicalIndicatorCalculator:
         # Balik urutan agar kembali kronologis (ascending) untuk perhitungan indikator
         rows = list(reversed(rows))
 
-        df = pd.DataFrame({
-            "timestamp": [r.timestamp for r in rows],
-            "open":  [r.open  for r in rows],
-            "high":  [r.high  for r in rows],
-            "low":   [r.low   for r in rows],
-            "close": [r.close for r in rows],
-            "volume":[r.volume for r in rows],
-        })
+        df = pd.DataFrame(
+            {
+                "timestamp": [r.timestamp for r in rows],
+                "open": [r.open for r in rows],
+                "high": [r.high for r in rows],
+                "low": [r.low for r in rows],
+                "close": [r.close for r in rows],
+                "volume": [r.volume for r in rows],
+            }
+        )
         df.set_index("timestamp", inplace=True)
-        
+
         # Ensure chronological monotonic index
         if not df.index.is_monotonic_increasing:
             df.sort_index(inplace=True)
 
         # For D1, normalize timestamps to daily boundaries to prevent hour shifts from dropping candles
         if timeframe.upper() == "D1" and len(df) > 1:
-            df.index = pd.to_datetime([pd.Timestamp(t).strftime('%Y-%m-%d') for t in df.index])
+            df.index = pd.to_datetime([pd.Timestamp(t).strftime("%Y-%m-%d") for t in df.index])
             df = df.loc[~df.index.duplicated(keep="last")]
-            
+
         # Resample and forward-fill to handle missing candles without time distortion
         tf_freq_map = {
             "M1": "1min",
@@ -281,29 +285,29 @@ class TechnicalIndicatorCalculator:
         freq = tf_freq_map.get(timeframe.upper())
         if freq and len(df) > 1:
             try:
-                deduped: pd.DataFrame = df.loc[~df.index.duplicated(keep='first')]
+                deduped: pd.DataFrame = df.loc[~df.index.duplicated(keep="first")]
                 if freq == "1D":
                     resampled = deduped.resample(freq).asfreq()
                 else:
                     resampled = deduped.resample(freq, origin="start").asfreq()
                 # If resampling produced NaNs across the series, fallback to raw deduped data
-                if not resampled['close'].isna().all():
+                if not resampled["close"].isna().all():
                     # Filter weekend market closure bars for Forex / Commodities (non-24/7 crypto)
                     is_crypto = any(c in symbol.upper() for c in ("BTC", "ETH", "SOL"))
                     if not is_crypto:
                         idx: Any = pd.DatetimeIndex(resampled.index)
                         is_weekend = (
-                            (idx.dayofweek == 5) |
-                            ((idx.dayofweek == 6) & (idx.hour < 21)) |
-                            ((idx.dayofweek == 4) & (idx.hour >= 22))
+                            (idx.dayofweek == 5)
+                            | ((idx.dayofweek == 6) & (idx.hour < 21))
+                            | ((idx.dayofweek == 4) & (idx.hour >= 22))
                         )
                         resampled = resampled[~is_weekend]
-                    resampled['close'] = resampled['close'].ffill()
-                    resampled['open'] = resampled['open'].fillna(resampled['close'])
-                    resampled['high'] = resampled['high'].fillna(resampled['close'])
-                    resampled['low'] = resampled['low'].fillna(resampled['close'])
-                    resampled['volume'] = resampled['volume'].fillna(0.0)
-                    if not resampled.empty and not resampled['close'].isna().all():
+                    resampled["close"] = resampled["close"].ffill()
+                    resampled["open"] = resampled["open"].fillna(resampled["close"])
+                    resampled["high"] = resampled["high"].fillna(resampled["close"])
+                    resampled["low"] = resampled["low"].fillna(resampled["close"])
+                    resampled["volume"] = resampled["volume"].fillna(0.0)
+                    if not resampled.empty and not resampled["close"].isna().all():
                         df = resampled
                     else:
                         df = deduped
@@ -311,7 +315,7 @@ class TechnicalIndicatorCalculator:
                     df = deduped
             except Exception as e:
                 logger.debug(f"Resampling error for {symbol}/{timeframe} (fallback to raw): {e}")
-                
+
         return cast(Optional[pd.DataFrame], df)
 
     # ------------------------------------------------------------------
@@ -337,9 +341,9 @@ class TechnicalIndicatorCalculator:
                 result[ts] = []
             result[ts].append({"name": name, "value_json": json.dumps(value)})
 
-        close  = cast(pd.Series, df["close"])
-        high   = cast(pd.Series, df["high"])
-        low    = cast(pd.Series, df["low"])
+        close = cast(pd.Series, df["close"])
+        high = cast(pd.Series, df["high"])
+        low = cast(pd.Series, df["low"])
         volume = cast(pd.Series, df["volume"])
 
         # Target timestamps to format and store: last 100 bars (earlier bars serve as calculation warmup)
@@ -372,20 +376,24 @@ class TechnicalIndicatorCalculator:
             window_sign=self.macd_signal,
             fillna=False,
         )
-        macd_line   = macd_obj.macd()
+        macd_line = macd_obj.macd()
         signal_line = macd_obj.macd_signal()
-        hist        = macd_obj.macd_diff()
+        hist = macd_obj.macd_diff()
 
         for ts in target_index:
             m = macd_line.get(ts)
             s = signal_line.get(ts)
             h = hist.get(ts)
             if m is not None and pd.notna(m):
-                add(ts, "MACD", {
-                    "macd":      round(float(m), 5),
-                    "signal":    round(float(s), 5) if (s is not None and pd.notna(s)) else None,
-                    "histogram": round(float(h), 5) if (h is not None and pd.notna(h)) else None,
-                })
+                add(
+                    ts,
+                    "MACD",
+                    {
+                        "macd": round(float(m), 5),
+                        "signal": round(float(s), 5) if (s is not None and pd.notna(s)) else None,
+                        "histogram": round(float(h), 5) if (h is not None and pd.notna(h)) else None,
+                    },
+                )
 
         # ---- Bollinger Bands ----
         bb_obj = ta.volatility.BollingerBands(
@@ -394,33 +402,36 @@ class TechnicalIndicatorCalculator:
             window_dev=self.bb_std,
             fillna=False,
         )
-        bb_upper  = bb_obj.bollinger_hband()
-        bb_mid    = bb_obj.bollinger_mavg()
-        bb_lower  = bb_obj.bollinger_lband()
-        bb_pct    = bb_obj.bollinger_pband()
-        bb_width  = bb_obj.bollinger_wband()
+        bb_upper = bb_obj.bollinger_hband()
+        bb_mid = bb_obj.bollinger_mavg()
+        bb_lower = bb_obj.bollinger_lband()
+        bb_pct = bb_obj.bollinger_pband()
+        bb_width = bb_obj.bollinger_wband()
 
         for ts in target_index:
             u = bb_upper.get(ts)
             m = bb_mid.get(ts)
             l = bb_lower.get(ts)
-            if (
-                u is not None and m is not None and l is not None
-                and pd.notna(u) and pd.notna(m) and pd.notna(l)
-            ):
+            if u is not None and m is not None and l is not None and pd.notna(u) and pd.notna(m) and pd.notna(l):
                 p = bb_pct.get(ts)
                 w = bb_width.get(ts)
-                add(ts, "BBANDS", {
-                    "upper": round(float(u), 5),
-                    "mid":   round(float(m), 5),
-                    "lower": round(float(l), 5),
-                    "pct_b": round(float(p), 4) if (p is not None and pd.notna(p)) else None,
-                    "width": round(float(w), 4) if (w is not None and pd.notna(w)) else None,
-                })
+                add(
+                    ts,
+                    "BBANDS",
+                    {
+                        "upper": round(float(u), 5),
+                        "mid": round(float(m), 5),
+                        "lower": round(float(l), 5),
+                        "pct_b": round(float(p), 4) if (p is not None and pd.notna(p)) else None,
+                        "width": round(float(w), 4) if (w is not None and pd.notna(w)) else None,
+                    },
+                )
 
         # ---- Stochastic ----
         stoch_obj = ta.momentum.StochasticOscillator(
-            high, low, close,
+            high,
+            low,
+            close,
             window=self.stoch_k,
             smooth_window=self.stoch_d,
             fillna=False,
@@ -432,10 +443,14 @@ class TechnicalIndicatorCalculator:
             k = stoch_k.get(ts)
             d = stoch_d_series.get(ts)
             if k is not None and pd.notna(k):
-                add(ts, "STOCH", {
-                    "k": round(float(k), 2),
-                    "d": round(float(d), 2) if (d is not None and pd.notna(d)) else None,
-                })
+                add(
+                    ts,
+                    "STOCH",
+                    {
+                        "k": round(float(k), 2),
+                        "d": round(float(d), 2) if (d is not None and pd.notna(d)) else None,
+                    },
+                )
 
         # ---- OBV (On-Balance Volume) ----
         try:
@@ -462,20 +477,24 @@ class TechnicalIndicatorCalculator:
         try:
             adx_indicator = ta.trend.ADXIndicator(high, low, close, window=self.adx_period, fillna=False)
             adx_series = adx_indicator.adx()
-            adx_pos = adx_indicator.adx_pos()   # +DI
-            adx_neg = adx_indicator.adx_neg()   # -DI
+            adx_pos = adx_indicator.adx_pos()  # +DI
+            adx_neg = adx_indicator.adx_neg()  # -DI
             for ts in target_index:
                 v = adx_series.get(ts)
                 if v is not None and pd.notna(v):
                     pos = adx_pos.get(ts)
                     neg = adx_neg.get(ts)
-                    add(ts, f"ADX_{self.adx_period}", {
-                        "adx": round(float(v), 2),
-                        "plus_di": round(float(pos), 2) if pos is not None and pd.notna(pos) else None,
-                        "minus_di": round(float(neg), 2) if neg is not None and pd.notna(neg) else None,
-                        "trending": bool(v > 25),
-                        "strong": bool(v > 40),
-                    })
+                    add(
+                        ts,
+                        f"ADX_{self.adx_period}",
+                        {
+                            "adx": round(float(v), 2),
+                            "plus_di": round(float(pos), 2) if pos is not None and pd.notna(pos) else None,
+                            "minus_di": round(float(neg), 2) if neg is not None and pd.notna(neg) else None,
+                            "trending": bool(v > 25),
+                            "strong": bool(v > 40),
+                        },
+                    )
         except Exception as e:
             logger.debug(f"ADX computation failed: {e}")
 
@@ -533,13 +552,15 @@ class TechnicalIndicatorCalculator:
         saved = 0
         for ts in timestamps:
             for entry in indicators.get(ts, []):
-                self.session.add(TechnicalIndicator(
-                    symbol=symbol,
-                    timeframe=timeframe,
-                    timestamp=ts,
-                    indicator_name=entry["name"],
-                    value_json=entry["value_json"],
-                ))
+                self.session.add(
+                    TechnicalIndicator(
+                        symbol=symbol,
+                        timeframe=timeframe,
+                        timestamp=ts,
+                        indicator_name=entry["name"],
+                        value_json=entry["value_json"],
+                    )
+                )
                 saved += 1
 
         await self.session.commit()
@@ -549,9 +570,7 @@ class TechnicalIndicatorCalculator:
     # Read helpers (used by analysis stage)
     # ------------------------------------------------------------------
 
-    async def get_latest(
-        self, symbol: str, timeframe: str, indicator_name: str
-    ) -> Optional[dict]:
+    async def get_latest(self, symbol: str, timeframe: str, indicator_name: str) -> Optional[dict]:
         """Mengambil metrik indikator terbaru untuk suatu symbol/timeframe."""
         result = await self.session.execute(
             select(TechnicalIndicator)
@@ -680,11 +699,15 @@ def detect_rsi_divergence(
         # Regular Bullish: Price Lower Low, RSI Higher Low (reversal up)
         if price_low_1 < price_low_2 and rsi_low_1 > rsi_low_2 and rsi_low_1 < 50:
             bullish_div = True
-            details.append(f"Regular Bullish Divergence: Price Lower Low ({price_low_2:.5f} -> {price_low_1:.5f}) with RSI Higher Low ({rsi_low_2:.1f} -> {rsi_low_1:.1f})")
+            details.append(
+                f"Regular Bullish Divergence: Price Lower Low ({price_low_2:.5f} -> {price_low_1:.5f}) with RSI Higher Low ({rsi_low_2:.1f} -> {rsi_low_1:.1f})"
+            )
         # Hidden Bullish: Price Higher Low, RSI Lower Low (continuation up)
         elif price_low_1 > price_low_2 and rsi_low_1 < rsi_low_2 and rsi_low_2 < 50:
             hidden_bullish_div = True
-            details.append(f"Hidden Bullish Divergence: Price Higher Low ({price_low_2:.5f} -> {price_low_1:.5f}) with RSI Lower Low ({rsi_low_2:.1f} -> {rsi_low_1:.1f})")
+            details.append(
+                f"Hidden Bullish Divergence: Price Higher Low ({price_low_2:.5f} -> {price_low_1:.5f}) with RSI Lower Low ({rsi_low_2:.1f} -> {rsi_low_1:.1f})"
+            )
     except Exception:
         pass
 
@@ -700,26 +723,55 @@ def detect_rsi_divergence(
         # Regular Bearish: Price Higher High, RSI Lower High (reversal down)
         if price_high_1 > price_high_2 and rsi_high_1 < rsi_high_2 and rsi_high_1 > 50:
             bearish_div = True
-            details.append(f"Regular Bearish Divergence: Price Higher High ({price_high_2:.5f} -> {price_high_1:.5f}) with RSI Lower High ({rsi_high_2:.1f} -> {rsi_high_1:.1f})")
+            details.append(
+                f"Regular Bearish Divergence: Price Higher High ({price_high_2:.5f} -> {price_high_1:.5f}) with RSI Lower High ({rsi_high_2:.1f} -> {rsi_high_1:.1f})"
+            )
         # Hidden Bearish: Price Lower High, RSI Higher High (continuation down)
         elif price_high_1 < price_high_2 and rsi_high_1 > rsi_high_2 and rsi_high_2 > 50:
             hidden_bearish_div = True
-            details.append(f"Hidden Bearish Divergence: Price Lower High ({price_high_2:.5f} -> {price_high_1:.5f}) with RSI Higher High ({rsi_high_2:.1f} -> {rsi_high_1:.1f})")
+            details.append(
+                f"Hidden Bearish Divergence: Price Lower High ({price_high_2:.5f} -> {price_high_1:.5f}) with RSI Higher High ({rsi_high_2:.1f} -> {rsi_high_1:.1f})"
+            )
     except Exception:
         pass
 
     if bullish_div and not (bearish_div or hidden_bearish_div):
-        return {"divergence": "bullish", "divergence_type": "regular_bullish", "strength": 0.8, "details": "; ".join(details)}
+        return {
+            "divergence": "bullish",
+            "divergence_type": "regular_bullish",
+            "strength": 0.8,
+            "details": "; ".join(details),
+        }
     elif bearish_div and not (bullish_div or hidden_bullish_div):
-        return {"divergence": "bearish", "divergence_type": "regular_bearish", "strength": 0.8, "details": "; ".join(details)}
+        return {
+            "divergence": "bearish",
+            "divergence_type": "regular_bearish",
+            "strength": 0.8,
+            "details": "; ".join(details),
+        }
     elif hidden_bullish_div and not (bearish_div or hidden_bearish_div):
-        return {"divergence": "hidden_bullish", "divergence_type": "hidden_bullish", "strength": 0.75, "details": "; ".join(details)}
+        return {
+            "divergence": "hidden_bullish",
+            "divergence_type": "hidden_bullish",
+            "strength": 0.75,
+            "details": "; ".join(details),
+        }
     elif hidden_bearish_div and not (bullish_div or hidden_bullish_div):
-        return {"divergence": "hidden_bearish", "divergence_type": "hidden_bearish", "strength": 0.75, "details": "; ".join(details)}
+        return {
+            "divergence": "hidden_bearish",
+            "divergence_type": "hidden_bearish",
+            "strength": 0.75,
+            "details": "; ".join(details),
+        }
     elif any([bullish_div, hidden_bullish_div]) and any([bearish_div, hidden_bearish_div]):
         return {"divergence": "mixed", "divergence_type": "mixed", "strength": 0.5, "details": "; ".join(details)}
 
-    return {"divergence": "none", "divergence_type": "none", "strength": 0.0, "details": "No divergence detected across lookback window"}
+    return {
+        "divergence": "none",
+        "divergence_type": "none",
+        "strength": 0.0,
+        "details": "No divergence detected across lookback window",
+    }
 
 
 def detect_macd_divergence(
@@ -770,10 +822,14 @@ def detect_macd_divergence(
 
         if price_low_1 < price_low_2 and macd_low_1 > macd_low_2:
             bullish_div = True
-            details.append(f"Regular Bullish MACD Divergence: Price Lower Low ({price_low_2:.5f} -> {price_low_1:.5f}) with MACD Higher Low ({macd_low_2:.5f} -> {macd_low_1:.5f})")
+            details.append(
+                f"Regular Bullish MACD Divergence: Price Lower Low ({price_low_2:.5f} -> {price_low_1:.5f}) with MACD Higher Low ({macd_low_2:.5f} -> {macd_low_1:.5f})"
+            )
         elif price_low_1 > price_low_2 and macd_low_1 < macd_low_2:
             hidden_bull = True
-            details.append(f"Hidden Bullish MACD Divergence: Price Higher Low ({price_low_2:.5f} -> {price_low_1:.5f}) with MACD Lower Low ({macd_low_2:.5f} -> {macd_low_1:.5f})")
+            details.append(
+                f"Hidden Bullish MACD Divergence: Price Higher Low ({price_low_2:.5f} -> {price_low_1:.5f}) with MACD Lower Low ({macd_low_2:.5f} -> {macd_low_1:.5f})"
+            )
     except Exception:
         pass
 
@@ -788,10 +844,14 @@ def detect_macd_divergence(
 
         if price_high_1 > price_high_2 and macd_high_1 < macd_high_2:
             bearish_div = True
-            details.append(f"Regular Bearish MACD Divergence: Price Higher High ({price_high_2:.5f} -> {price_high_1:.5f}) with MACD Lower High ({macd_high_2:.5f} -> {macd_high_1:.5f})")
+            details.append(
+                f"Regular Bearish MACD Divergence: Price Higher High ({price_high_2:.5f} -> {price_high_1:.5f}) with MACD Lower High ({macd_high_2:.5f} -> {macd_high_1:.5f})"
+            )
         elif price_high_1 < price_high_2 and macd_high_1 > macd_high_2:
             hidden_bear = True
-            details.append(f"Hidden Bearish MACD Divergence: Price Lower High ({price_high_2:.5f} -> {price_high_1:.5f}) with MACD Higher High ({macd_high_2:.5f} -> {macd_high_1:.5f})")
+            details.append(
+                f"Hidden Bearish MACD Divergence: Price Lower High ({price_high_2:.5f} -> {price_high_1:.5f}) with MACD Higher High ({macd_high_2:.5f} -> {macd_high_1:.5f})"
+            )
     except Exception:
         pass
 
@@ -804,7 +864,12 @@ def detect_macd_divergence(
     elif hidden_bear:
         return {"divergence": "bearish", "type": "hidden", "strength": 0.75, "details": "; ".join(details)}
 
-    return {"divergence": "none", "type": "none", "strength": 0.0, "details": "No MACD divergence detected across lookback window"}
+    return {
+        "divergence": "none",
+        "type": "none",
+        "strength": 0.0,
+        "details": "No MACD divergence detected across lookback window",
+    }
 
 
 def compute_pivot_points(high: float, low: float, close: float, method: str = "classic") -> dict[str, Any]:
@@ -896,7 +961,9 @@ def compute_ichimoku(
     - Chikou Span (Lagging Span)
     """
     if df is None or len(df) < senkou_b_period:
-        return {"error": f"Insufficient data for Ichimoku (need >= {senkou_b_period} bars, got {len(df) if df is not None else 0})"}
+        return {
+            "error": f"Insufficient data for Ichimoku (need >= {senkou_b_period} bars, got {len(df) if df is not None else 0})"
+        }
 
     high = df["high"].astype(float)
     low = df["low"].astype(float)
@@ -941,5 +1008,3 @@ def compute_ichimoku(
         "tk_cross": tk_cross,
         "future_cloud_sentiment": future_sentiment,
     }
-
-

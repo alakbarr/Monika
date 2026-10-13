@@ -32,6 +32,7 @@ logger = logging.getLogger("TradingAgent.Agent.TurnToolRound")
 @dataclass
 class ToolCallSpec:
     """Normalized tool call specification."""
+
     id: str
     name: str
     arguments: Dict[str, Any]
@@ -43,6 +44,7 @@ class ToolCallSpec:
 @dataclass
 class ToolRoundVerdict:
     """Result of a single tool-calling round."""
+
     action: str  # "continue" | "break" | "return"
     tool_results: List[Dict[str, Any]] = field(default_factory=list)
     persistence_failed: bool = False
@@ -160,13 +162,15 @@ class TurnToolRoundCoordinator:
 
         # Generate synthetic error responses for invalid calls immediately
         for inv in invalid_calls:
-            tool_results.append({
-                "role": "tool",
-                "tool_call_id": inv.id,
-                "name": inv.name,
-                "content": json.dumps({"error": inv.error_message}),
-                "is_error": True,
-            })
+            tool_results.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": inv.id,
+                    "name": inv.name,
+                    "content": json.dumps({"error": inv.error_message}),
+                    "is_error": True,
+                }
+            )
 
         if not valid_calls and invalid_calls:
             # Only invalid calls in batch, return them directly to model
@@ -177,17 +181,21 @@ class TurnToolRoundCoordinator:
         if self.persist_callback is not None:
             try:
                 all_calls = valid_calls + invalid_calls
-                persist_payload = [{
-                    "role": "assistant",
-                    "tool_calls": [
-                        {"id": v.id, "type": "function", "function": {"name": v.name, "arguments": v.raw_arguments}}
-                        for v in all_calls
-                    ],
-                    "metadata": assistant_turn_metadata or {},
-                }]
+                persist_payload = [
+                    {
+                        "role": "assistant",
+                        "tool_calls": [
+                            {"id": v.id, "type": "function", "function": {"name": v.name, "arguments": v.raw_arguments}}
+                            for v in all_calls
+                        ],
+                        "metadata": assistant_turn_metadata or {},
+                    }
+                ]
                 persist_success = await self.persist_callback(persist_payload)
                 if not persist_success:
-                    logger.error("[TurnToolRound] Persist-Before-Execute failed (callback returned False). Failing closed.")
+                    logger.error(
+                        "[TurnToolRound] Persist-Before-Execute failed (callback returned False). Failing closed."
+                    )
                     return ToolRoundVerdict(
                         action="break",
                         persistence_failed=True,
@@ -208,16 +216,40 @@ class TurnToolRoundCoordinator:
             lower = name.lower()
             # Side-effecting mutations MUST always be executed sequentially
             mutation_verbs = (
-                "execute", "cancel", "modify", "close", "kill", "place", "create",
-                "delete", "remove", "update", "write", "set_", "submit", "trigger",
-                "post_", "proposal",
+                "execute",
+                "cancel",
+                "modify",
+                "close",
+                "kill",
+                "place",
+                "create",
+                "delete",
+                "remove",
+                "update",
+                "write",
+                "set_",
+                "submit",
+                "trigger",
+                "post_",
+                "proposal",
             )
             if any(k in lower for k in mutation_verbs):
                 return True
             # Read-only prefixes are safe for parallel batch execution
             read_prefixes = (
-                "get_", "fetch_", "calc_", "calculate_", "read_", "inspect_",
-                "check_", "list_", "scan_", "search_", "query_", "load_", "find_",
+                "get_",
+                "fetch_",
+                "calc_",
+                "calculate_",
+                "read_",
+                "inspect_",
+                "check_",
+                "list_",
+                "scan_",
+                "search_",
+                "query_",
+                "load_",
+                "find_",
             )
             if any(lower.startswith(p) for p in read_prefixes):
                 return False

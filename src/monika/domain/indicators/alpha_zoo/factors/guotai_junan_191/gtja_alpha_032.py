@@ -1,4 +1,3 @@
-
 """GTJA Alpha #32.
 
 Formula: (-1 * SUM(RANK(CORR(RANK(HIGH), RANK(VOLUME), 3)), 3))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_032",
-    "theme": ['volume'],
-    "formula_latex": '(-1 * SUM(RANK(CORR(RANK(HIGH), RANK(VOLUME), 3)), 3))',
-    "columns_required": ['high', 'volume'],
+    "theme": ["volume"],
+    "formula_latex": "(-1 * SUM(RANK(CORR(RANK(HIGH), RANK(VOLUME), 3)), 3))",
+    "columns_required": ["high", "volume"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 3,
     "min_warmup_bars": 7,
-    "notes": 'Negated 3d sum of rank-corr(rank(high), rank(volume), 3).',
+    "notes": "Negated 3d sum of rank-corr(rank(high), rank(volume), 3).",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     h = panel["high"]

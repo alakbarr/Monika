@@ -14,8 +14,10 @@ def test_build_trading_graph_memory_saver_when_no_db():
 
 def test_build_trading_graph_authoritative_postgres():
     """Verify that build_trading_graph with postgres url attaches direct postgres checkpointer."""
-    with patch("psycopg_pool.AsyncConnectionPool") as mock_pool, \
-         patch("langgraph.checkpoint.postgres.aio.AsyncPostgresSaver") as mock_saver:
+    with (
+        patch("psycopg_pool.AsyncConnectionPool") as mock_pool,
+        patch("langgraph.checkpoint.postgres.aio.AsyncPostgresSaver") as mock_saver,
+    ):
         mock_pg_instance = MagicMock(spec=BaseCheckpointSaver)
         mock_saver.return_value = mock_pg_instance
 

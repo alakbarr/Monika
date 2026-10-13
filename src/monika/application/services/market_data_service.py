@@ -51,7 +51,7 @@ def _extract_float(val: object, default: float = 0.0) -> float:
     try:
         f = float(str(val))
         return default if math.isnan(f) else f
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return default
 
 
@@ -165,12 +165,19 @@ class MarketDataService:
         if session:
             try:
                 from monika.infrastructure.database.models import PriceOHLCV
-                rows = (await session.execute(
-                    select(PriceOHLCV)
-                    .where(PriceOHLCV.symbol == sym, PriceOHLCV.timeframe == timeframe)
-                    .order_by(PriceOHLCV.timestamp.desc())
-                    .limit(count)
-                )).scalars().all()
+
+                rows = (
+                    (
+                        await session.execute(
+                            select(PriceOHLCV)
+                            .where(PriceOHLCV.symbol == sym, PriceOHLCV.timeframe == timeframe)
+                            .order_by(PriceOHLCV.timestamp.desc())
+                            .limit(count)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
                 if rows and len(rows) >= min(count, 30):
                     return [
                         {
@@ -215,15 +222,17 @@ class MarketDataService:
                         ts_dt = ts_dt.astimezone(timezone.utc)
                     else:
                         ts_dt = ts_dt.replace(tzinfo=timezone.utc)
-                    bars.append({
-                        "time": ts_dt.isoformat(),
-                        "open": _extract_float(row.get("Open", 0.0)),
-                        "high": _extract_float(row.get("High", 0.0)),
-                        "low": _extract_float(row.get("Low", 0.0)),
-                        "close": _extract_float(row.get("Close", 0.0)),
-                        "volume": _extract_float(row.get("Volume", 0.0)),
-                        "tick_volume": _extract_float(row.get("Volume", 0.0)),
-                    })
+                    bars.append(
+                        {
+                            "time": ts_dt.isoformat(),
+                            "open": _extract_float(row.get("Open", 0.0)),
+                            "high": _extract_float(row.get("High", 0.0)),
+                            "low": _extract_float(row.get("Low", 0.0)),
+                            "close": _extract_float(row.get("Close", 0.0)),
+                            "volume": _extract_float(row.get("Volume", 0.0)),
+                            "tick_volume": _extract_float(row.get("Volume", 0.0)),
+                        }
+                    )
                 return bars
         except Exception as yf_err:
             logger.debug(f"[MarketDataService] yfinance fetch failed for {sym}: {yf_err}")

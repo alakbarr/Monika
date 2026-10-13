@@ -1,4 +1,3 @@
-
 """GTJA Alpha #71.
 
 Formula: (CLOSE-MEAN(CLOSE,24))/MEAN(CLOSE,24)*100
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_071",
-    "theme": ['reversal'],
-    "formula_latex": '(CLOSE-MEAN(CLOSE,24))/MEAN(CLOSE,24)*100',
-    "columns_required": ['close'],
+    "theme": ["reversal"],
+    "formula_latex": "(CLOSE-MEAN(CLOSE,24))/MEAN(CLOSE,24)*100",
+    "columns_required": ["close"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 24,
     "min_warmup_bars": 25,
-    "notes": 'Bias-24.',
+    "notes": "Bias-24.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]

@@ -20,6 +20,7 @@ class AnalysisPipelinePlugin(TradingPlugin, ABC):
     Abstract Base Class for full Analysis Cycle / Trading Style Plugins.
     Enables users to swap between Macro-to-Asset, Scalping, Pure Quant, etc.
     """
+
     metadata: PluginMetadata
 
     def __init__(self, *args, **kwargs):
@@ -29,11 +30,7 @@ class AnalysisPipelinePlugin(TradingPlugin, ABC):
 
     @abstractmethod
     async def execute_analysis_cycle(
-        self,
-        session: AsyncSession,
-        asset_universe: List[str],
-        forced: bool = False,
-        **kwargs
+        self, session: AsyncSession, asset_universe: List[str], forced: bool = False, **kwargs
     ) -> List[TradeProposal]:
         """
         Executes a complete market analysis cycle for the given asset universe.

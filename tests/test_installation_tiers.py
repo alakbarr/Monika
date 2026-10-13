@@ -45,6 +45,7 @@ def test_upgrade_subcommand_registration():
     assert "upgrade" in cmd.description.lower()
 
     import argparse
+
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command")
     subp = cmd.register_subparser(subparsers)

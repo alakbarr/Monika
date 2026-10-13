@@ -68,6 +68,7 @@ class MicroAlphaZoo:
             )
             cls._REGISTRY[name] = (fn, meta)
             return fn
+
         return decorator
 
     @classmethod
@@ -104,6 +105,7 @@ class MicroAlphaZoo:
 # ==============================================================================
 # 20 QUANTITATIVE ALPHA FORMULATIONS
 # ==============================================================================
+
 
 @MicroAlphaZoo.register(
     name="alpha_001",

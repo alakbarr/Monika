@@ -7,7 +7,6 @@ from database.models import COTReport
 
 
 class TestCFTCCOTFetcher:
-
     @pytest.mark.asyncio
     async def test_fetch_all_empty(self):
         fetcher = CFTCCOTFetcher(AsyncMock(), {})
@@ -19,8 +18,8 @@ class TestCFTCCOTFetcher:
     async def test_fetch_all_routing_and_code_query(self, mock_sleep):
         config = {
             "markets": {
-                "gold": "088691",          # commodity
-                "british_pound": "096742", # financial
+                "gold": "088691",  # commodity
+                "british_pound": "096742",  # financial
             }
         }
         fetcher = CFTCCOTFetcher(AsyncMock(), config)
@@ -54,19 +53,21 @@ class TestCFTCCOTFetcher:
         assert call2.args[3] == "096742"
 
     @pytest.mark.asyncio
-    @patch('data_sources.cftc_cot.fetch_with_retry')
+    @patch("data_sources.cftc_cot.fetch_with_retry")
     async def test_fetch_and_save_tff_forex(self, mock_fetch):
         # Sample response from gpe5-46if for British Pound
-        mock_fetch.return_value = [{
-            "report_date_as_yyyy_mm_dd": "2026-08-18T00:00:00.000",
-            "cftc_contract_market_code": "096742",
-            "dealer_positions_long_all": "133730",
-            "dealer_positions_short_all": "65165",
-            "asset_mgr_positions_long": "33516",
-            "asset_mgr_positions_short": "150756",
-            "lev_money_positions_long": "70821",
-            "lev_money_positions_short": "27944"
-        }]
+        mock_fetch.return_value = [
+            {
+                "report_date_as_yyyy_mm_dd": "2026-08-18T00:00:00.000",
+                "cftc_contract_market_code": "096742",
+                "dealer_positions_long_all": "133730",
+                "dealer_positions_short_all": "65165",
+                "asset_mgr_positions_long": "33516",
+                "asset_mgr_positions_short": "150756",
+                "lev_money_positions_long": "70821",
+                "lev_money_positions_short": "27944",
+            }
+        ]
 
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -79,7 +80,7 @@ class TestCFTCCOTFetcher:
             url=FINANCIAL_URL,
             params={"$where": "cftc_contract_market_code='096742'"},
             market_name="british_pound",
-            market_code="096742"
+            market_code="096742",
         )
 
         assert res == 1
@@ -95,19 +96,21 @@ class TestCFTCCOTFetcher:
         assert saved_record.dealer_short == 65165
 
     @pytest.mark.asyncio
-    @patch('data_sources.cftc_cot.fetch_with_retry')
+    @patch("data_sources.cftc_cot.fetch_with_retry")
     async def test_fetch_and_save_commodity_managed_money(self, mock_fetch):
         # Sample response from kh3c-gbw2 for Gold
-        mock_fetch.return_value = [{
-            "report_date_as_yyyy_mm_dd": "2026-08-18T00:00:00.000",
-            "cftc_contract_market_code": "088691",
-            "swap_positions_long_all": "17590",
-            "swap__positions_short_all": "246615",
-            "other_rept_positions_long": "95430",
-            "other_rept_positions_short": "21857",
-            "m_money_positions_long_all": "157173",
-            "m_money_positions_short_all": "11251"
-        }]
+        mock_fetch.return_value = [
+            {
+                "report_date_as_yyyy_mm_dd": "2026-08-18T00:00:00.000",
+                "cftc_contract_market_code": "088691",
+                "swap_positions_long_all": "17590",
+                "swap__positions_short_all": "246615",
+                "other_rept_positions_long": "95430",
+                "other_rept_positions_short": "21857",
+                "m_money_positions_long_all": "157173",
+                "m_money_positions_short_all": "11251",
+            }
+        ]
 
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -120,7 +123,7 @@ class TestCFTCCOTFetcher:
             url=DISAGGREGATED_URL,
             params={"$where": "cftc_contract_market_code='088691'"},
             market_name="gold",
-            market_code="088691"
+            market_code="088691",
         )
 
         assert res == 1
@@ -136,11 +139,9 @@ class TestCFTCCOTFetcher:
         assert saved_record.asset_mgr_short == 21857
 
     @pytest.mark.asyncio
-    @patch('data_sources.cftc_cot.fetch_with_retry')
+    @patch("data_sources.cftc_cot.fetch_with_retry")
     async def test_fetch_and_save_existing_duplicate(self, mock_fetch):
-        mock_fetch.return_value = [{
-            "report_date_as_yyyy_mm_dd": "2026-08-18T00:00:00.000"
-        }]
+        mock_fetch.return_value = [{"report_date_as_yyyy_mm_dd": "2026-08-18T00:00:00.000"}]
 
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -155,7 +156,7 @@ class TestCFTCCOTFetcher:
         mock_session.add.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch('data_sources.cftc_cot.fetch_with_retry')
+    @patch("data_sources.cftc_cot.fetch_with_retry")
     async def test_fetch_and_save_non_list_response(self, mock_fetch):
         mock_fetch.return_value = "<html>Error 500</html>"
 
@@ -167,7 +168,7 @@ class TestCFTCCOTFetcher:
         mock_session.add.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch('data_sources.cftc_cot.fetch_with_retry')
+    @patch("data_sources.cftc_cot.fetch_with_retry")
     async def test_fetch_and_save_with_non_dict_row(self, mock_fetch):
         mock_fetch.return_value = [
             "malformed_string_row",
@@ -208,5 +209,3 @@ class TestCFTCCOTFetcher:
         assert CFTCCOTFetcher._parse_date(None) is None
         assert CFTCCOTFetcher._parse_date(12345) is None
         assert CFTCCOTFetcher._parse_date("invalid-date") is None
-
-

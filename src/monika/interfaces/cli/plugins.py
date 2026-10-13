@@ -65,6 +65,7 @@ def _create_engine(settings: Optional[dict] = None) -> PluginEngine:
     auto_dirs = plugins_cfg.get("directories", ["plugins", "custom_plugins"])
     for d in auto_dirs:
         import os
+
         abs_d = d if os.path.isabs(d) else os.path.join(os.getcwd(), d)
         for dir_plugin in engine.discover_directory_plugins(abs_d):
             engine.register_plugin_instance(dir_plugin)
@@ -127,7 +128,11 @@ def cmd_plugin_install(args) -> int:
         console.print("[red]Error: Package name required. Usage: monika plugin install <name>[/red]")
         return 1
 
-    package_name = target if target.startswith("monika-plugin-") or "/" in target or target.endswith(".whl") else f"monika-plugin-{target}"
+    package_name = (
+        target
+        if target.startswith("monika-plugin-") or "/" in target or target.endswith(".whl")
+        else f"monika-plugin-{target}"
+    )
     console.print(f"[bold cyan]Installing Monika plugin package:[/] [bold]{package_name}[/]")
 
     cmd = [sys.executable, "-m", "pip", "install", package_name]
@@ -146,7 +151,9 @@ def cmd_plugin_install(args) -> int:
         for p in matching:
             console.print(f"  - [bold]{p.metadata.id}[/] ({p.metadata.name} v{p.metadata.version})")
     else:
-        console.print("[yellow]Note: No 'monika.plugins' entry_points found in package. Ensure package implements entry points.[/]")
+        console.print(
+            "[yellow]Note: No 'monika.plugins' entry_points found in package. Ensure package implements entry points.[/]"
+        )
 
     console.print("\n[dim]Configure plugin options in `settings.yaml:plugins` to activate.[/dim]")
     return 0
@@ -185,14 +192,14 @@ def cmd_plugin_info(args) -> int:
     meta = plugin.metadata
     info_text = f"""[bold cyan]Plugin ID:[/] {meta.id}
 [bold cyan]Name:[/] {meta.name} (v{meta.version})
-[bold cyan]Category:[/] {meta.category.value if hasattr(meta.category, 'value') else meta.category}
-[bold cyan]Origin:[/] {meta.origin.value if hasattr(meta.origin, 'value') else meta.origin}
-[bold cyan]Author:[/] {meta.author or 'Unknown'}
+[bold cyan]Category:[/] {meta.category.value if hasattr(meta.category, "value") else meta.category}
+[bold cyan]Origin:[/] {meta.origin.value if hasattr(meta.origin, "value") else meta.origin}
+[bold cyan]Author:[/] {meta.author or "Unknown"}
 [bold cyan]Is Core:[/] {meta.is_core}
 [bold cyan]Status:[/] {plugin.status}
-[bold cyan]Description:[/] {meta.description or 'No description provided.'}
-[bold cyan]Dependencies:[/] {', '.join(meta.dependencies) if meta.dependencies else 'None'}
-[bold cyan]Required Packages:[/] {', '.join(meta.required_packages) if meta.required_packages else 'None'}
+[bold cyan]Description:[/] {meta.description or "No description provided."}
+[bold cyan]Dependencies:[/] {", ".join(meta.dependencies) if meta.dependencies else "None"}
+[bold cyan]Required Packages:[/] {", ".join(meta.required_packages) if meta.required_packages else "None"}
 [bold cyan]Current Config:[/] {plugin.config}
 """
     console.print(Panel(info_text.strip(), title=f"Plugin Info: {meta.id}", border_style="cyan"))
@@ -207,6 +214,7 @@ def cmd_plugin_enable(args) -> int:
         return 1
 
     from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
+
     plugins = list_all_plugins_status()
     target = next((p for p in plugins if p["id"] == plugin_id), None)
     category = target["category"] if target else "middleware"
@@ -228,6 +236,7 @@ def cmd_plugin_disable(args) -> int:
         return 1
 
     from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
+
     plugins = list_all_plugins_status()
     target = next((p for p in plugins if p["id"] == plugin_id), None)
     category = target["category"] if target else "middleware"

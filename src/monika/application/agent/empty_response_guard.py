@@ -32,6 +32,7 @@ MAX_CONSECUTIVE_EMPTY_FOR_FAILOVER = 2
 @dataclass
 class EmptyRecoveryAction:
     """Action directive emitted by the 7-step empty response recovery ladder."""
+
     step: int
     action_type: str  # "nudge" | "close_reasoning" | "adjust_temp" | "prune_tools" | "retry" | "failover" | "terminal"
     instruction: str
@@ -41,7 +42,6 @@ class EmptyRecoveryAction:
 
 
 class EmptyResponseGuard:
-
     """Manages empty response state, consecutive empty tracking, and cost ceilings."""
 
     def __init__(self, cost_threshold_usd: float = DEFAULT_COST_THRESHOLD_USD):
@@ -76,8 +76,7 @@ class EmptyResponseGuard:
     def record_successful_response(self, provider: str, model: str):
         """Clears consecutive empty counts for the model upon successful non-empty response."""
         keys_to_clear = [
-            k for k in self._consecutive_empty_counts
-            if k[0] == provider.lower() and k[1] == model.lower()
+            k for k in self._consecutive_empty_counts if k[0] == provider.lower() and k[1] == model.lower()
         ]
         for k in keys_to_clear:
             self._consecutive_empty_counts.pop(k, None)
@@ -197,4 +196,3 @@ class EmptyResponseGuard:
 
 # Global singleton instance
 global_empty_response_guard = EmptyResponseGuard()
-

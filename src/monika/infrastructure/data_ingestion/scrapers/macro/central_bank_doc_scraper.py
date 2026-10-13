@@ -29,14 +29,32 @@ logger = logging.getLogger("TradingAgent.CentralBankDocScraper")
 
 # Curated monetary policy keywords for hawkish/dovish tone baseline scoring
 HAWKISH_TERMS = {
-    "elevated", "inflation persistent", "further firming", "tightening",
-    "restrictive stance", "upside risks", "labor market tight", "higher for longer",
-    "rate hike", "price pressures", "overheating", "vigilant"
+    "elevated",
+    "inflation persistent",
+    "further firming",
+    "tightening",
+    "restrictive stance",
+    "upside risks",
+    "labor market tight",
+    "higher for longer",
+    "rate hike",
+    "price pressures",
+    "overheating",
+    "vigilant",
 }
 DOVISH_TERMS = {
-    "disinflation", "rate cuts", "easing", "downside risks", "labor market cooling",
-    "growth slowing", "recessionary", "slack", "below target", "accommodative",
-    "soft landing", "modest expansion"
+    "disinflation",
+    "rate cuts",
+    "easing",
+    "downside risks",
+    "labor market cooling",
+    "growth slowing",
+    "recessionary",
+    "slack",
+    "below target",
+    "accommodative",
+    "soft landing",
+    "modest expansion",
 }
 
 FED_CALENDAR_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
@@ -78,7 +96,10 @@ class CentralBankDocScraper:
         tone_score, key_phrases = self._analyze_tone_polarity(paragraphs)
 
         doc_title = title or f"{bank_clean} Monetary Policy {doc_clean.title()} ({dt_meeting.strftime('%B %Y')})"
-        doc_url = source_url or f"https://www.federalreserve.gov/monetarypolicy/fomcminutes{dt_meeting.strftime('%Y%m%d')}.htm"
+        doc_url = (
+            source_url
+            or f"https://www.federalreserve.gov/monetarypolicy/fomcminutes{dt_meeting.strftime('%Y%m%d')}.htm"
+        )
 
         return await self._persist_document_record(
             bank=bank_clean,
@@ -206,7 +227,11 @@ class CentralBankDocScraper:
             txt = a.get_text().strip().lower()
             if href.startswith("javascript:") or href.startswith("mailto:"):
                 continue
-            if ("monetary-policy-statement" in href or "is" in href) and "index" not in href and ("ecb.is" in href or href.endswith(".html")):
+            if (
+                ("monetary-policy-statement" in href or "is" in href)
+                and "index" not in href
+                and ("ecb.is" in href or href.endswith(".html"))
+            ):
                 target_link = href
                 break
             elif "monetary policy statement" in txt and "index" not in href and href.endswith(".html"):
@@ -276,7 +301,9 @@ class CentralBankDocScraper:
                     if target_link.startswith("/"):
                         target_link = "https://www.boj.or.jp" + target_link
 
-                    async with http_client.get(target_link, ssl=False, timeout=aiohttp.ClientTimeout(total=15)) as doc_resp:
+                    async with http_client.get(
+                        target_link, ssl=False, timeout=aiohttp.ClientTimeout(total=15)
+                    ) as doc_resp:
                         if doc_resp.status == 200:
                             doc_raw = await doc_resp.read()
                             doc_html = doc_raw.decode("utf-8", errors="ignore")
@@ -286,12 +313,17 @@ class CentralBankDocScraper:
 
                             paragraphs = []
                             for line in raw_lines:
-                                if not any(k in line for k in ["Location", "Guide Map", "Visiting the Bank", "Copyright", "Site Map"]):
+                                if not any(
+                                    k in line
+                                    for k in ["Location", "Guide Map", "Visiting the Bank", "Copyright", "Site Map"]
+                                ):
                                     paragraphs.append(line)
 
                             if paragraphs:
                                 tone_score, key_phrases = self._analyze_tone_polarity(paragraphs)
-                                logger.info(f"Live scraped BOJ {doc_type}: {len(paragraphs)} paragraphs from {target_link}")
+                                logger.info(
+                                    f"Live scraped BOJ {doc_type}: {len(paragraphs)} paragraphs from {target_link}"
+                                )
 
                                 return await self._persist_document_record(
                                     bank="BOJ",
@@ -353,6 +385,7 @@ class CentralBankDocScraper:
             await self.session.execute(stmt)
         elif dialect_name == "sqlite":
             from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
             stmt = sqlite_insert(CentralBankDocument).values(record)
             stmt = stmt.on_conflict_do_update(
                 index_elements=["bank", "doc_type", "meeting_date"],

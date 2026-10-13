@@ -98,9 +98,9 @@ class StructuralShapeFilter:
     """
 
     DATE_PATTERNS = [
-        re.compile(r"\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b"),     # 2026-09-28
-        re.compile(r"\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b"),     # 28/09/2026
-        re.compile(r"\b\d{4}\b"),                             # Standalone year 2024..2030
+        re.compile(r"\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b"),  # 2026-09-28
+        re.compile(r"\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b"),  # 28/09/2026
+        re.compile(r"\b\d{4}\b"),  # Standalone year 2024..2030
     ]
 
     TIME_PATTERNS = [
@@ -116,7 +116,7 @@ class StructuralShapeFilter:
     def is_structural_noise(cls, token: str, full_context: str = "") -> bool:
         """Determines if a matched numeric token is structural noise rather than a market figure."""
         clean = token.strip()
-        
+
         # Standalone common integers
         try:
             val = float(clean)
@@ -242,7 +242,7 @@ def verify_declared_figures(
                     figure=fig,
                     is_verified=False,
                     discrepancy_pct=1.0,
-                    reason=f"No matching empirical observation found in ledger within {tol*100:.2f}% tolerance",
+                    reason=f"No matching empirical observation found in ledger within {tol * 100:.2f}% tolerance",
                 )
             )
             unverified += 1

@@ -33,10 +33,7 @@ class RiskRouter:
 
         if cmd == "kill":
             reason = " ".join(args) if args else "Emergency halt triggered via Telegram /kill"
-            return await TradingService.emergency_kill(
-                session, reason=reason, actor=actor
-            )
-
+            return await TradingService.emergency_kill(session, reason=reason, actor=actor)
 
         elif cmd == "resume":
             # Resume trading system if paused

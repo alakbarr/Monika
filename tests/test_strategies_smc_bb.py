@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit tests for SMCFairValueGapStrategy and BBVolumeProfileMeanReversion.
 """
@@ -47,10 +48,7 @@ async def test_bb_volume_profile_oversold_signal():
     mock_session = create_mock_async_session()
 
     # 30 candles where latest close dips below lower Bollinger band
-    candles = [
-        MagicMock(open=100.0, high=101.0, low=99.0, close=100.0, volume=100.0)
-        for _ in range(25)
-    ]
+    candles = [MagicMock(open=100.0, high=101.0, low=99.0, close=100.0, volume=100.0) for _ in range(25)]
     # Add oversold drop
     candles.append(MagicMock(open=100.0, high=100.2, low=95.0, close=95.5, volume=800.0))
 

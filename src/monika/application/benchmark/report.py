@@ -25,8 +25,10 @@ async def build_report(run_id: int) -> str:
             score = f"{r.overall_score:.1f}" if r.overall_score is not None else "-"
             det = f"{r.deterministic_score:.0%}" if r.deterministic_score is not None else "-"
             err = (r.error or "")[:60]
-            lines.append(f"| {r.model_name} | {score} | {det} | {r.input_tokens}/{r.output_tokens} | "
-                          f"{r.cost_usd:.5f} | {r.latency_s:.1f} | {err} |")
+            lines.append(
+                f"| {r.model_name} | {score} | {det} | {r.input_tokens}/{r.output_tokens} | "
+                f"{r.cost_usd:.5f} | {r.latency_s:.1f} | {err} |"
+            )
             agg = per_model_agg.setdefault(r.model_name, {"scores": [], "cost": 0.0, "success": 0, "total": 0})
             agg["total"] += 1
             agg["cost"] += r.cost_usd or 0.0

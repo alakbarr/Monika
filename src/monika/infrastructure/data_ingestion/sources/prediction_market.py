@@ -71,7 +71,7 @@ class PredictionMarketClient:
                 continue
             title = str(event.get("title", "")).lower()
             description = str(event.get("description", "")).lower()
-            
+
             # Check relevance against macro query terms
             if any(q in title or q in description for q in queries):
                 markets = event.get("markets", [])
@@ -81,15 +81,17 @@ class PredictionMarketClient:
                         continue
                     parsed_markets.append(self._parse_market(m))
 
-                macro_events.append({
-                    "id": event.get("id"),
-                    "title": event.get("title"),
-                    "category": event.get("category", "Macro"),
-                    "volume": float(event.get("volume", 0.0) or 0.0),
-                    "liquidity": float(event.get("liquidity", 0.0) or 0.0),
-                    "end_date": event.get("endDate"),
-                    "markets": parsed_markets,
-                })
+                macro_events.append(
+                    {
+                        "id": event.get("id"),
+                        "title": event.get("title"),
+                        "category": event.get("category", "Macro"),
+                        "volume": float(event.get("volume", 0.0) or 0.0),
+                        "liquidity": float(event.get("liquidity", 0.0) or 0.0),
+                        "end_date": event.get("endDate"),
+                        "markets": parsed_markets,
+                    }
+                )
 
         return macro_events
 
@@ -221,9 +223,9 @@ class PredictionMarketClient:
 
         if self.session is not None:
             cfg_key = "prediction_market_latest"
-            existing = (await self.session.execute(
-                select(SystemConfig).where(SystemConfig.key == cfg_key).limit(1)
-            )).scalar_one_or_none()
+            existing = (
+                await self.session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key).limit(1))
+            ).scalar_one_or_none()
 
             payload = json.dumps(result)
             if existing:
@@ -232,6 +234,7 @@ class PredictionMarketClient:
                 self.session.add(SystemConfig(key=cfg_key, value=payload))
 
             from monika.infrastructure.database.safe_ops import safe_commit
+
             await safe_commit(self.session, label="PredictionMarket")
             logger.info(f"Ingested {len(events)} macro events from Polymarket (Bias={sentiment_bias})")
 

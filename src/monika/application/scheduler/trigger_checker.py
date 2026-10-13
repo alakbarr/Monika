@@ -34,7 +34,9 @@ class TriggerChecker:
     Mengevaluasi triggers. Jika terpenuhi -> fired -> re-analisis aset.
     """
 
-    def __init__(self, settings: dict, per_asset_stage=None, execution_service=None, cycle_scheduler=None, recovery_event=None):
+    def __init__(
+        self, settings: dict, per_asset_stage=None, execution_service=None, cycle_scheduler=None, recovery_event=None
+    ):
         """
         Args:
             settings:         Dictionary konfigurasi lengkap.
@@ -82,9 +84,8 @@ class TriggerChecker:
     def asset_universe(self) -> list:
         if self._cycle_scheduler and hasattr(self._cycle_scheduler, "asset_universe"):
             return self._cycle_scheduler.asset_universe
-        return (
-            self.settings.get("trading", {}).get("asset_universe")
-            or self.settings.get("trading", {}).get("symbols", [])
+        return self.settings.get("trading", {}).get("asset_universe") or self.settings.get("trading", {}).get(
+            "symbols", []
         )
 
     # ------------------------------------------------------------------
@@ -94,7 +95,7 @@ class TriggerChecker:
     async def run_once(self) -> dict:
         """
         Satu iterasi: cek semua pending trigger & evaluasi.
-        
+
         Returns:
             Dict hasil cek (jumlah fired, aset direanalisis, dll).
         """
@@ -115,23 +116,37 @@ class TriggerChecker:
                 eval_result = await self._evaluate_trigger(trigger)
                 if eval_result == "invalid":
                     async with get_session() as session:
-                        await session.execute(update(TradeTrigger).where(TradeTrigger.id == trigger.id).values(status="invalid"))
+                        await session.execute(
+                            update(TradeTrigger).where(TradeTrigger.id == trigger.id).values(status="invalid")
+                        )
                         await safe_commit(session, label="trigger_invalid")
                     continue
                 elif eval_result == "expired":
                     async with get_session() as session:
-                        await session.execute(update(TradeTrigger).where(TradeTrigger.id == trigger.id).values(status="expired"))
+                        await session.execute(
+                            update(TradeTrigger).where(TradeTrigger.id == trigger.id).values(status="expired")
+                        )
                         await safe_commit(session, label="trigger_expired")
                     continue
                 elif eval_result is True:
                     # Validate trigger freshness & validity via Jev System One before firing
                     try:
-                        resolved_sym = getattr(getattr(trigger, "analysis", None), "symbol", None) or getattr(trigger, "symbol", None)
+                        resolved_sym = getattr(getattr(trigger, "analysis", None), "symbol", None) or getattr(
+                            trigger, "symbol", None
+                        )
                         jev_val = await self.validate_trigger_with_jev(trigger, symbol=resolved_sym)
-                        if jev_val and jev_val.get("is_still_valid") is False and jev_val.get("invalidation_risk", 0) >= 3:
-                            logger.info(f"Trigger {trigger.id} price condition met, but invalidated by Jev System One check (risk={jev_val.get('invalidation_risk')})")
+                        if (
+                            jev_val
+                            and jev_val.get("is_still_valid") is False
+                            and jev_val.get("invalidation_risk", 0) >= 3
+                        ):
+                            logger.info(
+                                f"Trigger {trigger.id} price condition met, but invalidated by Jev System One check (risk={jev_val.get('invalidation_risk')})"
+                            )
                             async with get_session() as session:
-                                await session.execute(update(TradeTrigger).where(TradeTrigger.id == trigger.id).values(status="invalid"))
+                                await session.execute(
+                                    update(TradeTrigger).where(TradeTrigger.id == trigger.id).values(status="invalid")
+                                )
                                 await safe_commit(session, label="trigger_jev_invalidated")
                             continue
                     except Exception as jev_err:
@@ -160,6 +175,7 @@ class TriggerChecker:
                     if trigger_cond.get("is_user_alert"):
                         try:
                             from monika.infrastructure.infra.notifier import AgentNotifier
+
                             p_level = trigger_cond.get("price") or trigger_cond.get("target_price")
                             cond_dir = trigger_cond.get("direction") or trigger_cond.get("condition", "")
                             note_text = trigger_cond.get("note", "")
@@ -178,7 +194,9 @@ class TriggerChecker:
                     preplanned_order = trigger_cond.get("preplanned_order") if isinstance(trigger_cond, dict) else None
 
                     if preplanned_order and self._execution_service:
-                        logger.info(f"Trigger {trigger.id} fired -> Executing preplanned order deterministically for {symbol}")
+                        logger.info(
+                            f"Trigger {trigger.id} fired -> Executing preplanned order deterministically for {symbol}"
+                        )
                         try:
                             async with get_session() as session:
                                 exec_res = await self._execution_service.execute_preplanned_order(
@@ -188,9 +206,12 @@ class TriggerChecker:
                                     trigger_id=trigger.id,
                                     analysis_id=trigger.asset_analysis_id,
                                 )
-                                logger.info(f"Preplanned order result for {symbol}: {exec_res.summary() if hasattr(exec_res, 'summary') else exec_res}")
+                                logger.info(
+                                    f"Preplanned order result for {symbol}: {exec_res.summary() if hasattr(exec_res, 'summary') else exec_res}"
+                                )
                                 try:
                                     from monika.infrastructure.database.event_store import TradingEventStore
+
                                     await TradingEventStore.emit(
                                         session=session,
                                         event_type="trigger.price_level",
@@ -210,7 +231,9 @@ class TriggerChecker:
                     elif symbol and self._per_asset:
                         per_asset = self._per_asset
                         logger.info(f"Trigger {trigger.id} fired -> triggering re-analysis for {symbol}")
-                        cycle_lock = getattr(self._cycle_scheduler, "_cycle_lock", None) if self._cycle_scheduler else None
+                        cycle_lock = (
+                            getattr(self._cycle_scheduler, "_cycle_lock", None) if self._cycle_scheduler else None
+                        )
 
                         async def _execute_trigger_reanalysis():
                             async with get_session() as session:
@@ -218,13 +241,16 @@ class TriggerChecker:
                                     session, symbol, bypass_prescreen=True, skip_cooldown=True
                                 )
                                 reanalyzed.append(symbol)
-                                
+
                                 dec = analysis_res.get("decision", "").lower() if isinstance(analysis_res, dict) else ""
                                 if dec in ("buy", "sell") and analysis_res.get("analysis_id"):
                                     try:
                                         from monika.application.graph.reactive_graph import get_reactive_graph
+
                                         reactive_graph = get_reactive_graph()
-                                        curr_price = analysis_res.get("current_price") or analysis_res.get("entry_price")
+                                        curr_price = analysis_res.get("current_price") or analysis_res.get(
+                                            "entry_price"
+                                        )
                                         reactive_state = {
                                             "symbols": [symbol],
                                             "event_type": "price_trigger",
@@ -241,25 +267,35 @@ class TriggerChecker:
                                             "should_pause": False,
                                         }
                                         config = {"configurable": {"scheduler": self._cycle_scheduler or self}}
-                                        logger.info(f"Routing trigger re-analysis for {symbol} through LangGraph ReactiveStateGraph...")
+                                        logger.info(
+                                            f"Routing trigger re-analysis for {symbol} through LangGraph ReactiveStateGraph..."
+                                        )
                                         await reactive_graph.ainvoke(reactive_state, config=config)
                                     except Exception as e:
-                                        logger.error(f"LangGraph reactive trigger execution failed for {symbol}: {e}", exc_info=True)
-                                    logger.info(f"auto_execute=false — sending trade proposal for {symbol} (analysis #{analysis_res.get('analysis_id')}) from trigger re-analysis")
+                                        logger.error(
+                                            f"LangGraph reactive trigger execution failed for {symbol}: {e}",
+                                            exc_info=True,
+                                        )
+                                    logger.info(
+                                        f"auto_execute=false — sending trade proposal for {symbol} (analysis #{analysis_res.get('analysis_id')}) from trigger re-analysis"
+                                    )
                                     try:
                                         from monika.infrastructure.infra.notifier import AgentNotifier
+
                                         notifier = AgentNotifier()
                                         ana_id = analysis_res.get("analysis_id")
                                         dec = analysis_res.get("decision", "").upper()
                                         conf = analysis_res.get("confidence", 0.0)
                                         sl = analysis_res.get("stop_loss", "N/A")
                                         tp = analysis_res.get("take_profit", "N/A")
-                                        
+
                                         keyboard = None
                                         try:
                                             keyboard = AgentNotifier.build_confirm_keyboard(str(ana_id))
                                         except Exception as kb_err:
-                                            logger.debug(f"Could not build inline keyboard for trade proposal: {kb_err}")
+                                            logger.debug(
+                                                f"Could not build inline keyboard for trade proposal: {kb_err}"
+                                            )
 
                                         await notifier.send_proposal(
                                             f"[TARGET] <b>Trade Proposal from Trigger</b>\n\n"
@@ -271,7 +307,9 @@ class TriggerChecker:
                                             reply_markup=keyboard,
                                         )
                                     except Exception as notify_err:
-                                        logger.error(f"Failed to send trade proposal notification for trigger {symbol}: {notify_err}")
+                                        logger.error(
+                                            f"Failed to send trade proposal notification for trigger {symbol}: {notify_err}"
+                                        )
 
                         if cycle_lock:
                             async with cycle_lock:
@@ -297,29 +335,30 @@ class TriggerChecker:
     async def check_invalidation_conditions(self) -> list[dict]:
         from monika.infrastructure.database.models import Position, AssetAnalysis, PriceOHLCV, SystemConfig
         from sqlalchemy import select as _select
+
         alerts = []
-        
+
         async with get_session() as session:
-            open_positions = (await session.execute(
-                _select(Position).where(Position.status == 'open')
-            )).scalars().all()
-            
+            open_positions = (await session.execute(_select(Position).where(Position.status == "open"))).scalars().all()
+
             for pos in open_positions:
-                analysis = (await session.execute(
-                    _select(AssetAnalysis)
-                    .where(AssetAnalysis.symbol == pos.symbol)
-                    .where(AssetAnalysis.generated_at <= pos.opened_at)
-                    .where(AssetAnalysis.decision.in_(['buy', 'sell']))
-                    .order_by(AssetAnalysis.generated_at.desc())
-                    .limit(1)
-                )).scalar_one_or_none()
-                
+                analysis = (
+                    await session.execute(
+                        _select(AssetAnalysis)
+                        .where(AssetAnalysis.symbol == pos.symbol)
+                        .where(AssetAnalysis.generated_at <= pos.opened_at)
+                        .where(AssetAnalysis.decision.in_(["buy", "sell"]))
+                        .order_by(AssetAnalysis.generated_at.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+
                 if not analysis:
                     continue
-                
+
                 # Get current price (prefer live MT5 tick for freshest price, fallback to DB with freshness validation)
                 current_price = None
-                mt5_inst = getattr(self._execution_service, 'mt5', getattr(self._execution_service, '_mt5', None))
+                mt5_inst = getattr(self._execution_service, "mt5", getattr(self._execution_service, "_mt5", None))
                 if mt5_inst:
                     try:
                         tick = await mt5_inst.get_tick(pos.symbol)
@@ -327,98 +366,111 @@ class TriggerChecker:
                             current_price = float(tick["bid"])
                     except Exception as tick_err:
                         logger.debug(f"Failed to fetch live tick for {pos.symbol}: {tick_err}")
-                
+
                 if current_price is None:
-                    last_bar = (await session.execute(
-                        _select(PriceOHLCV)
-                        .where(PriceOHLCV.symbol == pos.symbol)
-                        .where(PriceOHLCV.timeframe.in_(['H1', 'H4', 'M15']))
-                        .order_by(PriceOHLCV.timestamp.desc())
-                        .limit(1)
-                    )).scalar_one_or_none()
-                    
+                    last_bar = (
+                        await session.execute(
+                            _select(PriceOHLCV)
+                            .where(PriceOHLCV.symbol == pos.symbol)
+                            .where(PriceOHLCV.timeframe.in_(["H1", "H4", "M15"]))
+                            .order_by(PriceOHLCV.timestamp.desc())
+                            .limit(1)
+                        )
+                    ).scalar_one_or_none()
+
                     if not last_bar:
                         continue
-                    
-                    bar_time = last_bar.timestamp.replace(tzinfo=timezone.utc) if last_bar.timestamp.tzinfo is None else last_bar.timestamp
+
+                    bar_time = (
+                        last_bar.timestamp.replace(tzinfo=timezone.utc)
+                        if last_bar.timestamp.tzinfo is None
+                        else last_bar.timestamp
+                    )
                     if (clock.now() - bar_time).total_seconds() > 86400:
-                        logger.warning(f"[TriggerChecker] Stale price data for {pos.symbol} ({last_bar.timestamp}). Skipping invalidation check.")
+                        logger.warning(
+                            f"[TriggerChecker] Stale price data for {pos.symbol} ({last_bar.timestamp}). Skipping invalidation check."
+                        )
                         continue
                     current_price = last_bar.close
-                
+
                 invalidation_triggered = False
-                trigger_desc = ''
-                
+                trigger_desc = ""
+
                 # Priority 1: Use structured invalidation fields (reliable)
                 if analysis.invalidation_price and analysis.invalidation_direction:
                     inv_price = analysis.invalidation_price
                     inv_dir = analysis.invalidation_direction
-                    
-                    if inv_dir == 'above' and current_price > inv_price:
+
+                    if inv_dir == "above" and current_price > inv_price:
                         invalidation_triggered = True
                         trigger_desc = (
-                            f'Price ({current_price:.5f}) is ABOVE invalidation level {inv_price:.5f} '
-                            f'[structured field detection]'
+                            f"Price ({current_price:.5f}) is ABOVE invalidation level {inv_price:.5f} "
+                            f"[structured field detection]"
                         )
-                    elif inv_dir == 'below' and current_price < inv_price:
+                    elif inv_dir == "below" and current_price < inv_price:
                         invalidation_triggered = True
                         trigger_desc = (
-                            f'Price ({current_price:.5f}) is BELOW invalidation level {inv_price:.5f} '
-                            f'[structured field detection]'
+                            f"Price ({current_price:.5f}) is BELOW invalidation level {inv_price:.5f} "
+                            f"[structured field detection]"
                         )
-                
+
                 # Priority 2: Fallback to text parsing if no structured fields
                 elif analysis.invalidation and not analysis.invalidation_price:
                     invalidation_text = analysis.invalidation.lower()
                     import re
-                    above_match = re.search(r'(?:close[s]?\s+)?above\s+([\d,]+(?:\.\d+)?)', invalidation_text)
-                    below_match = re.search(r'(?:close[s]?\s+)?below\s+([\d,]+(?:\.\d+)?)', invalidation_text)
-                    
+
+                    above_match = re.search(r"(?:close[s]?\s+)?above\s+([\d,]+(?:\.\d+)?)", invalidation_text)
+                    below_match = re.search(r"(?:close[s]?\s+)?below\s+([\d,]+(?:\.\d+)?)", invalidation_text)
+
                     matched_price = None
                     matched_dir = None
-                    
+
                     # For BUY positions, invalidation is a drop BELOW a support level
-                    if pos.direction == 'buy' and below_match:
+                    if pos.direction == "buy" and below_match:
                         try:
-                            level = float(below_match.group(1).replace(',', ''))
+                            level = float(below_match.group(1).replace(",", ""))
                             if abs(level - current_price) / current_price < 0.20:
                                 matched_price = level
-                                matched_dir = 'below'
+                                matched_dir = "below"
                         except ValueError:
                             pass
                     # For SELL positions, invalidation is a rise ABOVE a resistance level
-                    elif pos.direction == 'sell' and above_match:
+                    elif pos.direction == "sell" and above_match:
                         try:
-                            level = float(above_match.group(1).replace(',', ''))
+                            level = float(above_match.group(1).replace(",", ""))
                             if abs(level - current_price) / current_price < 0.20:
                                 matched_price = level
-                                matched_dir = 'above'
+                                matched_dir = "above"
                         except ValueError:
                             pass
-                    
+
                     if matched_price and matched_dir:
-                        if matched_dir == 'above' and current_price > matched_price:
+                        if matched_dir == "above" and current_price > matched_price:
                             invalidation_triggered = True
-                            trigger_desc = f'Price ({current_price:.5f}) above text-parsed level {matched_price} [text fallback]'
-                        elif matched_dir == 'below' and current_price < matched_price:
+                            trigger_desc = (
+                                f"Price ({current_price:.5f}) above text-parsed level {matched_price} [text fallback]"
+                            )
+                        elif matched_dir == "below" and current_price < matched_price:
                             invalidation_triggered = True
-                            trigger_desc = f'Price ({current_price:.5f}) below text-parsed level {matched_price} [text fallback]'
+                            trigger_desc = (
+                                f"Price ({current_price:.5f}) below text-parsed level {matched_price} [text fallback]"
+                            )
                     else:
                         logger.debug(
-                            f'[InvalidationMonitor] Cannot parse invalidation for {pos.symbol}: '
-                            f'no structured fields or direction mismatch in text parsing.'
+                            f"[InvalidationMonitor] Cannot parse invalidation for {pos.symbol}: "
+                            f"no structured fields or direction mismatch in text parsing."
                         )
-                
+
                 if not invalidation_triggered:
                     continue
-                
+
                 # Dedup alert (max once per 4h)
-                alert_key = f'invalidation_alerted_{pos.id}'
-                last_alert = (await session.execute(
-                    _select(SystemConfig).where(SystemConfig.key == alert_key)
-                )).scalar_one_or_none()
+                alert_key = f"invalidation_alerted_{pos.id}"
+                last_alert = (
+                    await session.execute(_select(SystemConfig).where(SystemConfig.key == alert_key))
+                ).scalar_one_or_none()
                 now_str = datetime.now(timezone.utc).isoformat()
-                
+
                 should_alert = True
                 if last_alert and last_alert.value:
                     try:
@@ -429,14 +481,14 @@ class TriggerChecker:
                             should_alert = False
                     except Exception as dt_err:
                         logger.debug(f"Failed to parse last_alert timestamp: {dt_err}")
-                
+
                 if should_alert:
                     alert_msg = (
-                        f'[PERINGATAN] <b>Invalidation Alert — {pos.symbol}</b>\n\n'
-                        f'Position: {pos.direction.upper()} {pos.volume}L @ {pos.entry_price} | ticket={pos.mt5_ticket}\n\n'
-                        f'Condition Triggered: {trigger_desc}\n'
-                        f'Original invalidation: <i>{(analysis.invalidation or "N/A")[:150]}</i>\n\n'
-                        f'Consider closing position manually.'
+                        f"[PERINGATAN] <b>Invalidation Alert — {pos.symbol}</b>\n\n"
+                        f"Position: {pos.direction.upper()} {pos.volume}L @ {pos.entry_price} | ticket={pos.mt5_ticket}\n\n"
+                        f"Condition Triggered: {trigger_desc}\n"
+                        f"Original invalidation: <i>{(analysis.invalidation or 'N/A')[:150]}</i>\n\n"
+                        f"Consider closing position manually."
                     )
                     # Persist alert timestamp FIRST to prevent spam loop
                     if last_alert:
@@ -448,34 +500,44 @@ class TriggerChecker:
                     # Send notification (non-blocking, failure won't cause resend)
                     try:
                         from monika.infrastructure.infra.notifier import AgentNotifier
+
                         await AgentNotifier().send_warning(alert_msg)
-                        logger.warning(f'Invalidation alert sent for {pos.symbol} position {pos.id}')
+                        logger.warning(f"Invalidation alert sent for {pos.symbol} position {pos.id}")
                     except Exception as e:
-                        logger.error(f'Failed to send invalidation alert (state saved, no resend): {e}')
-                        
+                        logger.error(f"Failed to send invalidation alert (state saved, no resend): {e}")
+
                 # Auto-close only if explicitly enabled in configuration
-                auto_close_enabled = self.settings.get('trading', {}).get('position_review', {}).get('auto_close_on_invalidation', False) or \
-                                     self.settings.get('trading', {}).get('trigger_checker', {}).get('auto_close_on_invalidation', False)
+                auto_close_enabled = self.settings.get("trading", {}).get("position_review", {}).get(
+                    "auto_close_on_invalidation", False
+                ) or self.settings.get("trading", {}).get("trigger_checker", {}).get(
+                    "auto_close_on_invalidation", False
+                )
                 if self._execution_service and auto_close_enabled:
-                    logger.warning(f'Auto-closing position {pos.mt5_ticket} due to invalidation (auto_close_on_invalidation=True).')
+                    logger.warning(
+                        f"Auto-closing position {pos.mt5_ticket} due to invalidation (auto_close_on_invalidation=True)."
+                    )
                     try:
                         await self._execution_service.close_position_by_ticket(
-                            ticket=pos.mt5_ticket, 
-                            requested_by="TriggerChecker", 
-                            reason=f"Invalidation hit: {trigger_desc}"
+                            ticket=pos.mt5_ticket,
+                            requested_by="TriggerChecker",
+                            reason=f"Invalidation hit: {trigger_desc}",
                         )
                     except Exception as close_err:
-                        logger.error(f'Failed to auto-close {pos.symbol} ticket {pos.mt5_ticket}: {close_err}')
+                        logger.error(f"Failed to auto-close {pos.symbol} ticket {pos.mt5_ticket}: {close_err}")
                 elif not auto_close_enabled:
-                    logger.info(f'Position {pos.mt5_ticket} invalidation triggered but auto-close is disabled in settings. Notification sent.')
-                
-                alerts.append({
-                    'symbol': pos.symbol,
-                    'ticket': pos.mt5_ticket,
-                    'trigger_desc': trigger_desc,
-                    'invalidation_text': analysis.invalidation,
-                })
-                
+                    logger.info(
+                        f"Position {pos.mt5_ticket} invalidation triggered but auto-close is disabled in settings. Notification sent."
+                    )
+
+                alerts.append(
+                    {
+                        "symbol": pos.symbol,
+                        "ticket": pos.mt5_ticket,
+                        "trigger_desc": trigger_desc,
+                        "invalidation_text": analysis.invalidation,
+                    }
+                )
+
         return alerts
 
     async def start(self) -> None:
@@ -525,53 +587,78 @@ class TriggerChecker:
         if not self._execution_service:
             return
         from monika.infrastructure.database.models import Position
+
         async with get_session() as session:
-            pos = (await session.execute(
-                select(Position).where(Position.analysis_id == trigger.asset_analysis_id)
-                .where(Position.status == 'open')
-            )).scalar_one_or_none()
+            pos = (
+                await session.execute(
+                    select(Position)
+                    .where(Position.analysis_id == trigger.asset_analysis_id)
+                    .where(Position.status == "open")
+                )
+            ).scalar_one_or_none()
         if not pos or not pos.mt5_ticket:
             return
         try:
             await self._execution_service.close_position_by_ticket(
-                pos.mt5_ticket, requested_by='edge_time_exit', reason='max_hold_minutes reached',
+                pos.mt5_ticket,
+                requested_by="edge_time_exit",
+                reason="max_hold_minutes reached",
             )
-            logger.info(f'[TriggerChecker] Force-closed {pos.symbol} ticket={pos.mt5_ticket} (edge max-hold)')
+            logger.info(f"[TriggerChecker] Force-closed {pos.symbol} ticket={pos.mt5_ticket} (edge max-hold)")
         except Exception as e:
-            logger.error(f'[TriggerChecker] force_close failed for ticket {pos.mt5_ticket}: {e}')
+            logger.error(f"[TriggerChecker] force_close failed for ticket {pos.mt5_ticket}: {e}")
 
     async def _handle_cancel_pending_order(self, trigger: TradeTrigger) -> None:
         """Batalkan pending live order atau pending paper trade yang telah melewati TTL."""
         from monika.infrastructure.database.models import Position, PaperTradeRecord
+
         async with get_session() as session:
             # 1. Batalkan pending live order
-            pending_pos = (await session.execute(
-                select(Position).where(Position.analysis_id == trigger.asset_analysis_id)
-                .where(Position.status == 'pending')
-            )).scalars().all()
+            pending_pos = (
+                (
+                    await session.execute(
+                        select(Position)
+                        .where(Position.analysis_id == trigger.asset_analysis_id)
+                        .where(Position.status == "pending")
+                    )
+                )
+                .scalars()
+                .all()
+            )
             for p in pending_pos:
-                p.status = 'cancelled'
+                p.status = "cancelled"
                 p.closed_at = datetime.now(timezone.utc)
                 if p.mt5_ticket and self._execution_service:
                     try:
-                        adapter = getattr(self._execution_service, '_broker', None) or getattr(self._execution_service, 'broker', None)
-                        if adapter and hasattr(adapter, 'cancel_order'):
+                        adapter = getattr(self._execution_service, "_broker", None) or getattr(
+                            self._execution_service, "broker", None
+                        )
+                        if adapter and hasattr(adapter, "cancel_order"):
                             await adapter.cancel_order(p.mt5_ticket)
                     except Exception as e:
                         logger.error(f"[TriggerChecker] Failed to cancel broker order {p.mt5_ticket}: {e}")
 
             # 2. Batalkan pending paper trade
-            pending_paper = (await session.execute(
-                select(PaperTradeRecord).where(PaperTradeRecord.analysis_id == trigger.asset_analysis_id)
-                .where(PaperTradeRecord.status == 'pending')
-            )).scalars().all()
+            pending_paper = (
+                (
+                    await session.execute(
+                        select(PaperTradeRecord)
+                        .where(PaperTradeRecord.analysis_id == trigger.asset_analysis_id)
+                        .where(PaperTradeRecord.status == "pending")
+                    )
+                )
+                .scalars()
+                .all()
+            )
             for pt in pending_paper:
-                pt.status = 'cancelled'
-                pt.exit_reason = 'Cancelled: TTL expired'
+                pt.status = "cancelled"
+                pt.exit_reason = "Cancelled: TTL expired"
                 pt.closed_at = datetime.now(timezone.utc)
 
             await safe_commit(session, label="cancel_pending_ttl")
-            logger.info(f"[TriggerChecker] Cancelled pending orders for analysis_id={trigger.asset_analysis_id} (TTL expired)")
+            logger.info(
+                f"[TriggerChecker] Cancelled pending orders for analysis_id={trigger.asset_analysis_id} (TTL expired)"
+            )
 
     def _spawn_background_reanalysis(self, symbol: str) -> None:
         """Spawn background reanalysis task with reference retention and deduplication."""
@@ -592,14 +679,10 @@ class TriggerChecker:
             if cycle_lock:
                 async with cycle_lock:
                     async with get_session() as session:
-                        await self._per_asset.run_one(
-                            session, symbol, bypass_prescreen=True, skip_cooldown=True
-                        )
+                        await self._per_asset.run_one(session, symbol, bypass_prescreen=True, skip_cooldown=True)
             else:
                 async with get_session() as session:
-                    await self._per_asset.run_one(
-                        session, symbol, bypass_prescreen=True, skip_cooldown=True
-                    )
+                    await self._per_asset.run_one(session, symbol, bypass_prescreen=True, skip_cooldown=True)
         except Exception as e:
             logger.error(f"Background re-analysis failed for {symbol}: {e}")
         finally:
@@ -623,10 +706,7 @@ class TriggerChecker:
 
     async def _get_pending_triggers(self, session: AsyncSession) -> list[TradeTrigger]:
         """Ambil pending triggers."""
-        result = await session.execute(
-            select(TradeTrigger)
-            .where(TradeTrigger.status == "pending")
-        )
+        result = await session.execute(select(TradeTrigger).where(TradeTrigger.status == "pending"))
         return list(result.scalars().all())
 
     async def _fire_trigger(self, session: AsyncSession, trigger: TradeTrigger) -> Optional[str]:
@@ -635,9 +715,7 @@ class TriggerChecker:
 
         # Mark fired
         await session.execute(
-            update(TradeTrigger)
-            .where(TradeTrigger.id == trigger.id)
-            .values(status="fired", fired_at=now)
+            update(TradeTrigger).where(TradeTrigger.id == trigger.id).values(status="fired", fired_at=now)
         )
 
         # Get the symbol from the linked AssetAnalysis or condition_json
@@ -657,15 +735,17 @@ class TriggerChecker:
         except Exception as json_err:
             logger.debug(f"Failed to parse trigger {trigger.id} condition_json for activity log: {json_err}")
 
-        session.add(ActivityLog(
-            category="trading",
-            description=(
-                f"Trigger FIRED: id={trigger.id} type={trigger.trigger_type} "
-                f"symbol={symbol} condition={json.dumps(condition)[:200]}"
-            ),
-            related_id=trigger.id,
-            actor="trigger_checker",
-        ))
+        session.add(
+            ActivityLog(
+                category="trading",
+                description=(
+                    f"Trigger FIRED: id={trigger.id} type={trigger.trigger_type} "
+                    f"symbol={symbol} condition={json.dumps(condition)[:200]}"
+                ),
+                related_id=trigger.id,
+                actor="trigger_checker",
+            )
+        )
         await safe_commit(session, label="fire_trigger")
         logger.info(f"Trigger {trigger.id} fired: {trigger.trigger_type} for {symbol}")
         return symbol
@@ -674,7 +754,7 @@ class TriggerChecker:
     # Condition evaluators (pure logic, no LLM call)
     # ------------------------------------------------------------------
 
-    async def _evaluate_trigger(self, trigger: TradeTrigger) -> 'bool | str':
+    async def _evaluate_trigger(self, trigger: TradeTrigger) -> "bool | str":
         """Evaluasi apakah kondisi terpenuhi (True), belum (False), kedaluwarsa ('expired'), atau cacat ('invalid')."""
         trigger_type = trigger.trigger_type
         if trigger_type and trigger_type.startswith("price_") and trigger_type not in ("price_level", "price"):
@@ -706,7 +786,7 @@ class TriggerChecker:
             logger.debug(f"Unknown trigger type: {trigger_type}")
             return "invalid"
 
-    def _check_macro_event(self, trigger: TradeTrigger, condition: dict) -> 'bool | str':
+    def _check_macro_event(self, trigger: TradeTrigger, condition: dict) -> "bool | str":
         """
         Evaluates macro_event triggers (e.g. post-NFP/CPI settlement).
         Fires only after the post-event settlement window (default 15 minutes) has elapsed.
@@ -720,6 +800,7 @@ class TriggerChecker:
                 event_dt = datetime.fromtimestamp(raw_time, tz=timezone.utc)
             else:
                 import dateutil.parser as dparser
+
                 event_dt = dparser.parse(str(raw_time))
                 if event_dt.tzinfo is None:
                     event_dt = event_dt.replace(tzinfo=timezone.utc)
@@ -737,7 +818,7 @@ class TriggerChecker:
             logger.debug(f"Error checking macro_event trigger {trigger.id}: {e}")
             return False
 
-    async def _check_price_level(self, trigger: TradeTrigger, condition: dict) -> 'bool | str':
+    async def _check_price_level(self, trigger: TradeTrigger, condition: dict) -> "bool | str":
         """Evaluasi harga crossing level (above/below)."""
         raw_price = condition.get("price") if condition.get("price") is not None else condition.get("target_price")
         direction = condition.get("direction") or condition.get("condition")  # "above" or "below"
@@ -745,19 +826,20 @@ class TriggerChecker:
 
         if (raw_price is None or not direction) and condition.get("detail"):
             import re
+
             text = condition.get("detail", "").lower()
-            above_m = re.search(r'(?:above|break[s]?\s+above|over|reache[s]?|hit[s]?)\s+([\d,]+(?:\.\d+)?)', text)
-            below_m = re.search(r'(?:below|break[s]?\s+below|under|drop[s]?\s+to)\s+([\d,]+(?:\.\d+)?)', text)
+            above_m = re.search(r"(?:above|break[s]?\s+above|over|reache[s]?|hit[s]?)\s+([\d,]+(?:\.\d+)?)", text)
+            below_m = re.search(r"(?:below|break[s]?\s+below|under|drop[s]?\s+to)\s+([\d,]+(?:\.\d+)?)", text)
             if above_m and raw_price is None:
                 try:
-                    raw_price = float(above_m.group(1).replace(',', ''))
-                    direction = 'above'
+                    raw_price = float(above_m.group(1).replace(",", ""))
+                    direction = "above"
                 except ValueError:
                     pass
             elif below_m and raw_price is None:
                 try:
-                    raw_price = float(below_m.group(1).replace(',', ''))
-                    direction = 'below'
+                    raw_price = float(below_m.group(1).replace(",", ""))
+                    direction = "below"
                 except ValueError:
                     pass
 
@@ -767,18 +849,18 @@ class TriggerChecker:
 
         try:
             price = float(raw_price)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Invalid price value '{raw_price}' in trigger {trigger.id}")
             return "invalid"
 
         async with get_session() as session:
             from monika.infrastructure.database.models import PriceOHLCV
-            last_bar = (await session.execute(
-                select(PriceOHLCV)
-                .where(PriceOHLCV.symbol == symbol)
-                .order_by(PriceOHLCV.timestamp.desc())
-                .limit(1)
-            )).scalar_one_or_none()
+
+            last_bar = (
+                await session.execute(
+                    select(PriceOHLCV).where(PriceOHLCV.symbol == symbol).order_by(PriceOHLCV.timestamp.desc()).limit(1)
+                )
+            ).scalar_one_or_none()
 
             if last_bar is None:
                 return False
@@ -789,12 +871,14 @@ class TriggerChecker:
                 if bar_ts.tzinfo is None:
                     bar_ts = bar_ts.replace(tzinfo=timezone.utc)
                 if (now - bar_ts).total_seconds() > 7200:
-                    logger.debug(f"TriggerChecker: bar data for {symbol} is older than 2h ({last_bar.timestamp}), skipping price level trigger.")
+                    logger.debug(
+                        f"TriggerChecker: bar data for {symbol} is older than 2h ({last_bar.timestamp}), skipping price level trigger."
+                    )
                     return False
 
             try:
                 current_price = float(last_bar.close)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 return False
 
             is_met = False
@@ -812,14 +896,14 @@ class TriggerChecker:
                     vol = float(getattr(last_bar, "volume", 0.0) or 0.0)
                     if vol < float(min_vol):
                         return False
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
 
             return True
 
         return False
 
-    async def _check_indicator(self, trigger: TradeTrigger, condition: dict) -> 'bool | str':
+    async def _check_indicator(self, trigger: TradeTrigger, condition: dict) -> "bool | str":
         """Evaluasi nilai indikator crossing threshold."""
         indicator_name = condition.get("indicator")
         symbol = condition.get("symbol")
@@ -832,19 +916,21 @@ class TriggerChecker:
 
         try:
             threshold = float(raw_threshold)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Invalid threshold value '{raw_threshold}' in trigger {trigger.id}")
             return "invalid"
 
         async with get_session() as session:
-            row = (await session.execute(
-                select(TechnicalIndicator)
-                .where(TechnicalIndicator.symbol == symbol)
-                .where(TechnicalIndicator.timeframe == timeframe)
-                .where(TechnicalIndicator.indicator_name == indicator_name)
-                .order_by(TechnicalIndicator.timestamp.desc())
-                .limit(1)
-            )).scalar_one_or_none()
+            row = (
+                await session.execute(
+                    select(TechnicalIndicator)
+                    .where(TechnicalIndicator.symbol == symbol)
+                    .where(TechnicalIndicator.timeframe == timeframe)
+                    .where(TechnicalIndicator.indicator_name == indicator_name)
+                    .order_by(TechnicalIndicator.timestamp.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
 
             if row is None:
                 return False
@@ -864,13 +950,13 @@ class TriggerChecker:
                     return numeric >= float(threshold)
                 elif direction == "below":
                     return numeric <= float(threshold)
-            except (TypeError, ValueError, StopIteration):
+            except TypeError, ValueError, StopIteration:
                 pass
 
         return False
 
     @staticmethod
-    def _check_time(trigger: TradeTrigger, condition: dict) -> 'bool | str':
+    def _check_time(trigger: TradeTrigger, condition: dict) -> "bool | str":
         """Evaluasi waktu tercapai (time-based)."""
         fire_at_str = condition.get("fire_at")
         if fire_at_str:
@@ -881,7 +967,7 @@ class TriggerChecker:
                 return datetime.now(timezone.utc) >= fire_at
             except ValueError:
                 return "invalid"
-                
+
         return TriggerChecker._trigger_age_exceeded(trigger, max_hours=6)
 
     @staticmethod
@@ -900,7 +986,7 @@ class TriggerChecker:
         trigger: TradeTrigger,
         current_price: Optional[float] = None,
         symbol: Optional[str] = None,
-        macro_context: Optional[str] = None
+        macro_context: Optional[str] = None,
     ) -> dict:
         """
         Evaluates whether a pending trade trigger remains valid given market price and macro context
@@ -909,14 +995,19 @@ class TriggerChecker:
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
             from typesafe_sdk import Noul, Score
+
             client = get_client_for_task("jev_trigger_validator", self.settings)
-            
+
             created = trigger.created_at
             if created and created.tzinfo is None:
                 created = created.replace(tzinfo=timezone.utc)
             age_hours = (datetime.now(timezone.utc) - created).total_seconds() / 3600 if created else 0.0
 
-            resolved_symbol = symbol or getattr(getattr(trigger, "analysis", None), "symbol", None) or getattr(trigger, "symbol", "UNKNOWN")
+            resolved_symbol = (
+                symbol
+                or getattr(getattr(trigger, "analysis", None), "symbol", None)
+                or getattr(trigger, "symbol", "UNKNOWN")
+            )
 
             state = {
                 "symbol": resolved_symbol,
@@ -924,7 +1015,7 @@ class TriggerChecker:
                 "trigger_condition": trigger.condition_json,
                 "current_price": current_price,
                 "age_hours": round(age_hours, 1),
-                "macro_context": (macro_context or "")[:500]
+                "macro_context": (macro_context or "")[:500],
             }
 
             questions = {
@@ -937,9 +1028,9 @@ class TriggerChecker:
                         "No risk — setup intact",
                         "Low risk — minor deviation",
                         "Moderate risk — requires fresh check",
-                        "High risk — conditions severely invalidated"
-                    ]
-                )
+                        "High risk — conditions severely invalidated",
+                    ],
+                ),
             }
 
             res = await client.classify_json(prompt="", state=state, jev_questions=questions)

@@ -23,16 +23,18 @@ class BackgroundReviewEngine:
     """
 
     # Transient infrastructure errors that should NOT be captured as trading strategy lessons
-    DO_NOT_CAPTURE: FrozenSet[str] = frozenset({
-        "broker_connection_lost",
-        "spread_widened_temporarily",
-        "api_rate_limited",
-        "mt5_timeout_reconnected",
-        "transient_network_error",
-        "session_closed_normal",
-        "server_maintenance",
-        "ping_timeout",
-    })
+    DO_NOT_CAPTURE: FrozenSet[str] = frozenset(
+        {
+            "broker_connection_lost",
+            "spread_widened_temporarily",
+            "api_rate_limited",
+            "mt5_timeout_reconnected",
+            "transient_network_error",
+            "session_closed_normal",
+            "server_maintenance",
+            "ping_timeout",
+        }
+    )
 
     def __init__(
         self,
@@ -47,10 +49,13 @@ class BackgroundReviewEngine:
             try:
                 from monika.infrastructure.providers.llm_factory import get_client_for_task
                 from monika.application.analysis.memory.reflector import TradeReflector
+
                 aux_client = get_client_for_task("trade_reflection", self.settings)
                 if aux_client:
                     self.reflector = TradeReflector(llm_client=aux_client)
-                    logger.info(f"BackgroundReviewEngine initialized with auxiliary model: {getattr(aux_client, 'model', 'default')}")
+                    logger.info(
+                        f"BackgroundReviewEngine initialized with auxiliary model: {getattr(aux_client, 'model', 'default')}"
+                    )
             except Exception as e:
                 logger.debug(f"Could not auto-initialize TradeReflector: {e}")
         self.crystallizer = crystallizer
@@ -132,12 +137,14 @@ class BackgroundReviewEngine:
             try:
                 if hasattr(self.reflector, "reflect_on_trade"):
                     import inspect
+
                     sig_params = list(inspect.signature(self.reflector.reflect_on_trade).parameters.values())
                     reflection_id = outcome.get("reflection_id") or outcome.get("ticket")
                     if len(sig_params) == 1:
                         reflection = await self.reflector.reflect_on_trade(outcome)
                     elif reflection_id:
                         from monika.infrastructure.database.async_db import get_session
+
                         async with get_session() as session:
                             reflection = await self.reflector.reflect_on_trade(session, int(reflection_id))
                     else:
@@ -153,6 +160,7 @@ class BackgroundReviewEngine:
                 if hasattr(self.crystallizer, "evaluate_and_crystallize"):
                     # If DB session provider is present
                     from monika.infrastructure.database.async_db import get_session
+
                     async with get_session() as session:
                         await self.crystallizer.evaluate_and_crystallize(session, symbol=symbol)
             except Exception as cry_err:

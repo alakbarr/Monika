@@ -50,6 +50,7 @@ def test_emergency_exit_code_sync_with_main_module():
 
 def test_task_registry_operations():
     import asyncio
+
     shutdown_event = asyncio.Event()
     registry = TaskRegistry(shutdown_event)
 

@@ -83,7 +83,7 @@ class VerificationEvidenceLedger:
                 raw_tp = tool_input.get("tp") or tool_input.get("take_profit")
                 if raw_tp is not None:
                     tp = float(raw_tp)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
 
         record = VerificationRecord(
@@ -117,8 +117,10 @@ class VerificationEvidenceLedger:
         """
         clean_sym = str(symbol).upper() if symbol else None
         passed_sizing = [
-            r for r in self.records
-            if r.status == "passed" and r.tool_name in ("calculate_position_size", "validate_risk_limits")
+            r
+            for r in self.records
+            if r.status == "passed"
+            and r.tool_name in ("calculate_position_size", "validate_risk_limits")
             and (clean_sym is None or r.symbol == clean_sym or r.symbol is None)
         ]
         if not passed_sizing:
@@ -140,6 +142,7 @@ class VerificationEvidenceLedger:
         """Return list of passed records for a symbol."""
         clean_sym = str(symbol).upper() if symbol else None
         return [
-            r for r in self.records
+            r
+            for r in self.records
             if r.status == "passed" and (clean_sym is None or r.symbol == clean_sym or r.symbol is None)
         ]

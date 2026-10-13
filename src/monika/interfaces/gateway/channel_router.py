@@ -41,7 +41,6 @@ class ChannelRouter:
         self,
         pipeline_fn: Callable[[str, str, Dict[str, Any]], Any],
     ) -> None:
-
         """Set the agent execution callback (session_id, user_text, metadata) -> reply_text."""
         self.message_pipeline = pipeline_fn
 

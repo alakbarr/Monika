@@ -31,7 +31,7 @@ MARKET_SESSIONS_UTC = {
 def parse_natural_schedule(text: str) -> Tuple[Optional[str], Optional[float], str]:
     """
     Parse natural language schedule expression.
-    
+
     Returns:
         (cron_expr, interval_seconds, human_description)
         Exactly one of cron_expr or interval_seconds will be set.
@@ -53,13 +53,28 @@ def parse_natural_schedule(text: str) -> Tuple[Optional[str], Optional[float], s
     # 3. Indonesian & English Day-of-week with specific time & timezone
     # e.g., "setiap Senin jam 8 pagi WIB", "every monday at 8:00 WIB", "setiap hari jam 06:00"
     day_map = {
-        "senin": 1, "monday": 1, "mon": 1,
-        "selasa": 2, "tuesday": 2, "tue": 2,
-        "rabu": 3, "wednesday": 3, "wed": 3,
-        "kamis": 4, "thursday": 4, "thu": 4,
-        "jumat": 5, "friday": 5, "fri": 5,
-        "sabtu": 6, "saturday": 6, "sat": 6,
-        "minggu": 0, "ahad": 0, "sunday": 0, "sun": 0,
+        "senin": 1,
+        "monday": 1,
+        "mon": 1,
+        "selasa": 2,
+        "tuesday": 2,
+        "tue": 2,
+        "rabu": 3,
+        "wednesday": 3,
+        "wed": 3,
+        "kamis": 4,
+        "thursday": 4,
+        "thu": 4,
+        "jumat": 5,
+        "friday": 5,
+        "fri": 5,
+        "sabtu": 6,
+        "saturday": 6,
+        "sat": 6,
+        "minggu": 0,
+        "ahad": 0,
+        "sunday": 0,
+        "sun": 0,
     }
 
     # Detect timezone offset
@@ -129,7 +144,9 @@ def parse_natural_schedule(text: str) -> Tuple[Optional[str], Optional[float], s
         return "0 * * * *", None, "Every hour"
 
     # 7. Daily at specific time ("daily at HH:MM", "every day at HH:MM", "setiap hari jam HH:MM")
-    daily_time_match = re.search(r"(?:daily|every\s+day|setiap\s+hari|tiap\s+hari)\s+(?:at|jam|pukul)\s+(\d{1,2})(?::(\d{2}))?", raw)
+    daily_time_match = re.search(
+        r"(?:daily|every\s+day|setiap\s+hari|tiap\s+hari)\s+(?:at|jam|pukul)\s+(\d{1,2})(?::(\d{2}))?", raw
+    )
     if daily_time_match:
         h = int(daily_time_match.group(1))
         m = int(daily_time_match.group(2) or 0)

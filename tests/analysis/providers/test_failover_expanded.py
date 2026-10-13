@@ -88,12 +88,8 @@ def test_resolve_effective_context_window_cascade():
     # Tier 2: Settings overrides catalog/heuristics
     settings = {
         "llm": {
-            "models": {
-                "custom-trader-v1": {"context_window": 45000}
-            },
-            "providers": {
-                "groq": {"context_window": 65536}
-            }
+            "models": {"custom-trader-v1": {"context_window": 45000}},
+            "providers": {"groq": {"context_window": 65536}},
         }
     }
     assert resolve_effective_context_window("custom-trader-v1", settings=settings) == 45000
@@ -146,5 +142,3 @@ def test_endpoint_blackhole_lifecycle():
     # Sleep past TTL
     time.sleep(1.05)
     assert not EndpointBlackhole.is_blackholed("ollama-local")
-
-

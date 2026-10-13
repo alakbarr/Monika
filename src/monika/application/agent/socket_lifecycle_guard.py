@@ -38,11 +38,11 @@ def retire_socket_ownership_safe(sock: Optional[socket.socket]) -> bool:
     """
     Safely retires a socket by invoking shutdown(SHUT_RDWR) without immediately
     releasing the underlying OS file descriptor.
-    
+
     This ensures that any concurrent or abandoned thread reading from OpenSSL BIO
     receives an immediate network EOF/EPIPE and cleanly terminates its stack unwinding,
     preventing the OS kernel from immediately recycling the FD integer.
-    
+
     Returns:
         True if shutdown was successfully signaled, False otherwise.
     """
@@ -128,7 +128,7 @@ def get_socket_guard_diagnostics() -> dict:
     with _RETIREMENT_LOCK:
         active_graveyard_count = len(_RETIRED_SOCKETS)
         open_fds = [s.fileno() for s in _RETIRED_SOCKETS if s.fileno() != -1]
-        
+
     return {
         "status": "healthy",
         "graveyard_size": active_graveyard_count,
@@ -136,4 +136,3 @@ def get_socket_guard_diagnostics() -> dict:
         "active_retired_fds": open_fds,
         "fd_leak_risk": "none" if active_graveyard_count < _MAX_GRAVEYARD_SIZE * 0.8 else "elevated",
     }
-

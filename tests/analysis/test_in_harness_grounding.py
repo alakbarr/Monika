@@ -1,6 +1,7 @@
 import pytest
 from analysis.validators.in_harness_grounding import InHarnessGroundingValidator
 
+
 def test_grounding_valid_setup():
     data_bundle = {
         "current_price": 2735.0,
@@ -8,7 +9,7 @@ def test_grounding_valid_setup():
         "smc_zones": [
             {"price_low": 2730.0, "price_high": 2735.0, "type": "OB", "is_mitigated": False},
             {"price_low": 2710.0, "price_high": 2715.0, "type": "FVG", "is_mitigated": False},
-        ]
+        ],
     }
     proposal = {
         "decision": "BUY",
@@ -18,12 +19,13 @@ def test_grounding_valid_setup():
         "key_evidence": [
             "Price mitigating H4 unmitigated order block at 2730.00-2735.00",
             "Stop loss set at 2718.00 giving 1.13x ATR buffer from 15.0 ATR",
-        ]
+        ],
     }
     is_grounded, errors, metadata = InHarnessGroundingValidator.verify_grounding(proposal, data_bundle, "XAUUSD")
     assert is_grounded is True
     assert len(errors) == 0
     assert metadata["verified_anchors"] >= 2
+
 
 def test_grounding_rejects_tight_sl():
     data_bundle = {
@@ -40,13 +42,14 @@ def test_grounding_rejects_tight_sl():
     assert is_grounded is False
     assert any("too tight for market noise" in e for e in errors)
 
+
 def test_grounding_rejects_hallucinated_zone():
     data_bundle = {
         "current_price": 2735.0,
         "atr_14": 15.0,
         "smc_zones": [
             {"price_low": 2710.0, "price_high": 2715.0, "type": "FVG", "is_mitigated": False},
-        ]
+        ],
     }
     proposal = {
         "decision": "BUY",
@@ -60,6 +63,7 @@ def test_grounding_rejects_hallucinated_zone():
     assert is_grounded is False
     assert any("does not match any empirical unmitigated zone" in e for e in errors)
     assert metadata["hallucination_flags"] >= 1
+
 
 def test_grounding_allows_wait_decision():
     proposal = {"decision": "WAIT", "rationale": "Confluence score insufficient."}

@@ -35,6 +35,7 @@ logger = logging.getLogger("Monika.Application.TradingService")
 @dataclass
 class OrderPreviewResult:
     """Pre-trade verification calculation with time-limited confirmation token."""
+
     symbol: str
     action: str
     volume: float
@@ -53,6 +54,7 @@ class OrderPreviewResult:
 @dataclass
 class TradeExecutionResult:
     """Execution outcome from broker adapter or paper emulator."""
+
     success: bool
     ticket: Optional[int] = None
     order_id: Optional[str] = None
@@ -201,6 +203,7 @@ class TradingService:
         if not is_paper:
             try:
                 from monika.domain.risk.trade_proposal import TradeProposal
+
                 prop_dir = "BUY" if act == "BUY" else ("SELL" if act == "SELL" else "WAIT")
                 proposal = TradeProposal(
                     symbol=sym,
@@ -217,6 +220,7 @@ class TradingService:
                 else:
                     from monika.domain.risk.risk_gate import RiskGate
                     from monika.core.config.settings import load_settings
+
                     rg = RiskGate(settings=load_settings(), mt5_client=broker_adapter)
                 verdict = await rg.evaluate_proposal(session, proposal, is_paper=False)
                 if not verdict.approved:
@@ -315,7 +319,9 @@ class TradingService:
                     live_ticket = int(live_res.get("ticket") or live_res.get("order") or int(time.time()))
                     exec_price = float(live_res.get("price") or entry_price)
                 else:
-                    live_ticket = int(getattr(live_res, "order", None) or getattr(live_res, "ticket", None) or int(time.time()))
+                    live_ticket = int(
+                        getattr(live_res, "order", None) or getattr(live_res, "ticket", None) or int(time.time())
+                    )
                     exec_price = float(getattr(live_res, "price", None) or entry_price)
 
                 await pos_repo.create_position(

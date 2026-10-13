@@ -50,7 +50,6 @@ async def setup_sqlite_concurrency_db(tmp_path: Path, monkeypatch: pytest.Monkey
 
 
 class TestDatabaseConcurrency:
-
     @pytest.mark.asyncio
     async def test_concurrent_readers(self, setup_sqlite_concurrency_db: Path):
         """Verify 20 concurrent readers execute without lock contention or pool exhaustion."""
@@ -82,6 +81,7 @@ class TestDatabaseConcurrency:
     @pytest.mark.asyncio
     async def test_concurrent_writers(self, setup_sqlite_concurrency_db: Path):
         """Verify 10 concurrent writers serialize safely through get_write_session."""
+
         async def writer_task(writer_id: int) -> None:
             async with get_write_session() as session:
                 session.add(
@@ -144,6 +144,7 @@ class TestDatabaseConcurrency:
     @pytest.mark.asyncio
     async def test_rollback_safety_under_concurrency(self, setup_sqlite_concurrency_db: Path):
         """Verify failure in write transaction triggers safe rollback without wedging mutex."""
+
         async def failing_writer(writer_id: int) -> None:
             try:
                 async with get_write_session() as session:
@@ -230,4 +231,3 @@ class TestDatabaseConcurrency:
             )
             count_bulk = res_bulk.scalar()
             assert count_bulk == 15
-

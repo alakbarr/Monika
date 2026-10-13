@@ -27,6 +27,7 @@ class MacroDataScheduler:
     """
     Background worker mandiri untuk me-refresh 11 sumber data makro & sentimen.
     """
+
     _global_sync_locks: dict[Any, asyncio.Lock] = {}
 
     @classmethod
@@ -66,181 +67,209 @@ class MacroDataScheduler:
             # 1. Coinglass Funding
             try:
                 from monika.infrastructure.data_ingestion.sources.coinglass_funding import CoinglasFundingFetcher
+
                 async with get_session() as session:
                     fetcher = CoinglasFundingFetcher(session)
                     fg = await fetcher.fetch()
-                    results['btc_funding'] = fg
+                    results["btc_funding"] = fg
                     logger.info("MacroDataScheduler: Coinglass funding refreshed")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Coinglass funding fetch failed: {e}")
-                results['btc_funding'] = {'error': str(e)}
+                results["btc_funding"] = {"error": str(e)}
 
             # 2. Binance Sentiment
             try:
-                from monika.infrastructure.data_ingestion.scrapers.sentiment.binance_sentiment import BinanceSentimentFetcher
+                from monika.infrastructure.data_ingestion.scrapers.sentiment.binance_sentiment import (
+                    BinanceSentimentFetcher,
+                )
+
                 async with get_session() as session:
                     fetcher = BinanceSentimentFetcher(session)
                     sentiment = await fetcher.fetch()
-                    results['binance_sentiment'] = sentiment
+                    results["binance_sentiment"] = sentiment
                     logger.info("MacroDataScheduler: Binance retail sentiment refreshed")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Binance sentiment fetch failed: {e}")
-                results['binance_sentiment'] = {'error': str(e)}
+                results["binance_sentiment"] = {"error": str(e)}
 
             # 3. MyFxBook Sentiment
             try:
-                from monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
+                from monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment import (
+                    MyFxBookSentimentFetcher,
+                )
+
                 async with get_session() as session:
                     fetcher = MyFxBookSentimentFetcher(session)
                     sentiment = await fetcher.fetch()
-                    results['myfxbook_sentiment'] = sentiment
+                    results["myfxbook_sentiment"] = sentiment
                     logger.info("MacroDataScheduler: MyFxBook retail sentiment refreshed")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: MyFxBook sentiment fetch failed: {e}")
-                results['myfxbook_sentiment'] = {'error': str(e)}
+                results["myfxbook_sentiment"] = {"error": str(e)}
 
             # 4. FXSSI Sentiment
             try:
-                from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
+                from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import (
+                    FXSSISentimentFetcher,
+                )
+
                 async with get_session() as session:
                     fetcher = FXSSISentimentFetcher(session)
                     sentiment = await fetcher.fetch()
-                    results['fxssi_sentiment'] = sentiment
+                    results["fxssi_sentiment"] = sentiment
                     logger.info("MacroDataScheduler: FXSSI retail sentiment refreshed")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: FXSSI sentiment fetch failed: {e}")
-                results['fxssi_sentiment'] = {'error': str(e)}
+                results["fxssi_sentiment"] = {"error": str(e)}
 
             # 5. VIX (Multi-tier: Yahoo Direct, CBOE CDN, FRED, yfinance)
             try:
                 from monika.infrastructure.data_ingestion.sources.vix_yfinance import VIXFetcher
-                fred_key = self.settings.get('data_sources', {}).get('fred', {}).get('api_key')
+
+                fred_key = self.settings.get("data_sources", {}).get("fred", {}).get("api_key")
                 async with get_session() as session:
                     fetcher = VIXFetcher(session, fred_api_key=fred_key)
-                    n = await fetcher.fetch(period='5d')
-                    results['vix'] = {'saved': n}
+                    n = await fetcher.fetch(period="5d")
+                    results["vix"] = {"saved": n}
                     logger.info(f"MacroDataScheduler: VIX refreshed ({n} records)")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: VIX refresh failed: {e}")
-                results['vix'] = {'error': str(e)}
+                results["vix"] = {"error": str(e)}
 
             # 6. FRED Treasury Yields
             try:
                 from monika.infrastructure.data_ingestion.sources.fred_treasury_yield import FREDDataFetcher
+
                 async with get_session() as session:
-                    fetcher = FREDDataFetcher(session, self.settings.get('data_sources', {}).get('fred', {}))
+                    fetcher = FREDDataFetcher(session, self.settings.get("data_sources", {}).get("fred", {}))
                     r = await fetcher.fetch_all()
-                    results['fred'] = r
+                    results["fred"] = r
                     logger.info(f"MacroDataScheduler: FRED refreshed: {r}")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: FRED refresh failed: {e}")
-                results['fred'] = {'error': str(e)}
+                results["fred"] = {"error": str(e)}
 
             # 7. CFTC COT Report
             try:
                 from monika.infrastructure.data_ingestion.sources.cftc_cot import CFTCCOTFetcher
+
                 async with get_session() as session:
-                    fetcher = CFTCCOTFetcher(session, self.settings.get('data_sources', {}).get('cftc_cot', {}))
+                    fetcher = CFTCCOTFetcher(session, self.settings.get("data_sources", {}).get("cftc_cot", {}))
                     n = await fetcher.fetch_all()
-                    results['cftc'] = {'saved': n}
+                    results["cftc"] = {"saved": n}
                     logger.info(f"MacroDataScheduler: CFTC COT refreshed ({n} records)")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: CFTC refresh failed: {e}")
-                results['cftc'] = {'error': str(e)}
+                results["cftc"] = {"error": str(e)}
 
             # 8. DXY (Yahoo Finance)
             try:
                 from monika.infrastructure.data_ingestion.sources.dxy_yfinance import DXYFetcher
+
                 async with get_session() as session:
                     fetcher = DXYFetcher(session)
-                    n = await fetcher.fetch(period='15d')
-                    results['dxy'] = {'saved': n}
+                    n = await fetcher.fetch(period="15d")
+                    results["dxy"] = {"saved": n}
                     logger.info(f"MacroDataScheduler: DXY refreshed ({n} records)")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: DXY refresh failed: {e}")
-                results['dxy'] = {'error': str(e)}
+                results["dxy"] = {"error": str(e)}
 
             # 9. Bond Yields (Yahoo Finance)
             try:
                 from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import BondYieldFetcher
+
                 async with get_session() as session:
                     fetcher = BondYieldFetcher(session)
-                    r = await fetcher.fetch(period='15d')
-                    results['bond_yields'] = r
+                    r = await fetcher.fetch(period="15d")
+                    results["bond_yields"] = r
                     logger.info(f"MacroDataScheduler: Bond yields refreshed: {r}")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Bond yields refresh failed: {e}")
-                results['bond_yields'] = {'error': str(e)}
+                results["bond_yields"] = {"error": str(e)}
 
             # 10. Crypto Fear & Greed Index
             try:
                 from monika.infrastructure.data_ingestion.sources.fear_greed import FearGreedFetcher
+
                 async with get_session() as session:
                     fetcher = FearGreedFetcher(session)
                     fg = await fetcher.fetch()
-                    results['fear_greed'] = {
-                        'value': fg.get('current_value'),
-                        'classification': fg.get('classification')
+                    results["fear_greed"] = {
+                        "value": fg.get("current_value"),
+                        "classification": fg.get("classification"),
                     }
                     logger.info(f"MacroDataScheduler: Fear & Greed refreshed ({fg.get('current_value')})")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Fear & Greed fetch failed: {e}")
-                results['fear_greed'] = {'error': str(e)}
+                results["fear_greed"] = {"error": str(e)}
 
             # 11. EIA Oil Inventory
             try:
                 from monika.infrastructure.data_ingestion.sources.eia_oil_inventory import EIAInventoryFetcher
+
                 is_wednesday = datetime.now(timezone.utc).weekday() == 2
                 if is_wednesday:
                     async with get_session() as session:
                         fetcher = EIAInventoryFetcher(session)
                         eia = await fetcher.fetch()
-                        results['eia_oil'] = eia
+                        results["eia_oil"] = eia
                         logger.info("MacroDataScheduler: EIA Oil inventory refreshed")
                 else:
-                    results['eia_oil'] = {'status': 'skipped_not_wednesday'}
+                    results["eia_oil"] = {"status": "skipped_not_wednesday"}
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: EIA fetch failed: {e}")
-                results['eia_oil'] = {'error': str(e)}
+                results["eia_oil"] = {"error": str(e)}
 
             # 12. Central Bank Watch Rate Expectations & Sovereign Curves (Fed, ECB, BoE, BoJ, RBA)
             try:
                 from monika.infrastructure.data_ingestion.sources.central_bank_watch import CentralBankWatchFetcher
+
                 async with get_session() as session:
                     fetcher = CentralBankWatchFetcher(session)
                     cbw = await fetcher.fetch_all()
-                    results['central_bank_watch'] = {
-                        'expectations_count': len(cbw.get('expectations', {})),
-                        'yields_count': len(cbw.get('yields', {})),
+                    results["central_bank_watch"] = {
+                        "expectations_count": len(cbw.get("expectations", {})),
+                        "yields_count": len(cbw.get("yields", {})),
                     }
-                    logger.info(f"MacroDataScheduler: Central Bank Watch refreshed ({len(cbw.get('expectations', {}))} banks, {len(cbw.get('yields', {}))} curves)")
+                    logger.info(
+                        f"MacroDataScheduler: Central Bank Watch refreshed ({len(cbw.get('expectations', {}))} banks, {len(cbw.get('yields', {}))} curves)"
+                    )
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Central Bank Watch fetch failed: {e}")
-                results['central_bank_watch'] = {'error': str(e)}
+                results["central_bank_watch"] = {"error": str(e)}
 
             # 13. Fed H.4.1 Net Liquidity, Treasury Auctions & Market Stress
             try:
-                from monika.infrastructure.data_ingestion.sources.fed_liquidity_h41_fetcher import FedLiquidityH41Fetcher
-                from monika.infrastructure.data_ingestion.sources.market_stress_auction_fetcher import MarketStressAuctionFetcher
+                from monika.infrastructure.data_ingestion.sources.fed_liquidity_h41_fetcher import (
+                    FedLiquidityH41Fetcher,
+                )
+                from monika.infrastructure.data_ingestion.sources.market_stress_auction_fetcher import (
+                    MarketStressAuctionFetcher,
+                )
+
                 async with get_session() as session:
                     fed_fetcher = FedLiquidityH41Fetcher(session)
                     stress_fetcher = MarketStressAuctionFetcher(session)
                     fed_res = await fed_fetcher.fetch_and_store_liquidity()
                     auc_res = await stress_fetcher.fetch_and_store_treasury_auction(tenor="10Y")
                     stress_res = await stress_fetcher.fetch_and_store_credit_and_money_market()
-                    results['systemic_liquidity_and_stress'] = {
-                        'net_liquidity_b': fed_res.get('net_liquidity_billions'),
-                        'auction_yield': auc_res.get('value'),
-                        'stress_metrics': len(stress_res),
+                    results["systemic_liquidity_and_stress"] = {
+                        "net_liquidity_b": fed_res.get("net_liquidity_billions"),
+                        "auction_yield": auc_res.get("value"),
+                        "stress_metrics": len(stress_res),
                     }
-                    logger.info(f"MacroDataScheduler: Fed Net Liquidity (${fed_res.get('net_liquidity_billions'):,.1f}B) and Treasury Auction refreshed")
+                    logger.info(
+                        f"MacroDataScheduler: Fed Net Liquidity (${fed_res.get('net_liquidity_billions'):,.1f}B) and Treasury Auction refreshed"
+                    )
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Systemic liquidity refresh failed: {e}")
-                results['systemic_liquidity_and_stress'] = {'error': str(e)}
+                results["systemic_liquidity_and_stress"] = {"error": str(e)}
 
             # 14. Central Bank Documents & Macro Decomposition Warmup
             try:
                 from monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router import MacroTriggerRouter
+
                 async with get_session() as session:
                     router = MacroTriggerRouter(session)
                     await router.ensure_cb_document_available(bank="FED", doc_type="MINUTES")
@@ -249,11 +278,11 @@ class MacroDataScheduler:
                     await router.ensure_cb_document_available(bank="BOJ", doc_type="STATEMENT")
                     await router.ensure_report_available(report_type="CPI")
                     await router.ensure_report_available(report_type="NFP")
-                    results['macro_docs_and_decomposition'] = {'status': 'verified_and_warmed'}
+                    results["macro_docs_and_decomposition"] = {"status": "verified_and_warmed"}
                     logger.info("MacroDataScheduler: Central bank documents and macro decomposition cache warmed")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Central bank docs warm failed: {e}")
-                results['macro_docs_and_decomposition'] = {'error': str(e)}
+                results["macro_docs_and_decomposition"] = {"error": str(e)}
 
             self._last_refresh_time = datetime.now(timezone.utc)
             self._last_results = results

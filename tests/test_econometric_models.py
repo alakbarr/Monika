@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
@@ -10,6 +11,7 @@ from analysis.calculators.taylor_rule import TaylorRuleCalculator
 from analysis.calculators.timesfm_residual_validator import TimesFMResidualValidator
 from data_sources.fred_treasury_yield import TENOR_SERIES, SERIES_TO_TENOR
 
+
 def test_leading_indicator_mapper():
     # Test PCE nowcast
     res_pce = LeadingIndicatorMapper.nowcast_pce(
@@ -18,7 +20,7 @@ def test_leading_indicator_mapper():
         ppi_airfares_mom=2.5,
         ppi_portfolio_mgmt_mom=1.8,
         cpi_shelter_mom=0.45,
-        consensus_core_pce=0.20
+        consensus_core_pce=0.20,
     )
     assert res_pce.projection_category == "BEAT"
     assert res_pce.delta_vs_consensus > 0
@@ -28,25 +30,21 @@ def test_leading_indicator_mapper():
 
     # Test NFP nowcast
     res_nfp = LeadingIndicatorMapper.nowcast_nfp(
-        adp_change_k=110.0,
-        jobless_claims_4w_avg_k=245.0,
-        ism_services_employment=47.5,
-        consensus_nfp_k=180.0
+        adp_change_k=110.0, jobless_claims_4w_avg_k=245.0, ism_services_employment=47.5, consensus_nfp_k=180.0
     )
     assert res_nfp.projection_category == "MISS"
     assert res_nfp.delta_vs_consensus < 0
 
+
 def test_taylor_rule():
     res = TaylorRuleCalculator.calculate_fed_taylor_rule(
-        actual_effr=5.33,
-        current_inflation=2.8,
-        unemployment_rate=4.2,
-        r_star=1.0
+        actual_effr=5.33, current_inflation=2.8, unemployment_rate=4.2, r_star=1.0
     )
     assert res.central_bank == "Federal Reserve"
     assert res.policy_stance == "OVERLY RESTRICTIVE"
     assert res.rate_gap > 0
     assert "USD (DXY)" in res.market_implications
+
 
 def test_garch_volatility():
     np.random.seed(42)
@@ -55,6 +53,7 @@ def test_garch_volatility():
     assert res.status == "SUCCESS"
     assert res.persistence > 0
     assert res.annualized_forecast_vol > 0
+
 
 def test_timesfm_residuals():
     np.random.seed(42)
@@ -66,6 +65,7 @@ def test_timesfm_residuals():
     assert res.durbin_watson_stat > 0
     assert res.sample_size == 50
 
+
 def test_fred_series_extensions():
     assert "DGS3MO" in TENOR_SERIES
     assert "THREEFYTP10" in TENOR_SERIES
@@ -75,6 +75,7 @@ def test_fred_series_extensions():
     assert SERIES_TO_TENOR["THREEFYTP10"] == "10Y_TERM_PREMIUM"
     assert SERIES_TO_TENOR["ACMTP10"] == "10Y_TERM_PREMIUM"
     assert SERIES_TO_TENOR["CUSR0000SACL1E"] == "SUPERCORE_CPI"
+
 
 if __name__ == "__main__":
     test_leading_indicator_mapper()

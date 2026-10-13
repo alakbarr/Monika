@@ -246,4 +246,3 @@ def get_cycle_event_log() -> TradingCycleEventLog:
     if _default_event_log is None:
         _default_event_log = TradingCycleEventLog()
     return _default_event_log
-

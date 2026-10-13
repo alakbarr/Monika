@@ -141,9 +141,5 @@ class MarketGroundingEngine:
             l_val = float(str(row["low"]))
             c_val = float(str(row["close"]))
             vol_val = float(str(row.get("volume", 0.0) or 0.0))
-            sections.append(
-                f"| {d_str} | {o_val:.4f} | {h_val:.4f} | "
-                f"{l_val:.4f} | {c_val:.4f} | {vol_val:,.0f} |"
-            )
+            sections.append(f"| {d_str} | {o_val:.4f} | {h_val:.4f} | {l_val:.4f} | {c_val:.4f} | {vol_val:,.0f} |")
         return "\n".join(sections)
-

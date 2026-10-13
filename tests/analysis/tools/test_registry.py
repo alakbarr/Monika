@@ -100,4 +100,3 @@ async def test_legacy_tool_executor_dispatches_via_registry():
     assert isinstance(res, dict)
     assert res.get("status") == "custom_ok"
     assert res.get("param") == 50
-

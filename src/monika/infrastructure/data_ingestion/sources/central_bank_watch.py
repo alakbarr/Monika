@@ -126,18 +126,23 @@ class CentralBankWatchFetcher:
                 extracted[bank_code] = bank_data
 
                 # Simpan ke tabel CentralBankRateExpectation (dengan deduplikasi untuk mencegah bloat)
-                latest_exp = (await self.session.execute(
-                    select(CentralBankRateExpectation)
-                    .where(CentralBankRateExpectation.bank == bank_code)
-                    .order_by(CentralBankRateExpectation.fetched_at.desc(), CentralBankRateExpectation.id.desc())
-                    .limit(1)
-                )).scalar_one_or_none()
+                latest_exp = (
+                    await self.session.execute(
+                        select(CentralBankRateExpectation)
+                        .where(CentralBankRateExpectation.bank == bank_code)
+                        .order_by(CentralBankRateExpectation.fetched_at.desc(), CentralBankRateExpectation.id.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
 
-                if (latest_exp and latest_exp.meeting_date == m_date_str and
-                        abs((latest_exp.current_rate or 0.0) - cur_rate) < 1e-4 and
-                        abs((latest_exp.prob_hike or 0.0) - probs["hike"]) < 1e-4 and
-                        abs((latest_exp.prob_hold or 0.0) - probs["hold"]) < 1e-4 and
-                        abs((latest_exp.prob_cut or 0.0) - probs["cut"]) < 1e-4):
+                if (
+                    latest_exp
+                    and latest_exp.meeting_date == m_date_str
+                    and abs((latest_exp.current_rate or 0.0) - cur_rate) < 1e-4
+                    and abs((latest_exp.prob_hike or 0.0) - probs["hike"]) < 1e-4
+                    and abs((latest_exp.prob_hold or 0.0) - probs["hold"]) < 1e-4
+                    and abs((latest_exp.prob_cut or 0.0) - probs["cut"]) < 1e-4
+                ):
                     latest_exp.fetched_at = now_utc
                 else:
                     record = CentralBankRateExpectation(
@@ -221,20 +226,30 @@ class CentralBankWatchFetcher:
 
                 mapping = {}
                 if "united states" in country_text:
-                    if y2 is not None: mapping["US_2Y"] = y2
-                    if y10 is not None: mapping["US_10Y"] = y10
+                    if y2 is not None:
+                        mapping["US_2Y"] = y2
+                    if y10 is not None:
+                        mapping["US_10Y"] = y10
                 elif "eurozone" in country_text or "germany" in country_text:
-                    if y2 is not None: mapping["DE_2Y"] = y2
-                    if y10 is not None: mapping["DE_10Y"] = y10
+                    if y2 is not None:
+                        mapping["DE_2Y"] = y2
+                    if y10 is not None:
+                        mapping["DE_10Y"] = y10
                 elif "united kingdom" in country_text:
-                    if y2 is not None: mapping["UK_2Y"] = y2
-                    if y10 is not None: mapping["UK_10Y"] = y10
+                    if y2 is not None:
+                        mapping["UK_2Y"] = y2
+                    if y10 is not None:
+                        mapping["UK_10Y"] = y10
                 elif "australia" in country_text:
-                    if y2 is not None: mapping["AU_2Y"] = y2
-                    if y10 is not None: mapping["AU_10Y"] = y10
+                    if y2 is not None:
+                        mapping["AU_2Y"] = y2
+                    if y10 is not None:
+                        mapping["AU_10Y"] = y10
                 elif "japan" in country_text:
-                    if y2 is not None: mapping["JP_2Y"] = y2
-                    if y10 is not None: mapping["JP_10Y"] = y10
+                    if y2 is not None:
+                        mapping["JP_2Y"] = y2
+                    if y10 is not None:
+                        mapping["JP_10Y"] = y10
 
                 for ct, y_val in mapping.items():
                     yields_found[ct] = y_val

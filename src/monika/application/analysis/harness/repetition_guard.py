@@ -56,7 +56,7 @@ def detect_text_repetition(
                     snippet = clean_cand[:80] + ("..." if len(clean_cand) > 80 else "")
                     logger.warning(
                         f"[RepetitionGuard] Degenerate loop detected! Phrase ({len(clean_cand)} chars) "
-                        f"repeated {count}x, dominating {covered_chars/text_len:.1%} of response: '{snippet}'"
+                        f"repeated {count}x, dominating {covered_chars / text_len:.1%} of response: '{snippet}'"
                     )
                     return True, snippet
 

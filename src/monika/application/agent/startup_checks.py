@@ -125,18 +125,28 @@ class StartupChecker:
                             "_get_cached_client",
                         ):
                             role_val = None
-                            if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
+                            if (
+                                node.args
+                                and isinstance(node.args[0], ast.Constant)
+                                and isinstance(node.args[0].value, str)
+                            ):
                                 role_val = node.args[0].value
                             elif node.keywords:
                                 for kw in node.keywords:
-                                    if kw.arg in ("task_role", "role") and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+                                    if (
+                                        kw.arg in ("task_role", "role")
+                                        and isinstance(kw.value, ast.Constant)
+                                        and isinstance(kw.value.value, str)
+                                    ):
                                         role_val = kw.value.value
                                         break
                             if role_val:
                                 used_roles.add(role_val)
                 missing_roles = used_roles - declared_roles
                 if missing_roles:
-                    logger.error(f"[STARTUP CHECK FAIL] Task role used in code but NOT FOUND in settings.yaml: {missing_roles}")
+                    logger.error(
+                        f"[STARTUP CHECK FAIL] Task role used in code but NOT FOUND in settings.yaml: {missing_roles}"
+                    )
                     ok = False
                 else:
                     logger.info(f"  [OK] All {len(used_roles)} task_role references match settings.yaml")
@@ -148,9 +158,12 @@ class StartupChecker:
     def _check_critical_constants(self) -> Tuple[bool, List[str]]:
         try:
             from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
+
             if not MARKET_OUTCOME_EXIT_REASONS:
                 raise ValueError("MARKET_OUTCOME_EXIT_REASONS is empty")
-            logger.info(f"  [OK] utils.constants importable (MARKET_OUTCOME_EXIT_REASONS={MARKET_OUTCOME_EXIT_REASONS})")
+            logger.info(
+                f"  [OK] utils.constants importable (MARKET_OUTCOME_EXIT_REASONS={MARKET_OUTCOME_EXIT_REASONS})"
+            )
             return True, []
         except (ImportError, ValueError) as e:
             logger.error(f"  [FAIL] utils/constants.py missing or invalid: {e}. Paper tracking will not function.")
@@ -159,6 +172,7 @@ class StartupChecker:
     def _check_specialist_prompts(self) -> Tuple[bool, List[str]]:
         try:
             from monika.application.analysis.stages.per_asset_stage import SPECIALIST_PROMPTS, _render_specialist_prompt
+
             for role, template in SPECIALIST_PROMPTS.items():
                 _render_specialist_prompt(template, "TESTUSD", "TEST", "USD")
             logger.info("  [OK] Specialist prompt templates render without error")
@@ -170,9 +184,12 @@ class StartupChecker:
     def _check_preflight_baselines(self) -> Tuple[bool, List[str]]:
         try:
             from monika.application.analysis.stages.preflight_gate import PreFlightTurnGate, EMPIRICAL_ACTIVE_MEDIANS
+
             if not EMPIRICAL_ACTIVE_MEDIANS:
                 raise ValueError("EMPIRICAL_ACTIVE_MEDIANS is empty")
-            logger.info(f"  [OK] PreFlightTurnGate empirical baselines verified ({len(EMPIRICAL_ACTIVE_MEDIANS)} symbols)")
+            logger.info(
+                f"  [OK] PreFlightTurnGate empirical baselines verified ({len(EMPIRICAL_ACTIVE_MEDIANS)} symbols)"
+            )
             return True, []
         except Exception as e:
             logger.error(f"  [FAIL] PreFlightTurnGate baseline check failed: {e}")
@@ -198,14 +215,16 @@ class StartupChecker:
         if risk_cfg.get("intraday_range_strategy_enabled", True):
             logger.info(
                 f"  [INFO] Intraday-range strategy ENABLED: TP band "
-                f"{risk_cfg.get('intraday_tp_min_adr_pct', 0.5)*100:.0f}-"
-                f"{risk_cfg.get('intraday_tp_max_adr_pct', 0.8)*100:.0f}% ADR, "
-                f"SL ceiling {risk_cfg.get('intraday_max_sl_adr_pct', 0.35)*100:.0f}% ADR, "
+                f"{risk_cfg.get('intraday_tp_min_adr_pct', 0.5) * 100:.0f}-"
+                f"{risk_cfg.get('intraday_tp_max_adr_pct', 0.8) * 100:.0f}% ADR, "
+                f"SL ceiling {risk_cfg.get('intraday_max_sl_adr_pct', 0.35) * 100:.0f}% ADR, "
                 f"min_rr_ratio={risk_cfg.get('min_rr_ratio', 1.3)}"
             )
         risk_pct = risk_cfg.get("risk_percent_per_trade", 1.0)
         if risk_pct > 1.0:
-            logger.warning(f"[WARN] risk_percent_per_trade={risk_pct}% is high. Recommended: ≤1.0% until edge is proven.")
+            logger.warning(
+                f"[WARN] risk_percent_per_trade={risk_pct}% is high. Recommended: ≤1.0% until edge is proven."
+            )
             warnings.append("risk_percent_per_trade is high")
 
         max_pos = risk_cfg.get("max_concurrent_positions", 5)
@@ -249,19 +268,24 @@ class StartupChecker:
             logger.error(f"  [FAIL] Invalid tp_detection_method: {tp_method}. Must be 'close_price' or 'high_low'.")
             ok = False
         elif tp_method == "high_low":
-            logger.warning("  [WARN] tp_detection_method=high_low can inflate paper win rate. Use 'close_price' for realistic results.")
+            logger.warning(
+                "  [WARN] tp_detection_method=high_low can inflate paper win rate. Use 'close_price' for realistic results."
+            )
             warnings.append("tp_detection_method is high_low")
         else:
             logger.info("  [OK] tp_detection_method=close_price (conservative, accurate)")
 
         min_paper_trades = self.settings.get("trading", {}).get("min_paper_trades_before_live", 40)
         if min_paper_trades < 30:
-            logger.warning(f"  [WARN] min_paper_trades_before_live={min_paper_trades} is low. At least 30 trades recommended.")
+            logger.warning(
+                f"  [WARN] min_paper_trades_before_live={min_paper_trades} is low. At least 30 trades recommended."
+            )
             warnings.append("min_paper_trades_before_live too low")
 
         try:
             from monika.infrastructure.database.db import AsyncSessionLocal
             from monika.core.analytics.paper_tracker import PaperTracker
+
             async with AsyncSessionLocal() as session:
                 tracker = PaperTracker(self.settings)
                 stats = await tracker.get_statistics(session)
@@ -332,24 +356,36 @@ class StartupChecker:
 
                 try:
                     from monika.infrastructure.database.models import Base
+
                     critical_tables = [
-                        "news_items", "economic_calendar", "asset_analysis",
-                        "fundamental_briefs", "paper_trade_records", "trade_outcomes",
-                        "positions", "risk_state", "system_config", "decision_reflections",
-                        "prescreen_log", "candidate_lessons"
+                        "news_items",
+                        "economic_calendar",
+                        "asset_analysis",
+                        "fundamental_briefs",
+                        "paper_trade_records",
+                        "trade_outcomes",
+                        "positions",
+                        "risk_state",
+                        "system_config",
+                        "decision_reflections",
+                        "prescreen_log",
+                        "candidate_lessons",
                     ]
 
                     if "postgresql" in str(db_url).lower():
-                        res_tables = await conn.execute(text(
-                            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
-                        ))
+                        res_tables = await conn.execute(
+                            text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+                        )
                         existing_tables = {row[0] for row in res_tables}
                         missing_tables = [t for t in critical_tables if t not in existing_tables]
 
                         if missing_tables:
-                            logger.warning(f"  [WARN] Missing tables in database: {missing_tables}. Attempting auto-migration...")
+                            logger.warning(
+                                f"  [WARN] Missing tables in database: {missing_tables}. Attempting auto-migration..."
+                            )
                             try:
                                 import subprocess
+
                                 agent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                                 res_mig = subprocess.run(
                                     [sys.executable, "-m", "alembic", "upgrade", "head"],
@@ -360,23 +396,31 @@ class StartupChecker:
                                 )
                                 if res_mig.returncode == 0:
                                     logger.info("  [OK] Alembic auto-migration completed successfully.")
-                                    res_tables_retry = await conn.execute(text(
-                                        "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
-                                    ))
+                                    res_tables_retry = await conn.execute(
+                                        text(
+                                            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+                                        )
+                                    )
                                     existing_tables = {row[0] for row in res_tables_retry}
                                     missing_tables = [t for t in critical_tables if t not in existing_tables]
                                 else:
-                                    logger.warning(f"  [WARN] Alembic auto-migration returned non-zero: {res_mig.stderr or res_mig.stdout}")
+                                    logger.warning(
+                                        f"  [WARN] Alembic auto-migration returned non-zero: {res_mig.stderr or res_mig.stdout}"
+                                    )
                             except Exception as mig_err:
                                 logger.warning(f"  [WARN] Auto-migration execution failed: {mig_err}")
 
                         if missing_tables:
-                            logger.error(f"  [FAIL] Missing tables in database: {missing_tables}. Run 'alembic upgrade head'.")
+                            logger.error(
+                                f"  [FAIL] Missing tables in database: {missing_tables}. Run 'alembic upgrade head'."
+                            )
                             ok = False
                         else:
-                            res_cols = await conn.execute(text(
-                                "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'"
-                            ))
+                            res_cols = await conn.execute(
+                                text(
+                                    "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'"
+                                )
+                            )
                             existing_cols: Dict[str, Set[str]] = {}
                             for row in res_cols:
                                 existing_cols.setdefault(row[0], set()).add(row[1])
@@ -403,7 +447,9 @@ class StartupChecker:
 
                             # M-6: Check pgvector extension availability for episodic memory search
                             try:
-                                res_ext = await conn.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'vector'"))
+                                res_ext = await conn.execute(
+                                    text("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
+                                )
                                 has_pgvector = bool(res_ext.scalar())
                                 if has_pgvector:
                                     logger.info("  [OK] pgvector extension verified")
@@ -432,6 +478,7 @@ class StartupChecker:
                 from sqlalchemy import delete, select
                 from monika.infrastructure.database.db import AsyncSessionLocal
                 from monika.infrastructure.database.safe_ops import safe_commit
+
                 async with AsyncSessionLocal() as startup_session:
                     await startup_session.execute(
                         delete(SystemConfig).where(SystemConfig.key.like("pending_specialist_biases_%"))
@@ -442,22 +489,31 @@ class StartupChecker:
                     )
                     stub_keys = []
                     for r in res_stubs.scalars().all():
-                        if r and r.value and 'direction="buy"' in r.value and 'confidence=0.82' in r.value:
+                        if r and r.value and 'direction="buy"' in r.value and "confidence=0.82" in r.value:
                             stub_keys.append(r.key)
                     if stub_keys:
-                        await startup_session.execute(
-                            delete(SystemConfig).where(SystemConfig.key.in_(stub_keys))
+                        await startup_session.execute(delete(SystemConfig).where(SystemConfig.key.in_(stub_keys)))
+                        logger.info(
+                            f"  [OK] Cleaned up {len(stub_keys)} legacy blacklisted stub synthesized strategies from SystemConfig"
                         )
-                        logger.info(f"  [OK] Cleaned up {len(stub_keys)} legacy blacklisted stub synthesized strategies from SystemConfig")
 
                     # Pre-boot integrity verification of synthesized strategies
                     import json
                     from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
-                    synth_rows = (await startup_session.execute(
-                        select(SystemConfig).where(SystemConfig.key.like("synthesized_strategy_%"))
-                    )).scalars().all()
+
+                    synth_rows = (
+                        (
+                            await startup_session.execute(
+                                select(SystemConfig).where(SystemConfig.key.like("synthesized_strategy_%"))
+                            )
+                        )
+                        .scalars()
+                        .all()
+                    )
                     healed_boot_count = 0
-                    synth_dir = pathlib.Path(__file__).resolve().parent.parent / "analysis" / "strategies" / "synthesized"
+                    synth_dir = (
+                        pathlib.Path(__file__).resolve().parent.parent / "analysis" / "strategies" / "synthesized"
+                    )
                     for sr in synth_rows:
                         if not sr or not sr.value:
                             continue
@@ -479,7 +535,9 @@ class StartupChecker:
                         except Exception:
                             pass
                     if healed_boot_count > 0:
-                        logger.info(f"  [OK] Pre-boot reconciled {healed_boot_count} synthesized strategies in SystemConfig from disk")
+                        logger.info(
+                            f"  [OK] Pre-boot reconciled {healed_boot_count} synthesized strategies in SystemConfig from disk"
+                        )
 
                     await safe_commit(startup_session, label="startup_specialist_biases")
                 logger.info("  [OK] Cleaned up temporary specialist biases from previous runs")
@@ -489,6 +547,7 @@ class StartupChecker:
             try:
                 from monika.core.analytics.cost_tracker import CostTracker
                 from monika.infrastructure.database.db import AsyncSessionLocal
+
                 async with AsyncSessionLocal() as budget_session:
                     b_stat = await CostTracker.check_and_update_budget_status(budget_session, self.settings)
                     logger.info(
@@ -502,6 +561,7 @@ class StartupChecker:
             try:
                 from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
                 from monika.infrastructure.database.db import AsyncSessionLocal
+
                 async with AsyncSessionLocal() as chronicle_session:
                     c_writer = ChronicleWriter(self.settings)
                     synced = await c_writer.sync_macro_reality_from_file(chronicle_session)
@@ -537,6 +597,7 @@ class StartupChecker:
 
         try:
             from monika.infrastructure.providers.llm_factory import LLMFactory
+
             factory = LLMFactory(self.settings)
 
             for provider_name, config in providers_cfg.items():
@@ -569,7 +630,11 @@ class StartupChecker:
                     p1_clean, p2_clean = str(p1).lower().strip(), str(p2).lower().strip()
                     if p1_clean == p2_clean:
                         return True
-                    if p1_clean in ("9router", "ninerouter", "nine_router") and p2_clean in ("9router", "ninerouter", "nine_router"):
+                    if p1_clean in ("9router", "ninerouter", "nine_router") and p2_clean in (
+                        "9router",
+                        "ninerouter",
+                        "nine_router",
+                    ):
                         return True
                     return False
 
@@ -583,13 +648,16 @@ class StartupChecker:
                             break
 
                 if not test_model:
-                    logger.warning(f"  [WARN] No model found in catalog for provider '{provider_name}'. Skipping ping test.")
+                    logger.warning(
+                        f"  [WARN] No model found in catalog for provider '{provider_name}'. Skipping ping test."
+                    )
                     continue
 
                 try:
                     if provider_name in ("ninerouter", "9router", "nine_router"):
                         try:
                             from monika.infrastructure.providers.nine_router_provider import NineRouterProvider
+
                             NineRouterProvider.ensure_running()
                         except Exception:
                             pass
@@ -598,16 +666,22 @@ class StartupChecker:
                     if client:
                         logger.info(f"  [TEST] Pinging {provider_name} (model: {test_model})...")
                         if provider_name == "typesafe":
-                            res = await client.classify_json("ping", schema={"type": "object", "properties": {"ok": {"type": "boolean"}}})
+                            res = await client.classify_json(
+                                "ping", schema={"type": "object", "properties": {"ok": {"type": "boolean"}}}
+                            )
                         else:
                             res = await client.generate("ping", temperature=0.0)
                         if res is None:
                             raise Exception("API returned None")
                         served_model = getattr(client, "last_served_model", None)
-                        served_info = f" (served by: {served_model})" if served_model and served_model != test_model else ""
+                        served_info = (
+                            f" (served by: {served_model})" if served_model and served_model != test_model else ""
+                        )
                         logger.info(f"  [OK] {provider_name} API is functional{served_info}")
                 except Exception as e:
-                    logger.warning(f"  [WARN] {provider_name} ping failed: {e}. System will rely on fallback providers.")
+                    logger.warning(
+                        f"  [WARN] {provider_name} ping failed: {e}. System will rely on fallback providers."
+                    )
         except Exception as factory_err:
             logger.error(f"  [FAIL] Error initializing API test loop: {factory_err}")
             ok = False
@@ -615,8 +689,10 @@ class StartupChecker:
         # Groq model alias check
         try:
             from monika.infrastructure.providers.groq_provider import GROQ_MODEL_ALIASES
+
             if providers_cfg.get("groq", {}).get("enabled", False) and any(_get_env(k) for k in ["GROQ_API_KEYS"]):
                 import httpx
+
                 groq_keys_raw = _get_env("GROQ_API_KEYS", "")
                 groq_key = groq_keys_raw.split(",")[0].strip() if groq_keys_raw else ""
                 if groq_key:
@@ -630,7 +706,9 @@ class StartupChecker:
                                 available_ids = {m["id"] for m in resp.json().get("data", [])}
                                 for alias, groq_id in GROQ_MODEL_ALIASES.items():
                                     if groq_id not in available_ids:
-                                        logger.warning(f'  [WARN] Groq alias "{alias}" maps to "{groq_id}" which is NOT in Groq model list.')
+                                        logger.warning(
+                                            f'  [WARN] Groq alias "{alias}" maps to "{groq_id}" which is NOT in Groq model list.'
+                                        )
                                     else:
                                         logger.info(f'  [OK] Groq alias "{alias}" -> "{groq_id}" validated')
                     except Exception as groq_val_err:
@@ -661,11 +739,21 @@ class StartupChecker:
         ok = True
         warnings = []
         try:
-            from monika.infrastructure.brokers.mt5_compat import ensure_mt5_module, is_native_mt5_available, is_mt5linux_available
+            from monika.infrastructure.brokers.mt5_compat import (
+                ensure_mt5_module,
+                is_native_mt5_available,
+                is_mt5linux_available,
+            )
+
             mt5 = ensure_mt5_module()
-            mode_desc = "native Windows" if is_native_mt5_available() else ("Linux RPC bridge" if is_mt5linux_available() else "fallback")
+            mode_desc = (
+                "native Windows"
+                if is_native_mt5_available()
+                else ("Linux RPC bridge" if is_mt5linux_available() else "fallback")
+            )
             logger.info(f"  [OK] MetaTrader5 library available ({mode_desc})")
             from monika.infrastructure.brokers.mt5_client import MT5Client
+
             test_client = self.mt5_client or MT5Client(self.settings)
             if await test_client.connect():
                 logger.info("  [OK] MetaTrader5 connection validated")
@@ -714,8 +802,11 @@ class StartupChecker:
                 ok = False
 
             domain_attrs = [
-                "execution_handlers", "position_handlers", "macro_handlers",
-                "sentiment_handlers", "technical_handlers",
+                "execution_handlers",
+                "position_handlers",
+                "macro_handlers",
+                "sentiment_handlers",
+                "technical_handlers",
             ]
 
             def _resolves(tool_name: str) -> bool:
@@ -732,6 +823,7 @@ class StartupChecker:
                     return True
                 try:
                     from monika.application.analysis.tools.unified_registry import unified_tool_registry
+
                     if tool_name in unified_tool_registry._tools or tool_name in unified_tool_registry._aliases:
                         return True
                 except Exception:
@@ -741,13 +833,16 @@ class StartupChecker:
             missing_handlers = [t["name"] for t in ALL_TOOLS if not _resolves(t["name"])]
 
             if missing_handlers:
-                logger.error(f"  [FAIL] Tools with no resolvable handler (schema-only, would return UnknownToolError): {missing_handlers}")
+                logger.error(
+                    f"  [FAIL] Tools with no resolvable handler (schema-only, would return UnknownToolError): {missing_handlers}"
+                )
                 ok = False
             else:
                 logger.info(f"  [OK] All {len(ALL_TOOLS)} tool schemas resolve to a handler")
 
             try:
                 from monika.infrastructure.database.models import OrderBlock
+
                 logger.info("  [OK] OrderBlock model importable")
             except ImportError as e:
                 logger.error(f"  [FAIL] OrderBlock import: {e}")
@@ -756,6 +851,7 @@ class StartupChecker:
             try:
                 from sqlalchemy import text
                 from monika.infrastructure.database.db import engine, get_engine
+
                 eng = self.db_engine or engine or get_engine()
                 async with eng.connect() as conn:
                     await conn.execute(text("SELECT 1 FROM dxy_data LIMIT 1"))
@@ -774,26 +870,42 @@ class StartupChecker:
         try:
             from monika.core.analytics.performance_reviewer import PERFORMANCE_NOTES_PATH
             from monika.application.skills.loader import _SKILLS_DIR
+
             if not PERFORMANCE_NOTES_PATH.resolve().is_relative_to(_SKILLS_DIR.resolve()):
-                logger.error(f"[STARTUP CHECK FAIL] performance_notes write path {PERFORMANCE_NOTES_PATH} is not inside skills read path {_SKILLS_DIR}")
+                logger.error(
+                    f"[STARTUP CHECK FAIL] performance_notes write path {PERFORMANCE_NOTES_PATH} is not inside skills read path {_SKILLS_DIR}"
+                )
                 ok = False
         except Exception as e:
             logger.error(f"Performance path check failed: {e}")
 
         critical_roles = [
-            "stage1_fundamental", "stage1_escalation", "stage2_per_asset_primary",
-            "stage2_per_asset_secondary", "chat_telegram", "stage2_prescreen"
+            "stage1_fundamental",
+            "stage1_escalation",
+            "stage2_per_asset_primary",
+            "stage2_per_asset_secondary",
+            "chat_telegram",
+            "stage2_prescreen",
         ]
         task_roles_cfg = self.settings.get("llm", {}).get("task_roles", {})
         # Tool-bearing roles must never fall back to a provider without tool calling
         # (OllamaProvider.run_tool_agent raises NotImplementedError mid-cycle).
         tool_bearing_roles = {
-            "stage1_fundamental", "stage1_escalation", "stage2_per_asset_primary",
-            "stage2_per_asset_secondary", "chat_telegram", "stage2_prescreen",
-            "stage2_session_trigger", "specialist_technical", "specialist_sentiment",
-            "specialist_macro", "news_digest", "cot_precompute",
+            "stage1_fundamental",
+            "stage1_escalation",
+            "stage2_per_asset_primary",
+            "stage2_per_asset_secondary",
+            "chat_telegram",
+            "stage2_prescreen",
+            "stage2_session_trigger",
+            "specialist_technical",
+            "specialist_sentiment",
+            "specialist_macro",
+            "news_digest",
+            "cot_precompute",
         }
         from monika.infrastructure.providers.llm_factory import LLMFactory
+
         resolver = LLMFactory(self.settings)
         for role in critical_roles:
             role_cfg = task_roles_cfg.get(role, {})
@@ -803,7 +915,9 @@ class StartupChecker:
                 if not model_name:
                     continue
                 if model_name not in self.settings.get("llm", {}).get("model_catalog", {}):
-                    logger.error(f'[STARTUP CHECK FAIL] task_roles.{role}.{slot}="{model_name}" not found in llm.model_catalog')
+                    logger.error(
+                        f'[STARTUP CHECK FAIL] task_roles.{role}.{slot}="{model_name}" not found in llm.model_catalog'
+                    )
                     ok = False
                     continue
                 if role in tool_bearing_roles:
@@ -817,6 +931,7 @@ class StartupChecker:
 
         try:
             import anthropic
+
             if _get_env("ANTHROPIC_API_KEY"):
                 client = anthropic.AsyncAnthropic()
                 logger.info("  [OK] Anthropic client initialized successfully")

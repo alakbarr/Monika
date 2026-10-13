@@ -73,10 +73,7 @@ async def test_search_memo_single_flight_coalescing():
         return {"query": "fed rate decision", "results": ["Rate unchanged"]}
 
     # Launch 5 concurrent calls with identical cache key
-    tasks = [
-        memo.execute_coalesced("key_fed_rate", mock_heavy_search)
-        for _ in range(5)
-    ]
+    tasks = [memo.execute_coalesced("key_fed_rate", mock_heavy_search) for _ in range(5)]
     results = await asyncio.gather(*tasks)
 
     assert len(results) == 5
@@ -91,13 +88,14 @@ async def test_search_memo_single_flight_coalescing():
 @pytest.mark.asyncio
 async def test_multimodal_vision_clamp_and_repeat_refusal():
     # 1. Test fallback with non-image raw bytes
-    raw_payload = b"\x00\xFF" * (200 * 1024)  # 400 KB
+    raw_payload = b"\x00\xff" * (200 * 1024)  # 400 KB
     clamped_raw, mime_raw = VisionImageProcessor.clamp_image_to_budget(raw_payload)
     assert len(clamped_raw) <= MAX_IMAGE_BYTES
 
     # 2. Test with real PIL image
     from PIL import Image
     import io
+
     img = Image.new("RGB", (1200, 1200), color=(100, 150, 200))
     buf = io.BytesIO()
     img.save(buf, format="PNG")

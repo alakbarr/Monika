@@ -43,16 +43,25 @@ def _resolve_env_vars(obj: Any) -> Any:
         return _resolve_env_str(obj)
     return obj
 
+
 try:
     from monika.core.config.schemas import (
-        TradingAgentConfig, RiskConfig, PaperTradingConfig,
-        ExecutionConfig, IndicatorsConfig, TradingConfig
+        TradingAgentConfig,
+        RiskConfig,
+        PaperTradingConfig,
+        ExecutionConfig,
+        IndicatorsConfig,
+        TradingConfig,
     )
     from monika.core.config.migrations import migrate_config, require_parseable_config
 except ImportError:
     from .schemas import (
-        TradingAgentConfig, RiskConfig, PaperTradingConfig,
-        ExecutionConfig, IndicatorsConfig, TradingConfig
+        TradingAgentConfig,
+        RiskConfig,
+        PaperTradingConfig,
+        ExecutionConfig,
+        IndicatorsConfig,
+        TradingConfig,
     )
     from .migrations import migrate_config, require_parseable_config
 
@@ -85,12 +94,20 @@ def validate_config(settings: Dict[str, Any]) -> TradingAgentConfig:
 
 
 @overload
-def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool = False, *, return_model: Literal[True]) -> TradingAgentConfig: ...
+def load_settings(
+    path: Union[str, Dict[str, Any], None] = None, validate: bool = False, *, return_model: Literal[True]
+) -> TradingAgentConfig: ...
 @overload
-def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool = False, return_model: Literal[False] = False) -> Dict[str, Any]: ...
+def load_settings(
+    path: Union[str, Dict[str, Any], None] = None, validate: bool = False, return_model: Literal[False] = False
+) -> Dict[str, Any]: ...
 @overload
-def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool = False, return_model: bool = False) -> Union[Dict[str, Any], TradingAgentConfig]: ...
-def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool = False, return_model: bool = False) -> Union[Dict[str, Any], TradingAgentConfig]:
+def load_settings(
+    path: Union[str, Dict[str, Any], None] = None, validate: bool = False, return_model: bool = False
+) -> Union[Dict[str, Any], TradingAgentConfig]: ...
+def load_settings(
+    path: Union[str, Dict[str, Any], None] = None, validate: bool = False, return_model: bool = False
+) -> Union[Dict[str, Any], TradingAgentConfig]:
     """Memuat pengaturan utama dari file YAML beserta file split modular jika ada."""
     settings: Dict[str, Any]
     if isinstance(path, dict):
@@ -116,7 +133,7 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
             else:
                 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 path = os.path.join(base_dir, "config", "settings.yaml")
-                
+
         good_backup_path = f"{path}.good"
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -125,6 +142,7 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
             # Update last-known-good disk backup on successful load
             try:
                 import shutil
+
                 shutil.copy2(path, good_backup_path)
             except Exception:
                 pass
@@ -132,6 +150,7 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
             logger.error(f"Failed to parse settings at {path}: {read_err}")
             try:
                 import time, shutil
+
                 corrupt_path = f"{path}.corrupt.{int(time.time())}"
                 if os.path.exists(path):
                     shutil.copy2(path, corrupt_path)
@@ -189,9 +208,7 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
                         with open(fpath, "r", encoding="utf-8") as pf:
                             p_data = yaml.safe_load(pf) or {}
                         if isinstance(p_data, dict):
-                            settings["plugins"][plugin_id] = _deep_merge(
-                                settings["plugins"].get(plugin_id, {}), p_data
-                            )
+                            settings["plugins"][plugin_id] = _deep_merge(settings["plugins"].get(plugin_id, {}), p_data)
                             logger.info(f"Loaded per-plugin config from {fpath} for '{plugin_id}'")
                     except Exception as pe:
                         logger.warning(f"Failed to load plugin config {fpath}: {pe}")
@@ -204,7 +221,11 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
     if isinstance(settings, dict) and ("trading" in settings or "paper_trading" in settings):
         trading_cfg = settings.get("trading")
         root_pt = settings.get("paper_trading")
-        if isinstance(trading_cfg, dict) and isinstance(trading_cfg.get("paper_trading"), dict) and isinstance(root_pt, dict):
+        if (
+            isinstance(trading_cfg, dict)
+            and isinstance(trading_cfg.get("paper_trading"), dict)
+            and isinstance(root_pt, dict)
+        ):
             pt_cfg = trading_cfg["paper_trading"]
             if isinstance(pt_cfg, dict):
                 merged_pt = _deep_merge(root_pt, pt_cfg)
@@ -313,6 +334,7 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
             if isinstance(cp_cfg, dict):
                 try:
                     from monika.infrastructure.credentials.credential_pool import get_credential_pool
+
                     pool = get_credential_pool()
                     if "base_cooldown_seconds" in cp_cfg:
                         pool.base_cooldown_seconds = float(cp_cfg["base_cooldown_seconds"])
@@ -348,9 +370,7 @@ def load_settings_with_lkg(
         return load_settings(path, validate=validate, return_model=return_model)
     except Exception as exc:
         if _LKG_SETTINGS_CACHE:
-            logger.warning(
-                f"Failed to load settings ({exc}); falling back to Last-Known-Good configuration."
-            )
+            logger.warning(f"Failed to load settings ({exc}); falling back to Last-Known-Good configuration.")
             if validate or return_model:
                 model = validate_config(_LKG_SETTINGS_CACHE)
                 return model if return_model else dict(_LKG_SETTINGS_CACHE)
@@ -361,12 +381,12 @@ def load_settings_with_lkg(
 def load_all_config(settings_path: str | None = None, validate: bool = True) -> Dict[str, Any]:
     """Memuat pengaturan utama dari file YAML (settings.yaml)."""
     settings = load_settings(settings_path, validate=validate)
-    
+
     # Validasi struktur LLM baru
     if isinstance(settings, dict) and "llm" not in settings:
         logger.warning("Bagian 'llm' tidak ditemukan di settings.yaml. Default kosong.")
         settings["llm"] = {"providers": {}, "model_catalog": {}, "task_roles": {}}
-        
+
     return dict(settings) if isinstance(settings, dict) else settings.model_dump()
 
 
@@ -398,6 +418,7 @@ def get_installation_tier(settings_or_path: Union[Dict[str, Any], str, None] = N
         return env_tier.strip().lower()
 
     from pathlib import Path
+
     _cur = Path(__file__).resolve().parent
     candidates = [
         Path.cwd() / ".monika_tier",

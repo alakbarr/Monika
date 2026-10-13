@@ -42,7 +42,7 @@ class Span:
         self.trace_id = trace_id or get_current_trace_id()
         self.parent_span_id = parent_span_id or get_current_span_id()
         self.attributes: Dict[str, Any] = attributes or {}
-        
+
         cycle_id = get_current_cycle_id()
         if cycle_id and "cycle_id" not in self.attributes:
             self.attributes["cycle_id"] = cycle_id
@@ -121,6 +121,7 @@ class AgentTracer:
     def _init_otel(self):
         try:
             from opentelemetry import trace
+
             self._otel_tracer = trace.get_tracer("tradeagent.ai")
         except ImportError:
             self._otel_tracer = None

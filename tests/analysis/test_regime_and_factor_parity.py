@@ -54,14 +54,20 @@ class DummyFadeStrategy(EdgeStrategy):
 @pytest.mark.asyncio
 async def test_regime_classifier_probabilities():
     from analysis.calculators.regime_classifier import classify_market_regime
+
     mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalar_one_or_none.return_value = None  # No VIX data
     mock_session.execute.return_value = mock_res
 
-    with patch("analysis.calculators.regime_classifier._get_latest_adx", AsyncMock(return_value={"adx": 32.5})), \
-         patch("analysis.calculators.regime_classifier._get_atr_series", AsyncMock(return_value=[1.2] * 20)), \
-         patch("analysis.calculators.regime_classifier.compute_bollinger_donchian_chop", AsyncMock(return_value={"chop_block": False})):
+    with (
+        patch("analysis.calculators.regime_classifier._get_latest_adx", AsyncMock(return_value={"adx": 32.5})),
+        patch("analysis.calculators.regime_classifier._get_atr_series", AsyncMock(return_value=[1.2] * 20)),
+        patch(
+            "analysis.calculators.regime_classifier.compute_bollinger_donchian_chop",
+            AsyncMock(return_value={"chop_block": False}),
+        ),
+    ):
         res = await classify_market_regime(mock_session, "EURUSD")
         assert "regime_probabilities" in res
         probs = res["regime_probabilities"]
@@ -92,7 +98,9 @@ async def test_strategy_regime_compatibility():
 async def test_registry_evaluate_all_regime_filtering():
     mock_session = create_mock_async_session()
     strat1 = DummyTrendStrategy()
-    with patch.dict(StrategyRegistry._registry, {"dummy_trend": DummyTrendStrategy, "dummy_fade": DummyFadeStrategy}, clear=True):
+    with patch.dict(
+        StrategyRegistry._registry, {"dummy_trend": DummyTrendStrategy, "dummy_fade": DummyFadeStrategy}, clear=True
+    ):
         # When current_regime is RANGE, only strat2 (fade) should run
         signals_range = await StrategyRegistry.evaluate_all(mock_session, "EURUSD", {}, current_regime="RANGE")
         assert len(signals_range) == 1
@@ -164,7 +172,7 @@ async def test_edge_strategy_runner_ensemble_conflict_suppression():
             "asset_universe": ["GBPUSD"],
             "edge_strategy": {
                 "signal_cooldown_seconds": 3600,
-            }
+            },
         }
     }
     runner = EdgeStrategyRunner(settings=settings, execution_service=MagicMock())
@@ -197,12 +205,17 @@ async def test_edge_strategy_runner_ensemble_conflict_suppression():
     mock_res.scalar_one_or_none.return_value = None  # No open position
     mock_session.execute.return_value = mock_res
 
-    with patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})), \
-         patch("analysis.calculators.regime_classifier.classify_market_regime", AsyncMock(return_value={"regime": "trend"})), \
-         patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[sig_buy, sig_sell])), \
-         patch("scheduler.edge_strategy_runner.get_session") as mock_get_session, \
-         patch.object(runner, "_materialize_and_route", AsyncMock()) as mock_route:
-
+    with (
+        patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+        patch(
+            "analysis.calculators.regime_classifier.classify_market_regime", AsyncMock(return_value={"regime": "trend"})
+        ),
+        patch(
+            "scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[sig_buy, sig_sell])
+        ),
+        patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
+        patch.object(runner, "_materialize_and_route", AsyncMock()) as mock_route,
+    ):
         mock_get_session.return_value.__aenter__.return_value = mock_session
         await runner.run_once()
 
@@ -217,7 +230,7 @@ async def test_edge_strategy_runner_ensemble_concordance_boost():
             "asset_universe": ["GBPUSD"],
             "edge_strategy": {
                 "signal_cooldown_seconds": 3600,
-            }
+            },
         }
     }
     runner = EdgeStrategyRunner(settings=settings, execution_service=MagicMock())
@@ -250,12 +263,17 @@ async def test_edge_strategy_runner_ensemble_concordance_boost():
     mock_res.scalar_one_or_none.return_value = None  # No open position
     mock_session.execute.return_value = mock_res
 
-    with patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})), \
-         patch("analysis.calculators.regime_classifier.classify_market_regime", AsyncMock(return_value={"regime": "trend"})), \
-         patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[sig_buy1, sig_buy2])), \
-         patch("scheduler.edge_strategy_runner.get_session") as mock_get_session, \
-         patch.object(runner, "_materialize_and_route", AsyncMock()) as mock_route:
-
+    with (
+        patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+        patch(
+            "analysis.calculators.regime_classifier.classify_market_regime", AsyncMock(return_value={"regime": "trend"})
+        ),
+        patch(
+            "scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[sig_buy1, sig_buy2])
+        ),
+        patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
+        patch.object(runner, "_materialize_and_route", AsyncMock()) as mock_route,
+    ):
         mock_get_session.return_value.__aenter__.return_value = mock_session
         await runner.run_once()
 

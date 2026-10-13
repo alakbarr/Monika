@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """Unit tests for MyFxBook and FXSSI sentiment scrapers and FRED series integration."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock
@@ -126,10 +127,16 @@ async def test_fred_series_mapping():
 def test_base_scraper_is_cloudflare_challenge_multilingual():
     """Test BaseScraper._is_cloudflare_challenge recognizes Indonesian and English titles."""
     from scrapers.base_scraper import BaseScraper
+
     scraper = BaseScraper.__new__(BaseScraper)
     scraper.page = MagicMock()
 
-    for sample_title in ["Just a moment...", "Tunggu sebentar...", "Attention Required! | Cloudflare", "Pemeriksaan keamanan"]:
+    for sample_title in [
+        "Just a moment...",
+        "Tunggu sebentar...",
+        "Attention Required! | Cloudflare",
+        "Pemeriksaan keamanan",
+    ]:
         scraper.page.title = sample_title
         assert scraper._is_cloudflare_challenge() is True
 
@@ -141,8 +148,11 @@ def test_base_scraper_is_cloudflare_challenge_multilingual():
 def test_myfxbook_fetch_sync_error_resilience():
     """Test MyFxBookSentimentFetcher.fetch_sync handles browser failure without unhandled crash."""
     from unittest.mock import patch
+
     fetcher = MyFxBookSentimentFetcher(session=MagicMock())
-    with patch("scrapers.sentiment.myfxbook_sentiment.BaseScraper", side_effect=Exception("浏览器连接失败。 127.0.0.1:16944")):
+    with patch(
+        "scrapers.sentiment.myfxbook_sentiment.BaseScraper", side_effect=Exception("浏览器连接失败。 127.0.0.1:16944")
+    ):
         res = fetcher.fetch_sync()
         assert "error" in res
         assert "127.0.0.1:16944" in res["error"]

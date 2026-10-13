@@ -14,55 +14,77 @@ JUDGE_SCHEMA = {
         "hallucination_risk": {"type": "string", "enum": ["none", "low", "medium", "high"]},
         "notes": {"type": "string"},
     },
-    "required": ["grounding_score", "accuracy_score", "actionability_score",
-                 "consistency_score", "hallucination_risk", "notes"],
+    "required": [
+        "grounding_score",
+        "accuracy_score",
+        "actionability_score",
+        "consistency_score",
+        "hallucination_risk",
+        "notes",
+    ],
 }
 
 RUBRICS: dict[str, str] = {
-    "macro": ("Nilai sebuah macro/fundamental brief FX. grounding_score: apakah setiap klaim "
-              "melacak ke angka konkret (level DXY, VIX, yield, % FedWatch, COT) di context, bukan "
-              "pernyataan kabur? accuracy_score: apakah hubungan yang dinyatakan (DXY vs bias USD, "
-              "VIX vs risk sentiment) konsisten & arahnya benar? actionability_score: apakah ada bias "
-              "per-currency dengan invalidation yang falsifiable? consistency_score: narasi vs tabel "
-              "bias tidak kontradiktif. hallucination_risk: angka/kejadian yang TIDAK ada di context."),
-    "trade_decision": ("Nilai keputusan trading teknikal per-aset (SMC/ICT). grounding_score: entry/"
-                        "SL/TP terikat ke level struktural nyata (OB/FVG/S-R/swing) di data, bukan "
-                        "harga karangan. accuracy_score: matematika R:R benar, SL/TP di sisi yang "
-                        "benar terhadap entry, ADR-band masuk akal. actionability_score: keputusan "
-                        "spesifik & langsung bisa dieksekusi dengan invalidation jelas. "
-                        "consistency_score: confluence_factors yang disebut cocok dengan "
-                        "confluence_score yang diklaim. hallucination_risk: harga/indikator yang "
-                        "tidak bisa diturunkan dari context."),
-    "debate": ("Nilai satu sisi debat bull/bear/judge atas sebuah proposal trade. grounding_score: "
-               "argumen mengacu angka nyata di fact sheet. accuracy_score: logis, bukan strawman. "
-               "actionability_score: verdict/severity tegas & berdasar. consistency_score: koheren "
-               "internal. hallucination_risk: fakta karangan."),
-    "risk": ("Nilai rekomendasi veto/sizing risk-manager. grounding_score: multiplier & veto "
-             "mengikuti aturan numerik yang diberikan terhadap state portofolio nyata. "
-             "accuracy_score: aritmatika/logika benar. actionability_score: output jelas & bisa "
-             "dipakai. consistency_score: teks asesmen cocok dengan verdict numerik. "
-             "hallucination_risk: angka portofolio karangan."),
-    "news": ("Nilai klasifikasi/digest dampak berita. grounding_score: level impact cocok definisi "
-             "yang diberikan (BREAKING butuh <90mnt + surprise + tanpa kata reaksi pasar). "
-             "accuracy_score: tag currency & sentiment benar untuk isinya. actionability_score: "
-             "berguna buat trader yg scan cepat. consistency_score: tidak kontradiksi antar item. "
-             "hallucination_risk: angka/kejadian karangan."),
-    "specialist": ("Nilai laporan specialist satu-domain (technical-only / sentiment-only / "
-                   "macro-only). grounding_score: ketat hanya pakai data domainnya sendiri. "
-                   "accuracy_score: directional_bias cocok bukti. actionability_score: label "
-                   "confidence cocok kekuatan bukti. consistency_score: tidak ada leakage domain "
-                   "(mis. laporan technical mengutip COT). hallucination_risk: level karangan."),
-    "chat": ("Nilai balasan asisten trading Telegram. grounding_score: setiap angka yang dikutip "
-             "(harga, PnL, SL/TP) didukung tool call nyata di transkrip, tidak pernah dikarang. "
-             "accuracy_score: menjawab pertanyaan user dengan benar. actionability_score: ringkas, "
-             "terstruktur, berguna. consistency_score: tidak kontradiksi diri sendiri. "
-             "hallucination_risk: klaim harga/PnL dengan nol tool call."),
-    "reflection": ("Nilai refleksi post-mortem sebuah trade. grounding_score: lesson terkait data "
-                   "enrichment nyata (confluence factors, verdict adversarial, outcome). "
-                   "accuracy_score: process_was_sound/outcome_process_classification cocok logika "
-                   "narasi. actionability_score: next_trade_adjustment konkret, bukan generik "
-                   "('lebih hati-hati'). consistency_score: tag cocok narasi. hallucination_risk: "
-                   "detail trade karangan."),
+    "macro": (
+        "Nilai sebuah macro/fundamental brief FX. grounding_score: apakah setiap klaim "
+        "melacak ke angka konkret (level DXY, VIX, yield, % FedWatch, COT) di context, bukan "
+        "pernyataan kabur? accuracy_score: apakah hubungan yang dinyatakan (DXY vs bias USD, "
+        "VIX vs risk sentiment) konsisten & arahnya benar? actionability_score: apakah ada bias "
+        "per-currency dengan invalidation yang falsifiable? consistency_score: narasi vs tabel "
+        "bias tidak kontradiktif. hallucination_risk: angka/kejadian yang TIDAK ada di context."
+    ),
+    "trade_decision": (
+        "Nilai keputusan trading teknikal per-aset (SMC/ICT). grounding_score: entry/"
+        "SL/TP terikat ke level struktural nyata (OB/FVG/S-R/swing) di data, bukan "
+        "harga karangan. accuracy_score: matematika R:R benar, SL/TP di sisi yang "
+        "benar terhadap entry, ADR-band masuk akal. actionability_score: keputusan "
+        "spesifik & langsung bisa dieksekusi dengan invalidation jelas. "
+        "consistency_score: confluence_factors yang disebut cocok dengan "
+        "confluence_score yang diklaim. hallucination_risk: harga/indikator yang "
+        "tidak bisa diturunkan dari context."
+    ),
+    "debate": (
+        "Nilai satu sisi debat bull/bear/judge atas sebuah proposal trade. grounding_score: "
+        "argumen mengacu angka nyata di fact sheet. accuracy_score: logis, bukan strawman. "
+        "actionability_score: verdict/severity tegas & berdasar. consistency_score: koheren "
+        "internal. hallucination_risk: fakta karangan."
+    ),
+    "risk": (
+        "Nilai rekomendasi veto/sizing risk-manager. grounding_score: multiplier & veto "
+        "mengikuti aturan numerik yang diberikan terhadap state portofolio nyata. "
+        "accuracy_score: aritmatika/logika benar. actionability_score: output jelas & bisa "
+        "dipakai. consistency_score: teks asesmen cocok dengan verdict numerik. "
+        "hallucination_risk: angka portofolio karangan."
+    ),
+    "news": (
+        "Nilai klasifikasi/digest dampak berita. grounding_score: level impact cocok definisi "
+        "yang diberikan (BREAKING butuh <90mnt + surprise + tanpa kata reaksi pasar). "
+        "accuracy_score: tag currency & sentiment benar untuk isinya. actionability_score: "
+        "berguna buat trader yg scan cepat. consistency_score: tidak kontradiksi antar item. "
+        "hallucination_risk: angka/kejadian karangan."
+    ),
+    "specialist": (
+        "Nilai laporan specialist satu-domain (technical-only / sentiment-only / "
+        "macro-only). grounding_score: ketat hanya pakai data domainnya sendiri. "
+        "accuracy_score: directional_bias cocok bukti. actionability_score: label "
+        "confidence cocok kekuatan bukti. consistency_score: tidak ada leakage domain "
+        "(mis. laporan technical mengutip COT). hallucination_risk: level karangan."
+    ),
+    "chat": (
+        "Nilai balasan asisten trading Telegram. grounding_score: setiap angka yang dikutip "
+        "(harga, PnL, SL/TP) didukung tool call nyata di transkrip, tidak pernah dikarang. "
+        "accuracy_score: menjawab pertanyaan user dengan benar. actionability_score: ringkas, "
+        "terstruktur, berguna. consistency_score: tidak kontradiksi diri sendiri. "
+        "hallucination_risk: klaim harga/PnL dengan nol tool call."
+    ),
+    "reflection": (
+        "Nilai refleksi post-mortem sebuah trade. grounding_score: lesson terkait data "
+        "enrichment nyata (confluence factors, verdict adversarial, outcome). "
+        "accuracy_score: process_was_sound/outcome_process_classification cocok logika "
+        "narasi. actionability_score: next_trade_adjustment konkret, bukan generik "
+        "('lebih hati-hati'). consistency_score: tag cocok narasi. hallucination_risk: "
+        "detail trade karangan."
+    ),
 }
 
 
@@ -97,28 +119,38 @@ JUDGE_PERSONAS = {
 def _score(js: dict) -> float:
     if not js:
         return 0.0
-    base = ((float(js.get("grounding_score") or 0)) +
-            (float(js.get("accuracy_score") or 0)) +
-            (float(js.get("actionability_score") or 0)) +
-            (float(js.get("consistency_score") or 0))) / 4.0
+    base = (
+        (float(js.get("grounding_score") or 0))
+        + (float(js.get("accuracy_score") or 0))
+        + (float(js.get("actionability_score") or 0))
+        + (float(js.get("consistency_score") or 0))
+    ) / 4.0
     penalty = {"none": 0.0, "low": 0.5, "medium": 1.5, "high": 3.5}.get(js.get("hallucination_risk", "low"), 0.5)
     return max(0.0, base - penalty)
 
 
-async def judge_output(judge_model: str, settings: dict, category: str, context_summary: str,
-                        candidate_output, max_context_chars: int = 32000, persona: str = "general") -> tuple[dict, float, int, int]:
+async def judge_output(
+    judge_model: str,
+    settings: dict,
+    category: str,
+    context_summary: str,
+    candidate_output,
+    max_context_chars: int = 32000,
+    persona: str = "general",
+) -> tuple[dict, float, int, int]:
     rubric = RUBRICS.get(category, RUBRICS["trade_decision"])
     client = make_client(judge_model, settings, max_tokens=1200, temperature=0.0, thinking="low")
     usage = _attach_usage_capture(client)
     system_prompt = JUDGE_PERSONAS.get(persona, JUDGE_PERSONAS["general"])
-    prompt = (f"RUBRIC:\n{rubric}\n\n"
-              f"--- CONTEXT PROVIDED TO MODEL ---\n{str(context_summary)[:max_context_chars]}\n\n"
-              f"--- CANDIDATE OUTPUT BEING EVALUATED ---\n{str(candidate_output)[:max_context_chars]}\n\n"
-              f"EVALUATOR ROLE: {persona.upper()}\n"
-              "Evaluate strictly according to your specialized persona. Deduct score for any claim that cannot be traced back to the context.")
+    prompt = (
+        f"RUBRIC:\n{rubric}\n\n"
+        f"--- CONTEXT PROVIDED TO MODEL ---\n{str(context_summary)[:max_context_chars]}\n\n"
+        f"--- CANDIDATE OUTPUT BEING EVALUATED ---\n{str(candidate_output)[:max_context_chars]}\n\n"
+        f"EVALUATOR ROLE: {persona.upper()}\n"
+        "Evaluate strictly according to your specialized persona. Deduct score for any claim that cannot be traced back to the context."
+    )
     try:
-        js = await client.classify_json(prompt, system_prompt=system_prompt,
-                                         schema=JUDGE_SCHEMA)
+        js = await client.classify_json(prompt, system_prompt=system_prompt, schema=JUDGE_SCHEMA)
     except Exception as e:
         logger.warning(f"Judge call gagal ({judge_model} [{persona}]): {e}")
         js = None
@@ -139,6 +171,7 @@ async def judge_output_ensemble(
     (Macro Economist, Technical Analyst, Risk Officer) untuk mengurangi bias single-model.
     """
     import asyncio
+
     if not judge_models:
         default_judges = settings.get("benchmark", {}).get("default_judges")
         if default_judges and isinstance(default_judges, list):

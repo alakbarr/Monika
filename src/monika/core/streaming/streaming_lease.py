@@ -27,11 +27,13 @@ logger = logging.getLogger("TradingAgent.Utils.StreamingLease")
 
 class LeaseAcquisitionTimeoutError(TimeoutError):
     """Raised when acquiring a stream writer lease exceeds timeout."""
+
     pass
 
 
 class LeaseExpiredOrInvalidError(RuntimeError):
     """Raised when an operation is attempted on an invalid or expired lease."""
+
     pass
 
 
@@ -163,7 +165,9 @@ class StreamWriterLeaseHandle:
         self._coordinator._active_leases.pop(self._record.surface_id, None)
         if self._lock.locked():
             self._lock.release()
-        logger.debug(f"[StreamLease] Released lease {self._record.lease_id[:8]} on surface '{self._record.surface_id}'.")
+        logger.debug(
+            f"[StreamLease] Released lease {self._record.lease_id[:8]} on surface '{self._record.surface_id}'."
+        )
 
 
 # Global singleton coordinator

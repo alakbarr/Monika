@@ -7,6 +7,7 @@ Fetcher Fear & Greed Index dari API alternative.me.
 API gratis, tanpa perlu autentikasi.
 Mewakili sentimen pasar kripto umum dan spesifik BTC.
 """
+
 import json
 import logging
 from datetime import datetime, timezone
@@ -41,11 +42,13 @@ class FearGreedFetcher:
         for d in items[:7]:
             if not isinstance(d, dict):
                 continue
-            history.append({
-                "value": int(d.get("value", 0)),
-                "classification": str(d.get("value_classification", "Unknown")),
-                "timestamp": str(d.get("timestamp", "")),
-            })
+            history.append(
+                {
+                    "value": int(d.get("value", 0)),
+                    "classification": str(d.get("value_classification", "Unknown")),
+                    "timestamp": str(d.get("timestamp", "")),
+                }
+            )
 
         if not history:
             return {"error": "Fear & Greed API empty history"}
@@ -63,9 +66,9 @@ class FearGreedFetcher:
         }
 
         cfg_key = "fear_greed_latest"
-        existing = (await self.session.execute(
-            select(SystemConfig).where(SystemConfig.key == cfg_key).limit(1)
-        )).scalar_one_or_none()
+        existing = (
+            await self.session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key).limit(1))
+        ).scalar_one_or_none()
 
         if existing:
             existing.value = json.dumps(result)
@@ -73,6 +76,7 @@ class FearGreedFetcher:
             self.session.add(SystemConfig(key=cfg_key, value=json.dumps(result)))
 
         from monika.infrastructure.database.safe_ops import safe_commit
+
         await safe_commit(self.session, label="FearGreed")
         logger.info(f"Fear & Greed: {latest['value']} ({latest['classification']})")
         return result

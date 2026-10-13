@@ -40,6 +40,7 @@ class PluginManifest(BaseModel):
     Enforces semantic versioning, hook validity, explicit dependencies, and capabilities.
     Supports both dictionary-mapped hooks and list-declared hooks.
     """
+
     id: Optional[str] = None
     name: str
     version: str = "1.0.0"
@@ -61,18 +62,14 @@ class PluginManifest(BaseModel):
         if isinstance(v, dict):
             for hook_name, target in v.items():
                 if hook_name not in SUPPORTED_HOOKS:
-                    raise ValueError(
-                        f"Unsupported hook '{hook_name}'. Supported hooks: {', '.join(SUPPORTED_HOOKS)}"
-                    )
+                    raise ValueError(f"Unsupported hook '{hook_name}'. Supported hooks: {', '.join(SUPPORTED_HOOKS)}")
                 if ":" not in target:
                     raise ValueError(f"Hook target '{target}' must follow 'module.path:callable_name' format.")
             return v
         elif isinstance(v, list):
             for hook_name in v:
                 if hook_name not in SUPPORTED_HOOKS:
-                    raise ValueError(
-                        f"Unsupported hook '{hook_name}'. Supported hooks: {', '.join(SUPPORTED_HOOKS)}"
-                    )
+                    raise ValueError(f"Unsupported hook '{hook_name}'. Supported hooks: {', '.join(SUPPORTED_HOOKS)}")
             return v
         return v
 

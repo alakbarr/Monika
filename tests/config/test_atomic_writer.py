@@ -166,4 +166,3 @@ app:
     assert "${DB_PASS}" in raw_text
     assert "Monika-Renamed" in raw_text
     assert "secret123" not in raw_text
-

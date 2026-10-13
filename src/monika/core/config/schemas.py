@@ -1,6 +1,7 @@
 """
 Pydantic Schemas for strongly-typed configuration validation (H6, M-3, M-4).
 """
+
 from pydantic import BaseModel, Field, SecretStr, model_validator
 from typing import Dict, List, Optional, Any, Union
 
@@ -224,4 +225,3 @@ class TradingAgentConfig(SubscriptableConfig):
         if self.benchmark:
             BenchmarkConfig.model_validate(self.benchmark)
         return self
-

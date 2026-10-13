@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Test Suite for Spill Reader Tool (retrieve_spilled_context).
 Verifies DB retrieval, disk fallback, pagination slicing, error handling,
@@ -28,8 +29,7 @@ async def test_retrieve_spilled_context_from_db():
     mock_session.execute.return_value = mock_result
 
     res = await handle_retrieve_spilled_context(
-        {"blob_id": "db://spill/spill_test123", "offset": 0, "max_chars": 1000},
-        session=mock_session
+        {"blob_id": "db://spill/spill_test123", "offset": 0, "max_chars": 1000}, session=mock_session
     )
 
     assert res["success"] is True
@@ -52,8 +52,7 @@ async def test_retrieve_spilled_context_pagination():
     mock_session.execute.return_value = mock_result
 
     res = await handle_retrieve_spilled_context(
-        {"blob_id": "spill_page_test", "offset": 6, "max_chars": 100},
-        session=mock_session
+        {"blob_id": "spill_page_test", "offset": 6, "max_chars": 100}, session=mock_session
     )
 
     assert res["success"] is True
@@ -84,11 +83,11 @@ async def test_retrieve_spilled_context_disk_fallback(tmp_path):
             if "data/cache/spillover" in str(p):
                 return cache_dir
             return Path(p)
+
         mock_path.side_effect = side_effect
 
         res = await handle_retrieve_spilled_context(
-            {"blob_id": "disk123", "offset": 0, "max_chars": 500},
-            session=mock_session
+            {"blob_id": "disk123", "offset": 0, "max_chars": 500}, session=mock_session
         )
 
         assert res["success"] is True
@@ -103,10 +102,7 @@ async def test_retrieve_spilled_context_not_found():
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
 
-    res = await handle_retrieve_spilled_context(
-        {"blob_id": "spill_nonexistent_999"},
-        session=mock_session
-    )
+    res = await handle_retrieve_spilled_context({"blob_id": "spill_nonexistent_999"}, session=mock_session)
 
     assert res["success"] is False
     assert "not found" in res["error"]

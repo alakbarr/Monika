@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """Unit tests for get_market_quote tool and handlers."""
 
 import pytest
@@ -17,13 +18,15 @@ from analysis.tools.tools_definitions import ALL_TOOLS
 async def test_get_market_quote_mt5_success():
     """Test market quote fetching via live MT5 tick."""
     mock_mt5 = AsyncMock()
-    mock_mt5.get_current_price = AsyncMock(return_value={
-        "symbol": "EURUSD",
-        "bid": 1.08500,
-        "ask": 1.08520,
-        "last": 1.08510,
-        "time": datetime(2026, 9, 8, 0, 0, 0, tzinfo=timezone.utc),
-    })
+    mock_mt5.get_current_price = AsyncMock(
+        return_value={
+            "symbol": "EURUSD",
+            "bid": 1.08500,
+            "ask": 1.08520,
+            "last": 1.08510,
+            "time": datetime(2026, 9, 8, 0, 0, 0, tzinfo=timezone.utc),
+        }
+    )
 
     with patch("execution.mt5_client.get_mt5_client", return_value=mock_mt5):
         res = await handle_get_market_quote({"symbol": "EURUSD"})
@@ -103,13 +106,15 @@ async def test_get_market_quote_missing_symbol():
 async def test_technical_domain_handler():
     """Test TechnicalToolHandlers.get_market_quote method."""
     mock_mt5 = AsyncMock()
-    mock_mt5.get_current_price = AsyncMock(return_value={
-        "symbol": "BTCUSD",
-        "bid": 65000.0,
-        "ask": 65015.0,
-        "last": 65005.0,
-        "time": datetime(2026, 9, 8, 0, 0, 0, tzinfo=timezone.utc),
-    })
+    mock_mt5.get_current_price = AsyncMock(
+        return_value={
+            "symbol": "BTCUSD",
+            "bid": 65000.0,
+            "ask": 65015.0,
+            "last": 65005.0,
+            "time": datetime(2026, 9, 8, 0, 0, 0, tzinfo=timezone.utc),
+        }
+    )
 
     handler = TechnicalToolHandlers(settings={})
     with patch("execution.mt5_client.get_mt5_client", return_value=mock_mt5):
@@ -127,13 +132,15 @@ async def test_tool_executor_dispatch_and_aliases():
     executor = ToolExecutor(mock_session)
 
     mock_mt5 = AsyncMock()
-    mock_mt5.get_current_price = AsyncMock(return_value={
-        "symbol": "EURUSD",
-        "bid": 1.0850,
-        "ask": 1.0852,
-        "last": 1.0851,
-        "time": datetime.now(timezone.utc),
-    })
+    mock_mt5.get_current_price = AsyncMock(
+        return_value={
+            "symbol": "EURUSD",
+            "bid": 1.0850,
+            "ask": 1.0852,
+            "last": 1.0851,
+            "time": datetime.now(timezone.utc),
+        }
+    )
 
     with patch("execution.mt5_client.get_mt5_client", return_value=mock_mt5):
         # Direct call

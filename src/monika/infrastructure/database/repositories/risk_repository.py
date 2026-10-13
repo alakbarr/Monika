@@ -74,32 +74,36 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
             stmt = select(PaperTradeRecord).where(PaperTradeRecord.status == "open")
             res = await session.execute(stmt)
             for rec in res.scalars().all():
-                results.append({
-                    "id": rec.id,
-                    "symbol": rec.symbol,
-                    "direction": rec.direction,
-                    "lots": float(rec.lot_size),
-                    "entry_price": float(rec.entry_price or 0.0),
-                    "stop_loss": float(rec.stop_loss or 0.0) if rec.stop_loss else None,
-                    "take_profit": float(rec.take_profit or 0.0) if rec.take_profit else None,
-                    "is_paper": True,
-                })
+                results.append(
+                    {
+                        "id": rec.id,
+                        "symbol": rec.symbol,
+                        "direction": rec.direction,
+                        "lots": float(rec.lot_size),
+                        "entry_price": float(rec.entry_price or 0.0),
+                        "stop_loss": float(rec.stop_loss or 0.0) if rec.stop_loss else None,
+                        "take_profit": float(rec.take_profit or 0.0) if rec.take_profit else None,
+                        "is_paper": True,
+                    }
+                )
         else:
             stmt = select(Position).where(Position.status == "open")
             res = await session.execute(stmt)
             for pos in res.scalars().all():
                 ticket = pos.mt5_ticket or pos.id
-                results.append({
-                    "id": ticket,
-                    "ticket": ticket,
-                    "symbol": pos.symbol,
-                    "direction": str(pos.direction).upper(),
-                    "lots": float(pos.volume or 0.0),
-                    "entry_price": float(pos.entry_price or 0.0),
-                    "stop_loss": float(pos.sl or 0.0) if pos.sl else None,
-                    "take_profit": float(pos.tp or 0.0) if pos.tp else None,
-                    "is_paper": False,
-                })
+                results.append(
+                    {
+                        "id": ticket,
+                        "ticket": ticket,
+                        "symbol": pos.symbol,
+                        "direction": str(pos.direction).upper(),
+                        "lots": float(pos.volume or 0.0),
+                        "entry_price": float(pos.entry_price or 0.0),
+                        "stop_loss": float(pos.sl or 0.0) if pos.sl else None,
+                        "take_profit": float(pos.tp or 0.0) if pos.tp else None,
+                        "is_paper": False,
+                    }
+                )
         return results
 
     async def get_account_equity_and_balance(
@@ -281,14 +285,16 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
         res = await session.execute(stmt)
         bars: List[Dict[str, Any]] = []
         for row in reversed(res.scalars().all()):
-            bars.append({
-                "time": row.timestamp.isoformat() if hasattr(row.timestamp, "isoformat") else str(row.timestamp),
-                "open": float(row.open),
-                "high": float(row.high),
-                "low": float(row.low),
-                "close": float(row.close),
-                "volume": float(row.volume or 0.0),
-            })
+            bars.append(
+                {
+                    "time": row.timestamp.isoformat() if hasattr(row.timestamp, "isoformat") else str(row.timestamp),
+                    "open": float(row.open),
+                    "high": float(row.high),
+                    "low": float(row.low),
+                    "close": float(row.close),
+                    "volume": float(row.volume or 0.0),
+                }
+            )
         return bars
 
     async def get_loss_streak(
@@ -322,11 +328,7 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
                     break
             return streak
 
-        stmt = (
-            select(TradeOutcome.pnl_usd)
-            .order_by(desc(TradeOutcome.closed_at))
-            .limit(20)
-        )
+        stmt = select(TradeOutcome.pnl_usd).order_by(desc(TradeOutcome.closed_at)).limit(20)
         res = await session.execute(stmt)
         pnls = res.scalars().all()
         streak = 0
@@ -368,15 +370,17 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
         res = await session.execute(stmt)
         events: List[Dict[str, Any]] = []
         for row in res.scalars().all():
-            events.append({
-                "id": row.id,
-                "title": getattr(row, "event_name", None) or getattr(row, "title", "") or "",
-                "currency": row.currency,
-                "impact": row.impact,
-                "event_time": row.event_time,
-                "forecast": row.forecast,
-                "previous": row.previous,
-            })
+            events.append(
+                {
+                    "id": row.id,
+                    "title": getattr(row, "event_name", None) or getattr(row, "title", "") or "",
+                    "currency": row.currency,
+                    "impact": row.impact,
+                    "event_time": row.event_time,
+                    "forecast": row.forecast,
+                    "previous": row.previous,
+                }
+            )
         return events
 
     async def get_latest_timesfm_forecast(
@@ -403,6 +407,7 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
     ) -> Optional[Dict[str, Any]]:
         import json
         from datetime import timedelta
+
         cutoff_base = as_of if as_of is not None else datetime.now(timezone.utc)
         cutoff = cutoff_base - timedelta(hours=max_age_hours)
         stmt = (
@@ -476,8 +481,7 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
                     setattr(existing, k, v)
         else:
             state = RiskState(
-                date=now_date,
-                **{k: v for k, v in payload.items() if hasattr(RiskState, k) and k not in ("id", "date")}
+                date=now_date, **{k: v for k, v in payload.items() if hasattr(RiskState, k) and k not in ("id", "date")}
             )
             session.add(state)
         await session.flush()
@@ -552,6 +556,7 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
 
     async def _query_recent_stop_losses(self, session: AsyncSession, symbol: str, window_minutes: int) -> int:
         from datetime import timedelta
+
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
         stmt = (
             select(func.count(TradeOutcome.id))
@@ -602,4 +607,3 @@ from monika.domain.risk.ports import register_risk_data_provider_factory
 register_risk_data_provider_factory(
     lambda session=None, settings=None: SqlAlchemyRiskRepository(session=session, settings=settings)
 )
-

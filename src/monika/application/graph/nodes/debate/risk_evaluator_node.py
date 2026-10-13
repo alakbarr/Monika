@@ -18,13 +18,17 @@ from monika.application.analysis.debate.aggressive_risk_llm import analyze_risk_
 from monika.application.analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
 from monika.application.analysis.debate.portfolio_manager import make_portfolio_decision
 from monika.application.analysis.debate.deterministic_risk import (
-    analyze_risk_conservative, analyze_risk_aggressive, analyze_risk_neutral,
+    analyze_risk_conservative,
+    analyze_risk_aggressive,
+    analyze_risk_neutral,
     make_portfolio_decision_deterministic,
 )
 from monika.application.graph.nodes.debate.helpers import (
-    compute_actual_risk_state, _get_recent_sl_streak,
-    _get_correlated_exposure_summary, _apply_deterministic_risk_clamp,
-    sync_facade_patches
+    compute_actual_risk_state,
+    _get_recent_sl_streak,
+    _get_correlated_exposure_summary,
+    _apply_deterministic_risk_clamp,
+    sync_facade_patches,
 )
 
 logger = logging.getLogger("TradingAgent.Graph.Debate.RiskEvaluatorNode")
@@ -60,8 +64,12 @@ async def risk_evaluator_node(state: TradingState, config: Optional[RunnableConf
             "portfolio_decisions": portfolio_decisions,
         }
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
-    scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
+    scheduler = (
+        configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    )
     settings = scheduler.settings if scheduler else {}
     debate_cfg = settings.get("agent_architecture", {})
 
@@ -70,14 +78,14 @@ async def risk_evaluator_node(state: TradingState, config: Optional[RunnableConf
 
     logger.info(f"[Debate:RiskEvaluator] Running multi-persona risk evaluation for {len(actionable)} trades...")
 
-    mt5_client = getattr(scheduler, '_mt5', None) if scheduler else None
+    mt5_client = getattr(scheduler, "_mt5", None) if scheduler else None
 
     async with get_session() as session:
         actual_risk_state = await compute_actual_risk_state(session, settings, mt5_client=mt5_client)
 
     user_market_intel = state.get("user_market_intel") or []
-    use_deterministic = settings.get('agent_architecture', {}).get('deterministic_risk_gate', True)
-    min_rr = settings.get('trading', {}).get('risk', {}).get('min_rr_ratio', 1.3)
+    use_deterministic = settings.get("agent_architecture", {}).get("deterministic_risk_gate", True)
+    min_rr = settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
 
     surviving_trades: List[Tuple[str, dict]] = []
     semaphore = asyncio.Semaphore(3)
@@ -98,7 +106,7 @@ async def risk_evaluator_node(state: TradingState, config: Optional[RunnableConf
                         return sym, (sym, r), None, None
 
                     entry_zone_data = json.loads(ana.entry_zone) if ana.entry_zone else {}
-                    entry_price = entry_zone_data.get('price') or ana.price_at_analysis
+                    entry_price = entry_zone_data.get("price") or ana.price_at_analysis
                     rr_ratio = None
                     if entry_price and ana.stop_loss and ana.take_profit:
                         sl_dist = abs(entry_price - ana.stop_loss)
@@ -133,16 +141,29 @@ async def risk_evaluator_node(state: TradingState, config: Optional[RunnableConf
                         cons_risk = analyze_risk_conservative(strict_context)
                         agg_risk = analyze_risk_aggressive(strict_context, min_rr_ratio=min_rr)
                         neu_risk = analyze_risk_neutral(strict_context, min_rr_ratio=min_rr)
-                        single_risk_debate = {'conservative': cons_risk, 'aggressive': agg_risk, 'neutral': neu_risk}
+                        single_risk_debate = {"conservative": cons_risk, "aggressive": agg_risk, "neutral": neu_risk}
                         pm_decision = make_portfolio_decision_deterministic(single_risk_debate)
                     else:
-                        cons_risk = await analyze_risk_conservative_llm(get_client_for_task("risk_gate_conservative", settings), sym, strict_context)
-                        agg_risk = await analyze_risk_aggressive_llm(get_client_for_task("risk_gate_aggressive", settings), sym, strict_context)
-                        neu_risk = await analyze_risk_neutral_llm(get_client_for_task("risk_gate_neutral", settings), sym, strict_context)
-                        single_risk_debate = {'conservative': cons_risk, 'aggressive': agg_risk, 'neutral': neu_risk}
-                        pm_decision = await make_portfolio_decision(get_client_for_task("portfolio_manager_per_trade", settings), sym, single_risk_debate, actual_risk_state_with_intel)
+                        cons_risk = await analyze_risk_conservative_llm(
+                            get_client_for_task("risk_gate_conservative", settings), sym, strict_context
+                        )
+                        agg_risk = await analyze_risk_aggressive_llm(
+                            get_client_for_task("risk_gate_aggressive", settings), sym, strict_context
+                        )
+                        neu_risk = await analyze_risk_neutral_llm(
+                            get_client_for_task("risk_gate_neutral", settings), sym, strict_context
+                        )
+                        single_risk_debate = {"conservative": cons_risk, "aggressive": agg_risk, "neutral": neu_risk}
+                        pm_decision = await make_portfolio_decision(
+                            get_client_for_task("portfolio_manager_per_trade", settings),
+                            sym,
+                            single_risk_debate,
+                            actual_risk_state_with_intel,
+                        )
 
-                    pm_decision = _apply_deterministic_risk_clamp(pm_decision, single_risk_debate, actual_risk_state_with_intel)
+                    pm_decision = _apply_deterministic_risk_clamp(
+                        pm_decision, single_risk_debate, actual_risk_state_with_intel
+                    )
 
                     survived_item = None
                     if pm_decision.get("approval") == True:
@@ -154,12 +175,16 @@ async def risk_evaluator_node(state: TradingState, config: Optional[RunnableConf
                     else:
                         logger.warning(f"Portfolio Manager Rejected {sym}: {pm_decision.get('reason')}")
                         await DecisionLogger.log_paper_whatif(
-                            session=s_inner, analysis_id=int(analysis_id or ana.id), symbol=sym,
-                            decision=r.get("decision", "wait"), confidence=r.get("confidence", 0),
-                            confluence_score=ana.confluence_score, rationale=bull_thesis,
+                            session=s_inner,
+                            analysis_id=int(analysis_id or ana.id),
+                            symbol=sym,
+                            decision=r.get("decision", "wait"),
+                            confidence=r.get("confidence", 0),
+                            confluence_score=ana.confluence_score,
+                            rationale=bull_thesis,
                             reason=f"Portfolio Manager Rejected: {pm_decision.get('reason')}",
                             context_snapshot_id=ana.context_snapshot_id,
-                            ssvp_cds_score=ana.ssvp_cds_score_at_analysis
+                            ssvp_cds_score=ana.ssvp_cds_score_at_analysis,
                         )
 
                     return sym, survived_item, single_risk_debate, pm_decision

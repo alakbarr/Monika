@@ -5,6 +5,7 @@ and Deflated Sharpe Ratio (DSR) based on Bailey & López de Prado (2012, 2014).
 
 Uses Python stdlib (math, statistics) for zero external dependencies.
 """
+
 import math
 import statistics
 from typing import Any, Optional, Sequence
@@ -34,7 +35,7 @@ def probabilistic_sharpe_ratio(
 
     # Variance adjustment term for non-normal returns (Bailey & López de Prado 2012, eq. 6)
     # (gamma4 - 1)/4 = (excess_kurt + 2)/4 = excess_kurt/4 + 0.5
-    var_term = 1.0 - (skew * observed_sr) + (((excess_kurt + 2.0) / 4.0) * (observed_sr ** 2))
+    var_term = 1.0 - (skew * observed_sr) + (((excess_kurt + 2.0) / 4.0) * (observed_sr**2))
     if var_term <= 1e-12:
         var_term = 1e-12
 
@@ -126,12 +127,12 @@ def compute_sample_moments(returns: Sequence[float]) -> tuple[float, float, floa
         return mean, 0.0, 0.0, 0.0
 
     # Skewness (Fisher-Pearson)
-    m3 = sum(d ** 3 for d in diffs) / n
-    skew = m3 / (std ** 3)
+    m3 = sum(d**3 for d in diffs) / n
+    skew = m3 / (std**3)
 
     # Excess kurtosis
-    m4 = sum(d ** 4 for d in diffs) / n
-    excess_kurt = (m4 / (std ** 4)) - 3.0
+    m4 = sum(d**4 for d in diffs) / n
+    excess_kurt = (m4 / (std**4)) - 3.0
 
     return mean, std, skew, excess_kurt
 

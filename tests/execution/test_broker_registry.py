@@ -64,9 +64,9 @@ def test_broker_adapter_registry():
 @pytest.mark.asyncio
 async def test_simulated_broker_accepts_order_request():
     adapter = SimulatedBrokerAdapter(initial_balance=10000.0)
-    adapter.get_tick = AsyncMock(return_value={
-        "symbol": "EURUSD", "bid": 1.0850, "ask": 1.0852, "last": 1.0852, "spread": 0.0002
-    })
+    adapter.get_tick = AsyncMock(
+        return_value={"symbol": "EURUSD", "bid": 1.0850, "ask": 1.0852, "last": 1.0852, "spread": 0.0002}
+    )
 
     req = OrderRequest(symbol="EURUSD", direction="buy", volume=0.1, price=1.0852, client_order_id="req-1")
     result = await adapter.submit_order(req)

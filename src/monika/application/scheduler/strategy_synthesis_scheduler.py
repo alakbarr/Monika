@@ -39,6 +39,7 @@ logger = logging.getLogger("TradingAgent.StrategySynthesisScheduler")
 @dataclass
 class SynthesizedStrategyCandidate:
     """Metadata and backtest performance for a synthesized strategy candidate."""
+
     strategy_id: str
     class_name: str
     symbol: str
@@ -119,8 +120,7 @@ class StrategySynthesisScheduler:
         self.max_drawdown_pct = float(cfg.get("max_drawdown_pct", max_drawdown_pct))
         self.min_trades = int(cfg.get("min_trades", min_trades))
         self.target_symbols = target_symbols or cfg.get(
-            "target_symbols",
-            settings.get("trading", {}).get("asset_universe", ["EURUSD", "BTCUSD", "XAUUSD"])
+            "target_symbols", settings.get("trading", {}).get("asset_universe", ["EURUSD", "BTCUSD", "XAUUSD"])
         )
         self.walk_forward_enabled = bool(cfg.get("walk_forward_enabled", True))
         self.min_walk_forward_sharpe = float(cfg.get("min_walk_forward_sharpe", 1.0))
@@ -136,23 +136,59 @@ class StrategySynthesisScheduler:
 
     # Institutional module allowlist for quantitative EdgeStrategy code
     ALLOWED_MODULE_ROOTS = {
-        "math", "numpy", "np", "pandas", "pd", "datetime", "typing",
-        "dataclasses", "analysis", "sqlalchemy", "logging", "decimal",
-        "collections", "enum", "itertools", "functools", "uuid", "re"
+        "math",
+        "numpy",
+        "np",
+        "pandas",
+        "pd",
+        "datetime",
+        "typing",
+        "dataclasses",
+        "analysis",
+        "sqlalchemy",
+        "logging",
+        "decimal",
+        "collections",
+        "enum",
+        "itertools",
+        "functools",
+        "uuid",
+        "re",
     }
 
     ALLOWED_DUNDER_ATTRS = {"__init__"}
     ALLOWED_DUNDER_NAMES = {"__name__", "__doc__"}
 
     DISALLOWED_CALL_NAMES = {
-        "eval", "exec", "compile", "open", "input",
-        "breakpoint", "globals", "locals", "setattr", "delattr",
-        "__import__", "exit", "quit", "help"
+        "eval",
+        "exec",
+        "compile",
+        "open",
+        "input",
+        "breakpoint",
+        "globals",
+        "locals",
+        "setattr",
+        "delattr",
+        "__import__",
+        "exit",
+        "quit",
+        "help",
     }
 
     DISALLOWED_CALL_ATTRS = {
-        "system", "popen", "spawn", "fork", "read", "write",
-        "unlink", "rmdir", "mkdir", "connect", "remove", "rename"
+        "system",
+        "popen",
+        "spawn",
+        "fork",
+        "read",
+        "write",
+        "unlink",
+        "rmdir",
+        "mkdir",
+        "connect",
+        "remove",
+        "rename",
     }
 
     def validate_code_safety(self, code_str: str) -> bool:
@@ -174,10 +210,14 @@ class StrategySynthesisScheduler:
             # Prohibit unauthorized private / dunder attribute traversal (e.g., .__subclasses__, .__class__, .__globals__)
             if isinstance(node, ast.Attribute):
                 if node.attr.startswith("__") and node.attr not in self.ALLOWED_DUNDER_ATTRS:
-                    logger.warning(f"[StrategySynthesis] Security check failed: dunder attribute traversal '.{node.attr}'")
+                    logger.warning(
+                        f"[StrategySynthesis] Security check failed: dunder attribute traversal '.{node.attr}'"
+                    )
                     return False
                 if node.attr in self.DISALLOWED_CALL_ATTRS:
-                    logger.warning(f"[StrategySynthesis] Security check failed: disallowed attribute call '.{node.attr}'")
+                    logger.warning(
+                        f"[StrategySynthesis] Security check failed: disallowed attribute call '.{node.attr}'"
+                    )
                     return False
 
             # Prohibit any dunder names or dynamic execution primitives
@@ -207,11 +247,17 @@ class StrategySynthesisScheduler:
                             elif isinstance(attr_arg, getattr(ast, "Str", type(None))):
                                 attr_val = getattr(attr_arg, "s", None)
 
-                            if attr_val and not attr_val.startswith("__") and attr_val not in self.DISALLOWED_CALL_ATTRS:
+                            if (
+                                attr_val
+                                and not attr_val.startswith("__")
+                                and attr_val not in self.DISALLOWED_CALL_ATTRS
+                            ):
                                 is_safe_getattr = True
 
                     if not is_safe_getattr:
-                        logger.warning(f"[StrategySynthesis] Security check failed: disallowed or dynamic call 'getattr'")
+                        logger.warning(
+                            f"[StrategySynthesis] Security check failed: disallowed or dynamic call 'getattr'"
+                        )
                         return False
                 elif func_name in self.DISALLOWED_CALL_NAMES or func_name in self.DISALLOWED_CALL_ATTRS:
                     logger.warning(f"[StrategySynthesis] Security check failed: disallowed call '{func_name}'")
@@ -224,15 +270,19 @@ class StrategySynthesisScheduler:
                 for n in names:
                     target_root = (mod_name or n).split(".")[0].strip()
                     if target_root and target_root not in self.ALLOWED_MODULE_ROOTS:
-                        logger.warning(f"[StrategySynthesis] Security check failed: module '{target_root}' not in allowlist")
+                        logger.warning(
+                            f"[StrategySynthesis] Security check failed: module '{target_root}' not in allowlist"
+                        )
                         return False
 
         # Structural completeness: if an EdgeStrategy class is declared, ensure evaluate() exists and contains returns
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
                 has_edge_base = any(
-                    isinstance(b, ast.Name) and b.id == "EdgeStrategy" or
-                    isinstance(b, ast.Attribute) and b.attr == "EdgeStrategy"
+                    isinstance(b, ast.Name)
+                    and b.id == "EdgeStrategy"
+                    or isinstance(b, ast.Attribute)
+                    and b.attr == "EdgeStrategy"
                     for b in node.bases
                 )
                 if has_edge_base:
@@ -243,8 +293,7 @@ class StrategySynthesisScheduler:
                             break
                     if evaluate_node is not None:
                         returns_or_raises = [
-                            n for n in ast.walk(evaluate_node)
-                            if isinstance(n, (ast.Return, ast.Raise))
+                            n for n in ast.walk(evaluate_node) if isinstance(n, (ast.Return, ast.Raise))
                         ]
                         if not returns_or_raises:
                             logger.warning(
@@ -319,17 +368,23 @@ class StrategySynthesisScheduler:
                     text=True,
                     encoding="utf-8",
                     errors="replace",
-                    timeout=5.0
+                    timeout=5.0,
                 )
                 if res.returncode == 1:
                     first_err = (
                         res.stdout.strip().splitlines()[0]
                         if res.stdout.strip()
-                        else (res.stderr.strip().splitlines()[0] if res.stderr.strip() else "syntax or name resolution error")
+                        else (
+                            res.stderr.strip().splitlines()[0]
+                            if res.stderr.strip()
+                            else "syntax or name resolution error"
+                        )
                     )
                     return False, f"ruff check failed: {first_err}"
                 elif res.returncode != 0:
-                    tool_err = res.stderr.strip().splitlines()[0] if res.stderr.strip() else f"exit code {res.returncode}"
+                    tool_err = (
+                        res.stderr.strip().splitlines()[0] if res.stderr.strip() else f"exit code {res.returncode}"
+                    )
                     logger.debug(f"[StrategySynthesis] Subprocess ruff check non-fatal (tool warning): {tool_err}")
             except Exception as ruff_err:
                 logger.debug(f"[StrategySynthesis] Subprocess ruff check non-fatal: {ruff_err}")
@@ -347,15 +402,15 @@ class StrategySynthesisScheduler:
 
         # Defensive pre-sanitization: normalize hallucinated project root imports
         code_str = re.sub(
-            r'from\s+(?:app|core|edge_engine|trading_system)[a-zA-Z0-9_\.]*\s+import\s+([a-zA-Z0-9_,\s]+)',
-            r'from monika.application.analysis.strategies.base_strategy import \1',
-            code_str
+            r"from\s+(?:app|core|edge_engine|trading_system)[a-zA-Z0-9_\.]*\s+import\s+([a-zA-Z0-9_,\s]+)",
+            r"from monika.application.analysis.strategies.base_strategy import \1",
+            code_str,
         )
 
         # Auto-repair dunder attribute traversal on candles / dicts (e.g. c.__dict__ -> c)
-        code_str = re.sub(r'\b([a-zA-Z0-9_]+)\s*\.\s*__dict__', r'\1', code_str)
+        code_str = re.sub(r"\b([a-zA-Z0-9_]+)\s*\.\s*__dict__", r"\1", code_str)
         # Auto-repair vars(c) -> c
-        code_str = re.sub(r'\bvars\s*\(\s*([a-zA-Z0-9_]+)\s*\)', r'\1', code_str)
+        code_str = re.sub(r"\bvars\s*\(\s*([a-zA-Z0-9_]+)\s*\)", r"\1", code_str)
 
         # Pattern 1: .fillna(method='ffill'|'bfill', inplace=True|False)
         def _sub_method_first(m):
@@ -420,9 +475,9 @@ class StrategySynthesisScheduler:
             paren_depth = 1
             i = val_start
             while i < len(code_str) and paren_depth > 0:
-                if code_str[i] == '(':
+                if code_str[i] == "(":
                     paren_depth += 1
-                elif code_str[i] == ')':
+                elif code_str[i] == ")":
                     paren_depth -= 1
                     if paren_depth == 0:
                         break
@@ -430,18 +485,20 @@ class StrategySynthesisScheduler:
 
             if paren_depth == 0:
                 val_expr = code_str[val_start:i].strip()
-                is_scalar = bool(re.match(
-                    r"^(?:(?:np\.|math\.)?nan|float\(['\"]nan['\"]\)|None|-?\d+(?:\.\d+)?)(?:\s*,\s*inplace\s*=\s*(?:True|False))?$",
-                    val_expr,
-                    re.IGNORECASE
-                ))
+                is_scalar = bool(
+                    re.match(
+                        r"^(?:(?:np\.|math\.)?nan|float\(['\"]nan['\"]\)|None|-?\d+(?:\.\d+)?)(?:\s*,\s*inplace\s*=\s*(?:True|False))?$",
+                        val_expr,
+                        re.IGNORECASE,
+                    )
+                )
                 if not is_scalar:
                     inplace_match = re.search(r",\s*inplace\s*=\s*(True|False)", val_expr, re.IGNORECASE)
-                    if inplace_match and inplace_match.group(1).lower() == 'true':
+                    if inplace_match and inplace_match.group(1).lower() == "true":
                         replacement = f".replace({target_str}, np.nan, inplace=True)"
                     else:
                         replacement = f".replace({target_str}, np.nan).ffill().bfill()"
-                    code_str = code_str[:m.start()] + replacement + code_str[i+1:]
+                    code_str = code_str[: m.start()] + replacement + code_str[i + 1 :]
 
         return code_str
 
@@ -530,12 +587,18 @@ class StrategySynthesisScheduler:
         reindent_active = False
 
         method_triggers = (
-            "async def evaluate", "def evaluate",
-            "async def generate_signals", "def generate_signals",
-            "async def generate_signal", "def generate_signal",
-            "async def analyze", "def analyze",
-            "async def execute", "def execute",
-            "async def evaluate_strategy", "def evaluate_strategy"
+            "async def evaluate",
+            "def evaluate",
+            "async def generate_signals",
+            "def generate_signals",
+            "async def generate_signal",
+            "def generate_signal",
+            "async def analyze",
+            "def analyze",
+            "async def execute",
+            "def execute",
+            "async def evaluate_strategy",
+            "def evaluate_strategy",
         )
 
         for line in lines:
@@ -556,7 +619,9 @@ class StrategySynthesisScheduler:
             if in_class and indent <= class_indent:
                 if any(stripped.startswith(trig) for trig in method_triggers):
                     reindent_active = True
-                elif stripped.startswith(("class ", "import ", "from ")) and not any(stripped.startswith(trig) for trig in method_triggers):
+                elif stripped.startswith(("class ", "import ", "from ")) and not any(
+                    stripped.startswith(trig) for trig in method_triggers
+                ):
                     reindent_active = False
 
             if reindent_active:
@@ -599,7 +664,11 @@ class StrategySynthesisScheduler:
             indent_str = line[:indent]
 
             # Check if open try block at deeper or equal indent was abandoned before this line
-            while try_stack and indent <= try_stack[-1][0] and not (stripped.startswith("except") or stripped.startswith("finally")):
+            while (
+                try_stack
+                and indent <= try_stack[-1][0]
+                and not (stripped.startswith("except") or stripped.startswith("finally"))
+            ):
                 t_indent, t_indent_str = try_stack.pop()
                 inner_indent = t_indent_str + "    "
                 new_lines.append(f"{t_indent_str}except Exception:")
@@ -639,10 +708,20 @@ class StrategySynthesisScheduler:
             return None
 
         import builtins
+
         safe_builtins = dict(builtins.__dict__)
         for dangerous in (
-            "eval", "exec", "compile", "open", "input",
-            "breakpoint", "globals", "locals", "getattr", "setattr", "delattr"
+            "eval",
+            "exec",
+            "compile",
+            "open",
+            "input",
+            "breakpoint",
+            "globals",
+            "locals",
+            "getattr",
+            "setattr",
+            "delattr",
         ):
             safe_builtins.pop(dangerous, None)
 
@@ -700,8 +779,14 @@ class StrategySynthesisScheduler:
                 # 2. Check known method aliases on strat_cls
                 if getattr(strat_cls, "__abstractmethods__", None) and "evaluate" in strat_cls.__abstractmethods__:
                     candidate_aliases = [
-                        "generate_signals", "generate_signal", "analyze", "execute",
-                        "evaluate_strategy", "evaluate_symbol", "evaluate_market", "run"
+                        "generate_signals",
+                        "generate_signal",
+                        "analyze",
+                        "execute",
+                        "evaluate_strategy",
+                        "evaluate_symbol",
+                        "evaluate_market",
+                        "run",
                     ]
                     for alias in candidate_aliases:
                         if hasattr(strat_cls, alias) and callable(getattr(strat_cls, alias)):
@@ -752,6 +837,7 @@ class StrategySynthesisScheduler:
                     self.settings = settings
                 elif not hasattr(self, "settings") or self.settings is None:
                     self.settings = {}
+
             strat_cls.__init__ = safe_init
 
             # Robust evaluate error boundary: prevents runtime exceptions in synthesized quant code from bubbling to evaluate_all
@@ -772,7 +858,7 @@ class StrategySynthesisScheduler:
                             tags=["empty_signal"],
                         )
                     # Enforce signal integrity: valid=True requires direction in ('buy', 'sell')
-                    if getattr(res, "valid", False) and getattr(res, "direction", None) not in ('buy', 'sell'):
+                    if getattr(res, "valid", False) and getattr(res, "direction", None) not in ("buy", "sell"):
                         res.valid = False
                     return res
                 except Exception as eval_err:
@@ -785,7 +871,7 @@ class StrategySynthesisScheduler:
                         valid=False,
                         confidence=0.0,
                         rationale=f"Evaluation failed: {eval_err}",
-                        tags=["evaluation_error"]
+                        tags=["evaluation_error"],
                     )
 
             strat_cls.evaluate = safe_evaluate
@@ -824,7 +910,7 @@ class StrategySynthesisScheduler:
         for r in returns:
             if r > 0:
                 wins += 1
-            equity *= (1.0 + r)
+            equity *= 1.0 + r
             if equity > peak:
                 peak = equity
             dd = ((peak - equity) / peak) * 100.0 if peak > 0 else 0.0
@@ -947,6 +1033,7 @@ class StrategySynthesisScheduler:
         try:
             from monika.application.analysis.calculators.regime_classifier import classify_market_regime
             from monika.application.backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
+
             fprofile = ASSET_FRICTION_PROFILE.get(symbol, {"spread_pips": 2.0, "pip_value": 1.0})
             async with get_session() as mkt_session:
                 reg_info = await classify_market_regime(mkt_session, symbol, self.settings)
@@ -963,12 +1050,13 @@ class StrategySynthesisScheduler:
         code = None
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
+
             client = get_client_for_task("deep_research", self.settings)
             prompt = (
                 f"You are an elite institutional quantitative trading engineer. Write a Python EdgeStrategy subclass for trading on {symbol}.\n"
                 f"Class Name: {class_name}\n"
-                f"strategy_id: \"{raw_id}\"\n"
-                f"applicable_symbols: {{\"{symbol}\"}}\n"
+                f'strategy_id: "{raw_id}"\n'
+                f'applicable_symbols: {{"{symbol}"}}\n'
                 f"Trading Concept: {concept}\n"
                 f"{market_context_str}\n"
                 f"STRICT SKELETON (Class attributes and constructor must strictly match):\n"
@@ -978,9 +1066,9 @@ class StrategySynthesisScheduler:
                 f"from typing import Optional, Dict, Any, List\n"
                 f"import math, numpy as np, pandas as pd, datetime, logging, decimal\n\n"
                 f"class {class_name}(EdgeStrategy):\n"
-                f"    strategy_id: str = \"{raw_id}\"\n"
-                f"    applicable_symbols: set = {{\"{symbol}\"}}\n"
-                f"    compatible_regimes: set = {{\"TREND\", \"STRONG_TREND\", \"RANGE\", \"WEAK_TREND\", \"VOLATILE_CHOP\"}}\n"
+                f'    strategy_id: str = "{raw_id}"\n'
+                f'    applicable_symbols: set = {{"{symbol}"}}\n'
+                f'    compatible_regimes: set = {{"TREND", "STRONG_TREND", "RANGE", "WEAK_TREND", "VOLATILE_CHOP"}}\n'
                 f"    factor_family: str = \"trend\"  # choose from 'trend', 'momentum', 'reversal', 'breakout', 'volatility'\n\n"
                 f"    def __init__(self, settings: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:\n"
                 f"        super().__init__(settings or {{}}, *args, **kwargs)\n"
@@ -992,7 +1080,7 @@ class StrategySynthesisScheduler:
                 f"            # Return EdgeSignal with directional entry, valid=True, confidence, stop_loss, and take_profit\n"
                 f"            return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction='buy'|'sell'|None, valid=bool, confidence=float, stop_loss=float, take_profit=float, factor_family=self.factor_family, rationale=str, tags=list)\n"
                 f"        except Exception as e:\n"
-                f"            return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction=None, valid=False, confidence=0.0, rationale=f\"Calculation error: {{e}}\", tags=[\"error\"])\n"
+                f'            return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction=None, valid=False, confidence=0.0, rationale=f"Calculation error: {{e}}", tags=["error"])\n'
                 f"```\n\n"
                 f"STRICT SECURITY & QUANT RULES:\n"
                 f"- ONLY use the allowed imports shown in the skeleton above.\n"
@@ -1017,7 +1105,7 @@ class StrategySynthesisScheduler:
                 elif hasattr(client, "generate_content") and callable(getattr(client, "generate_content")):
                     response = await client.generate_content(
                         system_prompt="You are an elite quantitative trading strategy engineer.",
-                        user_message=current_prompt
+                        user_message=current_prompt,
                     )
                 elif callable(create_msg):
                     msg_call = cast(Callable[..., Any], create_msg)
@@ -1038,7 +1126,9 @@ class StrategySynthesisScheduler:
 
                 sanitized = self.sanitize_strategy_code(raw_extracted)
                 if not self.validate_code_safety(sanitized):
-                    logger.info(f"[StrategySynthesis] Code safety check failed on attempt {attempt+1} for {symbol}. Prompting repair.")
+                    logger.info(
+                        f"[StrategySynthesis] Code safety check failed on attempt {attempt + 1} for {symbol}. Prompting repair."
+                    )
                     current_prompt = (
                         f"Your previous code violated safety policies or module allowlists.\n"
                         f"STRICT INSTRUCTION: Only use math, numpy, pandas, datetime, sqlalchemy, logging.\n"
@@ -1048,7 +1138,9 @@ class StrategySynthesisScheduler:
 
                 strat_cls = self.compile_strategy_class(sanitized, class_name)
                 if strat_cls is None:
-                    logger.info(f"[StrategySynthesis] Compilation failed on attempt {attempt+1} for {symbol}. Prompting repair.")
+                    logger.info(
+                        f"[StrategySynthesis] Compilation failed on attempt {attempt + 1} for {symbol}. Prompting repair."
+                    )
                     current_prompt = (
                         f"Your previous code failed compilation or AST parsing.\n"
                         f"Please fix syntax, indentation, and undefined variables in {class_name}:\n```python\n{sanitized}\n```"
@@ -1060,6 +1152,7 @@ class StrategySynthesisScheduler:
                     if test_inst is not None:
                         # Pre-validate evaluate() on canary slice session to catch runtime calculation errors early
                         from monika.infrastructure.database.models import PriceOHLCV
+
                         now_dt = datetime.now(timezone.utc)
                         mock_candles = [
                             PriceOHLCV(
@@ -1079,14 +1172,19 @@ class StrategySynthesisScheduler:
                             test_inst.evaluate(canary_session, symbol, self.settings),
                             timeout=5.0,
                         )
-                        if canary_sig and ("error" in getattr(canary_sig, "tags", []) or "evaluation_error" in getattr(canary_sig, "tags", [])):
+                        if canary_sig and (
+                            "error" in getattr(canary_sig, "tags", [])
+                            or "evaluation_error" in getattr(canary_sig, "tags", [])
+                        ):
                             raise RuntimeError(f"evaluate() produced error signal: {canary_sig.rationale}")
 
                         code = sanitized
-                        logger.info(f"[StrategySynthesis] Successfully synthesized viable strategy '{class_name}' on attempt {attempt+1}.")
+                        logger.info(
+                            f"[StrategySynthesis] Successfully synthesized viable strategy '{class_name}' on attempt {attempt + 1}."
+                        )
                         break
                 except Exception as canary_err:
-                    logger.info(f"[StrategySynthesis] Canary error on attempt {attempt+1} for {symbol}: {canary_err}")
+                    logger.info(f"[StrategySynthesis] Canary error on attempt {attempt + 1} for {symbol}: {canary_err}")
                     current_prompt = (
                         f"Your strategy encountered a runtime error during validation: {canary_err}.\n"
                         f"Please fix the initialization, attribute assignments, or evaluate() indicator calculation logic in {class_name}:\n```python\n{sanitized}\n```"
@@ -1147,6 +1245,7 @@ class StrategySynthesisScheduler:
             # Execute canary evaluate on dummy slice session to ensure runtime stability
             from monika.infrastructure.database.models import PriceOHLCV
             import datetime
+
             now_dt = datetime.datetime.now(datetime.timezone.utc)
             mock_candles = [
                 PriceOHLCV(
@@ -1168,9 +1267,7 @@ class StrategySynthesisScheduler:
                     timeout=5.0,
                 )
             except asyncio.TimeoutError:
-                logger.warning(
-                    f"[StrategySynthesis] Canary evaluation timed out (> 5.0s) for {class_name}"
-                )
+                logger.warning(f"[StrategySynthesis] Canary evaluation timed out (> 5.0s) for {class_name}")
                 self.hypothesis_registry.update_status(
                     hyp.hypothesis_id,
                     HypothesisStatus.REJECTED,
@@ -1198,7 +1295,10 @@ class StrategySynthesisScheduler:
                         invalidation_notes=f"Canary evaluation produced error signal: {canary_sig.rationale}",
                     )
                     return None
-                if getattr(canary_sig, "valid", False) and getattr(canary_sig, "direction", None) not in ('buy', 'sell'):
+                if getattr(canary_sig, "valid", False) and getattr(canary_sig, "direction", None) not in (
+                    "buy",
+                    "sell",
+                ):
                     logger.warning(
                         f"[StrategySynthesis] Canary evaluation valid=True without directional bias ('buy'/'sell') for {class_name}"
                     )
@@ -1230,11 +1330,7 @@ class StrategySynthesisScheduler:
         trades = int(metrics["trades"])
         win_rate = metrics["win_rate_pct"]
 
-        meets_criteria = (
-            sharpe >= self.min_sharpe
-            and max_dd <= self.max_drawdown_pct
-            and trades >= self.min_trades
-        )
+        meets_criteria = sharpe >= self.min_sharpe and max_dd <= self.max_drawdown_pct and trades >= self.min_trades
 
         logger.info(
             f"[StrategySynthesis] Candidate '{strategy_id}' on {symbol}: "
@@ -1261,6 +1357,7 @@ class StrategySynthesisScheduler:
                 wf_res = self.run_walk_forward_validation(strat_cls, symbol, returns=returns)
             else:
                 from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+
                 harness = IsolatedStrategyBacktestHarness(
                     strategy=strat_cls,
                     symbol=symbol,
@@ -1320,9 +1417,7 @@ class StrategySynthesisScheduler:
             file_path.write_text(code_str, encoding="utf-8")
             lint_ok, lint_err = self._lint_check_code(code_str)
             if not lint_ok:
-                logger.error(
-                    f"[StrategySynthesis] Post-write lint verification failed for {strategy_id}: {lint_err}"
-                )
+                logger.error(f"[StrategySynthesis] Post-write lint verification failed for {strategy_id}: {lint_err}")
                 if file_path.exists():
                     file_path.unlink()
                 return None
@@ -1368,15 +1463,13 @@ class StrategySynthesisScheduler:
                 config_key = f"synthesized_strategy_{candidate.strategy_id}"
                 config_val = json.dumps(candidate.to_dict())
 
-                existing = (await session.execute(
-                    select(SystemConfig).where(SystemConfig.key == config_key)
-                )).scalar_one_or_none()
+                existing = (
+                    await session.execute(select(SystemConfig).where(SystemConfig.key == config_key))
+                ).scalar_one_or_none()
 
                 if existing:
                     await session.execute(
-                        update(SystemConfig)
-                        .where(SystemConfig.key == config_key)
-                        .values(value=config_val)
+                        update(SystemConfig).where(SystemConfig.key == config_key).values(value=config_val)
                     )
                 else:
                     session.add(SystemConfig(key=config_key, value=config_val))
@@ -1384,6 +1477,7 @@ class StrategySynthesisScheduler:
                 # Register into StrategyDecayMonitor as incubating
                 try:
                     from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
                     decay_mon = get_strategy_decay_monitor()
                     decay_mon.register_incubating_strategy(candidate.strategy_id)
                     await decay_mon.save_to_db(session)
@@ -1392,24 +1486,29 @@ class StrategySynthesisScheduler:
                         f"(requires {decay_mon.MIN_INCUBATION_TRADES} paper trades before live execution)."
                     )
                 except Exception as d_err:
-                    logger.debug(f"[StrategySynthesis] Failed to register incubating strategy in decay monitor: {d_err}")
+                    logger.debug(
+                        f"[StrategySynthesis] Failed to register incubating strategy in decay monitor: {d_err}"
+                    )
 
-                session.add(ActivityLog(
-                    category="strategy",
-                    description=(
-                        f"Autonomous Strategy Synthesized & Deployed [INCUBATING]: {candidate.strategy_id} "
-                        f"Sharpe={candidate.sharpe_ratio:.2f}, MaxDD={candidate.max_drawdown_pct:.1f}%, "
-                        f"WR={candidate.win_rate_pct:.1f}%"
-                    ),
-                    actor="strategy_synthesis_scheduler",
-                    related_id=None,
-                ))
+                session.add(
+                    ActivityLog(
+                        category="strategy",
+                        description=(
+                            f"Autonomous Strategy Synthesized & Deployed [INCUBATING]: {candidate.strategy_id} "
+                            f"Sharpe={candidate.sharpe_ratio:.2f}, MaxDD={candidate.max_drawdown_pct:.1f}%, "
+                            f"WR={candidate.win_rate_pct:.1f}%"
+                        ),
+                        actor="strategy_synthesis_scheduler",
+                        related_id=None,
+                    )
+                )
                 await session.commit()
                 logger.info(f"[StrategySynthesis] Persisted strategy {candidate.strategy_id} to DB.")
 
             # Notify operator if notifier is available
             if self.notifier and hasattr(self.notifier, "send_info"):
                 from monika.application.analysis.strategies.decay_monitor import StrategyDecayMonitor
+
                 incubation_trades = getattr(StrategyDecayMonitor, "MIN_INCUBATION_TRADES", 15)
                 await self.notifier.send_info(
                     f"[CATATAN] <b>Autonomous Strategy Synthesized & Deployed!</b>\n"
@@ -1430,13 +1529,17 @@ class StrategySynthesisScheduler:
         new_promoted = []
 
         cfg_concepts = self.settings.get("strategy_synthesis", {}).get("concepts")
-        concepts = cfg_concepts if isinstance(cfg_concepts, list) and cfg_concepts else [
-            "Mean reversion on ATR exhaustion",
-            "Multi-timeframe liquidity sweep displacement",
-            "Volume-weighted dynamic Donchian expansion",
-            "Momentum pullback with volatility band compression",
-            "Order flow imbalance structural break",
-        ]
+        concepts = (
+            cfg_concepts
+            if isinstance(cfg_concepts, list) and cfg_concepts
+            else [
+                "Mean reversion on ATR exhaustion",
+                "Multi-timeframe liquidity sweep displacement",
+                "Volume-weighted dynamic Donchian expansion",
+                "Momentum pullback with volatility band compression",
+                "Order flow imbalance structural break",
+            ]
+        )
 
         for sym in self.target_symbols:
             for concept in concepts:
@@ -1451,9 +1554,7 @@ class StrategySynthesisScheduler:
                     if not res:
                         continue
                     strat_id, class_name, code = res
-                    cand = await self.evaluate_and_register_candidate(
-                        strat_id, class_name, code, sym, concept=concept
-                    )
+                    cand = await self.evaluate_and_register_candidate(strat_id, class_name, code, sym, concept=concept)
                     if cand:
                         new_promoted.append(cand)
                 except Exception as e:
@@ -1477,7 +1578,11 @@ class StrategySynthesisScheduler:
             except asyncio.TimeoutError:
                 logger.debug("StrategySynthesisScheduler: Recovery wait timed out (120s), proceeding.")
 
-        startup_delay = float(self.settings.get("strategy_synthesis", {}).get("startup_delay_seconds", 90.0)) if isinstance(self.settings, dict) else 90.0
+        startup_delay = (
+            float(self.settings.get("strategy_synthesis", {}).get("startup_delay_seconds", 90.0))
+            if isinstance(self.settings, dict)
+            else 90.0
+        )
         if startup_delay > 0:
             logger.info(f"StrategySynthesisScheduler: Waiting {startup_delay:.0f}s before first synthesis cycle...")
             try:

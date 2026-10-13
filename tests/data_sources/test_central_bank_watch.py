@@ -145,9 +145,11 @@ async def test_central_bank_watch_fetch_expectations(db_session):
         assert boj_data["prob_cut"] == 0.0
 
     # Cek record tersimpan di database
-    rows = (await db_session.execute(
-        select(CentralBankRateExpectation).order_by(CentralBankRateExpectation.bank.asc())
-    )).scalars().all()
+    rows = (
+        (await db_session.execute(select(CentralBankRateExpectation).order_by(CentralBankRateExpectation.bank.asc())))
+        .scalars()
+        .all()
+    )
     assert len(rows) == 5
 
     # Cek bahwa next_meeting_date pada fed_rate diperbarui
@@ -178,9 +180,7 @@ async def test_central_bank_watch_fetch_sovereign_yields(db_session):
         assert yields.get("JP_10Y") == 1.25
 
     # Cek tersimpan di DB
-    rows = (await db_session.execute(
-        select(BondYieldData)
-    )).scalars().all()
+    rows = (await db_session.execute(select(BondYieldData))).scalars().all()
     assert len(rows) == 10
 
     # Uji idempotency / upsert saat di-fetch ulang
@@ -188,9 +188,7 @@ async def test_central_bank_watch_fetch_sovereign_yields(db_session):
         mock_http.return_value = SAMPLE_CBW_YIELD_HTML
         await fetcher.fetch_sovereign_yields()
 
-    rows_after = (await db_session.execute(
-        select(BondYieldData)
-    )).scalars().all()
+    rows_after = (await db_session.execute(select(BondYieldData))).scalars().all()
     assert len(rows_after) == 10
 
 

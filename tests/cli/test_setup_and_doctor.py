@@ -41,6 +41,7 @@ async def test_system_doctor_offline_probes():
 
 def test_setup_wizard_clean_terminal_input():
     from cli.setup_wizard import clean_terminal_input
+
     assert clean_terminal_input("  normal_input  ") == "normal_input"
     # Bracketed paste sequence
     pasted = "\x1b[200~pasted_token_12345\x1b[201~"
@@ -49,6 +50,7 @@ def test_setup_wizard_clean_terminal_input():
 
 def test_setup_wizard_missing_items():
     from cli.setup_wizard import SetupWizard
+
     missing = SetupWizard.get_missing_setup_items()
     assert "mt5" in missing
     assert "db" in missing
@@ -57,6 +59,7 @@ def test_setup_wizard_missing_items():
 
 def test_setup_wizard_headless_guard():
     from cli.setup_wizard import SetupWizard
+
     wizard = SetupWizard()
     with patch("sys.stdin.isatty", return_value=False):
         res = wizard.run_wizard()

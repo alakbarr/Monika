@@ -151,7 +151,9 @@ class PendingActionManager:
             updated_at=now,
         )
         self._atomic_write_action(pending)
-        logger.info(f"Phase 1 Order Commit Marker Created: [{pending.client_order_id}] {pending.action.upper()} {pending.volume} {pending.symbol}")
+        logger.info(
+            f"Phase 1 Order Commit Marker Created: [{pending.client_order_id}] {pending.action.upper()} {pending.volume} {pending.symbol}"
+        )
         return pending
 
     def commit_action(self, client_order_id: str, broker_ticket: Optional[int] = None) -> Optional[PendingAction]:
@@ -271,19 +273,24 @@ class PendingActionManager:
                     elif isinstance(pos_time, str):
                         try:
                             from datetime import datetime
+
                             pos_time = datetime.fromisoformat(pos_time).timestamp()
                         except Exception:
                             pos_time = 0
                     else:
                         pos_time = float(pos_time or 0)
-                    if act.nonce in pos_comment or (pos_type == expected_type and vol_diff < 0.001 and (now - pos_time) < 3600):
+                    if act.nonce in pos_comment or (
+                        pos_type == expected_type and vol_diff < 0.001 and (now - pos_time) < 3600
+                    ):
                         self.commit_action(act.client_order_id, broker_ticket=pos.get("ticket"))
-                        results.append({
-                            "client_order_id": act.client_order_id,
-                            "symbol": act.symbol,
-                            "status": "RECONCILED_COMMITTED",
-                            "ticket": pos.get("ticket"),
-                        })
+                        results.append(
+                            {
+                                "client_order_id": act.client_order_id,
+                                "symbol": act.symbol,
+                                "status": "RECONCILED_COMMITTED",
+                                "ticket": pos.get("ticket"),
+                            }
+                        )
                         resolved = True
                         break
             except Exception as e:
@@ -292,18 +299,24 @@ class PendingActionManager:
             if not resolved:
                 # If order was created more than 120 seconds ago and no trace in positions, mark as failed
                 if (now - act.timestamp) > 120.0:
-                    self.fail_action(act.client_order_id, "Order not found in broker positions after reboot grace period")
-                    results.append({
-                        "client_order_id": act.client_order_id,
-                        "symbol": act.symbol,
-                        "status": "RECONCILED_FAILED",
-                    })
+                    self.fail_action(
+                        act.client_order_id, "Order not found in broker positions after reboot grace period"
+                    )
+                    results.append(
+                        {
+                            "client_order_id": act.client_order_id,
+                            "symbol": act.symbol,
+                            "status": "RECONCILED_FAILED",
+                        }
+                    )
                 else:
                     self.mark_unconfirmed(act.client_order_id, "Recent order still indeterminate on boot")
-                    results.append({
-                        "client_order_id": act.client_order_id,
-                        "symbol": act.symbol,
-                        "status": "RECONCILED_UNCONFIRMED",
-                    })
+                    results.append(
+                        {
+                            "client_order_id": act.client_order_id,
+                            "symbol": act.symbol,
+                            "status": "RECONCILED_UNCONFIRMED",
+                        }
+                    )
 
         return results

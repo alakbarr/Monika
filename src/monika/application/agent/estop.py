@@ -30,6 +30,7 @@ logger = logging.getLogger("TradingAgent.Agent.ESTOP")
 
 class ESTOPActiveError(Exception):
     """Raised when an operation is rejected because ESTOP is armed."""
+
     def __init__(self, message: str = "Emergency Stop (ESTOP) is active. New actions blocked.", reason: str = ""):
         super().__init__(message)
         self.reason = reason
@@ -104,11 +105,11 @@ def arm_estop(reason: str = "Manual Emergency Stop initiated", actor: str = "ope
         "actor": actor,
         "armed_at": datetime.now(timezone.utc).isoformat(),
     }
-    
+
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(".tmp")
     tmp_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    
+
     # Atomic rename replace
     tmp_path.replace(path)
     logger.critical(f"[ESTOP] *** ESTOP ARMED by {actor}: '{reason}' (sentinel: {path}) ***")

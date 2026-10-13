@@ -24,6 +24,7 @@ logger = logging.getLogger("TradingAgent.Utils.ContextTracker")
 @dataclass
 class TokenSpan:
     """Record of a single token consumption event."""
+
     step: str
     input_tokens: int
     output_tokens: int
@@ -41,8 +42,11 @@ class ContextTracker:
         if not default_model:
             try:
                 from monika.core.config.settings import load_settings
+
                 s = load_settings()
-                default_model = s.get("llm", {}).get("default_model") or s.get("llm", {}).get("task_roles", {}).get("stage1_fundamental", {}).get("primary")
+                default_model = s.get("llm", {}).get("default_model") or s.get("llm", {}).get("task_roles", {}).get(
+                    "stage1_fundamental", {}
+                ).get("primary")
             except Exception:
                 default_model = None
         resolved = default_model or "gpt-6.1-sol-medium"

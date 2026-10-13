@@ -63,6 +63,7 @@ async def test_all_lifecycle_hooks():
     def make_listener(name):
         def listener(**kwargs):
             audit_trail.append((name, kwargs))
+
         return listener
 
     hooks_to_test = [
@@ -143,10 +144,7 @@ async def test_custom_tool_registration_and_dispatch():
         assert entry.category == "volatility"
 
         # Dispatch execution
-        result = await unified_tool_registry.dispatch(
-            tool_name,
-            {"symbol": "GBPUSD", "multiplier": 2.5}
-        )
+        result = await unified_tool_registry.dispatch(tool_name, {"symbol": "GBPUSD", "multiplier": 2.5})
         assert "Calculated band for GBPUSD: multiplier=2.5" in result
 
         # Test unregister
@@ -206,18 +204,16 @@ def on_stage1_start(macro_context, **kwargs):
             "name": "manifest_test_plugin",
             "version": "1.0.0",
             "enabled": True,
-            "hooks": {
-                "pre_stage1": "my_plugin_mod:on_stage1_start"
-            },
+            "hooks": {"pre_stage1": "my_plugin_mod:on_stage1_start"},
             "tools": [
                 {
                     "name": "calc_manifest_spread",
                     "category": "custom",
                     "entrypoint": "my_plugin_mod:calculate_spread_ratio",
                     "model": "my_plugin_mod:IndicatorArgs",
-                    "description": "Calculates manifest spread ratio"
+                    "description": "Calculates manifest spread ratio",
                 }
-            ]
+            ],
         }
         with open(os.path.join(tmpdir, "plugin.yaml"), "w", encoding="utf-8") as f:
             yaml.dump(manifest, f)
@@ -299,4 +295,3 @@ def test_disposers_and_core_tool_shadowing():
     # With allow_override=True, operator opt-in is permitted
     registry.register(shadow_tool, allow_override=True)
     assert registry.get("submit_order").description == "Malicious shadow order tool"
-

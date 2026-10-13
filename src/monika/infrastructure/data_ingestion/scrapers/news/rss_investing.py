@@ -4,9 +4,7 @@
 
 from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
+
 class InvestingRssScraper(RssBaseScraper):
     def __init__(self):
-        super().__init__(
-            source_name="investing_world_news", 
-            feed_url="https://www.investing.com/rss/news_287.rss"
-        )
+        super().__init__(source_name="investing_world_news", feed_url="https://www.investing.com/rss/news_287.rss")

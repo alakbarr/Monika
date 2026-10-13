@@ -46,16 +46,21 @@ class AdaptiveLLMLinguaCompressor:
 
         try:
             import torch
+
             if torch.cuda.is_available():
                 # Check available VRAM on primary device
                 free_bytes, total_bytes = torch.cuda.mem_get_info(0)
-                free_gb = free_bytes / (1024 ** 3)
+                free_gb = free_bytes / (1024**3)
                 if free_gb >= 1.2:
-                    logger.info(f"[LLMLingua] GPU detected: {torch.cuda.get_device_name(0)} ({free_gb:.2f} GB free VRAM). Using 'cuda'.")
+                    logger.info(
+                        f"[LLMLingua] GPU detected: {torch.cuda.get_device_name(0)} ({free_gb:.2f} GB free VRAM). Using 'cuda'."
+                    )
                     cls._device = "cuda"
                     return "cuda"
                 else:
-                    logger.info(f"[LLMLingua] GPU VRAM constrained ({free_gb:.2f} GB < 1.2 GB required). Routing to 'cpu'.")
+                    logger.info(
+                        f"[LLMLingua] GPU VRAM constrained ({free_gb:.2f} GB < 1.2 GB required). Routing to 'cpu'."
+                    )
                     cls._device = "cpu"
                     return "cpu"
         except Exception as e:
@@ -74,25 +79,23 @@ class AdaptiveLLMLinguaCompressor:
 
         try:
             from llmlingua import PromptCompressor
+
             logger.info(f"[LLMLingua] Initializing PromptCompressor ({self.model_name}) on device={device}...")
-            self._compressor = PromptCompressor(
-                model_name=self.model_name,
-                device_map=device
-            )
+            self._compressor = PromptCompressor(model_name=self.model_name, device_map=device)
             logger.info("[LLMLingua] LLMLingua-2 model loaded successfully.")
         except ImportError:
-            logger.info("[LLMLingua] 'llmlingua' package not installed in active environment. Using deterministic fallback compressor.")
+            logger.info(
+                "[LLMLingua] 'llmlingua' package not installed in active environment. Using deterministic fallback compressor."
+            )
             self._compressor = None
         except Exception as e:
-            logger.warning(f"[LLMLingua] Failed to load LLMLingua model on {device}: {e}. Falling back to CPU heuristic.")
+            logger.warning(
+                f"[LLMLingua] Failed to load LLMLingua model on {device}: {e}. Falling back to CPU heuristic."
+            )
             self._compressor = None
 
     def compress_text(
-        self,
-        text: str,
-        rate: float = 0.5,
-        target_token: Optional[int] = None,
-        drop_consecutive: bool = True
+        self, text: str, rate: float = 0.5, target_token: Optional[int] = None, drop_consecutive: bool = True
     ) -> str:
         """
         Compresses narrative text while preserving semantic coherence and financial facts.
@@ -106,14 +109,13 @@ class AdaptiveLLMLinguaCompressor:
         if self._compressor is not None:
             try:
                 res = self._compressor.compress_prompt(
-                    text,
-                    rate=rate,
-                    target_token=target_token,
-                    drop_consecutive=drop_consecutive
+                    text, rate=rate, target_token=target_token, drop_consecutive=drop_consecutive
                 )
                 if isinstance(res, dict) and "compressed_prompt" in res:
                     compressed = res["compressed_prompt"]
-                    logger.debug(f"[LLMLingua] Compressed {len(text)} chars -> {len(compressed)} chars ({res.get('ratio', 'N/A')})")
+                    logger.debug(
+                        f"[LLMLingua] Compressed {len(text)} chars -> {len(compressed)} chars ({res.get('ratio', 'N/A')})"
+                    )
                     return compressed
             except Exception as e:
                 logger.debug(f"[LLMLingua] Neural compression failed: {e}. Using heuristic fallback.")
@@ -134,10 +136,39 @@ class AdaptiveLLMLinguaCompressor:
 
         retained = []
         financial_keywords = (
-            "rate", "inflation", "cpi", "nfp", "gdp", "fomc", "ecb", "fed", "boj",
-            "yield", "percent", "%", "basis point", "bps", "support", "resistance",
-            "bullish", "bearish", "target", "stop", "sl", "tp", "pips", "usd", "eur",
-            "jpy", "gbp", "gold", "oil", "xau", "btc", "liquidity", "order block"
+            "rate",
+            "inflation",
+            "cpi",
+            "nfp",
+            "gdp",
+            "fomc",
+            "ecb",
+            "fed",
+            "boj",
+            "yield",
+            "percent",
+            "%",
+            "basis point",
+            "bps",
+            "support",
+            "resistance",
+            "bullish",
+            "bearish",
+            "target",
+            "stop",
+            "sl",
+            "tp",
+            "pips",
+            "usd",
+            "eur",
+            "jpy",
+            "gbp",
+            "gold",
+            "oil",
+            "xau",
+            "btc",
+            "liquidity",
+            "order block",
         )
 
         for line in lines:

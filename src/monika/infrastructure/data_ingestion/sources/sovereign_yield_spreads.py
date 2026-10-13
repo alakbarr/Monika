@@ -40,8 +40,8 @@ class YieldSpreadData:
     spread_bps: float
     spread_1d_change_bps: float
     macro_direction_bias: str  # "BULLISH_USD" | "BEARISH_USD" | "NEUTRAL"
-    fundamental_signal: str    # e.g. "EURUSD_BEARISH" or "USDJPY_BULLISH"
-    conviction: float          # 0.0 to 1.0
+    fundamental_signal: str  # e.g. "EURUSD_BEARISH" or "USDJPY_BULLISH"
+    conviction: float  # 0.0 to 1.0
 
 
 class SovereignYieldSpreads:
@@ -106,7 +106,9 @@ class SovereignYieldSpreads:
         us_de_prev_bps = (us_prev - de_prev) * 100.0
         delta_us_de = us_de_curr_bps - us_de_prev_bps
 
-        eur_bias = "EURUSD_BEARISH" if delta_us_de > 1.0 else ("EURUSD_BULLISH" if delta_us_de < -1.0 else "EURUSD_NEUTRAL")
+        eur_bias = (
+            "EURUSD_BEARISH" if delta_us_de > 1.0 else ("EURUSD_BULLISH" if delta_us_de < -1.0 else "EURUSD_NEUTRAL")
+        )
         eur_conviction = min(0.9, float(abs(delta_us_de) / 10.0 + 0.5))
 
         spreads["EURUSD"] = {
@@ -124,7 +126,9 @@ class SovereignYieldSpreads:
         us_jp_prev_bps = (us_prev - jp_prev) * 100.0
         delta_us_jp = us_jp_curr_bps - us_jp_prev_bps
 
-        jpy_bias = "USDJPY_BULLISH" if delta_us_jp > 1.0 else ("USDJPY_BEARISH" if delta_us_jp < -1.0 else "USDJPY_NEUTRAL")
+        jpy_bias = (
+            "USDJPY_BULLISH" if delta_us_jp > 1.0 else ("USDJPY_BEARISH" if delta_us_jp < -1.0 else "USDJPY_NEUTRAL")
+        )
         jpy_conviction = min(0.9, float(abs(delta_us_jp) / 10.0 + 0.5))
 
         spreads["USDJPY"] = {

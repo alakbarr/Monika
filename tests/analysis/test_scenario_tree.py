@@ -6,11 +6,7 @@ from analysis.scenario_tree import ScenarioTreeEngine, ScenarioTree, ScenarioNod
 def test_scenario_tree_generation_bullish():
     engine = ScenarioTreeEngine(settings={"scenario_tree": {"ev_threshold": 0.5, "min_dominant_prob": 0.40}})
     tree = engine.create_deterministic_tree(
-        symbol="EURUSD",
-        current_price=1.0850,
-        d1_trend="BULLISH",
-        atr_14=0.0050,
-        macro_bias="BULLISH"
+        symbol="EURUSD", current_price=1.0850, d1_trend="BULLISH", atr_14=0.0050, macro_bias="BULLISH"
     )
     assert tree.symbol == "EURUSD"
     assert "bull" in tree.branches
@@ -24,11 +20,7 @@ def test_scenario_tree_generation_bullish():
 def test_scenario_tree_jsonl_serialization():
     engine = ScenarioTreeEngine()
     tree = engine.create_deterministic_tree(
-        symbol="XAUUSD",
-        current_price=2650.0,
-        d1_trend="BEARISH",
-        atr_14=15.0,
-        macro_bias="BEARISH"
+        symbol="XAUUSD", current_price=2650.0, d1_trend="BEARISH", atr_14=15.0, macro_bias="BEARISH"
     )
     jsonl_output = tree.serialize_jsonl()
     lines = jsonl_output.strip().split("\n")
@@ -46,10 +38,15 @@ def test_stage2_bundle_price_extraction_robustness():
     raw_bundle_data = {
         "get_technical_indicators_H4": {"indicators": {"close": 2655.20}},
         "get_technical_indicators_D1": {"indicators": {"close": 2640.00}},
-        "get_price_history_H4": {"bars": [{"close": 2655.20}]}
+        "get_price_history_H4": {"bars": [{"close": 2655.20}]},
     }
     cur_p = 0.0
-    for k in ("get_technical_indicators_H4", "get_technical_indicators_D1", "get_technical_indicators_H1", "get_technical_indicators"):
+    for k in (
+        "get_technical_indicators_H4",
+        "get_technical_indicators_D1",
+        "get_technical_indicators_H1",
+        "get_technical_indicators",
+    ):
         t_val = raw_bundle_data.get(k)
         if isinstance(t_val, dict):
             ind = t_val.get("indicators", t_val)
@@ -59,9 +56,6 @@ def test_stage2_bundle_price_extraction_robustness():
     assert cur_p == 2655.20
     engine = ScenarioTreeEngine()
     tree = engine.create_deterministic_tree(
-        symbol="XAUUSD",
-        current_price=cur_p,
-        d1_trend="BULLISH",
-        macro_bias="BULLISH"
+        symbol="XAUUSD", current_price=cur_p, d1_trend="BULLISH", macro_bias="BULLISH"
     )
     assert tree.expected_value != 0.0

@@ -6,7 +6,7 @@ from analysis.tools.tools_definitions import minify_tool_definitions, make_stric
 def test_micro_prune_large_json_preserves_structure():
     """Verify bulky JSON list (>2500 tokens) is condensed without broken brackets or syntax errors."""
     engine = ContextCompactionEngine()
-    
+
     bulky_list = [
         {"item_id": i, "symbol": "EURUSD", "comment": f"Historical data row number {i} with long descriptive note"}
         for i in range(120)
@@ -34,12 +34,15 @@ def test_minify_tool_definitions():
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "symbol": {"type": "string", "description": "The financial instrument to be traded such as EURUSD or XAUUSD."},
+                    "symbol": {
+                        "type": "string",
+                        "description": "The financial instrument to be traded such as EURUSD or XAUUSD.",
+                    },
                     "entry_price": {"type": "number", "description": "Exact price where the order will be filled."},
-                    "stop_loss": {"type": "number", "description": "Exact invalidation price level."}
+                    "stop_loss": {"type": "number", "description": "Exact invalidation price level."},
                 },
-                "required": ["symbol", "entry_price", "stop_loss"]
-            }
+                "required": ["symbol", "entry_price", "stop_loss"],
+            },
         }
     ]
     minified = minify_tool_definitions(sample_tools)
@@ -58,12 +61,9 @@ def test_make_strict_tool_definitions():
             "description": "Get ATR value.",
             "input_schema": {
                 "type": "object",
-                "properties": {
-                    "symbol": {"type": "string"},
-                    "timeframe": {"type": "string"}
-                },
-                "required": ["symbol"]
-            }
+                "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}},
+                "required": ["symbol"],
+            },
         }
     ]
     strict = make_strict_tool_definitions(sample_tools)

@@ -58,8 +58,8 @@ def generate_synthetic_ohlcv(
 # 1. PriceNormalizer Tests
 # ==============================================================================
 
-class TestPriceNormalizer:
 
+class TestPriceNormalizer:
     def test_z_normalize_standard(self):
         series = np.array([10.0, 20.0, 30.0, 40.0, 50.0])
         z = PriceNormalizer.z_normalize(series)
@@ -89,8 +89,8 @@ class TestPriceNormalizer:
 # 2. SimilarityScanner Tests
 # ==============================================================================
 
-class TestSimilarityScanner:
 
+class TestSimilarityScanner:
     def test_exact_pattern_match(self):
         scanner = SimilarityScanner()
         bars = generate_synthetic_ohlcv(n_bars=300, seed=123)
@@ -151,8 +151,8 @@ class TestSimilarityScanner:
 # 3. FeatureExtractor Tests
 # ==============================================================================
 
-class TestFeatureExtractor:
 
+class TestFeatureExtractor:
     def test_feature_vector_extraction(self):
         extractor = FeatureExtractor()
         bars = generate_synthetic_ohlcv(n_bars=40, seed=789)
@@ -173,12 +173,12 @@ class TestFeatureExtractor:
 # 4. OutcomeAnalyzer Tests
 # ==============================================================================
 
-class TestOutcomeAnalyzer:
 
+class TestOutcomeAnalyzer:
     def test_pure_python_binomial_test(self):
         # 10 successes out of 10 under p=0.5 -> (0.5)^10 = 0.000976
         p_val_10 = OutcomeAnalyzer._binomial_test(k=10, n=10, p=0.5)
-        assert np.isclose(p_val_10, 0.5 ** 10, atol=1e-4)
+        assert np.isclose(p_val_10, 0.5**10, atol=1e-4)
 
         # 5 successes out of 10 under p=0.5 -> ~0.623 (cumulative >= 5)
         p_val_5 = OutcomeAnalyzer._binomial_test(k=5, n=10, p=0.5)
@@ -225,8 +225,8 @@ class TestOutcomeAnalyzer:
 # 5. ContextScorer & Cold-Start Tests
 # ==============================================================================
 
-class TestContextScorer:
 
+class TestContextScorer:
     def test_yang_zhang_proxy(self):
         bars = generate_synthetic_ohlcv(n_bars=50, base_price=2000.0, volatility=10.0, seed=999)
         scorer = ContextScorer(session=None, settings={})
@@ -272,15 +272,15 @@ class TestContextScorer:
         sim_part, cov_part = scorer._compute_adaptive_similarity(current, hist_partial)
         # Should drop missing dimensions and renormalize active weights
         assert np.isclose(sim_part, 1.0, atol=1e-5)  # Remaining active dimensions all match perfectly
-        assert cov_part < 1.0   # Coverage is lower due to missing macro tables
+        assert cov_part < 1.0  # Coverage is lower due to missing macro tables
 
 
 # ==============================================================================
 # 6. MultiTimeframeScreeningResult Formatting Tests
 # ==============================================================================
 
-class TestMultiTimeframeScreeningResult:
 
+class TestMultiTimeframeScreeningResult:
     def test_format_for_prompt(self):
         res_d1 = SingleTimeframeResult(
             timeframe="D1",
@@ -302,9 +302,12 @@ class TestMultiTimeframeScreeningResult:
             ),
             top_matches=[
                 PatternMatch(
-                    start_index=10, end_index=50, similarity=0.88,
-                    start_time=1680000000.0, end_time=1683456000.0,
-                    context_label="HIGH"
+                    start_index=10,
+                    end_index=50,
+                    similarity=0.88,
+                    start_time=1680000000.0,
+                    end_time=1683456000.0,
+                    context_label="HIGH",
                 )
             ],
             avg_similarity=0.84,

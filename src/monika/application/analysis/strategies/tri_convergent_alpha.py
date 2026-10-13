@@ -66,7 +66,7 @@ class TriConvergentAlphaStrategy(EdgeStrategy):
         ret = close.pct_change().fillna(0.0)
         cond = (ret < 0.0).astype(float)
         ret_rank = (ret.rolling(5).apply(lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False)).iloc[-1]
-        scores["alpha_mr5"] = float(- (ret_rank - 0.5) * 2.0) if not np.isnan(ret_rank) else 0.0
+        scores["alpha_mr5"] = float(-(ret_rank - 0.5) * 2.0) if not np.isnan(ret_rank) else 0.0
 
         # Factor 2: Volume-weighted Price Momentum (Alpha101 #006 inspiration)
         vol_z = ((volume - volume.rolling(20).mean()) / (volume.rolling(20).std() + 1e-9)).iloc[-1]
@@ -158,7 +158,9 @@ class TriConvergentAlphaStrategy(EdgeStrategy):
                     timesfm_passed = False
                     timesfm_reason = f"TimesFM strong bullish asymmetry (skew {skew_ratio:.2f}) vetoes bearish alpha."
                 else:
-                    timesfm_reason = f"TimesFM skew ({skew_ratio:.2f}, {asymmetry_bias}) confirms {intended_dir} momentum."
+                    timesfm_reason = (
+                        f"TimesFM skew ({skew_ratio:.2f}, {asymmetry_bias}) confirms {intended_dir} momentum."
+                    )
         except Exception as e:
             logger.debug(f"TimesFM validation exception: {e}")
 

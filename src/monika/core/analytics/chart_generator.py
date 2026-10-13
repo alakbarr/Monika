@@ -16,7 +16,8 @@ from typing import Optional, Any
 from datetime import datetime
 
 import matplotlib
-matplotlib.use('Agg')  # Headless mode — wajib sebelum import mplfinance
+
+matplotlib.use("Agg")  # Headless mode — wajib sebelum import mplfinance
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 import pandas as pd
@@ -24,16 +25,16 @@ import pandas as pd
 logger = logging.getLogger("TradingAgent.ChartGenerator")
 
 DARK_STYLE = mpf.make_mpf_style(
-    base_mpf_style='nightclouds',
+    base_mpf_style="nightclouds",
     rc={
-        'font.size': 8,
-        'axes.titlesize': 10,
-        'axes.labelsize': 8,
-        'xtick.labelsize': 7,
-        'ytick.labelsize': 7,
-        'figure.facecolor': '#131722',
-        'axes.facecolor': '#131722',
-    }
+        "font.size": 8,
+        "axes.titlesize": 10,
+        "axes.labelsize": 8,
+        "xtick.labelsize": 7,
+        "ytick.labelsize": 7,
+        "figure.facecolor": "#131722",
+        "axes.facecolor": "#131722",
+    },
 )
 
 
@@ -88,19 +89,19 @@ def generate_candlestick_chart(
         df.set_index("Date", inplace=True)
     elif not isinstance(df.index, pd.DatetimeIndex):
         # Fallback synthetic datetime index if timestamps missing
-        df.index = pd.date_range(end=pd.Timestamp.now(tz='UTC'), periods=len(df), freq='h')
+        df.index = pd.date_range(end=pd.Timestamp.now(tz="UTC"), periods=len(df), freq="h")
 
     # Convert numeric columns to float
     for req_col in ["Open", "High", "Low", "Close"]:
         if req_col not in df.columns:
             raise ValueError(f"Missing required OHLC column '{req_col}' in dataset")
-        df[req_col] = pd.to_numeric(df[req_col], errors='coerce')
+        df[req_col] = pd.to_numeric(df[req_col], errors="coerce")
 
     if "Volume" not in df.columns or df["Volume"].dropna().empty or (df["Volume"] == 0).all():
         df["Volume"] = 0
         has_volume = False
     else:
-        vol_s = pd.Series(pd.to_numeric(df["Volume"], errors='coerce'), index=df.index).fillna(0)
+        vol_s = pd.Series(pd.to_numeric(df["Volume"], errors="coerce"), index=df.index).fillna(0)
         df["Volume"] = vol_s
         has_volume = show_volume
 
@@ -111,7 +112,7 @@ def generate_candlestick_chart(
                 try:
                     s = pd.Series(values, index=df.index)
                     panel = 0 if any(k in name.lower() for k in ["ma", "ema", "sma", "band"]) else 2
-                    color = 'yellow' if 'rsi' in name.lower() else 'cyan'
+                    color = "yellow" if "rsi" in name.lower() else "cyan"
                     add_plots.append(mpf.make_addplot(s, panel=panel, color=color, width=0.8))
                 except Exception as e:
                     logger.debug(f"Failed to add indicator plot for {name}: {e}")
@@ -122,7 +123,7 @@ def generate_candlestick_chart(
         "style": DARK_STYLE,
         "title": f"\n{symbol}  •  {timeframe}  ({len(df)} candles)",
         "volume": has_volume,
-        "savefig": dict(fname=buf, dpi=100, bbox_inches='tight', format='png'),
+        "savefig": dict(fname=buf, dpi=100, bbox_inches="tight", format="png"),
         "figsize": (9, 5.5),
     }
 
@@ -137,7 +138,7 @@ def generate_candlestick_chart(
         logger.debug(f"Candlestick chart generated: {symbol} {timeframe}, size={buf.getbuffer().nbytes} bytes")
         return buf
     finally:
-        plt.close('all')
+        plt.close("all")
 
 
 async def generate_candlestick_chart_async(
@@ -150,6 +151,7 @@ async def generate_candlestick_chart_async(
 ) -> io.BytesIO:
     """Async wrapper non-blocking untuk eksekusi render grafik di thread terpisah."""
     import asyncio
+
     return await asyncio.to_thread(
         generate_candlestick_chart,
         ohlcv_rows,
@@ -208,15 +210,15 @@ def generate_smc_candlestick_chart(
         df["Date"] = pd.to_datetime(df["Date"])
         df.set_index("Date", inplace=True)
     elif not isinstance(df.index, pd.DatetimeIndex):
-        df.index = pd.date_range(end=pd.Timestamp.now(tz='UTC'), periods=len(df), freq='h')
+        df.index = pd.date_range(end=pd.Timestamp.now(tz="UTC"), periods=len(df), freq="h")
 
     for req_col in ["Open", "High", "Low", "Close"]:
         if req_col in df.columns:
-            df[req_col] = pd.to_numeric(df[req_col], errors='coerce')
+            df[req_col] = pd.to_numeric(df[req_col], errors="coerce")
 
     has_volume = False
     if "Volume" in df.columns:
-        vol_s = pd.Series(pd.to_numeric(df["Volume"], errors='coerce'), index=df.index).fillna(0)
+        vol_s = pd.Series(pd.to_numeric(df["Volume"], errors="coerce"), index=df.index).fillna(0)
         df["Volume"] = vol_s
         has_volume = not bool((vol_s == 0).all())
 
@@ -244,8 +246,7 @@ def generate_smc_candlestick_chart(
             alpha = 0.22
 
             rect = patches.Rectangle(
-                (0, y_min), len(df), height,
-                linewidth=1, edgecolor=color, facecolor=color, alpha=alpha, linestyle="--"
+                (0, y_min), len(df), height, linewidth=1, edgecolor=color, facecolor=color, alpha=alpha, linestyle="--"
             )
             main_ax.add_patch(rect)
 
@@ -260,8 +261,7 @@ def generate_smc_candlestick_chart(
             is_bull = "bull" in direction or "demand" in direction
             color = "#00e676" if is_bull else "#ff1744"
             rect = patches.Rectangle(
-                (0, y_min), len(df), height,
-                linewidth=1.2, edgecolor=color, facecolor=color, alpha=0.25, linestyle="-"
+                (0, y_min), len(df), height, linewidth=1.2, edgecolor=color, facecolor=color, alpha=0.25, linestyle="-"
             )
             main_ax.add_patch(rect)
 
@@ -300,7 +300,7 @@ def generate_smc_candlestick_chart(
                         main_ax.scatter(int_idx, price, marker="^", color="#69f0ae", s=70, zorder=6)
 
     buf = io.BytesIO()
-    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor=fig.get_facecolor())
+    fig.savefig(buf, format="png", dpi=120, bbox_inches="tight", facecolor=fig.get_facecolor())
     buf.seek(0)
 
     saved_path = None
@@ -325,12 +325,13 @@ def generate_equity_curve_chart(
     Renders a dark-themed portfolio equity curve with drawdown fill band.
     """
     from pathlib import Path
+
     if not records:
-        fig, ax = plt.subplots(figsize=(10, 5), facecolor='#131722')
-        ax.set_facecolor('#131722')
+        fig, ax = plt.subplots(figsize=(10, 5), facecolor="#131722")
+        ax.set_facecolor("#131722")
         ax.text(0.5, 0.5, "No closed trades recorded yet", color="#888888", ha="center", va="center")
         buf = io.BytesIO()
-        fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor=fig.get_facecolor())
+        fig.savefig(buf, format="png", dpi=120, bbox_inches="tight", facecolor=fig.get_facecolor())
         buf.seek(0)
         plt.close(fig)
         return buf, None
@@ -351,11 +352,10 @@ def generate_equity_curve_chart(
     dd_pct = (equity - peak) / peak * 100.0
 
     fig, (ax_eq, ax_dd) = plt.subplots(
-        2, 1, figsize=(10, 6), sharex=True, gridspec_kw={'height_ratios': [3, 1]},
-        facecolor='#131722'
+        2, 1, figsize=(10, 6), sharex=True, gridspec_kw={"height_ratios": [3, 1]}, facecolor="#131722"
     )
-    ax_eq.set_facecolor('#131722')
-    ax_dd.set_facecolor('#131722')
+    ax_eq.set_facecolor("#131722")
+    ax_dd.set_facecolor("#131722")
 
     x_vals = df["time"] if "time" in df.columns else range(len(df))
 
@@ -376,7 +376,7 @@ def generate_equity_curve_chart(
     ax_dd.tick_params(colors="#b2b5be", labelsize=8)
 
     buf = io.BytesIO()
-    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor=fig.get_facecolor())
+    fig.savefig(buf, format="png", dpi=120, bbox_inches="tight", facecolor=fig.get_facecolor())
     buf.seek(0)
 
     saved_path = None
@@ -390,4 +390,3 @@ def generate_equity_curve_chart(
 
     plt.close(fig)
     return buf, saved_path
-

@@ -14,11 +14,9 @@ class BBVolumeProfileMeanReversion(EdgeStrategy):
     Identifies mean-reversion opportunities where price reaches Bollinger Band extremes
     confluent with Volume Profile Value Area edges (VAH / VAL) and targets the Point of Control (POC).
     """
+
     strategy_id = "bb_volume_profile"
-    applicable_symbols = {
-        "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD", 
-        "USDCHF", "NZDUSD", "USDCAD", "US30"
-    }
+    applicable_symbols = {"EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD", "USDCHF", "NZDUSD", "USDCAD", "US30"}
     compatible_regimes = {"RANGING", "CHOP", "MEAN_REVERTING", "COMPRESSED", "ALL"}
     factor_family = "mean_reversion"
 
@@ -54,21 +52,19 @@ class BBVolumeProfileMeanReversion(EdgeStrategy):
         # Compute ATR (14)
         trs = []
         for i in range(1, len(candles)):
-            tr = max(
-                highs[i] - lows[i],
-                abs(highs[i] - closes[i-1]),
-                abs(lows[i] - closes[i-1])
-            )
+            tr = max(highs[i] - lows[i], abs(highs[i] - closes[i - 1]), abs(lows[i] - closes[i - 1]))
             trs.append(tr)
         atr = float(np.mean(trs[-14:])) if trs else (std or 0.001)
 
         # Build DataFrame for Volume Profile
-        df_candles = pd.DataFrame({
-            "high": highs[-40:],
-            "low": lows[-40:],
-            "close": closes[-40:],
-            "volume": volumes[-40:],
-        })
+        df_candles = pd.DataFrame(
+            {
+                "high": highs[-40:],
+                "low": lows[-40:],
+                "close": closes[-40:],
+                "volume": volumes[-40:],
+            }
+        )
 
         try:
             vp = await compute_volume_profile(session, symbol, settings=settings, timeframe=timeframe)

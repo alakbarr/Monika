@@ -36,12 +36,32 @@ from monika.domain.market.news_impact_keywords import HIGH_IMPACT_KEYWORDS, SHOC
 
 # Kata kunci Medium-Impact — dipantau tapi tidak memicu re-analisis instan
 MEDIUM_IMPACT_KEYWORDS = [
-    "inflation", "cpi", "pce", "jobs report", "trade deficit",
-    "gdp", "retail sales", "pmi", "ism", "housing",
-    "fed minutes", "fomc minutes", "fed speak", "hawkish", "dovish",
-    "yield curve", "treasury", "bond selloff", "risk appetite",
-    "geopolitical tension", "oil price", "gold price",
-    "ecb", "bank of england", "reserve bank", "central bank",
+    "inflation",
+    "cpi",
+    "pce",
+    "jobs report",
+    "trade deficit",
+    "gdp",
+    "retail sales",
+    "pmi",
+    "ism",
+    "housing",
+    "fed minutes",
+    "fomc minutes",
+    "fed speak",
+    "hawkish",
+    "dovish",
+    "yield curve",
+    "treasury",
+    "bond selloff",
+    "risk appetite",
+    "geopolitical tension",
+    "oil price",
+    "gold price",
+    "ecb",
+    "bank of england",
+    "reserve bank",
+    "central bank",
 ]
 
 # Pemetaan tag mata uang untuk targeted re-analysis aset
@@ -70,7 +90,15 @@ class NewsWatcher:
         await watcher.start()
     """
 
-    def __init__(self, settings: dict, cycle_scheduler=None, fundamental_stage=None, per_asset_stage=None, position_guardian=None, execution_service=None):
+    def __init__(
+        self,
+        settings: dict,
+        cycle_scheduler=None,
+        fundamental_stage=None,
+        per_asset_stage=None,
+        position_guardian=None,
+        execution_service=None,
+    ):
         """
         Args:
             settings:           Full settings dict.
@@ -84,11 +112,11 @@ class NewsWatcher:
         sched_cfg = settings.get("trading", {}).get("schedule", {})
         self.check_interval_minutes: float = sched_cfg.get("news_check_minutes", 5)
 
-        self._cycle_scheduler    = cycle_scheduler
-        self._fundamental_stage  = fundamental_stage
-        self._per_asset_stage    = per_asset_stage
-        self._position_guardian  = position_guardian
-        self._execution_service  = execution_service
+        self._cycle_scheduler = cycle_scheduler
+        self._fundamental_stage = fundamental_stage
+        self._per_asset_stage = per_asset_stage
+        self._position_guardian = position_guardian
+        self._execution_service = execution_service
         self._post_release_analyzer: Optional[Any] = None
         self._activity_log: Optional[Any] = None
 
@@ -98,8 +126,8 @@ class NewsWatcher:
 
         # Throttling klasifikasi LLM: batasi agar tidak cepat habis kuota API
         self._classify_tick_counter: int = 0
-        self._classify_every_n_ticks: int = 3   # ~15 min when check_interval=5
-        self._classify_min_items: int = 3        # don't burn a call for 1-2 items
+        self._classify_every_n_ticks: int = 3  # ~15 min when check_interval=5
+        self._classify_min_items: int = 3  # don't burn a call for 1-2 items
 
         # Circuit breaker: membatasi maksimal analisis ulang (full-cycle) dalam sehari
         self._forced_reruns_today: int = 0
@@ -118,19 +146,19 @@ class NewsWatcher:
         high_pattern = "|".join(re.escape(k) for k in HIGH_IMPACT_KEYWORDS)
         medium_pattern = "|".join(re.escape(k) for k in MEDIUM_IMPACT_KEYWORDS)
         shock_pattern = "|".join(re.escape(k) for k in SHOCK_KEYWORDS)
-        self._high_re   = re.compile(high_pattern, re.IGNORECASE)
+        self._high_re = re.compile(high_pattern, re.IGNORECASE)
         self._medium_re = re.compile(medium_pattern, re.IGNORECASE)
-        self._shock_re  = re.compile(shock_pattern, re.IGNORECASE)
+        self._shock_re = re.compile(shock_pattern, re.IGNORECASE)
 
         # Track last reanalysis time per symbol to prevent spam
         self._last_reanalysis: dict[str, datetime] = {}
         self._min_reanalysis_interval_minutes: int = 45  # min 45 min between reruns per symbol
-        
+
         # FIX-4: Persistent state file untuk survive restart
-        self._state_file: str = settings.get(
-            'trading', {}).get('schedule', {}).get(
-            'news_watcher_state_file',
-            'data/news_watcher_state.json'
+        self._state_file: str = (
+            settings.get("trading", {})
+            .get("schedule", {})
+            .get("news_watcher_state_file", "data/news_watcher_state.json")
         )
         self._load_persistent_state()
 
@@ -141,40 +169,42 @@ class NewsWatcher:
     def _load_persistent_state(self) -> None:
         """FIX-4: Load persisted state from disk on startup."""
         import json, os
+
         try:
             if os.path.exists(self._state_file):
-                with open(self._state_file, 'r') as f:
+                with open(self._state_file, "r") as f:
                     data = json.load(f)
-                ts_str = data.get('last_seen_at')
+                ts_str = data.get("last_seen_at")
                 if ts_str:
                     self._last_seen_at = datetime.fromisoformat(ts_str)
-                reruns = data.get('forced_reruns_today', 0)
-                targeted_reruns = data.get('targeted_reruns_today', 0)
-                day = data.get('forced_rerun_day')
-                today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+                reruns = data.get("forced_reruns_today", 0)
+                targeted_reruns = data.get("targeted_reruns_today", 0)
+                day = data.get("forced_rerun_day")
+                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
                 if day == today:
                     self._forced_reruns_today = reruns
                     self._targeted_reruns_today = targeted_reruns
                     self._forced_rerun_day = day
-                logger.info(f'NewsWatcher: Loaded persistent state. last_seen_at={self._last_seen_at}')
+                logger.info(f"NewsWatcher: Loaded persistent state. last_seen_at={self._last_seen_at}")
         except Exception as e:
-            logger.warning(f'NewsWatcher: Could not load persistent state: {e}')
+            logger.warning(f"NewsWatcher: Could not load persistent state: {e}")
 
     def _save_persistent_state(self) -> None:
         """FIX-4: Save state to disk after each run_once."""
         import json, os
+
         try:
-            os.makedirs(os.path.dirname(self._state_file) or '.', exist_ok=True)
+            os.makedirs(os.path.dirname(self._state_file) or ".", exist_ok=True)
             data = {
-                'last_seen_at': self._last_seen_at.isoformat() if self._last_seen_at else None,
-                'forced_reruns_today': self._forced_reruns_today,
-                'targeted_reruns_today': getattr(self, '_targeted_reruns_today', 0),
-                'forced_rerun_day': self._forced_rerun_day,
+                "last_seen_at": self._last_seen_at.isoformat() if self._last_seen_at else None,
+                "forced_reruns_today": self._forced_reruns_today,
+                "targeted_reruns_today": getattr(self, "_targeted_reruns_today", 0),
+                "forced_rerun_day": self._forced_rerun_day,
             }
-            with open(self._state_file, 'w') as f:
+            with open(self._state_file, "w") as f:
                 json.dump(data, f)
         except Exception as e:
-            logger.warning(f'NewsWatcher: Could not save persistent state: {e}')
+            logger.warning(f"NewsWatcher: Could not save persistent state: {e}")
 
     async def run_once(self) -> dict:
         """
@@ -222,57 +252,70 @@ class NewsWatcher:
         # Coba menggunakan klasifikasi LLM jika sudah saatnya
         high_items = []
         medium_items = []
-        
+
         try:
             from monika.application.analysis.prefetch.news_digest import NewsDigestProcessor
-            
+
             # P3-5: Always classify immediately if any item matches shock keywords,
             # bypassing the tick counter/batch size throttle.
             shock_checks = await asyncio.gather(*[self._is_shock_only_strict(n) for n in new_items])
             force_classify = any(shock_checks)
-            
+
             has_unclassified = any(getattr(n, "impact", None) is None for n in new_items)
-            if force_classify or (has_unclassified or (self._classify_tick_counter % self._classify_every_n_ticks == 0 and len(new_items) >= 1)):
+            if force_classify or (
+                has_unclassified
+                or (self._classify_tick_counter % self._classify_every_n_ticks == 0 and len(new_items) >= 1)
+            ):
                 # Quick batch classification via AI / LLM classifier
                 processor = NewsDigestProcessor(self.settings)
                 async with get_session() as session:
                     await processor.classify_unscored_news(session, hours_back=1)
-            
+
             # Re-query dengan impact filter (Fix 5.9: by ID instead of URL)
             async with get_session() as session:
                 from sqlalchemy import select
+
                 item_ids = [n.id for n in new_items if getattr(n, "id", None)]
                 if item_ids:
-                    classified = (await session.execute(
-                        select(NewsItem)
-                        .where(NewsItem.id.in_(item_ids))
-                    )).scalars().all()
+                    classified = (
+                        (await session.execute(select(NewsItem).where(NewsItem.id.in_(item_ids)))).scalars().all()
+                    )
                 else:
                     urls = [n.url for n in new_items if getattr(n, "url", None)]
-                    classified = (await session.execute(
-                        select(NewsItem)
-                        .where(NewsItem.url.in_(urls))
-                    )).scalars().all() if urls else []
-                
+                    classified = (
+                        (await session.execute(select(NewsItem).where(NewsItem.url.in_(urls)))).scalars().all()
+                        if urls
+                        else []
+                    )
+
                 # FIX: HIGH impact juga trigger re-analisis
                 high_items = [n for n in classified if n.impact in ("BREAKING", "HIGH")]
                 medium_items = [n for n in classified if n.impact == "MEDIUM"]
-        
+
         except Exception as e:
-            logger.error(f'LLM classification pipeline failed — applying conservative SHOCK-only fallback (no full validation layer available): {e}')
+            logger.error(
+                f"LLM classification pipeline failed — applying conservative SHOCK-only fallback (no full validation layer available): {e}"
+            )
             try:
                 from monika.infrastructure.infra.notifier import AgentNotifier
-                asyncio.create_task(AgentNotifier().send_warning(
-                    f'[PERINGATAN] News classification pipeline error. Menggunakan fallback shock-keyword konservatif '
-                    f'(tanpa validasi berlapis normal) sampai pipeline pulih.\n{str(e)[:150]}'
-                ))
+
+                asyncio.create_task(
+                    AgentNotifier().send_warning(
+                        f"[PERINGATAN] News classification pipeline error. Menggunakan fallback shock-keyword konservatif "
+                        f"(tanpa validasi berlapis normal) sampai pipeline pulih.\n{str(e)[:150]}"
+                    )
+                )
             except Exception:
                 pass
             # SENGAJA hanya pakai SHOCK_KEYWORDS (bukan HIGH_IMPACT_KEYWORDS penuh yang berisi
             # istilah lunak seperti "recession"/"financial crisis") — regex tanpa validasi
             # berlapis (calendar prior, magnitude cross-check, dedup) jauh lebih rawan false
             # positive, dan false positive di jalur ini langsung memicu forced full-cycle rerun.
-            high_items = [n for n in new_items if getattr(n, "impact", None) in ("BREAKING", "HIGH") or await self._is_shock_only_strict(n)]
+            high_items = [
+                n
+                for n in new_items
+                if getattr(n, "impact", None) in ("BREAKING", "HIGH") or await self._is_shock_only_strict(n)
+            ]
             medium_items = [n for n in new_items if n not in high_items and self._is_medium_impact(n)]
             fallback_mode = True
         else:
@@ -292,9 +335,11 @@ class NewsWatcher:
         # it is an old story repeating; do not trigger an emergency cycle interruption.
         actionable_high_items = []
         for n in high_items:
-            sentiments_str = n.sentiment or ''
-            if 'NARRATIVE_EXHAUSTION' in sentiments_str and 'FRESH_CATALYST' not in sentiments_str:
-                logger.info(f"NewsWatcher: Suppressing emergency rerun for '{n.title[:60]}' (tagged NARRATIVE_EXHAUSTION).")
+            sentiments_str = n.sentiment or ""
+            if "NARRATIVE_EXHAUSTION" in sentiments_str and "FRESH_CATALYST" not in sentiments_str:
+                logger.info(
+                    f"NewsWatcher: Suppressing emergency rerun for '{n.title[:60]}' (tagged NARRATIVE_EXHAUSTION)."
+                )
             else:
                 actionable_high_items.append(n)
 
@@ -302,8 +347,10 @@ class NewsWatcher:
             # When actionable breaking news occurs, invalidate macro context cache reactively
             try:
                 from monika.application.analysis.prefetch.news_digest import NewsDigestProcessor
+
                 NewsDigestProcessor(self.settings).invalidate_macro_context_cache()
                 from monika.application.analysis.prefetch.macro_preprocessor import clear_cache as clear_macro_cache
+
                 clear_macro_cache()
             except Exception:
                 pass
@@ -318,7 +365,10 @@ class NewsWatcher:
 
             try:
                 from monika.infrastructure.infra.notifier import AgentNotifier
-                top_items_text = "\n".join([f"• [{n.impact}] {n.title} ({n.source or 'News'})" for n in actionable_high_items[:3]])
+
+                top_items_text = "\n".join(
+                    [f"• [{n.impact}] {n.title} ({n.source or 'News'})" for n in actionable_high_items[:3]]
+                )
                 symbols_text = f"Simbol terdampak: {', '.join(affected)}" if affected else "Simbol: Multi-aset/Makro"
                 notif_msg = f"[BREAKING NEWS] Terdeteksi berita berdampak tinggi:\n{top_items_text}\n{symbols_text}\nEvaluasi risiko dan re-analisis otomatis dipicu."
                 asyncio.create_task(AgentNotifier().send_warning(notif_msg))
@@ -334,6 +384,7 @@ class NewsWatcher:
                 )
                 try:
                     from monika.infrastructure.database.event_store import TradingEventStore
+
                     await TradingEventStore.emit(
                         session=session,
                         event_type="trigger.news_shock",
@@ -348,15 +399,14 @@ class NewsWatcher:
                 except Exception:
                     pass
 
-            t = asyncio.create_task(self._trigger_reanalysis(actionable_high_items, affected, fallback_mode=fallback_mode))
+            t = asyncio.create_task(
+                self._trigger_reanalysis(actionable_high_items, affected, fallback_mode=fallback_mode)
+            )
             self._background_tasks.add(t)
             t.add_done_callback(self._background_tasks.discard)
 
         elif medium_items:
-            logger.info(
-                f"Medium-impact news: {len(medium_items)} items — "
-                + medium_items[0].title[:60]
-            )
+            logger.info(f"Medium-impact news: {len(medium_items)} items — " + medium_items[0].title[:60])
             # Medium impact: log but don't trigger re-analysis immediately
             # (will be picked up by next 6h cycle)
             async with get_session() as session:
@@ -367,10 +417,7 @@ class NewsWatcher:
 
         # Update last seen timestamp
         if new_items:
-            self._last_seen_at = max(
-                n.fetched_at for n in new_items
-                if n.fetched_at is not None
-            )
+            self._last_seen_at = max(n.fetched_at for n in new_items if n.fetched_at is not None)
 
         # FIX-4: Persist state after each check
         self._save_persistent_state()
@@ -424,9 +471,7 @@ class NewsWatcher:
             since = datetime.now(timezone.utc) - timedelta(minutes=self.check_interval_minutes)
 
         result = await session.execute(
-            select(NewsItem)
-            .where(NewsItem.fetched_at > since)
-            .order_by(NewsItem.fetched_at.asc())
+            select(NewsItem).where(NewsItem.fetched_at > since).order_by(NewsItem.fetched_at.asc())
         )
         return list(result.scalars().all())
 
@@ -455,15 +500,18 @@ class NewsWatcher:
         try:
             from monika.infrastructure.database.models import EconomicCalendar
             from sqlalchemy import select, func
+
             check_time = news.fetched_at or datetime.now(timezone.utc)
             async with get_session() as session:
-                row = (await session.execute(
-                    select(EconomicCalendar)
-                    .where(func.lower(EconomicCalendar.impact) == 'high')
-                    .where(EconomicCalendar.event_time >= check_time - timedelta(hours=2))
-                    .where(EconomicCalendar.event_time <= check_time + timedelta(hours=2))
-                    .limit(1)
-                )).scalar_one_or_none()
+                row = (
+                    await session.execute(
+                        select(EconomicCalendar)
+                        .where(func.lower(EconomicCalendar.impact) == "high")
+                        .where(EconomicCalendar.event_time >= check_time - timedelta(hours=2))
+                        .where(EconomicCalendar.event_time <= check_time + timedelta(hours=2))
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
                 return row is not None
         except Exception:
             return False
@@ -507,9 +555,7 @@ class NewsWatcher:
                     affected.update(symbols)
 
         # Jika berita USD besar tanpa spesifik aset -> anggap semua aset USD terdampak
-        text_combined = " ".join(
-            self._text_for_classification(n) for n in items
-        ).lower()
+        text_combined = " ".join(self._text_for_classification(n) for n in items).lower()
         if any(k in text_combined for k in ["federal reserve", "fomc", "fed rate", "powell"]):
             # USD news affects all instruments
             for syms in CURRENCY_TO_SYMBOLS.values():
@@ -532,34 +578,39 @@ class NewsWatcher:
         from monika.infrastructure.database.models import TradeOutcome, Position
         from sqlalchemy import select, func
         from datetime import timedelta
-        
+
         try:
             async with get_session() as session_inner:
                 # Record to Market Chronicle & generate immediate slice for breaking news
                 try:
                     from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
                     from monika.application.analysis.prefetch.digest_slice_generator import DigestSliceGenerator
+
                     c_writer = ChronicleWriter(self.settings)
                     slice_gen = DigestSliceGenerator(self.settings)
                     for h_item in high_items:
                         await c_writer.maybe_record_news_event(session_inner, h_item)
                     now_u = datetime.now(timezone.utc)
-                    await slice_gen.generate_slice(session_inner, now_u - timedelta(hours=2), now_u, trigger='breaking')
+                    await slice_gen.generate_slice(session_inner, now_u - timedelta(hours=2), now_u, trigger="breaking")
                 except Exception as e:
                     logger.debug(f"NewsWatcher chronicle/slice generation on breaking event failed (non-fatal): {e}")
 
                 # Check open positions count
-                open_pos_count = (await session_inner.execute(
-                    select(func.count(Position.id)).where(Position.status == 'open')
-                )).scalar_one_or_none() or 0
-                logger.info(f"NewsWatcher: Triggering re-analysis for {len(high_items)} high-impact items. Open positions: {open_pos_count}")
+                open_pos_count = (
+                    await session_inner.execute(select(func.count(Position.id)).where(Position.status == "open"))
+                ).scalar_one_or_none() or 0
+                logger.info(
+                    f"NewsWatcher: Triggering re-analysis for {len(high_items)} high-impact items. Open positions: {open_pos_count}"
+                )
 
                 # Instant Jev System One shock evaluation for active positions
                 if open_pos_count > 0:
                     try:
-                        open_pos_records = (await session_inner.execute(
-                            select(Position).where(Position.status == 'open')
-                        )).scalars().all()
+                        open_pos_records = (
+                            (await session_inner.execute(select(Position).where(Position.status == "open")))
+                            .scalars()
+                            .all()
+                        )
                         active_syms = list({p.symbol for p in open_pos_records if p.symbol})
                         for h_item in high_items:
                             shock = await self.evaluate_realtime_news_shock(h_item, open_positions=active_syms)
@@ -576,28 +627,30 @@ class NewsWatcher:
 
                 today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
                 today_end = today_start + timedelta(days=1)
-                today_trades = (await session_inner.execute(
-                    select(func.count(TradeOutcome.id))
-                    .where(TradeOutcome.opened_at >= today_start)
-                    .where(TradeOutcome.opened_at < today_end)
-                )).scalar_one_or_none() or 0
+                today_trades = (
+                    await session_inner.execute(
+                        select(func.count(TradeOutcome.id))
+                        .where(TradeOutcome.opened_at >= today_start)
+                        .where(TradeOutcome.opened_at < today_end)
+                    )
+                ).scalar_one_or_none() or 0
 
-            max_daily_trades = self.settings.get('trading', {}).get('risk', {}).get('max_daily_trades', 3)
+            max_daily_trades = self.settings.get("trading", {}).get("risk", {}).get("max_daily_trades", 3)
 
             if today_trades >= max_daily_trades:
                 logger.info(
-                    f'NewsWatcher: Daily trade limit reached ({today_trades}/{max_daily_trades}). '
-                    f'Skipping Stage 2 reanalysis to save tokens — risk gate would block execution anyway.'
+                    f"NewsWatcher: Daily trade limit reached ({today_trades}/{max_daily_trades}). "
+                    f"Skipping Stage 2 reanalysis to save tokens — risk gate would block execution anyway."
                 )
                 # Still run Stage 1 for macro brief update if it's a major news event
                 # but skip Stage 2 since it can't execute
                 if len(affected_symbols) >= 4 and self._fundamental_stage:
-                    logger.info('Running Stage 1 only (major event) to update macro brief.')
+                    logger.info("Running Stage 1 only (major event) to update macro brief.")
                     async with get_session() as session:
                         await self._fundamental_stage.run(session, forced=True)
                 return
         except Exception as e:
-            logger.debug(f'NewsWatcher daily count check failed (non-fatal): {e}')
+            logger.debug(f"NewsWatcher daily count check failed (non-fatal): {e}")
         # --- END NEW ---
         """
         Memicu re-analisis saat ada breaking news.
@@ -610,9 +663,9 @@ class NewsWatcher:
 
         # Dedup: if all high items are from calendar_poller and PostReleaseAnalyzer is active,
         # let PostReleaseAnalyzer handle the targeted Stage 2 re-analysis.
-        if getattr(self, '_post_release_analyzer', None):
-            calendar_items = [n for n in high_items if getattr(n, 'source', '') == 'calendar_poller']
-            non_calendar = [n for n in high_items if getattr(n, 'source', '') != 'calendar_poller']
+        if getattr(self, "_post_release_analyzer", None):
+            calendar_items = [n for n in high_items if getattr(n, "source", "") == "calendar_poller"]
+            non_calendar = [n for n in high_items if getattr(n, "source", "") != "calendar_poller"]
             if calendar_items and not non_calendar:
                 logger.info(
                     "[NewsWatcher] All breaking items from calendar_poller — "
@@ -635,6 +688,7 @@ class NewsWatcher:
         # Coalesce event into active turn leases if active
         try:
             from monika.application.agent.turn_lease_manager import SymbolTurnLeaseManager
+
             lease_mgr = SymbolTurnLeaseManager.get_instance()
             top_title = high_items[0].title if high_items else "Breaking News Shock"
             coalesce_msg = (
@@ -653,40 +707,44 @@ class NewsWatcher:
                 affected_symbols = [s for s in affected_symbols if s not in coalesced_symbols]
                 affected_set = set(affected_symbols)
                 if not affected_symbols:
-                    logger.info("NewsWatcher: All affected symbols coalesced into active turns. Skipping redundant rerun.")
+                    logger.info(
+                        "NewsWatcher: All affected symbols coalesced into active turns. Skipping redundant rerun."
+                    )
                     return
         except Exception as lease_err:
             logger.debug(f"NewsWatcher: Event coalescence check non-fatal error: {lease_err}")
 
         want_full_cycle = (affected_set >= all_assets or len(affected_symbols) >= 4) and not fallback_mode
         if fallback_mode and (affected_set >= all_assets or len(affected_symbols) >= 4):
-            logger.warning('Fallback mode aktif — full-cycle rerun DITOLAK meski affected_symbols besar. Downgrade ke targeted rerun per-simbol saja.')
+            logger.warning(
+                "Fallback mode aktif — full-cycle rerun DITOLAK meski affected_symbols besar. Downgrade ke targeted rerun per-simbol saja."
+            )
 
         POST_EVENT_DELAY_MINUTES = 15
         now = datetime.now(timezone.utc)
         pub_time = None
         if high_items:
-            pub_raw = getattr(high_items[0], 'published_at', None)
+            pub_raw = getattr(high_items[0], "published_at", None)
             if isinstance(pub_raw, datetime):
                 pub_time = pub_raw if pub_raw.tzinfo is not None else pub_raw.replace(tzinfo=timezone.utc)
         target_settle = (pub_time or now) + timedelta(minutes=POST_EVENT_DELAY_MINUTES)
         remaining_wait = max(0.0, (target_settle - now).total_seconds()) if isinstance(target_settle, datetime) else 0.0
-        
+
         if want_full_cycle and self._forced_reruns_today < self._max_forced_reruns:
             # Full cycle re-run (within budget)
             self._forced_reruns_today += 1
             logger.info(
                 f"Breaking news: triggering full analysis cycle "
                 f"({self._forced_reruns_today}/{self._max_forced_reruns} today). "
-                f"Settling window target: {target_settle.strftime('%H:%M:%S UTC')} (remaining: {remaining_wait/60:.1f}min)..."
+                f"Settling window target: {target_settle.strftime('%H:%M:%S UTC')} (remaining: {remaining_wait / 60:.1f}min)..."
             )
             if self._position_guardian:
-                logger.info('Breaking news: running emergency position check...')
+                logger.info("Breaking news: running emergency position check...")
                 await self._position_guardian.check_and_protect(emergency=True)
             await self._tighten_sl_on_breaking_news(affected_symbols)
             if remaining_wait > 0:
                 await asyncio.sleep(remaining_wait)
-            
+
             if self._cycle_scheduler:
                 asyncio.create_task(self._cycle_scheduler.run_once(forced=True))
             return
@@ -702,7 +760,7 @@ class NewsWatcher:
         # For targeted Stage 2 reruns, apply per-symbol cooldown:
         now = datetime.now(timezone.utc)
         symbols_to_reanalyze = []
-        
+
         for sym in affected_symbols:
             last_time = self._last_reanalysis.get(sym)
             if last_time is None:
@@ -715,12 +773,12 @@ class NewsWatcher:
                     self._last_reanalysis[sym] = now
                 else:
                     logger.info(
-                        f'News watcher: Skipping {sym} reanalysis '
-                        f'({elapsed_minutes:.0f}min < {self._min_reanalysis_interval_minutes}min cooldown)'
+                        f"News watcher: Skipping {sym} reanalysis "
+                        f"({elapsed_minutes:.0f}min < {self._min_reanalysis_interval_minutes}min cooldown)"
                     )
-        
+
         if not symbols_to_reanalyze:
-            logger.info('All affected symbols in cooldown period. No targeted reanalysis triggered.')
+            logger.info("All affected symbols in cooldown period. No targeted reanalysis triggered.")
             return
 
         if self._targeted_reruns_today >= self._max_targeted_reruns:
@@ -740,21 +798,21 @@ class NewsWatcher:
             f"Waiting {POST_EVENT_DELAY_MINUTES}min for market to settle..."
         )
         if self._position_guardian:
-            logger.info('Breaking news: running emergency position check...')
+            logger.info("Breaking news: running emergency position check...")
             await self._position_guardian.check_and_protect(emergency=True)
         await self._tighten_sl_on_breaking_news(symbols_to_reanalyze)
         if remaining_wait > 0:
             await asyncio.sleep(remaining_wait)
-        
+
         post_event_context = (
-            f'\n\nPOST-EVENT CONTEXT: This analysis is triggered {POST_EVENT_DELAY_MINUTES} minutes '
-            f'after breaking news: {high_items[0].title[:100]}. '
-            f'This is a POST-EVENT window — highest quality entry opportunity. '
-            f'Look for: (1) Initial spike reversal, (2) Re-test of pre-news level, '
-            f'(3) Structure reset with fresh FVG/OB created by the news spike.'
+            f"\n\nPOST-EVENT CONTEXT: This analysis is triggered {POST_EVENT_DELAY_MINUTES} minutes "
+            f"after breaking news: {high_items[0].title[:100]}. "
+            f"This is a POST-EVENT window — highest quality entry opportunity. "
+            f"Look for: (1) Initial spike reversal, (2) Re-test of pre-news level, "
+            f"(3) Structure reset with fresh FVG/OB created by the news spike."
         )
 
-        cycle_lock = getattr(self._cycle_scheduler, '_cycle_lock', None) if self._cycle_scheduler else None
+        cycle_lock = getattr(self._cycle_scheduler, "_cycle_lock", None) if self._cycle_scheduler else None
         if cycle_lock:
             async with cycle_lock:
                 if self._fundamental_stage:
@@ -763,8 +821,7 @@ class NewsWatcher:
 
                 if self._per_asset_stage and symbols_to_reanalyze:
                     await self._run_targeted_reanalysis_and_route(
-                        symbols=symbols_to_reanalyze,
-                        context=post_event_context
+                        symbols=symbols_to_reanalyze, context=post_event_context
                     )
         else:
             if self._fundamental_stage:
@@ -772,10 +829,7 @@ class NewsWatcher:
                     await self._fundamental_stage.run(session, forced=True)
 
             if self._per_asset_stage and symbols_to_reanalyze:
-                await self._run_targeted_reanalysis_and_route(
-                    symbols=symbols_to_reanalyze,
-                    context=post_event_context
-                )
+                await self._run_targeted_reanalysis_and_route(symbols=symbols_to_reanalyze, context=post_event_context)
 
     async def _run_targeted_reanalysis_and_route(self, symbols: list[str], context: str) -> None:
         """Run targeted per-asset reanalysis and route actionable trades to execution."""
@@ -798,17 +852,25 @@ class NewsWatcher:
                 is_secondary=True,
                 use_session_trigger_client=True,
                 extra_context=context,
-                skip_cooldown=True
+                skip_cooldown=True,
             )
-            actionable = [
-                (sym, r) for sym, r in pa_results.items()
-                if isinstance(r, dict) and r.get('decision') in ('buy', 'sell') and r.get('analysis_id')
-            ] if isinstance(pa_results, dict) else []
+            actionable = (
+                [
+                    (sym, r)
+                    for sym, r in pa_results.items()
+                    if isinstance(r, dict) and r.get("decision") in ("buy", "sell") and r.get("analysis_id")
+                ]
+                if isinstance(pa_results, dict)
+                else []
+            )
             if actionable:
-                logger.info(f"[NewsWatcher] Found {len(actionable)} actionable trade(s) from news reanalysis: {actionable}")
+                logger.info(
+                    f"[NewsWatcher] Found {len(actionable)} actionable trade(s) from news reanalysis: {actionable}"
+                )
                 # LangGraph Reactive Entry Point (CRITICAL-01)
                 try:
                     from monika.application.graph.reactive_graph import get_reactive_graph
+
                     reactive_graph = get_reactive_graph()
                     scheduler_ctx = self._cycle_scheduler or self
                     reactive_state = {
@@ -843,18 +905,24 @@ class NewsWatcher:
         try:
             from monika.infrastructure.database.models import Position
             from sqlalchemy import select
-            
+
             async with get_session() as session:
-                positions = (await session.execute(
-                    select(Position)
-                    .where(Position.status == 'open')
-                    .where(Position.symbol.in_(affected_symbols))
-                )).scalars().all()
+                positions = (
+                    (
+                        await session.execute(
+                            select(Position)
+                            .where(Position.status == "open")
+                            .where(Position.symbol.in_(affected_symbols))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
 
                 for pos in positions:
                     if not pos.mt5_ticket:
                         continue
-                    direction = (pos.direction or '').lower()
+                    direction = (pos.direction or "").lower()
                     entry = pos.entry_price
                     current_sl = pos.sl
 
@@ -885,7 +953,7 @@ class NewsWatcher:
                         pip_size = 0.01
                     elif "XAU" in pos.symbol.upper() or "BTC" in pos.symbol.upper():
                         pip_size = 0.1
-                    
+
                     spread_buffer = pip_size * 2.0
                     if hasattr(self._execution_service, "mt5") and self._execution_service.mt5:
                         try:
@@ -901,23 +969,29 @@ class NewsWatcher:
                     new_sl: Optional[float] = None
                     if current_price is not None:
                         # Only tighten to BE+buffer if position has moved enough into profit
-                        if direction == 'buy' and current_price > (entry + spread_buffer):
+                        if direction == "buy" and current_price > (entry + spread_buffer):
                             target_sl = round(entry + spread_buffer, 5)
                             if current_sl is None or current_sl < target_sl:
                                 should_tighten = True
                                 new_sl = target_sl
-                        elif direction == 'sell' and current_price < (entry - spread_buffer):
+                        elif direction == "sell" and current_price < (entry - spread_buffer):
                             target_sl = round(entry - spread_buffer, 5)
                             if current_sl is None or current_sl > target_sl:
                                 should_tighten = True
                                 new_sl = target_sl
 
-                    if should_tighten and new_sl is not None and hasattr(self._execution_service, 'modify_position_sl_tp'):
+                    if (
+                        should_tighten
+                        and new_sl is not None
+                        and hasattr(self._execution_service, "modify_position_sl_tp")
+                    ):
                         try:
                             await self._execution_service.modify_position_sl_tp(
                                 ticket=pos.mt5_ticket, sl=new_sl, tp=pos.tp, requested_by="news_watcher"
                             )
-                            logger.info(f"NewsWatcher: Tightened SL to breakeven ({new_sl}) for {pos.symbol} ticket={pos.mt5_ticket} due to breaking news")
+                            logger.info(
+                                f"NewsWatcher: Tightened SL to breakeven ({new_sl}) for {pos.symbol} ticket={pos.mt5_ticket} due to breaking news"
+                            )
                         except Exception as e:
                             logger.warning(f"NewsWatcher: Failed tightening SL for {pos.symbol}: {e}")
         except Exception as e:
@@ -928,12 +1002,13 @@ class NewsWatcher:
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
             from monika.core.primitives.jev_primitives import build_realtime_news_questions
+
             client = get_client_for_task("jev_news_realtime", self.settings)
             questions = build_realtime_news_questions(open_positions=open_positions)
             state = {
                 "title": str(getattr(news_item, "title", "") or "")[:300],
                 "summary": str(getattr(news_item, "summary", "") or "")[:1000],
-                "open_positions": open_positions or []
+                "open_positions": open_positions or [],
             }
             res = await client.classify_json(prompt="", state=state, jev_questions=questions)
             return res or {}
@@ -945,16 +1020,15 @@ class NewsWatcher:
     # Logging
     # ------------------------------------------------------------------
 
-    async def _log(
-        self, session: AsyncSession, description: str, category: str = "analysis"
-    ) -> None:
+    async def _log(self, session: AsyncSession, description: str, category: str = "analysis") -> None:
         try:
-            session.add(ActivityLog(
-                category=category,
-                description=description,
-                actor="news_watcher",
-            ))
+            session.add(
+                ActivityLog(
+                    category=category,
+                    description=description,
+                    actor="news_watcher",
+                )
+            )
             await session.commit()
         except Exception as e:
             logger.debug(f"Log write failed (non-fatal): {e}")
-

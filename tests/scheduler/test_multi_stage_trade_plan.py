@@ -16,7 +16,7 @@ async def test_trailing_stop_auto_breakeven_on_tp1_buy():
                 "timeframe": "H1",
             }
         },
-        "timesfm": {"volatility_trailing_adjustment": False}
+        "timesfm": {"volatility_trailing_adjustment": False},
     }
 
     mock_exec = AsyncMock()
@@ -45,14 +45,14 @@ async def test_trailing_stop_auto_breakeven_on_tp1_buy():
         take_profit_1=2710.0,
         total_volume=1.0,
     )
-    leg_probe = TradePlanLeg(id=1, plan_id=10, leg_type="probe", volume=0.3, target_entry=2700.0, stop_loss=2680.0, status="filled")
+    leg_probe = TradePlanLeg(
+        id=1, plan_id=10, leg_type="probe", volume=0.3, target_entry=2700.0, stop_loss=2680.0, status="filled"
+    )
     plan.legs = [leg_probe]
 
     mock_session = create_mock_async_session()
     mock_exec.mt5 = AsyncMock()
-    mock_exec.mt5.get_open_positions.return_value = [
-        {"ticket": 123456, "price_current": 2712.0}
-    ]
+    mock_exec.mt5.get_open_positions.return_value = [{"ticket": 123456, "price_current": 2712.0}]
 
     mock_atr_row = MagicMock()
     mock_atr_row.value_json = "10.0"
@@ -91,7 +91,7 @@ async def test_trailing_stop_auto_breakeven_on_tp1_sell():
                 "timeframe": "H1",
             }
         },
-        "timesfm": {"volatility_trailing_adjustment": False}
+        "timesfm": {"volatility_trailing_adjustment": False},
     }
 
     mock_exec = AsyncMock()
@@ -120,7 +120,9 @@ async def test_trailing_stop_auto_breakeven_on_tp1_sell():
         take_profit_1=1.0980,
         total_volume=0.5,
     )
-    leg_probe = TradePlanLeg(id=2, plan_id=11, leg_type="probe", volume=0.15, target_entry=1.1000, stop_loss=1.1050, status="filled")
+    leg_probe = TradePlanLeg(
+        id=2, plan_id=11, leg_type="probe", volume=0.15, target_entry=1.1000, stop_loss=1.1050, status="filled"
+    )
     plan.legs = [leg_probe]
 
     mock_session = create_mock_async_session()

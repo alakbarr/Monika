@@ -23,6 +23,7 @@ logger = logging.getLogger("TradingAgent.ScenarioTree")
 @dataclass
 class ScenarioNode:
     """Single node in the Scenario DAG."""
+
     uuid: str = field(default_factory=lambda: str(uuid.uuid4()))
     parent_uuid: Optional[str] = None
     node_type: str = "root"  # root, bull, bear, chop, convergence
@@ -43,6 +44,7 @@ class ScenarioNode:
 @dataclass
 class ScenarioTree:
     """Complete multi-hypothesis scenario tree for a symbol."""
+
     symbol: str
     root: ScenarioNode = field(default_factory=ScenarioNode)
     branches: Dict[str, ScenarioNode] = field(default_factory=dict)
@@ -85,7 +87,7 @@ class ScenarioTreeEngine:
         """
         trend = (d1_trend or "").upper()
         macro = (macro_bias or "").upper()
-        
+
         # Base logit scores for bull, bear, chop
         bull_logit = 0.0
         bear_logit = 0.0
@@ -148,6 +150,7 @@ class ScenarioTreeEngine:
 
         # Softmax normalization
         import math
+
         exp_bull = math.exp(max(-10.0, min(10.0, bull_logit)))
         exp_bear = math.exp(max(-10.0, min(10.0, bear_logit)))
         exp_chop = math.exp(max(-10.0, min(10.0, chop_logit)))
@@ -177,7 +180,7 @@ class ScenarioTreeEngine:
         spread_drift: float = 1.0,
         rsi: Optional[float] = None,
         timesfm_skew: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ) -> ScenarioTree:
         """
         Builds a deterministic 3-branch scenario tree from market context and indicators.
@@ -189,17 +192,13 @@ class ScenarioTreeEngine:
         spread_drift = max(0.1, min(5.0, float(spread_drift if spread_drift is not None else 1.0)))
 
         tree = ScenarioTree(symbol=symbol)
-        
+
         # 1. Root context node
         tree.root = ScenarioNode(
             node_type="root",
             symbol=symbol,
             thesis=f"Market Structure Context for {symbol} at {current_price:.5f}",
-            evidence=[
-                f"D1 Trend: {d1_trend}",
-                f"Macro Bias: {macro_bias}",
-                f"ATR(14): {atr_14:.5f}"
-            ]
+            evidence=[f"D1 Trend: {d1_trend}", f"Macro Bias: {macro_bias}", f"ATR(14): {atr_14:.5f}"],
         )
 
         probs = self.compute_empirical_probabilities(
@@ -208,7 +207,7 @@ class ScenarioTreeEngine:
             confluence_score=confluence_score,
             spread_drift=spread_drift,
             rsi=rsi,
-            timesfm_skew=timesfm_skew
+            timesfm_skew=timesfm_skew,
         )
         bull_prob = probs["bull"]
         bear_prob = probs["bear"]
@@ -230,7 +229,7 @@ class ScenarioTreeEngine:
             reward_risk_ratio=round(bull_rr, 2),
             probability=bull_prob,
             confidence=0.75,
-            entry_plan={"action": "BUY", "entry": current_price, "sl": bull_sl, "tp": bull_tp}
+            entry_plan={"action": "BUY", "entry": current_price, "sl": bull_sl, "tp": bull_tp},
         )
         tree.branches["bull"] = bull_node
 
@@ -250,7 +249,7 @@ class ScenarioTreeEngine:
             reward_risk_ratio=round(bear_rr, 2),
             probability=bear_prob,
             confidence=0.70,
-            entry_plan={"action": "SELL", "entry": current_price, "sl": bear_sl, "tp": bear_tp}
+            entry_plan={"action": "SELL", "entry": current_price, "sl": bear_sl, "tp": bear_tp},
         )
         tree.branches["bear"] = bear_node
 
@@ -265,7 +264,7 @@ class ScenarioTreeEngine:
             target_level=current_price,
             reward_risk_ratio=1.0,
             probability=chop_prob,
-            confidence=0.60
+            confidence=0.60,
         )
         tree.branches["chop"] = chop_node
 
@@ -295,7 +294,7 @@ class ScenarioTreeEngine:
             node_type="convergence",
             symbol=symbol,
             parent_uuid=tree.root.uuid,
-            thesis=f"Scenario Convergence -> EV={tree.expected_value:.2f}, Decision={tree.final_decision}"
+            thesis=f"Scenario Convergence -> EV={tree.expected_value:.2f}, Decision={tree.final_decision}",
         )
 
         return tree

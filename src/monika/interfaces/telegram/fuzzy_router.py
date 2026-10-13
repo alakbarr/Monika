@@ -24,85 +24,85 @@ TRADING_COMMAND_REGISTRY: Dict[str, SlashCommandDef] = {
         command="status",
         aliases=["s", "kondisi", "keadaan"],
         description="Menampilkan status sistem, flag trading, dan ringkasan portofolio",
-        usage="/status"
+        usage="/status",
     ),
     "positions": SlashCommandDef(
         command="positions",
         aliases=["pos", "posisi", "orders", "trades"],
         description="Melihat seluruh posisi aktif (real dan paper)",
-        usage="/positions"
+        usage="/positions",
     ),
     "risk": SlashCommandDef(
         command="risk",
         aliases=["risiko", "drawdown", "dd"],
         description="Menampilkan metrik risiko akun, margin, dan batas drawdown",
-        usage="/risk"
+        usage="/risk",
     ),
     "regime": SlashCommandDef(
         command="regime",
         aliases=["rezim", "market_regime", "volatilitas"],
         description="Melihat deteksi regime pasar makro dan volatilitas terkini",
-        usage="/regime"
+        usage="/regime",
     ),
     "override": SlashCommandDef(
         command="override",
         aliases=["setrisk", "adjust"],
         description="Mengubah parameter risiko dinamis (misal: /override max_risk 1.5)",
         admin_only=True,
-        usage="/override <param> <value>"
+        usage="/override <param> <value>",
     ),
     "audit": SlashCommandDef(
         command="audit",
         aliases=["trace", "investigasi"],
         description="Memeriksa jejak audit penalaran trade atau posisi berdasarkan tiket",
-        usage="/audit <ticket>"
+        usage="/audit <ticket>",
     ),
     "close": SlashCommandDef(
         command="close",
         aliases=["tutup", "exit"],
         description="Menutup posisi tertentu berdasarkan nomor tiket",
         admin_only=True,
-        usage="/close <ticket>"
+        usage="/close <ticket>",
     ),
     "closeall": SlashCommandDef(
         command="closeall",
         aliases=["tutupsemua", "liquidate"],
         description="Menutup seluruh posisi aktif dengan konfirmasi cepat",
         admin_only=True,
-        usage="/closeall"
+        usage="/closeall",
     ),
     "pause": SlashCommandDef(
         command="pause",
         aliases=["jeda", "stop_trading"],
         description="Menjeda pembukaan posisi trading baru",
         admin_only=True,
-        usage="/pause [alasan]"
+        usage="/pause [alasan]",
     ),
     "resume": SlashCommandDef(
         command="resume",
         aliases=["lanjut", "start_trading"],
         description="Melanjutkan kembali operasional trading",
         admin_only=True,
-        usage="/resume"
+        usage="/resume",
     ),
     "kill": SlashCommandDef(
         command="kill",
         aliases=["darurat", "killswitch"],
         description="Memicu kill switch darurat dan melikuidasi seluruh eksposur",
         admin_only=True,
-        usage="/kill"
+        usage="/kill",
     ),
     "brief": SlashCommandDef(
         command="brief",
         aliases=["fundamental", "makro"],
         description="Menampilkan ringkasan intelijen fundamental dan sentimen pasar terkini",
-        usage="/brief"
+        usage="/brief",
     ),
     "help": SlashCommandDef(
         command="help",
         aliases=["bantuan", "menu"],
         description="Menampilkan daftar perintah dan panduan penggunaan",
-        usage="/help"
+        usage="/help",
     ),
 }
 
@@ -120,7 +120,7 @@ class FuzzyCommandRouter:
 
     def resolve(self, raw_input: str) -> Tuple[Optional[SlashCommandDef], List[str]]:
         """Resolves input string to a command definition or suggests alternatives.
-        
+
         Returns:
             Tuple of (Matched SlashCommandDef or None, List of suggested command strings)
         """
@@ -137,9 +137,7 @@ class FuzzyCommandRouter:
         all_candidates = list(self._alias_map.keys())
         close_matches = difflib.get_close_matches(token, all_candidates, n=3, cutoff=0.6)
         if close_matches:
-            canonical_suggestions = list(dict.fromkeys(
-                self._alias_map[m] for m in close_matches
-            ))
+            canonical_suggestions = list(dict.fromkeys(self._alias_map[m] for m in close_matches))
             # If top match is extremely close (distance <= 1 or cutoff >= 0.8), accept match
             top_ratio = difflib.SequenceMatcher(None, token, close_matches[0]).ratio()
             if top_ratio >= 0.8:

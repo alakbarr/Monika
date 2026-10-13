@@ -27,6 +27,7 @@ from logging_observability.dashboard.log_streamer import (
 # 1. Ephemeral Single-Use WebSocket Ticket Tests
 # ==============================================================================
 
+
 def test_ws_ticket_lifecycle_and_single_use():
     mgr = WsTicketManager(default_ttl=10.0)
 
@@ -68,6 +69,7 @@ def test_ws_ticket_invalid_token():
 # 2. Incremental LogStreamer Tests
 # ==============================================================================
 
+
 def test_parse_log_line_level():
     assert parse_log_line_level("2026-09-27 00:00:00 [ERROR] MT5 connection dropped") == "ERROR"
     assert parse_log_line_level("2026-09-27 00:00:00 [WARNING] Spread widening") in ("WARNING", "WARN")
@@ -107,7 +109,7 @@ async def test_log_streamer_incremental_tailing():
         consumer_task.cancel()
         try:
             await consumer_task
-        except (asyncio.CancelledError, Exception):
+        except asyncio.CancelledError, Exception:
             pass
 
         assert len(streamed_lines) == 2

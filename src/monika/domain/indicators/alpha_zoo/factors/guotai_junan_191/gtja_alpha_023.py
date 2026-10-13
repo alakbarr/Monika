@@ -1,4 +1,3 @@
-
 """GTJA Alpha #23.
 
 Formula: SMA((CLOSE>DELAY(CLOSE,1)?STD(CLOSE,20):0),20,1)/(SMA((CLOSE>DELAY(CLOSE,1)?STD(CLOSE,20):0),20,1) + SMA((CLOSE<=DELAY(CLOSE,1)?STD(CLOSE,20):0),20,1)) * 100
@@ -28,23 +27,24 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_023",
-    "theme": ['volatility'],
-    "formula_latex": 'SMA((CLOSE>DELAY(CLOSE,1)?STD(CLOSE,20):0),20,1)/(SMA((CLOSE>DELAY(CLOSE,1)?STD(CLOSE,20):0),20,1) + SMA((CLOSE<=DELAY(CLOSE,1)?STD(CLOSE,20):0),20,1)) * 100',
-    "columns_required": ['close'],
+    "theme": ["volatility"],
+    "formula_latex": "SMA((CLOSE>DELAY(CLOSE,1)?STD(CLOSE,20):0),20,1)/(SMA((CLOSE>DELAY(CLOSE,1)?STD(CLOSE,20):0),20,1) + SMA((CLOSE<=DELAY(CLOSE,1)?STD(CLOSE,20):0),20,1)) * 100",
+    "columns_required": ["close"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 20,
     "min_warmup_bars": 22,
-    "notes": 'Up-volatility share. SMA(20, m=1) of STD(20) over up/down days.',
+    "notes": "Up-volatility share. SMA(20, m=1) of STD(20) over up/down days.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]
     pc = c.shift(1)
     s20 = ts_std(c, 20)
-    up = (c > pc)
+    up = c > pc
     up_part = s20.where(up, 0.0)
     dn_part = s20.where(~up, 0.0)
     u_sma = up_part.ewm(alpha=1.0 / 20.0, adjust=False).mean()

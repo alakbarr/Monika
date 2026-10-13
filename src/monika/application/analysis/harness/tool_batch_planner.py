@@ -12,7 +12,7 @@ logger = logging.getLogger("TradingAgent.ToolBatchPlanner")
 class ToolBatchPlanner:
     """Segment Planner: Partitions tool call batches into:
     [Parallel Segment] -> [Sequential Barrier] -> [Parallel Segment]
-    
+
     Prevents race conditions on state mutations while accelerating independent data reads 2-5x.
     """
 
@@ -64,7 +64,7 @@ class ToolBatchPlanner:
 
     def plan_segments(self, tool_calls: List[Dict[str, Any]]) -> List[Tuple[str, List[Dict[str, Any]]]]:
         """Split a batch of tool calls into executable segments.
-        
+
         Returns a list of tuples: (segment_type, batch_of_tool_calls)
         where segment_type is either 'parallel' or 'sequential'.
         """

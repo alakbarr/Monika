@@ -23,26 +23,26 @@ logger = logging.getLogger("TradingAgent.PreFlightGate")
 
 # Verified empirical baseline active medians (in points) from live MT5 terminal
 EMPIRICAL_ACTIVE_MEDIANS = {
-    "XAUUSD": 35.0,   # $0.35 (live active: 38.0)
-    "EURUSD": 10.0,   # 1.0 pip (live active: 10.0)
-    "GBPUSD": 11.0,   # 1.1 pip (live active: 11.0)
-    "USDJPY": 10.0,   # 1.0 pip (live active: 10.0)
-    "AUDUSD": 11.0,   # 1.1 pip (live active: 11.0)
-    "XTIUSD": 4.0,    # $0.04 (live active: 4.0)
-    "BTCUSD": 2000.0, # $20.00 (live active: 1965.0)
-    "XBRUSD": 3.5,    # $0.035 (live active: 3.0)
+    "XAUUSD": 35.0,  # $0.35 (live active: 38.0)
+    "EURUSD": 10.0,  # 1.0 pip (live active: 10.0)
+    "GBPUSD": 11.0,  # 1.1 pip (live active: 11.0)
+    "USDJPY": 10.0,  # 1.0 pip (live active: 10.0)
+    "AUDUSD": 11.0,  # 1.1 pip (live active: 11.0)
+    "XTIUSD": 4.0,  # $0.04 (live active: 4.0)
+    "BTCUSD": 2000.0,  # $20.00 (live active: 1965.0)
+    "XBRUSD": 3.5,  # $0.035 (live active: 3.0)
 }
 
 # Absolute hard ceiling limits during active hours (in points)
 ACTIVE_SPREAD_HARD_CEILINGS = {
-    "XAUUSD": 70.0,   # $0.70 (up to 2.0x active median)
-    "EURUSD": 20.0,   # 2.0 pips
-    "GBPUSD": 22.0,   # 2.2 pips
-    "USDJPY": 20.0,   # 2.0 pips
-    "AUDUSD": 22.0,   # 2.2 pips
-    "XTIUSD": 10.0,   # $0.10 (up to 2.5x active median)
-    "BTCUSD": 4500.0, # $45.00 (tolerates crypto volatility & weekend widenings)
-    "XBRUSD": 10.0,   # $0.10 (up to 2.8x active median)
+    "XAUUSD": 70.0,  # $0.70 (up to 2.0x active median)
+    "EURUSD": 20.0,  # 2.0 pips
+    "GBPUSD": 22.0,  # 2.2 pips
+    "USDJPY": 20.0,  # 2.0 pips
+    "AUDUSD": 22.0,  # 2.2 pips
+    "XTIUSD": 10.0,  # $0.10 (up to 2.5x active median)
+    "BTCUSD": 4500.0,  # $45.00 (tolerates crypto volatility & weekend widenings)
+    "XBRUSD": 10.0,  # $0.10 (up to 2.8x active median)
 }
 
 SYMBOL_CURRENCIES = {
@@ -72,22 +72,31 @@ class PreFlightTurnGate:
         try:
             from monika.infrastructure.database.models import EconomicCalendar
             from monika.domain.market.currency_utils import get_symbol_currencies
+
             sym_clean = symbol.replace("/", "").replace("_", "").replace(".", "").upper()
             currencies = SYMBOL_CURRENCIES.get(sym_clean)
             if not currencies:
                 c_set = get_symbol_currencies(sym_clean)
-                currencies = list(c_set) if c_set else ([sym_clean[:3], sym_clean[3:6]] if len(sym_clean) >= 6 else ["USD"])
+                currencies = (
+                    list(c_set) if c_set else ([sym_clean[:3], sym_clean[3:6]] if len(sym_clean) >= 6 else ["USD"])
+                )
 
             window_start = now_utc - timedelta(minutes=buffer_minutes)
             window_end = now_utc + timedelta(minutes=buffer_minutes)
 
-            events = (await session.execute(
-                select(EconomicCalendar)
-                .where(EconomicCalendar.currency.in_(currencies))
-                .where(EconomicCalendar.impact.in_(["high", "critical", "HIGH", "CRITICAL"]))
-                .where(EconomicCalendar.event_time >= window_start)
-                .where(EconomicCalendar.event_time <= window_end)
-            )).scalars().all()
+            events = (
+                (
+                    await session.execute(
+                        select(EconomicCalendar)
+                        .where(EconomicCalendar.currency.in_(currencies))
+                        .where(EconomicCalendar.impact.in_(["high", "critical", "HIGH", "CRITICAL"]))
+                        .where(EconomicCalendar.event_time >= window_start)
+                        .where(EconomicCalendar.event_time <= window_end)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             if events:
                 event = events[0]
@@ -108,7 +117,7 @@ class PreFlightTurnGate:
     ) -> Tuple[bool, Optional[str]]:
         """
         Evaluates whether an asset is in a valid state for LLM analysis.
-        
+
         Returns:
             (is_allowed: bool, rejection_reason: Optional[str])
         """
@@ -133,6 +142,7 @@ class PreFlightTurnGate:
         if mt5_client is None:
             try:
                 from monika.infrastructure.brokers.mt5_client import MT5Client
+
                 mt5_client = MT5Client(cfg)
             except Exception as e:
                 logger.debug(f"[{sym_clean}] PreFlightGate: MT5 client import failed: {e}")
@@ -203,7 +213,9 @@ class PreFlightTurnGate:
                             logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
                             return False, reason
             else:
-                is_dry_run = cfg.get("trading", {}).get("dry_run", False) or not cfg.get("trading", {}).get("auto_execute", False)
+                is_dry_run = cfg.get("trading", {}).get("dry_run", False) or not cfg.get("trading", {}).get(
+                    "auto_execute", False
+                )
                 if not is_dry_run:
                     reason = f"MT5 tick data unavailable for {sym_clean} in live execution mode."
                     logger.warning(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")

@@ -83,6 +83,7 @@ def _execute_single_scenario_worker(
         pnls = [float(t.get("price_delta", 0.0)) for t in ticks]
         if len(pnls) >= 2:
             import numpy as np
+
             std = float(np.std(pnls, ddof=1))
             mean = float(np.mean(pnls))
             sharpe = round(float((mean / std) * np.sqrt(252)), 2) if std > 1e-8 else (1.5 if mean > 0 else 0.0)
@@ -149,10 +150,7 @@ class BatchScenarioRunner:
 
         with open(out_path, "a", encoding="utf-8") as f_out:
             with concurrent.futures.ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-                futures = {
-                    executor.submit(_execute_single_scenario_worker, p): p["scenario_id"]
-                    for p in payloads
-                }
+                futures = {executor.submit(_execute_single_scenario_worker, p): p["scenario_id"] for p in payloads}
 
                 for future in concurrent.futures.as_completed(futures):
                     sc_id = futures[future]

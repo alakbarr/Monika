@@ -37,15 +37,17 @@ logger = logging.getLogger("TradingAgent.Agent.TurnPhaseMachine")
 
 class TurnVerdict(str, enum.Enum):
     """Execution directives returned by each phase step."""
-    CONTINUE = "continue"        # Proceed to next iteration in loop
-    BREAK = "break"              # Terminate turn loop normally (e.g. final text response rendered)
-    RETURN = "return"            # Immediate exit from turn handler
+
+    CONTINUE = "continue"  # Proceed to next iteration in loop
+    BREAK = "break"  # Terminate turn loop normally (e.g. final text response rendered)
+    RETURN = "return"  # Immediate exit from turn handler
     FALLTHROUGH = "fallthrough"  # Proceed to subsequent phase within current iteration
     RETRY_PHASE = "retry_phase"  # Re-run current phase (e.g. after parameter ladder adjustment)
 
 
 class TurnPhase(str, enum.Enum):
     """Canonical sequence of turn execution phases."""
+
     IDLE = "idle"
     PREPARE = "prepare_iteration"
     ASSEMBLE = "assemble_api_request"
@@ -62,6 +64,7 @@ class IterationBudget:
     Manages turn iteration quota with child inheritance and programmatic refunds.
     Prevents runaway tool loops while allowing micro-tool (PTC) refunds.
     """
+
     max_iterations: int = 25
     current_iteration: int = 0
     refunded_iterations: int = 0
@@ -88,7 +91,9 @@ class IterationBudget:
         self.current_iteration -= refund_amount
         self.refunded_iterations += refund_amount
         self.is_exhausted = False
-        logger.debug(f"[IterationBudget] Refunded {refund_amount} iteration(s). Current: {self.current_iteration}/{self.max_iterations}")
+        logger.debug(
+            f"[IterationBudget] Refunded {refund_amount} iteration(s). Current: {self.current_iteration}/{self.max_iterations}"
+        )
 
     def derive_child(self, max_child_iterations: Optional[int] = None) -> "IterationBudget":
         """
@@ -103,6 +108,7 @@ class IterationBudget:
 @dataclass
 class TurnState:
     """Carries mutable context and telemetry across all turn phases."""
+
     turn_id: str
     session_id: str
     user_prompt: str
@@ -241,6 +247,7 @@ class TurnPhaseMachine:
 
         if loop is not None and loop.is_running():
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 return pool.submit(asyncio.run, self.run_turn_async(state)).result()
         return asyncio.run(self.run_turn_async(state))

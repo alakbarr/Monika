@@ -125,8 +125,11 @@ app = FastAPI(
 )
 
 _allowed_origins = [o.strip() for o in os.getenv("DASHBOARD_ALLOWED_ORIGINS", "").split(",") if o.strip()] or [
-    "http://localhost:5173", "http://localhost:4173", "http://localhost:3000",
-    "http://127.0.0.1:5173", "http://127.0.0.1:4173",
+    "http://localhost:5173",
+    "http://localhost:4173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:4173",
 ]
 
 app.add_middleware(
@@ -162,6 +165,7 @@ async def verify_api_key(request: Request, call_next):
 
     if allowed_ips and not is_localhost:
         import ipaddress
+
         ip_matched = False
         try:
             client_ip_obj = ipaddress.ip_address(client_host)
@@ -180,19 +184,18 @@ async def verify_api_key(request: Request, call_next):
                         ip_matched = True
                         break
         except Exception:
-            ip_matched = (client_host in allowed_ips)
+            ip_matched = client_host in allowed_ips
 
         if not ip_matched:
             return JSONResponse(
-                status_code=403,
-                content={"detail": f"Forbidden: IP address {client_host} is not authorized."}
+                status_code=403, content={"detail": f"Forbidden: IP address {client_host} is not authorized."}
             )
 
     if not api_key and not multi_keys:
         if not is_localhost:
             return JSONResponse(
                 status_code=403,
-                content={"detail": "Forbidden: DASHBOARD_API_KEY must be configured for remote network access."}
+                content={"detail": "Forbidden: DASHBOARD_API_KEY must be configured for remote network access."},
             )
         request.state.role = Role.VIEWER
         request.state.is_localhost = True
@@ -215,6 +218,7 @@ async def verify_api_key(request: Request, call_next):
 # ---------------------------------------------------------------------------
 # Global Exception Handlers (Sanitize Internal Stack Traces)
 # ---------------------------------------------------------------------------
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -255,6 +259,7 @@ for router in all_routers:
 # Backward Compatibility Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_settings_path() -> str:
     """Resolve path to settings.yaml (kept at top-level for test monkeypatching)."""
     return _default_get_settings_path()
@@ -266,13 +271,16 @@ def _get_settings_path() -> str:
 
 _SETUP_HTML_PATH = Path(__file__).parent / "static_setup.html"
 
+
 @app.get("/setup", include_in_schema=False)
 async def serve_setup_page():
     """Serve standalone Web Setup Wizard page."""
     if _SETUP_HTML_PATH.exists():
         return FileResponse(str(_SETUP_HTML_PATH))
     from fastapi import HTTPException
+
     raise HTTPException(status_code=404, detail="Setup page template not found")
+
 
 @app.post("/api/setup/submit")
 @require_role(Role.ADMIN)
@@ -354,16 +362,20 @@ async def submit_setup_configuration(request: Request):
 
         # 5. Paper trading setting
         trade_mode = data.get("trade_mode", "paper")
-        is_paper = (trade_mode == "paper")
-        AtomicConfigWriter.update_in_place(settings_path, {
-            "paper_trading": {
-                "enabled": is_paper,
-            }
-        })
+        is_paper = trade_mode == "paper"
+        AtomicConfigWriter.update_in_place(
+            settings_path,
+            {
+                "paper_trading": {
+                    "enabled": is_paper,
+                }
+            },
+        )
 
         # 6. Initialize database tables
         try:
             from monika.infrastructure.database.db import init_db
+
             await init_db()
         except Exception as dberr:
             logger.warning(f"Database init warning during web setup: {dberr}")
@@ -379,10 +391,14 @@ async def submit_setup_configuration(request: Request):
 # Static File Serving (React Frontend)
 # ---------------------------------------------------------------------------
 
+
 def _resolve_frontend_dist() -> Path:
     """Resolve frontend dist path favoring root monorepo frontend/dist."""
     curr = Path(__file__).resolve()
-    repo_root = next((p for p in curr.parents if (p / "pyproject.toml").exists()), curr.parents[4] if len(curr.parents) > 4 else curr.parent)
+    repo_root = next(
+        (p for p in curr.parents if (p / "pyproject.toml").exists()),
+        curr.parents[4] if len(curr.parents) > 4 else curr.parent,
+    )
     candidates = [
         repo_root / "frontend" / "dist",
         Path(__file__).parent / "frontend" / "dist",
@@ -410,6 +426,7 @@ def _mount_frontend():
         async def serve_spa(full_path: str):
             if full_path.startswith("api/"):
                 from fastapi import HTTPException
+
                 raise HTTPException(status_code=404)
             file_path = (_FRONTEND_DIST / full_path).resolve()
             dist_resolved = _FRONTEND_DIST.resolve()
@@ -420,10 +437,8 @@ def _mount_frontend():
         logger.info(f"React frontend served from {_FRONTEND_DIST}")
     else:
         logger.info(
-            "Frontend dist not found — run `npm run build` in frontend/ to build. "
-            "API still available at /api/*"
+            "Frontend dist not found — run `npm run build` in frontend/ to build. API still available at /api/*"
         )
-
 
 
 _mount_frontend()
@@ -432,6 +447,7 @@ _mount_frontend()
 # ---------------------------------------------------------------------------
 # Dashboard Run Entrypoints
 # ---------------------------------------------------------------------------
+
 
 def run_dashboard(host: Optional[str] = None, port: Optional[int] = None, reload: bool = False):
     """Start API server dari script main (sync mode)."""
@@ -447,7 +463,9 @@ def run_dashboard(host: Optional[str] = None, port: Optional[int] = None, reload
     )
 
 
-async def run_dashboard_async(host: Optional[str] = None, port: Optional[int] = None, shutdown_event: Optional[asyncio.Event] = None):
+async def run_dashboard_async(
+    host: Optional[str] = None, port: Optional[int] = None, shutdown_event: Optional[asyncio.Event] = None
+):
     """Start API server di event loop yang ada (async mode)."""
     _host = host or os.getenv("DASHBOARD_HOST", "127.0.0.1")
     _port = port or int(os.getenv("DASHBOARD_PORT", 8000))
@@ -465,9 +483,11 @@ async def run_dashboard_async(host: Optional[str] = None, port: Optional[int] = 
 
     try:
         if shutdown_event is not None:
+
             async def _sync_exit():
                 await shutdown_event.wait()
                 server.should_exit = True
+
             exit_task = asyncio.create_task(_sync_exit())
             try:
                 await server.serve()

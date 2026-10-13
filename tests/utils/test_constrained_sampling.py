@@ -8,10 +8,17 @@ from analysis.providers.base_provider import BaseLLMClient
 
 
 class ConcreteClient(BaseLLMClient):
-    async def generate(self, *args, **kwargs): pass
-    async def classify_json(self, *args, **kwargs): pass
-    async def run_chat_loop(self, *args, **kwargs): pass
-    async def run_tool_agent(self, *args, **kwargs): pass
+    async def generate(self, *args, **kwargs):
+        pass
+
+    async def classify_json(self, *args, **kwargs):
+        pass
+
+    async def run_chat_loop(self, *args, **kwargs):
+        pass
+
+    async def run_tool_agent(self, *args, **kwargs):
+        pass
 
 
 def test_make_strict_json_schema():

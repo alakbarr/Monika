@@ -4,57 +4,57 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
 from analysis.providers.openai_provider import OpenAIProvider
 
+
 @pytest.mark.asyncio
 async def test_openai_generate():
     provider = OpenAIProvider(model="gpt-4o", api_key="test-key")
-    
+
     mock_response = AsyncMock()
     mock_response.choices = [AsyncMock()]
     mock_response.choices[0].message.content = "Hello from OpenAI"
-    
+
     # We must patch the client inside the provider since it's already instantiated
     provider.client = AsyncMock()
     provider.client.chat.completions.create.return_value = mock_response
-    
+
     result = await provider.generate("Say hello")
     assert result == "Hello from OpenAI"
+
 
 @pytest.mark.asyncio
 async def test_openai_classify_json():
     provider = OpenAIProvider(model="gpt-4o-mini", api_key="test-key")
-    
+
     mock_response = AsyncMock()
     mock_response.choices = [AsyncMock()]
     mock_response.choices[0].message.content = json.dumps({"decision": "buy"})
-    
+
     provider.client = AsyncMock()
     provider.client.chat.completions.create.return_value = mock_response
-    
+
     result = await provider.classify_json("Is it buy?", {"type": "object"})
     assert result["decision"] == "buy"
+
 
 def test_openai_normalize_messages_parallel_tools():
     provider = OpenAIProvider(model="gpt-4o", api_key="test-key")
     anthropic_style_messages = [
-        {
-            "role": "user",
-            "content": "Analyze markets"
-        },
+        {"role": "user", "content": "Analyze markets"},
         {
             "role": "assistant",
             "content": [
                 {"type": "text", "text": "Fetching indicators and price history"},
                 {"type": "tool_use", "id": "call_1", "name": "get_dxy", "input": {}},
-                {"type": "tool_use", "id": "call_2", "name": "get_vix", "input": {}}
-            ]
+                {"type": "tool_use", "id": "call_2", "name": "get_vix", "input": {}},
+            ],
         },
         {
             "role": "user",
             "content": [
                 {"type": "tool_result", "tool_use_id": "call_1", "name": "get_dxy", "content": {"dxy": 104.5}},
-                {"type": "tool_result", "tool_use_id": "call_2", "name": "get_vix", "content": {"vix": 14.2}}
-            ]
-        }
+                {"type": "tool_result", "tool_use_id": "call_2", "name": "get_vix", "content": {"vix": 14.2}},
+            ],
+        },
     ]
     normalized = provider._normalize_messages(anthropic_style_messages)
     assert len(normalized) == 4
@@ -69,21 +69,22 @@ def test_openai_normalize_messages_parallel_tools():
     assert normalized[3]["role"] == "tool"
     assert normalized[3]["tool_call_id"] == "call_2"
 
+
 @pytest.mark.asyncio
 async def test_openai_token_logging():
     provider = OpenAIProvider(model="gpt-4o", api_key="test-key")
     mock_usage = AsyncMock()
     mock_usage.prompt_tokens = 120
     mock_usage.completion_tokens = 45
-    
+
     mock_response = AsyncMock()
     mock_response.usage = mock_usage
     mock_response.choices = [AsyncMock()]
     mock_response.choices[0].message.content = "Analysis output"
-    
+
     provider.client = AsyncMock()
     provider.client.chat.completions.create.return_value = mock_response
-    
+
     with patch.object(provider, "_save_token_usage", new_callable=AsyncMock) as mock_save:
         res = await provider.generate("Test prompt")
         assert res == "Analysis output"
@@ -92,6 +93,7 @@ async def test_openai_token_logging():
 
 def test_extract_and_parse_json_with_trailing_braces():
     from analysis.providers.base_provider import extract_and_parse_json
+
     raw_text = """{
   "adjudication_rule_correctly_applied": true,
   "expected_outcome_per_rules": "wait",
@@ -109,6 +111,7 @@ Explanation: The specialist biases and confidence inputs are empty ({}), meaning
 
 def test_extract_and_parse_json_with_unescaped_quotes():
     from analysis.providers.base_provider import extract_and_parse_json
+
     raw_text = """```json
 {
   "has_contradictions": true,
@@ -131,6 +134,7 @@ def test_extract_and_parse_json_with_unescaped_quotes():
 
 def test_extract_and_parse_json_truncated_ox_alpha_log():
     from analysis.providers.base_provider import extract_and_parse_json
+
     raw_text = """```json
 {
   "has_contradictions": true,
@@ -148,6 +152,7 @@ def test_extract_and_parse_json_truncated_ox_alpha_log():
 
 def test_extract_and_parse_json_truncated_nested_arrays():
     from analysis.providers.base_provider import extract_and_parse_json
+
     raw_text = '{"status": "ok", "items": [{"id": 1, "name": "foo"}, {"id": 2, "name": "bar'
     parsed = extract_and_parse_json(raw_text)
     assert parsed is not None
@@ -160,10 +165,10 @@ def test_extract_and_parse_json_truncated_nested_arrays():
 async def test_openai_402_prompt_tokens_exceeded_fail_fast():
     provider = OpenAIProvider(model="z-ai/glm-5.2", api_key="test-key")
     error_msg = "Error code: 402 - {'error': {'message': 'Prompt tokens limit exceeded: 10354 > 2275'}}"
-    
-    with patch.object(provider.client.chat.completions, 'create', new_callable=AsyncMock) as mock_create:
+
+    with patch.object(provider.client.chat.completions, "create", new_callable=AsyncMock) as mock_create:
         mock_create.side_effect = Exception(error_msg)
-        
+
         res = await provider.generate("Test prompt")
         assert res is None
         # Must fail-fast: exactly 1 call, no futile retry
@@ -262,11 +267,11 @@ async def test_openai_run_agent_extra_context():
             user_message="Analyze XAUUSD",
             tools=[],
             stage_name="test_stage",
-            extra_context="H1 RSI: 65, D1 Trend: Bullish"
+            extra_context="H1 RSI: 65, D1 Trend: Bullish",
         )
         assert res["success"] is True
         assert res["final_text"] == "Analysis result"
-        
+
         # Verify extra_context was appended properly in messages passed to run_tool_agent
         passed_messages = mock_run.call_args[0][0]
         assert passed_messages[0]["role"] == "user"
@@ -282,13 +287,15 @@ async def test_openai_run_agent_from_messages_tool_tracking():
     # Turn 1: Assistant calls submit_asset_analysis tool
     mock_func = MagicMock()
     mock_func.name = "submit_asset_analysis"
-    mock_func.arguments = json.dumps({
-        "symbol": "XAUUSD",
-        "decision": "buy",
-        "confidence": 0.85,
-        "rationale": "Strong bullish breakout with structural confluence",
-        "invalidation": "2600.0"
-    })
+    mock_func.arguments = json.dumps(
+        {
+            "symbol": "XAUUSD",
+            "decision": "buy",
+            "confidence": 0.85,
+            "rationale": "Strong bullish breakout with structural confluence",
+            "invalidation": "2600.0",
+        }
+    )
 
     mock_tool_call = MagicMock()
     mock_tool_call.id = "call_submit"
@@ -323,9 +330,8 @@ async def test_openai_run_agent_from_messages_tool_tracking():
                     system_prompt="system",
                     messages=[{"role": "user", "content": "trade XAUUSD"}],
                     tools=[],
-                    stage_name="per_asset_XAUUSD"
+                    stage_name="per_asset_XAUUSD",
                 )
                 assert res["success"] is True
                 assert res["tool_calls_made"] == 1
                 assert res["turns"] == 2
-

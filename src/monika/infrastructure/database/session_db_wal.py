@@ -49,6 +49,7 @@ def check_fd_headroom(reserve: int = _FD_RESERVE_HEADROOM) -> bool:
     if sys.platform != "win32":
         try:
             import resource
+
             soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
             if soft_limit != resource.RLIM_INFINITY:
                 # Approximate open FDs by listing /proc/self/fd if available
@@ -82,20 +83,23 @@ class FileLockGuard:
             try:
                 if sys.platform == "win32":
                     import msvcrt
+
                     # Lock 1 byte at position 0 non-blocking
                     msvcrt.locking(self._fd, msvcrt.LK_NBLCK, 1)
                 else:
                     import fcntl
+
                     # Prefer Open File Description (OFD) locks if available on modern Linux
                     if hasattr(fcntl, "F_OFD_SETLK"):
                         import struct
+
                         # struct flock: l_type (F_WRLCK=1), l_whence (SEEK_SET=0), l_start=0, l_len=0
                         lockdata = struct.pack("hhqqi", fcntl.F_WRLCK, os.SEEK_SET, 0, 0, 0)
                         fcntl.fcntl(self._fd, fcntl.F_OFD_SETLK, lockdata)
                     else:
                         fcntl.flock(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 return self
-            except (BlockingIOError, OSError):
+            except BlockingIOError, OSError:
                 if time.time() - start_time >= self.timeout:
                     if self._fd is not None:
                         os.close(self._fd)
@@ -108,15 +112,18 @@ class FileLockGuard:
             try:
                 if sys.platform == "win32":
                     import msvcrt
+
                     try:
                         msvcrt.locking(self._fd, msvcrt.LK_UNLCK, 1)
                     except OSError:
                         pass
                 else:
                     import fcntl
+
                     try:
                         if hasattr(fcntl, "F_OFD_SETLK"):
                             import struct
+
                             unlockdata = struct.pack("hhqqi", fcntl.F_UNLCK, os.SEEK_SET, 0, 0, 0)
                             fcntl.fcntl(self._fd, fcntl.F_OFD_SETLK, unlockdata)
                         else:
@@ -147,9 +154,7 @@ class SessionDbReadPool:
         global _PROCESS_ACTIVE_READERS
         with _PROCESS_ACTIVE_READERS_LOCK:
             if _PROCESS_ACTIVE_READERS >= _READ_POOL_PROCESS_MAX:
-                logger.warning(
-                    f"[SessionDbReadPool] Process-wide reader limit ({_READ_POOL_PROCESS_MAX}) reached."
-                )
+                logger.warning(f"[SessionDbReadPool] Process-wide reader limit ({_READ_POOL_PROCESS_MAX}) reached.")
             if not check_fd_headroom():
                 logger.warning("[SessionDbReadPool] FD headroom critical; reader connection might fail.")
             _PROCESS_ACTIVE_READERS += 1
@@ -288,9 +293,11 @@ class SessionDbWal:
         if self._read_pool is not None:
             return self._read_pool.acquire_reader()
         else:
+
             @contextlib.contextmanager
             def _fallback():
                 yield self.get_connection()
+
             return _fallback()
 
     def _init_db(self) -> None:
@@ -347,7 +354,6 @@ class SessionDbWal:
             except sqlite3.OperationalError:
                 pass
 
-
     def create_or_touch_session(
         self,
         session_id: str,
@@ -360,7 +366,8 @@ class SessionDbWal:
         conn = self.get_connection()
         now = time.time()
         with conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO sessions (
                     session_id, title, created_at, updated_at, 
                     parent_session_id, root_session_id, end_reason, metadata_json
@@ -373,16 +380,18 @@ class SessionDbWal:
                     root_session_id = COALESCE(excluded.root_session_id, sessions.root_session_id),
                     end_reason = COALESCE(excluded.end_reason, sessions.end_reason),
                     metadata_json = COALESCE(excluded.metadata_json, sessions.metadata_json);
-            """, (
-                session_id,
-                title or "Session",
-                now,
-                now,
-                parent_session_id,
-                root_session_id or session_id,
-                end_reason,
-                json.dumps(metadata or {}),
-            ))
+            """,
+                (
+                    session_id,
+                    title or "Session",
+                    now,
+                    now,
+                    parent_session_id,
+                    root_session_id or session_id,
+                    end_reason,
+                    json.dumps(metadata or {}),
+                ),
+            )
 
     def append_message(
         self,
@@ -397,10 +406,13 @@ class SessionDbWal:
         conn = self.get_connection()
         now = time.time()
         with conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO session_messages (session_id, role, content, carrier_marker, created_at, turn_ordinal, active)
                 VALUES (?, ?, ?, ?, ?, ?, ?);
-            """, (session_id, role, content, carrier_marker, now, turn_ordinal, active))
+            """,
+                (session_id, role, content, carrier_marker, now, turn_ordinal, active),
+            )
             return cursor.lastrowid or 0
 
     def record_tool_execution(
@@ -416,24 +428,29 @@ class SessionDbWal:
         conn = self.get_connection()
         now = time.time()
         with conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO tool_records (session_id, turn_ordinal, tool_name, arguments_json, output_text, is_error, has_side_effects, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-            """, (
-                session_id,
-                turn_ordinal,
-                tool_name,
-                json.dumps(arguments),
-                output,
-                1 if is_error else 0,
-                1 if has_side_effects else 0,
-                now,
-            ))
+            """,
+                (
+                    session_id,
+                    turn_ordinal,
+                    tool_name,
+                    json.dumps(arguments),
+                    output,
+                    1 if is_error else 0,
+                    1 if has_side_effects else 0,
+                    now,
+                ),
+            )
             return cursor.lastrowid or 0
 
     def get_messages(self, session_id: str, active_only: bool = True) -> List[Dict[str, Any]]:
         """Fetch messages for session, optionally filtering for active turns only."""
-        where_clause = "WHERE session_id = ? AND (active IS NULL OR active = 1)" if active_only else "WHERE session_id = ?"
+        where_clause = (
+            "WHERE session_id = ? AND (active IS NULL OR active = 1)" if active_only else "WHERE session_id = ?"
+        )
         sql = f"""
             SELECT row_id, session_id, role, content, carrier_marker, created_at, turn_ordinal, active
             FROM session_messages
@@ -454,16 +471,20 @@ class SessionDbWal:
         conn = self.get_connection()
         now = time.time()
         with conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 UPDATE session_messages
                 SET active = 0
                 WHERE session_id = ? AND turn_ordinal > ? AND (active IS NULL OR active = 1);
-            """, (session_id, turn_ordinal))
+            """,
+                (session_id, turn_ordinal),
+            )
             affected = cursor.rowcount
             conn.execute("UPDATE sessions SET updated_at = ? WHERE session_id = ?;", (now, session_id))
-            logger.info(f"[SessionDbWal] Deactivated {affected} messages in session '{session_id}' above turn {turn_ordinal}.")
+            logger.info(
+                f"[SessionDbWal] Deactivated {affected} messages in session '{session_id}' above turn {turn_ordinal}."
+            )
             return affected
-
 
     def get_tool_records(self, session_id: str, turn_ordinal: Optional[int] = None) -> List[Dict[str, Any]]:
         """Fetch tool execution records for session."""

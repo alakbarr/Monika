@@ -49,7 +49,12 @@ from monika.interfaces.cli.theme import (
 
 logger = logging.getLogger("TradingAgent.TUI.Chat")
 
-DEFAULT_API_URL = os.environ.get("MONIKA_API_URL") or os.environ.get("TRADEAGENT_API_URL") or os.environ.get("DASHBOARD_URL") or "http://127.0.0.1:8000"
+DEFAULT_API_URL = (
+    os.environ.get("MONIKA_API_URL")
+    or os.environ.get("TRADEAGENT_API_URL")
+    or os.environ.get("DASHBOARD_URL")
+    or "http://127.0.0.1:8000"
+)
 
 CHAT_SCREEN_CSS = build_chat_css()
 
@@ -155,7 +160,10 @@ class ChatScreen(Screen):
     async def _connect_ws(self) -> bool:
         """Connect to /ws/agent-chat endpoint and consume initial handshake greeting."""
         await self._close_ws()
-        ws_url = self.api_url.replace("http://", "ws://").replace("https://", "wss://") + f"/ws/agent-chat?session_id={self.session_id}"
+        ws_url = (
+            self.api_url.replace("http://", "ws://").replace("https://", "wss://")
+            + f"/ws/agent-chat?session_id={self.session_id}"
+        )
         if self.api_key:
             ws_url += f"&token={self.api_key}"
 
@@ -249,11 +257,13 @@ class ChatScreen(Screen):
         if (self._is_ws_healthy() or await self._ensure_ws()) and self._ws is not None:
             ws = self._ws
             try:
-                await ws.send_json({
-                    "type": "approval_response",
-                    "action_id": action_id,
-                    "decision": decision,
-                })
+                await ws.send_json(
+                    {
+                        "type": "approval_response",
+                        "action_id": action_id,
+                        "decision": decision,
+                    }
+                )
                 self._pending_action_id = None
                 return
             except Exception as e:
@@ -294,7 +304,9 @@ class ChatScreen(Screen):
                     await self._run_local_turn(text)
                     return
             else:
-                transcript.write("[dim yellow][INFO] WebSocket reconnection failed. Falling back to local engine...[/]\n")
+                transcript.write(
+                    "[dim yellow][INFO] WebSocket reconnection failed. Falling back to local engine...[/]\n"
+                )
                 await self._run_local_turn(text)
                 return
 
@@ -347,11 +359,13 @@ class ChatScreen(Screen):
                 )
                 try:
                     from monika.interfaces.cli.overlays.approval_modal import ApprovalModalScreen
+
                     action_id = str(action.get("id", ""))
 
                     def _on_modal_result(decision: Optional[str]) -> None:
                         if decision:
                             import asyncio
+
                             asyncio.create_task(self._handle_approval_decision(action_id, decision))
 
                     if hasattr(self, "app") and self.app:
@@ -383,6 +397,7 @@ class ChatScreen(Screen):
         try:
             if not self._local_agent:
                 from monika.application.agent.chat_agent import ChatAgent
+
                 settings = load_settings()
                 self._local_agent = ChatAgent(settings=settings, user_id=self.session_id)
 
@@ -422,11 +437,13 @@ class ChatScreen(Screen):
 # Standalone CLI REPL Chat (prompt_toolkit + Rich)
 # -------------------------------------------------------------------------------
 
+
 def _get_prompt_session():
     """Safely initialize prompt_toolkit PromptSession with fallback for Windows non-console."""
     try:
         from prompt_toolkit import PromptSession
         from prompt_toolkit.history import InMemoryHistory
+
         return PromptSession(history=InMemoryHistory())
     except Exception as e:
         logger.debug(f"Falling back from standard prompt_toolkit: {e}")
@@ -435,6 +452,7 @@ def _get_prompt_session():
             from prompt_toolkit.output.vt100 import Vt100_Output
             from prompt_toolkit.data_structures import Size
             from prompt_toolkit.history import InMemoryHistory
+
             out = Vt100_Output(sys.stdout, lambda: Size(rows=24, columns=80))
             return PromptSession(output=out, history=InMemoryHistory())
         except Exception:
@@ -454,6 +472,7 @@ async def run_cli_chat(
     Delegates to the redesigned institutional CLI Chat subsystem in cli.chat.
     """
     from monika.interfaces.cli.chat import run_cli_chat as _run_chat
+
     await _run_chat(
         api_url=api_url,
         api_key=api_key,
@@ -467,16 +486,19 @@ async def run_cli_chat(
 async def _submit_cli_decision(ws, local_agent, action_id: str, decision: str, console: Console) -> None:
     """Submit approval decision in CLI REPL."""
     if ws and not ws.closed:
-        await ws.send_json({
-            "type": "approval_response",
-            "action_id": action_id,
-            "decision": decision,
-        })
+        await ws.send_json(
+            {
+                "type": "approval_response",
+                "action_id": action_id,
+                "decision": decision,
+            }
+        )
         msg = await ws.receive_json()
         console.print(f"[bold {PHOSPHOR_AMBER}]Monika:[/] {msg.get('text', 'Decision processed.')}\n")
     else:
         if local_agent is None:
             from monika.application.agent.chat_agent import ChatAgent
+
             settings = load_settings()
             local_agent = ChatAgent(settings=settings, user_id="cli:repl_user")
         if decision == "allow_once":

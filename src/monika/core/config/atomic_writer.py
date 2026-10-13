@@ -142,6 +142,7 @@ class AtomicConfigWriter:
         temp_name = None
         try:
             from ruamel.yaml import YAML
+
             ryaml = YAML()
             ryaml.preserve_quotes = True
 
@@ -213,6 +214,7 @@ class AtomicConfigWriter:
             cls.backup(target)
 
         from ruamel.yaml import YAML
+
         ryaml = YAML()
         ryaml.preserve_quotes = True
 

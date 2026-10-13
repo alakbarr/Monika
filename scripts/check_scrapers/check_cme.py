@@ -25,6 +25,7 @@ if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 try:
     from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+
     install_legacy_compat()
 except Exception:
     pass
@@ -32,6 +33,7 @@ except Exception:
 # Muat environment variables dari file .env
 try:
     from dotenv import load_dotenv
+
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     root_dir = os.path.abspath(os.path.join(base_dir, ".."))
     for p in [os.path.join(root_dir, ".env"), os.path.join(base_dir, ".env")]:
@@ -43,11 +45,7 @@ except Exception:
 
 from scrapers.models import FedMeeting
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(message)s",
-    datefmt="%H:%M:%S"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("CheckCME")
 
 
@@ -88,7 +86,12 @@ def check_cme_fedwatch(headless: bool = False, pause: int = 3) -> dict:
         if pause > 0 and not headless:
             logger.info(f"Menahan browser selama {pause} detik sebelum ditutup...")
             time.sleep(pause)
-        return {"source": "CME FedWatch", "status": "SUCCESS" if meetings else "EMPTY", "count": len(meetings), "duration": duration}
+        return {
+            "source": "CME FedWatch",
+            "status": "SUCCESS" if meetings else "EMPTY",
+            "count": len(meetings),
+            "duration": duration,
+        }
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         logger.error(f"[FAILED] CME FedWatch gagal: {e}")
@@ -101,8 +104,12 @@ def check_cme_fedwatch(headless: bool = False, pause: int = 3) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Pemeriksaan Scraper CME FedWatch Tool")
-    parser.add_argument("--headless", action="store_true", help="Jalankan dalam mode headless background (default: False/headed)")
-    parser.add_argument("--pause", type=int, default=3, help="Jeda penutupan browser untuk observasi visual dalam detik (default: 3)")
+    parser.add_argument(
+        "--headless", action="store_true", help="Jalankan dalam mode headless background (default: False/headed)"
+    )
+    parser.add_argument(
+        "--pause", type=int, default=3, help="Jeda penutupan browser untuk observasi visual dalam detik (default: 3)"
+    )
 
     args = parser.parse_args()
     headless_mode = args.headless
@@ -117,9 +124,15 @@ def main():
     print("\n" + "=" * 60)
     print("  RINGKASAN HASIL PEMERIKSAAN CME FEDWATCH")
     print("=" * 60)
-    status_tag = "[OK]   " if result.get("status") == "SUCCESS" else ("[EMPTY]" if result.get("status") == "EMPTY" else "[FAIL] ")
+    status_tag = (
+        "[OK]   "
+        if result.get("status") == "SUCCESS"
+        else ("[EMPTY]" if result.get("status") == "EMPTY" else "[FAIL] ")
+    )
     count_str = f"{result.get('count', 0)} FOMC meetings" if "count" in result else result.get("error", "Error")
-    print(f"  {status_tag} {result['source']:<20} | Status: {result['status']:<8} | {count_str} ({result.get('duration', 0)}s)")
+    print(
+        f"  {status_tag} {result['source']:<20} | Status: {result['status']:<8} | {count_str} ({result.get('duration', 0)}s)"
+    )
     print("=" * 60 + "\n")
 
 

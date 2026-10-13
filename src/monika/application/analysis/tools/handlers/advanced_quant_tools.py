@@ -25,7 +25,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
 from monika.application.analysis.tools.registry import register_tool
-from monika.infrastructure.database.models import PaperTradeRecord, Position, AssetAnalysis, SystemConfig, PriceOHLCV, OrderBlock, FVGZone
+from monika.infrastructure.database.models import (
+    PaperTradeRecord,
+    Position,
+    AssetAnalysis,
+    SystemConfig,
+    PriceOHLCV,
+    OrderBlock,
+    FVGZone,
+)
 
 logger = logging.getLogger("TradingAgent.Tools.AdvancedQuant")
 

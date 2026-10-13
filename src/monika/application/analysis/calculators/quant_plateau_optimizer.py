@@ -93,7 +93,6 @@ class PlateauOptimizationResult:
         return self.best_params
 
 
-
 class QuantPlateauOptimizer:
     """
     Adaptive Plateau Parameter Optimizer.
@@ -185,12 +184,14 @@ class QuantPlateauOptimizer:
 
             # Reject candidates with insufficient trade count
             if center_trades < self.min_trade_count or center_sr <= 0.0:
-                trials_history.append({
-                    "params": candidate_params,
-                    "plateau_score": -1.0,
-                    "center_sharpe": center_sr,
-                    "trades": center_trades,
-                })
+                trials_history.append(
+                    {
+                        "params": candidate_params,
+                        "plateau_score": -1.0,
+                        "center_sharpe": center_sr,
+                        "trades": center_trades,
+                    }
+                )
                 continue
 
             # 2. Evaluate neighbor perturbations to measure plateau stability

@@ -17,10 +17,10 @@ T = TypeVar("T")
 class ServiceContainer:
     """Lightweight inversion of control (IoC) service container with hierarchical scoping."""
 
-    def __init__(self, parent: Optional['ServiceContainer'] = None):
-        self._parent: Optional['ServiceContainer'] = parent
+    def __init__(self, parent: Optional["ServiceContainer"] = None):
+        self._parent: Optional["ServiceContainer"] = parent
         self._services: Dict[str, Any] = {}
-        self._factories: Dict[str, Callable[['ServiceContainer'], Any]] = {}
+        self._factories: Dict[str, Callable[["ServiceContainer"], Any]] = {}
 
     def register(self, name: str, instance: Any) -> None:
         """Register an existing singleton instance."""
@@ -30,7 +30,7 @@ class ServiceContainer:
     register_instance = register
     provide = register
 
-    def register_factory(self, name: str, factory: Callable[['ServiceContainer'], Any]) -> None:
+    def register_factory(self, name: str, factory: Callable[["ServiceContainer"], Any]) -> None:
         """Register a lazy factory for a service."""
         self._factories[name] = factory
         logger.debug(f"[Container] Registered factory for '{name}'")
@@ -55,17 +55,17 @@ class ServiceContainer:
             return self._parent.has(name)
         return False
 
-    def extend(self) -> 'ServiceContainer':
+    def extend(self) -> "ServiceContainer":
         """Returns a child scope inheriting this container with scoped isolation."""
         return ServiceContainer(parent=self)
 
-    def isolate(self, name: str) -> 'ServiceContainer':
+    def isolate(self, name: str) -> "ServiceContainer":
         """Returns an independent child bucket isolated under a namespace."""
         child = self.extend()
         child.register("_scope_name", name)
         return child
 
-    def intercept(self, overrides: Dict[str, Any]) -> 'ServiceContainer':
+    def intercept(self, overrides: Dict[str, Any]) -> "ServiceContainer":
         """Returns a child scope with injected configuration or mock overrides."""
         child = self.extend()
         for k, v in overrides.items():
@@ -76,7 +76,6 @@ class ServiceContainer:
         """Clear all registered services in this container."""
         self._services.clear()
         self._factories.clear()
-
 
     # Typed convenience properties
     @property

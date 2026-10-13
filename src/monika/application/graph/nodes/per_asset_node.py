@@ -8,11 +8,14 @@ from monika.infrastructure.database.db import get_session
 
 logger = logging.getLogger("TradingAgent.Graph.PerAssetNode")
 
+
 async def per_asset_analysis_node(state: TradingState, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
     """
     Node untuk menjalankan analisis teknikal dan sentimen per aset (Stage 2).
     """
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
     scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else None
     summary = state.get("summary", {})
     stale_assets = state.get("stale_assets", [])
@@ -21,9 +24,9 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     if scheduler is None:
         logger.error("Scheduler not found in config")
         return {"summary": summary, "asset_analyses": {}, "actionable_trades": []}
-    
+
     logger.info("[Step 7/7] Running Per-Asset Stage (Stage 2 — Per-Asset Analysis)...")
-    
+
     suspended_symbols: list[str] = []
     paper_tracker = getattr(scheduler, "_paper_tracker", getattr(scheduler, "paper_tracker", None))
     if paper_tracker is not None:
@@ -44,69 +47,101 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     now = clock.now()
     hour = now.hour
     weekday = now.weekday()
-    
-    trading_cfg = scheduler.settings.get('trading', {})
-    start_hr = trading_cfg.get('auto_execute_active_hours_utc_start', 6)
-    end_hr = trading_cfg.get('auto_execute_active_hours_utc_end', 22)
-    auto_execute = trading_cfg.get('auto_execute', False)
-    
+
+    trading_cfg = scheduler.settings.get("trading", {})
+    start_hr = trading_cfg.get("auto_execute_active_hours_utc_start", 6)
+    end_hr = trading_cfg.get("auto_execute_active_hours_utc_end", 22)
+    auto_execute = trading_cfg.get("auto_execute", False)
+
     is_outside_active_hours = not (start_hr <= hour < end_hr)
     is_weekday = weekday < 5
-    
+
     symbols_override = weekend_symbols_override or scheduler.asset_universe
-    
+
     if auto_execute and is_outside_active_hours and is_weekday:
         from monika.infrastructure.database.db import get_session as _gs_pos
         from monika.infrastructure.database.models import Position
         from sqlalchemy import select, func
+
         async with _gs_pos() as session:
-            open_count = (await session.execute(
-                select(func.count(Position.id)).where(Position.status == 'open')
-            )).scalar_one_or_none() or 0
-        
+            open_count = (
+                await session.execute(select(func.count(Position.id)).where(Position.status == "open"))
+            ).scalar_one_or_none() or 0
+
         # Check Asian session assets (Tokyo 00:00 - 09:00 UTC) and 24/7 crypto
         ASIA_SESSION_SYMBOLS = {"USDJPY", "AUDUSD", "NZDUSD", "AUDJPY", "BTCUSD", "ETHUSD"}
-        is_asian_session = (0 <= hour < 9)
+        is_asian_session = 0 <= hour < 9
         asian_crypto_eligible = [
-            s for s in symbols_override 
+            s
+            for s in symbols_override
             if (s in ASIA_SESSION_SYMBOLS and (is_asian_session or "BTC" in s or "ETH" in s))
         ]
-        
+
         if asian_crypto_eligible:
             open_symbols = []
             if open_count > 0:
                 async with _gs_pos() as session:
-                    open_symbols = list(set([p.symbol for p in (await session.execute(select(Position).where(Position.status == 'open'))).scalars().all()]))
+                    open_symbols = list(
+                        set(
+                            [
+                                p.symbol
+                                for p in (await session.execute(select(Position).where(Position.status == "open")))
+                                .scalars()
+                                .all()
+                            ]
+                        )
+                    )
             symbols_override = list(set(asian_crypto_eligible + open_symbols))
-            logger.info(f'[PerAsset] Active hours gate: Asian/Crypto session assets eligible ({symbols_override}). Proceeding with analysis.')
+            logger.info(
+                f"[PerAsset] Active hours gate: Asian/Crypto session assets eligible ({symbols_override}). Proceeding with analysis."
+            )
         elif open_count == 0:
-            logger.info(f'[PerAsset] Skipping full Stage 2: outside active hours ({hour}:00 UTC, window={start_hr}-{end_hr}) and no open positions. Token saved: ~7 AI calls.')
-            summary['per_asset'] = {'skipped': True, 'reason': 'outside_active_hours_no_positions', 'next_active_hour': start_hr}
-            return {'summary': summary, 'asset_analyses': {}, 'actionable_trades': []}
+            logger.info(
+                f"[PerAsset] Skipping full Stage 2: outside active hours ({hour}:00 UTC, window={start_hr}-{end_hr}) and no open positions. Token saved: ~7 AI calls."
+            )
+            summary["per_asset"] = {
+                "skipped": True,
+                "reason": "outside_active_hours_no_positions",
+                "next_active_hour": start_hr,
+            }
+            return {"summary": summary, "asset_analyses": {}, "actionable_trades": []}
         else:
-            logger.info(f'[PerAsset] Outside active hours but {open_count} open positions. Running limited analysis for position management only.')
+            logger.info(
+                f"[PerAsset] Outside active hours but {open_count} open positions. Running limited analysis for position management only."
+            )
             async with _gs_pos() as session:
-                open_symbols = list(set([p.symbol for p in (await session.execute(select(Position).where(Position.status == 'open'))).scalars().all()]))
+                open_symbols = list(
+                    set(
+                        [
+                            p.symbol
+                            for p in (await session.execute(select(Position).where(Position.status == "open")))
+                            .scalars()
+                            .all()
+                        ]
+                    )
+                )
             symbols_override = [s for s in symbols_override if s in open_symbols]
 
     symbols_to_analyze_fresh = [s for s in symbols_override if s not in stale_assets]
-    paper_cfg = scheduler.settings.get('trading', {}).get('paper_trading', {})
-    streak_policy = paper_cfg.get('streak_loss_policy', 'warn_and_scale')
-    is_auto_execute = scheduler.settings.get('trading', {}).get('auto_execute', False)
+    paper_cfg = scheduler.settings.get("trading", {}).get("paper_trading", {})
+    streak_policy = paper_cfg.get("streak_loss_policy", "warn_and_scale")
+    is_auto_execute = scheduler.settings.get("trading", {}).get("auto_execute", False)
 
-    if not is_auto_execute and streak_policy in ('disabled', 'warn_and_scale'):
+    if not is_auto_execute and streak_policy in ("disabled", "warn_and_scale"):
         symbols_to_analyze = symbols_to_analyze_fresh
         if suspended_symbols:
-            logger.info(f"[PerAsset] Symbols currently marked suspended: {suspended_symbols}, but analyzing anyway due to streak_loss_policy='{streak_policy}'.")
+            logger.info(
+                f"[PerAsset] Symbols currently marked suspended: {suspended_symbols}, but analyzing anyway due to streak_loss_policy='{streak_policy}'."
+            )
     else:
         symbols_to_analyze = [s for s in symbols_to_analyze_fresh if s not in suspended_symbols]
         if suspended_symbols:
             logger.warning(f"Skipping suspended symbols in Stage 2: {suspended_symbols}")
-        
+
     from monika.infrastructure.database.db import get_session as _gs
-    
-    per_symbol_contexts = state.get('ssvp_per_symbol_contexts', {})
-    ssvp_context = state.get('ssvp_reconciliation_context', '')
+
+    per_symbol_contexts = state.get("ssvp_per_symbol_contexts", {})
+    ssvp_context = state.get("ssvp_reconciliation_context", "")
     if ssvp_context or per_symbol_contexts:
         logger.info(f"[SSVP] Injecting reconciliation context into {len(symbols_to_analyze)} Stage 2 analyses")
 
@@ -120,7 +155,7 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
                 symbols=symbols_to_analyze,
                 extra_context=f"Market Regime: {state.get('market_regime', 'normal')}",
                 per_symbol_contexts=per_symbol_contexts,
-                user_market_intel=state.get('user_market_intel'),
+                user_market_intel=state.get("user_market_intel"),
             )
             if inspect.isawaitable(raw_res):
                 raw_res = await raw_res
@@ -128,7 +163,7 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
                 pa_results = raw_res
     else:
         logger.warning("Per-asset stage not available on scheduler")
-    
+
     # ============================================================
     # SSVP: CROSS-AGENT SELECTIVE SYNCHRONIZATION
     # Detects contradictions and suppresses ONLY the lower-confidence
@@ -136,25 +171,25 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     # ============================================================
     try:
         from monika.application.protocol.ssvp_coordinator import SSVPCoordinator
+
         ssvp = SSVPCoordinator(settings=scheduler.settings)
         async with get_session() as ssvp_session:
-            updated_pa_results, suppressed_symbols = await ssvp.compute_post_stage2_sync(
-                ssvp_session, pa_results
-            )
-            
+            updated_pa_results, suppressed_symbols = await ssvp.compute_post_stage2_sync(ssvp_session, pa_results)
+
             if suppressed_symbols:
-                logger.warning(f'[SSVP] Applied selective suppression to: {suppressed_symbols}')
-                summary['ssvp_suppressed_symbols'] = suppressed_symbols
-                summary['contradiction_filter_applied'] = True
-                
+                logger.warning(f"[SSVP] Applied selective suppression to: {suppressed_symbols}")
+                summary["ssvp_suppressed_symbols"] = suppressed_symbols
+                summary["contradiction_filter_applied"] = True
+
             pa_results = updated_pa_results
     except Exception as ssvp_sync_err:
-        logger.debug(f'SSVP Cross-agent sync failed (non-fatal): {ssvp_sync_err}')
+        logger.debug(f"SSVP Cross-agent sync failed (non-fatal): {ssvp_sync_err}")
     # ============================================================
 
     # Ingest Ad-Hoc Investigation Verdicts from sidecar subagents
     try:
         from monika.application.analysis.subagent.adhoc_manager import get_adhoc_manager
+
         adhoc_mgr = get_adhoc_manager(settings=scheduler.settings)
         adhoc_verdicts = {}
         for sym, r in pa_results.items():
@@ -163,7 +198,9 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
                 adhoc_verdicts[sym] = verdict.to_dict()
                 r["adhoc_investigation"] = verdict.to_dict()
                 if verdict.anomaly_detected:
-                    logger.warning(f"[PerAsset] Ad-hoc anomaly detected for {sym}: {verdict.findings} (rec={verdict.recommendation})")
+                    logger.warning(
+                        f"[PerAsset] Ad-hoc anomaly detected for {sym}: {verdict.findings} (rec={verdict.recommendation})"
+                    )
                     if verdict.recommendation in ("halt", "avoid"):
                         r["decision"] = "skip"
                         r["rationale"] = f"[AdHoc Anomaly Halt] {verdict.findings}"
@@ -177,38 +214,35 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     # TAMBAHKAN: Track dan notifikasi untuk failed analyses
     failed_symbols = []
     error_symbols = []
-    
+
     for sym, r in pa_results.items():
-        if r.get('decision') == 'error' or not r.get('success', True):
-            error_symbols.append({
-                'symbol': sym,
-                'error': r.get('error', 'unknown'),
-                'elapsed': r.get('elapsed_seconds', 0)
-            })
-        elif r.get('decision') == 'skip' and not r.get('skipped_by_cooldown'):
+        if r.get("decision") == "error" or not r.get("success", True):
+            error_symbols.append(
+                {"symbol": sym, "error": r.get("error", "unknown"), "elapsed": r.get("elapsed_seconds", 0)}
+            )
+        elif r.get("decision") == "skip" and not r.get("skipped_by_cooldown"):
             # Skipped bukan karena cooldown (unexpected)
             failed_symbols.append(sym)
-    
+
     if error_symbols:
-        error_detail = ', '.join([f"{e['symbol']}({e['error'][:30]})" for e in error_symbols])
-        logger.error(f'Stage 2 errors for: {error_detail}')
-        summary['per_asset_errors'] = error_symbols
-        
+        error_detail = ", ".join([f"{e['symbol']}({e['error'][:30]})" for e in error_symbols])
+        logger.error(f"Stage 2 errors for: {error_detail}")
+        summary["per_asset_errors"] = error_symbols
+
         # Notifikasi jika ada error yang tidak expected
-        unexpected_errors = [e for e in error_symbols 
-                           if 'timeout' not in e.get('error', '').lower()]
+        unexpected_errors = [e for e in error_symbols if "timeout" not in e.get("error", "").lower()]
         if unexpected_errors and len(unexpected_errors) >= 2:
             try:
                 from monika.infrastructure.infra.notifier import AgentNotifier
+
                 await AgentNotifier().send_warning(
-                    f'[PERINGATAN] <b>Analysis Errors</b>\n'
-                    f'{len(unexpected_errors)} symbols had unexpected errors:\n'
-                    + '\n'.join([f"• {e['symbol']}: {e['error'][:80]}" 
-                                for e in unexpected_errors[:3]])
+                    f"[PERINGATAN] <b>Analysis Errors</b>\n"
+                    f"{len(unexpected_errors)} symbols had unexpected errors:\n"
+                    + "\n".join([f"• {e['symbol']}: {e['error'][:80]}" for e in unexpected_errors[:3]])
                 )
             except Exception:
                 pass
-    
+
     # Store failed analyses untuk potential retry next cycle
     if error_symbols:
         try:
@@ -216,15 +250,13 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
             from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
             import json as _j
+
             async with _gs2() as cfg_session:
-                failed_key = 'last_cycle_failed_analyses'
-                failed_data = _j.dumps({
-                    'cycle_at': clock.now().isoformat(),
-                    'failed': error_symbols
-                })
-                cfg = (await cfg_session.execute(
-                    select(SystemConfig).where(SystemConfig.key == failed_key)
-                )).scalar_one_or_none()
+                failed_key = "last_cycle_failed_analyses"
+                failed_data = _j.dumps({"cycle_at": clock.now().isoformat(), "failed": error_symbols})
+                cfg = (
+                    await cfg_session.execute(select(SystemConfig).where(SystemConfig.key == failed_key))
+                ).scalar_one_or_none()
                 if cfg:
                     cfg.value = failed_data
                 else:
@@ -232,7 +264,7 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
                 await cfg_session.commit()
         except Exception:
             pass
-    
+
     summary["per_asset"] = {
         sym: {
             "decision": r.get("decision"),
@@ -252,45 +284,45 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
         }
         for sym, r in pa_results.items()
     }
-    
+
     actionable = [
-        (sym, r) for sym, r in pa_results.items()
+        (sym, r)
+        for sym, r in pa_results.items()
         if str(r.get("decision", "")).strip().lower() in ("buy", "sell") and r.get("analysis_id")
     ]
-    
+
     # Context Version Split Detection (P1-B)
     try:
         from monika.application.protocol.context_snapshot import detect_context_version_split
         from datetime import timedelta
+
         # P3-2: Use actual elapsed time from state if available, fallback to 1h
-        elapsed_s = float(state.get('summary', {}).get('elapsed_total_s') or 3600.0)
+        elapsed_s = float(state.get("summary", {}).get("elapsed_total_s") or 3600.0)
         cycle_start = clock.now() - timedelta(seconds=elapsed_s)
-        
+
         from monika.infrastructure.database.db import get_session as _gs_snap
+
         async with _gs_snap() as snap_session:
             split_warning = await detect_context_version_split(snap_session, cycle_start)
-        
+
         if split_warning:
-            logger.warning(f'[ContextSplit] {split_warning}')
-            summary['context_version_split_detected'] = True
-            summary['context_version_split_detail'] = split_warning
-            
+            logger.warning(f"[ContextSplit] {split_warning}")
+            summary["context_version_split_detected"] = True
+            summary["context_version_split_detail"] = split_warning
+
             # Add warning to all actionable trades from this cycle
             if actionable:
                 try:
                     from monika.infrastructure.infra.notifier import AgentNotifier
+
                     await AgentNotifier().send_warning(
-                        f'[PERINGATAN] <b>Context Version Split</b>\n{split_warning}\n'
-                        f'Actionable trades this cycle: {[sym for sym, _ in actionable]}\n'
-                        f'Recommend manual review before execution.'
+                        f"[PERINGATAN] <b>Context Version Split</b>\n{split_warning}\n"
+                        f"Actionable trades this cycle: {[sym for sym, _ in actionable]}\n"
+                        f"Recommend manual review before execution."
                     )
                 except Exception:
                     pass
     except Exception as e:
-        logger.debug(f'Context split detection failed (non-fatal): {e}')
+        logger.debug(f"Context split detection failed (non-fatal): {e}")
 
-    return {
-        "summary": summary,
-        "asset_analyses": pa_results,
-        "actionable_trades": actionable
-    }
+    return {"summary": summary, "asset_analyses": pa_results, "actionable_trades": actionable}

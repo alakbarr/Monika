@@ -35,7 +35,13 @@ def correlation_distance_matrix(corr: np.ndarray) -> np.ndarray:
 
 
 class _ClusterNode:
-    def __init__(self, cluster_id: int, left: _ClusterNode | None = None, right: _ClusterNode | None = None, leaf_id: int | None = None):
+    def __init__(
+        self,
+        cluster_id: int,
+        left: _ClusterNode | None = None,
+        right: _ClusterNode | None = None,
+        leaf_id: int | None = None,
+    ):
         self.cluster_id = cluster_id
         self.left = left
         self.right = right
@@ -173,7 +179,7 @@ def compute_hrp_weights(returns_df: pd.DataFrame) -> pd.Series:
                 alpha = 1.0 - (var1 / (var1 + var2))
 
                 weights[c1] *= alpha
-                weights[c2] *= (1.0 - alpha)
+                weights[c2] *= 1.0 - alpha
 
                 if len(c1) > 1:
                     next_clusters.append(c1)

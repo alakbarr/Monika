@@ -59,6 +59,7 @@ async def test_create_backup_success_with_safe_subprocess(monkeypatch, tmp_path)
         assert created_file.exists()
 
         import gzip
+
         with gzip.open(created_file, "rt", encoding="utf-8") as f:
             decompressed = f.read()
         assert decompressed == mock_sql_output
@@ -90,6 +91,7 @@ async def test_create_backup_subprocess_failure(monkeypatch, tmp_path):
 async def test_create_backup_timeout(monkeypatch, tmp_path):
     """Verify create_backup handles timeout in safe_subprocess_run."""
     import asyncio
+
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/tradingdb")
     settings = {
         "database": {
@@ -107,4 +109,3 @@ async def test_create_backup_timeout(monkeypatch, tmp_path):
         result = await create_backup(settings)
         assert "error" in result
         assert "timed out" in result["error"].lower()
-

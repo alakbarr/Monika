@@ -32,7 +32,6 @@ class BasePlatformAdapter(abc.ABC):
         self,
         handler: Callable[[str, str, str, Dict[str, Any]], Any],
     ) -> None:
-
         """Register the message intake callback (sender_id, channel_id, text, metadata)."""
         self.message_handler = handler
 

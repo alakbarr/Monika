@@ -24,10 +24,13 @@ from typing import Any, Optional, Union
 try:
     from telegram.error import RetryAfter, BadRequest
 except ImportError:
+
     class _FallbackRetryAfter(Exception):
         retry_after = 1.0
+
     class _FallbackBadRequest(Exception):
         pass
+
     RetryAfter = _FallbackRetryAfter
     BadRequest = _FallbackBadRequest
 
@@ -51,6 +54,7 @@ _sanitize_telegram_format = _sanitize_chat_format
 
 class _TelegramChatAgentMeta(type):
     """Metaclass to transparently synchronize class-level patches (e.g. ChatAgent.handle) to CoreChatAgent."""
+
     _orig_attrs: dict[str, Any] = {}
 
     def __setattr__(cls, name: str, value: Any) -> None:
@@ -94,37 +98,37 @@ class TelegramChatAgent(CoreChatAgent, metaclass=_TelegramChatAgentMeta):
 
             preference = self._detect_model_preference(user_message)
             clean_message = user_message
-            if preference == 'deep_research':
-                clean_message = re.sub(r'^/research\s*', '', user_message, flags=re.IGNORECASE)
-            elif preference in ('tier_lite', 'gemini_lite'):
-                preference = 'tier_lite'
-                clean_message = re.sub(r'^/(fast|quick)\s+', '', user_message, flags=re.IGNORECASE)
-            elif preference in ('tier_medium', 'groq_medium'):
-                preference = 'tier_medium'
-                clean_message = re.sub(r'^/(medium|mid)\s+', '', user_message, flags=re.IGNORECASE)
-            elif preference in ('tier_deep', 'claude_sonnet'):
-                preference = 'tier_deep'
-                clean_message = re.sub(r'^/(analyze|analisis)\s+', '', user_message, flags=re.IGNORECASE)
+            if preference == "deep_research":
+                clean_message = re.sub(r"^/research\s*", "", user_message, flags=re.IGNORECASE)
+            elif preference in ("tier_lite", "gemini_lite"):
+                preference = "tier_lite"
+                clean_message = re.sub(r"^/(fast|quick)\s+", "", user_message, flags=re.IGNORECASE)
+            elif preference in ("tier_medium", "groq_medium"):
+                preference = "tier_medium"
+                clean_message = re.sub(r"^/(medium|mid)\s+", "", user_message, flags=re.IGNORECASE)
+            elif preference in ("tier_deep", "claude_sonnet"):
+                preference = "tier_deep"
+                clean_message = re.sub(r"^/(analyze|analisis)\s+", "", user_message, flags=re.IGNORECASE)
 
-            if preference == 'auto':
+            if preference == "auto":
                 complexity = await self._classify_query_complexity(clean_message)
-                if complexity == 'deep_research':
-                    preference = 'deep_research'
-                elif complexity == 'complex':
-                    preference = 'tier_deep'
+                if complexity == "deep_research":
+                    preference = "deep_research"
+                elif complexity == "complex":
+                    preference = "tier_deep"
                 else:
-                    preference = 'tier_lite'
+                    preference = "tier_lite"
 
             selected_tools = self._tool_router.route_tools_for_query(clean_message)
             needs_tools = bool(selected_tools) or bool(
                 re.search(
-                    r'\b(posisi|order|orders|harga|price|chart|saldo|equity|balance|pnl|profit|loss|close|buy|sell|debat|analisis|analisa|setup|market|vix|dxy|cot|fedwatch|alpha|factor|factors)\b',
+                    r"\b(posisi|order|orders|harga|price|chart|saldo|equity|balance|pnl|profit|loss|close|buy|sell|debat|analisis|analisa|setup|market|vix|dxy|cot|fedwatch|alpha|factor|factors)\b",
                     clean_message,
                     re.IGNORECASE,
                 )
             )
 
-            if preference == 'deep_research' or needs_tools:
+            if preference == "deep_research" or needs_tools:
                 reply, pending = await self._handle_internal(
                     user_message=clean_message,
                     session_id=session_id,
@@ -135,7 +139,7 @@ class TelegramChatAgent(CoreChatAgent, metaclass=_TelegramChatAgentMeta):
                 async def _text_chunk_gen():
                     chunk_size = 30
                     for i in range(0, len(reply), chunk_size):
-                        yield reply[i:i + chunk_size]
+                        yield reply[i : i + chunk_size]
                         await asyncio.sleep(0.01)
 
                 streamed_res = await self._stream_response(update, context, _text_chunk_gen())
@@ -146,20 +150,15 @@ class TelegramChatAgent(CoreChatAgent, metaclass=_TelegramChatAgentMeta):
             system_prompt = self._inject_macro_playbooks(system_prompt, user_query=clean_message)
 
             if preference in ("tier_deep", "claude_sonnet"):
-                generator = await self._run_with_claude(
-                    system_prompt, history, clean_message, stream=True
-                )
+                generator = await self._run_with_claude(system_prompt, history, clean_message, stream=True)
             else:
-                generator = await self._run_with_gemini(
-                    system_prompt, history, clean_message, stream=True
-                )
+                generator = await self._run_with_gemini(system_prompt, history, clean_message, stream=True)
 
             final_text = await self._stream_response(update, context, generator)
             await self._save_message(session, "assistant", final_text, session_id=session_id)
             self._last_turn_streamed = True
             self.was_last_turn_streamed = True
             return final_text, None
-
 
     async def _stream_response(
         self,
@@ -230,6 +229,7 @@ __all__ = [
     "get_session",
 ]
 
+
 # Module proxy to mirror unittest.mock patches on telegram_bot.chat_agent
 # directly to agent.chat_agent for seamless backward compatibility.
 class _TelegramChatAgentModule(sys.modules[__name__].__class__):
@@ -242,5 +242,6 @@ class _TelegramChatAgentModule(sys.modules[__name__].__class__):
                 setattr(_core_agent, "ChatAgent", CoreChatAgent)
             else:
                 setattr(_core_agent, "ChatAgent", value)
+
 
 sys.modules[__name__].__class__ = _TelegramChatAgentModule

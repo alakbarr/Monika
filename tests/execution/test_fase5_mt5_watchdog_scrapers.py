@@ -25,11 +25,12 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 @pytest.mark.asyncio
 async def test_mt5_close_position_requote_retry():
     """Verify _close_position retries with updated tick price on requote retcode (10004)."""
-    with patch("MetaTrader5.positions_get") as mock_pos_get, \
-         patch("MetaTrader5.symbol_info_tick") as mock_tick, \
-         patch("MetaTrader5.symbol_info") as mock_sym, \
-         patch("MetaTrader5.order_send") as mock_order_send:
-
+    with (
+        patch("MetaTrader5.positions_get") as mock_pos_get,
+        patch("MetaTrader5.symbol_info_tick") as mock_tick,
+        patch("MetaTrader5.symbol_info") as mock_sym,
+        patch("MetaTrader5.order_send") as mock_order_send,
+    ):
         mock_pos = MagicMock()
         mock_pos.volume = 0.5
         mock_pos.symbol = "EURUSD"
@@ -68,11 +69,12 @@ async def test_mt5_in_flight_reconciliation_pending_orders():
     """Verify place_order timeout reconciliation checks active pending orders."""
     client = MT5Client()
 
-    with patch.object(client, "ensure_connected", new=AsyncMock(return_value=True)), \
-         patch.object(client, "_run", side_effect=asyncio.TimeoutError("MT5 Timeout")), \
-         patch.object(client, "get_open_positions", new=AsyncMock(return_value=[])), \
-         patch.object(client, "get_orders") as mock_get_orders:
-
+    with (
+        patch.object(client, "ensure_connected", new=AsyncMock(return_value=True)),
+        patch.object(client, "_run", side_effect=asyncio.TimeoutError("MT5 Timeout")),
+        patch.object(client, "get_open_positions", new=AsyncMock(return_value=[])),
+        patch.object(client, "get_orders") as mock_get_orders,
+    ):
         mock_pending_order = {
             "ticket": 88888,
             "symbol": "EURUSD",
@@ -102,6 +104,7 @@ async def test_mt5_in_flight_reconciliation_pending_orders():
 @pytest.mark.asyncio
 async def test_emergency_manager_close_position_timeout_safety():
     """Verify close_position_by_ticket times out safely after 15.0s without hanging event loop."""
+
     class DummyExecutionService(EmergencyManagerMixin):
         def __init__(self):
             self.broker_adapter = MagicMock()
@@ -195,8 +198,10 @@ async def test_bank_indonesia_targeted_bi_rate_success():
     </html>
     """
     fetcher = BankIndonesiaFetcher()
-    with patch("monika.infrastructure.data_ingestion.scrapers.macro.bank_indonesia.fetch_with_retry",
-               new=AsyncMock(return_value=html_sample)):
+    with patch(
+        "monika.infrastructure.data_ingestion.scrapers.macro.bank_indonesia.fetch_with_retry",
+        new=AsyncMock(return_value=html_sample),
+    ):
         data = await fetcher.fetch_bi_rate()
         assert data["status"] == "success"
         assert data["rate_pct"] == 6.25
@@ -221,11 +226,16 @@ async def test_bank_indonesia_targeted_bi_rate_range_rejection():
     </html>
     """
     fetcher = BankIndonesiaFetcher()
-    with patch("monika.infrastructure.data_ingestion.scrapers.macro.bank_indonesia.fetch_with_retry",
-               new=AsyncMock(return_value=html_bad_sample)), \
-         patch("monika.infrastructure.data_ingestion.sources.web_search.WebSearchService.search",
-               new=AsyncMock(return_value={"results": []})):
-
+    with (
+        patch(
+            "monika.infrastructure.data_ingestion.scrapers.macro.bank_indonesia.fetch_with_retry",
+            new=AsyncMock(return_value=html_bad_sample),
+        ),
+        patch(
+            "monika.infrastructure.data_ingestion.sources.web_search.WebSearchService.search",
+            new=AsyncMock(return_value={"results": []}),
+        ),
+    ):
         data = await fetcher.fetch_bi_rate()
         # Outlier 19.5% must be rejected; baseline 6.00% returned
         assert data["rate_pct"] == 6.00

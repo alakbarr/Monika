@@ -50,7 +50,7 @@ class SystemStatusService:
             },
             "environment": {
                 "paper_trading": paper_mode,
-            }
+            },
         }
 
     @staticmethod
@@ -62,13 +62,15 @@ class SystemStatusService:
 
         summary = []
         for p in pe.ordered_plugins:
-            summary.append({
-                "id": p.metadata.id,
-                "name": p.metadata.name,
-                "version": p.metadata.version,
-                "category": getattr(p.metadata.category, "value", str(p.metadata.category)),
-                "enabled": p.is_enabled,
-                "status": getattr(p, "status", "UNKNOWN"),
-                "is_core": p.metadata.is_core,
-            })
+            summary.append(
+                {
+                    "id": p.metadata.id,
+                    "name": p.metadata.name,
+                    "version": p.metadata.version,
+                    "category": getattr(p.metadata.category, "value", str(p.metadata.category)),
+                    "enabled": p.is_enabled,
+                    "status": getattr(p, "status", "UNKNOWN"),
+                    "is_core": p.metadata.is_core,
+                }
+            )
         return summary

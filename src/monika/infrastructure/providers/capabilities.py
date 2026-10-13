@@ -15,6 +15,7 @@ from typing import Dict, Optional
 @dataclass(frozen=True)
 class ModelCapabilities:
     """Declarative capability flags for a model or family of models."""
+
     supports_tool_choice: bool = True
     supports_json_mode: bool = True
     supports_structured_output: bool = True
@@ -86,7 +87,6 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         context_window=200000,
         prompt_cache_strategy="anthropic_system_and_3",
     ),
-
     # Google Gemini
     "gemini-3.8-flash": ModelCapabilities(
         supports_caching=True,
@@ -222,7 +222,6 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         supports_structured_output=True,
         max_output_tokens=8192,
     ),
-
     # OpenAI
     "gpt-6": ModelCapabilities(
         supports_caching=True,
@@ -288,7 +287,6 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         requires_reasoning_split=True,
         max_output_tokens=16384,
     ),
-
     # DeepSeek
     "deepseek-v4-pro": ModelCapabilities(
         supports_caching=True,
@@ -322,7 +320,6 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         max_output_tokens=8192,
         supports_native_thinking=True,
     ),
-
     # Groq / OpenRouter
     "groq-compound": ModelCapabilities(
         max_output_tokens=8192,
@@ -397,7 +394,6 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         supports_caching=False,
         supports_native_thinking=False,
     ),
-
     # 9Router Key & Free Models
     "kr/claude-sonnet-4.5": ModelCapabilities(
         supports_caching=True,
@@ -464,7 +460,7 @@ def get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities:
     # Handle 9Router prefix stripping (e.g. 9r/kr/claude-sonnet-4.5 -> kr/claude-sonnet-4.5 or claude-sonnet-4.5)
     for prefix in ("9router/", "9r/"):
         if clean_name.startswith(prefix):
-            stripped = clean_name[len(prefix):]
+            stripped = clean_name[len(prefix) :]
             if stripped in MODEL_CAPABILITIES:
                 return MODEL_CAPABILITIES[stripped]
             clean_name = stripped
@@ -494,9 +490,13 @@ def get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities:
     if "gpt-4" in clean_name:
         return ModelCapabilities(supports_caching=True, supports_structured_output=True)
     if "deepseek-reasoner" in clean_name or "r1" in clean_name:
-        return ModelCapabilities(supports_tool_choice=False, requires_reasoning_roundtrip=True, prompt_cache_strategy="none")
+        return ModelCapabilities(
+            supports_tool_choice=False, requires_reasoning_roundtrip=True, prompt_cache_strategy="none"
+        )
     if clean_name.startswith(("kr/", "if/", "oc/", "ocz/", "mmf/", "gc/", "af/", "ag/", "cx/", "cc/", "combo/")):
-        return ModelCapabilities(supports_caching=False, supports_structured_output=True, max_output_tokens=8192, context_window=128000)
+        return ModelCapabilities(
+            supports_caching=False, supports_structured_output=True, max_output_tokens=8192, context_window=128000
+        )
 
     return DEFAULT_CAPABILITIES
 

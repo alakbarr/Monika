@@ -36,14 +36,14 @@ logger = logging.getLogger("TradingAgent.MatrixAlignment")
 
 @dataclass(frozen=True, slots=True)
 class AlignedMarketMatrix:
-    timestamps: np.ndarray       # shape (T,) datetime64[ns]
-    instruments: Tuple[str, ...] # length N
+    timestamps: np.ndarray  # shape (T,) datetime64[ns]
+    instruments: Tuple[str, ...]  # length N
     instrument_to_idx: Dict[str, int]
-    open: np.ndarray             # shape (T, N) float64
-    high: np.ndarray             # shape (T, N) float64
-    low: np.ndarray              # shape (T, N) float64
-    close: np.ndarray            # shape (T, N) float64
-    volume: np.ndarray           # shape (T, N) float64
+    open: np.ndarray  # shape (T, N) float64
+    high: np.ndarray  # shape (T, N) float64
+    low: np.ndarray  # shape (T, N) float64
+    close: np.ndarray  # shape (T, N) float64
+    volume: np.ndarray  # shape (T, N) float64
 
     @property
     def shape(self) -> Tuple[int, int]:

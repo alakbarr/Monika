@@ -58,6 +58,7 @@ class TaskPlugin(TradingPlugin, ABC):
     Base contract for all background schedulers and asynchronous daemon tasks.
     Enables plug-and-play addition or disabling of background tasks via configuration.
     """
+
     trigger_type: TriggerType = TriggerType.INTERVAL
     interval_seconds: float = 60.0
     is_core: bool = False
@@ -77,7 +78,7 @@ class TaskPlugin(TradingPlugin, ABC):
         """Continuous execution loop with error handling and health updates."""
         self._running = True
         self._task_stop_event.clear()
-        
+
         while self._running and not self._task_stop_event.is_set():
             try:
                 self.health.last_run = datetime.now(timezone.utc)
@@ -89,7 +90,9 @@ class TaskPlugin(TradingPlugin, ABC):
             except Exception as e:
                 self.health.error_count += 1
                 self.health.last_error = str(e)
-                self.health.status = TaskHealthStatus.DEGRADED if self.health.error_count < 5 else TaskHealthStatus.FAILED
+                self.health.status = (
+                    TaskHealthStatus.DEGRADED if self.health.error_count < 5 else TaskHealthStatus.FAILED
+                )
                 logger.error(f"TaskPlugin [{self.metadata.id}] step execution failed: {e}", exc_info=True)
 
             if self.trigger_type == TriggerType.INTERVAL:

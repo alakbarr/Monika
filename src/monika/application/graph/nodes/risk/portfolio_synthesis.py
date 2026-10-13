@@ -75,16 +75,14 @@ async def ai_portfolio_synthesis(
     brief_stmt = select(FundamentalBrief)
     if as_of:
         brief_stmt = brief_stmt.where(FundamentalBrief.generated_at <= as_of)
-    brief = (await session.execute(
-        brief_stmt.order_by(FundamentalBrief.generated_at.desc()).limit(1)
-    )).scalar_one_or_none()
+    brief = (
+        await session.execute(brief_stmt.order_by(FundamentalBrief.generated_at.desc()).limit(1))
+    ).scalar_one_or_none()
 
     vix_stmt = select(VIXData)
     if as_of:
         vix_stmt = vix_stmt.where(VIXData.date <= as_of)
-    vix = (await session.execute(
-        vix_stmt.order_by(VIXData.date.desc()).limit(1)
-    )).scalar_one_or_none()
+    vix = (await session.execute(vix_stmt.order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
 
     prompt = f"""Portfolio Review: {len(actionable)} trades proposed simultaneously.
 
@@ -93,15 +91,15 @@ Proposed Trades:
 
 Macro Context:
 - Market Regime (from early cycle check): {market_regime}
-- Risk sentiment: {brief.risk_sentiment if brief else 'unknown'}
-- Brief confidence: {brief.confidence if brief else 'unknown'}
-- VIX: {vix.close if vix else 'unknown'}
+- Risk sentiment: {brief.risk_sentiment if brief else "unknown"}
+- Brief confidence: {brief.confidence if brief else "unknown"}
+- VIX: {vix.close if vix else "unknown"}
 
 Operator Market Intelligence & Directives:
-{chr(10).join(intel_context) if intel_context else '- (No active operator directives)'}
+{chr(10).join(intel_context) if intel_context else "- (No active operator directives)"}
 
 Pairwise Correlation Assessment:
-{chr(10).join(corr_context) if corr_context else '- (No relevant pairs found or only 1 trade)'}
+{chr(10).join(corr_context) if corr_context else "- (No relevant pairs found or only 1 trade)"}
 
 Question: Should we execute ALL these trades simultaneously, or REDUCE the portfolio?
 
@@ -127,8 +125,8 @@ Respond in JSON:
             "size_adjustments": {
                 "type": "object",
                 "description": "Optional per-symbol risk multiplier (0.1-1.0) as an alternative "
-                               "to fully dropping a trade — prefer this over hard exclusion when "
-                               "the correlation risk is moderate rather than severe.",
+                "to fully dropping a trade — prefer this over hard exclusion when "
+                "the correlation risk is moderate rather than severe.",
                 "additionalProperties": {"type": "number"},
             },
             "reasoning": {"type": "string"},
@@ -183,7 +181,7 @@ async def apply_portfolio_synthesis_reduction(
                         if sym in size_adj and sym in keep_symbols:
                             try:
                                 mult = max(0.1, min(1.0, float(size_adj[sym])))
-                            except (TypeError, ValueError):
+                            except TypeError, ValueError:
                                 continue
                             ana = await adj_session.get(AssetAnalysis, r["analysis_id"])
                             if ana:

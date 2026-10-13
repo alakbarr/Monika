@@ -20,17 +20,18 @@ class PricingTier:
     """Tiered pricing definition for models with threshold-based rates.
     Supports threshold-based model pricing tiers.
     """
-    threshold_tokens: int       # Threshold token count (e.g. 200_000 tokens)
-    input_rate: float           # $ / 1M input token beyond threshold
-    cached_input_rate: float    # $ / 1M cached input token beyond threshold
-    output_rate: float          # $ / 1M output token beyond threshold
+
+    threshold_tokens: int  # Threshold token count (e.g. 200_000 tokens)
+    input_rate: float  # $ / 1M input token beyond threshold
+    cached_input_rate: float  # $ / 1M cached input token beyond threshold
+    output_rate: float  # $ / 1M output token beyond threshold
 
 
 @dataclass(frozen=True)
 class Price:
-    input: float          # $ / 1M input token
-    cached_input: float   # $ / 1M cached input token (prompt caching)
-    output: float         # $ / 1M output token
+    input: float  # $ / 1M input token
+    cached_input: float  # $ / 1M cached input token (prompt caching)
+    output: float  # $ / 1M output token
     note: str = ""
     tier: Optional[PricingTier] = None
     cache_write: Optional[float] = None  # $ / 1M cache creation tokens
@@ -73,7 +74,6 @@ PRICING: Dict[str, Price] = {
     "claude-3-5-sonnet-20241022": Price(3.00, 0.30, 15.00),
     "claude-3-5-haiku": Price(0.80, 0.08, 4.00),
     "claude-3-5-haiku-20241022": Price(0.80, 0.08, 4.00),
-
     # --- Google Gemini Models ---
     "gemini-3.8-flash": Price(1.50, 0.15, 7.50),
     "gemini-3.7-flash": Price(1.50, 0.15, 7.50, "Free tier direct / Paid tier rate"),
@@ -91,7 +91,6 @@ PRICING: Dict[str, Price] = {
     "gemini-2.5-pro": Price(1.25, 0.125, 10.00),
     "gemini-2.5-flash": Price(0.15, 0.0375, 0.60),
     "gemini-2.0-flash": Price(0.10, 0.025, 0.40),
-
     # --- OpenAI Models ---
     "gpt-6.1-sol": Price(2.00, 0.10, 10.00),
     "gpt-sol-6.1": Price(2.00, 0.10, 10.00),
@@ -116,7 +115,6 @@ PRICING: Dict[str, Price] = {
     "gpt-4o-mini": Price(0.15, 0.075, 0.60),
     "o1": Price(15.00, 7.50, 60.00),
     "o3-mini": Price(1.10, 0.55, 4.40),
-
     # --- DeepSeek Models ---
     "deepseek-v4-pro": Price(0.66, 0.022, 1.98, "off-peak; peak=1.32/0.044/3.96"),
     "deepseek-v4-pro-0813": Price(0.66, 0.022, 1.98),
@@ -129,7 +127,6 @@ PRICING: Dict[str, Price] = {
     "jev-1.13.0": Price(0.042, 0.042, 0.0, "TypeSafe Jev 1.13 - output free"),
     "jev-1.13": Price(0.042, 0.042, 0.0, "TypeSafe Jev 1.13 - output free"),
     "jev-preview": Price(0.042, 0.042, 0.0, "TypeSafe Jev Preview - output free"),
-
     # --- OpenRouter Third-Party Paid Models ---
     "kimi-k3": Price(3.00, 0.30, 15.00),
     "qwen3.8-max": Price(1.60, 0.16, 6.40),
@@ -168,7 +165,6 @@ OPENROUTER_PRICING_MAP: Dict[str, str] = {
     "anthropic/claude-3.7-sonnet": "claude-3-7-sonnet",
     "anthropic/claude-3-7-sonnet": "claude-3-7-sonnet",
     "anthropic/claude-3.5-sonnet": "claude-3-5-sonnet",
-
     # DeepSeek
     "deepseek/deepseek-v4-pro": "deepseek-v4-pro",
     "deepseek/deepseek-v4-pro-0813": "deepseek-v4-pro-0813",
@@ -178,7 +174,6 @@ OPENROUTER_PRICING_MAP: Dict[str, str] = {
     "deepseek/deepseek-chat": "deepseek-chat",
     "deepseek/deepseek-r1": "deepseek-reasoner",
     "deepseek/deepseek-reasoner": "deepseek-reasoner",
-
     # OpenAI
     "openai/gpt-6.1-sol": "gpt-6.1-sol",
     "openai/gpt-sol-6.1": "gpt-6.1-sol",
@@ -196,7 +191,6 @@ OPENROUTER_PRICING_MAP: Dict[str, str] = {
     "openai/gpt-4o-mini": "gpt-4o-mini",
     "openai/o1": "o1",
     "openai/o3-mini": "o3-mini",
-
     # Google
     "google/gemini-3.8-flash": "gemini-3.8-flash",
     "google/gemini-3.7-flash": "gemini-3.7-flash",
@@ -209,35 +203,28 @@ OPENROUTER_PRICING_MAP: Dict[str, str] = {
     "google/gemini-2.5-pro": "gemini-2.5-pro",
     "google/gemini-2.5-flash": "gemini-2.5-flash",
     "google/gemini-2.0-flash": "gemini-2.0-flash",
-
     # Moonshot Kimi
     "moonshotai/kimi-k3": "kimi-k3",
     "moonshot/kimi-k3": "kimi-k3",
-
     # Qwen
     "qwen/qwen3.8-max": "qwen3.8-max",
     "qwen/qwen3.8-2.4t-a95b": "qwen3.8-2.4t-a95b",
     "qwen/qwen3.8-27b": "qwen3.8-27b",
     "qwen/qwen3.6-27b": "qwen3.8-27b",
-
     # X-AI Grok
     "x-ai/grok-4.6": "grok-4.6",
     "x-ai/grok-4.5": "grok-4.5",
     "x-ai/grok-4.3": "grok-4.3",
-
     # Xiaomi MiMo
     "xiaomi/mimo-v2.5-pro": "mimo-v2.5-pro",
     "xiaomi/mimo-v2.5": "mimo-v2.5",
-
     # Zhipu GLM
     "z-ai/glm-5.3-flash": "glm-5.3-flash",
     "z-ai/glm-5.3": "glm-5.3",
     "z-ai/glm-5.2": "glm-5.2",
     "z-ai/glm-5.1": "glm-5.1",
-
     # MiniMax
     "minimax/minimax-m3": "minimax-m3",
-
     # Meta
     "meta-llama/muse-spark-1.2": "muse-spark-1.2",
 }
@@ -245,56 +232,118 @@ OPENROUTER_PRICING_MAP: Dict[str, str] = {
 # Daftar eksplisit model Free Tier ($0)
 FREE_TIER_MODELS = {
     # Stealth
-    "ox-alpha", "stealth/ox-alpha", "openrouter/free", "openrouter-free",
-
+    "ox-alpha",
+    "stealth/ox-alpha",
+    "openrouter/free",
+    "openrouter-free",
     # OpenRouter Free Tier
-    "glm-5.2:free", "z-ai/glm-5.2:free",
-    "minimax-m3:free", "minimax/minimax-m3:free",
-    "gemma-4-31b:free", "google/gemma-4-31b-it:free",
-    "gemma-4-26b:free", "google/gemma-4-26b-a4b-it:free",
-    "nemotron-3-ultra:free", "nvidia/nemotron-3-ultra-550b-a55b:free",
-    "nemotron-3.5-lightning:free", "nvidia/nemotron-3.5-lightning:free",
-    "nemotron-3-super:free", "nvidia/nemotron-3-super-120b-a12b:free",
-    "nemotron-3-nano:free", "nvidia/nemotron-3-nano-30b-a3b:free",
-    "nemotron-3-nano-omni:free", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-    "nemotron-nano-12b-vl:free", "nvidia/nemotron-nano-12b-v2-vl:free",
-    "nemotron-nano-9b:free", "nvidia/nemotron-nano-9b-v2:free",
-    "nemotron-3.5-safety:free", "nvidia/nemotron-3.5-content-safety:free",
-    "north-mini-code:free", "cohere/north-mini-code:free",
-    "laguna-s-2.1:free", "poolside/laguna-s-2.1:free",
-    "laguna-xs-2.1:free", "poolside/laguna-xs-2.1:free",
-    "inkling:free", "thinkingmachines/inkling:free",
-    "inkling-small:free", "thinkingmachines/inkling-small:free",
-    "dots-3-note:free", "dots-studio/dots-3-note-preview:free",
-    "lfm-2.5-2.6b:free", "liquid/lfm-2.5-2.6b:free",
-
+    "glm-5.2:free",
+    "z-ai/glm-5.2:free",
+    "minimax-m3:free",
+    "minimax/minimax-m3:free",
+    "gemma-4-31b:free",
+    "google/gemma-4-31b-it:free",
+    "gemma-4-26b:free",
+    "google/gemma-4-26b-a4b-it:free",
+    "nemotron-3-ultra:free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "nemotron-3.5-lightning:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "nemotron-3-super:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "nemotron-3-nano:free",
+    "nvidia/nemotron-3-nano-30b-a3b:free",
+    "nemotron-3-nano-omni:free",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    "nemotron-nano-12b-vl:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "nemotron-nano-9b:free",
+    "nvidia/nemotron-nano-9b-v2:free",
+    "nemotron-3.5-safety:free",
+    "nvidia/nemotron-3.5-content-safety:free",
+    "north-mini-code:free",
+    "cohere/north-mini-code:free",
+    "laguna-s-2.1:free",
+    "poolside/laguna-s-2.1:free",
+    "laguna-xs-2.1:free",
+    "poolside/laguna-xs-2.1:free",
+    "inkling:free",
+    "thinkingmachines/inkling:free",
+    "inkling-small:free",
+    "thinkingmachines/inkling-small:free",
+    "dots-3-note:free",
+    "dots-studio/dots-3-note-preview:free",
+    "lfm-2.5-2.6b:free",
+    "liquid/lfm-2.5-2.6b:free",
     # Groq Developer Free Tier
-    "groq-compound", "groq-compound-mini", "groq-gpt-oss-120b", "groq-gpt-oss-20b",
-    "qwen3.6-27b", "groq-qwen3.6-27b", "groq-qwen3.8-27b",
-
+    "groq-compound",
+    "groq-compound-mini",
+    "groq-gpt-oss-120b",
+    "groq-gpt-oss-20b",
+    "qwen3.6-27b",
+    "groq-qwen3.6-27b",
+    "groq-qwen3.8-27b",
     # Ollama Local
-    "llama3.2", "ollama", "local",
-
+    "llama3.2",
+    "ollama",
+    "local",
     # 9Router Free Tier Models
-    "kr/claude-sonnet-4.5", "kr/claude-sonnet-4.5-thinking", "kr/claude-sonnet-4.5-agentic",
-    "kr/claude-sonnet-5", "kr/claude-sonnet-5-thinking",
-    "kr/claude-opus-5", "kr/claude-opus-5-thinking", "kr/claude-opus-5-agentic",
-    "kr/claude-opus-4.8", "kr/claude-opus-4.7", "kr/claude-opus-4.5",
-    "kr/claude-haiku-4.5", "kr/claude-haiku-4.5-thinking",
-    "kr/glm-5", "kr/minimax-m2.5", "kr/deepseek-3.2", "kr/qwen3-coder-next",
-    "kr/gpt-5.6-sol", "kr/gpt-5.6-terra", "kr/gpt-5.6-luna",
-    "oc/muse-spark-1.2-contributor-free", "oc/muse-spark-1.3-contributor-free",
-    "oc/union-alpha", "oc/jev-1.13-free",
-    "ocz/deepseek-v4-flash-free", "ocz/mimo-v2.6-flash-free", "ocz/mimo-v2.5-free",
-    "ocz/ling-3.0-flash-fin-free", "ocz/nemotron-3-ultra-free", "ocz/nemotron-3.5-lightning-free",
-    "ocz/muse-spark-1.3-contributor-free", "ocz/muse-spark-1.2-contributor-free", "ocz/jev-1.13-free",
-    "if/kimi-k2", "if/qwen3-coder-plus", "if/qwen3-max", "if/qwen3-235b",
-    "if/deepseek-v3.2", "if/deepseek-v3", "if/deepseek-r1", "if/glm-4.7", "if/iflow-rome-30ba3b",
+    "kr/claude-sonnet-4.5",
+    "kr/claude-sonnet-4.5-thinking",
+    "kr/claude-sonnet-4.5-agentic",
+    "kr/claude-sonnet-5",
+    "kr/claude-sonnet-5-thinking",
+    "kr/claude-opus-5",
+    "kr/claude-opus-5-thinking",
+    "kr/claude-opus-5-agentic",
+    "kr/claude-opus-4.8",
+    "kr/claude-opus-4.7",
+    "kr/claude-opus-4.5",
+    "kr/claude-haiku-4.5",
+    "kr/claude-haiku-4.5-thinking",
+    "kr/glm-5",
+    "kr/minimax-m2.5",
+    "kr/deepseek-3.2",
+    "kr/qwen3-coder-next",
+    "kr/gpt-5.6-sol",
+    "kr/gpt-5.6-terra",
+    "kr/gpt-5.6-luna",
+    "oc/muse-spark-1.2-contributor-free",
+    "oc/muse-spark-1.3-contributor-free",
+    "oc/union-alpha",
+    "oc/jev-1.13-free",
+    "ocz/deepseek-v4-flash-free",
+    "ocz/mimo-v2.6-flash-free",
+    "ocz/mimo-v2.5-free",
+    "ocz/ling-3.0-flash-fin-free",
+    "ocz/nemotron-3-ultra-free",
+    "ocz/nemotron-3.5-lightning-free",
+    "ocz/muse-spark-1.3-contributor-free",
+    "ocz/muse-spark-1.2-contributor-free",
+    "ocz/jev-1.13-free",
+    "if/kimi-k2",
+    "if/qwen3-coder-plus",
+    "if/qwen3-max",
+    "if/qwen3-235b",
+    "if/deepseek-v3.2",
+    "if/deepseek-v3",
+    "if/deepseek-r1",
+    "if/glm-4.7",
+    "if/iflow-rome-30ba3b",
     "mmf/mimo-auto",
-    "gc/gemini-3.5-flash", "gc/gemini-3.6-flash", "gc/gemini-3.7-flash", "gc/gemini-3.8-flash",
-    "gc/gemini-3.1-flash-lite", "gc/gemini-3.5-flash-lite",
-    "gc/gemini-2.5-flash", "gc/gemini-2.5-pro", "gc/gemini-3-flash-preview", "gc/gemini-3.1-pro-preview",
-    "af/gpt-oss-120b", "af/gpt-oss-20b", "af/kimi-k2.7-code",
+    "gc/gemini-3.5-flash",
+    "gc/gemini-3.6-flash",
+    "gc/gemini-3.7-flash",
+    "gc/gemini-3.8-flash",
+    "gc/gemini-3.1-flash-lite",
+    "gc/gemini-3.5-flash-lite",
+    "gc/gemini-2.5-flash",
+    "gc/gemini-2.5-pro",
+    "gc/gemini-3-flash-preview",
+    "gc/gemini-3.1-pro-preview",
+    "af/gpt-oss-120b",
+    "af/gpt-oss-20b",
+    "af/kimi-k2.7-code",
     "combo/free-fallback",
 }
 
@@ -327,11 +376,7 @@ def infer_provider_from_model(model_name: str) -> str:
     return "unknown"
 
 
-def is_free_tier(
-    model_name: str,
-    provider: Optional[str] = None,
-    is_direct_free_tier: Optional[bool] = None
-) -> bool:
+def is_free_tier(model_name: str, provider: Optional[str] = None, is_direct_free_tier: Optional[bool] = None) -> bool:
     """
     Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
     Mendukung Gemini (GEMINI_API_KEYS), Groq Developer Tier, OpenRouter :free & openrouter/free, Ollama, dan 9Router Free Tier.
@@ -354,7 +399,7 @@ def is_free_tier(
 
     # 2. 9Router Free Tier Models (with or without 9r/ or 9router/ prefix)
     for pfx in ("9router/", "9r/"):
-        if clean_name.startswith(pfx) and clean_name[len(pfx):] in FREE_TIER_MODELS:
+        if clean_name.startswith(pfx) and clean_name[len(pfx) :] in FREE_TIER_MODELS:
             return True
 
     # 3. Provider Free Tiers
@@ -370,22 +415,22 @@ def get_price(model_name: str) -> Price:
     """Mengembalikan objek Price untuk model yang diberikan."""
     if not model_name:
         return _FREE
-    
+
     clean_name = str(model_name).strip().lower()
-    
+
     # 1. Cek langsung model Free Tier
     if clean_name in FREE_TIER_MODELS or clean_name.endswith(":free") or ":free" in clean_name:
         return _FREE
-    
+
     # 2. Cek tabel PRICING langsung
     if clean_name in PRICING:
         return PRICING[clean_name]
-    
+
     # 3. Cek OPENROUTER_PRICING_MAP
     if clean_name in OPENROUTER_PRICING_MAP:
         mapped = OPENROUTER_PRICING_MAP[clean_name]
         return PRICING.get(mapped, _FREE)
-    
+
     # 4. Cek stripping provider prefix (e.g. 'anthropic/claude-sonnet-5' -> 'claude-sonnet-5')
     if "/" in clean_name:
         suffix = clean_name.split("/", 1)[1]
@@ -396,12 +441,12 @@ def get_price(model_name: str) -> Price:
         if suffix in OPENROUTER_PRICING_MAP:
             mapped = OPENROUTER_PRICING_MAP[suffix]
             return PRICING.get(mapped, _FREE)
-    
+
     # 5. Fuzzy match prefix/substring
     for k, price_obj in PRICING.items():
         if k in clean_name or clean_name in k:
             return price_obj
-            
+
     return _FREE
 
 
@@ -411,10 +456,11 @@ from decimal import Decimal, ROUND_HALF_UP
 @dataclass(frozen=True)
 class CanonicalUsage:
     """Normalized multi-provider token usage snapshot."""
-    input_tokens: int = 0          # Uncached input prompt tokens
-    output_tokens: int = 0         # Generated completion tokens
-    cache_read_tokens: int = 0     # Cached prompt tokens read
-    cache_creation_tokens: int = 0 # Tokens written to cache
+
+    input_tokens: int = 0  # Uncached input prompt tokens
+    output_tokens: int = 0  # Generated completion tokens
+    cache_read_tokens: int = 0  # Cached prompt tokens read
+    cache_creation_tokens: int = 0  # Tokens written to cache
 
     @property
     def total_tokens(self) -> int:
@@ -482,7 +528,7 @@ def cost_usd(
 ) -> float:
     """
     Menghitung estimasi biaya pemanggilan API dalam USD menggunakan decimal.Decimal.
-    
+
     Perhatian Khusus Provider Anthropic:
     Pada API resmi Anthropic Claude, input_tokens yang dikembalikan sudah uncached.
     Oleh karena itu, sistem tidak mengurangkan cached_tokens dua kali jika model adalah Anthropic.
@@ -575,6 +621,7 @@ async def fetch_openrouter_pricing_async(cache_path: Optional[str] = None) -> Di
     from pathlib import Path
 
     from monika.infrastructure.infra.paths import DATA_DIR
+
     cache_file = Path(cache_path) if cache_path else (DATA_DIR / "openrouter_pricing.json")
     # Check fresh cache (less than 24 hours)
     if cache_file.exists():
@@ -616,7 +663,10 @@ async def fetch_openrouter_pricing_async(cache_path: Optional[str] = None) -> Di
                     cache_file.parent.mkdir(parents=True, exist_ok=True)
                     with open(cache_file, "w", encoding="utf-8") as f:
                         json.dump(extracted, f, indent=2)
-                    return {k: Price(input=v["input"], cached_input=v["cached_input"], output=v["output"]) for k, v in extracted.items()}
+                    return {
+                        k: Price(input=v["input"], cached_input=v["cached_input"], output=v["output"])
+                        for k, v in extracted.items()
+                    }
     except Exception as e:
         logger.debug(f"[Pricing] OpenRouter live pricing fetch fallback to static: {e}")
 
@@ -625,5 +675,3 @@ async def fetch_openrouter_pricing_async(cache_path: Optional[str] = None) -> Di
 
 # Alias for backward compatibility
 estimate_cost = cost_usd
-
-

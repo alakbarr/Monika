@@ -7,7 +7,6 @@ from analysis.strategies.base_strategy import EdgeSignal
 
 
 class TestEdgeStrategyRunner:
-
     @pytest.fixture
     def settings(self):
         return {
@@ -15,15 +14,15 @@ class TestEdgeStrategyRunner:
                 "asset_universe": ["GBPUSD"],
                 "edge_strategy": {
                     "signal_cooldown_seconds": 3600,
-                    "macro_gate_exempt_strategies": ["gap_fade", "tsm_momentum"]
-                }
+                    "macro_gate_exempt_strategies": ["gap_fade", "tsm_momentum"],
+                },
             }
         }
 
     @pytest.mark.asyncio
     async def test_skip_signal_when_position_already_open(self, settings):
         runner = EdgeStrategyRunner(settings=settings, execution_service=MagicMock())
-        
+
         signal = EdgeSignal(
             strategy_id="tsm_momentum",
             symbol="GBPUSD",
@@ -33,18 +32,19 @@ class TestEdgeStrategyRunner:
             entry_price=1.2500,
             stop_loss=1.2400,
             take_profit=1.2700,
-            rationale="Test signal"
+            rationale="Test signal",
         )
 
         mock_session = create_mock_async_session()
-        
+
         # Mock validate_data_freshness -> ready: True
-        with patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})), \
-             patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])), \
-             patch("scheduler.edge_strategy_runner.get_session") as mock_get_session:
-            
+        with (
+            patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+            patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])),
+            patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
+        ):
             mock_get_session.return_value.__aenter__.return_value = mock_session
-            
+
             # Mock open position check returning an open position ID (e.g., id=1)
             mock_res = MagicMock()
             mock_res.scalar_one_or_none.return_value = 1  # open position exists!
@@ -58,10 +58,10 @@ class TestEdgeStrategyRunner:
     async def test_signal_cooldown_prevents_re_evaluation(self, settings):
         runner = EdgeStrategyRunner(settings=settings, execution_service=MagicMock())
         runner.cooldown_seconds = 3600
-        
+
         # Pre-populate cooldown timestamp
         runner._signal_cooldowns[("tsm_momentum", "GBPUSD")] = time.time() - 300  # 5 min ago (< 1 hour)
-        
+
         signal = EdgeSignal(
             strategy_id="tsm_momentum",
             symbol="GBPUSD",
@@ -71,17 +71,18 @@ class TestEdgeStrategyRunner:
             entry_price=1.2500,
             stop_loss=1.2400,
             take_profit=1.2700,
-            rationale="Test signal"
+            rationale="Test signal",
         )
 
         mock_session = create_mock_async_session()
-        
-        with patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})), \
-             patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])), \
-             patch("scheduler.edge_strategy_runner.get_session") as mock_get_session:
-            
+
+        with (
+            patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+            patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])),
+            patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
+        ):
             mock_get_session.return_value.__aenter__.return_value = mock_session
-            
+
             # No open position
             mock_res = MagicMock()
             mock_res.scalar_one_or_none.return_value = None
@@ -111,7 +112,7 @@ class TestEdgeStrategyRunner:
             entry_price=1.2500,
             stop_loss=1.2400,
             take_profit=1.2700,
-            rationale="Test signal"
+            rationale="Test signal",
         )
 
         mock_session = create_mock_async_session()
@@ -119,21 +120,23 @@ class TestEdgeStrategyRunner:
         mock_session.refresh = AsyncMock()
 
         mock_graph = MagicMock()
+
         async def mock_ainvoke(state, config=None):
             for a in state.get("event_data", {}).get("analyses", []):
                 await mock_exec_svc.execute_analysis(a, mock_session)
+
         mock_graph.ainvoke = AsyncMock(side_effect=mock_ainvoke)
 
         with patch("graph.reactive_graph.get_reactive_graph", return_value=mock_graph):
             await runner._materialize_and_route(mock_session, signal)
-        
+
         # Verify execute_analysis was called
         mock_exec_svc.execute_analysis.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_skip_signal_when_paper_trade_already_open(self, settings):
         runner = EdgeStrategyRunner(settings=settings, execution_service=MagicMock())
-        
+
         signal = EdgeSignal(
             strategy_id="tsm_momentum",
             symbol="GBPUSD",
@@ -143,17 +146,18 @@ class TestEdgeStrategyRunner:
             entry_price=1.2500,
             stop_loss=1.2400,
             take_profit=1.2700,
-            rationale="Test signal"
+            rationale="Test signal",
         )
 
         mock_session = create_mock_async_session()
-        
-        with patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})), \
-             patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])), \
-             patch("scheduler.edge_strategy_runner.get_session") as mock_get_session:
-            
+
+        with (
+            patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+            patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])),
+            patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
+        ):
             mock_get_session.return_value.__aenter__.return_value = mock_session
-            
+
             # First execute: Position.id -> None (no live position)
             # Second execute: PaperTradeRecord.id -> 42 (paper trade open!)
             mock_res_pos = MagicMock()
@@ -176,6 +180,7 @@ class TestEdgeStrategyRunner:
 
         from datetime import datetime, timezone, timedelta
         from utils import clock
+
         recent_dt = clock.now() - timedelta(minutes=10)
 
         mock_session = create_mock_async_session()
@@ -200,7 +205,7 @@ class TestEdgeStrategyRunner:
             valid=True,
             confidence=0.8,
             rationale="Test",
-            tags=["trend"]
+            tags=["trend"],
         )
 
         mock_session = create_mock_async_session()
@@ -209,12 +214,15 @@ class TestEdgeStrategyRunner:
         mock_session.execute.return_value = mock_res
 
         gate_reason = "balanced volume regime blocks pure trend-following"
-        with patch("scheduler.edge_strategy_runner.get_session") as mock_get_session, \
-             patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})), \
-             patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])), \
-             patch("scheduler.edge_strategy_runner.evaluate_pretrade_gate", AsyncMock(return_value=(False, gate_reason))), \
-             patch("scheduler.edge_strategy_runner.logger") as mock_logger:
-
+        with (
+            patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
+            patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+            patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])),
+            patch(
+                "scheduler.edge_strategy_runner.evaluate_pretrade_gate", AsyncMock(return_value=(False, gate_reason))
+            ),
+            patch("scheduler.edge_strategy_runner.logger") as mock_logger,
+        ):
             mock_get_session.return_value.__aenter__.return_value = mock_session
 
             # First run: should log at INFO and record in _gate_rejection_log_time
@@ -249,7 +257,7 @@ class TestEdgeStrategyRunner:
             entry_price=1.2500,
             stop_loss=1.2400,
             take_profit=1.2550,
-            rationale="Sub-optimal RR signal"
+            rationale="Sub-optimal RR signal",
         )
 
         mock_session = create_mock_async_session()
@@ -258,5 +266,3 @@ class TestEdgeStrategyRunner:
         # Should be suppressed by upstream R:R pre-filter before materialization
         mock_session.add.assert_not_called()
         mock_exec_svc.execute_analysis.assert_not_called()
-
-

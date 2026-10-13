@@ -1,6 +1,7 @@
 """
 Unit tests for benchmark/alpha_arena.py (Elo rating calculations and tournament management).
 """
+
 import pytest
 from benchmark.alpha_arena import (
     AlphaArenaTournament,

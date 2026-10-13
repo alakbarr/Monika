@@ -160,7 +160,6 @@ class SymbolTurnLeaseManager:
         return get_symbol_lease_manager()
 
 
-
 # Global singleton instance
 _GLOBAL_LEASE_MANAGER: Optional[SymbolTurnLeaseManager] = None
 

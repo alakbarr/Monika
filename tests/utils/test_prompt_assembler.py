@@ -8,7 +8,7 @@ def test_assemble_stage1():
     system, user = assembler.assemble_stage1(
         data_bundle="Sample Stage 1 Data",
         core_memory="Sample Core Memory",
-        sticky_bias_context="USD sticky bias justification"
+        sticky_bias_context="USD sticky bias justification",
     )
     assert "senior macro-economic analyst" in system
     assert "[AGENT MEMORY]" in system
@@ -33,7 +33,7 @@ def test_assemble_stage2():
         data_bundle="Sample Stage 2 Data",
         effective_threshold=8,
         min_rr_ratio=1.4,
-        core_memory="Sample Symbol Memory"
+        core_memory="Sample Symbol Memory",
     )
     assert "XAUUSD" in user
     assert "Effective Confluence Threshold: 8/14" in user
@@ -55,9 +55,7 @@ def test_assemble_stage2_tiers():
 def test_assemble_stage1_system_tuple_gemini_cache_threshold():
     assembler = PromptAssembler({"trading": {"caveman_mode": True}})
     static_sys, dynamic_note = assembler.assemble_stage1_system_tuple(
-        core_memory="Sample Core Memory",
-        behavioral_alert="Sample Alert",
-        pad_for_gemini=True
+        core_memory="Sample Core Memory", behavioral_alert="Sample Alert", pad_for_gemini=True
     )
     assert "senior macro-economic analyst" in static_sys
     assert "CANONICAL SYSTEM GOVERNANCE" in static_sys
@@ -68,8 +66,12 @@ def test_assemble_stage1_system_tuple_gemini_cache_threshold():
 
 def test_assemble_stage2_tiers_cache_invariance():
     assembler = PromptAssembler({"trading": {"caveman_mode": True}})
-    t1_eur, t2_eur, t3_eur = assembler.assemble_stage2_tiers(symbol="EURUSD", model_name="gemini-3", include_target_in_system=False)
-    t1_gbp, t2_gbp, t3_gbp = assembler.assemble_stage2_tiers(symbol="GBPUSD", model_name="gemini-3", include_target_in_system=False)
+    t1_eur, t2_eur, t3_eur = assembler.assemble_stage2_tiers(
+        symbol="EURUSD", model_name="gemini-3", include_target_in_system=False
+    )
+    t1_gbp, t2_gbp, t3_gbp = assembler.assemble_stage2_tiers(
+        symbol="GBPUSD", model_name="gemini-3", include_target_in_system=False
+    )
     assert t1_eur == t1_gbp
     assert t2_eur == t2_gbp
     assert "Symbol: EURUSD" not in t3_eur
@@ -85,6 +87,7 @@ def test_canonical_prompt_section_ordering():
         compare_sections,
         compose_ordered_prompt,
     )
+
     s1 = PromptSection(name="DOMAIN_SKILLS", content="Skills Content", order=2000)
     s2 = PromptSection(name="CANONICAL_TIER0_ANCHOR", content="Anchor Content", order=-2000)
     s3 = PromptSection(name="ROLE_MISSION", content="Mission Content", order=0)
@@ -100,4 +103,3 @@ def test_canonical_prompt_section_ordering():
     t2 = PromptSection(name="A_SEC", content="Content A", order=500)
     res_tie = compose_ordered_prompt([t1, t2], separator=" | ")
     assert res_tie == "Content A | Content B"
-

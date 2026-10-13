@@ -1,12 +1,14 @@
 """
 Unit tests for structured error classification (C4).
 """
+
 import pytest
 from analysis.providers.provider_failover_classifier import FailoverReason, classify_error
 
 
 def test_backward_compatibility_shim():
     from analysis.providers.error_classifier import FailoverReason as ShimReason, classify_error as shim_classify
+
     assert ShimReason is FailoverReason
     assert shim_classify is classify_error
 
@@ -41,6 +43,7 @@ def test_error_classifier_transient_overload():
 
 def test_error_classifier_network_timeout():
     import asyncio
+
     exc = asyncio.TimeoutError()
     reason, detail = classify_error(exc)
     assert reason == FailoverReason.NETWORK_TIMEOUT
@@ -73,18 +76,36 @@ def test_error_classifier_broker_margin_call():
 def test_all_failover_reasons_exist():
     assert len(FailoverReason) >= 30
     expected_members = {
-        "AUTH_TRANSIENT", "AUTH_PERMANENT", "BILLING_EXHAUSTED",
-        "RATE_LIMIT_API", "RATE_LIMIT_MODEL", "UPSTREAM_RATE_LIMIT",
-        "CONTEXT_OVERFLOW", "PAYLOAD_TOO_LARGE", "MODEL_OVERLOADED",
-        "MODEL_NOT_FOUND", "MODEL_UNAVAILABLE", "INVALID_REQUEST",
-        "NETWORK_TIMEOUT", "NETWORK_CONNECTION", "CONTENT_FILTERED",
-        "SERVER_ERROR", "BROKER_MARGIN_CALL", "SILENT_OVERFLOW",
-        "LENGTH_STOP_OVERFLOW", "OUTPUT_CAP_REACHED",
-        "COMPLETION_CEILING_EXCEEDED", "HARD_QUOTA_EXHAUSTED",
-        "TRANSIENT_RATE_LIMIT", "UPSTREAM_BLOCKED", "IMAGE_TOO_LARGE",
-        "IMAGE_CORRUPT", "ROLE_ALTERNATION", "THINKING_SIGNATURE",
-        "MODEL_ENTITLEMENT", "UNKNOWN"
+        "AUTH_TRANSIENT",
+        "AUTH_PERMANENT",
+        "BILLING_EXHAUSTED",
+        "RATE_LIMIT_API",
+        "RATE_LIMIT_MODEL",
+        "UPSTREAM_RATE_LIMIT",
+        "CONTEXT_OVERFLOW",
+        "PAYLOAD_TOO_LARGE",
+        "MODEL_OVERLOADED",
+        "MODEL_NOT_FOUND",
+        "MODEL_UNAVAILABLE",
+        "INVALID_REQUEST",
+        "NETWORK_TIMEOUT",
+        "NETWORK_CONNECTION",
+        "CONTENT_FILTERED",
+        "SERVER_ERROR",
+        "BROKER_MARGIN_CALL",
+        "SILENT_OVERFLOW",
+        "LENGTH_STOP_OVERFLOW",
+        "OUTPUT_CAP_REACHED",
+        "COMPLETION_CEILING_EXCEEDED",
+        "HARD_QUOTA_EXHAUSTED",
+        "TRANSIENT_RATE_LIMIT",
+        "UPSTREAM_BLOCKED",
+        "IMAGE_TOO_LARGE",
+        "IMAGE_CORRUPT",
+        "ROLE_ALTERNATION",
+        "THINKING_SIGNATURE",
+        "MODEL_ENTITLEMENT",
+        "UNKNOWN",
     }
     actual_members = set(FailoverReason.__members__.keys())
     assert expected_members.issubset(actual_members)
-

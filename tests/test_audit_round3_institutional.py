@@ -8,20 +8,24 @@ from datetime import datetime, timezone
 # Test 1: F2-1 Redundant MT5 Multi-Terminal Gateway & Failover
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_f2_1_mt5_redundant_failover_and_fallback():
     """Verify automated failover to secondary MT5 gateway and fallback to primary."""
     from execution.mt5_client import MT5Client
 
-    with patch.dict(os.environ, {
-        "MT5_ACCOUNT": "111111",
-        "MT5_SERVER": "Broker-Primary",
-        "MT5_PATH": "C:/MT5_Primary/terminal64.exe",
-        "MT5_SECONDARY_ACCOUNT": "222222",
-        "MT5_SECONDARY_PASSWORD": "SecPassword",
-        "MT5_SECONDARY_SERVER": "Broker-Secondary",
-        "MT5_SECONDARY_PATH": "C:/MT5_Secondary/terminal64.exe",
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "MT5_ACCOUNT": "111111",
+            "MT5_SERVER": "Broker-Primary",
+            "MT5_PATH": "C:/MT5_Primary/terminal64.exe",
+            "MT5_SECONDARY_ACCOUNT": "222222",
+            "MT5_SECONDARY_PASSWORD": "SecPassword",
+            "MT5_SECONDARY_SERVER": "Broker-Secondary",
+            "MT5_SECONDARY_PATH": "C:/MT5_Secondary/terminal64.exe",
+        },
+    ):
         client = MT5Client()
         client._run = AsyncMock(return_value=True)
         try:
@@ -51,6 +55,7 @@ async def test_f2_1_mt5_redundant_failover_and_fallback():
 # ---------------------------------------------------------------------------
 # Test 2: F2-2 Prometheus / OpenMetrics Exporter
 # ---------------------------------------------------------------------------
+
 
 def test_f2_2_prometheus_metrics_export():
     """Verify Prometheus metric collection and string formatting."""
@@ -87,6 +92,7 @@ def test_f2_2_dashboard_api_metrics_endpoint():
 # Test 3: F2-3 Monte Carlo Stress Tester & Scenario Shock Engine
 # ---------------------------------------------------------------------------
 
+
 def test_f2_3_monte_carlo_stress_tester_comprehensive():
     """Verify Monte Carlo 10,000 permutations, ruin probability, and slippage shock."""
     from backtest.monte_carlo_engine import MonteCarloStressTester
@@ -106,20 +112,20 @@ def test_f2_3_monte_carlo_stress_tester_comprehensive():
 
     # 2. Slippage Shock Test
     shock_res = tester.run_slippage_spread_shock_test(
-        trade_returns=returns,
-        slippage_multipliers=[1.0, 3.0],
-        num_simulations=500,
-        initial_equity=10000.0
+        trade_returns=returns, slippage_multipliers=[1.0, 3.0], num_simulations=500, initial_equity=10000.0
     )
     assert "shock_1x_slippage" in shock_res
     assert "shock_3x_slippage" in shock_res
     # 3x slippage shock should lead to higher or equal drawdown and lower median equity
-    assert shock_res["shock_3x_slippage"]["var_95_drawdown_pct"] >= shock_res["shock_1x_slippage"]["var_95_drawdown_pct"]
+    assert (
+        shock_res["shock_3x_slippage"]["var_95_drawdown_pct"] >= shock_res["shock_1x_slippage"]["var_95_drawdown_pct"]
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test 4: F2-4 Systemic Correlation Matrix & Directional USD Exposure
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_f2_4_systemic_correlation_matrix_and_usd_exposure():
@@ -146,9 +152,7 @@ async def test_f2_4_systemic_correlation_matrix_and_usd_exposure():
 
     with patch("risk.portfolio_correlation_gate.get_rolling_correlation", AsyncMock(return_value=(0.20, "db"))):
         # max_usd_exposure = 3 -> 4th trade should be rejected by systemic concentration cap
-        kept, rejected = await filter_correlated_proposals(
-            mock_session, proposals, threshold=0.65, max_usd_exposure=3
-        )
+        kept, rejected = await filter_correlated_proposals(mock_session, proposals, threshold=0.65, max_usd_exposure=3)
         assert len(kept) == 3
         assert len(rejected) == 1
         assert "Systemic concentration cap" in rejected[0][2]

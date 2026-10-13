@@ -1,4 +1,3 @@
-
 """GTJA Alpha #10.
 
 Formula: RANK(MAX(((RET<0)?STD(RET,20):CLOSE)^2,5))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_010",
-    "theme": ['volatility', 'reversal'],
-    "formula_latex": 'RANK(MAX(((RET<0)?STD(RET,20):CLOSE)^2,5))',
-    "columns_required": ['close'],
+    "theme": ["volatility", "reversal"],
+    "formula_latex": "RANK(MAX(((RET<0)?STD(RET,20):CLOSE)^2,5))",
+    "columns_required": ["close"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 5,
     "min_warmup_bars": 21,
-    "notes": 'Per-day return = pct_change(1) via (close - delay(close,1))/delay(close,1).',
+    "notes": "Per-day return = pct_change(1) via (close - delay(close,1))/delay(close,1).",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]

@@ -56,14 +56,14 @@ class CreditBalanceTracker:
                 "remaining_usd": None,
                 "total_credits_usd": None,
                 "total_usage_usd": None,
-                "message": ""
+                "message": "",
             },
             "free_keys": {
                 "configured_count": len(free_keys),
                 "active_count": 0,
                 "status": "unconfigured" if not free_keys else "ok",
-                "details": []
-            }
+                "details": [],
+            },
         }
 
         timeout = aiohttp.ClientTimeout(total=6.0)
@@ -74,7 +74,7 @@ class CreditBalanceTracker:
                     headers_paid = {
                         "Authorization": f"Bearer {paid_key.strip()}",
                         "HTTP-Referer": "https://tradeagent.local",
-                        "X-Title": "AI Trading Agent"
+                        "X-Title": "AI Trading Agent",
                     }
                     try:
                         async with session.get("https://openrouter.ai/api/v1/credits", headers=headers_paid) as resp:
@@ -112,26 +112,27 @@ class CreditBalanceTracker:
                     headers_free = {
                         "Authorization": f"Bearer {fk.strip()}",
                         "HTTP-Referer": "https://tradeagent.local",
-                        "X-Title": "AI Trading Agent"
+                        "X-Title": "AI Trading Agent",
                     }
                     try:
                         async with session.get("https://openrouter.ai/api/v1/key", headers=headers_free) as resp:
                             if resp.status == 200:
                                 kdata = (await resp.json()).get("data", {})
                                 result["free_keys"]["active_count"] += 1
-                                result["free_keys"]["details"].append({
-                                    "index": idx + 1,
-                                    "label": kdata.get("label", f"key_{idx+1}"),
-                                    "is_free_tier": bool(kdata.get("is_free_tier", True)),
-                                    "status": "active"
-                                })
+                                result["free_keys"]["details"].append(
+                                    {
+                                        "index": idx + 1,
+                                        "label": kdata.get("label", f"key_{idx + 1}"),
+                                        "is_free_tier": bool(kdata.get("is_free_tier", True)),
+                                        "status": "active",
+                                    }
+                                )
                             else:
-                                result["free_keys"]["details"].append({
-                                    "index": idx + 1,
-                                    "status": f"http_{resp.status}"
-                                })
+                                result["free_keys"]["details"].append(
+                                    {"index": idx + 1, "status": f"http_{resp.status}"}
+                                )
                     except Exception as e:
-                        logger.debug(f"OpenRouter free key #{idx+1} check failed: {e}")
+                        logger.debug(f"OpenRouter free key #{idx + 1} check failed: {e}")
 
                 if not result["paid_key"]["configured"] and result["free_keys"]["active_count"] > 0:
                     result["status"] = "free_tier_only"
@@ -155,13 +156,10 @@ class CreditBalanceTracker:
             return {
                 "provider": "deepseek",
                 "status": "unconfigured",
-                "message": "DEEPSEEK_API_KEY tidak disetel di environment."
+                "message": "DEEPSEEK_API_KEY tidak disetel di environment.",
             }
 
-        headers = {
-            "Authorization": f"Bearer {key.strip()}",
-            "Accept": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {key.strip()}", "Accept": "application/json"}
 
         result = {
             "provider": "deepseek",
@@ -170,7 +168,7 @@ class CreditBalanceTracker:
             "total_balance_usd": None,
             "granted_balance_usd": None,
             "topped_up_balance_usd": None,
-            "currency": "USD"
+            "currency": "USD",
         }
 
         timeout = aiohttp.ClientTimeout(total=6.0)
@@ -220,7 +218,7 @@ class CreditBalanceTracker:
                     TokenUsageLog.provider,
                     TokenUsageLog.model_name,
                     func.count(TokenUsageLog.id).label("call_count"),
-                    func.coalesce(func.sum(TokenUsageLog.total_tokens), 0).label("sum_tokens")
+                    func.coalesce(func.sum(TokenUsageLog.total_tokens), 0).label("sum_tokens"),
                 )
                 .where(TokenUsageLog.timestamp >= today_utc)
                 .group_by(TokenUsageLog.provider, TokenUsageLog.model_name)
@@ -268,7 +266,7 @@ class CreditBalanceTracker:
                     "rpd_limit": rpd_limit,
                     "remaining_calls": remaining_calls,
                     "pct_used": round((used_calls / rpd_limit) * 100, 1) if rpd_limit else 0,
-                    "total_tokens_today": r.sum_tokens
+                    "total_tokens_today": r.sum_tokens,
                 }
 
         # Masukkan model penting yang belum dipanggil hari ini (0 used)
@@ -281,7 +279,7 @@ class CreditBalanceTracker:
                     "rpd_limit": rpd_limit,
                     "remaining_calls": rpd_limit,
                     "pct_used": 0.0,
-                    "total_tokens_today": 0
+                    "total_tokens_today": 0,
                 }
 
         return quota_data
@@ -301,7 +299,7 @@ class CreditBalanceTracker:
                     func.count(TokenUsageLog.id).label("total_calls"),
                     func.coalesce(func.sum(TokenUsageLog.total_tokens), 0).label("total_tokens"),
                     func.coalesce(func.sum(TokenUsageLog.cached_tokens), 0).label("cached_tokens"),
-                    func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0).label("total_cost")
+                    func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0).label("total_cost"),
                 )
                 .where(TokenUsageLog.timestamp >= first_day_of_month)
                 .group_by(TokenUsageLog.provider)
@@ -327,14 +325,14 @@ class CreditBalanceTracker:
                 "calls": r.total_calls,
                 "tokens": r.total_tokens,
                 "cached_tokens": r.cached_tokens,
-                "cost_usd": round(cost, 4)
+                "cost_usd": round(cost, 4),
             }
 
         return {
             "month_str": now.strftime("%B %Y"),
             "total_month_usd": round(total_month_usd, 4),
             "total_month_calls": total_month_calls,
-            "by_provider": expenses
+            "by_provider": expenses,
         }
 
     @classmethod
@@ -356,5 +354,5 @@ class CreditBalanceTracker:
             "openrouter": or_res if not isinstance(or_res, Exception) else {"status": "error", "message": str(or_res)},
             "deepseek": ds_res if not isinstance(ds_res, Exception) else {"status": "error", "message": str(ds_res)},
             "quotas": quota_res if not isinstance(quota_res, Exception) else {},
-            "expenses": expense_res if not isinstance(expense_res, Exception) else {}
+            "expenses": expense_res if not isinstance(expense_res, Exception) else {},
         }

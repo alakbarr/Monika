@@ -80,6 +80,7 @@ def test_moa_context_trimming():
 
 def test_moa_chat_completions_facade():
     """Verify MoAChatCompletions produces OpenAI-compatible responses."""
+
     def mock_llm_caller(slot, msgs):
         label = slot.get("label", "Mock")
         return f"Response from {label}"

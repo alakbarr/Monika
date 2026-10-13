@@ -93,7 +93,9 @@ class BotLoopGuard:
                     similar_count += 1
 
             if similar_count >= 3:
-                reason = f"Bot ping-pong storm detected: {similar_count} highly similar messages in {self.window_seconds}s."
+                reason = (
+                    f"Bot ping-pong storm detected: {similar_count} highly similar messages in {self.window_seconds}s."
+                )
                 logger.warning(f"[BotLoopGuard] Blocked message from '{sender_id}' on '{key}': {reason}")
                 return False, reason
 

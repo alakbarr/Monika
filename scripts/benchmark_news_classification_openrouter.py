@@ -22,6 +22,7 @@ if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 try:
     from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+
     install_legacy_compat()
 except Exception:
     pass
@@ -40,10 +41,30 @@ from benchmark.system_one_scorer import score_system_one
 from utils.api.openrouter_rate_limiter import get_paid_key
 
 DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions"
-FIXTURE_PATH = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "fixtures" / "news" / "raw_news_batch_25.json"
-OUTPUT_JSON_ROOT = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_news_classification_results.json"
-OUTPUT_JSON_BENCHMARK = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "news_classification_openrouter.json"
-OUTPUT_MD_REPORT = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_news_classification_openrouter.md"
+FIXTURE_PATH = (
+    REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "fixtures" / "news" / "raw_news_batch_25.json"
+)
+OUTPUT_JSON_ROOT = (
+    REPO_ROOT
+    / "src"
+    / "monika"
+    / "application"
+    / "benchmark"
+    / "results"
+    / "benchmark_news_classification_results.json"
+)
+OUTPUT_JSON_BENCHMARK = (
+    REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "news_classification_openrouter.json"
+)
+OUTPUT_MD_REPORT = (
+    REPO_ROOT
+    / "src"
+    / "monika"
+    / "application"
+    / "benchmark"
+    / "results"
+    / "benchmark_news_classification_openrouter.md"
+)
 
 MODELS_TO_BENCHMARK: List[Dict[str, str]] = [
     {"id": "openai/gpt-6-luna-decisions", "name": "Luna Decision (GPT-6)"},
@@ -185,7 +206,14 @@ async def evaluate_single_item(
                         "latency_ms": round(latency_s * 1000.0, 1),
                         "input_tokens": 0,
                         "cost_usd": 0.0,
-                        "scores": {"accuracy_score": 0.0, "exact_accuracy_score": 0.0, "latency_score": 0.0, "calibration_score": 0.0, "schema_score": 0.0, "overall_score": 0.0},
+                        "scores": {
+                            "accuracy_score": 0.0,
+                            "exact_accuracy_score": 0.0,
+                            "latency_score": 0.0,
+                            "calibration_score": 0.0,
+                            "schema_score": 0.0,
+                            "overall_score": 0.0,
+                        },
                         "status": f"http_{resp.status_code}",
                         "error": resp.text[:200],
                     }
@@ -203,7 +231,14 @@ async def evaluate_single_item(
                         "latency_ms": round(latency_s * 1000.0, 1),
                         "input_tokens": 0,
                         "cost_usd": 0.0,
-                        "scores": {"accuracy_score": 0.0, "exact_accuracy_score": 0.0, "latency_score": 0.0, "calibration_score": 0.0, "schema_score": 0.0, "overall_score": 0.0},
+                        "scores": {
+                            "accuracy_score": 0.0,
+                            "exact_accuracy_score": 0.0,
+                            "latency_score": 0.0,
+                            "calibration_score": 0.0,
+                            "schema_score": 0.0,
+                            "overall_score": 0.0,
+                        },
                         "status": f"http_{resp.status_code}",
                         "error": resp.text[:200],
                     }
@@ -225,7 +260,14 @@ async def evaluate_single_item(
                     "latency_ms": round(latency_s * 1000.0, 1),
                     "input_tokens": 0,
                     "cost_usd": 0.0,
-                    "scores": {"accuracy_score": 0.0, "exact_accuracy_score": 0.0, "latency_score": 0.0, "calibration_score": 0.0, "schema_score": 0.0, "overall_score": 0.0},
+                    "scores": {
+                        "accuracy_score": 0.0,
+                        "exact_accuracy_score": 0.0,
+                        "latency_score": 0.0,
+                        "calibration_score": 0.0,
+                        "schema_score": 0.0,
+                        "overall_score": 0.0,
+                    },
                     "status": "exception",
                     "error": str(exc),
                 }
@@ -243,7 +285,14 @@ async def evaluate_single_item(
         "latency_ms": 0.0,
         "input_tokens": 0,
         "cost_usd": 0.0,
-        "scores": {"accuracy_score": 0.0, "exact_accuracy_score": 0.0, "latency_score": 0.0, "calibration_score": 0.0, "schema_score": 0.0, "overall_score": 0.0},
+        "scores": {
+            "accuracy_score": 0.0,
+            "exact_accuracy_score": 0.0,
+            "latency_score": 0.0,
+            "calibration_score": 0.0,
+            "schema_score": 0.0,
+            "overall_score": 0.0,
+        },
         "status": "timeout",
     }
 
@@ -261,10 +310,7 @@ async def benchmark_model(
     print(f"--> Benchmarking {model_name:25s} ({model_id})...", flush=True)
     semaphore = asyncio.Semaphore(4)
 
-    tasks = [
-        evaluate_single_item(client, model_id, item, headers, semaphore)
-        for item in news_items
-    ]
+    tasks = [evaluate_single_item(client, model_id, item, headers, semaphore) for item in news_items]
     results = await asyncio.gather(*tasks)
 
     # Compute aggregate metrics
@@ -284,7 +330,11 @@ async def benchmark_model(
     latencies = [r["latency_ms"] for r in valid_items]
     mean_latency = round(statistics.mean(latencies), 1) if latencies else 0.0
     p50_latency = round(statistics.median(latencies), 1) if latencies else 0.0
-    p95_latency = round(statistics.quantiles(latencies, n=20)[18], 1) if len(latencies) >= 20 else (max(latencies) if latencies else 0.0)
+    p95_latency = (
+        round(statistics.quantiles(latencies, n=20)[18], 1)
+        if len(latencies) >= 20
+        else (max(latencies) if latencies else 0.0)
+    )
 
     total_cost = sum(r["cost_usd"] for r in valid_items)
     cost_per_1k = round((total_cost / total_count) * 1000.0, 4) if total_count > 0 else 0.0
@@ -374,7 +424,12 @@ def generate_markdown_report(
     # Sort models by composite score descending, then by exact accuracy descending
     sorted_results = sorted(
         bench_results,
-        key=lambda x: (x["scores"]["composite_s1_score"], x["adjacent_accuracy_pct"], x["exact_accuracy_pct"], -x["mean_latency_ms"]),
+        key=lambda x: (
+            x["scores"]["composite_s1_score"],
+            x["adjacent_accuracy_pct"],
+            x["exact_accuracy_pct"],
+            -x["mean_latency_ms"],
+        ),
         reverse=True,
     )
 
@@ -412,20 +467,24 @@ def generate_markdown_report(
         cal = f"{res['scores']['calibration_score']:.2f}"
         s1_score = f"**{res['scores']['composite_s1_score']:.2f}**"
         cost_1k = f"${res['cost_per_1k_news']:.4f}"
-        md.append(f"| {rank} | {name} | `{mid}` | {exact_acc} | {adj_acc} | {mean_dist} | {lat} | {p95} | {cal} | {s1_score} | {cost_1k} |")
+        md.append(
+            f"| {rank} | {name} | `{mid}` | {exact_acc} | {adj_acc} | {mean_dist} | {lat} | {p95} | {cal} | {s1_score} | {cost_1k} |"
+        )
 
-    md.extend([
-        "",
-        "---",
-        "",
-        "## 2. In-Depth Architectural Analysis by Metric",
-        "",
-        "### A. Classification Accuracy Breakdown (Per-Class Exact / Adjacent)",
-        "The canonical 25-item dataset tests edge cases across volatility tiers (`BREAKING`, `HIGH`, `MEDIUM`, `LOW`, `NONE`).",
-        "",
-        "| Model Name | BREAKING | HIGH | MEDIUM | LOW | NONE |",
-        "| :--- | :---: | :---: | :---: | :---: | :---: |",
-    ])
+    md.extend(
+        [
+            "",
+            "---",
+            "",
+            "## 2. In-Depth Architectural Analysis by Metric",
+            "",
+            "### A. Classification Accuracy Breakdown (Per-Class Exact / Adjacent)",
+            "The canonical 25-item dataset tests edge cases across volatility tiers (`BREAKING`, `HIGH`, `MEDIUM`, `LOW`, `NONE`).",
+            "",
+            "| Model Name | BREAKING | HIGH | MEDIUM | LOW | NONE |",
+            "| :--- | :---: | :---: | :---: | :---: | :---: |",
+        ]
+    )
 
     for res in sorted_results:
         name = res["model_name"]
@@ -437,19 +496,21 @@ def generate_markdown_report(
         n_acc = f"{stats.get('NONE', {}).get('accuracy_pct', 0.0):.0f}% ({stats.get('NONE', {}).get('correct', 0)}/{stats.get('NONE', {}).get('total', 0)})"
         md.append(f"| {name} | {b_acc} | {h_acc} | {m_acc} | {l_acc} | {n_acc} |")
 
-    md.extend([
-        "",
-        "### B. Latency Hierarchy & Cloud WAN Distribution",
-        "- **Sub-1000ms Tier**: Models delivering real-time reflex speed over WAN HTTPS.",
-        "- **1000ms–2000ms Tier**: Reliable performance with minor network jitter.",
-        "- **>2000ms Outliers**: Models exhibiting queue delays or unoptimized execution paths.",
-        "",
-        "### C. Economic Efficiency (Cost per Million News Items)",
-        "Unlike Context Generation models (e.g. GPT-6.1 Sol, Claude Opus 5.5, DeepSeek v4 Pro) which cost $5.00 – $40.00 per task, Decision models cost fractions of a cent:",
-        "",
-        "| Model Name | Input Tokens / Batch | Total Cost (25 items) | Cost per 1,000 Items | Projected Cost / 100k Items |",
-        "| :--- | :---: | :---: | :---: | :---: |",
-    ])
+    md.extend(
+        [
+            "",
+            "### B. Latency Hierarchy & Cloud WAN Distribution",
+            "- **Sub-1000ms Tier**: Models delivering real-time reflex speed over WAN HTTPS.",
+            "- **1000ms–2000ms Tier**: Reliable performance with minor network jitter.",
+            "- **>2000ms Outliers**: Models exhibiting queue delays or unoptimized execution paths.",
+            "",
+            "### C. Economic Efficiency (Cost per Million News Items)",
+            "Unlike Context Generation models (e.g. GPT-6.1 Sol, Claude Opus 5.5, DeepSeek v4 Pro) which cost $5.00 – $40.00 per task, Decision models cost fractions of a cent:",
+            "",
+            "| Model Name | Input Tokens / Batch | Total Cost (25 items) | Cost per 1,000 Items | Projected Cost / 100k Items |",
+            "| :--- | :---: | :---: | :---: | :---: |",
+        ]
+    )
 
     for res in sorted_results:
         name = res["model_name"]
@@ -459,17 +520,19 @@ def generate_markdown_report(
         c_100k = f"${res['cost_per_1k_news'] * 100.0:.2f}"
         md.append(f"| {name} | {in_tok} | {tot_cost} | {c_1k} | {c_100k} |")
 
-    md.extend([
-        "",
-        "---",
-        "",
-        "## 3. Production Deployment Recommendation for Monika",
-        "",
-        "1. **Primary Reflex Screener**: The top-ranked model from this benchmark should be set as Monika's default `news_classification` System One provider.",
-        "2. **Zero Prose Leakage**: All tested models achieved 100% schema validity via typed questions (`type: choice`), completely eliminating markdown formatting or conversational noise.",
-        "3. **Fallback & Escalation Protocol**: Retain Monika's Option C Hybrid Architecture — Jev/Luna Decision handles 95% of incoming news volume for sub-cent costs; borderline or high-impact events automatically escalate to Gemini Flash Lite.",
-        "",
-    ])
+    md.extend(
+        [
+            "",
+            "---",
+            "",
+            "## 3. Production Deployment Recommendation for Monika",
+            "",
+            "1. **Primary Reflex Screener**: The top-ranked model from this benchmark should be set as Monika's default `news_classification` System One provider.",
+            "2. **Zero Prose Leakage**: All tested models achieved 100% schema validity via typed questions (`type: choice`), completely eliminating markdown formatting or conversational noise.",
+            "3. **Fallback & Escalation Protocol**: Retain Monika's Option C Hybrid Architecture — Jev/Luna Decision handles 95% of incoming news volume for sub-cent costs; borderline or high-impact events automatically escalate to Gemini Flash Lite.",
+            "",
+        ]
+    )
 
     report_content = "\n".join(md)
     output_path.write_text(report_content, encoding="utf-8")

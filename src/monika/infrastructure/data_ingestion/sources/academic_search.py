@@ -114,14 +114,16 @@ class AcademicSearchClient:
                 if arxiv_id.startswith("http://"):
                     arxiv_id = "https://" + arxiv_id[7:]
 
-                papers.append({
-                    "title": title,
-                    "authors": authors,
-                    "summary": summary,
-                    "published": published,
-                    "url": final_url,
-                    "arxiv_id": arxiv_id,
-                })
+                papers.append(
+                    {
+                        "title": title,
+                        "authors": authors,
+                        "summary": summary,
+                        "published": published,
+                        "url": final_url,
+                        "arxiv_id": arxiv_id,
+                    }
+                )
         except Exception as e:
             logger.error(f"Failed to parse arXiv Atom XML: {e}")
 

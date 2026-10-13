@@ -17,15 +17,15 @@ logger = logging.getLogger("TradingAgent.Harness.TradeStopGate")
 _TRADE_PROPOSAL_PATTERNS = [
     re.compile(r'["\']action["\']\s*:\s*["\'](BUY|SELL|LONG|SHORT)["\']', re.IGNORECASE),
     re.compile(r'["\']direction["\']\s*:\s*["\'](BUY|SELL|LONG|SHORT)["\']', re.IGNORECASE),
-    re.compile(r'\b(RECOMMEND|EXECUTE|PROPOSE|ORDER)\s*:\s*(BUY|SELL|LONG|SHORT)\b', re.IGNORECASE),
-    re.compile(r'\b(OPEN|ENTER)\s+(BUY|SELL|LONG|SHORT)\s+POSITION\b', re.IGNORECASE),
-    re.compile(r'\bDECISION\s*:\s*(BUY|SELL)\b', re.IGNORECASE),
+    re.compile(r"\b(RECOMMEND|EXECUTE|PROPOSE|ORDER)\s*:\s*(BUY|SELL|LONG|SHORT)\b", re.IGNORECASE),
+    re.compile(r"\b(OPEN|ENTER)\s+(BUY|SELL|LONG|SHORT)\s+POSITION\b", re.IGNORECASE),
+    re.compile(r"\bDECISION\s*:\s*(BUY|SELL)\b", re.IGNORECASE),
 ]
 
 _WAIT_PATTERNS = [
     re.compile(r'["\']action["\']\s*:\s*["\'](WAIT|HOLD|NEUTRAL|PASS|NO_TRADE)["\']', re.IGNORECASE),
-    re.compile(r'\bDECISION\s*:\s*(WAIT|HOLD|NEUTRAL|PASS|NO_TRADE)\b', re.IGNORECASE),
-    re.compile(r'\bRECOMMEND(?:ATION)?\s*:\s*(WAIT|HOLD|NEUTRAL|PASS|NO_TRADE)\b', re.IGNORECASE),
+    re.compile(r"\bDECISION\s*:\s*(WAIT|HOLD|NEUTRAL|PASS|NO_TRADE)\b", re.IGNORECASE),
+    re.compile(r"\bRECOMMEND(?:ATION)?\s*:\s*(WAIT|HOLD|NEUTRAL|PASS|NO_TRADE)\b", re.IGNORECASE),
 ]
 
 

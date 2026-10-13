@@ -64,7 +64,7 @@ async def test_path_dependent_sl_hit_first():
         high=1.1020,
         low=1.0940,  # Below SL (1.0950)
         close=1.0960,
-        volume=100.0
+        volume=100.0,
     )
     bar2 = PriceOHLCV(
         symbol=symbol,
@@ -74,7 +74,7 @@ async def test_path_dependent_sl_hit_first():
         high=1.1150,  # Above TP (1.1100)
         low=1.0955,
         close=1.1120,
-        volume=120.0
+        volume=120.0,
     )
 
     mock_session = create_mock_async_session()
@@ -91,7 +91,7 @@ async def test_path_dependent_sl_hit_first():
         proposed_sl=sl,
         proposed_tp=tp,
         direction=1,
-        pip_size=0.0001
+        pip_size=0.0001,
     )
 
     assert sl_hit is True
@@ -116,7 +116,7 @@ async def test_path_dependent_tp_hit_first():
         high=1.1120,  # Above TP (1.1100)
         low=1.0980,
         close=1.1110,
-        volume=150.0
+        volume=150.0,
     )
     bar2 = PriceOHLCV(
         symbol=symbol,
@@ -126,7 +126,7 @@ async def test_path_dependent_tp_hit_first():
         high=1.1130,
         low=1.0940,  # Below SL (1.0950) later
         close=1.0950,
-        volume=80.0
+        volume=80.0,
     )
 
     mock_session = create_mock_async_session()
@@ -143,7 +143,7 @@ async def test_path_dependent_tp_hit_first():
         proposed_sl=sl,
         proposed_tp=tp,
         direction=1,
-        pip_size=0.0001
+        pip_size=0.0001,
     )
 
     assert sl_hit is False
@@ -167,7 +167,7 @@ async def test_path_dependent_zero_or_inverted_sl_fallback():
         high=1.1010,
         low=1.0990,
         close=1.0995,
-        volume=100.0
+        volume=100.0,
     )
 
     mock_session = create_mock_async_session()
@@ -185,7 +185,7 @@ async def test_path_dependent_zero_or_inverted_sl_fallback():
         proposed_sl=0.0,
         proposed_tp=0.0,
         direction=-1,  # SELL
-        pip_size=0.0001
+        pip_size=0.0001,
     )
 
     assert sl_hit is False, "Zero SL must not falsely trigger hit on SELL bar"
@@ -261,7 +261,7 @@ async def test_process_paper_whatifs_timeframe_h1_filter():
     # 1. Main join query for reflections
     # 2. Target 24h bar query -> returns bar
     mock_session = create_mock_async_session()
-    
+
     mock_res_main = MagicMock()
     mock_res_main.all.return_value = [(reflection, analysis)]
 
@@ -270,14 +270,15 @@ async def test_process_paper_whatifs_timeframe_h1_filter():
 
     mock_session.execute.side_effect = [mock_res_main, mock_res_bar]
 
-    with patch.object(linker, "_check_path_dependent_outcome", new_callable=AsyncMock, return_value=(False, True)), \
-         patch("analysis.memory.outcome_linker.AlphaCalculator") as mock_calc_cls, \
-         patch.object(linker.reflector, "reflect_on_trade", new_callable=AsyncMock):
-        
+    with (
+        patch.object(linker, "_check_path_dependent_outcome", new_callable=AsyncMock, return_value=(False, True)),
+        patch("analysis.memory.outcome_linker.AlphaCalculator") as mock_calc_cls,
+        patch.object(linker.reflector, "reflect_on_trade", new_callable=AsyncMock),
+    ):
         mock_calc = MagicMock()
-        mock_calc.calculate_alpha = AsyncMock(return_value={
-            "benchmark_name": "DXY", "benchmark_return": 0.1, "alpha_return": 0.5
-        })
+        mock_calc.calculate_alpha = AsyncMock(
+            return_value={"benchmark_name": "DXY", "benchmark_return": 0.1, "alpha_return": 0.5}
+        )
         mock_calc_cls.return_value = mock_calc
 
         await linker.process_paper_whatifs(session=mock_session)
@@ -288,6 +289,3 @@ async def test_process_paper_whatifs_timeframe_h1_filter():
     compiled_bar_stmt = str(bar_stmt)
     assert "price_ohlcv.timeframe =" in compiled_bar_stmt
     assert "price_ohlcv.symbol =" in compiled_bar_stmt
-
-
-

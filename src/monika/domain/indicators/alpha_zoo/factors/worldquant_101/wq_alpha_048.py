@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #48.
 
 Formula (paper appendix): indneutralize(...subindustry...) / sum((delta(close,1)/delay(close,1))^2, 250)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_048"
 
 __alpha_meta__ = {
-    'id': 'alpha101_048',
-    'nickname': 'Kakushadze Alpha #48',
-    'theme': ['momentum', 'volatility'],
-    'formula_latex': 'indneutralize(...subindustry...) / sum((delta(close,1)/delay(close,1))^2, 250)',
-    'columns_required': ['close'],
-    'extras_required': [],
-    'requires_sector': True,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 251,
-    'notes': "Industry neutralization implemented via per-row sector group demean (panel['sector'] required). When sector tag is absent the registry rejects via SkipAlpha; the compute() also has a degraded global demean fallback. This is a partial approximation of the paper's IndClass.industry/subindustry/sector neutralization.",
+    "id": "alpha101_048",
+    "nickname": "Kakushadze Alpha #48",
+    "theme": ["momentum", "volatility"],
+    "formula_latex": "indneutralize(...subindustry...) / sum((delta(close,1)/delay(close,1))^2, 250)",
+    "columns_required": ["close"],
+    "extras_required": [],
+    "requires_sector": True,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 251,
+    "notes": "Industry neutralization implemented via per-row sector group demean (panel['sector'] required). When sector tag is absent the registry rejects via SkipAlpha; the compute() also has a degraded global demean fallback. This is a partial approximation of the paper's IndClass.industry/subindustry/sector neutralization.",
 }
 
 
@@ -95,7 +94,6 @@ def _ind_neutralize(x: Any, panel: Any) -> Any:
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
     close = panel["close"]
-
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
     rolling_sum = _rolling_sum

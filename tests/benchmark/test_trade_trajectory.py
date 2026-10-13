@@ -11,7 +11,7 @@ def test_trade_trajectory_logger():
 
     try:
         logger = TradeTrajectoryLogger(log_path=temp_log)
-        
+
         # Log 2 sample trajectories
         logger.log_trajectory(
             symbol="EURUSD",
@@ -24,14 +24,10 @@ def test_trade_trajectory_logger():
             pnl_pct=1.8,
             mae_points=12.0,
             mfe_points=35.0,
-            reflection_tags=["good_process_good_outcome"]
+            reflection_tags=["good_process_good_outcome"],
         )
         logger.log_trajectory(
-            symbol="USDJPY",
-            decision="SELL",
-            ticket=654321,
-            pnl_pct=-0.8,
-            reflection_tags=["sl_too_tight"]
+            symbol="USDJPY", decision="SELL", ticket=654321, pnl_pct=-0.8, reflection_tags=["sl_too_tight"]
         )
 
         records = logger.load_recent_trajectories(limit=10)
@@ -45,10 +41,7 @@ def test_trade_trajectory_logger():
 
         # Test updating trajectory outcome by ticket
         ok = logger.update_trajectory_outcome(
-            ticket=123456,
-            pnl_pct=2.5,
-            pnl_usd=250.0,
-            reflection_tags=["tp_hit", "runner_maximized"]
+            ticket=123456, pnl_pct=2.5, pnl_usd=250.0, reflection_tags=["tp_hit", "runner_maximized"]
         )
         assert ok is True
 
@@ -60,10 +53,7 @@ def test_trade_trajectory_logger():
 
         # Test updating trajectory outcome by symbol fallback
         ok_sym = logger.update_trajectory_outcome(
-            symbol="USDJPY",
-            pnl_pct=-1.2,
-            pnl_usd=-120.0,
-            reflection_tags=["sl_hit"]
+            symbol="USDJPY", pnl_pct=-1.2, pnl_usd=-120.0, reflection_tags=["sl_hit"]
         )
         assert ok_sym is True
         updated_records2 = logger.load_recent_trajectories(limit=10)

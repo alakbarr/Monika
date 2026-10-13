@@ -2,6 +2,7 @@
 WalkForwardEngine: Rolling-Window Walk-Forward Optimization & Out-of-Sample Validation.
 Evaluates strategy robustness, alpha degradation, and detects overfitting across chronological rolling folds.
 """
+
 import logging
 import math
 from dataclasses import dataclass, field
@@ -163,7 +164,9 @@ class WalkForwardEngine:
         oos_returns = []
 
         for idx, (is_start, is_end, oos_start, oos_end) in enumerate(raw_folds, 1):
-            logger.debug(f"--- Running Fold {idx}/{len(raw_folds)}: IS [{is_start.strftime('%Y-%m-%d')} - {is_end.strftime('%Y-%m-%d')}] | OOS [{oos_start.strftime('%Y-%m-%d')} - {oos_end.strftime('%Y-%m-%d')}] ---")
+            logger.debug(
+                f"--- Running Fold {idx}/{len(raw_folds)}: IS [{is_start.strftime('%Y-%m-%d')} - {is_end.strftime('%Y-%m-%d')}] | OOS [{oos_start.strftime('%Y-%m-%d')} - {oos_end.strftime('%Y-%m-%d')}] ---"
+            )
 
             from monika.infrastructure.database.models import BacktestRun
 
@@ -182,13 +185,19 @@ class WalkForwardEngine:
             else:
                 is_res = await is_engine.run()
             is_trades = is_res if isinstance(is_res, list) else getattr(is_engine, "trades", [])
-            is_run_rec = is_res if isinstance(is_res, BacktestRun) else BacktestRun(start_date=is_start, end_date=is_end, initial_equity=10000.0)
+            is_run_rec = (
+                is_res
+                if isinstance(is_res, BacktestRun)
+                else BacktestRun(start_date=is_start, end_date=is_end, initial_equity=10000.0)
+            )
             is_curve = getattr(is_engine, "equity_curve", None)
             if not isinstance(is_curve, list):
                 is_curve = getattr(is_run_rec, "equity_curve", None)
             if not isinstance(is_curve, list):
                 is_curve = None
-            is_rep = ReportGenerator(run=is_run_rec, trades=is_trades, equity_curve=is_curve, start_date=is_start, end_date=is_end)
+            is_rep = ReportGenerator(
+                run=is_run_rec, trades=is_trades, equity_curve=is_curve, start_date=is_start, end_date=is_end
+            )
             is_rep.calculate_metrics()
             is_days = max(1.0, (is_end - is_start).total_seconds() / 86400.0)
             is_total_pnl = sum(float(t.pnl_pct or 0.0) for t in is_trades)
@@ -217,13 +226,19 @@ class WalkForwardEngine:
             else:
                 oos_res = await oos_engine.run()
             oos_trades = oos_res if isinstance(oos_res, list) else getattr(oos_engine, "trades", [])
-            oos_run_rec = oos_res if isinstance(oos_res, BacktestRun) else BacktestRun(start_date=oos_start, end_date=oos_end, initial_equity=10000.0)
+            oos_run_rec = (
+                oos_res
+                if isinstance(oos_res, BacktestRun)
+                else BacktestRun(start_date=oos_start, end_date=oos_end, initial_equity=10000.0)
+            )
             oos_curve = getattr(oos_engine, "equity_curve", None)
             if not isinstance(oos_curve, list):
                 oos_curve = getattr(oos_run_rec, "equity_curve", None)
             if not isinstance(oos_curve, list):
                 oos_curve = None
-            oos_rep = ReportGenerator(run=oos_run_rec, trades=oos_trades, equity_curve=oos_curve, start_date=oos_start, end_date=oos_end)
+            oos_rep = ReportGenerator(
+                run=oos_run_rec, trades=oos_trades, equity_curve=oos_curve, start_date=oos_start, end_date=oos_end
+            )
             oos_rep.calculate_metrics()
             oos_days = max(1.0, (oos_end - oos_start).total_seconds() / 86400.0)
             oos_total_pnl = sum(float(t.pnl_pct or 0.0) for t in oos_trades)
@@ -240,8 +255,12 @@ class WalkForwardEngine:
             all_oos_trades.extend(oos_trades)
 
             # Extract annualized returns and Sharpe
-            is_ann_ret = float(is_metrics.get("annualized_return_pct", 0.0) or is_metrics.get("total_pnl_pct", 0.0) or 0.0)
-            oos_ann_ret = float(oos_metrics.get("annualized_return_pct", 0.0) or oos_metrics.get("total_pnl_pct", 0.0) or 0.0)
+            is_ann_ret = float(
+                is_metrics.get("annualized_return_pct", 0.0) or is_metrics.get("total_pnl_pct", 0.0) or 0.0
+            )
+            oos_ann_ret = float(
+                oos_metrics.get("annualized_return_pct", 0.0) or oos_metrics.get("total_pnl_pct", 0.0) or 0.0
+            )
             is_sharpe = float(is_metrics.get("sharpe_ratio", 0.0) or 0.0)
             oos_sharpe = float(oos_metrics.get("sharpe_ratio", 0.0) or 0.0)
 
@@ -257,7 +276,9 @@ class WalkForwardEngine:
                 fold_wfe = 1.0 if oos_ann_ret >= 0 else 0.0
             else:
                 # IS was negative
-                fold_wfe = 0.0 if oos_ann_ret <= is_ann_ret else round(abs(oos_ann_ret - is_ann_ret) / abs(is_ann_ret), 3)
+                fold_wfe = (
+                    0.0 if oos_ann_ret <= is_ann_ret else round(abs(oos_ann_ret - is_ann_ret) / abs(is_ann_ret), 3)
+                )
 
             fold_obj = WalkForwardFold(
                 fold_index=idx,
@@ -269,30 +290,34 @@ class WalkForwardEngine:
                 oos_metrics=oos_metrics,
                 wfe=fold_wfe,
                 is_trades_count=len(is_trades),
-                oos_trades_count=len(oos_trades)
+                oos_trades_count=len(oos_trades),
             )
             results_folds.append(fold_obj)
 
         # Calculate aggregate institutional metrics
         avg_is_sharpe = round(sum(is_sharpes) / len(is_sharpes), 2) if is_sharpes else 0.0
         avg_oos_sharpe = round(sum(oos_sharpes) / len(oos_sharpes), 2) if oos_sharpes else 0.0
-        
+
         avg_is_ret = sum(is_returns) / len(is_returns) if is_returns else 0.0
         avg_oos_ret = sum(oos_returns) / len(oos_returns) if oos_returns else 0.0
-        
+
         if avg_is_ret > 0:
             overall_wfe = round(avg_oos_ret / avg_is_ret, 3)
         else:
             overall_wfe = 1.0 if avg_oos_ret >= 0 else 0.0
 
         # Compute Deflated Sharpe Ratio (DSR) across folds
-        effective_trials = self.n_trials if self.n_trials is not None and self.n_trials > 0 else max(1, len(results_folds))
+        effective_trials = (
+            self.n_trials if self.n_trials is not None and self.n_trials > 0 else max(1, len(results_folds))
+        )
         total_oos_days = max(10, sum((f.oos_end - f.oos_start).days for f in results_folds))
         n_obs = max(len(all_oos_trades), total_oos_days)
         # De-annualize Sharpe to match daily frequency scale of n_obs
         daily_oos_sr = avg_oos_sharpe / math.sqrt(252.0) if avg_oos_sharpe > 0 else avg_oos_sharpe
         oos_trade_returns = [float(t.pnl_pct or 0.0) / 100.0 for t in all_oos_trades] if all_oos_trades else []
-        _, _, oos_skew, oos_kurt = compute_sample_moments(oos_trade_returns) if len(oos_trade_returns) >= 3 else (0.0, 0.0, 0.0, 0.0)
+        _, _, oos_skew, oos_kurt = (
+            compute_sample_moments(oos_trade_returns) if len(oos_trade_returns) >= 3 else (0.0, 0.0, 0.0, 0.0)
+        )
 
         dsr_score = deflated_sharpe_ratio(
             observed_sr=daily_oos_sr,
@@ -330,7 +355,9 @@ class WalkForwardEngine:
             alpha_validation=alpha_val,
         )
 
-        logger.debug(f"Walk-Forward Optimization Complete: WFE={overall_wfe:.2f}, DSR={dsr_score:.2f}, AlphaValid={alpha_val.passed} (IS Sharpe={avg_is_sharpe}, OOS Sharpe={avg_oos_sharpe}, Overfit={is_overfit})")
+        logger.debug(
+            f"Walk-Forward Optimization Complete: WFE={overall_wfe:.2f}, DSR={dsr_score:.2f}, AlphaValid={alpha_val.passed} (IS Sharpe={avg_is_sharpe}, OOS Sharpe={avg_oos_sharpe}, Overfit={is_overfit})"
+        )
         return result
 
     def generate_markdown_report(self, result: WalkForwardResult) -> str:
@@ -344,15 +371,19 @@ class WalkForwardEngine:
             f"- **Overall Walk-Forward Efficiency (WFE)**: `{result.overall_wfe:.2f}` ({'PASS (>= 0.50)' if result.overall_wfe >= 0.50 else 'FAIL (< 0.50)'})",
             f"- **Aggregate In-Sample Sharpe**: `{result.aggregate_is_sharpe:.2f}`",
             f"- **Aggregate Out-of-Sample Sharpe**: `{result.aggregate_oos_sharpe:.2f}`",
-            f"- **Deflated Sharpe Ratio (DSR)**: `{result.deflated_sharpe:.2f}` ({'PASS (>= 0.50)' if result.deflated_sharpe and result.deflated_sharpe >= 0.50 else 'CAUTION (< 0.50)'})" if result.deflated_sharpe is not None else "",
+            f"- **Deflated Sharpe Ratio (DSR)**: `{result.deflated_sharpe:.2f}` ({'PASS (>= 0.50)' if result.deflated_sharpe and result.deflated_sharpe >= 0.50 else 'CAUTION (< 0.50)'})"
+            if result.deflated_sharpe is not None
+            else "",
             f"- **Total Stitched OOS Trades**: `{result.total_oos_trades}` (Win Rate: `{result.oos_win_rate_pct:.1f}%`)",
-            f"- **Alpha Validation (Beta/Consistency/Cost)**: `{'PASS' if result.alpha_validation and result.alpha_validation.passed else 'FAIL'}`" if result.alpha_validation else "",
+            f"- **Alpha Validation (Beta/Consistency/Cost)**: `{'PASS' if result.alpha_validation and result.alpha_validation.passed else 'FAIL'}`"
+            if result.alpha_validation
+            else "",
             f"  - Details: {result.alpha_validation.details}" if result.alpha_validation else "",
             f"- **Overfitting Detected**: `{'YES (Strategy degrades out-of-sample)' if result.is_overfit else 'NO (Strategy generalizes well)'}`",
             "",
             "## Fold-by-Fold Breakdown",
             "| Fold | IS Period | OOS Period | IS Trades | OOS Trades | IS Sharpe | OOS Sharpe | WFE |",
-            "|---|---|---|:---:|:---:|:---:|:---:|:---:|"
+            "|---|---|---|:---:|:---:|:---:|:---:|:---:|",
         ]
 
         for f in result.folds:
@@ -360,6 +391,8 @@ class WalkForwardEngine:
             oos_s = f.oos_start.strftime("%Y-%m-%d") + ".." + f.oos_end.strftime("%m-%d")
             is_shp = f.is_metrics.get("sharpe_ratio", 0.0) or 0.0
             oos_shp = f.oos_metrics.get("sharpe_ratio", 0.0) or 0.0
-            lines.append(f"| {f.fold_index} | {is_s} | {oos_s} | {f.is_trades_count} | {f.oos_trades_count} | {is_shp:.2f} | {oos_shp:.2f} | {f.wfe:.2f} |")
+            lines.append(
+                f"| {f.fold_index} | {is_s} | {oos_s} | {f.is_trades_count} | {f.oos_trades_count} | {is_shp:.2f} | {oos_shp:.2f} | {f.wfe:.2f} |"
+            )
 
         return "\n".join([line for line in lines if line])

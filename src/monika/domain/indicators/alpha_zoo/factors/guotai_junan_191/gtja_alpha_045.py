@@ -1,4 +1,3 @@
-
 """GTJA Alpha #45.
 
 Formula: (RANK(DELTA((((CLOSE*0.6)+(OPEN*0.4))),1)) * RANK(CORR(VWAP,MEAN(VOLUME,150),15)))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_045",
-    "theme": ['volume'],
-    "formula_latex": '(RANK(DELTA((((CLOSE*0.6)+(OPEN*0.4))),1)) * RANK(CORR(VWAP,MEAN(VOLUME,150),15)))',
-    "columns_required": ['close', 'open', 'volume', 'amount'],
+    "theme": ["volume"],
+    "formula_latex": "(RANK(DELTA((((CLOSE*0.6)+(OPEN*0.4))),1)) * RANK(CORR(VWAP,MEAN(VOLUME,150),15)))",
+    "columns_required": ["close", "open", "volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 15,
     "min_warmup_bars": 44,
-    "notes": '150d MA volume approximated with 30d window.',
+    "notes": "150d MA volume approximated with 30d window.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]

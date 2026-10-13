@@ -42,7 +42,7 @@ from monika.domain.indicators.factor_primitives import safe_div
 def fundamental_asset_growth(df: pd.DataFrame) -> pd.Series | pd.DataFrame:
     # Proxy using long-term capitalization growth
     c = df["close"]
-    return - safe_div(c - c.shift(252), c.shift(252))
+    return -safe_div(c - c.shift(252), c.shift(252))
 
 
 # ==============================================================================

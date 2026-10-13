@@ -90,9 +90,7 @@ async def test_load_dynamic_parameters_calls_log_summary():
 
     mock_row = MagicMock()
     mock_row.key = "synthesized_strategy_alpha_audusd_111111"
-    mock_row.value = (
-        '{"strategy_id": "alpha_audusd_111111", "python_code": "code", "class_name": "Synthesized_Test"}'
-    )
+    mock_row.value = '{"strategy_id": "alpha_audusd_111111", "python_code": "code", "class_name": "Synthesized_Test"}'
 
     mock_session = create_mock_async_session()
     mock_scalars = MagicMock()
@@ -102,7 +100,10 @@ async def test_load_dynamic_parameters_calls_log_summary():
     mock_session.execute.return_value = mock_result
 
     with patch.object(StrategyRegistry, "log_summary") as mock_summary:
-        with patch("scheduler.strategy_synthesis_scheduler.StrategySynthesisScheduler.compile_strategy_class") as mock_compile:
+        with patch(
+            "scheduler.strategy_synthesis_scheduler.StrategySynthesisScheduler.compile_strategy_class"
+        ) as mock_compile:
+
             class DummyCompiled(EdgeStrategy):
                 strategy_id = "alpha_audusd_111111"
                 applicable_symbols = {"AUDUSD"}

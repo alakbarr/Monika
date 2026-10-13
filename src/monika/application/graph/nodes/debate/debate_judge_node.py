@@ -31,8 +31,12 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
     if not actionable:
         return {}
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
-    scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
+    scheduler = (
+        configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    )
     settings = scheduler.settings if scheduler else {}
     debate_cfg = settings.get("agent_architecture", {})
 
@@ -51,7 +55,9 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
         deb = debate_states.get(sym, {})
         verified_bull_claim = deb.get("verified_bull_claim")
         bear_dissent = deb.get("bear_dissent") or {}
-        bull_rebuttal = deb.get("bull_rebuttal") or deb.get("bear_rebuttal") or deb.get("rebuttal") or deb.get("pro_rebuttal")
+        bull_rebuttal = (
+            deb.get("bull_rebuttal") or deb.get("bear_rebuttal") or deb.get("rebuttal") or deb.get("pro_rebuttal")
+        )
         original_context = deb.get("original_context")
         analysis_id = r.get("analysis_id")
 
@@ -69,8 +75,8 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                     if ana:
                         ana.debate_bull_thesis = json.dumps(verified_bull_claim) if verified_bull_claim else None
                         ana.debate_bear_dissent = json.dumps(bear_dissent) if bear_dissent else None
-                        ana.debate_verdict = verdict.get('final_decision')
-                        ana.debate_reason = verdict.get('reason') if verdict.get('reason') else None
+                        ana.debate_verdict = verdict.get("final_decision")
+                        ana.debate_reason = verdict.get("reason") if verdict.get("reason") else None
                         ana.decision_source = "llm_debate"
 
                         entry_zone_data = json.loads(ana.entry_zone) if ana.entry_zone else {}
@@ -78,41 +84,46 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                             session, ana, verdict, settings, entry_zone_data
                         )
                         has_adjustment = any(
-                            verdict.get(k) is not None for k in ('adjusted_entry', 'adjusted_sl', 'adjusted_tp')
+                            verdict.get(k) is not None for k in ("adjusted_entry", "adjusted_sl", "adjusted_tp")
                         )
                         if has_adjustment and not is_adj_valid:
-                            logger.warning(f"[{sym}] Judge SL/TP adjustment DITOLAK: {adj_error}. Level asli Stage 2 dipertahankan.")
-                            ana.debate_reason = (ana.debate_reason or '') + f' [SYSTEM: Judge adjustment ditolak — {adj_error}. Level asli dipertahankan.]'
+                            logger.warning(
+                                f"[{sym}] Judge SL/TP adjustment DITOLAK: {adj_error}. Level asli Stage 2 dipertahankan."
+                            )
+                            ana.debate_reason = (
+                                ana.debate_reason or ""
+                            ) + f" [SYSTEM: Judge adjustment ditolak — {adj_error}. Level asli dipertahankan.]"
                         elif has_adjustment:
                             ana.was_debate_modified = True
-                            adj_entry = verdict.get('adjusted_entry')
+                            adj_entry = verdict.get("adjusted_entry")
                             if adj_entry is not None:
-                                entry_zone_data['price'] = float(adj_entry)
+                                entry_zone_data["price"] = float(adj_entry)
                                 ana.entry_zone = json.dumps(entry_zone_data)
                                 if isinstance(r, dict):
-                                    r['entry_price'] = float(adj_entry)
-                            adj_sl = verdict.get('adjusted_sl')
+                                    r["entry_price"] = float(adj_entry)
+                            adj_sl = verdict.get("adjusted_sl")
                             if adj_sl is not None:
                                 ana.stop_loss = float(adj_sl)
                                 if isinstance(r, dict):
-                                    r['stop_loss'] = float(adj_sl)
-                            adj_tp = verdict.get('adjusted_tp')
+                                    r["stop_loss"] = float(adj_sl)
+                            adj_tp = verdict.get("adjusted_tp")
                             if adj_tp is not None:
                                 ana.take_profit = float(adj_tp)
                                 if isinstance(r, dict):
-                                    r['take_profit'] = float(adj_tp)
+                                    r["take_profit"] = float(adj_tp)
 
-                        adj_rm = verdict.get('risk_multiplier')
+                        adj_rm = verdict.get("risk_multiplier")
                         if adj_rm is not None:
                             new_rm = float(adj_rm)
                             if abs(new_rm - (ana.risk_multiplier or 1.0)) > 1e-4:
                                 ana.was_debate_modified = True
                             ana.risk_multiplier = new_rm
                             if isinstance(r, dict):
-                                r['risk_multiplier'] = new_rm
+                                r["risk_multiplier"] = new_rm
 
                         try:
                             from monika.infrastructure.database.event_store import TradingEventStore
+
                             await TradingEventStore.emit(
                                 session=session,
                                 event_type="analysis.debate.verdict",
@@ -136,20 +147,24 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                                 session=session,
                                 analysis_id=int(analysis_id or ana.id),
                                 symbol=sym,
-                                decision=original_context.get('decision', 'wait'),
+                                decision=original_context.get("decision", "wait"),
                                 confidence=ana.confidence or 0.0,
                                 confluence_score=ana.confluence_score,
-                                rationale=original_context.get('rationale', ''),
-                                reason=f"Debate Judge Rejected: {verdict.get('reason')}"
+                                rationale=original_context.get("rationale", ""),
+                                reason=f"Debate Judge Rejected: {verdict.get('reason')}",
                             )
-                            ana.decision = 'wait'
+                            ana.decision = "wait"
                             await session.commit()
                             return sym, None, verdict
 
                     return sym, (sym, r), verdict
             except Exception as e:
                 logger.error(f"[{sym}] Judge adjudication failed (failing closed to avoid risk): {e}", exc_info=True)
-                return sym, None, {"decision": "wait", "reason": f"Judge adjudication failed: {e}", "risk_multiplier": 0.0}
+                return (
+                    sym,
+                    None,
+                    {"decision": "wait", "reason": f"Judge adjudication failed: {e}", "risk_multiplier": 0.0},
+                )
 
     tasks = [_process_single(sym, r) for sym, r in actionable]
     results = await asyncio.gather(*tasks)

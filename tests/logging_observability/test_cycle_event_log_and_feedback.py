@@ -134,8 +134,8 @@ def test_hash_chain_tamper_detection():
         events[0].payload["phase"] = "tampered_value"
 
         from logging_observability.trading_cycle_event_log import verify_chain_integrity
+
         is_valid, reason = verify_chain_integrity(events)
         assert is_valid is False
         assert reason is not None
         assert "Tampered event payload" in reason
-

@@ -173,8 +173,10 @@ class TestPositionGuardianFridayClose:
         )
 
         # Mock clock/time to Friday 20:30 UTC
-        with patch("scheduler.position_guardian.clock.now") as mock_clock_now, \
-             patch("scheduler.position_guardian.get_session") as mock_sess:
+        with (
+            patch("scheduler.position_guardian.clock.now") as mock_clock_now,
+            patch("scheduler.position_guardian.get_session") as mock_sess,
+        ):
             mock_now = MagicMock()
             mock_now.weekday.return_value = 4  # Friday
             mock_now.hour = 20
@@ -265,6 +267,7 @@ class TestDatabaseAndConfigRemediation:
     def test_domain_models_exports(self):
         """database.domain_models should export BacktestRun, BacktestTrade, TradePlanLeg, etc."""
         import database.domain_models as dm
+
         assert hasattr(dm, "BacktestRun")
         assert hasattr(dm, "BacktestTrade")
         assert hasattr(dm, "TradePlanLeg")

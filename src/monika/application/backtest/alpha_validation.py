@@ -7,6 +7,7 @@ Implements:
 2. Half-Consistency test (Sortino > 0 in both first half and second half of sample).
 3. Cost Stress Test (remains profitable under 2x execution/spread/commission costs).
 """
+
 import math
 from dataclasses import dataclass
 from typing import Any, List, Optional, Sequence
@@ -102,15 +103,18 @@ def validate_alpha(
         if pnl_pct is not None:
             pnls.append(float(pnl_pct))
         else:
-            pnl_usd = getattr(t, "pnl_usd", getattr(t, "pnl", 0.0)) if not isinstance(t, dict) else t.get("pnl_usd", t.get("pnl", 0.0))
+            pnl_usd = (
+                getattr(t, "pnl_usd", getattr(t, "pnl", 0.0))
+                if not isinstance(t, dict)
+                else t.get("pnl_usd", t.get("pnl", 0.0))
+            )
             eq_base = initial_equity if initial_equity > 0 else 10000.0
             pnls.append((float(pnl_usd or 0.0) / eq_base) * 100.0)
 
     if equity_curve and len(equity_curve) >= 6:
         # Use equity curve return series (supports list of floats or list of dicts)
         eq_floats: List[float] = [
-            float(p.get("equity", p.get("value", 0.0))) if isinstance(p, dict) else float(p)
-            for p in equity_curve
+            float(p.get("equity", p.get("value", 0.0))) if isinstance(p, dict) else float(p) for p in equity_curve
         ]
         rets = [eq_floats[i] - eq_floats[i - 1] for i in range(1, len(eq_floats))]
     else:
@@ -155,6 +159,7 @@ def validate_alpha(
             lots = float(getattr(t, "executed_lots", getattr(t, "lots", 0.1)) or 0.1)
             if sym:
                 from monika.application.backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
+
                 profile = ASSET_FRICTION_PROFILE.get(str(sym).upper(), {"spread_pips": 1.5, "slippage_pips": 0.5})
                 # Cost per lot in USD: forex pip ~$10, crypto ~$1, metals ~$10-100
                 sym_u = str(sym).upper()

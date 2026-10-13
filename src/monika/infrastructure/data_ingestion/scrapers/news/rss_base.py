@@ -14,6 +14,7 @@ logger = logging.getLogger("TradingAgent.RssNewsScraper")
 
 class _TimeoutHandler(urllib.request.BaseHandler):
     """Enforces connection and read timeout on feedparser urllib opener."""
+
     def __init__(self, timeout: float = 15.0):
         self.timeout = timeout
 
@@ -28,7 +29,7 @@ class _TimeoutHandler(urllib.request.BaseHandler):
 
 class RssBaseScraper:
     """RSS scraper menggunakan feedparser — TIDAK memerlukan browser."""
-    
+
     def __init__(self, source_name: str, feed_url: str, headless: bool = True, timeout: float = 15.0):
         # headless parameter dipertahankan untuk kompatibilitas interface, tapi tidak dipakai
         self.source_name = source_name
@@ -44,10 +45,7 @@ class RssBaseScraper:
             logger.error("feedparser is not installed. Run: pip install feedparser")
             return news_list
 
-        DEFAULT_UA = (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) "
-            "Gecko/20100101 Firefox/128.0"
-        )
+        DEFAULT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
         try:
             logger.info(f"Fetching RSS feed from {self.source_name}...")
             feed = feedparser.parse(
@@ -81,12 +79,15 @@ class RssBaseScraper:
 
                 url = entry.get("link", "")
                 title = entry.get("title", "")
-                raw_published = entry.get("published", entry.get("pubDate", entry.get("updated", entry.get("date", ""))))
+                raw_published = entry.get(
+                    "published", entry.get("pubDate", entry.get("updated", entry.get("date", "")))
+                )
                 normalized_ts = raw_published
                 if raw_published:
                     try:
                         from dateutil import parser as dateutil_parser
                         from datetime import timezone
+
                         parsed_dt = dateutil_parser.parse(str(raw_published))
                         if parsed_dt.tzinfo is None:
                             parsed_dt = parsed_dt.replace(tzinfo=timezone.utc)
@@ -109,16 +110,18 @@ class RssBaseScraper:
                     if isinstance(val, list):
                         val = val[0].get("value", "") if val else ""
                     if val:
-                        summary = re.sub(r'<[^>]+>', '', str(val)).strip()[:1000]
+                        summary = re.sub(r"<[^>]+>", "", str(val)).strip()[:1000]
                         break
 
-                news_list.append(ScrapedNews(
-                    title=title.strip(),
-                    url=url,
-                    source=f"RSS ({self.source_name})",
-                    timestamp=normalized_ts,
-                    summary=summary,
-                ))
+                news_list.append(
+                    ScrapedNews(
+                        title=title.strip(),
+                        url=url,
+                        source=f"RSS ({self.source_name})",
+                        timestamp=normalized_ts,
+                        summary=summary,
+                    )
+                )
                 count += 1
 
         except Exception as e:

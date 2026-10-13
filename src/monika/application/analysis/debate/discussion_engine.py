@@ -77,12 +77,7 @@ class DiscussionCouncil:
     def _is_pass(self, text: str) -> bool:
         """Detect if agent passed its turn."""
         cleaned = text.strip().lower()
-        return (
-            cleaned == "(pass)"
-            or cleaned == "pass"
-            or cleaned.startswith("(pass)")
-            or cleaned.endswith("(pass)")
-        )
+        return cleaned == "(pass)" or cleaned == "pass" or cleaned.startswith("(pass)") or cleaned.endswith("(pass)")
 
     def run_discussion(
         self,
@@ -115,7 +110,7 @@ class DiscussionCouncil:
             for p in self.participants:
                 name = p["name"]
                 role_prompt = p.get("role_prompt", f"You are {name}, a specialist council participant.")
-                
+
                 # Delta messages since last turn
                 last_seen = watermarks.get(name, 0)
                 delta_messages = transcript[last_seen:]
@@ -123,10 +118,7 @@ class DiscussionCouncil:
                 # Update watermark
                 watermarks[name] = len(transcript)
 
-                delta_text = "\n\n".join(
-                    f"[{m.speaker} (Round {m.round_num})]: {m.content}"
-                    for m in delta_messages
-                )
+                delta_text = "\n\n".join(f"[{m.speaker} (Round {m.round_num})]: {m.content}" for m in delta_messages)
 
                 council_system = (
                     f"{role_prompt}\n\n"
@@ -167,9 +159,7 @@ class DiscussionCouncil:
                 break
 
         # Synthesis
-        all_text = "\n\n".join(
-            f"[{m.speaker}]: {m.content}" for m in transcript if not m.is_pass
-        )
+        all_text = "\n\n".join(f"[{m.speaker}]: {m.content}" for m in transcript if not m.is_pass)
         synth_prompt = (
             f"Topic: {topic}\n\n"
             f"Deliberation Transcript:\n{all_text}\n\n"
@@ -190,7 +180,7 @@ class DiscussionCouncil:
 
         # Check for financial trading signal
         trade_terms = ["buy", "sell", "order", "lots", "position", "take_profit", "stop_loss"]
-        has_trade_signal = any(term in str(consensus_text or '').lower() for term in trade_terms)
+        has_trade_signal = any(term in str(consensus_text or "").lower() for term in trade_terms)
 
         total_latency = (time.monotonic() - start_time) * 1000
 

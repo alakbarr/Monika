@@ -1,6 +1,7 @@
 """
 Unit tests for Critical Harness Protections (C1, C2, C3, M5, I2, I7).
 """
+
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -11,6 +12,7 @@ from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBl
 
 class DummyHarnessClient(BaseLLMClient):
     """Test client subclassing BaseLLMClient for testing AgentHarness."""
+
     def __init__(self, model="dummy-model", **kwargs):
         super().__init__(model=model, max_tokens=4096, **kwargs)
         self.provider_name = "dummy"
@@ -28,7 +30,6 @@ class DummyHarnessClient(BaseLLMClient):
 
     async def run_chat_loop(self, system_prompt, conversation_history, new_user_message, tools, tool_executor=None):
         return {"reply": "ok"}
-
 
 
 @pytest.fixture
@@ -75,9 +76,11 @@ async def test_c1_truncated_tool_call_protection(mock_session):
 
     # Verify corrective feedback was injected into context
     tool_results = [
-        b["content"] for m in result["context_messages"]
+        b["content"]
+        for m in result["context_messages"]
         if m["role"] == "user" and isinstance(m["content"], list)
-        for b in m["content"] if b.get("type") == "tool_result"
+        for b in m["content"]
+        if b.get("type") == "tool_result"
     ]
     assert any("truncated" in str(c).lower() for c in tool_results)
 
@@ -98,7 +101,7 @@ async def test_c2_context_overflow_auto_recovery(mock_session):
     )
     client.mock_run_tool_agent.side_effect = [
         Exception("maximum context length is 8192 tokens, but request has 9200 tokens"),
-        resp_success
+        resp_success,
     ]
 
     result = await harness.run_agent_from_messages(
@@ -161,14 +164,12 @@ async def test_m5_preflight_tool_schema_validation(mock_session):
     mock_executor = AsyncMock()
     mock_executor.execute = AsyncMock(return_value={"ok": True})
     # Provide schema requiring 'symbol'
-    mock_executor.get_tool_schema = MagicMock(return_value={
-        "name": "calc_tool",
-        "input_schema": {
-            "type": "object",
-            "required": ["symbol"],
-            "properties": {"symbol": {"type": "string"}}
+    mock_executor.get_tool_schema = MagicMock(
+        return_value={
+            "name": "calc_tool",
+            "input_schema": {"type": "object", "required": ["symbol"], "properties": {"symbol": {"type": "string"}}},
         }
-    })
+    )
 
     resp1 = MockResponse(
         content=[MockBlock("tool_use", name="calc_tool", input={"wrong_key": 123}, id="c_schema_1")],
@@ -197,9 +198,11 @@ async def test_m5_preflight_tool_schema_validation(mock_session):
     assert mock_executor.execute.call_count == 0
 
     tool_results = [
-        b["content"] for m in result["context_messages"]
+        b["content"]
+        for m in result["context_messages"]
         if m["role"] == "user" and isinstance(m["content"], list)
-        for b in m["content"] if b.get("type") == "tool_result"
+        for b in m["content"]
+        if b.get("type") == "tool_result"
     ]
     assert any("schema_validation_error" in str(c) or "required" in str(c).lower() for c in tool_results)
 
@@ -328,11 +331,7 @@ def test_c4_role_alternation_enforcement():
 
 def test_c2_truncation_openai_dict_format():
     """Verify truncation guard detects finish_reason='length' inside OpenAI dict choices."""
-    resp = {
-        "choices": [
-            {"finish_reason": "length", "message": {"role": "assistant", "content": "Truncated"}}
-        ]
-    }
+    resp = {"choices": [{"finish_reason": "length", "message": {"role": "assistant", "content": "Truncated"}}]}
     assert AgentHarness._check_truncation(resp) is True
 
 
@@ -341,4 +340,3 @@ def test_c1_harness_db_session_init():
     mock_session = MagicMock()
     harness = AgentHarness(llm_client=MagicMock(), db_session=mock_session)
     assert harness.db_session is mock_session
-

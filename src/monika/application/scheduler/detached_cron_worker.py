@@ -103,25 +103,28 @@ class DetachedCronWorker:
 
         conn = self.get_connection()
         with conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO scheduled_jobs (
                     job_id, name, schedule_expr, interval_seconds, handler_name,
                     payload_json, target_platform, target_channel, last_run, next_run,
                     is_active, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?);
-            """, (
-                job_id,
-                name,
-                cron_expr,
-                interval_sec,
-                handler_name,
-                json.dumps(payload or {}),
-                target_platform,
-                target_channel,
-                None,
-                next_run,
-                now,
-            ))
+            """,
+                (
+                    job_id,
+                    name,
+                    cron_expr,
+                    interval_sec,
+                    handler_name,
+                    json.dumps(payload or {}),
+                    target_platform,
+                    target_channel,
+                    None,
+                    next_run,
+                    now,
+                ),
+            )
         conn.close()
 
         logger.info(f"[DetachedCronWorker] Added job '{job_id}' ({name}): {desc}, next_run in {int(next_run - now)}s")
@@ -182,16 +185,22 @@ class DetachedCronWorker:
         next_run = now + interval
 
         with conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE scheduled_jobs 
                 SET last_run = ?, next_run = ?
                 WHERE job_id = ?;
-            """, (now, next_run, job_id))
+            """,
+                (now, next_run, job_id),
+            )
 
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO job_deliveries (job_id, status, output_text, delivered_at)
                 VALUES (?, ?, ?, ?);
-            """, (job_id, status, output_str, now))
+            """,
+                (job_id, status, output_str, now),
+            )
 
         conn.close()
         return success, output_str
@@ -222,10 +231,13 @@ class DetachedCronWorker:
             try:
                 now = time.time()
                 conn = self.get_connection()
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     SELECT job_id FROM scheduled_jobs
                     WHERE is_active = 1 AND next_run <= ?;
-                """, (now,))
+                """,
+                    (now,),
+                )
                 due_jobs = [row["job_id"] for row in cursor.fetchall()]
                 conn.close()
 

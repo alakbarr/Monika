@@ -27,6 +27,7 @@ def canonical_json(data: Any) -> str:
     - Standardized ISO timestamps
     - Stripped whitespace
     """
+
     def _default_serializer(obj: Any) -> Any:
         if isinstance(obj, (datetime,)):
             return obj.isoformat()
@@ -202,6 +203,9 @@ class ApprovalTransport:
 
         current_time = now if now is not None else decision.decided_at
         if current_time > request.expires_at:
-            return False, f"Decision arrived after request expiry (now={current_time} > expires_at={request.expires_at})."
+            return (
+                False,
+                f"Decision arrived after request expiry (now={current_time} > expires_at={request.expires_at}).",
+            )
 
         return True, "Approval binding verified successfully."

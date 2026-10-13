@@ -38,6 +38,7 @@ logger = logging.getLogger("TradingAgent.Security.PromptInjectionScanner")
 
 class PromptInjectionThreatDetected(ValueError):
     """Raised when incoming content exceeds prompt injection threat threshold."""
+
     pass
 
 
@@ -54,7 +55,7 @@ class InjectionScanResult:
 INVISIBLE_CHARS: Set[int] = (
     set(range(0x200B, 0x200F))  # ZWS, ZWNJ, ZWJ, LRM, RLM
     | set(range(0x202A, 0x202F))  # LRE, RLE, PDF, LRO, RLO
-    | {0xFEFF, 0x2060, 0x00AD}    # BOM, Word Joiner, Soft Hyphen
+    | {0xFEFF, 0x2060, 0x00AD}  # BOM, Word Joiner, Soft Hyphen
 )
 
 
@@ -65,34 +66,77 @@ class PromptInjectionScanner:
 
     # High-severity override patterns (weight: 0.70 - 0.85)
     OVERRIDE_PATTERNS = [
-        (re.compile(r"ignore\s+(?:all\s+)?(?:previous|prior|above)\s+instructions?", re.IGNORECASE), 0.75, "instruction_override"),
-        (re.compile(r"disregard\s+(?:all\s+)?(?:previous|prior|system)\s+rules?", re.IGNORECASE), 0.75, "rule_override"),
+        (
+            re.compile(r"ignore\s+(?:all\s+)?(?:previous|prior|above)\s+instructions?", re.IGNORECASE),
+            0.75,
+            "instruction_override",
+        ),
+        (
+            re.compile(r"disregard\s+(?:all\s+)?(?:previous|prior|system)\s+rules?", re.IGNORECASE),
+            0.75,
+            "rule_override",
+        ),
         (re.compile(r"(?:system\s+prompt|core\s+instruction)\s*[:=]\s*", re.IGNORECASE), 0.70, "system_prompt_tamper"),
-        (re.compile(r"(?:stop\s+being\s+a\s+trading\s+assistant|you\s+are\s+no\s+longer\s+a)", re.IGNORECASE), 0.70, "role_inversion"),
-        (re.compile(r"override\s+(?:all\s+)?safety\s+(?:checks|rules|guidelines)", re.IGNORECASE), 0.75, "safety_override"),
+        (
+            re.compile(r"(?:stop\s+being\s+a\s+trading\s+assistant|you\s+are\s+no\s+longer\s+a)", re.IGNORECASE),
+            0.70,
+            "role_inversion",
+        ),
+        (
+            re.compile(r"override\s+(?:all\s+)?safety\s+(?:checks|rules|guidelines)", re.IGNORECASE),
+            0.75,
+            "safety_override",
+        ),
     ]
 
     # Persona hijacking / DAN patterns (weight: 0.70 - 0.80)
     JAILBREAK_PATTERNS = [
         (re.compile(r"\b(?:DAN|Do\s+Anything\s+Now)\b", re.IGNORECASE), 0.75, "dan_jailbreak"),
-        (re.compile(r"unrestricted\s+mode|jailbreak|developer\s+mode\s+output", re.IGNORECASE), 0.70, "developer_mode_exploit"),
-        (re.compile(r"pretend\s+(?:to\s+be|you\s+have\s+no\s+(?:limits|restrictions|filters))", re.IGNORECASE), 0.70, "restriction_evasion"),
+        (
+            re.compile(r"unrestricted\s+mode|jailbreak|developer\s+mode\s+output", re.IGNORECASE),
+            0.70,
+            "developer_mode_exploit",
+        ),
+        (
+            re.compile(r"pretend\s+(?:to\s+be|you\s+have\s+no\s+(?:limits|restrictions|filters))", re.IGNORECASE),
+            0.70,
+            "restriction_evasion",
+        ),
         (re.compile(r"you\s+are\s+now\s+(?:a|an)\b", re.IGNORECASE), 0.70, "role_hijack"),
     ]
 
     # Trading & Risk Manipulation patterns (weight: 0.70 - 0.80)
     TRADING_MANIPULATION_PATTERNS = [
-        (re.compile(r"(?:bypass|disable)\s+(?:risk\s+gate|circuit\s+breaker|position\s+limits?)", re.IGNORECASE), 0.75, "safety_gate_bypass"),
+        (
+            re.compile(r"(?:bypass|disable)\s+(?:risk\s+gate|circuit\s+breaker|position\s+limits?)", re.IGNORECASE),
+            0.75,
+            "safety_gate_bypass",
+        ),
         (re.compile(r"disable\s+(?:risk|stop.?loss|sl|kill.?switch)", re.IGNORECASE), 0.75, "safety_bypass"),
         (re.compile(r"override\s+(?:risk\s+gate|position\s+guardian|drawdown)", re.IGNORECASE), 0.75, "risk_override"),
-        (re.compile(r"set\s+(?:leverage|lot.?size)\s+(?:to\s+)?(?:max|maximum|\d{3,})|max(?:imum)?\s+leverage", re.IGNORECASE), 0.70, "risk_manipulation"),
-        (re.compile(r"(?:buy|sell|long|short)\s+(?:immediately|now|everything|all\s+in)", re.IGNORECASE), 0.75, "trade_manipulation"),
+        (
+            re.compile(
+                r"set\s+(?:leverage|lot.?size)\s+(?:to\s+)?(?:max|maximum|\d{3,})|max(?:imum)?\s+leverage",
+                re.IGNORECASE,
+            ),
+            0.70,
+            "risk_manipulation",
+        ),
+        (
+            re.compile(r"(?:buy|sell|long|short)\s+(?:immediately|now|everything|all\s+in)", re.IGNORECASE),
+            0.75,
+            "trade_manipulation",
+        ),
         (re.compile(r"(?:force\s+execute|max\s+leverage)", re.IGNORECASE), 0.70, "forced_execution"),
     ]
 
     # Exfiltration Protection (weight: 0.70 - 0.85)
     EXFILTRATION_PATTERNS = [
-        (re.compile(r"curl\s+[^\n]*\$(?:[A-Z0-9_]*(?:KEY|SECRET|TOKEN|PASSWORD|PASS|AUTH))", re.IGNORECASE), 0.80, "credential_exfiltration"),
+        (
+            re.compile(r"curl\s+[^\n]*\$(?:[A-Z0-9_]*(?:KEY|SECRET|TOKEN|PASSWORD|PASS|AUTH))", re.IGNORECASE),
+            0.80,
+            "credential_exfiltration",
+        ),
         (re.compile(r"cat\s+[^\n]*\.env\b", re.IGNORECASE), 0.85, "env_file_access"),
         (re.compile(r"(?:authorized_keys|id_rsa|id_ed25519)", re.IGNORECASE), 0.75, "ssh_key_access"),
         (re.compile(r"\bexfiltrate\b", re.IGNORECASE), 0.70, "exfiltration_keyword"),
@@ -106,7 +150,11 @@ class PromptInjectionScanner:
         (re.compile(r"<\s*(?:system|developer|assistant)\s*>", re.IGNORECASE), 0.60, "tag_injection"),
         (re.compile(r"system\s*:\s*", re.IGNORECASE), 0.50, "role_prefix_injection"),
         (re.compile(r"<!--[\s\S]*?-->"), 0.50, "hidden_html_comment"),
-        (re.compile(r'<(?:div|span)\s+style=[\'"][^\'"]*display:\s*none[\'"]', re.IGNORECASE), 0.60, "hidden_css_injection"),
+        (
+            re.compile(r'<(?:div|span)\s+style=[\'"][^\'"]*display:\s*none[\'"]', re.IGNORECASE),
+            0.60,
+            "hidden_css_injection",
+        ),
     ]
 
     @classmethod
@@ -126,7 +174,7 @@ class PromptInjectionScanner:
         if not text or not isinstance(text, str):
             return InjectionScanResult(is_safe=True, threat_score=0.0, sanitized_text=text or "")
 
-        bounded_text = text[:cls.MAX_SCAN_CHARS]
+        bounded_text = text[: cls.MAX_SCAN_CHARS]
         detected = []
         total_threat = 0.0
 

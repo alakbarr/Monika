@@ -40,7 +40,12 @@ class McpServerDispatcher:
         result = []
         for t in tools:
             input_model = getattr(t, "input_model", None)
-            if input_model is not None and isinstance(input_model, type) and issubclass(input_model, BaseModel) and input_model is not BaseModel:
+            if (
+                input_model is not None
+                and isinstance(input_model, type)
+                and issubclass(input_model, BaseModel)
+                and input_model is not BaseModel
+            ):
                 try:
                     schema = input_model.model_json_schema()
                     schema.pop("title", None)
@@ -48,11 +53,13 @@ class McpServerDispatcher:
                     schema = {"type": "object", "properties": {}}
             else:
                 schema = {"type": "object", "properties": {}}
-            result.append({
-                "name": t.name,
-                "description": t.description or f"Monika tool {t.name}",
-                "inputSchema": schema,
-            })
+            result.append(
+                {
+                    "name": t.name,
+                    "description": t.description or f"Monika tool {t.name}",
+                    "inputSchema": schema,
+                }
+            )
         return result
 
     async def handle_request(self, request: Dict[str, Any]) -> Optional[Dict[str, Any]]:

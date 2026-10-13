@@ -8,21 +8,22 @@ SETIAP kode yang membandingkan bias terhadap sinyal arah harga
 seluruh deteksi kontradiksi (contamination guard, SSVP/CDS, coherence
 check) tidak berfungsi dengan benar.
 """
+
 from typing import Optional
 
-_STRONG_MAP = {'strong_bullish': 'bullish', 'strong_bearish': 'bearish'}
-_VALID_3STATE = ('bullish', 'bearish', 'neutral')
+_STRONG_MAP = {"strong_bullish": "bullish", "strong_bearish": "bearish"}
+_VALID_3STATE = ("bullish", "bearish", "neutral")
 
 
 def normalize_bias(bias: Optional[str]) -> str:
     """Kolapskan enum 5-state ke enum 3-state yang dipakai di seluruh
     logika perbandingan/kontradiksi."""
     if not bias:
-        return 'neutral'
+        return "neutral"
     b = str(bias).strip().lower()
     if b in _STRONG_MAP:
         return _STRONG_MAP[b]
-    return b if b in _VALID_3STATE else 'neutral'
+    return b if b in _VALID_3STATE else "neutral"
 
 
 def bias_strength(bias: Optional[str]) -> float:
@@ -33,9 +34,9 @@ def bias_strength(bias: Optional[str]) -> float:
     if not bias:
         return 0.0
     b = str(bias).strip().lower()
-    if b in ('strong_bullish', 'strong_bearish'):
+    if b in ("strong_bullish", "strong_bearish"):
         return 1.0
-    if b in ('bullish', 'bearish'):
+    if b in ("bullish", "bearish"):
         return 0.6
     return 0.0
 
@@ -45,12 +46,12 @@ def normalize_currency_bias_dict(currency_bias: dict) -> dict:
 
 
 def is_bullish(bias: Optional[str]) -> bool:
-    return normalize_bias(bias) == 'bullish'
+    return normalize_bias(bias) == "bullish"
 
 
 def is_bearish(bias: Optional[str]) -> bool:
-    return normalize_bias(bias) == 'bearish'
+    return normalize_bias(bias) == "bearish"
 
 
 def is_neutral(bias: Optional[str]) -> bool:
-    return normalize_bias(bias) == 'neutral'
+    return normalize_bias(bias) == "neutral"

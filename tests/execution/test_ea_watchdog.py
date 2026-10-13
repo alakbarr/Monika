@@ -17,7 +17,7 @@ from execution.ea_bridge.watchdog import EAWatchdog
 def test_watchdog_fresh_heartbeat(tmp_path: Path):
     # Setup test common files directory
     hb_manager = HeartbeatManager(mt5_common_path=str(tmp_path))
-    
+
     # Write fresh EA heartbeat (5s ago)
     now_ts = int(time.time()) - 5
     hb_manager.ea_heartbeat_file.write_text(str(now_ts), encoding="utf-8")
@@ -38,7 +38,7 @@ def test_watchdog_fresh_heartbeat(tmp_path: Path):
 
 def test_watchdog_stale_heartbeat_trips(tmp_path: Path):
     hb_manager = HeartbeatManager(mt5_common_path=str(tmp_path))
-    
+
     # Write stale EA heartbeat (200s ago)
     now_ts = int(time.time()) - 200
     hb_manager.ea_heartbeat_file.write_text(str(now_ts), encoding="utf-8")
@@ -80,7 +80,7 @@ def test_watchdog_missing_file_trips(tmp_path: Path):
 
 def test_watchdog_auto_recovery(tmp_path: Path):
     hb_manager = HeartbeatManager(mt5_common_path=str(tmp_path))
-    
+
     # 1. Start with stale heartbeat
     now_ts = int(time.time()) - 300
     hb_manager.ea_heartbeat_file.write_text(str(now_ts), encoding="utf-8")

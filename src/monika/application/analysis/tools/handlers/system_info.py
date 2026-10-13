@@ -88,7 +88,11 @@ async def handle_get_system_health(
     try:
 
         def _get_terminal_info():
-            from monika.infrastructure.brokers.mt5_compat import ensure_mt5_module, is_native_mt5_available, is_mt5linux_available
+            from monika.infrastructure.brokers.mt5_compat import (
+                ensure_mt5_module,
+                is_native_mt5_available,
+                is_mt5linux_available,
+            )
 
             mt5 = ensure_mt5_module()
             if mt5 and (is_native_mt5_available() or is_mt5linux_available()):

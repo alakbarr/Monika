@@ -41,7 +41,7 @@ class TurnMarkerManager:
 
     def record_start(self, marker: TurnMarker) -> None:
         """Atomically records start of a critical execution turn."""
-        temp_file = self.marker_dir / f"interrupted_{int(time.time()*1000)}.tmp"
+        temp_file = self.marker_dir / f"interrupted_{int(time.time() * 1000)}.tmp"
         try:
             with open(temp_file, "w", encoding="utf-8") as f:
                 json.dump(asdict(marker), f, indent=2)
@@ -66,7 +66,7 @@ class TurnMarkerManager:
 
     def check_interrupted(self, max_age_seconds: float = 900.0) -> Optional[TurnMarker]:
         """Checks if an interrupted turn exists and is within the freshness window.
-        
+
         Args:
             max_age_seconds: Maximum age of marker in seconds before considered stale (default: 15 min).
         """

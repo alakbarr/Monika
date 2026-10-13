@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Comprehensive Unit Tests for Overhauled Alpha Strategy Discovery & Paper Incubation Pipeline.
 """
@@ -100,6 +101,7 @@ def test_strategy_decay_monitor_incubation_failure_low_win_rate():
 async def test_xau_trend_engine_numeric_parsing():
     """Bug 1: Verifies XAUTrendEngine parses JSON dict values safely without TypeError."""
     from analysis.strategies.xau_trend_engine import XAUTrendEngine
+
     strat = XAUTrendEngine({"trading": {}})
 
     mock_session = create_mock_async_session()
@@ -108,13 +110,11 @@ async def test_xau_trend_engine_numeric_parsing():
     slow_mock = MagicMock()
     slow_mock.value_json = json.dumps({"value": 2640.0})
 
-    bars = [
-        MagicMock(high=2650.0, low=2630.0, close=2645.0)
-        for _ in range(25)
-    ]
+    bars = [MagicMock(high=2650.0, low=2630.0, close=2645.0) for _ in range(25)]
     bars[0].close = 2660.0
 
     call_count = 0
+
     async def mock_execute(stmt):
         nonlocal call_count
         call_count += 1
@@ -140,13 +140,11 @@ async def test_xau_trend_engine_numeric_parsing():
 async def test_btc_donchian_breakout_abstract_contract():
     """Bug 2: Verifies BTCDonchianBreakout implements evaluate() and returns EdgeSignal."""
     from analysis.strategies.btc_donchian_breakout import BTCDonchianBreakout
+
     strat = BTCDonchianBreakout({"trading": {}})
 
     mock_session = create_mock_async_session()
-    candles = [
-        MagicMock(high=65000.0, low=64000.0, close=64500.0, volume=100.0)
-        for _ in range(35)
-    ]
+    candles = [MagicMock(high=65000.0, low=64000.0, close=64500.0, volume=100.0) for _ in range(35)]
     candles[0].close = 66000.0
     candles[0].high = 66100.0
     candles[0].volume = 500.0
@@ -174,8 +172,12 @@ def test_harness_true_range_and_r_multiple():
         symbol="EURUSD",
     )
     candles = [
-        CandleDict({"open": 1.1000, "high": 1.1050, "low": 1.0950, "close": 1.1020, "time": datetime.now(timezone.utc)}),
-        CandleDict({"open": 1.1020, "high": 1.1100, "low": 1.1000, "close": 1.1080, "time": datetime.now(timezone.utc)}),
+        CandleDict(
+            {"open": 1.1000, "high": 1.1050, "low": 1.0950, "close": 1.1020, "time": datetime.now(timezone.utc)}
+        ),
+        CandleDict(
+            {"open": 1.1020, "high": 1.1100, "low": 1.1000, "close": 1.1080, "time": datetime.now(timezone.utc)}
+        ),
     ]
     atr = harness._calculate_atr(candles, period=1)
     assert abs(atr - 0.0100) < 1e-5
@@ -196,7 +198,9 @@ def test_harness_dynamic_parameters_applied():
         symbol="EURUSD",
         strategy_params={"sl_atr_multiplier": 2.0, "tp_sl_multiplier": 3.0},
     )
-    sig = EdgeSignal(strategy_id="test", symbol="EURUSD", direction="buy", valid=True, confidence=0.8, exit_style="trend_trailing")
+    sig = EdgeSignal(
+        strategy_id="test", symbol="EURUSD", direction="buy", valid=True, confidence=0.8, exit_style="trend_trailing"
+    )
     entry = 1.1000
     atr = 0.0100
 
@@ -228,16 +232,18 @@ def test_strategy_decay_monitor_serialization_roundtrip():
 @pytest.mark.asyncio
 async def test_quant_signal_arbitrator_concordance():
     """Verifies SignalArbitrator awards concordant boost when Quant and LLM agree."""
-    arbitrator = SignalArbitrator(settings={
-        "trading": {
-            "signal_arbitration": {
-                "concordant_boost_confidence": 0.05,
-                "quant_weight": 0.50,
-                "llm_weight": 0.50,
-                "empirical_joint_pooling": False,
+    arbitrator = SignalArbitrator(
+        settings={
+            "trading": {
+                "signal_arbitration": {
+                    "concordant_boost_confidence": 0.05,
+                    "quant_weight": 0.50,
+                    "llm_weight": 0.50,
+                    "empirical_joint_pooling": False,
+                }
             }
         }
-    })
+    )
 
     quant_sig = EdgeSignal(
         strategy_id="mock_plateau_alpha",
@@ -283,14 +289,29 @@ async def test_context_builder_quant_edge_injection():
     cb = ContextBuilder(settings={"trading": {}})
     mock_session = create_mock_async_session()
 
-    with patch("analysis.calculators.regime_classifier.classify_market_regime", new=AsyncMock(return_value={"regime": "TREND"})), \
-         patch("analysis.strategies.registry.StrategyRegistry.evaluate_all", new=AsyncMock(return_value=[
-             EdgeSignal("tsm_momentum", "EURUSD", "buy", True, 0.85, 1.1000, 1.0950, 1.1100, rationale="Trend confirmed")
-         ])):
+    with (
+        patch(
+            "analysis.calculators.regime_classifier.classify_market_regime",
+            new=AsyncMock(return_value={"regime": "TREND"}),
+        ),
+        patch(
+            "analysis.strategies.registry.StrategyRegistry.evaluate_all",
+            new=AsyncMock(
+                return_value=[
+                    EdgeSignal(
+                        "tsm_momentum", "EURUSD", "buy", True, 0.85, 1.1000, 1.0950, 1.1100, rationale="Trend confirmed"
+                    )
+                ]
+            ),
+        ),
+    ):
         from analysis.calculators.regime_classifier import classify_market_regime
+
         reg_info = await classify_market_regime(mock_session, "EURUSD", cb.settings)
         assert reg_info["regime"] == "TREND"
-        edge_signals = await StrategyRegistry.evaluate_all(mock_session, "EURUSD", cb.settings, current_regime=reg_info["regime"])
+        edge_signals = await StrategyRegistry.evaluate_all(
+            mock_session, "EURUSD", cb.settings, current_regime=reg_info["regime"]
+        )
         assert len(edge_signals) == 1
         assert edge_signals[0].direction == "buy"
         assert edge_signals[0].confidence == 0.85

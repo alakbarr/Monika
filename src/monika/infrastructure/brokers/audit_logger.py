@@ -35,14 +35,15 @@ class TradeAuditLogger:
     ) -> Optional[int]:
         """Create a Position and MT5Signal record in DB after successful order placement."""
         try:
-            req_lots = float(getattr(sizing, 'recommended_lots', 0.0) or 0.0)
-            filled_lots = float(mt5_result.get('volume') or req_lots)
+            req_lots = float(getattr(sizing, "recommended_lots", 0.0) or 0.0)
+            filled_lots = float(mt5_result.get("volume") or req_lots)
             partially_filled = filled_lots < (req_lots - 1e-5)
 
-            exec_price = float(mt5_result.get('price') or getattr(sizing, 'entry_price', 0.0) or 0.0)
-            req_price = float(getattr(sizing, 'entry_price', 0.0) or exec_price)
+            exec_price = float(mt5_result.get("price") or getattr(sizing, "entry_price", 0.0) or 0.0)
+            req_price = float(getattr(sizing, "entry_price", 0.0) or exec_price)
 
             from monika.domain.risk.position_sizing import get_instrument_spec
+
             spec = get_instrument_spec(analysis.symbol)
             pip_size = spec.pip_size if spec and spec.pip_size > 0 else 0.0001
             slippage_pips = round(abs(exec_price - req_price) / pip_size, 2)
@@ -50,7 +51,7 @@ class TradeAuditLogger:
             pos = Position(
                 order_id=order_id,
                 analysis_id=analysis.id,
-                mt5_ticket=mt5_result.get('ticket'),
+                mt5_ticket=mt5_result.get("ticket"),
                 symbol=analysis.symbol,
                 direction=analysis.decision,
                 volume=filled_lots,
@@ -62,7 +63,7 @@ class TradeAuditLogger:
                 slippage_pips=slippage_pips,
                 partially_filled=partially_filled,
                 opened_at=datetime.now(timezone.utc),
-                status='open',
+                status="open",
                 is_paper=dry_run,
                 pair_group_id=pair_group_id,
             )
@@ -72,38 +73,45 @@ class TradeAuditLogger:
                 asset_analysis_id=analysis.id,
                 symbol=analysis.symbol,
                 action=analysis.decision,
-                status='executed',
-                mt5_ticket=mt5_result.get('ticket'),
-                executed_at=datetime.now(timezone.utc)
+                status="executed",
+                mt5_ticket=mt5_result.get("ticket"),
+                executed_at=datetime.now(timezone.utc),
             )
             session.add(signal)
 
             await session.flush()
 
             # Also write OrderLog
-            session.add(OrderLog(
-                action='place',
-                symbol=analysis.symbol,
-                params_json=json.dumps({
-                    'analysis_id': analysis.id,
-                    'direction': analysis.decision,
-                    'lots': sizing.recommended_lots,
-                    'entry_price': mt5_result.get('price'),
-                    'sl': analysis.stop_loss,
-                    'tp': analysis.take_profit,
-                    'ticket': mt5_result.get('ticket'),
-                }),
-                requested_by='analysis_pipeline',
-                approved_by='risk_gate',
-                result=json.dumps({'success': True, 'ticket': mt5_result.get('ticket')}),
-            ))
+            session.add(
+                OrderLog(
+                    action="place",
+                    symbol=analysis.symbol,
+                    params_json=json.dumps(
+                        {
+                            "analysis_id": analysis.id,
+                            "direction": analysis.decision,
+                            "lots": sizing.recommended_lots,
+                            "entry_price": mt5_result.get("price"),
+                            "sl": analysis.stop_loss,
+                            "tp": analysis.take_profit,
+                            "ticket": mt5_result.get("ticket"),
+                        }
+                    ),
+                    requested_by="analysis_pipeline",
+                    approved_by="risk_gate",
+                    result=json.dumps({"success": True, "ticket": mt5_result.get("ticket")}),
+                )
+            )
             if auto_commit:
                 await session.commit()
-            return pos.id if pos.id is not None else (mt5_result.get('ticket') or 1)
+            return pos.id if pos.id is not None else (mt5_result.get("ticket") or 1)
         except Exception as e:
             from sqlalchemy.exc import IntegrityError
-            if isinstance(e, IntegrityError) or 'IntegrityError' in str(type(e)):
-                logger.warning(f"Position DB save blocked by IntegrityError (race collision for {analysis.symbol}): {e}")
+
+            if isinstance(e, IntegrityError) or "IntegrityError" in str(type(e)):
+                logger.warning(
+                    f"Position DB save blocked by IntegrityError (race collision for {analysis.symbol}): {e}"
+                )
             else:
                 logger.error(f"Failed to save position to DB: {e}")
             try:
@@ -122,12 +130,14 @@ class TradeAuditLogger:
     ) -> None:
         """Write execution result to ActivityLog."""
         try:
-            session.add(ActivityLog(
-                category='trading',
-                description=summary_text,
-                related_id=analysis_id,
-                actor='execution_service',
-            ))
+            session.add(
+                ActivityLog(
+                    category="trading",
+                    description=summary_text,
+                    related_id=analysis_id,
+                    actor="execution_service",
+                )
+            )
             await session.commit()
         except Exception as e:
             logger.debug(f"Activity log write failed (non-fatal): {e}")

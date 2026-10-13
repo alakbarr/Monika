@@ -11,42 +11,47 @@ JUDGE_SCHEMA = {
             "type": "integer",
             "minimum": 1,
             "maximum": 10,
-            "description": "Objective score (1-10) for the Risk-On / Dollar-Bear thesis based on empirical data quality."
+            "description": "Objective score (1-10) for the Risk-On / Dollar-Bear thesis based on empirical data quality.",
         },
         "bear_arguments_score": {
             "type": "integer",
             "minimum": 1,
             "maximum": 10,
-            "description": "Objective score (1-10) for the Risk-Off / Dollar-Bull thesis based on empirical data quality."
+            "description": "Objective score (1-10) for the Risk-Off / Dollar-Bull thesis based on empirical data quality.",
         },
         "winner": {
             "type": "string",
             "enum": ["RISK_ON_USD_BEAR", "RISK_OFF_USD_BULL", "US_EXCEPTIONALISM", "STAGFLATION", "TIE"],
-            "description": "Winner of the debate. 'RISK_ON_USD_BEAR' means risk-on / weak dollar thesis won. 'RISK_OFF_USD_BULL' means risk-off / strong dollar thesis won. 'US_EXCEPTIONALISM' means both USD and US risk assets are bullish. 'STAGFLATION' means risk assets and USD are both struggling. 'TIE' if balanced."
+            "description": "Winner of the debate. 'RISK_ON_USD_BEAR' means risk-on / weak dollar thesis won. 'RISK_OFF_USD_BULL' means risk-off / strong dollar thesis won. 'US_EXCEPTIONALISM' means both USD and US risk assets are bullish. 'STAGFLATION' means risk assets and USD are both struggling. 'TIE' if balanced.",
         },
         "dxy_bias": {
             "type": "string",
             "enum": ["BULLISH", "BEARISH", "NEUTRAL"],
-            "description": "Directional bias for US Dollar Index (DXY). MANDATORY: If RISK_ON_USD_BEAR won, dxy_bias MUST be BEARISH. If RISK_OFF_USD_BULL or US_EXCEPTIONALISM won, dxy_bias MUST be BULLISH."
+            "description": "Directional bias for US Dollar Index (DXY). MANDATORY: If RISK_ON_USD_BEAR won, dxy_bias MUST be BEARISH. If RISK_OFF_USD_BULL or US_EXCEPTIONALISM won, dxy_bias MUST be BULLISH.",
         },
         "risk_asset_bias": {
             "type": "string",
             "enum": ["BULLISH", "BEARISH", "NEUTRAL"],
-            "description": "Directional bias for Risk Assets (equities, crypto, commodities, pro-cyclical FX). MANDATORY: If RISK_ON_USD_BEAR or US_EXCEPTIONALISM won, risk_asset_bias MUST be BULLISH. If RISK_OFF_USD_BULL or STAGFLATION won, risk_asset_bias MUST be BEARISH."
+            "description": "Directional bias for Risk Assets (equities, crypto, commodities, pro-cyclical FX). MANDATORY: If RISK_ON_USD_BEAR or US_EXCEPTIONALISM won, risk_asset_bias MUST be BULLISH. If RISK_OFF_USD_BULL or STAGFLATION won, risk_asset_bias MUST be BEARISH.",
         },
         "rationale": {
             "type": "string",
-            "description": "Detailed explanation of why one thesis prevailed over the other based on macro data."
+            "description": "Detailed explanation of why one thesis prevailed over the other based on macro data.",
         },
         "escalation_required": {
             "type": "boolean",
-            "description": "True if score difference <= 1, high uncertainty, severe data contradiction, or TIE."
-        }
+            "description": "True if score difference <= 1, high uncertainty, severe data contradiction, or TIE.",
+        },
     },
     "required": [
-        "bull_arguments_score", "bear_arguments_score", "winner",
-        "dxy_bias", "risk_asset_bias", "rationale", "escalation_required"
-    ]
+        "bull_arguments_score",
+        "bear_arguments_score",
+        "winner",
+        "dxy_bias",
+        "risk_asset_bias",
+        "rationale",
+        "escalation_required",
+    ],
 }
 
 
@@ -106,5 +111,5 @@ Evaluate the merits, assign scores (1-10), declare the winner ('RISK_ON_USD_BEAR
             "dxy_bias": "NEUTRAL",
             "risk_asset_bias": "NEUTRAL",
             "rationale": f"Fallback due to judge error: {e}",
-            "escalation_required": True
+            "escalation_required": True,
         }

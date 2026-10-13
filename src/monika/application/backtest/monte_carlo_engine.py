@@ -11,6 +11,7 @@ analisis klaster drawdown, serta estimasi probabilitas kebangkrutan (Probability
 import numpy as np
 from typing import List, Dict, Any, Optional
 
+
 class MonteCarloStressTester:
     """Engine pengujian ketahanan statistik tingkat institusional."""
 
@@ -24,7 +25,7 @@ class MonteCarloStressTester:
         num_simulations: int = 1000,
         initial_equity: float = 10000.0,
         ruin_drawdown_pct: float = 0.50,
-        mode: str = "permutation"
+        mode: str = "permutation",
     ) -> Dict[str, Any]:
         """
         Melakukan simulasi Monte Carlo berbasis permutasi urutan (tanpa pengembalian)
@@ -53,7 +54,7 @@ class MonteCarloStressTester:
 
         ruin_barrier = initial_equity * (1.0 - ruin_drawdown_pct)
         ruin_count = 0
-        use_replacement = (mode.lower() == "bootstrap")
+        use_replacement = mode.lower() == "bootstrap"
         is_block = mode.lower() in ("block_bootstrap", "cbb")
         n = len(returns_arr)
         block_size = max(2, int(np.sqrt(n))) if is_block else 1
@@ -75,7 +76,7 @@ class MonteCarloStressTester:
             equity_curve = initial_equity * np.cumprod(np.maximum(0.0, 1.0 + sampled))
             full_curve = np.insert(equity_curve, 0, initial_equity)
             final_equities.append(float(full_curve[-1]))
-            
+
             # Hitung drawdown
             running_max = np.maximum.accumulate(full_curve)
             drawdowns = (running_max - full_curve) / running_max
@@ -108,7 +109,7 @@ class MonteCarloStressTester:
                 "p5": round(float(np.percentile(final_equities, 5)), 2),
                 "median_p50": round(float(np.percentile(final_equities, 50)), 2),
                 "p95": round(float(np.percentile(final_equities, 95)), 2),
-            }
+            },
         }
 
     def run_slippage_spread_shock_test(
@@ -117,7 +118,7 @@ class MonteCarloStressTester:
         slippage_multipliers: Optional[List[float]] = None,
         base_friction_pct: float = 0.0003,  # 3 pips/bps
         num_simulations: int = 2000,
-        initial_equity: float = 10000.0
+        initial_equity: float = 10000.0,
     ) -> Dict[str, Dict[str, float]]:
         """
         Menguji ketahanan strategi terhadap lonjakan slippage dan pelebaran spread.
@@ -129,18 +130,16 @@ class MonteCarloStressTester:
         for mult in mults:
             penalty = base_friction_pct * (mult - 1.0)
             shocked_returns = returns_arr - penalty
-            
+
             res = self.run_permutation_drawdown_test(
-                trade_returns=shocked_returns.tolist(),
-                num_simulations=num_simulations,
-                initial_equity=initial_equity
+                trade_returns=shocked_returns.tolist(), num_simulations=num_simulations, initial_equity=initial_equity
             )
             key = f"shock_{int(mult)}x_slippage"
             results[key] = {
                 "var_95_drawdown_pct": res.get("var_95_drawdown_pct", 0.0),
                 "var_99_drawdown_pct": res.get("var_99_drawdown_pct", 0.0),
                 "ruin_probability_pct": res.get("ruin_probability_pct", 0.0),
-                "median_final_equity": res.get("final_equity_distribution", {}).get("median_p50", initial_equity)
+                "median_final_equity": res.get("final_equity_distribution", {}).get("median_p50", initial_equity),
             }
 
         return results

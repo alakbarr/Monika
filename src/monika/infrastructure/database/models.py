@@ -14,11 +14,27 @@ from enum import Enum as PyEnum
 from typing import Optional, Union, Dict, Set, Any
 
 from sqlalchemy import (
-    Column, Integer, BigInteger, String, Float, DateTime, Boolean, Text,
-    Index, ForeignKey, UniqueConstraint, JSON, text, func, ARRAY, Enum as SQLAlchemyEnum
+    Column,
+    Integer,
+    BigInteger,
+    String,
+    Float,
+    DateTime,
+    Boolean,
+    Text,
+    Index,
+    ForeignKey,
+    UniqueConstraint,
+    JSON,
+    text,
+    func,
+    ARRAY,
+    Enum as SQLAlchemyEnum,
 )
+
 try:
     from sqlalchemy.dialects.postgresql import TSVECTOR
+
     TSVECTOR_TYPE = TSVECTOR().with_variant(Text, "sqlite")
 except ImportError:
     TSVECTOR_TYPE = Text
@@ -27,6 +43,7 @@ from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column,
 
 
 from monika.core.primitives.clock import now as _clock_now
+
 
 def _utcnow() -> datetime:
     """Mengembalikan waktu saat ini dalam UTC (timezone-aware)."""
@@ -41,8 +58,10 @@ class Base(DeclarativeBase):
 # Model legacy (kompatibilitas ke belakang)
 # =============================================================================
 
+
 class Trade(Base):
     """Model trade lama (dipertahankan untuk kompatibilitas)."""
+
     __tablename__ = "trades"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -63,8 +82,10 @@ class Trade(Base):
 # 1-7: Data Mentah & Fundamental
 # =============================================================================
 
+
 class NewsItem(Base):
     """Berita dari semua sumber (scraper & RSS)."""
+
     __tablename__ = "news_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -85,13 +106,14 @@ class NewsItem(Base):
     gemini_sentiment = synonym("sentiment")
 
     __table_args__ = (
-        Index('idx_news_source_fetched', 'source', 'fetched_at'),
-        Index('idx_news_url', 'url'),
+        Index("idx_news_source_fetched", "source", "fetched_at"),
+        Index("idx_news_url", "url"),
     )
 
 
 class NewsDigest(Base):
     """Digest berita yang dikompres model LLM untuk efisiensi token."""
+
     __tablename__ = "news_digest"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -103,13 +125,14 @@ class NewsDigest(Base):
 
 class NewsDigestSlice(Base):
     """Rolling 2-hour digest snapshot per currency."""
+
     __tablename__ = "news_digest_slices"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    trigger: Mapped[str] = mapped_column(String(20), default='scheduled')  # 'scheduled' | 'breaking' | 'manual'
+    trigger: Mapped[str] = mapped_column(String(20), default="scheduled")  # 'scheduled' | 'breaking' | 'manual'
     period_hours: Mapped[float] = mapped_column(Float, default=2.0)
     items_processed: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     breaking_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -117,9 +140,7 @@ class NewsDigestSlice(Base):
     currency_sections: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON dict per currency
     metadata_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    __table_args__ = (
-        Index('ix_news_digest_slices_period', 'period_start', 'period_end'),
-    )
+    __table_args__ = (Index("ix_news_digest_slices_period", "period_start", "period_end"),)
 
 
 class MarketChronicle(Base):
@@ -127,15 +148,18 @@ class MarketChronicle(Base):
     Kronologi peristiwa makro signifikan yang persisten.
     Dikurasi secara otomatis dari BREAKING/HIGH news + FundamentalBrief.
     """
+
     __tablename__ = "market_chronicle"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     event_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-    category: Mapped[str] = mapped_column(String(30), nullable=False)  # policy_change | geopolitical | data_shock | regime_shift | institutional
+    category: Mapped[str] = mapped_column(
+        String(30), nullable=False
+    )  # policy_change | geopolitical | data_shock | regime_shift | institutional
     headline: Mapped[str] = mapped_column(String(300), nullable=False)
     narrative: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     currencies_affected: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    severity: Mapped[str] = mapped_column(String(10), default='medium')  # low | medium | high | critical
+    severity: Mapped[str] = mapped_column(String(10), default="medium")  # low | medium | high | critical
     source_news_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     source_brief_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     is_ongoing: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -143,14 +167,12 @@ class MarketChronicle(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     search_vector: Mapped[Optional[Any]] = mapped_column(TSVECTOR, nullable=True)
 
-    __table_args__ = (
-        Index('idx_chronicle_fts', 'search_vector', postgresql_using='gin'),
-    )
-
+    __table_args__ = (Index("idx_chronicle_fts", "search_vector", postgresql_using="gin"),)
 
 
 class EconomicCalendar(Base):
     """Kalender ekonomi (rilis data makro)."""
+
     __tablename__ = "economic_calendar"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -165,13 +187,12 @@ class EconomicCalendar(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     surprise_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
-    __table_args__ = (
-        UniqueConstraint('currency', 'event_name', 'event_time', name='uq_calendar_event'),
-    )
+    __table_args__ = (UniqueConstraint("currency", "event_name", "event_time", name="uq_calendar_event"),)
 
 
 class TreasuryYield(Base):
     """Yield obligasi pemerintah AS (dari FRED)."""
+
     __tablename__ = "treasury_yields"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -179,13 +200,12 @@ class TreasuryYield(Base):
     yield_percent: Mapped[float] = mapped_column(Float)
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    __table_args__ = (
-        Index('idx_treasury_tenor_date', 'tenor', 'date'),
-    )
+    __table_args__ = (Index("idx_treasury_tenor_date", "tenor", "date"),)
 
 
 class InterestRate(Base):
     """Suku bunga bank sentral (FED, ECB, BOE, BOJ, RBA)."""
+
     __tablename__ = "interest_rates"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -197,6 +217,7 @@ class InterestRate(Base):
 
 class FedWatchProbability(Base):
     """Probabilitas keputusan The Fed (dari CME FedWatch)."""
+
     __tablename__ = "fedwatch_probabilities"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -207,6 +228,7 @@ class FedWatchProbability(Base):
 
 class CentralBankRateExpectation(Base):
     """Ekspektasi keputusan suku bunga bank sentral (FED, ECB, BOE, BOJ, RBA)."""
+
     __tablename__ = "central_bank_rate_expectations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -219,13 +241,12 @@ class CentralBankRateExpectation(Base):
     source: Mapped[str] = mapped_column(String(50), default="centralbank.watch")
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
-    __table_args__ = (
-        Index('idx_cb_rate_exp_bank_date', 'bank', 'meeting_date'),
-    )
+    __table_args__ = (Index("idx_cb_rate_exp_bank_date", "bank", "meeting_date"),)
 
 
 class COTReport(Base):
     """COT Report — positioning institusional (dari CFTC API)."""
+
     __tablename__ = "cot_report"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -239,13 +260,12 @@ class COTReport(Base):
     leveraged_short: Mapped[int] = mapped_column(Integer)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
-    __table_args__ = (
-        Index('idx_cot_market_date', 'market_code', 'report_date'),
-    )
+    __table_args__ = (Index("idx_cot_market_date", "market_code", "report_date"),)
 
 
 class VIXData(Base):
     """Indeks volatilitas VIX (dari yfinance)."""
+
     __tablename__ = "vix_data"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -255,6 +275,7 @@ class VIXData(Base):
 
 class DXYData(Base):
     """US Dollar Index (DXY) harian dari Yahoo Finance."""
+
     __tablename__ = "dxy_data"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -264,6 +285,7 @@ class DXYData(Base):
 
 class BondYieldData(Base):
     """Yield obligasi pemerintah internasional harian (yfinance + ECB fallback)."""
+
     __tablename__ = "bond_yield_data"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -272,8 +294,8 @@ class BondYieldData(Base):
     yield_percent: Mapped[float] = mapped_column(Float)
 
     __table_args__ = (
-        Index('idx_bond_yield_ct_date', 'country_tenor', 'date'),
-        UniqueConstraint('country_tenor', 'date', name='uq_bond_yield_country_date'),
+        Index("idx_bond_yield_ct_date", "country_tenor", "date"),
+        UniqueConstraint("country_tenor", "date", name="uq_bond_yield_country_date"),
     )
 
 
@@ -281,8 +303,10 @@ class BondYieldData(Base):
 # 8-13: Data Harga & Teknikal
 # =============================================================================
 
+
 class PriceOHLCV(Base):
     """Data harga OHLCV dari MT5."""
+
     __tablename__ = "price_ohlcv"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -296,13 +320,14 @@ class PriceOHLCV(Base):
     volume: Mapped[float] = mapped_column(Float)
 
     __table_args__ = (
-        Index('idx_price_sym_tf_ts', 'symbol', 'timeframe', 'timestamp'),
-        UniqueConstraint('symbol', 'timeframe', 'timestamp', name='uq_price_sym_tf_ts'),
+        Index("idx_price_sym_tf_ts", "symbol", "timeframe", "timestamp"),
+        UniqueConstraint("symbol", "timeframe", "timestamp", name="uq_price_sym_tf_ts"),
     )
 
 
 class TechnicalIndicator(Base):
     """Indikator teknikal terhitung (MA, RSI, MACD, dll)."""
+
     __tablename__ = "technical_indicators"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -312,13 +337,12 @@ class TechnicalIndicator(Base):
     indicator_name: Mapped[str] = mapped_column(String(50))  # MA_20, RSI_14, MACD, etc.
     value_json: Mapped[str] = mapped_column(Text)  # JSON value(s)
 
-    __table_args__ = (
-        Index('idx_indicator_sym_tf_ts', 'symbol', 'timeframe', 'timestamp', 'indicator_name'),
-    )
+    __table_args__ = (Index("idx_indicator_sym_tf_ts", "symbol", "timeframe", "timestamp", "indicator_name"),)
 
 
 class SwingPoint(Base):
     """Swing high/low yang terdeteksi dari data harga."""
+
     __tablename__ = "swing_points"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -328,13 +352,12 @@ class SwingPoint(Base):
     type: Mapped[str] = mapped_column(String(10))  # high, low
     price: Mapped[float] = mapped_column(Float)
 
-    __table_args__ = (
-        Index('idx_swing_sym_tf', 'symbol', 'timeframe'),
-    )
+    __table_args__ = (Index("idx_swing_sym_tf", "symbol", "timeframe"),)
 
 
 class SRZone(Base):
     """Support & Resistance zone dari klaster swing points."""
+
     __tablename__ = "sr_zones"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -345,13 +368,12 @@ class SRZone(Base):
     strength: Mapped[int] = mapped_column(Integer)  # touch count
     last_touched: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (
-        Index('idx_sr_sym_tf', 'symbol', 'timeframe'),
-    )
+    __table_args__ = (Index("idx_sr_sym_tf", "symbol", "timeframe"),)
 
 
 class LiquidityZone(Base):
     """Zona likuiditas di atas/bawah swing points signifikan."""
+
     __tablename__ = "liquidity_zones"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -362,13 +384,12 @@ class LiquidityZone(Base):
     type: Mapped[str] = mapped_column(String(20))  # above_swing_high, below_swing_low
     identified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
-    __table_args__ = (
-        Index('idx_liq_sym_tf', 'symbol', 'timeframe'),
-    )
+    __table_args__ = (Index("idx_liq_sym_tf", "symbol", "timeframe"),)
 
 
 class FVGZone(Base):
     """Fair Value Gap (ICT/SMC concept)."""
+
     __tablename__ = "fvg_zones"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -380,13 +401,12 @@ class FVGZone(Base):
     formed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     filled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (
-        Index('idx_fvg_sym_tf', 'symbol', 'timeframe'),
-    )
+    __table_args__ = (Index("idx_fvg_sym_tf", "symbol", "timeframe"),)
 
 
 class OrderBlock(Base):
     """Order Block (SMC concept) — candle terakhir sebelum pergerakan impulsif."""
+
     __tablename__ = "order_blocks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -398,13 +418,12 @@ class OrderBlock(Base):
     formed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     mitigated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (
-        Index('idx_ob_sym_tf', 'symbol', 'timeframe'),
-    )
+    __table_args__ = (Index("idx_ob_sym_tf", "symbol", "timeframe"),)
 
 
 class StructureBreak(Base):
     """Break of Structure (BOS) / Change of Character (ChoCH)."""
+
     __tablename__ = "structure_breaks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -415,17 +434,17 @@ class StructureBreak(Base):
     price: Mapped[float] = mapped_column(Float)
     formed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    __table_args__ = (
-        Index('idx_sb_sym_tf', 'symbol', 'timeframe'),
-    )
+    __table_args__ = (Index("idx_sb_sym_tf", "symbol", "timeframe"),)
 
 
 # =============================================================================
 # 14-16: Hasil Analisis AI
 # =============================================================================
 
+
 class FundamentalBrief(Base):
     """Brief fundamental makro dari AI Tahap 1."""
+
     __tablename__ = "fundamental_briefs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -450,6 +469,7 @@ class FundamentalBrief(Base):
         if self.structured_json:
             try:
                 import json
+
                 parsed = json.loads(self.structured_json)
                 if isinstance(parsed, dict):
                     return parsed.get("currency_bias", {})
@@ -462,6 +482,7 @@ class FundamentalBrief(Base):
         if self.structured_json:
             try:
                 import json
+
                 parsed = json.loads(self.structured_json)
                 if isinstance(parsed, dict):
                     return parsed.get("macro_regime", "") or ""
@@ -474,6 +495,7 @@ class FundamentalBrief(Base):
         if self.structured_json:
             try:
                 import json
+
                 parsed = json.loads(self.structured_json)
                 if isinstance(parsed, dict):
                     return parsed.get("macro_narrative", "") or ""
@@ -484,12 +506,15 @@ class FundamentalBrief(Base):
 
 class AssetAnalysis(Base):
     """Keputusan analisis per-aset dari AI Tahap 2."""
+
     __tablename__ = "asset_analysis"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    brief_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('fundamental_briefs.id', ondelete='SET NULL'), nullable=True, index=True)
+    brief_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("fundamental_briefs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     decision: Mapped[str] = mapped_column(String(10))  # buy, sell, avoid, wait
     confidence: Mapped[float] = mapped_column(Float)
     entry_zone: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON entry condition
@@ -501,7 +526,9 @@ class AssetAnalysis(Base):
     priced_in_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     priced_in_override_justification: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     confluence_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    confluence_factors_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON list of active factor names
+    confluence_factors_json: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )  # JSON list of active factor names
     specialist_biases_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     invalidation_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     invalidation_direction: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # 'above' or 'below'
@@ -555,10 +582,11 @@ class AssetAnalysis(Base):
             try:
                 p = float(self.entry_zone.get("price", 0.0))
                 return p if p > 0 else None
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 return None
         try:
             import json
+
             data = json.loads(self.entry_zone)
             if isinstance(data, dict):
                 p = float(data.get("price", 0.0))
@@ -571,6 +599,7 @@ class AssetAnalysis(Base):
     def entry_price(self, value: Optional[float]) -> None:
         """Set harga entry ke dalam field entry_zone JSON secara aman."""
         import json
+
         ez: dict[str, Any] = {}
         if self.entry_zone:
             if isinstance(self.entry_zone, dict):
@@ -587,7 +616,7 @@ class AssetAnalysis(Base):
         else:
             try:
                 ez["price"] = float(value)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
         self.entry_zone = json.dumps(ez)
 
@@ -600,40 +629,42 @@ class AssetAnalysis(Base):
     def invalidation_condition(self, value: Optional[str]) -> None:
         self.invalidation = value
 
-    __table_args__ = (
-        Index('idx_analysis_sym_date', 'symbol', 'generated_at'),
-    )
+    __table_args__ = (Index("idx_analysis_sym_date", "symbol", "generated_at"),)
 
 
 class TradeTrigger(Base):
     """Trigger kondisional untuk re-evaluasi atau eksekusi."""
+
     __tablename__ = "trade_triggers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    asset_analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='CASCADE'), nullable=True, index=True)
+    asset_analysis_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("asset_analysis.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     trigger_type: Mapped[str] = mapped_column(String(20))  # price_level, indicator, time, news
     condition_json: Mapped[str] = mapped_column(Text)  # JSON condition detail
-    status: Mapped[str] = mapped_column(String(10), default='pending')  # pending, fired, cancelled
+    status: Mapped[str] = mapped_column(String(10), default="pending")  # pending, fired, cancelled
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     fired_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationship
     analysis = relationship("AssetAnalysis", back_populates="triggers", lazy="raise")
 
-    __table_args__ = (
-        Index('idx_trigger_status', 'status'),
-    )
+    __table_args__ = (Index("idx_trigger_status", "status"),)
 
 
 class MT5Signal(Base):
     """Korelasi antara hasil analisis AI dan eksekusi MT5."""
+
     __tablename__ = "mt5_signals"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    asset_analysis_id: Mapped[int] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='CASCADE'), index=True)
+    asset_analysis_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("asset_analysis.id", ondelete="CASCADE"), index=True
+    )
     symbol: Mapped[str] = mapped_column(String(20), index=True)
-    action: Mapped[str] = mapped_column(String(10)) # buy, sell
-    status: Mapped[str] = mapped_column(String(20), default="pending") # pending, sent, executed, failed
+    action: Mapped[str] = mapped_column(String(10))  # buy, sell
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, sent, executed, failed
     mt5_ticket: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     executed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -658,25 +689,26 @@ class Order(Base):
     Model Order untuk pelacakan lifecycle order yang strongly typed.
     Mencakup status transisi formal, slippage, dan foreign key ke analisis.
     """
+
     __tablename__ = "orders"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
     client_order_id: Mapped[str] = mapped_column(
         String(64), unique=True, index=True, nullable=False, default=lambda: f"ORD_{uuid.uuid4().hex[:12]}"
     )
-    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("asset_analysis.id", ondelete="SET NULL"), nullable=True, index=True)
+    analysis_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("asset_analysis.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     order_type: Mapped[str] = mapped_column(String(20), nullable=False)  # MARKET, LIMIT, STOP
-    direction: Mapped[str] = mapped_column(String(10), nullable=False)   # BUY, SELL
+    direction: Mapped[str] = mapped_column(String(10), nullable=False)  # BUY, SELL
     requested_price: Mapped[float] = mapped_column(Float, nullable=False)
     executed_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     slippage_pips: Mapped[float] = mapped_column(Float, default=0.0)
     requested_volume: Mapped[float] = mapped_column(Float, nullable=False)
     filled_volume: Mapped[float] = mapped_column(Float, default=0.0)
     status: Mapped[OrderStatus] = mapped_column(
-        SQLAlchemyEnum(OrderStatus, native_enum=False, length=30),
-        default=OrderStatus.PENDING_SUBMIT,
-        index=True
+        SQLAlchemyEnum(OrderStatus, native_enum=False, length=30), default=OrderStatus.PENDING_SUBMIT, index=True
     )
     replay_policy: Mapped[str] = mapped_column(String(20), default="never", nullable=False)
     intent_committed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -773,10 +805,13 @@ class Order(Base):
 
 class OrderEvent(Base):
     """Audit trail histori transisi state lifecycle order."""
+
     __tablename__ = "order_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    order_id: Mapped[str] = mapped_column(String(64), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
+    order_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     from_status: Mapped[str] = mapped_column(String(30), nullable=False)
     to_status: Mapped[str] = mapped_column(String(30), nullable=False)
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -788,12 +823,17 @@ class OrderEvent(Base):
 
 class Position(Base):
     """Posisi trading yang terbuka/tertutup."""
+
     __tablename__ = "positions"
     __allow_unmapped__ = True
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    order_id: Mapped[Optional[str]] = mapped_column(String(64), ForeignKey('orders.id', ondelete='SET NULL'), nullable=True, index=True)
-    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True, index=True)
+    order_id: Mapped[Optional[str]] = mapped_column(
+        String(64), ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    analysis_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("asset_analysis.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     mt5_ticket: Mapped[Optional[int]] = mapped_column(Integer, unique=True, nullable=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     direction: Mapped[str] = mapped_column(String(10))  # buy, sell
@@ -807,7 +847,7 @@ class Position(Base):
     partially_filled: Mapped[bool] = mapped_column(Boolean, default=False)
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    status: Mapped[str] = mapped_column(String(10), default='open')  # open, closed
+    status: Mapped[str] = mapped_column(String(10), default="open")  # open, closed
     pnl: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     is_paper: Mapped[bool] = mapped_column(Boolean, default=False)
     pair_group_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
@@ -867,23 +907,37 @@ class Position(Base):
     _mt5_exit_price: Optional[float] = None
 
     __table_args__ = (
-        Index('idx_position_status', 'status'),
-        Index('uq_position_analysis_open', 'analysis_id', 'mt5_ticket', unique=True,
-              postgresql_where=text("status = 'open' AND analysis_id IS NOT NULL"),
-              sqlite_where=text("status = 'open' AND analysis_id IS NOT NULL")),
-        Index('uq_position_symbol_open', 'symbol', unique=True,
-              postgresql_where=text("status = 'open' AND pair_group_id IS NULL"),
-              sqlite_where=text("status = 'open' AND pair_group_id IS NULL")),
+        Index("idx_position_status", "status"),
+        Index(
+            "uq_position_analysis_open",
+            "analysis_id",
+            "mt5_ticket",
+            unique=True,
+            postgresql_where=text("status = 'open' AND analysis_id IS NOT NULL"),
+            sqlite_where=text("status = 'open' AND analysis_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_position_symbol_open",
+            "symbol",
+            unique=True,
+            postgresql_where=text("status = 'open' AND pair_group_id IS NULL"),
+            sqlite_where=text("status = 'open' AND pair_group_id IS NULL"),
+        ),
     )
 
 
 class TradeOutcome(Base):
     """Link antara AssetAnalysis → Position → actual P&L outcome."""
+
     __tablename__ = "trade_outcomes"
-    
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True, index=True)
-    position_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('positions.id', ondelete='SET NULL'), nullable=True, index=True)
+    analysis_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("asset_analysis.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    position_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("positions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     symbol: Mapped[str] = mapped_column(String(20))
     direction: Mapped[str] = mapped_column(String(10))
     entry_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -891,7 +945,9 @@ class TradeOutcome(Base):
     stop_loss: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     take_profit: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     pnl_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    exit_reason: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)  # sl_hit, tp_hit, manual_close, system_exit
+    exit_reason: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True
+    )  # sl_hit, tp_hit, manual_close, system_exit
     confluence_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     priced_in_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     analysis_confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -906,20 +962,23 @@ class TradeOutcome(Base):
     sl_slippage_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.0)
     entry_session: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     market_regime: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    
+
     __table_args__ = (
-        Index('idx_trade_outcome_symbol', 'symbol'),
-        Index('idx_trade_outcome_closed', 'closed_at'),
-        Index('idx_trade_outcome_profitable', 'was_profitable'),
+        Index("idx_trade_outcome_symbol", "symbol"),
+        Index("idx_trade_outcome_closed", "closed_at"),
+        Index("idx_trade_outcome_profitable", "was_profitable"),
     )
 
 
 class PaperTradeRecord(Base):
     """Pelacakan paper trade persisten untuk mode dry-run."""
+
     __tablename__ = "paper_trade_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True, index=True)
+    analysis_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("asset_analysis.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     symbol: Mapped[str] = mapped_column(String(20))
     direction: Mapped[str] = mapped_column(String(10))  # buy, sell
     entry_price: Mapped[float] = mapped_column(Float)
@@ -930,9 +989,11 @@ class PaperTradeRecord(Base):
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     exit_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     exit_reason: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # sl_hit, tp_hit, manual, etc.
-    detection_method: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default='close_price')
+    detection_method: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="close_price")
     risk_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.75)
-    entry_condition_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default='market')  # 'market', 'limit', 'trigger'
+    entry_condition_type: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, default="market"
+    )  # 'market', 'limit', 'trigger'
     stated_entry_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # AI's stated entry price
     is_pending_fill: Mapped[bool] = mapped_column(Boolean, default=False)  # True = limit order awaiting fill
     pnl_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -940,7 +1001,7 @@ class PaperTradeRecord(Base):
     slippage_applied: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     partially_filled: Mapped[bool] = mapped_column(Boolean, default=False)
     requested_lot: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    status: Mapped[str] = mapped_column(String(10), default='open')  # open, closed
+    status: Mapped[str] = mapped_column(String(10), default="open")  # open, closed
 
     # Phase 3 Context tracking
     decision_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -953,8 +1014,8 @@ class PaperTradeRecord(Base):
     market_regime: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     __table_args__ = (
-        Index('idx_paper_trade_status', 'status'),
-        Index('idx_paper_trade_symbol', 'symbol'),
+        Index("idx_paper_trade_status", "status"),
+        Index("idx_paper_trade_symbol", "symbol"),
     )
 
     @property
@@ -980,6 +1041,7 @@ class PaperTradeRecord(Base):
 
 class EquityDrawdownSnapshot(Base):
     """Historical equity, balance, and drawdown telemetry snapshot."""
+
     __tablename__ = "equity_drawdown_snapshots"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -993,9 +1055,7 @@ class EquityDrawdownSnapshot(Base):
     peak_equity: Mapped[float] = mapped_column(Float, default=0.0)
     open_positions_count: Mapped[int] = mapped_column(Integer, default=0)
 
-    __table_args__ = (
-        Index('idx_equity_snapshot_ts', 'timestamp'),
-    )
+    __table_args__ = (Index("idx_equity_snapshot_ts", "timestamp"),)
 
 
 class TradePlan(Base):
@@ -1008,13 +1068,18 @@ class TradePlan(Base):
     - COMPLETED: Semua leg selesai atau ditutup
     - CANCELLED: Rencana dibatalkan
     """
+
     __tablename__ = "trade_plans"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True, index=True)
+    analysis_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("asset_analysis.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     direction: Mapped[str] = mapped_column(String(10))  # buy, sell
-    status: Mapped[str] = mapped_column(String(30), default="PENDING_PROBE", index=True)  # PENDING_PROBE, PROBE_FILLED, CONFIRMED_SCALE_IN, PARTIAL_TP1_HIT, COMPLETED, CANCELLED
+    status: Mapped[str] = mapped_column(
+        String(30), default="PENDING_PROBE", index=True
+    )  # PENDING_PROBE, PROBE_FILLED, CONFIRMED_SCALE_IN, PARTIAL_TP1_HIT, COMPLETED, CANCELLED
     entry_price: Mapped[float] = mapped_column(Float)
     stop_loss: Mapped[float] = mapped_column(Float)
     take_profit: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -1027,11 +1092,11 @@ class TradePlan(Base):
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    legs: Mapped[list["TradePlanLeg"]] = relationship("TradePlanLeg", back_populates="plan", cascade="all, delete-orphan", lazy="selectin")
-
-    __table_args__ = (
-        Index('idx_trade_plan_symbol_status', 'symbol', 'status'),
+    legs: Mapped[list["TradePlanLeg"]] = relationship(
+        "TradePlanLeg", back_populates="plan", cascade="all, delete-orphan", lazy="selectin"
     )
+
+    __table_args__ = (Index("idx_trade_plan_symbol_status", "symbol", "status"),)
 
 
 class TradePlanLeg(Base):
@@ -1040,6 +1105,7 @@ class TradePlanLeg(Base):
     - leg_type: 'probe' atau 'runner'
     - status: 'pending', 'filled', 'tp_hit', 'sl_hit', 'closed', 'cancelled'
     """
+
     __tablename__ = "trade_plan_legs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -1051,8 +1117,12 @@ class TradePlanLeg(Base):
     stop_loss: Mapped[float] = mapped_column(Float)
     take_profit: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     ticket_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    position_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('positions.id', ondelete='SET NULL'), nullable=True, index=True)
-    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, filled, tp_hit, sl_hit, closed, cancelled
+    position_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("positions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending"
+    )  # pending, filled, tp_hit, sl_hit, closed, cancelled
     filled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     exit_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -1060,13 +1130,12 @@ class TradePlanLeg(Base):
 
     plan: Mapped["TradePlan"] = relationship("TradePlan", back_populates="legs")
 
-    __table_args__ = (
-        Index('idx_trade_plan_leg_plan_status', 'plan_id', 'status'),
-    )
+    __table_args__ = (Index("idx_trade_plan_leg_plan_status", "plan_id", "status"),)
 
 
 class OrderLog(Base):
     """Log setiap order yang dicoba (berhasil maupun gagal)."""
+
     __tablename__ = "orders_log"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -1081,6 +1150,7 @@ class OrderLog(Base):
 
 class RiskState(Base):
     """Status risk harian — drawdown, PnL, pause status."""
+
     __tablename__ = "risk_state"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -1096,8 +1166,10 @@ class RiskState(Base):
 # 20-22: Interaksi & Memori
 # =============================================================================
 
+
 class TelegramConversation(Base):
     """Riwayat chat Telegram untuk konteks AI."""
+
     __tablename__ = "telegram_conversations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -1106,13 +1178,12 @@ class TelegramConversation(Base):
     message: Mapped[str] = mapped_column(Text)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
-    __table_args__ = (
-        Index('idx_tg_user_timestamp', 'telegram_user_id', 'timestamp'),
-    )
+    __table_args__ = (Index("idx_tg_user_timestamp", "telegram_user_id", "timestamp"),)
 
 
 class TelegramTopicBinding(Base):
     """Pemetaan forum topic Telegram ke session ChatAgent."""
+
     __tablename__ = "telegram_topic_bindings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -1123,13 +1194,14 @@ class TelegramTopicBinding(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     __table_args__ = (
-        UniqueConstraint('chat_id', 'topic_id', name='uq_telegram_topic_chat_topic'),
-        Index('idx_tg_topic_chat_topic', 'chat_id', 'topic_id'),
+        UniqueConstraint("chat_id", "topic_id", name="uq_telegram_topic_chat_topic"),
+        Index("idx_tg_topic_chat_topic", "chat_id", "topic_id"),
     )
 
 
 class ActivityLog(Base):
     """Log semua aktivitas sistem untuk audit."""
+
     __tablename__ = "activity_log"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -1156,6 +1228,7 @@ class ActivityLog(Base):
 
 class TradingEvent(Base):
     """Append-only immutable event store for decision audit trail."""
+
     __tablename__ = "trading_events"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -1165,28 +1238,31 @@ class TradingEvent(Base):
     causation_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False)
     actor: Mapped[str] = mapped_column(String(50), default="system")
-    ts_created: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow, index=True
-    )
+    ts_created: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
 
 
 class TokenUsageLog(Base):
     """Log konsumsi token API AI komprehensif untuk audit performa & biaya."""
+
     __tablename__ = "token_usage_log"
 
-    __table_args__ = (
-        Index("idx_token_usage_ts_subsys", "timestamp", "subsystem"),
-    )
+    __table_args__ = (Index("idx_token_usage_ts_subsys", "timestamp", "subsystem"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
     provider: Mapped[str] = mapped_column(String(20))  # claude, gemini, openrouter, openai, deepseek, groq, ollama
     model_name: Mapped[str] = mapped_column(String(50))
     task_name: Mapped[str] = mapped_column(String(100))
-    task_role: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)  # 32 task roles dari settings.yaml
-    subsystem: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)  # stage1, stage2, debate, news, risk_gate, etc.
+    task_role: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, index=True
+    )  # 32 task roles dari settings.yaml
+    subsystem: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, index=True
+    )  # stage1, stage2, debate, news, risk_gate, etc.
     symbol: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)  # BTCUSD, XAUUSD, EURUSD, dll.
-    cycle_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)  # trace correlation per cycle
+    cycle_id: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, index=True
+    )  # trace correlation per cycle
     input_tokens: Mapped[int] = mapped_column(Integer, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
     thinking_tokens: Mapped[int] = mapped_column(Integer, default=0, index=True)  # reasoning / chain-of-thought tokens
@@ -1195,13 +1271,15 @@ class TokenUsageLog(Base):
     cache_creation_tokens: Mapped[int] = mapped_column(Integer, default=0)  # prompt cache write
     cost_estimate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     execution_time_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # latency ms
-    status: Mapped[str] = mapped_column(String(20), default="success", index=True)  # success, fallback, error, rate_limited
+    status: Mapped[str] = mapped_column(
+        String(20), default="success", index=True
+    )  # success, fallback, error, rate_limited
     slot_name: Mapped[str] = mapped_column(String(20), default="primary")  # primary, fallback_1, etc.
-
 
 
 class SystemConfig(Base):
     """Key-value store untuk konfigurasi runtime."""
+
     __tablename__ = "system_config"
 
     key: Mapped[str] = mapped_column(String(100), primary_key=True)
@@ -1210,13 +1288,17 @@ class SystemConfig(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     @classmethod
-    async def upsert(cls, session, key: str, value: Optional[str] = None, description: Optional[str] = None) -> "SystemConfig":
+    async def upsert(
+        cls, session, key: str, value: Optional[str] = None, description: Optional[str] = None
+    ) -> "SystemConfig":
         """Upsert key-value record safely and atomically across concurrent transactions."""
         from sqlalchemy import select
+
         bind = session.bind
         dialect_name = bind.dialect.name if bind else "postgresql"
         if dialect_name == "postgresql":
             from sqlalchemy.dialects.postgresql import insert as pg_insert
+
             now = _utcnow()
             update_dict: dict[str, Any] = {"updated_at": now}
             if value is not None:
@@ -1224,14 +1306,10 @@ class SystemConfig(Base):
             if description is not None:
                 update_dict["description"] = description
 
-            stmt = pg_insert(cls).values(
-                key=key,
-                value=value,
-                description=description,
-                updated_at=now
-            ).on_conflict_do_update(
-                index_elements=['key'],
-                set_=update_dict
+            stmt = (
+                pg_insert(cls)
+                .values(key=key, value=value, description=description, updated_at=now)
+                .on_conflict_do_update(index_elements=["key"], set_=update_dict)
             )
             await session.execute(stmt)
             return (await session.execute(select(cls).where(cls.key == key))).scalar_one()
@@ -1248,41 +1326,43 @@ class SystemConfig(Base):
                 session.add(cfg)
             return cfg
 
+
 class CyclePerformance(Base):
     """Track setiap siklus analisis untuk pemantauan performa."""
+
     __tablename__ = "cycle_performance"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     cycle_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
     elapsed_seconds: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    
+
     # Scraping
     news_scraped: Mapped[int] = mapped_column(Integer, default=0)
     calendar_scraped: Mapped[int] = mapped_column(Integer, default=0)
-    
+
     # Analysis
     stage1_success: Mapped[bool] = mapped_column(Boolean, default=False)
     stage1_tokens_in: Mapped[int] = mapped_column(Integer, default=0)
     stage1_tokens_out: Mapped[int] = mapped_column(Integer, default=0)
-    
+
     assets_analyzed: Mapped[int] = mapped_column(Integer, default=0)
     assets_skipped: Mapped[int] = mapped_column(Integer, default=0)
     decisions_buy: Mapped[int] = mapped_column(Integer, default=0)
     decisions_sell: Mapped[int] = mapped_column(Integer, default=0)
     decisions_wait: Mapped[int] = mapped_column(Integer, default=0)
     decisions_avoid: Mapped[int] = mapped_column(Integer, default=0)
-    
+
     stage2_tokens_in: Mapped[int] = mapped_column(Integer, default=0)
     stage2_tokens_out: Mapped[int] = mapped_column(Integer, default=0)
-    
+
     # Execution
     trades_proposed: Mapped[int] = mapped_column(Integer, default=0)
     trades_executed: Mapped[int] = mapped_column(Integer, default=0)
     trades_blocked: Mapped[int] = mapped_column(Integer, default=0)
-    
+
     # Cost
     api_cost_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    
+
     # Health & Diagnostics
     health_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     data_completeness_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -1291,14 +1371,15 @@ class CyclePerformance(Base):
 
 class ConfluenceFactorOutcome(Base):
     """IMP-11: Track individual confluence factor contribution per trade outcome."""
-    __tablename__ = 'confluence_factor_outcomes'
+
+    __tablename__ = "confluence_factor_outcomes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     paper_trade_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey('paper_trade_records.id', ondelete='CASCADE'), nullable=True, index=True
+        Integer, ForeignKey("paper_trade_records.id", ondelete="CASCADE"), nullable=True, index=True
     )
     analysis_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey('asset_analysis.id', ondelete='CASCADE'), nullable=True, index=True
+        Integer, ForeignKey("asset_analysis.id", ondelete="CASCADE"), nullable=True, index=True
     )
     symbol: Mapped[str] = mapped_column(String(20))
     factor_name: Mapped[str] = mapped_column(String(50))
@@ -1308,33 +1389,35 @@ class ConfluenceFactorOutcome(Base):
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     __table_args__ = (
-        Index('idx_cfo_symbol', 'symbol'),
-        Index('idx_cfo_factor', 'factor_name'),
-        Index('idx_cfo_outcome', 'trade_outcome'),
+        Index("idx_cfo_symbol", "symbol"),
+        Index("idx_cfo_factor", "factor_name"),
+        Index("idx_cfo_outcome", "trade_outcome"),
     )
 
 
 class PrescreenLog(Base):
     """Log hasil haiku prescreen untuk evaluasi (blind spot analysis)."""
-    __tablename__ = 'prescreen_log'
+
+    __tablename__ = "prescreen_log"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
-    decision: Mapped[str] = mapped_column(String(10))       # 'analyze' or 'skip'
+    decision: Mapped[str] = mapped_column(String(10))  # 'analyze' or 'skip'
     reason: Mapped[str] = mapped_column(Text)
     price_at_check: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     price_4h_after: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     resolved: Mapped[bool] = mapped_column(Boolean, default=False)
-    __table_args__ = (Index('idx_prescreen_symbol_time', 'symbol', 'checked_at'),)
+    __table_args__ = (Index("idx_prescreen_symbol_time", "symbol", "checked_at"),)
 
 
 class DecisionReflection(Base):
     """Decision Memory: Refleksi AI untuk setiap trade real maupun paper what-ifs."""
+
     __tablename__ = "decision_reflections"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     analysis_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True, index=True
+        Integer, ForeignKey("asset_analysis.id", ondelete="SET NULL"), nullable=True, index=True
     )
     position_id: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True
@@ -1346,7 +1429,7 @@ class DecisionReflection(Base):
 
     # --- Original Thesis ---
     rationale_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    
+
     # --- Actual/Hypothetical Outcome ---
     outcome_pnl_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     holding_hours: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -1382,9 +1465,7 @@ class DecisionReflection(Base):
 
     # --- Debate Result (dari debate node, jika aktif) ---
     debate_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    debate_verdict: Mapped[Optional[str]] = mapped_column(
-        String(20), nullable=True
-    )  # confirmed, downgraded, rejected
+    debate_verdict: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # confirmed, downgraded, rejected
     pre_debate_confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # --- Paper What-If Tracking (Q4) ---
@@ -1420,27 +1501,22 @@ class DecisionReflection(Base):
     contamination_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # --- Metadata ---
-    status: Mapped[str] = mapped_column(
-        String(20), default='pending'
-    )  # pending | pending_whatif | resolved
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
-    resolved_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | pending_whatif | resolved
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     search_vector: Mapped[Optional[Any]] = mapped_column(TSVECTOR, nullable=True)
 
     __table_args__ = (
-        Index('idx_drefl_symbol_status', 'symbol', 'status'),
-        Index('idx_drefl_created', 'created_at'),
-        Index('idx_drefl_paper', 'is_paper_whatif', 'status'),
-        Index('idx_drefl_fts', 'search_vector', postgresql_using='gin'),
+        Index("idx_drefl_symbol_status", "symbol", "status"),
+        Index("idx_drefl_created", "created_at"),
+        Index("idx_drefl_paper", "is_paper_whatif", "status"),
+        Index("idx_drefl_fts", "search_vector", postgresql_using="gin"),
     )
 
 
 class TradingStateLog(Base):
     """Snapshot log of trading agent state, cycle context, and market observations."""
+
     __tablename__ = "trading_state_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -1451,15 +1527,15 @@ class TradingStateLog(Base):
     search_vector: Mapped[Optional[Any]] = mapped_column(TSVECTOR, nullable=True)
 
     __table_args__ = (
-        Index('idx_tslog_cycle', 'cycle_id'),
-        Index('idx_tslog_fts', 'search_vector', postgresql_using='gin'),
+        Index("idx_tslog_cycle", "cycle_id"),
+        Index("idx_tslog_fts", "search_vector", postgresql_using="gin"),
     )
-
 
 
 # =============================================================================
 # 23-25: Backtest Engine
 # =============================================================================
+
 
 class BacktestRun(Base):
     __tablename__ = "backtest_run"
@@ -1519,10 +1595,11 @@ class DecisionMemory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
+
 class NewsClassificationOutcome(Base):
-    __tablename__ = 'news_classification_outcomes'
+    __tablename__ = "news_classification_outcomes"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    news_item_id: Mapped[int] = mapped_column(Integer, ForeignKey('news_items.id', ondelete='CASCADE'))
+    news_item_id: Mapped[int] = mapped_column(Integer, ForeignKey("news_items.id", ondelete="CASCADE"))
     symbol_checked: Mapped[str] = mapped_column(String(20))
     classified_impact: Mapped[str] = mapped_column(String(20))
     classified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
@@ -1531,17 +1608,18 @@ class NewsClassificationOutcome(Base):
     move_pct_2h: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     outcome_matched_classification: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    __table_args__ = (Index('idx_ncls_outcome_pending', 'checked_at', 'classified_at'),)
+    __table_args__ = (Index("idx_ncls_outcome_pending", "checked_at", "classified_at"),)
 
 
 class CandidateLesson(Base):
     """Candidate empirical trading lesson pending out-of-sample shadow validation."""
-    __tablename__ = 'candidate_lessons'
+
+    __tablename__ = "candidate_lessons"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     lesson_text: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(30), default='shadow', index=True)  # shadow, promoted, rejected
+    status: Mapped[str] = mapped_column(String(30), default="shadow", index=True)  # shadow, promoted, rejected
     proposed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     evaluated_trades_count: Mapped[int] = mapped_column(Integer, default=0)
     win_rate_delta: Mapped[float] = mapped_column(Float, default=0.0)
@@ -1556,11 +1634,12 @@ class CandidateLesson(Base):
 
 class TimesFMForecast(Base):
     """Proyeksi probabilistik kuantil dan metrik dispersi dari Google TimesFM 3.0."""
-    __tablename__ = 'timesfm_forecasts'
+
+    __tablename__ = "timesfm_forecasts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
-    timeframe: Mapped[str] = mapped_column(String(10), default='H1')
+    timeframe: Mapped[str] = mapped_column(String(10), default="H1")
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
     horizon_steps: Mapped[int] = mapped_column(Integer, default=24)
     quantiles_json: Mapped[str] = mapped_column(Text)  # JSON serialisasi 9 kuantil (Q10..Q90)
@@ -1571,13 +1650,12 @@ class TimesFMForecast(Base):
     model_backend: Mapped[str] = mapped_column(String(50), default="neural_timesfm_3.0")
     is_fallback: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    __table_args__ = (
-        Index('idx_timesfm_sym_time', 'symbol', 'timeframe', 'generated_at'),
-    )
+    __table_args__ = (Index("idx_timesfm_sym_time", "symbol", "timeframe", "generated_at"),)
 
 
 class ContextSpillBlob(Base):
     """PostgreSQL storage for spilled tool observation payloads."""
+
     __tablename__ = "context_spill_blobs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -1588,20 +1666,21 @@ class ContextSpillBlob(Base):
     payload_text: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
 
-    __table_args__ = (
-        Index('idx_spill_cycle_tool', 'cycle_id', 'tool_name'),
-    )
+    __table_args__ = (Index("idx_spill_cycle_tool", "cycle_id", "tool_name"),)
 
 
 class PlaybookRuleAttribution(Base):
     """Playbook rule outcome attribution and closed-loop evolution tracking (SOTA Phase 4)."""
+
     __tablename__ = "playbook_rule_attributions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     rule_hash: Mapped[str] = mapped_column(String(64), index=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     rule_text: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(30), default='active', index=True)  # active, golden, deprecated, candidate
+    status: Mapped[str] = mapped_column(
+        String(30), default="active", index=True
+    )  # active, golden, deprecated, candidate
     times_triggered: Mapped[int] = mapped_column(Integer, default=0)
     wins_count: Mapped[int] = mapped_column(Integer, default=0)
     losses_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -1612,24 +1691,29 @@ class PlaybookRuleAttribution(Base):
     deprecated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     deprecation_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    __table_args__ = (
-        Index('idx_playbook_rule_sym_stat', 'symbol', 'status'),
-    )
+    __table_args__ = (Index("idx_playbook_rule_sym_stat", "symbol", "status"),)
 
 
 class UserMarketIntel(Base):
     """Intelijen pasar dan arahan khusus yang diberikan oleh operator melalui Telegram."""
+
     __tablename__ = "user_market_intel"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     telegram_user_id: Mapped[str] = mapped_column(String(50), default="0", index=True)
-    intel_type: Mapped[str] = mapped_column(String(30), default="tactical_directive")  # deep_research | breaking_news | scenario_watch | operator_directive | tactical_directive | macro_structural
+    intel_type: Mapped[str] = mapped_column(
+        String(30), default="tactical_directive"
+    )  # deep_research | breaking_news | scenario_watch | operator_directive | tactical_directive | macro_structural
     title: Mapped[str] = mapped_column(String(300))
     summary: Mapped[str] = mapped_column(Text)
     full_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     affected_symbols: Mapped[str] = mapped_column(String(100), default="ALL")  # misal: "XAUUSD,EURUSD" atau "ALL"
-    directive: Mapped[str] = mapped_column(String(30), default="neutral")  # caution | scenario_watch | bias_override | informational | neutral | favor_buy | favor_sell | avoid_trade
-    target_cycle: Mapped[str] = mapped_column(String(30), default="next_cycle_only")  # next_cycle_only | persistent | continuous | until_event
+    directive: Mapped[str] = mapped_column(
+        String(30), default="neutral"
+    )  # caution | scenario_watch | bias_override | informational | neutral | favor_buy | favor_sell | avoid_trade
+    target_cycle: Mapped[str] = mapped_column(
+        String(30), default="next_cycle_only"
+    )  # next_cycle_only | persistent | continuous | until_event
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
@@ -1637,9 +1721,7 @@ class UserMarketIntel(Base):
     consumed_by_cycle_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     metadata_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    __table_args__ = (
-        Index('ix_user_market_intel_active_exp', 'is_active', 'expires_at'),
-    )
+    __table_args__ = (Index("ix_user_market_intel_active_exp", "is_active", "expires_at"),)
 
     def __init__(self, **kwargs):
         if "affected_symbols" in kwargs:
@@ -1650,6 +1732,7 @@ class UserMarketIntel(Base):
             val = kwargs["metadata_json"]
             if isinstance(val, dict):
                 import json
+
                 kwargs["metadata_json"] = json.dumps(val)
         if "telegram_user_id" in kwargs:
             kwargs["telegram_user_id"] = str(kwargs["telegram_user_id"])
@@ -1679,6 +1762,7 @@ class UserMarketIntel(Base):
             return {}
         try:
             import json
+
             return json.loads(self.metadata_json)
         except Exception:
             return {}
@@ -1688,8 +1772,10 @@ class UserMarketIntel(Base):
 # Event-Sourced Decision Ledger
 # =============================================================================
 
+
 class CycleEvent(Base):
     """Event-sourced analytical and execution decision ledger for quantitative audit trails."""
+
     __tablename__ = "cycle_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -1709,15 +1795,17 @@ class CycleEvent(Base):
 # Pattern Similarity Screening Cache
 # =============================================================================
 
+
 class PatternScreeningCache(Base):
     """Cache for multi-timeframe historical chart pattern similarity screening results."""
+
     __tablename__ = "pattern_screening_cache"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     screened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
     overall_bias: Mapped[str] = mapped_column(String(10), nullable=False)  # bullish, bearish, neutral
-    confidence: Mapped[str] = mapped_column(String(10), nullable=False)    # high, medium, low, none
+    confidence: Mapped[str] = mapped_column(String(10), nullable=False)  # high, medium, low, none
     consensus_bullish_pct: Mapped[float] = mapped_column(Float, default=0.5)
     consensus_bearish_pct: Mapped[float] = mapped_column(Float, default=0.5)
     has_timeframe_conflict: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -1725,17 +1813,17 @@ class PatternScreeningCache(Base):
     per_timeframe_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     full_result_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    __table_args__ = (
-        Index("idx_pattern_cache_sym_at", "symbol", "screened_at"),
-    )
+    __table_args__ = (Index("idx_pattern_cache_sym_at", "symbol", "screened_at"),)
 
 
 # =============================================================================
 # Unified Agent State & Session Lineage Models
 # =============================================================================
 
+
 class SystemPrompt(Base):
     """Content-addressable deduplicated system prompt storage."""
+
     __tablename__ = "system_prompts"
 
     hash: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -1745,6 +1833,7 @@ class SystemPrompt(Base):
 
 class AgentSession(Base):
     """Institutional multi-tenant agent session tracking with parent-child lineage."""
+
     __tablename__ = "agent_sessions"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -1760,13 +1849,12 @@ class AgentSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
-    __table_args__ = (
-        Index("idx_agent_sess_user_plat", "user_id", "platform"),
-    )
+    __table_args__ = (Index("idx_agent_sess_user_plat", "user_id", "platform"),)
 
 
 class AgentSessionMessage(Base):
     """Granular turn and tool execution log supporting non-destructive compaction."""
+
     __tablename__ = "agent_session_messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -1789,6 +1877,7 @@ class AgentSessionMessage(Base):
 
 class UserPreference(Base):
     """User-defined persistent constraints and preferences (e.g. event blacklists, risk caps)."""
+
     __tablename__ = "user_preferences"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -1800,20 +1889,21 @@ class UserPreference(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
-    __table_args__ = (
-        Index("idx_user_pref_lookup", "user_id", "category", "is_active"),
-    )
+    __table_args__ = (Index("idx_user_pref_lookup", "user_id", "category", "is_active"),)
 
 
 class UserJournalEntry(Base):
     """Qualitative trader journal and psychology notes (FOMO, discipline, trade reflection)."""
+
     __tablename__ = "user_journal_entries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[str] = mapped_column(String(64), index=True, default="default")
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
     symbol: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    sentiment_tag: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)  # fomo, revenge, discipline, patience
+    sentiment_tag: Mapped[Optional[str]] = mapped_column(
+        String(32), nullable=True, index=True
+    )  # fomo, revenge, discipline, patience
     content: Mapped[str] = mapped_column(Text)
     ticket_ref: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
@@ -1821,16 +1911,23 @@ class UserJournalEntry(Base):
 
 class EconomicReportDecomposition(Base):
     """Universal granular sub-component storage for all macroeconomic releases (US & G10)."""
+
     __tablename__ = "economic_report_decompositions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    report_type: Mapped[str] = mapped_column(String(30), index=True)  # CPI, PPI, PCE, NFP, JOLTS, RETAIL_SALES, GDP, PMI, ECI, UMICH
+    report_type: Mapped[str] = mapped_column(
+        String(30), index=True
+    )  # CPI, PPI, PCE, NFP, JOLTS, RETAIL_SALES, GDP, PMI, ECI, UMICH
     country: Mapped[str] = mapped_column(String(10), default="US", index=True)
     currency: Mapped[str] = mapped_column(String(10), default="USD", index=True)
-    period: Mapped[str] = mapped_column(String(20), index=True)       # e.g. "2026-09", "2026-Q3"
+    period: Mapped[str] = mapped_column(String(20), index=True)  # e.g. "2026-09", "2026-Q3"
     release_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
-    component_name: Mapped[str] = mapped_column(String(120))         # e.g. "Shelter", "Supercore Services", "Private Payrolls", "ISM Prices Paid"
-    category: Mapped[str] = mapped_column(String(50))                # "headline", "core", "sticky", "transitory", "leading", "revision"
+    component_name: Mapped[str] = mapped_column(
+        String(120)
+    )  # e.g. "Shelter", "Supercore Services", "Private Payrolls", "ISM Prices Paid"
+    category: Mapped[str] = mapped_column(
+        String(50)
+    )  # "headline", "core", "sticky", "transitory", "leading", "revision"
     weight_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     value_actual: Mapped[float] = mapped_column(Float)
     value_forecast: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -1843,54 +1940,60 @@ class EconomicReportDecomposition(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     __table_args__ = (
-        UniqueConstraint('report_type', 'country', 'period', 'component_name', name='uq_report_decomp'),
-        Index('idx_report_lookup', 'report_type', 'currency', 'period'),
+        UniqueConstraint("report_type", "country", "period", "component_name", name="uq_report_decomp"),
+        Index("idx_report_lookup", "report_type", "currency", "period"),
     )
 
 
 class CentralBankDocument(Base):
     """Full-text repository for central bank monetary policy statements, minutes, and projections."""
+
     __tablename__ = "central_bank_documents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    bank: Mapped[str] = mapped_column(String(20), index=True)         # FED, ECB, BOE, BOJ, SNB, RBA, BOC
-    doc_type: Mapped[str] = mapped_column(String(30), index=True)     # STATEMENT, MINUTES, DOT_PLOT, BEIGE_BOOK, PRESS_CONF
+    bank: Mapped[str] = mapped_column(String(20), index=True)  # FED, ECB, BOE, BOJ, SNB, RBA, BOC
+    doc_type: Mapped[str] = mapped_column(
+        String(30), index=True
+    )  # STATEMENT, MINUTES, DOT_PLOT, BEIGE_BOOK, PRESS_CONF
     meeting_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     title: Mapped[str] = mapped_column(String(300))
     source_url: Mapped[str] = mapped_column(String(1000))
     full_text: Mapped[str] = mapped_column(Text)
-    paragraphs_json: Mapped[str] = mapped_column(Text)                # JSON array of paragraphs
-    hawkish_dovish_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True) # -1.0 (dovish) to +1.0 (hawkish)
+    paragraphs_json: Mapped[str] = mapped_column(Text)  # JSON array of paragraphs
+    hawkish_dovish_score: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True
+    )  # -1.0 (dovish) to +1.0 (hawkish)
     key_phrases_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     __table_args__ = (
-        UniqueConstraint('bank', 'doc_type', 'meeting_date', name='uq_cb_doc_record'),
-        Index('idx_cb_doc_bank_type_date', 'bank', 'doc_type', 'meeting_date'),
+        UniqueConstraint("bank", "doc_type", "meeting_date", name="uq_cb_doc_record"),
+        Index("idx_cb_doc_bank_type_date", "bank", "doc_type", "meeting_date"),
     )
 
 
 class MacroLiquidityCreditMetric(Base):
     """Storage for central bank balance sheets, systemic liquidity, debt auctions, and credit stress metrics."""
+
     __tablename__ = "macro_liquidity_credit_metrics"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    metric_type: Mapped[str] = mapped_column(String(50), index=True)  # FED_NET_LIQUIDITY, WALCL, TGA, ON_RRP, TREASURY_AUCTION_10Y, HY_OAS, SOFR, TIC_FLOWS
+    metric_type: Mapped[str] = mapped_column(
+        String(50), index=True
+    )  # FED_NET_LIQUIDITY, WALCL, TGA, ON_RRP, TREASURY_AUCTION_10Y, HY_OAS, SOFR, TIC_FLOWS
     country: Mapped[str] = mapped_column(String(10), default="US", index=True)
     record_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     value: Mapped[float] = mapped_column(Float)
     previous_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     change_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     unit: Mapped[str] = mapped_column(String(20), default="USD_BILLIONS")
-    regime: Mapped[Optional[str]] = mapped_column(String(30), nullable=True) # EXPANSIONARY, CONTRACTIONARY, STRESS, BENIGN
+    regime: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True
+    )  # EXPANSIONARY, CONTRACTIONARY, STRESS, BENIGN
     metadata_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     __table_args__ = (
-        UniqueConstraint('metric_type', 'country', 'record_date', name='uq_macro_liq_metric'),
-        Index('idx_liq_lookup', 'metric_type', 'record_date'),
+        UniqueConstraint("metric_type", "country", "record_date", name="uq_macro_liq_metric"),
+        Index("idx_liq_lookup", "metric_type", "record_date"),
     )
-
-
-
-

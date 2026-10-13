@@ -1,4 +1,3 @@
-
 """GTJA Alpha #83.
 
 Formula: (-1*RANK(COVIANCE(RANK(HIGH),RANK(VOLUME),5)))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_083",
-    "theme": ['volume'],
-    "formula_latex": '(-1*RANK(COVIANCE(RANK(HIGH),RANK(VOLUME),5)))',
-    "columns_required": ['high', 'volume'],
+    "theme": ["volume"],
+    "formula_latex": "(-1*RANK(COVIANCE(RANK(HIGH),RANK(VOLUME),5)))",
+    "columns_required": ["high", "volume"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 5,
     "min_warmup_bars": 6,
-    "notes": 'Negated rank of 5d cov(rank(high), rank(volume)).',
+    "notes": "Negated rank of 5d cov(rank(high), rank(volume)).",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     return -1.0 * rank(ts_cov(rank(panel["high"]), rank(panel["volume"]), 5))

@@ -62,12 +62,14 @@ async def get_metrics():
 async def get_health():
     """Mengecek uptime, koneksi DB, dan status koneksi MT5 (Liveness Probe)."""
     from monika.infrastructure.database.db import get_engine
+
     engine = get_engine()
 
     db_ok = False
     try:
         async with engine.connect() as conn:
             from sqlalchemy import text
+
             await conn.execute(text("SELECT 1"))
         db_ok = True
     except Exception as e:
@@ -103,12 +105,14 @@ async def get_health():
 async def get_health_diagnostics():
     """Diagnostik internal mendalam: kuota LLM, freshness data, heartbeat, biaya API."""
     from monika.infrastructure.database.db import get_engine
+
     engine = get_engine()
 
     db_ok = False
     try:
         async with engine.connect() as conn:
             from sqlalchemy import text
+
             await conn.execute(text("SELECT 1"))
         db_ok = True
     except Exception as e:
@@ -131,7 +135,10 @@ async def get_health_diagnostics():
     try:
         async with engine.connect() as conn:
             from sqlalchemy import text
-            scraper_res = await conn.execute(text("SELECT MAX(timestamp) FROM activity_log WHERE category = 'scraping'"))
+
+            scraper_res = await conn.execute(
+                text("SELECT MAX(timestamp) FROM activity_log WHERE category = 'scraping'")
+            )
             last_scraper = _parse_iso_datetime(scraper_res.scalar_one_or_none())
 
             cycle_res = await conn.execute(text("SELECT MAX(timestamp) FROM activity_log WHERE category = 'analysis'"))
@@ -145,6 +152,7 @@ async def get_health_diagnostics():
     try:
         async with engine.connect() as conn:
             from sqlalchemy import text
+
             cost_res = await conn.execute(text("SELECT value FROM system_config WHERE key = 'api_costs'"))
             cost_val = cost_res.scalar_one_or_none()
             if cost_val:
@@ -159,6 +167,7 @@ async def get_health_diagnostics():
     try:
         async with engine.connect() as conn:
             from sqlalchemy import text
+
             now_dt = datetime.now(timezone.utc)
             now_ts = now_dt.timestamp()
 
@@ -183,8 +192,10 @@ async def get_health_diagnostics():
     gemini_quota = {}
     try:
         from monika.infrastructure.database.db import AsyncSessionLocal
+
         async with AsyncSessionLocal() as session:
             from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
+
             limiter = GeminiRateLimiter(session)
             gemini_quota["flash"] = await limiter.get_usage("flash")
             gemini_quota["flash_lite"] = await limiter.get_usage("flash_lite")
@@ -205,8 +216,6 @@ async def get_health_diagnostics():
         "api_cost_ytd_usd": round(api_cost, 4),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-
-
 
 
 @router.get("/api/gemini-quota", tags=["System"])
@@ -245,13 +254,15 @@ async def get_vix(limit: int = Query(default=30, ge=1, le=90)):
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
-        rows = (await session.execute(
-            select(VIXData).order_by(VIXData.date.desc()).limit(limit)
-        )).scalars().all()
+        rows = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(limit))).scalars().all()
 
         return [
             {
-                "date": (r.date.date() if hasattr(r.date, "date") and callable(getattr(r.date, "date")) else r.date).isoformat() if r.date else None,
+                "date": (
+                    r.date.date() if hasattr(r.date, "date") and callable(getattr(r.date, "date")) else r.date
+                ).isoformat()
+                if r.date
+                else None,
                 "close": round(r.close, 2) if r.close else None,
             }
             for r in reversed(rows)
@@ -266,11 +277,9 @@ async def get_brief():
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
-        brief = (await session.execute(
-            select(FundamentalBrief)
-            .order_by(FundamentalBrief.generated_at.desc())
-            .limit(1)
-        )).scalar_one_or_none()
+        brief = (
+            await session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))
+        ).scalar_one_or_none()
 
         if not brief:
             return {"brief": None}
@@ -326,8 +335,8 @@ async def shutdown_system(request: Request):
             server.should_exit = True
         else:
             import signal
+
             os.kill(os.getpid(), signal.SIGINT)
 
     asyncio.create_task(_do_shutdown())
     return {"status": "shutting_down", "message": "Graceful shutdown initiated"}
-

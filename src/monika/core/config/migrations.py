@@ -19,9 +19,11 @@ MIGRATION_REGISTRY: Dict[int, Callable[[Dict[str, Any]], Dict[str, Any]]] = {}
 
 def register_migration(version: int):
     """Decorator to register a migration function for a specific target version."""
+
     def decorator(fn: Callable[[Dict[str, Any]], Dict[str, Any]]):
         MIGRATION_REGISTRY[version] = fn
         return fn
+
     return decorator
 
 

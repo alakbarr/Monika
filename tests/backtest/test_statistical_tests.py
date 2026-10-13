@@ -1,6 +1,7 @@
 """
 Unit tests for backtest/statistical_tests.py (PSR, E[max], DSR, sample moments).
 """
+
 import pytest
 from backtest.statistical_tests import (
     probabilistic_sharpe_ratio,
@@ -29,9 +30,7 @@ def test_probabilistic_sharpe_ratio_edge_cases():
     assert probabilistic_sharpe_ratio(observed_sr=2.0, n_obs=2) == 0.5
 
     # Fat-tail negative skew
-    psr_skew = probabilistic_sharpe_ratio(
-        observed_sr=1.0, benchmark_sr=0.0, n_obs=100, skew=-1.5, excess_kurt=4.0
-    )
+    psr_skew = probabilistic_sharpe_ratio(observed_sr=1.0, benchmark_sr=0.0, n_obs=100, skew=-1.5, excess_kurt=4.0)
     assert 0.0 < psr_skew < 1.0
 
 
@@ -74,6 +73,7 @@ def test_bailey_lopez_de_prado_variance_term():
     """Verify variance adjustment term includes the +0.5*SR^2 component from Bailey & Lopez de Prado (2012)."""
     import math
     import statistics
+
     norm = statistics.NormalDist(0.0, 1.0)
 
     # For Gaussian distribution: skew=0, excess_kurt=0
@@ -83,7 +83,7 @@ def test_bailey_lopez_de_prado_variance_term():
     # z = 2.0 / sqrt(3.0 / 99)
     sr = 2.0
     n_obs = 100
-    expected_var = 1.0 + 0.5 * (sr ** 2)  # 3.0
+    expected_var = 1.0 + 0.5 * (sr**2)  # 3.0
     expected_se = math.sqrt(expected_var / (n_obs - 1))
     expected_z = sr / expected_se
     expected_psr = norm.cdf(expected_z)

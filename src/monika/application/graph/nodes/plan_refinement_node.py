@@ -12,15 +12,34 @@ def _is_reason_negotiable(reason: str) -> bool:
     """Determine if a rejection reason can be resolved via parameter refinement."""
     r_lower = str(reason).lower()
     non_negotiable = [
-        "calendar proximity", "high-impact", "crisis", "vix >=", "drawdown",
-        "stale market data", "symbol wr <", "permanent_error", "blacklisted"
+        "calendar proximity",
+        "high-impact",
+        "crisis",
+        "vix >=",
+        "drawdown",
+        "stale market data",
+        "symbol wr <",
+        "permanent_error",
+        "blacklisted",
     ]
     if any(tok in r_lower for tok in non_negotiable):
         return False
 
     negotiable = [
-        "geometry", "sl", "stop loss", "tp", "take profit", "lot", "heat",
-        "sizing", "risk_multiplier", "drift", "staleness", "cone", "rr", "ratio"
+        "geometry",
+        "sl",
+        "stop loss",
+        "tp",
+        "take profit",
+        "lot",
+        "heat",
+        "sizing",
+        "risk_multiplier",
+        "drift",
+        "staleness",
+        "cone",
+        "rr",
+        "ratio",
     ]
     return any(tok in r_lower for tok in negotiable)
 
@@ -33,7 +52,9 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
     lot size exceeding portfolio heat, or entry price drift), this node acts as an
     Adjudicator to refine the proposal parameters and route back into RiskGate (up to 2 iterations).
     """
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
     scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else None
     settings = scheduler.settings if scheduler else {}
 
@@ -42,10 +63,14 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
     rejected_items = rejection_feedback.get("rejected_items", [])
     summary = dict(state.get("summary", {}))
 
-    logger.info(f"[PlanRefinementNode] Running plan refinement iteration {refinement_count}/2 for {len(rejected_items)} rejected items")
+    logger.info(
+        f"[PlanRefinementNode] Running plan refinement iteration {refinement_count}/2 for {len(rejected_items)} rejected items"
+    )
 
     if refinement_count > 2 or not rejected_items:
-        logger.warning(f"[PlanRefinementNode] Refinement limit reached ({refinement_count}) or empty items. Halting refinement.")
+        logger.warning(
+            f"[PlanRefinementNode] Refinement limit reached ({refinement_count}) or empty items. Halting refinement."
+        )
         return {
             "actionable_trades": [],
             "refinement_count": refinement_count,
@@ -77,11 +102,15 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
             adjustment_notes = []
 
             # 1. Adjust for portfolio heat / lot size / correlation reduction
-            if any(tok in " ".join(reasons).lower() for tok in ["heat", "lot", "sizing", "risk_multiplier", "correlation"]):
+            if any(
+                tok in " ".join(reasons).lower() for tok in ["heat", "lot", "sizing", "risk_multiplier", "correlation"]
+            ):
                 new_mult = round(max(0.1, risk_mult * 0.5), 3)
                 trade["risk_multiplier"] = new_mult
                 adjusted = True
-                adjustment_notes.append(f"Risk multiplier scaled from {risk_mult} -> {new_mult} to satisfy portfolio heat.")
+                adjustment_notes.append(
+                    f"Risk multiplier scaled from {risk_mult} -> {new_mult} to satisfy portfolio heat."
+                )
 
             # 2. Adjust for SL too tight, geometry, or noise cone
             if any(tok in " ".join(reasons).lower() for tok in ["sl", "stop loss", "geometry", "cone"]):
@@ -101,7 +130,9 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
                 trade["stop_loss"] = new_sl
                 trade["take_profit"] = new_tp
                 adjusted = True
-                adjustment_notes.append(f"SL widened to {new_sl} and TP adjusted to {new_tp} (R:R 2.0:1) to clear noise cone.")
+                adjustment_notes.append(
+                    f"SL widened to {new_sl} and TP adjusted to {new_tp} (R:R 2.0:1) to clear noise cone."
+                )
 
             # 3. Adjust for entry price drift / staleness
             if any(tok in " ".join(reasons).lower() for tok in ["drift", "staleness"]):
@@ -113,12 +144,15 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
                     trade["stop_loss"] = round(sl + drift_offset, 5)
                     trade["take_profit"] = round(tp + drift_offset, 5)
                     adjusted = True
-                    adjustment_notes.append(f"Entry recalibrated to live price {new_entry} (offset {drift_offset:+.5f}).")
+                    adjustment_notes.append(
+                        f"Entry recalibrated to live price {new_entry} (offset {drift_offset:+.5f})."
+                    )
 
             if adjusted:
                 # Recalculate position sizing after risk multiplier or SL/TP adjustment (Fix 4.12)
                 try:
                     from monika.domain.risk.position_sizing import PositionSizer
+
                     sizer = PositionSizer(settings)
                     equity = float(trade.get("account_equity") or 10000.0)
                     sizing_res = await sizer.calculate_with_session(
@@ -147,7 +181,9 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
                             ana.risk_multiplier = trade.get("risk_multiplier")
                             ana.was_debate_modified = True
                             curr_notes = ana.execution_notes or ""
-                            ana.execution_notes = (curr_notes + f" | [Refined Iteration {refinement_count}]: {'; '.join(adjustment_notes)}").strip()
+                            ana.execution_notes = (
+                                curr_notes + f" | [Refined Iteration {refinement_count}]: {'; '.join(adjustment_notes)}"
+                            ).strip()
                             await session.commit()
                     except Exception as db_err:
                         logger.debug(f"[PlanRefinementNode] Failed to update AssetAnalysis {analysis_id}: {db_err}")

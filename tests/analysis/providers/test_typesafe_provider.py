@@ -21,11 +21,7 @@ from typesafe_sdk._core.response_types import Usage
 
 @pytest.fixture
 def dummy_provider():
-    return TypeSafeProvider(
-        model="jev-latest",
-        api_key="mock_key",
-        confidence_threshold=0.70
-    )
+    return TypeSafeProvider(model="jev-latest", api_key="mock_key", confidence_threshold=0.70)
 
 
 def test_provider_initialization(dummy_provider):
@@ -62,7 +58,7 @@ def test_schema_to_jev_questions_conversion():
             "impact": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW"], "description": "Market impact"},
             "rating": {"type": "integer", "minimum": 1, "maximum": 5, "description": "Opportunity score"},
             "direction": {"type": "string", "enum": ["YES", "NO"], "description": "Should buy?"},
-        }
+        },
     }
     questions = schema_to_jev_questions(schema)
     assert "is_valid" in questions
@@ -74,9 +70,7 @@ def test_schema_to_jev_questions_conversion():
 def test_currency_bias_expansion_and_reassembly():
     schema = {
         "type": "object",
-        "properties": {
-            "currency_bias": {"type": "object", "description": "Macro currency bias"}
-        }
+        "properties": {"currency_bias": {"type": "object", "description": "Macro currency bias"}},
     }
     questions = schema_to_jev_questions(schema)
     assert "bias_USD" in questions
@@ -87,13 +81,17 @@ def test_currency_bias_expansion_and_reassembly():
         model="jev-1.13.0",
         usage=Usage(input_tokens=100, output_tokens=0),
         answers={
-            "bias_USD": ChoiceAnswer(choice="bullish", confidence=0.85, probabilities={"bullish": 0.85, "bearish": 0.15}),
-            "bias_EUR": ChoiceAnswer(choice="bearish", confidence=0.80, probabilities={"bearish": 0.80, "bullish": 0.20}),
+            "bias_USD": ChoiceAnswer(
+                choice="bullish", confidence=0.85, probabilities={"bullish": 0.85, "bearish": 0.15}
+            ),
+            "bias_EUR": ChoiceAnswer(
+                choice="bearish", confidence=0.80, probabilities={"bearish": 0.80, "bullish": 0.20}
+            ),
             "bias_GBP": ChoiceAnswer(choice="neutral", confidence=0.75, probabilities={"neutral": 0.75}),
             "bias_JPY": ChoiceAnswer(choice="bullish", confidence=0.90, probabilities={"bullish": 0.90}),
             "bias_AUD": ChoiceAnswer(choice="neutral", confidence=0.70, probabilities={"neutral": 0.70}),
             "bias_XAU": ChoiceAnswer(choice="neutral", confidence=0.70, probabilities={"neutral": 0.70}),
-        }
+        },
     )
     result = parse_jev_response_to_dict(mock_resp, schema=schema)
     assert "currency_bias" in result
@@ -111,18 +109,15 @@ async def test_classify_json_with_mocked_client(dummy_provider):
         usage=Usage(input_tokens=150, output_tokens=0),
         answers={
             "action": ChoiceAnswer(choice="BUY", confidence=0.88, probabilities={"BUY": 0.88, "SELL": 0.12}),
-            "is_risky": NoulAnswer(noul=0.15)
-        }
+            "is_risky": NoulAnswer(noul=0.15),
+        },
     )
     mock_client.system_one.return_value = mock_resp
     dummy_provider._client = mock_client
 
     schema = {
         "type": "object",
-        "properties": {
-            "action": {"type": "string", "enum": ["BUY", "SELL"]},
-            "is_risky": {"type": "boolean"}
-        }
+        "properties": {"action": {"type": "string", "enum": ["BUY", "SELL"]}, "is_risky": {"type": "boolean"}},
     }
 
     result = await dummy_provider.classify_json(prompt="Market is strong", schema=schema)
@@ -139,26 +134,16 @@ async def test_classify_json_low_confidence_rejection(dummy_provider):
     mock_resp = SystemOneResponse(
         model="jev-1.13.0",
         usage=Usage(input_tokens=150, output_tokens=0),
-        answers={
-            "action": ChoiceAnswer(choice="BUY", confidence=0.40, probabilities={"BUY": 0.55, "SELL": 0.45})
-        }
+        answers={"action": ChoiceAnswer(choice="BUY", confidence=0.40, probabilities={"BUY": 0.55, "SELL": 0.45})},
     )
     mock_client.system_one.return_value = mock_resp
     dummy_provider._client = mock_client
 
-    schema = {
-        "type": "object",
-        "properties": {
-            "action": {"type": "string", "enum": ["BUY", "SELL"]}
-        }
-    }
+    schema = {"type": "object", "properties": {"action": {"type": "string", "enum": ["BUY", "SELL"]}}}
 
     # Reject low confidence when requested -> triggers fallback to next model
     result = await dummy_provider.classify_json(
-        prompt="Ambiguous market",
-        schema=schema,
-        min_confidence=0.70,
-        reject_low_confidence=True
+        prompt="Ambiguous market", schema=schema, min_confidence=0.70, reject_low_confidence=True
     )
     assert result is None
 
@@ -198,10 +183,7 @@ async def test_typesafe_provider_system_one_passthrough(dummy_provider):
     res = await dummy_provider.system_one(state={"test": 1}, questions={"q": 1}, timeout=10.0)
     assert res is mock_resp
     mock_client.system_one.assert_awaited_once_with(
-        state={"test": 1},
-        questions={"q": 1},
-        model="jev-latest",
-        timeout=10.0
+        state={"test": 1}, questions={"q": 1}, model="jev-latest", timeout=10.0
     )
 
 
@@ -210,10 +192,7 @@ async def test_typesafe_provider_classify_json_rejects_array_schema(dummy_provid
     mock_client = mock.AsyncMock()
     dummy_provider._client = mock_client
 
-    array_schema = {
-        "type": "array",
-        "items": {"type": "object", "properties": {"impact": {"type": "string"}}}
-    }
+    array_schema = {"type": "array", "items": {"type": "object", "properties": {"impact": {"type": "string"}}}}
     result = await dummy_provider.classify_json(prompt="Batch of news", schema=array_schema)
     assert result is None
     mock_client.system_one.assert_not_called()
@@ -259,11 +238,7 @@ async def test_classify_news_batch_with_jev_supports_fallback_wrapper():
 
     wrapper = MockFallbackWrapper()
     items = [MockItem(101, "US CPI soars 4.5% vs 3.2% exp", "Inflation surprised high")]
-    res = await classify_news_batch_with_jev(
-        client=wrapper,
-        batch=items,
-        now_utc=datetime.now(timezone.utc)
-    )
+    res = await classify_news_batch_with_jev(client=wrapper, batch=items, now_utc=datetime.now(timezone.utc))
     assert res is not None
     assert len(res) == 1
     assert res[0]["news_id"] == 101
@@ -328,11 +303,7 @@ async def test_jev_option_c_asset_bias_and_sentiments():
         MockItem(2, "Gold and Bitcoin rally as oil supplies tighten", "WTI crude jumps, XAU surges, BTC hits high"),
     ]
 
-    res = await classify_news_batch_with_jev(
-        client=client,
-        batch=items,
-        now_utc=datetime.now(timezone.utc)
-    )
+    res = await classify_news_batch_with_jev(client=client, batch=items, now_utc=datetime.now(timezone.utc))
 
     assert res is not None
     assert len(res) == 2
@@ -391,11 +362,7 @@ async def test_jev_option_c_data_point_empty_on_none_surprise():
             return MockResp()
 
     items = [MockItem(10, "Fed Powell speaks on economic outlook at 2:00 PM vs earlier timing", "General speech")]
-    res = await classify_news_batch_with_jev(
-        client=MockClient(),
-        batch=items,
-        now_utc=datetime.now(timezone.utc)
-    )
+    res = await classify_news_batch_with_jev(client=MockClient(), batch=items, now_utc=datetime.now(timezone.utc))
 
     assert res is not None
     assert len(res) == 1
@@ -438,11 +405,11 @@ async def test_jev_option_c_partial_gather_triage():
         async def system_one(self, state, questions, timeout=15.0):
             title = state.get("title", "")
             if "Item 1" in title:
-                return MockResp("HIGH", 0.90)   # Confident
+                return MockResp("HIGH", 0.90)  # Confident
             elif "Item 2" in title:
-                return MockResp("MEDIUM", 0.40) # Low confidence (below 0.60 threshold)
+                return MockResp("MEDIUM", 0.40)  # Low confidence (below 0.60 threshold)
             else:
-                return MockResp("LOW", 0.85)    # Confident
+                return MockResp("LOW", 0.85)  # Confident
 
     batch = [
         MockItem(1, "Item 1: Major Policy Shift", "High confidence"),
@@ -451,10 +418,7 @@ async def test_jev_option_c_partial_gather_triage():
     ]
 
     res = await classify_news_batch_with_jev(
-        client=MockClient(),
-        batch=batch,
-        now_utc=datetime.now(timezone.utc),
-        min_confidence=0.60
+        client=MockClient(), batch=batch, now_utc=datetime.now(timezone.utc), min_confidence=0.60
     )
 
     assert res is not None
@@ -484,10 +448,7 @@ async def test_jev_option_c_all_fail_returns_none():
 
     batch = [MockItem(1, "Item A"), MockItem(2, "Item B")]
     res = await classify_news_batch_with_jev(
-        client=MockClient(),
-        batch=batch,
-        now_utc=datetime.now(timezone.utc),
-        min_confidence=0.60
+        client=MockClient(), batch=batch, now_utc=datetime.now(timezone.utc), min_confidence=0.60
     )
 
     assert res is None
@@ -549,50 +510,54 @@ async def test_conservative_and_aggressive_risk_llm_jev_mapping():
 
         async def generate_content(self, **kwargs):
             import json
+
             return json.dumps(self.mock_return)
 
     # 1. Conservative normal approval
-    mock_cons = MockJevClient({
-        "_jev_model": "jev-latest",
-        "veto_trade": False,
-        "risk_level": "LOW",
-        "recommended_multiplier_bucket": "STANDARD"
-    })
+    mock_cons = MockJevClient(
+        {
+            "_jev_model": "jev-latest",
+            "veto_trade": False,
+            "risk_level": "LOW",
+            "recommended_multiplier_bucket": "STANDARD",
+        }
+    )
     res_c = await analyze_risk_conservative_llm(mock_cons, "EURUSD", {"direction": "BUY"})
     assert res_c["veto_trade"] is False
     assert res_c["recommended_multiplier"] == 0.7
     assert "Jev Conservative Evaluation" in res_c["risk_profile_assessment"]
 
     # 2. Conservative critical veto
-    mock_cons_veto = MockJevClient({
-        "_jev_model": "jev-latest",
-        "veto_trade": False,
-        "risk_level": "CRITICAL",
-        "recommended_multiplier_bucket": "STANDARD"
-    })
+    mock_cons_veto = MockJevClient(
+        {
+            "_jev_model": "jev-latest",
+            "veto_trade": False,
+            "risk_level": "CRITICAL",
+            "recommended_multiplier_bucket": "STANDARD",
+        }
+    )
     res_c_veto = await analyze_risk_conservative_llm(mock_cons_veto, "EURUSD", {"direction": "BUY"})
     assert res_c_veto["veto_trade"] is True
     assert res_c_veto["recommended_multiplier"] == 0.0
 
     # 3. Aggressive normal approval
-    mock_agg = MockJevClient({
-        "_jev_model": "jev-latest",
-        "veto_trade": False,
-        "reward_asymmetry": 3,
-        "recommended_multiplier_bucket": "AGGRESSIVE"
-    })
+    mock_agg = MockJevClient(
+        {
+            "_jev_model": "jev-latest",
+            "veto_trade": False,
+            "reward_asymmetry": 3,
+            "recommended_multiplier_bucket": "AGGRESSIVE",
+        }
+    )
     res_a = await analyze_risk_aggressive_llm(mock_agg, "EURUSD", {"direction": "BUY"})
     assert res_a["veto_trade"] is False
     assert res_a["recommended_multiplier"] == 1.5
     assert "Jev Aggressive Evaluation" in res_a["risk_profile_assessment"]
 
     # 4. Aggressive structural veto
-    mock_agg_veto = MockJevClient({
-        "_jev_model": "jev-latest",
-        "veto_trade": True,
-        "reward_asymmetry": 1,
-        "recommended_multiplier_bucket": "ZERO"
-    })
+    mock_agg_veto = MockJevClient(
+        {"_jev_model": "jev-latest", "veto_trade": True, "reward_asymmetry": 1, "recommended_multiplier_bucket": "ZERO"}
+    )
     res_a_veto = await analyze_risk_aggressive_llm(mock_agg_veto, "EURUSD", {"direction": "BUY"})
     assert res_a_veto["veto_trade"] is True
     assert res_a_veto["recommended_multiplier"] == 0.0
@@ -614,7 +579,7 @@ async def test_context_verifier_jev_mapping():
                 "_jev_model": "jev-latest",
                 "relevance": "high",
                 "is_macro_driver_similar": True,
-                "adjustment_level": "full_weight"
+                "adjustment_level": "full_weight",
             }
 
     match = PatternMatch(
@@ -624,7 +589,7 @@ async def test_context_verifier_jev_mapping():
         end_time=1672617600.0,
         similarity=0.88,
         context_score=0.85,
-        context_label="MODERATE"
+        context_label="MODERATE",
     )
     current_context = MarketContext(
         vix_level=18.5,
@@ -632,7 +597,7 @@ async def test_context_verifier_jev_mapping():
         dxy_trend="bullish",
         market_regime="trend",
         rate_cycle="pause",
-        asset_trend="above_ema200"
+        asset_trend="above_ema200",
     )
 
     verdict = await verifier._verify_single_match(
@@ -642,7 +607,7 @@ async def test_context_verifier_jev_mapping():
         current_context=current_context,
         session=None,
         llm_client=MockContextClient(),
-        web_search_enabled=False
+        web_search_enabled=False,
     )
 
     assert isinstance(verdict, ContextVerdict)
@@ -672,22 +637,15 @@ async def test_fallback_wrapper_jev_adaptation():
     mock_gen_client = MockGenerativeClient()
     factory._create_client_instance = mock.MagicMock(return_value=mock_gen_client)
     wrapper = FallbackClientWrapper(
-        factory=factory,
-        primary="gemini-3.5-flash-lite",
-        fallbacks=[],
-        role_config={},
-        task_role="test_jev_fallback"
+        factory=factory, primary="gemini-3.5-flash-lite", fallbacks=[], role_config={}, task_role="test_jev_fallback"
     )
 
     jev_q = {
         "decision": Noul(instructions="Approve?"),
-        "verdict": Choice(instructions="Verdict", criteria={"APPROVE": "Approve", "REJECT": "Reject"})
+        "verdict": Choice(instructions="Verdict", criteria={"APPROVE": "Approve", "REJECT": "Reject"}),
     }
 
-    res = await wrapper.classify_json(
-        prompt="Evaluate setup",
-        jev_questions=jev_q
-    )
+    res = await wrapper.classify_json(prompt="Evaluate setup", jev_questions=jev_q)
 
     # 1. Verify schema was automatically synthesized from jev_questions
     assert "schema" in captured_kwargs
@@ -750,6 +708,7 @@ def test_llm_factory_and_registry_openrouter_routing(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "openrouter_secret_456")
 
     from utils.api.credential_pool import get_credential_pool
+
     pool = get_credential_pool()
     pool._pools.clear()
     pool._initialize_from_env()
@@ -826,13 +785,10 @@ async def test_fallback_wrapper_skips_typesafe_on_array_schema():
         fallbacks=["jaredpalmer/kev-4b", "gemini-3.5-flash-lite"],
         role_config={},
         factory=factory,
-        task_role="news_classification"
+        task_role="news_classification",
     )
 
-    array_schema = {
-        "type": "array",
-        "items": {"type": "object", "properties": {"impact": {"type": "string"}}}
-    }
+    array_schema = {"type": "array", "items": {"type": "object", "properties": {"impact": {"type": "string"}}}}
 
     result = await wrapper.classify_json(prompt="Batch of news", schema=array_schema)
 
@@ -843,9 +799,3 @@ async def test_fallback_wrapper_skips_typesafe_on_array_schema():
     # 2. Gemini should be invoked directly
     mock_gemini.classify_json.assert_awaited_once()
     assert result == [{"index": 1, "impact": "HIGH"}]
-
-
-
-
-
-

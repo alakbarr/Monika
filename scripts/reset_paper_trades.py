@@ -30,6 +30,7 @@ if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 try:
     from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+
     install_legacy_compat()
 except Exception:
     pass
@@ -60,13 +61,11 @@ async def main():
     args = parser.parse_args()
 
     from dotenv import load_dotenv
+
     load_dotenv(os.path.join(BASE_DIR, ".env"))
 
     from database.db import AsyncSessionLocal
-    from database.models import (
-        PaperTradeRecord, Position, MT5Signal, DecisionReflection,
-        SystemConfig, RiskState
-    )
+    from database.models import PaperTradeRecord, Position, MT5Signal, DecisionReflection, SystemConfig, RiskState
     from database.cleanup import reset_paper_trading_history
     from sqlalchemy import select, func
 
@@ -77,20 +76,18 @@ async def main():
     async with AsyncSessionLocal() as session:
         # Audit status saat ini
         pt_count = await session.scalar(select(func.count(PaperTradeRecord.id)))
-        pos_count = await session.scalar(
-            select(func.count(Position.id)).where(Position.is_paper == True)
-        )
+        pos_count = await session.scalar(select(func.count(Position.id)).where(Position.is_paper == True))
         sig_count = await session.scalar(select(func.count(MT5Signal.id)))
         refl_count = await session.scalar(select(func.count(DecisionReflection.id)))
 
-        risk_row = (await session.execute(
-            select(RiskState).order_by(RiskState.date.desc()).limit(1)
-        )).scalar_one_or_none()
+        risk_row = (
+            await session.execute(select(RiskState).order_by(RiskState.date.desc()).limit(1))
+        ).scalar_one_or_none()
         is_paused = risk_row.trading_paused if risk_row else False
 
-        susp_cfg = (await session.execute(
-            select(SystemConfig.value).where(SystemConfig.key == "suspended_symbols")
-        )).scalar_one_or_none()
+        susp_cfg = (
+            await session.execute(select(SystemConfig.value).where(SystemConfig.key == "suspended_symbols"))
+        ).scalar_one_or_none()
 
         fc_count = await session.scalar(
             select(func.count(SystemConfig.key)).where(SystemConfig.key.like("flash_crash_blocked_%"))
@@ -126,12 +123,10 @@ async def main():
 
         # Verifikasi setelah reset
         pt_after = await session.scalar(select(func.count(PaperTradeRecord.id)))
-        pos_after = await session.scalar(
-            select(func.count(Position.id)).where(Position.is_paper == True)
-        )
-        risk_after = (await session.execute(
-            select(RiskState).order_by(RiskState.date.desc()).limit(1)
-        )).scalar_one_or_none()
+        pos_after = await session.scalar(select(func.count(Position.id)).where(Position.is_paper == True))
+        risk_after = (
+            await session.execute(select(RiskState).order_by(RiskState.date.desc()).limit(1))
+        ).scalar_one_or_none()
         paused_after = risk_after.trading_paused if risk_after else False
 
         print("\nHasil Eksekusi:")

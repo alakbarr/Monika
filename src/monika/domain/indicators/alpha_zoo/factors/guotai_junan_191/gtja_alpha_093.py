@@ -1,4 +1,3 @@
-
 """GTJA Alpha #93.
 
 Formula: SUM((OPEN>=DELAY(OPEN,1)?0:MAX(OPEN-LOW,OPEN-DELAY(OPEN,1))),20)
@@ -28,24 +27,24 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_093",
-    "theme": ['microstructure'],
-    "formula_latex": 'SUM((OPEN>=DELAY(OPEN,1)?0:MAX(OPEN-LOW,OPEN-DELAY(OPEN,1))),20)',
-    "columns_required": ['open', 'low'],
+    "theme": ["microstructure"],
+    "formula_latex": "SUM((OPEN>=DELAY(OPEN,1)?0:MAX(OPEN-LOW,OPEN-DELAY(OPEN,1))),20)",
+    "columns_required": ["open", "low"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 20,
     "min_warmup_bars": 22,
-    "notes": 'Sum of downside range moves over 20 days.',
+    "notes": "Sum of downside range moves over 20 days.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     o = panel["open"]
     l = panel["low"]
     po = o.shift(1)
-    move = pd.DataFrame(np.maximum((o - l).to_numpy(), (o - po).to_numpy()),
-                        index=o.index, columns=o.columns)
+    move = pd.DataFrame(np.maximum((o - l).to_numpy(), (o - po).to_numpy()), index=o.index, columns=o.columns)
     # A missing open, prior open or low is neither a down move nor a zero (#1463).
     keep = move.where(o < po, 0.0).where(o.notna() & po.notna() & l.notna())
     res = keep.rolling(20, min_periods=20).sum()

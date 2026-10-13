@@ -33,12 +33,14 @@ class GoogleSheetsMcpServer:
     def __init__(self, creds_path: Optional[str] = None):
         self.name = "google-sheets-server"
         self.version = "1.0.0"
-        
-        self.creds_path = creds_path or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") or "config/google_credentials.json"
+
+        self.creds_path = (
+            creds_path or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") or "config/google_credentials.json"
+        )
         if not os.path.isabs(self.creds_path):
             base_dir = get_repo_root()
             self.creds_path = str(base_dir / self.creds_path)
-            
+
         self.default_folder_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "")
         self.user_email = os.environ.get("GOOGLE_USER_EMAIL", "")
         self.scopes = [
@@ -230,7 +232,7 @@ class GoogleSheetsMcpServer:
             creds = self._get_credentials()
             creds.refresh(Request())
             folder_id = args.get("folder_id") or self.default_folder_id
-            
+
             url = "https://www.googleapis.com/drive/v3/files"
             params = {
                 "q": f"'{folder_id}' in parents and trashed=false",
@@ -250,7 +252,7 @@ class GoogleSheetsMcpServer:
             sh = self._open_spreadsheet(gc, s_id)
             w_name = args.get("worksheet_name")
             ws = sh.worksheet(w_name) if w_name else sh.sheet1
-            
+
             records = ws.get_all_records()
             max_rows = args.get("max_rows", 100)
             return {
@@ -331,7 +333,7 @@ class GoogleSheetsMcpServer:
                 raise ValueError("Missing 'document_id' or 'text'")
             creds = self._get_credentials()
             creds.refresh(Request())
-            
+
             # Fetch doc length first
             get_url = f"https://docs.googleapis.com/v1/documents/{doc_id}"
             r_get = requests.get(get_url, headers={"Authorization": f"Bearer {creds.token}"})
@@ -382,11 +384,13 @@ class GoogleSheetsMcpServer:
                         auto_text = te.get("textRun", {}).get("content", "")
                         if auto_text.strip():
                             texts.append(auto_text.strip())
-                slide_summaries.append({
-                    "slide_number": idx,
-                    "slide_id": s.get("objectId"),
-                    "texts": texts,
-                })
+                slide_summaries.append(
+                    {
+                        "slide_number": idx,
+                        "slide_id": s.get("objectId"),
+                        "texts": texts,
+                    }
+                )
             return {"presentation_id": p_id, "title": title, "slide_count": len(slides), "slides": slide_summaries}
 
         elif tool_name == "gslides_append_slide":
@@ -399,6 +403,7 @@ class GoogleSheetsMcpServer:
             creds.refresh(Request())
 
             import uuid
+
             slide_obj_id = f"slide_{uuid.uuid4().hex[:12]}"
             batch_url = f"https://slides.googleapis.com/v1/presentations/{p_id}:batchUpdate"
 
@@ -407,7 +412,7 @@ class GoogleSheetsMcpServer:
                     {
                         "createSlide": {
                             "objectId": slide_obj_id,
-                            "slideLayoutReference": {"predefinedLayout": "TITLE_AND_BODY"}
+                            "slideLayoutReference": {"predefinedLayout": "TITLE_AND_BODY"},
                         }
                     }
                 ]
@@ -432,15 +437,13 @@ class GoogleSheetsMcpServer:
 
             insert_requests = []
             if title_elem_id and s_title:
-                insert_requests.append({
-                    "insertText": {"objectId": title_elem_id, "text": s_title}
-                })
+                insert_requests.append({"insertText": {"objectId": title_elem_id, "text": s_title}})
             if body_elem_id and s_body:
-                insert_requests.append({
-                    "insertText": {"objectId": body_elem_id, "text": s_body}
-                })
+                insert_requests.append({"insertText": {"objectId": body_elem_id, "text": s_body}})
             if insert_requests:
-                r_ins = requests.post(batch_url, headers={"Authorization": f"Bearer {creds.token}"}, json={"requests": insert_requests})
+                r_ins = requests.post(
+                    batch_url, headers={"Authorization": f"Bearer {creds.token}"}, json={"requests": insert_requests}
+                )
                 if r_ins.status_code != 200:
                     raise RuntimeError(f"Slides insert error: {r_ins.text}")
 

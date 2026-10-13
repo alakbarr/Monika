@@ -23,16 +23,19 @@ logger = logging.getLogger("TradingAgent.Plugins.Loader")
 
 class PluginDependencyError(Exception):
     """Base error for plugin dependency issues."""
+
     pass
 
 
 class MissingDependencyError(PluginDependencyError):
     """Raised when a required plugin dependency is missing."""
+
     pass
 
 
 class CircularDependencyError(PluginDependencyError):
     """Raised when circular dependencies exist between plugins."""
+
     pass
 
 
@@ -43,9 +46,7 @@ def load_manifest_file(manifest_path: str) -> PluginManifest:
     return PluginManifest(**raw_data)
 
 
-def topological_sort_plugins(
-    plugin_entries: List[Tuple[PluginManifest, str]]
-) -> List[Tuple[PluginManifest, str]]:
+def topological_sort_plugins(plugin_entries: List[Tuple[PluginManifest, str]]) -> List[Tuple[PluginManifest, str]]:
     """
     Sort a list of (PluginManifest, plugin_dir) tuples topologically based on dependencies.
     Dependencies must load before the plugins that depend on them.
@@ -72,9 +73,7 @@ def topological_sort_plugins(
         m_key = key_for_entry(manifest)
         for dep in manifest.dependencies:
             if dep not in lookup:
-                raise MissingDependencyError(
-                    f"Plugin '{manifest.name}' requires missing dependency '{dep}'"
-                )
+                raise MissingDependencyError(f"Plugin '{manifest.name}' requires missing dependency '{dep}'")
             dep_key = lookup[dep]
             adj[dep_key].append(m_key)
             in_degree[m_key] += 1
@@ -94,9 +93,7 @@ def topological_sort_plugins(
 
     if len(sorted_keys) != len(plugin_entries):
         cyclic_plugins = [name for name, deg in in_degree.items() if deg > 0]
-        raise CircularDependencyError(
-            f"Circular dependency detected involving plugins: {', '.join(cyclic_plugins)}"
-        )
+        raise CircularDependencyError(f"Circular dependency detected involving plugins: {', '.join(cyclic_plugins)}")
 
     return [entry_by_key[k] for k in sorted_keys]
 

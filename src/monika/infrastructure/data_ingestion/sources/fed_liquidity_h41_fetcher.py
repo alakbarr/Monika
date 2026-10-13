@@ -26,9 +26,9 @@ from monika.core.primitives import clock
 
 logger = logging.getLogger("TradingAgent.FedLiquidityH41Fetcher")
 
-FRED_SERIES_WALCL = "WALCL"       # Total Assets of the Federal Reserve (in Millions)
-FRED_SERIES_TGA = "WTREGEN"       # Treasury General Account at the Fed (in Millions)
-FRED_SERIES_RRP = "RRPONTSYD"     # Overnight Reverse Repurchase Agreements (in Billions)
+FRED_SERIES_WALCL = "WALCL"  # Total Assets of the Federal Reserve (in Millions)
+FRED_SERIES_TGA = "WTREGEN"  # Treasury General Account at the Fed (in Millions)
+FRED_SERIES_RRP = "RRPONTSYD"  # Overnight Reverse Repurchase Agreements (in Billions)
 
 
 class FedLiquidityH41Fetcher:
@@ -76,15 +76,15 @@ class FedLiquidityH41Fetcher:
                                 if obs and obs[0].get("value"):
                                     try:
                                         fetched_vals[key] = float(obs[0]["value"])
-                                    except (ValueError, TypeError):
+                                    except ValueError, TypeError:
                                         pass
 
                     if walcl is None and "WALCL" in fetched_vals:
                         walcl = round(fetched_vals["WALCL"] / 1000.0, 2)  # Millions to Billions
                     if tga is None and "TGA" in fetched_vals:
-                        tga = round(fetched_vals["TGA"] / 1000.0, 2)      # Millions to Billions
+                        tga = round(fetched_vals["TGA"] / 1000.0, 2)  # Millions to Billions
                     if rrp is None and "RRP" in fetched_vals:
-                        rrp = round(fetched_vals["RRP"], 2)               # already Billions
+                        rrp = round(fetched_vals["RRP"], 2)  # already Billions
                     logger.info(f"Live FRED H.4.1 Balance Sheet fetched: WALCL=${walcl}B, TGA=${tga}B, RRP=${rrp}B")
             except Exception as e:
                 logger.warning(f"FRED H.4.1 live fetch failed ({e}), using calibrated fallback")
@@ -102,10 +102,38 @@ class FedLiquidityH41Fetcher:
         regime = "EXPANSIONARY" if diff_net >= 0 else "CONTRACTIONARY"
 
         metrics = [
-            ("FED_NET_LIQUIDITY", net_liquidity, prev_net, diff_net, regime, {"formula": "WALCL - TGA - RRP", "source": "FRED_H41_Live"}),
-            ("FED_WALCL", walcl, round(walcl + 15.0, 2), -15.0, "CONTRACTIONARY", {"desc": "Fed Total Assets", "source": "FRED_Live"}),
-            ("FED_TGA", tga, round(tga - 20.0, 2), 20.0, "CONTRACTIONARY" if tga > 800 else "EXPANSIONARY", {"desc": "Treasury General Account", "source": "FRED_Live"}),
-            ("FED_ON_RRP", rrp, round(rrp + 0.5, 2), -0.5, "EXPANSIONARY" if rrp < 250 else "CONTRACTIONARY", {"desc": "Reverse Repo Facility", "source": "FRED_Live"}),
+            (
+                "FED_NET_LIQUIDITY",
+                net_liquidity,
+                prev_net,
+                diff_net,
+                regime,
+                {"formula": "WALCL - TGA - RRP", "source": "FRED_H41_Live"},
+            ),
+            (
+                "FED_WALCL",
+                walcl,
+                round(walcl + 15.0, 2),
+                -15.0,
+                "CONTRACTIONARY",
+                {"desc": "Fed Total Assets", "source": "FRED_Live"},
+            ),
+            (
+                "FED_TGA",
+                tga,
+                round(tga - 20.0, 2),
+                20.0,
+                "CONTRACTIONARY" if tga > 800 else "EXPANSIONARY",
+                {"desc": "Treasury General Account", "source": "FRED_Live"},
+            ),
+            (
+                "FED_ON_RRP",
+                rrp,
+                round(rrp + 0.5, 2),
+                -0.5,
+                "EXPANSIONARY" if rrp < 250 else "CONTRACTIONARY",
+                {"desc": "Reverse Repo Facility", "source": "FRED_Live"},
+            ),
         ]
 
         inserted_records = []

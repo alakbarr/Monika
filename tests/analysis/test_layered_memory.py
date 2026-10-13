@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 from analysis.memory.layered_memory import LayeredMemoryManager
 from utils.llm.prompt_compressor import estimate_tokens
 
+
 @pytest.mark.asyncio
 async def test_layered_memory_core_budget():
     mgr = LayeredMemoryManager()
@@ -12,6 +13,7 @@ async def test_layered_memory_core_budget():
     assert "LESSONS:" in core
     assert "HEAT:" in core
     assert estimate_tokens(core) <= 800
+
 
 @pytest.mark.asyncio
 async def test_layered_memory_symbol():
@@ -26,16 +28,18 @@ async def test_layered_memory_symbol():
 async def test_layered_memory_hybrid_rrf_precedents():
     """Verify that get_symbol_memory calls get_symbol_precedents_hybrid with RRF."""
     mgr = LayeredMemoryManager()
-    mgr.session_search.get_symbol_precedents_hybrid = AsyncMock(return_value=[
-        {
-            "timestamp": "2026-09-01T10:00:00",
-            "stage": "execution",
-            "decision": "BUY",
-            "confidence": 0.85,
-            "pnl": 1.25,
-            "content": "Breakout continuation above 2500"
-        }
-    ])
+    mgr.session_search.get_symbol_precedents_hybrid = AsyncMock(
+        return_value=[
+            {
+                "timestamp": "2026-09-01T10:00:00",
+                "stage": "execution",
+                "decision": "BUY",
+                "confidence": 0.85,
+                "pnl": 1.25,
+                "content": "Breakout continuation above 2500",
+            }
+        ]
+    )
     mem = await mgr.get_symbol_memory(session=None, symbol="XAUUSD", regime="trending_bullish")
     assert "PRECEDENTS:" in mem
     assert "BUY" in mem
@@ -49,16 +53,18 @@ async def test_layered_memory_hybrid_rrf_precedents():
 async def test_layered_memory_symbol_budget_cap():
     """Verify that get_symbol_memory enforces <= 400 token budget cap."""
     mgr = LayeredMemoryManager()
-    mgr.session_search.get_symbol_precedents_hybrid = AsyncMock(return_value=[
-        {
-            "timestamp": "2026-09-01T10:00:00",
-            "stage": "execution",
-            "decision": "BUY",
-            "confidence": 0.9,
-            "pnl": 2.5,
-            "content": "A" * 2000  # Large content
-        }
-    ])
+    mgr.session_search.get_symbol_precedents_hybrid = AsyncMock(
+        return_value=[
+            {
+                "timestamp": "2026-09-01T10:00:00",
+                "stage": "execution",
+                "decision": "BUY",
+                "confidence": 0.9,
+                "pnl": 2.5,
+                "content": "A" * 2000,  # Large content
+            }
+        ]
+    )
     mem = await mgr.get_symbol_memory(session=None, symbol="EURUSD")
     assert estimate_tokens(mem) <= 400
 
@@ -89,5 +95,3 @@ async def test_layered_memory_negative_constraints():
     assert "NEGATIVE_CONSTRAINTS:" in mem
     assert "FALSE_BREAKOUT" in mem
     assert "SL_TOO_TIGHT" in mem
-
-

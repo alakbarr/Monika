@@ -57,6 +57,7 @@ class InvariantRegistry:
         try:
             from .risk_gate_invariant import check_risk_gate_invariant
             from .position_count_invariant import check_position_count_invariant
+
             self.register("risk_gate_limits", check_risk_gate_invariant)
             self.register("position_count_ceiling", check_position_count_invariant)
         except Exception as e:
@@ -93,7 +94,7 @@ class InvariantRegistry:
     ) -> List[InvariantResult]:
         """
         Execute all registered invariants against provided runtime context.
-        
+
         Args:
             context: Dictionary containing state to validate (e.g. proposal, positions, drawdown).
             fail_fast: If True, immediately raises InvariantViolationError on first failure.

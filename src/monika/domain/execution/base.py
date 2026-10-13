@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from monika.domain.execution.verification_engine import EvidenceFirstVerifier
     from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
     from monika.application.execution.effect_gate import EffectGate
+
     AssetAnalysis = Any
     MT5Client = Any
     BrokerAdapter = Any

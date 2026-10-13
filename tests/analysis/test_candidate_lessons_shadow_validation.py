@@ -1,6 +1,7 @@
 """
 Unit tests for CandidateLesson Shadow Holdout Validation and Adaptive Memory Workflow.
 """
+
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -58,17 +59,29 @@ async def test_evaluate_candidate_lessons_promotes_on_positive_delta():
         lesson_text="- Prefer buying near H4 OrderBlock",
         status="shadow",
         proposed_at=proposed_time,
-        evaluated_trades_count=0
+        evaluated_trades_count=0,
     )
 
     # 35 post-proposal winning trades (70% win rate)
     post_trades = [
-        MagicMock(symbol="EURUSD", status="closed", exit_reason="tp_hit" if i < 24 else "sl_hit", closed_at=proposed_time + timedelta(hours=i), pnl_pct=None)
+        MagicMock(
+            symbol="EURUSD",
+            status="closed",
+            exit_reason="tp_hit" if i < 24 else "sl_hit",
+            closed_at=proposed_time + timedelta(hours=i),
+            pnl_pct=None,
+        )
         for i in range(35)
     ]
     # 30 pre-proposal trades (50% win rate)
     pre_trades = [
-        MagicMock(symbol="EURUSD", status="closed", exit_reason="tp_hit" if i < 15 else "sl_hit", closed_at=proposed_time - timedelta(hours=i), pnl_pct=None)
+        MagicMock(
+            symbol="EURUSD",
+            status="closed",
+            exit_reason="tp_hit" if i < 15 else "sl_hit",
+            closed_at=proposed_time - timedelta(hours=i),
+            pnl_pct=None,
+        )
         for i in range(30)
     ]
 
@@ -83,7 +96,9 @@ async def test_evaluate_candidate_lessons_promotes_on_positive_delta():
 
     mock_session.execute.side_effect = [mock_exec1, mock_exec2, mock_exec3]
 
-    with patch("analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock) as mock_promote:
+    with patch(
+        "analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock
+    ) as mock_promote:
         summary = await evaluate_candidate_lessons(mock_session)
         assert summary["promoted"] == 1
         assert candidate.status == "promoted"
@@ -101,7 +116,7 @@ async def test_auto_promote_high_confidence_rules():
         lesson_text="- Empirical risk: Entering XAUUSD during NFP spike [Corroborated by 4 trades]",
         status="shadow",
         evaluated_trades_count=2,
-        win_rate_delta=0.02
+        win_rate_delta=0.02,
     )
     cand2 = CandidateLesson(
         id=11,
@@ -109,17 +124,18 @@ async def test_auto_promote_high_confidence_rules():
         lesson_text="- Empirical observation: Waiting for H1 FVG mitigation",
         status="shadow",
         evaluated_trades_count=6,
-        win_rate_delta=-0.12
+        win_rate_delta=-0.12,
     )
     mock_exec = MagicMock()
     mock_exec.scalars.return_value.all.return_value = [cand1, cand2]
     mock_session.execute.return_value = mock_exec
 
-    with patch("analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock) as mock_promote:
+    with patch(
+        "analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock
+    ) as mock_promote:
         promoted = await auto_promote_high_confidence_rules(mock_session)
         assert 10 in promoted
         assert cand1.status == "promoted"
         assert cand2.status == "rejected"
         assert cand2.rejection_reason == "negative_delta_-0.12"
         assert mock_promote.called
-

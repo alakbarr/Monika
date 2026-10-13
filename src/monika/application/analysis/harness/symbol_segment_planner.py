@@ -41,7 +41,7 @@ class SymbolSegmentPlanner:
     def plan_segments(cls, tool_calls: List[Dict[str, Any]]) -> List[Tuple[str, List[Dict[str, Any]]]]:
         """
         Partitions tool calls into execution segments: ('parallel', [...]) or ('sequential', [...]).
-        
+
         Rules:
         1. If all calls touch distinct symbols (or are read-only non-conflicting), run in parallel.
         2. If multiple calls touch the same symbol and at least one is a MUTATING_TOOL,

@@ -124,16 +124,13 @@ class CacheBreakpointManager:
         if "gemini-3" in m or "haiku" in m or "opus-4-5" in m or "opus-4.5" in m:
             return cls.GEMINI_3_MIN_CACHEABLE_CHARS  # ~4,125 tokens (Gemini 3 and Haiku 4.5 4,096 token requirement)
         if "gemini-2.5" in m or "sonnet-4-5" in m or "sonnet-4.5" in m or "sonnet-4-6" in m or "sonnet-4.6" in m:
-            return cls.GEMINI_25_MIN_CACHEABLE_CHARS  # ~2,100 tokens (Gemini 2.5 and Sonnet 4.5 2,048 token requirement)
+            return (
+                cls.GEMINI_25_MIN_CACHEABLE_CHARS
+            )  # ~2,100 tokens (Gemini 2.5 and Sonnet 4.5 2,048 token requirement)
         return cls.MIN_CACHEABLE_CHARS  # ~1,050 tokens default (Sonnet 3.5/3.7 / OpenAI 1,024 threshold)
 
     @classmethod
-    def should_inject_anchor(
-        cls,
-        model_name: str = "",
-        provider_name: str = "",
-        current_prompt_chars: int = 0
-    ) -> bool:
+    def should_inject_anchor(cls, model_name: str = "", provider_name: str = "", current_prompt_chars: int = 0) -> bool:
         """
         Determines whether CANONICAL_TIER0_ANCHOR should be injected.
         Eliminates 4,125 token padding waste when:
@@ -155,9 +152,7 @@ class CacheBreakpointManager:
         return True
 
     @classmethod
-    def pad_system_prompt_to_threshold(
-        cls, system_prompt: str, model_name: str = "", provider_name: str = ""
-    ) -> str:
+    def pad_system_prompt_to_threshold(cls, system_prompt: str, model_name: str = "", provider_name: str = "") -> str:
         """Pads system prompts with canonical invariant rules only when close to cache threshold."""
         raw = (system_prompt or "").strip()
         min_chars = cls.get_min_cacheable_chars(model_name)
@@ -176,7 +171,9 @@ class CacheBreakpointManager:
             # If still slightly below cache threshold, deterministically anchor it
             if len(padded) < min_chars:
                 extra_needed = min_chars - len(padded) + 64
-                padded = f"{padded}\n\n[CACHE_ANCHOR_RULES]:\n" + (rules * (extra_needed // len(rules) + 1))[:extra_needed]
+                padded = (
+                    f"{padded}\n\n[CACHE_ANCHOR_RULES]:\n" + (rules * (extra_needed // len(rules) + 1))[:extra_needed]
+                )
             return padded
         return raw
 
@@ -186,15 +183,15 @@ class CacheBreakpointManager:
         tier2_session_stable: str = "",
         tier3_cycle_stable: str = "",
         pad_to_cache_threshold: bool = False,
-        model_name: str = ""
+        model_name: str = "",
     ) -> List[Dict[str, Any]]:
         """
         Wraps system prompt tiers into structured Anthropic content blocks with cache_control.
-        
+
         Tier 1 (Immutable): Identity + Invariant Rules (100% static) -> Breakpoint 1
         Tier 2 (Session-stable): Tool stubs / Schema definitions -> Breakpoint 2
         Tier 3 (Cycle-stable): Active skills + Core memory (changes per 6h) -> Breakpoint 3
-        
+
         Returns:
             List of content block dictionaries suitable for Anthropic system prompt parameter.
         """
@@ -211,18 +208,10 @@ class CacheBreakpointManager:
             if pad_to_cache_threshold and len(combined_t1_t2) < min_chars:
                 combined_t1_t2 = f"{combined_t1_t2}\n\n{self.CANONICAL_INVARIANT_RULES.strip()}"
 
-            blocks.append({
-                "type": "text",
-                "text": combined_t1_t2,
-                "cache_control": {"type": "ephemeral"}
-            })
+            blocks.append({"type": "text", "text": combined_t1_t2, "cache_control": {"type": "ephemeral"}})
 
         if tier3_cycle_stable.strip():
-            blocks.append({
-                "type": "text",
-                "text": tier3_cycle_stable.strip(),
-                "cache_control": {"type": "ephemeral"}
-            })
+            blocks.append({"type": "text", "text": tier3_cycle_stable.strip(), "cache_control": {"type": "ephemeral"}})
 
         return blocks
 
@@ -251,7 +240,7 @@ class CacheBreakpointManager:
         messages: List[Dict[str, Any]],
         max_message_breakpoints: int = 2,
         checkpoint_turn_index: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> List[Dict[str, Any]]:
         """
         Applies sliding cache breakpoints to the endpoints of the last completed tool transactions.
@@ -299,11 +288,7 @@ class CacheBreakpointManager:
                 content = msg.get("content")
 
                 if isinstance(content, str):
-                    msg["content"] = [{
-                        "type": "text",
-                        "text": content,
-                        "cache_control": {"type": "ephemeral"}
-                    }]
+                    msg["content"] = [{"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}]
                 elif isinstance(content, list) and content:
                     last_block = dict(content[-1])
                     last_block["cache_control"] = {"type": "ephemeral"}
@@ -315,7 +300,7 @@ class CacheBreakpointManager:
         self,
         system_prompt: Optional[str],
         tool_schema: Optional[Dict[str, Any]] = None,
-        pad_to_cache_threshold: bool = False
+        pad_to_cache_threshold: bool = False,
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
         Wraps system prompt and single tool schema into structured Anthropic blocks with cache_control.
@@ -335,11 +320,7 @@ class CacheBreakpointManager:
 
         sys_blocks: List[Dict[str, Any]] = []
         if anchored_sys:
-            sys_blocks.append({
-                "type": "text",
-                "text": anchored_sys,
-                "cache_control": {"type": "ephemeral"}
-            })
+            sys_blocks.append({"type": "text", "text": anchored_sys, "cache_control": {"type": "ephemeral"}})
 
         cached_tools: List[Dict[str, Any]] = []
         if tool_schema and isinstance(tool_schema, dict):
@@ -348,4 +329,3 @@ class CacheBreakpointManager:
             cached_tools.append(t_copy)
 
         return sys_blocks, cached_tools
-

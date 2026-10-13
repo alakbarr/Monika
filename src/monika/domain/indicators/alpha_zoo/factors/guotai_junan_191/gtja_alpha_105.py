@@ -1,11 +1,11 @@
-
 """GTJA Alpha 105 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     (-1 * CORR(RANK(OPEN), RANK(VOLUME), 10))
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_105"
 
 __alpha_meta__ = {
-    'id': 'gtja191_105',
-    'theme': ['volume'],
-    'formula_latex': '-1*corr(rank(open),rank(volume),10)',
-    'columns_required': ['open', 'volume', 'close'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 10,
-    'min_warmup_bars': 10,
-    'notes': '',
+    "id": "gtja191_105",
+    "theme": ["volume"],
+    "formula_latex": "-1*corr(rank(open),rank(volume),10)",
+    "columns_required": ["open", "volume", "close"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 10,
+    "min_warmup_bars": 10,
+    "notes": "",
 }
 
 

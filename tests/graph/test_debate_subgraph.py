@@ -63,9 +63,7 @@ async def test_sub_agent_nodes_modular_execution():
     }
     config = {
         "configurable": {
-            "scheduler": MagicMock(
-                settings={"agent_architecture": {"enable_debate": True, "debate_rounds": 2}}
-            )
+            "scheduler": MagicMock(settings={"agent_architecture": {"enable_debate": True, "debate_rounds": 2}})
         }
     }
 
@@ -84,28 +82,42 @@ async def test_sub_agent_nodes_modular_execution():
     class MockSession:
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, *a):
             pass
+
         async def get(self, *a):
             return mock_analysis
+
         async def execute(self, *a, **kw):
             m = MagicMock()
             m.scalars.return_value.all.return_value = []
             m.scalar_one_or_none.return_value = None
             return m
+
         async def commit(self):
             pass
 
-    with patch("graph.nodes.debate.bull_advocate_node.get_session", side_effect=MockSession), \
-         patch("graph.nodes.debate.bull_advocate_node.build_fact_sheet", return_value={"symbol": "EURUSD", "atr": 0.0050}), \
-         patch("graph.nodes.debate.bull_advocate_node.generate_bull_advocacy", return_value={"thesis": "bull entry at 1.0850 target 1.0950", "strength_score": 9}):
+    with (
+        patch("graph.nodes.debate.bull_advocate_node.get_session", side_effect=MockSession),
+        patch(
+            "graph.nodes.debate.bull_advocate_node.build_fact_sheet", return_value={"symbol": "EURUSD", "atr": 0.0050}
+        ),
+        patch(
+            "graph.nodes.debate.bull_advocate_node.generate_bull_advocacy",
+            return_value={"thesis": "bull entry at 1.0850 target 1.0950", "strength_score": 9},
+        ),
+    ):
         res_bull = await bull_advocate_node(state, config)
         assert "EURUSD" in res_bull["debate_states"]
         assert res_bull["debate_states"]["EURUSD"]["verified_bull_claim"]["strength_score"] == 9
 
     # 2. Bear Dissent with high disagreement (triggers rebuttal needed)
     state["debate_states"] = res_bull["debate_states"]
-    with patch("graph.nodes.debate.bear_dissent_node.generate_bear_dissent", return_value={"dissent": "liquidity grab at 1.0850", "risk_severity": 9}):
+    with patch(
+        "graph.nodes.debate.bear_dissent_node.generate_bear_dissent",
+        return_value={"dissent": "liquidity grab at 1.0850", "risk_severity": 9},
+    ):
         res_bear = await bear_dissent_node(state, config)
         deb = res_bear["debate_states"]["EURUSD"]
         assert deb["bear_dissent"]["risk_severity"] == 9
@@ -114,15 +126,23 @@ async def test_sub_agent_nodes_modular_execution():
 
     # 3. Rebuttal Node
     state["debate_states"] = res_bear["debate_states"]
-    with patch("graph.nodes.debate.rebuttal_node.generate_bull_rebuttal", return_value={"rebuttal": "retested level 1.0850", "rebuttal_strength": 8}):
+    with patch(
+        "graph.nodes.debate.rebuttal_node.generate_bull_rebuttal",
+        return_value={"rebuttal": "retested level 1.0850", "rebuttal_strength": 8},
+    ):
         res_reb = await rebuttal_node(state, config)
         assert res_reb["debate_states"]["EURUSD"]["bull_rebuttal"]["rebuttal_strength"] == 8
 
     # 4. Debate Judge Node (Approves)
     state["debate_states"] = res_reb["debate_states"]
-    with patch("graph.nodes.debate.debate_judge_node.get_session", side_effect=MockSession), \
-         patch("graph.nodes.debate.debate_judge_node.evaluate_debate", return_value={"final_decision": "buy", "reason": "strong confluence", "risk_multiplier": 1.2}), \
-         patch("graph.nodes.debate.debate_judge_node.validate_and_apply_judge_adjustments", return_value=(True, None)):
+    with (
+        patch("graph.nodes.debate.debate_judge_node.get_session", side_effect=MockSession),
+        patch(
+            "graph.nodes.debate.debate_judge_node.evaluate_debate",
+            return_value={"final_decision": "buy", "reason": "strong confluence", "risk_multiplier": 1.2},
+        ),
+        patch("graph.nodes.debate.debate_judge_node.validate_and_apply_judge_adjustments", return_value=(True, None)),
+    ):
         res_judge = await debate_judge_node(state, config)
         assert len(res_judge["actionable_trades"]) == 1
         assert res_judge["investment_verdicts"]["EURUSD"]["final_decision"] == "buy"
@@ -130,12 +150,20 @@ async def test_sub_agent_nodes_modular_execution():
     # 5. Risk Evaluator Node (Applies clamp and approves)
     state["actionable_trades"] = res_judge["actionable_trades"]
     state["investment_verdicts"] = res_judge["investment_verdicts"]
-    with patch("graph.nodes.debate.risk_evaluator_node.get_session", side_effect=MockSession), \
-         patch("graph.nodes.debate.risk_evaluator_node.compute_actual_risk_state", return_value={"daily_pnl_pct": 0.5, "portfolio_heat_pct": 1.0, "risk_budget_remaining_pct": 95.0}), \
-         patch("graph.nodes.debate.risk_evaluator_node.analyze_risk_conservative", return_value={"veto_trade": False}), \
-         patch("graph.nodes.debate.risk_evaluator_node.analyze_risk_aggressive", return_value={"veto_trade": False}), \
-         patch("graph.nodes.debate.risk_evaluator_node.analyze_risk_neutral", return_value={"veto_trade": False}), \
-         patch("graph.nodes.debate.risk_evaluator_node.make_portfolio_decision_deterministic", return_value={"approval": True, "recommended_risk_multiplier": 1.0}):
+    with (
+        patch("graph.nodes.debate.risk_evaluator_node.get_session", side_effect=MockSession),
+        patch(
+            "graph.nodes.debate.risk_evaluator_node.compute_actual_risk_state",
+            return_value={"daily_pnl_pct": 0.5, "portfolio_heat_pct": 1.0, "risk_budget_remaining_pct": 95.0},
+        ),
+        patch("graph.nodes.debate.risk_evaluator_node.analyze_risk_conservative", return_value={"veto_trade": False}),
+        patch("graph.nodes.debate.risk_evaluator_node.analyze_risk_aggressive", return_value={"veto_trade": False}),
+        patch("graph.nodes.debate.risk_evaluator_node.analyze_risk_neutral", return_value={"veto_trade": False}),
+        patch(
+            "graph.nodes.debate.risk_evaluator_node.make_portfolio_decision_deterministic",
+            return_value={"approval": True, "recommended_risk_multiplier": 1.0},
+        ),
+    ):
         res_risk = await risk_evaluator_node(state, config)
         assert len(res_risk["actionable_trades"]) == 1
         assert res_risk["summary"]["debate_approved"] == ["EURUSD"]
@@ -189,9 +217,7 @@ async def test_bear_dissent_round_2_evaluates_rebuttal():
     """Verify Bear Dissent node in round 2 incorporates rebuttal and stops infinite loop."""
     config = {
         "configurable": {
-            "scheduler": MagicMock(
-                settings={"agent_architecture": {"enable_debate": True, "debate_rounds": 2}}
-            )
+            "scheduler": MagicMock(settings={"agent_architecture": {"enable_debate": True, "debate_rounds": 2}})
         }
     }
     state = {
@@ -203,11 +229,12 @@ async def test_bear_dissent_round_2_evaluates_rebuttal():
                 "bull_rebuttal": {"rebuttal": "OB absorption at 1.0850", "rebuttal_strength": 8},
                 "turn": 2,
                 "curr_p": 1.0850,
-                "fact_sheet": {"symbol": "EURUSD"}
+                "fact_sheet": {"symbol": "EURUSD"},
             }
-        }
+        },
     }
     captured_context = {}
+
     async def mock_bear(client, sym, ctx, claim, fs):
         nonlocal captured_context
         captured_context = ctx
@@ -219,4 +246,3 @@ async def test_bear_dissent_round_2_evaluates_rebuttal():
         deb = res["debate_states"]["EURUSD"]
         # In round 2, needs_rebuttal must be False to terminate cyclic loop
         assert deb["needs_rebuttal"] is False
-

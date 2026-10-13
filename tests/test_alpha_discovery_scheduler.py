@@ -42,7 +42,7 @@ def test_generate_hypotheses(mock_settings):
     symbols = {h.symbol for h in hypotheses}
     assert "XAUUSD" in symbols
     assert "EURUSD" in symbols
-    
+
     # Check diverse strategy types generated
     strat_types = {h.strategy_type for h in hypotheses}
     assert any("trend" in st or "donchian" in st for st in strat_types)
@@ -83,9 +83,10 @@ async def test_evaluate_hypothesis_qualified(mock_settings):
         ],
     }
 
-    with patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls, \
-         patch.object(scheduler, "_persist_proposal", new_callable=AsyncMock) as mock_persist:
-        
+    with (
+        patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls,
+        patch.object(scheduler, "_persist_proposal", new_callable=AsyncMock) as mock_persist,
+    ):
         mock_instance = MagicMock()
         mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
         mock_instance.generate_markdown_report = MagicMock(return_value="# Mock WFO Report")
@@ -170,9 +171,10 @@ async def test_run_discovery_cycle(mock_settings):
         ],
     }
 
-    with patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls, \
-         patch.object(scheduler, "_persist_proposal", new_callable=AsyncMock):
-        
+    with (
+        patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls,
+        patch.object(scheduler, "_persist_proposal", new_callable=AsyncMock),
+    ):
         mock_instance = MagicMock()
         mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
         mock_instance.generate_markdown_report = MagicMock(return_value="# Report")
@@ -267,5 +269,3 @@ async def test_evaluate_hypothesis_rejected_high_drawdown(mock_settings):
 
         assert proposal is None, "Hypothesis with MaxDD 28.5% > 20.0% limit must be rejected"
         assert len(scheduler.candidate_proposals) == 0
-
-

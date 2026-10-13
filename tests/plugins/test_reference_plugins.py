@@ -15,6 +15,7 @@ from plugins.alerts.discord_alert.discord_alert import dispatch_discord_alert
 
 def _get_plugins_dir() -> Path:
     from monika.infrastructure.infra.paths import get_repo_root
+
     candidates = [
         get_repo_root() / "src" / "monika" / "application" / "plugins",
         get_repo_root() / "plugins",
@@ -80,7 +81,9 @@ async def test_trading_plugin_classes_integration():
     alert_p = DiscordAlertPlugin()
     assert alert_p.metadata.id == "discord_alert_plugin"
     assert alert_p.metadata.category.value == "notification"
-    await alert_p.on_order_state(OrderStateChangedEvent(order_id="ORD-12345", symbol="EURUSD", old_state="PENDING", new_state="FILLED"))
+    await alert_p.on_order_state(
+        OrderStateChangedEvent(order_id="ORD-12345", symbol="EURUSD", old_state="PENDING", new_state="FILLED")
+    )
     await alert_p.on_risk_breach(RiskBreachEvent(breach_type="MaxDrawdown", symbol="EURUSD", severity="warning"))
 
     # Custom indicator plugin
@@ -98,4 +101,3 @@ async def test_trading_plugin_classes_integration():
     feed_res = await scraper_p.fetch_feed("crypto")
     assert feed_res["status"] == "success"
     assert feed_res["count"] == 1
-

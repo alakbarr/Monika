@@ -18,11 +18,12 @@ class QuantizedThinkingAllocator:
     Quantizes reasoning budgets into discrete stable buckets.
     Guarantees 100% Anthropic and Gemini prompt caching hit rate across all symbols in a cycle.
     """
+
     BUCKETS: Dict[str, int] = {
-        "LOW": 1024,       # Low volatility / orderly trend (EURUSD, AUDUSD, VIX < 20)
-        "MEDIUM": 4096,    # Standard baseline / moderate volatility
-        "HIGH": 10000,     # Borderline setups, elevated VIX (20-25), volatile pairs (Gold, Oil)
-        "MAX": 16000,      # Capped for safety and token conservation
+        "LOW": 1024,  # Low volatility / orderly trend (EURUSD, AUDUSD, VIX < 20)
+        "MEDIUM": 4096,  # Standard baseline / moderate volatility
+        "HIGH": 10000,  # Borderline setups, elevated VIX (20-25), volatile pairs (Gold, Oil)
+        "MAX": 16000,  # Capped for safety and token conservation
     }
 
     @classmethod
@@ -58,22 +59,18 @@ class PerSymbolAdaptiveThinkingAllocator:
 
     @classmethod
     def compute_symbol_budget(
-        cls,
-        symbol: str,
-        context: Optional[Dict[str, Any]] = None,
-        base_budget: int = 4000,
-        quantized: bool = True
+        cls, symbol: str, context: Optional[Dict[str, Any]] = None, base_budget: int = 4000, quantized: bool = True
     ) -> int:
         """
         Calculates exact thinking token budget (tokens) for a given symbol.
-        
+
         Args:
             symbol: Target instrument (e.g. 'BTCUSD', 'XAUUSD', 'EURUSD')
             context: Context dictionary with optional 'vix', 'confluence_score', 'regime', 'atr_percentile'
             base_budget: Default baseline budget before multipliers
             quantized: If True, quantizes budget into discrete stable buckets (1024, 4096, 10000, 16000)
                        to preserve 100% prompt caching hit rate across assets.
-            
+
         Returns:
             Thinking token budget clamped between 1,024 and 16,384 tokens.
         """
@@ -86,11 +83,11 @@ class PerSymbolAdaptiveThinkingAllocator:
         if vix_val >= 30.0:
             vix_mult = 1.6  # Crisis / high stress
         elif vix_val >= 25.0:
-            vix_mult = 1.35 # Defensive regime
+            vix_mult = 1.35  # Defensive regime
         elif vix_val >= 20.0:
-            vix_mult = 1.15 # Caution regime
+            vix_mult = 1.15  # Caution regime
         else:
-            vix_mult = 0.85 # Low volatility / orderly trend
+            vix_mult = 0.85  # Low volatility / orderly trend
 
         # 2. Setup Ambiguity / Confluence Multiplier
         confluence = ctx.get("confluence_score")
@@ -106,7 +103,7 @@ class PerSymbolAdaptiveThinkingAllocator:
                 else:
                     # High conviction / clear confluence: orderly verification
                     conf_mult = 1.0
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 conf_mult = 1.0
         else:
             conf_mult = 1.0
@@ -132,11 +129,7 @@ class PerSymbolAdaptiveThinkingAllocator:
         return final_budget
 
     @classmethod
-    def get_thinking_level(
-        cls,
-        symbol: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> str:
+    def get_thinking_level(cls, symbol: str, context: Optional[Dict[str, Any]] = None) -> str:
         """
         Maps the adaptive computation to standardized thinking levels:
         'minimal', 'low', 'medium', 'high', or 'max'.
@@ -158,7 +151,7 @@ class PerSymbolAdaptiveThinkingAllocator:
         task_role: Optional[str] = None,
         symbol: str = "",
         context: Optional[Dict[str, Any]] = None,
-        base_budget: int = 4000
+        base_budget: int = 4000,
     ) -> int:
         """
         Determines the appropriate thinking token budget based on task role and symbol context.
@@ -171,7 +164,10 @@ class PerSymbolAdaptiveThinkingAllocator:
         if "prescreen" in role_clean:
             return 0
 
-        if any(sp in role_clean for sp in ("specialist_technical", "specialist_sentiment", "specialist_macro", "sentiment_analyst")):
+        if any(
+            sp in role_clean
+            for sp in ("specialist_technical", "specialist_sentiment", "specialist_macro", "sentiment_analyst")
+        ):
             return 1024
 
         if "fast" in role_clean or "quick" in role_clean or "classification" in role_clean:
@@ -181,4 +177,3 @@ class PerSymbolAdaptiveThinkingAllocator:
             return base_budget
 
         return cls.compute_symbol_budget(symbol, context, base_budget=base_budget)
-

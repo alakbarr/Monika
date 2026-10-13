@@ -31,7 +31,7 @@ async def test_brier_recency_decay_favors_recent_performance():
         if i < 10:  # Recent trades: LLM accurate, Quant inaccurate
             ana.confidence = 0.90
             ana.strategy_confidence = 0.20
-        else:       # Older trades: Quant accurate, LLM inaccurate
+        else:  # Older trades: Quant accurate, LLM inaccurate
             ana.confidence = 0.20
             ana.strategy_confidence = 0.90
 
@@ -128,8 +128,6 @@ async def test_losing_streak_penalty():
     mock_exec.all.return_value = records
     mock_session.execute.return_value = mock_exec
 
-    w_q, w_l = await compute_empirical_arbitrator_weights(
-        mock_session, default_quant=0.5, default_llm=0.5
-    )
+    w_q, w_l = await compute_empirical_arbitrator_weights(mock_session, default_quant=0.5, default_llm=0.5)
     # 3 consecutive losses triggers penalty on LLM weight
     assert w_q > w_l

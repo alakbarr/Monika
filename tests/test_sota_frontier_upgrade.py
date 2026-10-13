@@ -21,6 +21,7 @@ from indicators.alpha_zoo.alpha101 import wq_alpha_001, wq_alpha_006, wq_alpha_0
 from analysis.calculators.factor_ic import calculate_spearman_rank_ic, evaluate_factor_predictive_power
 from analysis.calculators.evt_tail_calculator import fit_evt_peaks_over_threshold
 from analysis.calculators.cointegration import test_cointegration_ou
+
 test_cointegration_ou.__test__ = False
 from indicators.microstructure import (
     calculate_vpin_fractional,
@@ -76,13 +77,16 @@ def _make_dummy_ohlcv(n: int = 120) -> pd.DataFrame:
     low = close - np.abs(np.random.randn(n) * 0.3)
     open_p = close + np.random.randn(n) * 0.2
     volume = np.random.randint(100, 1000, size=n).astype(float)
-    return pd.DataFrame({
-        "open": open_p,
-        "high": high,
-        "low": low,
-        "close": close,
-        "volume": volume,
-    }, index=dates)
+    return pd.DataFrame(
+        {
+            "open": open_p,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": volume,
+        },
+        index=dates,
+    )
 
 
 class TestSotaQuantLibrary:
@@ -155,11 +159,13 @@ class TestPortfolioAndLedger:
     """Verifies Portfolio Optimizer, Tamper-Evident Ledger, and Sizing."""
 
     def test_portfolio_optimizer_solvers(self):
-        cov = np.array([
-            [0.04, 0.01, 0.005],
-            [0.01, 0.09, 0.01],
-            [0.005, 0.01, 0.06],
-        ])
+        cov = np.array(
+            [
+                [0.04, 0.01, 0.005],
+                [0.01, 0.09, 0.01],
+                [0.005, 0.01, 0.06],
+            ]
+        )
         expected_returns = np.array([0.10, 0.15, 0.12])
         symbols = ["EURUSD", "XAUUSD", "BTCUSD"]
 

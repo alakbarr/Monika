@@ -45,7 +45,9 @@ class PptxDeckGenerator:
             from pptx.enum.shapes import MSO_SHAPE
         except ImportError as e:
             logger.error(f"python-pptx is not installed: {e}")
-            raise ImportError("python-pptx is required for PowerPoint generation. Install via pip install python-pptx") from e
+            raise ImportError(
+                "python-pptx is required for PowerPoint generation. Install via pip install python-pptx"
+            ) from e
 
         prs = Presentation()
         # 16:9 Widescreen dimensions
@@ -105,10 +107,22 @@ class PptxDeckGenerator:
         self._add_slide_header(slide2, "Core Philosophy & System Architecture", NAVY, GOLD)
 
         items_s2 = [
-            ("AI Proposes, Mechanical Fortress Disposes", "Probabilistic LLM models only formulate trade hypotheses. Deterministic Python controls all position sizing, broker execution, and stops."),
-            ("Dialectical Multi-Agent Adversarial Debate", "Specialized Bullish and Bearish personas cross-examine trade hypotheses. An impartial Investment Judge arbitrates before order creation."),
-            ("Fail-Closed Safety Fortress", "10-layer immutable RiskGate enforcing daily drawdown ceilings, spread filters, and news event blackout periods."),
-            ("MQL5 Dead-Man Switch", "Independent Expert Advisor (AIAgent_EA) automatically secures active capital if Python process disconnects."),
+            (
+                "AI Proposes, Mechanical Fortress Disposes",
+                "Probabilistic LLM models only formulate trade hypotheses. Deterministic Python controls all position sizing, broker execution, and stops.",
+            ),
+            (
+                "Dialectical Multi-Agent Adversarial Debate",
+                "Specialized Bullish and Bearish personas cross-examine trade hypotheses. An impartial Investment Judge arbitrates before order creation.",
+            ),
+            (
+                "Fail-Closed Safety Fortress",
+                "10-layer immutable RiskGate enforcing daily drawdown ceilings, spread filters, and news event blackout periods.",
+            ),
+            (
+                "MQL5 Dead-Man Switch",
+                "Independent Expert Advisor (AIAgent_EA) automatically secures active capital if Python process disconnects.",
+            ),
         ]
         self._add_bullet_cards(slide2, items_s2, prs.slide_width, NAVY, DARK_GRAY)
 
@@ -121,7 +135,11 @@ class PptxDeckGenerator:
         kpi_cards = [
             ("Total Return", f"{metrics.get('total_return_pct', 0.0):+.2f}%", "Overall portfolio growth"),
             ("Annualized Sharpe", f"{metrics.get('annualized_sharpe', 0.0):.2f}", "Risk-adjusted return"),
-            ("Win Rate", f"{metrics.get('win_rate_pct', 0.0):.1f}%", f"{metrics.get('winning_trades', 0)}W / {metrics.get('losing_trades', 0)}L"),
+            (
+                "Win Rate",
+                f"{metrics.get('win_rate_pct', 0.0):.1f}%",
+                f"{metrics.get('winning_trades', 0)}W / {metrics.get('losing_trades', 0)}L",
+            ),
             ("Profit Factor", f"{metrics.get('profit_factor', 0.0):.2f}", "Gross profit / gross loss"),
             ("Max Drawdown", f"{metrics.get('max_drawdown_pct', 0.0):.2f}%", "Peak-to-valley ceiling"),
             ("Trade Expectancy", f"{metrics.get('expectancy_r', 0.0):+.2f} R", "Average gain per risk unit"),
@@ -135,8 +153,14 @@ class PptxDeckGenerator:
         self._add_slide_header(slide4, "Deterministic Risk Governance (10-Layer RiskGate)", NAVY, GOLD)
 
         risk_rules = [
-            ("1. Max Daily Drawdown", "Hard circuit breaker halts intake if daily floating/realized loss hits 3.0% limit."),
-            ("2. High-Impact News Window", "Mandatory ±15 minute blackout around Tier-1 events (FOMC, NFP, CPI, Central Bank rates)."),
+            (
+                "1. Max Daily Drawdown",
+                "Hard circuit breaker halts intake if daily floating/realized loss hits 3.0% limit.",
+            ),
+            (
+                "2. High-Impact News Window",
+                "Mandatory ±15 minute blackout around Tier-1 events (FOMC, NFP, CPI, Central Bank rates).",
+            ),
             ("3. Volatility Sizing", "Kelly-criterion with dynamic ATR/ADR boundaries for fractional risk protection."),
             ("4. Cross-Asset Correlation", "Prevents concentrated exposure across co-moving FX and commodity pairs."),
         ]
@@ -216,7 +240,9 @@ class PptxDeckGenerator:
             shape.fill.fore_color.rgb = RGBColor(245, 248, 252)
             shape.line.color.rgb = RGBColor(210, 225, 245)
 
-            tx_box = slide.shapes.add_textbox(x + Inches(0.2), y + Inches(0.2), card_width - Inches(0.4), card_height - Inches(0.4))
+            tx_box = slide.shapes.add_textbox(
+                x + Inches(0.2), y + Inches(0.2), card_width - Inches(0.4), card_height - Inches(0.4)
+            )
             tf = tx_box.text_frame
             tf.word_wrap = True
 
@@ -255,7 +281,9 @@ class PptxDeckGenerator:
             shape.fill.fore_color.rgb = RGBColor(245, 248, 252)
             shape.line.color.rgb = RGBColor(210, 225, 245)
 
-            tx = slide.shapes.add_textbox(x + Inches(0.2), y + Inches(0.15), card_width - Inches(0.4), card_height - Inches(0.3))
+            tx = slide.shapes.add_textbox(
+                x + Inches(0.2), y + Inches(0.15), card_width - Inches(0.4), card_height - Inches(0.3)
+            )
             tf = tx.text_frame
             tf.word_wrap = True
 

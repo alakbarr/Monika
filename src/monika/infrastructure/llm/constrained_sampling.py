@@ -5,6 +5,7 @@ Architecture preparation for Ollama/vLLM/OpenAI/Gemini providers supporting JSON
 and grammar constraints.
 Normalizes JSON schemas for constrained decoding.
 """
+
 import logging
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
@@ -15,10 +16,11 @@ logger = logging.getLogger("TradingAgent.ConstrainedSampling")
 @dataclass
 class ConstrainedSamplingConfig:
     """Configuration for grammar-constrained LLM output generation."""
-    json_schema: Optional[Dict[str, Any]] = None   # JSON Schema for structured output
-    lark_grammar: Optional[str] = None              # Lark grammar string
-    regex_pattern: Optional[str] = None             # Regex constraint pattern
-    strict: bool = True                             # Enforce additionalProperties: false
+
+    json_schema: Optional[Dict[str, Any]] = None  # JSON Schema for structured output
+    lark_grammar: Optional[str] = None  # Lark grammar string
+    regex_pattern: Optional[str] = None  # Regex constraint pattern
+    strict: bool = True  # Enforce additionalProperties: false
 
 
 def make_strict_json_schema(schema: Dict[str, Any]) -> Dict[str, Any]:

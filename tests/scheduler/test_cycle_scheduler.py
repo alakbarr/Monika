@@ -3,22 +3,17 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from scheduler.cycle_scheduler import CycleScheduler
 
+
 class TestCycleScheduler:
     @pytest.fixture
     def settings(self):
         return {
             "trading": {
-                "schedule": {
-                    "analysis_cycle_hours": 6
-                },
+                "schedule": {"analysis_cycle_hours": 6},
                 "asset_universe": ["XAUUSD", "EURUSD"],
-                "mt5": {
-                    "timeframes": ["H1", "H4"]
-                }
+                "mt5": {"timeframes": ["H1", "H4"]},
             },
-            "gemini": {
-                "api_key": "test"
-            }
+            "gemini": {"api_key": "test"},
         }
 
     @pytest.fixture
@@ -55,9 +50,13 @@ class TestCycleScheduler:
         mock_cycle_get_session,
         mock_db_get_session,
         mock_build_graph,
-        settings, mock_mt5, mock_fundamental, mock_per_asset
+        settings,
+        mock_mt5,
+        mock_fundamental,
+        mock_per_asset,
     ):
         from scheduler.graph_cycle_scheduler import GraphCycleScheduler
+
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.execute = AsyncMock(return_value=MagicMock())
@@ -75,12 +74,14 @@ class TestCycleScheduler:
 
         scheduler = GraphCycleScheduler(settings, mock_mt5, mock_fundamental, mock_per_asset)
         scheduler._ensure_checkpointer_setup = AsyncMock()
-        scheduler._pre_cycle_setup = AsyncMock(return_value={
-            "should_skip": False,
-            "effective_auto_execute": False,
-            "weekend_symbols_override": None,
-            "skip_reason": None,
-        })
+        scheduler._pre_cycle_setup = AsyncMock(
+            return_value={
+                "should_skip": False,
+                "effective_auto_execute": False,
+                "weekend_symbols_override": None,
+                "skip_reason": None,
+            }
+        )
         scheduler._handle_weekend_positions = AsyncMock()
         scheduler._update_analysis_ground_truth = AsyncMock()
 
@@ -121,9 +122,13 @@ class TestCycleScheduler:
         mock_cycle_get_session,
         mock_db_get_session,
         mock_build_graph,
-        settings, mock_mt5, mock_fundamental, mock_per_asset
+        settings,
+        mock_mt5,
+        mock_fundamental,
+        mock_per_asset,
     ):
         from scheduler.graph_cycle_scheduler import GraphCycleScheduler
+
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.execute = AsyncMock(return_value=MagicMock())
@@ -141,12 +146,14 @@ class TestCycleScheduler:
 
         scheduler = GraphCycleScheduler(settings, mock_mt5, mock_fundamental, mock_per_asset)
         scheduler._ensure_checkpointer_setup = AsyncMock()
-        scheduler._pre_cycle_setup = AsyncMock(return_value={
-            "should_skip": False,
-            "effective_auto_execute": False,
-            "weekend_symbols_override": None,
-            "skip_reason": None,
-        })
+        scheduler._pre_cycle_setup = AsyncMock(
+            return_value={
+                "should_skip": False,
+                "effective_auto_execute": False,
+                "weekend_symbols_override": None,
+                "skip_reason": None,
+            }
+        )
         scheduler._handle_weekend_positions = AsyncMock()
         scheduler._update_analysis_ground_truth = AsyncMock()
 
@@ -198,7 +205,7 @@ class TestCycleScheduler:
         mock_db_get_session,
         mock_bond_yields,
         mock_cbw,
-        settings
+        settings,
     ):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -208,25 +215,25 @@ class TestCycleScheduler:
         mock_cycle_get_session.return_value = mock_ctx
         mock_macro_get_session.return_value = mock_ctx
         mock_db_get_session.return_value = mock_ctx
-        
+
         vix_instance = mock_vix.return_value
         vix_instance.fetch = AsyncMock(return_value=5)
-        
+
         fred_instance = mock_fred.return_value
         fred_instance.fetch_all = AsyncMock(return_value={"10Y": 1})
-        
+
         cftc_instance = mock_cftc.return_value
         cftc_instance.fetch_all = AsyncMock(return_value=2)
-        
+
         dxy_instance = mock_dxy.return_value
         dxy_instance.fetch = AsyncMock(side_effect=Exception("API Error"))
 
         mock_bond_yields.return_value.fetch = AsyncMock(return_value={"10Y": 4.1})
         mock_cbw.return_value.fetch_all = AsyncMock(return_value={"expectations": {}, "yields": {}})
-        
+
         scheduler = CycleScheduler(settings)
         res = await scheduler._refresh_data_sources()
-        
+
         assert res["vix"]["saved"] == 5
         assert res["fred"]["10Y"] == 1
         assert res["cftc"]["saved"] == 2
@@ -242,9 +249,13 @@ class TestCycleScheduler:
         mock_cycle_get_session,
         mock_db_get_session,
         mock_build_graph,
-        settings, mock_mt5, mock_fundamental, mock_per_asset
+        settings,
+        mock_mt5,
+        mock_fundamental,
+        mock_per_asset,
     ):
         from scheduler.graph_cycle_scheduler import GraphCycleScheduler
+
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
@@ -257,12 +268,14 @@ class TestCycleScheduler:
 
         scheduler = GraphCycleScheduler(settings, mock_mt5, mock_fundamental, mock_per_asset)
         scheduler._ensure_checkpointer_setup = AsyncMock()
-        scheduler._pre_cycle_setup = AsyncMock(return_value={
-            "should_skip": True,
-            "skip_reason": "stale_data",
-            "effective_auto_execute": False,
-            "weekend_symbols_override": None,
-        })
+        scheduler._pre_cycle_setup = AsyncMock(
+            return_value={
+                "should_skip": True,
+                "skip_reason": "stale_data",
+                "effective_auto_execute": False,
+                "weekend_symbols_override": None,
+            }
+        )
 
         summary = await scheduler.run_once(forced=False)
         assert summary["status"] == "skipped"
@@ -271,21 +284,22 @@ class TestCycleScheduler:
     @pytest.mark.asyncio
     @patch("database.db.get_session")
     @patch("utils.analytics.strategy_edge_tracker.apply_disable_flags", side_effect=Exception("Strategy DB Error"))
-    @patch("utils.calibration.cds_threshold_calibrator.run_calibration_if_due", return_value={"status": "calibrated", "recommendations": ["tighten"]})
-    @patch("utils.analytics.adversarial_outcome_tracker.compute_adversarial_check_correlation", side_effect=ImportError("Mock import error"))
-    @patch("utils.analytics.news_classification_tracker.compute_news_classification_calibration", return_value={"over_classification_suspected": False})
+    @patch(
+        "utils.calibration.cds_threshold_calibrator.run_calibration_if_due",
+        return_value={"status": "calibrated", "recommendations": ["tighten"]},
+    )
+    @patch(
+        "utils.analytics.adversarial_outcome_tracker.compute_adversarial_check_correlation",
+        side_effect=ImportError("Mock import error"),
+    )
+    @patch(
+        "utils.analytics.news_classification_tracker.compute_news_classification_calibration",
+        return_value={"over_classification_suspected": False},
+    )
     @patch("utils.calibration.confidence_calibrator.apply_calibration_correction", return_value=None)
     @patch("analysis.memory.lesson_consolidator.consolidate_lessons_to_playbook", return_value=None)
     async def test_run_daily_calibrations_fault_tolerance(
-        self,
-        mock_consolidate,
-        mock_confidence,
-        mock_news,
-        mock_adv,
-        mock_cds,
-        mock_strategy,
-        mock_db_session,
-        settings
+        self, mock_consolidate, mock_confidence, mock_news, mock_adv, mock_cds, mock_strategy, mock_db_session, settings
     ):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -320,6 +334,7 @@ class TestCycleScheduler:
 
         # Mock 20 records: 15 wins (tp_hit), 5 losses (sl_hit)
         from database.models import PaperTradeRecord
+
         records = [
             PaperTradeRecord(symbol="XAUUSD", status="closed", exit_reason="tp_hit" if i < 15 else "sl_hit")
             for i in range(20)
@@ -338,6 +353,3 @@ class TestCycleScheduler:
         compiled = str(stmt)
         assert "paper_trades.closed_at DESC" in compiled or "ORDER BY" in compiled.upper()
         assert "LIMIT" in compiled.upper()
-
-
-

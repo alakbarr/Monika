@@ -22,8 +22,8 @@ from typing import Optional
 @dataclass(frozen=True, slots=True)
 class ForexMarketRules:
     base_spread_pips: float = 1.2
-    rollover_hour_utc: int = 21       # 17:00 NY / 21:00 UTC
-    rollover_spread_mult: float = 3.5 # Widens 3.5x during illiquid rollover
+    rollover_hour_utc: int = 21  # 17:00 NY / 21:00 UTC
+    rollover_spread_mult: float = 3.5  # Widens 3.5x during illiquid rollover
     asian_session_spread_mult: float = 1.4
     long_swap_rate_annual: float = -0.015  # -1.5% annual financing drag
     short_swap_rate_annual: float = 0.005  # +0.5% annual carry yield

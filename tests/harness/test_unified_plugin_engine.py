@@ -79,9 +79,7 @@ async def test_unified_engine_context_and_hook_wiring(test_container):
             "pre_tool_call": "on_pre_tool",
             "pre_order": "on_pre_order",
         },
-        "tools": {
-            "mock_custom_tool": "custom_tool_handler"
-        }
+        "tools": {"mock_custom_tool": "custom_tool_handler"},
     }
 
     engine.register_plugin(plugin)

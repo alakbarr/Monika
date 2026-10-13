@@ -29,6 +29,7 @@ from telegram_bot.bot import TelegramBot
 # In-memory async database fixture for testing
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 async def test_db_session_factory():
     """Create in-memory SQLite database for testing models and TopicManager."""
@@ -44,6 +45,7 @@ async def test_db_session_factory():
 # ---------------------------------------------------------------------------
 # 1. Token Streaming via Edit-Message Tests
 # ---------------------------------------------------------------------------
+
 
 class TestStreamingMessageEdit:
     """Tests for token streaming, throttling, cursor display, and sanitization."""
@@ -206,6 +208,7 @@ class TestStreamingMessageEdit:
 # 2. Telegram Forum Topic Mode Tests
 # ---------------------------------------------------------------------------
 
+
 class TestTopicManager:
     """Tests for TopicManager CRUD, persistence, and session isolation."""
 
@@ -277,6 +280,7 @@ class TestTopicManager:
 # 3. Message Thread ID Routing in Bot Tests
 # ---------------------------------------------------------------------------
 
+
 class TestBotTopicRouting:
     """Tests for routing updates with message_thread_id to topic-specific sessions."""
 
@@ -335,6 +339,7 @@ class TestBotTopicRouting:
 # ---------------------------------------------------------------------------
 # 4. Voice Memo Transcription Tests
 # ---------------------------------------------------------------------------
+
 
 class TestVoiceMemoTranscription:
     """Tests for VoiceHandler audio download, Gemini transcription, and ChatAgent forwarding."""
@@ -485,6 +490,7 @@ class TestVoiceMemoTranscription:
         history = [{"role": "user", "content": "Analisa Gold"}]
 
         captured_kwargs = {}
+
         async def mock_stream(*args, **kwargs):
             captured_kwargs.update(kwargs)
             yield "Token"
@@ -532,6 +538,7 @@ class TestVoiceMemoTranscription:
     async def test_voice_handler_forwards_agent_reply_and_action_keyboard(self):
         """Verify VoiceHandler sends the AI reply and proposal keyboard back to the user."""
         from telegram_bot.chat_agent import PendingAction
+
         mock_pending = PendingAction("act_123", "place_order", {"symbol": "EURUSD"}, "Buy 0.1 EURUSD")
 
         mock_agent = MagicMock()
@@ -557,4 +564,3 @@ class TestVoiceMemoTranscription:
         reply_calls = [c[0][0] for c in update.message.reply_text.call_args_list]
         assert any("Analisis selesai" in c for c in reply_calls)
         assert any("AI Mengusulkan Tindakan" in c for c in reply_calls)
-

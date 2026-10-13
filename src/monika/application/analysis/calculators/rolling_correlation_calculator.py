@@ -25,11 +25,11 @@ logger = logging.getLogger("TradingAgent.Calculators.RollingCorrelation")
 async def _fetch_series(session: AsyncSession, sym: str, timeframe: str, cutoff: datetime) -> List[Dict[str, Any]]:
     sym_clean = sym.strip().upper().replace("/", "")
     if sym_clean in ("DXY", "USDX"):
-        rows = (await session.execute(
-            select(DXYData)
-            .where(DXYData.date >= cutoff)
-            .order_by(DXYData.date.asc())
-        )).scalars().all()
+        rows = (
+            (await session.execute(select(DXYData).where(DXYData.date >= cutoff).order_by(DXYData.date.asc())))
+            .scalars()
+            .all()
+        )
         result = []
         for r in rows:
             dt = getattr(r, "date", None)
@@ -42,31 +42,43 @@ async def _fetch_series(session: AsyncSession, sym: str, timeframe: str, cutoff:
         return result
     elif sym_clean in ("US10Y", "US2Y", "US30Y", "US05Y"):
         tenor_map = {"US10Y": "10Y", "US2Y": "2Y", "US30Y": "30Y", "US05Y": "5Y"}
-        rows = (await session.execute(
-            select(TreasuryYield)
-            .where(TreasuryYield.tenor == tenor_map.get(sym_clean, "10Y"), TreasuryYield.date >= cutoff)
-            .order_by(TreasuryYield.date.asc())
-        )).scalars().all()
+        rows = (
+            (
+                await session.execute(
+                    select(TreasuryYield)
+                    .where(TreasuryYield.tenor == tenor_map.get(sym_clean, "10Y"), TreasuryYield.date >= cutoff)
+                    .order_by(TreasuryYield.date.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
         return [
             {"timestamp": r.date.date() if hasattr(r.date, "date") else r.date, "close": float(r.yield_percent)}
             for r in rows
             if r.date is not None
         ]
     else:
-        bars = (await session.execute(
-            select(PriceOHLCV)
-            .where(PriceOHLCV.symbol == sym_clean, PriceOHLCV.timeframe == timeframe, PriceOHLCV.timestamp >= cutoff)
-            .order_by(PriceOHLCV.timestamp.asc())
-        )).scalars().all()
+        bars = (
+            (
+                await session.execute(
+                    select(PriceOHLCV)
+                    .where(
+                        PriceOHLCV.symbol == sym_clean,
+                        PriceOHLCV.timeframe == timeframe,
+                        PriceOHLCV.timestamp >= cutoff,
+                    )
+                    .order_by(PriceOHLCV.timestamp.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
         return [{"timestamp": b.timestamp.date(), "close": float(b.close)} for b in bars]
 
 
 async def compute_rolling_correlation(
-    session: AsyncSession,
-    symbol_a: str,
-    symbol_b: str,
-    window_days: int = 30,
-    timeframe: str = "D1"
+    session: AsyncSession, symbol_a: str, symbol_b: str, window_days: int = 30, timeframe: str = "D1"
 ) -> Dict[str, Any]:
     """
     Computes rolling Pearson r correlation and statistical z-score between two symbols.
@@ -86,11 +98,15 @@ async def compute_rolling_correlation(
             "correlation_r": 0.0,
             "z_score": 0.0,
             "regime": "NEUTRAL",
-            "description": f"Insufficient price data for {sym_a} or {sym_b}."
+            "description": f"Insufficient price data for {sym_a} or {sym_b}.",
         }
 
-    df_a = pd.DataFrame([{"timestamp": s["timestamp"], "close_a": s["close"]} for s in series_a]).drop_duplicates(subset=["timestamp"])
-    df_b = pd.DataFrame([{"timestamp": s["timestamp"], "close_b": s["close"]} for s in series_b]).drop_duplicates(subset=["timestamp"])
+    df_a = pd.DataFrame([{"timestamp": s["timestamp"], "close_a": s["close"]} for s in series_a]).drop_duplicates(
+        subset=["timestamp"]
+    )
+    df_b = pd.DataFrame([{"timestamp": s["timestamp"], "close_b": s["close"]} for s in series_b]).drop_duplicates(
+        subset=["timestamp"]
+    )
 
     merged = pd.merge(df_a, df_b, on="timestamp", how="inner").sort_values("timestamp")
     if len(merged) < window_days:
@@ -101,7 +117,7 @@ async def compute_rolling_correlation(
             "correlation_r": 0.0,
             "z_score": 0.0,
             "regime": "NEUTRAL",
-            "description": f"Overlapping data points ({len(merged)}) less than window ({window_days})."
+            "description": f"Overlapping data points ({len(merged)}) less than window ({window_days}).",
         }
 
     # Daily percentage returns
@@ -116,11 +132,15 @@ async def compute_rolling_correlation(
             "status": "insufficient_returns",
             "correlation_r": 0.0,
             "z_score": 0.0,
-            "regime": "NEUTRAL"
+            "regime": "NEUTRAL",
         }
 
     # Compute rolling Pearson r
-    rolling_r = valid_returns["ret_a"].rolling(window=window_days, min_periods=max(5, window_days // 2)).corr(valid_returns["ret_b"])
+    rolling_r = (
+        valid_returns["ret_a"]
+        .rolling(window=window_days, min_periods=max(5, window_days // 2))
+        .corr(valid_returns["ret_b"])
+    )
     current_r = float(rolling_r.iloc[-1]) if not pd.isna(rolling_r.iloc[-1]) else 0.0
     current_r = round(max(-1.0, min(1.0, current_r)), 4)
 
@@ -158,7 +178,7 @@ async def compute_rolling_correlation(
         "z_score": z_score,
         "regime": regime,
         "description": desc,
-        "data_points": len(valid_returns)
+        "data_points": len(valid_returns),
     }
 
 
@@ -172,7 +192,7 @@ async def compute_macro_cross_asset_matrix(session: AsyncSession, window_days: i
         ("EURUSD", "GBPUSD"),
         ("EURUSD", "USDJPY"),
         ("XTIUSD", "XBRUSD"),
-        ("BTCUSD", "DXY")
+        ("BTCUSD", "DXY"),
     ]
 
     pair_results = {}
@@ -190,5 +210,5 @@ async def compute_macro_cross_asset_matrix(session: AsyncSession, window_days: i
         "window_days": window_days,
         "pairs": pair_results,
         "gold_decoupled_from_usd": gold_decoupled,
-        "generated_at": clock.now().isoformat()
+        "generated_at": clock.now().isoformat(),
     }

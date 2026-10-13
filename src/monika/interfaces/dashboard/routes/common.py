@@ -68,7 +68,6 @@ def _safe_json(raw: Optional[str], default: Any = None) -> Any:
         return default if default is not None else raw
 
 
-
 async def broadcast_live_event(event_type: str, payload: dict) -> None:
     """Broadcast an event to all connected dashboard live-feed WebSockets non-blockingly via per-client queues."""
     message = {
@@ -107,8 +106,10 @@ async def broadcast_live_event(event_type: str, payload: dict) -> None:
         except Exception:
             pass
 
+
 try:
     from monika.application.analysis.event_broadcaster import register_event_listener
+
     register_event_listener(broadcast_live_event)
 except Exception:
     pass
@@ -122,8 +123,12 @@ class TriggerCycleRequest(BaseModel):
 
 
 class OverrideRiskRequest(BaseModel):
-    risk_percent_per_trade: Optional[float] = Field(default=None, ge=0.1, le=5.0, description="Risk percent per trade (e.g. 0.1 - 5.0)")
-    max_daily_drawdown_percent: Optional[float] = Field(default=None, ge=0.5, le=20.0, description="Max daily drawdown limit in % (e.g. 0.5 - 20.0)")
+    risk_percent_per_trade: Optional[float] = Field(
+        default=None, ge=0.1, le=5.0, description="Risk percent per trade (e.g. 0.1 - 5.0)"
+    )
+    max_daily_drawdown_percent: Optional[float] = Field(
+        default=None, ge=0.5, le=20.0, description="Max daily drawdown limit in % (e.g. 0.5 - 20.0)"
+    )
     max_weekly_drawdown_percent: Optional[float] = Field(default=None, description="Max weekly drawdown limit in %")
     max_concurrent_positions: Optional[int] = Field(default=None, description="Max open concurrent positions")
     max_lot_per_symbol: Optional[float] = Field(default=None, description="Max lot size per symbol")
@@ -142,7 +147,9 @@ class ClosePositionRequest(BaseModel):
     paper_trade_id: Optional[int] = Field(default=None, description="PaperTradeRecord ID")
     symbol: Optional[str] = Field(default=None, description="Currency symbol")
     volume: Optional[float] = Field(default=None, gt=0.0, description="Partial volume/lots to close")
-    percentage: Optional[float] = Field(default=None, ge=1.0, le=100.0, description="Percentage of position to close (1-100)")
+    percentage: Optional[float] = Field(
+        default=None, ge=1.0, le=100.0, description="Percentage of position to close (1-100)"
+    )
     reason: str = Field(default="Manual close from Dashboard", description="Closure reason")
 
 
@@ -166,7 +173,6 @@ class TrailingOverrideRequest(BaseModel):
     breakeven_pips: Optional[float] = Field(default=None, gt=0.0, description="Fixed profit in pips to trigger BE")
     enabled: bool = Field(default=True, description="Enable or disable trailing stop")
     reset_to_default: bool = Field(default=False, description="Reset trailing stop to system defaults")
-
 
 
 class BulkBreakevenRequest(BaseModel):
@@ -196,7 +202,9 @@ class ManualOrderPreviewRequest(BaseModel):
 class ManualOrderSubmitRequest(BaseModel):
     symbol: str = Field(..., min_length=1)
     direction: str = Field(default="buy", description="'buy' or 'sell'")
-    order_type: str = Field(default="buy", description="'buy', 'sell', 'buy_limit', 'sell_limit', 'buy_stop', 'sell_stop'")
+    order_type: str = Field(
+        default="buy", description="'buy', 'sell', 'buy_limit', 'sell_limit', 'buy_stop', 'sell_stop'"
+    )
     lots: Optional[float] = Field(default=None, gt=0.0, description="Order volume in lots")
     volume: Optional[float] = Field(default=None, gt=0.0, description="Order volume alias")
     price: Optional[float] = Field(default=None, description="Order execution/limit/stop price")
@@ -245,7 +253,11 @@ def _get_settings_path() -> str:
     candidates = [
         os.getenv("SETTINGS_PATH"),
         "config/settings.yaml",
-        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "config", "settings.yaml"),
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+            "config",
+            "settings.yaml",
+        ),
     ]
     for c in candidates:
         if c and os.path.exists(c):

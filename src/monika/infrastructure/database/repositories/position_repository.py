@@ -196,18 +196,15 @@ class PositionRepository:
         pnl_col = func.coalesce(Position.pnl, 0.0)
         vol_col = func.coalesce(Position.volume, 0.0)
 
-        stmt = (
-            select(
-                func.count(Position.id).label("total_trades"),
-                func.sum(case((pnl_col > 0.0, 1), else_=0)).label("winning_trades"),
-                func.sum(case((pnl_col < 0.0, 1), else_=0)).label("losing_trades"),
-                func.sum(pnl_col).label("total_pnl"),
-                func.sum(case((pnl_col > 0.0, pnl_col), else_=0.0)).label("gross_profit"),
-                func.sum(case((pnl_col < 0.0, func.abs(pnl_col)), else_=0.0)).label("gross_loss"),
-                func.sum(vol_col).label("total_volume"),
-            )
-            .where(Position.status == "closed")
-        )
+        stmt = select(
+            func.count(Position.id).label("total_trades"),
+            func.sum(case((pnl_col > 0.0, 1), else_=0)).label("winning_trades"),
+            func.sum(case((pnl_col < 0.0, 1), else_=0)).label("losing_trades"),
+            func.sum(pnl_col).label("total_pnl"),
+            func.sum(case((pnl_col > 0.0, pnl_col), else_=0.0)).label("gross_profit"),
+            func.sum(case((pnl_col < 0.0, func.abs(pnl_col)), else_=0.0)).label("gross_loss"),
+            func.sum(vol_col).label("total_volume"),
+        ).where(Position.status == "closed")
         if is_paper is not None:
             stmt = stmt.where(Position.is_paper == is_paper)
 
@@ -241,8 +238,16 @@ class PositionRepository:
             winning_trades = sum(1 for p in closed_positions if (getattr(p, "pnl", 0.0) or 0.0) > 0.0)
             losing_trades = sum(1 for p in closed_positions if (getattr(p, "pnl", 0.0) or 0.0) < 0.0)
             total_pnl = sum(float(getattr(p, "pnl", 0.0) or 0.0) for p in closed_positions)
-            gross_profit = sum(float(getattr(p, "pnl", 0.0) or 0.0) for p in closed_positions if (getattr(p, "pnl", 0.0) or 0.0) > 0.0)
-            gross_loss = abs(sum(float(getattr(p, "pnl", 0.0) or 0.0) for p in closed_positions if (getattr(p, "pnl", 0.0) or 0.0) < 0.0))
+            gross_profit = sum(
+                float(getattr(p, "pnl", 0.0) or 0.0) for p in closed_positions if (getattr(p, "pnl", 0.0) or 0.0) > 0.0
+            )
+            gross_loss = abs(
+                sum(
+                    float(getattr(p, "pnl", 0.0) or 0.0)
+                    for p in closed_positions
+                    if (getattr(p, "pnl", 0.0) or 0.0) < 0.0
+                )
+            )
             total_volume = sum(float(getattr(p, "volume", 0.0) or 0.0) for p in closed_positions)
 
         win_rate = (winning_trades / total_trades * 100.0) if total_trades > 0 else 0.0

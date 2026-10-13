@@ -46,6 +46,7 @@ AVAILABLE_THEMES = list(THEMES.keys())
 
 logger = logging.getLogger("TradingAgent.CLI.Chat.Commands")
 
+
 def _load_model_aliases() -> Dict[str, str]:
     """
     Dynamically loads model tiers and aliases from configured task_roles in settings.yaml.
@@ -55,6 +56,7 @@ def _load_model_aliases() -> Dict[str, str]:
     aliases: Dict[str, str] = {"auto": "auto"}
     try:
         from monika.core.config.settings import load_settings
+
         settings = load_settings()
         task_roles = settings.get("llm", {}).get("task_roles", {})
 
@@ -111,6 +113,7 @@ MODEL_ALIASES: Dict[str, str] = _load_model_aliases()
 @dataclass
 class CommandResult:
     """Outcome of a slash command evaluation."""
+
     handled: bool
     should_exit: bool = False
     action_payload: Optional[Dict[str, Any]] = None
@@ -193,7 +196,9 @@ class ChatCommandRouter:
         if cmd in ("/session", "/allow_session"):
             target_id = arg or pending_action_id
             if not target_id:
-                self.renderer.render_notice("No pending trade authorization proposal to approve for session.", level="warn")
+                self.renderer.render_notice(
+                    "No pending trade authorization proposal to approve for session.", level="warn"
+                )
                 return CommandResult(handled=True)
             return CommandResult(
                 handled=True,
@@ -512,7 +517,12 @@ class ChatCommandRouter:
         console = self.renderer.console
 
         try:
-            from monika.application.analysis.tools.domain.cron_tool import CronRegistry, DEFAULT_CRON_FILE, CronJobRecord
+            from monika.application.analysis.tools.domain.cron_tool import (
+                CronRegistry,
+                DEFAULT_CRON_FILE,
+                CronJobRecord,
+            )
+
             registry = CronRegistry(DEFAULT_CRON_FILE)
             parts = arg.split(maxsplit=2) if arg else []
             subcmd = parts[0].lower() if parts else "list"
@@ -568,7 +578,9 @@ class ChatCommandRouter:
                 registry.add_job(job)
                 self.renderer.render_notice(f"Cron schedule '{name}' ('{expr}') registered.", level="info")
             else:
-                self.renderer.render_notice("Usage: /cron [list | add <name> <expr> <prompt> | remove <name>]", level="info")
+                self.renderer.render_notice(
+                    "Usage: /cron [list | add <name> <expr> <prompt> | remove <name>]", level="info"
+                )
         except Exception as exc:
             self.renderer.render_notice(f"Error managing cron schedules: {exc}", level="error")
 
@@ -628,7 +640,9 @@ class ChatCommandRouter:
                 self.renderer.render_notice(f"Failed to close all positions: {msg}", level="error")
         elif target.isdigit():
             ticket = int(target)
-            ok, msg = await self._post_api("/api/actions/close-position", {"ticket": ticket, "reason": "Manual close from CLI"})
+            ok, msg = await self._post_api(
+                "/api/actions/close-position", {"ticket": ticket, "reason": "Manual close from CLI"}
+            )
             if ok:
                 self.renderer.render_notice(f"Position ticket #{ticket} closed successfully.", level="success")
             else:
@@ -680,4 +694,3 @@ class ChatCommandRouter:
             self.renderer.render_notice(f"Analysis & trading cycle triggered{sym_desc}.", level="success")
         else:
             self.renderer.render_notice(f"Failed to trigger cycle: {msg}", level="error")
-

@@ -27,7 +27,17 @@ def test_all_task_role_models_exist_in_catalog():
     task_roles = settings.get("llm", {}).get("task_roles", {})
 
     for role_name, role_cfg in task_roles.items():
-        for slot in ["primary", "fallback_1", "fallback_2", "fallback_3", "fallback_4", "fallback_5", "fallback_6", "fallback_7", "fallback_8"]:
+        for slot in [
+            "primary",
+            "fallback_1",
+            "fallback_2",
+            "fallback_3",
+            "fallback_4",
+            "fallback_5",
+            "fallback_6",
+            "fallback_7",
+            "fallback_8",
+        ]:
             model = role_cfg.get(slot)
             if model:
                 assert model in catalog, f"Role '{role_name}' slot '{slot}' model '{model}' not found in model_catalog"
@@ -39,33 +49,74 @@ def test_ai_price_benchmark_models_registered():
     catalog = settings.get("llm", {}).get("model_catalog", {})
 
     expected_openrouter_models = [
-        "fable-5", "claude-fable-5", "opus-5", "claude-opus-5", "opus-4.8", "opus-4.7", "opus-4.6", "opus-4.5",
-        "sonnet-5", "claude-sonnet-5", "sonnet-4.6", "claude-sonnet-4.6", "sonnet-4.5", "claude-sonnet-4.5",
-        "haiku-4.5", "claude-haiku-4.5",
-        "deepseek-v4-pro", "deepseek-v4-pro-0813", "deepseek-v4-flash", "deepseek-v4-flash-0731",
-        "glm-5.3", "glm-5.2", "glm-5.2:free", "glm-5.1",
-        "gemini-3.1-pro-preview", "gemini-2.5-pro",
-        "muse-spark-1.2", "minimax-m3", "kimi-k3",
-        "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.5", "gpt-5.4", "gpt-5.6-luna", "gpt-5.4-mini", "gpt-5.4-nano",
-        "qwen3.8-max", "qwen3.8-2.4t-a95b", "qwen3.8-27b",
-        "grok-4.6", "grok-4.5", "grok-4.3",
-        "mimo-v2.5-pro", "mimo-v2.5",
-        "ox-alpha"
+        "fable-5",
+        "claude-fable-5",
+        "opus-5",
+        "claude-opus-5",
+        "opus-4.8",
+        "opus-4.7",
+        "opus-4.6",
+        "opus-4.5",
+        "sonnet-5",
+        "claude-sonnet-5",
+        "sonnet-4.6",
+        "claude-sonnet-4.6",
+        "sonnet-4.5",
+        "claude-sonnet-4.5",
+        "haiku-4.5",
+        "claude-haiku-4.5",
+        "deepseek-v4-pro",
+        "deepseek-v4-pro-0813",
+        "deepseek-v4-flash",
+        "deepseek-v4-flash-0731",
+        "glm-5.3",
+        "glm-5.2",
+        "glm-5.2:free",
+        "glm-5.1",
+        "gemini-3.1-pro-preview",
+        "gemini-2.5-pro",
+        "muse-spark-1.2",
+        "minimax-m3",
+        "kimi-k3",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.5",
+        "gpt-5.4",
+        "gpt-5.6-luna",
+        "gpt-5.4-mini",
+        "gpt-5.4-nano",
+        "qwen3.8-max",
+        "qwen3.8-2.4t-a95b",
+        "qwen3.8-27b",
+        "grok-4.6",
+        "grok-4.5",
+        "grok-4.3",
+        "mimo-v2.5-pro",
+        "mimo-v2.5",
+        "ox-alpha",
     ]
 
     for m in expected_openrouter_models:
         assert m in catalog, f"Model '{m}' should be in model_catalog"
         expected_provider = "groq" if m == "qwen3.8-27b" else "openrouter"
-        assert catalog[m]["provider"] == expected_provider, f"Model '{m}' should have provider '{expected_provider}', got '{catalog[m]['provider']}'"
+        assert catalog[m]["provider"] == expected_provider, (
+            f"Model '{m}' should have provider '{expected_provider}', got '{catalog[m]['provider']}'"
+        )
 
     expected_gemini_models = [
-        "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash",
-        "gemini-3.0-flash-preview", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-3.0-flash-preview",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-flash-lite",
     ]
 
     for m in expected_gemini_models:
         assert m in catalog, f"Gemini flash model '{m}' should be in model_catalog"
-        assert catalog[m]["provider"] == "gemini", f"Gemini flash model '{m}' must stay on provider 'gemini', got '{catalog[m]['provider']}'"
+        assert catalog[m]["provider"] == "gemini", (
+            f"Gemini flash model '{m}' must stay on provider 'gemini', got '{catalog[m]['provider']}'"
+        )
 
 
 def test_openrouter_aliases_registered():
@@ -102,24 +153,41 @@ def test_openrouter_free_models_registered_in_catalog():
     catalog = settings.get("llm", {}).get("model_catalog", {})
 
     expected_free_models = [
-        "gemma-4-31b:free", "google/gemma-4-31b-it:free",
-        "gemma-4-26b:free", "google/gemma-4-26b-a4b-it:free",
-        "nemotron-3-ultra:free", "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "nemotron-3.5-lightning:free", "nvidia/nemotron-3.5-lightning:free",
-        "nemotron-3-super:free", "nvidia/nemotron-3-super-120b-a12b:free",
-        "nemotron-3-nano:free", "nvidia/nemotron-3-nano-30b-a3b:free",
-        "nemotron-3-nano-omni:free", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-        "nemotron-nano-12b-vl:free", "nvidia/nemotron-nano-12b-v2-vl:free",
-        "nemotron-nano-9b:free", "nvidia/nemotron-nano-9b-v2:free",
-        "nemotron-3.5-safety:free", "nvidia/nemotron-3.5-content-safety:free",
-        "north-mini-code:free", "cohere/north-mini-code:free",
-        "laguna-s-2.1:free", "poolside/laguna-s-2.1:free",
-        "laguna-xs-2.1:free", "poolside/laguna-xs-2.1:free",
-        "inkling:free", "thinkingmachines/inkling:free",
-        "inkling-small:free", "thinkingmachines/inkling-small:free",
-        "dots-3-note:free", "dots-studio/dots-3-note-preview:free",
-        "lfm-2.5-2.6b:free", "liquid/lfm-2.5-2.6b:free",
-        "openrouter/free"
+        "gemma-4-31b:free",
+        "google/gemma-4-31b-it:free",
+        "gemma-4-26b:free",
+        "google/gemma-4-26b-a4b-it:free",
+        "nemotron-3-ultra:free",
+        "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "nemotron-3.5-lightning:free",
+        "nvidia/nemotron-3.5-lightning:free",
+        "nemotron-3-super:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "nemotron-3-nano:free",
+        "nvidia/nemotron-3-nano-30b-a3b:free",
+        "nemotron-3-nano-omni:free",
+        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        "nemotron-nano-12b-vl:free",
+        "nvidia/nemotron-nano-12b-v2-vl:free",
+        "nemotron-nano-9b:free",
+        "nvidia/nemotron-nano-9b-v2:free",
+        "nemotron-3.5-safety:free",
+        "nvidia/nemotron-3.5-content-safety:free",
+        "north-mini-code:free",
+        "cohere/north-mini-code:free",
+        "laguna-s-2.1:free",
+        "poolside/laguna-s-2.1:free",
+        "laguna-xs-2.1:free",
+        "poolside/laguna-xs-2.1:free",
+        "inkling:free",
+        "thinkingmachines/inkling:free",
+        "inkling-small:free",
+        "thinkingmachines/inkling-small:free",
+        "dots-3-note:free",
+        "dots-studio/dots-3-note-preview:free",
+        "lfm-2.5-2.6b:free",
+        "liquid/lfm-2.5-2.6b:free",
+        "openrouter/free",
     ]
 
     for model_name in expected_free_models:
@@ -131,6 +199,7 @@ def test_openrouter_free_models_registered_in_catalog():
 def test_summarizer_task_role_and_factory():
     """Memastikan role summarizer terkonfigurasi dengan max_tokens 2048 dan get_client_for_task berfungsi."""
     from analysis.providers.llm_factory import get_client_for_task
+
     settings = load_settings()
     task_roles = settings.get("llm", {}).get("task_roles", {})
 
@@ -146,5 +215,3 @@ def test_summarizer_task_role_and_factory():
     # Verifikasi get_client_for_task dengan default None settings
     client_default = get_client_for_task("summarizer")
     assert client_default is not None
-
-

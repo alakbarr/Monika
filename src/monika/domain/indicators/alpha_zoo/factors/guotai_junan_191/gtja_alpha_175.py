@@ -1,4 +1,3 @@
-
 """GTJA Alpha 175 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
@@ -6,6 +5,7 @@ Formula (verbatim from the report):
 
 Notes: ATR(6).
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_175"
 
 __alpha_meta__ = {
-    'id': 'gtja191_175',
-    'theme': ['volatility'],
-    'formula_latex': 'mean(true_range,6)',
-    'columns_required': ['close', 'high', 'low'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 6,
-    'min_warmup_bars': 7,
-    'notes': 'ATR(6).',
+    "id": "gtja191_175",
+    "theme": ["volatility"],
+    "formula_latex": "mean(true_range,6)",
+    "columns_required": ["close", "high", "low"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 6,
+    "min_warmup_bars": 7,
+    "notes": "ATR(6).",
 }
 
 

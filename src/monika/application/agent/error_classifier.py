@@ -25,10 +25,10 @@ logger = logging.getLogger("TradingAgent.Agent.ErrorClassifier")
 from monika.infrastructure.credentials.error_taxonomy import FailoverReason  # noqa: F401 (canonical re-export)
 
 
-
 @dataclass
 class ClassifiedError:
     """Represents a categorized failure with concrete action directives."""
+
     reason: FailoverReason
     status_code: Optional[int] = None
     error_code: Optional[str] = None
@@ -243,7 +243,9 @@ def classify_api_error(
         )
 
     # 8. Timeout
-    if isinstance(exc, (TimeoutError, TimeoutException := getattr(__import__("asyncio"), "TimeoutError", TimeoutError))):
+    if isinstance(
+        exc, (TimeoutError, TimeoutException := getattr(__import__("asyncio"), "TimeoutError", TimeoutError))
+    ):
         return ClassifiedError(
             reason=FailoverReason.TIMEOUT,
             message=err_body or "Request timed out",

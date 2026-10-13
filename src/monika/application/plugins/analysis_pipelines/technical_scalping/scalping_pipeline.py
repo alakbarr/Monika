@@ -44,11 +44,7 @@ class TechnicalScalpingPipeline(AnalysisPipelinePlugin):
         return True, []
 
     async def execute_analysis_cycle(
-        self,
-        session: AsyncSession,
-        asset_universe: List[str],
-        forced: bool = False,
-        **kwargs
+        self, session: AsyncSession, asset_universe: List[str], forced: bool = False, **kwargs
     ) -> List[TradeProposal]:
         """
         Executes pure technical and price action evaluation on lower timeframes.

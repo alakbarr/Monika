@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #43.
 
 Formula (paper appendix): ts_rank(volume/adv20,20) * ts_rank(-1*delta(close,7),8)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_043"
 
 __alpha_meta__ = {
-    'id': 'alpha101_043',
-    'nickname': 'Kakushadze Alpha #43',
-    'theme': ['volume', 'momentum'],
-    'formula_latex': 'ts_rank(volume/adv20,20) * ts_rank(-1*delta(close,7),8)',
-    'columns_required': ['close', 'volume'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 39,
-    'notes': '',
+    "id": "alpha101_043",
+    "nickname": "Kakushadze Alpha #43",
+    "theme": ["volume", "momentum"],
+    "formula_latex": "ts_rank(volume/adv20,20) * ts_rank(-1*delta(close,7),8)",
+    "columns_required": ["close", "volume"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 39,
+    "notes": "",
 }
 
 

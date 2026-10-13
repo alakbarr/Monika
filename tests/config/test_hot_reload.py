@@ -11,11 +11,7 @@ from config.hot_reload import RiskParameterReloader
 def test_risk_gate_update_parameters():
     initial_settings = {
         "trading": {
-            "risk": {
-                "max_daily_drawdown_percent": 3.0,
-                "max_concurrent_positions": 5,
-                "news_window_minutes": 15
-            }
+            "risk": {"max_daily_drawdown_percent": 3.0, "max_concurrent_positions": 5, "news_window_minutes": 15}
         }
     }
     gate = RiskGate(initial_settings)
@@ -26,11 +22,7 @@ def test_risk_gate_update_parameters():
     # Update with new parameters
     new_cfg = {
         "trading": {
-            "risk": {
-                "max_daily_drawdown_percent": 4.5,
-                "max_concurrent_positions": 8,
-                "news_window_minutes": 20
-            }
+            "risk": {"max_daily_drawdown_percent": 4.5, "max_concurrent_positions": 8, "news_window_minutes": 20}
         }
     }
     gate.update_parameters(new_cfg)

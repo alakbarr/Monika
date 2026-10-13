@@ -9,17 +9,17 @@ import datetime
 
 client = TestClient(app)
 
-class TestDashboardAPI:
 
+class TestDashboardAPI:
     @patch("database.db.engine")
     def test_get_health(self, mock_engine):
         mock_conn = AsyncMock()
         mock_engine.connect.return_value.__aenter__.return_value = mock_conn
-        
+
         mock_res = MagicMock()
         mock_res.scalar_one_or_none.return_value = datetime.datetime.now()
         mock_conn.execute = AsyncMock(return_value=mock_res)
-        
+
         response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
@@ -31,11 +31,11 @@ class TestDashboardAPI:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
-        
+
         mock_res = MagicMock()
         mock_res.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_res)
-        
+
         response = client.get("/api/overview")
         assert response.status_code == 200
         data = response.json()
@@ -46,7 +46,7 @@ class TestDashboardAPI:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
-        
+
         mock_res = MagicMock()
         pos = MagicMock()
         pos.id = 1
@@ -61,10 +61,10 @@ class TestDashboardAPI:
         pos.closed_at = None
         pos.status = "open"
         pos.pnl = 50.0
-        
+
         mock_res.scalars().all.return_value = [pos]
         mock_session.execute = AsyncMock(return_value=mock_res)
-        
+
         response = client.get("/api/positions")
         assert response.status_code == 200
         data = response.json()
@@ -76,7 +76,7 @@ class TestDashboardAPI:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
-        
+
         mock_res = MagicMock()
         act = MagicMock()
         act.id = 1
@@ -85,10 +85,10 @@ class TestDashboardAPI:
         act.description = "Test"
         act.related_id = None
         act.actor = "system"
-        
+
         mock_res.scalars().all.return_value = [act]
         mock_session.execute = AsyncMock(return_value=mock_res)
-        
+
         response = client.get("/api/activity")
         assert response.status_code == 200
         data = response.json()
@@ -100,7 +100,7 @@ class TestDashboardAPI:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
-        
+
         mock_res = MagicMock()
         a = MagicMock()
         a.id = 1
@@ -113,10 +113,10 @@ class TestDashboardAPI:
         a.rationale = "Test"
         a.reevaluation_trigger = '{"detail": "Test"}'
         a.invalidation = "Test"
-        
+
         mock_res.scalars().all.return_value = [a]
         mock_session.execute = AsyncMock(return_value=mock_res)
-        
+
         response = client.get("/api/analysis")
         assert response.status_code == 200
         data = response.json()
@@ -128,7 +128,7 @@ class TestDashboardAPI:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
-        
+
         mock_res = MagicMock()
         o = MagicMock()
         o.id = 1
@@ -139,10 +139,10 @@ class TestDashboardAPI:
         o.approved_by = "risk_gate"
         o.result = '{"ticket": 123}'
         o.timestamp = datetime.datetime.now()
-        
+
         mock_res.scalars().all.return_value = [o]
         mock_session.execute = AsyncMock(return_value=mock_res)
-        
+
         response = client.get("/api/orders")
         assert response.status_code == 200
         data = response.json()
@@ -154,7 +154,7 @@ class TestDashboardAPI:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
-        
+
         mock_res = MagicMock()
         r = MagicMock()
         r.date = datetime.datetime.now()
@@ -162,10 +162,10 @@ class TestDashboardAPI:
         r.current_drawdown = 2.0
         r.trading_paused = False
         r.reason = None
-        
+
         mock_res.scalar_one_or_none.return_value = r
         mock_session.execute = AsyncMock(return_value=mock_res)
-        
+
         response = client.get("/api/risk")
         assert response.status_code == 200
         data = response.json()
@@ -208,15 +208,15 @@ class TestDashboardAPI:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
-        
+
         mock_res = MagicMock()
         v = MagicMock()
         v.date = datetime.datetime.now()
         v.close = 15.0
-        
+
         mock_res.scalars().all.return_value = [v]
         mock_session.execute = AsyncMock(return_value=mock_res)
-        
+
         response = client.get("/api/vix")
         assert response.status_code == 200
         data = response.json()
@@ -228,7 +228,7 @@ class TestDashboardAPI:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
-        
+
         mock_res = MagicMock()
         b = MagicMock()
         b.id = 1
@@ -236,10 +236,10 @@ class TestDashboardAPI:
         b.valid_until = datetime.datetime.now()
         b.content_markdown = "Test"
         b.structured_json = '{"key": "value"}'
-        
+
         mock_res.scalar_one_or_none.return_value = b
         mock_session.execute = AsyncMock(return_value=mock_res)
-        
+
         response = client.get("/api/brief")
         assert response.status_code == 200
         data = response.json()
@@ -249,7 +249,7 @@ class TestDashboardAPI:
     def test_safe_json(self):
         assert _safe_json(None) is None
         assert _safe_json('{"a": 1}') == {"a": 1}
-        assert _safe_json('invalid json') == 'invalid json'
+        assert _safe_json("invalid json") == "invalid json"
 
     def test_websocket_auth(self):
         # 1. Without DASHBOARD_API_KEY (localhost allowed)
@@ -262,6 +262,7 @@ class TestDashboardAPI:
         with patch.dict("os.environ", {"DASHBOARD_API_KEY": "secret123"}):
             # Missing / invalid token -> connection closed with 1008
             import starlette.websockets
+
             with pytest.raises(starlette.websockets.WebSocketDisconnect) as exc:
                 with client.websocket_connect("/ws/live-feed?token=wrong_key"):
                     pass
@@ -274,6 +275,7 @@ class TestDashboardAPI:
 
     def test_trace_endpoints(self):
         from logging_observability.tracing.exporters import global_trace_store, TraceRecord
+
         rec = TraceRecord(
             trace_id="test_trc_001",
             span_id="test_spn_001",
@@ -467,27 +469,17 @@ class TestDashboardAPI:
         }
         with patch.dict(os.environ, env):
             # 1. Viewer trying operator action (trigger-cycle) -> 403
-            res = client.post(
-                "/api/actions/trigger-cycle",
-                headers={"X-API-Key": "view_key"},
-                json={"forced": True}
-            )
+            res = client.post("/api/actions/trigger-cycle", headers={"X-API-Key": "view_key"}, json={"forced": True})
             assert res.status_code == 403
             assert "operator" in res.json()["detail"].lower()
 
             # 2. Operator trying operator action (trigger-cycle) -> allowed through RBAC
-            res = client.post(
-                "/api/actions/trigger-cycle",
-                headers={"X-API-Key": "ops_key"},
-                json={"forced": True}
-            )
+            res = client.post("/api/actions/trigger-cycle", headers={"X-API-Key": "ops_key"}, json={"forced": True})
             assert res.status_code != 403
 
             # 3. Operator trying admin action (override-risk) -> 403
             res = client.post(
-                "/api/actions/override-risk",
-                headers={"X-API-Key": "ops_key"},
-                json={"risk_percent_per_trade": 1.5}
+                "/api/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"risk_percent_per_trade": 1.5}
             )
             assert res.status_code == 403
             assert "admin" in res.json()["detail"].lower()
@@ -522,13 +514,9 @@ class TestDashboardAPI:
                         }
                     }
                 },
-                "reason": "Test invalid config"
+                "reason": "Test invalid config",
             }
-            res = client.put(
-                "/api/config/settings",
-                headers={"X-API-Key": "adm_key"},
-                json=invalid_payload
-            )
+            res = client.put("/api/config/settings", headers={"X-API-Key": "adm_key"}, json=invalid_payload)
             assert res.status_code == 422
             assert res.json()["status"] == "validation_error"
 
@@ -546,11 +534,11 @@ class TestDashboardAPI:
                     "risk": {
                         "max_daily_drawdown_percent": 4.0,
                         "max_weekly_drawdown_percent": 8.0,
-                        "max_concurrent_positions": 5
+                        "max_concurrent_positions": 5,
                     }
                 }
             },
-            "reason": "Adjust drawdown limits"
+            "reason": "Adjust drawdown limits",
         }
 
         with patch.dict(os.environ, {"DASHBOARD_API_KEY": "test_adm_key"}):
@@ -574,11 +562,7 @@ class TestDashboardAPI:
     def test_put_config_settings_role_forbidden(self):
         env = {"DASHBOARD_API_KEYS": "admin:adm_key,operator:ops_key,viewer:view_key"}
         with patch.dict(os.environ, env):
-            res = client.put(
-                "/api/config/settings",
-                headers={"X-API-Key": "ops_key"},
-                json={"settings": {}}
-            )
+            res = client.put("/api/config/settings", headers={"X-API-Key": "ops_key"}, json={"settings": {}})
             assert res.status_code == 403
 
     def test_spoofed_forwarded_for_cannot_bypass_rbac(self):
@@ -589,7 +573,6 @@ class TestDashboardAPI:
             res = client.get("/api/overview", headers={"X-Forwarded-For": "127.0.0.1"})
             assert res.status_code == 403
             assert "DASHBOARD_API_KEY must be configured for remote network access" in res.json().get("detail", "")
-
 
     # -----------------------------------------------------------------------
     # Phase 2: Sessions & Transcript Tests
@@ -659,6 +642,7 @@ class TestDashboardAPI:
         env = {"DASHBOARD_API_KEYS": "operator:ops_key", "DASHBOARD_API_KEY": ""}
         with patch.dict(os.environ, env):
             import starlette.websockets
+
             with pytest.raises(starlette.websockets.WebSocketDisconnect) as exc:
                 with client.websocket_connect("/ws/agent-chat?token=bad_key"):
                     pass
@@ -686,17 +670,11 @@ class TestDashboardAPI:
             "trading:\n"
             "  risk:\n"
             "    max_daily_drawdown_percent: 2.0\n",
-            encoding="utf-8"
+            encoding="utf-8",
         )
         partial_payload = {
-            "settings": {
-                "trading": {
-                    "risk": {
-                        "max_daily_drawdown_percent": 3.5
-                    }
-                }
-            },
-            "reason": "Update risk limit only"
+            "settings": {"trading": {"risk": {"max_daily_drawdown_percent": 3.5}}},
+            "reason": "Update risk limit only",
         }
         with patch.dict(os.environ, {"DASHBOARD_API_KEY": "test_adm_key"}):
             with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
@@ -712,6 +690,7 @@ class TestDashboardAPI:
                     )
                     assert res.status_code == 200
                 import yaml
+
                 with open(dummy_yaml, "r", encoding="utf-8") as f:
                     saved_data = yaml.safe_load(f)
                 # Verify custom_metadata and app_name was NOT wiped!
@@ -802,9 +781,9 @@ class TestDashboardAPI:
                 "input_tokens": 15000,
                 "output_tokens": 2500,
                 "cost_usd": 0.021,
-                "output_payload": {"macro_bias": "STRONG_BULLISH", "dxy": "dumping"}
+                "output_payload": {"macro_bias": "STRONG_BULLISH", "dxy": "dumping"},
             },
-            status="OK"
+            status="OK",
         )
         # 2. Failed node span
         risk_span = TraceRecord(
@@ -818,7 +797,7 @@ class TestDashboardAPI:
             duration_ms=500.0,
             attributes={"cycle_id": test_cycle, "node_name": "risk_gate"},
             status="ERROR",
-            error="Drawdown limit breached: 3.2% > 3.0%"
+            error="Drawdown limit breached: 3.2% > 3.0%",
         )
         # 3. Running node span (no end_time)
         exec_span = TraceRecord(
@@ -831,7 +810,7 @@ class TestDashboardAPI:
             end_time=None,
             duration_ms=0.0,
             attributes={"cycle_id": test_cycle, "node_name": "execution"},
-            status="OK"
+            status="OK",
         )
 
         global_trace_store.record_span(fund_span)
@@ -897,7 +876,7 @@ class TestDashboardAPI:
             end_time="2026-09-14T02:10:02Z",
             duration_ms=2000.0,
             attributes={"cycle_id": test_cycle, "input_tokens": 1200, "output_tokens": 300},
-            status="OK"
+            status="OK",
         )
         global_trace_store.record_span(llm_span)
 
@@ -956,17 +935,17 @@ class TestDashboardAPI:
                         "EURUSD": {
                             "signal": "BUY",
                             "confidence": 0.85,
-                            "token_usage": {"input_tokens": 6000, "output_tokens": 1500, "cost_usd": 0.0075}
+                            "token_usage": {"input_tokens": 6000, "output_tokens": 1500, "cost_usd": 0.0075},
                         },
                         "GBPUSD": {
                             "signal": "WAIT",
                             "confidence": 0.40,
-                            "token_usage": {"input_tokens": 6000, "output_tokens": 1500, "cost_usd": 0.0075}
-                        }
+                            "token_usage": {"input_tokens": 6000, "output_tokens": 1500, "cost_usd": 0.0075},
+                        },
                     }
-                }
+                },
             },
-            status="OK"
+            status="OK",
         )
         global_trace_store.record_span(asset_span)
 
@@ -999,7 +978,7 @@ class TestDashboardAPI:
             end_time="2026-09-14T04:00:10Z",
             duration_ms=10000.0,
             attributes={"cycle_id": test_cycle},
-            status="OK"
+            status="OK",
         )
         fund_span = TraceRecord(
             trace_id=test_cycle,
@@ -1011,7 +990,7 @@ class TestDashboardAPI:
             end_time="2026-09-14T04:00:02Z",
             duration_ms=2000.0,
             attributes={"cycle_id": test_cycle, "node_name": "fundamental_analysis"},
-            status="OK"
+            status="OK",
         )
         reflect_span = TraceRecord(
             trace_id=test_cycle,
@@ -1023,7 +1002,7 @@ class TestDashboardAPI:
             end_time="2026-09-14T04:00:07Z",
             duration_ms=2000.0,
             attributes={"cycle_id": test_cycle, "node_name": "reflection"},
-            status="OK"
+            status="OK",
         )
         risk_span = TraceRecord(
             trace_id=test_cycle,
@@ -1035,7 +1014,7 @@ class TestDashboardAPI:
             end_time="2026-09-14T04:00:09Z",
             duration_ms=1000.0,
             attributes={"cycle_id": test_cycle, "node_name": "risk_gate"},
-            status="OK"
+            status="OK",
         )
 
         global_trace_store.record_span(cycle_span)
@@ -1057,10 +1036,3 @@ class TestDashboardAPI:
         # Execution had no approved trades so it should also be marked skipped
         assert nodes_by_id["execution"]["status"] == "skipped"
         assert "Skipped" in nodes_by_id["execution"]["input_summary"]
-
-
-
-
-
-
-

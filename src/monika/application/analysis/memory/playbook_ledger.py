@@ -34,9 +34,9 @@ def get_playbook_async_lock() -> asyncio.Lock:
 
 class PlaybookState(str, Enum):
     CANDIDATE = "candidate"  # Newly generated, undergoing validation
-    ACTIVE = "active"        # Proven and approved for production execution
-    STALE = "stale"          # Inactive or showing degrading performance (48h cooldown)
-    ARCHIVED = "archived"    # Deprecated or rolled back (< 45% WR over 20 trades)
+    ACTIVE = "active"  # Proven and approved for production execution
+    STALE = "stale"  # Inactive or showing degrading performance (48h cooldown)
+    ARCHIVED = "archived"  # Deprecated or rolled back (< 45% WR over 20 trades)
 
 
 PlaybookStatus = PlaybookState
@@ -238,6 +238,7 @@ class PlaybookLedger:
 def __getattr__(name: str):
     if name in ("PlaybookLifecycleFSM", "PlaybookLifecycleManager"):
         from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleFSM, PlaybookLifecycleManager
+
         return locals()[name]
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
@@ -250,5 +251,3 @@ __all__ = [
     "PlaybookMetadata",
     "get_playbook_async_lock",
 ]
-
-

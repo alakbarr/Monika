@@ -153,6 +153,7 @@ def test_classify_response_clean():
 
 def test_sanitize_unicode_surrogates():
     from analysis.harness.error_classifier import sanitize_unicode_surrogates
+
     dirty = "EURUSD \ud83d\ude00 price \ud800\udc00 valid text"
     clean = sanitize_unicode_surrogates(dirty)
     assert "\ud800" not in clean
@@ -169,6 +170,7 @@ def test_sanitize_unicode_surrogates():
 
 def test_fallback_multimodal_to_text():
     from analysis.harness.error_classifier import fallback_multimodal_to_text
+
     messages = [
         {"role": "user", "content": "Check chart below"},
         {
@@ -226,5 +228,3 @@ def test_classify_rate_limit_with_nested_response_headers():
     assert result.category == ErrorCategory.RATE_LIMIT
     assert result.recovery == RecoveryAction.ROTATE_CREDENTIAL
     assert result.retry_delay == 25.0
-
-

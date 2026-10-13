@@ -34,6 +34,7 @@ GENESIS_PREV_HASH = "0" * 64
 
 class LedgerCorruptionError(Exception):
     """Raised when ledger integrity verification fails due to tampering or file truncation."""
+
     pass
 
 
@@ -60,6 +61,7 @@ class CryptographicAuditLedger:
 
     def __init__(self, ledger_path: str | Path):
         import threading
+
         self.ledger_path = Path(ledger_path)
         self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
         self._last_record: Optional[AuditRecord] = None
@@ -139,10 +141,12 @@ class CryptographicAuditLedger:
                 try:
                     if sys.platform == "win32":
                         import msvcrt
+
                         # Seek to file end before locking
                         f.seek(0, os.SEEK_END)
                     else:
                         import fcntl
+
                         getattr(fcntl, "flock")(fd, getattr(fcntl, "LOCK_EX", 2))
 
                     f.write(line)
@@ -152,6 +156,7 @@ class CryptographicAuditLedger:
                     if sys.platform != "win32":
                         try:
                             import fcntl
+
                             getattr(fcntl, "flock")(fd, getattr(fcntl, "LOCK_UN", 8))
                         except Exception:
                             pass
@@ -216,4 +221,3 @@ class CryptographicAuditLedger:
 
 # Alias for concise usage
 CryptoAuditLedger = CryptographicAuditLedger
-

@@ -53,9 +53,7 @@ def evaluate_macro_regime(fixture: Dict[str, Any], decision_data: Dict[str, Any]
 
     if expected_stance and cb_stance:
         if expected_stance not in cb_stance:
-            violations.append(
-                f"Policy stance '{cb_stance}' conflicts with expected stance '{expected_stance}'."
-            )
+            violations.append(f"Policy stance '{cb_stance}' conflicts with expected stance '{expected_stance}'.")
         else:
             checks_passed.append(f"Central bank stance '{cb_stance}' accurately resolved.")
 

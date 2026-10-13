@@ -44,14 +44,18 @@ from monika.application.execution.effect_gate import EffectGate, AbortRequested
 
 
 def get_session(*args, **kwargs):
-    es = sys.modules.get("monika.application.execution.execution_service") or sys.modules.get("execution.execution_service")
+    es = sys.modules.get("monika.application.execution.execution_service") or sys.modules.get(
+        "execution.execution_service"
+    )
     if es and hasattr(es, "get_session"):
         return es.get_session(*args, **kwargs)
     return _db_mod.get_session(*args, **kwargs)
 
 
 def transactional_advisory_lock(*args, **kwargs):
-    es = sys.modules.get("monika.application.execution.execution_service") or sys.modules.get("execution.execution_service")
+    es = sys.modules.get("monika.application.execution.execution_service") or sys.modules.get(
+        "execution.execution_service"
+    )
     if es and hasattr(es, "transactional_advisory_lock"):
         return es.transactional_advisory_lock(*args, **kwargs)
     return _db_mod.transactional_advisory_lock(*args, **kwargs)
@@ -694,11 +698,11 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             spec = getattr(sizing, "_instrument_spec", None)
             try:
                 max_limit = float(getattr(spec, "max_lot", 100.0))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 max_limit = 100.0
             try:
                 min_limit = float(getattr(spec, "min_lot", 0.01))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 min_limit = 0.01
             # Preplanned lot size provided in order_plan: clamp to broker bounds
             safe_lots = round(max(min_limit, min(specified_lots, max_limit)), 2)
@@ -712,7 +716,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                     sizing.risk_amount_usd = round(sl_dist * pip_val * safe_lots, 4)
                     if account_equity and account_equity > 0:
                         sizing.risk_percent = round((sizing.risk_amount_usd / account_equity) * 100.0, 4)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 pass
 
         # 3. Deterministic RiskGate Evaluation

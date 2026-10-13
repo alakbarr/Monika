@@ -1,4 +1,3 @@
-
 """GTJA Alpha #44.
 
 Formula: (TSRANK(DECAYLINEAR(CORR(LOW,MEAN(VOLUME,10),7),6),4)+TSRANK(DECAYLINEAR(DELTA(VWAP,3),10),15))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_044",
-    "theme": ['volume'],
-    "formula_latex": '(TSRANK(DECAYLINEAR(CORR(LOW,MEAN(VOLUME,10),7),6),4)+TSRANK(DECAYLINEAR(DELTA(VWAP,3),10),15))',
-    "columns_required": ['low', 'volume', 'amount'],
+    "theme": ["volume"],
+    "formula_latex": "(TSRANK(DECAYLINEAR(CORR(LOW,MEAN(VOLUME,10),7),6),4)+TSRANK(DECAYLINEAR(DELTA(VWAP,3),10),15))",
+    "columns_required": ["low", "volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 10,
     "min_warmup_bars": 27,
-    "notes": 'Sum of two TSRANK terms.',
+    "notes": "Sum of two TSRANK terms.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     l = panel["low"]

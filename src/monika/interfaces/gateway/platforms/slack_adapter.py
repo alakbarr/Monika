@@ -65,6 +65,7 @@ class SlackPlatformAdapter(BasePlatformAdapter):
         """
         try:
             from monika.interfaces.telegram.sanitizer import strip_emojis_and_emoticons
+
             content = strip_emojis_and_emoticons(content)
         except Exception:
             pass
@@ -94,7 +95,12 @@ class SlackPlatformAdapter(BasePlatformAdapter):
                     logger.warning(
                         f"[SlackAdapter] Webhook delivery failed with HTTP {resp.status_code}: {resp.text[:120]}"
                     )
-            elif self.bot_token and target_id and not target_id.startswith("slack_ch_") and not target_id.startswith("sim_"):
+            elif (
+                self.bot_token
+                and target_id
+                and not target_id.startswith("slack_ch_")
+                and not target_id.startswith("sim_")
+            ):
                 api_url = "https://slack.com/api/chat.postMessage"
                 headers = {
                     "Authorization": f"Bearer {self.bot_token}",
@@ -112,9 +118,7 @@ class SlackPlatformAdapter(BasePlatformAdapter):
                     logger.debug(f"[SlackAdapter] Delivered chat.postMessage to Slack #{target_id}")
                     delivered = True
                 else:
-                    logger.warning(
-                        f"[SlackAdapter] Bot delivery failed: {data.get('error', resp.text[:120])}"
-                    )
+                    logger.warning(f"[SlackAdapter] Bot delivery failed: {data.get('error', resp.text[:120])}")
             else:
                 # Dry-run or test channel
                 delivered = True

@@ -3,6 +3,7 @@ Startup Watchdog — detects deadlocks during TradingAgent initialization.
 Arms early before complex imports and monitors initialization phases.
 Dumps all thread tracebacks via faulthandler on timeout and enforces bounded exit.
 """
+
 import faulthandler
 import logging
 import os
@@ -242,4 +243,3 @@ async def run_cold_start_preflight(agent, max_wait_sec: float = 30.0) -> dict:
     summary["ready"] = summary["broker_ping"] and summary["positions_reconciled"]
     watchdog.report_progress("schedulers_arming", lease_seconds=30.0)
     return summary
-

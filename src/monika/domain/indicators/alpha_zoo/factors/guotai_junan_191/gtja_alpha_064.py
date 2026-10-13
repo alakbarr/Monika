@@ -1,4 +1,3 @@
-
 """GTJA Alpha #64.
 
 Formula: (MAX(RANK(DECAYLINEAR(CORR(RANK(VWAP),RANK(VOLUME),4),4)),RANK(DECAYLINEAR(MAX(CORR(RANK(CLOSE),RANK(MEAN(VOLUME,60)),4),13),14)))*-1)
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_064",
-    "theme": ['volume'],
-    "formula_latex": '(MAX(RANK(DECAYLINEAR(CORR(RANK(VWAP),RANK(VOLUME),4),4)),RANK(DECAYLINEAR(MAX(CORR(RANK(CLOSE),RANK(MEAN(VOLUME,60)),4),13),14)))*-1)',
-    "columns_required": ['close', 'volume', 'amount'],
+    "theme": ["volume"],
+    "formula_latex": "(MAX(RANK(DECAYLINEAR(CORR(RANK(VWAP),RANK(VOLUME),4),4)),RANK(DECAYLINEAR(MAX(CORR(RANK(CLOSE),RANK(MEAN(VOLUME,60)),4),13),14)))*-1)",
+    "columns_required": ["close", "volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 14,
     "min_warmup_bars": 30,
-    "notes": '60d mean truncated to 10d; ts_max window 13→4 and decay_linear 14→6 for warmup feasibility.',
+    "notes": "60d mean truncated to 10d; ts_max window 13→4 and decay_linear 14→6 for warmup feasibility.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]
@@ -52,5 +52,4 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     present = (x.notna() & y.notna()).astype(float).rolling(4, min_periods=4).min() == 1.0
     inner = ts_corr(x, y, 4).fillna(0.0).where(present)
     p2 = rank(decay_linear(ts_max(inner, 4), 6))
-    return -1.0 * pd.DataFrame(np.maximum(p1.to_numpy(), p2.to_numpy()),
-                               index=c.index, columns=c.columns)
+    return -1.0 * pd.DataFrame(np.maximum(p1.to_numpy(), p2.to_numpy()), index=c.index, columns=c.columns)

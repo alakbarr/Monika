@@ -13,7 +13,6 @@ client = TestClient(app)
 
 
 class TestObservabilityEndpoints:
-
     @patch("database.db.AsyncSessionLocal")
     def test_get_playbook_tree(self, mock_session_local):
         mock_session = create_mock_async_session()
@@ -70,6 +69,7 @@ class TestObservabilityEndpoints:
 
     def test_get_tool_latencies(self):
         from logging_observability.tracing.exporters import TraceRecord
+
         rec = TraceRecord(
             trace_id="test-trace",
             span_id="test-span",

@@ -26,6 +26,7 @@ if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 try:
     from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+
     install_legacy_compat()
 except Exception:
     pass
@@ -33,6 +34,7 @@ except Exception:
 # Muat environment variables dari file .env
 try:
     from dotenv import load_dotenv
+
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     root_dir = os.path.abspath(os.path.join(base_dir, ".."))
     for p in [os.path.join(root_dir, ".env"), os.path.join(base_dir, ".env")]:
@@ -44,11 +46,7 @@ except Exception:
 
 from scrapers.models import ScrapedTweet
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(message)s",
-    datefmt="%H:%M:%S"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("CheckTwitter")
 
 
@@ -79,7 +77,9 @@ def check_twitter_sessions(session_dir: Path):
     logger.info(f"Pemeriksaan Session Directory ({session_dir}):")
     logger.info(f"- Ditemukan {len(all_sessions)} total file sesi, {len(active_sessions)} aktif.")
     if not active_sessions:
-        logger.warning("[WARNING] Tidak ada file sesi twitter aktif (twitter_session*.json). Twitter scraping membutuhkan cookie session valid.")
+        logger.warning(
+            "[WARNING] Tidak ada file sesi twitter aktif (twitter_session*.json). Twitter scraping membutuhkan cookie session valid."
+        )
     else:
         for s in active_sessions:
             logger.info(f"  * {s.name}")
@@ -105,7 +105,12 @@ def check_twitter(headless: bool = False, list_url: str = None, max_age: int = 1
             logger.info(f"Menahan browser selama {pause} detik sebelum ditutup...")
             time.sleep(pause)
 
-        return {"source": "Twitter / X.com", "status": "SUCCESS" if tweets else "EMPTY", "count": len(tweets), "duration": duration}
+        return {
+            "source": "Twitter / X.com",
+            "status": "SUCCESS" if tweets else "EMPTY",
+            "count": len(tweets),
+            "duration": duration,
+        }
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         logger.error(f"[FAILED] Twitter scraper gagal: {e}")
@@ -119,9 +124,15 @@ def check_twitter(headless: bool = False, list_url: str = None, max_age: int = 1
 def main():
     parser = argparse.ArgumentParser(description="Pemeriksaan Scraper Twitter / X.com (TwitterWatchScraper)")
     parser.add_argument("--list-url", type=str, default=None, help="Custom Twitter List URL untuk diuji")
-    parser.add_argument("--max-age", type=int, default=1440, help="Batas usia maksimal tweet dalam menit (default: 1440 / 24 jam)")
-    parser.add_argument("--headless", action="store_true", help="Jalankan dalam mode headless background (default: False/headed)")
-    parser.add_argument("--pause", type=int, default=3, help="Jeda penutupan browser untuk observasi visual dalam detik (default: 3)")
+    parser.add_argument(
+        "--max-age", type=int, default=1440, help="Batas usia maksimal tweet dalam menit (default: 1440 / 24 jam)"
+    )
+    parser.add_argument(
+        "--headless", action="store_true", help="Jalankan dalam mode headless background (default: False/headed)"
+    )
+    parser.add_argument(
+        "--pause", type=int, default=3, help="Jeda penutupan browser untuk observasi visual dalam detik (default: 3)"
+    )
 
     args = parser.parse_args()
     headless_mode = args.headless
@@ -136,9 +147,15 @@ def main():
     print("\n" + "=" * 60)
     print("  RINGKASAN HASIL PEMERIKSAAN TWITTER")
     print("=" * 60)
-    status_tag = "[OK]   " if result.get("status") == "SUCCESS" else ("[EMPTY]" if result.get("status") == "EMPTY" else "[FAIL] ")
+    status_tag = (
+        "[OK]   "
+        if result.get("status") == "SUCCESS"
+        else ("[EMPTY]" if result.get("status") == "EMPTY" else "[FAIL] ")
+    )
     count_str = f"{result.get('count', 0)} tweets" if "count" in result else result.get("error", "Error")
-    print(f"  {status_tag} {result['source']:<20} | Status: {result['status']:<8} | {count_str} ({result.get('duration', 0)}s)")
+    print(
+        f"  {status_tag} {result['source']:<20} | Status: {result['status']:<8} | {count_str} ({result.get('duration', 0)}s)"
+    )
     print("=" * 60 + "\n")
 
 

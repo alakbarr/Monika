@@ -101,6 +101,7 @@ def test_dispatch_job_uses_outbox(engine):
     # Check that outbox has recorded this delivery as SENT
     conn = engine._get_conn() if hasattr(engine, "_get_conn") else None
     import sqlite3
+
     c = sqlite3.connect(engine.db_path)
     cur = c.cursor()
     cur.execute("SELECT status FROM outbox_deliveries WHERE job_id = ?", ("macro_alert",))

@@ -32,9 +32,9 @@ logger = logging.getLogger("TradingAgent.ShadowExtractor")
 class ShadowRule:
     rule_id: str
     symbol: str
-    action: str                       # 'buy' | 'sell' | 'both'
-    allowed_hours: List[int]          # UTC hours (0-23)
-    allowed_weekdays: List[int]       # 0=Monday .. 4=Friday
+    action: str  # 'buy' | 'sell' | 'both'
+    allowed_hours: List[int]  # UTC hours (0-23)
+    allowed_weekdays: List[int]  # 0=Monday .. 4=Friday
     min_holding_mins: float
     max_holding_mins: float
     expected_win_rate: float
@@ -92,7 +92,7 @@ class ShadowRuleExtractor:
             rule_id = f"shadow_{sym.lower()}_{action}_{len(extracted_rules) + 1}"
             desc = (
                 f"Operator Edge for {sym} {action.upper()}: Optimal session hours {active_hours} UTC, "
-                f"holding {p10_hold:.0f}-{p90_hold:.0f} mins. Historical WR: {win_rate*100:.1f}%, R:R: {est_rr:.2f}."
+                f"holding {p10_hold:.0f}-{p90_hold:.0f} mins. Historical WR: {win_rate * 100:.1f}%, R:R: {est_rr:.2f}."
             )
 
             rule = ShadowRule(

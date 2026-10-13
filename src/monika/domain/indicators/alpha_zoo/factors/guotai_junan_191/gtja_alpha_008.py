@@ -1,4 +1,3 @@
-
 """GTJA Alpha #8.
 
 Formula: RANK(DELTA(((HIGH+LOW)/2)*0.2 + VWAP*0.8, 4)) * -1
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_008",
-    "theme": ['reversal'],
-    "formula_latex": 'RANK(DELTA(((HIGH+LOW)/2)*0.2 + VWAP*0.8, 4)) * -1',
-    "columns_required": ['high', 'low', 'volume', 'amount'],
+    "theme": ["reversal"],
+    "formula_latex": "RANK(DELTA(((HIGH+LOW)/2)*0.2 + VWAP*0.8, 4)) * -1",
+    "columns_required": ["high", "low", "volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 4,
     "min_warmup_bars": 5,
-    "notes": 'Negated rank of 4d change in mid-vwap composite.',
+    "notes": "Negated rank of 4d change in mid-vwap composite.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     h = panel["high"]

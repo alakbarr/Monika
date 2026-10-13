@@ -1,4 +1,3 @@
-
 """GTJA Alpha #78.
 
 Formula: ((HIGH+LOW+CLOSE)/3-MA((HIGH+LOW+CLOSE)/3,12))/(0.015*MEAN(ABS(CLOSE-MA((HIGH+LOW+CLOSE)/3,12)),12))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_078",
-    "theme": ['reversal'],
-    "formula_latex": '((HIGH+LOW+CLOSE)/3-MA((HIGH+LOW+CLOSE)/3,12))/(0.015*MEAN(ABS(CLOSE-MA((HIGH+LOW+CLOSE)/3,12)),12))',
-    "columns_required": ['high', 'low', 'close'],
+    "theme": ["reversal"],
+    "formula_latex": "((HIGH+LOW+CLOSE)/3-MA((HIGH+LOW+CLOSE)/3,12))/(0.015*MEAN(ABS(CLOSE-MA((HIGH+LOW+CLOSE)/3,12)),12))",
+    "columns_required": ["high", "low", "close"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 12,
     "min_warmup_bars": 23,
-    "notes": 'CCI-12 style.',
+    "notes": "CCI-12 style.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     h = panel["high"]

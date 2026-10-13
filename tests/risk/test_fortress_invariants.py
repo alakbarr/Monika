@@ -128,6 +128,7 @@ def test_fortress_end_to_end_moa_to_risk_pipeline(base_risk_settings):
     MoA council consensus (Sonnet 5 + DeepSeek V4 + Gemini + GPT-6) must pass through
     deterministic Sizing and Risk Gate validation.
     """
+
     def mock_council_llm(slot, messages):
         model = slot.get("model", "")
         if "deepseek-v4-pro" in model:
@@ -169,18 +170,21 @@ def test_fortress_end_to_end_moa_to_risk_pipeline(base_risk_settings):
     market_open_time = datetime(2026, 9, 23, 14, 0, tzinfo=timezone.utc)
 
     import asyncio
-    verdict = asyncio.run(gate.evaluate(
-        session=mock_session,
-        symbol="GBPUSD",
-        direction="buy",
-        sizing=sizing,
-        account_equity=10000.0,
-        as_of=market_open_time,
-        simulated_positions=[],
-        simulated_equity=10000.0,
-        simulated_daily_pnl=0.0,
-        is_backtest=True,
-    ))
+
+    verdict = asyncio.run(
+        gate.evaluate(
+            session=mock_session,
+            symbol="GBPUSD",
+            direction="buy",
+            sizing=sizing,
+            account_equity=10000.0,
+            as_of=market_open_time,
+            simulated_positions=[],
+            simulated_equity=10000.0,
+            simulated_daily_pnl=0.0,
+            is_backtest=True,
+        )
+    )
 
     assert verdict.approved is True
 

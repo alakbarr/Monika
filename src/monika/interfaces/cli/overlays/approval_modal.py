@@ -184,7 +184,7 @@ class ApprovalModalScreen(ModalScreen[Optional[str]]):
                         try:
                             clean_risk = float(str(risk_usd).replace("$", "").replace(",", "").strip())
                             risk_str = f"${clean_risk:.2f}"
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             risk_str = str(risk_usd)
                         with Horizontal(classes="detail_row"):
                             yield Label("PROJECTED RISK:", classes="detail_label")
@@ -192,7 +192,7 @@ class ApprovalModalScreen(ModalScreen[Optional[str]]):
 
             yield Static(
                 "[PERINGATAN] Live capital at risk. Verifying MT5 margin and RiskGate invariants before placement.",
-                id="approval_warning"
+                id="approval_warning",
             )
 
             with Horizontal(id="button_bar"):

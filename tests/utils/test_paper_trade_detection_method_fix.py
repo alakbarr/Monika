@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit tests for PaperTradeRecord detection_method and exit_reason truncation fix.
 Validates model column lengths, Alembic migration chain, and PaperTracker error isolation.
@@ -14,8 +15,8 @@ from utils.analytics.paper_tracker import PaperTracker
 
 def test_papertraderecord_model_column_lengths():
     """Verify PaperTradeRecord detection_method and exit_reason are defined as String(100)."""
-    detection_col = PaperTradeRecord.__table__.columns['detection_method']
-    exit_col = PaperTradeRecord.__table__.columns['exit_reason']
+    detection_col = PaperTradeRecord.__table__.columns["detection_method"]
+    exit_col = PaperTradeRecord.__table__.columns["exit_reason"]
 
     assert isinstance(detection_col.type, sa.String)
     assert detection_col.type.length >= 100, f"Expected detection_method length >= 100, got {detection_col.type.length}"
@@ -26,16 +27,16 @@ def test_papertraderecord_model_column_lengths():
 
 def test_detection_method_string_generation_fits():
     """Verify that all standard combined detection_method strings fit safely within String(100)."""
-    tp_methods = ['close_price', 'high_low', 'custom_conservative_method']
-    sl_conflicts = ['sl_wins', 'tp_wins', 'split_decision_wins']
+    tp_methods = ["close_price", "high_low", "custom_conservative_method"]
+    sl_conflicts = ["sl_wins", "tp_wins", "split_decision_wins"]
 
     for tp in tp_methods:
         for sl in sl_conflicts:
-            combined = f'{tp}_tp_{sl}_sl'
+            combined = f"{tp}_tp_{sl}_sl"
             assert len(combined) <= 100
             # Test default case specifically
-            if tp == 'close_price' and sl == 'sl_wins':
-                assert combined == 'close_price_tp_sl_wins_sl'
+            if tp == "close_price" and sl == "sl_wins":
+                assert combined == "close_price_tp_sl_wins_sl"
                 assert len(combined) == 25
 
 
@@ -45,12 +46,20 @@ def test_alembic_migration_chain():
     import os
 
     from monika.infrastructure.infra.paths import get_repo_root
+
     migration_path = str(
-        get_repo_root() / "src" / "monika" / "infrastructure" / "database" / "migrations" / "versions" / "0001_initial_schema.py"
+        get_repo_root()
+        / "src"
+        / "monika"
+        / "infrastructure"
+        / "database"
+        / "migrations"
+        / "versions"
+        / "0001_initial_schema.py"
     )
     assert os.path.exists(migration_path), f"Migration file missing at {migration_path}"
 
-    with open(migration_path, 'r', encoding='utf-8') as f:
+    with open(migration_path, "r", encoding="utf-8") as f:
         tree = ast.parse(f.read(), filename=migration_path)
 
     # Extract global assignments and functions
@@ -67,9 +76,9 @@ def test_alembic_migration_chain():
         elif isinstance(node, ast.FunctionDef):
             functions.add(node.name)
 
-    assert globals_assigned.get('revision') == 't1a2b3c4d5e6'
-    assert 'upgrade' in functions
-    assert 'downgrade' in functions
+    assert globals_assigned.get("revision") == "t1a2b3c4d5e6"
+    assert "upgrade" in functions
+    assert "downgrade" in functions
 
 
 @pytest.mark.asyncio
@@ -87,7 +96,7 @@ async def test_paper_tracker_check_sl_tp_sets_full_detection_method():
         take_profit=1.3600,
         opened_at=datetime(2026, 8, 27, 10, 0, tzinfo=timezone.utc),
         status="open",
-        risk_pct=0.75
+        risk_pct=0.75,
     )
 
     # Bar hitting SL
@@ -97,13 +106,13 @@ async def test_paper_tracker_check_sl_tp_sets_full_detection_method():
     bar.high = 1.3520
     bar.close = 1.3460
 
-    with patch.object(tracker, '_is_news_environment', AsyncMock(return_value=False)):
-        result = await tracker._check_sl_tp(session, trade, [bar], 'M15')
+    with patch.object(tracker, "_is_news_environment", AsyncMock(return_value=False)):
+        result = await tracker._check_sl_tp(session, trade, [bar], "M15")
 
     assert result is not None
-    assert trade.status == 'closed'
-    assert trade.exit_reason == 'sl_hit'
-    assert trade.detection_method == 'close_price_tp_sl_wins_sl'
+    assert trade.status == "closed"
+    assert trade.exit_reason == "sl_hit"
+    assert trade.detection_method == "close_price_tp_sl_wins_sl"
     assert len(trade.detection_method) == 25
 
 
@@ -122,7 +131,7 @@ async def test_paper_tracker_error_isolation_on_flush_failure():
         stop_loss=1.2400,
         take_profit=1.2700,
         opened_at=datetime(2026, 8, 27, 10, 0, tzinfo=timezone.utc),
-        status="open"
+        status="open",
     )
 
     mock_exec = MagicMock()
@@ -130,10 +139,15 @@ async def test_paper_tracker_error_isolation_on_flush_failure():
     session.execute.return_value = mock_exec
 
     # Simulate SL hit in _get_bars_since_open & _check_sl_tp
-    with patch.object(tracker, '_get_bars_since_open', AsyncMock(return_value=[MagicMock()])), \
-         patch.object(tracker, '_check_sl_tp', AsyncMock(return_value={'symbol': 'GBPUSD', 'exit_reason': 'sl_hit', 'pnl_pct': -0.75})), \
-         patch.object(tracker, '_close_linked_position', AsyncMock(side_effect=Exception("Simulated Flush Failure"))):
-
+    with (
+        patch.object(tracker, "_get_bars_since_open", AsyncMock(return_value=[MagicMock()])),
+        patch.object(
+            tracker,
+            "_check_sl_tp",
+            AsyncMock(return_value={"symbol": "GBPUSD", "exit_reason": "sl_hit", "pnl_pct": -0.75}),
+        ),
+        patch.object(tracker, "_close_linked_position", AsyncMock(side_effect=Exception("Simulated Flush Failure"))),
+    ):
         closed = await tracker.check_and_close_trades(session)
 
     # Failed trade should NOT be in closed list

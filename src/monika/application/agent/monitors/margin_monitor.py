@@ -62,7 +62,9 @@ async def run_margin_monitor(agent: Any, alert_threshold_pct: float = 200.0, pol
                                 f"- **Margin Terpakai**: `${float(margin):,.2f}`\n\n"
                                 f"[CATATAN] *Saran*: Kurangi posisi terbuka atau tambahkan margin untuk menghindari Stop-Out."
                             )
-                            logger.warning(f"[MarginGuardian] Critical margin level: {ml_val:.1f}% (< {alert_threshold_pct}%)")
+                            logger.warning(
+                                f"[MarginGuardian] Critical margin level: {ml_val:.1f}% (< {alert_threshold_pct}%)"
+                            )
                             try:
                                 await notifier.send_warning(msg)
                             except Exception as notif_err:

@@ -62,28 +62,32 @@ async def test_order_flow_lee_ready_fallback_and_absorption():
     bars = []
     # First half: price rises with buyer ticks
     for i in range(10):
-        bars.append(PriceOHLCV(
-            symbol="EURUSD",
-            timeframe="M15",
-            timestamp=now - timedelta(minutes=15 * (20 - i)),
-            open=100.0 + i * 0.2,
-            high=100.0 + i * 0.2 + 0.3,
-            low=100.0 + i * 0.2 - 0.1,
-            close=100.0 + (i + 1) * 0.2,
-            volume=500.0
-        ))
+        bars.append(
+            PriceOHLCV(
+                symbol="EURUSD",
+                timeframe="M15",
+                timestamp=now - timedelta(minutes=15 * (20 - i)),
+                open=100.0 + i * 0.2,
+                high=100.0 + i * 0.2 + 0.3,
+                low=100.0 + i * 0.2 - 0.1,
+                close=100.0 + (i + 1) * 0.2,
+                volume=500.0,
+            )
+        )
     # Second half: price continues higher, but closes are lower than previous bar or with negative tick delta
     for i in range(10):
-        bars.append(PriceOHLCV(
-            symbol="EURUSD",
-            timeframe="M15",
-            timestamp=now - timedelta(minutes=15 * (10 - i)),
-            open=103.0 + i * 0.3,
-            high=103.0 + i * 0.3 + 0.1,
-            low=103.0 + i * 0.3 - 0.2,
-            close=103.0 + i * 0.3 - 0.05,  # Downtick from previous
-            volume=800.0
-        ))
+        bars.append(
+            PriceOHLCV(
+                symbol="EURUSD",
+                timeframe="M15",
+                timestamp=now - timedelta(minutes=15 * (10 - i)),
+                open=103.0 + i * 0.3,
+                high=103.0 + i * 0.3 + 0.1,
+                low=103.0 + i * 0.3 - 0.2,
+                close=103.0 + i * 0.3 - 0.05,  # Downtick from previous
+                volume=800.0,
+            )
+        )
 
     mock_session = create_mock_async_session()
     mock_result = MagicMock()
@@ -106,7 +110,7 @@ async def test_fetch_latest_order_flow_retrieval():
         timeframe="H1",
         indicator_name="ORDER_FLOW_SNAPSHOT",
         value_json='{"mode": "REAL_DOM_L2", "order_book_imbalance": 0.25, "cvd_session_delta": 45.0, "cvd_divergence": "BULLISH_ABSORPTION", "top_of_book_depth": {"bid_depth": 100, "ask_depth": 60}}',
-        timestamp=datetime.now(timezone.utc)
+        timestamp=datetime.now(timezone.utc),
     )
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_row
@@ -141,4 +145,3 @@ async def test_order_flow_real_dom_dict_structure():
     assert snapshot.top_of_book_depth["bid_depth"] == 150.0
     assert snapshot.top_of_book_depth["ask_depth"] == 50.0
     assert snapshot.top_of_book_depth["spread"] == 0.5
-

@@ -45,7 +45,9 @@ class UniversalMacroAnalyzer:
         rep_period = period or clock.now().strftime("%Y-%m")
 
         # JIT ensure available
-        await self.router.ensure_report_available(report_type=rtype, period=rep_period, country=country, currency=currency)
+        await self.router.ensure_report_available(
+            report_type=rtype, period=rep_period, country=country, currency=currency
+        )
 
         stmt = (
             select(EconomicReportDecomposition)
@@ -121,7 +123,9 @@ class UniversalMacroAnalyzer:
             )
         else:
             verdict = "MIXED_IMPACT"
-            verdict_explanation = "Balanced contribution between sticky core and volatile components. Monitor next revision."
+            verdict_explanation = (
+                "Balanced contribution between sticky core and volatile components. Monitor next revision."
+            )
 
         return {
             "report_type": rtype,
@@ -139,7 +143,9 @@ class UniversalMacroAnalyzer:
                 "forecast": core_item.value_forecast if core_item else None,
                 "mom": core_item.mom_change if core_item else None,
                 "yoy": core_item.yoy_change if core_item else None,
-            } if core_item else None,
+            }
+            if core_item
+            else None,
             "top_upside_drivers": top_upside_drivers[:3],
             "top_downside_drivers": top_downside_drivers[:3],
             "transitory_noise_attribution": {
@@ -183,7 +189,9 @@ class UniversalMacroAnalyzer:
 
         real_underlying_headline = total_nfp + revisions_2m
 
-        quality = "HIGH_QUALITY" if private / max(total_nfp, 1.0) >= 0.8 and revisions_2m >= 0 else "LOW_QUALITY_DISTORTED"
+        quality = (
+            "HIGH_QUALITY" if private / max(total_nfp, 1.0) >= 0.8 and revisions_2m >= 0 else "LOW_QUALITY_DISTORTED"
+        )
 
         return {
             "period": rep_period,
@@ -279,9 +287,8 @@ class UniversalMacroAnalyzer:
 
         # Dynamic interest rate query from InterestRate table
         try:
-            stmt_rates = (
-                select(InterestRate.bank, InterestRate.rate_percent)
-                .order_by(InterestRate.effective_date.desc())
+            stmt_rates = select(InterestRate.bank, InterestRate.rate_percent).order_by(
+                InterestRate.effective_date.desc()
             )
             rate_rows = (await self.session.execute(stmt_rates)).all()
             bank_to_curr = {"FED": "USD", "ECB": "EUR", "BOE": "GBP", "BOJ": "JPY", "RBA": "AUD"}
@@ -313,7 +320,9 @@ class UniversalMacroAnalyzer:
             recommendation = f"Fundamental macro divergence favors {quote} strength against {base}."
         else:
             bias = "NEUTRAL_BALANCED"
-            recommendation = f"Macro divergence between {base} and {quote} is compressed. Rely on technical price action."
+            recommendation = (
+                f"Macro divergence between {base} and {quote} is compressed. Rely on technical price action."
+            )
 
         return {
             "pair": pair_clean,

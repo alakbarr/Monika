@@ -107,7 +107,7 @@ async def test_omnichannel_streamer_3_strikes_flood_control():
 @pytest.mark.asyncio
 async def test_turn_lease_wait_timeout():
     mgr = TurnLeaseManager(default_ttl=5.0)
-    
+
     # Holder 1 acquires lease
     acq1 = await mgr.acquire_lease("conv_1", "holder_1", ttl_seconds=1.0)
     assert acq1 is True

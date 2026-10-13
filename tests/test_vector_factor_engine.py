@@ -20,13 +20,15 @@ def sample_ohlcv_df() -> pd.DataFrame:
     open_p = close + np.random.normal(0, 0.0005, n)
     volume = np.random.uniform(100, 1000, n)
 
-    df = pd.DataFrame({
-        "open": open_p,
-        "high": high,
-        "low": low,
-        "close": close,
-        "volume": volume,
-    })
+    df = pd.DataFrame(
+        {
+            "open": open_p,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": volume,
+        }
+    )
     return df
 
 
@@ -67,7 +69,7 @@ def test_vector_factor_engine_evaluation(sample_ohlcv_df):
 
 def test_vector_factor_engine_regime_filtering(sample_ohlcv_df):
     engine = VectorFactorEngine.get_instance()
-    
+
     # Evaluate under ranging regime
     ranging_res = engine.evaluate(sample_ohlcv_df, symbol="USDJPY", regime="ranging", top_k=3)
     assert ranging_res.symbol == "USDJPY"
@@ -77,7 +79,7 @@ def test_vector_factor_engine_regime_filtering(sample_ohlcv_df):
 
 def test_vector_factor_engine_empty_or_short_data():
     engine = VectorFactorEngine.get_instance()
-    
+
     empty_df = pd.DataFrame()
     res_empty = engine.evaluate(empty_df, symbol="GBPUSD")
     assert res_empty.factor_count == 0

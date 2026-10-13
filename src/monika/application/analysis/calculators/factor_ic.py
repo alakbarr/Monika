@@ -25,6 +25,7 @@ import pandas as pd
 
 try:
     from scipy import stats
+
     _HAS_SCIPY = True
 except ImportError:
     _HAS_SCIPY = False
@@ -41,7 +42,7 @@ def _calc_corr(a: pd.Series, b: pd.Series, method: str = "spearman") -> float:
             val = res[0]
         c = float(np.asarray(val, dtype=float).item()) if val is not None else 0.0
         return c if not np.isnan(c) else 0.0
-    
+
     if method == "spearman":
         c = a.rank().corr(b.rank())
     else:

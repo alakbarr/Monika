@@ -10,6 +10,7 @@ from database.models import NewsItem
 @pytest.fixture(autouse=True)
 def reset_turn_lease_singleton():
     import agent.turn_lease_manager as tlm
+
     tlm._GLOBAL_LEASE_MANAGER = None
     yield
     tlm._GLOBAL_LEASE_MANAGER = None
@@ -86,9 +87,7 @@ async def test_news_watcher_targeted_reanalysis_acquires_and_releases_lease(sett
     watcher = NewsWatcher(settings)
 
     mock_per_asset = MagicMock()
-    mock_per_asset.run_all = AsyncMock(return_value={
-        "EURUSD": {"decision": "wait", "analysis_id": 101}
-    })
+    mock_per_asset.run_all = AsyncMock(return_value={"EURUSD": {"decision": "wait", "analysis_id": 101}})
     watcher._per_asset_stage = mock_per_asset
 
     # Before targeted reanalysis, EURUSD is not leased

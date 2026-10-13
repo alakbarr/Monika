@@ -15,6 +15,7 @@ from analysis.tools.tool_executor import ToolExecutor
 # 1. CoinglasFundingFetcher Multi-Source Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_funding_rate_fetcher_binance_primary_success():
     """Verify CoinglasFundingFetcher successfully parses Binance Futures premiumIndex."""
@@ -27,7 +28,7 @@ async def test_funding_rate_fetcher_binance_primary_success():
         "indexPrice": "62480.00",
         "lastFundingRate": "0.000125",
         "nextFundingTime": 1724947200000,
-        "interestRate": "0.000100"
+        "interestRate": "0.000100",
     }
 
     with patch("data_sources.coinglass_funding.fetch_with_retry", new_callable=AsyncMock) as mock_fetch:
@@ -51,14 +52,8 @@ async def test_funding_rate_fetcher_bybit_fallback_success():
         "retCode": 0,
         "result": {
             "category": "linear",
-            "list": [
-                {
-                    "symbol": "BTCUSDT",
-                    "fundingRate": "0.000085",
-                    "nextFundingTime": "1724947200000"
-                }
-            ]
-        }
+            "list": [{"symbol": "BTCUSDT", "fundingRate": "0.000085", "nextFundingTime": "1724947200000"}],
+        },
     }
 
     async def side_effect_fetch(url, *args, **kwargs):
@@ -81,6 +76,7 @@ async def test_funding_rate_fetcher_bybit_fallback_success():
 # 2. ToolExecutor _tool_get_funding_rate Resilience Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_tool_get_funding_rate_on_demand_live_fallback():
     """Verify _tool_get_funding_rate performs live on-demand fetch when SystemConfig is empty."""
@@ -95,7 +91,7 @@ async def test_tool_get_funding_rate_on_demand_live_fallback():
         "symbol": "BTCUSD",
         "average_funding_rate": 0.000150,
         "interpretation": "Moderately long-biased",
-        "source": "Binance"
+        "source": "Binance",
     }
 
     with patch("data_sources.coinglass_funding.CoinglasFundingFetcher.fetch", new_callable=AsyncMock) as mock_fetch:
@@ -131,6 +127,7 @@ async def test_tool_get_funding_rate_offline_neutral_baseline():
 # 3. Multi-Meeting FedWatch Validation Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_fedwatch_validation_multi_meeting_tolerance_match():
     """
@@ -150,9 +147,9 @@ async def test_fedwatch_validation_multi_meeting_tolerance_match():
                     "probabilities": {
                         "4.00-4.25": {"probability": 52.7, "action": "cut_25"},
                         "4.25-4.50": {"probability": 39.2, "action": "maintain"},
-                        "3.75-4.00": {"probability": 8.1, "action": "cut_50"}
+                        "3.75-4.00": {"probability": 8.1, "action": "cut_50"},
                     }
-                }
+                },
             },
             {
                 "meeting_date": "2026-12-16",
@@ -160,18 +157,14 @@ async def test_fedwatch_validation_multi_meeting_tolerance_match():
                     "probabilities": {
                         "3.75-4.00": {"probability": 39.2, "action": "cut_25"},
                         "3.50-3.75": {"probability": 35.0, "action": "cut_50"},
-                        "4.00-4.25": {"probability": 25.8, "action": "maintain"}
+                        "4.00-4.25": {"probability": 25.8, "action": "maintain"},
                     }
-                }
-            }
-        ]
+                },
+            },
+        ],
     }
 
-    inp = {
-        "key_data_points_used": {
-            "fedwatch_dominant_pct": 52.7
-        }
-    }
+    inp = {"key_data_points_used": {"fedwatch_dominant_pct": 52.7}}
 
     with patch.object(executor, "execute", new_callable=AsyncMock) as mock_exec:
         mock_exec.return_value = fedwatch_payload
@@ -196,28 +189,24 @@ async def test_fedwatch_validation_genuine_mismatch_rejection():
                 "probabilities": {
                     "probabilities": {
                         "4.00-4.25": {"probability": 52.7, "action": "cut_25"},
-                        "4.25-4.50": {"probability": 39.2, "action": "maintain"}
+                        "4.25-4.50": {"probability": 39.2, "action": "maintain"},
                     }
-                }
+                },
             },
             {
                 "meeting_date": "2026-12-16",
                 "probabilities": {
                     "probabilities": {
                         "3.75-4.00": {"probability": 39.2, "action": "cut_25"},
-                        "3.50-3.75": {"probability": 35.0, "action": "cut_50"}
+                        "3.50-3.75": {"probability": 35.0, "action": "cut_50"},
                     }
-                }
-            }
-        ]
+                },
+            },
+        ],
     }
 
     # Claimed 90.0% which differs from 52.7% and 39.2% by > 8.0%
-    inp = {
-        "key_data_points_used": {
-            "fedwatch_dominant_pct": 90.0
-        }
-    }
+    inp = {"key_data_points_used": {"fedwatch_dominant_pct": 90.0}}
 
     with patch.object(executor, "execute", new_callable=AsyncMock) as mock_exec:
         mock_exec.return_value = fedwatch_payload

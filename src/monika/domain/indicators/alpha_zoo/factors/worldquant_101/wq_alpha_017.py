@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #17.
 
 Formula (paper appendix): ((-1*rank(ts_rank(close,10)))*rank(delta(delta(close,1),1)))*rank(ts_rank(volume/adv20,5))
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_017"
 
 __alpha_meta__ = {
-    'id': 'alpha101_017',
-    'nickname': 'Kakushadze Alpha #17',
-    'theme': ['volume', 'reversal'],
-    'formula_latex': '((-1*rank(ts_rank(close,10)))*rank(delta(delta(close,1),1)))*rank(ts_rank(volume/adv20,5))',
-    'columns_required': ['close', 'volume'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 25,
-    'notes': '',
+    "id": "alpha101_017",
+    "nickname": "Kakushadze Alpha #17",
+    "theme": ["volume", "reversal"],
+    "formula_latex": "((-1*rank(ts_rank(close,10)))*rank(delta(delta(close,1),1)))*rank(ts_rank(volume/adv20,5))",
+    "columns_required": ["close", "volume"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 25,
+    "notes": "",
 }
 
 
@@ -54,5 +53,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     adv20 = ts_mean(volume, 20)
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
-    out = (-1.0 * rank(ts_rank(close, 10))) * rank(delta(delta(close, 1), 1)) * rank(ts_rank(safe_div(volume, adv20), 5))
+    out = (
+        (-1.0 * rank(ts_rank(close, 10))) * rank(delta(delta(close, 1), 1)) * rank(ts_rank(safe_div(volume, adv20), 5))
+    )
     return out

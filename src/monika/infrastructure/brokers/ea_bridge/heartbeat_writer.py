@@ -24,6 +24,7 @@ logger = logging.getLogger("TradingAgent.Heartbeat")
 
 import platform
 
+
 # MT5 uses the Common folder for file sharing between EA and Python
 # Default location: C:\Users\<user>\AppData\Roaming\MetaQuotes\Terminal\Common\Files\
 def _get_default_mt5_common():
@@ -33,13 +34,14 @@ def _get_default_mt5_common():
         # Linux/VPS: path bisa dikonfigurasi via env var
         return os.getenv("MT5_COMMON_FILES_PATH", "/tmp/mt5_common")
 
+
 _DEFAULT_MT5_COMMON = _get_default_mt5_common()
 
 HEARTBEAT_FILENAME = "ai_agent_heartbeat.txt"
 LEGACY_HEARTBEAT_FILENAME = "claude_agent_heartbeat.txt"
 EA_HEARTBEAT_FILENAME = "ea_heartbeat.txt"
-HEARTBEAT_INTERVAL_SECONDS = 20      # Write every 20s (EA timeout is 10min)
-EA_STALE_THRESHOLD_SECONDS  = 120    # Alert if EA heartbeat is >2min old
+HEARTBEAT_INTERVAL_SECONDS = 20  # Write every 20s (EA timeout is 10min)
+EA_STALE_THRESHOLD_SECONDS = 120  # Alert if EA heartbeat is >2min old
 
 
 class HeartbeatManager:
@@ -64,11 +66,7 @@ class HeartbeatManager:
         """Tulis heartbeat setiap HEARTBEAT_INTERVAL_SECONDS terus-menerus."""
         self._running = True
         self._stop_event.clear()
-        logger.info(
-            f"Heartbeat writer started. "
-            f"Writing to: {self.heartbeat_file} "
-            f"every {HEARTBEAT_INTERVAL_SECONDS}s"
-        )
+        logger.info(f"Heartbeat writer started. Writing to: {self.heartbeat_file} every {HEARTBEAT_INTERVAL_SECONDS}s")
         while self._running and not self._stop_event.is_set():
             await asyncio.to_thread(self._write_heartbeat)
             try:
@@ -85,7 +83,7 @@ class HeartbeatManager:
         try:
             self.common_path.mkdir(parents=True, exist_ok=True)
             ts = int(time.time())
-            
+
             # Tulis ke file universal dan legacy (menggunakan UTF-8/ANSI standar secara atomik)
             for hb_file in (self.heartbeat_file, self.legacy_heartbeat_file):
                 tmp_file = hb_file.with_name(f"{hb_file.name}.tmp")
@@ -120,20 +118,17 @@ class HeartbeatManager:
                 content = self.ea_heartbeat_file.read_text(encoding="utf-8").strip()
             except Exception:
                 content = self.ea_heartbeat_file.read_text(encoding="utf-16le").strip()
-            
+
             # Hapus Null characters yang mungkin terbaca
             content = content.replace("\x00", "").strip()
             if not content:
                 return False, -1
-                
+
             ea_ts = int(content)
             stale = int(time.time()) - ea_ts
 
             if stale > EA_STALE_THRESHOLD_SECONDS:
-                logger.warning(
-                    f"EA heartbeat stale: {stale}s old "
-                    f"(threshold={EA_STALE_THRESHOLD_SECONDS}s)"
-                )
+                logger.warning(f"EA heartbeat stale: {stale}s old (threshold={EA_STALE_THRESHOLD_SECONDS}s)")
                 return False, stale
 
             return True, stale
@@ -144,6 +139,7 @@ class HeartbeatManager:
     def get_watchdog(self, check_interval_seconds: float = 15.0) -> Any:
         """PR-16: Returns an active EAWatchdog instance bound to this manager."""
         from monika.infrastructure.brokers.ea_bridge.watchdog import EAWatchdog
+
         return EAWatchdog(
             heartbeat_manager=self,
             check_interval_seconds=check_interval_seconds,

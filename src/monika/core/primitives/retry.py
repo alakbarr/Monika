@@ -24,7 +24,7 @@ def _calculate_delay(
     jitter: bool,
 ) -> float:
     """Calculate exponential backoff delay with optional jitter."""
-    delay = min(base_delay * (backoff_factor ** attempt), max_delay)
+    delay = min(base_delay * (backoff_factor**attempt), max_delay)
     if delay <= 0:
         return 0.0
     if jitter:
@@ -45,7 +45,7 @@ def retryable(
 ) -> Callable[[F], F]:
     """
     Decorator for retrying functions on transient failures with exponential backoff.
-    
+
     Args:
         max_retries: Maximum number of retry attempts before re-raising exception.
         base_delay: Initial delay in seconds.
@@ -60,6 +60,7 @@ def retryable(
 
     def decorator(func: F) -> F:
         if inspect.iscoroutinefunction(func):
+
             @functools.wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                 last_exc: Optional[BaseException] = None
@@ -88,6 +89,7 @@ def retryable(
 
             return async_wrapper  # type: ignore[return-value]
         else:
+
             @functools.wraps(func)
             def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
                 last_exc: Optional[BaseException] = None

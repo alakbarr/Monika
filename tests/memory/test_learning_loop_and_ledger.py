@@ -22,6 +22,7 @@ from analysis.memory.background_review_fork import BackgroundReviewFork
 # 1. Skill AST Audit Tests
 # ==============================================================================
 
+
 def test_ast_audit_valid_clean_code():
     clean_code = """
 def calculate_bollinger_bands(prices, period=20, std_dev=2.0):
@@ -74,6 +75,7 @@ def evaluate_expression(user_input):
 # 2. SHA-256 Chained Ledger Tests
 # ==============================================================================
 
+
 def test_sha_ledger_chaining_and_tamper_detection():
     with tempfile.TemporaryDirectory() as tmp_dir:
         ledger_path = Path(tmp_dir) / "test_ledger.jsonl"
@@ -124,6 +126,7 @@ def test_sha_ledger_chaining_and_tamper_detection():
         b0_obj = eval(lines[0].replace("true", "True").replace("false", "False"))
         b0_obj["content_text"] = "HACKED_CONTENT"
         import json
+
         lines[0] = json.dumps(b0_obj)
         ledger_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -137,6 +140,7 @@ def test_sha_ledger_chaining_and_tamper_detection():
 # ==============================================================================
 # 3. Background Review Fork Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_background_review_fork_execution():

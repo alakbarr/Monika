@@ -41,6 +41,7 @@ async def test_background_review_processes_valid_trade():
     class DummyReflector:
         def __init__(self):
             self.called = False
+
         async def reflect_on_trade(self, outcome):
             self.called = True
             return {"status": "ok"}

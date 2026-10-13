@@ -14,7 +14,6 @@ client = TestClient(app)
 
 
 class TestDashboardMemoryRoutes:
-
     @patch("logging_observability.dashboard.routes.memory.AsyncSessionLocal")
     def test_get_reflections(self, mock_session_local):
         mock_session = create_mock_async_session()

@@ -119,8 +119,13 @@ def _prune_unanswered_tool_calls(msgs: List[Dict[str, Any]]) -> List[Dict[str, A
                     del msg["tool_calls"]
             if isinstance(msg.get("content"), list):
                 msg["content"] = [
-                    b for b in msg["content"]
-                    if not (isinstance(b, dict) and b.get("type") == "tool_use" and str(b.get("id")) not in answered_tool_ids)
+                    b
+                    for b in msg["content"]
+                    if not (
+                        isinstance(b, dict)
+                        and b.get("type") == "tool_use"
+                        and str(b.get("id")) not in answered_tool_ids
+                    )
                 ]
 
     cleaned = []

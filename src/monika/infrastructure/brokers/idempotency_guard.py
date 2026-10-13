@@ -46,7 +46,7 @@ class IdempotencyGuard:
     Handles network dropouts, retry storms, and broker disconnect race conditions.
     """
 
-    DEFAULT_TTL_SECONDS = 90.0          # In-flight timeout window
+    DEFAULT_TTL_SECONDS = 90.0  # In-flight timeout window
     COMPLETION_COOLDOWN_SECONDS = 300.0  # Retain completed keys for 5 minutes
 
     def __init__(self):
@@ -69,7 +69,7 @@ class IdempotencyGuard:
         """
         sym = symbol.strip().upper()
         dir_clean = direction.strip().upper()
-        
+
         if proposal_id:
             raw = f"prop_{proposal_id}_{sym}_{dir_clean}"
             return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
@@ -177,9 +177,7 @@ class IdempotencyGuard:
         now = time.time()
         reconciled_count = 0
         async with self._lock:
-            active_tickets = {
-                int(p["ticket"]) for p in (open_positions or []) if "ticket" in p and p["ticket"]
-            }
+            active_tickets = {int(p["ticket"]) for p in (open_positions or []) if "ticket" in p and p["ticket"]}
             if pending_orders:
                 for o in pending_orders:
                     if "ticket" in o and o["ticket"]:

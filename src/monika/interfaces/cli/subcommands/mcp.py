@@ -25,7 +25,7 @@ class McpSubcommand(Subcommand):
     async def execute(self, args: argparse.Namespace) -> int:
         from monika.application.analysis.mcp.dispatcher import MonikaMcpDispatcher
         from monika.core.config.settings import load_settings
-        
+
         cfg = load_settings(getattr(args, "config", None))
         dispatcher = MonikaMcpDispatcher(settings=cfg)
         await dispatcher.run_stdio()

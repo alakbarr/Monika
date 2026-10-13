@@ -69,11 +69,11 @@ class WorktreeManager:
                     current = {}
                 continue
             if line.startswith("worktree "):
-                current["path"] = line[len("worktree "):].strip()
+                current["path"] = line[len("worktree ") :].strip()
             elif line.startswith("HEAD "):
-                current["head"] = line[len("HEAD "):].strip()
+                current["head"] = line[len("HEAD ") :].strip()
             elif line.startswith("branch "):
-                current["branch"] = line[len("branch "):].strip()
+                current["branch"] = line[len("branch ") :].strip()
             elif line == "bare":
                 current["bare"] = True
             elif line == "detached":

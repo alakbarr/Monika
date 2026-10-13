@@ -17,7 +17,11 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import CentralBankDocument, EconomicReportDecomposition, MacroLiquidityCreditMetric
+from monika.infrastructure.database.models import (
+    CentralBankDocument,
+    EconomicReportDecomposition,
+    MacroLiquidityCreditMetric,
+)
 from monika.infrastructure.data_ingestion.scrapers.macro.central_bank_doc_scraper import CentralBankDocScraper
 from monika.infrastructure.data_ingestion.scrapers.macro.generic_gov_stats_fetcher import GenericGovStatsFetcher
 from monika.infrastructure.data_ingestion.sources.fed_liquidity_h41_fetcher import FedLiquidityH41Fetcher

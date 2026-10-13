@@ -31,6 +31,7 @@ import pandas as pd
 
 try:
     from scipy.optimize import minimize
+
     _HAS_SCIPY = True
 except ImportError:
     _HAS_SCIPY = False
@@ -189,6 +190,7 @@ class PortfolioOptimizer:
         effective_max = max(max_weight, 1.0 / n)
 
         if _HAS_SCIPY and minimize is not None:
+
             def _neg_sharpe(w: np.ndarray) -> float:
                 r = np.dot(w, self.expected_returns) - risk_free_rate
                 vol = np.sqrt(w @ self.cov_matrix @ w)
@@ -215,7 +217,7 @@ class PortfolioOptimizer:
                 r_p = float(np.dot(w, self.expected_returns)) - risk_free_rate
                 var_p = float(w @ self.cov_matrix @ w)
                 vol_p = np.sqrt(max(var_p, 1e-8))
-                grad = (self.expected_returns / vol_p) - (r_p / (vol_p ** 3)) * (self.cov_matrix @ w)
+                grad = (self.expected_returns / vol_p) - (r_p / (vol_p**3)) * (self.cov_matrix @ w)
                 w_new = w + lr * grad
                 w_new = np.clip(w_new, 0.0, effective_max)
                 w_new = w_new / np.sum(w_new)
@@ -329,7 +331,11 @@ class PortfolioOptimizer:
         w = _project(w_prev.copy())
         lr = 0.02
         for t in range(400):
-            grad = -self.expected_returns + (2.0 * lambda_risk * (self.cov_matrix @ w)) + (churn_penalty * np.sign(w - w_prev))
+            grad = (
+                -self.expected_returns
+                + (2.0 * lambda_risk * (self.cov_matrix @ w))
+                + (churn_penalty * np.sign(w - w_prev))
+            )
             step_size = lr / np.sqrt(1.0 + t * 0.1)
             w_next = w - step_size * grad
             w = _project(w_next)

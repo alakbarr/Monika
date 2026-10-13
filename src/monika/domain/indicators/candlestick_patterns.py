@@ -57,7 +57,7 @@ def detect_candlestick_patterns(candles: Any, lookback: int = 5) -> Dict[str, An
             cl = float(c.get("close", 0))
             t = c.get("time") or c.get("timestamp") or ""
             formatted_candles.append({"open": o, "high": h, "low": l, "close": cl, "time": str(t)})
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             continue
 
     n = len(formatted_candles)
@@ -104,36 +104,42 @@ def detect_candlestick_patterns(candles: Any, lookback: int = 5) -> Dict[str, An
             else:
                 bias = "neutral"
 
-            patterns.append({
-                "index": i,
-                "candle_time": cur["time"],
-                "pattern": doji_type,
-                "bias": bias,
-                "confidence": 0.75,
-                "description": f"{doji_type} detected with body {body_size/total_range:.1%} of candle range.",
-            })
+            patterns.append(
+                {
+                    "index": i,
+                    "candle_time": cur["time"],
+                    "pattern": doji_type,
+                    "bias": bias,
+                    "confidence": 0.75,
+                    "description": f"{doji_type} detected with body {body_size / total_range:.1%} of candle range.",
+                }
+            )
 
         # 2. Pin Bar / Hammer / Shooting Star Detection
         # Bullish Pin Bar / Hammer (lower shadow >= 60%, upper shadow <= 20%)
         if lower_shadow >= total_range * 0.60 and upper_shadow <= total_range * 0.20:
-            patterns.append({
-                "index": i,
-                "candle_time": cur["time"],
-                "pattern": "Bullish Pin Bar / Hammer",
-                "bias": "bullish",
-                "confidence": 0.85,
-                "description": f"Long lower rejection wick ({lower_shadow/total_range:.1%}) indicating strong demand absorption.",
-            })
+            patterns.append(
+                {
+                    "index": i,
+                    "candle_time": cur["time"],
+                    "pattern": "Bullish Pin Bar / Hammer",
+                    "bias": "bullish",
+                    "confidence": 0.85,
+                    "description": f"Long lower rejection wick ({lower_shadow / total_range:.1%}) indicating strong demand absorption.",
+                }
+            )
         # Bearish Pin Bar / Shooting Star (upper shadow >= 60%, lower shadow <= 20%)
         elif upper_shadow >= total_range * 0.60 and lower_shadow <= total_range * 0.20:
-            patterns.append({
-                "index": i,
-                "candle_time": cur["time"],
-                "pattern": "Bearish Pin Bar / Shooting Star",
-                "bias": "bearish",
-                "confidence": 0.85,
-                "description": f"Long upper rejection wick ({upper_shadow/total_range:.1%}) indicating heavy supply overhang.",
-            })
+            patterns.append(
+                {
+                    "index": i,
+                    "candle_time": cur["time"],
+                    "pattern": "Bearish Pin Bar / Shooting Star",
+                    "bias": "bearish",
+                    "confidence": 0.85,
+                    "description": f"Long upper rejection wick ({upper_shadow / total_range:.1%}) indicating heavy supply overhang.",
+                }
+            )
 
         # 3. Engulfing Patterns
         p_body_top = max(p_open, p_close)
@@ -144,26 +150,30 @@ def detect_candlestick_patterns(candles: Any, lookback: int = 5) -> Dict[str, An
         # Bullish Engulfing: previous was red, current is green and engulfs previous body
         if not p_is_bullish and is_bullish:
             if c_close > p_body_top and c_open <= p_body_bottom and body_size > p_body_size * 1.1:
-                patterns.append({
-                    "index": i,
-                    "candle_time": cur["time"],
-                    "pattern": "Bullish Engulfing",
-                    "bias": "bullish",
-                    "confidence": 0.88,
-                    "description": "Bullish candle body completely engulfs the prior bearish candle body.",
-                })
+                patterns.append(
+                    {
+                        "index": i,
+                        "candle_time": cur["time"],
+                        "pattern": "Bullish Engulfing",
+                        "bias": "bullish",
+                        "confidence": 0.88,
+                        "description": "Bullish candle body completely engulfs the prior bearish candle body.",
+                    }
+                )
 
         # Bearish Engulfing: previous was green, current is red and engulfs previous body
         if p_is_bullish and not is_bullish:
             if c_open >= p_body_top and c_close < p_body_bottom and body_size > p_body_size * 1.1:
-                patterns.append({
-                    "index": i,
-                    "candle_time": cur["time"],
-                    "pattern": "Bearish Engulfing",
-                    "bias": "bearish",
-                    "confidence": 0.88,
-                    "description": "Bearish candle body completely engulfs the prior bullish candle body.",
-                })
+                patterns.append(
+                    {
+                        "index": i,
+                        "candle_time": cur["time"],
+                        "pattern": "Bearish Engulfing",
+                        "bias": "bearish",
+                        "confidence": 0.88,
+                        "description": "Bearish candle body completely engulfs the prior bullish candle body.",
+                    }
+                )
 
         # 4. 3-Bar Patterns: Morning Star & Evening Star
         if prev2 is not None:
@@ -174,25 +184,29 @@ def detect_candlestick_patterns(candles: Any, lookback: int = 5) -> Dict[str, An
 
             # Morning Star: 1=large bear, 2=small body (indecision), 3=large bull closing > 50% into bar 1
             if p2_is_bear and p_body_size < p2_body * 0.4 and is_bullish and c_close > (p2_open + p2_close) / 2:
-                patterns.append({
-                    "index": i,
-                    "candle_time": cur["time"],
-                    "pattern": "Morning Star",
-                    "bias": "bullish",
-                    "confidence": 0.90,
-                    "description": "3-candle bullish reversal: Bearish plunge -> Indecision base -> Strong Bullish recovery.",
-                })
+                patterns.append(
+                    {
+                        "index": i,
+                        "candle_time": cur["time"],
+                        "pattern": "Morning Star",
+                        "bias": "bullish",
+                        "confidence": 0.90,
+                        "description": "3-candle bullish reversal: Bearish plunge -> Indecision base -> Strong Bullish recovery.",
+                    }
+                )
 
             # Evening Star: 1=large bull, 2=small body, 3=large bear closing > 50% into bar 1
             if p2_is_bull and p_body_size < p2_body * 0.4 and not is_bullish and c_close < (p2_open + p2_close) / 2:
-                patterns.append({
-                    "index": i,
-                    "candle_time": cur["time"],
-                    "pattern": "Evening Star",
-                    "bias": "bearish",
-                    "confidence": 0.90,
-                    "description": "3-candle bearish reversal: Bullish rally -> Indecision peak -> Strong Bearish breakdown.",
-                })
+                patterns.append(
+                    {
+                        "index": i,
+                        "candle_time": cur["time"],
+                        "pattern": "Evening Star",
+                        "bias": "bearish",
+                        "confidence": 0.90,
+                        "description": "3-candle bearish reversal: Bullish rally -> Indecision peak -> Strong Bearish breakdown.",
+                    }
+                )
 
     bull_count = sum(1 for p in patterns if p["bias"] == "bullish")
     bear_count = sum(1 for p in patterns if p["bias"] == "bearish")

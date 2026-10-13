@@ -93,11 +93,7 @@ async def test_compute_and_persist_deltas():
     session = create_mock_async_session()
     # Mock previous state: EURUSD was NEUTRAL
     mock_row = MagicMock()
-    mock_row.value = json.dumps({
-        "verdicts": {
-            "EURUSD": {"state": "NEUTRAL", "reason": "Old range"}
-        }
-    })
+    mock_row.value = json.dumps({"verdicts": {"EURUSD": {"state": "NEUTRAL", "reason": "Old range"}}})
     session.execute.return_value = MagicMock(scalar_one_or_none=lambda: mock_row)
 
     runner = MacroPlaybookRunner(session=session)
@@ -126,10 +122,7 @@ async def test_compute_and_persist_deltas():
 async def test_fetch_playbook_data_handles_errors():
     """Verify data fetching handles unknown capabilities and exceptions gracefully."""
     runner = MacroPlaybookRunner()
-    meta = PlaybookMetadata(
-        title="Test",
-        data_capabilities=["nonexistent_capability", "economic_calendar"]
-    )
+    meta = PlaybookMetadata(title="Test", data_capabilities=["nonexistent_capability", "economic_calendar"])
     data = await runner._fetch_playbook_data(meta)
     assert isinstance(data, dict)
 
@@ -142,8 +135,10 @@ async def test_execute_real_playbook_template():
     assert pb_path.is_file(), "premarket_london_brief.md should exist"
 
     runner = MacroPlaybookRunner()
-    with patch.object(runner, "_fetch_playbook_data", new=AsyncMock(return_value={})), \
-         patch.object(runner, "_generate_verdicts_via_llm", new=AsyncMock(return_value="")):
+    with (
+        patch.object(runner, "_fetch_playbook_data", new=AsyncMock(return_value={})),
+        patch.object(runner, "_generate_verdicts_via_llm", new=AsyncMock(return_value="")),
+    ):
         res = await runner.execute_playbook(pb_path)
 
     assert res["playbook_file"] == "premarket_london_brief.md"

@@ -1,4 +1,5 @@
 """Unit tests for domain models packaging (Phase 7)."""
+
 import pytest
 import database.domain_models as dm
 

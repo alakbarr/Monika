@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #75.
 
 Formula (paper appendix): rank(correlation(vwap, volume, 4)) < rank(correlation(rank(low), rank(adv50), 12))
@@ -33,18 +32,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_075"
 
 __alpha_meta__ = {
-    'id': 'alpha101_075',
-    'nickname': 'Kakushadze Alpha #75',
-    'theme': ['volume'],
-    'formula_latex': 'rank(correlation(vwap, volume, 4)) < rank(correlation(rank(low), rank(adv50), 12))',
-    'columns_required': ['low', 'volume', 'vwap', 'close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 61,
-    'notes': '',
+    "id": "alpha101_075",
+    "nickname": "Kakushadze Alpha #75",
+    "theme": ["volume"],
+    "formula_latex": "rank(correlation(vwap, volume, 4)) < rank(correlation(rank(low), rank(adv50), 12))",
+    "columns_required": ["low", "volume", "vwap", "close"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 61,
+    "notes": "",
 }
 
 

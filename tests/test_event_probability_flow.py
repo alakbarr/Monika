@@ -80,6 +80,7 @@ def _load_benchmark_query() -> tuple[str, str]:
 # 1. Benchmark Query Complexity Classification
 # ==============================================================================
 
+
 class TestBenchmarkQueryClassification:
     """Verify that benchmark query and macro variations are classified as deep_research."""
 
@@ -136,6 +137,7 @@ class TestBenchmarkQueryClassification:
 # ==============================================================================
 # 2. Macro Event Query Detection (_is_macro_event_query)
 # ==============================================================================
+
 
 class TestIsMacroEventQuery:
     """Verify _is_macro_event_query identification on benchmark query, variations & negatives."""
@@ -201,6 +203,7 @@ class TestIsMacroEventQuery:
 # 3. Macro Playbook Injection (_inject_macro_playbooks)
 # ==============================================================================
 
+
 class TestInjectMacroPlaybooks:
     """Verify loading and injection of event_probability_playbook and market_dynamics_framework."""
 
@@ -218,11 +221,11 @@ class TestInjectMacroPlaybooks:
             assert "## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK" in injected
 
             # Verify core sections from event_probability_playbook.md
-            assert ("5-STAGE THINKING FLOW PROTOCOL" in injected or "PROTOKOL THINKING FLOW 5 TAHAP" in injected)
-            assert ("HISTORICAL PRECEDENT" in injected or "PUSTAKA PRESEDEN" in injected)
+            assert "5-STAGE THINKING FLOW PROTOCOL" in injected or "PROTOKOL THINKING FLOW 5 TAHAP" in injected
+            assert "HISTORICAL PRECEDENT" in injected or "PUSTAKA PRESEDEN" in injected
             assert "1994 Greenspan Preemptive Strike" in injected
             assert "2013 Bernanke" in injected
-            assert ("INSTITUTIONAL" in injected or "TEMPLATE OUTPUT" in injected)
+            assert "INSTITUTIONAL" in injected or "TEMPLATE OUTPUT" in injected
 
     def test_inject_macro_playbooks_tuple_format(self):
         with patch("telegram_bot.chat_agent.get_client_for_task"):
@@ -255,6 +258,7 @@ class TestInjectMacroPlaybooks:
 # ==============================================================================
 # 4. DynamicSubagentPool Decomposition: worker_macro with Tools & Checklist
 # ==============================================================================
+
 
 class TestDynamicSubagentPoolMacroDecomposition:
     """Verify DynamicSubagentPool spawns worker_macro with required tools and search checklist."""
@@ -319,6 +323,7 @@ class TestDynamicSubagentPoolMacroDecomposition:
 # 5. Deep Research Synthesizer: Tools, Executor & Section 6 Prompt
 # ==============================================================================
 
+
 class TestDeepResearchSynthesizer:
     """Verify _run_tier_deep_research Synthesizer execution parameters and Section 6 prompt structure."""
 
@@ -333,11 +338,26 @@ class TestDeepResearchSynthesizer:
             # 3 subagents + 1 synthesizer
             mock_client.run_chat_loop.side_effect = [
                 # Worker 1: Macro
-                {"reply": "Macro findings: FedWatch 89% hike.", "input_tokens": 100, "output_tokens": 50, "tool_calls_made": 3},
+                {
+                    "reply": "Macro findings: FedWatch 89% hike.",
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "tool_calls_made": 3,
+                },
                 # Worker 2: Tech
-                {"reply": "Tech findings: DXY near resistance.", "input_tokens": 100, "output_tokens": 50, "tool_calls_made": 2},
+                {
+                    "reply": "Tech findings: DXY near resistance.",
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "tool_calls_made": 2,
+                },
                 # Worker 3: Sentiment
-                {"reply": "Sentiment findings: Retail extreme short.", "input_tokens": 100, "output_tokens": 50, "tool_calls_made": 1},
+                {
+                    "reply": "Sentiment findings: Retail extreme short.",
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "tool_calls_made": 1,
+                },
                 # Synthesizer
                 {
                     "reply": "Executive Brief: Comprehensive Macro Event Synthesis.",
@@ -385,7 +405,9 @@ class TestDeepResearchSynthesizer:
 
             # 3. Check Synthesizer prompt contains Section 6 Macro Transmission & background persistence directive
             synth_sys = synth_kwargs.get("system_prompt", "")
-            assert ("6. Multi-Asset Macro Transmission Summary" in synth_sys or "6. Ringkasan Transmisi Makro" in synth_sys)
+            assert (
+                "6. Multi-Asset Macro Transmission Summary" in synth_sys or "6. Ringkasan Transmisi Makro" in synth_sys
+            )
             assert "user_market_intel" in synth_sys
             assert "IMPORTANT TRADING PLAN DIRECTIVE" in synth_sys
 
@@ -393,6 +415,7 @@ class TestDeepResearchSynthesizer:
 # ==============================================================================
 # 6. Synthesizer Proposed Action Capture & PendingAction Creation
 # ==============================================================================
+
 
 class TestSaveMarketIntelligencePendingAction:
     """Verify ChatAgent captures proposed save_market_intelligence and instantiates PendingAction."""
@@ -506,8 +529,11 @@ class TestSaveMarketIntelligencePendingAction:
 
             # Mock get_session and ToolExecutor
             from tests.conftest import create_mock_async_session
-            with patch("telegram_bot.chat_agent.get_session") as mock_gs, \
-                 patch("analysis.tools.tool_executor.ToolExecutor", return_value=mock_executor):
+
+            with (
+                patch("telegram_bot.chat_agent.get_session") as mock_gs,
+                patch("analysis.tools.tool_executor.ToolExecutor", return_value=mock_executor),
+            ):
                 mock_sess = create_mock_async_session()
                 mock_gs.return_value.__aenter__.return_value = mock_sess
                 res_msg = await agent._execute_action(action)
@@ -520,6 +546,7 @@ class TestSaveMarketIntelligencePendingAction:
 # ==============================================================================
 # 7. Comprehensive End-to-End Pipeline Integration
 # ==============================================================================
+
 
 class TestFullEventProbabilityEndToEndIntegration:
     """Verify entire flow from raw benchmark query to PendingAction registration."""
@@ -534,11 +561,26 @@ class TestFullEventProbabilityEndToEndIntegration:
             mock_client.model_name = "test-model"
             mock_client.run_chat_loop.side_effect = [
                 # Worker 1: Macro
-                {"reply": "Macro findings: Rates & yields", "input_tokens": 100, "output_tokens": 50, "tool_calls_made": 2},
+                {
+                    "reply": "Macro findings: Rates & yields",
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "tool_calls_made": 2,
+                },
                 # Worker 2: Tech
-                {"reply": "Tech findings: Structure & levels", "input_tokens": 100, "output_tokens": 50, "tool_calls_made": 2},
+                {
+                    "reply": "Tech findings: Structure & levels",
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "tool_calls_made": 2,
+                },
                 # Worker 3: Sentiment
-                {"reply": "Sentiment findings: Skew & funding", "input_tokens": 100, "output_tokens": 50, "tool_calls_made": 1},
+                {
+                    "reply": "Sentiment findings: Skew & funding",
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "tool_calls_made": 1,
+                },
                 # Synthesizer
                 {
                     "reply": "# Analisis Keputusan FOMC & Press Conference\n3-Skenario Plan formulated.",

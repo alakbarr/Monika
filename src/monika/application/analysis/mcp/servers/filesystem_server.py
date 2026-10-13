@@ -229,12 +229,14 @@ class FilesystemMcpServer:
             for child in iterator:
                 try:
                     is_dir = child.is_dir()
-                    items.append({
-                        "name": child.name,
-                        "path": str(child),
-                        "type": "directory" if is_dir else "file",
-                        "size": child.stat().st_size if not is_dir else 0,
-                    })
+                    items.append(
+                        {
+                            "name": child.name,
+                            "path": str(child),
+                            "type": "directory" if is_dir else "file",
+                            "size": child.stat().st_size if not is_dir else 0,
+                        }
+                    )
                     if len(items) >= max_items:
                         break
                 except Exception:

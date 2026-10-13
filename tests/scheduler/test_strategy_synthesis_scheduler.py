@@ -178,9 +178,9 @@ class HighAlphaStrategy(EdgeStrategy):
 
         # Verify ActivityLog entry was added with related_id=None
         from database.models import ActivityLog
+
         added_activities = [
-            call.args[0] for call in mock_session.add.call_args_list
-            if isinstance(call.args[0], ActivityLog)
+            call.args[0] for call in mock_session.add.call_args_list if isinstance(call.args[0], ActivityLog)
         ]
         assert len(added_activities) == 1
         assert added_activities[0].related_id is None
@@ -356,14 +356,17 @@ async def test_strategy_registry_evaluate_all_isolation():
     class BrokenInitStrategy(EdgeStrategy):
         strategy_id = "broken_init_strat"
         applicable_symbols = {"EURUSD"}
+
         def __init__(self, *args, **kwargs):
             raise RuntimeError("Fatal instantiation failure")
+
         async def evaluate(self, session, symbol, settings):
             return None
 
     class WorkingStrategy(EdgeStrategy):
         strategy_id = "working_strat"
         applicable_symbols = {"EURUSD"}
+
         async def evaluate(self, session, symbol, settings):
             return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction="buy", valid=True, confidence=0.9)
 
@@ -385,6 +388,7 @@ async def test_edge_strategy_get_historical_candles():
 
     class MockStrategy(EdgeStrategy):
         strategy_id = "mock_candles_strat"
+
         async def evaluate(self, session, symbol, settings):
             return None
 
@@ -595,5 +599,3 @@ class CanaryErrorStrategy(EdgeStrategy):
     )
     assert candidate is None
     assert StrategyRegistry.get_strategy("canary_err_strat") is None
-
-

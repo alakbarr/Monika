@@ -40,6 +40,7 @@ async def test_per_asset_stage_mt5_client_injection():
 @patch("sqlalchemy.ext.asyncio.AsyncEngine.connect")
 async def test_main_startup_checks_with_preflight(mock_connect, mock_session_local, mock_anthropic):
     from database.models import Base
+
     all_tables = [(table.name,) for table in Base.metadata.sorted_tables]
     all_cols = []
     for table in Base.metadata.sorted_tables:
@@ -51,7 +52,9 @@ async def test_main_startup_checks_with_preflight(mock_connect, mock_session_loc
     mock_connect.return_value.__aenter__.return_value = mock_conn
 
     mock_session = create_mock_async_session()
-    mock_session.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
+    mock_session.execute = AsyncMock(
+        return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))))
+    )
     mock_session_local.return_value.__aenter__.return_value = mock_session
 
     mock_client = AsyncMock()

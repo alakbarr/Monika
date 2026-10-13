@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 @dataclass
 class TokenUsage:
     """Standardized token usage across all providers."""
+
     input_tokens: int = 0
     output_tokens: int = 0
     cached_tokens: int = 0
@@ -42,6 +43,7 @@ class TokenUsage:
 @dataclass
 class NormalizedToolCall:
     """Standardized representation of a tool call."""
+
     id: str
     name: str
     arguments: Dict[str, Any]
@@ -59,6 +61,7 @@ class NormalizedResponse:
     """
     Universal representation of an LLM completion output.
     """
+
     text: str
     reasoning_content: Optional[str] = None
     tool_calls: List[NormalizedToolCall] = field(default_factory=list)
@@ -92,6 +95,7 @@ class ProviderProfile:
     """
     Defines capabilities, format conventions, and limits of an LLM provider.
     """
+
     provider_name: str
     supports_native_thinking: bool = False
     supports_prompt_caching: bool = False

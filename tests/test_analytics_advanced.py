@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit tests for Advanced Analytics: Macro Cross-Asset Correlation & Coinglass Open Interest.
 """

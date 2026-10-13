@@ -1,11 +1,11 @@
-
 """GTJA Alpha 159 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     ((CLOSE-SUM(MIN(LOW,DELAY(CLOSE,1)),6))/SUM(MAX(HIGH,DELAY(CLOSE,1))-MIN(LOW,DELAY(CLOSE,1)),6))*12*24 + similar over 12 and 24 windows /(6*12+6*24+12*24)*100
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_159"
 
 __alpha_meta__ = {
-    'id': 'gtja191_159',
-    'theme': ['momentum'],
-    'formula_latex': 'see body',
-    'columns_required': ['open', 'high', 'low', 'close', 'volume'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 24,
-    'min_warmup_bars': 25,
-    'notes': '',
+    "id": "gtja191_159",
+    "theme": ["momentum"],
+    "formula_latex": "see body",
+    "columns_required": ["open", "high", "low", "close", "volume"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 24,
+    "min_warmup_bars": 25,
+    "notes": "",
 }
 
 
@@ -59,16 +59,22 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     l = panel["low"]
     prev = c.shift(1)
     lo = pd.DataFrame(
-        np.minimum(l.to_numpy(dtype=np.float64, na_value=np.nan),
-                   prev.to_numpy(dtype=np.float64, na_value=np.nan)),
-        index=c.index, columns=c.columns,
+        np.minimum(l.to_numpy(dtype=np.float64, na_value=np.nan), prev.to_numpy(dtype=np.float64, na_value=np.nan)),
+        index=c.index,
+        columns=c.columns,
     )
     hi = pd.DataFrame(
-        np.maximum(h.to_numpy(dtype=np.float64, na_value=np.nan),
-                   prev.to_numpy(dtype=np.float64, na_value=np.nan)),
-        index=c.index, columns=c.columns,
+        np.maximum(h.to_numpy(dtype=np.float64, na_value=np.nan), prev.to_numpy(dtype=np.float64, na_value=np.nan)),
+        index=c.index,
+        columns=c.columns,
     )
+
     def _term(n):
         return safe_div((c - lo.rolling(n).sum()), (hi - lo).rolling(n).sum())
-    out = ((_term(6) * 12.0 * 24.0) + (_term(12) * 6.0 * 24.0) + (_term(24) * 6.0 * 12.0)) / (6.0 * 12.0 + 6.0 * 24.0 + 12.0 * 24.0) * 100.0
+
+    out = (
+        ((_term(6) * 12.0 * 24.0) + (_term(12) * 6.0 * 24.0) + (_term(24) * 6.0 * 12.0))
+        / (6.0 * 12.0 + 6.0 * 24.0 + 12.0 * 24.0)
+        * 100.0
+    )
     return out

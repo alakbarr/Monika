@@ -37,8 +37,14 @@ def _is_origin_allowed(websocket: WebSocket, is_localhost: bool) -> bool:
         return is_localhost
     allowed_raw = os.getenv("DASHBOARD_ALLOWED_ORIGINS", "")
     allowed = [o.strip() for o in allowed_raw.split(",") if o.strip()] or [
-        "http://localhost:5173", "http://localhost:4173", "http://localhost:3000", "http://localhost:8000",
-        "http://127.0.0.1:5173", "http://127.0.0.1:4173", "http://127.0.0.1:3000", "http://127.0.0.1:8000",
+        "http://localhost:5173",
+        "http://localhost:4173",
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:4173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
     ]
     if "*" in allowed:
         return True
@@ -50,6 +56,7 @@ def _is_origin_allowed(websocket: WebSocket, is_localhost: bool) -> bool:
 async def create_ws_ticket(request: Request):
     """Generate an ephemeral, single-use ticket for secure WebSocket connection."""
     from monika.interfaces.dashboard.ws_ticket import get_ws_ticket_manager
+
     manager = get_ws_ticket_manager()
     role_val = getattr(request.state, "role", Role.VIEWER)
     role_str = role_val.value if isinstance(role_val, Role) else str(role_val)
@@ -74,6 +81,7 @@ async def websocket_live_feed(websocket: WebSocket):
         return
 
     from monika.interfaces.dashboard.ws_ticket import get_ws_ticket_manager
+
     ticket_mgr = get_ws_ticket_manager()
 
     role = None
@@ -93,7 +101,9 @@ async def websocket_live_feed(websocket: WebSocket):
         client_key = token_param or websocket.headers.get("x-api-key") or bearer_key or ""
 
         if token_param:
-            logger.warning("[Dashboard WS] DeprecationWarning: Query parameter auth ('?token=...') is deprecated. Use ephemeral ticket or handshake authenticate message.")
+            logger.warning(
+                "[Dashboard WS] DeprecationWarning: Query parameter auth ('?token=...') is deprecated. Use ephemeral ticket or handshake authenticate message."
+            )
 
         try:
             role = resolve_role(str(client_key), is_localhost=is_localhost)
@@ -115,7 +125,9 @@ async def websocket_live_feed(websocket: WebSocket):
                 if auth_msg.get("ticket"):
                     ticket_payload = ticket_mgr.validate_and_consume(auth_msg["ticket"])
                     if ticket_payload:
-                        role = Role(ticket_payload.role) if ticket_payload.role in [r.value for r in Role] else Role.VIEWER
+                        role = (
+                            Role(ticket_payload.role) if ticket_payload.role in [r.value for r in Role] else Role.VIEWER
+                        )
                         authenticated = True
                     else:
                         await websocket.close(code=1008, reason="Unauthorized: Expired or invalid ticket")
@@ -154,13 +166,15 @@ async def websocket_live_feed(websocket: WebSocket):
 
     try:
         current_seq = get_current_stream_seq()
-        await queue.put({
-            "type": "connection_established",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "status": "connected",
-            "seq": current_seq,
-            "as_of_seq": current_seq,
-        })
+        await queue.put(
+            {
+                "type": "connection_established",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "connected",
+                "seq": current_seq,
+                "as_of_seq": current_seq,
+            }
+        )
 
         # Replay catch-up on reconnect if since_seq was provided via query param
         since_raw = websocket.query_params.get("since_seq") or websocket.query_params.get("last_seq")
@@ -170,19 +184,22 @@ async def websocket_live_feed(websocket: WebSocket):
                 missed_events = get_buffered_events_since(since_seq)
                 for ev in missed_events:
                     await queue.put(ev)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
 
         try:
             from monika.domain.risk.approval_hub import ApprovalHub
+
             open_reqs = ApprovalHub.get_instance().get_open_requests()
             if open_reqs:
-                await queue.put({
-                    "type": "open_approvals",
-                    "requests": open_reqs,
-                    "seq": get_current_stream_seq(),
-                    "as_of_seq": get_current_stream_seq(),
-                })
+                await queue.put(
+                    {
+                        "type": "open_approvals",
+                        "requests": open_reqs,
+                        "seq": get_current_stream_seq(),
+                        "as_of_seq": get_current_stream_seq(),
+                    }
+                )
         except Exception:
             pass
 
@@ -198,20 +215,25 @@ async def websocket_live_feed(websocket: WebSocket):
                     elif msg.get("type") in ("replay", "catch_up", "sync"):
                         since_seq = msg.get("since_seq") or msg.get("last_seq") or 0
                         missed = get_buffered_events_since(int(since_seq))
-                        await queue.put({
-                            "type": "replay_batch",
-                            "events": missed,
-                            "count": len(missed),
-                            "as_of_seq": get_current_stream_seq(),
-                        })
+                        await queue.put(
+                            {
+                                "type": "replay_batch",
+                                "events": missed,
+                                "count": len(missed),
+                                "as_of_seq": get_current_stream_seq(),
+                            }
+                        )
                     elif msg.get("type") == "steer":
                         if not role or ROLE_HIERARCHY.get(role, -1) < ROLE_HIERARCHY.get(Role.OPERATOR, 1):
                             await queue.put({"type": "error", "message": "Forbidden: Requires OPERATOR role or above"})
                             continue
-                        text = msg.get("message") or (msg.get("payload", {}).get("message") if isinstance(msg.get("payload"), dict) else None)
+                        text = msg.get("message") or (
+                            msg.get("payload", {}).get("message") if isinstance(msg.get("payload"), dict) else None
+                        )
                         symbol = msg.get("symbol") or "ALL"
                         if text:
                             from monika.domain.risk.approval_hub import ApprovalHub
+
                             operator_tag = f"ws:{role.value if role else 'client'}"
                             steer_res = await ApprovalHub.get_instance().steer(symbol, str(text), operator=operator_tag)
                             await queue.put({"type": "steer_acknowledged", **steer_res})
@@ -222,8 +244,11 @@ async def websocket_live_feed(websocket: WebSocket):
                         req_id = msg.get("request_id") or msg.get("action_id")
                         operator_tag = f"ws:{role.value if role else 'client'}"
                         from monika.domain.risk.approval_hub import ApprovalHub
+
                         ok, res_str = await ApprovalHub.get_instance().approve(str(req_id), operator=operator_tag)
-                        await queue.put({"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str})
+                        await queue.put(
+                            {"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str}
+                        )
                     elif msg.get("type") in ("reject", "approval_reject"):
                         if not role or ROLE_HIERARCHY.get(role, -1) < ROLE_HIERARCHY.get(Role.OPERATOR, 1):
                             await queue.put({"type": "error", "message": "Forbidden: Requires OPERATOR role or above"})
@@ -232,8 +257,13 @@ async def websocket_live_feed(websocket: WebSocket):
                         reason = msg.get("reason", "")
                         operator_tag = f"ws:{role.value if role else 'client'}"
                         from monika.domain.risk.approval_hub import ApprovalHub
-                        ok, res_str = await ApprovalHub.get_instance().reject(str(req_id), operator=operator_tag, reason=reason)
-                        await queue.put({"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str})
+
+                        ok, res_str = await ApprovalHub.get_instance().reject(
+                            str(req_id), operator=operator_tag, reason=reason
+                        )
+                        await queue.put(
+                            {"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str}
+                        )
                 except Exception:
                     pass
     except WebSocketDisconnect:
@@ -252,12 +282,15 @@ async def websocket_live_feed(websocket: WebSocket):
             await sender_task
         except asyncio.CancelledError:
             pass
+
+
 class TokenCoalescingBuffer:
     """
     High-performance 30 FPS (~33ms flush interval) token coalescing stream buffer.
     Coalesces incoming fine-grained tokens/chunks and safely strips reasoning blocks
     and credentials via StatefulStreamScrubber before dispatching over WebSocket.
     """
+
     def __init__(
         self,
         websocket: WebSocket,
@@ -282,7 +315,7 @@ class TokenCoalescingBuffer:
             token = self.scrubber.process_delta(token)
             curr_thought_len = len(self.scrubber._accumulated_thinking)
             if curr_thought_len > self._last_thought_idx:
-                new_parts = self.scrubber._accumulated_thinking[self._last_thought_idx:]
+                new_parts = self.scrubber._accumulated_thinking[self._last_thought_idx :]
                 self._last_thought_idx = curr_thought_len
                 thought_str = "".join(new_parts)
                 if thought_str:
@@ -325,7 +358,7 @@ class TokenCoalescingBuffer:
 
     async def stream_text(self, text: str):
         """Streams text smoothly through the coalescing buffer at ~30 FPS."""
-        tokens = re.findall(r'\S+|\s+', text)
+        tokens = re.findall(r"\S+|\s+", text)
         for tok in tokens:
             await self.push(tok)
             now = asyncio.get_event_loop().time()
@@ -333,7 +366,6 @@ class TokenCoalescingBuffer:
                 await self.flush()
                 await asyncio.sleep(self.flush_interval)
         await self.flush(final=True)
-
 
 
 @router.websocket("/ws/agent-chat")
@@ -348,6 +380,7 @@ async def websocket_agent_chat(websocket: WebSocket):
         return
 
     from monika.interfaces.dashboard.ws_ticket import get_ws_ticket_manager
+
     ticket_mgr = get_ws_ticket_manager()
 
     role = None
@@ -367,7 +400,9 @@ async def websocket_agent_chat(websocket: WebSocket):
         client_key = token_param or websocket.headers.get("x-api-key") or bearer_key or ""
 
         if token_param:
-            logger.warning("[AgentChat WS] DeprecationWarning: Query parameter auth ('?token=...') is deprecated. Use ephemeral ticket or handshake authenticate message.")
+            logger.warning(
+                "[AgentChat WS] DeprecationWarning: Query parameter auth ('?token=...') is deprecated. Use ephemeral ticket or handshake authenticate message."
+            )
 
         try:
             role = resolve_role(str(client_key), is_localhost=is_localhost)
@@ -389,7 +424,9 @@ async def websocket_agent_chat(websocket: WebSocket):
                 if auth_msg.get("ticket"):
                     ticket_payload = ticket_mgr.validate_and_consume(auth_msg["ticket"])
                     if ticket_payload:
-                        role = Role(ticket_payload.role) if ticket_payload.role in [r.value for r in Role] else Role.VIEWER
+                        role = (
+                            Role(ticket_payload.role) if ticket_payload.role in [r.value for r in Role] else Role.VIEWER
+                        )
                         authenticated = True
                     else:
                         await websocket.close(code=1008, reason="Unauthorized: Expired or invalid ticket")
@@ -406,28 +443,37 @@ async def websocket_agent_chat(websocket: WebSocket):
             await websocket.close(code=1008, reason="Unauthorized: Authentication handshake failed")
             return
 
-    session_id = websocket.query_params.get("session_id") or f"dash:{role.value if role else 'unknown'}:{uuid.uuid4().hex[:8]}"
-    await websocket.send_json({
-        "type": "connection_established",
-        "role": role.value if role else "viewer",
-        "session_id": session_id,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    session_id = (
+        websocket.query_params.get("session_id") or f"dash:{role.value if role else 'unknown'}:{uuid.uuid4().hex[:8]}"
+    )
+    await websocket.send_json(
+        {
+            "type": "connection_established",
+            "role": role.value if role else "viewer",
+            "session_id": session_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    )
     try:
         from monika.domain.risk.approval_hub import ApprovalHub
+
         open_reqs = ApprovalHub.get_instance().get_open_requests()
         if open_reqs:
-            await websocket.send_json({
-                "type": "open_approvals",
-                "requests": open_reqs,
-            })
+            await websocket.send_json(
+                {
+                    "type": "open_approvals",
+                    "requests": open_reqs,
+                }
+            )
     except Exception:
         pass
 
     from monika.core.config.settings import load_settings
+
     raw_settings = get_dashboard_dependency("settings") or load_settings()
     settings: dict = dict(raw_settings) if isinstance(raw_settings, dict) else raw_settings.model_dump()
     from monika.application.agent.chat_agent import ChatAgent
+
     agent = ChatAgent(settings=settings, user_id=session_id, is_admin=(role == Role.ADMIN))
 
     tools_used: list[str] = []
@@ -437,19 +483,23 @@ async def websocket_agent_chat(websocket: WebSocket):
             tool_name = data.get("tool", "")
             if tool_name not in tools_used:
                 tools_used.append(tool_name)
-            await websocket.send_json({
-                "type": "tool_start",
-                "tool": tool_name,
-                "input": data.get("input", {}),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            })
+            await websocket.send_json(
+                {
+                    "type": "tool_start",
+                    "tool": tool_name,
+                    "input": data.get("input", {}),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
         elif event_type == "result":
-            await websocket.send_json({
-                "type": "tool_result",
-                "tool": data.get("tool", ""),
-                "summary": data.get("summary", ""),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            })
+            await websocket.send_json(
+                {
+                    "type": "tool_result",
+                    "tool": data.get("tool", ""),
+                    "summary": data.get("summary", ""),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
 
     agent.set_tool_event_listener(tool_event_hook)
 
@@ -474,7 +524,7 @@ async def websocket_agent_chat(websocket: WebSocket):
                 token = msg.get("token") or msg.get("api_key") or ""
                 try:
                     role = resolve_role(str(token), is_localhost=is_localhost)
-                    agent.is_admin = (role == Role.ADMIN)
+                    agent.is_admin = role == Role.ADMIN
                     await websocket.send_json({"type": "authenticated", "role": role.value})
                 except PermissionError:
                     await websocket.send_json({"type": "error", "message": "Invalid authentication token"})
@@ -484,20 +534,24 @@ async def websocket_agent_chat(websocket: WebSocket):
                 interrupted = agent.interrupt("Turn interrupted by dashboard user.")
                 if turn_task and not turn_task.done():
                     turn_task.cancel()
-                await websocket.send_json({
-                    "type": "interrupted",
-                    "success": interrupted,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                })
+                await websocket.send_json(
+                    {
+                        "type": "interrupted",
+                        "success": interrupted,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
                 continue
 
             elif event_type == "approval_response":
                 user_role_level = ROLE_HIERARCHY.get(role, 0) if role is not None else 0
                 if user_role_level < ROLE_HIERARCHY.get(Role.OPERATOR, 1):
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": "Forbidden: Approving or denying actions requires Operator or Admin role.",
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "message": "Forbidden: Approving or denying actions requires Operator or Admin role.",
+                        }
+                    )
                     continue
 
                 action_id = msg.get("action_id", "")
@@ -506,58 +560,73 @@ async def websocket_agent_chat(websocket: WebSocket):
 
                 try:
                     from monika.domain.risk.approval_hub import ApprovalHub
+
                     if decision in ("allow_once", "allow_session"):
                         await ApprovalHub.get_instance().approve(action_id, operator=operator_tag)
                     elif decision in ("deny", "reject"):
-                        await ApprovalHub.get_instance().reject(action_id, operator=operator_tag, reason=str(msg.get("reason", "")))
+                        await ApprovalHub.get_instance().reject(
+                            action_id, operator=operator_tag, reason=str(msg.get("reason", ""))
+                        )
                 except Exception:
                     pass
 
                 if decision == "allow_once":
                     ok, res_text = await agent.confirm_action(action_id)
-                    await websocket.send_json({
-                        "type": "complete",
-                        "text": res_text,
-                        "action_id": action_id,
-                        "status": "approved" if ok else "failed",
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "complete",
+                            "text": res_text,
+                            "action_id": action_id,
+                            "status": "approved" if ok else "failed",
+                        }
+                    )
                 elif decision == "allow_session":
                     ok, res_text = await agent.approve_for_session(action_id)
-                    await websocket.send_json({
-                        "type": "complete",
-                        "text": res_text,
-                        "action_id": action_id,
-                        "status": "session_approved" if ok else "failed",
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "complete",
+                            "text": res_text,
+                            "action_id": action_id,
+                            "status": "session_approved" if ok else "failed",
+                        }
+                    )
                 elif decision in ("deny", "reject"):
                     res_text = await agent.reject_action(action_id)
-                    await websocket.send_json({
-                        "type": "complete",
-                        "text": res_text,
-                        "action_id": action_id,
-                        "status": "denied",
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "complete",
+                            "text": res_text,
+                            "action_id": action_id,
+                            "status": "denied",
+                        }
+                    )
                 else:
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": f"Unknown decision '{decision}'. Use allow_once, allow_session, or deny.",
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "message": f"Unknown decision '{decision}'. Use allow_once, allow_session, or deny.",
+                        }
+                    )
                 continue
 
             elif event_type == "message":
                 user_role_level = ROLE_HIERARCHY.get(role, 0) if role is not None else 0
                 if user_role_level < ROLE_HIERARCHY.get(Role.OPERATOR, 1):
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": "Forbidden: Sending messages to the chat agent requires Operator or Admin role.",
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "message": "Forbidden: Sending messages to the chat agent requires Operator or Admin role.",
+                        }
+                    )
                     continue
 
                 if turn_task and not turn_task.done():
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": "Agent is currently busy processing another message. Please wait or interrupt.",
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "message": "Agent is currently busy processing another message. Please wait or interrupt.",
+                        }
+                    )
                     continue
 
                 text = msg.get("text", "").strip()
@@ -594,25 +663,30 @@ async def websocket_agent_chat(websocket: WebSocket):
                             await coalescer.flush(final=True)
 
                         sanitized_reply = StatefulStreamScrubber.scrub_text(reply_text)
-                        await websocket.send_json({
-                            "type": "complete",
-                            "text": sanitized_reply,
-                            "tools_used": list(tools_used),
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                        })
+                        await websocket.send_json(
+                            {
+                                "type": "complete",
+                                "text": sanitized_reply,
+                                "tools_used": list(tools_used),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                            }
+                        )
 
                         import base64
+
                         if hasattr(agent, "pop_pending_charts"):
                             charts = agent.pop_pending_charts()
                             for chart_buf in charts:
                                 try:
                                     chart_buf.seek(0)
                                     b64_chart = base64.b64encode(chart_buf.getvalue()).decode("utf-8")
-                                    await websocket.send_json({
-                                        "type": "chart_image",
-                                        "data": b64_chart,
-                                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                                    })
+                                    await websocket.send_json(
+                                        {
+                                            "type": "chart_image",
+                                            "data": b64_chart,
+                                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                                        }
+                                    )
                                 except Exception as _ch_err:
                                     logger.warning(f"Failed to stream chart over WS: {_ch_err}")
 
@@ -622,31 +696,37 @@ async def websocket_agent_chat(websocket: WebSocket):
                                 try:
                                     file_buf.seek(0)
                                     b64_file = base64.b64encode(file_buf.getvalue()).decode("utf-8")
-                                    await websocket.send_json({
-                                        "type": "file_download",
-                                        "filename": filename,
-                                        "data": b64_file,
-                                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                                    })
+                                    await websocket.send_json(
+                                        {
+                                            "type": "file_download",
+                                            "filename": filename,
+                                            "data": b64_file,
+                                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                                        }
+                                    )
                                 except Exception as _f_err:
                                     logger.warning(f"Failed to stream file over WS: {_f_err}")
 
                         if pending:
-                            await websocket.send_json({
-                                "type": "approval_request",
-                                "action": pending.to_dict(),
-                                "expires_in": 90,
-                                "timestamp": datetime.now(timezone.utc).isoformat(),
-                            })
+                            await websocket.send_json(
+                                {
+                                    "type": "approval_request",
+                                    "action": pending.to_dict(),
+                                    "expires_in": 90,
+                                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                                }
+                            )
                     except asyncio.CancelledError:
                         pass
                     except Exception as err:
                         logger.error(f"[AgentChat WS] Error during turn: {err}", exc_info=True)
-                        await websocket.send_json({
-                            "type": "error",
-                            "message": f"Agent error: {str(err)}",
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                        })
+                        await websocket.send_json(
+                            {
+                                "type": "error",
+                                "message": f"Agent error: {str(err)}",
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                            }
+                        )
 
                 turn_task = asyncio.create_task(_run_chat_turn(processed_text))
 
@@ -694,22 +774,26 @@ async def list_sessions(
         results = []
         for row in rows:
             uid = row.telegram_user_id
-            latest = (await session.execute(
-                select(TelegramConversation.message, TelegramConversation.role)
-                .where(TelegramConversation.telegram_user_id == uid)
-                .order_by(TelegramConversation.timestamp.desc())
-                .limit(1)
-            )).first()
+            latest = (
+                await session.execute(
+                    select(TelegramConversation.message, TelegramConversation.role)
+                    .where(TelegramConversation.telegram_user_id == uid)
+                    .order_by(TelegramConversation.timestamp.desc())
+                    .limit(1)
+                )
+            ).first()
 
-            results.append({
-                "session_id": uid,
-                "source": "dashboard" if uid.startswith("dash") else "telegram",
-                "message_count": row.message_count,
-                "last_active": row.last_active.isoformat() if row.last_active else None,
-                "first_active": row.first_active.isoformat() if row.first_active else None,
-                "last_message": latest.message[:120] if latest else "",
-                "last_role": latest.role if latest else "",
-            })
+            results.append(
+                {
+                    "session_id": uid,
+                    "source": "dashboard" if uid.startswith("dash") else "telegram",
+                    "message_count": row.message_count,
+                    "last_active": row.last_active.isoformat() if row.last_active else None,
+                    "first_active": row.first_active.isoformat() if row.first_active else None,
+                    "last_message": latest.message[:120] if latest else "",
+                    "last_role": latest.role if latest else "",
+                }
+            )
         return results
 
 
@@ -779,7 +863,9 @@ async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str]
 
         # Terminal shell requires explicit token or ticket even on localhost to prevent CSWSH attacks
         if not client_key and not ticket_param:
-            logger.warning(f"[PtyBridge] Rejected terminal shell connection on localhost without explicit token or ticket from {client_host}")
+            logger.warning(
+                f"[PtyBridge] Rejected terminal shell connection on localhost without explicit token or ticket from {client_host}"
+            )
             await websocket.close(code=1008, reason="Forbidden: Terminal shell requires explicit ticket or API key")
             return
 
@@ -868,4 +954,3 @@ async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str]
             await websocket.close()
         except Exception:
             pass
-

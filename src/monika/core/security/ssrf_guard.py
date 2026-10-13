@@ -28,6 +28,7 @@ logger = logging.getLogger("TradingAgent.Security.SSRFGuard")
 
 class SSRFViolationError(PermissionError):
     """Raised when an outbound URL violates SSRF safety rules."""
+
     pass
 
 
@@ -35,24 +36,24 @@ class SSRFViolationError(PermissionError):
 BLOCKED_NETWORKS = [
     ipaddress.ip_network("0.0.0.0/8"),
     ipaddress.ip_network("10.0.0.0/8"),
-    ipaddress.ip_network("100.64.0.0/10"),     # Carrier-grade NAT
-    ipaddress.ip_network("127.0.0.0/8"),       # Loopback
-    ipaddress.ip_network("169.254.0.0/16"),    # Link-local & Cloud Metadata
-    ipaddress.ip_network("172.16.0.0/12"),     # Private
-    ipaddress.ip_network("192.0.0.0/24"),      # IETF Protocol Assignments
-    ipaddress.ip_network("192.0.2.0/24"),      # Documentation TEST-NET-1
-    ipaddress.ip_network("192.168.0.0/16"),    # Private
-    ipaddress.ip_network("198.18.0.0/15"),     # Benchmarking
-    ipaddress.ip_network("198.51.100.0/24"),   # Documentation TEST-NET-2
-    ipaddress.ip_network("203.0.113.0/24"),    # Documentation TEST-NET-3
-    ipaddress.ip_network("224.0.0.0/4"),       # Multicast
-    ipaddress.ip_network("240.0.0.0/4"),       # Reserved
-    ipaddress.ip_network("255.255.255.255/32"),# Broadcast
+    ipaddress.ip_network("100.64.0.0/10"),  # Carrier-grade NAT
+    ipaddress.ip_network("127.0.0.0/8"),  # Loopback
+    ipaddress.ip_network("169.254.0.0/16"),  # Link-local & Cloud Metadata
+    ipaddress.ip_network("172.16.0.0/12"),  # Private
+    ipaddress.ip_network("192.0.0.0/24"),  # IETF Protocol Assignments
+    ipaddress.ip_network("192.0.2.0/24"),  # Documentation TEST-NET-1
+    ipaddress.ip_network("192.168.0.0/16"),  # Private
+    ipaddress.ip_network("198.18.0.0/15"),  # Benchmarking
+    ipaddress.ip_network("198.51.100.0/24"),  # Documentation TEST-NET-2
+    ipaddress.ip_network("203.0.113.0/24"),  # Documentation TEST-NET-3
+    ipaddress.ip_network("224.0.0.0/4"),  # Multicast
+    ipaddress.ip_network("240.0.0.0/4"),  # Reserved
+    ipaddress.ip_network("255.255.255.255/32"),  # Broadcast
     # IPv6
-    ipaddress.ip_network("::1/128"),           # IPv6 Loopback
-    ipaddress.ip_network("::/128"),            # Unspecified
-    ipaddress.ip_network("fc00::/7"),          # Unique Local Address (ULA)
-    ipaddress.ip_network("fe80::/10"),         # Link-local unicast
+    ipaddress.ip_network("::1/128"),  # IPv6 Loopback
+    ipaddress.ip_network("::/128"),  # Unspecified
+    ipaddress.ip_network("fc00::/7"),  # Unique Local Address (ULA)
+    ipaddress.ip_network("fe80::/10"),  # Link-local unicast
 ]
 
 BLOCKED_HOSTNAMES = {
@@ -137,5 +138,5 @@ def is_url_safe(url: str) -> bool:
     try:
         validate_request_url(url)
         return True
-    except (SSRFViolationError, Exception):
+    except SSRFViolationError, Exception:
         return False

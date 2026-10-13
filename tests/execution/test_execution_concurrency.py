@@ -1,6 +1,7 @@
 """
 Integration and Concurrency Tests for Transactional Advisory Lock in ExecutionService.
 """
+
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -23,7 +24,7 @@ async def test_execution_service_lock_contention_handling():
         mt5_client=MagicMock(),
         dry_run=True,
     )
-    
+
     mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
@@ -46,18 +47,20 @@ async def test_execution_service_lock_contention_handling():
     class MockLockedContext:
         async def __aenter__(self):
             return False
+
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             pass
 
-    with patch("execution.execution_service.transactional_advisory_lock", return_value=MockLockedContext()), \
-         patch.object(service, "_get_current_price", AsyncMock(return_value=(1.0850, False, 1.0))):
-        
+    with (
+        patch("execution.execution_service.transactional_advisory_lock", return_value=MockLockedContext()),
+        patch.object(service, "_get_current_price", AsyncMock(return_value=(1.0850, False, 1.0))),
+    ):
         result = await service._execute_analysis_internal(
             session=mock_session,
             analysis=mock_analysis,
             account_equity=10000.0,
         )
-        
+
         assert result.risk_approved is False
         assert result.executed is False
         assert "advisory_lock_contention" in result.risk_checks_failed

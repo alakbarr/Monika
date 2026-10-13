@@ -68,8 +68,8 @@ async def test_reactive_graph_event_ingestion_preplanned():
             "analysis_id": 101,
             "symbol": "XAUUSD",
             "current_price": 2045.5,
-            "preplanned_order": {"type": "BUY", "confidence": 0.85, "sl": 2040.0, "tp": 2060.0}
-        }
+            "preplanned_order": {"type": "BUY", "confidence": 0.85, "sl": 2040.0, "tp": 2060.0},
+        },
     }
     res = await event_ingestion_node(state)
     assert "XAUUSD" in res["symbols"]
@@ -89,12 +89,15 @@ async def test_reactive_graph_confluence_filter():
     class MockSession:
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, *a):
             pass
+
         async def get(self, model, pk):
             if pk == 1:
                 return mock_ana_high
             return mock_ana_low
+
         async def execute(self, *a, **kw):
             m = MagicMock()
             m.scalar_one_or_none.return_value = None
@@ -133,19 +136,20 @@ async def test_reactive_graph_execution_auto_execute():
     class MockSession:
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, *a):
             pass
+
         async def get(self, model, pk):
             return mock_ana
+
         async def commit(self):
             pass
 
     mock_exec_svc = MagicMock()
-    mock_exec_svc.execute_analysis = AsyncMock(return_value=MagicMock(
-        executed=True,
-        risk_approved=True,
-        summary=lambda: "Executed 0.1 lots EURUSD"
-    ))
+    mock_exec_svc.execute_analysis = AsyncMock(
+        return_value=MagicMock(executed=True, risk_approved=True, summary=lambda: "Executed 0.1 lots EURUSD")
+    )
 
     mock_scheduler = MagicMock()
     mock_scheduler.settings = {"trading": {"auto_execute": True}}
@@ -153,11 +157,7 @@ async def test_reactive_graph_execution_auto_execute():
     mock_scheduler._execution_service = mock_exec_svc
     mock_scheduler._mt5 = None
 
-    state = {
-        "actionable_trades": [("EURUSD", {"analysis_id": 101})],
-        "summary": {},
-        "event_data": {}
-    }
+    state = {"actionable_trades": [("EURUSD", {"analysis_id": 101})], "summary": {}, "event_data": {}}
     config = {"configurable": {"scheduler": mock_scheduler}}
 
     with patch("graph.reactive_graph.get_session", side_effect=MockSession):
@@ -219,5 +219,3 @@ async def test_reactive_graph_edge_signal_routes_to_risk_gate():
     # 5. Compiled graph branch structure contains risk_gate destination
     graph = build_reactive_graph()
     assert graph is not None
-
-

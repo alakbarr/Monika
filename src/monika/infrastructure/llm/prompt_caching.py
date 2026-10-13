@@ -58,7 +58,7 @@ global_cache_tracker = PromptCacheTracker()
 
 class PromptCacheManager:
     """Applies provider-aware prompt caching strategies and breakpoints.
-    
+
     Adheres to strict prompt prefix invariance and provider ephemeral caching standards.
     """
 
@@ -70,7 +70,7 @@ class PromptCacheManager:
         ttl: Optional[str] = None,
     ) -> Tuple[List[Dict[str, Any]], Optional[List[Dict[str, Any]]], List[Dict[str, Any]]]:
         """Place up to 4 cache_control breakpoints on stable prefix boundaries for Anthropic.
-        
+
         Breakpoint 1: End of stable system prompt (with 1h TTL)
         Breakpoint 2: End of tool definitions (canonically sorted)
         Breakpoint 3/4: End of initial conversation turns
@@ -82,11 +82,13 @@ class PromptCacheManager:
         # 1. System blocks with ephemeral cache control
         system_blocks: List[Dict[str, Any]] = []
         if isinstance(system_prompt, str) and system_prompt:
-            system_blocks.append({
-                "type": "text",
-                "text": system_prompt,
-                "cache_control": dict(cache_marker),
-            })
+            system_blocks.append(
+                {
+                    "type": "text",
+                    "text": system_prompt,
+                    "cache_control": dict(cache_marker),
+                }
+            )
         elif isinstance(system_prompt, list):
             for item in system_prompt:
                 if isinstance(item, dict):
@@ -101,7 +103,11 @@ class PromptCacheManager:
         if tools:
             sorted_tools = sorted(
                 tools,
-                key=lambda t: str(t.get("name") or (t.get("function", {}).get("name") if isinstance(t.get("function"), dict) else "") or "")
+                key=lambda t: str(
+                    t.get("name")
+                    or (t.get("function", {}).get("name") if isinstance(t.get("function"), dict) else "")
+                    or ""
+                ),
             )
             cached_tools = []
             for i, tool in enumerate(sorted_tools):
@@ -113,6 +119,7 @@ class PromptCacheManager:
         # 3. Messages copy
         cached_messages = list(messages or [])
         return system_blocks, cached_tools, cached_messages
+
     @staticmethod
     def find_stable_prefix(text: str, split_marker: str = "\n---\n") -> Tuple[str, str]:
         """
@@ -158,22 +165,28 @@ class PromptCacheManager:
         if isinstance(system_prompt, str) and system_prompt:
             prefix, volatile = PromptCacheManager.find_stable_prefix(system_prompt)
             if prefix and volatile:
-                system_blocks.append({
-                    "type": "text",
-                    "text": prefix,
-                    "cache_control": dict(cache_marker),  # Breakpoint 1
-                })
-                system_blocks.append({
-                    "type": "text",
-                    "text": volatile,
-                    "cache_control": dict(cache_marker),  # Breakpoint 2
-                })
+                system_blocks.append(
+                    {
+                        "type": "text",
+                        "text": prefix,
+                        "cache_control": dict(cache_marker),  # Breakpoint 1
+                    }
+                )
+                system_blocks.append(
+                    {
+                        "type": "text",
+                        "text": volatile,
+                        "cache_control": dict(cache_marker),  # Breakpoint 2
+                    }
+                )
             else:
-                system_blocks.append({
-                    "type": "text",
-                    "text": system_prompt,
-                    "cache_control": dict(cache_marker),  # Breakpoint 1
-                })
+                system_blocks.append(
+                    {
+                        "type": "text",
+                        "text": system_prompt,
+                        "cache_control": dict(cache_marker),  # Breakpoint 1
+                    }
+                )
         elif isinstance(system_prompt, list):
             for item in system_prompt:
                 if isinstance(item, dict):
@@ -188,7 +201,11 @@ class PromptCacheManager:
         if tools:
             sorted_tools = sorted(
                 tools,
-                key=lambda t: str(t.get("name") or (t.get("function", {}).get("name") if isinstance(t.get("function"), dict) else "") or "")
+                key=lambda t: str(
+                    t.get("name")
+                    or (t.get("function", {}).get("name") if isinstance(t.get("function"), dict) else "")
+                    or ""
+                ),
             )
             cached_tools = []
             for i, tool in enumerate(sorted_tools):
@@ -200,8 +217,7 @@ class PromptCacheManager:
         # 3. Messages: add breakpoints on the 2 most recent non-system messages
         cached_messages = list(messages or [])
         non_system_indices = [
-            i for i, m in enumerate(cached_messages)
-            if isinstance(m, dict) and m.get("role") != "system"
+            i for i, m in enumerate(cached_messages) if isinstance(m, dict) and m.get("role") != "system"
         ]
 
         if len(non_system_indices) >= 2:
@@ -216,9 +232,7 @@ class PromptCacheManager:
                         content_list[-1]["cache_control"] = dict(cache_marker)
                         msg["content"] = content_list
                 elif isinstance(content, str):
-                    msg["content"] = [
-                        {"type": "text", "text": content, "cache_control": dict(cache_marker)}
-                    ]
+                    msg["content"] = [{"type": "text", "text": content, "cache_control": dict(cache_marker)}]
                 cached_messages[idx] = msg
 
         return system_blocks, cached_tools, cached_messages
@@ -264,4 +278,3 @@ class PromptCacheManager:
             "cached_tokens": cached_tokens,
             "creation_tokens": creation_tokens,
         }
-

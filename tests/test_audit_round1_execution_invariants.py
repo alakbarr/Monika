@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Comprehensive Unit Tests for Round 1 Phase 2 Remediation:
 - P2-1 (BT-09): Dynamic Broker Spread & Session Friction Calibration in OutcomeEvaluator
@@ -23,12 +24,11 @@ from utils.analytics.performance_reviewer import evaluate_candidate_lessons
 # P2-1 (BT-09): Dynamic Friction & Spread Calibration in OutcomeEvaluator
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_outcome_evaluator_custom_friction_and_db_calibration():
     """Verify OutcomeEvaluator accepts custom broker friction and calibrates from DB logs."""
-    custom_profile = {
-        "EURUSD": {"spread_pips": 2.5, "slippage_pips": 1.0}
-    }
+    custom_profile = {"EURUSD": {"spread_pips": 2.5, "slippage_pips": 1.0}}
     evaluator = OutcomeEvaluator(custom_friction_profile=custom_profile)
     assert evaluator.friction_profile["EURUSD"]["spread_pips"] == 2.5
     assert evaluator.friction_profile["EURUSD"]["slippage_pips"] == 1.0
@@ -67,6 +67,7 @@ async def test_outcome_evaluator_custom_friction_and_db_calibration():
 # ============================================================================
 # P2-2 (BT-10): Walk-Forward Optimization (WFO) Engine
 # ============================================================================
+
 
 def test_walk_forward_engine_fold_generation():
     """Verify WalkForwardEngine generates rolling chronological folds without lookahead overlap."""
@@ -109,16 +110,35 @@ async def test_walk_forward_engine_run_and_wfe_calculation():
         step_days=30,
     )
 
-    mock_trade_is = BacktestTrade(symbol="EURUSD", direction="buy", entry_time=start, entry_price=1.10, exit_price=1.12, pnl_pct=2.0, exit_reason="tp_hit")
-    mock_trade_oos = BacktestTrade(symbol="EURUSD", direction="buy", entry_time=start + timedelta(days=60), entry_price=1.12, exit_price=1.14, pnl_pct=1.5, exit_reason="tp_hit")
+    mock_trade_is = BacktestTrade(
+        symbol="EURUSD",
+        direction="buy",
+        entry_time=start,
+        entry_price=1.10,
+        exit_price=1.12,
+        pnl_pct=2.0,
+        exit_reason="tp_hit",
+    )
+    mock_trade_oos = BacktestTrade(
+        symbol="EURUSD",
+        direction="buy",
+        entry_time=start + timedelta(days=60),
+        entry_price=1.12,
+        exit_price=1.14,
+        pnl_pct=1.5,
+        exit_reason="tp_hit",
+    )
 
     with patch("backtest.walk_forward_engine.PointInTimeBacktestEngine") as MockPITE:
         mock_inst = AsyncMock()
         # Returns simulated trades for IS and OOS
         mock_inst.run_simulation.side_effect = [
-            [mock_trade_is, mock_trade_is], [mock_trade_oos],  # Fold 1 IS, OOS
-            [mock_trade_is], [mock_trade_oos],                # Fold 2 IS, OOS
-            [mock_trade_is], [mock_trade_oos],                # Fold 3 IS, OOS
+            [mock_trade_is, mock_trade_is],
+            [mock_trade_oos],  # Fold 1 IS, OOS
+            [mock_trade_is],
+            [mock_trade_oos],  # Fold 2 IS, OOS
+            [mock_trade_is],
+            [mock_trade_oos],  # Fold 3 IS, OOS
         ]
         MockPITE.return_value = mock_inst
 
@@ -139,6 +159,7 @@ async def test_walk_forward_engine_run_and_wfe_calculation():
 # P2-3 (AX6-04): Bayesian Thompson Sampling Multi-Armed Bandit
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_prompt_ab_test_thompson_sampling_bandit():
     """Verify PromptABTest dynamically updates Beta posteriors and samples optimal variant via Thompson Sampling."""
@@ -151,19 +172,21 @@ async def test_prompt_ab_test_thompson_sampling_bandit():
     mock_session.execute.return_value = mock_exec_none
 
     var = await test.get_variant_bandit(mock_session)
-    assert var in ('A', 'B')
+    assert var in ("A", "B")
 
     # 2. Record multiple wins for variant B, and losses for variant A
     stored_mab_state = {
         "A": {"alpha": 1.0, "beta": 1.0, "count": 0, "total_pnl": 0.0},
-        "B": {"alpha": 1.0, "beta": 1.0, "count": 0, "total_pnl": 0.0}
+        "B": {"alpha": 1.0, "beta": 1.0, "count": 0, "total_pnl": 0.0},
     }
 
     def mock_exec_side_effect(stmt):
         m = MagicMock()
-        params = list(getattr(stmt.compile(), 'params', {}).values())
+        params = list(getattr(stmt.compile(), "params", {}).values())
         if any("mab_bandit" in str(p) for p in params):
-            m.scalar_one_or_none.return_value = SystemConfig(key="mab_bandit_system_prompt_v2", value=json.dumps(stored_mab_state))
+            m.scalar_one_or_none.return_value = SystemConfig(
+                key="mab_bandit_system_prompt_v2", value=json.dumps(stored_mab_state)
+            )
         else:
             m.scalar_one_or_none.return_value = None
         return m
@@ -197,6 +220,7 @@ async def test_prompt_ab_test_thompson_sampling_bandit():
 # P2-4 (AX1-03 & AX6-02): Dynamic Concordant Multiplier & Structured Causal Tags
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_signal_arbitrator_dynamic_concordant_multiplier():
     """Verify SignalArbitrator dynamically scales concordant risk multiplier based on historical win rate."""
@@ -205,7 +229,13 @@ async def test_signal_arbitrator_dynamic_concordant_multiplier():
 
     # Case 1: High empirical win rate (70% win rate across 20 trades) -> Scales to 1.25x
     winning_trades = [
-        MagicMock(status="closed", decision_source="concordant", exit_reason="tp_hit" if i < 14 else "sl_hit", pnl_pct=1.0 if i < 14 else -1.0, was_profitable=i < 14)
+        MagicMock(
+            status="closed",
+            decision_source="concordant",
+            exit_reason="tp_hit" if i < 14 else "sl_hit",
+            pnl_pct=1.0 if i < 14 else -1.0,
+            was_profitable=i < 14,
+        )
         for i in range(20)
     ]
     mock_exec1 = MagicMock()
@@ -217,7 +247,13 @@ async def test_signal_arbitrator_dynamic_concordant_multiplier():
 
     # Case 2: Poor empirical win rate (30% win rate across 20 trades) -> Dampens to 1.00x
     losing_trades = [
-        MagicMock(status="closed", decision_source="concordant", exit_reason="tp_hit" if i < 6 else "sl_hit", pnl_pct=1.0 if i < 6 else -1.0, was_profitable=i < 6)
+        MagicMock(
+            status="closed",
+            decision_source="concordant",
+            exit_reason="tp_hit" if i < 6 else "sl_hit",
+            pnl_pct=1.0 if i < 6 else -1.0,
+            was_profitable=i < 6,
+        )
         for i in range(20)
     ]
     mock_exec2 = MagicMock()
@@ -240,7 +276,7 @@ async def test_performance_reviewer_structured_confluence_tag_matching():
         lesson_text="- Buy on H4 OrderBlock mitigation",
         status="shadow",
         proposed_at=proposed_time,
-        evaluated_trades_count=0
+        evaluated_trades_count=0,
     )
     # Target tag matches order_block
     candidate.condition_tags = json.dumps(["order_block"])
@@ -255,7 +291,7 @@ async def test_performance_reviewer_structured_confluence_tag_matching():
             pnl_pct=1.0 if i < 14 else -1.0,
             confluence_factors_json=json.dumps(["order_block", "fvg"]) if i < 16 else json.dumps(["trend"]),
             detection_method="standard",
-            decision_source="concordant"
+            decision_source="concordant",
         )
         for i in range(20)
     ]
@@ -270,7 +306,7 @@ async def test_performance_reviewer_structured_confluence_tag_matching():
             pnl_pct=1.0 if i < 8 else -1.0,
             confluence_factors_json=json.dumps(["order_block"]),
             detection_method="standard",
-            decision_source="concordant"
+            decision_source="concordant",
         )
         for i in range(20)
     ]
@@ -286,7 +322,9 @@ async def test_performance_reviewer_structured_confluence_tag_matching():
 
     mock_session.execute.side_effect = [mock_exec1, mock_exec2, mock_exec3]
 
-    with patch("analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock) as mock_promote:
+    with patch(
+        "analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock
+    ) as mock_promote:
         summary = await evaluate_candidate_lessons(mock_session)
         assert summary["promoted"] == 1
         assert candidate.status == "promoted"
@@ -301,7 +339,9 @@ async def test_batch_close_and_cancel_require_confirmation_in_live_mode():
         handle_cancel_stale_pending_orders,
     )
 
-    with patch("monika.core.config.settings.load_settings", return_value={"trading": {"paper_trading": {"enabled": False}}}):
+    with patch(
+        "monika.core.config.settings.load_settings", return_value={"trading": {"paper_trading": {"enabled": False}}}
+    ):
         # 1. Unconfirmed batch close in live mode
         res_close = await handle_close_positions_batch({"filter_type": "all", "confirmed": False})
         assert res_close["status"] == "requires_confirmation"

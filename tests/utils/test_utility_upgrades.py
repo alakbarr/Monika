@@ -10,7 +10,7 @@ def test_cycle_event_model():
         cycle_id="cycle_20260921_1900",
         sequence=1,
         event_type="macro_bias_assessed",
-        payload={"bias": "BULLISH", "confidence": 0.85, "reason": "DXY weakening"}
+        payload={"bias": "BULLISH", "confidence": 0.85, "reason": "DXY weakening"},
     )
     assert event.cycle_id == "cycle_20260921_1900"
     assert event.sequence == 1
@@ -21,7 +21,7 @@ def test_cycle_event_model():
 def test_disaggregated_tool_result():
     res = DisaggregatedToolResult(
         content="ATR14 is 0.0045, Trend is Bullish",
-        details={"atr_14": 0.0045, "raw_candles": [{"c": 1.085}, {"c": 1.086}]}
+        details={"atr_14": 0.0045, "raw_candles": [{"c": 1.085}, {"c": 1.086}]},
     )
     assert "ATR14 is 0.0045" in res.content
     assert res.details["atr_14"] == 0.0045
@@ -48,7 +48,7 @@ def test_models_dev_sync_local_cache():
 @pytest.mark.asyncio
 async def test_deferred_dispatcher_all_7_tasks():
     dispatcher = DeferredLLMDispatcher()
-    
+
     # All 7 target background tasks from user decision
     tasks = [
         "alpha_discovery",
@@ -57,14 +57,16 @@ async def test_deferred_dispatcher_all_7_tasks():
         "tearsheet_generation",
         "reflection_deep",
         "historical_backtest",
-        "sentiment_aggregate"
+        "sentiment_aggregate",
     ]
     for t in tasks:
         assert dispatcher.should_defer(t) is True, f"Task {t} should be deferrable"
 
     # Enqueue requests
     for t in tasks:
-        req = DeferredRequest(task_name=t, model="gemini-3.5-flash-lite", messages=[{"role": "user", "content": "analyze"}])
+        req = DeferredRequest(
+            task_name=t, model="gemini-3.5-flash-lite", messages=[{"role": "user", "content": "analyze"}]
+        )
         dispatcher.enqueue(req)
 
     assert dispatcher.get_queue_size() == len(tasks)

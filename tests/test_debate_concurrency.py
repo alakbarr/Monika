@@ -46,7 +46,9 @@ async def test_debate_parallel_execution():
 
     config = {
         "configurable": {
-            "scheduler": MagicMock(settings={"agent_architecture": {"enable_debate": True, "deterministic_risk_gate": True}})
+            "scheduler": MagicMock(
+                settings={"agent_architecture": {"enable_debate": True, "deterministic_risk_gate": True}}
+            )
         }
     }
 
@@ -78,17 +80,21 @@ async def test_debate_parallel_execution():
     class MockSession:
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, *args):
             pass
+
         async def get(self, model, aid):
             syms = {1: "EURUSD", 2: "GBPUSD", 3: "AUDUSD", 4: "USDJPY"}
             decs = {1: "buy", 2: "buy", 3: "buy", 4: "sell"}
             return MockAnalysis(aid, syms[aid], decs[aid])
+
         async def execute(self, *args, **kwargs):
             m = MagicMock()
             m.scalars.return_value.all.return_value = []
             m.scalar_one_or_none.return_value = None
             return m
+
         async def commit(self):
             pass
 

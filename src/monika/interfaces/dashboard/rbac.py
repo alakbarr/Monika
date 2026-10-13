@@ -62,7 +62,7 @@ ENDPOINT_ROLES: Dict[str, Role] = {
 def resolve_role(api_key: str, is_localhost: bool = False) -> Role:
     """
     Resolve client API key to a Role.
-    
+
     Supports:
     1. DASHBOARD_API_KEYS format: "admin:key1,operator:key2,viewer:key3"
     2. DASHBOARD_API_KEY fallback: single key mapped to Role.ADMIN (100% backward-compat)
@@ -105,6 +105,7 @@ def require_role(minimum: Role):
     Decorator for FastAPI endpoint handlers.
     Rejects the request with HTTP 403 if the caller's role is below the minimum required role.
     """
+
     def decorator(func: Callable) -> Callable:
         sig = inspect.signature(func)
         has_request_param = "request" in sig.parameters
@@ -119,10 +120,7 @@ def require_role(minimum: Role):
                         break
 
             if request is None:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Forbidden: Request context missing for RBAC validation"
-                )
+                raise HTTPException(status_code=403, detail="Forbidden: Request context missing for RBAC validation")
 
             role = getattr(request.state, "role", None)
             if role is None:
@@ -137,7 +135,7 @@ def require_role(minimum: Role):
             if ROLE_HIERARCHY.get(role, -1) < ROLE_HIERARCHY.get(minimum, 0):
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Forbidden: Action requires '{minimum.value}' role, current role is '{role.value}'"
+                    detail=f"Forbidden: Action requires '{minimum.value}' role, current role is '{role.value}'",
                 )
 
             call_kwargs = dict(kwargs)
@@ -153,7 +151,6 @@ def require_role(minimum: Role):
             setattr(wrapper, "__signature__", sig.replace(parameters=new_params))
             if hasattr(wrapper, "__wrapped__"):
                 delattr(wrapper, "__wrapped__")
-
 
         return wrapper
 

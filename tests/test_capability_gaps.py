@@ -28,6 +28,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 # 1. Technical Indicators & Pattern Recognition
 # ---------------------------------------------------------------------------
 
+
 def test_pivot_points_calculation():
     from indicators.technical import compute_pivot_points
 
@@ -62,13 +63,15 @@ def test_ichimoku_calculation():
     np.random.seed(42)
     n = 100
     prices = 2000.0 + np.cumsum(np.random.randn(n) * 2.0)
-    df = pd.DataFrame({
-        "open": prices,
-        "high": prices + np.random.uniform(0.5, 3.0, n),
-        "low": prices - np.random.uniform(0.5, 3.0, n),
-        "close": prices + np.random.uniform(-1.0, 1.0, n),
-        "volume": np.random.randint(100, 1000, n),
-    })
+    df = pd.DataFrame(
+        {
+            "open": prices,
+            "high": prices + np.random.uniform(0.5, 3.0, n),
+            "low": prices - np.random.uniform(0.5, 3.0, n),
+            "close": prices + np.random.uniform(-1.0, 1.0, n),
+            "volume": np.random.randint(100, 1000, n),
+        }
+    )
 
     result = compute_ichimoku(df)
     assert result["status"] == "success"
@@ -88,13 +91,15 @@ def test_chart_patterns_scanner():
     n = 120
     t = np.linspace(0, 4 * np.pi, n)
     wave = 2000.0 + 30.0 * np.sin(t)
-    df = pd.DataFrame({
-        "open": wave,
-        "high": wave + 2.0,
-        "low": wave - 2.0,
-        "close": wave + 0.5,
-        "volume": np.full(n, 500),
-    })
+    df = pd.DataFrame(
+        {
+            "open": wave,
+            "high": wave + 2.0,
+            "low": wave - 2.0,
+            "close": wave + 0.5,
+            "volume": np.full(n, 500),
+        }
+    )
 
     res = scan_all_chart_patterns(df, order=4)
     assert "patterns_found" in res
@@ -110,10 +115,12 @@ def test_seasonality_calculator():
     dates = pd.date_range(start="2022-01-01", end="2024-12-31", freq="D")
     n = len(dates)
     prices = 100.0 * np.cumprod(1 + np.random.randn(n) * 0.005)
-    df = pd.DataFrame({
-        "time": dates,
-        "close": prices,
-    })
+    df = pd.DataFrame(
+        {
+            "time": dates,
+            "close": prices,
+        }
+    )
 
     monthly = SeasonalityCalculator.compute_monthly_seasonality(df)
     assert "monthly_seasonality" in monthly
@@ -127,6 +134,7 @@ def test_seasonality_calculator():
 # ---------------------------------------------------------------------------
 # 2. Skills Hub Discovery & Dynamic Injection
 # ---------------------------------------------------------------------------
+
 
 def test_skills_hub_discovery():
     from skills.skills_hub import SkillsHub
@@ -174,14 +182,26 @@ def test_dynamic_skills_matching():
 # 3. Tool Definitions & ToolExecutor Dispatch
 # ---------------------------------------------------------------------------
 
+
 def test_new_tools_registration():
     from analysis.tools import tools_definitions as td
 
     tools_to_verify = [
-        "get_pivot_points", "get_ichimoku", "scan_chart_patterns", "get_seasonality",
-        "get_divergences", "get_recent_tick_flow", "export_tick_data", "get_latency_breakdown",
-        "browser", "save_script", "list_saved_scripts", "run_saved_script",
-        "get_indonesia_macro", "get_earnings_calendar", "search_social_sentiment"
+        "get_pivot_points",
+        "get_ichimoku",
+        "scan_chart_patterns",
+        "get_seasonality",
+        "get_divergences",
+        "get_recent_tick_flow",
+        "export_tick_data",
+        "get_latency_breakdown",
+        "browser",
+        "save_script",
+        "list_saved_scripts",
+        "run_saved_script",
+        "get_indonesia_macro",
+        "get_earnings_calendar",
+        "search_social_sentiment",
     ]
 
     telegram_names = {t["name"] for t in td.TELEGRAM_TOOLS if isinstance(t, dict)}
@@ -201,15 +221,32 @@ async def test_tool_executor_dispatch():
     executor = ToolExecutor(None, settings=settings)
 
     tools_to_verify = [
-        "get_pivot_points", "get_ichimoku", "scan_chart_patterns", "get_seasonality",
-        "get_divergences", "get_recent_tick_flow", "export_tick_data", "get_latency_breakdown",
-        "browser", "save_script", "list_saved_scripts", "run_saved_script",
-        "get_indonesia_macro", "get_earnings_calendar", "search_social_sentiment"
+        "get_pivot_points",
+        "get_ichimoku",
+        "scan_chart_patterns",
+        "get_seasonality",
+        "get_divergences",
+        "get_recent_tick_flow",
+        "export_tick_data",
+        "get_latency_breakdown",
+        "browser",
+        "save_script",
+        "list_saved_scripts",
+        "run_saved_script",
+        "get_indonesia_macro",
+        "get_earnings_calendar",
+        "search_social_sentiment",
     ]
 
     for t in tools_to_verify:
         found = False
-        for dh in [executor.execution_handlers, executor.position_handlers, executor.macro_handlers, executor.sentiment_handlers, executor.technical_handlers]:
+        for dh in [
+            executor.execution_handlers,
+            executor.position_handlers,
+            executor.macro_handlers,
+            executor.sentiment_handlers,
+            executor.technical_handlers,
+        ]:
             if hasattr(dh, t):
                 found = True
                 break
@@ -217,10 +254,12 @@ async def test_tool_executor_dispatch():
             found = True
         if not found:
             from analysis.tools.unified_registry import unified_tool_registry
+
             if unified_tool_registry.get_tool(t) is not None:
                 found = True
         if not found:
             from analysis.tools.registry import default_tool_registry
+
             if default_tool_registry.get(t, settings=settings) is not None:
                 found = True
         assert found, f"Tool '{t}' not dispatchable by ToolExecutor"
@@ -229,6 +268,7 @@ async def test_tool_executor_dispatch():
 # ---------------------------------------------------------------------------
 # 4. ChatToolRouter Coverage & Baseline Bundle
 # ---------------------------------------------------------------------------
+
 
 def test_chat_tool_router_routing():
     from analysis.tools.tools_definitions import TELEGRAM_TOOLS
@@ -262,14 +302,21 @@ def test_chat_tool_router_routing():
 # 5. Persistent Script Storage & Execution
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_saved_scripts_lifecycle():
-    from analysis.tools.domain.code_execution_tool import handle_save_script, handle_list_saved_scripts, handle_run_saved_script
+    from analysis.tools.domain.code_execution_tool import (
+        handle_save_script,
+        handle_list_saved_scripts,
+        handle_run_saved_script,
+    )
 
     # 1. Save Script
     test_script_name = "test_unit_script.py"
     code = "result = {'computed': 42 * 2}\nprint('Execution complete')"
-    save_res = await handle_save_script({"script_name": test_script_name, "code": code, "description": "Unit test script"})
+    save_res = await handle_save_script(
+        {"script_name": test_script_name, "code": code, "description": "Unit test script"}
+    )
     assert save_res["status"] == "success"
 
     # 2. List Scripts
@@ -284,6 +331,7 @@ async def test_saved_scripts_lifecycle():
 
     # Clean up test script
     from pathlib import Path
+
     test_file = Path("data/user_scripts") / test_script_name
     if test_file.exists():
         test_file.unlink()

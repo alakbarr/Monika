@@ -1,4 +1,5 @@
 """Unit tests for modular domain tool handlers and new utilities."""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
@@ -102,7 +103,9 @@ async def test_sentiment_handlers():
         assert res["current_value"] == 45
 
     # get_retail_sentiment
-    with patch("scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher.fetch", new_callable=AsyncMock) as mock_myfx:
+    with patch(
+        "scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher.fetch", new_callable=AsyncMock
+    ) as mock_myfx:
         mock_myfx.return_value = {"symbol": "EURUSD", "long_pct": 40.0, "short_pct": 60.0}
         ret_res = await handlers.get_retail_sentiment("EURUSD", session=mock_session)
         assert ret_res["long_pct"] == 40.0
@@ -141,7 +144,7 @@ def test_offline_signal_engine_atr():
     data = {
         "High": [10.0, 11.0, 12.0, 11.5, 12.5],
         "Low": [9.0, 9.5, 10.5, 10.0, 11.0],
-        "Close": [9.5, 10.5, 11.0, 11.2, 12.0]
+        "Close": [9.5, 10.5, 11.0, 11.2, 12.0],
     }
     df = pd.DataFrame(data)
     atr = engine._calculate_atr(df, period=3)

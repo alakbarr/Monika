@@ -214,10 +214,8 @@ async def test_plugin_slot_options_available_fallback():
             "directories": [],
             "broker": {
                 "active": "test_broker",
-                "available": {
-                    "test_broker": {"slippage_pips": 1.5, "mock_fill": True}
-                }
-            }
+                "available": {"test_broker": {"slippage_pips": 1.5, "mock_fill": True}},
+            },
         }
     }
     await engine.initialize(settings)
@@ -279,10 +277,7 @@ async def test_plugin_config_reload_propagation():
         "plugins": {
             "enabled": True,
             "directories": [],
-            "broker": {
-                "active": "reload_test",
-                "available": {"reload_test": {"lot_size": 0.05}}
-            }
+            "broker": {"active": "reload_test", "available": {"reload_test": {"lot_size": 0.05}}},
         }
     }
     await engine.initialize(settings)
@@ -292,10 +287,7 @@ async def test_plugin_config_reload_propagation():
     new_settings = {
         "plugins": {
             "enabled": True,
-            "broker": {
-                "active": "reload_test",
-                "available": {"reload_test": {"lot_size": 0.10, "max_slippage": 2.0}}
-            }
+            "broker": {"active": "reload_test", "available": {"reload_test": {"lot_size": 0.10, "max_slippage": 2.0}}},
         }
     }
     await engine.propagate_config_reload(new_settings)
@@ -306,6 +298,7 @@ async def test_plugin_config_reload_propagation():
 @pytest.mark.asyncio
 async def test_plugin_timeout_isolation_non_core(monkeypatch):
     import harness.engine as eng
+
     monkeypatch.setattr(eng, "LIFECYCLE_TIMEOUT_PREFLIGHT", 0.05)
 
     container = ServiceContainer()
@@ -334,5 +327,3 @@ async def test_plugin_timeout_isolation_non_core(monkeypatch):
     assert success is True
     assert plugin.is_enabled is False
     assert plugin.status == "PREFLIGHT_TIMEOUT"
-
-

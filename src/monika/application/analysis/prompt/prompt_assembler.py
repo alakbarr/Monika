@@ -91,6 +91,7 @@ SECTION_ORDERS: Dict[str, int] = {
 @dataclass
 class PromptSection:
     """Named system prompt section with deterministic sparse numeric ordering."""
+
     name: str
     content: str
     order: Optional[int] = None
@@ -111,7 +112,7 @@ def compare_sections(a: PromptSection, b: PromptSection) -> int:
 
 def compose_ordered_prompt(sections: List[PromptSection], separator: str = "\n\n---\n\n") -> str:
     """Sort prompt sections deterministically by order then code-unit name.
-    
+
     Guarantees 100% byte-identical rendering across turns and cycles for maximum KV-cache prefix hits.
     """
     valid = [s for s in sections if s and s.content and s.content.strip()]
@@ -150,7 +151,7 @@ class PromptAssembler:
         inject_anchor = CacheBreakpointManager.should_inject_anchor(
             model_name=effective_model,
             provider_name=(self.settings.get("llm", {}).get("providers", {}).get("default_provider") or ""),
-            current_prompt_chars=est_chars
+            current_prompt_chars=est_chars,
         )
 
         tier1_sections = []
@@ -175,6 +176,7 @@ class PromptAssembler:
         if model_name:
             try:
                 from monika.infrastructure.llm.model_discipline import get_model_discipline
+
                 discipline = get_model_discipline(model_name)
             except Exception:
                 pass
@@ -196,10 +198,7 @@ class PromptAssembler:
             "risk_management_principles",
             "session_timing_rules",
         ]
-        skills = compose_system_prompt(
-            *skill_names,
-            max_tokens=5500
-        )
+        skills = compose_system_prompt(*skill_names, max_tokens=5500)
         tier3_sections = [
             PromptSection(name="DOMAIN_SKILLS", content=_flatten_system_prompt(skills)),
         ]
@@ -216,15 +215,12 @@ class PromptAssembler:
     ) -> Any:
         """Returns structured TieredSystemPrompt for Stage 1 prompt cache stability."""
         from monika.infrastructure.llm.prompt_tiers import TieredSystemPrompt
+
         tier1, tier2, tier3 = self.assemble_stage1_tiers(core_memory=core_memory, pad_for_gemini=pad_for_gemini)
         return TieredSystemPrompt(tier1_stable=tier1, tier2_context=tier2, tier3_volatile=tier3)
 
-
     def assemble_stage1_system_tuple(
-        self,
-        core_memory: str = "",
-        behavioral_alert: str = "",
-        pad_for_gemini: bool = True
+        self, core_memory: str = "", behavioral_alert: str = "", pad_for_gemini: bool = True
     ) -> Tuple[str, str]:
         """
         Returns (static_system_prompt, dynamic_system_notes) for Stage 1 Macro Analysis.
@@ -233,7 +229,7 @@ class PromptAssembler:
         stable_mem, volatile_mem = _split_memory(core_memory)
         tier1, tier2, tier3 = self.assemble_stage1_tiers(core_memory=stable_mem, pad_for_gemini=pad_for_gemini)
         static_sys = "\n\n".join(filter(None, [tier1, tier2, tier3]))
-        
+
         dynamic_parts = []
         if behavioral_alert:
             dynamic_parts.append(behavioral_alert)
@@ -247,7 +243,7 @@ class PromptAssembler:
         data_bundle: str,
         portfolio_state: Optional[dict] = None,
         core_memory: str = "",
-        sticky_bias_context: str = ""
+        sticky_bias_context: str = "",
     ) -> Tuple[str, str]:
         """
         Returns (system_prompt, user_message) for Stage 1 Macro Analysis.
@@ -261,6 +257,7 @@ class PromptAssembler:
 
         # Tier 4: Volatile User Message — static prefetch bundle first, dynamic overrides at tail
         from monika.application.analysis.stages.fundamental_stage import USER_MESSAGE
+
         user_parts = [USER_MESSAGE, f"[PRE-FETCHED DATA]\n{data_bundle}"]
         if sticky_bias_context:
             user_parts.append(f"[STICKY BIAS CONTEXT]\n{sticky_bias_context}")
@@ -268,6 +265,7 @@ class PromptAssembler:
             user_parts.append(f"[VOLATILE PORTFOLIO STATE]\n{volatile_mem}")
         if portfolio_state:
             import json
+
             user_parts.append(f"[PORTFOLIO STATE]\n{json.dumps(portfolio_state)}")
 
         user = "\n\n".join(user_parts)
@@ -304,7 +302,7 @@ class PromptAssembler:
         inject_anchor = CacheBreakpointManager.should_inject_anchor(
             model_name=model_name or "",
             provider_name=(self.settings.get("llm", {}).get("providers", {}).get("default_provider") or ""),
-            current_prompt_chars=est_chars
+            current_prompt_chars=est_chars,
         )
 
         tier1_sections = []
@@ -328,6 +326,7 @@ class PromptAssembler:
         if model_name:
             try:
                 from monika.infrastructure.llm.model_discipline import get_model_discipline
+
                 discipline = get_model_discipline(model_name)
             except Exception:
                 pass
@@ -362,7 +361,7 @@ class PromptAssembler:
             cot_code=effective_cot,
             effective_threshold=effective_thresh_str,
             min_rr_ratio=effective_rr_str,
-            tool_order_guidance=tool_order_guidance or ""
+            tool_order_guidance=tool_order_guidance or "",
         )
 
         tier3_sections = [
@@ -399,6 +398,7 @@ class PromptAssembler:
     ) -> Any:
         """Returns structured TieredSystemPrompt for Stage 2 prompt cache stability."""
         from monika.infrastructure.llm.prompt_tiers import TieredSystemPrompt
+
         tier1, tier2, tier3 = self.assemble_stage2_tiers(
             symbol=symbol,
             cot_code=cot_code,
@@ -471,7 +471,7 @@ class PromptAssembler:
             cot_code="N/A",
             effective_threshold="7",
             min_rr_ratio="1.3",
-            tool_order_guidance=tool_order_guidance or ""
+            tool_order_guidance=tool_order_guidance or "",
         )
         stable_mem, volatile_mem = _split_memory(core_memory)
         effective_mem = stable_mem or core_memory
@@ -545,11 +545,7 @@ class PromptAssembler:
         return system, user
 
     @staticmethod
-    def assemble_3zone_prompt(
-        zone_a_anchor: str,
-        zone_b_context: str,
-        zone_c_volatile_tail: str
-    ) -> Dict[str, str]:
+    def assemble_3zone_prompt(zone_a_anchor: str, zone_b_context: str, zone_c_volatile_tail: str) -> Dict[str, str]:
         """
         Structured 3-Zone prompt pack:
         - Zone A: Immutable Anchor (System level, 100% prefix cache hit)
@@ -562,4 +558,3 @@ class PromptAssembler:
             "zone_c_volatile_tail": zone_c_volatile_tail.strip(),
             "assembled_user_message": f"{zone_b_context.strip()}\n\n[VOLATILE TAIL]\n{zone_c_volatile_tail.strip()}".strip(),
         }
-

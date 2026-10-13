@@ -48,7 +48,9 @@ async def _safe_await(awaitable_obj: Any) -> None:
         logger.debug(f"[EventBroadcaster] Async listener error: {err}")
 
 
-def _dispatch_to_listener(listener: Callable[[str, Dict[str, Any]], Any], event_type: str, payload: Dict[str, Any]) -> None:
+def _dispatch_to_listener(
+    listener: Callable[[str, Dict[str, Any]], Any], event_type: str, payload: Dict[str, Any]
+) -> None:
     try:
         res = listener(event_type, payload)
         if inspect.isawaitable(res):
@@ -87,7 +89,7 @@ def emit_analysis_event(event_type: str, payload: Dict[str, Any]) -> None:
                     loop.create_task(broadcast_live_event(event_type, enriched_payload))
             except RuntimeError:
                 pass
-        except (ImportError, Exception):
+        except ImportError, Exception:
             pass
 
     except Exception as exc:
@@ -116,7 +118,7 @@ async def emit_analysis_event_async(event_type: str, payload: Dict[str, Any]) ->
             from monika.interfaces.dashboard.routes.common import broadcast_live_event
 
             await broadcast_live_event(event_type, enriched_payload)
-        except (ImportError, Exception):
+        except ImportError, Exception:
             pass
     except Exception as exc:
         logger.debug(f"[EventBroadcaster Async] Failed emitting {event_type}: {exc}")

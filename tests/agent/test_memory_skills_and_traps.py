@@ -34,6 +34,7 @@ def temp_db_dir():
 # 1. FileLockGuard & RepairLedger Tests
 # ==============================================================================
 
+
 def test_file_lock_guard_concurrency(temp_db_dir):
     lock_file = temp_db_dir / "test.lock"
 
@@ -86,6 +87,7 @@ def test_repair_ledger_scratchpad_fence_repair(temp_db_dir):
 # 2. TrajectoryCompressor Tests
 # ==============================================================================
 
+
 def test_trajectory_compressor_semantic_preserves_invariants():
     compressor = TrajectoryCompressor(
         default_mode="semantic",
@@ -100,7 +102,11 @@ def test_trajectory_compressor_semantic_preserves_invariants():
             "role": "user",
             "content": "Analyze EURUSD.<mechanical-invariants>Max risk per trade 1.5%; Never trade without SL</mechanical-invariants>",
         },
-        {"role": "assistant", "content": "Checking order flow and liquidity levels for EURUSD.", "tool_calls": [{"id": "call_1", "name": "get_spread"}]},
+        {
+            "role": "assistant",
+            "content": "Checking order flow and liquidity levels for EURUSD.",
+            "tool_calls": [{"id": "call_1", "name": "get_spread"}],
+        },
         {"role": "tool", "tool_call_id": "call_1", "content": "Spread snapshot: 0.8 pips; Liquidity: High"},
         {"role": "assistant", "content": "The spread is tight, confirming execution conditions."},
         {"role": "user", "content": "Proceed with sizing calculation."},
@@ -146,6 +152,7 @@ def test_trajectory_compressor_sanitizes_orphaned_tools():
 # 3. ToolSafetyOracle & Trap Fixtures Tests
 # ==============================================================================
 
+
 def test_tool_safety_oracle_catches_all_traps():
     oracle = ToolSafetyOracle(fixture_path="trading-agent/evals/fixtures/tool_jailbreak_trap.json")
     results = oracle.evaluate_traps_suite()
@@ -158,6 +165,7 @@ def test_tool_safety_oracle_catches_all_traps():
 # ==============================================================================
 # 4. SystemDoctor Live WAL Check Tests
 # ==============================================================================
+
 
 def test_system_doctor_wal_integrity(temp_db_dir):
     doc = SystemDoctor(fix=False, live_probes=False)

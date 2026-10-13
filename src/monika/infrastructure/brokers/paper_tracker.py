@@ -2,6 +2,7 @@
 Execution Paper Tracker Facade.
 Re-exports PaperTracker from utils.analytics.paper_tracker for clean execution domain architecture.
 """
+
 from monika.core.analytics.paper_tracker import (
     PaperTracker,
     _group_by_symbol,

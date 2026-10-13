@@ -124,9 +124,7 @@ class NegativeConstraintGenerator:
         # 4. If fewer than max_constraints, supplement with regime-specific cautionary rules
         if len(constraints) < max_constraints and current_regime:
             regime_rules = get_negative_constraints_for_regime(
-                symbol=symbol_clean,
-                regime=current_regime,
-                max_rules=max_constraints - len(constraints)
+                symbol=symbol_clean, regime=current_regime, max_rules=max_constraints - len(constraints)
             )
             for r in regime_rules:
                 if r not in constraints:

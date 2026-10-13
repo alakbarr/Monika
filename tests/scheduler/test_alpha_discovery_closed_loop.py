@@ -26,7 +26,7 @@ class MockDynamicStrategy(EdgeStrategy):
             direction="buy",
             valid=True,
             confidence=0.85,
-            meta={"donchian_period": period}
+            meta={"donchian_period": period},
         )
 
 
@@ -65,19 +65,18 @@ async def test_strategy_registry_dynamic_parameter_loading():
 
     mock_row_alpha = MagicMock()
     mock_row_alpha.key = "candidate_alpha_123"
-    mock_row_alpha.value = json.dumps({
-        "status": "PAPER_ACTIVE",
-        "hypothesis": {
-            "strategy_type": "test_mock_alpha",
-            "parameters": {"donchian_period": 60}
+    mock_row_alpha.value = json.dumps(
+        {
+            "status": "PAPER_ACTIVE",
+            "hypothesis": {"strategy_type": "test_mock_alpha", "parameters": {"donchian_period": 60}},
         }
-    })
+    )
 
     mock_exec_res = MagicMock()
     mock_exec_res.scalars.return_value.all.side_effect = [
-        [mock_row_param],   # for strategy_params_%
-        [mock_row_alpha],   # for candidate_alpha_%
-        [],                 # for synthesized_strategy_%
+        [mock_row_param],  # for strategy_params_%
+        [mock_row_alpha],  # for candidate_alpha_%
+        [],  # for synthesized_strategy_%
     ]
     mock_session.execute.return_value = mock_exec_res
 
@@ -97,13 +96,9 @@ async def test_alpha_auto_deploy_promotes_to_paper_active_and_hot_reloads():
 
     settings = {
         "trading": {"asset_universe": ["EURUSD"]},
-        "alpha_discovery": {"auto_deploy_paper": True, "min_wfe": 0.60}
+        "alpha_discovery": {"auto_deploy_paper": True, "min_wfe": 0.60},
     }
-    scheduler = AlphaDiscoveryScheduler(
-        settings=settings,
-        edge_strategy_runner=mock_runner,
-        auto_deploy_paper=True
-    )
+    scheduler = AlphaDiscoveryScheduler(settings=settings, edge_strategy_runner=mock_runner, auto_deploy_paper=True)
 
     hypothesis = AlphaHypothesis(
         hypothesis_id="hyp_alpha_auto_1",
@@ -130,9 +125,10 @@ async def test_alpha_auto_deploy_promotes_to_paper_active_and_hot_reloads():
         ],
     }
 
-    with patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls, \
-         patch("scheduler.alpha_discovery_scheduler.get_session") as mock_get_session:
-
+    with (
+        patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls,
+        patch("scheduler.alpha_discovery_scheduler.get_session") as mock_get_session,
+    ):
         mock_instance = MagicMock()
         mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
         mock_instance.generate_markdown_report = MagicMock(return_value="# Report")
@@ -176,7 +172,7 @@ async def test_manual_promote_to_paper_active():
             strategy_type="test_mock_alpha",
             symbol="EURUSD",
             parameters={"donchian_period": 99},
-            description="Manual test"
+            description="Manual test",
         ),
         overall_wfe=0.68,
         aggregate_is_sharpe=1.7,

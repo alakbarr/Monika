@@ -25,8 +25,12 @@ async def bear_dissent_node(state: TradingState, config: Optional[RunnableConfig
     if not actionable:
         return {}
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
-    scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
+    scheduler = (
+        configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    )
     settings = scheduler.settings if scheduler else {}
     debate_cfg = settings.get("agent_architecture", {})
 
@@ -49,7 +53,9 @@ async def bear_dissent_node(state: TradingState, config: Optional[RunnableConfig
             return sym, None
 
         turn = deb.get("turn", 1)
-        rebuttal_claim = deb.get("bull_rebuttal") or deb.get("bear_rebuttal") or deb.get("rebuttal") or deb.get("pro_rebuttal")
+        rebuttal_claim = (
+            deb.get("bull_rebuttal") or deb.get("bear_rebuttal") or deb.get("rebuttal") or deb.get("pro_rebuttal")
+        )
         context_to_use = dict(original_context)
         claim_to_use = dict(verified_bull_claim)
         rebuttal_completed = bool(rebuttal_claim or deb.get("rebuttal_completed", False))
@@ -60,35 +66,39 @@ async def bear_dissent_node(state: TradingState, config: Optional[RunnableConfig
 
         async with semaphore:
             try:
-                bear_dissent = await generate_bear_dissent(
-                    bear_client, sym, context_to_use, claim_to_use, fact_sheet
-                )
+                bear_dissent = await generate_bear_dissent(bear_client, sym, context_to_use, claim_to_use, fact_sheet)
 
-                if not _is_grounded(bear_dissent, curr_p, reference=fact_sheet if isinstance(fact_sheet, dict) else None):
-                    bear_dissent['risk_severity'] = max(1, bear_dissent.get('risk_severity', 5) - 2)
-                    bear_dissent['ungrounded_penalty'] = True
+                if not _is_grounded(
+                    bear_dissent, curr_p, reference=fact_sheet if isinstance(fact_sheet, dict) else None
+                ):
+                    bear_dissent["risk_severity"] = max(1, bear_dissent.get("risk_severity", 5) - 2)
+                    bear_dissent["ungrounded_penalty"] = True
 
                 if rebuttal_claim:
-                    bull_strength = rebuttal_claim.get('rebuttal_strength', verified_bull_claim.get('strength_score', 5))
+                    bull_strength = rebuttal_claim.get(
+                        "rebuttal_strength", verified_bull_claim.get("strength_score", 5)
+                    )
                 else:
-                    bull_strength = verified_bull_claim.get('strength_score', 5)
-                bear_severity = bear_dissent.get('risk_severity', 5)
+                    bull_strength = verified_bull_claim.get("strength_score", 5)
+                bear_severity = bear_dissent.get("risk_severity", 5)
                 disagreement = abs(bull_strength - (10 - bear_severity))
                 divergence = round(disagreement / 10.0, 2)
-                max_rounds = int(debate_cfg.get('debate_rounds', 2) or 2)
+                max_rounds = int(debate_cfg.get("debate_rounds", 2) or 2)
                 needs_rebuttal = divergence > 0.40 and turn < max_rounds and max_rounds >= 2
 
                 if needs_rebuttal:
-                    logger.info(f'[{sym}] High debate divergence ({divergence:.2f}) at turn {turn}/{max_rounds} — cyclic dialectic rebuttal required')
+                    logger.info(
+                        f"[{sym}] High debate divergence ({divergence:.2f}) at turn {turn}/{max_rounds} — cyclic dialectic rebuttal required"
+                    )
 
                 return sym, {
-                    'bear_dissent': bear_dissent,
-                    'disagreement': disagreement,
-                    'divergence': divergence,
-                    'turn': turn,
-                    'max_rounds': max_rounds,
-                    'needs_rebuttal': needs_rebuttal,
-                    'rebuttal_completed': turn >= max_rounds
+                    "bear_dissent": bear_dissent,
+                    "disagreement": disagreement,
+                    "divergence": divergence,
+                    "turn": turn,
+                    "max_rounds": max_rounds,
+                    "needs_rebuttal": needs_rebuttal,
+                    "rebuttal_completed": turn >= max_rounds,
                 }
             except Exception as e:
                 logger.error(f"[{sym}] Bear dissent failed: {e}", exc_info=True)

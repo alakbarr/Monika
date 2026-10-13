@@ -20,6 +20,7 @@ logger = logging.getLogger("TradingAgent.Calculators.GarchVolatility")
 
 try:
     from arch import arch_model
+
     ARCH_AVAILABLE = True
 except ImportError:
     ARCH_AVAILABLE = False
@@ -57,7 +58,9 @@ class GarchVolatilityEngine:
         annualization_factor: float = math.sqrt(252),  # 252 for Daily, sqrt(252*24) for Hourly
         p: int = 1,
         q: int = 1,
-        dist: Literal['normal', 'gaussian', 't', 'studentst', 'skewstudent', 'skewt', 'ged', 'generalized error'] = "normal",
+        dist: Literal[
+            "normal", "gaussian", "t", "studentst", "skewstudent", "skewt", "ged", "generalized error"
+        ] = "normal",
     ) -> GarchForecastResult:
         """
         Estimate GARCH(p,q) model and forecast 1-step ahead conditional volatility.
@@ -88,15 +91,7 @@ class GarchVolatilityEngine:
         if ARCH_AVAILABLE and arch_model is not None:
             try:
                 # Fit GARCH(1,1) with constant mean
-                am = arch_model(
-                    scaled_returns,
-                    mean="Constant",
-                    vol="GARCH",
-                    p=p,
-                    q=q,
-                    dist=dist,
-                    rescale=False
-                )
+                am = arch_model(scaled_returns, mean="Constant", vol="GARCH", p=p, q=q, dist=dist, rescale=False)
                 res = am.fit(disp="off", show_warning=False)
 
                 # Extract parameters
@@ -160,10 +155,10 @@ class GarchVolatilityEngine:
                         "aic": round(float(res.aic), 2),
                         "bic": round(float(res.bic), 2),
                         "log_likelihood": round(float(res.loglikelihood), 2),
-                        "r_squared": round(float(getattr(res, "rsquared", 0.0)), 4)
+                        "r_squared": round(float(getattr(res, "rsquared", 0.0)), 4),
                     },
                     volatility_regime=regime,
-                    notes=f"Convergence achieved. Persistence: {persistence:.2f}. Shock half-life: {half_life} bars."
+                    notes=f"Convergence achieved. Persistence: {persistence:.2f}. Shock half-life: {half_life} bars.",
                 )
 
             except Exception as e:
@@ -174,16 +169,13 @@ class GarchVolatilityEngine:
 
     @classmethod
     def _estimate_ewma_fallback(
-        cls,
-        returns: pd.Series,
-        annualization_factor: float,
-        decay_factor: float = 0.94
+        cls, returns: pd.Series, annualization_factor: float, decay_factor: float = 0.94
     ) -> GarchForecastResult:
         """EWMA Fallback when arch is unavailable or optimizer fails."""
         arr = returns.to_numpy(dtype=float)
         var = float(np.var(arr))
         for r in arr:
-            var = decay_factor * var + (1.0 - decay_factor) * (r ** 2)
+            var = decay_factor * var + (1.0 - decay_factor) * (r**2)
 
         vol = math.sqrt(var)
         ann_vol = round(vol * annualization_factor * 100.0, 2)
@@ -201,7 +193,7 @@ class GarchVolatilityEngine:
             parameters={"decay_lambda": decay_factor},
             fit_metrics={},
             volatility_regime="NORMAL",
-            notes="Calculated via EWMA (lambda=0.94) fallback."
+            notes="Calculated via EWMA (lambda=0.94) fallback.",
         )
 
     @staticmethod
@@ -216,5 +208,5 @@ class GarchVolatilityEngine:
             persistence=0.0,
             half_life_bars=None,
             unconditional_volatility=None,
-            notes=error_msg
+            notes=error_msg,
         )

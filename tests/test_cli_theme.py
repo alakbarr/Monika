@@ -1,6 +1,7 @@
 """
 Unit Tests for Retro-Vintage CLI Theme (cli/theme.py).
 """
+
 import pytest
 from cli.theme import (
     PHOSPHOR_AMBER,

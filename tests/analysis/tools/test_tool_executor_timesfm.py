@@ -32,10 +32,14 @@ async def test_tool_get_timesfm_forecast_success(fake_forecast):
     mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
-    with patch("indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new_callable=AsyncMock) as mock_get_fc:
+    with patch(
+        "indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new_callable=AsyncMock
+    ) as mock_get_fc:
         mock_get_fc.return_value = fake_forecast
 
-        result = await executor.execute("get_timesfm_forecast", {"symbol": "XAUUSD", "timeframe": "H1", "horizon_steps": 24})
+        result = await executor.execute(
+            "get_timesfm_forecast", {"symbol": "XAUUSD", "timeframe": "H1", "horizon_steps": 24}
+        )
 
         assert result["status"] == "success"
         assert result["symbol"] == "XAUUSD"
@@ -51,7 +55,9 @@ async def test_tool_get_timesfm_forecast_positional_and_kwargs(fake_forecast):
     mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
-    with patch("indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new_callable=AsyncMock) as mock_get_fc:
+    with patch(
+        "indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new_callable=AsyncMock
+    ) as mock_get_fc:
         mock_get_fc.return_value = fake_forecast
 
         # Positional call

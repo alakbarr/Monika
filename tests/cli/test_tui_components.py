@@ -117,4 +117,3 @@ def test_market_tab_activation():
     app.notify.assert_called_once()
     args, _ = app.notify.call_args
     assert "MARKET" in args[0]
-

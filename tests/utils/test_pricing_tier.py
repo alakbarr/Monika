@@ -12,12 +12,12 @@ def test_pricing_tier_calculation():
     """Verify tiered pricing applies base rate up to threshold and tier rate beyond."""
     tier = PricingTier(
         threshold_tokens=100_000,
-        input_rate=1.0,        # Cheaper beyond 100k
+        input_rate=1.0,  # Cheaper beyond 100k
         cached_input_rate=0.1,
         output_rate=5.0,
     )
     custom_price = Price(
-        input=2.0,            # Standard $2/1M
+        input=2.0,  # Standard $2/1M
         cached_input=0.2,
         output=10.0,
         tier=tier,

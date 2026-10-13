@@ -36,16 +36,12 @@ class TradingRouter:
                 ticket = int(args[0])
             except ValueError:
                 return {"status": "error", "message": f"Invalid ticket: {args[0]}"}
-            ok = await TradingService.close_position(
-                session, ticket=ticket, actor=actor, broker_adapter=broker_adapter
-            )
+            ok = await TradingService.close_position(session, ticket=ticket, actor=actor, broker_adapter=broker_adapter)
             return {"status": "success" if ok else "error", "closed": ok, "ticket": ticket}
 
         elif cmd == "closeall":
             reason = " ".join(args) if args else "Manual close-all via Telegram"
-            return await TradingService.emergency_kill(
-                session, reason=reason, actor=actor
-            )
+            return await TradingService.emergency_kill(session, reason=reason, actor=actor)
 
         elif cmd in ("orders", "positions"):
             positions = await PortfolioService.get_open_positions(session)
@@ -55,6 +51,5 @@ class TradingRouter:
             if broker_adapter is None:
                 return {"status": "error", "message": "Broker adapter not available for reconciliation"}
             return {"status": "success", "message": "Position reconciliation completed", "actor": actor}
-
 
         return {"status": "unknown_command", "command": command}

@@ -19,9 +19,11 @@ if hasattr(sys.stdout, "reconfigure"):
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_SRC = REPO_ROOT / "frontend" / "src"
 
+
 def lin(c: float) -> float:
     c /= 255.0
     return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
 
 def lum(h: str) -> float:
     h = h.lstrip("#")
@@ -30,23 +32,25 @@ def lum(h: str) -> float:
     r, g, b = (int(h[i : i + 2], 16) for i in (0, 2, 4))
     return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
 
+
 def contrast_ratio(fg: str, bg: str) -> float:
     a, b = lum(fg), lum(bg)
     if a < b:
         a, b = b, a
     return (a + 0.05) / (b + 0.05)
 
+
 def run_g1_scan():
     print("=== G1: FORBIDDEN EFFECTS & TOKEN INTEGRITY ===")
     forbidden_pat = re.compile(r"(backdrop-filter|filter:\s*blur|blur\(|rounded-full|from-purple|to-indigo)")
     sub_1px_pat = re.compile(r"(border[^:]*:\s*0\.\d+px|border-\[0\.\d+px\])")
-    
+
     forbidden_matches = []
     sub_1px_matches = []
     raw_hex_matches = []
-    
+
     hex_pat = re.compile(r"#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b")
-    
+
     for root, _, files in os.walk(FRONTEND_SRC):
         for f in files:
             if not f.endswith((".tsx", ".ts", ".css")):
@@ -54,7 +58,7 @@ def run_g1_scan():
             path = Path(root) / f
             rel = path.relative_to(REPO_ROOT)
             is_token_file = "theme" in str(rel) or f in ("index.css", "tokens.ts")
-            
+
             with open(path, "r", encoding="utf-8", errors="ignore") as fp:
                 for idx, line in enumerate(fp, 1):
                     # Forbidden effects
@@ -79,6 +83,7 @@ def run_g1_scan():
     print(f"Raw hex occurrences outside token files: {len(raw_hex_matches)}")
     for rel, idx, hx, l in raw_hex_matches[:15]:
         print(f"  - {rel}:{idx} [{hx}]: {l[:80]}")
+
 
 def run_g2_contrast_check():
     print("\n=== G2: WCAG 2.2 AA CONTRAST RATIOS ===")
@@ -112,7 +117,7 @@ def run_g2_contrast_check():
         ("Dark Profit (#4CAF50) on PaperRaised (#2D2824)", "#4CAF50", "#2D2824", 4.5),
         ("Dark Loss (#F46A6A) on PaperRaised (#2D2824)", "#F46A6A", "#2D2824", 4.5),
     ]
-    
+
     fails = 0
     for name, fg, bg, req in pairs:
         r = contrast_ratio(fg, bg)
@@ -123,10 +128,13 @@ def run_g2_contrast_check():
         print(f"  [{status}] {r:5.2f}:1 (req >= {req}:1) - {name} ({fg} on {bg})")
     print(f"Total Contrast Failures: {fails}")
 
+
 def run_g3_type_floor_scan():
     print("\n=== G3: TYPE FLOOR SCAN (<11px) ===")
     # Look for font-size < 11px, e.g. 8px, 9px, 10px, or text-[8px], text-[9px], text-[10px], or rem < 0.6875rem
-    tiny_type_pat = re.compile(r"(font-size:\s*([1-9]|10)(\.\d+)?px|text-\[([1-9]|10)(\.\d+)?px\]|fontSize:\s*['\"]?([1-9]|10)px)")
+    tiny_type_pat = re.compile(
+        r"(font-size:\s*([1-9]|10)(\.\d+)?px|text-\[([1-9]|10)(\.\d+)?px\]|fontSize:\s*['\"]?([1-9]|10)px)"
+    )
     tiny_matches = []
     for root, _, files in os.walk(FRONTEND_SRC):
         for f in files:
@@ -139,14 +147,17 @@ def run_g3_type_floor_scan():
                     m = tiny_type_pat.search(line)
                     if m:
                         tiny_matches.append((str(rel), idx, m.group(0), line.strip()))
-    
+
     print(f"Type floor violations (<11px) found: {len(tiny_matches)}")
     for rel, idx, matched, line in tiny_matches[:20]:
         print(f"  - {rel}:{idx} [{matched}]: {line[:80]}")
 
+
 def run_g4_affordance_scan():
     print("\n=== G4: AFFORDANCES & DEAD CONTROLS ===")
-    window_ctrl_pat = re.compile(r"(win-control-btn|aria-label=['\"]?(Minimize|Maximize|Close)['\"]?|['\"]_['\"]|['\"]□['\"]|['\"]×['\"])")
+    window_ctrl_pat = re.compile(
+        r"(win-control-btn|aria-label=['\"]?(Minimize|Maximize|Close)['\"]?|['\"]_['\"]|['\"]□['\"]|['\"]×['\"])"
+    )
     dead_ctrls = []
     for root, _, files in os.walk(FRONTEND_SRC):
         for f in files:
@@ -157,18 +168,21 @@ def run_g4_affordance_scan():
             with open(path, "r", encoding="utf-8", errors="ignore") as fp:
                 content = fp.read()
                 # Check for win-control-btn without onClick
-                for m in re.finditer(r'<span[^>]*className=["\'][^"\']*win-control-btn[^"\']*["\'][^>]*>([_□×])</span>', content):
+                for m in re.finditer(
+                    r'<span[^>]*className=["\'][^"\']*win-control-btn[^"\']*["\'][^>]*>([_□×])</span>', content
+                ):
                     dead_ctrls.append((str(rel), m.group(0)))
-    
+
     print(f"Dead window controls found (span without onClick): {len(dead_ctrls)}")
     for rel, tag in dead_ctrls[:10]:
         print(f"  - {rel}: {tag}")
     return dead_ctrls
 
+
 if __name__ == "__main__":
     out_dir = REPO_ROOT / "docs" / "ux-audit" / "iterations" / "01"
     out_dir.mkdir(parents=True, exist_ok=True)
-    
+
     run_g1_scan()
     run_g2_contrast_check()
     run_g3_type_floor_scan()

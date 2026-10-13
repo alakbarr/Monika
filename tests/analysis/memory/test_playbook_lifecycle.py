@@ -96,8 +96,28 @@ def test_playbook_archival_on_low_winrate(temp_playbooks_env):
 
     # Record 20 trades with low win rate (6 wins, 14 losses = 30% WR < 45%)
     # Alternate to avoid 3 consecutive losses
-    outcomes = [False, False, True, False, False, True, False, False, True, False,
-                False, True, False, False, True, False, False, True, False, False]
+    outcomes = [
+        False,
+        False,
+        True,
+        False,
+        False,
+        True,
+        False,
+        False,
+        True,
+        False,
+        False,
+        True,
+        False,
+        False,
+        True,
+        False,
+        False,
+        True,
+        False,
+        False,
+    ]
     assert len(outcomes) == 20
 
     for won in outcomes[:-1]:
@@ -132,9 +152,10 @@ async def test_layered_memory_gating_excludes_stale_and_archived():
     mgr = LayeredMemoryManager()
 
     # Mock PlaybookLifecycleFSM and ProgressiveMemoryLoader
-    with patch("analysis.memory.playbook_lifecycle.PlaybookLifecycleFSM") as MockFSM, \
-         patch("analysis.memory.progressive_loader.ProgressiveMemoryLoader") as MockLoader:
-
+    with (
+        patch("analysis.memory.playbook_lifecycle.PlaybookLifecycleFSM") as MockFSM,
+        patch("analysis.memory.progressive_loader.ProgressiveMemoryLoader") as MockLoader,
+    ):
         mock_fsm = MagicMock()
         mock_fsm.get_status.return_value = PlaybookState.STALE
         MockFSM.return_value = mock_fsm

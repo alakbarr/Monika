@@ -40,9 +40,10 @@ from risk.approval_hub import ApprovalHub, ApprovalStatus
 # 1. Delivery Ledger Flood Control Tests
 # ==============================================================================
 
+
 def test_delivery_ledger_flood_wait_extraction():
     ledger = DeliveryLedger(db_path=":memory:")
-    
+
     # Telegram error pattern
     err_tg = "Too Many Requests: retry after 42"
     assert ledger.extract_flood_wait(err_tg) == 42.0
@@ -90,7 +91,6 @@ def test_delivery_ledger_mark_flood_delayed():
         assert not any(p.idempotency_key == key for p in pending)
     finally:
         if os.path.exists(db_path):
-
             os.remove(db_path)
 
 
@@ -98,10 +98,11 @@ def test_delivery_ledger_mark_flood_delayed():
 # 2. Cryptographic Approval Transport Tests
 # ==============================================================================
 
+
 def test_canonical_json_determinism():
     d1 = {"b": 2, "a": 1, "c": {"y": [1, 2], "x": "val"}}
     d2 = {"c": {"x": "val", "y": [1, 2]}, "a": 1, "b": 2}
-    
+
     # Must produce identical canonical strings regardless of insertion order
     assert canonical_json(d1) == canonical_json(d2)
 
@@ -190,6 +191,7 @@ def test_approval_transport_expired_rejection():
 # 3. Webhook Ingress & Replay Protection Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_webhook_ingress_signature_and_rotation():
     primary_secret = "secret_key_v1"
@@ -202,6 +204,7 @@ async def test_webhook_ingress_signature_and_rotation():
     router = WebhookIngressRouter(verifier=verifier, enforce_signature=True, enforce_timestamp=True)
 
     received_events = []
+
     async def sample_handler(payload, headers):
         received_events.append(payload)
         return {"status": "ok"}
@@ -277,12 +280,14 @@ async def test_webhook_ingress_replay_prevention():
 # 4. ACP Server Protocol Tests
 # ==============================================================================
 
+
 def test_acp_server_protocol_lifecycle():
     server = AcpServer()
 
     # Capture outputs by intercepting sys.stdout
     import io
     import sys
+
     fake_stdout = io.StringIO()
     old_stdout = sys.stdout
     sys.stdout = fake_stdout
@@ -291,19 +296,27 @@ def test_acp_server_protocol_lifecycle():
         # 1. Initialize
         server.handle_message(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize"}))
         # 2. New session
-        server.handle_message(json.dumps({
-            "jsonrpc": "2.0",
-            "id": 2,
-            "method": "new_session",
-            "params": {"session_id": "test_sess_01", "cwd": "/workspace"},
-        }))
+        server.handle_message(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "new_session",
+                    "params": {"session_id": "test_sess_01", "cwd": "/workspace"},
+                }
+            )
+        )
         # 3. Load session
-        server.handle_message(json.dumps({
-            "jsonrpc": "2.0",
-            "id": 3,
-            "method": "load_session",
-            "params": {"session_id": "test_sess_01"},
-        }))
+        server.handle_message(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "method": "load_session",
+                    "params": {"session_id": "test_sess_01"},
+                }
+            )
+        )
     finally:
         sys.stdout = old_stdout
 
@@ -331,6 +344,7 @@ def test_acp_server_client_permission_resolution():
     # Simulate client responding to outbound request
     import io
     import sys
+
     fake_stdout = io.StringIO()
     old_stdout = sys.stdout
     sys.stdout = fake_stdout
@@ -338,6 +352,7 @@ def test_acp_server_client_permission_resolution():
     try:
         # Trigger outbound request in a separate thread
         import threading
+
         result_holder = []
 
         def worker():

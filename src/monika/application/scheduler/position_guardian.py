@@ -10,6 +10,7 @@ Opsi perlindungan (diatur di settings.yaml):
 2. CLOSE_POSITION: Tutup posisi sebelum berita rilis.
 3. ALERT_ONLY: Kirim notifikasi Telegram untuk intervensi manual.
 """
+
 import asyncio
 import logging
 from typing import Any, Optional
@@ -67,14 +68,17 @@ class PositionGuardian:
         async with get_session() as session:
             # Check DB emergency kill switch flag (from CLI/Web)
             from monika.infrastructure.database.models import SystemConfig
-            cfg_kill = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key == "kill_switch")
-            )).scalar_one_or_none()
+
+            cfg_kill = (
+                await session.execute(select(SystemConfig).where(SystemConfig.key == "kill_switch"))
+            ).scalar_one_or_none()
             kill_active = bool(cfg_kill and str(cfg_kill.value).lower() in ("true", "1", "yes"))
             if kill_active:
                 if not self._kill_switch_triggered:
                     self._kill_switch_triggered = True
-                    logger.critical("[PositionGuardian] Emergency kill switch is ACTIVE in SystemConfig! Liquidating all positions.")
+                    logger.critical(
+                        "[PositionGuardian] Emergency kill switch is ACTIVE in SystemConfig! Liquidating all positions."
+                    )
                     if self.execution_service:
                         await self.execution_service.kill_switch("Database emergency kill switch triggered")
                 return {"checked": True, "action_taken": True, "kill_switch_active": True}
@@ -82,9 +86,11 @@ class PositionGuardian:
                 self._kill_switch_triggered = False
 
             # Get open and orphan_pending_close positions
-            all_active_positions = (await session.execute(
-                select(Position).where(Position.status.in_(["open", "orphan_pending_close"]))
-            )).scalars().all()
+            all_active_positions = (
+                (await session.execute(select(Position).where(Position.status.in_(["open", "orphan_pending_close"]))))
+                .scalars()
+                .all()
+            )
 
             if not all_active_positions:
                 return {"checked": True, "action_taken": False, "positions_checked": 0}
@@ -120,20 +126,27 @@ class PositionGuardian:
                 if len(legs) == 1:
                     # Only one leg open — other was closed (by SL/TP hit on MT5)
                     orphan = legs[0]
-                    logger.warning(f"Orphan paired leg detected: {orphan.symbol} "
-                                 f"ticket={orphan.mt5_ticket} [group={group_id[:8]}]")
+                    logger.warning(
+                        f"Orphan paired leg detected: {orphan.symbol} ticket={orphan.mt5_ticket} [group={group_id[:8]}]"
+                    )
                     await self._close_paired_orphan(session, orphan)
 
             # Get upcoming high-impact events
-            upcoming_events = (await session.execute(
-                select(EconomicCalendar)
-                .where(EconomicCalendar.impact.in_(self.impact_levels))
-                .where(EconomicCalendar.event_time >= now - timedelta(minutes=5))
-                .where(EconomicCalendar.event_time <= warning_window)
-            )).scalars().all()
+            upcoming_events = (
+                (
+                    await session.execute(
+                        select(EconomicCalendar)
+                        .where(EconomicCalendar.impact.in_(self.impact_levels))
+                        .where(EconomicCalendar.event_time >= now - timedelta(minutes=5))
+                        .where(EconomicCalendar.event_time <= warning_window)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             actions_taken = []
-            
+
             if upcoming_events:
                 # Check which positions are exposed to upcoming events
                 for pos in open_positions:
@@ -144,9 +157,7 @@ class PositionGuardian:
                     for event in upcoming_events:
                         if event.event_time is not None and event.currency in pos_currencies:
                             minutes_to_event = (event.event_time - now).total_seconds() / 60
-                            action = await self._protect_position(
-                                session, pos, event, minutes_to_event
-                            )
+                            action = await self._protect_position(session, pos, event, minutes_to_event)
                             if action:
                                 actions_taken.append(action)
                             break  # One action per position
@@ -159,10 +170,10 @@ class PositionGuardian:
                     {
                         "event": e.event_name,
                         "currency": e.currency,
-                        "time": e.event_time.strftime("%H:%M UTC") if e.event_time else "?"
+                        "time": e.event_time.strftime("%H:%M UTC") if e.event_time else "?",
                     }
                     for e in upcoming_events
-                ]
+                ],
             }
 
     async def _close_paired_orphan(self, session: AsyncSession, orphan: Position):
@@ -170,9 +181,7 @@ class PositionGuardian:
         try:
             if self.execution_service and orphan.mt5_ticket:
                 await self.execution_service.close_position_by_ticket(
-                    orphan.mt5_ticket,
-                    requested_by="position_guardian",
-                    reason=f"Paired leg closed (orphan cleanup)"
+                    orphan.mt5_ticket, requested_by="position_guardian", reason=f"Paired leg closed (orphan cleanup)"
                 )
         except Exception as e:
             logger.error(f"Failed to close paired orphan {orphan.symbol}: {e}")
@@ -198,11 +207,15 @@ class PositionGuardian:
             return
 
         # Check if the other tranche leg is already closed
-        closed_legs = (await session.execute(
-            select(Position)
-            .where(Position.pair_group_id == group_id)
-            .where(Position.status == "closed")
-        )).scalars().all()
+        closed_legs = (
+            (
+                await session.execute(
+                    select(Position).where(Position.pair_group_id == group_id).where(Position.status == "closed")
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         if not closed_legs:
             return
@@ -233,18 +246,21 @@ class PositionGuardian:
                 )
                 if res and res.get("success"):
                     runner_leg.sl = be_price
-                    session.add(ActivityLog(
-                        category="risk",
-                        description=(
-                            f"PositionGuardian tranche scale-out: Leg 1 closed. "
-                            f"Leg 2 {runner_leg.symbol} (ticket={runner_leg.mt5_ticket}) SL moved to BE {be_price}."
-                        ),
-                        actor="position_guardian",
-                    ))
+                    session.add(
+                        ActivityLog(
+                            category="risk",
+                            description=(
+                                f"PositionGuardian tranche scale-out: Leg 1 closed. "
+                                f"Leg 2 {runner_leg.symbol} (ticket={runner_leg.mt5_ticket}) SL moved to BE {be_price}."
+                            ),
+                            actor="position_guardian",
+                        )
+                    )
                     await session.commit()
 
                     try:
                         from monika.infrastructure.infra.notifier import AgentNotifier
+
                         await AgentNotifier().send_info(
                             f"[TARGET] <b>Tranche Scale-Out: Leg 1 Closed</b>\n"
                             f"Symbol: <b>{runner_leg.symbol}</b> | Ticket: <code>{runner_leg.mt5_ticket}</code>\n"
@@ -255,7 +271,6 @@ class PositionGuardian:
                         logger.debug(f"Scale-out notification error: {notif_err}")
             except Exception as mod_err:
                 logger.error(f"[PositionGuardian] Failed to move Leg 2 to BE: {mod_err}")
-
 
     async def _protect_position(
         self,
@@ -291,15 +306,14 @@ class PositionGuardian:
         if self.strategy == "close_before_news":
             msg += f"Action: <b>AUTO-CLOSING position before news.</b>"
             logger.warning(
-                f"PositionGuardian: closing {position.symbol} ticket={position.mt5_ticket} "
-                f"before {event.event_name}"
+                f"PositionGuardian: closing {position.symbol} ticket={position.mt5_ticket} before {event.event_name}"
             )
             if self.execution_service and position.mt5_ticket:
                 try:
                     await self.execution_service.close_position_by_ticket(
                         position.mt5_ticket,
                         requested_by="position_guardian",
-                        reason=f"Pre-news close: {event.event_name}"
+                        reason=f"Pre-news close: {event.event_name}",
                     )
                     action_type = "closed"
                 except Exception as e:
@@ -309,28 +323,31 @@ class PositionGuardian:
                 action_type = "no_execution_service"
         else:  # alert_only
             msg += (
-                f"Action: <b>ALERT ONLY</b> — Manual action recommended.\n"
-                f"Consider closing or widening SL before news."
+                f"Action: <b>ALERT ONLY</b> — Manual action recommended.\nConsider closing or widening SL before news."
             )
             action_type = "alerted"
 
         try:
             from monika.infrastructure.infra.notifier import AgentNotifier
+
             await AgentNotifier().send_warning(msg)
         except Exception as e:
             logger.warning(f"Position guardian alert failed: {e}")
 
         # Log to activity_log
-        session.add(ActivityLog(
-            category="risk",
-            description=(
-                f"PositionGuardian: {action_type} {position.symbol} ticket={position.mt5_ticket} "
-                f"before {event.event_name} ({minutes_to_event:.0f}min)"
-            ),
-            actor="position_guardian",
-        ))
+        session.add(
+            ActivityLog(
+                category="risk",
+                description=(
+                    f"PositionGuardian: {action_type} {position.symbol} ticket={position.mt5_ticket} "
+                    f"before {event.event_name} ({minutes_to_event:.0f}min)"
+                ),
+                actor="position_guardian",
+            )
+        )
         try:
             from monika.infrastructure.database.event_store import TradingEventStore
+
             await TradingEventStore.emit(
                 session=session,
                 event_type="position.protected",
@@ -360,95 +377,102 @@ class PositionGuardian:
         """
         Executed between 20:00-21:30 UTC every Friday.
         Ensures all non-exempt positions trigger notifications or are automatically liquidated.
-        
+
         Evaluates auto_close_friday_positions configuration: if True, positions at risk
         are automatically liquidated (rather than alert-only). Defaults to False for safety.
         """
         now = clock.now()
         weekday = now.weekday()
         hour = now.hour
-        
+
         # Hanya aktif Jumat 20:00-21:30 UTC
         if not (weekday == 4 and 20 <= hour <= 21):
             return {"skipped": True}
-        
+
         weekend_cfg = self.settings.get("trading", {}).get("weekend_management", {})
         # Baca setting strategy atau boolean legacy auto_close_friday_positions
         strategy = weekend_cfg.get("strategy", "alert_only")
-        auto_close_enabled = weekend_cfg.get("auto_close_friday_positions", False) or (strategy in ("close_positions", "close_if_profitable"))
-        
+        auto_close_enabled = weekend_cfg.get("auto_close_friday_positions", False) or (
+            strategy in ("close_positions", "close_if_profitable")
+        )
+
         async with get_session() as session:
-            open_positions = (await session.execute(
-                select(Position).where(Position.status == "open")
-            )).scalars().all()
-            
+            open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+
             exempted = set(weekend_cfg.get("exempted_symbols", ["BTCUSD", "ETHUSD"]))
             at_risk = [p for p in open_positions if p.symbol not in exempted]
-            
+
             if not at_risk:
                 return {"positions_at_risk": 0}
-            
+
             closed_count = 0
             close_errors = []
-            
+
             if auto_close_enabled:
                 # AUTO-CLOSE MODE: Tutup posisi at-risk sesuai strategi
                 logger.warning(
-                    f'[PositionGuardian] Friday auto-close AKTIF (strategi={strategy}): mengevaluasi {len(at_risk)} posisi '
-                    f'sebelum weekend gap risk (21:00 UTC).'
+                    f"[PositionGuardian] Friday auto-close AKTIF (strategi={strategy}): mengevaluasi {len(at_risk)} posisi "
+                    f"sebelum weekend gap risk (21:00 UTC)."
                 )
                 for p in at_risk:
                     pnl_val = getattr(p, "unrealized_pnl", None)
                     pnl = float(pnl_val if pnl_val is not None else (getattr(p, "pnl", 0.0) or 0.0))
                     if strategy == "close_if_profitable" and pnl <= 0:
-                        logger.info(f"[PositionGuardian] Skipping {p.symbol} ticket={p.mt5_ticket} (Friday close_if_profitable: PnL={pnl:.2f} <= 0)")
+                        logger.info(
+                            f"[PositionGuardian] Skipping {p.symbol} ticket={p.mt5_ticket} (Friday close_if_profitable: PnL={pnl:.2f} <= 0)"
+                        )
                         continue
                     try:
                         if self.execution_service and p.mt5_ticket:
                             await self.execution_service.close_position_by_ticket(
                                 p.mt5_ticket,
                                 requested_by="position_guardian_friday",
-                                reason=f"Friday auto-close ({strategy}): weekend gap protection"
+                                reason=f"Friday auto-close ({strategy}): weekend gap protection",
                             )
                             closed_count += 1
-                            logger.info(f'[PositionGuardian] Closed {p.symbol} ticket={p.mt5_ticket} (Friday auto-close, pnl={pnl:.2f})')
+                            logger.info(
+                                f"[PositionGuardian] Closed {p.symbol} ticket={p.mt5_ticket} (Friday auto-close, pnl={pnl:.2f})"
+                            )
                         else:
                             close_errors.append(f"{p.symbol}: no execution_service or ticket")
                     except Exception as e:
                         close_errors.append(f"{p.symbol}: {e}")
-                        logger.error(f'[PositionGuardian] Friday auto-close failed for {p.symbol}: {e}')
-                
+                        logger.error(f"[PositionGuardian] Friday auto-close failed for {p.symbol}: {e}")
+
                 # Log ke ActivityLog
-                session.add(ActivityLog(
-                    category="risk",
-                    description=(
-                        f"PositionGuardian Friday auto-close: "
-                        f"closed={closed_count}, errors={len(close_errors)} "
-                        f"symbols={[p.symbol for p in at_risk]}"
-                    ),
-                    actor="position_guardian",
-                ))
+                session.add(
+                    ActivityLog(
+                        category="risk",
+                        description=(
+                            f"PositionGuardian Friday auto-close: "
+                            f"closed={closed_count}, errors={len(close_errors)} "
+                            f"symbols={[p.symbol for p in at_risk]}"
+                        ),
+                        actor="position_guardian",
+                    )
+                )
                 await session.commit()
-                
+
                 # Notifikasi hasil
                 lines = [f" <b>Friday Auto-Close Selesai</b>\n"]
                 lines.append(f"Posisi ditutup: <b>{closed_count}/{len(at_risk)}</b>")
                 if close_errors:
                     lines.append(f"\n[PERINGATAN] Gagal: {', '.join(close_errors[:3])}")
                 lines.append("\nSemua posisi at-risk telah diamankan dari weekend gap.")
-                
+
                 try:
                     from monika.infrastructure.infra.notifier import AgentNotifier
+
                     await AgentNotifier().send_info("\n".join(lines))
                 except Exception as e:
                     logger.error(f"Friday auto-close notification failed: {e}")
-                
+
                 return {
                     "positions_at_risk": len(at_risk),
                     "auto_closed": closed_count,
                     "close_errors": close_errors,
                 }
-            
+
             else:
                 # ALERT-ONLY MODE (default): Kirim alert kritis
                 lines = [" <b>CRITICAL: Market closing in <60 minutes</b>\n"]
@@ -461,13 +485,14 @@ class PositionGuardian:
                     f"<i>Tip: Set weekend_management.auto_close_friday_positions: true "
                     f"in settings.yaml to auto-close next time.</i>"
                 )
-                
+
                 try:
                     from monika.infrastructure.infra.notifier import AgentNotifier
+
                     await AgentNotifier().send_critical("\n".join(lines))
                 except Exception as e:
                     logger.error(f"Friday close alert failed: {e}")
-                
+
                 return {"positions_alerted": len(at_risk)}
 
     async def on_tick(self, event: Any) -> None:
@@ -500,26 +525,36 @@ class PositionGuardian:
         try:
             async with get_session() as session:
                 # Fast check for DB emergency kill switch
-                cfg_kill = (await session.execute(
-                    select(SystemConfig).where(SystemConfig.key == "kill_switch")
-                )).scalar_one_or_none()
+                cfg_kill = (
+                    await session.execute(select(SystemConfig).where(SystemConfig.key == "kill_switch"))
+                ).scalar_one_or_none()
                 kill_active = bool(cfg_kill and str(cfg_kill.value).lower() in ("true", "1", "yes"))
                 if kill_active:
                     if not getattr(self, "_kill_switch_triggered", False):
                         self._kill_switch_triggered = True
-                        logger.critical(f"[PositionGuardian][on_tick] Emergency kill switch ACTIVE on tick {sym_clean}! Liquidating.")
+                        logger.critical(
+                            f"[PositionGuardian][on_tick] Emergency kill switch ACTIVE on tick {sym_clean}! Liquidating."
+                        )
                         if self.execution_service:
-                            await self.execution_service.kill_switch("Database emergency kill switch triggered via tick")
+                            await self.execution_service.kill_switch(
+                                "Database emergency kill switch triggered via tick"
+                            )
                     return
                 else:
                     self._kill_switch_triggered = False
 
                 # Check if we have active positions for this symbol
-                positions = (await session.execute(
-                    select(Position)
-                    .where(Position.symbol == sym_clean)
-                    .where(Position.status.in_(["open", "orphan_pending_close"]))
-                )).scalars().all()
+                positions = (
+                    (
+                        await session.execute(
+                            select(Position)
+                            .where(Position.symbol == sym_clean)
+                            .where(Position.status.in_(["open", "orphan_pending_close"]))
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
 
                 if not positions:
                     return
@@ -540,9 +575,7 @@ class PositionGuardian:
         except Exception as e:
             logger.debug(f"[PositionGuardian] on_tick error for {sym_clean}: {e}")
 
-    async def evaluate_position_threat_with_jev(
-        self, position: Any, current_price: Optional[float] = None
-    ) -> dict:
+    async def evaluate_position_threat_with_jev(self, position: Any, current_price: Optional[float] = None) -> dict:
         """
         Sub-100ms real-time position threat assessment via TypeSafe Jev System One.
         Evaluates adverse momentum and stop-loss vulnerability without generating text.
@@ -550,6 +583,7 @@ class PositionGuardian:
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
             from monika.core.primitives.jev_primitives import build_position_guard_questions
+
             client = get_client_for_task("jev_position_guard", self.settings)
             if not hasattr(client, "classify_json"):
                 return {}
@@ -571,6 +605,3 @@ class PositionGuardian:
         except Exception as e:
             logger.debug(f"[PositionGuardian] Jev position threat assessment bypassed: {e}")
             return {}
-
-
-

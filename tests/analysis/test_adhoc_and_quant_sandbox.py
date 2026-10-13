@@ -7,7 +7,24 @@ from analysis.tools.quant_sandbox.rpc_server import QuantSandboxRpcServer, Quant
 @pytest.mark.asyncio
 async def test_quant_sandbox_stats():
     client = QuantSandboxClient()
-    series = [100.0, 102.0, 101.5, 103.0, 102.5, 104.0, 105.0, 106.0, 105.5, 107.0, 108.0, 107.5, 109.0, 110.0, 111.0, 112.0]
+    series = [
+        100.0,
+        102.0,
+        101.5,
+        103.0,
+        102.5,
+        104.0,
+        105.0,
+        106.0,
+        105.5,
+        107.0,
+        108.0,
+        107.5,
+        109.0,
+        110.0,
+        111.0,
+        112.0,
+    ]
     res = await client.compute_stats(series)
 
     assert res["count"] == 16

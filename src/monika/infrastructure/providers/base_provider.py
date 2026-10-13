@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 import re
 
+
 def extract_and_parse_json(text: str) -> Optional[dict]:
     """
     Robust extraction and parsing of JSON from LLM responses.
@@ -24,11 +25,11 @@ def extract_and_parse_json(text: str) -> Optional[dict]:
     """
     if not text or not isinstance(text, str):
         return None
-    
+
     clean = text.strip()
     # Strip <think>...</think> and <thought>...</thought> blocks from reasoning models
     clean = re.sub(r"<(?:think|thought)>[\s\S]*?</(?:think|thought)>", "", clean, flags=re.IGNORECASE).strip()
-    
+
     # 1. Try direct parse first
     try:
         res = json.loads(clean, strict=False)
@@ -36,9 +37,9 @@ def extract_and_parse_json(text: str) -> Optional[dict]:
             return res
         if isinstance(res, list):
             return {"items": res}
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         pass
-    
+
     # 2. Try markdown code block extraction
     md_matches = re.findall(r"```(?:json)?\s*([\s\S]*?)\s*```", clean, flags=re.IGNORECASE)
     for block in md_matches:
@@ -48,7 +49,7 @@ def extract_and_parse_json(text: str) -> Optional[dict]:
                 return res
             if isinstance(res, list):
                 return {"items": res}
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError, ValueError:
             # Try raw_decode on the block content
             b_clean = block.strip()
             sb = b_clean.find("{")
@@ -60,10 +61,10 @@ def extract_and_parse_json(text: str) -> Optional[dict]:
                 except Exception:
                     pass
             continue
-            
+
     # 3. Try progressive raw_decode from first '{' or '['
     decoder = json.JSONDecoder(strict=False)
-    
+
     start_brace = clean.find("{")
     if start_brace != -1:
         try:
@@ -130,7 +131,7 @@ def extract_and_parse_json(text: str) -> Optional[dict]:
                 return res
             if isinstance(res, list):
                 return {"items": res}
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError, ValueError:
             pass
         # Preamble before JSON: raw_decode from first '{' or '['
         for opener, wrap in (("{", "dict"), ("[", "list")):
@@ -154,26 +155,26 @@ def extract_and_parse_json(text: str) -> Optional[dict]:
     end_brace = clean.rfind("}")
     if start_brace != -1 and end_brace != -1 and end_brace > start_brace:
         try:
-            res = json.loads(clean[start_brace:end_brace + 1], strict=False)
+            res = json.loads(clean[start_brace : end_brace + 1], strict=False)
             if isinstance(res, dict):
                 return res
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError, ValueError:
             pass
     end_bracket = clean.rfind("]")
     if start_bracket != -1 and end_bracket != -1 and end_bracket > start_bracket:
         try:
-            res = json.loads(clean[start_bracket:end_bracket + 1], strict=False)
+            res = json.loads(clean[start_bracket : end_bracket + 1], strict=False)
             if isinstance(res, list):
                 return {"items": res}
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError, ValueError:
             pass
 
     # 5. Fallback with JSON quote repair / sanitization (e.g. unescaped nested quotes "")
     try:
         repaired = re.sub(r':\s*""', r': "', clean)
         repaired = re.sub(r'""(\s*[,\]\}])', r'"\1', repaired)
-        repaired = re.sub(r'""+', r'\"', repaired)
-        
+        repaired = re.sub(r'""+', r"\"", repaired)
+
         try:
             res = json.loads(repaired, strict=False)
             if isinstance(res, dict):
@@ -223,29 +224,29 @@ def extract_and_parse_json(text: str) -> Optional[dict]:
                     if esc:
                         esc = False
                         continue
-                    if ch == '\\' and in_str:
+                    if ch == "\\" and in_str:
                         esc = True
                         continue
                     if ch == '"':
                         in_str = not in_str
                         continue
                     if not in_str:
-                        if ch in ('{', '['):
+                        if ch in ("{", "["):
                             stack.append(ch)
-                        elif ch in ('}', ']'):
+                        elif ch in ("}", "]"):
                             if stack:
                                 top = stack[-1]
-                                if (ch == '}' and top == '{') or (ch == ']' and top == '['):
+                                if (ch == "}" and top == "{") or (ch == "]" and top == "["):
                                     stack.pop()
 
                 rep = s.rstrip()
                 if in_str:
                     rep += '"'
                 rep = re.sub(r",\s*$", "", rep)
-                if re.search(r':\s*$', rep):
-                    rep += 'null'
+                if re.search(r":\s*$", rep):
+                    rep += "null"
                 for d in reversed(stack):
-                    rep += '}' if d == '{' else ']'
+                    rep += "}" if d == "{" else "]"
                 try:
                     r = json.loads(rep, strict=False)
                     if isinstance(r, dict):
@@ -269,7 +270,7 @@ def extract_and_parse_json(text: str) -> Optional[dict]:
                     return r
     except Exception:
         pass
-            
+
     return None
 
 
@@ -281,24 +282,38 @@ class MockBlock(dict):
     Blok konten respons yang kompatibel dengan format Anthropic.
     DIPINDAHKAN dari gemini_client.py
     """
+
     def __init__(self, type, text=None, name=None, input=None, id=None):
         super().__init__()
         self["type"] = type
-        if text is not None: self["text"] = text
-        if name is not None: self["name"] = name
-        if input is not None: self["input"] = input
-        if id is not None: self["id"] = id
+        if text is not None:
+            self["text"] = text
+        if name is not None:
+            self["name"] = name
+        if input is not None:
+            self["input"] = input
+        if id is not None:
+            self["id"] = id
 
     @property
-    def type(self): return self.get("type")
+    def type(self):
+        return self.get("type")
+
     @property
-    def text(self): return self.get("text")
+    def text(self):
+        return self.get("text")
+
     @property
-    def name(self): return self.get("name")
+    def name(self):
+        return self.get("name")
+
     @property
-    def input(self): return self.get("input")
+    def input(self):
+        return self.get("input")
+
     @property
-    def id(self): return self.get("id")
+    def id(self):
+        return self.get("id")
 
 
 class MockResponse:
@@ -306,9 +321,19 @@ class MockResponse:
     Response wrapper yang kompatibel dengan format Anthropic.
     DIPINDAHKAN dari gemini_client.py
     """
+
     is_paid: bool = False
 
-    def __init__(self, content, stop_reason, input_tokens, output_tokens, thinking_tokens: int = 0, cached_tokens: int = 0, cache_creation_tokens: int = 0):
+    def __init__(
+        self,
+        content,
+        stop_reason,
+        input_tokens,
+        output_tokens,
+        thinking_tokens: int = 0,
+        cached_tokens: int = 0,
+        cache_creation_tokens: int = 0,
+    ):
         self.content = content
         self.stop_reason = stop_reason
         self.input_tokens = input_tokens
@@ -317,12 +342,14 @@ class MockResponse:
         self.cached_tokens = cached_tokens
         self.cache_creation_tokens = cache_creation_tokens
         self.is_paid = False
+
         class Usage:
             input_tokens: int = 0
             output_tokens: int = 0
             thinking_tokens: int = 0
             cache_creation_input_tokens: int = 0
             cache_read_input_tokens: int = 0
+
         self.usage = Usage()
         self.usage.input_tokens = input_tokens
         self.usage.output_tokens = output_tokens
@@ -357,14 +384,14 @@ def extract_retry_after(error_or_headers: Any) -> Optional[float]:
             if val is not None:
                 try:
                     return float(val)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
         for key in ("retry-after-ms", "Retry-After-Ms", "x-retry-after-ms"):
             val = headers.get(key)
             if val is not None:
                 try:
                     return float(val) / 1000.0
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
 
     # 2. Inspect exception message for explicit retry backoff patterns
@@ -373,14 +400,14 @@ def extract_retry_after(error_or_headers: Any) -> Optional[float]:
     if m_sec:
         try:
             return float(m_sec.group(1))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             pass
 
     m_ms = re.search(r"retry\s*(?:after|in)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*ms\b", msg)
     if m_ms:
         try:
             return float(m_ms.group(1)) / 1000.0
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             pass
 
     return None
@@ -389,21 +416,30 @@ def extract_retry_after(error_or_headers: Any) -> Optional[float]:
 class BaseLLMClient(ABC):
     """Abstract base — setiap provider WAJIB implement SEMUA method ini."""
 
-    def __init__(self, model: str, max_tokens: int = 8192, max_tool_turns: int = 15,
-                 thinking_level: str = "none", settings: Optional[dict] = None, temperature: float = 0.0, **kwargs):
+    def __init__(
+        self,
+        model: str,
+        max_tokens: int = 8192,
+        max_tool_turns: int = 15,
+        thinking_level: str = "none",
+        settings: Optional[dict] = None,
+        temperature: float = 0.0,
+        **kwargs,
+    ):
         self.model = model
         self.max_tokens = max_tokens
         self.max_tool_turns = max_tool_turns
         self.thinking_level = thinking_level
         self.settings = settings or {}
         self.default_temperature = temperature
-        self.role = kwargs.get('role', kwargs.get('task_role', model))
+        self.role = kwargs.get("role", kwargs.get("task_role", model))
         self.task_role = self.role
-        self.subsystem = kwargs.get('subsystem', None)
-        self.symbol = kwargs.get('symbol', None)
-        self.cycle_id = kwargs.get('cycle_id', None)
-        self.thinking_budget: Optional[int] = kwargs.get('thinking_budget', None)
+        self.subsystem = kwargs.get("subsystem", None)
+        self.symbol = kwargs.get("symbol", None)
+        self.cycle_id = kwargs.get("cycle_id", None)
+        self.thinking_budget: Optional[int] = kwargs.get("thinking_budget", None)
         from monika.infrastructure.providers.capabilities import get_model_capabilities
+
         self.capabilities = get_model_capabilities(model)
 
     def set_thinking_budget(self, budget: int) -> None:
@@ -435,13 +471,26 @@ class BaseLLMClient(ABC):
     # --- Core generation methods ---
 
     @abstractmethod
-    async def generate(self, prompt: str, system: str = "", temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs: Any) -> Optional[str]:
+    async def generate(
+        self,
+        prompt: str,
+        system: str = "",
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs: Any,
+    ) -> Optional[str]:
         """Single-turn text generation. Returns plain text or None."""
         pass
 
-    async def generate_content(self, system_prompt: str = "", user_message: str = "",
-                                response_schema: Optional[dict] = None, temperature: Optional[float] = None,
-                                max_tokens: Optional[int] = None, **kwargs: Any) -> Optional[str]:
+    async def generate_content(
+        self,
+        system_prompt: str = "",
+        user_message: str = "",
+        response_schema: Optional[dict] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs: Any,
+    ) -> Optional[str]:
         """
         Generate content with optional JSON schema enforcement.
         DEFAULT implementation delegates ke generate() + classify_json().
@@ -454,12 +503,20 @@ class BaseLLMClient(ABC):
                 schema=response_schema,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                **kwargs
+                **kwargs,
             )
             return json.dumps(result) if result else None
-        return await self.generate(user_message, system=system_prompt, temperature=temperature, max_tokens=max_tokens, **kwargs)
+        return await self.generate(
+            user_message, system=system_prompt, temperature=temperature, max_tokens=max_tokens, **kwargs
+        )
 
-    async def generate_content_stream(self, system_prompt: str = "", user_message: str = "", conversation_history: Optional[list] = None, **kwargs: Any):
+    async def generate_content_stream(
+        self,
+        system_prompt: str = "",
+        user_message: str = "",
+        conversation_history: Optional[list] = None,
+        **kwargs: Any,
+    ):
         """
         Stream content generation token-by-token or chunk-by-chunk.
         Default implementation delegates to generate_content and yields chunks.
@@ -478,18 +535,31 @@ class BaseLLMClient(ABC):
         if full_text:
             chunk_size = 20
             for i in range(0, len(full_text), chunk_size):
-                yield full_text[i:i + chunk_size]
+                yield full_text[i : i + chunk_size]
 
     @abstractmethod
-    async def classify_json(self, prompt: str, system_prompt: Optional[str] = None, schema: Optional[dict] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs: Any) -> Optional[dict]:
+    async def classify_json(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        schema: Optional[dict] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs: Any,
+    ) -> Optional[dict]:
         """Generate + parse JSON response."""
         pass
 
     # --- Compatibility wrappers (generasi lama) ---
 
-    async def generate_text(self, user_prompt: str, system_prompt: str = "",
-                            max_tokens: Optional[int] = 1024, temperature: Optional[float] = 0.0,
-                            is_chat: bool = False) -> str:
+    async def generate_text(
+        self,
+        user_prompt: str,
+        system_prompt: str = "",
+        max_tokens: Optional[int] = 1024,
+        temperature: Optional[float] = 0.0,
+        is_chat: bool = False,
+    ) -> str:
         """Single-turn text generation (ClaudeClient compatibility)."""
         old_max = self.max_tokens
         if max_tokens and max_tokens != self.max_tokens:
@@ -507,8 +577,7 @@ class BaseLLMClient(ABC):
     # --- Agent/Tool methods ---
 
     @abstractmethod
-    async def run_tool_agent(self, messages: list, tools: list,
-                              system_prompt: Any) -> Any:
+    async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any) -> Any:
         """Low-level multi-turn tool-calling. Returns MockResponse or native Message."""
         pass
 
@@ -519,11 +588,17 @@ class BaseLLMClient(ABC):
         """Register the AgentHarness factory to avoid infrastructure -> application cyclic imports."""
         cls._agent_harness_factory = factory
 
-    async def run_agent(self, session, system_prompt: str | tuple[str, str] | Any, user_message: str,
-                        tools: list, stage_name: str = "unknown",
-                        extra_context: Optional[str] = None,
-                        prefetch_satisfied_tools: Optional[set] = None,
-                        **kwargs) -> dict:
+    async def run_agent(
+        self,
+        session,
+        system_prompt: str | tuple[str, str] | Any,
+        user_message: str,
+        tools: list,
+        stage_name: str = "unknown",
+        extra_context: Optional[str] = None,
+        prefetch_satisfied_tools: Optional[set] = None,
+        **kwargs,
+    ) -> dict:
         """
         Full agent loop with tool execution + logging via AgentHarness.
         Returns: {"success": bool, "final_text": str, "tool_calls_made": int,
@@ -534,6 +609,7 @@ class BaseLLMClient(ABC):
         factory = self._agent_harness_factory
         if factory is None:
             import importlib
+
             factory = importlib.import_module("monika.application.analysis.harness.agent_harness").AgentHarness
         harness = factory(
             llm_client=self,
@@ -552,9 +628,9 @@ class BaseLLMClient(ABC):
         )
 
     @abstractmethod
-    async def run_chat_loop(self, system_prompt: str, conversation_history: list,
-                             new_user_message: str, tools: list,
-                             tool_executor=None) -> dict:
+    async def run_chat_loop(
+        self, system_prompt: str, conversation_history: list, new_user_message: str, tools: list, tool_executor=None
+    ) -> dict:
         """
         Chat loop (Telegram).
         Returns: {"reply": str, "tool_calls_made": int, "turns": int,
@@ -562,16 +638,22 @@ class BaseLLMClient(ABC):
         """
         pass
 
-    async def run_agent_from_messages(self, session, system_prompt: str | tuple[str, str] | Any,
-                                       messages: list, tools: list,
-                                       max_tool_turns: int = 15,
-                                       stage_name: str = "unknown",
-                                       prefetch_satisfied_tools: Optional[set] = None,
-                                       **kwargs) -> dict:
+    async def run_agent_from_messages(
+        self,
+        session,
+        system_prompt: str | tuple[str, str] | Any,
+        messages: list,
+        tools: list,
+        max_tool_turns: int = 15,
+        stage_name: str = "unknown",
+        prefetch_satisfied_tools: Optional[set] = None,
+        **kwargs,
+    ) -> dict:
         """Continue agent from existing messages via AgentHarness."""
         factory = self._agent_harness_factory
         if factory is None:
             import importlib
+
             factory = importlib.import_module("monika.application.analysis.harness.agent_harness").AgentHarness
         harness = factory(
             llm_client=self,
@@ -596,6 +678,7 @@ class BaseLLMClient(ABC):
         session_id = getattr(self, "_session_affinity_id", None)
         if not session_id:
             import hashlib
+
             role = getattr(self, "role", None) or getattr(self, "task_role", "default")
             session_id = hashlib.sha256(f"tradeagent_{role}".encode("utf-8")).hexdigest()[:32]
             self._session_affinity_id = session_id
@@ -612,7 +695,7 @@ class BaseLLMClient(ABC):
 
     def _preserve_reasoning_signatures(self, messages: list, target_provider: str) -> list:
         """Preserve opaque reasoning signatures for multi-turn replay.
-        
+
         Models emit encrypted/opaque signatures (Anthropic redacted_thinking,
         Gemini thoughtSignature) that must be preserved when replaying the same model,
         but stripped when switching models to avoid schema errors.
@@ -664,12 +747,13 @@ class BaseLLMClient(ABC):
             from monika.infrastructure.database.models import ActivityLog
             from monika.infrastructure.database.db import get_session
             from datetime import datetime, timezone
+
             actor_name = getattr(self, "role", getattr(self, "model", "llm"))
             entry = ActivityLog(
                 timestamp=datetime.now(timezone.utc),
                 category="analysis",
                 description=f"[{stage_name}] {tool_name}({json.dumps(tool_input, ensure_ascii=False, default=str)[:200]}) → {json.dumps(result, ensure_ascii=False, default=str)[:300]}",
-                actor=actor_name
+                actor=actor_name,
             )
             async with get_session() as log_session:
                 log_session.add(entry)
@@ -708,15 +792,19 @@ class BaseLLMClient(ABC):
             from monika.infrastructure.database.db import get_session
 
             resolved_role = task_role or getattr(self, "role", None) or getattr(self, "task_role", None)
-            resolved_subsystem = subsystem or getattr(self, "subsystem", None) or self._infer_subsystem(resolved_role, task_name)
+            resolved_subsystem = (
+                subsystem or getattr(self, "subsystem", None) or self._infer_subsystem(resolved_role, task_name)
+            )
             resolved_symbol = symbol or getattr(self, "symbol", None)
             if not resolved_symbol and task_name and task_name.startswith("per_asset_"):
-                resolved_symbol = task_name[len("per_asset_"):]
+                resolved_symbol = task_name[len("per_asset_") :]
             resolved_cycle_id = cycle_id or getattr(self, "cycle_id", None)
 
             provider_name = getattr(self, "provider_name", None)
             if not provider_name:
-                cls_name = self.__class__.__name__.replace("Provider", "").replace("Client", "").replace("Wrapper", "").lower()
+                cls_name = (
+                    self.__class__.__name__.replace("Provider", "").replace("Client", "").replace("Wrapper", "").lower()
+                )
                 provider_name = cls_name or "llm"
 
             cost_estimate = None
@@ -725,21 +813,18 @@ class BaseLLMClient(ABC):
             else:
                 try:
                     from monika.core.analytics.pricing import cost_usd
+
                     kwargs_cost = {"cached_tokens": cached_tokens, "provider": provider_name}
                     if is_direct_free_tier is not None:
                         kwargs_cost["is_direct_free_tier"] = is_direct_free_tier
-                    cost_estimate = cost_usd(
-                        model_name,
-                        input_tokens,
-                        output_tokens,
-                        **kwargs_cost
-                    )
+                    cost_estimate = cost_usd(model_name, input_tokens, output_tokens, **kwargs_cost)
                 except Exception:
                     pass
 
             # Track cache miss diagnostics
             try:
                 from monika.infrastructure.llm.cache_miss_detector import global_cache_miss_detector
+
                 c_key = f"{resolved_subsystem or 'subsystem'}:{resolved_role or task_name or 'role'}:{resolved_symbol or 'global'}"
                 global_cache_miss_detector.check(
                     cached_tokens=cached_tokens,
@@ -753,6 +838,7 @@ class BaseLLMClient(ABC):
 
             try:
                 from monika.infrastructure.llm.cycle_budget_guard import get_cycle_budget_guard
+
                 guard = get_cycle_budget_guard(self.settings)
                 guard.record(
                     input_tokens=input_tokens,
@@ -766,6 +852,7 @@ class BaseLLMClient(ABC):
 
             try:
                 from monika.infrastructure.llm.context_tracker import get_context_tracker
+
                 tracker = get_context_tracker()
                 tracker.record_usage(
                     input_tokens=input_tokens,
@@ -782,6 +869,7 @@ class BaseLLMClient(ABC):
                 try:
                     from monika.core.telemetry.tracing.context import get_current_trace_id, get_current_span_id
                     from monika.core.telemetry.tracing.tracer import get_tracer
+
                     current_trace = get_current_trace_id()
                     current_parent_span = get_current_span_id()
                     if current_trace:
@@ -887,6 +975,7 @@ async def _flush_token_usage_worker():
 
             if batch:
                 from monika.infrastructure.database.db import get_session
+
                 async with get_session() as s:
                     s.add_all(batch)
                     await s.commit()
@@ -895,4 +984,3 @@ async def _flush_token_usage_worker():
         except Exception as e:
             logger.debug(f"[TokenFlushWorker] Coalesced write non-fatal error: {e}")
             await asyncio.sleep(1.0)
-

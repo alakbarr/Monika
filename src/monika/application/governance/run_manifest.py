@@ -33,7 +33,7 @@ logger = logging.getLogger("TradingAgent.Governance.RunManifest")
 
 @dataclass(frozen=True, slots=True)
 class RunManifest:
-    manifest_id: str                   # SHA-256 content-hash of the entire manifest payload
+    manifest_id: str  # SHA-256 content-hash of the entire manifest payload
     timestamp_utc: str
     git_commit_hash: Optional[str]
     python_version: str
@@ -81,6 +81,7 @@ class RunManifestGenerator:
     def _get_registered_strategies(cls) -> List[str]:
         try:
             from monika.application.analysis.strategies.registry import StrategyRegistry
+
             return sorted(list(StrategyRegistry._registry.keys()))
         except Exception:
             return []

@@ -4,6 +4,7 @@ from analysis.providers.anthropic_provider import AnthropicProvider
 from analysis.providers.gemini_provider import GeminiProvider
 from analysis.providers.openai_provider import OpenAIProvider
 
+
 def test_quantized_thinking_allocator_buckets():
     assert QuantizedThinkingAllocator.quantize(500) == 1024
     assert QuantizedThinkingAllocator.quantize(1024) == 1024
@@ -17,6 +18,7 @@ def test_quantized_thinking_allocator_buckets():
     assert QuantizedThinkingAllocator.quantize(13000) == 16000
     assert QuantizedThinkingAllocator.quantize(16384) == 16000
 
+
 def test_per_symbol_adaptive_thinking_quantized_default():
     # Test EURUSD low volatility
     eur_budget = PerSymbolAdaptiveThinkingAllocator.compute_symbol_budget(
@@ -26,9 +28,13 @@ def test_per_symbol_adaptive_thinking_quantized_default():
 
     # Test BTCUSD crisis regime
     btc_budget = PerSymbolAdaptiveThinkingAllocator.compute_symbol_budget(
-        "BTCUSD", context={"vix": 35.0, "confluence_score": 6.5, "regime": "CRISIS_SHIFT"}, base_budget=4000, quantized=True
+        "BTCUSD",
+        context={"vix": 35.0, "confluence_score": 6.5, "regime": "CRISIS_SHIFT"},
+        base_budget=4000,
+        quantized=True,
     )
     assert btc_budget in (10000, 16000)
+
 
 def test_providers_set_thinking_budget_quantization():
     anthropic_p = AnthropicProvider(model="claude-sonnet-4-6", settings={})

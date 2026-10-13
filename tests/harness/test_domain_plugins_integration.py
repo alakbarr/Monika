@@ -83,6 +83,7 @@ async def test_tool_plugin_domain_bridge():
         def get_handlers(self):
             async def _pivot_handler(args, **kwargs):
                 return {"pivot": 1.2345}
+
             return {"calculate_pivot": _pivot_handler}
 
     tool_plugin = CustomMathToolPlugin()

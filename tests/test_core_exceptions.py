@@ -19,7 +19,7 @@ from monika.core.exceptions import (
 def test_monika_error_str_and_dict():
     err = MonikaError("Base error", code="ERR_BASE", details={"retry": False})
     assert str(err) == "[ERR_BASE] Base error | Details: {'retry': False}"
-    
+
     d = err.to_dict()
     assert d["error"] == "MonikaError"
     assert d["code"] == "ERR_BASE"
@@ -31,7 +31,7 @@ def test_exception_inheritance_hierarchy():
     # Risk hierarchy
     risk_err = RiskViolationError("Risk breached", details={"drawdown": 0.06})
     assert isinstance(risk_err, MonikaError)
-    
+
     kill_err = KillSwitchActiveError("Kill switch triggered")
     assert isinstance(kill_err, RiskViolationError)
     assert isinstance(kill_err, MonikaError)

@@ -37,7 +37,7 @@ def mock_settings():
                     "cost_tier": "free",
                 }
             },
-            "task_roles": {}
+            "task_roles": {},
         }
     }
 
@@ -47,10 +47,7 @@ def test_nine_router_initialization_defaults(mock_settings, monkeypatch):
     monkeypatch.delenv("NINEROUTER_KEY", raising=False)
     monkeypatch.delenv("NINEROUTER_BASE_URL", raising=False)
     monkeypatch.delenv("NINEROUTER_URL", raising=False)
-    provider = NineRouterProvider(
-        model="kr/claude-sonnet-4.5",
-        settings=mock_settings
-    )
+    provider = NineRouterProvider(model="kr/claude-sonnet-4.5", settings=mock_settings)
     assert provider.provider_name == "9router"
     assert provider.model == "kr/claude-sonnet-4.5"
     assert provider.base_url == "http://localhost:20128/v1"
@@ -60,10 +57,7 @@ def test_nine_router_initialization_defaults(mock_settings, monkeypatch):
 
 def test_nine_router_initialization_custom_url(mock_settings):
     provider = NineRouterProvider(
-        model="if/kimi-k2",
-        base_url="http://192.168.1.100:20128/v1",
-        api_key="custom-test-key",
-        settings=mock_settings
+        model="if/kimi-k2", base_url="http://192.168.1.100:20128/v1", api_key="custom-test-key", settings=mock_settings
     )
     assert provider.base_url == "http://192.168.1.100:20128/v1"
     assert provider.api_key == "custom-test-key"
@@ -150,7 +144,7 @@ def test_llm_factory_and_registry_resolution(mock_settings):
         model_name="kr/claude-sonnet-4.5",
         settings=mock_settings,
         role_config={"max_tokens": 4096, "temperature": 0.2},
-        task_role="test_role"
+        task_role="test_role",
     )
     assert isinstance(client, NineRouterProvider)
     assert client.provider_name == "9router"
@@ -190,13 +184,7 @@ async def test_nine_router_classify_json_mocked(mock_settings):
     mock_resp.choices = [mock_choice]
     mock_resp.usage = mock.MagicMock(prompt_tokens=15, completion_tokens=25, total_tokens=40)
 
-    schema = {
-        "type": "object",
-        "properties": {
-            "signal": {"type": "string"},
-            "confidence": {"type": "number"}
-        }
-    }
+    schema = {"type": "object", "properties": {"signal": {"type": "string"}, "confidence": {"type": "number"}}}
 
     with mock.patch.object(provider, "_call_chat_completions_with_recovery", mock.AsyncMock(return_value=mock_resp)):
         res = await provider.classify_json("Analisis EURUSD", schema=schema)
@@ -253,14 +241,18 @@ def test_nine_router_is_alive_and_ensure_running():
         assert NineRouterProvider.is_alive("127.0.0.1", 20128) is False
 
     # Test auto spawn when no binary is found
-    with mock.patch("socket.create_connection", side_effect=ConnectionRefusedError()), \
-         mock.patch("shutil.which", return_value=None):
+    with (
+        mock.patch("socket.create_connection", side_effect=ConnectionRefusedError()),
+        mock.patch("shutil.which", return_value=None),
+    ):
         assert NineRouterProvider.ensure_running("127.0.0.1", 20128, wait_seconds=0.1) is False
 
     # Test auto spawn when 9router binary is found and starts
-    with mock.patch("socket.create_connection", side_effect=[ConnectionRefusedError(), mock_sock, mock_sock]), \
-         mock.patch("shutil.which", side_effect=lambda cmd: "9router" if cmd == "9router" else None), \
-         mock.patch("subprocess.Popen") as mock_popen:
+    with (
+        mock.patch("socket.create_connection", side_effect=[ConnectionRefusedError(), mock_sock, mock_sock]),
+        mock.patch("shutil.which", side_effect=lambda cmd: "9router" if cmd == "9router" else None),
+        mock.patch("subprocess.Popen") as mock_popen,
+    ):
         assert NineRouterProvider.ensure_running("127.0.0.1", 20128, wait_seconds=0.5) is True
         mock_popen.assert_called_once()
 
@@ -278,21 +270,21 @@ def test_llm_factory_create_client_instance_ninerouter_alias(mock_settings):
 async def test_startup_checker_ninerouter_ping_finds_model(mock_settings):
     """Test that StartupChecker._check_api_keys finds model for 'ninerouter' provider without warning."""
     from agent.startup_checks import StartupChecker
+
     checker = StartupChecker(mock_settings)
 
     mock_client = mock.MagicMock()
     mock_client.generate = mock.AsyncMock(return_value="pong")
     mock_client.last_served_model = "kr/claude-sonnet-4.5"
 
-    with mock.patch("analysis.providers.nine_router_provider.NineRouterProvider.ensure_running", return_value=True), \
-         mock.patch("analysis.providers.llm_factory.LLMFactory._create_client_instance", return_value=mock_client), \
-         mock.patch("agent.startup_checks.logger.warning") as mock_warn:
+    with (
+        mock.patch("analysis.providers.nine_router_provider.NineRouterProvider.ensure_running", return_value=True),
+        mock.patch("analysis.providers.llm_factory.LLMFactory._create_client_instance", return_value=mock_client),
+        mock.patch("agent.startup_checks.logger.warning") as mock_warn,
+    ):
         ok, warns = await checker._check_api_keys()
         assert ok is True
         # Verify no "No model found in catalog for provider 'ninerouter'" warning
         for call_args in mock_warn.call_args_list:
             msg = call_args[0][0]
             assert "No model found in catalog for provider 'ninerouter'" not in msg
-
-
-

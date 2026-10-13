@@ -1,4 +1,3 @@
-
 """GTJA Alpha #49.
 
 Formula: SUM(((HIGH+LOW)>=(DELAY(HIGH,1)+DELAY(LOW,1))?0:MAX(ABS(HIGH-DELAY(HIGH,1)),ABS(LOW-DELAY(LOW,1)))),12)/(SUM(...,12)+SUM(...,12))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_049",
-    "theme": ['reversal'],
-    "formula_latex": 'SUM(((HIGH+LOW)>=(DELAY(HIGH,1)+DELAY(LOW,1))?0:MAX(ABS(HIGH-DELAY(HIGH,1)),ABS(LOW-DELAY(LOW,1)))),12)/(SUM(...,12)+SUM(...,12))',
-    "columns_required": ['high', 'low'],
+    "theme": ["reversal"],
+    "formula_latex": "SUM(((HIGH+LOW)>=(DELAY(HIGH,1)+DELAY(LOW,1))?0:MAX(ABS(HIGH-DELAY(HIGH,1)),ABS(LOW-DELAY(LOW,1)))),12)/(SUM(...,12)+SUM(...,12))",
+    "columns_required": ["high", "low"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 12,
     "min_warmup_bars": 13,
-    "notes": 'Down-side range as share of total range over 12 days.',
+    "notes": "Down-side range as share of total range over 12 days.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     h = panel["high"]
@@ -46,9 +46,9 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     hl = h + l
     phl = h.shift(1) + l.shift(1)
     move = pd.DataFrame(
-        np.maximum(np.abs(h.to_numpy() - h.shift(1).to_numpy()),
-                   np.abs(l.to_numpy() - l.shift(1).to_numpy())),
-        index=h.index, columns=h.columns,
+        np.maximum(np.abs(h.to_numpy() - h.shift(1).to_numpy()), np.abs(l.to_numpy() - l.shift(1).to_numpy())),
+        index=h.index,
+        columns=h.columns,
     )
     # A missing high/low today or yesterday is neither an up nor a down move (#1463).
     valid = hl.notna() & phl.notna() & move.notna()

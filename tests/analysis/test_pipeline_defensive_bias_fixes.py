@@ -14,9 +14,7 @@ def test_in_harness_grounding_symmetric_wait_validation():
         "confluence_score": 8,
         "rationale": "Just waiting",
     }
-    is_grounded, errors, metadata = InHarnessGroundingValidator.verify_grounding(
-        payload_bad_wait, {}
-    )
+    is_grounded, errors, metadata = InHarnessGroundingValidator.verify_grounding(payload_bad_wait, {})
     assert not is_grounded
     assert metadata.get("suspicious_wait") is True
     assert any("High confluence but chose WAIT" in e for e in errors)
@@ -27,9 +25,7 @@ def test_in_harness_grounding_symmetric_wait_validation():
         "confluence_score": 8,
         "rationale": "Waiting for H4 candle close at 14:00 UTC to confirm liquidity sweep reclaim.",
     }
-    is_grounded, errors, metadata = InHarnessGroundingValidator.verify_grounding(
-        payload_good_wait, {}
-    )
+    is_grounded, errors, metadata = InHarnessGroundingValidator.verify_grounding(payload_good_wait, {})
     assert is_grounded
     assert len(errors) == 0
 
@@ -39,9 +35,7 @@ def test_in_harness_grounding_symmetric_wait_validation():
         "confluence_score": 4,
         "rationale": "No setup",
     }
-    is_grounded, errors, metadata = InHarnessGroundingValidator.verify_grounding(
-        payload_normal_wait, {}
-    )
+    is_grounded, errors, metadata = InHarnessGroundingValidator.verify_grounding(payload_normal_wait, {})
     assert is_grounded
 
 
@@ -51,13 +45,16 @@ async def test_unified_threshold_hard_ceiling_7():
         compute_unified_confluence_threshold,
         MAX_TOTAL_ADJUSTMENT,
     )
+
     assert MAX_TOTAL_ADJUSTMENT == 1
 
     from collections import namedtuple
-    TradeStats = namedtuple('TradeStats', ['total_trades', 'winning_trades'])
+
+    TradeStats = namedtuple("TradeStats", ["total_trades", "winning_trades"])
     mock_trade_stats = TradeStats(total_trades=0, winning_trades=0)
 
     mock_session = create_mock_async_session()
+
     def mock_execute(query):
         res = MagicMock()
         res.first.return_value = mock_trade_stats
@@ -68,9 +65,7 @@ async def test_unified_threshold_hard_ceiling_7():
     mock_session.execute.side_effect = mock_execute
 
     # Compute threshold with mock
-    thresh, reason = await compute_unified_confluence_threshold(
-        mock_session, "EURUSD", {}, stage1_confidence=0.10
-    )
+    thresh, reason = await compute_unified_confluence_threshold(mock_session, "EURUSD", {}, stage1_confidence=0.10)
     # Threshold must not exceed ceiling of 7
     assert thresh <= 7
 

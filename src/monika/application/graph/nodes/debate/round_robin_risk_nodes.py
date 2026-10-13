@@ -44,7 +44,9 @@ from monika.application.graph.nodes.debate.helpers import (
 logger = logging.getLogger("TradingAgent.Graph.Debate.RoundRobinRisk")
 
 
-async def _build_strict_context(s_inner, sym: str, r: dict, state: TradingState, scheduler) -> Tuple[Optional[AssetAnalysis], Optional[dict], Optional[dict]]:
+async def _build_strict_context(
+    s_inner, sym: str, r: dict, state: TradingState, scheduler
+) -> Tuple[Optional[AssetAnalysis], Optional[dict], Optional[dict]]:
     """Helper untuk membangun strict risk context per simbol."""
     analysis_id = r.get("analysis_id")
     deb = state.get("debate_states", {}).get(sym, {})
@@ -98,8 +100,12 @@ async def conservative_risk_node(state: TradingState, config: Optional[RunnableC
     if not actionable:
         return {}
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
-    scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
+    scheduler = (
+        configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    )
     settings = scheduler.settings if scheduler else {}
     use_deterministic = settings.get("agent_architecture", {}).get("deterministic_risk_gate", True)
 
@@ -120,7 +126,10 @@ async def conservative_risk_node(state: TradingState, config: Optional[RunnableC
                     else:
                         client = get_client_for_task("risk_gate_conservative", settings)
                         try:
-                            from monika.application.analysis.debate.multi_persona_risk_llm import analyze_risk_multi_persona_llm
+                            from monika.application.analysis.debate.multi_persona_risk_llm import (
+                                analyze_risk_multi_persona_llm,
+                            )
+
                             batch_eval = await analyze_risk_multi_persona_llm(client, sym, strict_context)
                             return sym, batch_eval
                         except Exception as b_err:
@@ -151,8 +160,12 @@ async def aggressive_risk_node(state: TradingState, config: Optional[RunnableCon
     if not actionable:
         return {}
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
-    scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
+    scheduler = (
+        configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    )
     settings = scheduler.settings if scheduler else {}
     use_deterministic = settings.get("agent_architecture", {}).get("deterministic_risk_gate", True)
     min_rr = settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
@@ -205,8 +218,12 @@ async def neutral_risk_node(state: TradingState, config: Optional[RunnableConfig
     if not actionable:
         return {}
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
-    scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
+    scheduler = (
+        configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    )
     settings = scheduler.settings if scheduler else {}
     use_deterministic = settings.get("agent_architecture", {}).get("deterministic_risk_gate", True)
     min_rr = settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
@@ -259,8 +276,12 @@ async def portfolio_judge_node(state: TradingState, config: Optional[RunnableCon
     if not actionable:
         return {"actionable_trades": []}
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
-    scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
+    scheduler = (
+        configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    )
     settings = scheduler.settings if scheduler else {}
     use_deterministic = settings.get("agent_architecture", {}).get("deterministic_risk_gate", True)
 
@@ -273,7 +294,9 @@ async def portfolio_judge_node(state: TradingState, config: Optional[RunnableCon
         async with semaphore:
             try:
                 async with get_session() as session:
-                    ana, strict_context, actual_risk_state_with_intel = await _build_strict_context(session, sym, r, state, scheduler)
+                    ana, strict_context, actual_risk_state_with_intel = await _build_strict_context(
+                        session, sym, r, state, scheduler
+                    )
                     if not strict_context or not ana:
                         return sym, (sym, r), None
 
@@ -282,9 +305,13 @@ async def portfolio_judge_node(state: TradingState, config: Optional[RunnableCon
                         pm_decision = make_portfolio_decision_deterministic(single_risk_debate)
                     else:
                         client = get_client_for_task("portfolio_manager_per_trade", settings)
-                        pm_decision = await make_portfolio_decision(client, sym, single_risk_debate, actual_risk_state_with_intel)
+                        pm_decision = await make_portfolio_decision(
+                            client, sym, single_risk_debate, actual_risk_state_with_intel
+                        )
 
-                    pm_decision = _apply_deterministic_risk_clamp(pm_decision, single_risk_debate, actual_risk_state_with_intel)
+                    pm_decision = _apply_deterministic_risk_clamp(
+                        pm_decision, single_risk_debate, actual_risk_state_with_intel
+                    )
 
                     survived_item = None
                     if pm_decision.get("approval") == True:
@@ -305,7 +332,7 @@ async def portfolio_judge_node(state: TradingState, config: Optional[RunnableCon
                             rationale=ana.rationale or "",
                             reason=f"Portfolio Judge Rejected: {pm_decision.get('reason')}",
                             context_snapshot_id=ana.context_snapshot_id,
-                            ssvp_cds_score=ana.ssvp_cds_score_at_analysis
+                            ssvp_cds_score=ana.ssvp_cds_score_at_analysis,
                         )
 
                     return sym, survived_item, pm_decision

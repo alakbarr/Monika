@@ -3,7 +3,10 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone, timedelta
 import pandas as pd
-from analysis.calculators.rolling_correlation_calculator import compute_rolling_correlation, compute_macro_cross_asset_matrix
+from analysis.calculators.rolling_correlation_calculator import (
+    compute_rolling_correlation,
+    compute_macro_cross_asset_matrix,
+)
 from analysis.calculators.economic_surprise import compute_cesi_index
 
 

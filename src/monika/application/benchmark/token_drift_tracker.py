@@ -24,6 +24,7 @@ logger = logging.getLogger("TradingAgent.TokenDriftTracker")
 @dataclass
 class PromptSnapshot:
     """Snapshot of a stage's prompt assembly metadata."""
+
     stage_name: str
     system_prompt_chars: int
     system_prompt_tokens_est: int
@@ -65,6 +66,7 @@ class PromptSnapshot:
 @dataclass
 class DriftReport:
     """Audit report comparing current prompt footprint against baseline."""
+
     stage_name: str
     is_drift_detected: bool
     is_cache_invalidated: bool

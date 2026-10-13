@@ -22,6 +22,7 @@ print("[HF] Please wait while weights are downloaded to local cache...")
 
 try:
     from huggingface_hub import snapshot_download
+
     cache_dir = snapshot_download(
         repo_id=repo_id,
         token=token if token else None,
@@ -32,6 +33,7 @@ try:
     # Verify model initialization
     print("\n[TimesFM] Verifying model initialization from cached weights...")
     import timesfm
+
     model = timesfm.TimesFM3Forecaster.from_pretrained(repo_id)
     print("[TimesFM] Model initialized successfully!")
     print(f"[TimesFM] Quantiles: {model.config.quantiles}")

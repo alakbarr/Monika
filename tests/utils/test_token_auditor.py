@@ -1,6 +1,7 @@
 """
 Unit test untuk TokenAuditor service.
 """
+
 import pytest
 from utils.analytics.token_auditor import TokenAuditor
 
@@ -127,5 +128,3 @@ async def test_activity_logger_fallback_event(db_session):
     assert "gemini-2.5-pro" in entry.description
     assert "claude-3-7-sonnet" in entry.description
     assert "cycle-404" in entry.description
-
-

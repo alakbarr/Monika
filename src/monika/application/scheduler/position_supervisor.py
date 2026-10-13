@@ -49,7 +49,11 @@ class PositionSupervisor:
     async def get_latest_snapshot(self) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]], Optional[datetime]]:
         """Return the latest cached positions and account info."""
         async with self._lock:
-            return list(self._latest_positions), dict(self._latest_account_info) if self._latest_account_info else None, self._last_poll_time
+            return (
+                list(self._latest_positions),
+                dict(self._latest_account_info) if self._latest_account_info else None,
+                self._last_poll_time,
+            )
 
     async def poll_once(self) -> None:
         """Fetch positions and account info once and distribute to evaluators."""
@@ -61,8 +65,12 @@ class PositionSupervisor:
             if not connected:
                 return
 
-            positions = await self.mt5_client.get_open_positions() if hasattr(self.mt5_client, "get_open_positions") else []
-            account_info = await self.mt5_client.get_account_info() if hasattr(self.mt5_client, "get_account_info") else None
+            positions = (
+                await self.mt5_client.get_open_positions() if hasattr(self.mt5_client, "get_open_positions") else []
+            )
+            account_info = (
+                await self.mt5_client.get_account_info() if hasattr(self.mt5_client, "get_account_info") else None
+            )
 
             async with self._lock:
                 self._latest_positions = positions or []
@@ -73,6 +81,7 @@ class PositionSupervisor:
             for name, eval_fn in list(self._evaluators.items()):
                 try:
                     import inspect
+
                     if inspect.iscoroutinefunction(eval_fn):
                         await eval_fn(self._latest_positions, self._latest_account_info)
                     else:

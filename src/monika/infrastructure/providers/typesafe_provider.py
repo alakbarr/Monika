@@ -41,12 +41,12 @@ class TypeSafeProvider(BaseLLMClient):
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
         confidence_threshold: float = 0.70,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         # Normalize model aliases
         clean_model = model
         if clean_model.startswith("openrouter/"):
-            clean_model = clean_model[len("openrouter/"):]
+            clean_model = clean_model[len("openrouter/") :]
         if clean_model.lower() in ("kev", "kev-4b"):
             clean_model = "jaredpalmer/kev-4b"
         elif clean_model.lower() in ("liquid-d1", "lfm-7b-d1", "liquid/lfm-7b-d1"):
@@ -63,13 +63,15 @@ class TypeSafeProvider(BaseLLMClient):
             thinking_level=thinking_level,
             settings=settings,
             temperature=temperature,
-            **kwargs
+            **kwargs,
         )
 
         # Base URL resolution
         if base_url:
             self.base_url = base_url
-        elif "openrouter" in (model or "").lower() or any(k in (model or "").lower() for k in ("kev", "liquid", "luna", "mercury")):
+        elif "openrouter" in (model or "").lower() or any(
+            k in (model or "").lower() for k in ("kev", "liquid", "luna", "mercury")
+        ):
             self.base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api")
         else:
             self.base_url = os.getenv("TYPESAFE_BASE_URL", "https://api.typesafe.ai")
@@ -89,6 +91,7 @@ class TypeSafeProvider(BaseLLMClient):
         """Lazy initialization of AsyncTypeSafeClient."""
         if self._client is None:
             from typesafe_sdk import AsyncTypeSafeClient
+
             resolved_key = self.api_key
             if not resolved_key:
                 if "openrouter.ai" in (self.base_url or ""):
@@ -98,26 +101,14 @@ class TypeSafeProvider(BaseLLMClient):
             if not resolved_key:
                 err_env = "OPENROUTER_API_KEY" if "openrouter.ai" in (self.base_url or "") else "TYPESAFE_API_KEY"
                 raise ValueError(f"{err_env} not configured in environment or settings")
-            self._client = AsyncTypeSafeClient(
-                api_key=resolved_key,
-                base_url=self.base_url
-            )
+            self._client = AsyncTypeSafeClient(api_key=resolved_key, base_url=self.base_url)
         return self._client
 
-    async def system_one(
-        self,
-        state: Any,
-        questions: dict,
-        timeout: float = 15.0,
-        **kwargs: Any
-    ) -> Any:
+    async def system_one(self, state: Any, questions: dict, timeout: float = 15.0, **kwargs: Any) -> Any:
         """Direct pass-through to underlying AsyncTypeSafeClient.system_one."""
         client = self._get_client()
         return await client.system_one(
-            state=state,
-            questions=questions,
-            model=kwargs.get("model", self.model),
-            timeout=timeout
+            state=state, questions=questions, model=kwargs.get("model", self.model), timeout=timeout
         )
 
     async def classify_json(
@@ -127,7 +118,7 @@ class TypeSafeProvider(BaseLLMClient):
         schema: Optional[dict] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Optional[dict]:
         """
         Executes System One evaluation using Jev primitives.
@@ -170,10 +161,7 @@ class TypeSafeProvider(BaseLLMClient):
         try:
             # 3. Invoke Jev System One API
             response = await client.system_one(
-                state=state,
-                questions=jev_questions,
-                model=self.model,
-                timeout=kwargs.get("timeout", 15.0)
+                state=state, questions=jev_questions, model=self.model, timeout=kwargs.get("timeout", 15.0)
             )
 
             latency_ms = int((time.perf_counter() - t0) * 1000)
@@ -193,14 +181,12 @@ class TypeSafeProvider(BaseLLMClient):
                 symbol=self.symbol,
                 cycle_id=self.cycle_id,
                 execution_time_ms=latency_ms,
-                status="success"
+                status="success",
             )
 
             # 5. Transform SystemOneResponse to standard dict
             result = parse_jev_response_to_dict(
-                response,
-                schema=schema,
-                default_confidence_threshold=self.confidence_threshold
+                response, schema=schema, default_confidence_threshold=self.confidence_threshold
             )
 
             # Check confidence gating if requested
@@ -229,7 +215,7 @@ class TypeSafeProvider(BaseLLMClient):
                 symbol=self.symbol,
                 cycle_id=self.cycle_id,
                 execution_time_ms=latency_ms,
-                status=f"error: {str(e)[:100]}"
+                status=f"error: {str(e)[:100]}",
             )
             # Returning None signals FallbackClientWrapper to failover to next model
             return None
@@ -240,7 +226,7 @@ class TypeSafeProvider(BaseLLMClient):
         system: str = "",
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Optional[str]:
         """Jev is a System One decision model and does not generate free text."""
         raise NotImplementedError(
@@ -254,29 +240,26 @@ class TypeSafeProvider(BaseLLMClient):
         conversation_history: list,
         new_user_message: str,
         tools: list,
-        tool_executor: Any = None
+        tool_executor: Any = None,
     ) -> dict:
         """Jev does not support interactive chat loops."""
-        raise NotImplementedError(
-            f"Model '{self.model}' (TypeSafe Jev) does not support interactive chat loops."
-        )
+        raise NotImplementedError(f"Model '{self.model}' (TypeSafe Jev) does not support interactive chat loops.")
 
     async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any) -> Any:
         """Jev does not support tool-calling agent loops."""
-        raise NotImplementedError(
-            f"Model '{self.model}' (TypeSafe Jev) does not support tool-calling loops."
-        )
+        raise NotImplementedError(f"Model '{self.model}' (TypeSafe Jev) does not support tool-calling loops.")
 
     async def ping(self) -> bool:
         """Pings TypeSafe Jev API with a minimal test evaluation."""
         try:
             from typesafe_sdk import Noul
+
             client = self._get_client()
             res = await client.system_one(
                 state="Health check",
                 questions={"status": Noul(instructions="Is system alive?")},
                 model=self.model,
-                timeout=5.0
+                timeout=5.0,
             )
             return bool(res and res.answers)
         except Exception as e:

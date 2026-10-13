@@ -4,9 +4,7 @@
 
 from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
+
 class ForexliveRssScraper(RssBaseScraper):
     def __init__(self):
-        super().__init__(
-            source_name="forexlive_main", 
-            feed_url="https://www.forexlive.com/feed"
-        )
+        super().__init__(source_name="forexlive_main", feed_url="https://www.forexlive.com/feed")

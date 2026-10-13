@@ -65,7 +65,9 @@ class WebhookSignatureVerifier:
         secondary_secret: Optional[str] = None,
         max_drift_seconds: float = DEFAULT_REPLAY_WINDOW_SECONDS,
     ):
-        self.primary_secret: bytes = primary_secret.encode("utf-8") if isinstance(primary_secret, str) else primary_secret
+        self.primary_secret: bytes = (
+            primary_secret.encode("utf-8") if isinstance(primary_secret, str) else primary_secret
+        )
         if secondary_secret:
             self.secondary_secret: Optional[bytes] = (
                 secondary_secret.encode("utf-8") if isinstance(secondary_secret, str) else secondary_secret
@@ -73,7 +75,6 @@ class WebhookSignatureVerifier:
         else:
             self.secondary_secret: Optional[bytes] = None
         self.max_drift_seconds: float = max_drift_seconds
-
 
     def compute_signature(self, payload: bytes, secret: Optional[bytes] = None) -> str:
         """Generates standard lowercase hex HMAC-SHA256 signature."""
@@ -91,7 +92,7 @@ class WebhookSignatureVerifier:
 
         sig = signature_header.strip()
         if sig.startswith("sha256="):
-            sig = sig[len("sha256="):]
+            sig = sig[len("sha256=") :]
 
         expected_primary = self.compute_signature(payload, self.primary_secret)
         if hmac.compare_digest(expected_primary.lower(), sig.lower()):
@@ -122,6 +123,7 @@ class WebhookSignatureVerifier:
         except ValueError:
             # Try ISO 8601 parsing
             from datetime import datetime, timezone
+
             try:
                 dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
                 ts = dt.timestamp()
@@ -286,7 +288,9 @@ class WebhookIngressRouter:
                     data=payload,
                 )
 
-        logger.info(f"[WebhookIngress] Event '{event_type}' (id={event_id}) dispatched successfully to {len(all_handlers)} handlers.")
+        logger.info(
+            f"[WebhookIngress] Event '{event_type}' (id={event_id}) dispatched successfully to {len(all_handlers)} handlers."
+        )
         return WebhookIngressResult(
             status=WebhookIngressStatus.SUCCESS,
             event_type=event_type,
@@ -299,7 +303,7 @@ class WebhookIngressRouter:
 def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
     """
     Normalizes a TradingView Pine Script webhook alert payload into Monika's standard trade_signal structure.
-    
+
     Handles:
       - Raw JSON string, bytes, or parsed dict
       - Key-value plain text alert payloads (e.g., 'ticker=EURUSD\\naction=buy')
@@ -373,7 +377,7 @@ def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
         volume = float(raw_vol)
         if volume <= 0:
             volume = 0.01
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         volume = 0.01
 
     # 4. Price normalization
@@ -382,7 +386,7 @@ def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
     if raw_price is not None:
         try:
             price = float(raw_price)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             price = None
 
     # 5. Stop Loss & Take Profit
@@ -391,7 +395,7 @@ def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
     if raw_sl is not None:
         try:
             sl = float(raw_sl)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             sl = None
 
     raw_tp = _get_val("tp", "take_profit", "target", default=None)
@@ -399,7 +403,7 @@ def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
     if raw_tp is not None:
         try:
             tp = float(raw_tp)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             tp = None
 
     # 6. Metadata

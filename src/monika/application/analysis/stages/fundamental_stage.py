@@ -24,7 +24,11 @@ from monika.application.analysis.prefetch.stage1_prefetcher import (
     CORE_STAGE1_PREFETCH_TOOLS,
     prune_stage1_tools,
 )
-from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE1_TOOLS_WEEKEND_BTC, minify_tool_definitions
+from monika.application.analysis.tools.tools_definitions import (
+    STAGE1_TOOLS,
+    STAGE1_TOOLS_WEEKEND_BTC,
+    minify_tool_definitions,
+)
 from monika.application.analysis.validators.fundamental_verifier import verify_fundamental_brief
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import ActivityLog, FundamentalBrief, SystemConfig, EconomicCalendar
@@ -42,6 +46,7 @@ logger = logging.getLogger("TradingAgent.FundamentalStage")
 # Muat system prompt dari file skill, fallback jika gagal
 try:
     from monika.application.skills.loader import compose_system_prompt as _compose
+
     _SYSTEM_PROMPT_BUILT = False  # build lazily
 except ImportError:
     _compose = None
@@ -68,6 +73,7 @@ Your task is to analyze the macroeconomic environment, central bank reaction fun
 """
 
 from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
+
 FALLBACK_SYSTEM_PROMPT = FALLBACK_SYSTEM_PROMPT.strip() + "\n\n" + get_universal_execution_discipline()
 
 USER_MESSAGE = """Please perform a complete fundamental macro analysis for the current market session.
@@ -143,10 +149,11 @@ class FundamentalStage:
         # SOTA Quantized Thinking Budget Allocation (Guarantees prompt cache hit rate)
         try:
             from monika.infrastructure.llm.adaptive_thinking import QuantizedThinkingAllocator
-            raw_budget = getattr(self.client, 'thinking_budget', None)
+
+            raw_budget = getattr(self.client, "thinking_budget", None)
             if raw_budget:
                 q_budget = QuantizedThinkingAllocator.quantize(raw_budget)
-                if hasattr(self.client, 'set_thinking_budget'):
+                if hasattr(self.client, "set_thinking_budget"):
                     self.client.set_thinking_budget(q_budget)
                 else:
                     self.client.thinking_budget = q_budget
@@ -158,14 +165,14 @@ class FundamentalStage:
         difinalisasi, supaya kontradiksi yang ditemukan debate bisa memicu eskalasi ke Opus
         (bukan cuma pasif menurunkan confidence)."""
         outcome = {
-            'ran': False,
-            'winner': 'TIE',
-            'legacy_winner': 'TIE',
-            'escalation_required': False,
-            'contradicts_usd_bias': False,
-            'internal_hallucination': False,
+            "ran": False,
+            "winner": "TIE",
+            "legacy_winner": "TIE",
+            "escalation_required": False,
+            "contradicts_usd_bias": False,
+            "internal_hallucination": False,
         }
-        if not self.settings.get('agent_architecture', {}).get('enable_debate', False):
+        if not self.settings.get("agent_architecture", {}).get("enable_debate", False):
             return outcome
         try:
             from monika.application.analysis.debate.macro_bull_analyst import run_bull_analyst
@@ -173,14 +180,16 @@ class FundamentalStage:
             from monika.application.analysis.debate.macro_judge import run_macro_judge
             from monika.application.analysis.debate.macro_debate_validator import validate_macro_judge_output
             import json
+
             chronicle_bullets = ""
             try:
                 from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+
                 c_writer = ChronicleWriter(self.settings)
                 chronicle_bullets = await c_writer.get_condensed_chronicle_bullets(session, limit=4)
             except Exception:
                 pass
-            context = 'BRIEF SO FAR:\n' + (brief.structured_json or brief.content_markdown or '')
+            context = "BRIEF SO FAR:\n" + (brief.structured_json or brief.content_markdown or "")
             if chronicle_bullets:
                 context = f"ACTIVE MACRO CHRONICLE (Ongoing Structural Regimes):\n{chronicle_bullets}\n\n{context}"
             if prefetched_data:
@@ -194,7 +203,16 @@ class FundamentalStage:
 
                 if isinstance(pref_dict, dict):
                     macro_blocks = []
-                    for k in ("central_bank_rates", "dxy", "bond_yields", "vix", "cme_fedwatch", "economic_calendar", "cot_report", "news_digest"):
+                    for k in (
+                        "central_bank_rates",
+                        "dxy",
+                        "bond_yields",
+                        "vix",
+                        "cme_fedwatch",
+                        "economic_calendar",
+                        "cot_report",
+                        "news_digest",
+                    ):
                         if k in pref_dict:
                             v_str = json.dumps(pref_dict[k], default=str)
                             macro_blocks.append(f"[{k.upper()}]:\n{v_str[:2500]}")
@@ -227,48 +245,53 @@ class FundamentalStage:
             bear_str = json.dumps(bear, indent=2) if isinstance(bear, dict) else str(bear)
             brief.debate_bull_thesis = bull_str
             brief.debate_bear_thesis = bear_str
-            brief.debate_winner = judge.get('winner', 'TIE')
-            brief.debate_escalation_required = judge.get('escalation_required', False)
+            brief.debate_winner = judge.get("winner", "TIE")
+            brief.debate_escalation_required = judge.get("escalation_required", False)
 
-            outcome.update({
-                'ran': True,
-                'winner': brief.debate_winner,
-                'legacy_winner': judge.get('legacy_winner', 'TIE'),
-                'dxy_bias': judge.get('dxy_bias', 'NEUTRAL'),
-                'risk_asset_bias': judge.get('risk_asset_bias', 'NEUTRAL'),
-                'bull_score': judge.get('bull_arguments_score', 5),
-                'bear_score': judge.get('bear_arguments_score', 5),
-                'escalation_required': brief.debate_escalation_required,
-                'internal_hallucination': judge.get('internal_hallucination_detected', False),
-            })
+            outcome.update(
+                {
+                    "ran": True,
+                    "winner": brief.debate_winner,
+                    "legacy_winner": judge.get("legacy_winner", "TIE"),
+                    "dxy_bias": judge.get("dxy_bias", "NEUTRAL"),
+                    "risk_asset_bias": judge.get("risk_asset_bias", "NEUTRAL"),
+                    "bull_score": judge.get("bull_arguments_score", 5),
+                    "bear_score": judge.get("bear_arguments_score", 5),
+                    "escalation_required": brief.debate_escalation_required,
+                    "internal_hallucination": judge.get("internal_hallucination_detected", False),
+                }
+            )
 
             if brief.structured_json:
                 b_data = json.loads(brief.structured_json)
-                b_data['debate_winner'] = brief.debate_winner
-                b_data['debate_winner_legacy'] = judge.get('legacy_winner', 'TIE')
-                b_data['debate_bull_thesis'] = bull
-                b_data['debate_bear_thesis'] = bear
-                b_data['debate_bull_score'] = judge.get('bull_arguments_score', 5)
-                b_data['debate_bear_score'] = judge.get('bear_arguments_score', 5)
-                b_data['debate_rationale'] = judge.get('rationale', '')
-                b_data['dxy_bias_from_judge'] = judge.get('dxy_bias', 'NEUTRAL')
-                b_data['risk_asset_bias_from_judge'] = judge.get('risk_asset_bias', 'NEUTRAL')
-                b_data['debate_hallucination_detected'] = judge.get('internal_hallucination_detected', False)
+                b_data["debate_winner"] = brief.debate_winner
+                b_data["debate_winner_legacy"] = judge.get("legacy_winner", "TIE")
+                b_data["debate_bull_thesis"] = bull
+                b_data["debate_bear_thesis"] = bear
+                b_data["debate_bull_score"] = judge.get("bull_arguments_score", 5)
+                b_data["debate_bear_score"] = judge.get("bear_arguments_score", 5)
+                b_data["debate_rationale"] = judge.get("rationale", "")
+                b_data["dxy_bias_from_judge"] = judge.get("dxy_bias", "NEUTRAL")
+                b_data["risk_asset_bias_from_judge"] = judge.get("risk_asset_bias", "NEUTRAL")
+                b_data["debate_hallucination_detected"] = judge.get("internal_hallucination_detected", False)
 
-                if judge.get('internal_hallucination_detected'):
-                    reasons_str = "; ".join(judge.get('hallucination_reasons', []))
-                    b_data['macro_narrative'] = b_data.get('macro_narrative', '') + (
+                if judge.get("internal_hallucination_detected"):
+                    reasons_str = "; ".join(judge.get("hallucination_reasons", []))
+                    b_data["macro_narrative"] = b_data.get("macro_narrative", "") + (
                         f"\n\n[SYSTEM: Macro debate judge output contains internal inconsistencies: {reasons_str}. "
                         f"Confidence penalized and escalated.]"
                     )
                     brief.confidence = min(brief.confidence or 0.7, 0.65)
 
                 from monika.domain.market.bias_utils import normalize_bias
-                norm_dxy = normalize_bias(judge.get('dxy_bias'))
-                norm_usd = normalize_bias(b_data.get('currency_bias', {}).get('USD'))
-                if (norm_dxy == 'bullish' and norm_usd == 'bearish') or (norm_dxy == 'bearish' and norm_usd == 'bullish'):
-                    outcome['contradicts_usd_bias'] = True
-                    b_data['macro_narrative'] = b_data.get('macro_narrative', '') + (
+
+                norm_dxy = normalize_bias(judge.get("dxy_bias"))
+                norm_usd = normalize_bias(b_data.get("currency_bias", {}).get("USD"))
+                if (norm_dxy == "bullish" and norm_usd == "bearish") or (
+                    norm_dxy == "bearish" and norm_usd == "bullish"
+                ):
+                    outcome["contradicts_usd_bias"] = True
+                    b_data["macro_narrative"] = b_data.get("macro_narrative", "") + (
                         f"\n\n[SYSTEM: Macro debate judge concluded DXY bias={norm_dxy}, while "
                         f"currency_bias['USD']={norm_usd}. Contradiction detected — escalated for adjudication.]"
                     )
@@ -284,7 +307,7 @@ class FundamentalStage:
                 f"hallucination={outcome['internal_hallucination']}"
             )
         except Exception as e:
-            logger.error(f'Macro debate failed: {e}')
+            logger.error(f"Macro debate failed: {e}")
         return outcome
 
     async def run(
@@ -310,6 +333,7 @@ class FundamentalStage:
         start_time = clock.now()
         try:
             from monika.application.analysis.event_broadcaster import emit_analysis_event
+
             emit_analysis_event("analysis_step_start", {"step": "fundamental_brief", "stage": 1})
         except Exception:
             pass
@@ -317,25 +341,30 @@ class FundamentalStage:
         # Inject Anti-Anchoring / Flip-Flop streak if available as dynamic component
         dynamic_system_notes = ""
         try:
-            key = f'anchoring_streak_alert_{clock.now().strftime("%Y%m%d_%H")}'
-            streak_cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
+            key = f"anchoring_streak_alert_{clock.now().strftime('%Y%m%d_%H')}"
+            streak_cfg = (
+                await session.execute(select(SystemConfig).where(SystemConfig.key == key))
+            ).scalar_one_or_none()
             if streak_cfg and streak_cfg.value:
                 streak_alerts = json.loads(streak_cfg.value)
                 if streak_alerts:
-                    dynamic_system_notes = f"\n\n[BEHAVIORAL WARNING]:\n" + "\n".join(streak_alerts) + "\nEnsure you evaluate fresh incoming data. If anchoring: do NOT duplicate prior cycle biases without new catalysts. If flip-flopping: beware of whipsaw noise; adopt a neutral stance unless a decisive new macro catalyst is confirmed."
+                    dynamic_system_notes = (
+                        f"\n\n[BEHAVIORAL WARNING]:\n"
+                        + "\n".join(streak_alerts)
+                        + "\nEnsure you evaluate fresh incoming data. If anchoring: do NOT duplicate prior cycle biases without new catalysts. If flip-flopping: beware of whipsaw noise; adopt a neutral stance unless a decisive new macro catalyst is confirmed."
+                    )
         except Exception as e:
-            logger.debug(f'Failed to load behavioral streak alerts: {e}')
+            logger.debug(f"Failed to load behavioral streak alerts: {e}")
 
         # SOTA Cache-Optimized 4-Tier Prompt Assembly with Canonical Tier-0 Anchor (>= 4,150 tokens)
         try:
             from monika.application.analysis.prompt.prompt_assembler import PromptAssembler
             from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+
             core_memory = await LayeredMemoryManager(self.settings).get_core_memory(session)
             assembler = PromptAssembler(self.settings)
             static_sys, dynamic_notes = assembler.assemble_stage1_system_tuple(
-                core_memory=core_memory,
-                behavioral_alert=dynamic_system_notes,
-                pad_for_gemini=True
+                core_memory=core_memory, behavioral_alert=dynamic_system_notes, pad_for_gemini=True
             )
             system_prompt = static_sys
             effective_system_prompt = (static_sys, dynamic_notes) if dynamic_notes else static_sys
@@ -356,6 +385,7 @@ class FundamentalStage:
 
             try:
                 from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+
                 soul_identity = LayeredMemoryManager(self.settings).get_identity()
                 if soul_identity:
                     system_prompt = f"{soul_identity}\n\n---\n\n{system_prompt}"
@@ -364,6 +394,7 @@ class FundamentalStage:
 
             try:
                 from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
                 model_name = getattr(self.client, "model", "")
                 min_cache_chars = CacheBreakpointManager.get_min_cacheable_chars(model_name)
                 if len(system_prompt) < min_cache_chars:
@@ -376,7 +407,7 @@ class FundamentalStage:
         # Record start timestamp
         await self._log(session, "Starting Stage 1: Fundamental Brief generation")
 
-        current_utc_str = clock.now().strftime('%Y-%m-%d %H:%M UTC (%A)')
+        current_utc_str = clock.now().strftime("%Y-%m-%d %H:%M UTC (%A)")
         actual_user_message = USER_MESSAGE
         # Fetch factor effectiveness as extra context for Stage 1
         extra_context = None
@@ -384,6 +415,7 @@ class FundamentalStage:
         # Dynamic performance notes loaded into user message (preserves static system prompt KV-cache)
         try:
             from monika.application.skills.loader import load_skill
+
             p_notes = load_skill("performance_notes")
             if p_notes and len(p_notes.strip()) > 20:
                 ctx_lines.append(f"\n--- HISTORICAL PERFORMANCE DIRECTIVES ---\n{p_notes.strip()}")
@@ -394,71 +426,77 @@ class FundamentalStage:
             logger.debug(f"Dynamic performance notes load failed (non-fatal): {p_err}")
         try:
             from monika.core.analytics.analysis_tracker import compute_factor_effectiveness
+
             factor_data = await compute_factor_effectiveness(session, days_back=30)
-            
-            if (not factor_data.get('insufficient_data') and 
-                factor_data.get('total_trades_analyzed', 0) >= 15):
-                
-                factors = factor_data.get('factor_effectiveness', {})
-                strong = [(k, v) for k, v in factors.items() 
-                          if v.get('assessment') == 'STRONG_PREDICTOR']
-                negative = [(k, v) for k, v in factors.items() 
-                            if v.get('assessment') == 'NEGATIVE_PREDICTOR']
-                
+
+            if not factor_data.get("insufficient_data") and factor_data.get("total_trades_analyzed", 0) >= 15:
+                factors = factor_data.get("factor_effectiveness", {})
+                strong = [(k, v) for k, v in factors.items() if v.get("assessment") == "STRONG_PREDICTOR"]
+                negative = [(k, v) for k, v in factors.items() if v.get("assessment") == "NEGATIVE_PREDICTOR"]
+
                 if strong or negative:
-                    ctx_lines.append('\n--- LIVE TRADING PERFORMANCE CONTEXT (Last 30 Days) ---')
+                    ctx_lines.append("\n--- LIVE TRADING PERFORMANCE CONTEXT (Last 30 Days) ---")
                     ctx_lines.append(f"Analyzed {factor_data['total_trades_analyzed']} closed trades.")
-                    
+
                     if strong:
-                        ctx_lines.append('Historically reliable confluence factors (weight these higher):')
+                        ctx_lines.append("Historically reliable confluence factors (weight these higher):")
                         for k, v in strong[:4]:
-                            ctx_lines.append(f"  + {k.replace('_', ' ')}: {v['win_rate']:.0f}% WR ({v['total']} trades)")
-                    
+                            ctx_lines.append(
+                                f"  + {k.replace('_', ' ')}: {v['win_rate']:.0f}% WR ({v['total']} trades)"
+                            )
+
                     if negative:
-                        ctx_lines.append('Historically weak/negative factors (be cautious when ONLY these apply):')
+                        ctx_lines.append("Historically weak/negative factors (be cautious when ONLY these apply):")
                         for k, v in negative[:3]:
-                            ctx_lines.append(f"  - {k.replace('_', ' ')}: {v['win_rate']:.0f}% WR ({v['total']} trades)")
+                            ctx_lines.append(
+                                f"  - {k.replace('_', ' ')}: {v['win_rate']:.0f}% WR ({v['total']} trades)"
+                            )
         except Exception as e:
-            logger.debug(f'Factor effectiveness fetch for Stage 1 failed (non-fatal): {e}')
+            logger.debug(f"Factor effectiveness fetch for Stage 1 failed (non-fatal): {e}")
 
         # Fetch Market Chronicle (Persistent Long-term Memory)
         try:
             from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+
             chronicle_ctx = await ChronicleWriter(self.settings).get_chronicle_context(session, days_back=30)
             if chronicle_ctx and isinstance(chronicle_ctx, str):
-                ctx_lines.append(f'\n{chronicle_ctx}')
+                ctx_lines.append(f"\n{chronicle_ctx}")
         except Exception as e:
-            logger.debug(f'Market chronicle fetch for Stage 1 failed (non-fatal): {e}')
+            logger.debug(f"Market chronicle fetch for Stage 1 failed (non-fatal): {e}")
 
         # Fetch compressed memory
         try:
-            compressed_query = select(ActivityLog).where(
-                ActivityLog.category == 'compressed_memory'
-            ).order_by(ActivityLog.timestamp.desc()).limit(3)
-            
+            compressed_query = (
+                select(ActivityLog)
+                .where(ActivityLog.category == "compressed_memory")
+                .order_by(ActivityLog.timestamp.desc())
+                .limit(3)
+            )
+
             compressed_logs = (await session.execute(compressed_query)).scalars().all()
             if compressed_logs:
-                ctx_lines.append('\n--- LONG-TERM AI COMPRESSED MEMORY ---')
+                ctx_lines.append("\n--- LONG-TERM AI COMPRESSED MEMORY ---")
                 for clog in compressed_logs:
-                    desc = getattr(clog, 'description', None)
+                    desc = getattr(clog, "description", None)
                     if desc and isinstance(desc, str):
                         ctx_lines.append(desc)
         except Exception as e:
-            logger.debug(f'Compressed memory fetch for Stage 1 failed (non-fatal): {e}')
+            logger.debug(f"Compressed memory fetch for Stage 1 failed (non-fatal): {e}")
 
         # Fetch Layered Core Memory (Curated, <=800 tok)
         try:
             from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+
             mem_mgr = LayeredMemoryManager(self.settings)
             core_mem = await mem_mgr.get_core_memory(session)
             if core_mem:
-                ctx_lines.append(f'\n--- AGENT CORE MEMORY (Curated <=800 tok) ---\n{core_mem}')
+                ctx_lines.append(f"\n--- AGENT CORE MEMORY (Curated <=800 tok) ---\n{core_mem}")
         except Exception as e:
-            logger.debug(f'Layered core memory fetch failed (non-fatal): {e}')
+            logger.debug(f"Layered core memory fetch failed (non-fatal): {e}")
 
         str_lines = [line for line in ctx_lines if isinstance(line, str)]
         if str_lines:
-            extra_context = '\n'.join(str_lines)
+            extra_context = "\n".join(str_lines)
 
         # PREFETCH ALL STAGE 1 DATA TO SAVE TOKENS AND LATENCY
         await self._log(session, "Prefetching Stage 1 context data...")
@@ -473,20 +511,29 @@ class FundamentalStage:
         # Check DataFeedCircuitBreaker status and inject warning if tripped
         try:
             from monika.infrastructure.data_ingestion.sources.circuit_breaker import get_data_feed_circuit_breaker
+
             feed_breaker = get_data_feed_circuit_breaker()
             if feed_breaker.is_tripped():
                 tripped = feed_breaker.get_tripped_feeds()
                 logger.warning(f"[FundamentalStage] Active data feed circuit breaker: {tripped}")
-                ctx_lines.append(f"\n[DATA FEED CIRCUIT BREAKER ACTIVE]: Stale feeds detected ({list(tripped.keys())}). Prioritize capital preservation.")
-                extra_context = '\n'.join([line for line in ctx_lines if isinstance(line, str)])
+                ctx_lines.append(
+                    f"\n[DATA FEED CIRCUIT BREAKER ACTIVE]: Stale feeds detected ({list(tripped.keys())}). Prioritize capital preservation."
+                )
+                extra_context = "\n".join([line for line in ctx_lines if isinstance(line, str)])
         except Exception as e:
             logger.debug(f"Circuit breaker alert check non-fatal error: {e}")
 
         # Pre-compute sticky currency biases (held >=4 distinct cycles) to alert the model upfront
         try:
-            raw_briefs = (await session.execute(
-                select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(20)
-            )).scalars().all()
+            raw_briefs = (
+                (
+                    await session.execute(
+                        select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(20)
+                    )
+                )
+                .scalars()
+                .all()
+            )
             distinct_cycle_briefs = []
             last_time = None
             for b in raw_briefs:
@@ -516,14 +563,19 @@ class FundamentalStage:
                     all_currencies = set().union(*[pb.keys() for pb in last_4_biases])
                     for cur in all_currencies:
                         cur_biases = [pb.get(cur) for pb in last_4_biases if cur in pb]
-                        if len(cur_biases) == 4 and all(b == cur_biases[0] and b != 'neutral' for b in cur_biases):
+                        if len(cur_biases) == 4 and all(b == cur_biases[0] and b != "neutral" for b in cur_biases):
                             sticky_currencies[cur] = cur_biases[0]
                     if sticky_currencies:
-                        sticky_lines = "\n".join([f"- {cur}: '{bias}' (held for 4+ consecutive cycles)" for cur, bias in sticky_currencies.items()])
+                        sticky_lines = "\n".join(
+                            [
+                                f"- {cur}: '{bias}' (held for 4+ consecutive cycles)"
+                                for cur, bias in sticky_currencies.items()
+                            ]
+                        )
                         actual_user_message += (
                             f"\n\n[STICKY BIAS CONTEXT & ANCHORING REQUIREMENT]\n"
                             f"The following currencies are anchored across recent distinct cycles:\n{sticky_lines}\n"
-                            f"If your analysis maintains any of these sticky biases, you MUST populate `bias_continuity_justification` in submit_fundamental_brief with >= 40 characters and concrete numeric evidence from this cycle (e.g. price levels, yield bps, dates, economic figures). Example: bias_continuity_justification={{\"USD\": \"USD bearish bias maintained as DXY remains below 102.50 resistance and 10Y yields fell 4 bps on 2026-08-23\"}}."
+                            f'If your analysis maintains any of these sticky biases, you MUST populate `bias_continuity_justification` in submit_fundamental_brief with >= 40 characters and concrete numeric evidence from this cycle (e.g. price levels, yield bps, dates, economic figures). Example: bias_continuity_justification={{"USD": "USD bearish bias maintained as DXY remains below 102.50 resistance and 10Y yields fell 4 bps on 2026-08-23"}}.'
                         )
         except Exception as _sticky_err:
             logger.warning(f"Sticky bias pre-computation error: {_sticky_err}")
@@ -541,10 +593,11 @@ class FundamentalStage:
                     )
         except Exception as _ceil_err:
             logger.debug(f"Confidence ceiling pre-computation non-fatal error: {_ceil_err}")
-        
+
         # SOTA Context Compression: Apply LFSP (Lossless Financial Structural Projection)
         try:
             from monika.infrastructure.llm.prompt_compressor import truncate_to_budget
+
             if isinstance(prefetched_json, str):
                 compressed_json = truncate_to_budget(prefetched_json, max_tokens=3500)
             else:
@@ -564,37 +617,47 @@ class FundamentalStage:
                 "Provide brief for BTCUSD only. Evaluate confidence realistically based on available data.\n"
                 "Use minimal tool calls: get_vix, get_fedwatch_probabilities, get_news_digest, get_funding_rate only.\n"
                 "You MUST invoke get_funding_rate to inspect perpetual futures positioning and sentiment.\n"
-                "priced_in_assessment format for weekend: priced_in_assessment={\"dominant_driver\": \"BTC weekend risk sentiment & Fed policy\", \"priced_in_score\": 5, \"sell_the_news_risk\": \"low\", \"retail_sentiment_percentile\": 55.0, \"funding_rate\": 0.01}\n"
-                "If USD bias is sticky over the weekend, you may justify: bias_continuity_justification={\"USD\": \"Forex markets closed for weekend; Friday close reference at DXY 102.50 and 10Y yield 4.10% maintained.\"}"
+                'priced_in_assessment format for weekend: priced_in_assessment={"dominant_driver": "BTC weekend risk sentiment & Fed policy", "priced_in_score": 5, "sell_the_news_risk": "low", "retail_sentiment_percentile": 55.0, "funding_rate": 0.01}\n'
+                'If USD bias is sticky over the weekend, you may justify: bias_continuity_justification={"USD": "Forex markets closed for weekend; Friday close reference at DXY 102.50 and 10Y yield 4.10% maintained."}'
             )
             actual_user_message += weekend_context
 
         if user_market_intel:
             intel_block = ["\n\n[OPERATOR MARKET INTELLIGENCE & DIRECTIVES]"]
-            intel_block.append("The human operator has recorded the following verified market intelligence and tactical directives.")
-            intel_block.append("You MUST incorporate these insights and directives into your macro reasoning and currency bias assessments:\n")
+            intel_block.append(
+                "The human operator has recorded the following verified market intelligence and tactical directives."
+            )
+            intel_block.append(
+                "You MUST incorporate these insights and directives into your macro reasoning and currency bias assessments:\n"
+            )
             for item in user_market_intel:
                 raw_syms = item.get("affected_symbols")
                 if isinstance(raw_syms, list):
                     syms = ", ".join(raw_syms) or "ALL"
                 else:
                     syms = str(raw_syms or "ALL")
-                intel_block.append(f"- ID #{item.get('id')} [{item.get('intel_type', '').upper()}]: {item.get('title')}")
-                intel_block.append(f"  Directive: {item.get('directive', 'neutral')} | Scope: {syms} | Target Cycle: {item.get('target_cycle', 'continuous')}")
+                intel_block.append(
+                    f"- ID #{item.get('id')} [{item.get('intel_type', '').upper()}]: {item.get('title')}"
+                )
+                intel_block.append(
+                    f"  Directive: {item.get('directive', 'neutral')} | Scope: {syms} | Target Cycle: {item.get('target_cycle', 'continuous')}"
+                )
                 intel_block.append(f"  Summary: {item.get('summary')}")
                 if item.get("full_content"):
                     intel_block.append(f"  Details: {item.get('full_content')[:500]}")
             actual_user_message += "\n".join(intel_block)
 
         # IMP-9: Exponential backoff retry for transient API failures
-        analysis_cfg = self.settings.get('analysis', {}) or self.settings.get('claude', {})
-        max_retries = analysis_cfg.get('fundamental_max_retries', 3)
-        base_delay = analysis_cfg.get('fundamental_retry_base_delay', 5)
+        analysis_cfg = self.settings.get("analysis", {}) or self.settings.get("claude", {})
+        max_retries = analysis_cfg.get("fundamental_max_retries", 3)
+        base_delay = analysis_cfg.get("fundamental_retry_base_delay", 5)
         result = None
         last_error = None
-        
+
         base_tools = STAGE1_TOOLS_WEEKEND_BTC if weekend_btc_only_mode else STAGE1_TOOLS
-        is_prefetch_healthy = bool(prefetch_satisfied_tools and CORE_STAGE1_PREFETCH_TOOLS.issubset(prefetch_satisfied_tools))
+        is_prefetch_healthy = bool(
+            prefetch_satisfied_tools and CORE_STAGE1_PREFETCH_TOOLS.issubset(prefetch_satisfied_tools)
+        )
 
         if not is_prefetch_healthy and prefetch_satisfied_tools:
             missing_core = sorted(list(CORE_STAGE1_PREFETCH_TOOLS - prefetch_satisfied_tools))
@@ -611,7 +674,7 @@ class FundamentalStage:
 
         # Turn budget: strict 2 turns when prefetch is complete, 4 turns if fallback tools required.
         stage1_max_turns = 2 if is_prefetch_healthy else 4
-        
+
         for attempt in range(max_retries):
             try:
                 result = await self.client.run_agent(
@@ -627,12 +690,14 @@ class FundamentalStage:
                 if result.get("success"):
                     break
                 last_error = result.get("error", "unknown error")
-                
+
                 # Don't retry on structural errors (only transient API overload)
                 error_str = str(last_error).lower()
                 if any(x in error_str for x in ["overloaded", "rate_limit", "timeout", "529", "503"]):
-                    delay = base_delay * (2 ** attempt)
-                    logger.warning(f"Stage 1 transient error (attempt {attempt+1}/{max_retries}): {last_error}. Retrying in {delay}s...")
+                    delay = base_delay * (2**attempt)
+                    logger.warning(
+                        f"Stage 1 transient error (attempt {attempt + 1}/{max_retries}): {last_error}. Retrying in {delay}s..."
+                    )
                     await asyncio.sleep(delay)
                 else:
                     logger.warning(f"Stage 1 non-transient error: {last_error}. No retry.")
@@ -641,44 +706,54 @@ class FundamentalStage:
                 last_error = str(e)
                 error_str = last_error.lower()
                 if any(x in error_str for x in ["overloaded", "rate_limit", "timeout"]):
-                    delay = base_delay * (2 ** attempt)
-                    logger.warning(f"Stage 1 exception (attempt {attempt+1}/{max_retries}): {e}. Retrying in {delay}s...")
+                    delay = base_delay * (2**attempt)
+                    logger.warning(
+                        f"Stage 1 exception (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s..."
+                    )
                     await asyncio.sleep(delay)
                 else:
                     raise
-        
+
         if result is None:
             result = {"success": False, "error": last_error or "max retries exceeded"}
 
         elapsed = (clock.now() - start_time).total_seconds()
 
         if not result["success"]:
-            if result.get("is_billing_error") and (self.consent_callback is not None or (self.is_fallback_always_approved is not None and self.is_fallback_always_approved())):
-                role_fallbacks = self.settings.get('llm', {}).get('task_roles', {}).get('stage1_fundamental', {})
+            if result.get("is_billing_error") and (
+                self.consent_callback is not None
+                or (self.is_fallback_always_approved is not None and self.is_fallback_always_approved())
+            ):
+                role_fallbacks = self.settings.get("llm", {}).get("task_roles", {}).get("stage1_fundamental", {})
                 fallback_model = (
-                    role_fallbacks.get('billing_fallback')
-                    or role_fallbacks.get('fallback')
-                    or role_fallbacks.get('fallback_2')
-                    or role_fallbacks.get('fallback_3')
-                    or role_fallbacks.get('primary')
+                    role_fallbacks.get("billing_fallback")
+                    or role_fallbacks.get("fallback")
+                    or role_fallbacks.get("fallback_2")
+                    or role_fallbacks.get("fallback_3")
+                    or role_fallbacks.get("primary")
                 )
                 approved = False
                 if self.is_fallback_always_approved is not None and self.is_fallback_always_approved():
                     approved = True
                 elif self.consent_callback is not None:
                     logger.warning("Billing error detected. Requesting fallback consent...")
-                    approved = await self.consent_callback(f"Saldo LLM utama habis (Fundamental Stage). Pindah ke model fallback ({fallback_model})?")
-                
+                    approved = await self.consent_callback(
+                        f"Saldo LLM utama habis (Fundamental Stage). Pindah ke model fallback ({fallback_model})?"
+                    )
+
                 if approved:
                     logger.info(f"Fallback approved. Switching to fallback client ({fallback_model})...")
                     fallback_client = create_client(fallback_model, self.settings)
-                    
+
                     messages = result.get("context_messages", [])
                     if not messages:
                         messages = [
-                            {"role": "user", "content": actual_user_message + "\n\n(Extra Context: " + (extra_context or "") + ")"}
+                            {
+                                "role": "user",
+                                "content": actual_user_message + "\n\n(Extra Context: " + (extra_context or "") + ")",
+                            }
                         ]
-                    
+
                     fallback_result = await fallback_client.run_agent_from_messages(
                         session=session,
                         system_prompt=system_prompt,
@@ -686,18 +761,20 @@ class FundamentalStage:
                         tools=tools_to_use,
                         max_tool_turns=self.client.max_tool_turns,
                         stage_name="fundamental",
-                        prefetch_satisfied_tools=prefetch_satisfied_tools
+                        prefetch_satisfied_tools=prefetch_satisfied_tools,
                     )
-                    
+
                     if fallback_result["success"]:
                         result = fallback_result
-                        
+
             if not result["success"]:
                 msg = f"Stage 1 FAILED after {elapsed:.1f}s: {result.get('error')}"
                 logger.error(msg)
                 await self._log(session, msg, category="error")
-                if self.settings.get('analysis', {}).get('enable_fallback_brief', True):
-                    brief = await self._generate_deterministic_fallback_brief(session, prefetched_json, weekend_btc_only_mode)
+                if self.settings.get("analysis", {}).get("enable_fallback_brief", True):
+                    brief = await self._generate_deterministic_fallback_brief(
+                        session, prefetched_json, weekend_btc_only_mode
+                    )
                     if brief:
                         result["success"] = True
                         result["is_deterministic_fallback"] = True
@@ -710,24 +787,28 @@ class FundamentalStage:
                     return result
 
         # Verifikasi brief berhasil disubmit ke DB dalam cycle saat ini (anti-stale gating)
-        brief = (await session.execute(
-            select(FundamentalBrief)
-            .where(FundamentalBrief.generated_at >= start_time - timedelta(seconds=10))
-            .order_by(FundamentalBrief.generated_at.desc())
-            .limit(1)
-        )).scalar_one_or_none()
+        brief = (
+            await session.execute(
+                select(FundamentalBrief)
+                .where(FundamentalBrief.generated_at >= start_time - timedelta(seconds=10))
+                .order_by(FundamentalBrief.generated_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
 
         if brief is None and not result.get("is_deterministic_fallback"):
             logger.warning("LLM run completed but no fresh brief was saved. Generating deterministic fallback brief.")
-            if self.settings.get('analysis', {}).get('enable_fallback_brief', True):
-                brief = await self._generate_deterministic_fallback_brief(session, prefetched_json, weekend_btc_only_mode)
+            if self.settings.get("analysis", {}).get("enable_fallback_brief", True):
+                brief = await self._generate_deterministic_fallback_brief(
+                    session, prefetched_json, weekend_btc_only_mode
+                )
                 if brief:
                     result["success"] = True
                     result["is_deterministic_fallback"] = True
                     result["brief_id"] = brief.id
                     result["tool_calls_made"] = result.get("tool_calls_made", 0)
                     result["turns"] = result.get("turns", 0)
-        
+
         # Run macro debate before escalation so debate contradictions can trigger escalation to frontier model
         _debate_outcome = {}
         if brief and not result.get("is_deterministic_fallback"):
@@ -736,16 +817,23 @@ class FundamentalStage:
         # Logika Eskalasi: Panggil model lebih pintar jika confidence rendah
         escalation_model = analysis_cfg.get("fundamental_model_escalation", "")
         escalation_threshold = float(analysis_cfg.get("fundamental_escalation_threshold", 0.0))
-        
+
         # Eskalasi aktif jika model dikonfigurasi
         escalated = False
-        if (brief and escalation_model and escalation_model != self.client.model and not result.get("is_deterministic_fallback")):
+        if (
+            brief
+            and escalation_model
+            and escalation_model != self.client.model
+            and not result.get("is_deterministic_fallback")
+        ):
             should_escalate = False
             escalation_trigger_reason = ""
 
             if _debate_outcome.get("escalation_required"):
                 should_escalate = True
-                escalation_trigger_reason = f"Macro Debate flagged escalation required (Winner: {_debate_outcome.get('winner')})"
+                escalation_trigger_reason = (
+                    f"Macro Debate flagged escalation required (Winner: {_debate_outcome.get('winner')})"
+                )
             elif _debate_outcome.get("internal_hallucination"):
                 should_escalate = True
                 escalation_trigger_reason = "Macro Debate detected internal hallucination in initial brief"
@@ -753,21 +841,31 @@ class FundamentalStage:
             # [NEW] Independent Verification
             try:
                 verifier_result = await verify_fundamental_brief(session, brief, self.settings)
-                if not verifier_result.get('internally_consistent', True):
+                if not verifier_result.get("internally_consistent", True):
                     should_escalate = True
-                    escalation_trigger_reason = f"Verifier flagged contradictions: {', '.join(verifier_result.get('contradictions_found', []))}"
-                elif not verifier_result.get('counter_thesis_is_substantive', True):
+                    escalation_trigger_reason = (
+                        f"Verifier flagged contradictions: {', '.join(verifier_result.get('contradictions_found', []))}"
+                    )
+                elif not verifier_result.get("counter_thesis_is_substantive", True):
                     should_escalate = True
-                    escalation_trigger_reason = "Verifier flagged that counter thesis is NOT substantive or falsifiable."
-                
-                if brief and brief.content_markdown and "[SYSTEM FLAG: Brief force-accepted with unresolved errors" in brief.content_markdown:
+                    escalation_trigger_reason = (
+                        "Verifier flagged that counter thesis is NOT substantive or falsifiable."
+                    )
+
+                if (
+                    brief
+                    and brief.content_markdown
+                    and "[SYSTEM FLAG: Brief force-accepted with unresolved errors" in brief.content_markdown
+                ):
                     should_escalate = True
-                    escalation_trigger_reason = "Tool Executor flagged the brief as force-accepted with unresolved completeness/schema errors."
-                elif verifier_result.get('unjustified_confidence'):
-                    cap = verifier_result.get('recommended_confidence_cap', 0.75)
+                    escalation_trigger_reason = (
+                        "Tool Executor flagged the brief as force-accepted with unresolved completeness/schema errors."
+                    )
+                elif verifier_result.get("unjustified_confidence"):
+                    cap = verifier_result.get("recommended_confidence_cap", 0.75)
                     brief.confidence = min(brief.confidence or 0.7, cap)
                     b_data = json.loads(brief.structured_json) if brief.structured_json else {}
-                    b_data['confidence'] = brief.confidence
+                    b_data["confidence"] = brief.confidence
                     brief.structured_json = json.dumps(b_data)
                     await session.commit()
                     logger.info(f"Fundamental Stage confidence adjusted to {brief.confidence} by verifier (cap={cap})")
@@ -777,63 +875,75 @@ class FundamentalStage:
             if not should_escalate:
                 try:
                     hour_key = f"tool_compliance_fundamental_{clock.now().strftime('%Y%m%d_%H')}"
-                    compliance_cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == hour_key))).scalar_one_or_none()
+                    compliance_cfg = (
+                        await session.execute(select(SystemConfig).where(SystemConfig.key == hour_key))
+                    ).scalar_one_or_none()
                     if compliance_cfg and compliance_cfg.value:
                         comp_data = json.loads(compliance_cfg.value)
-                        if comp_data.get('compliance_rate', 1.0) < 0.8:
+                        if comp_data.get("compliance_rate", 1.0) < 0.8:
                             should_escalate = True
                             escalation_trigger_reason = f"tool_compliance_low_{comp_data.get('compliance_rate', 0):.0%}"
                 except Exception as e:
-                    logger.debug(f'Compliance check for escalation failed: {e}')
-            
+                    logger.debug(f"Compliance check for escalation failed: {e}")
+
             # Existing: low confidence
             brief_confidence = brief.confidence if brief.confidence is not None else 1.0
             if escalation_threshold > 0 and brief_confidence < escalation_threshold:
                 should_escalate = True
                 escalation_trigger_reason = f"low_confidence_{brief_confidence:.0%}"
-            
+
             # NEW: Currency bias contradictions (more than 4 currencies "neutral")
             if brief.structured_json:
                 try:
                     b_data = json.loads(brief.structured_json)
-                    currency_bias = b_data.get('currency_bias', {})
-                    neutral_count = sum(1 for v in currency_bias.values() if str(v).lower() == 'neutral')
-                    if not weekend_btc_only_mode and neutral_count > 4:  # More than 4 of 6 major currencies neutral = unclear analysis (skip on weekend crypto mode)
+                    currency_bias = b_data.get("currency_bias", {})
+                    neutral_count = sum(1 for v in currency_bias.values() if str(v).lower() == "neutral")
+                    if (
+                        not weekend_btc_only_mode and neutral_count > 4
+                    ):  # More than 4 of 6 major currencies neutral = unclear analysis (skip on weekend crypto mode)
                         should_escalate = True
                         escalation_trigger_reason = f"too_many_neutral_biases_{neutral_count}"
                 except json.JSONDecodeError:
                     pass
-            
+
             # Aggressively trigger escalation if high-impact event is within 4 hours
-            upcoming_4h = (await session.execute(
-                select(EconomicCalendar)
-                .where(EconomicCalendar.impact == 'high')
-                .where(EconomicCalendar.event_time >= clock.now())
-                .where(EconomicCalendar.event_time <= clock.now() + timedelta(hours=4))
-                .limit(1)
-            )).scalar_one_or_none()
-            
+            upcoming_4h = (
+                await session.execute(
+                    select(EconomicCalendar)
+                    .where(EconomicCalendar.impact == "high")
+                    .where(EconomicCalendar.event_time >= clock.now())
+                    .where(EconomicCalendar.event_time <= clock.now() + timedelta(hours=4))
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+
             if upcoming_4h:
                 should_escalate = True
                 escalation_trigger_reason = f"high_impact_event_within_4h_{str(upcoming_4h.event_name)[:30]}"
-            elif not brief.structured_json or 'priced_in_assessment' not in (json.loads(brief.structured_json) if brief.structured_json else {}):
-                upcoming_6h = (await session.execute(
-                    select(EconomicCalendar)
-                    .where(EconomicCalendar.impact == 'high')
-                    .where(EconomicCalendar.event_time >= clock.now())
-                    .where(EconomicCalendar.event_time <= clock.now() + timedelta(hours=6))
-                    .limit(1)
-                )).scalar_one_or_none()
+            elif not brief.structured_json or "priced_in_assessment" not in (
+                json.loads(brief.structured_json) if brief.structured_json else {}
+            ):
+                upcoming_6h = (
+                    await session.execute(
+                        select(EconomicCalendar)
+                        .where(EconomicCalendar.impact == "high")
+                        .where(EconomicCalendar.event_time >= clock.now())
+                        .where(EconomicCalendar.event_time <= clock.now() + timedelta(hours=6))
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
                 if upcoming_6h:
                     should_escalate = True
-                    escalation_trigger_reason = f"missing_priced_in_assessment_with_upcoming_{str(upcoming_6h.event_name)[:30]}"
+                    escalation_trigger_reason = (
+                        f"missing_priced_in_assessment_with_upcoming_{str(upcoming_6h.event_name)[:30]}"
+                    )
 
             if brief and brief.structured_json:
                 try:
                     _bd_check = json.loads(brief.structured_json)
-                    if _bd_check.get('_data_quality_degraded'):
+                    if _bd_check.get("_data_quality_degraded"):
                         should_escalate = True
-                        escalation_trigger_reason = 'brief_force_accepted_with_validation_errors'
+                        escalation_trigger_reason = "brief_force_accepted_with_validation_errors"
                 except Exception:
                     pass
 
@@ -843,14 +953,14 @@ class FundamentalStage:
                 if brief.structured_json:
                     try:
                         b_data = json.loads(brief.structured_json)
-                        currency_conf = b_data.get('currency_confidence', {})
+                        currency_conf = b_data.get("currency_confidence", {})
                         low_conf_count = sum(1 for v in currency_conf.values() if v < 0.5)
                         if low_conf_count > 2:
                             should_escalate = True
                             escalation_trigger_reason = f"low_currency_confidence_{low_conf_count}"
                     except json.JSONDecodeError:
                         pass
-                
+
                 if not should_escalate:
                     try:
                         brief_data_for_check = json.loads(brief.structured_json) if brief.structured_json else {}
@@ -859,26 +969,28 @@ class FundamentalStage:
                         )
                         if 0.3 <= contamination_risk < 0.5:
                             should_escalate = True
-                            escalation_trigger_reason = f'borderline_contamination_risk_{contamination_risk:.2f}'
+                            escalation_trigger_reason = f"borderline_contamination_risk_{contamination_risk:.2f}"
                     except Exception as e:
-                        logger.debug(f'Contamination escalation check failed (non-fatal): {e}')
+                        logger.debug(f"Contamination escalation check failed (non-fatal): {e}")
 
             if should_escalate:
                 # Cek apakah sudah escalate hari ini
                 today = clock.now().strftime("%Y-%m-%d")
                 esc_key = f"fundamental_escalated_{today}"
-                
+
                 async with get_session() as check_session:
-                    esc_cfg = (await check_session.execute(
-                        select(SystemConfig).where(SystemConfig.key == esc_key)
-                    )).scalar_one_or_none()
-                    
+                    esc_cfg = (
+                        await check_session.execute(select(SystemConfig).where(SystemConfig.key == esc_key))
+                    ).scalar_one_or_none()
+
                     escalation_limit = await compute_dynamic_escalation_threshold(check_session, base_limit=1)
-                
-                escalation_count = int(esc_cfg.value) if (esc_cfg and esc_cfg.value is not None and esc_cfg.value.isdigit()) else 0
-                
+
+                escalation_count = (
+                    int(esc_cfg.value) if (esc_cfg and esc_cfg.value is not None and esc_cfg.value.isdigit()) else 0
+                )
+
                 _bd_check = json.loads(brief.structured_json) if brief and brief.structured_json else {}
-                force_bypass_budget = bool(_bd_check.get('_data_quality_degraded'))
+                force_bypass_budget = bool(_bd_check.get("_data_quality_degraded"))
                 if escalation_count >= escalation_limit and not force_bypass_budget:
                     logger.info(
                         f"Escalation to {escalation_model} skipped: already escalated {escalation_count} times today. "
@@ -886,7 +998,9 @@ class FundamentalStage:
                     )
                 else:
                     if force_bypass_budget and escalation_count >= escalation_limit:
-                        logger.warning('Escalation budget exhausted TAPI brief degraded — bypass budget, tetap eskalasi.')
+                        logger.warning(
+                            "Escalation budget exhausted TAPI brief degraded — bypass budget, tetap eskalasi."
+                        )
                     logger.warning(
                         f"Escalation Triggered! Reason: {escalation_trigger_reason}. "
                         f"Escalating to {escalation_model} (checking budget first)."
@@ -896,13 +1010,15 @@ class FundamentalStage:
                         is_paused = False
                         async with get_session() as budget_session:
                             is_paused = await CostTracker.is_budget_paused(budget_session, settings=self.settings)
-                        
+
                         if is_paused:
                             logger.warning("Budget limit reached — skipping escalation.")
                         else:
-                            escalation_client = get_client_for_task('stage1_escalation', self.settings)
-                            
-                            esc_msg = actual_user_message + f"""
+                            escalation_client = get_client_for_task("stage1_escalation", self.settings)
+
+                            esc_msg = (
+                                actual_user_message
+                                + f"""
 
 --- ESCALATION REQUIRED ---
 Trigger reason: {escalation_trigger_reason} (previous confidence: {brief_confidence:.2f}, threshold: {escalation_threshold}).
@@ -914,6 +1030,7 @@ INSTRUCTIONS:
    - For ANY non-neutral bias, ensure `invalidation_conditions` has >= 40 chars and concrete numerical levels.
    - For ANY sticky currency (bias held >=4 cycles), ensure `bias_continuity_justification` has >= 40 chars with concrete numeric evidence.
 """
+                            )
                             esc_result = await escalation_client.run_agent(
                                 session=session,
                                 system_prompt=system_prompt,
@@ -922,12 +1039,14 @@ INSTRUCTIONS:
                                 stage_name="fundamental",
                                 prefetch_satisfied_tools=prefetch_satisfied_tools,
                             )
-                            
+
                             if esc_result["success"]:
-                                esc_brief = (await session.execute(
-                                    select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
-                                )).scalar_one_or_none()
-                                
+                                esc_brief = (
+                                    await session.execute(
+                                        select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                                    )
+                                ).scalar_one_or_none()
+
                                 if esc_brief and esc_brief.id != brief.id:
                                     old_brief = brief
                                     brief = esc_brief
@@ -935,43 +1054,80 @@ INSTRUCTIONS:
                                     try:
                                         await session.delete(old_brief)
                                         await session.commit()
-                                        logger.info(f"Cleaned up pre-escalation draft brief (id={old_brief.id}) in favor of authoritative escalated brief (id={brief.id})")
+                                        logger.info(
+                                            f"Cleaned up pre-escalation draft brief (id={old_brief.id}) in favor of authoritative escalated brief (id={brief.id})"
+                                        )
                                     except Exception as del_err:
                                         logger.debug(f"Pre-escalation draft brief cleanup error (non-fatal): {del_err}")
-                                    
+
                                     try:
-                                        stage1_esc = self.settings.get('llm', {}).get('task_roles', {}).get('stage1_escalation', {})
-                                        cross_check_model = stage1_esc.get('fallback_2') or stage1_esc.get('fallback') or stage1_esc.get('primary')
+                                        stage1_esc = (
+                                            self.settings.get("llm", {})
+                                            .get("task_roles", {})
+                                            .get("stage1_escalation", {})
+                                        )
+                                        cross_check_model = (
+                                            stage1_esc.get("fallback_2")
+                                            or stage1_esc.get("fallback")
+                                            or stage1_esc.get("primary")
+                                        )
                                         cross_client = create_client(cross_check_model, self.settings)
-                                        cross_schema = {'type': 'object', 'properties': {
-                                            'currency_bias': {'type': 'object'}, 'confidence': {'type': 'number'}, 'one_line_reasoning': {'type': 'string'},
-                                        }, 'required': ['currency_bias', 'confidence', 'one_line_reasoning']}
+                                        cross_schema = {
+                                            "type": "object",
+                                            "properties": {
+                                                "currency_bias": {"type": "object"},
+                                                "confidence": {"type": "number"},
+                                                "one_line_reasoning": {"type": "string"},
+                                            },
+                                            "required": ["currency_bias", "confidence", "one_line_reasoning"],
+                                        }
                                         cross_prompt = (
                                             "Independently assess current USD/EUR/GBP/JPY/AUD/XAU directional bias (bullish/bearish/neutral) "
                                             "using the data context below. Do NOT reference any prior brief — form your own view from raw data.\n\n"
                                             f"{esc_msg}"
                                         )
-                                        cross_result = await cross_client.classify_json(prompt=cross_prompt, schema=cross_schema, temperature=0.0)
+                                        cross_result = await cross_client.classify_json(
+                                            prompt=cross_prompt, schema=cross_schema, temperature=0.0
+                                        )
                                         if cross_result:
-                                            esc_bias = json.loads(brief.structured_json).get('currency_bias', {}) if brief.structured_json else {}
-                                            cross_bias = cross_result.get('currency_bias', {})
-                                            disagreements = [c for c in esc_bias if c in cross_bias and esc_bias[c] != 'neutral' and cross_bias[c] != 'neutral' and esc_bias[c] != cross_bias[c]]
+                                            esc_bias = (
+                                                json.loads(brief.structured_json).get("currency_bias", {})
+                                                if brief.structured_json
+                                                else {}
+                                            )
+                                            cross_bias = cross_result.get("currency_bias", {})
+                                            disagreements = [
+                                                c
+                                                for c in esc_bias
+                                                if c in cross_bias
+                                                and esc_bias[c] != "neutral"
+                                                and cross_bias[c] != "neutral"
+                                                and esc_bias[c] != cross_bias[c]
+                                            ]
                                             if len(disagreements) >= 2:
-                                                logger.warning(f"[Stage1 Escalation] Cross-provider disagreement pada {disagreements} antara {escalation_model} dan {cross_check_model}. Confidence dibatasi.")
+                                                logger.warning(
+                                                    f"[Stage1 Escalation] Cross-provider disagreement pada {disagreements} antara {escalation_model} dan {cross_check_model}. Confidence dibatasi."
+                                                )
                                                 brief.confidence = min(brief.confidence or 0.7, 0.65)
-                                                b_data = json.loads(brief.structured_json) if brief.structured_json else {}
-                                                b_data['confidence'] = brief.confidence
-                                                b_data['macro_narrative'] = b_data.get('macro_narrative', '') + (
+                                                b_data = (
+                                                    json.loads(brief.structured_json) if brief.structured_json else {}
+                                                )
+                                                b_data["confidence"] = brief.confidence
+                                                b_data["macro_narrative"] = b_data.get("macro_narrative", "") + (
                                                     f"\n\n[SYSTEM: Cross-provider check ({cross_check_model}) tidak sepakat pada {disagreements}. "
                                                     f"Confidence dibatasi menunggu konfirmasi siklus berikutnya.]"
                                                 )
                                                 brief.structured_json = json.dumps(b_data)
                                                 await session.commit()
                                     except Exception as cross_err:
-                                        logger.debug(f'Cross-provider escalation sanity check gagal (non-fatal): {cross_err}')
-                                
+                                        logger.debug(
+                                            f"Cross-provider escalation sanity check gagal (non-fatal): {cross_err}"
+                                        )
+
                                 # Update escalation count
-                                existing_cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == esc_key))).scalar_one_or_none()
+                                existing_cfg = (
+                                    await session.execute(select(SystemConfig).where(SystemConfig.key == esc_key))
+                                ).scalar_one_or_none()
                                 if existing_cfg and existing_cfg.value is not None:
                                     existing_cfg.value = str(int(existing_cfg.value) + 1)
                                 else:
@@ -986,25 +1142,27 @@ INSTRUCTIONS:
         if brief and brief.structured_json:
             try:
                 _bd_sc = json.loads(brief.structured_json)
-                _quality_flag = bool(_bd_sc.get('_data_quality_degraded'))
+                _quality_flag = bool(_bd_sc.get("_data_quality_degraded"))
             except Exception:
                 pass
 
         # IMP-15: Non-polluting in-memory self-consistency check (0 DB write) when escalation did not run
-        if brief and not escalated and self.settings.get('trading', {}).get('stage1_self_consistency_enabled', True):
-            if (brief.confidence is not None and brief.confidence < 0.6 or _quality_flag):
-                logger.info(f'Stage 1 self-consistency check triggered (confidence={brief.confidence}, degraded={_quality_flag}).')
-                shadow_client = get_client_for_task('stage1_shadow_check', self.settings)
+        if brief and not escalated and self.settings.get("trading", {}).get("stage1_self_consistency_enabled", True):
+            if brief.confidence is not None and brief.confidence < 0.6 or _quality_flag:
+                logger.info(
+                    f"Stage 1 self-consistency check triggered (confidence={brief.confidence}, degraded={_quality_flag})."
+                )
+                shadow_client = get_client_for_task("stage1_shadow_check", self.settings)
                 if not shadow_client:
                     shadow_client = self.client
                 shadow_schema = {
-                    'type': 'object',
-                    'properties': {
-                        'currency_bias': {'type': 'object'},
-                        'confidence': {'type': 'number'},
-                        'rationale': {'type': 'string'}
+                    "type": "object",
+                    "properties": {
+                        "currency_bias": {"type": "object"},
+                        "confidence": {"type": "number"},
+                        "rationale": {"type": "string"},
                     },
-                    'required': ['currency_bias', 'confidence']
+                    "required": ["currency_bias", "confidence"],
                 }
                 shadow_prompt = (
                     f"Independently assess current USD/EUR/GBP/JPY/AUD/XAU directional bias (bullish/bearish/neutral) "
@@ -1012,16 +1170,27 @@ INSTRUCTIONS:
                     f"{prefetched_json}"
                 )
                 try:
-                    shadow_res = await shadow_client.classify_json(prompt=shadow_prompt, schema=shadow_schema, temperature=0.0)
+                    shadow_res = await shadow_client.classify_json(
+                        prompt=shadow_prompt, schema=shadow_schema, temperature=0.0
+                    )
                     if shadow_res and isinstance(shadow_res, dict):
-                        s_bias = shadow_res.get('currency_bias', {})
-                        f_bias = json.loads(brief.structured_json).get('currency_bias', {}) if brief.structured_json else {}
-                        diff_count = sum(1 for c, v in f_bias.items() if c in s_bias and s_bias[c] != 'neutral' and v != 'neutral' and s_bias[c] != v)
+                        s_bias = shadow_res.get("currency_bias", {})
+                        f_bias = (
+                            json.loads(brief.structured_json).get("currency_bias", {}) if brief.structured_json else {}
+                        )
+                        diff_count = sum(
+                            1
+                            for c, v in f_bias.items()
+                            if c in s_bias and s_bias[c] != "neutral" and v != "neutral" and s_bias[c] != v
+                        )
                         if diff_count >= 2:
                             brief.confidence = min(brief.confidence or 0.7, 0.60)
                             b_data = json.loads(brief.structured_json) if brief.structured_json else {}
-                            b_data['confidence'] = brief.confidence
-                            b_data['macro_narrative'] = (b_data.get('macro_narrative', '') + "\n\n[SELF-CONSISTENCY NOTE]: Variance detected across shadow check. Confidence moderated to 0.60.")
+                            b_data["confidence"] = brief.confidence
+                            b_data["macro_narrative"] = (
+                                b_data.get("macro_narrative", "")
+                                + "\n\n[SELF-CONSISTENCY NOTE]: Variance detected across shadow check. Confidence moderated to 0.60."
+                            )
                             if brief.content_markdown:
                                 brief.content_markdown += "\n\n[SELF-CONSISTENCY NOTE]: Variance detected across shadow check. Confidence moderated to 0.60."
                             brief.structured_json = json.dumps(b_data)
@@ -1033,15 +1202,15 @@ INSTRUCTIONS:
         # ALWAYS-ON lightweight cross-check untuk brief ber-confidence tinggi (yang belum dicek oleh self-consistency)
         if brief and brief.confidence and brief.confidence >= 0.60 and not escalated:
             try:
-                cheap_check_client = get_client_for_task('stage1_shadow_check', self.settings)
+                cheap_check_client = get_client_for_task("stage1_shadow_check", self.settings)
                 b_data = json.loads(brief.structured_json) if brief.structured_json else {}
                 shadow_schema = {
-                    'type': 'object',
-                    'properties': {
-                        'currency_bias': {'type': 'object'},
-                        'rationale': {'type': 'string'},
+                    "type": "object",
+                    "properties": {
+                        "currency_bias": {"type": "object"},
+                        "rationale": {"type": "string"},
                     },
-                    'required': ['currency_bias'],
+                    "required": ["currency_bias"],
                 }
                 shadow_prompt = (
                     "Independently assess current USD/EUR/GBP/JPY/AUD/XAU directional bias "
@@ -1050,56 +1219,72 @@ INSTRUCTIONS:
                     f"{prefetched_json}"
                 )
                 shadow_result = await cheap_check_client.classify_json(
-                    prompt=shadow_prompt, schema=shadow_schema, temperature=0.0)
+                    prompt=shadow_prompt, schema=shadow_schema, temperature=0.0
+                )
                 if shadow_result and isinstance(shadow_result, dict):
-                    s_bias = shadow_result.get('currency_bias', {})
-                    f_bias = b_data.get('currency_bias', {})
-                    tracked_keys = [k for k in ('USD', 'EUR', 'GBP', 'JPY', 'AUD', 'XAU') if k in f_bias and k in s_bias]
+                    s_bias = shadow_result.get("currency_bias", {})
+                    f_bias = b_data.get("currency_bias", {})
+                    tracked_keys = [
+                        k for k in ("USD", "EUR", "GBP", "JPY", "AUD", "XAU") if k in f_bias and k in s_bias
+                    ]
                     matching_keys = [k for k in tracked_keys if f_bias[k] == s_bias[k]]
-                    flagged = [k for k in tracked_keys if f_bias[k] != 'neutral' and s_bias[k] != 'neutral' and f_bias[k] != s_bias[k]]
+                    flagged = [
+                        k
+                        for k in tracked_keys
+                        if f_bias[k] != "neutral" and s_bias[k] != "neutral" and f_bias[k] != s_bias[k]
+                    ]
                     agreement_pct = (len(matching_keys) / len(tracked_keys) * 100.0) if tracked_keys else 100.0
                     if agreement_pct < 60.0 or len(flagged) >= 2:
-                        logger.warning(f"[Stage1 Shadow Check] Low agreement ({agreement_pct:.1f}%) "
-                                        f"pada {flagged}. Confidence disesuaikan.")
+                        logger.warning(
+                            f"[Stage1 Shadow Check] Low agreement ({agreement_pct:.1f}%) "
+                            f"pada {flagged}. Confidence disesuaikan."
+                        )
                         brief.confidence = min(brief.confidence, 0.70)
-                        b_data['confidence'] = brief.confidence
-                        curr_narrative = b_data.get('macro_narrative') or ''
-                        b_data['macro_narrative'] = curr_narrative + (f"\n\n[SYSTEM: Shadow cross-check independen berbeda "
-                            f"pada {flagged} (agreement {agreement_pct:.0f}%). Confidence disesuaikan ke 0.70.]")
+                        b_data["confidence"] = brief.confidence
+                        curr_narrative = b_data.get("macro_narrative") or ""
+                        b_data["macro_narrative"] = curr_narrative + (
+                            f"\n\n[SYSTEM: Shadow cross-check independen berbeda "
+                            f"pada {flagged} (agreement {agreement_pct:.0f}%). Confidence disesuaikan ke 0.70.]"
+                        )
                         brief.structured_json = json.dumps(b_data)
                         await session.commit()
             except Exception as e:
-                logger.debug(f'Stage1 always-on shadow check failed (non-fatal): {e}')
+                logger.debug(f"Stage1 always-on shadow check failed (non-fatal): {e}")
 
         brief_id = brief.id if brief else None
         if brief_id is None:
-            if self.settings.get('analysis', {}).get('enable_fallback_brief', False):
+            if self.settings.get("analysis", {}).get("enable_fallback_brief", False):
                 logger.warning(
                     "Stage 1 completed but no brief was found in DB. "
                     "Generating deterministic fallback brief to prevent pipeline stall."
                 )
-                brief = await self._generate_deterministic_fallback_brief(session, prefetched_json, weekend_btc_only_mode)
+                brief = await self._generate_deterministic_fallback_brief(
+                    session, prefetched_json, weekend_btc_only_mode
+                )
                 brief_id = brief.id if brief else None
                 if brief_id is None:
                     result["success"] = False
-                    result["error"] = "Brief submission missing — LLM did not call submit tool and fallback generation failed"
+                    result["error"] = (
+                        "Brief submission missing — LLM did not call submit tool and fallback generation failed"
+                    )
                     return result
                 result["success"] = True
                 result["is_deterministic_fallback"] = True
             else:
                 logger.error(
-                    "Stage 1 completed but no brief was found in DB. "
-                    "LLM may not have called submit_fundamental_brief."
+                    "Stage 1 completed but no brief was found in DB. LLM may not have called submit_fundamental_brief."
                 )
                 result["success"] = False
                 result["error"] = "Brief submission missing — LLM did not call submit tool"
                 return result
 
-        if brief and (escalated or not _debate_outcome or not _debate_outcome.get('ran')):
+        if brief and (escalated or not _debate_outcome or not _debate_outcome.get("ran")):
             _debate_outcome = await self._run_macro_debate(session, brief, prefetched_data=prefetched_json)
             MINIMUM_USABLE_CONFIDENCE = 0.50
             if brief.confidence is not None and brief.confidence < MINIMUM_USABLE_CONFIDENCE and not _quality_flag:
-                logger.info(f"Applying confidence floor {MINIMUM_USABLE_CONFIDENCE} to prevent sub-functional level (was {brief.confidence})")
+                logger.info(
+                    f"Applying confidence floor {MINIMUM_USABLE_CONFIDENCE} to prevent sub-functional level (was {brief.confidence})"
+                )
                 brief.confidence = MINIMUM_USABLE_CONFIDENCE
                 try:
                     b_data = json.loads(brief.structured_json or "{}")
@@ -1108,7 +1293,6 @@ INSTRUCTIONS:
                     await session.commit()
                 except Exception:
                     pass
-
 
         msg = (
             f"Stage 1 complete: {result['tool_calls_made']} tool calls, "
@@ -1119,6 +1303,7 @@ INSTRUCTIONS:
 
         try:
             from monika.infrastructure.database.event_store import TradingEventStore
+
             await TradingEventStore.emit(
                 session=session,
                 event_type="analysis.stage1.completed",
@@ -1139,14 +1324,18 @@ INSTRUCTIONS:
 
         try:
             from monika.application.analysis.event_broadcaster import emit_analysis_event
-            emit_analysis_event("analysis_step_complete", {
-                "step": "fundamental_brief",
-                "stage": 1,
-                "brief_id": brief_id,
-                "duration_s": elapsed,
-                "input_tokens": result.get("input_tokens", 0),
-                "output_tokens": result.get("output_tokens", 0),
-            })
+
+            emit_analysis_event(
+                "analysis_step_complete",
+                {
+                    "step": "fundamental_brief",
+                    "stage": 1,
+                    "brief_id": brief_id,
+                    "duration_s": elapsed,
+                    "input_tokens": result.get("input_tokens", 0),
+                    "output_tokens": result.get("output_tokens", 0),
+                },
+            )
         except Exception:
             pass
 
@@ -1155,20 +1344,19 @@ INSTRUCTIONS:
     async def _log(self, session: AsyncSession, description: str, category: str = "analysis") -> None:
         """Mencatat aktivitas ke `activity_log`."""
         try:
-            session.add(ActivityLog(
-                category=category,
-                description=description,
-                actor="system",
-            ))
+            session.add(
+                ActivityLog(
+                    category=category,
+                    description=description,
+                    actor="system",
+                )
+            )
             await session.commit()
         except Exception as e:
             logger.debug(f"Activity log write failed (non-fatal): {e}")
 
     async def _generate_deterministic_fallback_brief(
-        self,
-        session: AsyncSession,
-        prefetched_data: Any,
-        weekend_btc_only_mode: bool = False
+        self, session: AsyncSession, prefetched_data: Any, weekend_btc_only_mode: bool = False
     ) -> Optional[FundamentalBrief]:
         """
         Generate deterministic baseline brief when LLM fails or fails to call submit tool.
@@ -1245,7 +1433,7 @@ INSTRUCTIONS:
                         elif crude_float > 2000000:  # Big inventory build -> bearish OIL
                             currency_bias["OIL"] = "bearish"
                             currency_confidence["OIL"] = 0.65
-                    except (ValueError, TypeError):
+                    except ValueError, TypeError:
                         pass
 
             # Synthesize risk-asset bias from sentiment
@@ -1286,15 +1474,29 @@ INSTRUCTIONS:
             for c in currencies:
                 b = currency_bias.get(c, "neutral")
                 if c == "USD":
-                    invalidation_conditions[c] = "DXY daily change > +0.75% or 10Y US Treasury yield shifts by >= 15 bps contrary to bias" if b != "neutral" else "DXY breaks outside 5-day range by > 1.0%"
+                    invalidation_conditions[c] = (
+                        "DXY daily change > +0.75% or 10Y US Treasury yield shifts by >= 15 bps contrary to bias"
+                        if b != "neutral"
+                        else "DXY breaks outside 5-day range by > 1.0%"
+                    )
                 elif c in ("XAU", "GOLD"):
-                    invalidation_conditions[c] = "US 10Y real yield rises by >= 20 bps or DXY surges > 0.8%" if b == "bullish" else "VIX spikes > 25.0 or sudden safe-haven demand emerges"
+                    invalidation_conditions[c] = (
+                        "US 10Y real yield rises by >= 20 bps or DXY surges > 0.8%"
+                        if b == "bullish"
+                        else "VIX spikes > 25.0 or sudden safe-haven demand emerges"
+                    )
                 elif c == "JPY":
-                    invalidation_conditions[c] = "BoJ surprise policy action or US-JP 10Y yield differential expands by >= 25 bps"
+                    invalidation_conditions[c] = (
+                        "BoJ surprise policy action or US-JP 10Y yield differential expands by >= 25 bps"
+                    )
                 elif c == "OIL":
-                    invalidation_conditions[c] = "EIA crude inventory surprise > 5M barrels or OPEC+ emergency output change"
+                    invalidation_conditions[c] = (
+                        "EIA crude inventory surprise > 5M barrels or OPEC+ emergency output change"
+                    )
                 else:
-                    invalidation_conditions[c] = f"{c} central bank guidance shifts by >= 25 bps or core CPI surprise > 0.3%"
+                    invalidation_conditions[c] = (
+                        f"{c} central bank guidance shifts by >= 25 bps or core CPI surprise > 0.3%"
+                    )
 
             structured = {
                 "macro_bias": currency_bias.get("USD", "neutral"),
@@ -1307,7 +1509,7 @@ INSTRUCTIONS:
                 "key_drivers": [
                     f"VIX: {vix_val if vix_val is not None else 'baseline'}",
                     f"DXY 5d Trend: {dxy_trend or 'neutral'}",
-                    "Deterministic baseline fallback"
+                    "Deterministic baseline fallback",
                 ],
                 "risk_events": [],
                 "narrative_shift": False,
@@ -1320,7 +1522,7 @@ INSTRUCTIONS:
                 "priced_in_assessment": {
                     "dominant_driver": "Deterministic baseline fallback",
                     "priced_in_score": 5,
-                    "sell_the_news_risk": "low"
+                    "sell_the_news_risk": "low",
                 },
                 "strongest_counter_thesis": "Deterministic baseline holds technical-inferred bias; directional momentum may develop from technical or order-flow drivers.",
                 "is_fallback": True,

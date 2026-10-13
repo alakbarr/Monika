@@ -1,11 +1,11 @@
-
 """GTJA Alpha 180 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     ((MEAN(VOLUME,20) < VOLUME) ? ((-1*TSRANK(ABS(DELTA(CLOSE,7)),60)) * SIGN(DELTA(CLOSE,7))) : (-1*VOLUME))
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_180"
 
 __alpha_meta__ = {
-    'id': 'gtja191_180',
-    'theme': ['volume', 'reversal'],
-    'formula_latex': 'see body',
-    'columns_required': ['close', 'volume'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 60,
-    'min_warmup_bars': 67,
-    'notes': '',
+    "id": "gtja191_180",
+    "theme": ["volume", "reversal"],
+    "formula_latex": "see body",
+    "columns_required": ["close", "volume"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 60,
+    "min_warmup_bars": 67,
+    "notes": "",
 }
 
 

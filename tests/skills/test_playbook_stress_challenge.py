@@ -128,9 +128,9 @@ class TestPlaybookStressChallenge(unittest.TestCase):
         self.assertIn("save_market_intelligence(", content)
         self.assertIn("title=", content)
         self.assertIn("summary=", content)
-        self.assertIn("intel_type=\"deep_research\"", content)
-        self.assertIn("directive=\"scenario_watch\"", content)
-        self.assertIn("target_cycle=\"until_event\"", content)
+        self.assertIn('intel_type="deep_research"', content)
+        self.assertIn('directive="scenario_watch"', content)
+        self.assertIn('target_cycle="until_event"', content)
         self.assertIn("expires_in_hours=", content)
 
 

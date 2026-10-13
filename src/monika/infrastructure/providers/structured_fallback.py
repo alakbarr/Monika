@@ -23,6 +23,7 @@ from monika.infrastructure.providers.base_provider import extract_and_parse_json
 @dataclass
 class StructuredOutputResult:
     """Telemetry-rich container for structured output parsing and degradation status."""
+
     data: Dict[str, Any]
     success: bool
     degradation_stage: str  # "native" | "repaired_json" | "regex_field_recovery" | "default_fallback" | "failed"
@@ -42,7 +43,7 @@ def extract_key_values_by_regex(text: str, fields: List[str]) -> Dict[str, Any]:
         return {}
 
     extracted = {}
-    sep = r'(?::|=|is)\s*'
+    sep = r"(?::|=|is)\s*"
     for f in fields:
         # Pattern 1: string value -> "key": "value" or key is 'value'
         str_match = re.search(rf'["\']?\b{re.escape(f)}\b["\']?\s*{sep}["\']([^"\'\r\n]+)["\']', text, re.IGNORECASE)
@@ -66,7 +67,7 @@ def extract_key_values_by_regex(text: str, fields: List[str]) -> Dict[str, Any]:
         # Pattern 4: array of strings/numbers -> "key": ["a", "b"]
         arr_match = re.search(rf'["\']?\b{re.escape(f)}\b["\']?\s*{sep}\[([^\]]+)\]', text, re.IGNORECASE)
         if arr_match:
-            items = [item.strip().strip('"\'') for item in arr_match.group(1).split(",") if item.strip()]
+            items = [item.strip().strip("\"'") for item in arr_match.group(1).split(",") if item.strip()]
             extracted[f] = items
             continue
 

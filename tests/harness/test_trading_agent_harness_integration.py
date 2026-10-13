@@ -14,10 +14,11 @@ from config.settings import load_settings
 async def test_trading_agent_plugin_engine_wiring():
     settings = load_settings()
     # Mock MT5Client, TelegramBot, DB to avoid connecting to live services during unit test
-    with patch("execution.mt5_client.MT5Client") as mock_mt5, \
-         patch("telegram_bot.bot.TelegramBot") as mock_tg, \
-         patch("execution.execution_service.ExecutionService") as mock_exec:
-        
+    with (
+        patch("execution.mt5_client.MT5Client") as mock_mt5,
+        patch("telegram_bot.bot.TelegramBot") as mock_tg,
+        patch("execution.execution_service.ExecutionService") as mock_exec,
+    ):
         mock_mt5.return_value = MagicMock()
         mock_tg.return_value = MagicMock()
         mock_exec.return_value = MagicMock()

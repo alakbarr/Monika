@@ -11,11 +11,7 @@ from analysis.stages.fundamental_stage import FundamentalStage
 async def test_macro_debate_concurrent_execution():
     settings = {
         "agent_architecture": {"enable_debate": True},
-        "llm": {
-            "task_roles": {
-                "stage1_fundamental": {"primary": "mock-model"}
-            }
-        }
+        "llm": {"task_roles": {"stage1_fundamental": {"primary": "mock-model"}}},
     }
     stage = FundamentalStage(settings)
     mock_session = create_mock_async_session()
@@ -47,11 +43,12 @@ async def test_macro_debate_concurrent_execution():
             "bear_arguments_score": 5,
         }
 
-    with patch("analysis.debate.macro_bull_analyst.run_bull_analyst", side_effect=mock_bull), \
-         patch("analysis.debate.macro_bear_analyst.run_bear_analyst", side_effect=mock_bear), \
-         patch("analysis.debate.macro_judge.run_macro_judge", side_effect=mock_judge), \
-         patch("analysis.debate.macro_debate_validator.validate_macro_judge_output", side_effect=lambda j, b, be: j):
-
+    with (
+        patch("analysis.debate.macro_bull_analyst.run_bull_analyst", side_effect=mock_bull),
+        patch("analysis.debate.macro_bear_analyst.run_bear_analyst", side_effect=mock_bear),
+        patch("analysis.debate.macro_judge.run_macro_judge", side_effect=mock_judge),
+        patch("analysis.debate.macro_debate_validator.validate_macro_judge_output", side_effect=lambda j, b, be: j),
+    ):
         outcome = await stage._run_macro_debate(mock_session, mock_brief)
 
         assert outcome["ran"] is True
@@ -70,11 +67,7 @@ async def test_macro_debate_concurrent_execution():
 async def test_macro_debate_exception_resilience():
     settings = {
         "agent_architecture": {"enable_debate": True},
-        "llm": {
-            "task_roles": {
-                "stage1_fundamental": {"primary": "mock-model"}
-            }
-        }
+        "llm": {"task_roles": {"stage1_fundamental": {"primary": "mock-model"}}},
     }
     stage = FundamentalStage(settings)
     mock_session = create_mock_async_session()
@@ -99,11 +92,12 @@ async def test_macro_debate_exception_resilience():
             "bear_arguments_score": 7,
         }
 
-    with patch("analysis.debate.macro_bull_analyst.run_bull_analyst", side_effect=mock_bull_error), \
-         patch("analysis.debate.macro_bear_analyst.run_bear_analyst", side_effect=mock_bear_success), \
-         patch("analysis.debate.macro_judge.run_macro_judge", side_effect=mock_judge), \
-         patch("analysis.debate.macro_debate_validator.validate_macro_judge_output", side_effect=lambda j, b, be: j):
-
+    with (
+        patch("analysis.debate.macro_bull_analyst.run_bull_analyst", side_effect=mock_bull_error),
+        patch("analysis.debate.macro_bear_analyst.run_bear_analyst", side_effect=mock_bear_success),
+        patch("analysis.debate.macro_judge.run_macro_judge", side_effect=mock_judge),
+        patch("analysis.debate.macro_debate_validator.validate_macro_judge_output", side_effect=lambda j, b, be: j),
+    ):
         outcome = await stage._run_macro_debate(mock_session, mock_brief)
 
         assert outcome["ran"] is True

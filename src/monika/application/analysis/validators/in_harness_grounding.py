@@ -45,7 +45,7 @@ class InHarnessGroundingValidator:
     ) -> Tuple[bool, List[str], Dict[str, Any]]:
         """
         Validates LLM trade proposal or specialist output against empirical data bundle.
-        
+
         Returns:
             (is_grounded: bool, errors: list[str], metadata: dict)
         """
@@ -55,13 +55,17 @@ class InHarnessGroundingValidator:
         if not isinstance(decision_payload, dict):
             return False, ["Payload is not a valid dictionary."], metadata
 
-        decision = str(
-            decision_payload.get("decision")
-            or decision_payload.get("direction")
-            or decision_payload.get("action")
-            or decision_payload.get("directional_bias")
-            or ""
-        ).strip().upper()
+        decision = (
+            str(
+                decision_payload.get("decision")
+                or decision_payload.get("direction")
+                or decision_payload.get("action")
+                or decision_payload.get("directional_bias")
+                or ""
+            )
+            .strip()
+            .upper()
+        )
         if decision in ("WAIT", "AVOID", "NEUTRAL"):
             # Require minimal structural justification for WAIT
             rationale = str(decision_payload.get("rationale", ""))
@@ -70,7 +74,7 @@ class InHarnessGroundingValidator:
             if confluence is not None:
                 try:
                     cs = int(confluence)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     cs = 0
                 if cs >= 7 and len(rationale) < 30:
                     metadata["suspicious_wait"] = True
@@ -88,12 +92,18 @@ class InHarnessGroundingValidator:
                 try:
                     current_price = float(data_bundle[p_key])
                     break
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
 
         # If current price not at top level, search in namespaced price history keys
         if current_price is None:
-            for ph_key in ("get_price_history_H4", "get_price_history_H1", "price_history_D1_recent", "get_price_history", "price_history"):
+            for ph_key in (
+                "get_price_history_H4",
+                "get_price_history_H1",
+                "price_history_D1_recent",
+                "get_price_history",
+                "price_history",
+            ):
                 ph = data_bundle.get(ph_key)
                 if not ph:
                     continue
@@ -103,13 +113,13 @@ class InHarnessGroundingValidator:
                         try:
                             current_price = float(ph["close"][-1])
                             break
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
                     elif "candles" in ph and isinstance(ph["candles"], list) and ph["candles"]:
                         try:
                             current_price = float(ph["candles"][-1].get("close", 0))
                             break
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
                 elif isinstance(ph, list) and ph:
                     last_bar = ph[-1]
@@ -117,7 +127,7 @@ class InHarnessGroundingValidator:
                         try:
                             current_price = float(last_bar["close"])
                             break
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
 
         atr_val = None
@@ -126,12 +136,17 @@ class InHarnessGroundingValidator:
                 try:
                     atr_val = float(data_bundle[a_key])
                     break
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
 
         # If ATR not at top level, search in namespaced technical indicator bundles
         if atr_val is None:
-            for ti_key in ("get_technical_indicators_H4", "get_technical_indicators", "get_technical_indicators_H1", "technical"):
+            for ti_key in (
+                "get_technical_indicators_H4",
+                "get_technical_indicators",
+                "get_technical_indicators_H1",
+                "technical",
+            ):
                 tech = data_bundle.get(ti_key)
                 if isinstance(tech, dict):
                     raw_atr = tech.get("atr_14") or tech.get("atr") or tech.get("h4_atr")
@@ -139,7 +154,7 @@ class InHarnessGroundingValidator:
                         try:
                             atr_val = float(raw_atr)
                             break
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
             if atr_val is None:
                 for atr_key in ("get_atr_H4", "get_atr"):
@@ -148,7 +163,7 @@ class InHarnessGroundingValidator:
                         try:
                             atr_val = float(atr_pkg["atr"])
                             break
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
 
         # 2. Verify Entry Price
@@ -164,7 +179,7 @@ class InHarnessGroundingValidator:
                             f"Entry price {entry_f} is too far from current price {current_price} "
                             f"(distance={distance:.4f} > 2.0x ATR {max_allowed_distance:.4f})."
                         )
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 errors.append(f"Invalid entry price format: {entry_price}")
 
         # 3. Verify Stop Loss ATR Distance
@@ -183,7 +198,7 @@ class InHarnessGroundingValidator:
                         )
                     else:
                         metadata["verified_anchors"] += 1
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 errors.append(f"Invalid stop loss format: {sl_price}")
 
         # 4. Verify SMC Zones / Liquidity Pools
@@ -230,7 +245,7 @@ class InHarnessGroundingValidator:
                         )
                     else:
                         metadata["verified_anchors"] += 1
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
 
         # 5. Key Evidence Grounding Check
@@ -244,6 +259,7 @@ class InHarnessGroundingValidator:
         if symbol:
             try:
                 from monika.application.analysis.memory.working_scratchpad import WorkingScratchpad
+
                 sp = WorkingScratchpad.read_scratchpad(symbol)
                 if sp and sp.get("bias") and sp.get("bias") != "NEUTRAL":
                     sp_bias = sp.get("bias")
@@ -255,13 +271,9 @@ class InHarnessGroundingValidator:
                     inv_p = float(sp["invalidation_price"])
                     sl_f = float(sl_price)
                     if decision == "BUY" and sl_f > inv_p:
-                        errors.append(
-                            f"Stop loss {sl_f} is placed above structural invalidation level {inv_p}."
-                        )
+                        errors.append(f"Stop loss {sl_f} is placed above structural invalidation level {inv_p}.")
                     elif decision == "SELL" and sl_f < inv_p:
-                        errors.append(
-                            f"Stop loss {sl_f} is placed below structural invalidation level {inv_p}."
-                        )
+                        errors.append(f"Stop loss {sl_f} is placed below structural invalidation level {inv_p}.")
                     else:
                         metadata["verified_anchors"] += 1
             except Exception as sp_err:
@@ -270,6 +282,7 @@ class InHarnessGroundingValidator:
         # 7. Extended Grounding Verification (PR-07: lot_size, spread, margin, equity)
         try:
             from monika.application.analysis.grounding.provenance_tagger import ProvenanceLedger
+
             ledger = ProvenanceLedger()
             ext_ok, ext_errors, ext_meta = ledger.verify_trade_parameters(
                 proposal=decision_payload,

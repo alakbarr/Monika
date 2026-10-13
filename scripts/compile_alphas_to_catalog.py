@@ -127,7 +127,11 @@ def extract_synthesized_strategy(file_path: Path) -> Optional[Dict[str, Any]]:
                     for stmt in item.body:
                         if isinstance(stmt, ast.Assign):
                             for target in stmt.targets:
-                                if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "self":
+                                if (
+                                    isinstance(target, ast.Attribute)
+                                    and isinstance(target.value, ast.Name)
+                                    and target.value.id == "self"
+                                ):
                                     param_name = target.attr
                                     if isinstance(stmt.value, ast.Call):
                                         # e.g. int(safe_settings.get("htf_lookback", 24))

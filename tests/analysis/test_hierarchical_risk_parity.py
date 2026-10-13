@@ -14,11 +14,13 @@ from analysis.calculators.hierarchical_risk_parity import (
 
 
 def test_correlation_distance_matrix():
-    corr = np.array([
-        [1.0, 0.5, -0.2],
-        [0.5, 1.0, 0.1],
-        [-0.2, 0.1, 1.0],
-    ])
+    corr = np.array(
+        [
+            [1.0, 0.5, -0.2],
+            [0.5, 1.0, 0.1],
+            [-0.2, 0.1, 1.0],
+        ]
+    )
     dist = correlation_distance_matrix(corr)
 
     assert dist.shape == (3, 3)
@@ -35,12 +37,14 @@ def test_compute_hrp_weights_basic():
     # Asset B: medium vol (sigma = 0.02)
     # Asset C: high vol (sigma = 0.05)
     # Asset D: very high vol (sigma = 0.10)
-    rets = pd.DataFrame({
-        "LOW_VOL": np.random.randn(n) * 0.01,
-        "MED_VOL": np.random.randn(n) * 0.02,
-        "HIGH_VOL": np.random.randn(n) * 0.05,
-        "CRYPTO_VOL": np.random.randn(n) * 0.10,
-    })
+    rets = pd.DataFrame(
+        {
+            "LOW_VOL": np.random.randn(n) * 0.01,
+            "MED_VOL": np.random.randn(n) * 0.02,
+            "HIGH_VOL": np.random.randn(n) * 0.05,
+            "CRYPTO_VOL": np.random.randn(n) * 0.10,
+        }
+    )
 
     weights = compute_hrp_weights(rets)
 

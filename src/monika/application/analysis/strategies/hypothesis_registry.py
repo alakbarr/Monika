@@ -264,10 +264,10 @@ class HypothesisRegistry:
                     )
                 else:
                     hyp.status = HypothesisStatus.REJECTED
-                    hyp.invalidation_notes = f"Failed incubation stage: WinRate={win_rate * 100:.1f}% < {min_incubation_win_rate * 100:.1f}%"
-                    logger.warning(
-                        f"REJECTED hypothesis [{hypothesis_id}] during incubation: {hyp.invalidation_notes}"
+                    hyp.invalidation_notes = (
+                        f"Failed incubation stage: WinRate={win_rate * 100:.1f}% < {min_incubation_win_rate * 100:.1f}%"
                     )
+                    logger.warning(f"REJECTED hypothesis [{hypothesis_id}] during incubation: {hyp.invalidation_notes}")
 
         self._save()
         return hyp

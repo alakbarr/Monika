@@ -27,14 +27,14 @@ from utils.analytics.paper_tracker import PaperTracker
 def test_is_spread_acceptable_canonical_assets():
     """Memverifikasi 8 canonical assets lolos pada spread normal dan memblokir spread ekstrem."""
     canonical_normal = {
-        "XAUUSD": (2650.0, 2650.40),   # 40 cents spread < 50c * 5
+        "XAUUSD": (2650.0, 2650.40),  # 40 cents spread < 50c * 5
         "EURUSD": (1.08500, 1.08514),  # 1.4 pips < 1.5p * 5
         "GBPUSD": (1.30000, 1.30018),  # 1.8 pips < 2.0p * 5
         "USDJPY": (150.000, 150.014),  # 1.4 pips < 1.5p * 5 (0.014 < 0.075)
         "AUDUSD": (0.67000, 0.67015),  # 1.5 pips < 1.8p * 5
         "BTCUSD": (65000.0, 65004.0),  # $4 < $5 * 5
-        "XTIUSD": (72.00, 72.03),      # 3 cents < 3c * 5 (0.03 < 0.15)
-        "XBRUSD": (75.00, 75.035),     # 3.5 cents < 4c * 5 (0.035 < 0.20)
+        "XTIUSD": (72.00, 72.03),  # 3 cents < 3c * 5 (0.03 < 0.15)
+        "XBRUSD": (75.00, 75.035),  # 3.5 cents < 4c * 5 (0.035 < 0.20)
     }
     for sym, (bid, ask) in canonical_normal.items():
         assert is_spread_acceptable(sym, bid, ask) is True, f"{sym} normal spread failed"
@@ -42,8 +42,8 @@ def test_is_spread_acceptable_canonical_assets():
     # Verifikasi spread ekstrem (6x typical) diblokir
     canonical_extreme = {
         "USDJPY": (150.000, 150.080),  # 8 pips > 7.5 pips max
-        "XTIUSD": (72.00, 72.20),      # 20 cents > 15 cents max
-        "XBRUSD": (75.00, 75.25),      # 25 cents > 20 cents max
+        "XTIUSD": (72.00, 72.20),  # 20 cents > 15 cents max
+        "XBRUSD": (75.00, 75.25),  # 25 cents > 20 cents max
         "EURUSD": (1.08500, 1.08600),  # 10 pips > 7.5 pips max
     }
     for sym, (bid, ask) in canonical_extreme.items():
@@ -55,10 +55,10 @@ async def test_gap_fade_no_name_error():
     """Memverifikasi DailyReopenGapFade tidak melempar NameError: name 'gap' is not defined."""
     strat = DailyReopenGapFade(settings={})
     session = create_mock_async_session()
-    
+
     with patch("utils.clock.now") as mock_now:
         mock_now.return_value = datetime(2026, 9, 14, 8, 30, tzinfo=timezone.utc)
-        
+
         bar_today = MagicMock()
         bar_today.timestamp = datetime(2026, 9, 14, 0, 0, tzinfo=timezone.utc)
         bar_today.open = 2660.0
@@ -128,7 +128,7 @@ async def test_signal_arbitrator_direction_none():
 def test_telegram_chunk_preserves_emojis_and_html():
     """Memverifikasi TelegramBot._chunk_text tidak menghapus emoji alert dan tidak merusak HTML."""
     alert_text = "[DARURAT] *EMERGENCY ALERT* [PERINGATAN]\nPosition liquidated: XAUUSD [OK] Loss: $0.00 [LAPORAN]"
-    
+
     # Notifikasi sistem default sanitize_format=False -> emoji WAJIB utuh
     chunks = TelegramBot._chunk_text(alert_text, max_len=4000, sanitize_format=False)
     assert len(chunks) == 1
@@ -212,6 +212,7 @@ def test_paper_tracker_brent_spread():
 def test_route_ordering_trace_search():
     """Memverifikasi trace_search_router dipasang sebelum observability_router di all_routers."""
     from logging_observability.dashboard.routes import all_routers, trace_search_router, observability_router
+
     idx_search = all_routers.index(trace_search_router)
     idx_obs = all_routers.index(observability_router)
     assert idx_search < idx_obs, f"trace_search_router ({idx_search}) must precede observability_router ({idx_obs})"

@@ -5,6 +5,7 @@ Computes exact OHLCV + key indicators from raw data WITHOUT LLM involvement.
 Injected into analysis context as immutable ground truth that overrides
 any conflicting LLM-generated metrics.
 """
+
 import logging
 import json
 from typing import Dict, Any, Optional
@@ -87,13 +88,15 @@ class VerifiedMarketSnapshot:
         }
 
         if ohlcv_row:
-            snapshot.update({
-                "latest_close": float(ohlcv_row.close) if ohlcv_row.close is not None else None,
-                "latest_high": float(ohlcv_row.high) if ohlcv_row.high is not None else None,
-                "latest_low": float(ohlcv_row.low) if ohlcv_row.low is not None else None,
-                "latest_open": float(ohlcv_row.open) if ohlcv_row.open is not None else None,
-                "bar_timestamp": ohlcv_row.timestamp.isoformat() if ohlcv_row.timestamp else None,
-            })
+            snapshot.update(
+                {
+                    "latest_close": float(ohlcv_row.close) if ohlcv_row.close is not None else None,
+                    "latest_high": float(ohlcv_row.high) if ohlcv_row.high is not None else None,
+                    "latest_low": float(ohlcv_row.low) if ohlcv_row.low is not None else None,
+                    "latest_open": float(ohlcv_row.open) if ohlcv_row.open is not None else None,
+                    "bar_timestamp": ohlcv_row.timestamp.isoformat() if ohlcv_row.timestamp else None,
+                }
+            )
 
         for ind in ind_rows:
             try:
@@ -128,12 +131,7 @@ class VerifiedMarketSnapshot:
         return snapshot
 
     async def _compute_fallback_indicators(
-        self,
-        session: AsyncSession,
-        symbol: str,
-        timeframe: str,
-        now: datetime,
-        snapshot: Dict[str, Any]
+        self, session: AsyncSession, symbol: str, timeframe: str, now: datetime, snapshot: Dict[str, Any]
     ) -> None:
         """Compute deterministic RSI and ATR if not present in database."""
         recent_bars_q = (
@@ -210,10 +208,7 @@ class VerifiedMarketSnapshot:
         return "\n".join(lines)
 
     @staticmethod
-    def validate_plan_against_snapshot(
-        plan: Dict[str, Any],
-        snapshot: Dict[str, Any]
-    ) -> tuple[bool, list[str]]:
+    def validate_plan_against_snapshot(plan: Dict[str, Any], snapshot: Dict[str, Any]) -> tuple[bool, list[str]]:
         """
         Validasi matematis trade plan terhadap snapshot pasar.
         Mencegah error halusinasi harga entry, SL, dan TP yang tidak masuk akal.

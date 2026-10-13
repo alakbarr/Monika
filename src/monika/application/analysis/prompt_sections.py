@@ -92,6 +92,7 @@ class PromptSectionRegistry:
             try:
                 if callable(s.content):
                     import inspect
+
                     sig = inspect.signature(s.content)
                     if len(sig.parameters) == 0:
                         text = str(s.content())
@@ -145,4 +146,3 @@ def get_prompt_section_registry() -> PromptSectionRegistry:
 
 # Default singleton instance exported for convenience
 prompt_section_registry: PromptSectionRegistry = PromptSectionRegistry.get_instance()
-

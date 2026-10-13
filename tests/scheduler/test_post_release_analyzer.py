@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """Unit tests for PostReleaseAnalyzer."""
 import pytest
 from unittest.mock import MagicMock
@@ -8,34 +9,32 @@ from scheduler.post_release_analyzer import PostReleaseAnalyzer, CURRENCY_TO_SYM
 
 class TestCurrencyMapping:
     def test_usd_maps_all_pairs(self):
-        assert len(CURRENCY_TO_SYMBOLS['USD']) == 8
-        assert 'XAUUSD' in CURRENCY_TO_SYMBOLS['USD']
-        assert 'BTCUSD' in CURRENCY_TO_SYMBOLS['USD']
-        assert 'EURUSD' in CURRENCY_TO_SYMBOLS['USD']
-        assert 'GBPUSD' in CURRENCY_TO_SYMBOLS['USD']
-        assert 'USDJPY' in CURRENCY_TO_SYMBOLS['USD']
-        assert 'AUDUSD' in CURRENCY_TO_SYMBOLS['USD']
-        assert 'XTIUSD' in CURRENCY_TO_SYMBOLS['USD']
-        assert 'XBRUSD' in CURRENCY_TO_SYMBOLS['USD']
+        assert len(CURRENCY_TO_SYMBOLS["USD"]) == 8
+        assert "XAUUSD" in CURRENCY_TO_SYMBOLS["USD"]
+        assert "BTCUSD" in CURRENCY_TO_SYMBOLS["USD"]
+        assert "EURUSD" in CURRENCY_TO_SYMBOLS["USD"]
+        assert "GBPUSD" in CURRENCY_TO_SYMBOLS["USD"]
+        assert "USDJPY" in CURRENCY_TO_SYMBOLS["USD"]
+        assert "AUDUSD" in CURRENCY_TO_SYMBOLS["USD"]
+        assert "XTIUSD" in CURRENCY_TO_SYMBOLS["USD"]
+        assert "XBRUSD" in CURRENCY_TO_SYMBOLS["USD"]
 
     def test_eur_maps_eurusd(self):
-        assert CURRENCY_TO_SYMBOLS['EUR'] == ['EURUSD']
+        assert CURRENCY_TO_SYMBOLS["EUR"] == ["EURUSD"]
 
     def test_cad_maps_oil(self):
-        assert 'XTIUSD' in CURRENCY_TO_SYMBOLS['CAD']
-        assert 'XBRUSD' in CURRENCY_TO_SYMBOLS['CAD']
+        assert "XTIUSD" in CURRENCY_TO_SYMBOLS["CAD"]
+        assert "XBRUSD" in CURRENCY_TO_SYMBOLS["CAD"]
 
     def test_jpy_maps_usdjpy(self):
-        assert CURRENCY_TO_SYMBOLS['JPY'] == ['USDJPY']
+        assert CURRENCY_TO_SYMBOLS["JPY"] == ["USDJPY"]
 
 
 class TestPostReleaseAnalyzer:
     def setup_method(self):
         self.settings = {
-            'trading': {
-                'asset_universe': ['XAUUSD', 'EURUSD', 'GBPUSD',
-                                   'USDJPY', 'AUDUSD', 'XTIUSD',
-                                   'BTCUSD', 'XBRUSD']
+            "trading": {
+                "asset_universe": ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XTIUSD", "BTCUSD", "XBRUSD"]
             }
         }
         self.analyzer = PostReleaseAnalyzer(self.settings)
@@ -81,11 +80,12 @@ class TestPostReleaseAnalyzer:
     @pytest.mark.asyncio
     async def test_check_releases_no_events(self):
         from unittest.mock import AsyncMock, patch
+
         mock_session = create_mock_async_session()
         mock_res = MagicMock()
         mock_res.scalars.return_value.all.return_value = []
         mock_session.execute.return_value = mock_res
-        
+
         with patch("database.db.get_session") as mock_get_sess:
             mock_get_sess.return_value.__aenter__.return_value = mock_session
             await self.analyzer._check_releases()
@@ -93,6 +93,7 @@ class TestPostReleaseAnalyzer:
     @pytest.mark.asyncio
     async def test_check_releases_with_handled_events(self):
         from unittest.mock import AsyncMock, patch
+
         mock_event = MagicMock()
         mock_event.id = 999
         mock_event.currency = "USD"

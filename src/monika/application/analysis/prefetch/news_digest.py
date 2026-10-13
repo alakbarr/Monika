@@ -10,6 +10,7 @@ Fungsi:
 2. Peringkasan berita menjadi narasi utama.
 Tujuan: Meringankan beban token dan memfokuskan konteks untuk analisis Tahap 1.
 """
+
 import json
 import logging
 import asyncio
@@ -24,6 +25,7 @@ from monika.infrastructure.providers.llm_factory import get_client_for_task
 from monika.domain.market.news_impact_keywords import SHOCK_KEYWORDS
 from monika.core.primitives.clock import ensure_utc
 import re
+
 _re_module = re
 
 NON_BREAKING_TITLE_PATTERN = _re_module.compile(
@@ -35,17 +37,70 @@ NON_BREAKING_TITLE_PATTERN = _re_module.compile(
 logger = logging.getLogger("TradingAgent.NewsDigest")
 
 _FINANCIAL_SHORT_TOKENS = {
-    "fed", "boe", "ecb", "boj", "rba", "snb", "cpi", "ppi", "pce", "gdp", "pmi",
-    "oil", "gas", "cut", "wti", "btc", "xau", "usd", "eur", "gbp", "jpy", "aud", "cad", "chf", "nzd", "jobs", "war"
+    "fed",
+    "boe",
+    "ecb",
+    "boj",
+    "rba",
+    "snb",
+    "cpi",
+    "ppi",
+    "pce",
+    "gdp",
+    "pmi",
+    "oil",
+    "gas",
+    "cut",
+    "wti",
+    "btc",
+    "xau",
+    "usd",
+    "eur",
+    "gbp",
+    "jpy",
+    "aud",
+    "cad",
+    "chf",
+    "nzd",
+    "jobs",
+    "war",
 }
 
 import string as _string
 
 _POLARITY_GROUPS = {
-    "dovish_down": {"cut", "cuts", "cutting", "falls", "fell", "drop", "drops", "dropping", "plunge", "plunges", "slump", "slumps"},
-    "hawkish_up": {"hike", "hikes", "hiking", "rise", "rises", "rising", "rose", "jump", "jumps", "jumping", "surge", "surges", "surging"},
+    "dovish_down": {
+        "cut",
+        "cuts",
+        "cutting",
+        "falls",
+        "fell",
+        "drop",
+        "drops",
+        "dropping",
+        "plunge",
+        "plunges",
+        "slump",
+        "slumps",
+    },
+    "hawkish_up": {
+        "hike",
+        "hikes",
+        "hiking",
+        "rise",
+        "rises",
+        "rising",
+        "rose",
+        "jump",
+        "jumps",
+        "jumping",
+        "surge",
+        "surges",
+        "surging",
+    },
     "neutral_hold": {"hold", "holds", "holding", "pause", "pauses", "pausing"},
 }
+
 
 def _get_polarity_group(toks: set) -> Optional[str]:
     for group, words in _POLARITY_GROUPS.items():
@@ -53,10 +108,11 @@ def _get_polarity_group(toks: set) -> Optional[str]:
             return group
     return None
 
+
 def _jaccard_title_similarity(title_a: str, title_b: str) -> float:
     def _clean_tokens(title: str) -> set:
         toks = set()
-        for raw in (title or '').lower().split():
+        for raw in (title or "").lower().split():
             clean = raw.strip(_string.punctuation)
             if len(clean) > 3 or clean in _FINANCIAL_SHORT_TOKENS:
                 toks.add(clean)
@@ -77,36 +133,52 @@ def _jaccard_title_similarity(title_a: str, title_b: str) -> float:
     union = len(tokens_a | tokens_b)
     return intersection / union if union > 0 else 0.0
 
+
 import re as _re
 
 _STRUCTURAL_NUMBERS = {
     # Small counting integers / list indices / day ranges
-    0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
+    0.0,
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
     # Common financial horizon hours / round anchors (25, 50, 75 removed to enforce monetary grounding)
-    12.0, 24.0, 48.0, 72.0, 100.0,
+    12.0,
+    24.0,
+    48.0,
+    72.0,
+    100.0,
     # Historical years & horizons (1980 - 2035)
     *set(float(y) for y in range(1980, 2036)),
 }
 
 _NUMERIC_TOKEN_PATTERN = _re.compile(
-    r'(?<![A-Za-z0-9_])'
-    r'[+\-±~><$€£¥₣₩₹]*'
-    r'\d+(?:,\d{3})*(?:\.\d+)?%?'
-    r'(?:\s*(?:'
-    r'trillions?|tril|\u5146|tn|'
-    r'billions?|bil|blns?|bns?|'
-    r'millions?|mlns?|mios?|mm|mn|'
-    r'thousands?|thou|kilo|'
-    r'basis\s*points?|bps?|bp|'
-    r'percentage\s*points?|percent|percentage|pct|pp|%|'
-    r'pips?|points?|pts?|'
-    r'years?|yrs?|months?|weeks?|days?|hours?|hrs?|'
-    r'[xX]|sigma|'
-    r'[kKmMbBtT]|\u5104'
-    r'))?'
-    r'(?![A-Za-z0-9_])',
-    _re.IGNORECASE
+    r"(?<![A-Za-z0-9_])"
+    r"[+\-±~><$€£¥₣₩₹]*"
+    r"\d+(?:,\d{3})*(?:\.\d+)?%?"
+    r"(?:\s*(?:"
+    r"trillions?|tril|\u5146|tn|"
+    r"billions?|bil|blns?|bns?|"
+    r"millions?|mlns?|mios?|mm|mn|"
+    r"thousands?|thou|kilo|"
+    r"basis\s*points?|bps?|bp|"
+    r"percentage\s*points?|percent|percentage|pct|pp|%|"
+    r"pips?|points?|pts?|"
+    r"years?|yrs?|months?|weeks?|days?|hours?|hrs?|"
+    r"[xX]|sigma|"
+    r"[kKmMbBtT]|\u5104"
+    r"))?"
+    r"(?![A-Za-z0-9_])",
+    _re.IGNORECASE,
 )
+
 
 def _extract_numeric_claims(text: str) -> list[str]:
     """Extract raw numeric token strings from text (handles thousands separators, decimals, %, bps, currency, etc.)."""
@@ -115,38 +187,45 @@ def _extract_numeric_claims(text: str) -> list[str]:
     raw_matches = _NUMERIC_TOKEN_PATTERN.findall(text)
     cleaned = []
     for m in raw_matches:
-        s = m.strip(' \t\n\r:;()[]{}*`"\'')
+        s = m.strip(" \t\n\r:;()[]{}*`\"'")
         if s and any(c.isdigit() for c in s):
             cleaned.append(s)
     return cleaned
 
+
 def _format_news_item_for_prompt(item, max_summary_chars: int = 1500) -> str:
     """Format a news item cleanly for prompt injection, retaining full summary and key_data_point."""
-    pub_time = item.published_at.strftime('%H:%M UTC') if getattr(item, 'published_at', None) else '?'
-    impact = getattr(item, 'impact', 'UNKNOWN')
-    title = (getattr(item, 'title', '') or '').strip()
-    
-    summary = (getattr(item, 'summary', '') or '').strip()
+    pub_time = item.published_at.strftime("%H:%M UTC") if getattr(item, "published_at", None) else "?"
+    impact = getattr(item, "impact", "UNKNOWN")
+    title = (getattr(item, "title", "") or "").strip()
+
+    summary = (getattr(item, "summary", "") or "").strip()
     if summary and len(summary) > max_summary_chars:
         # Smart sentence boundary truncation
-        period_idx = summary.rfind('.', 0, max_summary_chars)
+        period_idx = summary.rfind(".", 0, max_summary_chars)
         if period_idx > int(max_summary_chars * 0.7):
-            summary = summary[:period_idx + 1]
+            summary = summary[: period_idx + 1]
         else:
-            summary = summary[:max_summary_chars] + '...'
-            
-    key_dp = (getattr(item, 'key_data_point', '') or '').strip()
-    
+            summary = summary[:max_summary_chars] + "..."
+
+    key_dp = (getattr(item, "key_data_point", "") or "").strip()
+
     import html
+
     # Sanitize brackets in untrusted title, summary, and key_data_point to prevent spoofing internal system alert headers
-    clean_title = title.replace('[', '(').replace(']', ')')
-    clean_summary = summary.replace('[', '(').replace(']', ')') if summary else ""
-    clean_key_dp = key_dp.replace('[', '(').replace(']', ')') if key_dp else ""
+    clean_title = title.replace("[", "(").replace("]", ")")
+    clean_summary = summary.replace("[", "(").replace("]", ")") if summary else ""
+    clean_key_dp = key_dp.replace("[", "(").replace("]", ")") if key_dp else ""
     key_dp_str = f" (Data Point: {clean_key_dp})" if clean_key_dp else ""
-    body = f"[{pub_time}] {clean_title}{key_dp_str}\n{clean_summary}" if clean_summary else f"[{pub_time}] {clean_title}{key_dp_str}"
+    body = (
+        f"[{pub_time}] {clean_title}{key_dp_str}\n{clean_summary}"
+        if clean_summary
+        else f"[{pub_time}] {clean_title}{key_dp_str}"
+    )
     safe_impact = html.escape(str(impact), quote=True)
     safe_body = html.escape(body, quote=False)
     return f"<untrusted_news_item impact='{safe_impact}'>\n{safe_body}\n</untrusted_news_item>"
+
 
 def _normalize_num_variants(n_str: str) -> set[float]:
     """Return all plausible float representations/scales for a numeric token."""
@@ -156,40 +235,42 @@ def _normalize_num_variants(n_str: str) -> set[float]:
 
     s = n_str.strip().lower()
     # Strip currency symbols, signs, prefixes, and markdown formatting
-    s = _re.sub(r'^[+\-±~><$€£¥₣₩₹\s]+', '', s)
-    s = s.strip(' \t\n\r:;()[]{}*`"\'')
+    s = _re.sub(r"^[+\-±~><$€£¥₣₩₹\s]+", "", s)
+    s = s.strip(" \t\n\r:;()[]{}*`\"'")
 
     mult = 1.0
     is_percent = False
     is_bps = False
 
     # Check for unit / multiplier suffixes (longest match first with anchor)
-    if _re.search(r'\s*(?:basis\s*points?|bps?|bp)$', s):
+    if _re.search(r"\s*(?:basis\s*points?|bps?|bp)$", s):
         is_bps = True
-        s = _re.sub(r'\s*(?:basis\s*points?|bps?|bp)$', '', s).strip()
-    elif _re.search(r'\s*(?:percentage\s*points?|percent|percentage|pct|pp|%)$', s):
+        s = _re.sub(r"\s*(?:basis\s*points?|bps?|bp)$", "", s).strip()
+    elif _re.search(r"\s*(?:percentage\s*points?|percent|percentage|pct|pp|%)$", s):
         is_percent = True
-        s = _re.sub(r'\s*(?:percentage\s*points?|percent|percentage|pct|pp|%)$', '', s).strip()
-    elif _re.search(r'\s*(?:pips?|points?|pts?|years?|yrs?|months?|weeks?|days?|hours?|hrs?|sigma|[xX])$', s):
-        s = _re.sub(r'\s*(?:pips?|points?|pts?|years?|yrs?|months?|weeks?|days?|hours?|hrs?|sigma|[xX])$', '', s).strip()
-    elif _re.search(r'\s*(?:trillions?|tril|\u5146|tn|t)$', s):
+        s = _re.sub(r"\s*(?:percentage\s*points?|percent|percentage|pct|pp|%)$", "", s).strip()
+    elif _re.search(r"\s*(?:pips?|points?|pts?|years?|yrs?|months?|weeks?|days?|hours?|hrs?|sigma|[xX])$", s):
+        s = _re.sub(
+            r"\s*(?:pips?|points?|pts?|years?|yrs?|months?|weeks?|days?|hours?|hrs?|sigma|[xX])$", "", s
+        ).strip()
+    elif _re.search(r"\s*(?:trillions?|tril|\u5146|tn|t)$", s):
         mult = 1_000_000_000_000.0
-        s = _re.sub(r'\s*(?:trillions?|tril|\u5146|tn|t)$', '', s).strip()
-    elif _re.search(r'\s*(?:billions?|bil|blns?|bns?|b)$', s):
+        s = _re.sub(r"\s*(?:trillions?|tril|\u5146|tn|t)$", "", s).strip()
+    elif _re.search(r"\s*(?:billions?|bil|blns?|bns?|b)$", s):
         mult = 1_000_000_000.0
-        s = _re.sub(r'\s*(?:billions?|bil|blns?|bns?|b)$', '', s).strip()
-    elif _re.search(r'\s*(?:millions?|mlns?|mios?|mm|mn|m)$', s):
+        s = _re.sub(r"\s*(?:billions?|bil|blns?|bns?|b)$", "", s).strip()
+    elif _re.search(r"\s*(?:millions?|mlns?|mios?|mm|mn|m)$", s):
         mult = 1_000_000.0
-        s = _re.sub(r'\s*(?:millions?|mlns?|mios?|mm|mn|m)$', '', s).strip()
-    elif _re.search(r'\s*\u5104$', s):
+        s = _re.sub(r"\s*(?:millions?|mlns?|mios?|mm|mn|m)$", "", s).strip()
+    elif _re.search(r"\s*\u5104$", s):
         mult = 100_000_000.0
-        s = _re.sub(r'\s*\u5104$', '', s).strip()
-    elif _re.search(r'\s*(?:thousands?|thou|kilo|k)$', s):
+        s = _re.sub(r"\s*\u5104$", "", s).strip()
+    elif _re.search(r"\s*(?:thousands?|thou|kilo|k)$", s):
         mult = 1_000.0
-        s = _re.sub(r'\s*(?:thousands?|thou|kilo|k)$', '', s).strip()
+        s = _re.sub(r"\s*(?:thousands?|thou|kilo|k)$", "", s).strip()
 
     # Remove commas
-    clean = s.replace(',', '').strip()
+    clean = s.replace(",", "").strip()
     try:
         val = float(clean) * mult
         variants.add(round(val, 6))
@@ -225,6 +306,7 @@ def _normalize_num_variants(n_str: str) -> set[float]:
 
     return variants
 
+
 def _flag_ungrounded_numbers(section_text: str, source_news_text: str, extra_context_text: str = "") -> list[str]:
     """Flag numeric claims in section_text that cannot be grounded in source text or context."""
     if not section_text:
@@ -251,14 +333,14 @@ def _flag_ungrounded_numbers(section_text: str, source_news_text: str, extra_con
     seen_tokens = set()
 
     for token in claimed_tokens:
-        tok_clean = token.strip(' \t\n\r:;()[]{}*`"\'')
+        tok_clean = token.strip(" \t\n\r:;()[]{}*`\"'")
         if not tok_clean or tok_clean in seen_tokens:
             continue
         seen_tokens.add(tok_clean)
 
         # Check verbatim substring presence in raw text
         tok_lower = tok_clean.lower()
-        tok_lower_stripped = _re.sub(r'^[+\-±~><$€£¥₣₩₹\s]+', '', tok_lower).strip(' \t\n\r:;()[]{}*`"\'')
+        tok_lower_stripped = _re.sub(r"^[+\-±~><$€£¥₣₩₹\s]+", "", tok_lower).strip(" \t\n\r:;()[]{}*`\"'")
         if tok_lower_stripped and tok_lower_stripped in ref_raw_text:
             continue
 
@@ -268,7 +350,12 @@ def _flag_ungrounded_numbers(section_text: str, source_news_text: str, extra_con
 
         # Check structural whitelist ONLY for unscaled base numbers (e.g. 1..10, years, horizons)
         # Scaled financial claims like $2B, 25bps, or 5.0% must be grounded in source text!
-        has_multiplier = bool(_re.search(r'(?:[0-9]+(?:\.[0-9]+)?\s*(?:[kmb\u5146\u5104]|thousand|million|billion|trillion|mio|bln|bn|tn|bps|bp|%|percent|pct)|(?:\$|€|£|¥)\s*[0-9]+|\b(?:usd|eur|gbp)\b)', tok_lower))
+        has_multiplier = bool(
+            _re.search(
+                r"(?:[0-9]+(?:\.[0-9]+)?\s*(?:[kmb\u5146\u5104]|thousand|million|billion|trillion|mio|bln|bn|tn|bps|bp|%|percent|pct)|(?:\$|€|£|¥)\s*[0-9]+|\b(?:usd|eur|gbp)\b)",
+                tok_lower,
+            )
+        )
         if not has_multiplier and any(v in _STRUCTURAL_NUMBERS for v in tok_variants):
             continue
 
@@ -296,36 +383,63 @@ def _flag_ungrounded_numbers(section_text: str, source_news_text: str, extra_con
 
     return ungrounded
 
+
 def _deduplicate_items_by_title(items: list, threshold: float = 0.78) -> list:
     unique = []
     for item in items:
-        title = item.title or ''
-        if not any(_jaccard_title_similarity(title, (u.title or '')) > threshold for u in unique):
+        title = item.title or ""
+        if not any(_jaccard_title_similarity(title, (u.title or "")) > threshold for u in unique):
             unique.append(item)
     return unique
 
+
 from monika.domain.market.news_impact_keywords import (
-    HIGH_IMPACT_KEYWORDS, SHOCK_KEYWORDS, DEESCALATION_KEYWORDS, REHASH_KEYWORDS
+    HIGH_IMPACT_KEYWORDS,
+    SHOCK_KEYWORDS,
+    DEESCALATION_KEYWORDS,
+    REHASH_KEYWORDS,
 )
 
 SENTIMENT_TAXONOMY = [
-    'BULLISH_USD', 'BEARISH_USD', 'BULLISH_EUR', 'BEARISH_EUR',
-    'BULLISH_GBP', 'BEARISH_GBP', 'BULLISH_JPY', 'BEARISH_JPY',
-    'BULLISH_AUD', 'BEARISH_AUD', 'BULLISH_XAU', 'BEARISH_XAU',
-    'BULLISH_XTI', 'BEARISH_XTI', 'BULLISH_BTC', 'BEARISH_BTC',
-    'RISK_ON', 'RISK_OFF', 'HAWKISH', 'DOVISH',
-    'INFLATIONARY', 'DISINFLATIONARY', 'GEOPOLITICAL_RISK', 'NEUTRAL',
+    "BULLISH_USD",
+    "BEARISH_USD",
+    "BULLISH_EUR",
+    "BEARISH_EUR",
+    "BULLISH_GBP",
+    "BEARISH_GBP",
+    "BULLISH_JPY",
+    "BEARISH_JPY",
+    "BULLISH_AUD",
+    "BEARISH_AUD",
+    "BULLISH_XAU",
+    "BEARISH_XAU",
+    "BULLISH_XTI",
+    "BEARISH_XTI",
+    "BULLISH_BTC",
+    "BEARISH_BTC",
+    "RISK_ON",
+    "RISK_OFF",
+    "HAWKISH",
+    "DOVISH",
+    "INFLATIONARY",
+    "DISINFLATIONARY",
+    "GEOPOLITICAL_RISK",
+    "NEUTRAL",
     # 5-Day Multi-Day Nuance & Narrative Tags
-    'FRESH_CATALYST', 'NARRATIVE_EXHAUSTION', 'DEESCALATION_RELIEF',
-    'HAWKISH_PRICED_IN', 'DOVISH_PRICED_IN',
+    "FRESH_CATALYST",
+    "NARRATIVE_EXHAUSTION",
+    "DEESCALATION_RELIEF",
+    "HAWKISH_PRICED_IN",
+    "DOVISH_PRICED_IN",
 ]
 _SENTIMENT_SET = set(SENTIMENT_TAXONOMY)
+
 
 def _keyword_fallback_classify(title: str, summary: str) -> dict:
     text = f"{title} {summary or ''}".lower()
     shock_hits = sum((1 for k in SHOCK_KEYWORDS if k in text))
     high_hits = sum((1 for k in HIGH_IMPACT_KEYWORDS if k in text))
-    reaction_words = ['surges', 'tumbles', 'rallies', 'spikes', 'slumps', 'falls', 'jumps', 'plunges']
+    reaction_words = ["surges", "tumbles", "rallies", "spikes", "slumps", "falls", "jumps", "plunges"]
     has_reaction_word = any((w in text for w in reaction_words))
     # CRITICAL FIX: Keyword fallback TIDAK BOLEH menghasilkan BREAKING.
     # BREAKING memerlukan LLM yang berhasil menjalankan MANDATORY_BREAKING_CHECKLIST penuh.
@@ -333,16 +447,17 @@ def _keyword_fallback_classify(title: str, summary: str) -> dict:
     # justru kondisi paling tidak reliable untuk assign impact tertinggi.
     # Max output fallback = HIGH, yang sudah cukup untuk trigger escalation re-verify.
     if shock_hits >= 1 and (not has_reaction_word):
-        impact = 'HIGH'      # Was BREAKING — downgrade ke HIGH, LLM akan re-verify jika diperlukan
+        impact = "HIGH"  # Was BREAKING — downgrade ke HIGH, LLM akan re-verify jika diperlukan
     elif shock_hits >= 1 or high_hits >= 2:
-        impact = 'HIGH'
+        impact = "HIGH"
     elif high_hits >= 1:
-        impact = 'MEDIUM'
+        impact = "MEDIUM"
     else:
-        impact = 'LOW'
+        impact = "LOW"
     from monika.infrastructure.database.adapters import extract_currency_tags
+
     tags_str = extract_currency_tags(f"{title} {summary or ''}")
-    currencies = [c for c in (tags_str.split(',') if tags_str else []) if c] or ['NON']
+    currencies = [c for c in (tags_str.split(",") if tags_str else []) if c] or ["NON"]
     # FIX (P0): sertakan confidence RENDAH secara eksplisit. Tanpa field ini,
     # `item_result.get('confidence') or 1.0` di _detect_under_classification_candidates
     # akan mengevaluasi ke 1.0 ("percaya diri penuh") justru saat kualitas
@@ -352,7 +467,14 @@ def _keyword_fallback_classify(title: str, summary: str) -> dict:
     # 0.35 sengaja di bawah threshold 0.6 agar item ini juga otomatis
     # kena DOWNGRADE_MAP di _validate_classification_batch (BREAKING->HIGH
     # dst.) selain dikirim ke jalur reverify.
-    return {'impact': impact, 'confidence': 0.35, 'surprise_magnitude': 'none', 'currencies': currencies, 'sentiments': [], '_fallback_method': 'keyword_weighted'}
+    return {
+        "impact": impact,
+        "confidence": 0.35,
+        "surprise_magnitude": "none",
+        "currencies": currencies,
+        "sentiments": [],
+        "_fallback_method": "keyword_weighted",
+    }
 
 
 def _is_zero_based_series(results: list, batch_len: int) -> bool:
@@ -365,7 +487,7 @@ def _is_zero_based_series(results: list, batch_len: int) -> bool:
             try:
                 c_str = str(r["index"]).strip().rstrip(".:)")
                 parsed_indices.append(int(c_str))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
     return 0 in parsed_indices and batch_len not in parsed_indices
 
@@ -382,7 +504,7 @@ def _resolve_item_index(item_result: dict, batch: list, is_zero_based: bool = Fa
     """
     if not isinstance(item_result, dict) or not batch:
         return None
-    
+
     # 1. Match via explicit news_id / id if provided
     raw_id = item_result.get("news_id") or item_result.get("id")
     if raw_id is not None:
@@ -391,7 +513,7 @@ def _resolve_item_index(item_result: dict, batch: list, is_zero_based: bool = Fa
             for i, b_item in enumerate(batch):
                 if getattr(b_item, "id", None) == target_id:
                     return i
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             pass
 
     # 2. Extract raw index
@@ -401,7 +523,7 @@ def _resolve_item_index(item_result: dict, batch: list, is_zero_based: bool = Fa
     try:
         clean_str = str(raw_idx).strip().rstrip(".:)")
         idx_val = int(float(clean_str))
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
     actual_idx = idx_val if is_zero_based else (idx_val - 1)
@@ -417,38 +539,63 @@ NEWS_CLASSIFICATION_SCHEMA = {
         "properties": {
             "index": {"type": "integer"},
             "news_id": {"type": "integer", "description": "ID of the news item being classified"},
-            "reasoning": {"type": "string", "description": "Chain of thought explaining the impact, surprise magnitude, and sentiment classification."},
+            "reasoning": {
+                "type": "string",
+                "description": "Chain of thought explaining the impact, surprise magnitude, and sentiment classification.",
+            },
             "impact": {"type": "string", "enum": ["BREAKING", "HIGH", "MEDIUM", "LOW", "NONE"]},
             "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0, "description": "Confidence score 0.0-1.0"},
             "surprise_magnitude": {
-                "type": "string", "enum": ["none", "small", "moderate", "large"],
+                "type": "string",
+                "enum": ["none", "small", "moderate", "large"],
                 "description": "For DATA RELEASES only: how far actual differs from consensus/forecast. "
-                               "\"none\" for non-data news (speeches, geopolitical, opinion). "
-                               "BREAKING requires \"large\". A data release matching consensus is \"none\" "
-                               "even if the topic itself sounds important."
+                '"none" for non-data news (speeches, geopolitical, opinion). '
+                'BREAKING requires "large". A data release matching consensus is "none" '
+                "even if the topic itself sounds important.",
             },
-            "currencies": {"type": "array", "items": {"type": "string", "enum": ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "XTI", "BTC", "NON"]}},
+            "currencies": {
+                "type": "array",
+                "items": {"type": "string", "enum": ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "XTI", "BTC", "NON"]},
+            },
             "sentiments": {"type": "array", "items": {"type": "string", "enum": SENTIMENT_TAXONOMY}},
             "key_data_point": {
                 "type": "string",
-                "description": "For DATA RELEASES only: extract actual vs forecast figures verbatim from title/summary if available (e.g. 'CPI actual 3.8% vs forecast 3.1%'). Empty string for non-data releases."
-            }
+                "description": "For DATA RELEASES only: extract actual vs forecast figures verbatim from title/summary if available (e.g. 'CPI actual 3.8% vs forecast 3.1%'). Empty string for non-data releases.",
+            },
         },
-        "required": ["index", "reasoning", "impact", "confidence", "surprise_magnitude", "currencies", "sentiments", "key_data_point"]
-    }
+        "required": [
+            "index",
+            "reasoning",
+            "impact",
+            "confidence",
+            "surprise_magnitude",
+            "currencies",
+            "sentiments",
+            "key_data_point",
+        ],
+    },
 }
 
 DIGEST_CONSISTENCY_SCHEMA = {
-    'type': 'object',
-    'properties': {
-        'has_contradictions': {'type': 'boolean'},
-        'contradictions': {'type': 'array', 'items': {'type': 'object', 'properties': {
-            'section_a': {'type': 'string'}, 'section_b': {'type': 'string'},
-            'claim_a': {'type': 'string'}, 'claim_b': {'type': 'string'},
-            'severity': {'type': 'string', 'enum': ['minor', 'material']},
-        }, 'required': ['section_a', 'section_b', 'claim_a', 'claim_b', 'severity']}},
+    "type": "object",
+    "properties": {
+        "has_contradictions": {"type": "boolean"},
+        "contradictions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "section_a": {"type": "string"},
+                    "section_b": {"type": "string"},
+                    "claim_a": {"type": "string"},
+                    "claim_b": {"type": "string"},
+                    "severity": {"type": "string", "enum": ["minor", "material"]},
+                },
+                "required": ["section_a", "section_b", "claim_a", "claim_b", "severity"],
+            },
+        },
     },
-    'required': ['has_contradictions', 'contradictions'],
+    "required": ["has_contradictions", "contradictions"],
 }
 
 
@@ -464,27 +611,41 @@ def _normalize_contradictions(raw_contradictions: Any) -> list[dict]:
     for c in raw_contradictions:
         if not isinstance(c, dict):
             continue
-        claim_a = (c.get('claim_a') or c.get('claimA') or c.get('claim_1') or 
-                   c.get('claim1') or c.get('statement_a') or c.get('statement1') or 
-                   c.get('claim') or '')
-        claim_b = (c.get('claim_b') or c.get('claimB') or c.get('claim_2') or 
-                   c.get('claim2') or c.get('statement_b') or c.get('statement2') or '')
-        section_a = (c.get('section_a') or c.get('sectionA') or c.get('section_1') or 
-                     c.get('section1') or 'Section A')
-        section_b = (c.get('section_b') or c.get('sectionB') or c.get('section_2') or 
-                     c.get('section2') or 'Section B')
-        severity = str(c.get('severity', 'minor')).lower()
-        if severity not in ('material', 'minor'):
-            severity = 'material' if any(w in severity for w in ('high', 'crit', 'mat', 'severe')) else 'minor'
-        
+        claim_a = (
+            c.get("claim_a")
+            or c.get("claimA")
+            or c.get("claim_1")
+            or c.get("claim1")
+            or c.get("statement_a")
+            or c.get("statement1")
+            or c.get("claim")
+            or ""
+        )
+        claim_b = (
+            c.get("claim_b")
+            or c.get("claimB")
+            or c.get("claim_2")
+            or c.get("claim2")
+            or c.get("statement_b")
+            or c.get("statement2")
+            or ""
+        )
+        section_a = c.get("section_a") or c.get("sectionA") or c.get("section_1") or c.get("section1") or "Section A"
+        section_b = c.get("section_b") or c.get("sectionB") or c.get("section_2") or c.get("section2") or "Section B"
+        severity = str(c.get("severity", "minor")).lower()
+        if severity not in ("material", "minor"):
+            severity = "material" if any(w in severity for w in ("high", "crit", "mat", "severe")) else "minor"
+
         if claim_a or claim_b:
-            normalized.append({
-                'section_a': str(section_a),
-                'section_b': str(section_b),
-                'claim_a': str(claim_a) if claim_a else '(unspecified claim)',
-                'claim_b': str(claim_b) if claim_b else '(unspecified claim)',
-                'severity': severity
-            })
+            normalized.append(
+                {
+                    "section_a": str(section_a),
+                    "section_b": str(section_b),
+                    "claim_a": str(claim_a) if claim_a else "(unspecified claim)",
+                    "claim_b": str(claim_b) if claim_b else "(unspecified claim)",
+                    "severity": severity,
+                }
+            )
     return normalized
 
 
@@ -530,7 +691,9 @@ def generate_deterministic_macro_summary(
         currencies = getattr(item, "currency_tags", "") or "GLOBAL"
         drivers_lines.append(f"- [{impact}] ({pub_str} | {currencies}) {title}")
 
-    drivers_block = "\n".join(drivers_lines) if drivers_lines else "- No breaking or high-impact news items recorded in window."
+    drivers_block = (
+        "\n".join(drivers_lines) if drivers_lines else "- No breaking or high-impact news items recorded in window."
+    )
 
     lines = [
         "**[MACRO REGIME]**",
@@ -587,6 +750,7 @@ def generate_deterministic_currency_summary(currency: str, items: Sequence[Any])
 
 class NewsDigestProcessor:
     """Memproses berita untuk disajikan ke tahap analisis."""
+
     CLASSIFICATION_FEW_SHOT_EXAMPLES = """
 CALIBRATED FEW-SHOT EXAMPLES (Study this reasoning pattern; do not merely memorize outputs):
 
@@ -644,11 +808,11 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
         self.settings = settings
         self._classifier = get_client_for_task("news_classification", settings)
         self._digest_generator = get_client_for_task("news_digest", settings)
-        self._macro_synth = get_client_for_task('news_digest_macro_overview', settings)
-        self._verifier = get_client_for_task('news_digest_verifier', settings)
-        self._classification_verifier = get_client_for_task('news_classification_verifier', settings)
-        self._classification_escalation = get_client_for_task('news_classification_escalation', settings)
-        
+        self._macro_synth = get_client_for_task("news_digest_macro_overview", settings)
+        self._verifier = get_client_for_task("news_digest_verifier", settings)
+        self._classification_verifier = get_client_for_task("news_classification_verifier", settings)
+        self._classification_escalation = get_client_for_task("news_classification_escalation", settings)
+
         # Hybrid Event-Driven 5-Day Macro Context Cache
         self._macro_context_cache: Optional[str] = None
         self._macro_context_cache_time: Optional[datetime] = None
@@ -677,16 +841,24 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
 
         # Check for reactive invalidation triggers (new brief or new breaking news)
         try:
-            latest_brief_id = (await session.execute(
-                select(FundamentalBrief.id).order_by(FundamentalBrief.generated_at.desc()).limit(1)
-            )).scalar_one_or_none()
-            latest_breaking_id = (await session.execute(
-                select(NewsItem.id).where(NewsItem.impact == 'BREAKING').order_by(NewsItem.fetched_at.desc()).limit(1)
-            )).scalar_one_or_none()
+            latest_brief_id = (
+                await session.execute(
+                    select(FundamentalBrief.id).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                )
+            ).scalar_one_or_none()
+            latest_breaking_id = (
+                await session.execute(
+                    select(NewsItem.id)
+                    .where(NewsItem.impact == "BREAKING")
+                    .order_by(NewsItem.fetched_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
 
             # If new event occurred since cache creation, invalidate immediately
-            if (self._last_known_brief_id is not None and latest_brief_id != self._last_known_brief_id) or \
-               (self._last_known_breaking_id is not None and latest_breaking_id != self._last_known_breaking_id):
+            if (self._last_known_brief_id is not None and latest_brief_id != self._last_known_brief_id) or (
+                self._last_known_breaking_id is not None and latest_breaking_id != self._last_known_breaking_id
+            ):
                 self.invalidate_macro_context_cache()
 
             self._last_known_brief_id = latest_brief_id
@@ -701,23 +873,24 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
 
         try:
             # 1. Ambil brief fundamental terbaru untuk baseline regime & bias
-            brief = (await session.execute(
-                select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
-            )).scalar_one_or_none()
+            brief = (
+                await session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))
+            ).scalar_one_or_none()
 
             macro_summary = "Regime: BALANCED | Risk: NEUTRAL | Biases: Mixed"
             if brief:
-                regime = getattr(brief, 'macro_regime', 'mixed')
-                risk = getattr(brief, 'risk_sentiment', 'mixed')
-                cb = getattr(brief, 'currency_bias', {}) or {}
+                regime = getattr(brief, "macro_regime", "mixed")
+                risk = getattr(brief, "risk_sentiment", "mixed")
+                cb = getattr(brief, "currency_bias", {}) or {}
                 if isinstance(cb, dict) and cb:
-                    bias_str = ", ".join([f"{k}:{v}" for k, v in cb.items() if v != 'neutral'][:6])
+                    bias_str = ", ".join([f"{k}:{v}" for k, v in cb.items() if v != "neutral"][:6])
                 else:
                     bias_str = "Balanced"
                 macro_summary = f"Regime: {str(regime).upper()} | Risk: {str(risk).upper()} | Biases: {bias_str}"
 
             try:
                 from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+
                 c_writer = ChronicleWriter(self.settings)
                 c_bullets = await c_writer.get_condensed_chronicle_bullets(session, limit=4)
                 if c_bullets:
@@ -727,13 +900,15 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
 
             # 2. Ambil berita HIGH/BREAKING dari 5 hari terakhir (120 jam)
             five_days_ago = now_utc - timedelta(days=5)
-            recent_high_items = (await session.execute(
-                select(NewsItem.title, NewsItem.currency_tags, NewsItem.impact, NewsItem.fetched_at)
-                .where(NewsItem.fetched_at >= five_days_ago)
-                .where(NewsItem.impact.in_(['BREAKING', 'HIGH']))
-                .order_by(NewsItem.fetched_at.desc())
-                .limit(30)
-            )).all()
+            recent_high_items = (
+                await session.execute(
+                    select(NewsItem.title, NewsItem.currency_tags, NewsItem.impact, NewsItem.fetched_at)
+                    .where(NewsItem.fetched_at >= five_days_ago)
+                    .where(NewsItem.impact.in_(["BREAKING", "HIGH"]))
+                    .order_by(NewsItem.fetched_at.desc())
+                    .limit(30)
+                )
+            ).all()
 
             theme_lines = []
             seen_titles = []
@@ -745,7 +920,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
                 if any(_jaccard_title_similarity(t, st) > 0.45 for st in seen_titles):
                     continue
                 seen_titles.append(t)
-                cur = row[1] or 'MACRO'
+                cur = row[1] or "MACRO"
                 imp = row[2]
                 r_utc = ensure_utc(row[3]) if row[3] else None
                 age_days = max(0, round((now_utc - r_utc).total_seconds() / 86400, 1)) if r_utc else 0
@@ -753,16 +928,21 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
                 if len(theme_lines) >= 8:
                     break
 
-            themes_block = "\n".join(theme_lines) if theme_lines else "• No dominant multi-day shock recorded in recent 5 days."
+            themes_block = (
+                "\n".join(theme_lines) if theme_lines else "• No dominant multi-day shock recorded in recent 5 days."
+            )
 
             # SOTA Memory Grounding: Inject active structural chronicles (ongoing wars, central bank leadership, tariffs)
             chronicle_block = ""
             try:
                 from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+
                 c_writer = ChronicleWriter(self.settings)
                 c_bullets = await c_writer.get_condensed_chronicle_bullets(session, days_back=60, limit=5)
                 if c_bullets:
-                    chronicle_block = f"ACTIVE STRUCTURAL MACRO REGIMES (Ongoing Historical Milestones & Conflicts):\n{c_bullets}\n\n"
+                    chronicle_block = (
+                        f"ACTIVE STRUCTURAL MACRO REGIMES (Ongoing Historical Milestones & Conflicts):\n{c_bullets}\n\n"
+                    )
             except Exception as _c_err:
                 logger.debug(f"Failed to fetch chronicle in news context: {_c_err}")
 
@@ -784,15 +964,16 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
             logger.debug(f"Failed to build 5-day macro context (non-fatal): {e}")
             return "--- 5-DAY MACRO CONTEXT ---\nEvaluate news items objectively based on fresh catalysts vs market consensus."
 
-    def _detect_under_classification_candidates(self, batch: list[NewsItem], validated_result: list,
-                                                 calendar_priors: dict) -> list[tuple[dict, NewsItem]]:
+    def _detect_under_classification_candidates(
+        self, batch: list[NewsItem], validated_result: list, calendar_priors: dict
+    ) -> list[tuple[dict, NewsItem]]:
         """Symmetric safety net to the existing over-classification downgrade logic.
         Catches items the primary classifier under-rated (e.g. MEDIUM/LOW/NONE) that
         keyword or calendar evidence suggests should actually be HIGH or BREAKING.
         Without this, the system only ever protects against false BREAKING alarms,
         never against missed real ones — an asymmetry that directly contradicts the
         zero-tolerance requirement for this stage."""
-        IMPACT_RANK = {'NONE': 0, 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'BREAKING': 4}
+        IMPACT_RANK = {"NONE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "BREAKING": 4}
         candidates = []
         is_zb = _is_zero_based_series(validated_result, len(batch))
         for item_result in validated_result:
@@ -802,22 +983,23 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
             if idx is None:
                 continue
             news_item = batch[idx]
-            current_impact = item_result.get('impact', 'MEDIUM')
-            if IMPACT_RANK.get(current_impact, 0) >= IMPACT_RANK['HIGH']:
+            current_impact = item_result.get("impact", "MEDIUM")
+            if IMPACT_RANK.get(current_impact, 0) >= IMPACT_RANK["HIGH"]:
                 continue
             text = f"{news_item.title} {news_item.summary or ''}".lower()
             has_shock = any(k in text for k in SHOCK_KEYWORDS)
             calendar_prior = calendar_priors.get(idx + 1)
-            calendar_says_high = calendar_prior == 'high'
+            calendar_says_high = calendar_prior == "high"
             # Also catch cases where confidence itself was low on a non-HIGH verdict —
             # low confidence in either direction deserves a second look.
-            low_confidence = (item_result.get('confidence') or 1.0) < 0.55
-            if has_shock or calendar_says_high or (low_confidence and current_impact == 'MEDIUM'):
+            low_confidence = (item_result.get("confidence") or 1.0) < 0.55
+            if has_shock or calendar_says_high or (low_confidence and current_impact == "MEDIUM"):
                 candidates.append((item_result, news_item))
         return candidates
 
-    async def _reverify_candidates(self, session: AsyncSession, candidates: list[tuple[dict, NewsItem]],
-                                    now_utc: datetime) -> dict:
+    async def _reverify_candidates(
+        self, session: AsyncSession, candidates: list[tuple[dict, NewsItem]], now_utc: datetime
+    ) -> dict:
         """Generalized bidirectional re-verification (replaces the old, one-directional
         _escalate_low_confidence_items — now used for BOTH downgrade and upgrade cases)."""
         if not candidates:
@@ -825,32 +1007,43 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
         lines = []
         for j, (item_result, news_item) in enumerate(candidates):
             f_utc = ensure_utc(news_item.fetched_at) if news_item.fetched_at else None
-            age_min = round((now_utc - f_utc).total_seconds() / 60) if f_utc else '?'
-            lines.append(f"{j + 1}. ORIGINAL_VERDICT={item_result.get('impact')} "
-                          f"(confidence={item_result.get('confidence', 0):.2f})\n"
-                          f"   TITLE: {news_item.title[:200]}\n"
-                          f"   FULL SUMMARY: {(news_item.summary or '')[:600]}\n"
-                          f"   TIME-IN-SYSTEM: {age_min} min")
+            age_min = round((now_utc - f_utc).total_seconds() / 60) if f_utc else "?"
+            lines.append(
+                f"{j + 1}. ORIGINAL_VERDICT={item_result.get('impact')} "
+                f"(confidence={item_result.get('confidence', 0):.2f})\n"
+                f"   TITLE: {news_item.title[:200]}\n"
+                f"   FULL SUMMARY: {(news_item.summary or '')[:600]}\n"
+                f"   TIME-IN-SYSTEM: {age_min} min"
+            )
         macro_5d_context = await self._build_5day_macro_context(session, now_utc)
-        prompt = (f"Re-evaluate each of the following items from SCRATCH, without bias toward the original verdict. "
-                  f"The original verdict MIGHT be too high OR too low — your job is purely "
-                  f"to assess objectively based on the 5-day market context and full content below, not to confirm "
-                  f"or refute the prior verdict.\n\n"
-                  f"{macro_5d_context}\n\n"
-                  f"ITEMS:\n{chr(10).join(lines)}\n\n"
-                  f'Respond JSON array: [{{"index":1,"reasoning":"...","impact":"HIGH",'
-                  f'"confidence":0.8,"surprise_magnitude":"none","currencies":["USD"],'
-                  f'"sentiments":[],"key_data_point":""}}]')
+        prompt = (
+            f"Re-evaluate each of the following items from SCRATCH, without bias toward the original verdict. "
+            f"The original verdict MIGHT be too high OR too low — your job is purely "
+            f"to assess objectively based on the 5-day market context and full content below, not to confirm "
+            f"or refute the prior verdict.\n\n"
+            f"{macro_5d_context}\n\n"
+            f"ITEMS:\n{chr(10).join(lines)}\n\n"
+            f'Respond JSON array: [{{"index":1,"reasoning":"...","impact":"HIGH",'
+            f'"confidence":0.8,"surprise_magnitude":"none","currencies":["USD"],'
+            f'"sentiments":[],"key_data_point":""}}]'
+        )
         try:
             result = await self._classification_escalation.classify_json(
-                prompt=prompt, schema=NEWS_CLASSIFICATION_SCHEMA)
+                prompt=prompt, schema=NEWS_CLASSIFICATION_SCHEMA
+            )
         except Exception as e:
-            logger.warning(f'[NewsClassification] Re-verification failed (non-fatal): {e}')
+            logger.warning(f"[NewsClassification] Re-verification failed (non-fatal): {e}")
             return {}
         if not result:
             return {}
         if isinstance(result, dict):
-            result = result.get('items') or result.get('results') or result.get('data') or result.get('classifications') or [result]
+            result = (
+                result.get("items")
+                or result.get("results")
+                or result.get("data")
+                or result.get("classifications")
+                or [result]
+            )
         if not isinstance(result, list):
             return {}
         corrected = {}
@@ -873,7 +1066,9 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
                 corrected[matched_item.id] = r
         return corrected
 
-    async def _escalate_low_confidence_items(self, session: AsyncSession, low_conf_items: list[tuple[dict, NewsItem]], now_utc: datetime) -> dict:
+    async def _escalate_low_confidence_items(
+        self, session: AsyncSession, low_conf_items: list[tuple[dict, NewsItem]], now_utc: datetime
+    ) -> dict:
         """Re-classify items marked HIGH/BREAKING by flash-lite with confidence < 0.6
         (meaning the model was uncertain), using a stronger model + full context (untruncated).
         Returns {news_item_id: corrected_result_dict}."""
@@ -882,7 +1077,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
         lines = []
         for j, (item_result, news_item) in enumerate(low_conf_items):
             f_utc = ensure_utc(news_item.fetched_at) if news_item.fetched_at else None
-            age_min = round((now_utc - f_utc).total_seconds() / 60) if f_utc else '?'
+            age_min = round((now_utc - f_utc).total_seconds() / 60) if f_utc else "?"
             lines.append(
                 f"{j + 1}. [ID #{news_item.id}] ORIGINAL_VERDICT={item_result.get('impact')} (confidence={item_result.get('confidence', 0):.2f})\n"
                 f"   TITLE: {news_item.title[:200]}\n"
@@ -898,14 +1093,22 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
             '"surprise_magnitude":"none","currencies":["USD"],"sentiments":[],"key_data_point":""}]'
         )
         try:
-            result = await self._classification_escalation.classify_json(prompt=prompt, schema=NEWS_CLASSIFICATION_SCHEMA)
+            result = await self._classification_escalation.classify_json(
+                prompt=prompt, schema=NEWS_CLASSIFICATION_SCHEMA
+            )
         except Exception as e:
-            logger.warning(f'[NewsClassification] Escalation re-verify failed (non-fatal, keeping original): {e}')
+            logger.warning(f"[NewsClassification] Escalation re-verify failed (non-fatal, keeping original): {e}")
             return {}
         if not result:
             return {}
         if isinstance(result, dict):
-            result = result.get('items') or result.get('results') or result.get('data') or result.get('classifications') or [result]
+            result = (
+                result.get("items")
+                or result.get("results")
+                or result.get("data")
+                or result.get("classifications")
+                or [result]
+            )
         if not isinstance(result, list):
             return {}
         corrected = {}
@@ -926,37 +1129,48 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
                     matched_item = low_items[idx]
             if matched_item:
                 corrected[matched_item.id] = r
-                logger.info(f"[NewsClassification] Escalation resolved '{matched_item.title[:50]}': "
-                            f"-> {r.get('impact')} (conf={r.get('confidence', 0):.2f})")
+                logger.info(
+                    f"[NewsClassification] Escalation resolved '{matched_item.title[:50]}': "
+                    f"-> {r.get('impact')} (conf={r.get('confidence', 0):.2f})"
+                )
         return corrected
 
-    async def _get_calendar_impact_priors(self, session: AsyncSession, batch: list[NewsItem], now_utc: datetime) -> dict[int, Optional[str]]:
+    async def _get_calendar_impact_priors(
+        self, session: AsyncSession, batch: list[NewsItem], now_utc: datetime
+    ) -> dict[int, Optional[str]]:
         from monika.infrastructure.database.models import EconomicCalendar
         from sqlalchemy import select
+
         priors: dict[int, Optional[str]] = {}
-        MIN_TOKEN_OVERLAP = 2       # FIX: sebelumnya 1 — terlalu longgar, rawan false-match
-        MIN_OVERLAP_RATIO = 0.25    # FIX BARU: overlap harus jadi porsi berarti dari nama event
+        MIN_TOKEN_OVERLAP = 2  # FIX: sebelumnya 1 — terlalu longgar, rawan false-match
+        MIN_OVERLAP_RATIO = 0.25  # FIX BARU: overlap harus jadi porsi berarti dari nama event
 
         for idx, item in enumerate(batch, start=1):
             priors[idx] = None
             if not item.currency_tags:
                 continue
-            currencies = [c.strip().upper() for c in item.currency_tags.split(',') if c.strip() and c.strip() != 'NON']
+            currencies = [c.strip().upper() for c in item.currency_tags.split(",") if c.strip() and c.strip() != "NON"]
             if not currencies:
                 continue
             check_time = ensure_utc(item.fetched_at) or now_utc
-            candidates = (await session.execute(
-                select(EconomicCalendar)
-                .where(EconomicCalendar.currency.in_(currencies))
-                .where(EconomicCalendar.event_time >= check_time - timedelta(hours=2))
-                .where(EconomicCalendar.event_time <= check_time + timedelta(hours=1))
-            )).scalars().all()
+            candidates = (
+                (
+                    await session.execute(
+                        select(EconomicCalendar)
+                        .where(EconomicCalendar.currency.in_(currencies))
+                        .where(EconomicCalendar.event_time >= check_time - timedelta(hours=2))
+                        .where(EconomicCalendar.event_time <= check_time + timedelta(hours=1))
+                    )
+                )
+                .scalars()
+                .all()
+            )
             if not candidates:
                 continue
-            title_tokens = set(w for w in (item.title or '').lower().split() if len(w) > 4)
+            title_tokens = set(w for w in (item.title or "").lower().split() if len(w) > 4)
             best_match, best_overlap, best_ratio = None, 0, 0.0
             for ev in candidates:
-                ev_tokens = set(w for w in (ev.event_name or '').lower().split() if len(w) > 4)
+                ev_tokens = set(w for w in (ev.event_name or "").lower().split() if len(w) > 4)
                 if not ev_tokens:
                     continue
                 overlap = len(title_tokens & ev_tokens)
@@ -964,33 +1178,54 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
                 if overlap > best_overlap or (overlap == best_overlap and ratio > best_ratio):
                     best_overlap, best_ratio, best_match = overlap, ratio, ev
             if best_match and best_overlap >= MIN_TOKEN_OVERLAP and (best_ratio >= MIN_OVERLAP_RATIO):
-                priors[idx] = (best_match.impact or '').lower()
+                priors[idx] = (best_match.impact or "").lower()
             else:
                 # NEW fallback: judul tidak match via token overlap (paraphrase umum, e.g. "US jobs
                 # beat forecast" vs event_name "Non-Farm Payrolls"), tapi ada event HIGH currency-sama
                 # dalam window WAKTU SANGAT SEMPIT (±20 menit) — itu sangat mungkin event yang sama.
                 tight_candidates = [
-                    ev for ev in candidates
-                    if (ev.impact or '').lower() == 'high' and ev.event_time is not None
+                    ev
+                    for ev in candidates
+                    if (ev.impact or "").lower() == "high"
+                    and ev.event_time is not None
                     and (ev_dt := ensure_utc(ev.event_time)) is not None
                     and abs((ev_dt - check_time).total_seconds()) <= 1200
                 ]
                 if tight_candidates:
-                    priors[idx] = 'high'
+                    priors[idx] = "high"
         return priors
 
     def _is_potentially_relevant(self, title: Optional[str], summary: Optional[str]) -> bool:
         text = f"{title or ''} {summary or ''}".lower()
-        
+
         # 1. Urgent/breaking headlines always relevant (H-3)
-        URGENT_TAGS = ['breaking', 'flash', 'urgent', 'alert', 'bulletin', 'just in',
-                       'emergency', 'war', 'sanction', 'crisis', 'attack', 'explosion',
-                       'embargo', 'escalation', 'coup', 'default', 'bailout',
-                       'ultimatum', 'threaten', 'retaliat']
+        URGENT_TAGS = [
+            "breaking",
+            "flash",
+            "urgent",
+            "alert",
+            "bulletin",
+            "just in",
+            "emergency",
+            "war",
+            "sanction",
+            "crisis",
+            "attack",
+            "explosion",
+            "embargo",
+            "escalation",
+            "coup",
+            "default",
+            "bailout",
+            "ultimatum",
+            "threaten",
+            "retaliat",
+        ]
         if any(tag in text for tag in URGENT_TAGS):
             return True
 
         from monika.domain.market.news_impact_keywords import GEOPOLITICAL_HOTSPOT_ENTITIES, GEOPOLITICAL_LEADERS
+
         # 1.1 Geopolitical Hotspot + Leader combination (e.g. Trump + Iran, Putin + Xi)
         has_leader = any(leader in text for leader in GEOPOLITICAL_LEADERS)
         has_hotspot = any(spot in text for spot in GEOPOLITICAL_HOTSPOT_ENTITIES)
@@ -998,25 +1233,68 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
             return True
 
         # 1.2 High-level diplomatic summits, accords, and strategic talks
-        if any(w in text for w in ('trilateral', 'bilateral', 'summit', 'diplomatic', 'accord')):
+        if any(w in text for w in ("trilateral", "bilateral", "summit", "diplomatic", "accord")):
             return True
 
         from monika.infrastructure.database.adapters import CURRENCY_KEYWORDS
+
         for keywords in CURRENCY_KEYWORDS.values():
             if any(kw in text for kw in keywords):
                 return True
         if any(kw in text for kw in HIGH_IMPACT_KEYWORDS) or any(kw in text for kw in SHOCK_KEYWORDS):
             return True
-            
+
         GENERIC_MACRO_TERMS = [
-            'stock market', 'wall street', 'bond yield', 'crude oil',
-            'commodities', 'risk appetite', 'safe haven', 'market selloff',
-            'rally', 'volatility', 'crypto', 'bitcoin', 'recession', 'tariff',
-            'inflation', 'cpi', 'pce', 'gdp', 'nfp', 'employment', 'unemployment',
-            'fomc', 'fed', 'ecb', 'boe', 'boj', 'pboc', 'snb', 'rba', 'rbnz',
-            'opec', 'treasury', 'equities', 'gold', 'dollar', 'euro', 'yen',
-            'pound', 'oil', 'nasdaq', 'dow', 's&p', 'dxy', 'vix', 'rate hike',
-            'rate cut', 'stimulus', 'debt ceiling', 'central bank', 'interest rate'
+            "stock market",
+            "wall street",
+            "bond yield",
+            "crude oil",
+            "commodities",
+            "risk appetite",
+            "safe haven",
+            "market selloff",
+            "rally",
+            "volatility",
+            "crypto",
+            "bitcoin",
+            "recession",
+            "tariff",
+            "inflation",
+            "cpi",
+            "pce",
+            "gdp",
+            "nfp",
+            "employment",
+            "unemployment",
+            "fomc",
+            "fed",
+            "ecb",
+            "boe",
+            "boj",
+            "pboc",
+            "snb",
+            "rba",
+            "rbnz",
+            "opec",
+            "treasury",
+            "equities",
+            "gold",
+            "dollar",
+            "euro",
+            "yen",
+            "pound",
+            "oil",
+            "nasdaq",
+            "dow",
+            "s&p",
+            "dxy",
+            "vix",
+            "rate hike",
+            "rate cut",
+            "stimulus",
+            "debt ceiling",
+            "central bank",
+            "interest rate",
         ]
         return any(kw in text for kw in GENERIC_MACRO_TERMS)
 
@@ -1027,31 +1305,33 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
         - HIGH salah diturunkan ke MEDIUM -> Stage 1 under-weight driver yang sebenarnya penting.
         - MEDIUM salah dinaikkan ke HIGH -> Stage 1 over-inflate urgensi makro yang sebenarnya rutin.
         """
-        high_items = [n for n in news_items if getattr(n, 'impact', None) == 'HIGH']
-        medium_items = [n for n in news_items if getattr(n, 'impact', None) == 'MEDIUM']
+        high_items = [n for n in news_items if getattr(n, "impact", None) == "HIGH"]
+        medium_items = [n for n in news_items if getattr(n, "impact", None) == "MEDIUM"]
         boundary_candidates = high_items + medium_items
         if len(boundary_candidates) < 3:
             return
 
         verify_schema = {
-            'type': 'array',
-            'items': {
-                'type': 'object',
-                'properties': {
-                    'index': {'type': 'integer'},
-                    'target_impact': {'type': 'string', 'enum': ['HIGH', 'MEDIUM', 'LOW']},
-                    'reason': {'type': 'string'},
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "index": {"type": "integer"},
+                    "target_impact": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW"]},
+                    "reason": {"type": "string"},
                 },
-                'required': ['index', 'target_impact', 'reason'],
+                "required": ["index", "target_impact", "reason"],
             },
         }
 
         for batch_start in range(0, len(boundary_candidates), 8):
-            chunk = boundary_candidates[batch_start:batch_start + 8]
-            text = '\n\n'.join([
-                f"{j+1}. [current={item.impact}] {item.title[:150]}\n   {(item.summary or '')[:200]}"
-                for j, item in enumerate(chunk)
-            ])
+            chunk = boundary_candidates[batch_start : batch_start + 8]
+            text = "\n\n".join(
+                [
+                    f"{j + 1}. [current={item.impact}] {item.title[:150]}\n   {(item.summary or '')[:200]}"
+                    for j, item in enumerate(chunk)
+                ]
+            )
             prompt = f"""You are a senior macro calibration editor for FX, Commodities (Gold/Oil), and Crypto (Bitcoin) trading signals.
 Task: For EACH item, evaluate its true market impact and assign the exact TARGET IMPACT: HIGH, MEDIUM, or LOW.
 
@@ -1073,7 +1353,7 @@ Respond JSON array of objects:
                 if not result:
                     continue
                 if isinstance(result, dict):
-                    result = result.get('items') or result.get('verdicts') or result.get('results') or [result]
+                    result = result.get("items") or result.get("verdicts") or result.get("results") or [result]
                 if not isinstance(result, list):
                     continue
                 is_zb = _is_zero_based_series(result, len(chunk))
@@ -1085,86 +1365,108 @@ Respond JSON array of objects:
                         continue
                     item = chunk[idx]
                     old_impact = item.impact
-                    reason = str(v.get('reason', '')).strip()
+                    reason = str(v.get("reason", "")).strip()
                     reason_lower = reason.lower()
 
                     # Resolve intended target_impact (supporting both new target_impact and legacy verdict enum)
-                    target = v.get('target_impact') or v.get('impact')
+                    target = v.get("target_impact") or v.get("impact")
                     if not target:
-                        verdict = v.get('verdict', '')
-                        if verdict == 'PROMOTE_TO_HIGH':
-                            target = 'HIGH'
-                        elif verdict == 'DEMOTE_TO_MEDIUM':
-                            target = 'MEDIUM'
-                        elif verdict == 'DEMOTE_TO_LOW':
-                            target = 'LOW'
-                        elif verdict == 'CONFIRM':
+                        verdict = v.get("verdict", "")
+                        if verdict == "PROMOTE_TO_HIGH":
+                            target = "HIGH"
+                        elif verdict == "DEMOTE_TO_MEDIUM":
+                            target = "MEDIUM"
+                        elif verdict == "DEMOTE_TO_LOW":
+                            target = "LOW"
+                        elif verdict == "CONFIRM":
                             target = old_impact
-                    
+
                     target = str(target).upper() if target else old_impact
 
                     # Contradiction Guard: Reconcile discrepancies between target_impact and semantic reason
                     downgrade_indicators = [
-                        'keep medium', 'stay medium', 'remain medium', 'is medium', 'not high',
-                        'lacks catalyst', 'no catalyst', 'routine', 'opinion only', 'not market moving',
-                        'historical analysis', 'commentary only', 'structural without catalyst',
-                        'no immediate impact', 'limited impact'
+                        "keep medium",
+                        "stay medium",
+                        "remain medium",
+                        "is medium",
+                        "not high",
+                        "lacks catalyst",
+                        "no catalyst",
+                        "routine",
+                        "opinion only",
+                        "not market moving",
+                        "historical analysis",
+                        "commentary only",
+                        "structural without catalyst",
+                        "no immediate impact",
+                        "limited impact",
                     ]
                     upgrade_indicators = [
-                        'must be high', 'urgent breaking', 'major catalyst', 'tier-1 data release',
-                        'central bank shock', 'major market mover', 'critical geopolitics'
+                        "must be high",
+                        "urgent breaking",
+                        "major catalyst",
+                        "tier-1 data release",
+                        "central bank shock",
+                        "major market mover",
+                        "critical geopolitics",
                     ]
 
-                    if target == 'HIGH' and any(kw in reason_lower for kw in downgrade_indicators):
+                    if target == "HIGH" and any(kw in reason_lower for kw in downgrade_indicators):
                         logger.warning(
                             f"[HIGH/MEDIUM Boundary] Contradiction caught & reconciled: Target HIGH overridden to MEDIUM for '{item.title[:50]}' because reason states: '{reason}'"
                         )
-                        target = 'MEDIUM'
-                    elif target == 'MEDIUM' and any(kw in reason_lower for kw in upgrade_indicators):
+                        target = "MEDIUM"
+                    elif target == "MEDIUM" and any(kw in reason_lower for kw in upgrade_indicators):
                         logger.warning(
                             f"[HIGH/MEDIUM Boundary] Contradiction caught & reconciled: Target MEDIUM upgraded to HIGH for '{item.title[:50]}' because reason states: '{reason}'"
                         )
-                        target = 'HIGH'
+                        target = "HIGH"
 
                     # Apply validated tier change
                     if target != old_impact:
                         item.impact = target
-                        if target == 'HIGH':
+                        if target == "HIGH":
                             logger.info(f"[HIGH/MEDIUM Boundary] Promoted to HIGH: {item.title[:60]} ({reason})")
-                        elif target == 'MEDIUM':
+                        elif target == "MEDIUM":
                             logger.info(f"[HIGH/MEDIUM Boundary] Demoted to MEDIUM: {item.title[:60]} ({reason})")
-                        elif target == 'LOW':
+                        elif target == "LOW":
                             logger.info(f"[HIGH/MEDIUM Boundary] Demoted to LOW: {item.title[:60]} ({reason})")
                 await session.commit()
             except Exception as e:
-                logger.warning(f'[HIGH/MEDIUM Boundary] verification pass failed (non-fatal): {e}')
+                logger.warning(f"[HIGH/MEDIUM Boundary] verification pass failed (non-fatal): {e}")
 
     async def _get_recent_classified_titles(self, session: AsyncSession, hours: int = 12) -> list[str]:
         from sqlalchemy import select
+
         since = datetime.now(timezone.utc) - timedelta(hours=hours)
         res = await session.execute(
-            select(NewsItem.title)
-            .where(NewsItem.fetched_at >= since)
-            .where(NewsItem.impact.in_(['BREAKING', 'HIGH']))
+            select(NewsItem.title).where(NewsItem.fetched_at >= since).where(NewsItem.impact.in_(["BREAKING", "HIGH"]))
         )
         return [r for r in res.scalars() if r]
 
-    async def classify_unscored_news(self, session: AsyncSession, hours_back: int=6) -> int:
+    async def classify_unscored_news(self, session: AsyncSession, hours_back: int = 6) -> int:
         since = datetime.now(timezone.utc) - timedelta(hours=hours_back)
         try:
             from monika.application.analysis.calculators.economic_surprise import compute_surprise_scores
+
             await compute_surprise_scores(session)
         except Exception as e:
-            logger.debug(f'Surprise score refresh sebelum klasifikasi gagal (non-fatal): {e}')
-        max_classify = self.settings.get('news_classification', {}).get('max_classify_items', 400)
-        news_items = (await session.execute(
-            select(NewsItem)
-            .where(NewsItem.fetched_at >= since)
-            .where(NewsItem.impact == None)
-            .order_by(NewsItem.fetched_at.desc())
-            .limit(max_classify)
-        )).scalars().all()
-        
+            logger.debug(f"Surprise score refresh sebelum klasifikasi gagal (non-fatal): {e}")
+        max_classify = self.settings.get("news_classification", {}).get("max_classify_items", 400)
+        news_items = (
+            (
+                await session.execute(
+                    select(NewsItem)
+                    .where(NewsItem.fetched_at >= since)
+                    .where(NewsItem.impact == None)
+                    .order_by(NewsItem.fetched_at.desc())
+                    .limit(max_classify)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
         if not news_items:
             return 0
 
@@ -1175,82 +1477,99 @@ Respond JSON array of objects:
             is_duplicate = False
             if is_relevant:
                 for seen_t in recent_titles:
-                    if _jaccard_title_similarity(item.title or '', seen_t) > 0.75:
+                    if _jaccard_title_similarity(item.title or "", seen_t) > 0.75:
                         is_duplicate = True
                         break
-            
+
             if is_relevant and not is_duplicate:
                 relevant_items.append(item)
             else:
                 irrelevant_items.append((item, is_duplicate))
 
         for item, is_duplicate in irrelevant_items:
-            item.impact = 'LOW' if is_duplicate else 'NONE'
-            item.prefilter_flags = 'DUPLICATE' if is_duplicate else 'IRRELEVANT'
+            item.impact = "LOW" if is_duplicate else "NONE"
+            item.prefilter_flags = "DUPLICATE" if is_duplicate else "IRRELEVANT"
             item.sentiment = None
 
         if irrelevant_items and len(irrelevant_items) > 0:
             import random
+
             sample = random.sample(irrelevant_items, min(5, len(irrelevant_items)))
             for item, is_dup in sample:
                 if not is_dup:
                     logger.debug(f'[PrefilterAudit] Dropped (no keyword match): "{item.title[:100]}"')
             try:
                 from monika.infrastructure.database.models import SystemConfig
+
                 key = f"prefilter_audit_sample_{datetime.now(timezone.utc).strftime('%Y%m%d')}"
-                existing = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
+                existing = (
+                    await session.execute(select(SystemConfig).where(SystemConfig.key == key))
+                ).scalar_one_or_none()
                 titles = [i.title for i, d in sample if not d]
                 if titles:
                     import json
+
                     payload = json.dumps(titles)
                     if existing:
-                        existing.value = existing.value + '|' + payload if existing.value else payload
+                        existing.value = existing.value + "|" + payload if existing.value else payload
                     else:
                         session.add(SystemConfig(key=key, value=payload))
             except Exception:
                 pass
             await session.commit()
-            logger.info(f'[NewsClassification] Pre-filtered {len(irrelevant_items)} items (skipped LLM)')
+            logger.info(f"[NewsClassification] Pre-filtered {len(irrelevant_items)} items (skipped LLM)")
         news_items = relevant_items
 
         now_utc = datetime.now(timezone.utc)
-        now_str = now_utc.strftime('%Y-%m-%d %H:%M UTC')
+        now_str = now_utc.strftime("%Y-%m-%d %H:%M UTC")
         classified = 0
-        batch_size = self.settings.get('news_classification', {}).get('batch_size', 6)
+        batch_size = self.settings.get("news_classification", {}).get("batch_size", 6)
         seen_breaking_titles = []
-        
+
         # FIX P0-3: Implement persistent daily BREAKING budget
-        max_daily_breaking = self.settings.get('news_classification_control', {}).get('max_breaking_per_day', 8)
+        max_daily_breaking = self.settings.get("news_classification_control", {}).get("max_breaking_per_day", 8)
         try:
             from sqlalchemy import select as _sel, func as _func
+
             today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
-            today_breaking_count = (await session.execute(
-                _sel(_func.count(NewsItem.id))
-                .where(NewsItem.fetched_at >= today_start)
-                .where(NewsItem.impact == 'BREAKING')
-            )).scalar_one_or_none() or 0
+            today_breaking_count = (
+                await session.execute(
+                    _sel(_func.count(NewsItem.id))
+                    .where(NewsItem.fetched_at >= today_start)
+                    .where(NewsItem.impact == "BREAKING")
+                )
+            ).scalar_one_or_none() or 0
         except Exception as e:
             logger.debug(f"Failed to fetch today's breaking count: {e}")
             today_breaking_count = 0
-            
-        global_breaking_budget = {'count': today_breaking_count, 'max': max_daily_breaking}
+
+        global_breaking_budget = {"count": today_breaking_count, "max": max_daily_breaking}
 
         macro_5d_context = await self._build_5day_macro_context(session, now_utc)
 
         for i in range(0, len(news_items), batch_size):
-            batch = news_items[i:i + batch_size]
+            batch = news_items[i : i + batch_size]
             calendar_priors = await self._get_calendar_impact_priors(session, batch, now_utc)
 
-            tier_directives_str = ''
+            tier_directives_str = ""
             try:
                 from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import select as _sel
-                cfg = (await session.execute(_sel(SystemConfig).where(SystemConfig.key == 'news_tier_calibration_directives'))).scalar_one_or_none()
+
+                cfg = (
+                    await session.execute(
+                        _sel(SystemConfig).where(SystemConfig.key == "news_tier_calibration_directives")
+                    )
+                ).scalar_one_or_none()
                 if cfg and cfg.value:
                     import json as _json
-                    directives = _json.loads(cfg.value).get('directives', [])
+
+                    directives = _json.loads(cfg.value).get("directives", [])
                     if directives:
-                        tier_directives_str = "\n\nCALIBRATION FEEDBACK (System Outcome Tracking Directives):\n" + "\n".join(f"- {d}" for d in directives)
+                        tier_directives_str = (
+                            "\n\nCALIBRATION FEEDBACK (System Outcome Tracking Directives):\n"
+                            + "\n".join(f"- {d}" for d in directives)
+                        )
             except Exception:
                 pass
 
@@ -1267,7 +1586,7 @@ Respond JSON array of objects:
                     f"   TITLE: {item.title[:150]}\n"
                     f"   SUMMARY: {(item.summary or '')[:200]}"
                 )
-            items_text = '\n'.join(items_text_lines)
+            items_text = "\n".join(items_text_lines)
 
             CALENDAR_PRIOR_INSTRUCTION = """
 CALENDAR_IMPACT_RATING (when present) is the OFFICIAL impact rating from the economic calendar
@@ -1282,7 +1601,7 @@ Treat it as a STRONG PRIOR, not just a suggestion:
 If CALENDAR_IMPACT_RATING does not appear, evaluate normally according to the definitions below.
 """
 
-            MANDATORY_BREAKING_CHECKLIST = '''
+            MANDATORY_BREAKING_CHECKLIST = """
 MANDATORY PRE-CLASSIFICATION CHECKLIST — complete for every BREAKING candidate,
 write a brief assessment for each point inside the "reasoning" field:
 [C1] Fetched < 90 minutes ago? (mandatory for BREAKING)
@@ -1293,7 +1612,7 @@ write a brief assessment for each point inside the "reasoning" field:
 
 STRICT RULE: BREAKING is ONLY valid if ALL C1-C5 = YES.
 If EVEN ONE is NO or UNCERTAIN → classify as HIGH, not BREAKING.
-'''
+"""
 
             system_prompt = f"""Classify each news item's market impact for FX, Commodities (Gold/Oil), and Crypto (Bitcoin) trading.
 
@@ -1325,7 +1644,7 @@ RULES:
 - surprise_magnitude: for data releases ONLY, estimate how far actual differs from forecast (none, small, moderate, large). For non-data news, ALWAYS use "none".
 - currencies: list of affected currencies (USD, EUR, GBP, JPY, AUD, XAU, XTI, BTC). Use NON if none.
 - sentiments: choose 1-3 tags STRICTLY from this fixed taxonomy — do NOT invent new tags:
-  {', '.join(SENTIMENT_TAXONOMY)}
+  {", ".join(SENTIMENT_TAXONOMY)}
 
 {self.CLASSIFICATION_FEW_SHOT_EXAMPLES}
 
@@ -1360,52 +1679,73 @@ Respond with JSON array for items 1 to {len(batch)}: [{{"index":1,"news_id":123,
 Return ONLY valid JSON matching schema."""
 
             # Strict temperature for deterministic classification
-            if hasattr(self._classifier, 'default_temperature'):
+            if hasattr(self._classifier, "default_temperature"):
                 self._classifier.default_temperature = 0.0
 
             # --- Fast Path: Try TypeSafe Jev System One parallel classification ---
             result = None
             try:
                 from monika.core.primitives.jev_primitives import classify_news_batch_with_jev
+
                 result = await classify_news_batch_with_jev(
                     client=self._classifier,
                     batch=batch,
                     now_utc=now_utc,
                     calendar_priors=calendar_priors,
                     macro_context=macro_5d_context,
-                    min_confidence=0.60
+                    min_confidence=0.60,
                 )
                 if result:
-                    logger.info(f"[NewsClassification] Classified {len(result)}/{len(batch)} items via TypeSafe Jev in sub-100ms parallel pass")
+                    logger.info(
+                        f"[NewsClassification] Classified {len(result)}/{len(batch)} items via TypeSafe Jev in sub-100ms parallel pass"
+                    )
             except Exception as e:
                 logger.debug(f"[NewsClassification] Jev fast path bypassed: {e}")
                 result = None
 
             if not result:
                 result = await self._classifier.classify_json(
-                    prompt=prompt,
-                    system_prompt=system_prompt,
-                    schema=NEWS_CLASSIFICATION_SCHEMA
+                    prompt=prompt, system_prompt=system_prompt, schema=NEWS_CLASSIFICATION_SCHEMA
                 )
-                
+
                 if not result:
-                    logger.warning(f'[NewsClassification] Batch classify empty, retrying once for {len(batch)} items...')
-                    result = await self._classifier.classify_json(prompt=prompt, system_prompt=system_prompt, schema=NEWS_CLASSIFICATION_SCHEMA)
-                
+                    logger.warning(
+                        f"[NewsClassification] Batch classify empty, retrying once for {len(batch)} items..."
+                    )
+                    result = await self._classifier.classify_json(
+                        prompt=prompt, system_prompt=system_prompt, schema=NEWS_CLASSIFICATION_SCHEMA
+                    )
+
                 if isinstance(result, dict):
-                    result = result.get('items') or result.get('results') or result.get('data') or result.get('classifications') or [result]
+                    result = (
+                        result.get("items")
+                        or result.get("results")
+                        or result.get("data")
+                        or result.get("classifications")
+                        or [result]
+                    )
 
                 if not result or not isinstance(result, list):
-                    logger.error(f'[NewsClassification] LLM classify failed TWICE for {len(batch)} items. Using keyword fallback to avoid silently downgrading breaking news to MEDIUM.')
-                    result = [{'index': j + 1, 'news_id': item.id, **_keyword_fallback_classify(item.title, item.summary)} for j, item in enumerate(batch)]
+                    logger.error(
+                        f"[NewsClassification] LLM classify failed TWICE for {len(batch)} items. Using keyword fallback to avoid silently downgrading breaking news to MEDIUM."
+                    )
+                    result = [
+                        {"index": j + 1, "news_id": item.id, **_keyword_fallback_classify(item.title, item.summary)}
+                        for j, item in enumerate(batch)
+                    ]
                     try:
                         from monika.infrastructure.infra.notifier import AgentNotifier
-                        await AgentNotifier().send_warning(f'[PERINGATAN] News classification LLM gagal 2x; fallback keyword dipakai untuk {len(batch)} item.')
+
+                        await AgentNotifier().send_warning(
+                            f"[PERINGATAN] News classification LLM gagal 2x; fallback keyword dipakai untuk {len(batch)} item."
+                        )
                     except Exception:
                         pass
-            
-            validated_result = await self._validate_classification_batch(session, result, batch, now_utc, seen_breaking_titles, global_breaking_budget, calendar_priors)
-            
+
+            validated_result = await self._validate_classification_batch(
+                session, result, batch, now_utc, seen_breaking_titles, global_breaking_budget, calendar_priors
+            )
+
             # --- Targeted Micro-Retry & Keyword Recovery for Missing Items ---
             is_zb = _is_zero_based_series(validated_result, len(batch))
             processed_indices = {
@@ -1414,13 +1754,13 @@ Return ONLY valid JSON matching schema."""
                 if isinstance(r, dict)
             } - {None}
             missing_batch_items = [(idx, item) for idx, item in enumerate(batch) if idx not in processed_indices]
-            
+
             if missing_batch_items:
                 logger.info(f"[NewsClassification] Micro-retrying {len(missing_batch_items)} omitted items in batch...")
                 retry_lines = []
                 for sub_i, (orig_idx, m_item) in enumerate(missing_batch_items):
                     m_utc = ensure_utc(m_item.fetched_at) if m_item.fetched_at else None
-                    m_age = round((now_utc - m_utc).total_seconds() / 60) if m_utc else '?'
+                    m_age = round((now_utc - m_utc).total_seconds() / 60) if m_utc else "?"
                     retry_lines.append(
                         f"{sub_i + 1}. [ID: {m_item.id}] TITLE: {m_item.title[:150]}\n"
                         f"   SUMMARY: {(m_item.summary or '')[:200]}\n"
@@ -1428,13 +1768,14 @@ Return ONLY valid JSON matching schema."""
                     )
                 micro_prompt = (
                     "The following news items were omitted in the previous pass. "
-                    "Classify each item immediately conforming to the JSON schema:\n\n"
-                    + "\n".join(retry_lines)
+                    "Classify each item immediately conforming to the JSON schema:\n\n" + "\n".join(retry_lines)
                 )
                 try:
-                    micro_res = await self._flash_lite.classify_json(prompt=micro_prompt, schema=NEWS_CLASSIFICATION_SCHEMA)
+                    micro_res = await self._flash_lite.classify_json(
+                        prompt=micro_prompt, schema=NEWS_CLASSIFICATION_SCHEMA
+                    )
                     if isinstance(micro_res, dict):
-                        micro_res = micro_res.get('items') or micro_res.get('results') or [micro_res]
+                        micro_res = micro_res.get("items") or micro_res.get("results") or [micro_res]
                     if isinstance(micro_res, list):
                         micro_batch = [item for _, item in missing_batch_items]
                         is_zb = _is_zero_based_series(micro_res, len(micro_batch))
@@ -1442,7 +1783,7 @@ Return ONLY valid JSON matching schema."""
                             m_idx = _resolve_item_index(m_res, micro_batch, is_zero_based=is_zb)
                             if m_idx is not None:
                                 orig_batch_idx = missing_batch_items[m_idx][0]
-                                m_res['index'] = orig_batch_idx + 1
+                                m_res["index"] = orig_batch_idx + 1
                                 validated_result.append(m_res)
                                 processed_indices.add(orig_batch_idx)
                 except Exception as e:
@@ -1451,19 +1792,21 @@ Return ONLY valid JSON matching schema."""
             for idx, news_item in enumerate(batch):
                 if idx not in processed_indices:
                     kw_res = _keyword_fallback_classify(news_item.title, news_item.summary)
-                    kw_res['index'] = idx + 1
-                    kw_res['news_id'] = news_item.id
+                    kw_res["index"] = idx + 1
+                    kw_res["news_id"] = news_item.id
                     validated_result.append(kw_res)
                     processed_indices.add(idx)
-                    logger.info(f"[NewsClassification] News item id={news_item.id} resolved via keyword fallback: impact={kw_res['impact']} (conf=0.35)")
+                    logger.info(
+                        f"[NewsClassification] News item id={news_item.id} resolved via keyword fallback: impact={kw_res['impact']} (conf=0.35)"
+                    )
 
             # --- NEW: eskalasi item low-confidence HIGH/BREAKING sebelum diterapkan ---
             low_conf_candidates = []
             for item_result in validated_result or []:
                 if not isinstance(item_result, dict):
                     continue
-                dc = item_result.get('_confidence_downgrade', '')
-                if dc.startswith('BREAKING->') or dc.startswith('HIGH->') or item_result.get('confidence', 1.0) < 0.6:
+                dc = item_result.get("_confidence_downgrade", "")
+                if dc.startswith("BREAKING->") or dc.startswith("HIGH->") or item_result.get("confidence", 1.0) < 0.6:
                     idx = _resolve_item_index(item_result, batch, is_zero_based=is_zb)
                     if idx is not None:
                         low_conf_candidates.append((item_result, batch[idx]))
@@ -1477,17 +1820,20 @@ Return ONLY valid JSON matching schema."""
                         news_item = batch[idx]
                         if news_item.id in corrections:
                             fixed = corrections[news_item.id]
-                            item_result['impact'] = fixed.get('impact', item_result['impact'])
-                            item_result['confidence'] = fixed.get('confidence', item_result.get('confidence'))
-                            item_result['sentiments'] = fixed.get('sentiments', item_result.get('sentiments', []))
-                            item_result['surprise_magnitude'] = fixed.get('surprise_magnitude', item_result.get('surprise_magnitude', 'none'))
-                            item_result.pop('_confidence_downgrade', None)
-                            item_result['_escalation_corrected'] = True
+                            item_result["impact"] = fixed.get("impact", item_result["impact"])
+                            item_result["confidence"] = fixed.get("confidence", item_result.get("confidence"))
+                            item_result["sentiments"] = fixed.get("sentiments", item_result.get("sentiments", []))
+                            item_result["surprise_magnitude"] = fixed.get(
+                                "surprise_magnitude", item_result.get("surprise_magnitude", "none")
+                            )
+                            item_result.pop("_confidence_downgrade", None)
+                            item_result["_escalation_corrected"] = True
             # --- END NEW ---
-            
+
             # --- P1-1: Symmetric under-classification detection ---
             under_class_candidates = self._detect_under_classification_candidates(
-                batch, validated_result, calendar_priors)
+                batch, validated_result, calendar_priors
+            )
             if under_class_candidates:
                 corrections = await self._reverify_candidates(session, under_class_candidates, now_utc)
                 for item_result in validated_result:
@@ -1498,15 +1844,17 @@ Return ONLY valid JSON matching schema."""
                         news_item = batch[idx]
                         if news_item.id in corrections:
                             fixed = corrections[news_item.id]
-                            fixed_impact = fixed.get('impact', item_result['impact'])
-                            IMPACT_RANK = {'NONE': 0, 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'BREAKING': 4}
-                            if IMPACT_RANK.get(fixed_impact, 0) > IMPACT_RANK.get(item_result['impact'], 0):
-                                logger.warning(f"[NewsClassification] UNDER-CLASSIFICATION CAUGHT: "
-                                    f"'{news_item.title[:60]}' {item_result['impact']} -> {fixed_impact}")
-                                item_result['impact'] = fixed_impact
-                                item_result['confidence'] = fixed.get('confidence', item_result.get('confidence'))
-                                item_result['sentiments'] = fixed.get('sentiments', item_result.get('sentiments', []))
-                                item_result['_under_classification_corrected'] = True
+                            fixed_impact = fixed.get("impact", item_result["impact"])
+                            IMPACT_RANK = {"NONE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "BREAKING": 4}
+                            if IMPACT_RANK.get(fixed_impact, 0) > IMPACT_RANK.get(item_result["impact"], 0):
+                                logger.warning(
+                                    f"[NewsClassification] UNDER-CLASSIFICATION CAUGHT: "
+                                    f"'{news_item.title[:60]}' {item_result['impact']} -> {fixed_impact}"
+                                )
+                                item_result["impact"] = fixed_impact
+                                item_result["confidence"] = fixed.get("confidence", item_result.get("confidence"))
+                                item_result["sentiments"] = fixed.get("sentiments", item_result.get("sentiments", []))
+                                item_result["_under_classification_corrected"] = True
 
             if validated_result:
                 processed_indices = set()
@@ -1517,70 +1865,73 @@ Return ONLY valid JSON matching schema."""
                     if idx is not None and idx not in processed_indices:
                         processed_indices.add(idx)
                         news_item = batch[idx]
-                        
-                        impact = item_result.get('impact', 'LOW')
-                        if impact == 'NONE':
-                            news_item.impact = 'NONE'
+
+                        impact = item_result.get("impact", "LOW")
+                        if impact == "NONE":
+                            news_item.impact = "NONE"
                             continue
-                            
+
                         news_item.impact = impact
-                        
+
                         # Store surprise magnitude in sentiment string
-                        sentiments = item_result.get('sentiments', [])
-                        mag = item_result.get('surprise_magnitude', 'none')
-                        if mag != 'none':
-                            sentiments.append(f'SURPRISE_{mag.upper()}')
-                            
+                        sentiments = item_result.get("sentiments", [])
+                        mag = item_result.get("surprise_magnitude", "none")
+                        if mag != "none":
+                            sentiments.append(f"SURPRISE_{mag.upper()}")
+
                         if sentiments:
-                            news_item.sentiment = ','.join(sentiments)
-                        
-                        classified_currencies = item_result.get('currencies', [])
+                            news_item.sentiment = ",".join(sentiments)
+
+                        classified_currencies = item_result.get("currencies", [])
                         if classified_currencies:
-                            existing = set((news_item.currency_tags or '').split(','))
+                            existing = set((news_item.currency_tags or "").split(","))
                             merged = existing | set(classified_currencies)
-                            news_item.currency_tags = ','.join(c for c in merged if c)
-                        
-                        if item_result.get('key_data_point'):
-                            news_item.key_data_point = item_result['key_data_point'][:300]
-                        
+                            news_item.currency_tags = ",".join(c for c in merged if c)
+
+                        if item_result.get("key_data_point"):
+                            news_item.key_data_point = item_result["key_data_point"][:300]
+
                         classified += 1
-            
+
             await session.commit()
 
             from monika.core.analytics.news_classification_tracker import snapshot_classification_for_tracking
+
             for news_item in batch:
-                if news_item.impact in ('BREAKING', 'HIGH', 'MEDIUM'):
+                if news_item.impact in ("BREAKING", "HIGH", "MEDIUM"):
                     try:
                         await snapshot_classification_for_tracking(session, news_item)
                     except Exception as e:
-                        logger.debug(f'Outcome snapshot failed (non-fatal): {e}')
+                        logger.debug(f"Outcome snapshot failed (non-fatal): {e}")
 
         # SECOND-PASS VERIFICATION untuk item BREAKING
-        breaking_items_in_batch = [
-            item for item in news_items if getattr(item, 'impact', None) == 'BREAKING'
-        ]
+        breaking_items_in_batch = [item for item in news_items if getattr(item, "impact", None) == "BREAKING"]
         if breaking_items_in_batch:
             verify_schema = {
-                'type': 'array',
-                'items': {
-                    'type': 'object',
-                    'properties': {
-                        'index': {'type': 'integer'},
-                        'verdict': {'type': 'string', 'enum': ['CONFIRM', 'DOWNGRADE_TO_HIGH', 'DOWNGRADE_TO_MEDIUM']},
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "index": {"type": "integer"},
+                        "verdict": {"type": "string", "enum": ["CONFIRM", "DOWNGRADE_TO_HIGH", "DOWNGRADE_TO_MEDIUM"]},
                     },
-                    'required': ['index', 'verdict'],
+                    "required": ["index", "verdict"],
                 },
             }
-            
+
             for b_idx in range(0, len(breaking_items_in_batch), 8):
-                b_chunk = breaking_items_in_batch[b_idx:b_idx+8]
+                b_chunk = breaking_items_in_batch[b_idx : b_idx + 8]
                 b_chunk_calendar_priors = await self._get_calendar_impact_priors(session, b_chunk, now_utc)
                 verify_lines = []
                 for j, item in enumerate(b_chunk):
                     prior = b_chunk_calendar_priors.get(j + 1)
-                    prior_tag = f' | CALENDAR_IMPACT_RATING={prior.upper()}' if prior else ' | CALENDAR_IMPACT_RATING=NONE (tidak ditemukan event terjadwal resmi yang cocok)'
+                    prior_tag = (
+                        f" | CALENDAR_IMPACT_RATING={prior.upper()}"
+                        if prior
+                        else " | CALENDAR_IMPACT_RATING=NONE (tidak ditemukan event terjadwal resmi yang cocok)"
+                    )
                     verify_lines.append(f"{j + 1}. {item.title[:150]}{prior_tag}\n   {(item.summary or '')[:200]}")
-                verify_text = '\n\n'.join(verify_lines)
+                verify_text = "\n\n".join(verify_lines)
                 verify_prompt = f"""You are a skeptical editor who MUST re-confirm each item
 already marked BREAKING by the initial classifier. Your job: look for reasons to DOWNGRADE
 the level, not preserve it. BREAKING is ONLY valid if ALL of the following criteria are strictly met:
@@ -1599,12 +1950,19 @@ ITEMS TO RE-VERIFY:
 
 For each number, return CONFIRM (keep BREAKING), DOWNGRADE_TO_HIGH, or DOWNGRADE_TO_MEDIUM.
 Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
-                
+
                 try:
-                    verify_result = await self._classification_verifier.classify_json(prompt=verify_prompt, schema=verify_schema)
+                    verify_result = await self._classification_verifier.classify_json(
+                        prompt=verify_prompt, schema=verify_schema
+                    )
                     if verify_result:
                         if isinstance(verify_result, dict):
-                            verify_result = verify_result.get('items') or verify_result.get('verdicts') or verify_result.get('results') or [verify_result]
+                            verify_result = (
+                                verify_result.get("items")
+                                or verify_result.get("verdicts")
+                                or verify_result.get("results")
+                                or [verify_result]
+                            )
                         if isinstance(verify_result, list):
                             is_zb = _is_zero_based_series(verify_result, len(b_chunk))
                             for v in verify_result:
@@ -1612,61 +1970,89 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
                                     continue
                                 idx = _resolve_item_index(v, b_chunk, is_zero_based=is_zb)
                                 if idx is not None:
-                                    verdict = v.get('verdict')
-                                    if verdict == 'DOWNGRADE_TO_HIGH':
-                                        b_chunk[idx].impact = 'HIGH'
+                                    verdict = v.get("verdict")
+                                    if verdict == "DOWNGRADE_TO_HIGH":
+                                        b_chunk[idx].impact = "HIGH"
                                         logger.info(f"[BreakingVerify] Downgraded to HIGH: {b_chunk[idx].title[:60]}")
-                                    elif verdict == 'DOWNGRADE_TO_MEDIUM':
-                                        b_chunk[idx].impact = 'MEDIUM'
+                                    elif verdict == "DOWNGRADE_TO_MEDIUM":
+                                        b_chunk[idx].impact = "MEDIUM"
                                         logger.info(f"[BreakingVerify] Downgraded to MEDIUM: {b_chunk[idx].title[:60]}")
                             await session.commit()
                 except Exception as e:
-                    logger.warning(f'[BreakingVerify] Second-pass verification failed (non-fatal, keeping original): {e}')
+                    logger.warning(
+                        f"[BreakingVerify] Second-pass verification failed (non-fatal, keeping original): {e}"
+                    )
 
         try:
             await self._verify_high_medium_boundary(session, news_items)
         except Exception as e:
-            logger.warning(f'[NewsClassification] HIGH/MEDIUM boundary verification failed (non-fatal): {e}')
+            logger.warning(f"[NewsClassification] HIGH/MEDIUM boundary verification failed (non-fatal): {e}")
 
-        logger.info(f'Classified {classified} news items (from {len(news_items)} unclassified)')
-        
+        logger.info(f"Classified {classified} news items (from {len(news_items)} unclassified)")
+
         # Simpan classification quality stats
         try:
             from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select as _sel
-            stats_key = f'news_classification_stats_{datetime.now(timezone.utc).strftime("%Y%m%d_%H")}'
-            existing = (await session.execute(_sel(SystemConfig).where(SystemConfig.key == stats_key))).scalar_one_or_none()
+
+            stats_key = f"news_classification_stats_{datetime.now(timezone.utc).strftime('%Y%m%d_%H')}"
+            existing = (
+                await session.execute(_sel(SystemConfig).where(SystemConfig.key == stats_key))
+            ).scalar_one_or_none()
             if not existing:
                 import json
-                session.add(SystemConfig(key=stats_key, value=json.dumps({
-                    'classified': classified,
-                    'total_candidates': len(news_items),
-                    'timestamp': datetime.now(timezone.utc).isoformat()
-                })))
+
+                session.add(
+                    SystemConfig(
+                        key=stats_key,
+                        value=json.dumps(
+                            {
+                                "classified": classified,
+                                "total_candidates": len(news_items),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                            }
+                        ),
+                    )
+                )
                 await session.commit()
         except Exception as e:
             await session.rollback()
-            logger.debug(f'Classification stats save failed (non-fatal): {e}')
-            
+            logger.debug(f"Classification stats save failed (non-fatal): {e}")
+
         if classified > 0:
             await self._track_classification_metrics(session, news_items)
-        
+
         return classified
-    
-    async def _validate_classification_batch(self, session: AsyncSession, result: list | dict, batch: list, now_utc: datetime, seen_breaking_titles: list, global_breaking_budget: dict, calendar_priors: dict) -> list:
+
+    async def _validate_classification_batch(
+        self,
+        session: AsyncSession,
+        result: list | dict,
+        batch: list,
+        now_utc: datetime,
+        seen_breaking_titles: list,
+        global_breaking_budget: dict,
+        calendar_priors: dict,
+    ) -> list:
         """Validate and correct classification results."""
         if not result:
             return []
         if isinstance(result, dict):
-            result = result.get('items') or result.get('results') or result.get('data') or result.get('classifications') or [result]
+            result = (
+                result.get("items")
+                or result.get("results")
+                or result.get("data")
+                or result.get("classifications")
+                or [result]
+            )
         if not isinstance(result, list):
             return []
-        
+
         validated = []
         breaking_indices = set()
         resolved_batch_indices = set()
         is_zero_based = _is_zero_based_series(result, len(batch))
-        
+
         for item_result in result:
             if not isinstance(item_result, dict):
                 continue
@@ -1674,194 +2060,231 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
             if idx is None or idx in resolved_batch_indices:
                 continue
             resolved_batch_indices.add(idx)
-            item_result['index'] = idx + 1
+            item_result["index"] = idx + 1
             news_item = batch[idx]
-            impact = item_result.get('impact', 'MEDIUM')
-            mag = item_result.get('surprise_magnitude', 'none')
-            
+            impact = item_result.get("impact", "MEDIUM")
+            mag = item_result.get("surprise_magnitude", "none")
+
             # === NEW: hard calendar-based cap (deterministic, cannot be bypassed by LLM) ===
             calendar_prior = calendar_priors.get(idx + 1)
             if calendar_prior:
-                IMPACT_RANK = {'NONE': 0, 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'BREAKING': 4}
-                CALENDAR_CAP = {'high': 'BREAKING', 'medium': 'HIGH', 'low': 'MEDIUM'}
+                IMPACT_RANK = {"NONE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "BREAKING": 4}
+                CALENDAR_CAP = {"high": "BREAKING", "medium": "HIGH", "low": "MEDIUM"}
                 cap = CALENDAR_CAP.get(calendar_prior)
                 if cap and IMPACT_RANK.get(impact, 0) > IMPACT_RANK.get(cap, 4):
-                    item_result['_downgraded_reason'] = f'calendar_impact_rating={calendar_prior} caps at {cap}'
+                    item_result["_downgraded_reason"] = f"calendar_impact_rating={calendar_prior} caps at {cap}"
                     impact = cap
-                    item_result['impact'] = cap
+                    item_result["impact"] = cap
                 # also enforce a FLOOR: don't let LLM under-classify a HIGH-rated calendar event to LOW/NONE
-                CALENDAR_FLOOR = {'high': 'MEDIUM'}  # conservative floor, avoid over-forcing
+                CALENDAR_FLOOR = {"high": "MEDIUM"}  # conservative floor, avoid over-forcing
                 floor = CALENDAR_FLOOR.get(calendar_prior)
                 if floor and IMPACT_RANK.get(impact, 0) < IMPACT_RANK.get(floor, 0):
-                    item_result['_upgraded_reason'] = f'calendar_impact_rating={calendar_prior} floors at {floor}'
+                    item_result["_upgraded_reason"] = f"calendar_impact_rating={calendar_prior} floors at {floor}"
                     impact = floor
-                    item_result['impact'] = floor
+                    item_result["impact"] = floor
             # === existing magnitude/confidence/duplicate/budget checks continue unchanged below ===
             title_summary = f"{news_item.title or ''} {news_item.summary or ''}".lower()
             is_non_data_shock = any(w in title_summary for w in SHOCK_KEYWORDS) or any(
-                w in title_summary for w in (
-                    'emergency rate', 'rate cut', 'rate hike', 'war', 'invasion', 'missile',
-                    'sanction', 'ban', 'default', 'halted', 'crisis', 'tariff', 'black swan'
+                w in title_summary
+                for w in (
+                    "emergency rate",
+                    "rate cut",
+                    "rate hike",
+                    "war",
+                    "invasion",
+                    "missile",
+                    "sanction",
+                    "ban",
+                    "default",
+                    "halted",
+                    "crisis",
+                    "tariff",
+                    "black swan",
                 )
             )
 
-            if impact == 'BREAKING' and mag not in ('large', 'moderate') and not is_non_data_shock:
-                item_result['_downgraded_reason'] = f'magnitude={mag} not large/moderate (non-shock)'
-                impact = 'HIGH'
-                item_result['impact'] = 'HIGH'
+            if impact == "BREAKING" and mag not in ("large", "moderate") and not is_non_data_shock:
+                item_result["_downgraded_reason"] = f"magnitude={mag} not large/moderate (non-shock)"
+                impact = "HIGH"
+                item_result["impact"] = "HIGH"
 
             # Confidence-based safety downgrade
-            confidence = item_result.get('confidence', 1.0)
-            DOWNGRADE_MAP = {'BREAKING': 'HIGH', 'HIGH': 'MEDIUM', 'MEDIUM': 'LOW'}
+            confidence = item_result.get("confidence", 1.0)
+            DOWNGRADE_MAP = {"BREAKING": "HIGH", "HIGH": "MEDIUM", "MEDIUM": "LOW"}
             if confidence is not None and confidence < 0.6 and impact in DOWNGRADE_MAP:
                 downgraded = DOWNGRADE_MAP[impact]
-                item_result['_confidence_downgrade'] = f'{impact}->{downgraded} (confidence={confidence:.2f})'
+                item_result["_confidence_downgrade"] = f"{impact}->{downgraded} (confidence={confidence:.2f})"
                 impact = downgraded
-                item_result['impact'] = downgraded
+                item_result["impact"] = downgraded
 
             # Hard validation: BREAKING requires TIME-IN-SYSTEM < 120 minutes
-            if impact == 'BREAKING' and news_item.fetched_at:
+            if impact == "BREAKING" and news_item.fetched_at:
                 f_at = ensure_utc(news_item.fetched_at)
                 time_in_system = (now_utc - f_at).total_seconds() / 60 if f_at else 0
                 if time_in_system > 120:
-                    impact = 'HIGH'
-                    item_result['impact'] = 'HIGH'
-                    item_result['_downgraded_reason'] = f'time_in_system={time_in_system:.0f}min > 120'
-                    
+                    impact = "HIGH"
+                    item_result["impact"] = "HIGH"
+                    item_result["_downgraded_reason"] = f"time_in_system={time_in_system:.0f}min > 120"
+
             # Auto-tightening validation
-            if impact == 'BREAKING':
+            if impact == "BREAKING":
                 from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import select
-                cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == 'news_auto_tighten'))).scalar_one_or_none()
+
+                cfg = (
+                    await session.execute(select(SystemConfig).where(SystemConfig.key == "news_auto_tighten"))
+                ).scalar_one_or_none()
                 if cfg and cfg.value == "1":
-                    is_shock = any(w in (news_item.title or '').lower() for w in SHOCK_KEYWORDS)
+                    is_shock = any(w in (news_item.title or "").lower() for w in SHOCK_KEYWORDS)
                     if not is_shock:
-                        impact = 'HIGH'
-                        item_result['impact'] = 'HIGH'
-                        item_result['_downgraded_reason'] = 'auto_tightening_active'
-            
+                        impact = "HIGH"
+                        item_result["impact"] = "HIGH"
+                        item_result["_downgraded_reason"] = "auto_tightening_active"
+
             # Cross-batch deduplication for BREAKING themes
-            if impact == 'BREAKING':
+            if impact == "BREAKING":
                 is_duplicate = await self._is_duplicate_breaking_event(session, news_item, now_utc)
                 if is_duplicate:
-                    impact = 'HIGH'
-                    item_result['impact'] = 'HIGH'
-                    item_result['_downgraded_reason'] = 'duplicate_breaking_in_db'
+                    impact = "HIGH"
+                    item_result["impact"] = "HIGH"
+                    item_result["_downgraded_reason"] = "duplicate_breaking_in_db"
                 else:
                     is_similar_to_seen = any(
-                        _jaccard_title_similarity(news_item.title or '', seen_title) >= 0.5
+                        _jaccard_title_similarity(news_item.title or "", seen_title) >= 0.5
                         for seen_title in seen_breaking_titles
                     )
                     if is_similar_to_seen:
-                        impact = 'HIGH'
-                        item_result['impact'] = 'HIGH'
-                        item_result['_downgraded_reason'] = 'cross_batch_dedup_jaccard'
+                        impact = "HIGH"
+                        item_result["impact"] = "HIGH"
+                        item_result["_downgraded_reason"] = "cross_batch_dedup_jaccard"
                     else:
-                        seen_breaking_titles.append(news_item.title or '')
+                        seen_breaking_titles.append(news_item.title or "")
 
-            if impact == 'BREAKING' and NON_BREAKING_TITLE_PATTERN.search(news_item.title or ''):
+            if impact == "BREAKING" and NON_BREAKING_TITLE_PATTERN.search(news_item.title or ""):
                 # FIX: Demote to HIGH (not MEDIUM) so it still triggers re-analysis if actionable
-                impact = 'HIGH'
-                item_result['impact'] = 'HIGH'
-                item_result['_downgraded_reason'] = 'non_breaking_title_pattern (bahasa opini/analisis/preview terdeteksi di judul)'
-            
+                impact = "HIGH"
+                item_result["impact"] = "HIGH"
+                item_result["_downgraded_reason"] = (
+                    "non_breaking_title_pattern (bahasa opini/analisis/preview terdeteksi di judul)"
+                )
+
             # Hard validation: BREAKING max 2 per batch
-            if impact == 'BREAKING':
+            if impact == "BREAKING":
                 if len(breaking_indices) >= 2:
-                    impact = 'HIGH'
-                    item_result['impact'] = 'HIGH'
-                    item_result['_downgraded_reason'] = 'max_breaking_per_batch_exceeded'
-                elif global_breaking_budget['count'] >= global_breaking_budget['max']:
-                    impact = 'HIGH'
-                    item_result['impact'] = 'HIGH'
-                    item_result['_downgraded_reason'] = 'global_breaking_budget_exceeded'
+                    impact = "HIGH"
+                    item_result["impact"] = "HIGH"
+                    item_result["_downgraded_reason"] = "max_breaking_per_batch_exceeded"
+                elif global_breaking_budget["count"] >= global_breaking_budget["max"]:
+                    impact = "HIGH"
+                    item_result["impact"] = "HIGH"
+                    item_result["_downgraded_reason"] = "global_breaking_budget_exceeded"
                 else:
                     breaking_indices.add(idx)
-                    global_breaking_budget['count'] += 1
+                    global_breaking_budget["count"] += 1
 
             # Calendar cross-check
-            if impact == 'BREAKING':
+            if impact == "BREAKING":
                 has_event = await self._cross_check_breaking_against_calendar(session, news_item, now_utc)
                 if not has_event:
                     # Downgrade if no recent calendar event supports this breaking data release
                     # Unless it contains keywords indicative of shock or high confidence from LLM
-                    is_shock = any(w in (news_item.title or '').lower() for w in SHOCK_KEYWORDS)
-                    conf = float(item_result.get('confidence', 1.0) or 1.0)
+                    is_shock = any(w in (news_item.title or "").lower() for w in SHOCK_KEYWORDS)
+                    conf = float(item_result.get("confidence", 1.0) or 1.0)
                     if not is_shock and conf < 0.70:
-                        impact = 'HIGH'
-                        item_result['impact'] = 'HIGH'
-                        item_result['_downgraded_reason'] = 'no_calendar_event_low_conf'
-            
+                        impact = "HIGH"
+                        item_result["impact"] = "HIGH"
+                        item_result["_downgraded_reason"] = "no_calendar_event_low_conf"
+
             # NEW: cross-check magnitude untuk data release (non-data shocks exempt)
-            if impact == 'BREAKING' and not is_non_data_shock and mag in ('large', 'moderate'):
-                kdp = item_result.get('key_data_point', '').strip()
+            if impact == "BREAKING" and not is_non_data_shock and mag in ("large", "moderate"):
+                kdp = item_result.get("key_data_point", "").strip()
                 if not kdp:
-                    impact = 'HIGH'
-                    item_result['impact'] = 'HIGH'
-                    item_result['_downgraded_reason'] = 'missing_key_data_point_grounding'
+                    impact = "HIGH"
+                    item_result["impact"] = "HIGH"
+                    item_result["_downgraded_reason"] = "missing_key_data_point_grounding"
                 else:
-                    magnitude_ok, mag_reason = await self._cross_check_breaking_surprise_magnitude(session, news_item, now_utc)
+                    magnitude_ok, mag_reason = await self._cross_check_breaking_surprise_magnitude(
+                        session, news_item, now_utc
+                    )
                     if not magnitude_ok:
-                        impact = 'HIGH'
-                        item_result['impact'] = 'HIGH'
-                        item_result['_downgraded_reason'] = f'surprise_magnitude_check: {mag_reason}'
+                        impact = "HIGH"
+                        item_result["impact"] = "HIGH"
+                        item_result["_downgraded_reason"] = f"surprise_magnitude_check: {mag_reason}"
 
             # Validate impact value
-            if impact not in ('BREAKING', 'HIGH', 'MEDIUM', 'LOW', 'NONE'):
-                impact = 'MEDIUM'
-                item_result['impact'] = 'MEDIUM'
-            
+            if impact not in ("BREAKING", "HIGH", "MEDIUM", "LOW", "NONE"):
+                impact = "MEDIUM"
+                item_result["impact"] = "MEDIUM"
+
             # Validate currencies
-            valid_currencies = {'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'XAU', 'XTI', 'BTC', 'NON'}
-            currencies = [c for c in item_result.get('currencies', []) if c in valid_currencies]
+            valid_currencies = {"USD", "EUR", "GBP", "JPY", "AUD", "XAU", "XTI", "BTC", "NON"}
+            currencies = [c for c in item_result.get("currencies", []) if c in valid_currencies]
             if not currencies:
-                currencies = ['NON']
-            item_result['currencies'] = currencies
+                currencies = ["NON"]
+            item_result["currencies"] = currencies
 
             # NEW: validasi sentiment terhadap taksonomi terkontrol
-            sentiments = [s for s in item_result.get('sentiments', []) if s in _SENTIMENT_SET]
-            item_result['sentiments'] = sentiments
-            
+            sentiments = [s for s in item_result.get("sentiments", []) if s in _SENTIMENT_SET]
+            item_result["sentiments"] = sentiments
+
             validated.append(item_result)
-        
+
         return validated
 
     async def _is_duplicate_breaking_event(self, session: AsyncSession, news_item, now_utc: datetime) -> bool:
         """Check database for recent BREAKING news on the same theme."""
         from sqlalchemy import select
         from monika.infrastructure.database.models import NewsItem
-        
+
         check_time = ensure_utc(news_item.fetched_at) or now_utc
         since = check_time - timedelta(hours=4)
-        
+
         # Get recent breaking news
         stmt = select(NewsItem).where(
-            NewsItem.fetched_at >= since,
-            NewsItem.impact == 'BREAKING',
-            NewsItem.id != news_item.id
+            NewsItem.fetched_at >= since, NewsItem.impact == "BREAKING", NewsItem.id != news_item.id
         )
         recent_breaking = (await session.execute(stmt)).scalars().all()
-        
+
         if not recent_breaking:
             return False
-            
+
         FINANCIAL_COMMON_WORDS = {
-            "market", "markets", "dollar", "rates", "report", "economic", "prices",
-            "price", "yield", "yields", "today", "ahead", "after", "since", "about",
-            "could", "would", "first", "month", "years", "daily", "weekly", "update"
+            "market",
+            "markets",
+            "dollar",
+            "rates",
+            "report",
+            "economic",
+            "prices",
+            "price",
+            "yield",
+            "yields",
+            "today",
+            "ahead",
+            "after",
+            "since",
+            "about",
+            "could",
+            "would",
+            "first",
+            "month",
+            "years",
+            "daily",
+            "weekly",
+            "update",
         }
-        title_lower = (news_item.title or '').lower()
+        title_lower = (news_item.title or "").lower()
         keywords = set(w for w in title_lower.split() if len(w) > 4 and w not in FINANCIAL_COMMON_WORDS)
-        
+
         for rb in recent_breaking:
-            rb_title = (rb.title or '').lower()
+            rb_title = (rb.title or "").lower()
             rb_keywords = set(w for w in rb_title.split() if len(w) > 4 and w not in FINANCIAL_COMMON_WORDS)
-            
+
             # If they share 4 or more specific significant words, consider it a duplicate event
             overlap = keywords.intersection(rb_keywords)
             if len(overlap) >= 4:
                 return True
-                
+
         return False
 
     async def _cross_check_breaking_against_calendar(self, session: AsyncSession, news_item, now_utc: datetime) -> bool:
@@ -1869,44 +2292,61 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
         try:
             from monika.infrastructure.database.models import EconomicCalendar
             from sqlalchemy import select, or_
-            
+
             # Check window: 4 hours before fetched time
             check_time = ensure_utc(news_item.fetched_at) or now_utc
             since = check_time - timedelta(hours=4)
-            
-            stmt = select(EconomicCalendar).where(
-                EconomicCalendar.event_time >= since,
-                EconomicCalendar.event_time <= check_time + timedelta(hours=1),
-                or_(EconomicCalendar.impact == 'HIGH', EconomicCalendar.impact == 'High', EconomicCalendar.impact == 'high')
-            ).limit(1)
-            
+
+            stmt = (
+                select(EconomicCalendar)
+                .where(
+                    EconomicCalendar.event_time >= since,
+                    EconomicCalendar.event_time <= check_time + timedelta(hours=1),
+                    or_(
+                        EconomicCalendar.impact == "HIGH",
+                        EconomicCalendar.impact == "High",
+                        EconomicCalendar.impact == "high",
+                    ),
+                )
+                .limit(1)
+            )
+
             event = (await session.execute(stmt)).scalar_one_or_none()
             return event is not None
         except Exception as e:
-            logger.debug(f'Calendar cross-check failed (fail-open): {e}')
+            logger.debug(f"Calendar cross-check failed (fail-open): {e}")
             return True
 
-    async def _cross_check_breaking_surprise_magnitude(self, session: AsyncSession, news_item, now_utc: datetime) -> tuple[bool, str]:
+    async def _cross_check_breaking_surprise_magnitude(
+        self, session: AsyncSession, news_item, now_utc: datetime
+    ) -> tuple[bool, str]:
         """Memvalidasi bahwa klasifikasi BREAKING untuk data release didukung oleh surprise_score
         aktual yang tersimpan di EconomicCalendar (bukan sekadar klaim LLM)."""
         try:
             from monika.infrastructure.database.models import EconomicCalendar
             from sqlalchemy import select
+
             check_time = ensure_utc(news_item.fetched_at) or now_utc
             since = check_time - timedelta(hours=4)
-            stmt = select(EconomicCalendar).where(
-                EconomicCalendar.event_time >= since,
-                EconomicCalendar.event_time <= check_time + timedelta(hours=1),
-                EconomicCalendar.impact.in_(['high', 'High', 'HIGH']),
-                EconomicCalendar.surprise_score.is_not(None),
-            ).order_by(EconomicCalendar.event_time.desc()).limit(3)
+            stmt = (
+                select(EconomicCalendar)
+                .where(
+                    EconomicCalendar.event_time >= since,
+                    EconomicCalendar.event_time <= check_time + timedelta(hours=1),
+                    EconomicCalendar.impact.in_(["high", "High", "HIGH"]),
+                    EconomicCalendar.surprise_score.is_not(None),
+                )
+                .order_by(EconomicCalendar.event_time.desc())
+                .limit(3)
+            )
             events = (await session.execute(stmt)).scalars().all()
             if not events:
-                return (True, 'no_surprise_data_available')  # fail-open, data belum sempat dihitung
+                return (True, "no_surprise_data_available")  # fail-open, data belum sempat dihitung
             max_abs_surprise = max(abs(e.surprise_score or 0.0) for e in events)
             MIN_SURPRISE_FOR_BREAKING = 15.0  # tinjau ulang periodik via compute_news_classification_calibration
 
             from monika.application.analysis.calculators.economic_surprise import _parse_numeric
+
             # Check relative score (>= 15.0) AND indicator-specific absolute thresholds
             has_major_surprise = False
             for e in events:
@@ -1927,7 +2367,9 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
                         has_major_surprise = True
                         break
                     # NFP / Payrolls: 30K
-                    if any(k in name_l for k in ("nonfarm", "payroll", "employment change")) and (diff >= 30000 or (diff >= 30.0 and act_v < 1000)):
+                    if any(k in name_l for k in ("nonfarm", "payroll", "employment change")) and (
+                        diff >= 30000 or (diff >= 30.0 and act_v < 1000)
+                    ):
                         has_major_surprise = True
                         break
                     # Unemployment Rate: 0.20%
@@ -1936,105 +2378,139 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
                         break
 
             if not has_major_surprise:
-                return (False, f'surprise_score={max_abs_surprise:.1f} and indicator values below absolute BREAKING thresholds')
-            return (True, f'surprise confirms BREAKING magnitude (score={max_abs_surprise:.1f})')
+                return (
+                    False,
+                    f"surprise_score={max_abs_surprise:.1f} and indicator values below absolute BREAKING thresholds",
+                )
+            return (True, f"surprise confirms BREAKING magnitude (score={max_abs_surprise:.1f})")
         except Exception as e:
-            logger.debug(f'Surprise magnitude cross-check failed (fail-open): {e}')
-            return (True, 'check_failed_fail_open')
+            logger.debug(f"Surprise magnitude cross-check failed (fail-open): {e}")
+            return (True, "check_failed_fail_open")
 
     async def _track_classification_metrics(self, session: AsyncSession, classified_items: list):
-        impact_dist = {'BREAKING': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'NONE': 0}
+        impact_dist = {"BREAKING": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "NONE": 0}
         for item in classified_items:
-            impact = getattr(item, 'impact', 'NONE') or 'NONE'
+            impact = getattr(item, "impact", "NONE") or "NONE"
             impact_dist[impact] = impact_dist.get(impact, 0) + 1
         total = sum(impact_dist.values())
-        breaking_pct = impact_dist['BREAKING'] / total * 100 if total > 0 else 0
+        breaking_pct = impact_dist["BREAKING"] / total * 100 if total > 0 else 0
         if breaking_pct > 20:
-            logger.warning(f'[NewsClassification] RATE ANOMALY: {breaking_pct:.0f}% item BREAKING (ambang: 20%).')
+            logger.warning(f"[NewsClassification] RATE ANOMALY: {breaking_pct:.0f}% item BREAKING (ambang: 20%).")
             try:
                 from monika.core.analytics.news_classification_tracker import compute_news_classification_calibration
                 from monika.infrastructure.database.models import SystemConfig
+
                 calib = await compute_news_classification_calibration(session, days_back=3)
-                breaking_stats = calib.get('by_impact', {}).get('BREAKING', {})
-                match_rate = breaking_stats.get('match_rate_pct', 100)
-                sample = breaking_stats.get('total', 0)
+                breaking_stats = calib.get("by_impact", {}).get("BREAKING", {})
+                match_rate = breaking_stats.get("match_rate_pct", 100)
+                sample = breaking_stats.get("total", 0)
                 # Hanya auto-tighten kalau ADA bukti outcome bahwa BREAKING beneran sering
                 # tidak match pergerakan harga nyata — bukan cuma karena hari ini banyak berita.
                 should_tighten = sample < 5 or match_rate < 45
-                cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == 'news_auto_tighten'))).scalar_one_or_none()
-                new_val = '1' if should_tighten else '0'
+                cfg = (
+                    await session.execute(select(SystemConfig).where(SystemConfig.key == "news_auto_tighten"))
+                ).scalar_one_or_none()
+                new_val = "1" if should_tighten else "0"
                 if cfg:
                     cfg.value = new_val
                 else:
-                    session.add(SystemConfig(key='news_auto_tighten', value=new_val))
+                    session.add(SystemConfig(key="news_auto_tighten", value=new_val))
                 await session.commit()
-                logger.warning(f"[NewsClassification] Rate anomaly {'DIKONFIRMASI' if should_tighten else 'DITOLAK'} oleh outcome "
-                                f"(3d BREAKING match_rate={match_rate}% dari {sample} sampel). news_auto_tighten={new_val}")
+                logger.warning(
+                    f"[NewsClassification] Rate anomaly {'DIKONFIRMASI' if should_tighten else 'DITOLAK'} oleh outcome "
+                    f"(3d BREAKING match_rate={match_rate}% dari {sample} sampel). news_auto_tighten={new_val}"
+                )
             except Exception as e:
-                logger.debug(f'Outcome-corroborated anomaly check gagal, fallback ke rate-only: {e}')
+                logger.debug(f"Outcome-corroborated anomaly check gagal, fallback ke rate-only: {e}")
         from monika.infrastructure.database.models import SystemConfig
         import json
+
         hour_key = f"news_cls_dist_{datetime.now(timezone.utc).strftime('%Y%m%d_%H')}"
-        existing = (await session.execute(select(SystemConfig).where(SystemConfig.key == hour_key))).scalar_one_or_none()
+        existing = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == hour_key))
+        ).scalar_one_or_none()
         if not existing:
-            session.add(SystemConfig(key=hour_key, value=json.dumps({**impact_dist, 'breaking_pct': round(breaking_pct, 1)})))
+            session.add(
+                SystemConfig(key=hour_key, value=json.dumps({**impact_dist, "breaking_pct": round(breaking_pct, 1)}))
+            )
             await session.commit()
 
     async def _should_use_cache(self, session: AsyncSession, cache_hours: float) -> tuple[bool, Optional[str]]:
         """Determine if existing digest is still valid."""
         from monika.infrastructure.database.models import NewsDigest
+
         since = datetime.now(timezone.utc) - timedelta(hours=cache_hours)
-        digest = (await session.execute(
-            select(NewsDigest)
-            .where(NewsDigest.generated_at >= since)
-            .order_by(NewsDigest.generated_at.desc())
-            .limit(1)
-        )).scalar_one_or_none()
-        
+        digest = (
+            await session.execute(
+                select(NewsDigest)
+                .where(NewsDigest.generated_at >= since)
+                .order_by(NewsDigest.generated_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
         if not digest:
             return False, None
-        
+
         # Check if any BREAKING news arrived after digest was generated
-        breaking_after_digest = (await session.execute(
-            select(NewsItem)
-            .where(NewsItem.fetched_at > digest.generated_at)
-            .where(NewsItem.impact == 'BREAKING')
-            .limit(1)
-        )).scalar_one_or_none()
-        
+        breaking_after_digest = (
+            await session.execute(
+                select(NewsItem)
+                .where(NewsItem.fetched_at > digest.generated_at)
+                .where(NewsItem.impact == "BREAKING")
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
         if breaking_after_digest:
-            logger.info(f'Cache invalidated: BREAKING news "{breaking_after_digest.title[:50]}" arrived after digest generation')
+            logger.info(
+                f'Cache invalidated: BREAKING news "{breaking_after_digest.title[:50]}" arrived after digest generation'
+            )
             return False, None
-            
+
         from sqlalchemy import func
-        high_count_after = (await session.execute(
-            select(func.count(NewsItem.id)).where(NewsItem.fetched_at > digest.generated_at).where(NewsItem.impact == 'HIGH')
-        )).scalar_one_or_none() or 0
+
+        high_count_after = (
+            await session.execute(
+                select(func.count(NewsItem.id))
+                .where(NewsItem.fetched_at > digest.generated_at)
+                .where(NewsItem.impact == "HIGH")
+            )
+        ).scalar_one_or_none() or 0
         if high_count_after >= 3:
-            logger.info(f'Cache invalidated: {high_count_after} item HIGH-impact masuk sejak digest dibuat (akumulasi signifikan)')
+            logger.info(
+                f"Cache invalidated: {high_count_after} item HIGH-impact masuk sejak digest dibuat (akumulasi signifikan)"
+            )
             return False, None
-        
+
         return True, digest.digest_text
 
     def _compute_quick_priced_in(self, news_items: Sequence[NewsItem] | list, theme_counts: dict) -> dict:
         """Quick computation of priced-in signals from news saturation."""
         high_saturation_themes = {k: v for k, v in theme_counts.items() if v >= 5}
         moderate_themes = {k: v for k, v in theme_counts.items() if 2 <= v < 5}
-        
+
         return {
             "high_saturation": list(high_saturation_themes.keys()),
             "moderate_saturation": list(moderate_themes.keys()),
-            "saturation_risk": "HIGH" if len(high_saturation_themes) >= 2 else "MEDIUM" if high_saturation_themes else "LOW"
+            "saturation_risk": "HIGH"
+            if len(high_saturation_themes) >= 2
+            else "MEDIUM"
+            if high_saturation_themes
+            else "LOW",
         }
 
-    async def _build_structured_metadata_dict(self, session: AsyncSession, all_significant: Sequence[NewsItem] | list) -> dict:
+    async def _build_structured_metadata_dict(
+        self, session: AsyncSession, all_significant: Sequence[NewsItem] | list
+    ) -> dict:
         from monika.infrastructure.database.models import VIXData, DXYData, NewsItem
         from sqlalchemy import select, func
-        INTERNAL_TAGS = {'IRRELEVANT_PREFILTERED', 'DUPLICATE_PREFILTERED', 'IRRELEVANT', 'DUPLICATE'}
+
+        INTERNAL_TAGS = {"IRRELEVANT_PREFILTERED", "DUPLICATE_PREFILTERED", "IRRELEVANT", "DUPLICATE"}
         theme_counts = {}
         for item in all_significant:
             if item.sentiment:
-                for sentiment in item.sentiment.split(','):
+                for sentiment in item.sentiment.split(","):
                     s = sentiment.strip()
                     if s and s not in INTERNAL_TAGS:
                         theme_counts[s] = theme_counts.get(s, 0) + 1
@@ -2043,19 +2519,20 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
         dxy_rows = (await session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(5))).scalars().all()
         surprises = []
         for item in all_significant:
-            if item.sentiment and 'SURPRISE_' in item.sentiment:
-                mag = [t.split('_')[1] for t in item.sentiment.split(',') if t.startswith('SURPRISE_')]
+            if item.sentiment and "SURPRISE_" in item.sentiment:
+                mag = [t.split("_")[1] for t in item.sentiment.split(",") if t.startswith("SURPRISE_")]
                 if mag:
-                    surprises.append({'title': item.title, 'magnitude': mag[0]})
+                    surprises.append({"title": item.title, "magnitude": mag[0]})
         key_data_points = [
-            {'title': i.title[:100], 'data': getattr(i, 'key_data_point', '')}
-            for i in all_significant if getattr(i, 'key_data_point', None)
+            {"title": i.title[:100], "data": getattr(i, "key_data_point", "")}
+            for i in all_significant
+            if getattr(i, "key_data_point", None)
         ]
 
         since_window = datetime.now(timezone.utc) - timedelta(hours=12)
-        total_in_window = (await session.execute(
-            select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since_window)
-        )).scalar_one_or_none() or len(all_significant)
+        total_in_window = (
+            await session.execute(select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since_window))
+        ).scalar_one_or_none() or len(all_significant)
 
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -2063,31 +2540,39 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
             "items_classified_high_medium": len(all_significant),
             "items_excluded_low_none": max(0, total_in_window - len(all_significant)),
             "items_analyzed": len(all_significant),
-            "breaking_count": sum(1 for i in all_significant if i.impact == 'BREAKING'),
-            "breaking_headlines": [i.title for i in all_significant if i.impact == 'BREAKING'],
-            "high_count": sum(1 for i in all_significant if i.impact == 'HIGH'),
+            "breaking_count": sum(1 for i in all_significant if i.impact == "BREAKING"),
+            "breaking_headlines": [i.title for i in all_significant if i.impact == "BREAKING"],
+            "high_count": sum(1 for i in all_significant if i.impact == "HIGH"),
             "key_economic_surprises": surprises,
             "key_data_points": key_data_points,
             "market_snapshot": {
                 "vix": vix.close if vix else None,
-                "dxy_trend": ("strengthening" if len(dxy_rows) >= 2 and dxy_rows[0].close > dxy_rows[-1].close else "weakening") if dxy_rows else None,
+                "dxy_trend": (
+                    "strengthening" if len(dxy_rows) >= 2 and dxy_rows[0].close > dxy_rows[-1].close else "weakening"
+                )
+                if dxy_rows
+                else None,
                 "dominant_themes": [t[0] for t in top_themes[:3]],
-                "theme_counts": dict(top_themes[:5])
+                "theme_counts": dict(top_themes[:5]),
             },
-            "priced_in_signal": self._compute_quick_priced_in(all_significant, theme_counts)
+            "priced_in_signal": self._compute_quick_priced_in(all_significant, theme_counts),
         }
 
-    async def _build_structured_metadata(self, session: AsyncSession, all_significant: Sequence[NewsItem] | list) -> str:
+    async def _build_structured_metadata(
+        self, session: AsyncSession, all_significant: Sequence[NewsItem] | list
+    ) -> str:
         """Build structured metadata block for agent consumption."""
         import json
+
         metadata = await self._build_structured_metadata_dict(session, all_significant)
         return f"```digest_metadata\n{json.dumps(metadata, indent=2)}\n```\n\n"
 
     def _extract_prior_metadata(self, text: str) -> dict:
         import json
+
         try:
-            if '```digest_metadata' in text:
-                block = text.split('```digest_metadata')[1].split('```')[0]
+            if "```digest_metadata" in text:
+                block = text.split("```digest_metadata")[1].split("```")[0]
                 return json.loads(block)
         except Exception:
             pass
@@ -2095,14 +2580,15 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
 
     def _build_structured_delta(self, curr_meta: dict, prev_meta: dict) -> str:
         import json
+
         if not prev_meta:
             return "No previous digest state found. This is a baseline digest."
-        
+
         delta = {"new_breaking_events": [], "theme_shifts": {}, "surprise_shifts": []}
         curr_breaking = set(curr_meta.get("breaking_headlines", []))
         prev_breaking = set(prev_meta.get("breaking_headlines", []))
         delta["new_breaking_events"] = list(curr_breaking - prev_breaking)
-        
+
         curr_themes = curr_meta.get("market_snapshot", {}).get("theme_counts", {})
         prev_themes = prev_meta.get("market_snapshot", {}).get("theme_counts", {})
         all_themes = set(curr_themes.keys()) | set(prev_themes.keys())
@@ -2111,146 +2597,180 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
             p = prev_themes.get(th, 0)
             if c != p:
                 delta["theme_shifts"][th] = f"{p} -> {c}"
-                
-        curr_surprises = {s['title']: s['magnitude'] for s in curr_meta.get("key_economic_surprises", [])}
-        prev_surprises = {s['title']: s['magnitude'] for s in prev_meta.get("key_economic_surprises", [])}
+
+        curr_surprises = {s["title"]: s["magnitude"] for s in curr_meta.get("key_economic_surprises", [])}
+        prev_surprises = {s["title"]: s["magnitude"] for s in prev_meta.get("key_economic_surprises", [])}
         for title, mag in curr_surprises.items():
             if title not in prev_surprises:
                 delta["surprise_shifts"].append(f"NEW Surprise: {title} ({mag})")
-                
+
         return f"```digest_delta\n{json.dumps(delta, indent=2)}\n```\n"
 
     async def _build_currency_signals_summary(self, grouped_news: dict, target_currencies: list) -> str:
-        IMPACT_WEIGHT = {'BREAKING': 3, 'HIGH': 2, 'MEDIUM': 1}
-        lines = ['\n### CURRENCY SIGNAL SUMMARY (Structured, Impact-Weighted)\n']
-        lines.append('| Currency | Dominant Signal | Confidence | Weighted Score | Key Driver |')
-        lines.append('|----------|----------------|------------|-----------------|------------|')
+        IMPACT_WEIGHT = {"BREAKING": 3, "HIGH": 2, "MEDIUM": 1}
+        lines = ["\n### CURRENCY SIGNAL SUMMARY (Structured, Impact-Weighted)\n"]
+        lines.append("| Currency | Dominant Signal | Confidence | Weighted Score | Key Driver |")
+        lines.append("|----------|----------------|------------|-----------------|------------|")
         for currency in target_currencies:
             items = grouped_news.get(currency, [])
             if not items:
-                lines.append(f'| {currency} | NEUTRAL | - | 0 | No significant news |')
+                lines.append(f"| {currency} | NEUTRAL | - | 0 | No significant news |")
                 continue
             bullish_weight = sum(
-                IMPACT_WEIGHT.get(i.impact, 1) for i in items
-                if i.sentiment and f'BULLISH_{currency}' in i.sentiment
+                IMPACT_WEIGHT.get(i.impact, 1) for i in items if i.sentiment and f"BULLISH_{currency}" in i.sentiment
             )
             bearish_weight = sum(
-                IMPACT_WEIGHT.get(i.impact, 1) for i in items
-                if i.sentiment and f'BEARISH_{currency}' in i.sentiment
+                IMPACT_WEIGHT.get(i.impact, 1) for i in items if i.sentiment and f"BEARISH_{currency}" in i.sentiment
             )
             net_weight = bullish_weight - bearish_weight
-            has_breaking = any(getattr(i, 'impact', None) == 'BREAKING' for i in items)
+            has_breaking = any(getattr(i, "impact", None) == "BREAKING" for i in items)
             total_weight = bullish_weight + bearish_weight
 
             # Calibrated smoothing: guard against false divergence from single isolated items
             if len(items) < 2 and not has_breaking and total_weight < 3:
-                signal, confidence = 'MIXED/NEUTRAL', 'LOW'
+                signal, confidence = "MIXED/NEUTRAL", "LOW"
             elif bullish_weight >= bearish_weight * 1.4 and (bullish_weight - bearish_weight) >= 2:
-                signal, confidence = 'BULLISH', ('HIGH' if bullish_weight >= 6 else 'MEDIUM')
+                signal, confidence = "BULLISH", ("HIGH" if bullish_weight >= 6 else "MEDIUM")
             elif bearish_weight >= bullish_weight * 1.4 and (bearish_weight - bullish_weight) >= 2:
-                signal, confidence = 'BEARISH', ('HIGH' if bearish_weight >= 6 else 'MEDIUM')
+                signal, confidence = "BEARISH", ("HIGH" if bearish_weight >= 6 else "MEDIUM")
             else:
-                signal, confidence = 'MIXED/NEUTRAL', 'LOW'
+                signal, confidence = "MIXED/NEUTRAL", "LOW"
 
-            key_item = max(items, key=lambda i: IMPACT_WEIGHT.get(str(getattr(i, 'impact', '') or ''), 1))
-            key_driver = (key_item.title[:50] + '...') if key_item.title else 'No headline'
-            lines.append(f'| {currency} | {signal} | {confidence} | {net_weight:+d} | {key_driver} |')
-        return '\n'.join(lines)
+            key_item = max(items, key=lambda i: IMPACT_WEIGHT.get(str(getattr(i, "impact", "") or ""), 1))
+            key_driver = (key_item.title[:50] + "...") if key_item.title else "No headline"
+            lines.append(f"| {currency} | {signal} | {confidence} | {net_weight:+d} | {key_driver} |")
+        return "\n".join(lines)
 
-    async def create_news_digest(self, session: AsyncSession, hours_back: int=12) -> Optional[str]:
+    async def create_news_digest(self, session: AsyncSession, hours_back: int = 12) -> Optional[str]:
         await self._cleanup_old_digests(session)
-        
+
         is_valid, existing_digest = await self._should_use_cache(session, cache_hours=3.0)
         if is_valid:
-            logger.info('Using cached news digest, skipping LLM API call')
+            logger.info("Using cached news digest, skipping LLM API call")
             return existing_digest
 
         since = datetime.now(timezone.utc) - timedelta(hours=hours_back)
-        
+
         # Fetch all significant news
-        high_impact_news = (await session.execute(
-            select(NewsItem)
-            .where(NewsItem.fetched_at >= since)
-            .where(NewsItem.impact.in_(['BREAKING', 'HIGH']))
-            .order_by(NewsItem.fetched_at.desc())
-        )).scalars().all()
-        
-        medium_impact_news = (await session.execute(
-            select(NewsItem)
-            .where(NewsItem.fetched_at >= since)
-            .where(NewsItem.impact == 'MEDIUM')
-            .order_by(NewsItem.fetched_at.desc())
-        )).scalars().all()
-        
+        high_impact_news = (
+            (
+                await session.execute(
+                    select(NewsItem)
+                    .where(NewsItem.fetched_at >= since)
+                    .where(NewsItem.impact.in_(["BREAKING", "HIGH"]))
+                    .order_by(NewsItem.fetched_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        medium_impact_news = (
+            (
+                await session.execute(
+                    select(NewsItem)
+                    .where(NewsItem.fetched_at >= since)
+                    .where(NewsItem.impact == "MEDIUM")
+                    .order_by(NewsItem.fetched_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+
         all_significant = list(high_impact_news) + list(medium_impact_news)
-        
+
         if not all_significant:
-            all_significant = (await session.execute(
-                select(NewsItem).where(NewsItem.fetched_at >= since).order_by(NewsItem.fetched_at.desc())
-            )).scalars().all()
-        
+            all_significant = (
+                (
+                    await session.execute(
+                        select(NewsItem).where(NewsItem.fetched_at >= since).order_by(NewsItem.fetched_at.desc())
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
         if not all_significant:
             return None
 
         # Group by currency
         from collections import defaultdict
+
         grouped_news = defaultdict(list)
         all_news_for_macro = []
         for item in all_significant:
             all_news_for_macro.append(item)
             if item.currency_tags:
-                for c in item.currency_tags.split(','):
+                for c in item.currency_tags.split(","):
                     c_clean = c.strip().upper()
-                    if c_clean and c_clean != 'NON':
+                    if c_clean and c_clean != "NON":
                         grouped_news[c_clean].append(item)
 
-        target_currencies = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'XAU', 'XTI', 'BTC']
-        
+        target_currencies = ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "XTI", "BTC"]
+
         from monika.infrastructure.database.models import VIXData, DXYData, FedWatchProbability
+
         market_ctx = {}
         try:
             # VIX
             vix = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
             if vix:
-                market_ctx['vix'] = {'value': vix.close, 'regime': 'high_fear' if vix.close > 25 else 'moderate' if vix.close > 15 else 'complacent'}
+                market_ctx["vix"] = {
+                    "value": vix.close,
+                    "regime": "high_fear" if vix.close > 25 else "moderate" if vix.close > 15 else "complacent",
+                }
             # DXY
             dxy_rows = (await session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(5))).scalars().all()
             if len(dxy_rows) >= 3:
-                market_ctx['dxy'] = {'latest': dxy_rows[0].close, 'trend_5d': 'strengthening' if dxy_rows[0].close > dxy_rows[-1].close else 'weakening'}
+                market_ctx["dxy"] = {
+                    "latest": dxy_rows[0].close,
+                    "trend_5d": "strengthening" if dxy_rows[0].close > dxy_rows[-1].close else "weakening",
+                }
             # FedWatch
-            fedwatch = (await session.execute(select(FedWatchProbability).order_by(FedWatchProbability.fetched_at.desc()).limit(1))).scalar_one_or_none()
+            fedwatch = (
+                await session.execute(
+                    select(FedWatchProbability).order_by(FedWatchProbability.fetched_at.desc()).limit(1)
+                )
+            ).scalar_one_or_none()
             if fedwatch:
                 probs = json.loads(fedwatch.probabilities_json)
-                market_ctx['fedwatch_dominant'] = max(probs.get('probabilities', {}).items(), key=lambda x: x[1].get('probability', 0) if isinstance(x[1], dict) else 0, default=('unknown', {}))
+                market_ctx["fedwatch_dominant"] = max(
+                    probs.get("probabilities", {}).items(),
+                    key=lambda x: x[1].get("probability", 0) if isinstance(x[1], dict) else 0,
+                    default=("unknown", {}),
+                )
         except Exception as e:
             logger.debug(f"Failed to fetch market context for digest: {e}")
 
         market_ctx_str = f"""
 MARKET DATA CONTEXT (use to enrich your analysis, not to replace news):
-- VIX: {market_ctx.get('vix', {}).get('value', 'N/A')} ({market_ctx.get('vix', {}).get('regime', 'unknown')})
-- DXY 5-day trend: {market_ctx.get('dxy', {}).get('trend_5d', 'unknown')} (latest: {market_ctx.get('dxy', {}).get('latest', 'N/A')})
-- Fed expectations: {market_ctx.get('fedwatch_dominant', ['unknown'])[0]}
+- VIX: {market_ctx.get("vix", {}).get("value", "N/A")} ({market_ctx.get("vix", {}).get("regime", "unknown")})
+- DXY 5-day trend: {market_ctx.get("dxy", {}).get("trend_5d", "unknown")} (latest: {market_ctx.get("dxy", {}).get("latest", "N/A")})
+- Fed expectations: {market_ctx.get("fedwatch_dominant", ["unknown"])[0]}
 """
         import asyncio
 
         # === STEP 1: Generate MACRO OVERVIEW first (cross-currency) ===
-        breaking_items = [n for n in all_significant if n.impact == 'BREAKING']
-        high_items = [n for n in all_significant if n.impact == 'HIGH']
-        
+        breaking_items = [n for n in all_significant if n.impact == "BREAKING"]
+        high_items = [n for n in all_significant if n.impact == "HIGH"]
+
         breaking_items_dedup = _deduplicate_items_by_title(breaking_items)
         high_items_dedup = _deduplicate_items_by_title(high_items)
-        macro_news_text = '\n\n'.join([
-            _format_news_item_for_prompt(n)
-            for n in breaking_items_dedup[:10] + high_items_dedup[:15]
-        ])
-        
+        macro_news_text = "\n\n".join(
+            [_format_news_item_for_prompt(n) for n in breaking_items_dedup[:10] + high_items_dedup[:15]]
+        )
+
         # Get structured metadata
         structured_metadata = await self._build_structured_metadata(session, all_significant)
         curr_meta_dict = await self._build_structured_metadata_dict(session, all_significant)
-        
+
         # Get previous digest for delta-awareness
         from monika.infrastructure.database.models import NewsDigest
-        prev_digest = (await session.execute(select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1))).scalar_one_or_none()
+
+        prev_digest = (
+            await session.execute(select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1))
+        ).scalar_one_or_none()
         prev_digest_text = prev_digest.digest_text if prev_digest else "No previous digest."
         prev_meta_dict = self._extract_prior_metadata(prev_digest_text) if prev_digest else {}
         delta_str = self._build_structured_delta(curr_meta_dict, prev_meta_dict)
@@ -2326,15 +2846,21 @@ Guidance: {depth_guidance} Write in professional trading analyst style."""
                 result = await self._macro_synth.generate(macro_user_prompt, system=MACRO_OVERVIEW_STATIC_SYSTEM)
                 if result and not result.startswith("(") and len(result.strip()) > 50:
                     return result
-                logger.warning("[NewsDigest] Macro overview generation returned empty/error; falling back to deterministic summary")
-                return generate_deterministic_macro_summary(all_significant, currency_signals, market_ctx, macro_5d_context)
+                logger.warning(
+                    "[NewsDigest] Macro overview generation returned empty/error; falling back to deterministic summary"
+                )
+                return generate_deterministic_macro_summary(
+                    all_significant, currency_signals, market_ctx, macro_5d_context
+                )
             except Exception as e:
-                logger.error(f'Macro overview generation failed ({e}); falling back to deterministic summary')
-                return generate_deterministic_macro_summary(all_significant, currency_signals, market_ctx, macro_5d_context)
+                logger.error(f"Macro overview generation failed ({e}); falling back to deterministic summary")
+                return generate_deterministic_macro_summary(
+                    all_significant, currency_signals, market_ctx, macro_5d_context
+                )
 
         # === STEP 2: Per-currency digests (sequential after macro) ===
         macro_overview = await fetch_macro_overview()
-        
+
         full_macro_context = (
             f"{macro_5d_context}\n"
             f"{market_ctx_str}\n"
@@ -2344,38 +2870,37 @@ Guidance: {depth_guidance} Write in professional trading analyst style."""
             f"{prev_digest_text}\n"
             f"{macro_user_prompt}"
         )
-        ungrounded = _flag_ungrounded_numbers(
-            macro_overview, macro_news_text, extra_context_text=full_macro_context
-        )
+        ungrounded = _flag_ungrounded_numbers(macro_overview, macro_news_text, extra_context_text=full_macro_context)
         if ungrounded:
-            logger.warning(f'[NewsDigest] Possible ungrounded numeric claims in macro_overview: {ungrounded[:5]}. Sanitizing with [UNVERIFIED_NUM]...')
+            logger.warning(
+                f"[NewsDigest] Possible ungrounded numeric claims in macro_overview: {ungrounded[:5]}. Sanitizing with [UNVERIFIED_NUM]..."
+            )
             for u_token in ungrounded:
                 if str(u_token).isdigit() and len(str(u_token)) < 2:
                     continue
-                macro_overview = re.sub(rf"(?<![\w$€£¥]){re.escape(str(u_token))}(?![\w%])", "[UNVERIFIED_NUM]", macro_overview)
-        
+                macro_overview = re.sub(
+                    rf"(?<![\w$€£¥]){re.escape(str(u_token))}(?![\w%])", "[UNVERIFIED_NUM]", macro_overview
+                )
+
         async def fetch_currency_digest(currency: str, items: list, macro_ctx: str) -> str:
             if not items:
-                return f'### {currency} Nuances\nNo significant news for {currency} in this period.'
-            
+                return f"### {currency} Nuances\nNo significant news for {currency} in this period."
+
             # Deduplicate via Jaccard
             unique_items = []
             for item in items[:20]:  # Cap per currency
-                if not any(_jaccard_title_similarity(item.title or '', u.title or '') > 0.6 for u in unique_items):
+                if not any(_jaccard_title_similarity(item.title or "", u.title or "") > 0.6 for u in unique_items):
                     unique_items.append(item)
-            
-            news_text = '\n\n'.join([
-                _format_news_item_for_prompt(item)
-                for item in unique_items
-            ])
-            
+
+            news_text = "\n\n".join([_format_news_item_for_prompt(item) for item in unique_items])
+
             # Tambahkan market context yang relevan untuk currency ini
-            currency_market_ctx = ''
-            if currency == 'USD':
+            currency_market_ctx = ""
+            if currency == "USD":
                 currency_market_ctx = f"\nContext: DXY trend={market_ctx.get('dxy', {}).get('trend_5d', 'unknown')}, VIX={market_ctx.get('vix', {}).get('value', 'N/A')}\n"
-            elif currency == 'XAU':
+            elif currency == "XAU":
                 currency_market_ctx = f"\nContext: VIX={market_ctx.get('vix', {}).get('value', 'N/A')} (gold safe-haven proxy), DXY trend={market_ctx.get('dxy', {}).get('trend_5d', 'unknown')} (gold inverse)\n"
-            
+
             CURRENCY_DIGEST_STATIC_SYSTEM = """You are a specialized currency market analyst. Synthesize currency-specific news for a trading digest.
 Ensure your analysis ALIGNS with the overarching macro narrative provided in the user prompt.
 
@@ -2397,20 +2922,22 @@ MACRO NARRATIVE:
 <untrusted_news_data>
 {news_text}
 </untrusted_news_data>"""
-            
+
             try:
-                has_breaking = any(getattr(i, 'impact', None) == 'BREAKING' for i in items)
-                high_count = sum(1 for i in items if getattr(i, 'impact', None) == 'HIGH')
-                use_top_tier = has_breaking or high_count >= 1 or currency in ('USD', 'XAU', 'XTI', 'BTC')
+                has_breaking = any(getattr(i, "impact", None) == "BREAKING" for i in items)
+                high_count = sum(1 for i in items if getattr(i, "impact", None) == "HIGH")
+                use_top_tier = has_breaking or high_count >= 1 or currency in ("USD", "XAU", "XTI", "BTC")
                 if use_top_tier:
                     result = await self._macro_synth.generate(prompt, system=CURRENCY_DIGEST_STATIC_SYSTEM)
                 else:
                     result = await self._digest_generator.generate(prompt, system=CURRENCY_DIGEST_STATIC_SYSTEM)
-                
+
                 if not result or len(result.strip()) < 30:
-                    logger.warning(f"[NewsDigest] Empty currency result for {currency}; using deterministic summary fallback")
+                    logger.warning(
+                        f"[NewsDigest] Empty currency result for {currency}; using deterministic summary fallback"
+                    )
                     return generate_deterministic_currency_summary(currency, items)
-                
+
                 market_ctx_str_rep = json.dumps(market_ctx) if isinstance(market_ctx, dict) else str(market_ctx)
                 full_currency_context = (
                     f"{macro_ctx}\n"
@@ -2421,19 +2948,19 @@ MACRO NARRATIVE:
                     f"{structured_metadata}\n"
                     f"{currency_signals}"
                 )
-                ungrounded = _flag_ungrounded_numbers(
-                    result, news_text, extra_context_text=full_currency_context
-                )
+                ungrounded = _flag_ungrounded_numbers(result, news_text, extra_context_text=full_currency_context)
                 if ungrounded:
-                    logger.warning(f"[NewsDigest] Ungrounded numbers in {currency} section: {ungrounded[:5]}. Sanitizing with [UNVERIFIED_NUM]...")
+                    logger.warning(
+                        f"[NewsDigest] Ungrounded numbers in {currency} section: {ungrounded[:5]}. Sanitizing with [UNVERIFIED_NUM]..."
+                    )
                     for u_token in ungrounded:
                         if str(u_token).isdigit() and len(str(u_token)) < 2:
                             continue
                         result = re.sub(rf"(?<![\w$€£¥]){re.escape(str(u_token))}(?![\w%])", "[UNVERIFIED_NUM]", result)
-                    
-                return f'### {currency} Nuances\n{result}'
+
+                return f"### {currency} Nuances\n{result}"
             except Exception as e:
-                logger.error(f'Currency digest failed for {currency} ({e}); falling back to deterministic summary')
+                logger.error(f"Currency digest failed for {currency} ({e}); falling back to deterministic summary")
                 return generate_deterministic_currency_summary(currency, items)
 
         # Run currency digests in parallel for all target currencies
@@ -2441,38 +2968,40 @@ MACRO NARRATIVE:
         for currency in target_currencies:
             items = grouped_news.get(currency, [])
             currency_tasks.append((currency, fetch_currency_digest(currency, items, macro_overview)))
-        
+
         currency_task_coros = [task for _, task in currency_tasks]
         results = await asyncio.gather(*currency_task_coros, return_exceptions=True)
-        
+
         currency_results = {}
         for i, (currency, _) in enumerate(currency_tasks):
             result = results[i]
             if isinstance(result, Exception):
                 logger.error(f"Task exception in currency {currency}: {result}; using deterministic summary")
-                currency_results[currency] = generate_deterministic_currency_summary(currency, grouped_news.get(currency, []))
+                currency_results[currency] = generate_deterministic_currency_summary(
+                    currency, grouped_news.get(currency, [])
+                )
             else:
                 currency_results[currency] = result
 
         # 1. Machine-readable metadata (SELALU PERTAMA)
         metadata_block = await self._build_structured_metadata(session, all_significant)
         digest_parts = [metadata_block]
-        
+
         # 2. Currency signal table (STRUCTURED)
         digest_parts.append(currency_signals)
-        
+
         # 3. Macro narrative (PROSE - untuk context)
         digest_parts.append("\n### MACRO OVERVIEW\n")
         digest_parts.append(macro_overview)
-        
+
         # 4. Per-currency nuances (PROSE - untuk depth)
         digest_parts.append("\n### CURRENCY-SPECIFIC NUANCES\n")
         for currency in target_currencies:
             if currency in currency_results:
                 digest_parts.append(currency_results[currency])
-        
-        digest = '\n'.join(digest_parts)
-        
+
+        digest = "\n".join(digest_parts)
+
         priced_in_prompt = f"""You are a market analyst. Read the following news digest:
         
 {digest}
@@ -2491,65 +3020,74 @@ Fully priced in: ... | ...
 Not yet priced in: ... | ...  
 New trade priced-in risk: LOW/MEDIUM/HIGH
 [END PRICED-IN SUMMARY]"""
-        
+
         try:
             priced_in_result = await self._digest_generator.generate(priced_in_prompt)
             if priced_in_result:
                 digest += f"\n\n{priced_in_result}"
         except Exception as e:
-            logger.error(f'Priced-in summary generation failed: {e}')
-            
+            logger.error(f"Priced-in summary generation failed: {e}")
+
         # Consistency Check
         try:
             consistency_result = await self._check_digest_internal_consistency(digest)
-            if consistency_result and consistency_result.get('has_contradictions'):
-                raw_contradictions = consistency_result.get('contradictions', [])
+            if consistency_result and consistency_result.get("has_contradictions"):
+                raw_contradictions = consistency_result.get("contradictions", [])
                 contradictions = _normalize_contradictions(raw_contradictions)
-                material_count = sum(1 for c in contradictions if c.get('severity') == 'material')
+                material_count = sum(1 for c in contradictions if c.get("severity") == "material")
                 if material_count > 0:
                     reconciled = await self._reconcile_digest_contradictions(digest, contradictions)
                     if reconciled:
                         digest = reconciled
-                        logger.info(f'[NewsDigest] {material_count} kontradiksi material berhasil direkonsiliasi secara aktif.')
+                        logger.info(
+                            f"[NewsDigest] {material_count} kontradiksi material berhasil direkonsiliasi secara aktif."
+                        )
                     else:
-                        logger.warning(f'[NewsDigest] Rekonsiliasi aktif gagal untuk {material_count} kontradiksi material; menyematkan catatan konsistensi pasif.')
-                        note = '\n'.join(
+                        logger.warning(
+                            f"[NewsDigest] Rekonsiliasi aktif gagal untuk {material_count} kontradiksi material; menyematkan catatan konsistensi pasif."
+                        )
+                        note = "\n".join(
                             f"- [{c.get('section_a', 'Section A')}] {c.get('claim_a', '')}  vs  [{c.get('section_b', 'Section B')}] {c.get('claim_b', '')}"
                             for c in contradictions
                         )
                         if note.strip():
-                            digest += f'\n\n### CONSISTENCY CHECK (belum terselesaikan — perlakukan dengan hati-hati)\n{note}'
+                            digest += (
+                                f"\n\n### CONSISTENCY CHECK (belum terselesaikan — perlakukan dengan hati-hati)\n{note}"
+                            )
                 elif contradictions:
-                    note = '\n'.join(
+                    note = "\n".join(
                         f"- (minor) [{c.get('section_a', 'Section A')}] {c.get('claim_a', '')}  vs  [{c.get('section_b', 'Section B')}] {c.get('claim_b', '')}"
                         for c in contradictions
                     )
                     if note.strip():
-                        digest += f'\n\n### CONSISTENCY CHECK (perbedaan nuansa minor)\n{note}'
+                        digest += f"\n\n### CONSISTENCY CHECK (perbedaan nuansa minor)\n{note}"
         except Exception as e:
-            logger.error(f'Digest consistency check failed: {e}')
-        
+            logger.error(f"Digest consistency check failed: {e}")
+
         # Coverage Gap Safety Net (P1-4)
         try:
             gaps = await self._compute_coverage_gaps(session, digest)
             if gaps:
                 digest += f"\n\n### [COVERAGE GAPS]\n{gaps}"
         except Exception as e:
-            logger.error(f'Coverage gap computation failed: {e}')
+            logger.error(f"Coverage gap computation failed: {e}")
 
         # Save to DB
         if digest:
             from monika.infrastructure.database.models import NewsDigest
+
             entry = NewsDigest(
                 generated_at=datetime.now(timezone.utc),
                 period_hours=hours_back,
                 digest_text=digest,
-                items_processed=len(all_significant)
+                items_processed=len(all_significant),
             )
             session.add(entry)
             await session.commit()
-            logger.info(f'News digest created from {len(all_significant)} items ({len(breaking_items)} BREAKING, {len(high_items)} HIGH)')
-        
+            logger.info(
+                f"News digest created from {len(all_significant)} items ({len(breaking_items)} BREAKING, {len(high_items)} HIGH)"
+            )
+
         return digest
 
     async def _check_digest_internal_consistency(self, digest_text: str) -> Optional[dict]:
@@ -2567,42 +3105,48 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
             # Jev System One fast gating: check if digest is clean in sub-100ms
             try:
                 from monika.core.primitives.jev_primitives import build_digest_consistency_questions
+
                 jev_client = None
                 if getattr(self._verifier, "provider_name", None) == "typesafe":
                     jev_client = self._verifier
                 elif isinstance(self.settings, dict) and self.settings.get("typesafe", {}).get("enabled"):
                     from monika.infrastructure.providers.llm_factory import get_client_for_task
+
                     cand = get_client_for_task("news_classification_verifier", self.settings)
                     if getattr(cand, "provider_name", None) == "typesafe":
                         jev_client = cand
 
                 if jev_client and hasattr(jev_client, "classify_json"):
                     gating_q = build_digest_consistency_questions()
-                    gate_res = await jev_client.classify_json(prompt="", state=digest_text[:3000], jev_questions=gating_q)
+                    gate_res = await jev_client.classify_json(
+                        prompt="", state=digest_text[:3000], jev_questions=gating_q
+                    )
                     if (
                         isinstance(gate_res, dict)
                         and gate_res.get("has_contradictions") is False
                         and gate_res.get("contradiction_severity") in ("none", "low", None)
                     ):
-                        logger.info("[NewsDigest] Jev System One verified digest consistency (no contradictions) — skipping LLM verifier")
+                        logger.info(
+                            "[NewsDigest] Jev System One verified digest consistency (no contradictions) — skipping LLM verifier"
+                        )
                         return {"has_contradictions": False, "contradictions": []}
             except Exception as jev_gate_err:
                 logger.debug(f"Digest Jev gating check bypassed: {jev_gate_err}")
 
             return await self._verifier.classify_json(prompt=prompt, schema=DIGEST_CONSISTENCY_SCHEMA)
         except Exception as e:
-            logger.debug(f'Consistency check failed: {e}')
+            logger.debug(f"Consistency check failed: {e}")
             return None
 
     async def _reconcile_digest_contradictions(self, digest_text: str, contradictions: list[dict]) -> Optional[str]:
         """Aktif memperbaiki kontradiksi MATERIAL, bukan sekadar menambahkan catatan pasif
         yang berisiko diberi bobot rendah oleh agent pembaca hilir."""
         normalized = _normalize_contradictions(contradictions)
-        material = [c for c in normalized if c.get('severity') == 'material']
+        material = [c for c in normalized if c.get("severity") == "material"]
         if not material:
             return None
-        conflict_desc = '\n'.join(
-            f"- In [{c.get('section_a', 'Section A')}]: \"{c.get('claim_a', '')}\" CONTRADICTS [{c.get('section_b', 'Section B')}]: \"{c.get('claim_b', '')}\""
+        conflict_desc = "\n".join(
+            f'- In [{c.get("section_a", "Section A")}]: "{c.get("claim_a", "")}" CONTRADICTS [{c.get("section_b", "Section B")}]: "{c.get("claim_b", "")}"'
             for c in material
         )
         prompt = (
@@ -2620,23 +3164,26 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
         try:
             return await self._macro_synth.generate(prompt)
         except Exception as e:
-            logger.warning(f'Digest reconciliation failed (non-fatal, fallback to passive note): {e}')
+            logger.warning(f"Digest reconciliation failed (non-fatal, fallback to passive note): {e}")
             return None
 
     async def _compute_coverage_gaps(self, session: AsyncSession, digest_text: str) -> str:
         """Cek aset utama yang absen dari digest via DB query, beri peringatan agar pipeline tahu."""
         from monika.infrastructure.database.models import NewsItem
         from sqlalchemy import select, func
+
         since = datetime.now(timezone.utc) - timedelta(hours=12)
         major_assets = ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "XTI", "BTC"]
         missing = []
         for cur in major_assets:
-            cnt = (await session.execute(
-                select(func.count(NewsItem.id))
-                .where(NewsItem.fetched_at >= since)
-                .where(NewsItem.impact.in_(['HIGH', 'BREAKING']))
-                .where(NewsItem.currency_tags.contains(cur))
-            )).scalar_one_or_none() or 0
+            cnt = (
+                await session.execute(
+                    select(func.count(NewsItem.id))
+                    .where(NewsItem.fetched_at >= since)
+                    .where(NewsItem.impact.in_(["HIGH", "BREAKING"]))
+                    .where(NewsItem.currency_tags.contains(cur))
+                )
+            ).scalar_one_or_none() or 0
             if cnt == 0 and f"{cur} Nuances" not in digest_text and f"{cur} Bias" not in digest_text:
                 missing.append(cur)
 
@@ -2653,25 +3200,30 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
         try:
             from monika.infrastructure.database.models import NewsDigest
             from sqlalchemy import delete
+
             cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
             await session.execute(delete(NewsDigest).where(NewsDigest.generated_at < cutoff))
             await session.commit()
         except Exception as e:
-            logger.debug(f'Digest cleanup failed (non-fatal): {e}')
+            logger.debug(f"Digest cleanup failed (non-fatal): {e}")
 
     async def get_latest_digest(self, session: AsyncSession, hours_back: int = 12) -> Optional[str]:
         """Mengambil rangkuman berita (digest) terbaru dari DB (cache read)."""
         from monika.infrastructure.database.models import NewsDigest
+
         since = datetime.now(timezone.utc) - timedelta(hours=hours_back + 2)
-        
-        digest = (await session.execute(
-            select(NewsDigest)
-            .where(NewsDigest.generated_at >= since)
-            .order_by(NewsDigest.generated_at.desc())
-            .limit(1)
-        )).scalar_one_or_none()
-        
+
+        digest = (
+            await session.execute(
+                select(NewsDigest)
+                .where(NewsDigest.generated_at >= since)
+                .order_by(NewsDigest.generated_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
         return digest.digest_text if digest else None
+
 
 async def get_classification_health_report(session) -> dict:
     """
@@ -2679,38 +3231,38 @@ async def get_classification_health_report(session) -> dict:
     Dipanggil dari dashboard atau daily report.
     """
     since = datetime.now(timezone.utc) - timedelta(hours=24)
-    
+
     from monika.infrastructure.database.models import NewsItem
     from sqlalchemy import select, func
-    
-    total = (await session.execute(
-        select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since)
-    )).scalar_one_or_none() or 0
-    
-    classified = (await session.execute(
-        select(func.count(NewsItem.id))
-        .where(NewsItem.fetched_at >= since)
-        .where(NewsItem.impact != None)
-    )).scalar_one_or_none() or 0
-    
+
+    total = (
+        await session.execute(select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since))
+    ).scalar_one_or_none() or 0
+
+    classified = (
+        await session.execute(
+            select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since).where(NewsItem.impact != None)
+        )
+    ).scalar_one_or_none() or 0
+
     by_impact = {}
-    for impact in ['BREAKING', 'HIGH', 'MEDIUM', 'LOW']:
-        count = (await session.execute(
-            select(func.count(NewsItem.id))
-            .where(NewsItem.fetched_at >= since)
-            .where(NewsItem.impact == impact)
-        )).scalar_one_or_none() or 0
+    for impact in ["BREAKING", "HIGH", "MEDIUM", "LOW"]:
+        count = (
+            await session.execute(
+                select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since).where(NewsItem.impact == impact)
+            )
+        ).scalar_one_or_none() or 0
         by_impact[impact] = count
-    
+
     classification_rate = classified / total * 100 if total > 0 else 0
-    breaking_rate = by_impact.get('BREAKING', 0) / classified * 100 if classified > 0 else 0
-    
+    breaking_rate = by_impact.get("BREAKING", 0) / classified * 100 if classified > 0 else 0
+
     return {
-        'total_items_24h': total,
-        'classified_count': classified,
-        'classification_rate_pct': round(classification_rate, 1),
-        'by_impact': by_impact,
-        'breaking_rate_pct': round(breaking_rate, 1),
-        'health': 'good' if classification_rate > 80 else 'degraded' if classification_rate > 50 else 'critical',
-        'anomaly_alert': breaking_rate > 30  # Alert jika >30% BREAKING (likely over-classification)
+        "total_items_24h": total,
+        "classified_count": classified,
+        "classification_rate_pct": round(classification_rate, 1),
+        "by_impact": by_impact,
+        "breaking_rate_pct": round(breaking_rate, 1),
+        "health": "good" if classification_rate > 80 else "degraded" if classification_rate > 50 else "critical",
+        "anomaly_alert": breaking_rate > 30,  # Alert jika >30% BREAKING (likely over-classification)
     }

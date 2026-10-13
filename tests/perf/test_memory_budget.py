@@ -20,14 +20,18 @@ def test_agent_context_memory_budget():
 
         # Simulate 25 turns of conversation growth with tool observations
         for i in range(25):
-            messages.append({
-                "role": "assistant",
-                "content": f"Analyzing turn {i}..." + ("\nPrice action confirms liquidity sweep." * 30),
-            })
-            messages.append({
-                "role": "user",
-                "content": f"[Observation {i}]: " + ("Candle data row with OHLCV metrics " * 50),
-            })
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": f"Analyzing turn {i}..." + ("\nPrice action confirms liquidity sweep." * 30),
+                }
+            )
+            messages.append(
+                {
+                    "role": "user",
+                    "content": f"[Observation {i}]: " + ("Candle data row with OHLCV metrics " * 50),
+                }
+            )
             # Run compaction pass
             messages = engine.check_and_compact(messages, context_window=64000)
 

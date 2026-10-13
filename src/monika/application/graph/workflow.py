@@ -26,7 +26,11 @@ from monika.application.graph.nodes.plan_refinement_node import plan_refinement_
 import asyncio
 import functools
 import inspect
-from monika.application.graph.nodes.state_pruner import prune_after_fundamental, prune_after_debate, prune_before_execution
+from monika.application.graph.nodes.state_pruner import (
+    prune_after_fundamental,
+    prune_after_debate,
+    prune_before_execution,
+)
 from monika.core.telemetry.tracing.spans import node_span
 import time
 from monika.application.analysis.event_broadcaster import emit_analysis_event
@@ -66,7 +70,7 @@ def _build_node_payload_summary(node_name: str, res: Any, state: Any) -> Optiona
             return {
                 "events_count": len(res.get("upcoming_events", [])),
                 "market_regime": res.get("market_regime", "normal"),
-                "status": "data_gathered"
+                "status": "data_gathered",
             }
         elif node_name == "fundamental_analysis":
             sum_fund = res.get("summary", {}).get("fundamental", {})
@@ -88,8 +92,14 @@ def _build_node_payload_summary(node_name: str, res: Any, state: Any) -> Optiona
                 "actionable_symbols": [sym for sym, _ in actionable] if actionable else [],
             }
         elif node_name in ("bull_advocate", "bear_dissent", "debate_judge", "rebuttal", "debate"):
-            deb_states = res.get("debate_states") or (state.get("debate_states") if isinstance(state, dict) else {}) or {}
-            actionable = res.get("actionable_trades") or (state.get("actionable_trades") if isinstance(state, dict) else []) or []
+            deb_states = (
+                res.get("debate_states") or (state.get("debate_states") if isinstance(state, dict) else {}) or {}
+            )
+            actionable = (
+                res.get("actionable_trades")
+                or (state.get("actionable_trades") if isinstance(state, dict) else [])
+                or []
+            )
             return {
                 "actionable_count": len(actionable),
                 "symbols": [s for s, _ in actionable] if actionable else [],
@@ -100,7 +110,9 @@ def _build_node_payload_summary(node_name: str, res: Any, state: Any) -> Optiona
                         "judge_verdict": d.get("investment_verdict") or d.get("final_decision"),
                     }
                     for s, d in deb_states.items()
-                } if deb_states else {},
+                }
+                if deb_states
+                else {},
             }
         elif node_name == "reflection":
             sum_refl = res.get("summary", {}).get("reflection", {}) if isinstance(res.get("summary"), dict) else {}
@@ -139,20 +151,25 @@ def _is_node_skipped(node_name: str, res: Any, state: Any) -> bool:
     return False
 
 
-def _record_cycle_event(node_name: str, cycle_id: Optional[str], res: Any, state: Any, dur_s: float, inp: int, out: int):
+def _record_cycle_event(
+    node_name: str, cycle_id: Optional[str], res: Any, state: Any, dur_s: float, inp: int, out: int
+):
     """Records cryptographic event in TradingCycleEventLog for immutable lineage."""
     if not cycle_id:
         return
     try:
         from monika.core.telemetry.trading_cycle_event_log import get_cycle_event_log, CycleEventType
+
         event_log = get_cycle_event_log()
         payload = _build_node_payload_summary(node_name, res, state) or {}
-        payload.update({
-            "duration_ms": round(dur_s * 1000, 2),
-            "input_tokens": inp,
-            "output_tokens": out,
-            "is_skipped": _is_node_skipped(node_name, res, state),
-        })
+        payload.update(
+            {
+                "duration_ms": round(dur_s * 1000, 2),
+                "input_tokens": inp,
+                "output_tokens": out,
+                "is_skipped": _is_node_skipped(node_name, res, state),
+            }
+        )
 
         if "fundamental" in node_name:
             ev_type = CycleEventType.STAGE_FUNDAMENTAL
@@ -182,6 +199,7 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
         return node_fn
 
     if inspect.iscoroutinefunction(node_fn):
+
         @functools.wraps(node_fn)
         async def _traced_async_node_fn(state: Any, *args, **kwargs):
             cycle_id = state.get("cycle_id") if isinstance(state, dict) else None
@@ -205,6 +223,7 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
             inp, out = _extract_tokens_from_result(node_name, res)
             try:
                 from monika.infrastructure.llm.context_tracker import get_context_tracker
+
                 if inp or out:
                     get_context_tracker().record_usage(input_tokens=inp, output_tokens=out, step=node_name)
             except Exception:
@@ -225,6 +244,7 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
 
         return _traced_async_node_fn
     else:
+
         @functools.wraps(node_fn)
         def _traced_sync_node_fn(state: Any, *args, **kwargs):
             cycle_id = state.get("cycle_id") if isinstance(state, dict) else None
@@ -248,6 +268,7 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
             inp, out = _extract_tokens_from_result(node_name, res)
             try:
                 from monika.infrastructure.llm.context_tracker import get_context_tracker
+
                 if inp or out:
                     get_context_tracker().record_usage(input_tokens=inp, output_tokens=out, step=node_name)
             except Exception:
@@ -279,26 +300,24 @@ def build_trading_graph(db_url: Optional[str] = None, checkpointer: Optional[Any
     # PR-04: Authoritative PostgreSQL checkpointer (no SQLite dual-write overhead)
     if checkpointer is None:
         if db_url:
-            pg_url = db_url.replace('+asyncpg', '').replace('postgresql+psycopg2', 'postgresql')
-            if pg_url.startswith(('postgresql://', 'postgres://')):
+            pg_url = db_url.replace("+asyncpg", "").replace("postgresql+psycopg2", "postgresql")
+            if pg_url.startswith(("postgresql://", "postgres://")):
                 try:
                     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
                     from psycopg_pool import AsyncConnectionPool
+
                     pool: Any = AsyncConnectionPool(
-                        conninfo=pg_url,
-                        max_size=20,
-                        kwargs={"autocommit": True, "prepare_threshold": 0},
-                        open=False
+                        conninfo=pg_url, max_size=20, kwargs={"autocommit": True, "prepare_threshold": 0}, open=False
                     )
                     pg_checkpointer = AsyncPostgresSaver(pool)
                     setattr(pg_checkpointer, "_needs_setup", True)
                     checkpointer = pg_checkpointer
-                    logger.info('LangGraph: Authoritative PostgreSQL checkpointer created (setup pending)')
+                    logger.info("LangGraph: Authoritative PostgreSQL checkpointer created (setup pending)")
                 except ImportError:
-                    logger.warning('langgraph-checkpoint-postgres not installed, using MemorySaver fallback')
+                    logger.warning("langgraph-checkpoint-postgres not installed, using MemorySaver fallback")
                     checkpointer = MemorySaver() if MemorySaver is not None else None
                 except Exception as e:
-                    logger.error(f'PostgreSQL checkpointer init failed: {e}. Using MemorySaver fallback.')
+                    logger.error(f"PostgreSQL checkpointer init failed: {e}. Using MemorySaver fallback.")
                     checkpointer = MemorySaver() if MemorySaver is not None else None
             else:
                 checkpointer = MemorySaver() if MemorySaver is not None else None
@@ -306,13 +325,13 @@ def build_trading_graph(db_url: Optional[str] = None, checkpointer: Optional[Any
             checkpointer = MemorySaver() if MemorySaver is not None else None
 
     workflow = StateGraph(TradingState)
-    
+
     # 1. Define nodes
     workflow.add_node("data_gathering", _wrap_traced_node("data_gathering", fetch_data_node))
     workflow.add_node("fundamental_analysis", _wrap_traced_node("fundamental_analysis", fundamental_analysis_node))
     workflow.add_node("prune_fundamental", _wrap_traced_node("prune_fundamental", prune_after_fundamental))
     workflow.add_node("per_asset_analysis", _wrap_traced_node("per_asset_analysis", per_asset_analysis_node))
-    
+
     # LangGraph multi-agent debate decomposition: wire decomposed debate subgraph with unified checkpointer and node tracing
     try:
         debate_subgraph = build_debate_subgraph(checkpointer=checkpointer, node_wrapper=_wrap_traced_node)
@@ -325,109 +344,90 @@ def build_trading_graph(db_url: Optional[str] = None, checkpointer: Optional[Any
     workflow.add_node("risk_gate", _wrap_traced_node("risk_gate", risk_gate_node))
     workflow.add_node("plan_refinement", _wrap_traced_node("plan_refinement", plan_refinement_node))
     workflow.add_node("execution", _wrap_traced_node("execution", execution_node))
-    
+
     # 2. Define edges & entry point
     workflow.set_entry_point("data_gathering")
-    
+
     # Setelah data gathering, cek apakah budget pause
     def data_routing(state: TradingState) -> str:
         if state.get("should_pause"):
             return "END"
         return "fundamental_analysis"
-        
+
     workflow.add_conditional_edges(
-        "data_gathering",
-        data_routing,
-        {
-            "fundamental_analysis": "fundamental_analysis",
-            "END": END
-        }
+        "data_gathering", data_routing, {"fundamental_analysis": "fundamental_analysis", "END": END}
     )
-    
+
     # Setelah fundamental, lanjut ke per_asset
     def fundamental_routing(state: TradingState) -> str:
         if state.get("should_pause"):
-            errors = state.get('node_errors', {})
-            fund_error = errors.get('fundamental') or ''
-            
+            errors = state.get("node_errors", {})
+            fund_error = errors.get("fundamental") or ""
+
             # Permanent errors -> langsung END
-            if any(perm in fund_error for perm in ['AuthenticationError', 'invalid_api_key', 'permanent_error']):
-                return 'END'
-                
-            retry_count = state.get('fundamental_retry_count', 0)
+            if any(perm in fund_error for perm in ["AuthenticationError", "invalid_api_key", "permanent_error"]):
+                return "END"
+
+            retry_count = state.get("fundamental_retry_count", 0)
             if retry_count <= 1:
-                return 'fundamental_analysis' # re-run same node
+                return "fundamental_analysis"  # re-run same node
             return "END"
-            
+
         # NEW: SSVP pre-check sebelum per_asset
-        ssvp_blocked = state.get('ssvp_blocked', False)
+        ssvp_blocked = state.get("ssvp_blocked", False)
         if ssvp_blocked:
-            ssvp_cds = state.get('ssvp_cds_score', 0.0)
+            ssvp_cds = state.get("ssvp_cds_score", 0.0)
             import logging
+
             logger = logging.getLogger(__name__)
-            
-            retry = state.get('ssvp_retry_count', 0)
+
+            retry = state.get("ssvp_retry_count", 0)
             if retry >= 2:
                 logger.warning(f"[SSVP] Routing blocked max retries reached: CDS={ssvp_cds:.2f} — ENDING")
-                return 'END'
-                
+                return "END"
+
             logger.warning(f"[SSVP] Routing blocked: CDS={ssvp_cds:.2f} — triggering Stage 1 re-run (retry {retry})")
-            return 'fundamental_analysis'  # Re-run Stage 1
-            
+            return "fundamental_analysis"  # Re-run Stage 1
+
         return "prune_fundamental"
-        
+
     workflow.add_conditional_edges(
         "fundamental_analysis",
         fundamental_routing,
-        {
-            "fundamental_analysis": "fundamental_analysis",
-            "prune_fundamental": "prune_fundamental",
-            "END": END
-        }
+        {"fundamental_analysis": "fundamental_analysis", "prune_fundamental": "prune_fundamental", "END": END},
     )
     workflow.add_edge("prune_fundamental", "per_asset_analysis")
-    
+
     workflow.add_node("prune_debate", _wrap_traced_node("prune_debate", prune_after_debate))
     workflow.add_edge("per_asset_analysis", "debate")
     workflow.add_edge("debate", "prune_debate")
     workflow.add_edge("prune_debate", "reflection")
-    
+
     def reflection_routing(state: TradingState) -> str:
         if state.get("should_pause"):
             return "END"
         return "risk_gate"  # Always evaluate — quant alpha may promote WAIT assets
-        
-    workflow.add_conditional_edges(
-        "reflection",
-        reflection_routing,
-        {
-            "risk_gate": "risk_gate",
-            "END": END
-        }
-    )
-    
+
+    workflow.add_conditional_edges("reflection", reflection_routing, {"risk_gate": "risk_gate", "END": END})
+
     workflow.add_node("prune_execution", _wrap_traced_node("prune_execution", prune_before_execution))
 
     # Setelah risk gate, cek apakah ada trade yang disetujui atau penolakan yang bisa disempurnakan
     def risk_routing(state: TradingState) -> str:
-        actionable = state.get('actionable_trades', [])
+        actionable = state.get("actionable_trades", [])
         if actionable and len(actionable) > 0:
             return "prune_execution"
         if state.get("is_negotiable_rejection") and state.get("refinement_count", 0) < 2:
             return "plan_refinement"
         return "END"
-        
+
     workflow.add_conditional_edges(
         "risk_gate",
         risk_routing,
-        {
-            "prune_execution": "prune_execution",
-            "plan_refinement": "plan_refinement",
-            "END": END
-        }
+        {"prune_execution": "prune_execution", "plan_refinement": "plan_refinement", "END": END},
     )
     workflow.add_edge("plan_refinement", "risk_gate")
     workflow.add_edge("prune_execution", "execution")
     workflow.add_edge("execution", END)
-    
+
     return workflow.compile(checkpointer=checkpointer)

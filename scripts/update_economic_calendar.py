@@ -21,6 +21,7 @@ if _src_dir not in sys.path:
 
 try:
     from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+
     install_legacy_compat()
 except Exception:
     pass
@@ -49,6 +50,7 @@ async def update_calendar(headless: bool = True) -> dict:
     logger.info("Fetching economic calendar events from Investing.com (This Week & Next Week)...")
     try:
         from scrapers.calendar.calendar_investing import InvestingCalendarScraper
+
         scraper = InvestingCalendarScraper(headless=headless)
         try:
             loop = asyncio.get_running_loop()
@@ -67,6 +69,7 @@ async def update_calendar(headless: bool = True) -> dict:
         source = "forexfactory"
         try:
             from scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
+
             ff = ForexFactoryCalendarScraper(headless=headless)
             try:
                 events = ff.fetch_feed_events(ignore_cache=True)
@@ -84,6 +87,7 @@ async def update_calendar(headless: bool = True) -> dict:
         source = "finnhub"
         try:
             from scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
+
             fh = FinnhubCalendarScraper()
             if hasattr(fh, "afetch_today_events"):
                 events = await fh.afetch_today_events()
@@ -108,21 +112,15 @@ async def update_calendar(headless: bool = True) -> dict:
     # Verify and inspect updated state
     async with get_session() as session:
         now_utc = datetime.now(timezone.utc)
-        cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == "last_calendar_fetch_at")
-        )).scalar_one_or_none()
-        total_in_db = (await session.execute(
-            select(func.count(EconomicCalendar.id))
-        )).scalar_one()
-        upcoming_count = (await session.execute(
-            select(func.count(EconomicCalendar.id)).where(EconomicCalendar.event_time >= now_utc)
-        )).scalar_one()
-        max_time = (await session.execute(
-            select(func.max(EconomicCalendar.event_time))
-        )).scalar_one_or_none()
-        min_time = (await session.execute(
-            select(func.min(EconomicCalendar.event_time))
-        )).scalar_one_or_none()
+        cfg = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "last_calendar_fetch_at"))
+        ).scalar_one_or_none()
+        total_in_db = (await session.execute(select(func.count(EconomicCalendar.id)))).scalar_one()
+        upcoming_count = (
+            await session.execute(select(func.count(EconomicCalendar.id)).where(EconomicCalendar.event_time >= now_utc))
+        ).scalar_one()
+        max_time = (await session.execute(select(func.max(EconomicCalendar.event_time)))).scalar_one_or_none()
+        min_time = (await session.execute(select(func.min(EconomicCalendar.event_time)))).scalar_one_or_none()
 
     await close_db()
 
@@ -151,6 +149,7 @@ async def update_calendar(headless: bool = True) -> dict:
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Update economic calendar data in database")
     parser.add_argument("--headed", action="store_true", help="Run browser in visible mode (default: headless)")
     args = parser.parse_args()

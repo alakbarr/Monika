@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #58.
 
 Formula (paper appendix): -1 * Ts_Rank(decay_linear(correlation(IndNeutralize(vwap, sector), volume, 4), 8), 6)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_058"
 
 __alpha_meta__ = {
-    'id': 'alpha101_058',
-    'nickname': 'Kakushadze Alpha #58',
-    'theme': ['volume'],
-    'formula_latex': '-1 * Ts_Rank(decay_linear(correlation(IndNeutralize(vwap, sector), volume, 4), 8), 6)',
-    'columns_required': ['volume', 'vwap', 'close'],
-    'extras_required': [],
-    'requires_sector': True,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 25,
-    'notes': "Industry neutralization implemented via per-row sector group demean (panel['sector'] required). When sector tag is absent the registry rejects via SkipAlpha; the compute() also has a degraded global demean fallback. This is a partial approximation of the paper's IndClass.industry/subindustry/sector neutralization.",
+    "id": "alpha101_058",
+    "nickname": "Kakushadze Alpha #58",
+    "theme": ["volume"],
+    "formula_latex": "-1 * Ts_Rank(decay_linear(correlation(IndNeutralize(vwap, sector), volume, 4), 8), 6)",
+    "columns_required": ["volume", "vwap", "close"],
+    "extras_required": [],
+    "requires_sector": True,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 25,
+    "notes": "Industry neutralization implemented via per-row sector group demean (panel['sector'] required). When sector tag is absent the registry rejects via SkipAlpha; the compute() also has a degraded global demean fallback. This is a partial approximation of the paper's IndClass.industry/subindustry/sector neutralization.",
 }
 
 
@@ -82,7 +81,6 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
     volume = panel["volume"]
     vwap = panel["vwap"]
-
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
     ind_neutralize = _ind_neutralize

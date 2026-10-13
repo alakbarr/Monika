@@ -24,6 +24,7 @@ import monika.core.primitives.clock as clock
 
 class OrderEntity(BaseModel):
     """Pure domain entity representing an execution order."""
+
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -31,7 +32,7 @@ class OrderEntity(BaseModel):
     analysis_id: Optional[int] = None
     symbol: str
     order_type: str  # MARKET, LIMIT, STOP
-    direction: str   # BUY, SELL
+    direction: str  # BUY, SELL
     requested_price: float
     executed_price: Optional[float] = None
     slippage_pips: float = 0.0
@@ -120,6 +121,7 @@ class OrderEntity(BaseModel):
         if isinstance(obj, cls):
             return obj
         if hasattr(obj, "_mock_return_value") or hasattr(obj, "_mock_wraps"):
+
             def _val(attr: str, default: Any = None) -> Any:
                 v = getattr(obj, attr, default)
                 if hasattr(v, "_mock_return_value") or hasattr(v, "_mock_wraps"):

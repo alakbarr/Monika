@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit & Regression Tests for Remediation Phase 0 & Phase 1.
 """
@@ -38,20 +39,13 @@ def test_outcome_evaluator_pip_calculation():
     """Verify outcome evaluator pip calculation uses dynamic pip sizes for Gold and Crypto."""
     evaluator = OutcomeEvaluator(apply_costs=False)
     from datetime import datetime, timezone
-    
+
     # Gold test (pip_size = 0.01 or 0.1 depending on spec, here 0.01 for 100 multiplier)
     gold_trade = BacktestTrade(
-        symbol="XAUUSD",
-        direction="buy",
-        entry_price=2000.0,
-        stop_loss=1990.0,
-        take_profit=2020.0
+        symbol="XAUUSD", direction="buy", entry_price=2000.0, stop_loss=1990.0, take_profit=2020.0
     )
     outcome_gold = evaluator._calculate_outcome(
-        gold_trade,
-        exit_time=datetime.now(timezone.utc),
-        exit_price=2010.0,
-        reason="tp_hit"
+        gold_trade, exit_time=datetime.now(timezone.utc), exit_price=2010.0, reason="tp_hit"
     )
     # Price difference = $10.0. With pip_size=0.01 -> 1000 pips
     assert outcome_gold["pnl_pips"] == 1000.0
@@ -59,17 +53,10 @@ def test_outcome_evaluator_pip_calculation():
 
     # BTC test (pip_size = 1.0)
     btc_trade = BacktestTrade(
-        symbol="BTCUSD",
-        direction="sell",
-        entry_price=60000.0,
-        stop_loss=61000.0,
-        take_profit=58000.0
+        symbol="BTCUSD", direction="sell", entry_price=60000.0, stop_loss=61000.0, take_profit=58000.0
     )
     outcome_btc = evaluator._calculate_outcome(
-        btc_trade,
-        exit_time=datetime.now(timezone.utc),
-        exit_price=59000.0,
-        reason="tp_hit"
+        btc_trade, exit_time=datetime.now(timezone.utc), exit_price=59000.0, reason="tp_hit"
     )
     # Price difference = $1000 profit. With pip_size=1.0 -> 1000 pips
     assert outcome_btc["pnl_pips"] == 1000.0
@@ -107,7 +94,7 @@ async def test_confidence_calibrator_ece_and_guard():
         trade = PaperTradeRecord(exit_reason="tp_hit" if i % 2 == 0 else "sl_hit")
         analysis = AssetAnalysis(confidence=0.75 if i % 2 == 0 else 0.65)
         mock_records.append((trade, analysis))
-    
+
     mock_result_ok = MagicMock()
     mock_result_ok.all.return_value = mock_records
     mock_session.execute.return_value = mock_result_ok
@@ -143,7 +130,7 @@ def test_position_sizing_dynamic_risk_cap_and_unknown_symbol():
         stop_loss=9.0,
         take_profit=11.0,
         account_equity=10000.0,
-        risk_percent_override=1.0
+        risk_percent_override=1.0,
     )
     assert res_unknown.is_valid is False
     assert any("Instrument specifications unavailable" in r for r in res_unknown.rejection_reasons)
@@ -156,7 +143,7 @@ def test_position_sizing_dynamic_risk_cap_and_unknown_symbol():
         stop_loss=1.0900,  # 100 pips
         take_profit=1.1200,
         account_equity=50000.0,
-        risk_percent_override=2.0  # $1000 risk > $250 cap
+        risk_percent_override=2.0,  # $1000 risk > $250 cap
     )
     assert res_large_risk.is_valid is False
     assert any("exceeds configured risk limit of $250.00" in r for r in res_large_risk.rejection_reasons)

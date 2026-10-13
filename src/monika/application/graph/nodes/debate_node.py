@@ -43,7 +43,9 @@ from monika.application.analysis.debate.aggressive_risk_llm import analyze_risk_
 from monika.application.analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
 from monika.application.analysis.debate.portfolio_manager import make_portfolio_decision
 from monika.application.analysis.debate.deterministic_risk import (
-    analyze_risk_conservative, analyze_risk_aggressive, analyze_risk_neutral,
+    analyze_risk_conservative,
+    analyze_risk_aggressive,
+    analyze_risk_neutral,
     make_portfolio_decision_deterministic,
 )
 from monika.application.analysis.debate.adjustment_validator import validate_and_apply_judge_adjustments
@@ -61,8 +63,12 @@ async def debate_node(state: TradingState, config: Optional[RunnableConfig] = No
     if not actionable:
         return {}
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
-    scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
+    scheduler = (
+        configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    )
     settings = scheduler.settings if scheduler else {}
     debate_cfg = settings.get("agent_architecture", {})
 
@@ -86,8 +92,7 @@ async def debate_node(state: TradingState, config: Optional[RunnableConfig] = No
     # Step 3: Dialectic Rebuttal Sub-Agent (Conditional)
     deb_states = current_state.get("debate_states", {})
     needs_rebuttal = any(
-        deb_states.get(sym, {}).get("needs_rebuttal", False)
-        for sym, _ in current_state.get("actionable_trades", [])
+        deb_states.get(sym, {}).get("needs_rebuttal", False) for sym, _ in current_state.get("actionable_trades", [])
     )
     if needs_rebuttal:
         res_rebuttal = await rebuttal_node(current_state, config)

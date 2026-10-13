@@ -19,10 +19,10 @@ async def test_compute_edge_status_insufficient():
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [MagicMock() for _ in range(10)]
     mock_session.execute.return_value = mock_result
-    
+
     result = await compute_edge_status(mock_session)
-    assert result['status'] == 'insufficient_data'
-    assert result['trades'] == 10
+    assert result["status"] == "insufficient_data"
+    assert result["trades"] == 10
 
 
 @pytest.mark.asyncio
@@ -32,7 +32,7 @@ async def test_compute_edge_status_positive():
     records = []
     for _ in range(25):
         m = MagicMock()
-        m.exit_reason = 'tp_hit'
+        m.exit_reason = "tp_hit"
         # Tidak ada entry_price/sl/tp → R:R calc gagal → fallback ke 33.3%
         m.entry_price = None
         m.sl = None
@@ -40,66 +40,66 @@ async def test_compute_edge_status_positive():
         records.append(m)
     for _ in range(15):
         m = MagicMock()
-        m.exit_reason = 'sl_hit'
+        m.exit_reason = "sl_hit"
         m.entry_price = None
         m.sl = None
         m.tp = None
         records.append(m)
-        
+
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = records
     mock_session.execute.return_value = mock_result
-    
+
     result = await compute_edge_status(mock_session)
-    assert result['status'] in ['positive_edge', 'uncertain']  # 62.5% WR dengan breakeven ~33%
-    assert result['win_rate'] == 62.5
-    assert result['total_trades'] == 40
+    assert result["status"] in ["positive_edge", "uncertain"]  # 62.5% WR dengan breakeven ~33%
+    assert result["win_rate"] == 62.5
+    assert result["total_trades"] == 40
 
 
 @pytest.mark.asyncio
 async def test_compute_edge_status_dynamic_breakeven_r3():
     """
     Test dynamic breakeven win-rate calculation from empirical R:R data.
-    
+
     If average R:R = 2.0 (reward = 2x risk):
     Breakeven WR = 1 / (1 + 2.0) = 33.33%
-    
+
     If average R:R = 1.0 (reward = 1x risk):
     Breakeven WR = 1 / (1 + 1.0) = 50%
     """
     mock_session = create_mock_async_session()
-    
+
     records = []
     # 30 trades dengan R:R 1:1 (entry=100, sl=95, tp=105 → R:R=1.0)
     # Breakeven WR harus naik ke 50% (bukan 33.3%)
     for i in range(20):
         m = MagicMock()
-        m.exit_reason = 'tp_hit'
+        m.exit_reason = "tp_hit"
         m.entry_price = 100.0
-        m.sl = 95.0      # risk = 5
-        m.tp = 105.0     # reward = 5 → R:R = 1.0
+        m.sl = 95.0  # risk = 5
+        m.tp = 105.0  # reward = 5 → R:R = 1.0
         records.append(m)
     for i in range(10):
         m = MagicMock()
-        m.exit_reason = 'sl_hit'
+        m.exit_reason = "sl_hit"
         m.entry_price = 100.0
         m.sl = 95.0
         m.tp = 105.0
         records.append(m)
-    
+
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = records
     mock_session.execute.return_value = mock_result
-    
+
     result = await compute_edge_status(mock_session)
     # 30 trades: 20 wins (66.7%) vs breakeven ~50% (R:R 1:1)
     # Z-score should be positive, status uncertain or positive_edge
-    assert result['total_trades'] == 30
-    assert result['win_rate'] == pytest.approx(66.67, abs=0.1)
+    assert result["total_trades"] == 30
+    assert result["win_rate"] == pytest.approx(66.67, abs=0.1)
     # Breakeven WR dinamis ≈ 50%, z-score harus > 0 (WR > breakeven)
-    assert result['z_score'] > 0
+    assert result["z_score"] > 0
     # Status harus positif atau uncertain (bukan no_edge)
-    assert result['status'] in ['positive_edge', 'uncertain']
+    assert result["status"] in ["positive_edge", "uncertain"]
 
 
 @pytest.mark.asyncio
@@ -111,25 +111,25 @@ async def test_compute_edge_status_no_edge():
     # Tapi dengan data yg cukup, z-score ≈ 0 → uncertain atau no_edge
     for i in range(10):
         m = MagicMock()
-        m.exit_reason = 'tp_hit'
+        m.exit_reason = "tp_hit"
         m.entry_price = None
         m.sl = None
         m.tp = None
         records.append(m)
     for i in range(20):
         m = MagicMock()
-        m.exit_reason = 'sl_hit'
+        m.exit_reason = "sl_hit"
         m.entry_price = None
         m.sl = None
         m.tp = None
         records.append(m)
-    
+
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = records
     mock_session.execute.return_value = mock_result
-    
+
     result = await compute_edge_status(mock_session)
-    assert result['total_trades'] == 30
-    assert result['win_rate'] == pytest.approx(33.33, abs=0.1)
+    assert result["total_trades"] == 30
+    assert result["win_rate"] == pytest.approx(33.33, abs=0.1)
     # z_score ≈ 0 atau negatif → no_edge atau uncertain
-    assert result['status'] in ['no_edge', 'uncertain']
+    assert result["status"] in ["no_edge", "uncertain"]

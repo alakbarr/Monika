@@ -291,4 +291,3 @@ def calculate_amihud_illiquidity_mt5(
     amihud_series = compute_amihud_illiquidity(rets, dollar_vol, window=window)
     val = float(amihud_series.iloc[-1]) if not amihud_series.empty else 0.0
     return {"amihud_illiquidity": max(0.0, 0.0 if np.isnan(val) else val)}
-

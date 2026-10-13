@@ -12,19 +12,17 @@ def get_cot_extreme_thresholds(symbol: str, history_percentiles: Optional[list] 
     else:
         base_long = 80.0
         base_short = 20.0
-        
+
     if history_percentiles and len(history_percentiles) >= 10:
         sorted_hist = sorted(history_percentiles)
         idx_long = int(len(sorted_hist) * 0.9)
         idx_short = int(len(sorted_hist) * 0.1)
         dyn_long = sorted_hist[idx_long]
         dyn_short = sorted_hist[idx_short]
-        return {
-            "extreme_long": (base_long + dyn_long) / 2.0,
-            "extreme_short": (base_short + dyn_short) / 2.0
-        }
-        
+        return {"extreme_long": (base_long + dyn_long) / 2.0, "extreme_short": (base_short + dyn_short) / 2.0}
+
     return {"extreme_long": base_long, "extreme_short": base_short}
+
 
 def cot_extreme_score(symbol: str, current_percentile: float, history_percentiles: Optional[list] = None) -> int:
     """Returns +1 if extreme short (bullish for asset), -1 if extreme long (bearish), 0 if neutral"""

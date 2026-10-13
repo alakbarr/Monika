@@ -2,6 +2,7 @@
 Trace Search API — enables querying LLM performance and errors across cycles.
 Solves gap: querying slow or failed LLM calls with granular filters.
 """
+
 import logging
 from fastapi import APIRouter, Query
 from typing import Optional

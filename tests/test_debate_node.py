@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 from graph.state import TradingState
 from graph.nodes.debate_node import debate_node
 
+
 @pytest.mark.asyncio
 async def test_debate_node_bypass():
     state = TradingState(
@@ -11,23 +12,14 @@ async def test_debate_node_bypass():
         debate_states={},
         risk_debate_states={},
         investment_verdicts={},
-        portfolio_decisions={}
+        portfolio_decisions={},
     )
-    
-    config = {
-        "configurable": {
-            "scheduler": MagicMock(
-                settings={
-                    "agent_architecture": {
-                        "enable_debate": False
-                    }
-                }
-            )
-        }
-    }
-    
+
+    config = {"configurable": {"scheduler": MagicMock(settings={"agent_architecture": {"enable_debate": False}})}}
+
     result = await debate_node(state, config)
     assert result == {}
+
 
 @pytest.mark.asyncio
 async def test_debate_node_empty_actionable():
@@ -37,20 +29,10 @@ async def test_debate_node_empty_actionable():
         debate_states={},
         risk_debate_states={},
         investment_verdicts={},
-        portfolio_decisions={}
+        portfolio_decisions={},
     )
-    
-    config = {
-        "configurable": {
-            "scheduler": MagicMock(
-                settings={
-                    "agent_architecture": {
-                        "enable_debate": True
-                    }
-                }
-            )
-        }
-    }
-    
+
+    config = {"configurable": {"scheduler": MagicMock(settings={"agent_architecture": {"enable_debate": True}})}}
+
     result = await debate_node(state, config)
     assert result == {}

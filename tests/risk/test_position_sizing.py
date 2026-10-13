@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import MagicMock
 from risk.position_sizing import PositionSizer, InstrumentSpec, DEFAULT_INSTRUMENTS
 
-class TestPositionSizing:
 
+class TestPositionSizing:
     @pytest.fixture
     def settings(self):
         return {
@@ -12,7 +12,7 @@ class TestPositionSizing:
                     "risk_percent_per_trade": 1.0,
                     "max_lot_size": 10.0,
                     "min_rr_ratio": 2.0,
-                    "vix_risk_adjustment": True
+                    "vix_risk_adjustment": True,
                 }
             }
         }
@@ -25,11 +25,11 @@ class TestPositionSizing:
             direction="buy",
             entry_price=2000.0,
             stop_loss=1990.0,
-            take_profit=2020.0, # 20 distance -> RR 2.0
-            account_equity=10000.0
+            take_profit=2020.0,  # 20 distance -> RR 2.0
+            account_equity=10000.0,
         )
         assert res.is_valid
-        assert res.risk_amount_usd == 100.0 # 1% of 10000
+        assert res.risk_amount_usd == 100.0  # 1% of 10000
         assert res.sl_distance_price == 10.0
         assert res.sl_distance_pips == 1000.0
         # Lots = 100 / (1000 * 1.0) = 0.1
@@ -45,7 +45,7 @@ class TestPositionSizing:
             entry_price=1.1000,
             stop_loss=1.0900,
             take_profit=1.0800,
-            account_equity=10000.0
+            account_equity=10000.0,
         )
         assert not res.is_valid
         assert "stop_loss must be above entry_price" in res.rejection_reasons[0]
@@ -57,13 +57,11 @@ class TestPositionSizing:
             direction="buy",
             entry_price=2000.0,
             stop_loss=1990.0,
-            take_profit=2005.0, # distance 5 -> RR 0.5
-            account_equity=10000.0
+            take_profit=2005.0,  # distance 5 -> RR 0.5
+            account_equity=10000.0,
         )
         assert not res.is_valid
         assert any("R:R ratio" in r for r in res.rejection_reasons)
-
-
 
     def test_vix_adjustment(self, settings):
         sizer = PositionSizer(settings)
@@ -75,7 +73,7 @@ class TestPositionSizing:
             stop_loss=1990.0,
             take_profit=2020.0,
             account_equity=10000.0,
-            vix_level=30.0
+            vix_level=30.0,
         )
         assert res.is_valid
         assert res.risk_percent == 0.25
@@ -85,7 +83,7 @@ class TestPositionSizing:
     def test_mt5_live_spec(self, settings, monkeypatch):
         mock_mt5_client = MagicMock()
         sizer = PositionSizer(settings, mt5_client=mock_mt5_client)
-        
+
         mock_mt5 = MagicMock()
         mock_info = MagicMock()
         mock_info.digits = 5
@@ -98,10 +96,11 @@ class TestPositionSizing:
         mock_info.volume_step = 0.01
         mock_info.trade_stops_level = 10
         mock_mt5.symbol_info.return_value = mock_info
-        
+
         import sys
-        sys.modules['MetaTrader5'] = mock_mt5
-        
+
+        sys.modules["MetaTrader5"] = mock_mt5
+
         res = sizer._get_instrument_spec("TESTEURUSD")
         assert res.symbol == "TESTEURUSD"
         assert res.pip_size == 0.0001  # 5-digit quote: point 0.00001 * 10 = 0.0001
@@ -158,13 +157,15 @@ class TestPositionSizing:
 
         mock_mt5 = MagicMock()
         mock_mt5.get_account_info = AsyncMock(return_value={"equity": 76849.91, "balance": 76849.91})
-        mock_mt5.get_symbol_spec = AsyncMock(return_value={
-            "volume_min": 0.01,
-            "volume_step": 0.01,
-            "trade_contract_size": 100.0,
-            "trade_tick_value": 1.0,
-            "digits": 2,
-        })
+        mock_mt5.get_symbol_spec = AsyncMock(
+            return_value={
+                "volume_min": 0.01,
+                "volume_step": 0.01,
+                "trade_contract_size": 100.0,
+                "trade_tick_value": 1.0,
+                "digits": 2,
+            }
+        )
 
         res = await calculate_lot_size(
             symbol="XAUUSD",
@@ -220,6 +221,3 @@ class TestPositionSizing:
             avg_atr=1e-9,
         )
         assert lot_flat_atr >= 0.01
-
-
-

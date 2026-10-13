@@ -28,6 +28,7 @@ from monika.domain.indicators.alpha_zoo.meta import AlphaMeta
 
 class RegistryError(Exception):
     """Raised when factor registration, compilation, or execution violates invariants."""
+
     pass
 
 
@@ -63,17 +64,20 @@ class FactorRegistry:
     """
     Central registry and execution engine for quantitative alpha factors.
     """
+
     _FACTORS: Dict[str, Tuple[FactorCallable, AlphaMeta]] = {}
 
     @classmethod
     def register(cls, meta: AlphaMeta):
         """Decorator to register a factor calculation function with its AlphaMeta."""
+
         def decorator(fn: FactorCallable) -> FactorCallable:
             if meta.name in cls._FACTORS:
                 # Allow re-registering for test suites / hot reload
                 pass
             cls._FACTORS[meta.name] = (fn, meta)
             return fn
+
         return decorator
 
     @classmethod
@@ -108,12 +112,12 @@ class FactorRegistry:
     ) -> pd.Series:
         """
         Executes a factor calculation with deterministic NaN dependency masking.
-        
+
         Args:
             name: Factor identifier
             df: OHLCV DataFrame (must contain required columns)
             strict_masking: If True, any bar with NaN in required inputs becomes NaN in output.
-            
+
         Returns:
             Computed factor Series with strict NaN guarantees.
         """
@@ -123,7 +127,12 @@ class FactorRegistry:
         df_eval = df.copy(deep=False)
         if "amount" not in df_eval.columns and "close" in df_eval.columns and "volume" in df_eval.columns:
             df_eval["amount"] = df_eval["close"] * df_eval["volume"]
-        if "vwap" not in df_eval.columns and "high" in df_eval.columns and "low" in df_eval.columns and "close" in df_eval.columns:
+        if (
+            "vwap" not in df_eval.columns
+            and "high" in df_eval.columns
+            and "low" in df_eval.columns
+            and "close" in df_eval.columns
+        ):
             df_eval["vwap"] = (
                 df_eval["high"] + df_eval["low"] + df_eval["close"] + df_eval.get("open", df_eval["close"])
             ) / 4.0
@@ -212,6 +221,7 @@ class FactorRegistry:
 
         loaded_count = 0
         import importlib.util
+
         for py_path in factors_dir.rglob("*.py"):
             if py_path.name.startswith("__"):
                 continue
@@ -228,7 +238,18 @@ class FactorRegistry:
                         category = meta_dict.get("theme", ["momentum"])[0] if meta_dict.get("theme") else "momentum"
                         if category == "reversal":
                             category = "mean_reversion"
-                        elif category not in ("momentum", "mean_reversion", "volatility", "volume", "liquidity", "trend", "structural", "fundamental", "risk_premia", "microstructure"):
+                        elif category not in (
+                            "momentum",
+                            "mean_reversion",
+                            "volatility",
+                            "volume",
+                            "liquidity",
+                            "trend",
+                            "structural",
+                            "fundamental",
+                            "risk_premia",
+                            "microstructure",
+                        ):
                             category = "momentum"
 
                         meta = AlphaMeta(
@@ -263,5 +284,3 @@ class FactorRegistry:
 
 
 AlphaZooRegistry = FactorRegistry
-
-

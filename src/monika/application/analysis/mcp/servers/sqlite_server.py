@@ -71,6 +71,7 @@ class SqliteMcpServer:
 
     def _get_default_db(self) -> str:
         from monika.infrastructure.infra.paths import get_repo_root
+
         root = get_repo_root()
         chk = root / "checkpoints.db"
         if chk.exists():
@@ -107,7 +108,11 @@ class SqliteMcpServer:
             query = arguments.get("query", "").strip()
             # Enforce read-only safety
             normalized_q = query.upper()
-            if not (normalized_q.startswith("SELECT") or normalized_q.startswith("PRAGMA") or normalized_q.startswith("EXPLAIN")):
+            if not (
+                normalized_q.startswith("SELECT")
+                or normalized_q.startswith("PRAGMA")
+                or normalized_q.startswith("EXPLAIN")
+            ):
                 raise PermissionError("Only SELECT and PRAGMA read-only queries are permitted.")
             for forbid in ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "ATTACH", "DETACH"]:
                 if forbid in normalized_q.split():

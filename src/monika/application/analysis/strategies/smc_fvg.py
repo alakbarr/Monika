@@ -12,10 +12,20 @@ class SMCFairValueGapStrategy(EdgeStrategy):
     Identifies 3-candle price imbalances on H1/H4 timeframes and trades pullbacks
     into unmitigated FVG zones with targeted Risk-Reward ratios.
     """
+
     strategy_id = "smc_fvg"
     applicable_symbols = {
-        "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD", 
-        "USDCHF", "NZDUSD", "USDCAD", "BTCUSD", "ETHUSD", "US30"
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+        "AUDUSD",
+        "XAUUSD",
+        "USDCHF",
+        "NZDUSD",
+        "USDCAD",
+        "BTCUSD",
+        "ETHUSD",
+        "US30",
     }
     compatible_regimes = {"TREND", "STRONG_TREND", "RANGING", "EXPANDING_FAST", "ALL"}
     factor_family = "trend"
@@ -47,38 +57,42 @@ class SMCFairValueGapStrategy(EdgeStrategy):
         bearish_fvgs = []
 
         for i in range(len(candles) - 3):
-            c1, c2, c3 = candles[i], candles[i+1], candles[i+2]
-            
+            c1, c2, c3 = candles[i], candles[i + 1], candles[i + 2]
+
             # Bullish FVG
             if c3.low > c1.high:
                 gap_low = c1.high
                 gap_high = c3.low
                 gap_mid = (gap_low + gap_high) / 2.0
                 # Check mitigation in subsequent candles (up to current)
-                mitigated = any(c.low <= gap_mid for c in candles[i+3:])
+                mitigated = any(c.low <= gap_mid for c in candles[i + 3 :])
                 if not mitigated:
-                    bullish_fvgs.append({
-                        "gap_low": gap_low,
-                        "gap_high": gap_high,
-                        "gap_mid": gap_mid,
-                        "c1_low": c1.low,
-                        "index": i,
-                    })
+                    bullish_fvgs.append(
+                        {
+                            "gap_low": gap_low,
+                            "gap_high": gap_high,
+                            "gap_mid": gap_mid,
+                            "c1_low": c1.low,
+                            "index": i,
+                        }
+                    )
 
             # Bearish FVG
             elif c3.high < c1.low:
                 gap_high = c1.low
                 gap_low = c3.high
                 gap_mid = (gap_low + gap_high) / 2.0
-                mitigated = any(c.high >= gap_mid for c in candles[i+3:])
+                mitigated = any(c.high >= gap_mid for c in candles[i + 3 :])
                 if not mitigated:
-                    bearish_fvgs.append({
-                        "gap_low": gap_low,
-                        "gap_high": gap_high,
-                        "gap_mid": gap_mid,
-                        "c1_high": c1.high,
-                        "index": i,
-                    })
+                    bearish_fvgs.append(
+                        {
+                            "gap_low": gap_low,
+                            "gap_high": gap_high,
+                            "gap_mid": gap_mid,
+                            "c1_high": c1.high,
+                            "index": i,
+                        }
+                    )
 
         # Evaluate if current price is within or testing the most recent unmitigated Bullish FVG
         if bullish_fvgs:

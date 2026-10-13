@@ -1,6 +1,7 @@
 """
 Unit tests for Friday Market Close Shield and Weekend Gap Risk Protection in PositionGuardian.
 """
+
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -18,7 +19,7 @@ async def test_friday_close_protection_triggers_auto_close():
             "weekend_management": {
                 "strategy": "close_positions",
                 "auto_close_friday_positions": True,
-                "exempted_symbols": ["BTCUSD"]
+                "exempted_symbols": ["BTCUSD"],
             }
         }
     }
@@ -33,10 +34,11 @@ async def test_friday_close_protection_triggers_auto_close():
     mock_pos_eur = Position(id=1, symbol="EURUSD", status="open", mt5_ticket=1001, volume=0.5, entry_price=1.10)
     mock_pos_btc = Position(id=2, symbol="BTCUSD", status="open", mt5_ticket=1002, volume=0.1, entry_price=60000)
 
-    with clock.frozen_time(friday_time), \
-         patch("scheduler.position_guardian.get_session") as mock_get_session, \
-         patch("utils.infra.notifier.AgentNotifier.send_info", new_callable=AsyncMock) as mock_notify:
-
+    with (
+        clock.frozen_time(friday_time),
+        patch("scheduler.position_guardian.get_session") as mock_get_session,
+        patch("utils.infra.notifier.AgentNotifier.send_info", new_callable=AsyncMock) as mock_notify,
+    ):
         mock_session = create_mock_async_session()
         mock_exec = MagicMock()
         mock_exec.scalars.return_value.all.return_value = [mock_pos_eur, mock_pos_btc]

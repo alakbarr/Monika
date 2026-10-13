@@ -13,7 +13,9 @@ def test_spill_store_text_artifact():
         store = SpillStore(base_dir=tmp_dir, max_preview_chars=200)
 
         # Oversized text payload
-        large_text = "Headline: Central bank interest rate hike shock.\n" + ("Data row analysis with macroeconomic impact indicators.\n" * 20)
+        large_text = "Headline: Central bank interest rate hike shock.\n" + (
+            "Data row analysis with macroeconomic impact indicators.\n" * 20
+        )
         res = store.spill_artifact(large_text, artifact_type="news_feed", preview_chars=100)
 
         assert res["spilled"] is True

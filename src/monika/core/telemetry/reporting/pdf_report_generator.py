@@ -140,7 +140,12 @@ class PDFReportGenerator:
 
             # 1. Header Banner
             story.append(Paragraph("MONIKA INSTITUTIONAL TRADING DESK", title_style))
-            story.append(Paragraph(f"{report_title} | Period: {period} | Generated: {now.strftime('%Y-%m-%d %H:%M UTC')}", subtitle_style))
+            story.append(
+                Paragraph(
+                    f"{report_title} | Period: {period} | Generated: {now.strftime('%Y-%m-%d %H:%M UTC')}",
+                    subtitle_style,
+                )
+            )
             story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#2B6CB0"), spaceAfter=15))
 
             # 2. Executive Metrics Summary Table
@@ -150,62 +155,68 @@ class PDFReportGenerator:
 
             metrics_data = [
                 [
-                    Paragraph("<b>Metric</b>", cell_bold), Paragraph("<b>Value</b>", cell_bold),
-                    Paragraph("<b>Benchmark / Target</b>", cell_bold), Paragraph("<b>Status</b>", cell_bold)
+                    Paragraph("<b>Metric</b>", cell_bold),
+                    Paragraph("<b>Value</b>", cell_bold),
+                    Paragraph("<b>Benchmark / Target</b>", cell_bold),
+                    Paragraph("<b>Status</b>", cell_bold),
                 ],
                 [
                     Paragraph("Net Realized PnL", cell_norm),
                     Paragraph(f"<font color='{pnl_color}'><b>${pnl_val:+,.2f}</b></font>", cell_norm),
                     Paragraph("Positive Drift (> 0)", cell_norm),
-                    Paragraph("PASS" if pnl_val >= 0 else "DEFICIT", cell_bold)
+                    Paragraph("PASS" if pnl_val >= 0 else "DEFICIT", cell_bold),
                 ],
                 [
                     Paragraph("Win Rate (%)", cell_norm),
                     Paragraph(f"<b>{metrics.get('win_rate_pct', 0.0):.1f}%</b>", cell_norm),
                     Paragraph("Min 45.0% (R:R >= 1.5)", cell_norm),
-                    Paragraph("OPTIMAL" if metrics.get("win_rate_pct", 0) >= 45 else "MONITOR", cell_norm)
+                    Paragraph("OPTIMAL" if metrics.get("win_rate_pct", 0) >= 45 else "MONITOR", cell_norm),
                 ],
                 [
                     Paragraph("Profit Factor", cell_norm),
                     Paragraph(f"<b>{metrics.get('profit_factor', 0.0):.2f}</b>", cell_norm),
                     Paragraph("Target > 1.30", cell_norm),
-                    Paragraph("HEALTHY" if metrics.get("profit_factor", 0) >= 1.3 else "COMPRESSED", cell_norm)
+                    Paragraph("HEALTHY" if metrics.get("profit_factor", 0) >= 1.3 else "COMPRESSED", cell_norm),
                 ],
                 [
                     Paragraph("Sharpe Ratio", cell_norm),
                     Paragraph(f"<b>{metrics.get('sharpe_ratio', 0.0):.2f}</b>", cell_norm),
                     Paragraph("Target > 1.50 (Annualized)", cell_norm),
-                    Paragraph("STRONG" if metrics.get("sharpe_ratio", 0) >= 1.5 else "ADEQUATE", cell_norm)
+                    Paragraph("STRONG" if metrics.get("sharpe_ratio", 0) >= 1.5 else "ADEQUATE", cell_norm),
                 ],
                 [
                     Paragraph("Max Period Drawdown", cell_norm),
                     Paragraph(f"<b>{metrics.get('max_drawdown_pct', 0.0):.2f}%</b>", cell_norm),
                     Paragraph("Risk Gate Hard Limit: 5.0%", cell_norm),
-                    Paragraph("SAFE" if metrics.get("max_drawdown_pct", 0) < 5.0 else "BREACH", cell_bold)
+                    Paragraph("SAFE" if metrics.get("max_drawdown_pct", 0) < 5.0 else "BREACH", cell_bold),
                 ],
                 [
                     Paragraph("Trade Expectancy ($)", cell_norm),
                     Paragraph(f"<b>${metrics.get('expectancy_usd', 0.0):+,.2f}</b>", cell_norm),
                     Paragraph("Positive per executed lot", cell_norm),
-                    Paragraph("PASS" if metrics.get("expectancy_usd", 0) > 0 else "FAIL", cell_norm)
+                    Paragraph("PASS" if metrics.get("expectancy_usd", 0) > 0 else "FAIL", cell_norm),
                 ],
                 [
                     Paragraph("Total Trades Executed", cell_norm),
                     Paragraph(f"<b>{metrics.get('total_trades', 0)}</b>", cell_norm),
                     Paragraph("Statistical Significance (N >= 30)", cell_norm),
-                    Paragraph("ACTIVE", cell_norm)
+                    Paragraph("ACTIVE", cell_norm),
                 ],
             ]
 
             table = Table(metrics_data, colWidths=[1.8 * inch, 1.5 * inch, 2.3 * inch, 1.2 * inch])
-            table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EDF2F7")),
-                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E0")),
-            ]))
+            table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EDF2F7")),
+                        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                        ("TOPPADDING", (0, 0), (-1, -1), 4),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E0")),
+                    ]
+                )
+            )
             story.append(table)
             story.append(Spacer(1, 15))
 
@@ -219,22 +230,34 @@ class PDFReportGenerator:
             sym_breakdown = metrics.get("trades_by_symbol")
             if sym_breakdown and isinstance(sym_breakdown, dict):
                 story.append(Paragraph("Asset Allocation & Symbol Attribution", h2_style))
-                sym_data = [[Paragraph("<b>Asset</b>", cell_bold), Paragraph("<b>Trades</b>", cell_bold), Paragraph("<b>Net PnL</b>", cell_bold)]]
+                sym_data = [
+                    [
+                        Paragraph("<b>Asset</b>", cell_bold),
+                        Paragraph("<b>Trades</b>", cell_bold),
+                        Paragraph("<b>Net PnL</b>", cell_bold),
+                    ]
+                ]
                 for sym, s_data in list(sym_breakdown.items())[:8]:
                     tr_cnt = s_data.get("count", 0) if isinstance(s_data, dict) else s_data
                     pnl_s = s_data.get("pnl", 0.0) if isinstance(s_data, dict) else 0.0
-                    sym_data.append([
-                        Paragraph(str(sym), cell_norm),
-                        Paragraph(str(tr_cnt), cell_norm),
-                        Paragraph(f"${pnl_s:+,.2f}", cell_norm),
-                    ])
+                    sym_data.append(
+                        [
+                            Paragraph(str(sym), cell_norm),
+                            Paragraph(str(tr_cnt), cell_norm),
+                            Paragraph(f"${pnl_s:+,.2f}", cell_norm),
+                        ]
+                    )
                 sym_table = Table(sym_data, colWidths=[2.5 * inch, 2.0 * inch, 2.3 * inch])
-                sym_table.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EDF2F7")),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E0")),
-                    ("TOPPADDING", (0, 0), (-1, -1), 3),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-                ]))
+                sym_table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EDF2F7")),
+                            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E0")),
+                            ("TOPPADDING", (0, 0), (-1, -1), 3),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                        ]
+                    )
+                )
                 story.append(sym_table)
 
             doc.build(story)

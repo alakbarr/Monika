@@ -41,11 +41,13 @@ def _lock_append_handle(f: Any, acquire: bool) -> None:
     """
     if os.name == "nt":
         import msvcrt
+
         f.seek(0)
         msvcrt.locking(f.fileno(), msvcrt.LK_LOCK if acquire else msvcrt.LK_UNLCK, 1)
         f.seek(0, os.SEEK_END)
     else:
         import fcntl
+
         fcntl.flock(f.fileno(), fcntl.LOCK_EX if acquire else fcntl.LOCK_UN)
 
 

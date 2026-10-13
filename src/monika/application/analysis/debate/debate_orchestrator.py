@@ -60,7 +60,9 @@ class DebateOrchestrator:
 
         bull_client = get_client_for_task("debate_bull", self.settings) or get_client_for_task("default", self.settings)
         bear_client = get_client_for_task("debate_bear", self.settings) or get_client_for_task("default", self.settings)
-        judge_client = get_client_for_task("investment_judge", self.settings) or get_client_for_task("default", self.settings)
+        judge_client = get_client_for_task("investment_judge", self.settings) or get_client_for_task(
+            "default", self.settings
+        )
 
         if not bull_client or not bear_client or not judge_client:
             logger.warning("[DebateOrchestrator] Missing LLM client for debate participants; returning neutral WAIT.")

@@ -44,7 +44,7 @@ async def test_telegram_outbound_queue_send_and_rate_limiting(tmp_path):
     worker.cancel()
     try:
         await worker
-    except (asyncio.CancelledError, Exception):
+    except asyncio.CancelledError, Exception:
         pass
 
     assert mock_send.call_count == 2
@@ -79,7 +79,7 @@ async def test_telegram_outbound_retry_after_backoff(tmp_path):
     worker.cancel()
     try:
         await worker
-    except (asyncio.CancelledError, Exception):
+    except asyncio.CancelledError, Exception:
         pass
 
     assert mock_send.call_count == 2
@@ -110,7 +110,7 @@ async def test_telegram_offline_buffer_persistence_and_flush(tmp_path):
     worker.cancel()
     try:
         await worker
-    except (asyncio.CancelledError, Exception):
+    except asyncio.CancelledError, Exception:
         pass
 
     # Verify saved to disk buffer

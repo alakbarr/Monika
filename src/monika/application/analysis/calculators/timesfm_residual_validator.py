@@ -52,7 +52,7 @@ class TimesFMResidualValidator:
         actual_series: Union[List[float], np.ndarray, pd.Series],
         predicted_series: Union[List[float], np.ndarray, pd.Series],
         lags: Optional[List[int]] = None,
-        alpha_significance: float = 0.05
+        alpha_significance: float = 0.05,
     ) -> ResidualValidationResult:
         """
         Calculates diagnostic statistics on residual series: e_t = actual_t - predicted_t.
@@ -70,14 +70,16 @@ class TimesFMResidualValidator:
         n = len(y_true)
 
         if n < 15:
-            return cls._create_error_result("Insufficient sample size (minimum 15 points required for residual testing).")
+            return cls._create_error_result(
+                "Insufficient sample size (minimum 15 points required for residual testing)."
+            )
 
         # Residuals: actual minus predicted
         residuals = y_true - y_pred
 
         mean_err = float(np.mean(residuals))
         mae = float(np.mean(np.abs(residuals)))
-        rmse = float(math.sqrt(np.mean(residuals ** 2)))
+        rmse = float(math.sqrt(np.mean(residuals**2)))
 
         # Durbin-Watson test
         dw_val = float(durbin_watson(residuals))
@@ -150,7 +152,7 @@ class TimesFMResidualValidator:
             skewness=skew,
             kurtosis=kurt,
             recommendation=rec,
-            notes=f"Evaluated on {n} bars. Skew: {skew}, Kurtosis: {kurt}."
+            notes=f"Evaluated on {n} bars. Skew: {skew}, Kurtosis: {kurt}.",
         )
 
     @staticmethod
@@ -164,5 +166,5 @@ class TimesFMResidualValidator:
             durbin_watson_stat=0.0,
             dw_verdict="ERROR",
             recommendation=error_msg,
-            notes=error_msg
+            notes=error_msg,
         )

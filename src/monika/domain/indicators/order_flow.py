@@ -26,11 +26,12 @@ logger = logging.getLogger("TradingAgent.OrderFlow")
 @dataclass
 class OrderFlowSnapshot:
     """Snapshot data representing order flow and liquidity metrics for a symbol."""
+
     symbol: str
     mode: str  # "REAL_DOM_L2" | "SYNTHETIC_TICK_RULE"
     order_book_imbalance: float  # [-1.0, 1.0]. Positive = Bid Dominant, Negative = Ask Dominant
-    cvd_session_delta: float     # Cumulative session volume delta
-    cvd_divergence: str         # "BEARISH_ABSORPTION" | "BULLISH_ABSORPTION" | "NONE"
+    cvd_session_delta: float  # Cumulative session volume delta
+    cvd_divergence: str  # "BEARISH_ABSORPTION" | "BULLISH_ABSORPTION" | "NONE"
     top_of_book_depth: Dict[str, Any] = field(default_factory=dict)
     vpin: Optional[float] = None
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -90,6 +91,7 @@ class OrderFlowEngine:
         try:
             books = await self.mt5_client.market_book_get(symbol)
             if books:
+
                 def _val(item: Any, key: str, default: Any = 0.0) -> Any:
                     if isinstance(item, dict):
                         return item.get(key, default)
@@ -129,7 +131,12 @@ class OrderFlowEngine:
         )
 
     async def _compute_tick_rule_cvd_snapshot(
-        self, session: Optional[AsyncSession] = None, symbol: str = "", lookback: int = 200, df: Any = None, timeframe: str = "H1"
+        self,
+        session: Optional[AsyncSession] = None,
+        symbol: str = "",
+        lookback: int = 200,
+        df: Any = None,
+        timeframe: str = "H1",
     ) -> OrderFlowSnapshot:
         """
         Kalkulasi Cumulative Volume Delta (CVD) berbasis Lee-Ready Tick Rule & deteksi absorpsi.
@@ -152,6 +159,7 @@ class OrderFlowEngine:
         if len(prices) < 2 and session is not None:
             try:
                 from monika.infrastructure.database.models import PriceOHLCV
+
                 stmt = (
                     select(PriceOHLCV)
                     .where(PriceOHLCV.symbol == symbol)
@@ -163,7 +171,11 @@ class OrderFlowEngine:
                 rows = res.scalars().all()
                 if rows and len(rows) >= 2:
                     bars = list(reversed(rows))
-                    prices = [float(b.close) for b in bars if hasattr(b, "close") and isinstance(getattr(b, "close", None), (int, float))]
+                    prices = [
+                        float(b.close)
+                        for b in bars
+                        if hasattr(b, "close") and isinstance(getattr(b, "close", None), (int, float))
+                    ]
                     volumes = [float(b.volume or 1.0) for b in bars if hasattr(b, "volume")]
             except Exception as db_err:
                 logger.debug(f"Error loading OHLCV for CVD: {db_err}")
@@ -226,6 +238,7 @@ class OrderFlowEngine:
             try:
                 import pandas as pd
                 from monika.domain.indicators.microstructure import compute_vpin
+
                 t_df = pd.DataFrame({"price": prices, "volume": volumes})
                 bucket_vol = float(np.sum(volumes) / 50.0) if np.sum(volumes) > 0 else 1.0
                 vpin_val = round(compute_vpin(t_df, bucket_volume=bucket_vol), 4)
@@ -243,7 +256,12 @@ class OrderFlowEngine:
         )
 
     async def analyze_order_flow(
-        self, session: Optional[AsyncSession] = None, symbol: str = "", lookback: int = 200, df: Any = None, timeframe: str = "H1"
+        self,
+        session: Optional[AsyncSession] = None,
+        symbol: str = "",
+        lookback: int = 200,
+        df: Any = None,
+        timeframe: str = "H1",
     ) -> OrderFlowSnapshot:
         """Entry point utama: coba DOM L2 jika broker mendukung, atau beralih ke Lee-Ready CVD."""
         is_dom_avail = await self._check_and_subscribe_dom(symbol)
@@ -255,13 +273,16 @@ class OrderFlowEngine:
 async def fetch_latest_order_flow(session: AsyncSession, symbol: str) -> OrderFlowSnapshot:
     """Ambil snapshot order flow terbaru dari database atau hitung on-the-fly."""
     from monika.infrastructure.database.models import TechnicalIndicator
-    row = (await session.execute(
-        select(TechnicalIndicator)
-        .where(TechnicalIndicator.symbol == symbol)
-        .where(TechnicalIndicator.indicator_name == "ORDER_FLOW_SNAPSHOT")
-        .order_by(TechnicalIndicator.timestamp.desc())
-        .limit(1)
-    )).scalar_one_or_none()
+
+    row = (
+        await session.execute(
+            select(TechnicalIndicator)
+            .where(TechnicalIndicator.symbol == symbol)
+            .where(TechnicalIndicator.indicator_name == "ORDER_FLOW_SNAPSHOT")
+            .order_by(TechnicalIndicator.timestamp.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
 
     if row and row.value_json:
         try:

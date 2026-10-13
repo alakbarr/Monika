@@ -17,29 +17,31 @@ class DataFetchDeduplicator:
     while automatically invalidating on context compaction to preserve reasoning grounds.
     """
 
-    DEDUP_CANDIDATE_TOOLS = frozenset({
-        "get_price_history",
-        "get_technical_indicators",
-        "get_atr",
-        "get_open_positions",
-        "get_account_info",
-        "get_dxy",
-        "get_vix",
-        "get_news_items",
-        "get_news_digest",
-        "get_smc_zones",
-        "get_structure_breaks",
-        "get_swing_points",
-        "get_liquidity_pools",
-        "get_fair_value_gaps",
-        "get_order_blocks",
-        "get_indicator_snapshot",
-        "get_cot_report",
-        "get_economic_calendar",
-        "get_fedwatch_probabilities",
-        "get_retail_sentiment",
-        "get_social_sentiment",
-    })
+    DEDUP_CANDIDATE_TOOLS = frozenset(
+        {
+            "get_price_history",
+            "get_technical_indicators",
+            "get_atr",
+            "get_open_positions",
+            "get_account_info",
+            "get_dxy",
+            "get_vix",
+            "get_news_items",
+            "get_news_digest",
+            "get_smc_zones",
+            "get_structure_breaks",
+            "get_swing_points",
+            "get_liquidity_pools",
+            "get_fair_value_gaps",
+            "get_order_blocks",
+            "get_indicator_snapshot",
+            "get_cot_report",
+            "get_economic_calendar",
+            "get_fedwatch_probabilities",
+            "get_retail_sentiment",
+            "get_social_sentiment",
+        }
+    )
 
     def __init__(self):
         self._cache: Dict[str, Tuple[str, int]] = {}  # key -> (content_hash, generation)

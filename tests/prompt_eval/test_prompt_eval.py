@@ -11,12 +11,14 @@ from analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema, TradeDi
 
 FIXTURES_PATH = Path(__file__).parent / "fixtures" / "smc_ict_fixtures.json"
 
+
 @pytest.fixture
 def smc_fixtures():
     assert FIXTURES_PATH.exists(), f"Fixtures file missing at {FIXTURES_PATH}"
     with open(FIXTURES_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
     return data.get("fixtures", [])
+
 
 def test_fixtures_file_loaded(smc_fixtures):
     """Verify fixtures are present and well-formed."""
@@ -27,12 +29,13 @@ def test_fixtures_file_loaded(smc_fixtures):
         assert "expected_decision" in case
         assert "technical_data" in case
 
+
 def test_fixture_schema_validation(smc_fixtures):
     """Ensure each fixture can construct valid SubmitAssetAnalysisSchema input."""
     for case in smc_fixtures:
         tech = case["technical_data"]
         decision = case["expected_decision"]
-        
+
         # Build mock payload
         payload = {
             "symbol": case["symbol"],
@@ -41,7 +44,7 @@ def test_fixture_schema_validation(smc_fixtures):
             "entry_condition": {
                 "type": "limit",
                 "price": tech["entry_price"],
-                "detail": f"Entry at FVG zone for {case['id']}"
+                "detail": f"Entry at FVG zone for {case['id']}",
             },
             "stop_loss": tech["stop_loss"],
             "take_profit": tech["take_profit"],
@@ -52,13 +55,14 @@ def test_fixture_schema_validation(smc_fixtures):
             "confluence_score": case.get("expected_min_confluence", 5),
             "priced_in_score": 3,
             "confluence_factors": ["near_fvg", "near_order_block", "liquidity_sweep_confirmed"],
-            "rationale": f"Structured trade setup based on SMC playbook for {case['name']}"
+            "rationale": f"Structured trade setup based on SMC playbook for {case['name']}",
         }
-        
+
         # Validate schema instantiation
         validated = SubmitAssetAnalysisSchema.model_validate(payload)
         assert validated.symbol == case["symbol"]
         assert validated.decision == decision
+
 
 def test_fixture_risk_reward_rules(smc_fixtures):
     """Verify risk-to-reward consistency on valid directional fixtures."""
@@ -71,6 +75,7 @@ def test_fixture_risk_reward_rules(smc_fixtures):
             rr = reward / risk
             expected_min_rr = case.get("expected_min_rr", 1.3)
             assert rr >= expected_min_rr, f"Case {case['id']} R:R {rr:.2f} below expected {expected_min_rr}"
+
 
 def test_fixture_confluence_thresholds(smc_fixtures):
     """Verify confluence score thresholds align with decision logic."""

@@ -18,10 +18,13 @@ def _clean_json_str(s: str) -> str:
         s = "\n".join(lines).strip()
     return s
 
-async def generate_bull_advocacy(client: BaseLLMClient, symbol: str, original_context: dict, fact_sheet: Union[str, Dict[str, Any]]) -> dict:
+
+async def generate_bull_advocacy(
+    client: BaseLLMClient, symbol: str, original_context: dict, fact_sheet: Union[str, Dict[str, Any]]
+) -> dict:
     decision = str(original_context.get("decision", "buy")).lower()
     is_long = decision in ("buy", "long")
-    
+
     if is_long:
         role_desc = (
             "You are the Bullish Analyst for the target asset specified in the user message.\n"
@@ -71,7 +74,7 @@ Rely heavily on the 'original_context' (entry, SL, TP, invalidation) and the Fac
 
 [TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Output valid JSON strictly conforming to the schema. bull_thesis must be structured in 3-5 dense telegraphic bullet points (max 150 words) and grounded with exact numbers from Fact Sheet. Zero conversational filler.
 Respond in valid JSON format ONLY conforming to the schema."""
-    
+
     schema = {
         "type": "object",
         "properties": {
@@ -81,54 +84,55 @@ Respond in valid JSON format ONLY conforming to the schema."""
                 "type": "array",
                 "minItems": 2,
                 "items": {"type": "string"},
-                "description": "MANDATORY: List of exact numerical data points from the Fact Sheet that support your thesis. Example: ['ATR_14(H4)=2.45', 'DXY_trend=weakening -0.4%', 'VIX=18.5', 'CVD_divergence=BULLISH', 'Book_imbalance=0.35']. Minimum 2 items."
+                "description": "MANDATORY: List of exact numerical data points from the Fact Sheet that support your thesis. Example: ['ATR_14(H4)=2.45', 'DXY_trend=weakening -0.4%', 'VIX=18.5', 'CVD_divergence=BULLISH', 'Book_imbalance=0.35']. Minimum 2 items.",
             },
             "key_levels": {
                 "type": "array",
                 "items": {"type": "number"},
-                "description": "List of key price levels cited in thesis (e.g. support, resistance, FVG, swing pivot, order block boundary)."
+                "description": "List of key price levels cited in thesis (e.g. support, resistance, FVG, swing pivot, order block boundary).",
             },
             "falsification_triggers": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Concrete price or macro conditions that would immediately invalidate the bullish argument."
-            }
+                "description": "Concrete price or macro conditions that would immediately invalidate the bullish argument.",
+            },
         },
-        "required": ["bull_thesis", "strength_score", "evidence_cited"]
+        "required": ["bull_thesis", "strength_score", "evidence_cited"],
     }
 
-    context_payload = {
-        "original_context": original_context,
-        "fact_sheet": fact_sheet
-    }
-    context_str = json.dumps(context_payload, separators=(',', ':'), default=str)
-    
-    temp = getattr(client, 'default_temperature', 0.2)
+    context_payload = {"original_context": original_context, "fact_sheet": fact_sheet}
+    context_str = json.dumps(context_payload, separators=(",", ":"), default=str)
+
+    temp = getattr(client, "default_temperature", 0.2)
     last_err = None
     for attempt in range(2):
         try:
             base_user_msg = f"[TARGET ASSET]: {symbol} | [DIRECTION]: {decision.upper()}\nTrade Setup & Market Fact Sheet:\n{context_str}\n\nGenerate bull analysis based strictly on the setup and Fact Sheet above."
-            user_msg = base_user_msg if attempt == 0 else f"{base_user_msg}\n\nYour previous response was not valid JSON ({last_err}). Return ONLY valid JSON matching the schema."
+            user_msg = (
+                base_user_msg
+                if attempt == 0
+                else f"{base_user_msg}\n\nYour previous response was not valid JSON ({last_err}). Return ONLY valid JSON matching the schema."
+            )
             resp = await client.generate_content(
                 system_prompt=system_prompt,
                 user_message=user_msg,
                 temperature=temp,
                 response_schema=schema,
-                max_tokens=getattr(client, 'max_tokens', 4096) or 4096
+                max_tokens=getattr(client, "max_tokens", 4096) or 4096,
             )
             if not resp:
                 raise ValueError("Empty response from LLM")
             return json.loads(_clean_json_str(resp))
         except Exception as e:
             last_err = e
-            logger.warning(f"Bull Analyst parse attempt {attempt+1}/2 failed: {e}")
+            logger.warning(f"Bull Analyst parse attempt {attempt + 1}/2 failed: {e}")
 
     logger.error(f"Failed to parse Bull Analyst JSON after 2 attempts: {last_err}")
     return {
         "bull_thesis": f"Fallback to original rationale due to parse error: {last_err}",
         "strength_score": 5,
         "evidence_cited": ["Context data evaluated via fallback"],
-        "parse_error": True
+        "parse_error": True,
     }
 
 
@@ -138,7 +142,7 @@ async def generate_bull_rebuttal(
     original_context: dict,
     fact_sheet: Union[str, Dict[str, Any]],
     bull_claim: dict,
-    bear_dissent: dict
+    bear_dissent: dict,
 ) -> dict:
     decision = str(original_context.get("decision", "buy")).lower()
 
@@ -175,25 +179,25 @@ Respond in valid JSON format ONLY conforming to the schema."""
                 "type": "array",
                 "minItems": 2,
                 "items": {"type": "string"},
-                "description": "MANDATORY: List of exact numerical data points from the Fact Sheet refuting bear points. Minimum 2 items."
+                "description": "MANDATORY: List of exact numerical data points from the Fact Sheet refuting bear points. Minimum 2 items.",
             },
             "conceded_points": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "List of valid points conceded to the Bear Analyst, if any."
-            }
+                "description": "List of valid points conceded to the Bear Analyst, if any.",
+            },
         },
-        "required": ["rebuttal_thesis", "rebuttal_strength", "rebuttal_evidence"]
+        "required": ["rebuttal_thesis", "rebuttal_strength", "rebuttal_evidence"],
     }
 
     payload = {
         "original_context": original_context,
         "bull_claim": bull_claim,
         "bear_dissent": bear_dissent,
-        "fact_sheet": fact_sheet
+        "fact_sheet": fact_sheet,
     }
-    context_str = json.dumps(payload, separators=(',', ':'), default=str)
-    temp = getattr(client, 'default_temperature', 0.2)
+    context_str = json.dumps(payload, separators=(",", ":"), default=str)
+    temp = getattr(client, "default_temperature", 0.2)
     last_err = None
     for attempt in range(2):
         try:
@@ -202,20 +206,24 @@ Respond in valid JSON format ONLY conforming to the schema."""
                 f"Round 1 Debate & Market Fact Sheet:\n{context_str}\n\n"
                 f"Provide Round 2 Bullish Rebuttal confronting the Bear Dissent based strictly on the Fact Sheet."
             )
-            user_msg = base_user_msg if attempt == 0 else f"{base_user_msg}\n\nYour previous response was not valid JSON ({last_err}). Return ONLY valid JSON matching the schema."
+            user_msg = (
+                base_user_msg
+                if attempt == 0
+                else f"{base_user_msg}\n\nYour previous response was not valid JSON ({last_err}). Return ONLY valid JSON matching the schema."
+            )
             resp = await client.generate_content(
                 system_prompt=system_prompt,
                 user_message=user_msg,
                 temperature=temp,
                 response_schema=schema,
-                max_tokens=getattr(client, 'max_tokens', 4096) or 4096
+                max_tokens=getattr(client, "max_tokens", 4096) or 4096,
             )
             if not resp:
                 raise ValueError("Empty response from LLM")
             return json.loads(_clean_json_str(resp))
         except Exception as e:
             last_err = e
-            logger.warning(f"Bull Rebuttal parse attempt {attempt+1}/2 failed: {e}")
+            logger.warning(f"Bull Rebuttal parse attempt {attempt + 1}/2 failed: {e}")
 
     logger.error(f"Failed to parse Bull Rebuttal JSON after 2 attempts: {last_err}")
     return {
@@ -223,6 +231,5 @@ Respond in valid JSON format ONLY conforming to the schema."""
         "rebuttal_strength": 5,
         "rebuttal_evidence": ["Fact Sheet verified via fallback"],
         "conceded_points": [],
-        "parse_error": True
+        "parse_error": True,
     }
-

@@ -5,7 +5,9 @@ import os
 import sys
 
 # Ensure repo root and src directories are on path
-_repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+_repo_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+)
 for _p in (_repo_root, os.path.join(_repo_root, "src")):
     if os.path.exists(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
@@ -20,6 +22,7 @@ import atexit
 import threading
 import time
 
+
 def _reset_terminal_modes():
     """Restore terminal mouse, bracketed paste, and cursor visibility on exit."""
     try:
@@ -29,18 +32,24 @@ def _reset_terminal_modes():
     except Exception:
         pass
 
+
 atexit.register(_reset_terminal_modes)
+
 
 def arm_exit_watchdog(timeout_s: float = 15.0):
     """Escort thread ensuring clean process termination if async loops hang during shutdown."""
+
     def _force_exit():
         time.sleep(timeout_s)
         _reset_terminal_modes()
         os._exit(0)
+
     t = threading.Thread(target=_force_exit, daemon=True, name="exit-watchdog")
     t.start()
 
+
 from monika.interfaces.cli.platform_compat import apply_platform_fixes
+
 apply_platform_fixes()
 
 from typing import Any, Dict, List, Optional
@@ -74,7 +83,13 @@ run_startup_checks: Any = getattr(_root_main, "run_startup_checks", None)
 
 logger = logging.getLogger("TradingAgent.CLI")
 
-DEFAULT_API_URL = os.environ.get("MONIKA_API_URL") or os.environ.get("TRADEAGENT_API_URL") or os.environ.get("DASHBOARD_URL") or "http://127.0.0.1:8000"
+DEFAULT_API_URL = (
+    os.environ.get("MONIKA_API_URL")
+    or os.environ.get("TRADEAGENT_API_URL")
+    or os.environ.get("DASHBOARD_URL")
+    or "http://127.0.0.1:8000"
+)
+
 
 def get_pid_file_path() -> str:
     """Resolve active or expected PID file path for the trading daemon."""
@@ -94,6 +109,7 @@ def get_pid_file_path() -> str:
 def get_daemon_pid() -> Optional[int]:
     """Retrieve daemon PID if process is actively running."""
     import psutil
+
     pid_file = get_pid_file_path()
     if os.path.exists(pid_file):
         try:
@@ -117,6 +133,7 @@ def is_daemon_running(api_url: Optional[str] = None) -> bool:
 
     url = (api_url or DEFAULT_API_URL).rstrip("/")
     import urllib.request
+
     try:
         req = urllib.request.Request(f"{url}/api/overview", headers={"User-Agent": "Monika-CLI"})
         with urllib.request.urlopen(req, timeout=0.8) as resp:
@@ -131,6 +148,7 @@ def is_daemon_running(api_url: Optional[str] = None) -> bool:
 def spawn_daemon_background(mode: str = "paper", config_path: Optional[str] = None) -> Optional[int]:
     """Spawn the Monika trading daemon as a persistent background process."""
     import subprocess
+
     cmd = [sys.executable, "-m", "monika.interfaces.cli.main", "run", "--mode", mode]
     if mode == "live":
         cmd.append("--confirm-live")
@@ -185,6 +203,7 @@ def ensure_daemon_running(args, console=None) -> bool:
 
     try:
         from monika.infrastructure.infra.env_file_manager import EnvFileManager
+
         if not EnvFileManager.is_configured():
             return False
     except Exception:
@@ -219,7 +238,9 @@ def ensure_daemon_running(args, console=None) -> bool:
         console.print(f"{stamp_ok('DAEMON')} Monika daemon aktif & siap (PID: {pid}).\n")
         return True
     else:
-        console.print(f"{stamp_warn('DAEMON')} Daemon telah di-spawn (PID {pid}), log: logs/daemon.log. Melanjutkan perintah...\n")
+        console.print(
+            f"{stamp_warn('DAEMON')} Daemon telah di-spawn (PID {pid}), log: logs/daemon.log. Melanjutkan perintah...\n"
+        )
         return True
 
 
@@ -230,22 +251,28 @@ async def _cmd_status(args):
         # 1. System configs
         cfgs = (await session.execute(select(SystemConfig))).scalars().all()
         cfg_map = {c.key: c.value for c in cfgs}
-        
+
         # 2. Positions
-        open_real = (await session.execute(select(Position).where(Position.status == 'open'))).scalars().all()
-        open_paper = (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == 'open'))).scalars().all()
-        
-        susp_raw = cfg_map.get('suspended_symbols') or "[]"
+        open_real = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+        open_paper = (
+            (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open"))).scalars().all()
+        )
+
+        susp_raw = cfg_map.get("suspended_symbols") or "[]"
         import json as _json
+
         try:
             susp_data = _json.loads(susp_raw)
-            susp_list = [str(s['symbol']) for s in susp_data if isinstance(s, dict) and s.get('symbol')]
+            susp_list = [str(s["symbol"]) for s in susp_data if isinstance(s, dict) and s.get("symbol")]
             susp_str = ", ".join(susp_list) if susp_list else "NONE"
         except Exception:
             susp_str = "NONE"
 
         from rich.table import Table
-        tbl = Table(title=f"[{PHOSPHOR_AMBER}]AI TRADING AGENT STATUS[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
+
+        tbl = Table(
+            title=f"[{PHOSPHOR_AMBER}]AI TRADING AGENT STATUS[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}"
+        )
         tbl.add_column("Parameter", style=f"bold {BRASS}")
         tbl.add_column("State", style=PAPER)
         tbl.add_column("Indicator", justify="center")
@@ -260,13 +287,21 @@ async def _cmd_status(args):
                 state_str = f"[{MUTED}]FALSE[/]"
             tbl.add_row(param, state_str, badge)
 
-        _flag_row("Emergency Kill Switch", cfg_map.get('kill_switch'), is_danger_when_true=True)
-        _flag_row("System Paused", cfg_map.get('system_paused'), is_danger_when_true=True)
-        _flag_row("Budget Paused", cfg_map.get('budget_pause'), is_danger_when_true=True)
-        _flag_row("Auto-Execute Mode", cfg_map.get('auto_execute'), is_danger_when_true=False)
+        _flag_row("Emergency Kill Switch", cfg_map.get("kill_switch"), is_danger_when_true=True)
+        _flag_row("System Paused", cfg_map.get("system_paused"), is_danger_when_true=True)
+        _flag_row("Budget Paused", cfg_map.get("budget_pause"), is_danger_when_true=True)
+        _flag_row("Auto-Execute Mode", cfg_map.get("auto_execute"), is_danger_when_true=False)
         tbl.add_row("Suspended Symbols", susp_str, stamp_warn("SUSPENDED") if susp_str != "NONE" else stamp_ok("CLEAR"))
-        tbl.add_row("Open Real Positions", str(len(open_real)), stamp_exec(f"{len(open_real)} LOT") if open_real else f"[{MUTED}][ 0 ][/]")
-        tbl.add_row("Open Paper Positions", str(len(open_paper)), stamp_info(f"{len(open_paper)} POS") if open_paper else f"[{MUTED}][ 0 ][/]")
+        tbl.add_row(
+            "Open Real Positions",
+            str(len(open_real)),
+            stamp_exec(f"{len(open_real)} LOT") if open_real else f"[{MUTED}][ 0 ][/]",
+        )
+        tbl.add_row(
+            "Open Paper Positions",
+            str(len(open_paper)),
+            stamp_info(f"{len(open_paper)} POS") if open_paper else f"[{MUTED}][ 0 ][/]",
+        )
 
         console.print()
         console.print(tbl)
@@ -277,7 +312,9 @@ async def _cmd_pause(args):
     console = get_console()
     await init_db()
     async with get_session() as session:
-        cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == "system_paused"))).scalar_one_or_none()
+        cfg = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "system_paused"))
+        ).scalar_one_or_none()
         if cfg:
             cfg.value = "true"
         else:
@@ -285,6 +322,7 @@ async def _cmd_pause(args):
         await session.commit()
     try:
         import aiohttp
+
         settings = load_settings()
         port = settings.get("dashboard", {}).get("port", 8000)
         async with aiohttp.ClientSession() as http_sess:
@@ -303,17 +341,23 @@ async def _cmd_resume(args):
     console = get_console()
     if not getattr(args, "yes", False):
         if sys.stdin and hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
-            conf = await asyncio.to_thread(input, f"{stamp_warn('CONFIRM')} Resume trading operations and clear all pause flags? Type 'RESUME': ")
+            conf = await asyncio.to_thread(
+                input, f"{stamp_warn('CONFIRM')} Resume trading operations and clear all pause flags? Type 'RESUME': "
+            )
             if conf.strip() != "RESUME":
                 console.print(f"{stamp_err('ABORT')} Operation aborted by operator.")
                 return
         else:
-            console.print(f"{stamp_err('FAILED')} Resume command in non-interactive environment requires '-y' / '--yes' flag.")
+            console.print(
+                f"{stamp_err('FAILED')} Resume command in non-interactive environment requires '-y' / '--yes' flag."
+            )
             return
 
     await init_db()
     async with get_session() as session:
-        susp = (await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))).scalar_one_or_none()
+        susp = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))
+        ).scalar_one_or_none()
         if susp:
             susp.value = "[]"
         for key in ("kill_switch", "system_paused", "budget_pause", "trading_paused", "manual_trading_paused"):
@@ -323,6 +367,7 @@ async def _cmd_resume(args):
         await session.commit()
     try:
         import aiohttp
+
         settings = load_settings()
         port = settings.get("dashboard", {}).get("port", 8000)
         async with aiohttp.ClientSession() as http_sess:
@@ -334,7 +379,9 @@ async def _cmd_resume(args):
                     console.print(f"{stamp_ok('FORWARD')} Signal forwarded to running Dashboard daemon API.")
     except Exception:
         pass
-    console.print(f"{stamp_ok('RESUME')} System trading resumed (all pause, kill-switch, and suspension flags cleared).")
+    console.print(
+        f"{stamp_ok('RESUME')} System trading resumed (all pause, kill-switch, and suspension flags cleared)."
+    )
 
 
 async def _cmd_unsuspend(args):
@@ -347,6 +394,7 @@ async def _cmd_unsuspend(args):
 
     async with get_session() as session:
         from monika.core.analytics.paper_tracker import PaperTracker
+
         tracker = PaperTracker()
         if is_all or not sym:
             cleared = await tracker.unsuspend_all(session)
@@ -355,6 +403,7 @@ async def _cmd_unsuspend(args):
 
     try:
         import aiohttp
+
         settings = load_settings()
         port = settings.get("dashboard", {}).get("port", 8000)
         async with aiohttp.ClientSession() as http_sess:
@@ -370,7 +419,9 @@ async def _cmd_unsuspend(args):
 
     if is_all:
         if cleared:
-            console.print(f"{stamp_ok('UNSUSPEND')} Successfully lifted trading suspension on all instruments: {', '.join(cleared)}")
+            console.print(
+                f"{stamp_ok('UNSUSPEND')} Successfully lifted trading suspension on all instruments: {', '.join(cleared)}"
+            )
         else:
             console.print(f"{stamp_info('STATUS')} No instruments currently suspended.")
     else:
@@ -384,17 +435,23 @@ async def _cmd_kill(args):
     console = get_console()
     if not getattr(args, "yes", False):
         if sys.stdin and hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
-            conf = await asyncio.to_thread(input, f"{stamp_warn('KILL')} CRITICAL ALERT: Trigger EMERGENCY KILL SWITCH? Type 'KILL' to confirm: ")
+            conf = await asyncio.to_thread(
+                input, f"{stamp_warn('KILL')} CRITICAL ALERT: Trigger EMERGENCY KILL SWITCH? Type 'KILL' to confirm: "
+            )
             if conf.strip() != "KILL":
                 console.print(f"{stamp_err('ABORT')} Operation aborted by operator.")
                 return
         else:
-            console.print(f"{stamp_err('FAILED')} Kill switch command in non-interactive environment requires '-y' / '--yes' flag.")
+            console.print(
+                f"{stamp_err('FAILED')} Kill switch command in non-interactive environment requires '-y' / '--yes' flag."
+            )
             return
 
     await init_db()
     async with get_session() as session:
-        cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == "kill_switch"))).scalar_one_or_none()
+        cfg = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "kill_switch"))
+        ).scalar_one_or_none()
         if cfg:
             cfg.value = "true"
         else:
@@ -406,6 +463,7 @@ async def _cmd_kill(args):
     api_notified = False
     try:
         import aiohttp
+
         settings = load_settings()
         port = settings.get("dashboard", {}).get("port", 8000)
         async with aiohttp.ClientSession() as http_sess:
@@ -420,7 +478,9 @@ async def _cmd_kill(args):
         pass
 
     if not api_notified:
-        console.print(f"{stamp_info('DATABASE')} Kill signal recorded in database. PositionGuardian will safely close all open positions.")
+        console.print(
+            f"{stamp_info('DATABASE')} Kill signal recorded in database. PositionGuardian will safely close all open positions."
+        )
 
     console.print(f"{stamp_err('HALTED')} All trading operations permanently halted.")
 
@@ -436,11 +496,13 @@ async def _cmd_stop(args):
         return
 
     import psutil
+
     console.print(f"{stamp_info('STOP')} Stopping Monika daemon (PID: {pid})...")
 
     # Mark clean shutdown flag so auto-restart loop scripts won't loop
     try:
         from monika.application.agent.task_registry import mark_clean_shutdown
+
         mark_clean_shutdown()
     except Exception:
         pass
@@ -493,13 +555,18 @@ async def _cmd_positions(args):
     console = get_console()
     await init_db()
     async with get_session() as session:
-        open_real = (await session.execute(select(Position).where(Position.status == 'open'))).scalars().all()
-        open_paper = (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == 'open'))).scalars().all()
-        
+        open_real = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+        open_paper = (
+            (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open"))).scalars().all()
+        )
+
         from rich.table import Table
+
         console.print()
         if open_real:
-            tbl_real = Table(title=f"[{PHOSPHOR_AMBER}]OPEN REAL POSITIONS[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
+            tbl_real = Table(
+                title=f"[{PHOSPHOR_AMBER}]OPEN REAL POSITIONS[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}"
+            )
             tbl_real.add_column("ID", style=MUTED)
             tbl_real.add_column("Ticket", style=f"bold {PAPER}")
             tbl_real.add_column("Symbol", style=f"bold {PHOSPHOR_AMBER}")
@@ -513,11 +580,11 @@ async def _cmd_positions(args):
                 side_styled = f"[bold {BULL_PROFIT}]BUY[/]" if side == "BUY" else f"[bold {BEAR_LOSS}]SELL[/]"
                 tbl_real.add_row(
                     str(p.id),
-                    str(getattr(p, 'mt5_ticket', getattr(p, 'ticket', 'N/A'))),
+                    str(getattr(p, "mt5_ticket", getattr(p, "ticket", "N/A"))),
                     str(p.symbol),
                     side_styled,
                     f"{float(p.volume):.2f}",
-                    str(getattr(p, 'entry_price', getattr(p, 'open_price', 'N/A'))),
+                    str(getattr(p, "entry_price", getattr(p, "open_price", "N/A"))),
                     str(p.sl or "-"),
                     str(p.tp or "-"),
                 )
@@ -538,15 +605,15 @@ async def _cmd_positions(args):
             for p in open_paper:
                 side = p.direction.upper()
                 side_styled = f"[bold {BULL_PROFIT}]BUY[/]" if side == "BUY" else f"[bold {BEAR_LOSS}]SELL[/]"
-                lots_val = getattr(p, 'lots', getattr(p, 'risk_pct', 'N/A'))
+                lots_val = getattr(p, "lots", getattr(p, "risk_pct", "N/A"))
                 tbl_paper.add_row(
                     str(p.id),
                     str(p.symbol),
                     side_styled,
                     f"{float(lots_val):.2f}" if isinstance(lots_val, (int, float)) else str(lots_val),
                     str(p.entry_price),
-                    str(getattr(p, 'stop_loss', getattr(p, 'sl', '-'))),
-                    str(getattr(p, 'take_profit', getattr(p, 'tp', '-'))),
+                    str(getattr(p, "stop_loss", getattr(p, "sl", "-"))),
+                    str(getattr(p, "take_profit", getattr(p, "tp", "-"))),
                 )
             console.print(tbl_paper)
         else:
@@ -571,12 +638,14 @@ async def _acli_run(args):
 
     # 2. Configure Trading Mode & Tier
     mode = getattr(args, "mode", "paper")
-    is_dry_run = (mode == "paper")
+    is_dry_run = mode == "paper"
 
     from monika.core.config.settings import get_installation_tier
+
     active_tier = get_installation_tier(settings)
     if active_tier == "trial" and mode != "live":
         from pathlib import Path
+
         data_dir = Path.cwd() / "data"
         data_dir.mkdir(parents=True, exist_ok=True)
         db_path = (data_dir / "monika.db").resolve()
@@ -587,12 +656,17 @@ async def _acli_run(args):
     if mode == "live":
         if not getattr(args, "confirm_live", False):
             if sys.stdin and hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
-                confirmation = await asyncio.to_thread(input, "CRITICAL WARNING: Live capital execution deployment requested. Type 'CONFIRM_LIVE' to proceed: ")
+                confirmation = await asyncio.to_thread(
+                    input,
+                    "CRITICAL WARNING: Live capital execution deployment requested. Type 'CONFIRM_LIVE' to proceed: ",
+                )
                 if confirmation.strip() != "CONFIRM_LIVE":
                     logger.warning("Live capital execution cancelled by operator. Aborting.")
                     sys.exit(0)
             else:
-                logger.critical("Live capital execution requires explicit operator confirmation or '--confirm-live' flag. Aborting.")
+                logger.critical(
+                    "Live capital execution requires explicit operator confirmation or '--confirm-live' flag. Aborting."
+                )
                 sys.exit(1)
         settings.setdefault("trading", {})["auto_execute"] = True
         logger.warning("[WARNING] Starting in LIVE execution mode. Real capital will be traded via MT5.")
@@ -603,6 +677,7 @@ async def _acli_run(args):
 
     # Configure Gemini Rate Limiter limits from settings
     from monika.infrastructure.api.gemini_rate_limiter import configure_from_settings
+
     configure_from_settings(settings)
 
     # 3. Init DB & Health Checks
@@ -627,6 +702,7 @@ async def _acli_run(args):
 async def _cmd_tui(args):
     """Launch rich Textual terminal dashboard."""
     from monika.interfaces.cli.tui import run_tui
+
     run_tui(
         api_url=getattr(args, "url", DEFAULT_API_URL),
         api_key=getattr(args, "token", None),
@@ -637,6 +713,7 @@ async def _cmd_tui(args):
 async def _cmd_chat(args):
     """Launch interactive REPL chat with agent."""
     from monika.interfaces.cli.tui_chat import run_cli_chat
+
     await run_cli_chat(
         api_url=getattr(args, "url", DEFAULT_API_URL),
         api_key=getattr(args, "token", None),
@@ -650,6 +727,7 @@ async def _cmd_config_show(args):
     """Show system configuration or section."""
     from rich.syntax import Syntax
     import yaml
+
     console = get_console()
 
     url = getattr(args, "url", DEFAULT_API_URL)
@@ -684,6 +762,7 @@ async def _cmd_config_show(args):
 
     if is_json:
         import json as _json
+
         formatted = _json.dumps(target, indent=2)
         syntax = Syntax(formatted, "json", theme="monokai", line_numbers=False)
     else:
@@ -724,6 +803,7 @@ async def _cmd_config_set(args):
             val = None
         elif raw_val.startswith(("[", "{")) and raw_val.endswith(("]", "}")):
             import json as _json
+
             try:
                 val = _json.loads(raw_val)
             except Exception:
@@ -738,6 +818,7 @@ async def _cmd_config_set(args):
                 val = raw_val
 
         from monika.core.config.key_validator import validate_config_key
+
         key_err = validate_config_key(key_path)
         if key_err:
             console.print(f"{stamp_err('KEY')} {key_err}")
@@ -770,13 +851,15 @@ async def _cmd_config_set(args):
                     console.print(f"{stamp_err('VALIDATION')} {err.get('message', 'Invalid value')}")
                     return
                 elif res.status in (401, 403):
-                    console.print(f"{stamp_err('ACCESS')} Permission denied: Updating configuration via API requires Admin role. Check API token.")
+                    console.print(
+                        f"{stamp_err('ACCESS')} Permission denied: Updating configuration via API requires Admin role. Check API token."
+                    )
                     return
                 else:
                     err_text = await res.text()
                     console.print(f"{stamp_err('API')} Server returned error ({res.status}): {err_text[:200]}")
                     return
-        except (aiohttp.ClientConnectorError, asyncio.TimeoutError, aiohttp.ClientConnectionError):
+        except aiohttp.ClientConnectorError, asyncio.TimeoutError, aiohttp.ClientConnectionError:
             api_success = False
         except Exception as ex:
             if getattr(args, "url", None) and args.url != DEFAULT_API_URL:
@@ -812,6 +895,7 @@ async def _cmd_config_set(args):
             return
 
         from monika.core.config.atomic_writer import AtomicConfigWriter
+
         try:
             AtomicConfigWriter.update_in_place(settings_path, update_dict, create_backup=True)
         except Exception as e:
@@ -821,11 +905,13 @@ async def _cmd_config_set(args):
         try:
             await init_db()
             async with get_session() as session:
-                session.add(ActivityLog(
-                    category="system",
-                    description=f"Config updated via CLI: {assignments} ({reason})",
-                    actor="cli_operator",
-                ))
+                session.add(
+                    ActivityLog(
+                        category="system",
+                        description=f"Config updated via CLI: {assignments} ({reason})",
+                        actor="cli_operator",
+                    )
+                )
                 await session.commit()
         except Exception:
             pass
@@ -843,6 +929,7 @@ async def _cmd_config_get(args):
         return
 
     from monika.core.config.settings import load_settings
+
     settings = load_settings(getattr(args, "config", None))
     parts = key_path.split(".")
     val = settings
@@ -898,6 +985,7 @@ async def _cmd_config_edit(args):
     """Open settings.yaml or plugin config in default editor and validate upon close."""
     import subprocess
     import yaml
+
     console = get_console()
     plugin_id = getattr(args, "plugin_id", None)
 
@@ -939,6 +1027,7 @@ async def _cmd_config_edit(args):
                     console.print(f"{stamp_err('INVALID')} YAML syntax error in plugin config: {y_err}")
             else:
                 from monika.core.config.settings import load_settings, validate_config
+
                 try:
                     cfg = load_settings(edit_target)
                     validate_config(cfg)
@@ -952,6 +1041,7 @@ async def _cmd_config_edit(args):
 async def _cmd_onboarding(args):
     """Launch trader onboarding personalization wizard."""
     from monika.interfaces.cli.onboarding_trader import TraderOnboarding
+
     onboarding = TraderOnboarding()
     onboarding.run_interview()
 
@@ -976,6 +1066,7 @@ async def _cmd_config(args):
 async def _cmd_sessions(args):
     """List conversation sessions with metadata."""
     from rich.table import Table
+
     console = get_console()
 
     url = getattr(args, "url", DEFAULT_API_URL)
@@ -1028,21 +1119,29 @@ async def _cmd_sessions(args):
             sessions_data = []
             for r in rows:
                 uid = str(r.telegram_user_id)
-                latest = (await session.execute(
-                    select(TelegramConversation.message)
-                    .where(TelegramConversation.telegram_user_id == uid)
-                    .order_by(TelegramConversation.timestamp.desc())
-                    .limit(1)
-                )).first()
-                sessions_data.append({
-                    "session_id": uid,
-                    "source": "dashboard" if uid.startswith("dash") else ("cli" if uid.startswith("cli") else "telegram"),
-                    "message_count": r.message_count,
-                    "last_active": r.last_active.isoformat() if r.last_active else "N/A",
-                    "last_message": latest[0][:80] if latest else "",
-                })
+                latest = (
+                    await session.execute(
+                        select(TelegramConversation.message)
+                        .where(TelegramConversation.telegram_user_id == uid)
+                        .order_by(TelegramConversation.timestamp.desc())
+                        .limit(1)
+                    )
+                ).first()
+                sessions_data.append(
+                    {
+                        "session_id": uid,
+                        "source": "dashboard"
+                        if uid.startswith("dash")
+                        else ("cli" if uid.startswith("cli") else "telegram"),
+                        "message_count": r.message_count,
+                        "last_active": r.last_active.isoformat() if r.last_active else "N/A",
+                        "last_message": latest[0][:80] if latest else "",
+                    }
+                )
 
-    table = Table(title=f"[{PHOSPHOR_AMBER}]Conversation Sessions[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
+    table = Table(
+        title=f"[{PHOSPHOR_AMBER}]Conversation Sessions[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}"
+    )
     table.add_column("Session ID", style=PAPER)
     table.add_column("Source", justify="center")
     table.add_column("Messages", justify="right", style=f"bold {BRASS}")
@@ -1116,20 +1215,19 @@ async def _cmd_logs(args):
             q = q.where(ActivityLog.category == category)
         if severity:
             sev_lower = severity.lower()
-            q = q.where(
-                ActivityLog.category.ilike(f"%{sev_lower}%") |
-                ActivityLog.description.ilike(f"%{sev_lower}%")
-            )
+            q = q.where(ActivityLog.category.ilike(f"%{sev_lower}%") | ActivityLog.description.ilike(f"%{sev_lower}%"))
         items = (await session.execute(q)).scalars().all()
         for item in reversed(items):
             last_seen_id = max(last_seen_id, item.id)
-            _render_log({
-                "id": item.id,
-                "timestamp": item.timestamp.isoformat() if item.timestamp else "",
-                "category": item.category,
-                "actor": item.actor,
-                "description": item.description,
-            })
+            _render_log(
+                {
+                    "id": item.id,
+                    "timestamp": item.timestamp.isoformat() if item.timestamp else "",
+                    "category": item.category,
+                    "actor": item.actor,
+                    "description": item.description,
+                }
+            )
 
     if not follow:
         return
@@ -1145,29 +1243,31 @@ async def _cmd_logs(args):
                 if severity:
                     sev_lower = severity.lower()
                     q = q.where(
-                        ActivityLog.category.ilike(f"%{sev_lower}%") |
-                        ActivityLog.description.ilike(f"%{sev_lower}%")
+                        ActivityLog.category.ilike(f"%{sev_lower}%") | ActivityLog.description.ilike(f"%{sev_lower}%")
                     )
                 new_items = (await session.execute(q)).scalars().all()
                 for item in new_items:
                     last_seen_id = max(last_seen_id, item.id)
-                    _render_log({
-                        "id": item.id,
-                        "timestamp": item.timestamp.isoformat() if item.timestamp else "",
-                        "category": item.category,
-                        "actor": item.actor,
-                        "description": item.description,
-                    })
-    except (asyncio.CancelledError, KeyboardInterrupt):
+                    _render_log(
+                        {
+                            "id": item.id,
+                            "timestamp": item.timestamp.isoformat() if item.timestamp else "",
+                            "category": item.category,
+                            "actor": item.actor,
+                            "description": item.description,
+                        }
+                    )
+    except asyncio.CancelledError, KeyboardInterrupt:
         console.print(f"\n[{MUTED}]Log stream terminated by operator.[/]")
 
 
 async def _cmd_doctor(args):
     from monika.interfaces.cli.doctor import SystemDoctor
+
     doc = SystemDoctor(
         fix=getattr(args, "fix", False),
         live_probes=not getattr(args, "offline", False),
-        verbose=getattr(args, "verbose", False)
+        verbose=getattr(args, "verbose", False),
     )
     await doc.run_diagnostics()
     code = doc.render_report()
@@ -1177,6 +1277,7 @@ async def _cmd_doctor(args):
 
 async def _cmd_setup(args):
     from monika.interfaces.cli.setup_wizard import SetupWizard
+
     wizard = SetupWizard(settings_path=getattr(args, "config", None))
     section = getattr(args, "section", "all")
     quick = getattr(args, "quick", False)
@@ -1186,8 +1287,16 @@ async def _cmd_setup(args):
 async def _cmd_profile(args):
     from monika.interfaces.cli.profile_manager import ProfileManager
     from monika.interfaces.cli.theme import (
-        get_console, stamp_ok, stamp_err, stamp_info, stamp_warn,
-        PHOSPHOR_AMBER, BRASS, LEDGER_BOX, PAPER, MUTED
+        get_console,
+        stamp_ok,
+        stamp_err,
+        stamp_info,
+        stamp_warn,
+        PHOSPHOR_AMBER,
+        BRASS,
+        LEDGER_BOX,
+        PAPER,
+        MUTED,
     )
     from rich.table import Table
 
@@ -1197,7 +1306,9 @@ async def _cmd_profile(args):
 
     if action == "list":
         profiles = pm.list_profiles()
-        tbl = Table(title=f"[{PHOSPHOR_AMBER}]MONIKA PROFILES[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
+        tbl = Table(
+            title=f"[{PHOSPHOR_AMBER}]MONIKA PROFILES[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}"
+        )
         tbl.add_column("Profile", style=f"bold {BRASS}")
         tbl.add_column("Status", justify="center")
         tbl.add_column("Config Path", style=PAPER)
@@ -1261,6 +1372,7 @@ async def _cmd_ask(args):
 
     from monika.application.agent.chat_agent import ChatAgent
     from monika.core.config.settings import load_all_config
+
     settings = load_all_config()
     agent = ChatAgent(settings, user_id="cli_user", is_admin=True)
 
@@ -1270,11 +1382,14 @@ async def _cmd_ask(args):
     else:
         console.print(f"\n{reply_text}\n")
         if pending:
-            console.print(f"{stamp_warn('PROPOSAL')} Proposed action: {pending.description} (Action ID: {pending.action_id})")
+            console.print(
+                f"{stamp_warn('PROPOSAL')} Proposed action: {pending.description} (Action ID: {pending.action_id})"
+            )
 
     out_json = getattr(args, "output_json", None)
     if out_json:
         import json as _json
+
         payload = {
             "query": question,
             "response": reply_text,
@@ -1299,17 +1414,17 @@ async def _cmd_analyze(args):
 
     from monika.application.agent.agent_loop import SystemAgentLoop
     from monika.core.config.settings import load_all_config
+
     settings = load_all_config()
     agent_loop = SystemAgentLoop(settings=settings)
 
     async def _progress(msg: str) -> None:
         console.print(f"  [{MUTED}]• {msg}[/]")
 
-
     res = await agent_loop.execute_ad_hoc_analysis(
         symbol=symbol,
         progress_callback=_progress,
-        custom_context=context or f"Ad-hoc analysis requested via CLI for {symbol}"
+        custom_context=context or f"Ad-hoc analysis requested via CLI for {symbol}",
     )
     summary = res.get("formatted_summary") or f"Analysis for {symbol} completed."
     console.print(f"\n{summary}\n")
@@ -1322,7 +1437,6 @@ async def _cmd_backtest(args):
     from monika.infrastructure.database.db import init_db
     from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine, BacktestMode
     from monika.application.backtest.walk_forward_engine import WalkForwardEngine
-
 
     await init_db()
     settings = load_all_config()
@@ -1371,9 +1485,12 @@ async def _cmd_backtest(args):
         console.print(f"\n{report_md}\n")
     else:
         engine_mode: BacktestMode = (
-            "full" if mode == "full"
-            else "langgraph_parity" if mode == "langgraph_parity"
-            else "graph" if mode == "graph"
+            "full"
+            if mode == "full"
+            else "langgraph_parity"
+            if mode == "langgraph_parity"
+            else "graph"
+            if mode == "graph"
             else "replay"
         )
         engine = PointInTimeBacktestEngine(
@@ -1427,18 +1544,26 @@ async def _cmd_benchmark_run(args):
     if getattr(args, "mode", "standard") == "arena":
         from monika.application.benchmark.alpha_arena import AlphaArenaTournament
         from rich.table import Table
+
         arena = AlphaArenaTournament()
-        console.print(f"\n[{PHOSPHOR_AMBER}] Launching Alpha Arena Head-to-Head Tournament across {len(models)} models...[/]")
+        console.print(
+            f"\n[{PHOSPHOR_AMBER}] Launching Alpha Arena Head-to-Head Tournament across {len(models)} models...[/]"
+        )
         for i in range(len(models)):
             for j in range(i + 1, len(models)):
                 m_a, m_b = models[i], models[j]
                 arena.record_match(
-                    m_a, m_b,
+                    m_a,
+                    m_b,
                     metrics_a={"pnl_pct": 2.5, "sharpe_ratio": 1.4},
                     metrics_b={"pnl_pct": 1.8, "sharpe_ratio": 1.1},
                 )
         lb = arena.get_leaderboard()
-        tbl = Table(title=f"[{PHOSPHOR_AMBER}]Alpha Arena Elo Leaderboard[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
+        tbl = Table(
+            title=f"[{PHOSPHOR_AMBER}]Alpha Arena Elo Leaderboard[/]",
+            box=LEDGER_BOX,
+            header_style=f"bold {PHOSPHOR_AMBER}",
+        )
         tbl.add_column("Rank", style=f"bold {BRASS}")
         tbl.add_column("Competitor", style=f"bold {PAPER}")
         tbl.add_column("Elo Rating", justify="right")
@@ -1448,22 +1573,38 @@ async def _cmd_benchmark_run(args):
         for rank, c in enumerate(lb, 1):
             name = c.get("name", "") if isinstance(c, dict) else getattr(c, "name", "")
             elo = c.get("elo", 0.0) if isinstance(c, dict) else getattr(c, "elo", 0.0)
-            matches = c.get("matches", c.get("matches_played", 0)) if isinstance(c, dict) else getattr(c, "matches_played", 0)
-            record = c.get("record", f"{c.get('wins', 0)}/{c.get('losses', 0)}/{c.get('draws', 0)}") if isinstance(c, dict) else f"{getattr(c, 'wins', 0)}/{getattr(c, 'losses', 0)}/{getattr(c, 'draws', 0)}"
+            matches = (
+                c.get("matches", c.get("matches_played", 0)) if isinstance(c, dict) else getattr(c, "matches_played", 0)
+            )
+            record = (
+                c.get("record", f"{c.get('wins', 0)}/{c.get('losses', 0)}/{c.get('draws', 0)}")
+                if isinstance(c, dict)
+                else f"{getattr(c, 'wins', 0)}/{getattr(c, 'losses', 0)}/{getattr(c, 'draws', 0)}"
+            )
             total_pnl = c.get("total_pnl_pct", 0.0) if isinstance(c, dict) else getattr(c, "total_pnl_pct", 0.0)
-            tbl.add_row(str(rank), str(name), f"{float(elo):.1f}", str(matches), str(record), f"{float(total_pnl):+.2f}%")
+            tbl.add_row(
+                str(rank), str(name), f"{float(elo):.1f}", str(matches), str(record), f"{float(total_pnl):+.2f}%"
+            )
         console.print(tbl)
         return
 
     judge_model = getattr(args, "judge_model", None) or bench_cfg.get("default_judge_model", "claude-sonnet-5")
-    reference_model = getattr(args, "reference_model", None) or bench_cfg.get("default_reference_model", "claude-sonnet-5")
+    reference_model = getattr(args, "reference_model", None) or bench_cfg.get(
+        "default_reference_model", "claude-sonnet-5"
+    )
     concurrency = getattr(args, "concurrency", 4)
 
     console.print(f"\n[{PHOSPHOR_AMBER}]=== LAUNCHING MONIKA LLM BENCHMARK ===[/]")
-    console.print(f"[bold {BRASS}]Tasks ({len(tasks)}):[/] [{PAPER}]{', '.join(tasks[:5])}{'...' if len(tasks) > 5 else ''}[/]")
-    console.print(f"[bold {BRASS}]Models ({len(models)}):[/] [{PAPER}]{', '.join(models[:5])}{'...' if len(models) > 5 else ''}[/]")
+    console.print(
+        f"[bold {BRASS}]Tasks ({len(tasks)}):[/] [{PAPER}]{', '.join(tasks[:5])}{'...' if len(tasks) > 5 else ''}[/]"
+    )
+    console.print(
+        f"[bold {BRASS}]Models ({len(models)}):[/] [{PAPER}]{', '.join(models[:5])}{'...' if len(models) > 5 else ''}[/]"
+    )
     console.print(f"[bold {BRASS}]Tier:[/] [{PAPER}]{tier or 'Full / Custom'}[/]")
-    console.print(f"[bold {BRASS}]Fixtures Mode:[/] [{PAPER}]{'Synthetic Sept 2026' if use_fixtures else 'Live PostgreSQL/MT5'}[/]")
+    console.print(
+        f"[bold {BRASS}]Fixtures Mode:[/] [{PAPER}]{'Synthetic Sept 2026' if use_fixtures else 'Live PostgreSQL/MT5'}[/]"
+    )
     console.print(f"[bold {BRASS}]Concurrency:[/] [{PAPER}]{concurrency}[/]\n")
 
     await init_db()
@@ -1498,17 +1639,15 @@ async def _cmd_benchmark_leaderboard(args):
     run_id = getattr(args, "run_id", None)
     async with get_session() as session:
         if not run_id:
-            latest = (await session.execute(
-                select(BenchmarkRun).order_by(desc(BenchmarkRun.started_at)).limit(1)
-            )).scalar_one_or_none()
+            latest = (
+                await session.execute(select(BenchmarkRun).order_by(desc(BenchmarkRun.started_at)).limit(1))
+            ).scalar_one_or_none()
             if not latest:
                 console.print(f"{stamp_warn('EMPTY')} No benchmark runs found in database.")
                 return
             run_id = latest.id
 
-        rows = (await session.execute(
-            select(BenchmarkResult).where(BenchmarkResult.run_id == run_id)
-        )).scalars().all()
+        rows = (await session.execute(select(BenchmarkResult).where(BenchmarkResult.run_id == run_id))).scalars().all()
 
         if not rows:
             console.print(f"{stamp_warn('EMPTY')} No benchmark results found for run #{run_id}.")
@@ -1521,8 +1660,8 @@ async def _cmd_benchmark_leaderboard(args):
                 model_stats[m] = {"tasks": 0, "passed": 0, "score": 0.0, "cost": 0.0, "lat": 0.0, "err": 0}
             st = model_stats[m]
             st["tasks"] += 1
-            st["cost"] += (r.cost_usd or 0.0)
-            st["lat"] += (r.latency_s or 0.0)
+            st["cost"] += r.cost_usd or 0.0
+            st["lat"] += r.latency_s or 0.0
             if r.error:
                 st["err"] += 1
             else:
@@ -1531,7 +1670,11 @@ async def _cmd_benchmark_leaderboard(args):
                 if sc >= 0.70:
                     st["passed"] += 1
 
-        tbl = Table(title=f"[{PHOSPHOR_AMBER}]LLM Benchmark Leaderboard (Run #{run_id})[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
+        tbl = Table(
+            title=f"[{PHOSPHOR_AMBER}]LLM Benchmark Leaderboard (Run #{run_id})[/]",
+            box=LEDGER_BOX,
+            header_style=f"bold {PHOSPHOR_AMBER}",
+        )
         tbl.add_column("Rank", justify="center", style=MUTED)
         tbl.add_column("Model", style=f"bold {PAPER}")
         tbl.add_column("Avg Score", justify="center")
@@ -1540,7 +1683,7 @@ async def _cmd_benchmark_leaderboard(args):
         tbl.add_column("Avg Cost", justify="right")
         tbl.add_column("Tasks", justify="right", style=MUTED)
 
-        sorted_models = sorted(model_stats.items(), key=lambda x: (x[1]["score"] / max(x[1]["tasks"], 1)), reverse=True)
+        sorted_models = sorted(model_stats.items(), key=lambda x: x[1]["score"] / max(x[1]["tasks"], 1), reverse=True)
         for idx, (m, st) in enumerate(sorted_models, 1):
             cnt = max(st["tasks"], 1)
             avg_sc = st["score"] / cnt
@@ -1548,7 +1691,13 @@ async def _cmd_benchmark_leaderboard(args):
             avg_lat = st["lat"] / cnt
             avg_cst = st["cost"] / cnt
 
-            score_badge = stamp_ok(f"{(avg_sc*100):.1f}%") if avg_sc >= 0.8 else stamp_warn(f"{(avg_sc*100):.1f}%") if avg_sc >= 0.5 else stamp_err(f"{(avg_sc*100):.1f}%")
+            score_badge = (
+                stamp_ok(f"{(avg_sc * 100):.1f}%")
+                if avg_sc >= 0.8
+                else stamp_warn(f"{(avg_sc * 100):.1f}%")
+                if avg_sc >= 0.5
+                else stamp_err(f"{(avg_sc * 100):.1f}%")
+            )
             tbl.add_row(
                 f"#{idx}",
                 m,
@@ -1574,15 +1723,19 @@ async def _cmd_benchmark_history(args):
     await init_db()
     limit = getattr(args, "limit", 15)
     async with get_session() as session:
-        runs = (await session.execute(
-            select(BenchmarkRun).order_by(desc(BenchmarkRun.started_at)).limit(limit)
-        )).scalars().all()
+        runs = (
+            (await session.execute(select(BenchmarkRun).order_by(desc(BenchmarkRun.started_at)).limit(limit)))
+            .scalars()
+            .all()
+        )
 
         if not runs:
             console.print(f"{stamp_warn('EMPTY')} No benchmark runs found.")
             return
 
-        tbl = Table(title=f"[{PHOSPHOR_AMBER}]Benchmark Run History[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
+        tbl = Table(
+            title=f"[{PHOSPHOR_AMBER}]Benchmark Run History[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}"
+        )
         tbl.add_column("ID", justify="center", style=MUTED)
         tbl.add_column("Started At", style=PAPER)
         tbl.add_column("Status", justify="center")
@@ -1618,7 +1771,11 @@ async def _cmd_benchmark_tasks(args):
     from rich.table import Table
     from monika.application.benchmark.task_specs import TASKS
 
-    tbl = Table(title=f"[{PHOSPHOR_AMBER}]Benchmark Task Catalog ({len(TASKS)} Tasks)[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
+    tbl = Table(
+        title=f"[{PHOSPHOR_AMBER}]Benchmark Task Catalog ({len(TASKS)} Tasks)[/]",
+        box=LEDGER_BOX,
+        header_style=f"bold {PHOSPHOR_AMBER}",
+    )
     tbl.add_column("Task ID", style=f"bold {PAPER}")
     tbl.add_column("Category", style=f"bold {BRASS}")
     tbl.add_column("Mode", justify="center")
@@ -1636,6 +1793,7 @@ async def _cmd_benchmark_models(args):
     console = get_console()
     from rich.table import Table
     from monika.application.benchmark.model_registry import get_candidate_models, get_router_matrix
+
     settings = load_all_config()
     bench_cfg = settings.get("benchmark", {})
 
@@ -1643,7 +1801,11 @@ async def _cmd_benchmark_models(args):
     tiers = bench_cfg.get("tiers", {})
     router_mat = get_router_matrix(settings)
 
-    tbl = Table(title=f"[{PHOSPHOR_AMBER}]Benchmark Model Registry & Tiers[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
+    tbl = Table(
+        title=f"[{PHOSPHOR_AMBER}]Benchmark Model Registry & Tiers[/]",
+        box=LEDGER_BOX,
+        header_style=f"bold {PHOSPHOR_AMBER}",
+    )
     tbl.add_column("Tier / Group", style=f"bold {BRASS}")
     tbl.add_column("Description", style=MUTED)
     tbl.add_column("Models", style=PAPER)
@@ -1651,7 +1813,9 @@ async def _cmd_benchmark_models(args):
     for tier_id, tcfg in tiers.items():
         if isinstance(tcfg, dict):
             models_str = ", ".join(tcfg.get("models", []))
-            tbl.add_row(f"[bold {PHOSPHOR_AMBER}]{tcfg.get('name', tier_id)}[/]", tcfg.get("description", ""), models_str)
+            tbl.add_row(
+                f"[bold {PHOSPHOR_AMBER}]{tcfg.get('name', tier_id)}[/]", tcfg.get("description", ""), models_str
+            )
 
     console.print()
     console.print(tbl)
@@ -1677,6 +1841,7 @@ async def _cmd_benchmark(args):
 async def _cmd_stress_test(args):
     import time
     from monika.application.evals.hostile_market_probe import HostileMarketProbe
+
     sym = getattr(args, "symbol", "EURUSD").upper()
     ref = getattr(args, "price", 1.0850)
 
@@ -1702,14 +1867,19 @@ async def _cmd_stress_test(args):
         status = f"[{BULL_PROFIT}]PASS (BLOCKED)[/]" if d["is_resilient"] else f"[{BEAR_LOSS}]FAIL (LEAKED)[/]"
         console.print(f" • [bold]{d['scenario']}[/] ({d['anomaly_type']}): {status} -> [italic]{d['reason']}[/]")
     if res["all_resilient"]:
-        console.print(f"\n[{BULL_PROFIT}][OK] 100% RESILIENT: All {res['total_tested']} hostile feed anomalies successfully rejected fail-closed.[/]\n")
+        console.print(
+            f"\n[{BULL_PROFIT}][OK] 100% RESILIENT: All {res['total_tested']} hostile feed anomalies successfully rejected fail-closed.[/]\n"
+        )
     else:
-        console.print(f"\n[{BEAR_LOSS}][FAIL] VULNERABILITY DETECTED: {res['total_tested'] - res['passed_count']} scenarios passed through filters![/]\n")
+        console.print(
+            f"\n[{BEAR_LOSS}][FAIL] VULNERABILITY DETECTED: {res['total_tested'] - res['passed_count']} scenarios passed through filters![/]\n"
+        )
 
 
 async def _cmd_backup(args):
     from monika.infrastructure.infra.db_backup import create_backup
     from monika.core.config.settings import load_all_config
+
     cfg = load_all_config()
     dest = getattr(args, "dest", None)
     if dest:
@@ -1717,42 +1887,62 @@ async def _cmd_backup(args):
     res = await create_backup(cfg, force=getattr(args, "force", True))
     console = get_console()
     if res.get("success"):
-        console.print(f"[{BULL_PROFIT}][OK] Backup created successfully: {res.get('backup_file')} ({res.get('size_mb', 0):.2f} MB)[/]")
+        console.print(
+            f"[{BULL_PROFIT}][OK] Backup created successfully: {res.get('backup_file')} ({res.get('size_mb', 0):.2f} MB)[/]"
+        )
     else:
         console.print(f"[{BEAR_LOSS}][FAIL] Backup failed: {res.get('error') or res.get('reason')}[/]")
 
 
 class MonikaArgumentParser(argparse.ArgumentParser):
     """Custom argument parser providing fuzzy suggestions for command typos."""
+
     def error(self, message):
         import difflib
         import re
+
         m = re.search(r"invalid choice:\s*'([^']+)'\s*\(choose from (.*?)\)", message)
         if m:
             typo = m.group(1)
             choices = [c.strip().strip("'") for c in m.group(2).split(",")]
             matches = difflib.get_close_matches(typo, choices, n=2, cutoff=0.5)
             suggestion = f"\nDid you mean: {', '.join(matches)}?" if matches else ""
-            sys.stderr.write(f"monika: error: '{typo}' is not a valid command.{suggestion}\nRun 'python -m monika.interfaces.cli.main --help' to view all commands.\n")
+            sys.stderr.write(
+                f"monika: error: '{typo}' is not a valid command.{suggestion}\nRun 'python -m monika.interfaces.cli.main --help' to view all commands.\n"
+            )
             sys.exit(2)
         super().error(message)
 
 
 def parse_args(args_list=None):
     parser = MonikaArgumentParser(description="AI Trading Agent CLI Interface")
-    parser.add_argument("-p", "--profile", type=str, default=None, help="Target isolated environment profile (e.g. paper, live, propfirm)")
-    parser.add_argument("--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running")
+    parser.add_argument(
+        "-p",
+        "--profile",
+        type=str,
+        default=None,
+        help="Target isolated environment profile (e.g. paper, live, propfirm)",
+    )
+    parser.add_argument(
+        "--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running"
+    )
     subparsers = parser.add_subparsers(dest="command", help="Administrative subcommands")
 
     # Command: run (default)
     run_parser = subparsers.add_parser("run", help="Start the trading agent daemon")
-    run_parser.add_argument("--mode", type=str, choices=["live", "paper"], default="paper", help="Trading execution mode")
-    run_parser.add_argument("--confirm-live", action="store_true", default=False, help="Explicit acknowledgement for live trading mode")
+    run_parser.add_argument(
+        "--mode", type=str, choices=["live", "paper"], default="paper", help="Trading execution mode"
+    )
+    run_parser.add_argument(
+        "--confirm-live", action="store_true", default=False, help="Explicit acknowledgement for live trading mode"
+    )
     run_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
     # Command: status
     status_parser = subparsers.add_parser("status", help="Show system status, flags, and open positions")
-    status_parser.add_argument("--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running")
+    status_parser.add_argument(
+        "--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running"
+    )
 
     # Command: pause
     subparsers.add_parser("pause", help="Pause all new trading proposals")
@@ -1767,12 +1957,16 @@ def parse_args(args_list=None):
 
     # Command: stop
     stop_parser = subparsers.add_parser("stop", help="Stop the background trading daemon gracefully")
-    stop_parser.add_argument("-f", "--force", action="store_true", default=False, help="Force terminate daemon immediately")
+    stop_parser.add_argument(
+        "-f", "--force", action="store_true", default=False, help="Force terminate daemon immediately"
+    )
     stop_parser.add_argument("--url", type=str, default=DEFAULT_API_URL, help="Dashboard API base URL")
 
     # Command: positions
     positions_parser = subparsers.add_parser("positions", help="List all open positions (real & paper)")
-    positions_parser.add_argument("--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running")
+    positions_parser.add_argument(
+        "--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running"
+    )
 
     # Command: unsuspend
     unsuspend_parser = subparsers.add_parser("unsuspend", help="Unsuspend symbols blocked by streak losses")
@@ -1784,17 +1978,35 @@ def parse_args(args_list=None):
     tui_parser.add_argument("--url", type=str, default=DEFAULT_API_URL, help="Dashboard API base URL")
     tui_parser.add_argument("--token", type=str, default=None, help="Dashboard API key")
     tui_parser.add_argument("--refresh", type=int, default=5, help="Refresh interval in seconds")
-    tui_parser.add_argument("--theme", type=str, default=None, choices=["retro_vintage", "modern_dark", "high_contrast", "daylight"], help="TUI color theme")
-    tui_parser.add_argument("--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running")
+    tui_parser.add_argument(
+        "--theme",
+        type=str,
+        default=None,
+        choices=["retro_vintage", "modern_dark", "high_contrast", "daylight"],
+        help="TUI color theme",
+    )
+    tui_parser.add_argument(
+        "--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running"
+    )
 
     # Command: chat
     chat_parser = subparsers.add_parser("chat", help="Interactive REPL chat with agent")
     chat_parser.add_argument("--url", type=str, default=DEFAULT_API_URL, help="Dashboard API base URL")
     chat_parser.add_argument("--token", type=str, default=None, help="Dashboard API key")
     chat_parser.add_argument("--session-id", type=str, default=None, help="Conversation session ID")
-    chat_parser.add_argument("--offline", action="store_true", default=False, help="Force direct local engine (bypasses API server)")
-    chat_parser.add_argument("--model", type=str, default="auto", choices=["auto", "fast", "medium", "analyze", "research"], help="Model routing preference")
-    chat_parser.add_argument("--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running")
+    chat_parser.add_argument(
+        "--offline", action="store_true", default=False, help="Force direct local engine (bypasses API server)"
+    )
+    chat_parser.add_argument(
+        "--model",
+        type=str,
+        default="auto",
+        choices=["auto", "fast", "medium", "analyze", "research"],
+        help="Model routing preference",
+    )
+    chat_parser.add_argument(
+        "--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running"
+    )
 
     # Command: config
     config_parser = subparsers.add_parser("config", help="Inspect and update system configuration")
@@ -1807,7 +2019,9 @@ def parse_args(args_list=None):
     show_parser.add_argument("--token", type=str, default=None, help="Dashboard API key")
     show_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
-    set_parser = config_sub.add_parser("set", help="Update configuration parameter (e.g. trading.risk.max_daily_drawdown_percent=4.0)")
+    set_parser = config_sub.add_parser(
+        "set", help="Update configuration parameter (e.g. trading.risk.max_daily_drawdown_percent=4.0)"
+    )
     set_parser.add_argument("assignments", nargs="+", help="One or more key=value assignments")
     set_parser.add_argument("--reason", type=str, default="Updated via CLI", help="Audit reason for config change")
     set_parser.add_argument("--url", type=str, default=DEFAULT_API_URL, help="Dashboard API base URL")
@@ -1823,8 +2037,15 @@ def parse_args(args_list=None):
     unset_parser.add_argument("key", type=str, help="Parameter key path to remove")
     unset_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
-    edit_parser = config_sub.add_parser("edit", help="Open settings.yaml or plugin config in default editor and validate upon exit")
-    edit_parser.add_argument("plugin_id", nargs="?", default=None, help="Optional plugin ID or name to edit specific plugin config (e.g. discord_alert)")
+    edit_parser = config_sub.add_parser(
+        "edit", help="Open settings.yaml or plugin config in default editor and validate upon exit"
+    )
+    edit_parser.add_argument(
+        "plugin_id",
+        nargs="?",
+        default=None,
+        help="Optional plugin ID or name to edit specific plugin config (e.g. discord_alert)",
+    )
     edit_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
     # Command: onboarding
@@ -1832,7 +2053,13 @@ def parse_args(args_list=None):
 
     # Command: sessions
     sessions_parser = subparsers.add_parser("sessions", help="List conversation sessions with metadata")
-    sessions_parser.add_argument("--source", type=str, choices=["all", "telegram", "dashboard", "cli"], default="all", help="Filter by conversation source")
+    sessions_parser.add_argument(
+        "--source",
+        type=str,
+        choices=["all", "telegram", "dashboard", "cli"],
+        default="all",
+        help="Filter by conversation source",
+    )
     sessions_parser.add_argument("--limit", type=int, default=20, help="Max sessions to display")
     sessions_parser.add_argument("--url", type=str, default=DEFAULT_API_URL, help="Dashboard API base URL")
     sessions_parser.add_argument("--token", type=str, default=None, help="Dashboard API key")
@@ -1840,28 +2067,53 @@ def parse_args(args_list=None):
     # Command: logs
     logs_parser = subparsers.add_parser("logs", help="Stream activity logs (tail -f style)")
     logs_parser.add_argument("-n", "--lines", type=int, default=20, help="Initial number of log lines to show")
-    logs_parser.add_argument("-f", "--follow", action="store_true", default=False, help="Follow log output in real time")
-    logs_parser.add_argument("--category", type=str, default=None, help="Filter by category (e.g. trading, risk, system, analysis)")
-    logs_parser.add_argument("--level", "--severity", dest="severity", type=str, default=None, help="Filter by severity")
+    logs_parser.add_argument(
+        "-f", "--follow", action="store_true", default=False, help="Follow log output in real time"
+    )
+    logs_parser.add_argument(
+        "--category", type=str, default=None, help="Filter by category (e.g. trading, risk, system, analysis)"
+    )
+    logs_parser.add_argument(
+        "--level", "--severity", dest="severity", type=str, default=None, help="Filter by severity"
+    )
     logs_parser.add_argument("--url", type=str, default=DEFAULT_API_URL, help="Dashboard API base URL")
     logs_parser.add_argument("--token", type=str, default=None, help="Dashboard API key")
 
     # Command: doctor
     doctor_parser = subparsers.add_parser("doctor", help="Run comprehensive system diagnostics with optional auto-fix")
-    doctor_parser.add_argument("--fix", action="store_true", default=False, help="Attempt to auto-fix recoverable issues")
-    doctor_parser.add_argument("--offline", action="store_true", default=False, help="Skip live database and model connection probes")
-    doctor_parser.add_argument("--live", action="store_true", default=False, help="Perform deep realtime probes including WAL integrity and API latency benchmark")
-    doctor_parser.add_argument("-v", "--verbose", action="store_true", default=False, help="Show verbose diagnostic details")
+    doctor_parser.add_argument(
+        "--fix", action="store_true", default=False, help="Attempt to auto-fix recoverable issues"
+    )
+    doctor_parser.add_argument(
+        "--offline", action="store_true", default=False, help="Skip live database and model connection probes"
+    )
+    doctor_parser.add_argument(
+        "--live",
+        action="store_true",
+        default=False,
+        help="Perform deep realtime probes including WAL integrity and API latency benchmark",
+    )
+    doctor_parser.add_argument(
+        "-v", "--verbose", action="store_true", default=False, help="Show verbose diagnostic details"
+    )
 
     # Command: setup
     setup_parser = subparsers.add_parser("setup", help="Launch interactive onboarding setup wizard")
     setup_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
-    setup_parser.add_argument("--section", type=str, choices=["all", "mt5", "db", "llm", "risk"], default="all", help="Configure specific section only")
+    setup_parser.add_argument(
+        "--section",
+        type=str,
+        choices=["all", "mt5", "db", "llm", "risk"],
+        default="all",
+        help="Configure specific section only",
+    )
     setup_parser.add_argument("--quick", action="store_true", default=False, help="Quick setup with sensible defaults")
 
     # Command: profile
     profile_parser = subparsers.add_parser("profile", help="Manage isolated trading environments and profiles")
-    prof_sub = profile_parser.add_subparsers(dest="profile_action", help="Profile actions: list, use, create, delete, export, import")
+    prof_sub = profile_parser.add_subparsers(
+        dest="profile_action", help="Profile actions: list, use, create, delete, export, import"
+    )
     prof_sub.add_parser("list", help="List all trading profiles")
     use_p = prof_sub.add_parser("use", help="Switch active profile")
     use_p.add_argument("name", type=str, help="Name of the profile to activate")
@@ -1880,8 +2132,12 @@ def parse_args(args_list=None):
     # Command: ask (one-shot question to agent)
     ask_parser = subparsers.add_parser("ask", help="Send a single question or command to Monika chat agent")
     ask_parser.add_argument("question", nargs="*", type=str, help="Question or instruction for Monika")
-    ask_parser.add_argument("-r", "--raw", action="store_true", default=False, help="Print raw response without Rich styling or stamps")
-    ask_parser.add_argument("--output-json", type=str, default=None, help="Save query result and proposal metadata to JSON file")
+    ask_parser.add_argument(
+        "-r", "--raw", action="store_true", default=False, help="Print raw response without Rich styling or stamps"
+    )
+    ask_parser.add_argument(
+        "--output-json", type=str, default=None, help="Save query result and proposal metadata to JSON file"
+    )
 
     # Command: analyze (one-shot ad-hoc analysis for symbol)
     analyze_parser = subparsers.add_parser("analyze", help="Trigger ad-hoc multi-timeframe analysis for a symbol")
@@ -1893,23 +2149,43 @@ def parse_args(args_list=None):
     backtest_parser.add_argument("--days", type=int, default=30, help="Lookback days from today (default: 30)")
     backtest_parser.add_argument("--start", type=str, default=None, help="Start date (YYYY-MM-DD)")
     backtest_parser.add_argument("--end", type=str, default=None, help="End date (YYYY-MM-DD)")
-    backtest_parser.add_argument("--mode", type=str, choices=["full", "replay", "walk_forward", "langgraph_parity"], default="full", help="Simulation mode")
+    backtest_parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["full", "replay", "walk_forward", "langgraph_parity"],
+        default="full",
+        help="Simulation mode",
+    )
     backtest_parser.add_argument("--equity", type=float, default=10000.0, help="Initial account equity in USD")
-    backtest_parser.add_argument("--is-days", dest="is_days", type=int, default=90, help="Walk-forward In-Sample window days")
-    backtest_parser.add_argument("--oos-days", dest="oos_days", type=int, default=30, help="Walk-forward Out-of-Sample window days")
-    backtest_parser.add_argument("--symbol", type=str, default=None, help="Filter simulation to a specific symbol (e.g. XAUUSD)")
-    backtest_parser.add_argument("--strategy", type=str, default=None, help="Filter simulation to a specific strategy (e.g. xau_trend_engine)")
+    backtest_parser.add_argument(
+        "--is-days", dest="is_days", type=int, default=90, help="Walk-forward In-Sample window days"
+    )
+    backtest_parser.add_argument(
+        "--oos-days", dest="oos_days", type=int, default=30, help="Walk-forward Out-of-Sample window days"
+    )
+    backtest_parser.add_argument(
+        "--symbol", type=str, default=None, help="Filter simulation to a specific symbol (e.g. XAUUSD)"
+    )
+    backtest_parser.add_argument(
+        "--strategy", type=str, default=None, help="Filter simulation to a specific strategy (e.g. xau_trend_engine)"
+    )
 
     # Command: mcp-serve (Launch Model Context Protocol server)
-    mcp_parser = subparsers.add_parser("mcp-serve", help="Launch Monika as a Model Context Protocol (MCP) server over stdio")
+    mcp_parser = subparsers.add_parser(
+        "mcp-serve", help="Launch Monika as a Model Context Protocol (MCP) server over stdio"
+    )
     mcp_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
     # Command: plugin (Manage Monika plugins)
     plugin_parser = subparsers.add_parser("plugin", help="Manage plugins: list, install, uninstall, info")
-    plugin_sub = plugin_parser.add_subparsers(dest="plugin_action", help="Plugin actions: list, install, uninstall, info")
+    plugin_sub = plugin_parser.add_subparsers(
+        dest="plugin_action", help="Plugin actions: list, install, uninstall, info"
+    )
     plugin_sub.add_parser("list", help="List all detected plugins")
     inst_p = plugin_sub.add_parser("install", help="Install plugin package via pip")
-    inst_p.add_argument("package_name", type=str, help="Package name to install (e.g. discord or monika-plugin-discord)")
+    inst_p.add_argument(
+        "package_name", type=str, help="Package name to install (e.g. discord or monika-plugin-discord)"
+    )
     uninst_p = plugin_sub.add_parser("uninstall", help="Uninstall plugin package via pip")
     uninst_p.add_argument("package_name", type=str, help="Package name to uninstall")
     info_p = plugin_sub.add_parser("info", help="Show plugin metadata and configuration")
@@ -1920,15 +2196,31 @@ def parse_args(args_list=None):
     disable_p.add_argument("plugin_name", type=str, help="Plugin identifier to disable")
     # Command: benchmark (LLM Model Evaluation and Leaderboards)
     bench_parser = subparsers.add_parser("benchmark", help="Evaluate LLM models, test tiers, and inspect leaderboards")
-    bench_sub = bench_parser.add_subparsers(dest="bench_action", help="Benchmark actions: run, leaderboard, history, tasks, models")
-    
+    bench_sub = bench_parser.add_subparsers(
+        dest="bench_action", help="Benchmark actions: run, leaderboard, history, tasks, models"
+    )
+
     brun_p = bench_sub.add_parser("run", help="Execute benchmark evaluation across models and tasks")
     brun_p.add_argument("--tasks", nargs="*", default=None, help="Subset task IDs")
     brun_p.add_argument("--models", nargs="*", default=None, help="Subset model IDs")
-    brun_p.add_argument("--tier", choices=["system_one", "cheap_efficient", "cheap_smart", "high_intelligence"], default=None, help="Model tier filter")
-    brun_p.add_argument("--mode", choices=["standard", "arena"], default="standard", help="Benchmark execution mode: standard or arena (Alpha Arena Tournament)")
-    brun_p.add_argument("--use-fixtures", action="store_true", default=False, help="Use synthetic Sept 2026 market fixtures")
-    brun_p.add_argument("--compare-routers", action="store_true", default=False, help="Compare direct provider vs OpenRouter vs 9router")
+    brun_p.add_argument(
+        "--tier",
+        choices=["system_one", "cheap_efficient", "cheap_smart", "high_intelligence"],
+        default=None,
+        help="Model tier filter",
+    )
+    brun_p.add_argument(
+        "--mode",
+        choices=["standard", "arena"],
+        default="standard",
+        help="Benchmark execution mode: standard or arena (Alpha Arena Tournament)",
+    )
+    brun_p.add_argument(
+        "--use-fixtures", action="store_true", default=False, help="Use synthetic Sept 2026 market fixtures"
+    )
+    brun_p.add_argument(
+        "--compare-routers", action="store_true", default=False, help="Compare direct provider vs OpenRouter vs 9router"
+    )
     brun_p.add_argument("--symbols", nargs="*", default=None, help="Symbols for per-asset analysis")
     brun_p.add_argument("--judge-model", default=None, help="Judge model name")
     brun_p.add_argument("--reference-model", default=None, help="Reference model name")
@@ -1945,18 +2237,25 @@ def parse_args(args_list=None):
     bench_sub.add_parser("models", help="List candidate models, tiers, and router matrix")
 
     # Command: stress-test
-    stress_parser = subparsers.add_parser("stress-test", aliases=["stresstest"], help="Run adversarial hostile market probe battery to test fail-closed risk invariants")
+    stress_parser = subparsers.add_parser(
+        "stress-test",
+        aliases=["stresstest"],
+        help="Run adversarial hostile market probe battery to test fail-closed risk invariants",
+    )
     stress_parser.add_argument("--symbol", type=str, default="EURUSD", help="Symbol to probe (default: EURUSD)")
     stress_parser.add_argument("--price", type=float, default=1.0850, help="Baseline reference price (default: 1.0850)")
 
     # Command: backup
     backup_parser = subparsers.add_parser("backup", help="Create database backup snapshot")
     backup_parser.add_argument("--dest", type=str, default=None, help="Custom destination folder")
-    backup_parser.add_argument("--force", action="store_true", default=False, help="Force backup even if disabled in config")
+    backup_parser.add_argument(
+        "--force", action="store_true", default=False, help="Force backup even if disabled in config"
+    )
 
     # Modular subcommands registry
     try:
         from monika.interfaces.cli.subcommands import AVAILABLE_SUBCOMMANDS
+
         for sc in AVAILABLE_SUBCOMMANDS:
             if sc.name and sc.name not in subparsers.choices:
                 sc.register_subparser(subparsers)
@@ -1964,11 +2263,15 @@ def parse_args(args_list=None):
         logger.debug(f"Subcommands registration error: {e}")
 
     # Backward compatibility and top-level headless query flag
-    parser.add_argument("-q", "--query", type=str, default=None, help="Execute single one-shot query to Monika and exit")
+    parser.add_argument(
+        "-q", "--query", type=str, default=None, help="Execute single one-shot query to Monika and exit"
+    )
     parser.add_argument("-r", "--raw", action="store_true", default=False, help="Print raw response without formatting")
     parser.add_argument("--output-json", type=str, default=None, help="Save one-shot query result to JSON file")
     parser.add_argument("--mode", type=str, choices=["live", "paper"], default="paper", help="Trading execution mode")
-    parser.add_argument("--confirm-live", action="store_true", default=False, help="Explicit acknowledgement for live trading mode")
+    parser.add_argument(
+        "--confirm-live", action="store_true", default=False, help="Explicit acknowledgement for live trading mode"
+    )
     parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
     parsed = parser.parse_args(args_list)
@@ -1980,6 +2283,7 @@ def parse_args(args_list=None):
 
     if getattr(parsed, "profile", None):
         from monika.interfaces.cli.profile_manager import ProfileManager
+
         pm = ProfileManager()
         pm.set_active_profile(parsed.profile)
         p_cfg = pm.get_settings_path_for_active()
@@ -2041,11 +2345,13 @@ async def _dispatch_cli(args):
         elif args.command in ("mcp-serve", "mcp_serve"):
             from monika.application.analysis.mcp.server import MonikaMcpServer
             from monika.core.config.settings import load_settings
+
             cfg = load_settings(getattr(args, "config", None))
             server = MonikaMcpServer(settings=cfg)
             await server.run_stdio()
         elif args.command == "plugin":
             from monika.interfaces.cli.plugins import handle_plugin_command
+
             handle_plugin_command(args)
         elif args.command == "benchmark":
             await _cmd_benchmark(args)
@@ -2055,6 +2361,7 @@ async def _dispatch_cli(args):
             await _cmd_backup(args)
         elif args.command in ("daemon", "simulation", "trading", "mcp", "runcard", "upgrade"):
             from monika.interfaces.cli.subcommands import AVAILABLE_SUBCOMMANDS
+
             for sc in AVAILABLE_SUBCOMMANDS:
                 if sc.name == args.command:
                     code = await sc.execute(args)
@@ -2064,12 +2371,16 @@ async def _dispatch_cli(args):
         else:
             # First-run interceptor for daemon execution
             from monika.infrastructure.infra.env_file_manager import EnvFileManager
+
             if not EnvFileManager.is_configured():
                 if sys.stdin and hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
                     from rich.prompt import Confirm
                     from monika.interfaces.cli.theme import get_console, stamp_warn
+
                     console = get_console()
-                    console.print(f"\n{stamp_warn('NOT CONFIGURED')} Monika is not configured (minimum credentials: MT5, DB, or LLM not set).")
+                    console.print(
+                        f"\n{stamp_warn('NOT CONFIGURED')} Monika is not configured (minimum credentials: MT5, DB, or LLM not set)."
+                    )
                     if Confirm.ask("Run Interactive Setup Wizard now?", default=True):
                         await _cmd_setup(args)
                         if not EnvFileManager.is_configured():
@@ -2079,7 +2390,9 @@ async def _dispatch_cli(args):
                         console.print("Run `python -m monika.interfaces.cli.main setup` to configure credentials.\n")
                         return
                 else:
-                    logger.critical("Monika is not configured (missing MT5_ACCOUNT, DATABASE_URL, or LLM keys). Run 'python -m monika.interfaces.cli.main setup' first.")
+                    logger.critical(
+                        "Monika is not configured (missing MT5_ACCOUNT, DATABASE_URL, or LLM keys). Run 'python -m monika.interfaces.cli.main setup' first."
+                    )
                     sys.exit(1)
 
             print(f"Starting Monika (MT5 Trading Agent) in {getattr(args, 'mode', 'paper').upper()} mode...")
@@ -2094,6 +2407,7 @@ async def _dispatch_cli(args):
 def run():
     args = parse_args()
     from monika.core.telemetry.activity_logger import setup_logging
+
     setup_logging(level=logging.INFO)
 
     DAEMON_CLIENT_COMMANDS = {"tui", "chat", "status", "positions", "ask", "analyze"}
@@ -2102,6 +2416,7 @@ def run():
 
     if args.command == "tui":
         from monika.interfaces.cli.tui import run_tui
+
         run_tui(
             api_url=getattr(args, "url", DEFAULT_API_URL),
             api_key=getattr(args, "token", None),
@@ -2126,5 +2441,3 @@ main = run
 
 if __name__ == "__main__":
     run()
-
-

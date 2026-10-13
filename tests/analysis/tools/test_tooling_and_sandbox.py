@@ -25,16 +25,14 @@ from utils.infra.worktree_manager import WorktreeManager
 # 1. Code Search Tool Tests
 # ==============================================================================
 
+
 def test_code_search_engine_basic_and_context():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         # Create test files
         f1 = tmp / "sample.py"
         f1.write_text(
-            "import os\n"
-            "def calculate_alpha():\n"
-            "    value = 42\n"
-            "    return value\n",
+            "import os\ndef calculate_alpha():\n    value = 42\n    return value\n",
             encoding="utf-8",
         )
         f2 = tmp / "ignored.bin"
@@ -79,6 +77,7 @@ async def test_handle_search_files_tool_invocation():
 # 2. File Patch Engine Wipeout Protection
 # ==============================================================================
 
+
 def test_file_patch_engine_empty_and_large_file_protection():
     engine = FilePatchEngine()
 
@@ -118,6 +117,7 @@ def test_file_patch_engine_empty_and_large_file_protection():
 # 3. PTY Terminal Escape Query Responder
 # ==============================================================================
 
+
 def test_pty_query_responder():
     responder = PtyQueryResponder()
 
@@ -147,6 +147,7 @@ def test_pty_query_responder():
 # ==============================================================================
 # 4. Worktree Manager
 # ==============================================================================
+
 
 def test_worktree_manager_query():
     wm = WorktreeManager()

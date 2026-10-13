@@ -20,10 +20,10 @@ from typing import Optional
 
 @dataclass(frozen=True, slots=True)
 class CryptoMarketRules:
-    maker_fee_bps: float = 2.0   # 0.02%
-    taker_fee_bps: float = 5.0   # 0.05%
+    maker_fee_bps: float = 2.0  # 0.02%
+    taker_fee_bps: float = 5.0  # 0.05%
     default_funding_rate_8h: float = 0.0001  # +0.01% baseline
-    maintenance_margin_pct: float = 0.02    # 2% maintenance margin (50x leverage cap)
+    maintenance_margin_pct: float = 0.02  # 2% maintenance margin (50x leverage cap)
 
 
 class CryptoEngine:
@@ -48,7 +48,7 @@ class CryptoEngine:
         """
         if action.lower() == "buy":
             # Long pays when funding > 0, receives when funding < 0
-            return float(- notional_usd * funding_rate)
+            return float(-notional_usd * funding_rate)
         else:
             # Short receives when funding > 0, pays when funding < 0
             return float(notional_usd * funding_rate)

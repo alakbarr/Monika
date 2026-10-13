@@ -79,12 +79,24 @@ class VoiceSafetyGate:
             sym_match = re.search(r"\b([a-z]{6})\b", text)
             if sym_match:
                 candidate = sym_match.group(1).upper()
-                if candidate in ("EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD", "AUDUSD", "NZDUSD", "USDCAD", "USDCHF"):
+                if candidate in (
+                    "EURUSD",
+                    "GBPUSD",
+                    "USDJPY",
+                    "XAUUSD",
+                    "BTCUSD",
+                    "AUDUSD",
+                    "NZDUSD",
+                    "USDCAD",
+                    "USDCHF",
+                ):
                     symbol = candidate
 
         # Check lots / volume (requires explicit 'lot' or 'volume' keyword to avoid capturing price levels)
         lots = None
-        lot_match = re.search(r"(?:volume\s*)?(\d+(?:[.,]\d+)?)\s*(?:lot|lots|volume)\b|(?:volume\s+)(\d+(?:[.,]\d+)?)", text)
+        lot_match = re.search(
+            r"(?:volume\s*)?(\d+(?:[.,]\d+)?)\s*(?:lot|lots|volume)\b|(?:volume\s+)(\d+(?:[.,]\d+)?)", text
+        )
         if lot_match:
             try:
                 val_str = lot_match.group(1) or lot_match.group(2)
@@ -117,7 +129,7 @@ class VoiceSafetyGate:
                 is_trade_command=True,
                 action=action,
                 raw_transcript=transcript,
-                error="Simbol aset tidak terdeteksi dari perintah suara."
+                error="Simbol aset tidak terdeteksi dari perintah suara.",
             )
 
         if not lots and action != "CLOSE":

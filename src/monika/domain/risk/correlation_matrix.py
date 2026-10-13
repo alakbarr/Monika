@@ -76,13 +76,13 @@ class DynamicCorrelationMatrix:
             dir1 = pos1.get("direction", "BUY").upper()
             vol1 = float(pos1.get("volume", 0.01))
 
-            for pos2 in positions[i + 1:]:
+            for pos2 in positions[i + 1 :]:
                 sym2 = pos2.get("symbol", "").upper()
                 dir2 = pos2.get("direction", "BUY").upper()
                 vol2 = float(pos2.get("volume", 0.01))
 
                 corr = correlation_matrix.get(sym1, {}).get(sym2, 0.0)
-                same_dir = (dir1 == dir2)
+                same_dir = dir1 == dir2
 
                 # High positive correlation in same direction increases risk; opposite direction hedges risk
                 effective_corr = corr if same_dir else -corr
@@ -90,23 +90,27 @@ class DynamicCorrelationMatrix:
                 if effective_corr >= self.correlation_threshold:
                     weight = math.sqrt(vol1 * vol2) * effective_corr
                     total_heat_score += weight
-                    correlated_pairs.append({
-                        "pair": f"{sym1}/{sym2}",
-                        "correlation": corr,
-                        "effective_risk": effective_corr,
-                        "weight": round(weight, 4),
-                        "type": "additive_risk",
-                    })
+                    correlated_pairs.append(
+                        {
+                            "pair": f"{sym1}/{sym2}",
+                            "correlation": corr,
+                            "effective_risk": effective_corr,
+                            "weight": round(weight, 4),
+                            "type": "additive_risk",
+                        }
+                    )
                 elif effective_corr <= -self.correlation_threshold:
                     weight = math.sqrt(vol1 * vol2) * abs(effective_corr)
                     total_heat_score -= weight * 0.5  # Hedge reduces systemic risk
-                    correlated_pairs.append({
-                        "pair": f"{sym1}/{sym2}",
-                        "correlation": corr,
-                        "effective_risk": effective_corr,
-                        "weight": round(-weight * 0.5, 4),
-                        "type": "hedge_reduction",
-                    })
+                    correlated_pairs.append(
+                        {
+                            "pair": f"{sym1}/{sym2}",
+                            "correlation": corr,
+                            "effective_risk": effective_corr,
+                            "weight": round(-weight * 0.5, 4),
+                            "type": "hedge_reduction",
+                        }
+                    )
 
         total_heat_score = max(0.0, total_heat_score)
         return {

@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #14.
 
 Formula (paper appendix): (-1*rank(delta(returns,3))) * correlation(open, volume, 10)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_014"
 
 __alpha_meta__ = {
-    'id': 'alpha101_014',
-    'nickname': 'Kakushadze Alpha #14',
-    'theme': ['volume', 'momentum'],
-    'formula_latex': '(-1*rank(delta(returns,3))) * correlation(open, volume, 10)',
-    'columns_required': ['open', 'close', 'volume'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 10,
-    'notes': '',
+    "id": "alpha101_014",
+    "nickname": "Kakushadze Alpha #14",
+    "theme": ["volume", "momentum"],
+    "formula_latex": "(-1*rank(delta(returns,3))) * correlation(open, volume, 10)",
+    "columns_required": ["open", "close", "volume"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 10,
+    "notes": "",
 }
 
 

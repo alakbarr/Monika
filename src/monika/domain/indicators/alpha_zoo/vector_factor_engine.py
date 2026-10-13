@@ -32,6 +32,7 @@ logger = logging.getLogger("TradingAgent.Indicators.VectorFactorEngine")
 @dataclass
 class FactorSignal:
     """Individual alpha factor evaluation result."""
+
     factor_id: str
     name: str
     category: str
@@ -46,6 +47,7 @@ class FactorSignal:
 @dataclass
 class VectorFactorResult:
     """Aggregated multi-factor consensus output for an asset bar."""
+
     symbol: str
     regime: str
     composite_alpha_score: float  # Weighted consensus in [-1.0, 1.0]
@@ -58,7 +60,11 @@ class VectorFactorResult:
         if not self.top_factors:
             return f"Quantitative Alpha Consensus for {self.symbol}: Insufficient data for factor evaluation."
 
-        sentiment = "BULLISH" if self.composite_alpha_score > 0.15 else ("BEARISH" if self.composite_alpha_score < -0.15 else "NEUTRAL")
+        sentiment = (
+            "BULLISH"
+            if self.composite_alpha_score > 0.15
+            else ("BEARISH" if self.composite_alpha_score < -0.15 else "NEUTRAL")
+        )
         lines = [
             f"--- [QUANTITATIVE ALPHA FACTOR ENGINE: {self.symbol}] ---",
             f"Market Regime: {self.regime.upper()} | Composite Alpha Score: {self.composite_alpha_score:+.3f} ({sentiment})",
@@ -92,6 +98,7 @@ class VectorFactorEngine:
     def __init__(self, catalog_path: Optional[Path | str] = None) -> None:
         if catalog_path is None:
             from monika.infrastructure.infra.paths import DATA_DIR
+
             self.catalog_path = DATA_DIR / "alpha_catalog" / "factors.json"
         else:
             self.catalog_path = Path(catalog_path)
@@ -251,4 +258,3 @@ def get_vector_factor_engine() -> VectorFactorEngine:
     if _GLOBAL_VECTOR_FACTOR_ENGINE is None:
         _GLOBAL_VECTOR_FACTOR_ENGINE = VectorFactorEngine()
     return _GLOBAL_VECTOR_FACTOR_ENGINE
-

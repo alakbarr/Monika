@@ -6,9 +6,7 @@ import shutil
 from analysis.memory.playbook_linter import PlaybookLinter, PlaybookLintResult
 from analysis.memory.playbook_ledger import PlaybookLedger
 from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
-from analysis.stages.per_asset.specialist_council import (
-    SpecialistCouncil, SpecialistRole, TradeAction, SpecialistVote
-)
+from analysis.stages.per_asset.specialist_council import SpecialistCouncil, SpecialistRole, TradeAction, SpecialistVote
 
 
 @pytest.fixture
@@ -19,6 +17,7 @@ def temp_playbooks_dir():
 
 
 # --- PlaybookLinter Tests ---
+
 
 def test_playbook_linter_valid():
     valid_content = """---
@@ -85,6 +84,7 @@ Stop loss at swing low.
 
 # --- PlaybookLifecycleManager Tests ---
 
+
 def test_playbook_lifecycle_promotion_and_rollback(temp_playbooks_dir):
     ledger = PlaybookLedger(playbooks_dir=temp_playbooks_dir)
     lifecycle = PlaybookLifecycleManager(playbooks_dir=temp_playbooks_dir, ledger=ledger)
@@ -116,6 +116,7 @@ def test_playbook_lifecycle_promotion_and_rollback(temp_playbooks_dir):
 
 # --- SpecialistCouncil Tests ---
 
+
 def test_specialist_council_deliberation():
     council = SpecialistCouncil()
 
@@ -127,11 +128,7 @@ def test_specialist_council_deliberation():
         "spread_pips": 1.1,
     }
 
-    verdict = council.evaluate(
-        symbol="EURUSD",
-        regime="TRENDING",
-        bundle_data=bundle_data
-    )
+    verdict = council.evaluate(symbol="EURUSD", regime="TRENDING", bundle_data=bundle_data)
 
     assert verdict.action == TradeAction.BUY
     assert verdict.is_approved is True
@@ -152,11 +149,7 @@ def test_specialist_council_risk_arbitrator_veto():
         "spread_pips": 1.0,
     }
 
-    verdict = council.evaluate(
-        symbol="GBPUSD",
-        regime="TRENDING",
-        bundle_data=bundle_data
-    )
+    verdict = council.evaluate(symbol="GBPUSD", regime="TRENDING", bundle_data=bundle_data)
 
     assert verdict.action == TradeAction.HOLD
     assert verdict.is_approved is False

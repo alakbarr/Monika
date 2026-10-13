@@ -5,16 +5,18 @@ from utils.llm.context_compaction import ContextCompactionEngine
 
 def test_micro_prune_order():
     engine = ContextCompactionEngine()
-    raw_order = json.dumps({
-        "ticket": 123456,
-        "symbol": "EURUSD",
-        "price_open": 1.0850,
-        "sl": 1.0820,
-        "tp": 1.0920,
-        "volume": 0.5,
-        "status": "OPEN",
-        "internal_comment_debug_blob": "large debug data " * 50
-    })
+    raw_order = json.dumps(
+        {
+            "ticket": 123456,
+            "symbol": "EURUSD",
+            "price_open": 1.0850,
+            "sl": 1.0820,
+            "tp": 1.0920,
+            "volume": 0.5,
+            "status": "OPEN",
+            "internal_comment_debug_blob": "large debug data " * 50,
+        }
+    )
     pruned = engine.micro_prune(raw_order, tool_name="get_open_positions")
     data = json.loads(pruned)
     assert data["ticket"] == 123456
@@ -76,11 +78,20 @@ def test_mask_aged_observations_gemini_anthropic():
     messages = [
         {"role": "user", "content": "Start task"},
         {"role": "assistant", "content": [{"type": "tool_use", "name": "get_indicators", "id": "call_1"}]},
-        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "call_1", "content": "huge indicator data " * 80}]},
+        {
+            "role": "user",
+            "content": [{"type": "tool_result", "tool_use_id": "call_1", "content": "huge indicator data " * 80}],
+        },
         {"role": "assistant", "content": [{"type": "tool_use", "name": "get_atr", "id": "call_2"}]},
-        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "call_2", "content": "huge atr data " * 80}]},
+        {
+            "role": "user",
+            "content": [{"type": "tool_result", "tool_use_id": "call_2", "content": "huge atr data " * 80}],
+        },
         {"role": "assistant", "content": [{"type": "tool_use", "name": "submit_asset_analysis", "id": "call_3"}]},
-        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "call_3", "content": "decision: buy, stop_loss: 1.05"}]},
+        {
+            "role": "user",
+            "content": [{"type": "tool_result", "tool_use_id": "call_3", "content": "decision: buy, stop_loss: 1.05"}],
+        },
     ]
     masked = engine.mask_aged_observations(messages, keep_recent_turns=1)
     # call_1 in turn 1 should be masked
@@ -95,11 +106,27 @@ def test_mask_aged_observations_state_preserving_and_alias():
         {"role": "system", "content": "System prompt"},
         {"role": "user", "content": "User prompt"},
         {"role": "assistant", "content": "calling adr"},
-        {"role": "tool", "name": "get_daily_range_context", "content": json.dumps({"adr": 0.0065, "target_tp_min_distance": 0.0032, "target_tp_max_distance": 0.0052, "target_sl_max_distance": 0.0022, "padding": "x" * 250})},
+        {
+            "role": "tool",
+            "name": "get_daily_range_context",
+            "content": json.dumps(
+                {
+                    "adr": 0.0065,
+                    "target_tp_min_distance": 0.0032,
+                    "target_tp_max_distance": 0.0052,
+                    "target_sl_max_distance": 0.0022,
+                    "padding": "x" * 250,
+                }
+            ),
+        },
         {"role": "assistant", "content": "calling atr"},
         {"role": "tool", "name": "get_atr", "content": json.dumps({"atr_14": 0.0045, "padding": "y" * 250})},
         {"role": "assistant", "content": "calling submit"},
-        {"role": "tool", "name": "submit_asset_analysis", "content": json.dumps({"decision": "buy", "stop_loss": 1.05})},
+        {
+            "role": "tool",
+            "name": "submit_asset_analysis",
+            "content": json.dumps({"decision": "buy", "stop_loss": 1.05}),
+        },
     ]
     # Test using turns_to_keep alias
     masked = engine.mask_aged_observations(messages, turns_to_keep=1)
@@ -121,35 +148,36 @@ def test_mask_aged_observations_technical_and_smc_retention():
         {
             "role": "tool",
             "name": "get_technical_indicators",
-            "content": json.dumps({
-                "indicators": {"rsi_14": 48.5, "ema_20": 1.0820, "ema_200": 1.0750, "adx_14": 26.2},
-                "padding": "z" * 300
-            })
+            "content": json.dumps(
+                {
+                    "indicators": {"rsi_14": 48.5, "ema_20": 1.0820, "ema_200": 1.0750, "adx_14": 26.2},
+                    "padding": "z" * 300,
+                }
+            ),
         },
         {"role": "assistant", "content": "calling smc"},
         {
             "role": "tool",
             "name": "get_smc_zones",
-            "content": json.dumps({
-                "order_blocks": [{"price_low": 1.0800, "price_high": 1.0825}],
-                "fvg_zones": [{"top": 1.0850, "bottom": 1.0840}],
-                "padding": "w" * 300
-            })
+            "content": json.dumps(
+                {
+                    "order_blocks": [{"price_low": 1.0800, "price_high": 1.0825}],
+                    "fvg_zones": [{"top": 1.0850, "bottom": 1.0840}],
+                    "padding": "w" * 300,
+                }
+            ),
         },
         {"role": "assistant", "content": "calling breaks"},
         {
             "role": "tool",
             "name": "get_structure_breaks",
-            "content": json.dumps({
-                "breaks": [{"type": "BOS_BULLISH", "level": 1.0835}],
-                "padding": "v" * 300
-            })
+            "content": json.dumps({"breaks": [{"type": "BOS_BULLISH", "level": 1.0835}], "padding": "v" * 300}),
         },
         {"role": "assistant", "content": "calling submit"},
         {
             "role": "tool",
             "name": "submit_asset_analysis",
-            "content": json.dumps({"decision": "buy", "stop_loss": 1.0790})
+            "content": json.dumps({"decision": "buy", "stop_loss": 1.0790}),
         },
     ]
     masked = engine.mask_aged_observations(messages, keep_recent_turns=1)
@@ -186,5 +214,3 @@ def test_check_and_compact_intermediate_threshold():
     assert "Observation:" in compacted[3]["content"]
     # Recent tool output (turn 2) remains untouched
     assert compacted[5]["content"] == "current spread 0.8 pips"
-
-

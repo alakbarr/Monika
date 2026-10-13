@@ -26,7 +26,7 @@ def temp_skills_dir(tmp_path):
     (test_skill_dir / "SKILL.md").write_text(
         "---\n"
         "name: test_dummy\n"
-        "description: \"Test dummy skill for automated tests.\"\n"
+        'description: "Test dummy skill for automated tests."\n'
         "version: 1.0.0\n"
         "category: GENERAL\n"
         "tags: [test, dummy]\n"
@@ -35,7 +35,7 @@ def temp_skills_dir(tmp_path):
         "Initial instructions line 1.\n"
         "Line 2: Target to be edited.\n"
         "Line 3: Final step.\n",
-        encoding="utf-8"
+        encoding="utf-8",
     )
     return skills_base
 
@@ -117,6 +117,7 @@ def test_skill_manager_protected_immunity_and_archival(temp_skills_dir):
 async def test_handle_skill_manage_tool_workflow(temp_skills_dir, monkeypatch):
     hub = SkillsHub(search_directories=[str(temp_skills_dir)])
     from analysis.tools.domain import skill_tools
+
     monkeypatch.setattr(skill_tools, "_SKILLS_HUB", hub)
 
     # Hot reload

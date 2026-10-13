@@ -99,16 +99,18 @@ async def test_chat_agent_auto_execute_when_session_approved(mock_get_session, m
     mock_client = mock_get_client.return_value
     mock_client.model = "gemini-3.1-flash-lite"
     mock_client.model_name = "gemini-3.1-flash-lite"
-    mock_client.run_chat_loop = AsyncMock(return_value={
-        "reply": "Executing buy setup for BTCUSD.",
-        "proposed_action": {
-            "action_type": "place_order",
-            "params": {"symbol": "BTCUSD", "direction": "buy", "lots": 0.05},
-            "description": "Buy 0.05 BTCUSD",
-        },
-        "input_tokens": 80,
-        "output_tokens": 40,
-    })
+    mock_client.run_chat_loop = AsyncMock(
+        return_value={
+            "reply": "Executing buy setup for BTCUSD.",
+            "proposed_action": {
+                "action_type": "place_order",
+                "params": {"symbol": "BTCUSD", "direction": "buy", "lots": 0.05},
+                "description": "Buy 0.05 BTCUSD",
+            },
+            "input_tokens": 80,
+            "output_tokens": 40,
+        }
+    )
 
     agent = ChatAgent(settings={}, user_id=123)
     agent.add_session_approval("BTCUSD")

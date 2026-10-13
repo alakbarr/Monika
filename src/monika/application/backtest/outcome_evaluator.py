@@ -2,6 +2,7 @@
 OutcomeEvaluator: High-fidelity trade outcome evaluation against historical OHLCV data.
 Includes realistic asset-specific dynamic spreads, slippage, and lot-sized swap costs.
 """
+
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
@@ -77,7 +78,9 @@ class OutcomeEvaluator:
 
     _get_contract_size = get_contract_size
 
-    async def calibrate_from_db(self, session, lookback_days: int = 30, as_of: Optional[datetime] = None) -> Dict[str, Dict[str, float]]:
+    async def calibrate_from_db(
+        self, session, lookback_days: int = 30, as_of: Optional[datetime] = None
+    ) -> Dict[str, Dict[str, float]]:
         """
         Calibrate dynamic asset friction profiles from historical paper/live execution logs.
         Calculates empirical average slippage and spread per symbol.
@@ -86,29 +89,31 @@ class OutcomeEvaluator:
         from monika.infrastructure.database.models import PaperTradeRecord
         from sqlalchemy import select
         import monika.core.primitives.clock as clock
-        
+
         now = as_of if as_of is not None else clock.now()
         since = now - timedelta(days=lookback_days)
         stmt = (
             select(PaperTradeRecord)
-            .where(PaperTradeRecord.status == 'closed')
+            .where(PaperTradeRecord.status == "closed")
             .where(PaperTradeRecord.closed_at >= since)
             .where(PaperTradeRecord.closed_at <= now)
         )
         trades = (await session.execute(stmt)).scalars().all()
-        
+
         calibrated = {}
         for t in trades:
             if t.symbol and t.slippage_applied is not None:
                 calibrated.setdefault(t.symbol, []).append(float(t.slippage_applied))
-                
+
         for sym, slips in calibrated.items():
             if len(slips) >= 5:
                 avg_slip = sum(slips) / len(slips)
                 existing = self.friction_profile.get(sym, {"spread_pips": 1.5, "slippage_pips": 0.5})
                 existing["slippage_pips"] = round(max(0.2, avg_slip), 2)
                 self.friction_profile[sym] = existing
-                logger.info(f"Calibrated empirical friction for {sym}: slippage={existing['slippage_pips']} pips (N={len(slips)})")
+                logger.info(
+                    f"Calibrated empirical friction for {sym}: slippage={existing['slippage_pips']} pips (N={len(slips)})"
+                )
 
         return self.friction_profile
 
@@ -124,6 +129,7 @@ class OutcomeEvaluator:
             try:
                 from monika.domain.risk.position_sizing import SizingResult
                 from monika.infrastructure.database.db import get_session
+
                 lots = float(getattr(trade, "executed_lots", getattr(trade, "lots", 0.1)) or 0.1)
                 risk_usd = float(getattr(trade, "risk_usd", 100.0) or 100.0)
                 entry_p = float(trade.entry_price or 0.0)
@@ -169,7 +175,7 @@ class OutcomeEvaluator:
         reward_dist = abs(trade.take_profit - trade.entry_price)
         min_rr = getattr(risk_gate, "min_rr_ratio", 1.3) if risk_gate else 1.3
         if r_dist > 0 and (reward_dist / r_dist) < (min_rr - 1e-4):
-            return False, f"RR ratio {reward_dist/r_dist:.2f} < minimum {min_rr}"
+            return False, f"RR ratio {reward_dist / r_dist:.2f} < minimum {min_rr}"
 
         sym_profile = self.friction_profile.get(trade.symbol, {})
         spread_pips = sym_profile.get("spread_pips", 1.5)
@@ -257,13 +263,27 @@ class OutcomeEvaluator:
             # Simulated PositionGuardian Friday market close liquidation parity
             if simulate_guardian:
                 bar_dt = bar.timestamp
-                if bar_dt.weekday() == 4 and bar_dt.hour >= 20 and "BTC" not in trade.symbol and "ETH" not in trade.symbol:
+                if (
+                    bar_dt.weekday() == 4
+                    and bar_dt.hour >= 20
+                    and "BTC" not in trade.symbol
+                    and "ETH" not in trade.symbol
+                ):
                     # R-4 parity: Friday close protection skips losing positions (close_if_profitable)
-                    unrealized_pnl = (bar.close - trade.entry_price) if trade.direction.lower() == "buy" else (trade.entry_price - bar.close)
+                    unrealized_pnl = (
+                        (bar.close - trade.entry_price)
+                        if trade.direction.lower() == "buy"
+                        else (trade.entry_price - bar.close)
+                    )
                     if unrealized_pnl > 0:
                         outcome = self._calculate_outcome(
-                            trade, bar.timestamp, bar.close, "friday_close",
-                            bar=bar, apply_costs=apply_costs, atr_pips=atr_pips
+                            trade,
+                            bar.timestamp,
+                            bar.close,
+                            "friday_close",
+                            bar=bar,
+                            apply_costs=apply_costs,
+                            atr_pips=atr_pips,
                         )
                         break
 
@@ -272,13 +292,37 @@ class OutcomeEvaluator:
                 tp_hit = bar.high >= trade.take_profit
                 if sl_hit and tp_hit:
                     # Intra-bar collision resolution: conservative worst-case (SL triggered first)
-                    outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    outcome = self._calculate_outcome(
+                        trade,
+                        bar.timestamp,
+                        trade.stop_loss,
+                        "sl_hit",
+                        bar=bar,
+                        apply_costs=apply_costs,
+                        atr_pips=atr_pips,
+                    )
                     break
                 elif sl_hit:
-                    outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    outcome = self._calculate_outcome(
+                        trade,
+                        bar.timestamp,
+                        trade.stop_loss,
+                        "sl_hit",
+                        bar=bar,
+                        apply_costs=apply_costs,
+                        atr_pips=atr_pips,
+                    )
                     break
                 elif tp_hit:
-                    outcome = self._calculate_outcome(trade, bar.timestamp, trade.take_profit, "tp_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    outcome = self._calculate_outcome(
+                        trade,
+                        bar.timestamp,
+                        trade.take_profit,
+                        "tp_hit",
+                        bar=bar,
+                        apply_costs=apply_costs,
+                        atr_pips=atr_pips,
+                    )
                     break
             elif trade.direction.lower() == "sell":
                 # Posisi SELL ditutup pada harga ASK (Bid + Spread)
@@ -288,26 +332,61 @@ class OutcomeEvaluator:
                 tp_hit = ask_low <= trade.take_profit
                 if sl_hit and tp_hit:
                     # Intra-bar collision resolution: conservative worst-case (SL triggered first)
-                    outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    outcome = self._calculate_outcome(
+                        trade,
+                        bar.timestamp,
+                        trade.stop_loss,
+                        "sl_hit",
+                        bar=bar,
+                        apply_costs=apply_costs,
+                        atr_pips=atr_pips,
+                    )
                     break
                 elif sl_hit:
-                    outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    outcome = self._calculate_outcome(
+                        trade,
+                        bar.timestamp,
+                        trade.stop_loss,
+                        "sl_hit",
+                        bar=bar,
+                        apply_costs=apply_costs,
+                        atr_pips=atr_pips,
+                    )
                     break
                 elif tp_hit:
-                    outcome = self._calculate_outcome(trade, bar.timestamp, trade.take_profit, "tp_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    outcome = self._calculate_outcome(
+                        trade,
+                        bar.timestamp,
+                        trade.take_profit,
+                        "tp_hit",
+                        bar=bar,
+                        apply_costs=apply_costs,
+                        atr_pips=atr_pips,
+                    )
                     break
 
         if outcome is None:
             last_bar = bars[-1]
-            outcome = self._calculate_outcome(trade, last_bar.timestamp, last_bar.close, "timeout", bar=last_bar, apply_costs=apply_costs, atr_pips=atr_pips)
+            outcome = self._calculate_outcome(
+                trade,
+                last_bar.timestamp,
+                last_bar.close,
+                "timeout",
+                bar=last_bar,
+                apply_costs=apply_costs,
+                atr_pips=atr_pips,
+            )
 
         # Apply holding swap costs based on calculated lot size
         if apply_costs:
             try:
                 from monika.domain.market.swap_estimator import estimate_swap_cost
+
                 holding_hours = max(1.0, (outcome["exit_time"] - trade_entry_time).total_seconds() / 3600.0)
                 lots = getattr(trade, "executed_lots", None) or 0.1
-                swap = await estimate_swap_cost(trade.symbol, trade.direction, lots, holding_hours, start_time=trade_entry_time)
+                swap = await estimate_swap_cost(
+                    trade.symbol, trade.direction, lots, holding_hours, start_time=trade_entry_time
+                )
                 outcome["swap_cost_usd"] = round(swap, 2)
                 # Deduct swap from pnl_usd
                 outcome["pnl_usd"] = round(outcome["pnl_usd"] + swap, 2)
@@ -337,7 +416,9 @@ class OutcomeEvaluator:
             return 1.0
         return 1.2
 
-    def _get_volatility_slippage(self, bar: PriceOHLCV, base_slippage: float, pip_size: float, atr_pips: Optional[float] = None) -> float:
+    def _get_volatility_slippage(
+        self, bar: PriceOHLCV, base_slippage: float, pip_size: float, atr_pips: Optional[float] = None
+    ) -> float:
         """Dynamic slippage scaling with intraday bar range volatility and ATR."""
         if not bar or pip_size <= 0:
             return base_slippage
@@ -418,20 +499,21 @@ class OutcomeEvaluator:
         lots = getattr(trade, "executed_lots", None) or 0.1
         if apply_costs:
             friction_cfg = self.friction_profile.get(
-                trade.symbol,
-                {"spread_pips": getattr(spec, "stops_level_pips", 1.5) or 1.5, "slippage_pips": 0.5}
+                trade.symbol, {"spread_pips": getattr(spec, "stops_level_pips", 1.5) or 1.5, "slippage_pips": 0.5}
             )
             base_spread = friction_cfg.get("spread_pips", 1.5)
             base_slippage = friction_cfg.get("slippage_pips", 0.5)
-            
+
             # Session-aware and volatility-shock spread multiplier
             session_mult = self._get_session_spread_multiplier(exit_time)
             vol_spread_mult = self._get_volatility_spread_multiplier(bar, pip_size) if bar else 1.0
             effective_spread = base_spread * session_mult * vol_spread_mult
-            
+
             # Volatility-adjusted slippage with ATR
-            effective_slippage = self._get_volatility_slippage(bar, base_slippage, pip_size, atr_pips=atr_pips) if bar else base_slippage
-            
+            effective_slippage = (
+                self._get_volatility_slippage(bar, base_slippage, pip_size, atr_pips=atr_pips) if bar else base_slippage
+            )
+
             # Latency model: execution latency delay induces micro-slippage penalty
             latency_slippage_pips = (self.latency_ms / 1000.0) * (base_slippage * 0.2)
 

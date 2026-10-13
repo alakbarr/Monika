@@ -7,7 +7,6 @@ from database.models import UserMarketIntel, MarketChronicle
 
 
 class TestMarketIntelligenceTools:
-
     @pytest.mark.asyncio
     async def test_tool_web_search(self):
         mock_session = create_mock_async_session()
@@ -16,9 +15,7 @@ class TestMarketIntelligenceTools:
         mock_search_res = {
             "query": "FOMC rate cuts",
             "source": "tavily",
-            "results": [
-                {"title": "FOMC Preview", "url": "https://example.com", "content": "Rate cut expected"}
-            ],
+            "results": [{"title": "FOMC Preview", "url": "https://example.com", "content": "Rate cut expected"}],
             "total_results": 1,
         }
 
@@ -36,7 +33,7 @@ class TestMarketIntelligenceTools:
     @pytest.mark.asyncio
     async def test_tool_save_market_intelligence_basic(self):
         mock_session = create_mock_async_session()
-        mock_session.add = MagicMock(side_effect=lambda obj: setattr(obj, 'id', 42))
+        mock_session.add = MagicMock(side_effect=lambda obj: setattr(obj, "id", 42))
         mock_session.commit = AsyncMock()
         mock_session.flush = AsyncMock()
 
@@ -64,7 +61,7 @@ class TestMarketIntelligenceTools:
     @pytest.mark.asyncio
     async def test_tool_save_market_intelligence_cross_posts_macro_structural(self):
         mock_session = create_mock_async_session()
-        mock_session.add = MagicMock(side_effect=lambda obj: setattr(obj, 'id', 99))
+        mock_session.add = MagicMock(side_effect=lambda obj: setattr(obj, "id", 99))
         mock_session.commit = AsyncMock()
         mock_session.flush = AsyncMock()
 
@@ -94,7 +91,7 @@ class TestMarketIntelligenceTools:
     async def test_tool_list_active_intelligence(self):
         mock_session = create_mock_async_session()
         now = datetime.now(timezone.utc)
-        
+
         intel_item1 = UserMarketIntel(
             id=1,
             title="Intel 1",

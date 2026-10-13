@@ -1,4 +1,3 @@
-
 """GTJA Alpha #4.
 
 Formula: ((((SUM(CLOSE,8)/8)+STD(CLOSE,8))<(SUM(CLOSE,2)/2))?(-1):((SUM(CLOSE,2)/2<(SUM(CLOSE,8)/8-STD(CLOSE,8)))?1:((1<(VOLUME/MEAN(VOLUME,20)))?1:(-1))))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_004",
-    "theme": ['momentum', 'volume'],
-    "formula_latex": '((((SUM(CLOSE,8)/8)+STD(CLOSE,8))<(SUM(CLOSE,2)/2))?(-1):((SUM(CLOSE,2)/2<(SUM(CLOSE,8)/8-STD(CLOSE,8)))?1:((1<(VOLUME/MEAN(VOLUME,20)))?1:(-1))))',
-    "columns_required": ['close', 'volume'],
+    "theme": ["momentum", "volume"],
+    "formula_latex": "((((SUM(CLOSE,8)/8)+STD(CLOSE,8))<(SUM(CLOSE,2)/2))?(-1):((SUM(CLOSE,2)/2<(SUM(CLOSE,8)/8-STD(CLOSE,8)))?1:((1<(VOLUME/MEAN(VOLUME,20)))?1:(-1))))",
+    "columns_required": ["close", "volume"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 8,
     "min_warmup_bars": 20,
-    "notes": 'Breakout signal: short-MA vs long-MA +/- 1 std, volume-relative tiebreaker. Output in {-1, +1}.',
+    "notes": "Breakout signal: short-MA vs long-MA +/- 1 std, volume-relative tiebreaker. Output in {-1, +1}.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]
@@ -52,9 +52,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     cond_top = upper < ma2
     cond_bot = ma2 < lower
     vol_strong = (v / vmean20) > 1.0
-    res = np.where(cond_top, -1.0,
-                   np.where(cond_bot, 1.0,
-                            np.where(vol_strong, 1.0, -1.0)))
+    res = np.where(cond_top, -1.0, np.where(cond_bot, 1.0, np.where(vol_strong, 1.0, -1.0)))
     # NaN comparisons are False, not NaN, so a gap in any trailing window
     # (a halt day inside the 8/20-day lookback, not just series warmup)
     # would otherwise fall through to the innermost -1.0 branch instead of

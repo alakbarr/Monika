@@ -9,16 +9,19 @@ def test_working_scratchpad_lifecycle():
     assert state["bias"] == "NEUTRAL"
 
     # Update with calculations
-    WorkingScratchpad.update_scratchpad("EURUSD", {
-        "bias": "BULLISH",
-        "h4_atr": 0.0045,
-        "daily_adr": 0.0075,
-        "invalidation_price": 1.0780,
-        "rr_ratio": 2.1,
-        "confluence_score": 9.0,
-        "verified_confluences": ["d1_trend", "near_order_block"],
-        "notes": ["Confirmed H4 BOS at 1.0820", "OTE retracement active"]
-    })
+    WorkingScratchpad.update_scratchpad(
+        "EURUSD",
+        {
+            "bias": "BULLISH",
+            "h4_atr": 0.0045,
+            "daily_adr": 0.0075,
+            "invalidation_price": 1.0780,
+            "rr_ratio": 2.1,
+            "confluence_score": 9.0,
+            "verified_confluences": ["d1_trend", "near_order_block"],
+            "notes": ["Confirmed H4 BOS at 1.0820", "OTE retracement active"],
+        },
+    )
 
     read_back = WorkingScratchpad.read_scratchpad("EURUSD")
     assert read_back["bias"] == "BULLISH"

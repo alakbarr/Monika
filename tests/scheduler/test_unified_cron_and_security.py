@@ -56,6 +56,7 @@ def temp_pairing_file():
 # 1. UnifiedCronEngine Tests
 # ==============================================================================
 
+
 def test_unified_cron_schedule_parsing_and_market_presets(temp_cron_db):
     engine = UnifiedCronEngine(db_path=temp_cron_db)
     now = time.time()
@@ -83,7 +84,7 @@ def test_unified_cron_schedule_parsing_and_market_presets(temp_cron_db):
 
 def test_unified_cron_registration_and_at_most_once(temp_cron_db):
     engine = UnifiedCronEngine(db_path=temp_cron_db)
-    
+
     # Register job
     job = engine.register_job(
         job_id="test_cot_sync",
@@ -112,6 +113,7 @@ def test_unified_cron_registration_and_at_most_once(temp_cron_db):
     # Force job to be due now
     with engine._lock:
         import sqlite3
+
         conn = sqlite3.connect(temp_cron_db)
         conn.execute("UPDATE cron_jobs SET next_run_at = ? WHERE job_id = ?", (time.time() - 10, "test_cot_sync"))
         conn.commit()
@@ -146,6 +148,7 @@ def test_unified_cron_zero_cost_token_suppression(temp_cron_db):
     # First run: output hash is recorded, job executes
     with engine._lock:
         import sqlite3
+
         conn = sqlite3.connect(temp_cron_db)
         conn.execute("UPDATE cron_jobs SET next_run_at = ? WHERE job_id = ?", (time.time() - 10, "monitor_check"))
         conn.commit()
@@ -157,6 +160,7 @@ def test_unified_cron_zero_cost_token_suppression(temp_cron_db):
     # Second run: output is identical, execution must be suppressed (zero tokens spent)
     with engine._lock:
         import sqlite3
+
         conn = sqlite3.connect(temp_cron_db)
         conn.execute("UPDATE cron_jobs SET next_run_at = ? WHERE job_id = ?", (time.time() - 10, "monitor_check"))
         conn.commit()
@@ -170,6 +174,7 @@ def test_unified_cron_zero_cost_token_suppression(temp_cron_db):
 # ==============================================================================
 # 2. PairingManager Tests
 # ==============================================================================
+
 
 def test_pairing_manager_lifecycle(temp_pairing_file):
     mgr = PairingManager(store_path=temp_pairing_file)
@@ -210,6 +215,7 @@ def test_pairing_manager_lifecycle(temp_pairing_file):
 # ==============================================================================
 # 3. TerminalGuard Cloud IMDS & De-obfuscation Tests
 # ==============================================================================
+
 
 def test_terminal_guard_cloud_imds_blocking():
     # AWS / GCP / Azure IMDS endpoint

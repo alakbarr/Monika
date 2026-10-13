@@ -33,11 +33,11 @@ logger = logging.getLogger("TradingAgent.AttributionEngine")
 class WaterfallAttribution:
     real_pnl: float
     shadow_potential_pnl: float
-    net_alpha_delta: float             # shadow_potential_pnl - real_pnl
-    noise_trades_cost: float           # Saved losses if noise trades were eliminated
-    early_exit_cost: float             # Forfeited profit from premature profit-taking
-    late_exit_cost: float              # Excess loss from bag-holding losing positions
-    overtrading_drag_cost: float       # Execution friction from excessive frequency
+    net_alpha_delta: float  # shadow_potential_pnl - real_pnl
+    noise_trades_cost: float  # Saved losses if noise trades were eliminated
+    early_exit_cost: float  # Forfeited profit from premature profit-taking
+    late_exit_cost: float  # Excess loss from bag-holding losing positions
+    overtrading_drag_cost: float  # Execution friction from excessive frequency
     noise_trade_count: int
     compliant_trade_count: int
     waterfall_steps: List[Dict[str, Any]] = field(default_factory=list)
@@ -122,8 +122,16 @@ class AttributionEngine:
 
         waterfall_steps = [
             {"label": "Realized Human PnL", "value": round(real_pnl, 2), "cumulative": round(real_pnl, 2)},
-            {"label": "Eliminate Noise Trades", "value": round(noise_losses, 2), "cumulative": round(real_pnl + noise_losses, 2)},
-            {"label": "Capture Full Winner Targets", "value": round(early_exit_loss, 2), "cumulative": round(real_pnl + noise_losses + early_exit_loss, 2)},
+            {
+                "label": "Eliminate Noise Trades",
+                "value": round(noise_losses, 2),
+                "cumulative": round(real_pnl + noise_losses, 2),
+            },
+            {
+                "label": "Capture Full Winner Targets",
+                "value": round(early_exit_loss, 2),
+                "cumulative": round(real_pnl + noise_losses + early_exit_loss, 2),
+            },
             {"label": "Cut Stubborn Losers", "value": round(late_exit_loss, 2), "cumulative": round(shadow_pnl, 2)},
         ]
 

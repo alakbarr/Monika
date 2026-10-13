@@ -38,9 +38,7 @@ class SimulationClock:
                 self._current_time = datetime.now(timezone.utc)
         else:
             self._current_time = (
-                start_time
-                if start_time.tzinfo is not None
-                else start_time.replace(tzinfo=timezone.utc)
+                start_time if start_time.tzinfo is not None else start_time.replace(tzinfo=timezone.utc)
             )
 
         self._frozen: bool = True
@@ -131,6 +129,7 @@ def get_pip_unit(symbol: str) -> float:
 @dataclass
 class MarketStep:
     """A single discrete market tick or bar in the step simulator."""
+
     timestamp: datetime
     symbol: str
     bid: float

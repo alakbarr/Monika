@@ -15,6 +15,7 @@ from alembic import context
 
 from monika.infrastructure.database.models import Base
 import monika.application.benchmark.db_models
+
 target_metadata = Base.metadata
 
 # this is the Alembic Config object, which provides
@@ -49,8 +50,12 @@ def include_object(object, name, type_, reflected, compare_to):
     # Ignore tables managed outside Alembic (e.g. LangGraph checkpointer, raw partition tables)
     if type_ == "table":
         if name in {
-            "checkpoints", "wal_entries", "checkpoint_blobs", "checkpoint_writes",
-            "checkpoint_migrations", "price_ohlcv_partitioned"
+            "checkpoints",
+            "wal_entries",
+            "checkpoint_blobs",
+            "checkpoint_writes",
+            "checkpoint_migrations",
+            "price_ohlcv_partitioned",
         } or name.startswith("price_ohlcv_"):
             return False
     return True
@@ -102,6 +107,7 @@ async def run_async_migrations() -> None:
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
     import sys
+
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(run_async_migrations())

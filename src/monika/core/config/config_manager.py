@@ -137,7 +137,7 @@ class ConfigManager:
                     logger.debug(f"Config watcher loop error: {e}")
                 try:
                     await asyncio.wait_for(self._stop_event.wait(), timeout=interval_seconds)
-                except (asyncio.TimeoutError, TimeoutError):
+                except asyncio.TimeoutError, TimeoutError:
                     pass
         except asyncio.CancelledError:
             pass

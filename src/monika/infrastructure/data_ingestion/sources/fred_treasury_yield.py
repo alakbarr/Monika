@@ -38,9 +38,25 @@ FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 # Pemetaan FRED series ID ke tipe/label tenor
 TENOR_SERIES = {
-    "DGS2", "DGS5", "DGS10", "DGS30", "DFII10", "T10YIE", "WALCL", "RRPONTSYD",
-    "WTREGEN", "M2SL", "GVZCLS", "OVXCLS", "DGS3MO", "THREEFYTP10", "ACMTP10", "CUSR0000SACL1E",
-    "A191RL1Q225SBEA", "CLVMNACSCAB1GQEA19", "ECBASSETSW"
+    "DGS2",
+    "DGS5",
+    "DGS10",
+    "DGS30",
+    "DFII10",
+    "T10YIE",
+    "WALCL",
+    "RRPONTSYD",
+    "WTREGEN",
+    "M2SL",
+    "GVZCLS",
+    "OVXCLS",
+    "DGS3MO",
+    "THREEFYTP10",
+    "ACMTP10",
+    "CUSR0000SACL1E",
+    "A191RL1Q225SBEA",
+    "CLVMNACSCAB1GQEA19",
+    "ECBASSETSW",
 }
 INTEREST_RATE_SERIES = {"FEDFUNDS", "ECBDFR", "BOERUKM", "IRSTCB01JPM156N", "IRSTCB01AUM156N"}
 
@@ -71,7 +87,7 @@ SERIES_TO_TENOR = {
 SERIES_TO_BANK = {
     "FEDFUNDS": "FED",
     "ECBDFR": "ECB",
-    "BOERUKM": "BOE",    # BOE Base Rate
+    "BOERUKM": "BOE",  # BOE Base Rate
     "IRSTCB01JPM156N": "BOJ",  # BOJ Policy Rate (OECD series via FRED)
     "IRSTCB01AUM156N": "RBA",  # RBA Cash Rate Target (OECD series via FRED)
 }
@@ -137,7 +153,7 @@ class FREDDataFetcher:
                     rate_saved += n
                 else:
                     logger.warning(f"Unknown FRED series: {series_id} ({label})")
-                
+
             except Exception as e:
                 logger.error(f"FRED fetch failed for {series_id}: {e}")
                 try:
@@ -145,12 +161,10 @@ class FREDDataFetcher:
                 except Exception:
                     pass
 
-        logger.info(
-            f"FRED fetch complete. Treasury: {treasury_saved} new, "
-            f"Interest rates: {rate_saved} new."
-        )
+        logger.info(f"FRED fetch complete. Treasury: {treasury_saved} new, Interest rates: {rate_saved} new.")
         try:
             from monika.infrastructure.data_ingestion.sources.circuit_breaker import record_feed_heartbeat
+
             record_feed_heartbeat("fred", metadata={"treasury_saved": treasury_saved, "rate_saved": rate_saved})
         except Exception:
             pass
@@ -160,9 +174,7 @@ class FREDDataFetcher:
     # Internal — Treasury Yields
     # ------------------------------------------------------------------
 
-    async def _fetch_treasury_series(
-        self, series_id: str, tenor: str
-    ) -> int:
+    async def _fetch_treasury_series(self, series_id: str, tenor: str) -> int:
         """Mengambil data terbaru untuk satu series treasury. Mengembalikan jumlah baris yang disimpan."""
         observations = await self._call_fred(series_id, limit=10)
         saved = 0
@@ -178,7 +190,7 @@ class FREDDataFetcher:
 
                 try:
                     yield_pct = float(value_str)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     logger.debug(f"Skipping non-numeric FRED treasury yield value: {value_str}")
                     continue
 
@@ -212,9 +224,7 @@ class FREDDataFetcher:
     # Internal — Interest Rates
     # ------------------------------------------------------------------
 
-    async def _fetch_interest_rate(
-        self, series_id: str, bank: str
-    ) -> int:
+    async def _fetch_interest_rate(self, series_id: str, bank: str) -> int:
         """Mengambil data suku bunga terbaru. Mengembalikan 1 jika baris baru disimpan."""
         observations = await self._call_fred(series_id, limit=1)
         if not observations:
@@ -230,7 +240,7 @@ class FREDDataFetcher:
             return 0
         try:
             rate_pct = float(value_str)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.debug(f"Skipping non-numeric FRED interest rate value: {value_str}")
             return 0
 
@@ -279,7 +289,7 @@ class FREDDataFetcher:
         if not data or not isinstance(data, dict):
             logger.error(f"FRED API fetch failed for {series_id}")
             return []
-            
+
         observations = data.get("observations", [])
         return observations if isinstance(observations, list) else []
 
@@ -304,6 +314,7 @@ class FREDDataFetcher:
 # Quick standalone test
 # ---------------------------------------------------------------------------
 
+
 async def _test():
     import os
     from dotenv import load_dotenv
@@ -313,6 +324,7 @@ async def _test():
     await init_db()
 
     from monika.core.config.settings import load_settings
+
     settings = load_settings()
     fred_config = settings["data_sources"]["fred"]
 
@@ -334,6 +346,7 @@ async def _test():
 
 if __name__ == "__main__":
     import sys
+
     if sys.platform == "win32":
         asyncio.run(_test(), loop_factory=asyncio.SelectorEventLoop)
     else:

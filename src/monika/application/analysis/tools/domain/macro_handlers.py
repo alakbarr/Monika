@@ -169,7 +169,9 @@ class MacroToolHandlers:
             return {"events": [], "count": 0, "source": "db_only"}
         try:
             import asyncio
-            from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import InvestingCalendarScraper
+            from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import (
+                InvestingCalendarScraper,
+            )
 
             scraper = InvestingCalendarScraper()
             loop = asyncio.get_running_loop()

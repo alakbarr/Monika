@@ -3,6 +3,7 @@
 proposal filter), agar keduanya tidak pernah menilai korelasi dua simbol
 secara berbeda. Fallback ke tabel statis hanya bila histori harga < 30
 bar D1."""
+
 import logging
 import math
 import pandas as pd
@@ -10,34 +11,64 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from monika.infrastructure.database.models import PriceOHLCV, DXYData, TreasuryYield
 
-logger = logging.getLogger('TradingAgent.DynamicCorrelation')
+logger = logging.getLogger("TradingAgent.DynamicCorrelation")
 
 STATIC_CORRELATION_FALLBACK = {
-    ('EURUSD', 'GBPUSD'): 0.85, ('EURUSD', 'AUDUSD'): 0.70, ('EURUSD', 'USDJPY'): -0.80,
-    ('GBPUSD', 'AUDUSD'): 0.65, ('GBPUSD', 'USDJPY'): -0.75, ('AUDUSD', 'USDJPY'): -0.65,
-    ('XAUUSD', 'USDJPY'): -0.60, ('XAUUSD', 'EURUSD'): 0.65, ('XAUUSD', 'GBPUSD'): 0.55,
-    ('XAUUSD', 'AUDUSD'): 0.60, ('XAUUSD', 'XTIUSD'): 0.45, ('XAUUSD', 'BTCUSD'): 0.35,
-    ('EURUSD', 'XTIUSD'): 0.45, ('GBPUSD', 'XTIUSD'): 0.40, ('AUDUSD', 'XTIUSD'): 0.55,
-    ('BTCUSD', 'EURUSD'): 0.30, ('BTCUSD', 'USDJPY'): -0.25, ('BTCUSD', 'GBPUSD'): 0.25,
-    ('BTCUSD', 'AUDUSD'): 0.35, ('BTCUSD', 'XTIUSD'): 0.20, ('USDJPY', 'XTIUSD'): -0.40,
-    ('XTIUSD', 'XBRUSD'): 0.95, ('XBRUSD', 'EURUSD'): 0.45, ('XBRUSD', 'USDJPY'): -0.40, ('XAUUSD', 'XBRUSD'): 0.45,
-    ('XAUUSD', 'US10Y'): -0.45, ('US10Y', 'XAUUSD'): -0.45,
-    ('USDJPY', 'US10Y'): 0.65, ('US10Y', 'USDJPY'): 0.65,
-    ('EURUSD', 'US10Y'): -0.50, ('US10Y', 'EURUSD'): -0.50,
-    ('XAUUSD', 'US02Y'): -0.40, ('US02Y', 'XAUUSD'): -0.40,
-    ('USDJPY', 'US02Y'): 0.60, ('US02Y', 'USDJPY'): 0.60,
+    ("EURUSD", "GBPUSD"): 0.85,
+    ("EURUSD", "AUDUSD"): 0.70,
+    ("EURUSD", "USDJPY"): -0.80,
+    ("GBPUSD", "AUDUSD"): 0.65,
+    ("GBPUSD", "USDJPY"): -0.75,
+    ("AUDUSD", "USDJPY"): -0.65,
+    ("XAUUSD", "USDJPY"): -0.60,
+    ("XAUUSD", "EURUSD"): 0.65,
+    ("XAUUSD", "GBPUSD"): 0.55,
+    ("XAUUSD", "AUDUSD"): 0.60,
+    ("XAUUSD", "XTIUSD"): 0.45,
+    ("XAUUSD", "BTCUSD"): 0.35,
+    ("EURUSD", "XTIUSD"): 0.45,
+    ("GBPUSD", "XTIUSD"): 0.40,
+    ("AUDUSD", "XTIUSD"): 0.55,
+    ("BTCUSD", "EURUSD"): 0.30,
+    ("BTCUSD", "USDJPY"): -0.25,
+    ("BTCUSD", "GBPUSD"): 0.25,
+    ("BTCUSD", "AUDUSD"): 0.35,
+    ("BTCUSD", "XTIUSD"): 0.20,
+    ("USDJPY", "XTIUSD"): -0.40,
+    ("XTIUSD", "XBRUSD"): 0.95,
+    ("XBRUSD", "EURUSD"): 0.45,
+    ("XBRUSD", "USDJPY"): -0.40,
+    ("XAUUSD", "XBRUSD"): 0.45,
+    ("XAUUSD", "US10Y"): -0.45,
+    ("US10Y", "XAUUSD"): -0.45,
+    ("USDJPY", "US10Y"): 0.65,
+    ("US10Y", "USDJPY"): 0.65,
+    ("EURUSD", "US10Y"): -0.50,
+    ("US10Y", "EURUSD"): -0.50,
+    ("XAUUSD", "US02Y"): -0.40,
+    ("US02Y", "XAUUSD"): -0.40,
+    ("USDJPY", "US02Y"): 0.60,
+    ("US02Y", "USDJPY"): 0.60,
 }
 
 YIELD_TENOR_MAP = {
-    "US10Y": "10Y", "10Y": "10Y",
-    "US02Y": "2Y", "US2Y": "2Y", "2Y": "2Y",
-    "US05Y": "5Y", "US5Y": "5Y", "5Y": "5Y",
-    "US30Y": "30Y", "30Y": "30Y",
+    "US10Y": "10Y",
+    "10Y": "10Y",
+    "US02Y": "2Y",
+    "US2Y": "2Y",
+    "2Y": "2Y",
+    "US05Y": "5Y",
+    "US5Y": "5Y",
+    "5Y": "5Y",
+    "US30Y": "30Y",
+    "30Y": "30Y",
 }
+
 
 def is_crypto_or_commodity_symbol(sym: str) -> bool:
     s = (sym or "").upper()
-    return any(k in s for k in ('BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'ADA', 'XTI', 'XBR', 'XAU'))
+    return any(k in s for k in ("BTC", "ETH", "SOL", "XRP", "BNB", "DOGE", "ADA", "XTI", "XBR", "XAU"))
+
 
 def get_correlation_uncertainty_multiplier(sym1: str, sym2: str, source: str) -> float:
     """
@@ -47,6 +78,7 @@ def get_correlation_uncertainty_multiplier(sym1: str, sym2: str, source: str) ->
     if "static_fallback" in source and (is_crypto_or_commodity_symbol(sym1) or is_crypto_or_commodity_symbol(sym2)):
         return 0.80
     return 1.00
+
 
 def _static_fallback(sym1: str, sym2: str) -> float:
     val = STATIC_CORRELATION_FALLBACK.get((sym1, sym2)) or STATIC_CORRELATION_FALLBACK.get((sym2, sym1))
@@ -61,11 +93,15 @@ def _static_fallback(sym1: str, sym2: str) -> float:
         else:
             res = 0.40
     if is_crypto_or_commodity_symbol(sym1) or is_crypto_or_commodity_symbol(sym2):
-        logger.warning(f"[DynamicCorrelation] Using static correlation fallback for {sym1}-{sym2}: {res:.2f} (D1 history < 20 bars). Exercise caution.")
+        logger.warning(
+            f"[DynamicCorrelation] Using static correlation fallback for {sym1}-{sym2}: {res:.2f} (D1 history < 20 bars). Exercise caution."
+        )
     return res
+
 
 from datetime import datetime
 from typing import Optional
+
 
 async def get_rolling_correlation(
     session: AsyncSession,
@@ -81,7 +117,7 @@ async def get_rolling_correlation(
     EWMA (span=30, lambda ~0.94) memberikan bobot lebih tinggi pada data terkini untuk merespons regime shift.
     """
     if symbol1 == symbol2:
-        return (1.0, 'identity')
+        return (1.0, "identity")
     try:
         from monika.infrastructure.database.models import TreasuryYield
 
@@ -102,7 +138,7 @@ async def get_rolling_correlation(
                 return q.order_by(TreasuryYield.date.desc()).limit(lookback_bars)
             else:
                 q = select(PriceOHLCV.timestamp, PriceOHLCV.close).where(
-                    PriceOHLCV.symbol == sym, PriceOHLCV.timeframe == 'D1'
+                    PriceOHLCV.symbol == sym, PriceOHLCV.timeframe == "D1"
                 )
                 if as_of is not None:
                     q = q.where(PriceOHLCV.timestamp <= as_of)
@@ -114,45 +150,45 @@ async def get_rolling_correlation(
         s1_rows = (await session.execute(q1)).all()
         s2_rows = (await session.execute(q2)).all()
         if len(s1_rows) < 20 or len(s2_rows) < 20:
-            return (_static_fallback(symbol1, symbol2), 'static_fallback_insufficient_history')
-        df1 = pd.DataFrame(s1_rows, columns=['timestamp', 'close1'])
-        df2 = pd.DataFrame(s2_rows, columns=['timestamp', 'close2'])
-        df1['date'] = pd.to_datetime(df1['timestamp']).dt.date
-        df2['date'] = pd.to_datetime(df2['timestamp']).dt.date
-        df = df1.set_index('date')[['close1']].join(df2.set_index('date')[['close2']], how='inner').sort_index()
+            return (_static_fallback(symbol1, symbol2), "static_fallback_insufficient_history")
+        df1 = pd.DataFrame(s1_rows, columns=["timestamp", "close1"])
+        df2 = pd.DataFrame(s2_rows, columns=["timestamp", "close2"])
+        df1["date"] = pd.to_datetime(df1["timestamp"]).dt.date
+        df2["date"] = pd.to_datetime(df2["timestamp"]).dt.date
+        df = df1.set_index("date")[["close1"]].join(df2.set_index("date")[["close2"]], how="inner").sort_index()
         if len(df) < 20:
-            return (_static_fallback(symbol1, symbol2), 'static_fallback_insufficient_overlap')
-        df['ret1'] = df['close1'].pct_change()
-        df['ret2'] = df['close2'].pct_change()
-        
-        valid_df = df.dropna(subset=['ret1', 'ret2'])
-        if len(valid_df) < 15:
-            return (_static_fallback(symbol1, symbol2), 'static_fallback_insufficient_returns')
+            return (_static_fallback(symbol1, symbol2), "static_fallback_insufficient_overlap")
+        df["ret1"] = df["close1"].pct_change()
+        df["ret2"] = df["close2"].pct_change()
 
-        s_ret1 = pd.Series(valid_df['ret1'], dtype=float)
-        s_ret2 = pd.Series(valid_df['ret2'], dtype=float)
+        valid_df = df.dropna(subset=["ret1", "ret2"])
+        if len(valid_df) < 15:
+            return (_static_fallback(symbol1, symbol2), "static_fallback_insufficient_returns")
+
+        s_ret1 = pd.Series(valid_df["ret1"], dtype=float)
+        s_ret2 = pd.Series(valid_df["ret2"], dtype=float)
 
         if method == "ewma":
             # Exponentially Weighted Moving Average Correlation (RiskMetrics lambda ~ 0.94)
             ewm_corr_series = s_ret1.ewm(span=span, min_periods=15).corr(s_ret2)
-            corr_raw = ewm_corr_series.iloc[-1] if not ewm_corr_series.empty else float('nan')
-            corr = float(corr_raw) if pd.notna(corr_raw) else float('nan')
-            source = 'dynamic_ewma'
+            corr_raw = ewm_corr_series.iloc[-1] if not ewm_corr_series.empty else float("nan")
+            corr = float(corr_raw) if pd.notna(corr_raw) else float("nan")
+            source = "dynamic_ewma"
             if math.isnan(corr):
                 c_calc = s_ret1.corr(s_ret2)
-                corr = float(c_calc) if pd.notna(c_calc) else float('nan')
-                source = 'dynamic_rolling'
+                corr = float(c_calc) if pd.notna(c_calc) else float("nan")
+                source = "dynamic_rolling"
         else:
             c_calc = s_ret1.corr(s_ret2)
-            corr = float(c_calc) if pd.notna(c_calc) else float('nan')
-            source = 'dynamic_rolling'
+            corr = float(c_calc) if pd.notna(c_calc) else float("nan")
+            source = "dynamic_rolling"
 
         if math.isnan(corr):
-            return (_static_fallback(symbol1, symbol2), 'static_fallback_nan')
+            return (_static_fallback(symbol1, symbol2), "static_fallback_nan")
         return (float(corr), source)
     except Exception as e:
-        logger.warning(f'Dynamic correlation failed ({symbol1}/{symbol2}): {e}. Using static fallback.')
-        return (_static_fallback(symbol1, symbol2), 'static_fallback_error')
+        logger.warning(f"Dynamic correlation failed ({symbol1}/{symbol2}): {e}. Using static fallback.")
+        return (_static_fallback(symbol1, symbol2), "static_fallback_error")
 
 
 async def compute_cross_asset_macro_correlation(
@@ -171,12 +207,16 @@ async def compute_cross_asset_macro_correlation(
 
     try:
         # 1. Fetch 10Y and 2Y yields
-        stmt_10y = select(TreasuryYield.date, TreasuryYield.yield_percent).where(
-            TreasuryYield.tenor == "10Y", TreasuryYield.date >= cutoff
-        ).order_by(TreasuryYield.date.asc())
-        stmt_2y = select(TreasuryYield.date, TreasuryYield.yield_percent).where(
-            TreasuryYield.tenor == "2Y", TreasuryYield.date >= cutoff
-        ).order_by(TreasuryYield.date.asc())
+        stmt_10y = (
+            select(TreasuryYield.date, TreasuryYield.yield_percent)
+            .where(TreasuryYield.tenor == "10Y", TreasuryYield.date >= cutoff)
+            .order_by(TreasuryYield.date.asc())
+        )
+        stmt_2y = (
+            select(TreasuryYield.date, TreasuryYield.yield_percent)
+            .where(TreasuryYield.tenor == "2Y", TreasuryYield.date >= cutoff)
+            .order_by(TreasuryYield.date.asc())
+        )
 
         rows_10y = (await session.execute(stmt_10y)).all()
         rows_2y = (await session.execute(stmt_2y)).all()
@@ -185,12 +225,16 @@ async def compute_cross_asset_macro_correlation(
         df_2y = pd.DataFrame(rows_2y, columns=["date", "us2y"]).dropna()
 
         # 2. Fetch OHLCV D1 for Gold and FX
-        stmt_xau = select(PriceOHLCV.timestamp, PriceOHLCV.close).where(
-            PriceOHLCV.symbol == "XAUUSD", PriceOHLCV.timeframe == "D1", PriceOHLCV.timestamp >= cutoff
-        ).order_by(PriceOHLCV.timestamp.asc())
-        stmt_jpy = select(PriceOHLCV.timestamp, PriceOHLCV.close).where(
-            PriceOHLCV.symbol == "USDJPY", PriceOHLCV.timeframe == "D1", PriceOHLCV.timestamp >= cutoff
-        ).order_by(PriceOHLCV.timestamp.asc())
+        stmt_xau = (
+            select(PriceOHLCV.timestamp, PriceOHLCV.close)
+            .where(PriceOHLCV.symbol == "XAUUSD", PriceOHLCV.timeframe == "D1", PriceOHLCV.timestamp >= cutoff)
+            .order_by(PriceOHLCV.timestamp.asc())
+        )
+        stmt_jpy = (
+            select(PriceOHLCV.timestamp, PriceOHLCV.close)
+            .where(PriceOHLCV.symbol == "USDJPY", PriceOHLCV.timeframe == "D1", PriceOHLCV.timestamp >= cutoff)
+            .order_by(PriceOHLCV.timestamp.asc())
+        )
 
         rows_xau = (await session.execute(stmt_xau)).all()
         rows_jpy = (await session.execute(stmt_jpy)).all()
@@ -267,4 +311,3 @@ async def compute_cross_asset_macro_correlation(
             "is_inverted": False,
             "error": str(exc),
         }
-

@@ -6,6 +6,7 @@
 Kalkulator Economic Surprise.
 Menghitung selisih persentase antara nilai aktual dan ekspektasi (forecast).
 """
+
 import logging
 import re
 from typing import Optional
@@ -21,23 +22,31 @@ def _parse_numeric(val: Optional[str]) -> Optional[float]:
     if not val or val in ("-", "--", "N/A", ""):
         return None
     try:
-        clean = re.sub(r'[%,]', '', str(val).strip())
+        clean = re.sub(r"[%,]", "", str(val).strip())
         multiplier = 1
-        if clean.upper().endswith('K'):
-            multiplier = 1_000; clean = clean[:-1]
-        elif clean.upper().endswith('M'):
-            multiplier = 1_000_000; clean = clean[:-1]
-        elif clean.upper().endswith('B'):
-            multiplier = 1_000_000_000; clean = clean[:-1]
+        if clean.upper().endswith("K"):
+            multiplier = 1_000
+            clean = clean[:-1]
+        elif clean.upper().endswith("M"):
+            multiplier = 1_000_000
+            clean = clean[:-1]
+        elif clean.upper().endswith("B"):
+            multiplier = 1_000_000_000
+            clean = clean[:-1]
         return float(clean) * multiplier
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
 
 _INVERTED_METRIC_KEYWORDS = (
-    "unemployment", "jobless claims", "initial claims", "continuing claims",
-    "claimant count", "unemployment rate"
+    "unemployment",
+    "jobless claims",
+    "initial claims",
+    "continuing claims",
+    "claimant count",
+    "unemployment rate",
 )
+
 
 async def compute_surprise_scores(session: AsyncSession) -> int:
     """
@@ -46,27 +55,36 @@ async def compute_surprise_scores(session: AsyncSession) -> int:
     Membalikkan tanda (inverted sign) untuk metrik pengangguran/klaim agar skor positif
     konsisten mencerminkan dorongan hawkish/penguatan nilai mata uang.
     """
-    events = (await session.execute(
-        select(EconomicCalendar)
-        .where(EconomicCalendar.actual != None)
-        .where(EconomicCalendar.forecast != None)
-        .where(EconomicCalendar.surprise_score == None)
-    )).scalars().all()
-    
+    events = (
+        (
+            await session.execute(
+                select(EconomicCalendar)
+                .where(EconomicCalendar.actual != None)
+                .where(EconomicCalendar.forecast != None)
+                .where(EconomicCalendar.surprise_score == None)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
     updated = 0
     for event in events:
         actual = _parse_numeric(event.actual)
         forecast = _parse_numeric(event.forecast)
-        
+
         if actual is None or forecast is None:
             continue
-        
+
         # Indicator-specific surprise calculation
         name_lower = (event.event_name or "").lower()
         diff = actual - forecast
-        
+
         # 1. Central bank interest rate decisions (Fed Funds, ECB, BOE, BOJ, RBA)
-        if any(k in name_lower for k in ("interest rate", "rate decision", "fed funds", "refinancing rate", "cash rate", "policy rate")):
+        if any(
+            k in name_lower
+            for k in ("interest rate", "rate decision", "fed funds", "refinancing rate", "cash rate", "policy rate")
+        ):
             # 15 bps (0.15%) difference is massive -> normalize so 15 bps = 20.0 surprise score
             surprise = round((diff / 0.15) * 20.0, 4)
         # 2. CPI / PCE inflation
@@ -83,7 +101,9 @@ async def compute_surprise_scores(session: AsyncSession) -> int:
             # Inverted: higher unemployment is dovish (-), 0.20% = 20.0 score
             surprise = round((-diff / 0.20) * 20.0, 4)
         # 5. PMI / ISM / Business & Consumer Sentiment Surveys (Index scale centered around 50 or 100)
-        elif any(k in name_lower for k in ("pmi", "ism", "sentiment", "ifo", "zew", "chicago pm", "consumer confidence")):
+        elif any(
+            k in name_lower for k in ("pmi", "ism", "sentiment", "ifo", "zew", "chicago pm", "consumer confidence")
+        ):
             # 1.5 index point difference is a major macro surprise -> normalize so 1.5 = 20.0 score
             surprise = round((diff / 1.50) * 20.0, 4)
         # 6. GDP / Retail Sales / Industrial Production (Growth rates)
@@ -100,23 +120,20 @@ async def compute_surprise_scores(session: AsyncSession) -> int:
             # Inversi arah untuk metrik pengangguran/klaim lainnya
             if any(kw in name_lower for kw in _INVERTED_METRIC_KEYWORDS):
                 surprise = -surprise
-        
+
         # Clamp ke rentang batas wajar [-300.0, +300.0] untuk mencegah anomali angka tak terhingga
         surprise = max(-300.0, min(300.0, surprise))
         event.surprise_score = round(surprise, 4)
         updated += 1
-    
+
     if updated:
         await session.commit()
-    
+
     return updated
 
 
 async def compute_cesi_index(
-    session: AsyncSession,
-    currency: str,
-    window_days: int = 90,
-    half_life_days: float = 30.0
+    session: AsyncSession, currency: str, window_days: int = 90, half_life_days: float = 30.0
 ) -> dict:
     """
     Menghitung Citigroup-style Economic Surprise Index (CESI) untuk suatu mata uang
@@ -130,13 +147,19 @@ async def compute_cesi_index(
     now = clock.now()
     cutoff = now - timedelta(days=window_days)
 
-    events = (await session.execute(
-        select(EconomicCalendar)
-        .where(EconomicCalendar.currency == curr)
-        .where(EconomicCalendar.surprise_score != None)
-        .where(EconomicCalendar.event_time >= cutoff)
-        .order_by(EconomicCalendar.event_time.asc())
-    )).scalars().all()
+    events = (
+        (
+            await session.execute(
+                select(EconomicCalendar)
+                .where(EconomicCalendar.currency == curr)
+                .where(EconomicCalendar.surprise_score != None)
+                .where(EconomicCalendar.event_time >= cutoff)
+                .order_by(EconomicCalendar.event_time.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     if not events:
         return {
@@ -145,7 +168,7 @@ async def compute_cesi_index(
             "cesi_score": 0.0,
             "event_count": 0,
             "trend": "NEUTRAL",
-            "description": f"No scored economic events in the last {window_days} days."
+            "description": f"No scored economic events in the last {window_days} days.",
         }
 
     decay_lambda = math.log(2) / max(1.0, half_life_days)
@@ -187,6 +210,5 @@ async def compute_cesi_index(
         "cesi_score": cesi,
         "event_count": len(events),
         "trend": trend,
-        "description": f"CESI for {curr} over {window_days}d is {cesi:+.2f} ({trend}, {len(events)} events)."
+        "description": f"CESI for {curr} over {window_days}d is {cesi:+.2f} ({trend}, {len(events)} events).",
     }
-

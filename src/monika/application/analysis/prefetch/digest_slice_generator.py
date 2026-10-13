@@ -26,8 +26,8 @@ from monika.application.analysis.prefetch.news_digest import _jaccard_title_simi
 
 logger = logging.getLogger("TradingAgent.DigestSliceGenerator")
 
-TARGET_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'XAU', 'XTI', 'BTC']
-IMPACT_WEIGHT = {'BREAKING': 3, 'HIGH': 2, 'MEDIUM': 1, 'LOW': 0, 'NONE': 0}
+TARGET_CURRENCIES = ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "XTI", "BTC"]
+IMPACT_WEIGHT = {"BREAKING": 3, "HIGH": 2, "MEDIUM": 1, "LOW": 0, "NONE": 0}
 
 
 class DigestSliceGenerator:
@@ -35,21 +35,23 @@ class DigestSliceGenerator:
 
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
-        self._digest_generator = get_client_for_task('news_digest', self.settings)
-        self._macro_synth = get_client_for_task('news_digest_macro_overview', self.settings)
-        self._verifier = get_client_for_task('news_digest_verifier', self.settings)
+        self._digest_generator = get_client_for_task("news_digest", self.settings)
+        self._macro_synth = get_client_for_task("news_digest_macro_overview", self.settings)
+        self._verifier = get_client_for_task("news_digest_verifier", self.settings)
 
     async def generate_slice(
         self,
         session: AsyncSession,
         period_start: datetime,
         period_end: datetime,
-        trigger: str = 'scheduled',
+        trigger: str = "scheduled",
     ) -> NewsDigestSlice:
         """
         Generate snapshot 2 jam untuk rentang period_start s/d period_end.
         """
-        logger.info(f"[DigestSlice] Generating slice for window {period_start.isoformat()} to {period_end.isoformat()} (trigger={trigger})")
+        logger.info(
+            f"[DigestSlice] Generating slice for window {period_start.isoformat()} to {period_end.isoformat()} (trigger={trigger})"
+        )
 
         # Query news items in window
         query = (
@@ -59,30 +61,27 @@ class DigestSliceGenerator:
             .order_by(NewsItem.fetched_at.desc())
         )
         all_items = (await session.execute(query)).scalars().all()
-        
-        significant_items = [
-            i for i in all_items 
-            if i.impact in ('BREAKING', 'HIGH', 'MEDIUM')
-        ]
 
-        breaking_count = sum(1 for i in significant_items if i.impact == 'BREAKING')
-        high_count = sum(1 for i in significant_items if i.impact == 'HIGH')
+        significant_items = [i for i in all_items if i.impact in ("BREAKING", "HIGH", "MEDIUM")]
+
+        breaking_count = sum(1 for i in significant_items if i.impact == "BREAKING")
+        high_count = sum(1 for i in significant_items if i.impact == "HIGH")
 
         # Group items by currency
         grouped_news: Dict[str, List[NewsItem]] = {c: [] for c in TARGET_CURRENCIES}
         for item in significant_items:
             if item.currency_tags:
-                for tag in item.currency_tags.split(','):
+                for tag in item.currency_tags.split(","):
                     clean_tag = tag.strip().upper()
                     if clean_tag in grouped_news:
                         grouped_news[clean_tag].append(item)
 
         # Build theme counts
-        INTERNAL_TAGS = {'IRRELEVANT_PREFILTERED', 'DUPLICATE_PREFILTERED', 'IRRELEVANT', 'DUPLICATE'}
+        INTERNAL_TAGS = {"IRRELEVANT_PREFILTERED", "DUPLICATE_PREFILTERED", "IRRELEVANT", "DUPLICATE"}
         theme_counts: Dict[str, int] = {}
         for item in significant_items:
             if item.sentiment:
-                for s in item.sentiment.split(','):
+                for s in item.sentiment.split(","):
                     clean_s = s.strip()
                     if clean_s and clean_s not in INTERNAL_TAGS:
                         theme_counts[clean_s] = theme_counts.get(clean_s, 0) + 1
@@ -91,8 +90,16 @@ class DigestSliceGenerator:
         weighted_scores: Dict[str, int] = {}
         for cur in TARGET_CURRENCIES:
             cur_items = grouped_news.get(cur, [])
-            bull_w = sum(IMPACT_WEIGHT.get(i.impact or '', 1) for i in cur_items if i.sentiment and f'BULLISH_{cur}' in i.sentiment)
-            bear_w = sum(IMPACT_WEIGHT.get(i.impact or '', 1) for i in cur_items if i.sentiment and f'BEARISH_{cur}' in i.sentiment)
+            bull_w = sum(
+                IMPACT_WEIGHT.get(i.impact or "", 1)
+                for i in cur_items
+                if i.sentiment and f"BULLISH_{cur}" in i.sentiment
+            )
+            bear_w = sum(
+                IMPACT_WEIGHT.get(i.impact or "", 1)
+                for i in cur_items
+                if i.sentiment and f"BEARISH_{cur}" in i.sentiment
+            )
             weighted_scores[cur] = bull_w - bear_w
 
         # Generate currency sections in parallel
@@ -102,14 +109,14 @@ class DigestSliceGenerator:
         async def _synth_currency(cur: str, items: List[NewsItem]) -> tuple[str, str]:
             if not items:
                 return cur, f"No high/medium impact developments in this 2-hour window."
-            
+
             # Deduplicate items
             unique_items = []
             for it in items[:15]:
-                if not any(_jaccard_title_similarity(it.title or '', u.title or '') > 0.6 for u in unique_items):
+                if not any(_jaccard_title_similarity(it.title or "", u.title or "") > 0.6 for u in unique_items):
                     unique_items.append(it)
 
-            news_text = '\n\n'.join([_format_news_item_for_prompt(it) for it in unique_items])
+            news_text = "\n\n".join([_format_news_item_for_prompt(it) for it in unique_items])
             prompt = f"""You are a senior macro trading analyst. Summarize {cur}-specific news from this 2-hour window.
 
 {cur} NEWS:
@@ -124,7 +131,7 @@ Provide a concise 2-hour update:
 
 Max 250 words. Be terse, factual, and strictly grounded in provided data."""
             try:
-                use_top = any(getattr(i, 'impact', None) == 'BREAKING' for i in items) or cur in ('USD', 'XAU')
+                use_top = any(getattr(i, "impact", None) == "BREAKING" for i in items) or cur in ("USD", "XAU")
                 client = self._macro_synth if use_top else self._digest_generator
                 res = await client.generate(prompt)
                 return cur, res or "Insufficient data."
@@ -134,7 +141,7 @@ Max 250 words. Be terse, factual, and strictly grounded in provided data."""
 
         for cur in TARGET_CURRENCIES:
             cur_items = grouped_news.get(cur, [])
-            if cur_items or cur in ('USD', 'XAU'):
+            if cur_items or cur in ("USD", "XAU"):
                 tasks.append(_synth_currency(cur, cur_items))
 
         if tasks:
@@ -170,7 +177,9 @@ Max 250 words. Be terse, factual, and strictly grounded in provided data."""
         session.add(slice_entry)
         await session.commit()
 
-        logger.info(f"[DigestSlice] Saved slice #{slice_entry.id} ({period_hours}h, {breaking_count} BREAKING, {high_count} HIGH, {len(all_items)} items)")
+        logger.info(
+            f"[DigestSlice] Saved slice #{slice_entry.id} ({period_hours}h, {breaking_count} BREAKING, {high_count} HIGH, {len(all_items)} items)"
+        )
         return slice_entry
 
     async def assemble_12h_digest(self, session: AsyncSession, hours_back: int = 12) -> Optional[str]:
@@ -178,7 +187,7 @@ Max 250 words. Be terse, factual, and strictly grounded in provided data."""
         Menggabungkan slices dalam window hours_back (default 12 jam) menjadi satu digest komprehensif.
         """
         since = datetime.now(timezone.utc) - timedelta(hours=hours_back)
-        
+
         slices_query = (
             select(NewsDigestSlice)
             .where(NewsDigestSlice.period_end >= since)
@@ -191,7 +200,7 @@ Max 250 words. Be terse, factual, and strictly grounded in provided data."""
             now_utc = datetime.now(timezone.utc)
             start_utc = now_utc - timedelta(hours=2)
             try:
-                fresh_slice = await self.generate_slice(session, start_utc, now_utc, trigger='on_demand')
+                fresh_slice = await self.generate_slice(session, start_utc, now_utc, trigger="on_demand")
                 slices = [fresh_slice]
             except Exception as e:
                 logger.error(f"[DigestSlice] On-demand slice generation failed: {e}")
@@ -232,20 +241,26 @@ Max 250 words. Be terse, factual, and strictly grounded in provided data."""
             "high_count": total_high,
             "market_snapshot": {
                 "vix": vix.close if vix else None,
-                "dxy_trend": ("strengthening" if len(dxy_rows) >= 2 and dxy_rows[0].close > dxy_rows[-1].close else "weakening") if dxy_rows else None,
+                "dxy_trend": (
+                    "strengthening" if len(dxy_rows) >= 2 and dxy_rows[0].close > dxy_rows[-1].close else "weakening"
+                )
+                if dxy_rows
+                else None,
                 "dominant_themes": [t[0] for t in top_themes[:3]],
-                "theme_counts": dict(top_themes[:5])
+                "theme_counts": dict(top_themes[:5]),
             },
             "priced_in_signal": {
                 "high_saturation": [k for k, v in agg_themes.items() if v >= 6],
                 "moderate_saturation": [k for k, v in agg_themes.items() if 3 <= v < 6],
-                "saturation_risk": "HIGH" if sum(1 for v in agg_themes.values() if v >= 6) >= 2 else "MEDIUM" if any(v >= 6 for v in agg_themes.values()) else "LOW"
-            }
+                "saturation_risk": "HIGH"
+                if sum(1 for v in agg_themes.values() if v >= 6) >= 2
+                else "MEDIUM"
+                if any(v >= 6 for v in agg_themes.values())
+                else "LOW",
+            },
         }
 
-        digest_parts = [
-            f"```digest_metadata\n{json.dumps(metadata_block, indent=2)}\n```\n"
-        ]
+        digest_parts = [f"```digest_metadata\n{json.dumps(metadata_block, indent=2)}\n```\n"]
 
         # 2. Aggregated Currency Signal Summary Table
         table_lines = [
@@ -275,8 +290,8 @@ Based on {len(slices)} rolling news snapshot slices over the past {hours_back} h
 AGGREGATED DATA METRICS:
 - Total news processed: {total_items}
 - Breaking news: {total_breaking}, High impact: {total_high}
-- VIX: {vix.close if vix else 'N/A'}, DXY trend: {metadata_block['market_snapshot']['dxy_trend']}
-- Dominant Themes: {', '.join(t[0] for t in top_themes)}
+- VIX: {vix.close if vix else "N/A"}, DXY trend: {metadata_block["market_snapshot"]["dxy_trend"]}
+- Dominant Themes: {", ".join(t[0] for t in top_themes)}
 
 CURRENCY 12H NET SCORES:
 {json.dumps(agg_weighted_scores, indent=2)}
@@ -296,15 +311,23 @@ Strictly ground all numeric claims. Max 700 words."""
             logger.error(f"[DigestSlice] Macro overview generation failed: {e}")
             macro_overview = None
 
-        if not macro_overview or macro_overview.strip() == "" or macro_overview == "(Macro overview generation unavailable)":
+        if (
+            not macro_overview
+            or macro_overview.strip() == ""
+            or macro_overview == "(Macro overview generation unavailable)"
+        ):
             # Synthesize deterministic fallback from chronological slices or recent NewsDigest
             synth_parts = ["**Deterministic Macro Summary (Synthesized from Slices)**:"]
             for s in slices[-4:]:
-                summary_text = getattr(s, 'macro_summary', None)
+                summary_text = getattr(s, "macro_summary", None)
                 if not summary_text and s.currency_sections:
                     try:
                         c_dict = json.loads(s.currency_sections)
-                        highlights = [f"{cur}: {txt.strip()[:100]}" for cur, txt in c_dict.items() if txt and not txt.startswith("No high/medium")]
+                        highlights = [
+                            f"{cur}: {txt.strip()[:100]}"
+                            for cur, txt in c_dict.items()
+                            if txt and not txt.startswith("No high/medium")
+                        ]
                         if highlights:
                             summary_text = "; ".join(highlights[:3])
                     except Exception:
@@ -315,9 +338,9 @@ Strictly ground all numeric claims. Max 700 words."""
             if len(synth_parts) > 1:
                 macro_overview = "\n".join(synth_parts)
             else:
-                recent_digest = (await session.execute(
-                    select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1)
-                )).scalar_one_or_none()
+                recent_digest = (
+                    await session.execute(select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1))
+                ).scalar_one_or_none()
                 if recent_digest and recent_digest.digest_text:
                     macro_overview = f"(Synthesized from recent NewsDigest):\n{recent_digest.digest_text[:500]}..."
                 else:
@@ -327,14 +350,14 @@ Strictly ground all numeric claims. Max 700 words."""
         digest_parts.append(macro_overview or "")
 
         # 4. 12-Hour Chronological Timeline (Slices)
-        timeline_lines = [
-            f"\n### 12-HOUR ROLLING TIMELINE ({len(slices)} Sequential Slices)\n"
-        ]
+        timeline_lines = [f"\n### 12-HOUR ROLLING TIMELINE ({len(slices)} Sequential Slices)\n"]
         for idx, s in enumerate(slices, 1):
             p_start_str = s.period_start.strftime("%H:%M UTC")
             p_end_str = s.period_end.strftime("%H:%M UTC")
-            timeline_lines.append(f"#### Window #{idx}: [{p_start_str} - {p_end_str}] (Breaking: {s.breaking_count}, High: {s.high_count}, Trigger: {s.trigger})")
-            
+            timeline_lines.append(
+                f"#### Window #{idx}: [{p_start_str} - {p_end_str}] (Breaking: {s.breaking_count}, High: {s.high_count}, Trigger: {s.trigger})"
+            )
+
             if s.currency_sections:
                 try:
                     c_dict = json.loads(s.currency_sections)
@@ -374,12 +397,14 @@ Strictly ground all numeric claims. Max 700 words."""
         since = datetime.now(timezone.utc) - timedelta(hours=12)
         missing = []
         for cur in TARGET_CURRENCIES:
-            cnt = (await session.execute(
-                select(func.count(NewsItem.id))
-                .where(NewsItem.fetched_at >= since)
-                .where(NewsItem.impact.in_(['BREAKING', 'HIGH', 'MEDIUM']))
-                .where(NewsItem.currency_tags.contains(cur))
-            )).scalar_one_or_none() or 0
+            cnt = (
+                await session.execute(
+                    select(func.count(NewsItem.id))
+                    .where(NewsItem.fetched_at >= since)
+                    .where(NewsItem.impact.in_(["BREAKING", "HIGH", "MEDIUM"]))
+                    .where(NewsItem.currency_tags.contains(cur))
+                )
+            ).scalar_one_or_none() or 0
             if cnt == 0:
                 missing.append(cur)
 

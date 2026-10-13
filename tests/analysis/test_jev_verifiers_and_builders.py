@@ -99,7 +99,7 @@ def test_dynamic_agreement_pct_not_hardcoded():
             "bias_USD": ChoiceAnswer(choice="bullish", confidence=0.50, probabilities={"bullish": 0.50}),
             "bias_EUR": ChoiceAnswer(choice="bearish", confidence=0.40, probabilities={"bearish": 0.40}),
             "bias_GBP": ChoiceAnswer(choice="neutral", confidence=0.60, probabilities={"neutral": 0.60}),
-        }
+        },
     )
     result = parse_jev_response_to_dict(resp)
     assert "currency_bias" in result
@@ -132,13 +132,11 @@ async def test_classify_news_batch_with_key_asset_classes():
             "is_risk_off": NoulAnswer(noul=0.10),
             "is_risk_on": NoulAnswer(noul=0.88),
             "key_asset_classes": ChoiceAnswer(choice="forex", confidence=0.92, probabilities={"forex": 0.92}),
-        }
+        },
     )
 
     results = await classify_news_batch_with_jev(
-        client=mock_client,
-        batch=[mock_item],
-        now_utc=datetime.now(timezone.utc)
+        client=mock_client, batch=[mock_item], now_utc=datetime.now(timezone.utc)
     )
 
     assert results is not None

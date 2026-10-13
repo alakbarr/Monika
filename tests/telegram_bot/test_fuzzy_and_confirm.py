@@ -17,7 +17,7 @@ def test_turn_marker_lifecycle(tmp_path):
         task_type="adhoc_analysis",
         symbol="XAUUSD",
         stage="stage2_debate",
-        started_at=time.time()
+        started_at=time.time(),
     )
 
     manager.record_start(marker)
@@ -37,7 +37,7 @@ def test_turn_marker_stale_discard(tmp_path):
         task_type="recurring_cycle",
         symbol=None,
         stage="init",
-        started_at=time.time() - 1000.0  # Old
+        started_at=time.time() - 1000.0,  # Old
     )
     manager.record_start(marker)
     # With max_age 100s, this should be discarded
@@ -72,14 +72,12 @@ def test_fuzzy_router_matching():
 async def test_trade_confirm_pop_before_execute():
     manager = TradeConfirmManager()
     action = manager.create_pending_action(
-        action_type="close_position",
-        description="Close position 123456",
-        payload={"ticket": 123456},
-        ttl_seconds=10.0
+        action_type="close_position", description="Close position 123456", payload={"ticket": 123456}, ttl_seconds=10.0
     )
     confirm_id = action.confirm_id
 
     executed_payloads = []
+
     async def _mock_handler(payload):
         executed_payloads.append(payload)
         return "SUCCESS"

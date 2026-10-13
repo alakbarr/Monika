@@ -25,6 +25,7 @@ if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 try:
     from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+
     install_legacy_compat()
 except Exception:
     pass
@@ -32,6 +33,7 @@ except Exception:
 # Muat environment variables dari file .env
 try:
     from dotenv import load_dotenv
+
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     root_dir = os.path.abspath(os.path.join(base_dir, ".."))
     for p in [os.path.join(root_dir, ".env"), os.path.join(base_dir, ".env")]:
@@ -41,11 +43,7 @@ try:
 except Exception:
     pass
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(message)s",
-    datefmt="%H:%M:%S"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("CheckSentiment")
 
 
@@ -86,7 +84,13 @@ def check_fxssi(headless: bool = False, pause: int = 3) -> dict:
             logger.info(f"Menahan jeda {pause} detik...")
             time.sleep(pause)
 
-        return {"source": "FXSSI (Browser)", "status": "SUCCESS" if ratios else "EMPTY", "count": len(ratios), "duration": duration, "error": result.get("error")}
+        return {
+            "source": "FXSSI (Browser)",
+            "status": "SUCCESS" if ratios else "EMPTY",
+            "count": len(ratios),
+            "duration": duration,
+            "error": result.get("error"),
+        }
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         logger.error(f"[FAILED] FXSSI gagal: {e}")
@@ -114,7 +118,13 @@ def check_myfxbook(headless: bool = False, pause: int = 3) -> dict:
             logger.info(f"Menahan jeda {pause} detik...")
             time.sleep(pause)
 
-        return {"source": "MyFxBook (Browser)", "status": "SUCCESS" if ratios else "EMPTY", "count": len(ratios), "duration": duration, "error": result.get("error")}
+        return {
+            "source": "MyFxBook (Browser)",
+            "status": "SUCCESS" if ratios else "EMPTY",
+            "count": len(ratios),
+            "duration": duration,
+            "error": result.get("error"),
+        }
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         logger.error(f"[FAILED] MyFxBook gagal: {e}")
@@ -138,7 +148,13 @@ async def check_binance() -> dict:
         else:
             logger.warning(f"[EMPTY] Binance kosong atau error: {result.get('error')}")
 
-        return {"source": "Binance Futures (API)", "status": "SUCCESS" if ratios else "EMPTY", "count": len(ratios), "duration": duration, "error": result.get("error")}
+        return {
+            "source": "Binance Futures (API)",
+            "status": "SUCCESS" if ratios else "EMPTY",
+            "count": len(ratios),
+            "duration": duration,
+            "error": result.get("error"),
+        }
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         logger.error(f"[FAILED] Binance gagal: {e}")
@@ -147,9 +163,18 @@ async def check_binance() -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Pemeriksaan Scraper Sentimen Ritel (FXSSI, MyFxBook, Binance)")
-    parser.add_argument("--source", choices=["all", "fxssi", "myfxbook", "binance"], default="all", help="Pilih sumber sentimen yang ingin diuji (default: all)")
-    parser.add_argument("--headless", action="store_true", help="Jalankan browser scraper dalam mode headless (default: False/headed)")
-    parser.add_argument("--pause", type=int, default=3, help="Jeda penutupan browser untuk observasi visual dalam detik (default: 3)")
+    parser.add_argument(
+        "--source",
+        choices=["all", "fxssi", "myfxbook", "binance"],
+        default="all",
+        help="Pilih sumber sentimen yang ingin diuji (default: all)",
+    )
+    parser.add_argument(
+        "--headless", action="store_true", help="Jalankan browser scraper dalam mode headless (default: False/headed)"
+    )
+    parser.add_argument(
+        "--pause", type=int, default=3, help="Jeda penutupan browser untuk observasi visual dalam detik (default: 3)"
+    )
 
     args = parser.parse_args()
     headless_mode = args.headless
@@ -169,6 +194,7 @@ def main():
 
     if args.source in ["all", "binance"]:
         import sys
+
         if sys.platform == "win32":
             res_binance = asyncio.run(check_binance(), loop_factory=asyncio.SelectorEventLoop)
         else:
@@ -179,8 +205,12 @@ def main():
     print("  RINGKASAN HASIL PEMERIKSAAN SENTIMEN")
     print("=" * 60)
     for r in results:
-        status_tag = "[OK]   " if r.get("status") == "SUCCESS" else ("[EMPTY]" if r.get("status") == "EMPTY" else "[FAIL] ")
-        count_str = f"{r.get('count', 0)} symbols" if "count" in r and r.get("count", 0) > 0 else r.get("error", "Error/Empty")
+        status_tag = (
+            "[OK]   " if r.get("status") == "SUCCESS" else ("[EMPTY]" if r.get("status") == "EMPTY" else "[FAIL] ")
+        )
+        count_str = (
+            f"{r.get('count', 0)} symbols" if "count" in r and r.get("count", 0) > 0 else r.get("error", "Error/Empty")
+        )
         print(f"  {status_tag} {r['source']:<24} | Status: {r['status']:<8} | {count_str} ({r.get('duration', 0)}s)")
     print("=" * 60 + "\n")
 

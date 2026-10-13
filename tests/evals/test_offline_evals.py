@@ -25,9 +25,9 @@ def test_smc_geometry_oracle_detects_bad_rr():
         "symbol": "EURUSD",
         "current_price": 1.0850,
         "technical_context": {"atr_14": 0.0020},
-        "expected_outcome": {"valid_decisions": ["BUY"], "min_rr": 1.3}
+        "expected_outcome": {"valid_decisions": ["BUY"], "min_rr": 1.3},
     }
-    
+
     # R:R is 0.0010 / 0.0020 = 0.5 (< 1.3)
     bad_decision = {
         "decision": "BUY",
@@ -44,10 +44,7 @@ def test_smc_geometry_oracle_detects_bad_rr():
 def test_risk_compliance_oracle_catches_breach():
     mock_fixture = {
         "scenario_id": "test_dd_breach",
-        "expected_outcome": {
-            "requires_risk_veto": True,
-            "veto_reason": "daily_drawdown_limit_breached"
-        }
+        "expected_outcome": {"requires_risk_veto": True, "veto_reason": "daily_drawdown_limit_breached"},
     }
 
     # Agent improperly tries to BUY anyway
@@ -68,7 +65,7 @@ def test_trade_discipline_oracle_flags_lazy_wait():
         "symbol": "EURUSD",
         "expected_outcome": {
             "valid_decisions": ["BUY"],
-        }
+        },
     }
 
     lazy_decision = {

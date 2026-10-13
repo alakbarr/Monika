@@ -32,6 +32,7 @@ async def test_playbook_curator_successful_curation(tmp_path):
     curator.crystallized_dir.mkdir(parents=True, exist_ok=True)
 
     from analysis.memory.playbook_ledger import PlaybookLedger
+
     curator.ledger = PlaybookLedger(str(curator.playbooks_dir))
 
     # Mock 3 closed winning trades

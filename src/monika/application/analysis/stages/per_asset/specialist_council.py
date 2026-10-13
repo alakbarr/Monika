@@ -69,14 +69,16 @@ class SpecialistCouncil:
     def __init__(self, settings: Optional[Dict[str, Any]] = None):
         self.settings = settings or {}
 
-    def _evaluate_macro(self, symbol: str, bundle_data: Dict[str, Any], override: Optional[Dict[str, Any]] = None) -> SpecialistVote:
+    def _evaluate_macro(
+        self, symbol: str, bundle_data: Dict[str, Any], override: Optional[Dict[str, Any]] = None
+    ) -> SpecialistVote:
         if override:
             return SpecialistVote(
                 role=SpecialistRole.MACRO,
                 bias=override.get("bias", "NEUTRAL").upper(),
                 confidence=float(override.get("confidence", 0.5)),
                 rationale=override.get("rationale", "Macro evaluation provided via override."),
-                metadata=override.get("metadata", {})
+                metadata=override.get("metadata", {}),
             )
         # Empirical fallback inspection
         macro_score = bundle_data.get("get_macro_bias_score", 0.0)
@@ -90,20 +92,19 @@ class SpecialistCouncil:
             bias = "NEUTRAL"
             conf = 0.5
         return SpecialistVote(
-            role=SpecialistRole.MACRO,
-            bias=bias,
-            confidence=conf,
-            rationale=f"Macro score: {macro_score:.2f}."
+            role=SpecialistRole.MACRO, bias=bias, confidence=conf, rationale=f"Macro score: {macro_score:.2f}."
         )
 
-    def _evaluate_technical(self, symbol: str, bundle_data: Dict[str, Any], override: Optional[Dict[str, Any]] = None) -> SpecialistVote:
+    def _evaluate_technical(
+        self, symbol: str, bundle_data: Dict[str, Any], override: Optional[Dict[str, Any]] = None
+    ) -> SpecialistVote:
         if override:
             return SpecialistVote(
                 role=SpecialistRole.TECHNICAL,
                 bias=override.get("bias", "NEUTRAL").upper(),
                 confidence=float(override.get("confidence", 0.5)),
                 rationale=override.get("rationale", "Technical evaluation provided via override."),
-                metadata=override.get("metadata", {})
+                metadata=override.get("metadata", {}),
             )
         # Basic indicators fallback
         regime = bundle_data.get("market_regime", "RANGING").upper()
@@ -117,20 +118,19 @@ class SpecialistCouncil:
             bias = "BEARISH"
             conf = 0.7
         return SpecialistVote(
-            role=SpecialistRole.TECHNICAL,
-            bias=bias,
-            confidence=conf,
-            rationale=f"Market regime: {regime}."
+            role=SpecialistRole.TECHNICAL, bias=bias, confidence=conf, rationale=f"Market regime: {regime}."
         )
 
-    def _evaluate_news_sentiment(self, symbol: str, bundle_data: Dict[str, Any], override: Optional[Dict[str, Any]] = None) -> SpecialistVote:
+    def _evaluate_news_sentiment(
+        self, symbol: str, bundle_data: Dict[str, Any], override: Optional[Dict[str, Any]] = None
+    ) -> SpecialistVote:
         if override:
             return SpecialistVote(
                 role=SpecialistRole.NEWS_SENTIMENT,
                 bias=override.get("bias", "NEUTRAL").upper(),
                 confidence=float(override.get("confidence", 0.5)),
                 rationale=override.get("rationale", "News/Sentiment evaluation provided via override."),
-                metadata=override.get("metadata", {})
+                metadata=override.get("metadata", {}),
             )
         retail_sentiment = bundle_data.get("retail_sentiment", {})
         long_pct = retail_sentiment.get("long_percentage", 50.0) if isinstance(retail_sentiment, dict) else 50.0
@@ -148,7 +148,7 @@ class SpecialistCouncil:
             role=SpecialistRole.NEWS_SENTIMENT,
             bias=bias,
             confidence=conf,
-            rationale=f"Retail long: {long_pct:.1f}% (Contrarian bias: {bias})."
+            rationale=f"Retail long: {long_pct:.1f}% (Contrarian bias: {bias}).",
         )
 
     def _evaluate_risk_arbitrator(
@@ -158,7 +158,7 @@ class SpecialistCouncil:
         tentative_action: str,
         negative_constraints: List[str],
         bundle_data: Dict[str, Any],
-        override: Optional[Dict[str, Any]] = None
+        override: Optional[Dict[str, Any]] = None,
     ) -> SpecialistVote:
         if override:
             return SpecialistVote(
@@ -168,7 +168,7 @@ class SpecialistCouncil:
                 rationale=override.get("rationale", "Risk Arbitrator evaluation provided via override."),
                 veto=override.get("veto", False),
                 veto_reason=override.get("veto_reason"),
-                metadata=override.get("metadata", {})
+                metadata=override.get("metadata", {}),
             )
 
         # Check for news blackout window or adverse risk conditions
@@ -180,7 +180,7 @@ class SpecialistCouncil:
                 confidence=0.9,
                 rationale="High-impact news event imminent within embargo window.",
                 veto=True,
-                veto_reason="News embargo window active: entries prohibited."
+                veto_reason="News embargo window active: entries prohibited.",
             )
 
         # Invariant checks: minimum R:R >= configured min_rr (Fix 6.3)
@@ -193,22 +193,18 @@ class SpecialistCouncil:
                 confidence=0.85,
                 rationale=f"Estimated R:R ratio ({est_rr:.2f}) is below mandatory minimum {min_rr:.1f}.",
                 veto=True,
-                veto_reason=f"Sub-optimal risk-to-reward ratio: {est_rr:.2f} < {min_rr:.1f}"
+                veto_reason=f"Sub-optimal risk-to-reward ratio: {est_rr:.2f} < {min_rr:.1f}",
             )
 
         return SpecialistVote(
             role=SpecialistRole.RISK_ARBITRATOR,
             bias="NEUTRAL",
             confidence=0.8,
-            rationale=f"Risk parameters approved with {len(negative_constraints)} negative constraints applied."
+            rationale=f"Risk parameters approved with {len(negative_constraints)} negative constraints applied.",
         )
 
     def _evaluate_execution_strategist(
-        self,
-        symbol: str,
-        action: str,
-        bundle_data: Dict[str, Any],
-        override: Optional[Dict[str, Any]] = None
+        self, symbol: str, action: str, bundle_data: Dict[str, Any], override: Optional[Dict[str, Any]] = None
     ) -> SpecialistVote:
         if override:
             return SpecialistVote(
@@ -216,7 +212,7 @@ class SpecialistCouncil:
                 bias=override.get("bias", "NEUTRAL").upper(),
                 confidence=float(override.get("confidence", 0.5)),
                 rationale=override.get("rationale", "Execution Strategist evaluation provided via override."),
-                metadata=override.get("metadata", {})
+                metadata=override.get("metadata", {}),
             )
 
         # Determine optimal entry order type
@@ -224,12 +220,7 @@ class SpecialistCouncil:
         spread = bundle_data.get("spread_pips", 1.2)
 
         # Default execution params
-        exec_params = {
-            "order_type": "LIMIT",
-            "pullback_target_atr": 0.3,
-            "max_slippage_pips": 2.0,
-            "session_ok": True
-        }
+        exec_params = {"order_type": "LIMIT", "pullback_target_atr": 0.3, "max_slippage_pips": 2.0, "session_ok": True}
 
         # If spread is wide, enforce limit order
         if spread > 2.5:
@@ -245,7 +236,7 @@ class SpecialistCouncil:
             bias="NEUTRAL",
             confidence=0.75,
             rationale=rationale,
-            metadata=exec_params
+            metadata=exec_params,
         )
 
     def evaluate(
@@ -253,7 +244,7 @@ class SpecialistCouncil:
         symbol: str,
         regime: str,
         bundle_data: Dict[str, Any],
-        specialist_overrides: Optional[Dict[str, Dict[str, Any]]] = None
+        specialist_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> CouncilVerdict:
         """
         Conduct full council deliberation across all 5 specialist domains.
@@ -269,9 +260,11 @@ class SpecialistCouncil:
         bull_score = 0.0
         bear_score = 0.0
 
-        for vote, role in [(macro_vote, SpecialistRole.MACRO),
-                           (tech_vote, SpecialistRole.TECHNICAL),
-                           (news_vote, SpecialistRole.NEWS_SENTIMENT)]:
+        for vote, role in [
+            (macro_vote, SpecialistRole.MACRO),
+            (tech_vote, SpecialistRole.TECHNICAL),
+            (news_vote, SpecialistRole.NEWS_SENTIMENT),
+        ]:
             weight = self.ROLE_WEIGHTS[role]
             if vote.bias == "BULLISH":
                 bull_score += weight * vote.confidence
@@ -295,7 +288,7 @@ class SpecialistCouncil:
             tentative_action=tentative_action,
             negative_constraints=negative_constraints,
             bundle_data=bundle_data,
-            override=overrides.get("risk_arbitrator")
+            override=overrides.get("risk_arbitrator"),
         )
 
         # 4. Execution Strategist Deliberation
@@ -303,7 +296,7 @@ class SpecialistCouncil:
             symbol=symbol,
             action=tentative_action,
             bundle_data=bundle_data,
-            override=overrides.get("execution_strategist")
+            override=overrides.get("execution_strategist"),
         )
 
         votes = {
@@ -325,14 +318,16 @@ class SpecialistCouncil:
                 rationale=f"VETO by Risk Arbitrator: {risk_vote.veto_reason}",
                 specialist_votes=votes,
                 negative_constraints_applied=negative_constraints,
-                execution_parameters=exec_vote.metadata
+                execution_parameters=exec_vote.metadata,
             )
 
         # Calculate final consensus score
         total_consensus = 0.0
         aligned_weight = 0.0
 
-        target_bias = "BULLISH" if tentative_action == "BUY" else ("BEARISH" if tentative_action == "SELL" else "NEUTRAL")
+        target_bias = (
+            "BULLISH" if tentative_action == "BUY" else ("BEARISH" if tentative_action == "SELL" else "NEUTRAL")
+        )
 
         for role_name, vote in votes.items():
             role_enum = SpecialistRole(role_name)
@@ -362,5 +357,5 @@ class SpecialistCouncil:
             rationale=rationale,
             specialist_votes=votes,
             negative_constraints_applied=negative_constraints,
-            execution_parameters=exec_vote.metadata
+            execution_parameters=exec_vote.metadata,
         )

@@ -18,6 +18,7 @@ from analysis.tools.handlers.trade_intel import handle_simulate_price_shock, han
 from analysis.tools.handlers.db_tools import handle_query_database_sql
 from analysis.tools.tools_definitions import ALL_TOOLS, TELEGRAM_TOOLS
 
+
 def test_tool_definitions():
     telegram_names = {t["name"] for t in TELEGRAM_TOOLS}
     all_names = {t["name"] for t in ALL_TOOLS}
@@ -34,21 +35,26 @@ def test_tool_definitions():
         assert r in all_names, f"{r} missing from ALL_TOOLS"
     print("PASS: test_tool_definitions")
 
+
 def test_router_intents():
     router = ChatToolRouter(TELEGRAM_TOOLS)
-    
+
     # Q25: ditolak
     tools_q25 = router.route_tools_for_query("Kenapa order saya ditolak oleh sistem tadi pagi?")
     tool_names_q25 = [t["name"] for t in tools_q25]
-    assert "get_rejected_trade_reasons" in tool_names_q25 or "read_system_logs" in tool_names_q25, f"Q25 failed: {tool_names_q25}"
-    
+    assert "get_rejected_trade_reasons" in tool_names_q25 or "read_system_logs" in tool_names_q25, (
+        f"Q25 failed: {tool_names_q25}"
+    )
+
     # Q30: komisi & swap
     tools_q30 = router.route_tools_for_query("Berapa total biaya komisi dan swap yang sudah saya bayar bulan ini?")
     tool_names_q30 = [t["name"] for t in tools_q30]
     assert "get_broker_expenses_summary" in tool_names_q30, f"Q30 failed: {tool_names_q30}"
-    
+
     # Q53: SMT divergence
-    tools_q53 = router.route_tools_for_query("Bandingkan struktur grafik DXY vs EURUSD dalam 48 jam terakhir, apakah ada SMT divergence?")
+    tools_q53 = router.route_tools_for_query(
+        "Bandingkan struktur grafik DXY vs EURUSD dalam 48 jam terakhir, apakah ada SMT divergence?"
+    )
     tool_names_q53 = [t["name"] for t in tools_q53]
     assert "get_smt_divergence" in tool_names_q53, f"Q53 failed: {tool_names_q53}"
 
@@ -71,8 +77,9 @@ def test_router_intents():
     tools_q132 = router.route_tools_for_query("Cek penggunaan memori CPU dan disk space server")
     tool_names_q132 = [t["name"] for t in tools_q132]
     assert "get_server_telemetry" in tool_names_q132, f"Q132 failed: {tool_names_q132}"
-    
+
     print("PASS: test_router_intents")
+
 
 async def async_tests():
     # Telemetry
@@ -113,15 +120,12 @@ async def async_tests():
     print("PASS: test_synthetic_cross")
 
     # Position sizing with custom equity
-    res_pos = await handle_calculate_position_size({
-        "symbol": "EURUSD",
-        "entry_price": 1.0850,
-        "stop_loss": 1.0830,
-        "risk_pct": 1.0,
-        "account_equity": 500.0
-    })
+    res_pos = await handle_calculate_position_size(
+        {"symbol": "EURUSD", "entry_price": 1.0850, "stop_loss": 1.0830, "risk_pct": 1.0, "account_equity": 500.0}
+    )
     assert "lot_size" in res_pos or "lots" in res_pos or "error" not in res_pos
     print("PASS: test_position_sizing_equity")
+
 
 def test_indicators():
     # RSI Divergence
@@ -130,27 +134,34 @@ def test_indicators():
     lows = pd.Series(highs - 1.0, index=dates)
     closes = pd.Series(highs - 0.5, index=dates)
     rsi = pd.Series(np.linspace(75, 60, 60), index=dates)
-    
+
     res_div = detect_rsi_divergence(highs, lows, closes, rsi)
     assert "divergence" in res_div
     assert "details" in res_div
 
     # SMT Divergence
     dates_smt = pd.date_range("2026-01-01", periods=20, freq="1h")
-    df_asset1 = pd.DataFrame({
-        "high": [10.0 + i * 0.2 for i in range(20)],
-        "low": [9.0 + i * 0.2 for i in range(20)],
-        "close": [9.5 + i * 0.2 for i in range(20)],
-    }, index=dates_smt)
-    df_asset2 = pd.DataFrame({
-        "high": [100.0 - i * 0.2 for i in range(20)],
-        "low": [90.0 - i * 0.2 for i in range(20)],
-        "close": [95.0 - i * 0.2 for i in range(20)],
-    }, index=dates_smt)
+    df_asset1 = pd.DataFrame(
+        {
+            "high": [10.0 + i * 0.2 for i in range(20)],
+            "low": [9.0 + i * 0.2 for i in range(20)],
+            "close": [9.5 + i * 0.2 for i in range(20)],
+        },
+        index=dates_smt,
+    )
+    df_asset2 = pd.DataFrame(
+        {
+            "high": [100.0 - i * 0.2 for i in range(20)],
+            "low": [90.0 - i * 0.2 for i in range(20)],
+            "close": [95.0 - i * 0.2 for i in range(20)],
+        },
+        index=dates_smt,
+    )
 
     res_smt = detect_smt_divergence(df_asset1, df_asset2, "EURUSD", "GBPUSD", inverse_correlation=False)
     assert "smt_detected" in res_smt
     print("PASS: test_indicators")
+
 
 if __name__ == "__main__":
     test_tool_definitions()

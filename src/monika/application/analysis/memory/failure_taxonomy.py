@@ -9,6 +9,7 @@ logger = logging.getLogger("TradingAgent.FailureTaxonomy")
 
 class FailureCategory(str, Enum):
     """Systematic reasoning failure taxonomy categories."""
+
     REGIME_MISCLASSIFICATION = "regime_misclassification"
     FALSE_BREAKOUT = "false_breakout"
     TIMING_EARLY = "timing_early"
@@ -80,7 +81,7 @@ PREVENTATIVE_RULES: Dict[FailureCategory, str] = {
     ),
     FailureCategory.UNKNOWN_FAILURE: (
         "Maintain disciplined risk management and strictly adhere to pre-defined invalidation points."
-    )
+    ),
 }
 
 
@@ -104,44 +105,38 @@ class FailureClassifier:
 
     KEYWORD_MAPPING: Dict[FailureCategory, List[str]] = {
         FailureCategory.REGIME_MISCLASSIFICATION: [
-            "regime", "ranging", "chop", "sideways", "trending wrong", "misread regime"
+            "regime",
+            "ranging",
+            "chop",
+            "sideways",
+            "trending wrong",
+            "misread regime",
         ],
         FailureCategory.FALSE_BREAKOUT: [
-            "fakeout", "false breakout", "bull trap", "bear trap", "liquidity grab", "sweep"
+            "fakeout",
+            "false breakout",
+            "bull trap",
+            "bear trap",
+            "liquidity grab",
+            "sweep",
         ],
-        FailureCategory.TIMING_EARLY: [
-            "premature", "early entry", "too early", "before pullback", "missed pullback"
-        ],
-        FailureCategory.TIMING_LATE: [
-            "chased", "late entry", "fomo", "extended", "overextended"
-        ],
+        FailureCategory.TIMING_EARLY: ["premature", "early entry", "too early", "before pullback", "missed pullback"],
+        FailureCategory.TIMING_LATE: ["chased", "late entry", "fomo", "extended", "overextended"],
         FailureCategory.SL_TOO_TIGHT: [
-            "sl too tight", "tight stop", "stopped out prematurely", "spread stopped", "noise"
+            "sl too tight",
+            "tight stop",
+            "stopped out prematurely",
+            "spread stopped",
+            "noise",
         ],
-        FailureCategory.SL_TOO_WIDE: [
-            "sl too wide", "wide stop", "risk too big"
-        ],
-        FailureCategory.CORRELATION_SHOCK: [
-            "correlation", "dxy", "basket", "cross pair", "currency shock"
-        ],
-        FailureCategory.NEWS_SPIKE: [
-            "news", "cpi", "nfp", "fomc", "rate hike", "high impact", "spike"
-        ],
-        FailureCategory.EXECUTION_SLIPPAGE: [
-            "slippage", "spread widening", "bad fill", "requote"
-        ],
-        FailureCategory.RISK_MISSIZING: [
-            "oversized", "too large", "missizing", "multiplier too high"
-        ],
-        FailureCategory.COUNTER_TREND_BLINDNESS: [
-            "counter trend", "against trend", "fought the trend", "htf trend"
-        ],
-        FailureCategory.VOLATILITY_UNDERESTIMATION: [
-            "volatility spike", "vix", "atr expansion", "wild swing"
-        ],
-        FailureCategory.UNGROUNDED_CONFLUENCE: [
-            "ungrounded", "hallucinated", "no real confluence", "weak confluence"
-        ]
+        FailureCategory.SL_TOO_WIDE: ["sl too wide", "wide stop", "risk too big"],
+        FailureCategory.CORRELATION_SHOCK: ["correlation", "dxy", "basket", "cross pair", "currency shock"],
+        FailureCategory.NEWS_SPIKE: ["news", "cpi", "nfp", "fomc", "rate hike", "high impact", "spike"],
+        FailureCategory.EXECUTION_SLIPPAGE: ["slippage", "spread widening", "bad fill", "requote"],
+        FailureCategory.RISK_MISSIZING: ["oversized", "too large", "missizing", "multiplier too high"],
+        FailureCategory.COUNTER_TREND_BLINDNESS: ["counter trend", "against trend", "fought the trend", "htf trend"],
+        FailureCategory.VOLATILITY_UNDERESTIMATION: ["volatility spike", "vix", "atr expansion", "wild swing"],
+        FailureCategory.UNGROUNDED_CONFLUENCE: ["ungrounded", "hallucinated", "no real confluence", "weak confluence"],
     }
 
     @classmethod
@@ -204,13 +199,10 @@ class FailureClassifier:
 
 
 def generate_negative_constraints(
-    failures: List[Any],
-    symbol: Optional[str] = None,
-    current_regime: Optional[str] = None,
-    max_constraints: int = 4
+    failures: List[Any], symbol: Optional[str] = None, current_regime: Optional[str] = None, max_constraints: int = 4
 ) -> List[str]:
     """Generate bulleted negative constraints for LLM prompt context based on historical failures.
-    
+
     Prevents repeated reasoning failure patterns for the target asset and regime.
     """
     if not failures:
@@ -249,12 +241,18 @@ def get_negative_constraints_for_regime(symbol: str, regime: str, max_rules: int
     rules = []
     reg_lower = (regime or "").lower()
     if any(k in reg_lower for k in ("trend", "bull", "bear")):
-        rules.extend([FailureCategory.TIMING_EARLY, FailureCategory.TIMING_LATE, FailureCategory.COUNTER_TREND_BLINDNESS])
+        rules.extend(
+            [FailureCategory.TIMING_EARLY, FailureCategory.TIMING_LATE, FailureCategory.COUNTER_TREND_BLINDNESS]
+        )
     elif any(k in reg_lower for k in ("range", "chop")):
         rules.extend([FailureCategory.FALSE_BREAKOUT, FailureCategory.REGIME_MISCLASSIFICATION])
     elif any(k in reg_lower for k in ("volatil", "news")):
-        rules.extend([FailureCategory.NEWS_SPIKE, FailureCategory.VOLATILITY_UNDERESTIMATION, FailureCategory.SL_TOO_TIGHT])
+        rules.extend(
+            [FailureCategory.NEWS_SPIKE, FailureCategory.VOLATILITY_UNDERESTIMATION, FailureCategory.SL_TOO_TIGHT]
+        )
     else:
         rules.extend([FailureCategory.SL_TOO_TIGHT, FailureCategory.UNGROUNDED_CONFLUENCE])
 
-    return generate_negative_constraints(rules[:max_rules], symbol=symbol, current_regime=regime, max_constraints=max_rules)
+    return generate_negative_constraints(
+        rules[:max_rules], symbol=symbol, current_regime=regime, max_constraints=max_rules
+    )

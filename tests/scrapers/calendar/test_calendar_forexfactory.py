@@ -3,15 +3,16 @@ from unittest.mock import MagicMock, patch
 from scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
 from database.adapters import parse_timestamp
 
+
 class TestForexFactoryCalendarScraper:
     @patch("scrapers.calendar.calendar_forexfactory.BaseScraper._initialize_browser")
     def test_fetch_events_fail_navigate(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
-        
+
         scraper = ForexFactoryCalendarScraper()
         scraper.navigate_with_fallback = MagicMock(return_value=False)
-        
+
         events = scraper.fetch_events(prefer_feed=False)
         assert events == []
         assert scraper.navigate_with_fallback.call_count == 2
@@ -34,18 +35,18 @@ class TestForexFactoryCalendarScraper:
             </tr>
         </table>
         """
-        
+
         scraper = ForexFactoryCalendarScraper()
         scraper.navigate_with_fallback = MagicMock(return_value=True)
         scraper.page = mock_page
-        
+
         events = scraper.fetch_events(prefer_feed=False)
         assert len(events) == 2  # once per url
         event = events[0]
         assert event.event_name == "Initial Jobless Claims"
         assert event.currency == "USD"
         assert event.impact == "High"
-        
+
         # 8:30am EDT (America/New_York) -> 12:30:00 UTC
         dt = parse_timestamp(event.time)
         assert dt is not None
@@ -107,7 +108,7 @@ class TestForexFactoryCalendarScraper:
                 "date": "2026-09-25T10:00:00-04:00",
                 "impact": "Low",
                 "forecast": "1.0%",
-                "previous": "0.8%"
+                "previous": "0.8%",
             }
         ]
         with patch.object(scraper, "_load_from_cache", return_value=cached_data):
@@ -116,4 +117,3 @@ class TestForexFactoryCalendarScraper:
             assert events[0].event_name == "Cached Event"
             assert events[0].currency == "GBP"
             assert events[0].country == "GB"
-

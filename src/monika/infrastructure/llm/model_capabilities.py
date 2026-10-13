@@ -10,6 +10,7 @@ from typing import Dict, Optional
 @dataclass(frozen=True)
 class ModelCapabilities:
     """Declared operational capabilities for an LLM."""
+
     supports_tool_choice: bool = True
     supports_json_mode: bool = True
     supports_structured_output: bool = True
@@ -49,7 +50,6 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         max_output_tokens=8192,
         context_window=200000,
     ),
-
     "gemini-3.8-flash": ModelCapabilities(
         prompt_cache_strategy="gemini_context",
         max_output_tokens=65536,
@@ -104,7 +104,6 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         context_window=2097152,
         supports_tool_choice=True,
     ),
-
     # DeepSeek models
     "deepseek-reasoner": ModelCapabilities(
         supports_tool_choice=False,
@@ -120,7 +119,6 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         max_output_tokens=8192,
         context_window=64000,
     ),
-
     # OpenAI models
     "gpt-4o": ModelCapabilities(
         prompt_cache_strategy="none",
@@ -144,7 +142,6 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         max_output_tokens=65536,
         context_window=200000,
     ),
-
     # Groq / OpenRouter models
     "groq": ModelCapabilities(
         prompt_cache_strategy="none",

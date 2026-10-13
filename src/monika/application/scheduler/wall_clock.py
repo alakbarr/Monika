@@ -14,6 +14,7 @@ tertentu setiap hari, di timezone ini" (mis. WIB / Asia/Jakarta), lalu
 cukup tidur sampai jam berikutnya — berapa kali pun proses di-restart di
 antaranya.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -21,13 +22,13 @@ import logging
 from datetime import datetime, time as dtime, timedelta, timezone
 from typing import Sequence, Optional
 
-logger = logging.getLogger('TradingAgent.WallClockScheduler')
+logger = logging.getLogger("TradingAgent.WallClockScheduler")
 
 _FIXED_OFFSETS_HOURS = {
-    'Asia/Jakarta': 7,    # WIB
-    'Asia/Makassar': 8,   # WITA
-    'Asia/Jayapura': 9,   # WIT
-    'UTC': 0,
+    "Asia/Jakarta": 7,  # WIB
+    "Asia/Makassar": 8,  # WITA
+    "Asia/Jayapura": 9,  # WIT
+    "UTC": 0,
 }
 
 
@@ -41,6 +42,7 @@ def get_tzinfo(tz_name: str):
     """
     try:
         from zoneinfo import ZoneInfo
+
         return ZoneInfo(tz_name)
     except Exception:
         offset_hours = _FIXED_OFFSETS_HOURS.get(tz_name)
@@ -61,16 +63,16 @@ def parse_time_list(times: Sequence[str]) -> list[dtime]:
     parsed = []
     for t in times:
         t = str(t).strip()
-        hh, mm = t.split(':')
+        hh, mm = t.split(":")
         parsed.append(dtime(hour=int(hh), minute=int(mm)))
     if not parsed:
-        raise ValueError('Minimal satu jam terjadwal harus dikonfigurasi.')
+        raise ValueError("Minimal satu jam terjadwal harus dikonfigurasi.")
     return sorted(parsed)
 
 
 def next_occurrence(
     times_local: Sequence[dtime],
-    tz_name: str = 'Asia/Jakarta',
+    tz_name: str = "Asia/Jakarta",
     now_utc: datetime | None = None,
 ) -> datetime:
     """
@@ -78,7 +80,7 @@ def next_occurrence(
     datetime UTC tz-aware) yang berada strictly setelah `now_utc`.
     """
     if not times_local:
-        raise ValueError('times_local cannot be empty.')
+        raise ValueError("times_local cannot be empty.")
     tz = get_tzinfo(tz_name)
     now_utc = now_utc or datetime.now(timezone.utc)
     now_local = now_utc.astimezone(tz)
@@ -97,7 +99,7 @@ def next_occurrence(
 
 def previous_occurrence(
     times_local: Sequence[dtime],
-    tz_name: str = 'Asia/Jakarta',
+    tz_name: str = "Asia/Jakarta",
     now_utc: datetime | None = None,
 ) -> datetime:
     """
@@ -105,7 +107,7 @@ def previous_occurrence(
     (sebagai datetime UTC tz-aware) yang berada <= `now_utc`.
     """
     if not times_local:
-        raise ValueError('times_local cannot be empty.')
+        raise ValueError("times_local cannot be empty.")
     tz = get_tzinfo(tz_name)
     now_utc = now_utc or datetime.now(timezone.utc)
     now_local = now_utc.astimezone(tz)
@@ -124,8 +126,8 @@ def previous_occurrence(
 
 async def sleep_until_next(
     times_local: Sequence[dtime],
-    tz_name: str = 'Asia/Jakarta',
-    label: str = 'task',
+    tz_name: str = "Asia/Jakarta",
+    label: str = "task",
     shutdown_event: Optional[asyncio.Event] = None,
 ) -> datetime:
     """Tidur sampai jam terjadwal berikutnya tiba atau shutdown_event diset. Mengembalikan target datetime (UTC)."""

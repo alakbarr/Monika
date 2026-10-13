@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #7.
 
 Formula (paper appendix): (adv20<volume)?((-1*ts_rank(abs(delta(close,7)),60))*sign(delta(close,7))):(-1)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_007"
 
 __alpha_meta__ = {
-    'id': 'alpha101_007',
-    'nickname': 'Kakushadze Alpha #7',
-    'theme': ['momentum', 'volume'],
-    'formula_latex': '(adv20<volume)?((-1*ts_rank(abs(delta(close,7)),60))*sign(delta(close,7))):(-1)',
-    'columns_required': ['close', 'volume'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 67,
-    'notes': '',
+    "id": "alpha101_007",
+    "nickname": "Kakushadze Alpha #7",
+    "theme": ["momentum", "volume"],
+    "formula_latex": "(adv20<volume)?((-1*ts_rank(abs(delta(close,7)),60))*sign(delta(close,7))):(-1)",
+    "columns_required": ["close", "volume"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 67,
+    "notes": "",
 }
 
 

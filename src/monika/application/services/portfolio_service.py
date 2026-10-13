@@ -84,7 +84,13 @@ class PortfolioService:
             total_unrealized_pnl += pnl
             side = (getattr(p, "direction", None) or getattr(p, "side", "") or "").lower()
             if sym not in by_symbol:
-                by_symbol[sym] = {"long_lots": 0.0, "short_lots": 0.0, "net_lots": 0.0, "unrealized_pnl": 0.0, "count": 0}
+                by_symbol[sym] = {
+                    "long_lots": 0.0,
+                    "short_lots": 0.0,
+                    "net_lots": 0.0,
+                    "unrealized_pnl": 0.0,
+                    "count": 0,
+                }
             by_symbol[sym]["count"] += 1
             by_symbol[sym]["unrealized_pnl"] = round(by_symbol[sym]["unrealized_pnl"] + pnl, 2)
             if side in ("buy", "long"):
@@ -97,6 +103,7 @@ class PortfolioService:
 
         # Calculate Net Currency Exposure (e.g. USD, EUR, GBP, XAU)
         from monika.domain.market.instrument_identity import resolve_instrument_identity
+
         by_currency: Dict[str, Dict[str, float]] = {}
         for p in positions:
             sym = p.symbol or "UNKNOWN"
@@ -132,4 +139,3 @@ class PortfolioService:
             "by_symbol": by_symbol,
             "by_currency": by_currency,
         }
-

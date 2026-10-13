@@ -95,23 +95,29 @@ Here are the rules to make sure we reach the minimum length limit safely without
 def test_lint_directory(tmp_path):
     linter = TradingSkillLinter()
     valid_file = tmp_path / "valid.md"
-    valid_file.write_text("""---
+    valid_file.write_text(
+        """---
 name: valid
 description: Clean strategy.
 regimes: [ranging]
 ---
 # Clean Strategy
 Rules for range bound trading with enough content to satisfy minimum length requirements.
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
 
     invalid_file = tmp_path / "invalid.md"
-    invalid_file.write_text("""---
+    invalid_file.write_text(
+        """---
 name: invalid
 description: Short.
 ---
 # Title
 As an AI, I suggest trading carefully when market is choppy.
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
 
     results = linter.lint_directory(tmp_path)
     assert "invalid.md" in results

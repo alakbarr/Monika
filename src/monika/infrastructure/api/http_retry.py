@@ -3,6 +3,7 @@
 # ==============================================================================
 
 """HTTP Request Wrapper dengan fitur retry otomatis dan exponential backoff."""
+
 import asyncio
 import logging
 import os
@@ -12,6 +13,7 @@ import aiohttp
 
 try:
     import certifi
+
     _DEFAULT_SSL_CONTEXT: Optional[ssl.SSLContext] = ssl.create_default_context(cafile=certifi.where())
     if "SSL_CERT_FILE" not in os.environ:
         os.environ["SSL_CERT_FILE"] = certifi.where()
@@ -26,6 +28,7 @@ from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
 logger = logging.getLogger("TradingAgent.HTTPRetry")
 
+
 def format_api_error_summary(status: int, body: str = "", url: str = "") -> str:
     """
     Extracts a clean, single-line error summary from API error response body.
@@ -33,7 +36,7 @@ def format_api_error_summary(status: int, body: str = "", url: str = "") -> str:
     """
     if not body:
         return f"HTTP {status}"
-    
+
     # Try parsing JSON error from Gemini, OpenAI, Anthropic, OpenRouter, etc.
     try:
         data = json.loads(body) if isinstance(body, str) else body
@@ -48,14 +51,14 @@ def format_api_error_summary(status: int, body: str = "", url: str = "") -> str:
                     return f"HTTP {status}: {msg.strip()}"
             elif isinstance(err, str):
                 return f"HTTP {status}: {err.strip()}"
-            
+
             if "detail" in data:
                 return f"HTTP {status}: {str(data['detail']).strip()}"
             if "message" in data:
                 return f"HTTP {status}: {str(data['message']).strip()}"
     except Exception:
         pass
-    
+
     # Clean HTML or raw text to single line
     clean_body = re.sub(r"<[^>]+>", " ", str(body))
     clean_body = " ".join(clean_body.split())
@@ -66,7 +69,16 @@ def format_api_error_summary(status: int, body: str = "", url: str = "") -> str:
 
 class APIStatusError(Exception):
     """Clean structured API status exception with formatted summary."""
-    def __init__(self, status: int, message: str = "", body: str = "", retry_after: Optional[float] = None, url: str = "", status_name: str = ""):
+
+    def __init__(
+        self,
+        status: int,
+        message: str = "",
+        body: str = "",
+        retry_after: Optional[float] = None,
+        url: str = "",
+        status_name: str = "",
+    ):
         self.status = status
         self.status_code = status
         self.error_message = message
@@ -74,33 +86,38 @@ class APIStatusError(Exception):
         self.retry_after = retry_after
         self.url = url
         self.status_name = status_name
-        
+
         summary = message or format_api_error_summary(status, body, url)
         super().__init__(summary)
 
 
 class RateLimitError(APIStatusError):
     """Raised on rate limits (HTTP 429 / RESOURCE_EXHAUSTED)."""
+
     def __init__(self, message: str, body: str = "", retry_after: Optional[float] = None, status: int = 429):
         clean_msg = message
         if body and ("HTTP 429" in message or not message):
             clean_msg = format_api_error_summary(status, body)
         super().__init__(status=status, message=clean_msg, body=body, retry_after=retry_after)
 
+
 _CIRCUIT_BREAKER: dict[str, float] = {}
+
 
 def _jittered_delay(base_delay: float, attempt: int, max_delay: float = 60.0) -> float:
     """Exponential backoff with jitter (delay * (1 - random * 0.25))."""
-    delay = min(base_delay * (2 ** attempt), max_delay)
+    delay = min(base_delay * (2**attempt), max_delay)
     if delay <= 0:
         return 0.0
     return delay * (1.0 - random.random() * 0.25)
+
 
 def _jitter_retry_after(retry_after: float) -> float:
     """Apply 10% jitter to Retry-After header value to prevent thundering herd."""
     if retry_after <= 0:
         return 0.0
     return retry_after * (1.0 - random.random() * 0.1)
+
 
 def _sanitize_url(url: str) -> str:
     """Mask sensitive query parameter values in URL before logging."""
@@ -111,13 +128,14 @@ def _sanitize_url(url: str) -> str:
         params = parse_qsl(parsed.query, keep_blank_values=True)
         masked_params = []
         for k, v in params:
-            if any(s in k.lower() for s in ('key', 'token', 'secret', 'password', 'auth')):
-                masked_params.append((k, '***'))
+            if any(s in k.lower() for s in ("key", "token", "secret", "password", "auth")):
+                masked_params.append((k, "***"))
             else:
                 masked_params.append((k, v))
         return urlunparse(parsed._replace(query=urlencode(masked_params)))
     except Exception:
         return url
+
 
 async def fetch_with_retry(
     url: str,
@@ -145,34 +163,43 @@ async def fetch_with_retry(
     conn_timeout = min(10.0, float(effective_timeout) * 0.5) if effective_timeout else 10.0
     timeout_obj = aiohttp.ClientTimeout(total=effective_timeout, connect=conn_timeout, sock_connect=conn_timeout)
     effective_ssl = ssl if ssl is not None else kwargs.get("ssl", _DEFAULT_SSL_CONTEXT)
-    domain = url.split('/')[2] if '//' in url else url
+    domain = url.split("/")[2] if "//" in url else url
     safe_url = _sanitize_url(url)
-    
+
     # Injeksi default headers jika tidak ada User-Agent untuk mencegah WAF throttling/blocking
     req_headers = dict(headers) if headers else {}
     if "User-Agent" not in req_headers:
-        req_headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        req_headers["User-Agent"] = (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        )
     if "Accept" not in req_headers:
         req_headers["Accept"] = "*/*"
 
-    proxy = kwargs.get("proxy") or os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY") or os.environ.get("ALL_PROXY")
+    proxy = (
+        kwargs.get("proxy")
+        or os.environ.get("HTTPS_PROXY")
+        or os.environ.get("HTTP_PROXY")
+        or os.environ.get("ALL_PROXY")
+    )
 
     if use_circuit_breaker and domain in _CIRCUIT_BREAKER and time.time() < _CIRCUIT_BREAKER[domain]:
         logger.warning(f"Circuit breaker OPEN for {domain}, skipping {safe_url}")
         if return_error_info:
             return {"_error": True, "_status": 503, "_body": "Circuit breaker OPEN", "_url": safe_url}
         return None
-    
+
     for attempt in range(max_retries):
         try:
             async with aiohttp.ClientSession(timeout=timeout_obj) as http:
-                async with http.request(method, url, params=params, headers=req_headers, json=json, ssl=effective_ssl, proxy=proxy) as resp:
+                async with http.request(
+                    method, url, params=params, headers=req_headers, json=json, ssl=effective_ssl, proxy=proxy
+                ) as resp:
                     raw_ra = resp.headers.get("Retry-After") or resp.headers.get("retry-after")
                     parsed_retry_after: Optional[float] = None
                     if raw_ra:
                         try:
                             parsed_retry_after = float(raw_ra)
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             parsed_retry_after = None
 
                     if resp.status == 429:  # Rate limited
@@ -184,19 +211,27 @@ async def fetch_with_retry(
                                 f"HTTP 429 Too Many Requests on {safe_url}",
                                 body=body,
                                 retry_after=parsed_retry_after,
-                                status=429
+                                status=429,
                             )
-                        wait = (_jitter_retry_after(parsed_retry_after) + 1.0) if parsed_retry_after is not None else (_jittered_delay(base_delay, attempt) + 5)
+                        wait = (
+                            (_jitter_retry_after(parsed_retry_after) + 1.0)
+                            if parsed_retry_after is not None
+                            else (_jittered_delay(base_delay, attempt) + 5)
+                        )
                         logger.warning(f"Rate limited on {safe_url}, waiting {wait:.1f}s")
                         await asyncio.sleep(wait)
                         continue
-                    
+
                     if resp.status in (500, 502, 503, 504):  # Server errors
-                        wait = (_jitter_retry_after(parsed_retry_after) + 1.0) if parsed_retry_after is not None else _jittered_delay(base_delay, attempt)
+                        wait = (
+                            (_jitter_retry_after(parsed_retry_after) + 1.0)
+                            if parsed_retry_after is not None
+                            else _jittered_delay(base_delay, attempt)
+                        )
                         logger.warning(f"Server error {resp.status} on {safe_url}, retry in {wait:.1f}s")
                         await asyncio.sleep(wait)
                         continue
-                    
+
                     if resp.status != 200:
                         body = await resp.text()
                         err_summary = format_api_error_summary(resp.status, body, safe_url)
@@ -204,22 +239,22 @@ async def fetch_with_retry(
                         if return_error_info:
                             return {"_error": True, "_status": resp.status, "_body": body, "_url": safe_url}
                         return None
-                    
+
                     if response_type == "text":
                         return await resp.text()
                     try:
                         return await resp.json()
                     except Exception:
                         return await resp.text()
-                    
+
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             wait = _jittered_delay(base_delay, attempt)
             err_msg = str(e) if str(e).strip() else type(e).__name__
-            err_msg = re.sub(r'(key|token|secret|password|auth)=([^\s&]+)', r'\1=***', err_msg, flags=re.IGNORECASE)
-            err_msg = re.sub(r'sk-[a-zA-Z0-9_\-]+', 'sk-***', err_msg)
-            logger.warning(f"Request failed (attempt {attempt+1}/{max_retries}): {err_msg}, retry in {wait:.1f}s")
+            err_msg = re.sub(r"(key|token|secret|password|auth)=([^\s&]+)", r"\1=***", err_msg, flags=re.IGNORECASE)
+            err_msg = re.sub(r"sk-[a-zA-Z0-9_\-]+", "sk-***", err_msg)
+            logger.warning(f"Request failed (attempt {attempt + 1}/{max_retries}): {err_msg}, retry in {wait:.1f}s")
             await asyncio.sleep(wait)
-            
+
     logger.error(f"Failed to fetch {safe_url} after {max_retries} attempts")
     if use_circuit_breaker:
         _CIRCUIT_BREAKER[domain] = time.time() + 60.0

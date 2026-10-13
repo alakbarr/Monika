@@ -8,10 +8,26 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import delete, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from monika.infrastructure.database.models import (
-    PriceOHLCV, AssetAnalysis, FundamentalBrief, ActivityLog,
-    OrderLog, NewsItem, EconomicCalendar, VIXData, RiskState, TechnicalIndicator, ConfluenceFactorOutcome,
-    SwingPoint, LiquidityZone, FVGZone, OrderBlock, StructureBreak, TokenUsageLog, PrescreenLog, NewsDigest,
-    TradingEvent
+    PriceOHLCV,
+    AssetAnalysis,
+    FundamentalBrief,
+    ActivityLog,
+    OrderLog,
+    NewsItem,
+    EconomicCalendar,
+    VIXData,
+    RiskState,
+    TechnicalIndicator,
+    ConfluenceFactorOutcome,
+    SwingPoint,
+    LiquidityZone,
+    FVGZone,
+    OrderBlock,
+    StructureBreak,
+    TokenUsageLog,
+    PrescreenLog,
+    NewsDigest,
+    TradingEvent,
 )
 
 logger = logging.getLogger("TradingAgent.DBCleanup")
@@ -21,7 +37,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
     """
     Hapus data lama untuk mencegah db bloat, menggunakan kebijakan retensi dari settings['data_retention_days'].
 
-    Catatan Penting: OHLCV D1 disimpan minimal 400 hari agar indikator seperti SMA/EMA 200 (butuh 205 bar) 
+    Catatan Penting: OHLCV D1 disimpan minimal 400 hari agar indikator seperti SMA/EMA 200 (butuh 205 bar)
     memiliki historis yang cukup. OHLCV H1/H4 mengikuti konfigurasi standar (default: 60 hari).
 
     Args:
@@ -33,20 +49,20 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
     # Batas retensi (hari) per tabel. OHLCV ditangani khusus per timeframe.
     # Floor pengaman wajar: D1 >= 205 hari (SMA200 butuh 205 bar), H1/H4 >= 30 hari, M15 >= 3 hari.
     ohlcv_h1_h4_days = max(int(retention_cfg.get("ohlcv_h1_h4", 60)), 30)
-    ohlcv_m15_days   = max(int(retention_cfg.get("ohlcv_m15", 7)), 3)
-    ohlcv_d1_days    = max(int(retention_cfg.get("ohlcv_d1", 400)), 205)
-    news_days        = int(retention_cfg.get("news_items", 30))
-    activity_days    = int(retention_cfg.get("activity_log", 90))
-    analysis_days    = int(retention_cfg.get("asset_analysis", 60))
-    brief_days       = int(retention_cfg.get("fundamental_brief", 60))
-    order_log_days   = int(retention_cfg.get("order_log", 90))
-    calendar_days    = int(retention_cfg.get("economic_calendar", 30))
-    vix_days         = int(retention_cfg.get("vix_data", 60))
-    risk_state_days  = int(retention_cfg.get("risk_state", 90))
-    smc_days         = int(retention_cfg.get("smc_zones", 60))
-    token_log_days   = int(retention_cfg.get("token_usage_log", 90))
-    prescreen_days   = int(retention_cfg.get("prescreen_log", 30))
-    digest_days      = int(retention_cfg.get("news_digest", 30))
+    ohlcv_m15_days = max(int(retention_cfg.get("ohlcv_m15", 7)), 3)
+    ohlcv_d1_days = max(int(retention_cfg.get("ohlcv_d1", 400)), 205)
+    news_days = int(retention_cfg.get("news_items", 30))
+    activity_days = int(retention_cfg.get("activity_log", 90))
+    analysis_days = int(retention_cfg.get("asset_analysis", 60))
+    brief_days = int(retention_cfg.get("fundamental_brief", 60))
+    order_log_days = int(retention_cfg.get("order_log", 90))
+    calendar_days = int(retention_cfg.get("economic_calendar", 30))
+    vix_days = int(retention_cfg.get("vix_data", 60))
+    risk_state_days = int(retention_cfg.get("risk_state", 90))
+    smc_days = int(retention_cfg.get("smc_zones", 60))
+    token_log_days = int(retention_cfg.get("token_usage_log", 90))
+    prescreen_days = int(retention_cfg.get("prescreen_log", 30))
+    digest_days = int(retention_cfg.get("news_digest", 30))
     trading_event_days = int(retention_cfg.get("trading_events", 90))
 
     now = datetime.now(timezone.utc)
@@ -101,35 +117,36 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
 
         # ---- Tabel lainnya: satu batasan per tabel ----
         other_targets = [
-            (AssetAnalysis,   "generated_at",  analysis_days,  "AssetAnalysis"),
-            (FundamentalBrief,"generated_at",  brief_days,     "FundamentalBrief"),
-            (ActivityLog,     "timestamp",     activity_days,  "ActivityLog"),
-            (OrderLog,        "timestamp",     order_log_days, "OrderLog"),
-            (NewsItem,        "published_at",  news_days,      "NewsItem"),
-            (EconomicCalendar,"event_time",    calendar_days,  "EconomicCalendar"),
-            (VIXData,         "date",          vix_days,       "VIXData"),
-            (RiskState,       "date",          risk_state_days,"RiskState"),
-            (TechnicalIndicator, "timestamp",  ohlcv_h1_h4_days, "TechnicalIndicator"),
+            (AssetAnalysis, "generated_at", analysis_days, "AssetAnalysis"),
+            (FundamentalBrief, "generated_at", brief_days, "FundamentalBrief"),
+            (ActivityLog, "timestamp", activity_days, "ActivityLog"),
+            (OrderLog, "timestamp", order_log_days, "OrderLog"),
+            (NewsItem, "published_at", news_days, "NewsItem"),
+            (EconomicCalendar, "event_time", calendar_days, "EconomicCalendar"),
+            (VIXData, "date", vix_days, "VIXData"),
+            (RiskState, "date", risk_state_days, "RiskState"),
+            (TechnicalIndicator, "timestamp", ohlcv_h1_h4_days, "TechnicalIndicator"),
             (ConfluenceFactorOutcome, "recorded_at", analysis_days, "ConfluenceFactorOutcome"),
-            (SwingPoint,      "timestamp",     smc_days,       "SwingPoint"),
-            (LiquidityZone,   "identified_at", smc_days,       "LiquidityZone"),
-            (FVGZone,         "formed_at",     smc_days,       "FVGZone"),
-            (OrderBlock,      "formed_at",     smc_days,       "OrderBlock"),
-            (StructureBreak,  "formed_at",     smc_days,       "StructureBreak"),
-            (TokenUsageLog,   "timestamp",     token_log_days, "TokenUsageLog"),
-            (PrescreenLog,    "checked_at",    prescreen_days, "PrescreenLog"),
-            (NewsDigest,      "generated_at",  digest_days,    "NewsDigest"),
-            (TradingEvent,    "ts_created",    trading_event_days, "TradingEvent"),
+            (SwingPoint, "timestamp", smc_days, "SwingPoint"),
+            (LiquidityZone, "identified_at", smc_days, "LiquidityZone"),
+            (FVGZone, "formed_at", smc_days, "FVGZone"),
+            (OrderBlock, "formed_at", smc_days, "OrderBlock"),
+            (StructureBreak, "formed_at", smc_days, "StructureBreak"),
+            (TokenUsageLog, "timestamp", token_log_days, "TokenUsageLog"),
+            (PrescreenLog, "checked_at", prescreen_days, "PrescreenLog"),
+            (NewsDigest, "generated_at", digest_days, "NewsDigest"),
+            (TradingEvent, "ts_created", trading_event_days, "TradingEvent"),
         ]
 
         for model, col_name, days, label in other_targets:
             cutoff = now - timedelta(days=days)
             col = getattr(model, col_name)
-            
+
             # Fix FK violation: Delete dependent NewsClassificationOutcomes first
             if model == NewsItem:
                 from monika.infrastructure.database.models import NewsClassificationOutcome
                 from sqlalchemy import select
+
                 await session.execute(
                     delete(NewsClassificationOutcome).where(
                         NewsClassificationOutcome.news_item_id.in_(
@@ -139,70 +156,60 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
                 )
             elif model == AssetAnalysis:
                 from monika.infrastructure.database.models import (
-                    TradeTrigger, MT5Signal, TradeOutcome, PaperTradeRecord, Position, DecisionReflection,
-                    Order, TradePlan
+                    TradeTrigger,
+                    MT5Signal,
+                    TradeOutcome,
+                    PaperTradeRecord,
+                    Position,
+                    DecisionReflection,
+                    Order,
+                    TradePlan,
                 )
                 from sqlalchemy import select, update
+
                 expired_analysis_ids = select(AssetAnalysis.id).where(AssetAnalysis.generated_at < cutoff)
                 # Preserve long-term memory: nullify analysis_id instead of purging reflections
                 await session.execute(
-                    update(DecisionReflection).where(
-                        DecisionReflection.analysis_id.in_(expired_analysis_ids)
-                    ).values(analysis_id=None)
+                    update(DecisionReflection)
+                    .where(DecisionReflection.analysis_id.in_(expired_analysis_ids))
+                    .values(analysis_id=None)
                 )
                 # Nullify FK references in Order and TradePlan to prevent FK constraint failures
                 await session.execute(
-                    update(Order).where(
-                        Order.analysis_id.in_(expired_analysis_ids)
-                    ).values(analysis_id=None)
+                    update(Order).where(Order.analysis_id.in_(expired_analysis_ids)).values(analysis_id=None)
                 )
                 await session.execute(
-                    update(TradePlan).where(
-                        TradePlan.analysis_id.in_(expired_analysis_ids)
-                    ).values(analysis_id=None)
+                    update(TradePlan).where(TradePlan.analysis_id.in_(expired_analysis_ids)).values(analysis_id=None)
                 )
                 await session.execute(
-                    delete(ConfluenceFactorOutcome).where(
-                        ConfluenceFactorOutcome.analysis_id.in_(expired_analysis_ids)
-                    )
+                    delete(ConfluenceFactorOutcome).where(ConfluenceFactorOutcome.analysis_id.in_(expired_analysis_ids))
                 )
                 await session.execute(
-                    delete(TradeTrigger).where(
-                        TradeTrigger.asset_analysis_id.in_(expired_analysis_ids)
-                    )
+                    delete(TradeTrigger).where(TradeTrigger.asset_analysis_id.in_(expired_analysis_ids))
+                )
+                await session.execute(delete(MT5Signal).where(MT5Signal.asset_analysis_id.in_(expired_analysis_ids)))
+                await session.execute(
+                    update(TradeOutcome)
+                    .where(TradeOutcome.analysis_id.in_(expired_analysis_ids))
+                    .values(analysis_id=None)
                 )
                 await session.execute(
-                    delete(MT5Signal).where(
-                        MT5Signal.asset_analysis_id.in_(expired_analysis_ids)
-                    )
+                    update(PaperTradeRecord)
+                    .where(PaperTradeRecord.analysis_id.in_(expired_analysis_ids))
+                    .values(analysis_id=None)
                 )
                 await session.execute(
-                    update(TradeOutcome).where(
-                        TradeOutcome.analysis_id.in_(expired_analysis_ids)
-                    ).values(analysis_id=None)
-                )
-                await session.execute(
-                    update(PaperTradeRecord).where(
-                        PaperTradeRecord.analysis_id.in_(expired_analysis_ids)
-                    ).values(analysis_id=None)
-                )
-                await session.execute(
-                    update(Position).where(
-                        Position.analysis_id.in_(expired_analysis_ids)
-                    ).values(analysis_id=None)
+                    update(Position).where(Position.analysis_id.in_(expired_analysis_ids)).values(analysis_id=None)
                 )
             elif model == FundamentalBrief:
                 from sqlalchemy import select, update
+
                 expired_brief_ids = select(FundamentalBrief.id).where(FundamentalBrief.generated_at < cutoff)
                 await session.execute(
-                    update(AssetAnalysis).where(
-                        AssetAnalysis.brief_id.in_(expired_brief_ids)
-                    ).values(brief_id=None)
+                    update(AssetAnalysis).where(AssetAnalysis.brief_id.in_(expired_brief_ids)).values(brief_id=None)
                 )
 
-            result = await session.execute(
-                delete(model).where(col < cutoff)
-            )
+            result = await session.execute(delete(model).where(col < cutoff))
             deleted = getattr(result, "rowcount", 0) or 0
             if deleted > 0:
                 logger.info(f"Deleted {deleted} old records from {label} (kept >= {days} days)")
@@ -210,6 +217,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
 
         # ---- Inactive TradeTrigger pruning (fired, cancelled, expired, invalid) ----
         from monika.infrastructure.database.models import TradeTrigger
+
         trigger_cutoff = now - timedelta(days=14)
         result = await session.execute(
             delete(TradeTrigger).where(
@@ -226,20 +234,20 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
 
         # ---- SystemConfig keys pruning ----
         from monika.infrastructure.database.models import SystemConfig
+
         STALE_SYSCONFIG_PREFIXES_MAX_AGE_DAYS = {
-            'context_drift_': 3, 'autopsy_': 30, 'submit_attempt_': 7,
-            'news_cls_dist_': 14, 'prefilter_audit_sample_': 7, 'adversarial_outcome_': 60,
+            "context_drift_": 3,
+            "autopsy_": 30,
+            "submit_attempt_": 7,
+            "news_cls_dist_": 14,
+            "prefilter_audit_sample_": 7,
+            "adversarial_outcome_": 60,
         }
         sysconfig_deleted = 0
         for prefix, days in STALE_SYSCONFIG_PREFIXES_MAX_AGE_DAYS.items():
             cutoff = now - timedelta(days=days)
             result = await session.execute(
-                delete(SystemConfig).where(
-                    and_(
-                        SystemConfig.key.like(f"{prefix}%"),
-                        SystemConfig.updated_at < cutoff
-                    )
-                )
+                delete(SystemConfig).where(and_(SystemConfig.key.like(f"{prefix}%"), SystemConfig.updated_at < cutoff))
             )
             sysconfig_deleted += getattr(result, "rowcount", 0) or 0
         if sysconfig_deleted > 0:
@@ -276,6 +284,7 @@ async def drop_expired_partitions(session: AsyncSession, older_than_days: int = 
             return 0
 
         from sqlalchemy import text
+
         query = text("""
             SELECT c.relname AS partition_name
             FROM pg_inherits i
@@ -317,7 +326,7 @@ async def reset_paper_trading_history(
 ) -> dict:
     """
     Mereset seluruh riwayat paper trading (simulasi) dan data terkait secara aman.
-    
+
     Tindakan:
     1. Mencadangkan data paper trade, posisi paper, sinyal, refleksi, dan autopsi ke file JSON.
     2. Menghapus rekaman paper trade dari database:
@@ -333,13 +342,13 @@ async def reset_paper_trading_history(
        - Mereset adaptive_threshold_* ke adjustment 0
        - Mereset RiskState.trading_paused ke False
        - Mereset pause flags sistem ke 'false'
-    
+
     Args:
         session: AsyncSession SQLAlchemy aktif.
         create_backup: Apakah membuat backup JSON sebelum penghapusan.
         backup_dir: Direktori penyimpanan backup. Jika None, gunakan 'data/backups'.
         unlock_all: Apakah membuka seluruh kuncian/suspensi dan mereset streak.
-        
+
     Returns:
         dict ringkasan operasi pembersihan dan backup.
     """
@@ -347,8 +356,15 @@ async def reset_paper_trading_history(
     import json
     from sqlalchemy import select, update
     from monika.infrastructure.database.models import (
-        PaperTradeRecord, Position, MT5Signal, DecisionReflection,
-        ConfluenceFactorOutcome, SystemConfig, RiskState, TradeOutcome, TradePlanLeg
+        PaperTradeRecord,
+        Position,
+        MT5Signal,
+        DecisionReflection,
+        ConfluenceFactorOutcome,
+        SystemConfig,
+        RiskState,
+        TradeOutcome,
+        TradePlanLeg,
     )
 
     now = datetime.now(timezone.utc)
@@ -371,9 +387,15 @@ async def reset_paper_trading_history(
     try:
         # 1. Kumpulkan data untuk dicadangkan
         paper_trades = (await session.execute(select(PaperTradeRecord))).scalars().all()
-        positions = (await session.execute(
-            select(Position).where(Position.is_paper == True)  # noqa: E712
-        )).scalars().all()
+        positions = (
+            (
+                await session.execute(
+                    select(Position).where(Position.is_paper == True)  # noqa: E712
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         paper_analysis_ids = [p.analysis_id for p in paper_trades if p.analysis_id is not None]
         for pos in positions:
@@ -395,25 +417,41 @@ async def reset_paper_trading_history(
 
         reflections = []
         if paper_analysis_ids:
-            reflections = (await session.execute(
-                select(DecisionReflection).where(DecisionReflection.analysis_id.in_(paper_analysis_ids))
-            )).scalars().all()
+            reflections = (
+                (
+                    await session.execute(
+                        select(DecisionReflection).where(DecisionReflection.analysis_id.in_(paper_analysis_ids))
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
-        factor_outcomes = (await session.execute(
-            select(ConfluenceFactorOutcome).where(ConfluenceFactorOutcome.paper_trade_id.isnot(None))
-        )).scalars().all()
+        factor_outcomes = (
+            (
+                await session.execute(
+                    select(ConfluenceFactorOutcome).where(ConfluenceFactorOutcome.paper_trade_id.isnot(None))
+                )
+            )
+            .scalars()
+            .all()
+        )
 
-        autopsies = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key.like('autopsy_%'))
-        )).scalars().all()
+        autopsies = (
+            (await session.execute(select(SystemConfig).where(SystemConfig.key.like("autopsy_%")))).scalars().all()
+        )
 
-        exit_reviews = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key.like('position_exit_review_last_%'))
-        )).scalars().all()
+        exit_reviews = (
+            (await session.execute(select(SystemConfig).where(SystemConfig.key.like("position_exit_review_last_%"))))
+            .scalars()
+            .all()
+        )
 
-        flash_crash_blocks = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key.like('flash_crash_blocked_%'))
-        )).scalars().all()
+        flash_crash_blocks = (
+            (await session.execute(select(SystemConfig).where(SystemConfig.key.like("flash_crash_blocked_%"))))
+            .scalars()
+            .all()
+        )
 
         # 2. Buat backup file JSON jika diminta
         if create_backup:
@@ -533,7 +571,9 @@ async def reset_paper_trading_history(
                 update(TradePlanLeg).where(TradePlanLeg.position_id.in_(paper_pos_ids)).values(position_id=None)
             )
             await session.execute(
-                update(DecisionReflection).where(DecisionReflection.position_id.in_(paper_pos_ids)).values(position_id=None)
+                update(DecisionReflection)
+                .where(DecisionReflection.position_id.in_(paper_pos_ids))
+                .values(position_id=None)
             )
 
         res_pos = await session.execute(
@@ -542,9 +582,7 @@ async def reset_paper_trading_history(
         summary["positions_deleted"] = getattr(res_pos, "rowcount", 0) or len(positions)
 
         if signal_conds:
-            res_sig = await session.execute(
-                delete(MT5Signal).where(or_(*signal_conds))
-            )
+            res_sig = await session.execute(delete(MT5Signal).where(or_(*signal_conds)))
             summary["signals_deleted"] = getattr(res_sig, "rowcount", 0) or len(signals)
 
         if paper_analysis_ids:
@@ -555,19 +593,21 @@ async def reset_paper_trading_history(
 
         # 4. Buka seluruh kuncian & suspensi jika unlock_all=True
         if unlock_all:
-            res_auto = await session.execute(delete(SystemConfig).where(SystemConfig.key.like('autopsy_%')))
+            res_auto = await session.execute(delete(SystemConfig).where(SystemConfig.key.like("autopsy_%")))
             summary["autopsies_deleted"] = getattr(res_auto, "rowcount", 0) or len(autopsies)
 
-            res_ex = await session.execute(delete(SystemConfig).where(SystemConfig.key.like('position_exit_review_last_%')))
+            res_ex = await session.execute(
+                delete(SystemConfig).where(SystemConfig.key.like("position_exit_review_last_%"))
+            )
             summary["exit_reviews_deleted"] = getattr(res_ex, "rowcount", 0) or len(exit_reviews)
 
-            res_fc = await session.execute(delete(SystemConfig).where(SystemConfig.key.like('flash_crash_blocked_%')))
+            res_fc = await session.execute(delete(SystemConfig).where(SystemConfig.key.like("flash_crash_blocked_%")))
             summary["flash_crash_blocks_deleted"] = getattr(res_fc, "rowcount", 0) or len(flash_crash_blocks)
 
             # Kosongkan suspended_symbols
-            susp_cfg = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key == 'suspended_symbols')
-            )).scalar_one_or_none()
+            susp_cfg = (
+                await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))
+            ).scalar_one_or_none()
             if susp_cfg:
                 try:
                     old_susp = json.loads(susp_cfg.value or "[]")
@@ -579,26 +619,28 @@ async def reset_paper_trading_history(
                 session.add(SystemConfig(key="suspended_symbols", value="[]"))
 
             # Reset adaptive_threshold_* ke 0
-            adapt_cfgs = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key.like('adaptive_threshold_%'))
-            )).scalars().all()
+            adapt_cfgs = (
+                (await session.execute(select(SystemConfig).where(SystemConfig.key.like("adaptive_threshold_%"))))
+                .scalars()
+                .all()
+            )
             for ac in adapt_cfgs:
                 ac.value = json.dumps({"adjustment": 0, "set_at": now.isoformat()})
             summary["adaptive_thresholds_reset"] = len(adapt_cfgs)
 
             # Reset RiskState.trading_paused
-            recent_risk = (await session.execute(
-                select(RiskState).order_by(RiskState.date.desc()).limit(10)
-            )).scalars().all()
+            recent_risk = (
+                (await session.execute(select(RiskState).order_by(RiskState.date.desc()).limit(10))).scalars().all()
+            )
             for r in recent_risk:
                 r.trading_paused = False
             summary["trading_unpaused"] = True
 
             # Pastikan pause flags sistem di-set false
             for pkey in ("kill_switch", "system_paused", "budget_pause", "trading_paused", "manual_trading_paused"):
-                pcfg = (await session.execute(
-                    select(SystemConfig).where(SystemConfig.key == pkey)
-                )).scalar_one_or_none()
+                pcfg = (
+                    await session.execute(select(SystemConfig).where(SystemConfig.key == pkey))
+                ).scalar_one_or_none()
                 if pcfg:
                     pcfg.value = "false"
                 else:

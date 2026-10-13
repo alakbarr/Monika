@@ -20,12 +20,12 @@ class SimilarityScanner:
 
     def find_similar_patterns(
         self,
-        current_bars: np.ndarray,     # shape (W, 6): [timestamp, O, H, L, C, V]
+        current_bars: np.ndarray,  # shape (W, 6): [timestamp, O, H, L, C, V]
         historical_bars: np.ndarray,  # shape (N, 6): [timestamp, O, H, L, C, V]
         window_size: int,
         top_k: int = 20,
         min_similarity: float = 0.75,
-        method: str = "euclidean",    # "euclidean", "dtw", "hybrid"
+        method: str = "euclidean",  # "euclidean", "dtw", "hybrid"
     ) -> List[PatternMatch]:
         """
         Scans entire historical array for segments matching current_bars.
@@ -53,7 +53,7 @@ class SimilarityScanner:
 
         # Vectorized Euclidean distance calculation (broadcasts curr_z)
         diff = windows_z - curr_z[np.newaxis, :]
-        distances = np.sqrt(np.sum(diff ** 2, axis=1)) / np.sqrt(window_size)
+        distances = np.sqrt(np.sum(diff**2, axis=1)) / np.sqrt(window_size)
 
         # Transform distance to similarity score in range (0.0, 1.0]
         similarities = 1.0 / (1.0 + distances)
@@ -84,7 +84,7 @@ class SimilarityScanner:
         # Optional DTW refinement for top matches if hybrid method requested
         if method == "hybrid" and matches:
             for m in matches:
-                cand_close = close_hist[m.start_index:m.end_index]
+                cand_close = close_hist[m.start_index : m.end_index]
                 cand_z = PriceNormalizer.z_normalize(cand_close)
                 dtw_dist = self.compute_dtw_distance(curr_z, cand_z, sakoe_chiba_radius=4)
                 dtw_sim = float(1.0 / (1.0 + dtw_dist))
@@ -151,8 +151,8 @@ class SimilarityScanner:
             for j in range(j_lo, j_hi):
                 cost = (series_a[i - 1] - series_b[j - 1]) ** 2
                 dtw[i, j] = cost + min(
-                    dtw[i - 1, j],      # insertion
-                    dtw[i, j - 1],      # deletion
+                    dtw[i - 1, j],  # insertion
+                    dtw[i, j - 1],  # deletion
                     dtw[i - 1, j - 1],  # match
                 )
 

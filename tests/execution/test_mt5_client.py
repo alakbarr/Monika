@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
 from execution.mt5_client import MT5Client
 
-class TestMT5Client:
 
+class TestMT5Client:
     @pytest.fixture
     def client(self):
         c = MT5Client()
@@ -24,22 +24,41 @@ class TestMT5Client:
 
     @pytest.mark.asyncio
     async def test_get_account_info(self, client):
-        mock_info = MagicMock(login=123, balance=1000.0, equity=1000.0, margin=0, margin_free=1000.0,
-                              margin_level=0, currency="USD", leverage=100, server="Test")
+        mock_info = MagicMock(
+            login=123,
+            balance=1000.0,
+            equity=1000.0,
+            margin=0,
+            margin_free=1000.0,
+            margin_level=0,
+            currency="USD",
+            leverage=100,
+            server="Test",
+        )
         client._run.return_value = mock_info
-        
+
         res = await client.get_account_info()
         assert res["balance"] == 1000.0
         assert res["currency"] == "USD"
 
     @pytest.mark.asyncio
     async def test_get_symbol_info(self, client):
-        mock_info = MagicMock(digits=2, point=0.01, trade_tick_size=0.01, trade_tick_value=1.0,
-                              trade_contract_size=100.0, volume_min=0.01, volume_max=100.0, volume_step=0.01,
-                              bid=2000.0, ask=2001.0, spread=100)
+        mock_info = MagicMock(
+            digits=2,
+            point=0.01,
+            trade_tick_size=0.01,
+            trade_tick_value=1.0,
+            trade_contract_size=100.0,
+            volume_min=0.01,
+            volume_max=100.0,
+            volume_step=0.01,
+            bid=2000.0,
+            ask=2001.0,
+            spread=100,
+        )
         mock_info.name = "XAUUSD"
         client._run.return_value = mock_info
-        
+
         res = await client.get_symbol_info("XAUUSD")
         assert res["symbol"] == "XAUUSD"
         assert res["bid"] == 2000.0
@@ -47,13 +66,11 @@ class TestMT5Client:
     @pytest.mark.asyncio
     async def test_get_ohlcv(self, client):
         client._resolve_timeframe = MagicMock(return_value=1)
-        mock_rates = [
-            {"time": 1704067200, "open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15, "tick_volume": 100}
-        ]
+        mock_rates = [{"time": 1704067200, "open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15, "tick_volume": 100}]
         client._run.return_value = mock_rates
-        
+
         df = await client.get_ohlcv("EURUSD", "H1", 1)
-        
+
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 1
         assert df.iloc[0]["close"] == 1.15
@@ -66,14 +83,20 @@ class TestMT5Client:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_result)
-        
-        df = pd.DataFrame({
-            "time": [pd.Timestamp('2024-01-01', tz='UTC')],
-            "open": [1.1], "high": [1.2], "low": [1.0], "close": [1.15], "volume": [100]
-        })
-        
+
+        df = pd.DataFrame(
+            {
+                "time": [pd.Timestamp("2024-01-01", tz="UTC")],
+                "open": [1.1],
+                "high": [1.2],
+                "low": [1.0],
+                "close": [1.15],
+                "volume": [100],
+            }
+        )
+
         saved = await client.save_ohlcv(mock_session, "EURUSD", "H1", df)
-        
+
         assert saved == 1
         mock_session.add.assert_called_once()
         mock_session.commit.assert_awaited_once()
@@ -82,68 +105,84 @@ class TestMT5Client:
     async def test_get_current_price(self, client):
         mock_tick = MagicMock(bid=1999.0, ask=2000.0, last=1999.5, time=1704067200)
         client._run.return_value = mock_tick
-        
+
         res = await client.get_current_price("XAUUSD")
-        
+
         assert res["bid"] == 1999.0
         assert res["ask"] == 2000.0
 
     @pytest.mark.asyncio
     async def test_place_order(self, client):
         client._run.return_value = {"success": True, "ticket": 12345, "price": 2000.0, "error": None, "retcode": 10009}
-        
+
         res = await client.place_order("XAUUSD", "buy", 0.1)
-        
+
         assert res["success"] is True
         assert res["ticket"] == 12345
 
     @pytest.mark.asyncio
     async def test_modify_position(self, client):
         client._run.return_value = {"success": True, "error": None, "retcode": 10009}
-        
+
         res = await client.modify_position(12345, sl=1980.0)
-        
+
         assert res["success"] is True
 
     @pytest.mark.asyncio
     async def test_close_position(self, client):
         client._run.return_value = {"success": True, "price": 2010.0, "profit": 100.0, "error": None, "retcode": 10009}
-        
+
         res = await client.close_position(12345)
-        
+
         assert res["success"] is True
         assert res["profit"] == 100.0
 
     @pytest.mark.asyncio
     async def test_get_open_positions(self, client):
         client._run.return_value = [
-            {"ticket": 123, "symbol": "XAUUSD", "type": 0, "volume": 0.1, "price_open": 2000.0, "time": datetime.now(timezone.utc)}
+            {
+                "ticket": 123,
+                "symbol": "XAUUSD",
+                "type": 0,
+                "volume": 0.1,
+                "price_open": 2000.0,
+                "time": datetime.now(timezone.utc),
+            }
         ]
-        
+
         res = await client.get_open_positions()
-        
+
         assert len(res) == 1
         assert res[0]["ticket"] == 123
 
     @pytest.mark.asyncio
     async def test_sync_positions_from_mt5(self, client):
-        client.get_open_positions = AsyncMock(return_value=[
-            {"ticket": 123, "symbol": "XAUUSD", "type": 0, "volume": 0.1, "price_open": 2000.0, "time": datetime.now(timezone.utc)}
-        ])
-        
+        client.get_open_positions = AsyncMock(
+            return_value=[
+                {
+                    "ticket": 123,
+                    "symbol": "XAUUSD",
+                    "type": 0,
+                    "volume": 0.1,
+                    "price_open": 2000.0,
+                    "time": datetime.now(timezone.utc),
+                }
+            ]
+        )
+
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
-        
+
         mock_result1 = MagicMock()
         mock_result1.scalar_one_or_none.return_value = None  # Position not in DB
-        
+
         mock_result2 = MagicMock()
-        mock_result2.scalars().all.return_value = [] # No DB-open positions to close
-        
+        mock_result2.scalars().all.return_value = []  # No DB-open positions to close
+
         mock_session.execute = AsyncMock(side_effect=[mock_result1, mock_result2])
-        
+
         res = await client.sync_positions_from_mt5(mock_session)
-        
+
         assert res["synced"] == 1
         assert res["closed_in_db"] == 0
         mock_session.add.assert_called_once()
@@ -151,7 +190,9 @@ class TestMT5Client:
 
     @pytest.mark.asyncio
     async def test_get_spread(self, client):
-        client.get_symbol_info = AsyncMock(return_value={"symbol": "EURUSD", "spread": 15, "bid": 1.1000, "ask": 1.1015})
+        client.get_symbol_info = AsyncMock(
+            return_value={"symbol": "EURUSD", "spread": 15, "bid": 1.1000, "ask": 1.1015}
+        )
         spread_res = await client.get_spread("EURUSD")
         assert spread_res["spread_points"] == 15
         assert spread_res["spread"] == 15
@@ -163,7 +204,9 @@ class TestMT5Client:
 
     @pytest.mark.asyncio
     async def test_get_rates(self, client):
-        df_mock = pd.DataFrame([{"time": 1704067200, "open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15, "volume": 100}])
+        df_mock = pd.DataFrame(
+            [{"time": 1704067200, "open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15, "volume": 100}]
+        )
         client.get_ohlcv = AsyncMock(return_value=df_mock)
         rates = await client.get_rates("EURUSD", "H4", 10)
         assert len(rates) == 1
@@ -185,6 +228,7 @@ class TestMT5Client:
     async def test_run_without_timeout_returns_coro_result(self):
         """Regression test: verify real _run() returns the executed function result when timeout=None."""
         real_client = MT5Client()
+
         def dummy_worker(x, y):
             return x + y
 
@@ -195,6 +239,7 @@ class TestMT5Client:
     async def test_run_with_timeout_returns_coro_result(self):
         """Verify real _run() returns result when timeout is provided."""
         real_client = MT5Client()
+
         def dummy_worker():
             return "ok"
 
@@ -222,11 +267,18 @@ class TestMT5Client:
     async def test_priority_resolution_defaults(self):
         """Verify automatic mapping of MT5 functions to priority levels."""
         from execution.mt5_client import (
-            PRIORITY_CRITICAL, PRIORITY_STANDARD, PRIORITY_BACKGROUND,
-            _place_order, _modify_position, _close_position,
-            _copy_rates_from_pos, _copy_rates_range,
-            _get_account_info, _get_last_tick
+            PRIORITY_CRITICAL,
+            PRIORITY_STANDARD,
+            PRIORITY_BACKGROUND,
+            _place_order,
+            _modify_position,
+            _close_position,
+            _copy_rates_from_pos,
+            _copy_rates_range,
+            _get_account_info,
+            _get_last_tick,
         )
+
         client = MT5Client()
         # Critical orders
         assert client._resolve_priority(_place_order) == PRIORITY_CRITICAL
@@ -249,6 +301,7 @@ class TestMT5Client:
         """Verify that Priority 0 (Critical) tasks preempt Priority 10 (Background) in the queue."""
         import time
         from execution.mt5_client import PRIORITY_CRITICAL, PRIORITY_BACKGROUND
+
         client = MT5Client()
         execution_order = []
 
@@ -281,9 +334,7 @@ class TestMT5Client:
     @pytest.mark.asyncio
     async def test_copy_rates_range(self, client):
         """Verify copy_rates_range fetches OHLCV dataframe within date range."""
-        mock_rates = [
-            {"time": 1704067200, "open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15, "tick_volume": 100}
-        ]
+        mock_rates = [{"time": 1704067200, "open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15, "tick_volume": 100}]
         client._resolve_timeframe = MagicMock(return_value=1)
         client._run.return_value = mock_rates
 
@@ -300,6 +351,7 @@ class TestMT5Client:
     async def test_get_broker_utc_offset_configured(self):
         """Verifikasi offset broker menggunakan konfigurasi settings.yaml jika tersedia."""
         from execution.mt5_client import MT5Client
+
         client = MT5Client(settings={"trading": {"mt5": {"broker_utc_offset_hours": 3}}})
         offset = await client.get_broker_utc_offset_seconds()
         assert offset == 10800
@@ -310,31 +362,39 @@ class TestMT5Client:
         mock_session = create_mock_async_session()
         existing_d1 = MagicMock(
             timestamp=datetime(2026, 9, 25, 0, 0, tzinfo=timezone.utc),
-            open=100.0, high=105.0, low=95.0, close=102.0, volume=500.0
+            open=100.0,
+            high=105.0,
+            low=95.0,
+            close=102.0,
+            volume=500.0,
         )
-        
+
         # Panggilan pertama (where timestamp == ts_dt) return None
         # Panggilan kedua (where timestamp between +-6h) return existing_d1
         first_res = MagicMock()
         first_res.scalar_one_or_none.return_value = None
-        
+
         second_res = MagicMock()
         second_res.scalar_one_or_none.return_value = existing_d1
-        
+
         mock_session.execute.side_effect = [first_res, second_res]
-        
+
         # Candle masuk dengan timestamp 21:00 (bergeser 3 jam dari 00:00)
-        df_new = pd.DataFrame([{
-            "time": datetime(2026, 9, 24, 21, 0, tzinfo=timezone.utc),
-            "open": 100.0, "high": 106.0, "low": 95.0, "close": 103.0, "volume": 600.0
-        }])
-        
+        df_new = pd.DataFrame(
+            [
+                {
+                    "time": datetime(2026, 9, 24, 21, 0, tzinfo=timezone.utc),
+                    "open": 100.0,
+                    "high": 106.0,
+                    "low": 95.0,
+                    "close": 103.0,
+                    "volume": 600.0,
+                }
+            ]
+        )
+
         saved = await client.save_ohlcv(mock_session, "BTCUSD", "D1", df_new)
         assert saved == 1
         # Memperbarui bar lama dan tidak memanggil session.add (tidak duplikat)
         mock_session.add.assert_not_called()
         mock_session.commit.assert_awaited_once()
-
-
-
-

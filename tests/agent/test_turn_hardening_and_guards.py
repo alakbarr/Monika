@@ -53,8 +53,11 @@ from analysis.providers.capabilities import get_model_capabilities
 # 1. Repetition Guard Tests
 # ==============================================================================
 
+
 def test_repetition_guard_normal_text():
-    normal_text = "The market is currently trending upwards due to strong US labor data. EURUSD is holding above 1.0850."
+    normal_text = (
+        "The market is currently trending upwards due to strong US labor data. EURUSD is holding above 1.0850."
+    )
     assert not is_repetition_dominated(normal_text)
     assert not is_runaway_repetition(normal_text)
 
@@ -69,7 +72,10 @@ def test_repetition_guard_runaway_loop():
 
 def test_repetition_guard_tabular_sql_discrimination():
     # 30 lines of SQL insert with varied values
-    sql_lines = [f"INSERT INTO market_quotes VALUES ('EURUSD', {1.0800 + i * 0.001:.4f}, '{time.time() + i}');" for i in range(30)]
+    sql_lines = [
+        f"INSERT INTO market_quotes VALUES ('EURUSD', {1.0800 + i * 0.001:.4f}, '{time.time() + i}');"
+        for i in range(30)
+    ]
     sql_text = "\n".join(sql_lines)
     # Even if long, distinct line ratio is high so it should NOT be flagged as runaway repetition
     assert not is_runaway_repetition(sql_text)
@@ -89,32 +95,51 @@ def test_repetition_guard_transcript_immunization():
 # 2. Empty Response Guard Tests
 # ==============================================================================
 
+
 def test_empty_response_guard_consecutive_tracking():
     guard = EmptyResponseGuard(cost_threshold_usd=0.25)
-    
+
     # 1st empty response: eligible for retry
     count1 = guard.record_empty_response("openai", "gpt-4o", "stop")
     assert count1 == 1
-    can_retry, reason = guard.evaluate_retry_eligibility("openai", "gpt-4o", "stop", current_attempt=0, max_configured_retries=3)
+    can_retry, reason = guard.evaluate_retry_eligibility(
+        "openai", "gpt-4o", "stop", current_attempt=0, max_configured_retries=3
+    )
     assert can_retry is True
 
     # 2nd consecutive empty: failover immediately
     count2 = guard.record_empty_response("openai", "gpt-4o", "stop")
     assert count2 == 2
-    can_retry, reason = guard.evaluate_retry_eligibility("openai", "gpt-4o", "stop", current_attempt=1, max_configured_retries=3)
+    can_retry, reason = guard.evaluate_retry_eligibility(
+        "openai", "gpt-4o", "stop", current_attempt=1, max_configured_retries=3
+    )
     assert can_retry is False
     assert "Deterministic empty response limit reached" in reason
 
 
 def test_empty_response_guard_cost_clamping():
     guard = EmptyResponseGuard(cost_threshold_usd=0.20)
-    
+
     # Low cost prompt: allows 3 retries
-    can_retry, _ = guard.evaluate_retry_eligibility("anthropic", "claude-3-5-sonnet", "stop", current_attempt=0, max_configured_retries=3, estimated_input_cost_usd=0.05)
+    can_retry, _ = guard.evaluate_retry_eligibility(
+        "anthropic",
+        "claude-3-5-sonnet",
+        "stop",
+        current_attempt=0,
+        max_configured_retries=3,
+        estimated_input_cost_usd=0.05,
+    )
     assert can_retry is True
 
     # High cost prompt: clamped to 1 retry
-    can_retry, reason = guard.evaluate_retry_eligibility("anthropic", "claude-3-5-sonnet", "stop", current_attempt=1, max_configured_retries=3, estimated_input_cost_usd=0.50)
+    can_retry, reason = guard.evaluate_retry_eligibility(
+        "anthropic",
+        "claude-3-5-sonnet",
+        "stop",
+        current_attempt=1,
+        max_configured_retries=3,
+        estimated_input_cost_usd=0.50,
+    )
     assert can_retry is False
     assert "Retry attempts exhausted" in reason
 
@@ -122,6 +147,7 @@ def test_empty_response_guard_cost_clamping():
 # ==============================================================================
 # 3. Scratchpad Guard Tests
 # ==============================================================================
+
 
 def test_scratchpad_guard_incomplete_tag():
     truncated = "Let me think about this trade setup.\n<think>\nLooking at H4 liquidity pool around 1.0850..."
@@ -151,6 +177,7 @@ def test_scratchpad_guard_close_dangling():
 # 4. ESTOP Sentinel Tests
 # ==============================================================================
 
+
 def test_estop_lifecycle():
     # Clean state before test
     disarm_estop()
@@ -178,6 +205,7 @@ def test_estop_lifecycle():
 # 5. Turn Preflight Gate Tests
 # ==============================================================================
 
+
 def test_preflight_context_floor():
     ok, _ = TurnPreflightGate.validate_context_floor(context_window=128000, estimated_required_tokens=4096)
     assert ok is True
@@ -198,14 +226,14 @@ def test_preflight_compression_progress():
 def test_wall_clock_budget_wrapup():
     budget = WallClockBudgetManager(budget_seconds=1.0, wrapup_ratio=0.80)
     assert not budget.should_inject_wrapup()
-    
+
     # Simulate time lapse by shifting start_time
     budget.start_time = time.time() - 0.85
     assert budget.should_inject_wrapup() is True
-    
+
     notice = budget.get_wrapup_notice()
     assert RUN_BUDGET_WRAPUP_NOTICE == notice
-    
+
     budget.mark_wrapup_injected()
     assert not budget.should_inject_wrapup()
 
@@ -213,6 +241,7 @@ def test_wall_clock_budget_wrapup():
 # ==============================================================================
 # 6. Turn Tool Round & Persist-Before-Execute Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_turn_tool_round_persist_before_execute_failure():
@@ -224,7 +253,7 @@ async def test_turn_tool_round_persist_before_execute_failure():
     raw_calls = [{"id": "c1", "function": {"name": "place_order", "arguments": '{"symbol": "EURUSD"}'}}]
 
     verdict = await coordinator.execute_tool_round(raw_calls, mock_executor)
-    
+
     assert verdict.action == "break"
     assert verdict.persistence_failed is True
     # The crucial invariant: tool was NEVER executed!
@@ -240,7 +269,7 @@ async def test_turn_tool_round_persist_before_execute_success():
     raw_calls = [{"id": "c1", "function": {"name": "place_order", "arguments": '{"symbol": "EURUSD"}'}}]
 
     verdict = await coordinator.execute_tool_round(raw_calls, mock_executor)
-    
+
     assert verdict.action == "continue"
     assert verdict.persistence_failed is False
     assert len(verdict.tool_results) == 1
@@ -270,9 +299,10 @@ async def test_turn_tool_round_estop_halts():
 # 7. Credential Pool Resilience Enhancements Tests
 # ==============================================================================
 
+
 def test_credential_pool_status_and_sibling_propagation():
     pool = CredentialPool(auto_init_env=False, rotation_strategy="round_robin")
-    
+
     # Register same key under two providers to test sibling propagation
     shared_key = "sk-shared-key-test-12345"
     pool.add_key("openai", shared_key)
@@ -310,6 +340,7 @@ def test_credential_pool_rotation_strategies():
 # ==============================================================================
 # 8. Modern Capabilities & Prompt Caching 4-Breakpoint Tests
 # ==============================================================================
+
 
 def test_capabilities_modern_models():
     # User specified modern models:

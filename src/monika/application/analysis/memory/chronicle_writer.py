@@ -31,29 +31,83 @@ import monika.core.primitives.clock as clock
 logger = logging.getLogger("TradingAgent.ChronicleWriter")
 
 CHRONICLE_CATEGORIES = {
-    'policy_change': [
-        'tariff', 'trade war', 'sanctions', 'tax', 'subsidy', 'embargo', 'ban',
-        'protectionism', 'reciprocal tariff', 'export ban', 'opec', 'production cut',
-        'strategic petroleum reserve', 'spr release'
+    "policy_change": [
+        "tariff",
+        "trade war",
+        "sanctions",
+        "tax",
+        "subsidy",
+        "embargo",
+        "ban",
+        "protectionism",
+        "reciprocal tariff",
+        "export ban",
+        "opec",
+        "production cut",
+        "strategic petroleum reserve",
+        "spr release",
     ],
-    'geopolitical': [
-        'war', 'missile', 'attack', 'military', 'ceasefire', 'treaty', 'houthi',
-        'iran', 'ukraine', 'taiwan', 'middle east', 'strait of hormuz', 'taiwan strait',
-        'red sea', 'nato', 'blockade'
+    "geopolitical": [
+        "war",
+        "missile",
+        "attack",
+        "military",
+        "ceasefire",
+        "treaty",
+        "houthi",
+        "iran",
+        "ukraine",
+        "taiwan",
+        "middle east",
+        "strait of hormuz",
+        "taiwan strait",
+        "red sea",
+        "nato",
+        "blockade",
     ],
-    'data_shock': [
-        'emergency cut', 'rate hike', 'rate cut', 'cpi surge', 'nfp collapse',
-        'gdp contraction', 'flash crash', 'data outage', 'system outage'
+    "data_shock": [
+        "emergency cut",
+        "rate hike",
+        "rate cut",
+        "cpi surge",
+        "nfp collapse",
+        "gdp contraction",
+        "flash crash",
+        "data outage",
+        "system outage",
     ],
-    'regime_shift': [
-        'recession', 'stagflation', 'financial crisis', 'liquidity crisis', 'debt ceiling',
-        'default', 'fiscal dominance', 'quantitative tightening', 'qt', 'quantitative easing',
-        'qe', 'yield curve control', 'ycc', 'reverse repo', 'rrp', 'bank reserve drain'
+    "regime_shift": [
+        "recession",
+        "stagflation",
+        "financial crisis",
+        "liquidity crisis",
+        "debt ceiling",
+        "default",
+        "fiscal dominance",
+        "quantitative tightening",
+        "qt",
+        "quantitative easing",
+        "qe",
+        "yield curve control",
+        "ycc",
+        "reverse repo",
+        "rrp",
+        "bank reserve drain",
     ],
-    'institutional': [
-        'fed chair', 'powell', 'warsh', 'yellen', 'bessent', 'ecb president',
-        'lagarde', 'boj governor', 'ueda', 'prime minister', 'president', 'treasury secretary',
-        'fomc voting member'
+    "institutional": [
+        "fed chair",
+        "powell",
+        "warsh",
+        "yellen",
+        "bessent",
+        "ecb president",
+        "lagarde",
+        "boj governor",
+        "ueda",
+        "prime minister",
+        "president",
+        "treasury secretary",
+        "fomc voting member",
     ],
 }
 
@@ -64,7 +118,7 @@ class ChronicleWriter:
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
         try:
-            self._client = get_client_for_task('trade_reflection', self.settings)
+            self._client = get_client_for_task("trade_reflection", self.settings)
         except Exception:
             self._client = None
 
@@ -75,43 +129,48 @@ class ChronicleWriter:
                 return cat
         return None
 
-    async def maybe_record_news_event(
-        self, session: AsyncSession, news_item: NewsItem
-    ) -> Optional[MarketChronicle]:
+    async def maybe_record_news_event(self, session: AsyncSession, news_item: NewsItem) -> Optional[MarketChronicle]:
         """
         Evaluasi apakah news_item layak dicatat ke dalam MarketChronicle.
         Hanya mencatat berita BREAKING atau HIGH yang memiliki signifikansi struktural.
         """
-        if not news_item or news_item.impact not in ('BREAKING', 'HIGH'):
+        if not news_item or news_item.impact not in ("BREAKING", "HIGH"):
             return None
 
         combined_text = f"{news_item.title} {news_item.summary or ''}"
         category = self._match_category(combined_text)
-        
+
         # Jika bukan kategori makro struktural dan bukan BREAKING, abaikan
-        if not category and news_item.impact != 'BREAKING':
+        if not category and news_item.impact != "BREAKING":
             return None
 
-        cat = category or 'policy_change'
+        cat = category or "policy_change"
         event_time = news_item.published_at or news_item.fetched_at or datetime.now(timezone.utc)
 
         # Cek apakah sudah ada chronicle serupa dalam 7 hari terakhir
         since = event_time - timedelta(days=7)
-        existing = (await session.execute(
-            select(MarketChronicle)
-            .where(MarketChronicle.event_date >= since)
-            .where(MarketChronicle.category == cat)
-        )).scalars().all()
+        existing = (
+            (
+                await session.execute(
+                    select(MarketChronicle)
+                    .where(MarketChronicle.event_date >= since)
+                    .where(MarketChronicle.category == cat)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         for ex in existing:
             # Jaccard title match
             from monika.application.analysis.prefetch.news_digest import _jaccard_title_similarity
+
             if _jaccard_title_similarity(ex.headline, news_item.title) > 0.4:
                 logger.debug(f"[ChronicleWriter] Similar chronicle exists: '{ex.headline[:50]}'")
                 return ex
 
         now = clock.now()
-        severity = 'critical' if news_item.impact == 'BREAKING' else 'high'
+        severity = "critical" if news_item.impact == "BREAKING" else "high"
         narrative = (news_item.summary or news_item.title)[:400]
 
         entry = MarketChronicle(
@@ -119,7 +178,7 @@ class ChronicleWriter:
             category=cat,
             headline=news_item.title[:300],
             narrative=narrative,
-            currencies_affected=news_item.currency_tags or 'MACRO',
+            currencies_affected=news_item.currency_tags or "MACRO",
             severity=severity,
             source_news_id=news_item.id,
             is_ongoing=True,
@@ -147,6 +206,7 @@ class ChronicleWriter:
         # Kategori 'geopolitical', 'institutional', dan 'regime_shift' TETAP ONGOING sampai ada resolusi eksplisit
         try:
             from sqlalchemy import update
+
             data_shock_cutoff = now - timedelta(days=14)
             policy_cutoff = now - timedelta(days=90)
             await session.execute(
@@ -154,7 +214,7 @@ class ChronicleWriter:
                 .where(
                     MarketChronicle.is_ongoing == True,
                     MarketChronicle.event_date < data_shock_cutoff,
-                    MarketChronicle.category == 'data_shock'
+                    MarketChronicle.category == "data_shock",
                 )
                 .values(is_ongoing=False)
             )
@@ -163,16 +223,16 @@ class ChronicleWriter:
                 .where(
                     MarketChronicle.is_ongoing == True,
                     MarketChronicle.event_date < policy_cutoff,
-                    MarketChronicle.category == 'policy_change'
+                    MarketChronicle.category == "policy_change",
                 )
                 .values(is_ongoing=False)
             )
         except Exception as e:
             logger.debug(f"[ChronicleWriter] Auto-resolve ongoing error: {e}")
 
-        curr_regime = getattr(brief, 'macro_regime', '') or ''
-        prev_regime = getattr(prev_brief, 'macro_regime', '') or ''
-        curr_risk = getattr(brief, 'risk_sentiment', '') or ''
+        curr_regime = getattr(brief, "macro_regime", "") or ""
+        prev_regime = getattr(prev_brief, "macro_regime", "") or ""
+        curr_risk = getattr(brief, "risk_sentiment", "") or ""
 
         if curr_regime.lower() != prev_regime.lower() and curr_regime:
             # Check if identical regime shift was recorded within last 12 hours
@@ -180,12 +240,12 @@ class ChronicleWriter:
             try:
                 res = await session.execute(
                     select(MarketChronicle)
-                    .where(MarketChronicle.category == 'regime_shift')
+                    .where(MarketChronicle.category == "regime_shift")
                     .where(MarketChronicle.event_date >= now - timedelta(hours=12))
                     .order_by(MarketChronicle.event_date.desc())
                     .limit(1)
                 )
-                if hasattr(res, 'scalar_one_or_none'):
+                if hasattr(res, "scalar_one_or_none"):
                     recent_shift = res.scalar_one_or_none()
                     if asyncio.iscoroutine(recent_shift):
                         recent_shift = await recent_shift
@@ -193,17 +253,17 @@ class ChronicleWriter:
                 logger.debug(f"[ChronicleWriter] Error checking recent regime shift: {e}")
 
             headline = f"Macro Regime Shift: {prev_regime.upper()} -> {curr_regime.upper()}"
-            if recent_shift and getattr(recent_shift, 'headline', None) == headline:
+            if recent_shift and getattr(recent_shift, "headline", None) == headline:
                 logger.debug(f"[ChronicleWriter] Skipping duplicate regime shift: {headline}")
                 return None
 
             entry = MarketChronicle(
                 event_date=brief.generated_at or now,
-                category='regime_shift',
+                category="regime_shift",
                 headline=headline[:300],
                 narrative=f"System detected fundamental regime shift. Risk sentiment: {curr_risk.upper()}. Brief confidence: {brief.confidence or 0.0:.2f}",
-                currencies_affected='MACRO',
-                severity='high',
+                currencies_affected="MACRO",
+                severity="high",
                 source_brief_id=brief.id,
                 is_ongoing=True,
                 created_at=now,
@@ -280,9 +340,7 @@ class ChronicleWriter:
         synced_count = 0
         for reg in verified_regimes:
             try:
-                stmt = select(MarketChronicle).where(
-                    MarketChronicle.headline.ilike(f"%{reg['key_phrase']}%")
-                ).limit(1)
+                stmt = select(MarketChronicle).where(MarketChronicle.headline.ilike(f"%{reg['key_phrase']}%")).limit(1)
                 res = await session.execute(stmt)
                 existing = res.scalar_one_or_none()
                 if asyncio.iscoroutine(existing):
@@ -316,7 +374,9 @@ class ChronicleWriter:
             commit_res = session.commit()
             if asyncio.iscoroutine(commit_res):
                 await commit_res
-            logger.info(f"[ChronicleWriter] Synchronized {synced_count} verified macro reality regimes into MarketChronicle.")
+            logger.info(
+                f"[ChronicleWriter] Synchronized {synced_count} verified macro reality regimes into MarketChronicle."
+            )
         except Exception as e:
             logger.debug(f"[ChronicleWriter] Commit error during macro reality sync: {e}")
 
@@ -339,10 +399,11 @@ class ChronicleWriter:
                     dt_str = dt_str[:-1] + "+00:00"
                 dt = datetime.fromisoformat(dt_str)
 
-                exists_stmt = select(MarketChronicle).where(
-                    MarketChronicle.event_date == dt,
-                    MarketChronicle.headline == item["headline"]
-                ).limit(1)
+                exists_stmt = (
+                    select(MarketChronicle)
+                    .where(MarketChronicle.event_date == dt, MarketChronicle.headline == item["headline"])
+                    .limit(1)
+                )
                 res = await session.execute(exists_stmt)
                 existing = res.scalar_one_or_none()
                 if asyncio.iscoroutine(existing):
@@ -376,6 +437,7 @@ class ChronicleWriter:
         """Seed initial structural macro anchors if the MarketChronicle table is empty."""
         try:
             from sqlalchemy import func
+
             count_res = await session.execute(select(func.count(MarketChronicle.id)))
             count = count_res.scalar_one()
             if asyncio.iscoroutine(count):
@@ -389,24 +451,18 @@ class ChronicleWriter:
             logger.warning(f"[ChronicleWriter] Failed to seed bootstrap chronicles (non-fatal): {e}")
             return 0
 
-    async def get_chronicle_context(
-        self, session: AsyncSession, days_back: int = 30, limit: int = 12
-    ) -> str:
+    async def get_chronicle_context(self, session: AsyncSession, days_back: int = 30, limit: int = 12) -> str:
         """
         Mengambil ringkasan kronologi peristiwa makro penting untuk prompt LLM Stage 1 dan Stage 2.
         Menyertakan SEMUA ongoing structural events (perang, pimpinan bank sentral baru, rezim aktif)
         tanpa batasan hari, ditambah milestone penting terbaru dalam 'days_back'.
         """
         from sqlalchemy import or_
+
         since = clock.now() - timedelta(days=days_back)
         query = (
             select(MarketChronicle)
-            .where(
-                or_(
-                    MarketChronicle.is_ongoing == True,
-                    MarketChronicle.event_date >= since
-                )
-            )
+            .where(or_(MarketChronicle.is_ongoing == True, MarketChronicle.event_date >= since))
             .order_by(MarketChronicle.is_ongoing.desc(), MarketChronicle.event_date.desc())
             .limit(limit + 4)
         )
@@ -419,9 +475,7 @@ class ChronicleWriter:
         if not chronicles:
             return "• No extraordinary structural macro milestones recorded in the past 30 days."
 
-        lines = [
-            f"--- PERSISTENT MARKET CHRONICLE (Ongoing Regimes & Macro Milestones) ---"
-        ]
+        lines = [f"--- PERSISTENT MARKET CHRONICLE (Ongoing Regimes & Macro Milestones) ---"]
         for c in chronicles:
             dt_str = c.event_date.strftime("%Y-%m-%d")
             status = "ACTIVE ONGOING" if c.is_ongoing else "RESOLVED"
@@ -438,21 +492,18 @@ class ChronicleWriter:
     ) -> str:
         """Fetch ongoing and recent macro chronicles relevant to a specific currency pair/asset."""
         from monika.application.protocol.context_coherence import get_base_quote_tags
-        tags = get_base_quote_tags(symbol).split(',')
+
+        tags = get_base_quote_tags(symbol).split(",")
         currencies = [t.strip() for t in tags if t.strip()]
-        currencies.append('MACRO')
+        currencies.append("MACRO")
         currencies.append(symbol)
 
         from sqlalchemy import or_
+
         since = datetime.now(timezone.utc) - timedelta(days=days_back)
         query = (
             select(MarketChronicle)
-            .where(
-                or_(
-                    MarketChronicle.is_ongoing == True,
-                    MarketChronicle.event_date >= since
-                )
-            )
+            .where(or_(MarketChronicle.is_ongoing == True, MarketChronicle.event_date >= since))
             .order_by(MarketChronicle.is_ongoing.desc(), MarketChronicle.event_date.desc())
             .limit(limit * 2)
         )
@@ -463,8 +514,8 @@ class ChronicleWriter:
 
         matched = []
         for c in chronicles:
-            aff = (c.currencies_affected or '').upper()
-            if any(curr.upper() in aff for curr in currencies) or 'MACRO' in aff:
+            aff = (c.currencies_affected or "").upper()
+            if any(curr.upper() in aff for curr in currencies) or "MACRO" in aff:
                 matched.append(c)
                 if len(matched) >= limit:
                     break
@@ -488,15 +539,11 @@ class ChronicleWriter:
         Ideal for injecting into debate analysts, judges, and domain specialists.
         """
         from sqlalchemy import or_
+
         since = datetime.now(timezone.utc) - timedelta(days=days_back)
         query = (
             select(MarketChronicle)
-            .where(
-                or_(
-                    MarketChronicle.is_ongoing == True,
-                    MarketChronicle.event_date >= since
-                )
-            )
+            .where(or_(MarketChronicle.is_ongoing == True, MarketChronicle.event_date >= since))
             .order_by(MarketChronicle.is_ongoing.desc(), MarketChronicle.event_date.desc())
             .limit(limit * 2)
         )
@@ -513,15 +560,16 @@ class ChronicleWriter:
         if symbol:
             try:
                 from monika.application.protocol.context_coherence import get_base_quote_tags
-                tags = get_base_quote_tags(symbol).split(',')
+
+                tags = get_base_quote_tags(symbol).split(",")
                 currencies = [t.strip().upper() for t in tags if t.strip()]
             except Exception:
                 currencies = []
 
         for c in chronicles:
             if symbol and currencies:
-                aff = (c.currencies_affected or '').upper()
-                if not (any(curr in aff for curr in currencies) or 'MACRO' in aff or symbol.upper() in aff):
+                aff = (c.currencies_affected or "").upper()
+                if not (any(curr in aff for curr in currencies) or "MACRO" in aff or symbol.upper() in aff):
                     continue
             status = "ACTIVE" if c.is_ongoing else "RECENT"
             bullets.append(f"• [{status}] {c.headline.strip()}")

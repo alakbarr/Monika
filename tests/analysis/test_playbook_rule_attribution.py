@@ -13,19 +13,15 @@ async def test_playbook_rule_attribution_model_and_recording():
     mock_result = MagicMock()
     mock_result.scalars.return_value.first.return_value = None
     mock_session.execute.return_value = mock_result
-    
+
     rule = "Wait for London session liquidity sweep before buying EURUSD demand"
     symbol = "EURUSD"
-    
+
     # 1. Record first win
     attr = await record_playbook_rule_outcome(
-        session=mock_session,
-        rule_text=rule,
-        symbol=symbol,
-        was_profitable=True,
-        pnl=150.0
+        session=mock_session, rule_text=rule, symbol=symbol, was_profitable=True, pnl=150.0
     )
-    
+
     assert attr.symbol == "EURUSD"
     assert attr.times_triggered == 1
     assert attr.wins_count == 1
@@ -38,7 +34,7 @@ async def test_playbook_rule_attribution_model_and_recording():
 @pytest.mark.asyncio
 async def test_playbook_rule_auto_deprecation_on_low_win_rate():
     mock_session = create_mock_async_session()
-    
+
     existing_attr = PlaybookRuleAttribution(
         rule_hash="eurusd_test_hash",
         symbol="EURUSD",
@@ -49,13 +45,13 @@ async def test_playbook_rule_auto_deprecation_on_low_win_rate():
         losses_count=3,
         total_pnl=-80.0,
         win_rate=0.25,
-        promoted_at=datetime.now(timezone.utc)
+        promoted_at=datetime.now(timezone.utc),
     )
-    
+
     mock_result = MagicMock()
     mock_result.scalars.return_value.first.return_value = existing_attr
     mock_session.execute.return_value = mock_result
-    
+
     # 5th trade is a loss -> total 1 win, 4 losses -> win rate 0.20 < 0.40 -> auto-deprecated
     updated = await record_playbook_rule_outcome(
         session=mock_session,
@@ -64,9 +60,9 @@ async def test_playbook_rule_auto_deprecation_on_low_win_rate():
         was_profitable=False,
         pnl=-40.0,
         min_eval_deprecate=5,
-        deprecation_win_rate=0.40
+        deprecation_win_rate=0.40,
     )
-    
+
     assert updated.times_triggered == 5
     assert updated.wins_count == 1
     assert updated.losses_count == 4
@@ -79,7 +75,7 @@ async def test_playbook_rule_auto_deprecation_on_low_win_rate():
 @pytest.mark.asyncio
 async def test_playbook_rule_auto_elevation_to_golden():
     mock_session = create_mock_async_session()
-    
+
     existing_attr = PlaybookRuleAttribution(
         rule_hash="gold_rule_hash",
         symbol="XAUUSD",
@@ -90,13 +86,13 @@ async def test_playbook_rule_auto_elevation_to_golden():
         losses_count=1,
         total_pnl=300.0,
         win_rate=0.75,
-        promoted_at=datetime.now(timezone.utc)
+        promoted_at=datetime.now(timezone.utc),
     )
-    
+
     mock_result = MagicMock()
     mock_result.scalars.return_value.first.return_value = existing_attr
     mock_session.execute.return_value = mock_result
-    
+
     # 5th trade is a win -> 4 wins, 1 loss -> win rate 0.80 >= 0.65 -> elevated to golden
     updated = await record_playbook_rule_outcome(
         session=mock_session,
@@ -105,9 +101,9 @@ async def test_playbook_rule_auto_elevation_to_golden():
         was_profitable=True,
         pnl=120.0,
         min_eval_deprecate=5,
-        golden_win_rate=0.65
+        golden_win_rate=0.65,
     )
-    
+
     assert updated.times_triggered == 5
     assert updated.wins_count == 4
     assert updated.losses_count == 1
@@ -118,7 +114,7 @@ async def test_playbook_rule_auto_elevation_to_golden():
 def test_hybrid_multi_factor_precedent_scoring():
     engine = SessionSearchEngine()
     now = datetime.now(timezone.utc)
-    
+
     # Case 1: High match (matching regime, matching tokens, profitable, recent)
     ref_high = DecisionReflection(
         id=1,
@@ -128,17 +124,14 @@ def test_hybrid_multi_factor_precedent_scoring():
         rationale_summary="EURUSD buy in trending_bull with strong macro support.",
         was_profitable=True,
         outcome_pnl_usd=250.0,
-        created_at=now - timedelta(days=2)
+        created_at=now - timedelta(days=2),
     )
-    
+
     setup_tokens = {"eurusd", "demand", "macro", "trending_bull"}
     score_high = engine.compute_precedent_hybrid_score(
-        reflection=ref_high,
-        current_regime="trending_bull",
-        setup_tokens=setup_tokens,
-        now=now
+        reflection=ref_high, current_regime="trending_bull", setup_tokens=setup_tokens, now=now
     )
-    
+
     # Case 2: Low match (different regime, loss, old)
     ref_low = DecisionReflection(
         id=2,
@@ -148,16 +141,13 @@ def test_hybrid_multi_factor_precedent_scoring():
         rationale_summary="EURUSD stopped out due to sudden news catalyst.",
         was_profitable=False,
         outcome_pnl_usd=-180.0,
-        created_at=now - timedelta(days=60)
+        created_at=now - timedelta(days=60),
     )
-    
+
     score_low = engine.compute_precedent_hybrid_score(
-        reflection=ref_low,
-        current_regime="trending_bull",
-        setup_tokens=setup_tokens,
-        now=now
+        reflection=ref_low, current_regime="trending_bull", setup_tokens=setup_tokens, now=now
     )
-    
+
     assert score_high["composite"] > score_low["composite"]
     assert score_high["regime_score"] == 1.0
     assert score_high["outcome_score"] == 1.0

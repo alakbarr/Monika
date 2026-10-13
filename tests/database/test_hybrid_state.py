@@ -34,6 +34,7 @@ from agent.state_rewind import StateRewindManager, CARRIER_SIDE_EFFECT_PERSISTED
 # 1. Bounded Read Pool & Headroom Tests
 # ==============================================================================
 
+
 def test_fd_headroom_check():
     """Headroom check must return boolean without raising."""
     assert isinstance(check_fd_headroom(), bool)
@@ -76,6 +77,7 @@ def test_file_lock_guard_exclusive():
 # 2. WAL Pragmas, Checkpoint & Hot Backup
 # ==============================================================================
 
+
 def test_wal_pragmas_checkpoint_and_vacuum():
     with tempfile.TemporaryDirectory() as tmp_dir:
         db_path = Path(tmp_dir) / "test_wal_ops.sqlite"
@@ -108,13 +110,14 @@ def test_wal_pragmas_checkpoint_and_vacuum():
 # 3. FTS5 with CJK Bigram and Fail-Open Resilience
 # ==============================================================================
 
+
 def test_fts5_sanitize_term():
     raw = 'EURUSD "breakout" +strategy: (H1)*'
     cleaned = sanitize_fts5_term(raw)
     assert '"' not in cleaned
-    assert '*' not in cleaned
-    assert ':' not in cleaned
-    assert 'breakout strategy H1' in cleaned
+    assert "*" not in cleaned
+    assert ":" not in cleaned
+    assert "breakout strategy H1" in cleaned
 
 
 def test_fts5_search_fail_open_on_malformed_query():
@@ -143,6 +146,7 @@ def test_fts5_search_fail_open_on_malformed_query():
 # ==============================================================================
 # 4. Session Lifecycle, Lineage & Portability
 # ==============================================================================
+
 
 def test_derive_session_title():
     messages = [

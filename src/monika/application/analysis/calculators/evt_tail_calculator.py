@@ -29,6 +29,7 @@ import pandas as pd
 
 try:
     from scipy import stats
+
     _HAS_SCIPY = True
 except ImportError:
     _HAS_SCIPY = False
@@ -55,12 +56,12 @@ def fit_gpd_tail(
 ) -> TailRiskProfile:
     """
     Fits GPD to the negative tail (losses) using Peaks-Over-Threshold.
-    
+
     Args:
         returns: Time-series of arithmetic returns.
         quantile_threshold: Threshold percentile for loss exceedances (default 0.95).
         significance_sigmas: Significance threshold in standard deviations (default 2.0).
-        
+
     Returns:
         TailRiskProfile containing tail shape, classification, and recommended sizing multiplier.
     """
@@ -130,9 +131,9 @@ def fit_gpd_tail(
         mean_y = float(np.mean(exceedances))
         var_y = float(np.var(exceedances, ddof=1)) if n_exceed > 1 else float(np.var(exceedances))
         if var_y > 1e-12 and mean_y > 1e-12:
-            hw_xi = 0.5 * (1.0 - (mean_y ** 2) / var_y)
+            hw_xi = 0.5 * (1.0 - (mean_y**2) / var_y)
             hw_xi = float(np.clip(hw_xi, -1.0, 1.5))
-            hw_sigma = 0.5 * mean_y * (1.0 + (mean_y ** 2) / var_y)
+            hw_sigma = 0.5 * mean_y * (1.0 + (mean_y**2) / var_y)
             xi = hw_xi
             sigma = max(hw_sigma, 1e-6)
         else:

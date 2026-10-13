@@ -43,7 +43,9 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
     LangGraph execution node for evaluating trade proposals through
     Portfolio Synthesis, Correlation Filters, and Institutional RiskGate.
     """
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
     scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else None
     summary = state.get("summary", {})
     actionable = list(state.get("actionable_trades", []) or [])
@@ -151,7 +153,9 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                         reasoning_text = str(ana.rationale or "")
 
                     conf_override = r.get("confidence_override") or (
-                        r.get("metadata", {}).get("confidence_override") if isinstance(r.get("metadata"), dict) else None
+                        r.get("metadata", {}).get("confidence_override")
+                        if isinstance(r.get("metadata"), dict)
+                        else None
                     )
 
                     try:
@@ -169,13 +173,17 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             account_equity=equity,
                             analysis=ana,
                         )
-                        verdict = await risk_gate.evaluate_proposal(rg_session, proposal, account_equity=equity, analysis=ana)
+                        verdict = await risk_gate.evaluate_proposal(
+                            rg_session, proposal, account_equity=equity, analysis=ana
+                        )
                         if verdict.approved:
                             gate_approved.append((sym, r))
                         else:
                             reasons = verdict.rejection_reasons or verdict.checks_failed or ["risk_gate_rejected"]
                             logger.warning(f"[RiskGate] Suppressed {sym}: {reasons}")
-                            rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"risk_gate: {x}" for x in reasons]})
+                            rejected_candidates.append(
+                                {"symbol": sym, "trade": r, "reasons": [f"risk_gate: {x}" for x in reasons]}
+                            )
                             await audit_trade_rejection(
                                 rg_session,
                                 symbol=sym,
@@ -186,7 +194,9 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             )
                     except Exception as prop_err:
                         logger.warning(f"[RiskGate] Proposal error for {sym}: {prop_err}")
-                        rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"proposal_error: {prop_err}"]})
+                        rejected_candidates.append(
+                            {"symbol": sym, "trade": r, "reasons": [f"proposal_error: {prop_err}"]}
+                        )
                         await audit_trade_rejection(
                             rg_session,
                             symbol=sym,
@@ -200,11 +210,13 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
         except Exception as e:
             logger.critical(f"[RiskGate] Evaluation failure - enforcing FAIL-CLOSED: {e}", exc_info=True)
             for sym, r in actionable:
-                rejected_candidates.append({
-                    "symbol": sym,
-                    "trade": r,
-                    "reasons": [f"risk_gate_system_exception: {e}"],
-                })
+                rejected_candidates.append(
+                    {
+                        "symbol": sym,
+                        "trade": r,
+                        "reasons": [f"risk_gate_system_exception: {e}"],
+                    }
+                )
             actionable = []
 
     # 5. Deterministic Trade Pre-Commit Gate
@@ -256,8 +268,7 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
         from monika.application.graph.nodes.plan_refinement_node import _is_reason_negotiable
 
         negotiable_items = [
-            item for item in rejected_candidates
-            if _is_reason_negotiable(" ".join(item.get("reasons", [])))
+            item for item in rejected_candidates if _is_reason_negotiable(" ".join(item.get("reasons", [])))
         ]
         if negotiable_items:
             is_negotiable = True

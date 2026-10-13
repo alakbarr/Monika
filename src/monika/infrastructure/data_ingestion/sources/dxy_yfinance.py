@@ -6,6 +6,7 @@
 DXY (US Dollar Index) Fetcher using yfinance.
 The US Dollar Index tracks the relative performance of USD against major trade partner currencies.
 """
+
 import asyncio
 import logging
 import math
@@ -55,7 +56,7 @@ def _extract_float(val: object) -> Optional[float]:
     try:
         f = float(str(val))
         return None if math.isnan(f) else f
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
 
@@ -137,10 +138,12 @@ class DXYFetcher:
                 records = []
                 for ts, close_val in zip(timestamps, closes):
                     if close_val is not None:
-                        records.append({
-                            "Date": pd.to_datetime(ts, unit="s", utc=True),
-                            "Close": float(close_val),
-                        })
+                        records.append(
+                            {
+                                "Date": pd.to_datetime(ts, unit="s", utc=True),
+                                "Close": float(close_val),
+                            }
+                        )
                 if not records:
                     continue
                 df = pd.DataFrame(records)
@@ -180,7 +183,7 @@ class DXYFetcher:
     async def _save(self, df: pd.DataFrame) -> int:
         """Menyimpan data DXY ke database."""
         from monika.infrastructure.database.models import DXYData
-        
+
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
@@ -192,7 +195,7 @@ class DXYFetcher:
             else:
                 ts = pd.Timestamp(str(idx))
                 record_dt = datetime(int(ts.year), int(ts.month), int(ts.day), tzinfo=timezone.utc)
-            
+
             close_val: Optional[float] = None
             for col in ["Close", "Adj Close", "close"]:
                 if col in row:
@@ -206,9 +209,7 @@ class DXYFetcher:
 
         if candidates:
             all_dates = [c[0] for c in candidates]
-            existing_res = await self.session.execute(
-                select(DXYData.date).where(DXYData.date.in_(all_dates))
-            )
+            existing_res = await self.session.execute(select(DXYData.date).where(DXYData.date.in_(all_dates)))
             existing_dates = set()
             try:
                 if hasattr(existing_res, "scalars"):
@@ -217,13 +218,19 @@ class DXYFetcher:
                     if isinstance(vals, (list, tuple, set)):
                         for d in vals:
                             if d is not None and isinstance(d, datetime):
-                                dt = d.astimezone(timezone.utc) if getattr(d, "tzinfo", None) else d.replace(tzinfo=timezone.utc)
+                                dt = (
+                                    d.astimezone(timezone.utc)
+                                    if getattr(d, "tzinfo", None)
+                                    else d.replace(tzinfo=timezone.utc)
+                                )
                                 existing_dates.add(dt)
             except Exception:
                 existing_dates = set()
 
             for record_dt, close_val in candidates:
-                norm_dt = record_dt.astimezone(timezone.utc) if record_dt.tzinfo else record_dt.replace(tzinfo=timezone.utc)
+                norm_dt = (
+                    record_dt.astimezone(timezone.utc) if record_dt.tzinfo else record_dt.replace(tzinfo=timezone.utc)
+                )
                 if norm_dt in existing_dates:
                     continue
                 self.session.add(DXYData(date=norm_dt, close=close_val))
@@ -232,6 +239,7 @@ class DXYFetcher:
 
         if saved:
             from monika.infrastructure.database.safe_ops import safe_commit
+
             ok = await safe_commit(self.session, label="DXYData")
             if not ok:
                 return 0
@@ -244,9 +252,7 @@ class DXYFetcher:
         Returns:
             Dict dengan kunci 'date' dan 'close', atau None jika data kosong.
         """
-        result = await self.session.execute(
-            select(DXYData).order_by(DXYData.date.desc()).limit(1)
-        )
+        result = await self.session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(1))
         row = result.scalar_one_or_none()
         if row is None:
             return None

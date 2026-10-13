@@ -57,10 +57,7 @@ class ExecutionSimulator:
         self.mt5_client = mt5_client
 
     async def fetch_recent_ticks(
-        self,
-        symbol: str,
-        count: int = 100,
-        session: Optional[AsyncSession] = None
+        self, symbol: str, count: int = 100, session: Optional[AsyncSession] = None
     ) -> List[Dict[str, float]]:
         """
         Retrieves up to `count` recent price ticks.
@@ -89,6 +86,7 @@ class ExecutionSimulator:
         if session is not None:
             try:
                 from monika.domain.risk.ports import get_default_risk_data_provider
+
                 repo = get_default_risk_data_provider(session=session)
                 bars = await repo.get_recent_price_bars(symbol=symbol, timeframe="M15", limit=20, session=session)
                 if bars:
@@ -99,11 +97,7 @@ class ExecutionSimulator:
                         # Synthesize 5 micro-ticks per bar (open, high, low, close, mid)
                         o, h, l, c = float(b["open"]), float(b["high"]), float(b["low"]), float(b["close"])
                         for price in [o, (o + h) / 2.0, h, l, (l + c) / 2.0, c]:
-                            ticks.append({
-                                "bid": price,
-                                "ask": price + base_spread,
-                                "spread": base_spread
-                            })
+                            ticks.append({"bid": price, "ask": price + base_spread, "spread": base_spread})
                     if len(ticks) > count:
                         ticks = ticks[-count:]
                     return ticks
@@ -123,7 +117,7 @@ class ExecutionSimulator:
         take_profit: float,
         volume: float = 0.1,
         ticks: Optional[List[Dict[str, float]]] = None,
-        session: Optional[AsyncSession] = None
+        session: Optional[AsyncSession] = None,
     ) -> ExecutionSimulationResult:
         """
         Runs tick-level market replay and stress tests across 3 slippage scenarios.
@@ -135,7 +129,7 @@ class ExecutionSimulator:
                 median_spread=0.0,
                 current_spread=0.0,
                 scenarios={},
-                details={"status": "disabled_by_config"}
+                details={"status": "disabled_by_config"},
             )
 
         if entry_price <= 0 or stop_loss <= 0 or take_profit <= 0:
@@ -145,7 +139,7 @@ class ExecutionSimulator:
                 median_spread=0.0,
                 current_spread=0.0,
                 scenarios={},
-                details={"status": "zero_price_bypass"}
+                details={"status": "zero_price_bypass"},
             )
 
         # 1. Fetch ticks
@@ -207,5 +201,5 @@ class ExecutionSimulator:
                 "gross_edge": gross_edge,
                 "risk_distance": risk_distance,
                 "ticks_evaluated": len(ticks),
-            }
+            },
         )

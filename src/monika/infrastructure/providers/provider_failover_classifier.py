@@ -8,6 +8,7 @@ Each reason carries:
   - backoff_seconds: recommended wait before retry
   - max_retries: max same-model retries for this error class
 """
+
 from enum import Enum
 from typing import Tuple
 import logging
@@ -23,7 +24,6 @@ __all__ = [
     "classify_error",
     "extract_completion_ceiling",
 ]
-
 
 
 # Pre-compiled patterns for fast classification
@@ -55,24 +55,40 @@ _OVERFLOW_PATTERNS = re.compile(
     r"request.?too.?large|413|max_tokens_exceeded",
     re.IGNORECASE,
 )
-_AUTH_PATTERNS = re.compile(r"401|unauthorized|invalid.?api.?key|invalid.?x-api-key|authentication|api.?key.?(?:not.?set|missing|not.?configured|uninitialized)", re.IGNORECASE)
+_AUTH_PATTERNS = re.compile(
+    r"401|unauthorized|invalid.?api.?key|invalid.?x-api-key|authentication|api.?key.?(?:not.?set|missing|not.?configured|uninitialized)",
+    re.IGNORECASE,
+)
 _BILLING_PATTERNS = re.compile(r"402|insufficient.?quota|billing|credit|payment.?required", re.IGNORECASE)
-_UPSTREAM_RATE_PATTERNS = re.compile(r"upstream.?(?:429|rate|service|error)|openrouter.?(?:upstream|provider.?rate)", re.IGNORECASE)
+_UPSTREAM_RATE_PATTERNS = re.compile(
+    r"upstream.?(?:429|rate|service|error)|openrouter.?(?:upstream|provider.?rate)", re.IGNORECASE
+)
 _RATE_PATTERNS = re.compile(r"429|rate.?limit|too.?many.?requests|resource.?exhausted", re.IGNORECASE)
 _MARGIN_PATTERNS = re.compile(r"margin.?call|insufficient.?margin|not.?enough.?money|no.?money", re.IGNORECASE)
 _INVALID_REQ_PATTERNS = re.compile(r"400|bad.?request|invalid.?request|schema.?validation.?failed", re.IGNORECASE)
 _NOT_FOUND_PATTERNS = re.compile(r"404|model.?not.?found|does.?not.?exist|not_found_error", re.IGNORECASE)
-_OVERLOAD_PATTERNS = re.compile(r"overloaded|503|529|service.?unavailable|capacity|high.?demand|spikes.?in.?demand|temporarily.?unavailable|model.?unavailable|unavailable", re.IGNORECASE)
+_OVERLOAD_PATTERNS = re.compile(
+    r"overloaded|503|529|service.?unavailable|capacity|high.?demand|spikes.?in.?demand|temporarily.?unavailable|model.?unavailable|unavailable",
+    re.IGNORECASE,
+)
 _FILTER_PATTERNS = re.compile(r"content.?filter|content.?policy|safety|blocked|harmful", re.IGNORECASE)
 _TIMEOUT_PATTERNS = re.compile(r"timeout|timed.?out|deadline.?exceeded", re.IGNORECASE)
 _CONN_PATTERNS = re.compile(r"connection.?(?:refused|reset|error|closed)|broken.?pipe|eof", re.IGNORECASE)
 _SERVER_PATTERNS = re.compile(r"500|502|internal.?server.?error|bad.?gateway", re.IGNORECASE)
-_WAF_PATTERNS = re.compile(r"cloudflare|just\s+a\s+moment|access\s+denied|cf-ray|blocked\s+by\s+waf|403\s+forbidden", re.IGNORECASE)
-_ROLE_ALT_PATTERNS = re.compile(r"role\s+alternation|consecutive\s+(?:user|assistant)|messages\s+must\s+alternate", re.IGNORECASE)
+_WAF_PATTERNS = re.compile(
+    r"cloudflare|just\s+a\s+moment|access\s+denied|cf-ray|blocked\s+by\s+waf|403\s+forbidden", re.IGNORECASE
+)
+_ROLE_ALT_PATTERNS = re.compile(
+    r"role\s+alternation|consecutive\s+(?:user|assistant)|messages\s+must\s+alternate", re.IGNORECASE
+)
 _THINKING_PATTERNS = re.compile(r"thinking\s+signature|thought\s+signature|invalid\s+thought", re.IGNORECASE)
-_ENTITLEMENT_PATTERNS = re.compile(r"not\s+entitled|does\s+not\s+have\s+access|permission\s+denied|tier\s+required", re.IGNORECASE)
+_ENTITLEMENT_PATTERNS = re.compile(
+    r"not\s+entitled|does\s+not\s+have\s+access|permission\s+denied|tier\s+required", re.IGNORECASE
+)
 _IMAGE_LARGE_PATTERNS = re.compile(r"image\s+too\s+large|maximum\s+image\s+size|exceeds\s+image\s+limit", re.IGNORECASE)
-_IMAGE_CORRUPT_PATTERNS = re.compile(r"cannot\s+decode\s+image|invalid\s+image\s+data|unsupported\s+image", re.IGNORECASE)
+_IMAGE_CORRUPT_PATTERNS = re.compile(
+    r"cannot\s+decode\s+image|invalid\s+image\s+data|unsupported\s+image", re.IGNORECASE
+)
 
 
 def extract_completion_ceiling(error: Exception | str) -> int | None:
@@ -87,14 +103,18 @@ def extract_completion_ceiling(error: Exception | str) -> int | None:
     if m:
         try:
             return int(m.group(1))
-        except (ValueError, IndexError):
+        except ValueError, IndexError:
             pass
     # Pattern: less than or equal to 8192 / cannot exceed 8192 / max 8192
-    m = re.search(r"(?:less than or equal to|cannot exceed|maximum allowed is|limit is|must be <=)\s*[`'\"]?(\d+)", msg, re.IGNORECASE)
+    m = re.search(
+        r"(?:less than or equal to|cannot exceed|maximum allowed is|limit is|must be <=)\s*[`'\"]?(\d+)",
+        msg,
+        re.IGNORECASE,
+    )
     if m:
         try:
             return int(m.group(1))
-        except (ValueError, IndexError):
+        except ValueError, IndexError:
             pass
     return None
 

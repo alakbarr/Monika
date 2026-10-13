@@ -3,18 +3,18 @@ import logging
 from typing import Optional
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
-logger = logging.getLogger('TradingAgent.AdjudicationVerifier')
+logger = logging.getLogger("TradingAgent.AdjudicationVerifier")
 
 ADJUDICATION_VERIFY_SCHEMA = {
-    'type': 'object',
-    'properties': {
-        'adjudication_rule_correctly_applied': {'type': 'boolean'},
-        'expected_outcome_per_rules': {'type': 'string', 'enum': ['buy', 'sell', 'wait', 'avoid', 'ambiguous']},
-        'is_conditional_wait': {'type': 'boolean'},
-        'mismatch_explanation': {'type': 'string'},
-        'verdict': {'type': 'string', 'enum': ['CONFIRM', 'FLAG_FOR_REVIEW', 'CONTRADICTS_OWN_FRAMEWORK']},
+    "type": "object",
+    "properties": {
+        "adjudication_rule_correctly_applied": {"type": "boolean"},
+        "expected_outcome_per_rules": {"type": "string", "enum": ["buy", "sell", "wait", "avoid", "ambiguous"]},
+        "is_conditional_wait": {"type": "boolean"},
+        "mismatch_explanation": {"type": "string"},
+        "verdict": {"type": "string", "enum": ["CONFIRM", "FLAG_FOR_REVIEW", "CONTRADICTS_OWN_FRAMEWORK"]},
     },
-    'required': ['adjudication_rule_correctly_applied', 'expected_outcome_per_rules', 'verdict'],
+    "required": ["adjudication_rule_correctly_applied", "expected_outcome_per_rules", "verdict"],
 }
 
 ADJUDICATION_SYSTEM_PROMPT = """Synthesis Adjudication Framework Rules & Execution Principles:
@@ -44,19 +44,26 @@ Evaluation Task:
 - Only return 'CONTRADICTS_OWN_FRAMEWORK' if there is a true directional conflict (e.g., BUY when Bearish, SELL when Bullish, or unexplained refusal to align).
 - Respond in valid JSON adhering to the provided schema."""
 
-async def verify_adjudication(settings: dict, symbol: str, specialist_biases: dict,
-                                specialist_confidence: dict, final_decision: str, rationale: str,
-                                specialist_trust_weights: Optional[dict] = None,
-                                confluence_score: Optional[int] = None,
-                                effective_threshold: Optional[int] = None,
-                                reeval_trigger: Optional[dict] = None) -> dict:
+
+async def verify_adjudication(
+    settings: dict,
+    symbol: str,
+    specialist_biases: dict,
+    specialist_confidence: dict,
+    final_decision: str,
+    rationale: str,
+    specialist_trust_weights: Optional[dict] = None,
+    confluence_score: Optional[int] = None,
+    effective_threshold: Optional[int] = None,
+    reeval_trigger: Optional[dict] = None,
+) -> dict:
     """
     Verifikasi independen: apakah keputusan akhir Stage 2 primary benar-benar
     konsisten dengan Synthesis Adjudication Framework yang seharusnya diterapkan,
     membedakan antara Directional Bias vs Execution Timing (misal: conditional WAIT for pullback).
     """
-    client = get_client_for_task('stage2_adjudicator', settings)
-    
+    client = get_client_for_task("stage2_adjudicator", settings)
+
     trust_str = f"Specialist Trust Weights: {json.dumps(specialist_trust_weights)}" if specialist_trust_weights else ""
     context_extras = []
     if confluence_score is not None:
@@ -66,7 +73,7 @@ async def verify_adjudication(settings: dict, symbol: str, specialist_biases: di
     if reeval_trigger:
         context_extras.append(f"Re-evaluation Trigger: {json.dumps(reeval_trigger)}")
     extras_str = " | ".join(context_extras) if context_extras else ""
-    
+
     user_prompt = f"""Specialist biases for {symbol}: {json.dumps(specialist_biases)}
 Specialist confidence: {json.dumps(specialist_confidence)}
 {trust_str}
@@ -77,35 +84,48 @@ Rationale: {rationale[:1500]}"""
 
     try:
         from monika.core.primitives.jev_primitives import build_adjudication_questions
+
         adjudication_jev_q = build_adjudication_questions()
         result = await client.classify_json(
             prompt=user_prompt,
             system_prompt=ADJUDICATION_SYSTEM_PROMPT,
             schema=ADJUDICATION_VERIFY_SCHEMA,
             jev_questions=adjudication_jev_q,
-            temperature=0.0
+            temperature=0.0,
         )
         if not result or not isinstance(result, dict):
-            return {'verdict': 'UNVERIFIED', 'adjudication_rule_correctly_applied': None, 'expected_outcome_per_rules': final_decision, 'mismatch_explanation': 'Empty response from verifier model'}
-        
-        mismatch_expl = str(result.get('mismatch_explanation', '') or '')
+            return {
+                "verdict": "UNVERIFIED",
+                "adjudication_rule_correctly_applied": None,
+                "expected_outcome_per_rules": final_decision,
+                "mismatch_explanation": "Empty response from verifier model",
+            }
+
+        mismatch_expl = str(result.get("mismatch_explanation", "") or "")
         # Handle Jev categorical fallback if string was empty or YES/NO
-        if mismatch_expl in ('', 'YES', 'NO', 'None'):
-            mismatch_cat = result.get('mismatch_category')
-            if mismatch_cat and mismatch_cat != 'none':
+        if mismatch_expl in ("", "YES", "NO", "None"):
+            mismatch_cat = result.get("mismatch_category")
+            if mismatch_cat and mismatch_cat != "none":
                 mismatch_expl = f"Framework mismatch category: {mismatch_cat}"
-            elif result.get('verdict') == 'CONTRADICTS_OWN_FRAMEWORK':
-                mismatch_expl = f"Contradicts framework: expected {result.get('expected_outcome_per_rules')} vs {final_decision}"
+            elif result.get("verdict") == "CONTRADICTS_OWN_FRAMEWORK":
+                mismatch_expl = (
+                    f"Contradicts framework: expected {result.get('expected_outcome_per_rules')} vs {final_decision}"
+                )
             else:
-                mismatch_expl = ''
+                mismatch_expl = ""
 
         return {
-            'verdict': str(result.get('verdict', 'CONFIRM')),
-            'adjudication_rule_correctly_applied': bool(result.get('adjudication_rule_correctly_applied', True)),
-            'is_conditional_wait': bool(result.get('is_conditional_wait', False)),
-            'expected_outcome_per_rules': str(result.get('expected_outcome_per_rules', final_decision)),
-            'mismatch_explanation': mismatch_expl
+            "verdict": str(result.get("verdict", "CONFIRM")),
+            "adjudication_rule_correctly_applied": bool(result.get("adjudication_rule_correctly_applied", True)),
+            "is_conditional_wait": bool(result.get("is_conditional_wait", False)),
+            "expected_outcome_per_rules": str(result.get("expected_outcome_per_rules", final_decision)),
+            "mismatch_explanation": mismatch_expl,
         }
     except Exception as e:
-        logger.warning(f'[AdjudicationVerifier] failed (non-fatal, unverified): {e}')
-        return {'verdict': 'UNVERIFIED', 'adjudication_rule_correctly_applied': None, 'expected_outcome_per_rules': final_decision, 'mismatch_explanation': str(e)}
+        logger.warning(f"[AdjudicationVerifier] failed (non-fatal, unverified): {e}")
+        return {
+            "verdict": "UNVERIFIED",
+            "adjudication_rule_correctly_applied": None,
+            "expected_outcome_per_rules": final_decision,
+            "mismatch_explanation": str(e),
+        }

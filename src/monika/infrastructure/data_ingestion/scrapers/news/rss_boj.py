@@ -3,7 +3,9 @@
 # ==============================================================================
 
 """Bank of Japan official announcements RSS feed. Critical for USDJPY."""
+
 from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
+
 
 class BojRssScraper(RssBaseScraper):
     def __init__(self):

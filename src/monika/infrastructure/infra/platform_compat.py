@@ -25,7 +25,7 @@ IS_WINE: bool = "WINEPREFIX" in os.environ or os.path.exists("/.wine")
 def configure_event_loop() -> Dict[str, Any]:
     """
     Configure and return keyword arguments for optimal event loop factory based on OS.
-    
+
     - Python < 3.12: asyncio.run does not accept loop_factory keyword argument.
       Configures event loop policy on Windows and returns empty dict.
     - Python >= 3.12:
@@ -46,6 +46,7 @@ def configure_event_loop() -> Dict[str, Any]:
     else:
         try:
             import uvloop
+
             return {"loop_factory": uvloop.new_event_loop}
         except ImportError:
             return {}
@@ -71,19 +72,20 @@ async def safe_subprocess_run(
     env: Optional[Dict[str, str]] = None,
     timeout: Optional[float] = None,
     capture_output: bool = True,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> Tuple[int, str, str]:
     """
     Run subprocess safely across platforms without triggering NotImplementedError.
-    
+
     On Windows when SelectorEventLoop is active, asyncio.create_subprocess_exec()
     raises NotImplementedError. This function executes subprocess.run via
     asyncio.to_thread on Windows, and uses native asyncio.create_subprocess_exec on Linux.
-    
+
     Returns:
         Tuple of (returncode, stdout_str, stderr_str)
     """
     if IS_WINDOWS:
+
         def _sync_exec():
             proc = subprocess.run(
                 cmd,
@@ -94,7 +96,7 @@ async def safe_subprocess_run(
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                **kwargs
+                **kwargs,
             )
             return proc.returncode, proc.stdout or "", proc.stderr or ""
 
@@ -107,19 +109,17 @@ async def safe_subprocess_run(
                 env=env or os.environ.copy(),
                 stdout=asyncio.subprocess.PIPE if capture_output else None,
                 stderr=asyncio.subprocess.PIPE if capture_output else None,
-                **kwargs
+                **kwargs,
             )
             if timeout:
-                stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                    proc.communicate(), timeout=timeout
-                )
+                stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             else:
                 stdout_bytes, stderr_bytes = await proc.communicate()
 
             stdout_str = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
             stderr_str = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
             return proc.returncode or 0, stdout_str, stderr_str
-        except (NotImplementedError, AttributeError):
+        except NotImplementedError, AttributeError:
             # Fallback if loop type doesn't support async subprocess
             def _sync_fallback():
                 p = subprocess.run(
@@ -131,7 +131,8 @@ async def safe_subprocess_run(
                     text=True,
                     encoding="utf-8",
                     errors="replace",
-                    **kwargs
+                    **kwargs,
                 )
                 return p.returncode, p.stdout or "", p.stderr or ""
+
             return await asyncio.to_thread(_sync_fallback)

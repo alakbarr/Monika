@@ -1,11 +1,11 @@
-
 """GTJA Alpha 187 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     SUM((OPEN<=DELAY(OPEN,1) ? 0 : MAX(HIGH-OPEN, OPEN-DELAY(OPEN,1))), 20)
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_187"
 
 __alpha_meta__ = {
-    'id': 'gtja191_187',
-    'theme': ['reversal'],
-    'formula_latex': 'see body',
-    'columns_required': ['open', 'high'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 20,
-    'min_warmup_bars': 21,
-    'notes': '',
+    "id": "gtja191_187",
+    "theme": ["reversal"],
+    "formula_latex": "see body",
+    "columns_required": ["open", "high"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 20,
+    "min_warmup_bars": 21,
+    "notes": "",
 }
 
 

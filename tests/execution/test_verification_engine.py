@@ -16,7 +16,7 @@ async def test_pre_trade_assertions_valid():
         "priced_in_score": 4,
         "invalidation": "Invalid if D1 candle closes below 1.0820",
         "key_evidence": ["D1+H4 aligned", "Unmitigated FVG at 1.0845"],
-        "quote_age_seconds": 15
+        "quote_age_seconds": 15,
     }
     passed, violations = await verifier.pre_trade_assertions(valid_signal)
     assert passed is True
@@ -37,7 +37,7 @@ async def test_pre_trade_assertions_invalid_sl():
         "confluence_score": 8,
         "priced_in_score": 3,
         "invalidation": "Thesis invalid below support",
-        "key_evidence": ["SMC zone", "DXY weak"]
+        "key_evidence": ["SMC zone", "DXY weak"],
     }
     passed, violations = await verifier.pre_trade_assertions(bad_signal)
     assert passed is False
@@ -58,7 +58,7 @@ async def test_pre_trade_assertions_low_rr():
         "confluence_score": 8,
         "priced_in_score": 3,
         "invalidation": "Thesis invalid below support",
-        "key_evidence": ["SMC zone", "DXY weak"]
+        "key_evidence": ["SMC zone", "DXY weak"],
     }
     passed, violations = await verifier.pre_trade_assertions(bad_rr_signal)
     assert passed is False
@@ -76,6 +76,7 @@ async def test_post_execution_reconciliation_mock():
 
 def test_record_evidence_payload_hash():
     import hashlib, json
+
     verifier = EvidenceFirstVerifier()
     decision_payload = {
         "symbol": "EURUSD",

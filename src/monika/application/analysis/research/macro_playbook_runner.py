@@ -240,9 +240,9 @@ class MacroPlaybookRunner:
         previous_data: dict[str, Any] = {}
 
         if self.session is not None:
-            row = (await self.session.execute(
-                select(SystemConfig).where(SystemConfig.key == cfg_key).limit(1)
-            )).scalar_one_or_none()
+            row = (
+                await self.session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key).limit(1))
+            ).scalar_one_or_none()
             if row and row.value:
                 try:
                     previous_data = json.loads(row.value)
@@ -254,29 +254,28 @@ class MacroPlaybookRunner:
         for sym, v in current_verdicts.items():
             prev_state = prev_symbols.get(sym, {}).get("state")
             changed = prev_state != v.state
-            deltas.append(VerdictDelta(
-                symbol=sym,
-                previous_state=prev_state,
-                current_state=v.state,
-                reason=v.reason,
-                changed=changed,
-            ))
+            deltas.append(
+                VerdictDelta(
+                    symbol=sym,
+                    previous_state=prev_state,
+                    current_state=v.state,
+                    reason=v.reason,
+                    changed=changed,
+                )
+            )
 
         # Save new snapshot
         new_payload = {
             "playbook": playbook_name,
             "updated_at": datetime.now(timezone.utc).isoformat(),
-            "verdicts": {
-                sym: {"state": v.state, "reason": v.reason}
-                for sym, v in current_verdicts.items()
-            },
+            "verdicts": {sym: {"state": v.state, "reason": v.reason} for sym, v in current_verdicts.items()},
             "deltas_detected": sum(1 for d in deltas if d.changed),
         }
 
         if self.session is not None:
-            existing = (await self.session.execute(
-                select(SystemConfig).where(SystemConfig.key == cfg_key).limit(1)
-            )).scalar_one_or_none()
+            existing = (
+                await self.session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key).limit(1))
+            ).scalar_one_or_none()
 
             val_str = json.dumps(new_payload)
             if existing:
@@ -285,7 +284,9 @@ class MacroPlaybookRunner:
                 self.session.add(SystemConfig(key=cfg_key, value=val_str))
 
             await safe_commit(self.session, label=f"MacroPlaybook_{playbook_name}")
-            logger.info(f"Persisted macro verdicts for {playbook_name} ({new_payload['deltas_detected']} delta(s) detected)")
+            logger.info(
+                f"Persisted macro verdicts for {playbook_name} ({new_payload['deltas_detected']} delta(s) detected)"
+            )
 
         return deltas
 

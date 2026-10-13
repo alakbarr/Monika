@@ -74,7 +74,9 @@ def test_provider_circuit_breaker():
     assert ProviderCircuitBreaker.is_provider_available(provider) is True
 
     # 3rd failure trips breaker
-    ProviderCircuitBreaker.record_provider_failure(provider, is_server_or_timeout=True, reason="503 Service Unavailable")
+    ProviderCircuitBreaker.record_provider_failure(
+        provider, is_server_or_timeout=True, reason="503 Service Unavailable"
+    )
     assert ProviderCircuitBreaker.is_provider_available(provider) is False
 
     # Simulate cooldown expiry
@@ -111,6 +113,7 @@ def test_capability_blacklist():
 def test_failover_reason_hot_path_eager():
     """Verify RATE_LIMIT_API enables immediate failover when is_hot_path is True."""
     from analysis.providers.provider_failover_classifier import FailoverReason
+
     # In background mode: should_failover is False (retries)
     assert FailoverReason.RATE_LIMIT_API.should_failover is False
     assert FailoverReason.RATE_LIMIT_API.can_failover(is_hot_path=False) is False
@@ -137,5 +140,3 @@ async def test_streaming_heartbeat_monitor():
     monitor.stop()
 
     assert pulse_count >= 2
-
-

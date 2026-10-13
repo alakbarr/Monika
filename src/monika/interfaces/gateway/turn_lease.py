@@ -89,7 +89,7 @@ class TurnLeaseManager:
             rem = max(deadline - time.time(), 0.01)
             try:
                 await asyncio.wait_for(event_to_wait.wait(), timeout=rem)
-            except (asyncio.TimeoutError, TimeoutError):
+            except asyncio.TimeoutError, TimeoutError:
                 pass
 
     async def renew_lease(

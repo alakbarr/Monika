@@ -49,8 +49,7 @@ async def test_counterfactual_simulator_robustness_gating():
     mock_execute.return_value = mock_res
     session.execute = mock_execute
 
-    with patch.object(sim.lifecycle, "register_playbook") as mock_reg, \
-         patch.object(sim.lifecycle, "_save_state"):
+    with patch.object(sim.lifecycle, "register_playbook") as mock_reg, patch.object(sim.lifecycle, "_save_state"):
         mock_reg.return_value = MagicMock()
         res = await sim.simulate_candidate(
             session=session,
@@ -91,7 +90,8 @@ async def test_reflector_dual_branch_negative_constraint():
 
     # Mock LLM client response for reflection
     mock_llm = MagicMock()
-    mock_llm.generate_content = AsyncMock(return_value="""{
+    mock_llm.generate_content = AsyncMock(
+        return_value="""{
         "reflection_text": "Failed trade due to resistance rejection.",
         "lesson_tags": ["counter_trend_entry"],
         "specific_lesson": "Entered into major H4 resistance before NY open",
@@ -101,11 +101,14 @@ async def test_reflector_dual_branch_negative_constraint():
         "outcome_process_classification": "bad_process_bad_outcome",
         "macro_thesis_correct": false,
         "synthesis_adjudication_sound": false
-    }""")
+    }"""
+    )
     reflector.llm_client = mock_llm
 
-    with patch("database.safe_ops.safe_commit", new=AsyncMock()), \
-         patch("database.event_store.TradingEventStore.emit", new=AsyncMock()):
+    with (
+        patch("database.safe_ops.safe_commit", new=AsyncMock()),
+        patch("database.event_store.TradingEventStore.emit", new=AsyncMock()),
+    ):
         await reflector.reflect_on_trade(session, 1)
 
     # Verify that a Negative Constraint was persisted into session via SystemConfig

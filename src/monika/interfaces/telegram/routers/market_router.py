@@ -63,7 +63,6 @@ class MarketRouter:
                 ],
             }
 
-
         elif cmd in ("factors", "chart", "news", "macro", "vix"):
             return {
                 "status": "success",

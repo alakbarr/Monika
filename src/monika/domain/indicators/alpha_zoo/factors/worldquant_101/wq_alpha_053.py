@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #53.
 
 Formula (paper appendix): -1 * delta(((close-low) - (high-close))/(close-low), 9)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_053"
 
 __alpha_meta__ = {
-    'id': 'alpha101_053',
-    'nickname': 'Kakushadze Alpha #53',
-    'theme': ['reversal'],
-    'formula_latex': '-1 * delta(((close-low) - (high-close))/(close-low), 9)',
-    'columns_required': ['high', 'low', 'close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 10,
-    'notes': '',
+    "id": "alpha101_053",
+    "nickname": "Kakushadze Alpha #53",
+    "theme": ["reversal"],
+    "formula_latex": "-1 * delta(((close-low) - (high-close))/(close-low), 9)",
+    "columns_required": ["high", "low", "close"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 10,
+    "notes": "",
 }
 
 
@@ -52,7 +51,6 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     close = panel["close"]
     high = panel["high"]
     low = panel["low"]
-
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
     x = safe_div(((close - low) - (high - close)), (close - low))

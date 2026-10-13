@@ -30,9 +30,7 @@ async def heal():
     now = clock.now()
     async with get_session() as session:
         # 1. Close open positions
-        open_positions = (await session.execute(
-            select(Position).where(Position.status == "open")
-        )).scalars().all()
+        open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
 
         closed_pos_count = 0
         for pos in open_positions:
@@ -42,9 +40,9 @@ async def heal():
             closed_pos_count += 1
 
         # 2. Close any open paper trade records
-        open_papers = (await session.execute(
-            select(PaperTradeRecord).where(PaperTradeRecord.status == "open")
-        )).scalars().all()
+        open_papers = (
+            (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open"))).scalars().all()
+        )
         for paper in open_papers:
             logger.info(f"Closing lingering paper trade #{paper.id} ({paper.symbol})")
             paper.status = "closed"
@@ -53,9 +51,7 @@ async def heal():
 
         # 3. Clear SystemConfig kill_switch and pause flags
         for key in ("kill_switch", "manual_trading_paused", "trading_paused", "system_paused"):
-            cfg = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key == key)
-            )).scalar_one_or_none()
+            cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
             if cfg:
                 logger.info(f"Resetting SystemConfig {key} from '{cfg.value}' to 'false'")
                 cfg.value = "false"
@@ -63,9 +59,9 @@ async def heal():
                 session.add(SystemConfig(key=key, value="false"))
 
         # 4. Clear RiskState trading_paused
-        recent_states = (await session.execute(
-            select(RiskState).order_by(RiskState.date.desc()).limit(5)
-        )).scalars().all()
+        recent_states = (
+            (await session.execute(select(RiskState).order_by(RiskState.date.desc()).limit(5))).scalars().all()
+        )
         for st in recent_states:
             if st.trading_paused:
                 logger.info(f"Resetting RiskState ({st.date}) trading_paused to False")
@@ -73,14 +69,18 @@ async def heal():
                 st.reason = None
 
         # 5. Log audit trail
-        session.add(ActivityLog(
-            category="system",
-            description=f"Data healing executed: closed {closed_pos_count} lingering positions, cleared kill_switch latch and pause flags.",
-            actor="heal_script",
-        ))
+        session.add(
+            ActivityLog(
+                category="system",
+                description=f"Data healing executed: closed {closed_pos_count} lingering positions, cleared kill_switch latch and pause flags.",
+                actor="heal_script",
+            )
+        )
 
         await session.commit()
-        logger.info(f"Data healing completed successfully. {closed_pos_count} positions closed, kill switch latch cleared.")
+        logger.info(
+            f"Data healing completed successfully. {closed_pos_count} positions closed, kill switch latch cleared."
+        )
 
 
 if __name__ == "__main__":

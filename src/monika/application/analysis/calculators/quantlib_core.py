@@ -66,9 +66,11 @@ def _brentq_solve(f: Callable[[float], float], a: float, b: float, tol: float = 
 
         if fa != fc and fb != fc:
             # Inverse quadratic interpolation
-            s = (a * fb * fc) / ((fa - fb) * (fa - fc)) + \
-                (b * fa * fc) / ((fb - fa) * (fb - fc)) + \
-                (c * fa * fb) / ((fc - fa) * (fc - fb))
+            s = (
+                (a * fb * fc) / ((fa - fb) * (fa - fc))
+                + (b * fa * fc) / ((fb - fa) * (fb - fc))
+                + (c * fa * fb) / ((fc - fa) * (fc - fb))
+            )
         else:
             # Secant method
             s = b - fb * (b - a) / (fb - fa)
@@ -105,6 +107,7 @@ def _brentq_solve(f: Callable[[float], float], a: float, b: float, tol: float = 
 # ==============================================================================
 # 1. Deflated & Probabilistic Sharpe Ratio
 # ==============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class DeflatedSharpeResult:
@@ -144,7 +147,7 @@ def probabilistic_sharpe_ratio(
     if n_observations < 2:
         raise ValueError(f"n_observations must be >= 2, got {n_observations}")
 
-    denom_var = 1.0 - skew * observed_sharpe + ((kurtosis - 1.0) / 4.0) * (observed_sharpe ** 2)
+    denom_var = 1.0 - skew * observed_sharpe + ((kurtosis - 1.0) / 4.0) * (observed_sharpe**2)
     if denom_var <= 0.0:
         denom_var = 1e-12
 
@@ -190,6 +193,7 @@ def deflated_sharpe_ratio(
 # ==============================================================================
 # 2. Probability of Backtest Overfitting (PBO - CSCV)
 # ==============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class PBOResult:
@@ -264,6 +268,7 @@ def probability_of_backtest_overfitting(
 # 3. Combinatorial Purged & Embargoed Cross-Validation
 # ==============================================================================
 
+
 def combinatorial_purged_splits(
     n_samples: int,
     n_splits: int = 6,
@@ -273,7 +278,9 @@ def combinatorial_purged_splits(
     """Generates train/test index splits with Purging and Embargo."""
     indices = np.arange(n_samples)
     split_size = n_samples // n_splits
-    splits = [indices[i * split_size : (i + 1) * split_size if i < n_splits - 1 else n_samples] for i in range(n_splits)]
+    splits = [
+        indices[i * split_size : (i + 1) * split_size if i < n_splits - 1 else n_samples] for i in range(n_splits)
+    ]
     embargo_bars = int(n_samples * embargo_pct)
 
     for test_fold_ids in itertools.combinations(range(n_splits), n_test_splits):
@@ -305,6 +312,7 @@ def detect_boundary_leakage(train_idx: np.ndarray, test_idx: np.ndarray, max_hor
 # ==============================================================================
 # 4. Market Impact & Slippage Models
 # ==============================================================================
+
 
 def fixed_slippage(price: float, side: str, bps: float = 5.0) -> float:
     """Fixed basis point slippage model for orders < 0.5% of ADV."""
@@ -342,6 +350,7 @@ def sqrt_impact(
 # 5. Black-Scholes-Merton Pricing, Greeks & Implied Volatility Solver
 # ==============================================================================
 
+
 def black_scholes_price(
     spot: float,
     strike: float,
@@ -356,7 +365,9 @@ def black_scholes_price(
         intrinsic = max(spot - strike, 0.0) if option_type.lower() == "call" else max(strike - spot, 0.0)
         return float(intrinsic)
 
-    d1 = (math.log(spot / strike) + (rate - dividend_yield + 0.5 * volatility ** 2) * t_years) / (volatility * math.sqrt(t_years))
+    d1 = (math.log(spot / strike) + (rate - dividend_yield + 0.5 * volatility**2) * t_years) / (
+        volatility * math.sqrt(t_years)
+    )
     d2 = d1 - volatility * math.sqrt(t_years)
 
     df_q = math.exp(-dividend_yield * t_years)
@@ -384,7 +395,7 @@ def black_scholes_greeks(
         return {"delta": delta_val, "gamma": 0.0, "vega": 0.0, "theta": 0.0, "rho": 0.0}
 
     sqrt_t = math.sqrt(t_years)
-    d1 = (math.log(spot / strike) + (rate - dividend_yield + 0.5 * volatility ** 2) * t_years) / (volatility * sqrt_t)
+    d1 = (math.log(spot / strike) + (rate - dividend_yield + 0.5 * volatility**2) * t_years) / (volatility * sqrt_t)
     d2 = d1 - volatility * sqrt_t
 
     df_q = math.exp(-dividend_yield * t_years)
@@ -398,10 +409,14 @@ def black_scholes_greeks(
 
     theta_base = -(spot * df_q * n_prime_d1 * volatility) / (2.0 * sqrt_t)
     if is_call:
-        theta = (theta_base - rate * strike * df_r * _norm_cdf(d2) + dividend_yield * spot * df_q * _norm_cdf(d1)) / 365.0
+        theta = (
+            theta_base - rate * strike * df_r * _norm_cdf(d2) + dividend_yield * spot * df_q * _norm_cdf(d1)
+        ) / 365.0
         rho = (strike * t_years * df_r * _norm_cdf(d2)) * 0.01
     else:
-        theta = (theta_base + rate * strike * df_r * _norm_cdf(-d2) - dividend_yield * spot * df_q * _norm_cdf(-d1)) / 365.0
+        theta = (
+            theta_base + rate * strike * df_r * _norm_cdf(-d2) - dividend_yield * spot * df_q * _norm_cdf(-d1)
+        ) / 365.0
         rho = (-strike * t_years * df_r * _norm_cdf(-d2)) * 0.01
 
     return {"delta": float(delta), "gamma": float(gamma), "vega": float(vega), "theta": float(theta), "rho": float(rho)}
@@ -435,6 +450,7 @@ def implied_volatility_solver(
 # 6. Copula Models
 # ==============================================================================
 
+
 def gaussian_copula_cdf(u: float, v: float, rho: float) -> float:
     """Bivariate Gaussian copula CDF using Drezner-Wesolowsky bivariate normal approximation."""
     if not (-1.0 < rho < 1.0):
@@ -466,7 +482,7 @@ def frank_copula_cdf(u: float, v: float, theta: float) -> float:
         return u * v
     num = (math.exp(-theta * u) - 1.0) * (math.exp(-theta * v) - 1.0)
     denom = math.exp(-theta) - 1.0
-    return float(- (1.0 / theta) * math.log(1.0 + num / denom))
+    return float(-(1.0 / theta) * math.log(1.0 + num / denom))
 
 
 def clayton_copula_cdf(u: float, v: float, theta: float) -> float:
@@ -486,12 +502,13 @@ def gumbel_copula_cdf(u: float, v: float, theta: float) -> float:
     u_c = min(max(u, 1e-9), 1.0 - 1e-9)
     v_c = min(max(v, 1e-9), 1.0 - 1e-9)
     term = ((-math.log(u_c)) ** theta) + ((-math.log(v_c)) ** theta)
-    return float(math.exp(- (term ** (1.0 / theta))))
+    return float(math.exp(-(term ** (1.0 / theta))))
 
 
 # ==============================================================================
 # 7. Value-at-Risk Validation Tests
 # ==============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class KupiecPOFResult:
@@ -524,7 +541,7 @@ def kupiec_pof_test(
     if exceptions == 0:
         lr = -2.0 * math.log((1.0 - p) ** total_observations)
     elif exceptions == total_observations:
-        lr = -2.0 * math.log(p ** total_observations)
+        lr = -2.0 * math.log(p**total_observations)
     else:
         log_num = (total_observations - exceptions) * math.log(1.0 - p) + exceptions * math.log(p)
         log_den = (total_observations - exceptions) * math.log(1.0 - p_hat) + exceptions * math.log(p_hat)
@@ -585,7 +602,7 @@ def _binom_cdf(k: int, n: int, p: float) -> float:
         return 1.0
     total = 0.0
     for i in range(k + 1):
-        total += math.comb(n, i) * (p ** i) * ((1.0 - p) ** (n - i))
+        total += math.comb(n, i) * (p**i) * ((1.0 - p) ** (n - i))
     return float(total)
 
 
@@ -642,4 +659,3 @@ class QuantLibCore:
     kupiec_pof_test = staticmethod(kupiec_pof_test)
     christoffersen_test = staticmethod(christoffersen_test)
     basel_traffic_light = staticmethod(basel_traffic_light)
-

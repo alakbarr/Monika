@@ -22,9 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger("TradingAgent.Database.Fts5Cjk")
 
 # Unicode ranges for CJK Unified Ideographs, Hiragana, Katakana, Hangul
-_CJK_REGEX = re.compile(
-    r"[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]"
-)
+_CJK_REGEX = re.compile(r"[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]")
 
 # Characters that break SQLite FTS5 MATCH queries
 _FTS5_SPECIAL_CHARS = re.compile(r'["*^():\-+?{}[\]~]')
@@ -40,7 +38,7 @@ def tokenize_cjk_bigram(text: str) -> str:
     """
     Transforms text by extracting 2-character bi-grams from CJK sequences
     while preserving standard whitespace-delimited Latin/alphanumeric tokens.
-    
+
     Example:
         'EURUSD 突破 策略' -> 'EURUSD 突破 策略'
         '今天天气很好' -> '今天 天天 天气 气很 很好'
@@ -137,10 +135,13 @@ class Fts5SessionSearch:
         tokens = tokenize_cjk_bigram(truncated_content)
         try:
             with self.conn:
-                self.conn.execute("""
+                self.conn.execute(
+                    """
                     INSERT OR REPLACE INTO session_messages_fts (row_id, session_id, role, search_tokens)
                     VALUES (?, ?, ?, ?);
-                """, (row_id, session_id, role, tokens))
+                """,
+                    (row_id, session_id, role, tokens),
+                )
         except sqlite3.OperationalError as e:
             logger.debug(f"[Fts5SessionSearch] Failed to index row {row_id} in FTS5: {e}")
 
@@ -155,15 +156,17 @@ class Fts5SessionSearch:
                 for r in rows:
                     truncated = r["content"][:8192] if r["content"] else ""
                     tokens = tokenize_cjk_bigram(truncated)
-                    self.conn.execute("""
+                    self.conn.execute(
+                        """
                         INSERT INTO session_messages_fts (row_id, session_id, role, search_tokens)
                         VALUES (?, ?, ?, ?);
-                    """, (r["row_id"], r["session_id"], r["role"], tokens))
+                    """,
+                        (r["row_id"], r["session_id"], r["role"], tokens),
+                    )
                     count += 1
         except Exception as e:
             logger.error(f"[Fts5SessionSearch] Reindex failed: {e}")
         return count
-
 
     def search(
         self,
@@ -209,18 +212,18 @@ class Fts5SessionSearch:
             cursor = self.conn.execute(sql, params)
             results = []
             for r in cursor.fetchall():
-                results.append({
-                    "row_id": r["row_id"],
-                    "session_id": r["session_id"],
-                    "role": r["role"],
-                    "rank": float(r["rank"]) if r["rank"] is not None else 0.0,
-                    "engine": "fts5",
-                })
+                results.append(
+                    {
+                        "row_id": r["row_id"],
+                        "session_id": r["session_id"],
+                        "role": r["role"],
+                        "rank": float(r["rank"]) if r["rank"] is not None else 0.0,
+                        "engine": "fts5",
+                    }
+                )
             return results
         except sqlite3.OperationalError as err:
-            logger.warning(
-                f"[Fts5SessionSearch] FTS5 query failed ('{query}'): {err}. Degrading to LIKE fallback."
-            )
+            logger.warning(f"[Fts5SessionSearch] FTS5 query failed ('{query}'): {err}. Degrading to LIKE fallback.")
             return self._fallback_like_search(raw_query, session_id, limit)
 
     def _fallback_like_search(
@@ -254,13 +257,15 @@ class Fts5SessionSearch:
             cursor = self.conn.execute(sql, params)
             results = []
             for r in cursor.fetchall():
-                results.append({
-                    "row_id": r["row_id"],
-                    "session_id": r["session_id"],
-                    "role": r["role"],
-                    "rank": 0.0,
-                    "engine": "like_fallback",
-                })
+                results.append(
+                    {
+                        "row_id": r["row_id"],
+                        "session_id": r["session_id"],
+                        "role": r["role"],
+                        "rank": 0.0,
+                        "engine": "like_fallback",
+                    }
+                )
             return results
         except Exception as e:
             logger.error(f"[Fts5SessionSearch] Fallback LIKE search also failed: {e}")

@@ -47,6 +47,7 @@ def test_voice_safety_gate_valid_lot_parsing():
 @pytest.mark.asyncio
 async def test_rbac_fails_closed_when_request_missing():
     """Verify require_role raises 403 instead of bypassing when Request is missing."""
+
     @require_role(Role.OPERATOR)
     async def dummy_endpoint():
         return {"ok": True}
@@ -60,6 +61,7 @@ async def test_rbac_fails_closed_when_request_missing():
 @pytest.mark.asyncio
 async def test_rbac_enforces_role_hierarchy():
     """Verify require_role correctly blocks VIEWER from OPERATOR endpoint."""
+
     @require_role(Role.OPERATOR)
     async def restricted_action(request: Request):
         return {"action": "executed"}
@@ -84,6 +86,7 @@ async def test_rbac_enforces_role_hierarchy():
 @pytest.mark.asyncio
 async def test_rbac_rejects_unauthenticated_localhost():
     """Verify unauthenticated localhost requests (role is None) are rejected with 401."""
+
     @require_role(Role.ADMIN)
     async def admin_action(request: Request):
         return {"action": "admin_granted"}

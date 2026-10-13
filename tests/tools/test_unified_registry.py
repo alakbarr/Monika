@@ -25,7 +25,7 @@ def test_unified_registry_registration_and_schema():
 
     tools = registry.list_tools()
     assert any(t.name == "test_get_quote" for t in tools)
-    
+
     # Anthropic schema check
     anthropic_schemas = registry.get_anthropic_tools()
     target = next((s for s in anthropic_schemas if s["name"] == "test_get_quote"), None)
@@ -70,7 +70,7 @@ def test_env_sanitizer_redacts_credentials():
         "OPENAI_API_KEY": "sk-proj-yyyy",
         "SAFE_PARAM": "standard_value",
     }
-    
+
     clean_env = sanitize_environment(dirty_env)
     assert "MT5_PASSWORD" not in clean_env
     assert "ANTHROPIC_API_KEY" not in clean_env

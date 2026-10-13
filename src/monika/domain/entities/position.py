@@ -20,6 +20,7 @@ import monika.core.primitives.clock as clock
 
 class PositionEntity(BaseModel):
     """Pure domain entity representing a trading position."""
+
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
     id: Optional[int] = None
@@ -56,6 +57,7 @@ class PositionEntity(BaseModel):
         if isinstance(obj, cls):
             return obj
         if hasattr(obj, "_mock_return_value") or hasattr(obj, "_mock_wraps"):
+
             def _val(attr: str, default: Any = None) -> Any:
                 v = getattr(obj, attr, default)
                 if hasattr(v, "_mock_return_value") or hasattr(v, "_mock_wraps"):

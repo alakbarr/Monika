@@ -33,7 +33,7 @@ async def test_slot_cooldown_and_skipping():
         primary="model-primary",
         fallbacks=["model-fallback"],
         role_config={"max_tokens": 1000},
-        task_role="stage2_per_asset_primary"
+        task_role="stage2_per_asset_primary",
     )
 
     with patch("asyncio.sleep", new_callable=AsyncMock):

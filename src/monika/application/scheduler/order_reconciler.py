@@ -52,6 +52,7 @@ logger = logging.getLogger("TradingAgent.OrderReconciler")
 
 class ReconciliationDeltaType(str, Enum):
     """Formal delta classification for institutional audit & safety gating."""
+
     MATCHED = "MATCHED"
     UNKNOWN_FILL = "UNKNOWN_FILL"
     ORPHAN_ORDER = "ORPHAN_ORDER"
@@ -90,9 +91,7 @@ class OrderReconciler:
             self.settings.get("execution", {}).get("reconciliation_interval_seconds", interval_seconds),
         )
         self.interval_seconds = max(5.0, float(cfg_interval))
-        self.submitted_grace_seconds = float(
-            reconcile_cfg.get("submitted_grace_seconds", 45.0)
-        )
+        self.submitted_grace_seconds = float(reconcile_cfg.get("submitted_grace_seconds", 45.0))
         self._running = True
         self._stop_event = shutdown_event or asyncio.Event()
         self._running_task: Optional[asyncio.Task] = None
@@ -177,7 +176,7 @@ class OrderReconciler:
             if t is not None:
                 try:
                     term_orders_by_ticket[int(t)] = o
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
             cid = o.get("client_order_id")
             if cid:
@@ -192,13 +191,13 @@ class OrderReconciler:
             if t is not None:
                 try:
                     term_positions_by_ticket[int(t)] = p
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
             ident = p.get("identifier")
             if ident is not None:
                 try:
                     term_positions_by_identifier[int(ident)] = p
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
             comm = p.get("comment")
             if comm:
@@ -208,11 +207,13 @@ class OrderReconciler:
         stmt = (
             select(Order)
             .where(
-                Order.status.in_([
-                    OrderStatus.SUBMITTED,
-                    OrderStatus.ACCEPTED,
-                    OrderStatus.PARTIALLY_FILLED,
-                ])
+                Order.status.in_(
+                    [
+                        OrderStatus.SUBMITTED,
+                        OrderStatus.ACCEPTED,
+                        OrderStatus.PARTIALLY_FILLED,
+                    ]
+                )
             )
             .order_by(Order.created_at.asc())
         )
@@ -257,8 +258,10 @@ class OrderReconciler:
                     session.add(evt)
                     stats["orders_accepted"] += 1
                     await self._publish_order_event(
-                        order, old_st, OrderStatus.ACCEPTED.value,
-                        {"ticket": order.mt5_ticket, "price": term_price, "source": "reconciler"}
+                        order,
+                        old_st,
+                        OrderStatus.ACCEPTED.value,
+                        {"ticket": order.mt5_ticket, "price": term_price, "source": "reconciler"},
                     )
 
                 # Check incremental / partial fill
@@ -281,8 +284,10 @@ class OrderReconciler:
                         session.add(evt)
                         stats["orders_partially_filled"] += 1
                         await self._publish_order_event(
-                            order, old_st, OrderStatus.PARTIALLY_FILLED.value,
-                            {"ticket": order.mt5_ticket, "filled_volume": filled_vol, "source": "reconciler"}
+                            order,
+                            old_st,
+                            OrderStatus.PARTIALLY_FILLED.value,
+                            {"ticket": order.mt5_ticket, "filled_volume": filled_vol, "source": "reconciler"},
                         )
                 continue
 
@@ -292,9 +297,7 @@ class OrderReconciler:
             if matched_term_pos is not None:
                 old_st = order.status.value
                 fill_price = float(
-                    matched_term_pos.get("price_open")
-                    or matched_term_pos.get("open_price")
-                    or order.requested_price
+                    matched_term_pos.get("price_open") or matched_term_pos.get("open_price") or order.requested_price
                 )
                 fill_vol = float(matched_term_pos.get("volume") or order.requested_volume)
                 pos_ticket = matched_term_pos.get("ticket") or t_ticket
@@ -317,11 +320,7 @@ class OrderReconciler:
                 if t_ticket is not None and t_ticket != pos_ticket:
                     pos_conds.append(Position.mt5_ticket == t_ticket)
 
-                existing_pos = (
-                    await session.execute(
-                        select(Position).where(or_(*pos_conds))
-                    )
-                ).scalar_one_or_none()
+                existing_pos = (await session.execute(select(Position).where(or_(*pos_conds)))).scalar_one_or_none()
 
                 created_pos = None
                 if existing_pos is None:
@@ -353,6 +352,7 @@ class OrderReconciler:
                     try:
                         from monika.infrastructure.database.models import TradePlan, TradePlanLeg
                         from sqlalchemy.orm import selectinload
+
                         plan_rec = (
                             await session.execute(
                                 select(TradePlan)
@@ -375,8 +375,10 @@ class OrderReconciler:
                         logger.debug(f"[OrderReconciler] TradePlan sync note: {tp_err}")
 
                 await self._publish_order_event(
-                    order, old_st, OrderStatus.FILLED.value,
-                    {"ticket": pos_ticket, "price": fill_price, "volume": fill_vol, "source": "reconciler"}
+                    order,
+                    old_st,
+                    OrderStatus.FILLED.value,
+                    {"ticket": pos_ticket, "price": fill_price, "volume": fill_vol, "source": "reconciler"},
                 )
                 continue
 
@@ -409,6 +411,7 @@ class OrderReconciler:
             elif self.mt5_client and hasattr(self.mt5_client, "_run") and t_ticket:
                 try:
                     from monika.infrastructure.brokers.mt5_client import _get_deal_history
+
                     deals = await self.mt5_client._run(_get_deal_history, t_ticket)
                 except Exception:
                     deals = []
@@ -432,11 +435,7 @@ class OrderReconciler:
                 pos_conds = [Position.order_id == order.id]
                 if t_ticket is not None:
                     pos_conds.append(Position.mt5_ticket == t_ticket)
-                existing_pos = (
-                    await session.execute(
-                        select(Position).where(or_(*pos_conds))
-                    )
-                ).scalar_one_or_none()
+                existing_pos = (await session.execute(select(Position).where(or_(*pos_conds)))).scalar_one_or_none()
 
                 if existing_pos is None:
                     closed_pos = Position(
@@ -490,8 +489,10 @@ class OrderReconciler:
                             logger.debug(f"[OrderReconciler] Risk state update note: {gate_err}")
 
                 await self._publish_order_event(
-                    order, old_st, OrderStatus.FILLED.value,
-                    {"ticket": t_ticket, "price": deal_price, "source": "reconciler_deals"}
+                    order,
+                    old_st,
+                    OrderStatus.FILLED.value,
+                    {"ticket": t_ticket, "price": deal_price, "source": "reconciler_deals"},
                 )
                 stats["delta_classification"][ReconciliationDeltaType.MATCHED.value] += 1
             else:
@@ -524,9 +525,10 @@ class OrderReconciler:
                     )
                     try:
                         from monika.application.agent.estop import arm_estop
+
                         arm_estop(
                             reason=f"MID_ORDER_AMBIGUOUS on order {order.id} ({order.symbol} #{t_ticket})",
-                            actor="OrderReconciler"
+                            actor="OrderReconciler",
                         )
                     except Exception as estop_err:
                         logger.error(f"[OrderReconciler] Failed to arm ESTOP: {estop_err}")
@@ -545,8 +547,10 @@ class OrderReconciler:
                     f"transitioned to {new_state.value} (not found in terminal)"
                 )
                 await self._publish_order_event(
-                    order, old_st, new_state.value,
-                    {"ticket": t_ticket, "reason": terminal_reason, "source": "reconciler"}
+                    order,
+                    old_st,
+                    new_state.value,
+                    {"ticket": t_ticket, "reason": terminal_reason, "source": "reconciler"},
                 )
 
         return stats
@@ -574,7 +578,7 @@ class OrderReconciler:
             if t is not None:
                 try:
                     term_positions_by_ticket[int(t)] = p
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
 
         # Query all DB positions with status == 'open'
@@ -603,6 +607,7 @@ class OrderReconciler:
                 if self.mt5_client and hasattr(self.mt5_client, "_run"):
                     try:
                         from monika.infrastructure.brokers.mt5_client import _get_deal_history
+
                         deals = await self.mt5_client._run(_get_deal_history, ticket)
                     except Exception:
                         deals = []
@@ -636,9 +641,7 @@ class OrderReconciler:
                 # Create TradeOutcome for analytics & memory outcome linker
                 try:
                     existing_outcome = (
-                        await session.execute(
-                            select(TradeOutcome).where(TradeOutcome.position_id == db_pos.id)
-                        )
+                        await session.execute(select(TradeOutcome).where(TradeOutcome.position_id == db_pos.id))
                     ).scalar_one_or_none()
 
                     if existing_outcome is None:
@@ -683,7 +686,10 @@ class OrderReconciler:
                         strat_id = getattr(related_analysis, "source_strategy_id", None) if related_analysis else None
                         if strat_id:
                             try:
-                                from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                                from monika.application.analysis.strategies.decay_monitor import (
+                                    get_strategy_decay_monitor,
+                                )
+
                                 decay_mon = get_strategy_decay_monitor()
                                 decay_mon.record_trade_outcome(
                                     strategy_id=str(strat_id),
@@ -695,7 +701,9 @@ class OrderReconciler:
                 except Exception as out_err:
                     logger.debug(f"[OrderReconciler] TradeOutcome creation error: {out_err}")
 
-                logger.info(f"[OrderReconciler] Position #{ticket} ({db_pos.symbol}) closed externally. PnL: {db_pos.pnl}")
+                logger.info(
+                    f"[OrderReconciler] Position #{ticket} ({db_pos.symbol}) closed externally. PnL: {db_pos.pnl}"
+                )
                 continue
 
             # -------------------------------------------------------------
@@ -729,15 +737,11 @@ class OrderReconciler:
         # -----------------------------------------------------------------
         # Untracked Terminal Positions Adoption
         # -----------------------------------------------------------------
-        known_tickets = {
-            p.mt5_ticket for p in open_db_positions if p.mt5_ticket is not None
-        }
+        known_tickets = {p.mt5_ticket for p in open_db_positions if p.mt5_ticket is not None}
         for t_ticket, t_pos in term_positions_by_ticket.items():
             if t_ticket not in known_tickets:
                 existing_any = (
-                    await session.execute(
-                        select(Position).where(Position.mt5_ticket == t_ticket)
-                    )
+                    await session.execute(select(Position).where(Position.mt5_ticket == t_ticket))
                 ).scalar_one_or_none()
 
                 if existing_any is None:

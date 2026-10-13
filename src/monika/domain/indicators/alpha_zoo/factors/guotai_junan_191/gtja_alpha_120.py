@@ -1,11 +1,11 @@
-
 """GTJA Alpha 120 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     (RANK((VWAP - CLOSE)) / RANK((VWAP + CLOSE)))
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -33,16 +33,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_120"
 
 __alpha_meta__ = {
-    'id': 'gtja191_120',
-    'theme': ['reversal'],
-    'formula_latex': 'rank(vwap-close)/rank(vwap+close)',
-    'columns_required': ['open', 'high', 'low', 'close', 'volume', 'amount'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 1,
-    'min_warmup_bars': 1,
-    'notes': '',
+    "id": "gtja191_120",
+    "theme": ["reversal"],
+    "formula_latex": "rank(vwap-close)/rank(vwap+close)",
+    "columns_required": ["open", "high", "low", "close", "volume", "amount"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 1,
+    "min_warmup_bars": 1,
+    "notes": "",
 }
 
 

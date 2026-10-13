@@ -148,9 +148,9 @@ def test_three_part_context_compressor():
             "role": "tool",
             "content": "A" * 200,  # Long tool output to be pruned
         },
-        {"role": "assistant", "content": "Old response"},   # Middle
-        {"role": "user", "content": "Recent prompt"},      # Tail
-        {"role": "assistant", "content": "Recent reply"},   # Tail
+        {"role": "assistant", "content": "Old response"},  # Middle
+        {"role": "user", "content": "Recent prompt"},  # Tail
+        {"role": "assistant", "content": "Recent reply"},  # Tail
     ]
 
     pruned, saved = compressor.prune_tool_results_determinist(messages)

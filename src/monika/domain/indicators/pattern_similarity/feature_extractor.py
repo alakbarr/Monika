@@ -14,6 +14,7 @@ import numpy as np
 @dataclass
 class FeatureVector:
     """Extracted structural features characterizing a candlestick segment."""
+
     trend_slope: float
     volatility_ratio: float
     range_position: float
@@ -24,16 +25,19 @@ class FeatureVector:
     swing_count: int
 
     def to_array(self) -> np.ndarray:
-        return np.array([
-            self.trend_slope,
-            self.volatility_ratio,
-            self.range_position,
-            self.body_ratio_mean,
-            self.upper_wick_ratio,
-            self.lower_wick_ratio,
-            self.volume_trend,
-            float(self.swing_count) / 10.0,
-        ], dtype=float)
+        return np.array(
+            [
+                self.trend_slope,
+                self.volatility_ratio,
+                self.range_position,
+                self.body_ratio_mean,
+                self.upper_wick_ratio,
+                self.lower_wick_ratio,
+                self.volume_trend,
+                float(self.swing_count) / 10.0,
+            ],
+            dtype=float,
+        )
 
 
 class FeatureExtractor:
@@ -66,8 +70,7 @@ class FeatureExtractor:
 
         # 2. Volatility ratio (approximate ATR over mean close)
         tr = np.maximum(
-            highs[1:] - lows[1:],
-            np.maximum(np.abs(highs[1:] - closes[:-1]), np.abs(lows[1:] - closes[:-1]))
+            highs[1:] - lows[1:], np.maximum(np.abs(highs[1:] - closes[:-1]), np.abs(lows[1:] - closes[:-1]))
         )
         atr = np.mean(tr) if len(tr) > 0 else (highs[-1] - lows[-1])
         mean_close = np.mean(closes)

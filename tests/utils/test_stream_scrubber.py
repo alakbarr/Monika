@@ -55,7 +55,9 @@ def test_scrubber_internal_context_tags():
 
 def test_scrubber_secret_redaction():
     scrubber = StatefulStreamScrubber(redact_secrets=True)
-    text = "Configured with api_key='sk-1234567890abcdef1234567890' and bot123456789:ABCdefGhIjkLmNoPqRsTuVwXyZ123456789."
+    text = (
+        "Configured with api_key='sk-1234567890abcdef1234567890' and bot123456789:ABCdefGhIjkLmNoPqRsTuVwXyZ123456789."
+    )
     emitted = scrubber.process_delta(text) + scrubber.flush()
     assert "sk-1234567890abcdef1234567890" not in emitted
     assert "[REDACTED_API_KEY]" in emitted or "[REDACTED_SECRET]" in emitted
@@ -76,4 +78,3 @@ def test_scrubber_emoji_and_emoticon_stripping():
     emitted = "".join(scrubber.process_delta(c) for c in chunks) + scrubber.flush()
     assert ":)" not in emitted
     assert emitted == "Signal: BUY EURUSD target hit profit confirmed."
-

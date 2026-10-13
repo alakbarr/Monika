@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """Unit tests for Phase 8 medium improvements and polish."""
 
 import pytest
@@ -46,6 +47,7 @@ async def test_position_supervisor_dispatch():
     supervisor = PositionSupervisor(mt5_client=mock_mt5, poll_interval_seconds=1.0)
 
     received_eval = []
+
     async def evaluator_callback(positions, account):
         received_eval.append((positions, account))
 
@@ -100,11 +102,10 @@ async def test_risk_gate_check_correlation_exposure():
     # Simulated positions with high correlation
     pos = {"symbol": "GBPUSD", "direction": "buy", "volume": 1.0}
     gate._get_dynamic_correlation = AsyncMock(return_value=(0.85, 0.01))
-    
+
     # Exceed limit: 1.0 + 4 * 0.85 = 4.4 > 3
     ok, reason = await gate.check_correlation_exposure(
         mock_session, "EURUSD", "buy", open_positions=[pos, pos, pos, pos]
     )
     assert not ok
     assert "Correlated exposure limit exceeded" in reason
-

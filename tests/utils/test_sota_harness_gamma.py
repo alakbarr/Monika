@@ -15,7 +15,7 @@ def test_reflector_critique_gate_platitudes():
     bad_data = {
         "specific_lesson": "You must be more careful and follow the plan next time",
         "lesson_tags": ["sl_too_tight"],
-        "outcome_process_classification": "good_process_bad_outcome"
+        "outcome_process_classification": "good_process_bad_outcome",
     }
     is_valid, critique = reflector._verify_reflection_quality(bad_data, was_profitable=False)
     assert not is_valid
@@ -25,7 +25,7 @@ def test_reflector_critique_gate_platitudes():
     bad_outcome = {
         "specific_lesson": "Wait for H1 ChoCH on Asian low sweep before entering",
         "lesson_tags": ["well_executed_setup"],
-        "outcome_process_classification": "good_process_bad_outcome"
+        "outcome_process_classification": "good_process_bad_outcome",
     }
     is_valid2, critique2 = reflector._verify_reflection_quality(bad_outcome, was_profitable=True)
     assert not is_valid2
@@ -35,7 +35,7 @@ def test_reflector_critique_gate_platitudes():
     good_data = {
         "specific_lesson": "Wait for H1 ChoCH on Asian low sweep before entering buy setups",
         "lesson_tags": ["well_executed_setup"],
-        "outcome_process_classification": "good_process_good_outcome"
+        "outcome_process_classification": "good_process_good_outcome",
     }
     is_valid3, critique3 = reflector._verify_reflection_quality(good_data, was_profitable=True)
     assert is_valid3
@@ -45,7 +45,7 @@ def test_reflector_critique_gate_platitudes():
 def test_domain_aware_lossless_semantic_slicing():
     """Verify LSS preserves active unmitigated zones and prioritizes high-impact events."""
     import json
-    
+
     # Test economic calendar prioritization
     data = {
         "symbol": "EURUSD",
@@ -56,13 +56,13 @@ def test_domain_aware_lossless_semantic_slicing():
             {"event": "Core CPI", "impact": "HIGH"},
             {"event": "Housing Starts", "impact": "LOW"},
             {"event": "FOMC Rate Decision", "impact": "HIGH"},
-        ]
+        ],
     }
     json_text = json.dumps(data)
     # Truncate with tight budget
     truncated = truncate_to_budget(json_text, max_tokens=60)
     parsed = json.loads(truncated)
-    
+
     event_names = [e["event"] for e in parsed["events"]]
     assert "CPI MoM" in event_names or "Core CPI" in event_names or "FOMC Rate Decision" in event_names
 
@@ -95,13 +95,29 @@ def test_offline_prompt_optimizer_scoring_and_champion():
     optimizer = OfflinePromptOptimizer()
 
     control_trades = [
-        {"pnl": 10.0}, {"pnl": -5.0}, {"pnl": 15.0}, {"pnl": -8.0}, {"pnl": 12.0},
-        {"pnl": -10.0}, {"pnl": 20.0}, {"pnl": -5.0}, {"pnl": 5.0}, {"pnl": -10.0}
+        {"pnl": 10.0},
+        {"pnl": -5.0},
+        {"pnl": 15.0},
+        {"pnl": -8.0},
+        {"pnl": 12.0},
+        {"pnl": -10.0},
+        {"pnl": 20.0},
+        {"pnl": -5.0},
+        {"pnl": 5.0},
+        {"pnl": -10.0},
     ]  # 6 wins, 4 losses -> 60% WR
 
     treatment_trades = [
-        {"pnl": 25.0}, {"pnl": 20.0}, {"pnl": -5.0}, {"pnl": 15.0}, {"pnl": 30.0},
-        {"pnl": 12.0}, {"pnl": -10.0}, {"pnl": 18.0}, {"pnl": 22.0}, {"pnl": -5.0}
+        {"pnl": 25.0},
+        {"pnl": 20.0},
+        {"pnl": -5.0},
+        {"pnl": 15.0},
+        {"pnl": 30.0},
+        {"pnl": 12.0},
+        {"pnl": -10.0},
+        {"pnl": 18.0},
+        {"pnl": 22.0},
+        {"pnl": -5.0},
     ]  # 7 wins, 3 losses -> 70% WR
 
     score_a = optimizer.score_variant_performance("A", control_trades)

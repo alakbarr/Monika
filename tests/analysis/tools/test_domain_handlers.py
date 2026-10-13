@@ -101,10 +101,14 @@ async def test_tool_executor_executes_search_academic():
             }
         ],
     }
-    with patch("data_sources.academic_search.AcademicSearchClient.search_papers", new_callable=AsyncMock) as mock_search:
+    with patch(
+        "data_sources.academic_search.AcademicSearchClient.search_papers", new_callable=AsyncMock
+    ) as mock_search:
         mock_search.return_value = fake_papers
 
-        res = await executor.execute("search_academic", {"query": "statistical arbitrage order flow toxicity", "max_results": 3})
+        res = await executor.execute(
+            "search_academic", {"query": "statistical arbitrage order flow toxicity", "max_results": 3}
+        )
         assert res["success"] is True
         assert len(res["papers"]) == 1
         assert "Flow Toxicity" in res["papers"][0]["title"]
@@ -120,4 +124,3 @@ async def test_tool_executor_unknown_tool_returns_structured_error():
     res = await executor.execute("non_existent_tool_xyz", {"foo": "bar"})
     assert "error" in res
     assert res.get("error_type") == "UnknownToolError"
-

@@ -51,22 +51,24 @@ class FlashCrashDetector:
         self.settings = settings or {}
         self.execution_service = execution_service
         self.notifier = notifier
-        
+
         flash_cfg = self.settings.get("trading", {}).get("risk", {}).get("flash_crash", {})
         self.enabled: bool = flash_cfg.get("enabled", True)
-        self.default_atr_multiplier: float = float(flash_cfg.get("default_atr_multiplier", flash_cfg.get("atr_multiplier", 5.0)))
+        self.default_atr_multiplier: float = float(
+            flash_cfg.get("default_atr_multiplier", flash_cfg.get("atr_multiplier", 5.0))
+        )
         self.default_min_pct_move: float = float(flash_cfg.get("default_min_pct_move", 2.0))
         self.lookback_minutes: int = int(flash_cfg.get("lookback_minutes", 15))
         self.cooldown_minutes: int = int(flash_cfg.get("cooldown_minutes", 30))
         self.symbol_rules: dict[str, dict] = flash_cfg.get("symbol_rules", {})
-        
+
         # Simpan waktu expiry blokir per simbol {symbol: datetime_utc}
         self._blocked_symbols: dict[str, datetime] = {}
         self._persisted_loaded: bool = False
 
     def get_symbol_thresholds(self, symbol: str) -> tuple[float, float]:
         """Mengembalikan (atr_multiplier, min_pct_move) untuk simbol tertentu."""
-        sym_clean = symbol.strip().upper().replace('/', '')
+        sym_clean = symbol.strip().upper().replace("/", "")
         rule = self.symbol_rules.get(sym_clean) or DEFAULT_SYMBOL_RULES.get(sym_clean)
         if rule:
             atr_mult = float(rule.get("atr_multiplier", self.default_atr_multiplier))
@@ -78,10 +80,12 @@ class FlashCrashDetector:
         """Memuat status karantina aktif dari database SystemConfig saat inisialisasi/restart."""
         try:
             now = clock.now()
-            configs = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key.like("flash_crash_blocked_%"))
-            )).scalars().all()
-            
+            configs = (
+                (await session.execute(select(SystemConfig).where(SystemConfig.key.like("flash_crash_blocked_%"))))
+                .scalars()
+                .all()
+            )
+
             for cfg in configs:
                 if not cfg.value:
                     continue
@@ -103,7 +107,7 @@ class FlashCrashDetector:
         """Mengecek apakah simbol sedang dalam status karantina flash crash."""
         if not self.enabled:
             return False
-        sym_clean = symbol.strip().upper().replace('/', '')
+        sym_clean = symbol.strip().upper().replace("/", "")
         blocked_until = self._blocked_symbols.get(sym_clean)
         if not blocked_until:
             return False
@@ -112,7 +116,7 @@ class FlashCrashDetector:
             blocked_until = blocked_until.replace(tzinfo=timezone.utc)
         elif blocked_until.tzinfo is not None and now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
-            
+
         if now < blocked_until:
             return True
         else:
@@ -131,23 +135,24 @@ class FlashCrashDetector:
 
         now = clock.now()
         symbols = self.settings.get("trading", {}).get(
-            "asset_universe",
-            ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "BTCUSD", "XTIUSD", "XBRUSD"]
+            "asset_universe", ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "BTCUSD", "XTIUSD", "XBRUSD"]
         )
         alerts = []
 
         for symbol in symbols:
             try:
                 # 1. Ambil nilai ATR_14 H1 terbaru
-                atr_row = (await session.execute(
-                    select(TechnicalIndicator)
-                    .where(TechnicalIndicator.symbol == symbol)
-                    .where(TechnicalIndicator.timeframe == "H1")
-                    .where(TechnicalIndicator.indicator_name == "ATR_14")
-                    .where(TechnicalIndicator.timestamp <= now)
-                    .order_by(TechnicalIndicator.timestamp.desc())
-                    .limit(1)
-                )).scalar_one_or_none()
+                atr_row = (
+                    await session.execute(
+                        select(TechnicalIndicator)
+                        .where(TechnicalIndicator.symbol == symbol)
+                        .where(TechnicalIndicator.timeframe == "H1")
+                        .where(TechnicalIndicator.indicator_name == "ATR_14")
+                        .where(TechnicalIndicator.timestamp <= now)
+                        .order_by(TechnicalIndicator.timestamp.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
 
                 if not atr_row:
                     continue
@@ -164,22 +169,34 @@ class FlashCrashDetector:
 
                 # 2. Ambil candle M15 (atau fallback M5) dalam lookback window (ISOLASI TIMEFRAME: TIDAK H1)
                 lookback_dt = now - timedelta(minutes=self.lookback_minutes)
-                candles = (await session.execute(
-                    select(PriceOHLCV)
-                    .where(PriceOHLCV.symbol == symbol)
-                    .where(PriceOHLCV.timeframe == "M15")
-                    .where(PriceOHLCV.timestamp >= lookback_dt)
-                    .order_by(PriceOHLCV.timestamp.desc())
-                )).scalars().all()
+                candles = (
+                    (
+                        await session.execute(
+                            select(PriceOHLCV)
+                            .where(PriceOHLCV.symbol == symbol)
+                            .where(PriceOHLCV.timeframe == "M15")
+                            .where(PriceOHLCV.timestamp >= lookback_dt)
+                            .order_by(PriceOHLCV.timestamp.desc())
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
 
                 if not candles:
-                    candles = (await session.execute(
-                        select(PriceOHLCV)
-                        .where(PriceOHLCV.symbol == symbol)
-                        .where(PriceOHLCV.timeframe == "M5")
-                        .where(PriceOHLCV.timestamp >= lookback_dt)
-                        .order_by(PriceOHLCV.timestamp.desc())
-                    )).scalars().all()
+                    candles = (
+                        (
+                            await session.execute(
+                                select(PriceOHLCV)
+                                .where(PriceOHLCV.symbol == symbol)
+                                .where(PriceOHLCV.timeframe == "M5")
+                                .where(PriceOHLCV.timestamp >= lookback_dt)
+                                .order_by(PriceOHLCV.timestamp.desc())
+                            )
+                        )
+                        .scalars()
+                        .all()
+                    )
 
                 if not candles:
                     continue
@@ -187,7 +204,9 @@ class FlashCrashDetector:
                 max_high = max(c.high for c in candles)
                 min_low = min(c.low for c in candles)
                 range_move = max_high - min_low
-                current_price = candles[0].close if hasattr(candles[0], "close") and candles[0].close > 0 else candles[0].open
+                current_price = (
+                    candles[0].close if hasattr(candles[0], "close") and candles[0].close > 0 else candles[0].open
+                )
 
                 if current_price <= 0:
                     continue
@@ -207,9 +226,9 @@ class FlashCrashDetector:
                     self._blocked_symbols[symbol] = blocked_until
                     try:
                         cfg_key = f"flash_crash_blocked_{symbol}"
-                        existing_cfg = (await session.execute(
-                            select(SystemConfig).where(SystemConfig.key == cfg_key)
-                        )).scalar_one_or_none()
+                        existing_cfg = (
+                            await session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key))
+                        ).scalar_one_or_none()
                         if existing_cfg:
                             existing_cfg.value = blocked_until.isoformat()
                         else:
@@ -259,12 +278,15 @@ class FlashCrashDetector:
 
                     # Catat ke ActivityLog
                     try:
-                        session.add(ActivityLog(
-                            category="risk",
-                            description=f"FLASH CRASH: {symbol} moved {range_move:.5f} ({move_pct:.2f}% / {multiplier}x ATR). Cooldown {self.cooldown_minutes}m.",
-                            actor="flash_crash_detector",
-                        ))
+                        session.add(
+                            ActivityLog(
+                                category="risk",
+                                description=f"FLASH CRASH: {symbol} moved {range_move:.5f} ({move_pct:.2f}% / {multiplier}x ATR). Cooldown {self.cooldown_minutes}m.",
+                                actor="flash_crash_detector",
+                            )
+                        )
                         from monika.infrastructure.database.event_store import TradingEventStore
+
                         await TradingEventStore.emit(
                             session=session,
                             event_type="risk.flash_crash",
@@ -290,16 +312,20 @@ class FlashCrashDetector:
     async def _protect_open_positions(self, session: AsyncSession, symbol: str, now: datetime):
         """Memperketat SL ke level breakeven untuk posisi terbuka pada simbol terdampak."""
         try:
-            positions = (await session.execute(
-                select(Position)
-                .where(Position.status == "open")
-                .where(Position.symbol == symbol)
-            )).scalars().all()
+            positions = (
+                (
+                    await session.execute(
+                        select(Position).where(Position.status == "open").where(Position.symbol == symbol)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             for pos in positions:
                 if not pos.mt5_ticket:
                     continue
-                direction = (pos.direction or '').lower()
+                direction = (pos.direction or "").lower()
                 entry = pos.entry_price
                 current_sl = pos.sl
 
@@ -343,7 +369,9 @@ class FlashCrashDetector:
                         await exec_svc.modify_position_sl_tp(
                             ticket=pos.mt5_ticket, sl=new_sl, tp=pos.tp, requested_by="flash_crash_detector"
                         )
-                        logger.info(f"FlashCrash: SL tightened to breakeven ({new_sl}) for {pos.symbol} ticket={pos.mt5_ticket}")
+                        logger.info(
+                            f"FlashCrash: SL tightened to breakeven ({new_sl}) for {pos.symbol} ticket={pos.mt5_ticket}"
+                        )
                     except Exception as e:
                         logger.warning(f"FlashCrash: Failed tightening SL for ticket {pos.mt5_ticket}: {e}")
         except Exception as e:
@@ -396,6 +424,7 @@ class FlashCrashDetector:
 
         if move_pct >= min_pct_thresh:
             from monika.infrastructure.database.db import get_session
+
             try:
                 async with get_session() as session:
                     alerts = await self.check(session)
@@ -406,10 +435,11 @@ class FlashCrashDetector:
                         try:
                             from monika.infrastructure.database.models import SystemConfig
                             from sqlalchemy import select
+
                             cfg_key = f"flash_crash_blocked_{sym_clean}"
-                            existing_cfg = (await session.execute(
-                                select(SystemConfig).where(SystemConfig.key == cfg_key)
-                            )).scalar_one_or_none()
+                            existing_cfg = (
+                                await session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key))
+                            ).scalar_one_or_none()
                             if existing_cfg:
                                 existing_cfg.value = blocked_until.isoformat()
                             else:
@@ -424,6 +454,7 @@ class FlashCrashDetector:
                     if alerts:
                         try:
                             from monika.application.protocol.event_bus import get_event_bus, CircuitBreakerEvent
+
                             bus = get_event_bus()
                             cb_event = CircuitBreakerEvent(
                                 component="FlashCrashDetector",
@@ -437,4 +468,3 @@ class FlashCrashDetector:
                             logger.debug(f"Failed to publish CircuitBreakerEvent from FlashCrashDetector: {pub_err}")
             except Exception as e:
                 logger.error(f"[FlashCrashDetector] on_tick check failed for {sym_clean}: {e}")
-

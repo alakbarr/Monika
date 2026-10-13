@@ -73,9 +73,7 @@ class TestCostTracker:
             }
         }
 
-        cost = await CostTracker.log_cycle_cost(
-            mock_session, 100_000, 5_000, 500_000, 20_000, settings=settings
-        )
+        cost = await CostTracker.log_cycle_cost(mock_session, 100_000, 5_000, 500_000, 20_000, settings=settings)
         assert cost == 0.0
         mock_session.add.assert_called_once()
         args = mock_session.add.call_args[0][0]
@@ -104,9 +102,7 @@ class TestCostTracker:
         # 1000 in + 3000 in = 4000 in @ $2/1M = $0.008
         # 2000 out + 4000 out = 6000 out @ $10/1M = $0.060
         # total = 0.068
-        cost = await CostTracker.log_cycle_cost(
-            mock_session, 1000, 2000, 3000, 4000, settings=settings
-        )
+        cost = await CostTracker.log_cycle_cost(mock_session, 1000, 2000, 3000, 4000, settings=settings)
         assert round(cost, 3) == 0.068
 
     @pytest.mark.asyncio
@@ -114,12 +110,13 @@ class TestCostTracker:
         """Memverifikasi bahwa TokenUsageLog menjadi SSOT dan mtd_cost >= daily_cost selalu ditegakkan."""
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
-        
+
         mock_cfg_pause = MagicMock()
         mock_cfg_pause.key = "budget_pause"
         mock_cfg_pause.value = "true"
-        
+
         scalar_calls = []
+
         def execute_side_effect(stmt):
             mock_res = MagicMock()
             sql_str = str(stmt).lower()
@@ -138,18 +135,18 @@ class TestCostTracker:
                 mock_res.scalar_one.return_value = 0.0
                 mock_res.scalar_one_or_none.return_value = None
             return mock_res
-            
+
         mock_session.execute.side_effect = execute_side_effect
-        
+
         settings = {
             "cost_tracking": {
                 "monthly_budget_usd": 100.0,
                 "daily_budget_usd": 5.0,
             }
         }
-        
+
         status = await CostTracker.check_and_update_budget_status(mock_session, settings)
-        
+
         # MTD = 0.1698, Daily = 0.0, Invariant MTD >= Daily holds
         assert status["mtd_cost"] == 0.1698
         assert status["daily_cost"] == 0.0
@@ -161,12 +158,13 @@ class TestCostTracker:
     async def test_check_and_update_budget_status_triggers_daily_pause(self):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
-        
+
         mock_cfg_pause = MagicMock()
         mock_cfg_pause.key = "budget_pause"
         mock_cfg_pause.value = "false"
-        
+
         scalar_calls = []
+
         def execute_side_effect(stmt):
             mock_res = MagicMock()
             sql_str = str(stmt).lower()
@@ -185,19 +183,19 @@ class TestCostTracker:
                 mock_res.scalar_one.return_value = 0.0
                 mock_res.scalar_one_or_none.return_value = None
             return mock_res
-            
+
         mock_session.execute.side_effect = execute_side_effect
-        
+
         settings = {
             "cost_tracking": {
                 "monthly_budget_usd": 100.0,
                 "daily_budget_usd": 5.0,
             }
         }
-        
+
         with patch("utils.infra.notifier.AgentNotifier.send_critical", AsyncMock()):
             status = await CostTracker.check_and_update_budget_status(mock_session, settings)
-        
+
         assert status["is_paused"] is True
         assert status["daily_cost"] == 5.50
         assert mock_cfg_pause.value == "true"
@@ -211,9 +209,9 @@ class TestCostTracker:
         mock_res = MagicMock()
         mock_res.scalar_one_or_none.return_value = mock_cfg_pause
         mock_session.execute = AsyncMock(return_value=mock_res)
-        
+
         CostTracker._cached_pause_state = True
         await CostTracker.clear_budget_pause(mock_session)
-        
+
         assert mock_cfg_pause.value == "false"
         assert CostTracker.is_budget_paused_cached() is False

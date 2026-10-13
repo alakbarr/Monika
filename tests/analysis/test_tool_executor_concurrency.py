@@ -11,7 +11,7 @@ from analysis.providers.anthropic_provider import AnthropicProvider
 async def test_tool_executor_shares_session_lock():
     """Verify that multiple ToolExecutor instances bound to the same session share the same asyncio.Lock."""
     mock_session = MagicMock(spec=AsyncSession)
-    
+
     ex1 = ToolExecutor(session=mock_session, settings={})
     assert hasattr(mock_session, "_session_lock")
     assert ex1._session_lock is mock_session._session_lock
@@ -26,10 +26,10 @@ async def test_concurrent_tool_execution_serialized_by_session_lock():
     """Verify that concurrent tool executions on the same session are serialized by session_lock."""
     mock_session = MagicMock(spec=AsyncSession)
     mock_session._session_lock = asyncio.Lock()
-    
+
     executor = ToolExecutor(session=mock_session, settings={})
     execution_order = []
-    
+
     async def slow_handler_1(inp):
         execution_order.append("start_1")
         await asyncio.sleep(0.05)
@@ -44,15 +44,12 @@ async def test_concurrent_tool_execution_serialized_by_session_lock():
 
     executor._tool_tool1 = slow_handler_1
     executor._tool_tool2 = slow_handler_2
-    
-    res1, res2 = await asyncio.gather(
-        executor.execute("tool1", {}),
-        executor.execute("tool2", {})
-    )
-    
+
+    res1, res2 = await asyncio.gather(executor.execute("tool1", {}), executor.execute("tool2", {}))
+
     assert res1.get("status") == "ok1"
     assert res2.get("status") == "ok2"
-    
+
     # Since both acquired the shared session_lock, tool1 should fully finish before tool2 starts
     assert execution_order == ["start_1", "end_1", "start_2", "end_2"]
 
@@ -62,7 +59,7 @@ async def test_transient_concurrency_error_retry_and_rollback():
     """Verify that InterfaceError ('another operation is in progress') triggers rollback and retries."""
     mock_session = MagicMock(spec=AsyncSession)
     mock_session.rollback = AsyncMock()
-    
+
     executor = ToolExecutor(session=mock_session, settings={})
     call_count = 0
 
@@ -74,7 +71,7 @@ async def test_transient_concurrency_error_retry_and_rollback():
         return {"status": "recovered"}
 
     executor._tool_flaky = flaky_handler
-    
+
     res = await executor.execute("flaky", {})
     assert res.get("status") == "recovered"
     assert call_count == 2
@@ -95,6 +92,7 @@ async def test_base_provider_log_tool_call_uses_isolated_session():
     class AsyncContextManagerMock:
         async def __aenter__(self):
             return isolated_session
+
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return None
 
@@ -126,6 +124,7 @@ async def test_anthropic_provider_log_tool_call_uses_isolated_session():
     class AsyncContextManagerMock:
         async def __aenter__(self):
             return isolated_session
+
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return None
 

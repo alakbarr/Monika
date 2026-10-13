@@ -2,6 +2,7 @@
 Integration tests for PostgreSQL Transactional Advisory Lock & Concurrency Contention.
 Verifies fail-closed behavior and real concurrent access serialization.
 """
+
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch

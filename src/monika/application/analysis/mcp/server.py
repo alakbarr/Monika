@@ -147,8 +147,14 @@ class MonikaMcpServer:
                 async with get_session() as session:
                     cfgs = (await session.execute(select(SystemConfig))).scalars().all()
                     cfg_map = {c.key: c.value for c in cfgs}
-                    open_real = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
-                    open_paper = (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open"))).scalars().all()
+                    open_real = (
+                        (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+                    )
+                    open_paper = (
+                        (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open")))
+                        .scalars()
+                        .all()
+                    )
 
                     return {
                         "kill_switch": cfg_map.get("kill_switch") == "true",
@@ -180,32 +186,42 @@ class MonikaMcpServer:
 
             async with get_session() as session:
                 if mode in ("all", "real"):
-                    real_rows = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+                    real_rows = (
+                        (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+                    )
                     for r in real_rows:
-                        positions_data.append({
-                            "type": "real",
-                            "ticket": r.mt5_ticket or r.id,
-                            "symbol": r.symbol,
-                            "direction": r.direction,
-                            "volume": r.volume,
-                            "open_price": r.entry_price,
-                            "sl": r.sl,
-                            "tp": r.tp,
-                        })
+                        positions_data.append(
+                            {
+                                "type": "real",
+                                "ticket": r.mt5_ticket or r.id,
+                                "symbol": r.symbol,
+                                "direction": r.direction,
+                                "volume": r.volume,
+                                "open_price": r.entry_price,
+                                "sl": r.sl,
+                                "tp": r.tp,
+                            }
+                        )
 
                 if mode in ("all", "paper"):
-                    paper_rows = (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open"))).scalars().all()
+                    paper_rows = (
+                        (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open")))
+                        .scalars()
+                        .all()
+                    )
                     for p in paper_rows:
-                        positions_data.append({
-                            "type": "paper",
-                            "ticket": p.id,
-                            "symbol": p.symbol,
-                            "direction": p.direction,
-                            "volume": getattr(p, "risk_pct", 0.0),
-                            "open_price": p.entry_price,
-                            "sl": p.stop_loss,
-                            "tp": p.take_profit,
-                        })
+                        positions_data.append(
+                            {
+                                "type": "paper",
+                                "ticket": p.id,
+                                "symbol": p.symbol,
+                                "direction": p.direction,
+                                "volume": getattr(p, "risk_pct", 0.0),
+                                "open_price": p.entry_price,
+                                "sl": p.stop_loss,
+                                "tp": p.take_profit,
+                            }
+                        )
 
             return {"count": len(positions_data), "positions": positions_data}
 
@@ -228,15 +244,18 @@ class MonikaMcpServer:
 
         elif tool_name == "monika_list_playbooks":
             from monika.application.analysis.tools.handlers.skills_tools import handle_skills_list
+
             return await handle_skills_list()
 
         elif tool_name == "monika_get_playbook":
             from monika.application.analysis.tools.handlers.skills_tools import handle_skill_view
+
             return await handle_skill_view({"skill_name": arguments.get("name", "")})
 
         elif tool_name == "monika_search_session_memory":
             from monika.infrastructure.database.session_db_wal import SessionDbWal
             from monika.infrastructure.database.fts5_cjk import Fts5SessionSearch
+
             wal = SessionDbWal()
             try:
                 conn = wal.get_connection()
@@ -250,6 +269,7 @@ class MonikaMcpServer:
 
         elif tool_name == "monika_execute_quant_calc":
             from monika.application.analysis.tools.environments.tier1_inprocess import Tier1InProcessEnvironment
+
             env = Tier1InProcessEnvironment()
             code = arguments.get("code", "")
             outcome = await env.run_python_code(code)
@@ -311,7 +331,9 @@ class MonikaMcpServer:
                         "content": [
                             {
                                 "type": "text",
-                                "text": json.dumps(result, indent=2) if isinstance(result, (dict, list)) else str(result),
+                                "text": json.dumps(result, indent=2)
+                                if isinstance(result, (dict, list))
+                                else str(result),
                             }
                         ]
                     },

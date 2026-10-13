@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 from analysis.schemas.pydantic_schemas import FundamentalBriefSchema, TradeDirection, ConfidenceLevel
 
+
 def test_fundamental_brief_schema_valid():
     data = {
         "macro_bias": "Bullish USD",
@@ -9,7 +10,7 @@ def test_fundamental_brief_schema_valid():
         "risk_events": ["CPI", "NFP"],
         "narrative_shift": False,
         "currency_bias": {"USD": "bullish"},
-        "confidence": 0.85
+        "confidence": 0.85,
     }
     obj = FundamentalBriefSchema(**data)
     assert obj.macro_bias == "Bullish USD"
@@ -30,7 +31,7 @@ def test_submit_asset_analysis_trade_validation():
             invalidation="Invalid if closes below 1.0800",
             entry_condition=EntryCondition(type="market", detail="Market execution"),
             take_profit=1.0950,
-            stop_loss=None
+            stop_loss=None,
         )
 
     # 2. Buy with full trade parameters should pass
@@ -47,7 +48,7 @@ def test_submit_asset_analysis_trade_validation():
         entry_condition=EntryCondition(type="market", detail="Market execution"),
         reevaluation_trigger={"type": "indicator", "detail": "RSI drops below 30"},
         stop_loss=1.0800,
-        take_profit=1.0950
+        take_profit=1.0950,
     )
     assert schema.decision == "buy"
     assert schema.stop_loss == 1.0800
@@ -69,20 +70,17 @@ def test_submit_asset_analysis_trade_validation():
             reevaluation_trigger={"type": "indicator", "detail": "RSI drops below 30"},
             stop_loss=1.0800,
             take_profit=1.0950,
-            confluence_score=None
+            confluence_score=None,
         )
     assert "confluence_score" in str(excinfo.value)
 
     # 4. Avoid / Wait without stop_loss should pass
     avoid_schema = SubmitAssetAnalysisSchema(
-        symbol="EURUSD",
-        decision="avoid",
-        confidence=0.5,
-        rationale="Unclear market direction",
-        invalidation="N/A"
+        symbol="EURUSD", decision="avoid", confidence=0.5, rationale="Unclear market direction", invalidation="N/A"
     )
     assert avoid_schema.decision == "avoid"
     assert avoid_schema.stop_loss is None
+
 
 def test_submit_asset_analysis_symbol_aliases_and_normalization():
     from analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema
@@ -95,7 +93,7 @@ def test_submit_asset_analysis_symbol_aliases_and_normalization():
             "confidence": 0.6,
             "rationale": "Testing alias",
             "invalidation": "Invalid if structure breaks",
-            "reevaluation_trigger": {"type": "time", "detail": "Wait 4h"}
+            "reevaluation_trigger": {"type": "time", "detail": "Wait 4h"},
         }
         obj = SubmitAssetAnalysisSchema.model_validate(payload)
         assert obj.symbol == "GBPUSD"
@@ -106,7 +104,7 @@ def test_submit_asset_analysis_symbol_aliases_and_normalization():
         "decision": "avoid",
         "confidence": 0.5,
         "rationale": "Testing slash",
-        "invalidation": "N/A"
+        "invalidation": "N/A",
     }
     obj_slash = SubmitAssetAnalysisSchema.model_validate(payload_slash)
     assert obj_slash.symbol == "EURUSD"
@@ -146,26 +144,30 @@ def test_key_data_points_used_string_and_percentage_coercion():
     from analysis.schemas.pydantic_schemas import KeyDataPointsUsed
 
     # 1. String with %, N/A, and +/-
-    kdp = KeyDataPointsUsed.model_validate({
-        "dxy_trend_5d": "strengthening +0.8%",
-        "vix_close": "15.5",
-        "fedwatch_dominant_pct": "85.0%",
-        "treasury_10y_yield_pct": "4.25%",
-        "cot_leveraged_long_pct": "58.4%"
-    })
+    kdp = KeyDataPointsUsed.model_validate(
+        {
+            "dxy_trend_5d": "strengthening +0.8%",
+            "vix_close": "15.5",
+            "fedwatch_dominant_pct": "85.0%",
+            "treasury_10y_yield_pct": "4.25%",
+            "cot_leveraged_long_pct": "58.4%",
+        }
+    )
     assert kdp.vix_close == 15.5
     assert kdp.fedwatch_dominant_pct == 85.0
     assert kdp.treasury_10y_yield_pct == 4.25
     assert kdp.cot_leveraged_long_pct == 58.4
 
     # 2. Placeholders N/A, not quoted, None
-    kdp2 = KeyDataPointsUsed.model_validate({
-        "dxy_trend_5d": "weakening -0.4%",
-        "vix_close": 18.2,
-        "fedwatch_dominant_pct": "N/A",
-        "treasury_10y_yield_pct": "none",
-        "cot_leveraged_long_pct": "not quoted"
-    })
+    kdp2 = KeyDataPointsUsed.model_validate(
+        {
+            "dxy_trend_5d": "weakening -0.4%",
+            "vix_close": 18.2,
+            "fedwatch_dominant_pct": "N/A",
+            "treasury_10y_yield_pct": "none",
+            "cot_leveraged_long_pct": "not quoted",
+        }
+    )
     assert kdp2.vix_close == 18.2
     assert kdp2.fedwatch_dominant_pct is None
     assert kdp2.treasury_10y_yield_pct is None
@@ -175,13 +177,15 @@ def test_key_data_points_used_string_and_percentage_coercion():
 def test_priced_in_assessment_coercion():
     from analysis.schemas.pydantic_schemas import PricedInAssessment
 
-    pi = PricedInAssessment.model_validate({
-        "dominant_driver": "Rate cut",
-        "priced_in_score": "7/10",
-        "sell_the_news_risk": "medium",
-        "cot_positioning_percentile": "65%",
-        "retail_sentiment_percentile": "40.5%"
-    })
+    pi = PricedInAssessment.model_validate(
+        {
+            "dominant_driver": "Rate cut",
+            "priced_in_score": "7/10",
+            "sell_the_news_risk": "medium",
+            "cot_positioning_percentile": "65%",
+            "retail_sentiment_percentile": "40.5%",
+        }
+    )
     assert pi.priced_in_score == 7
     assert pi.cot_positioning_percentile == 65.0
     assert pi.retail_sentiment_percentile == 40.5
@@ -197,18 +201,18 @@ def test_submit_fundamental_brief_full_coercion():
             "vix_close": "15.5",
             "fedwatch_dominant_pct": "85%",
             "treasury_10y_yield_pct": "4.25%",
-            "cot_leveraged_long_pct": "58.4%"
+            "cot_leveraged_long_pct": "58.4%",
         },
         "macro_narrative": "Detailed macro narrative describing the economic drivers...",
         "currency_bias": {
-            "USD": "bullish", "EUR": "bearish", "GBP": "neutral",
-            "JPY": "neutral", "AUD": "neutral", "XAU": "bearish"
+            "USD": "bullish",
+            "EUR": "bearish",
+            "GBP": "neutral",
+            "JPY": "neutral",
+            "AUD": "neutral",
+            "XAU": "bearish",
         },
-        "currency_confidence": {
-            "USD": "80%",
-            "EUR": "0.7",
-            "XAU": 0.9
-        },
+        "currency_confidence": {"USD": "80%", "EUR": "0.7", "XAU": 0.9},
         "confidence": "85%",
         "risk_sentiment": "risk-on",
         "macro_regime": "mixed",
@@ -216,8 +220,8 @@ def test_submit_fundamental_brief_full_coercion():
             "dominant_driver": "Fed cut",
             "priced_in_score": "6",
             "sell_the_news_risk": "medium",
-            "cot_positioning_percentile": "75.0%"
-        }
+            "cot_positioning_percentile": "75.0%",
+        },
     }
 
     brief = SubmitFundamentalBriefSchema.model_validate(payload)
@@ -251,7 +255,7 @@ def test_coerce_string_list_and_str_helpers():
         {"driver": "Fed Hawkish Repricing"},
         123,
         None,
-        "NFP Surprise"
+        "NFP Surprise",
     ]
     res = coerce_string_list(mixed_list)
     assert len(res) == 6
@@ -291,9 +295,9 @@ def test_submit_asset_analysis_key_news_events_considered_dict_at_index_5():
             "Fed Powell Speech",
             "US Initial Jobless Claims",
             "Retail Sales MoM",
-            {"event_name": "Jackson Hole Symposium", "currency": "USD", "impact": "high"}  # Index 5 is dict!
+            {"event_name": "Jackson Hole Symposium", "currency": "USD", "impact": "high"},  # Index 5 is dict!
         ],
-        "news_impact_assessment": {"impact": "High volatility expected around speech"}
+        "news_impact_assessment": {"impact": "High volatility expected around speech"},
     }
 
     schema = SubmitAssetAnalysisSchema.model_validate(payload)
@@ -347,14 +351,14 @@ def test_inline_refs_preserves_nullable_numbers_for_gemini_tools():
         },
         "macro_narrative": "Detailed macro narrative describing the economic drivers...",
         "currency_bias": {
-            "USD": "bullish", "EUR": "bearish", "GBP": "neutral",
-            "JPY": "neutral", "AUD": "neutral", "XAU": "bearish"
+            "USD": "bullish",
+            "EUR": "bearish",
+            "GBP": "neutral",
+            "JPY": "neutral",
+            "AUD": "neutral",
+            "XAU": "bearish",
         },
-        "currency_confidence": {
-            "USD": 0.8,
-            "EUR": 0.7,
-            "XAU": 0.9
-        },
+        "currency_confidence": {"USD": 0.8, "EUR": 0.7, "XAU": 0.9},
         "confidence": 0.85,
         "risk_sentiment": "risk-on",
         "macro_regime": "mixed",
@@ -362,9 +366,9 @@ def test_inline_refs_preserves_nullable_numbers_for_gemini_tools():
             "dominant_driver": "Fed cut",
             "priced_in_score": 6,
             "sell_the_news_risk": "medium",
-            "cot_positioning_percentile": 75.0
+            "cot_positioning_percentile": 75.0,
         },
-        "strongest_counter_thesis": "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
+        "strongest_counter_thesis": "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter.",
     }
     jsonschema.validate(instance=payload, schema=inlined)
 
@@ -392,7 +396,7 @@ def test_reevaluation_trigger_and_entry_condition_xml_and_string_coercion():
         "rationale": "Clear calendar, waiting for price structure breakout at lower levels.",
         "invalidation": "Thesis invalid if AUDUSD closes above 0.6700",
         "reevaluation_trigger": '<parameter name="type">\nprice_level',
-        "key_news_events_considered": "No major news in last 6 hours. Economic calendar clear for AUD/USD."
+        "key_news_events_considered": "No major news in last 6 hours. Economic calendar clear for AUD/USD.",
     }
     schema = SubmitAssetAnalysisSchema.model_validate(payload)
     assert schema.symbol == "AUDUSD"
@@ -408,24 +412,25 @@ def test_submit_fundamental_brief_checklist_resilience():
     base_payload = {
         "macro_narrative": "Comprehensive US disinflation narrative with solid labor conditions.",
         "currency_bias": {
-            "USD": "bullish", "EUR": "bearish", "GBP": "neutral",
-            "JPY": "neutral", "AUD": "neutral", "XAU": "bearish"
+            "USD": "bullish",
+            "EUR": "bearish",
+            "GBP": "neutral",
+            "JPY": "neutral",
+            "AUD": "neutral",
+            "XAU": "bearish",
         },
         "currency_confidence": {"USD": 0.8, "EUR": 0.7, "XAU": 0.9},
         "confidence": 0.85,
         "risk_sentiment": "risk-on",
         "macro_regime": "mixed",
-        "key_data_points_used": {
-            "dxy_trend_5d": "strengthening +0.8%",
-            "vix_close": 15.5
-        },
+        "key_data_points_used": {"dxy_trend_5d": "strengthening +0.8%", "vix_close": 15.5},
         "priced_in_assessment": {
             "dominant_driver": "Fed cut",
             "priced_in_score": 6,
             "sell_the_news_risk": "medium",
-            "cot_positioning_percentile": 75.0
+            "cot_positioning_percentile": 75.0,
         },
-        "strongest_counter_thesis": "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
+        "strongest_counter_thesis": "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter.",
     }
 
     # 1. Grok style: checklist omitted entirely

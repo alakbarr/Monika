@@ -62,7 +62,7 @@ def clayton_copula_cdf(u: np.ndarray | float, v: np.ndarray | float, theta: floa
     """
     Bivariate Clayton Copula CDF:
     C(u, v; theta) = max((u^(-theta) + v^(-theta) - 1)^(-1/theta), 0)
-    
+
     Models Lower Tail Dependence (joint crashes).
     theta must be > 0.
     """
@@ -77,7 +77,7 @@ def clayton_copula_cdf(u: np.ndarray | float, v: np.ndarray | float, theta: floa
     log_u_term = -theta * np.log(u_arr)
     log_v_term = -theta * np.log(v_arr)
     sum_terms = np.exp(np.logaddexp(log_u_term, log_v_term))
-    
+
     bracket = np.maximum(sum_terms - 1.0, 0.0)
     with np.errstate(divide="ignore", invalid="ignore"):
         res = np.power(bracket, -1.0 / theta)
@@ -92,7 +92,7 @@ def gumbel_copula_cdf(u: np.ndarray | float, v: np.ndarray | float, theta: float
     """
     Bivariate Gumbel Copula CDF:
     C(u, v; theta) = exp(-((-ln(u))^theta + (-ln(v))^theta)^(1/theta))
-    
+
     Models Upper Tail Dependence (joint surges).
     theta must be >= 1.0.
     """
@@ -120,11 +120,11 @@ def fit_copula_from_tau(
     """
     Inverts empirical Kendall's tau to calibrate copula parameter theta
     and returns (theta, tail_dependence_lambda).
-    
+
     Clayton:
       tau = theta / (theta + 2) => theta = 2*tau / (1 - tau)
       lambda_L = 2^(-1 / theta)
-      
+
     Gumbel:
       tau = 1 - 1 / theta => theta = 1 / (1 - tau)
       lambda_U = 2 - 2^(1 / theta)
@@ -214,4 +214,3 @@ def fit_clayton_copula(
         "theta": float(theta),
         "lower_tail_dependence": float(lambda_lower),
     }
-

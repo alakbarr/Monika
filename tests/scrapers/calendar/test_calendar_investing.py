@@ -2,16 +2,17 @@ import pytest
 from unittest.mock import MagicMock, patch
 from scrapers.calendar.calendar_investing import InvestingCalendarScraper
 
+
 class TestInvestingCalendarScraper:
     @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
     def test_fetch_events_fail_navigate(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
-        
+
         scraper = InvestingCalendarScraper()
         scraper.navigate_with_fallback = MagicMock(return_value=False)
         scraper._fallback_forexfactory = MagicMock(return_value=[])
-        
+
         events = scraper.fetch_events()
         assert events == []
         scraper.navigate_with_fallback.assert_called_once()
@@ -20,13 +21,13 @@ class TestInvestingCalendarScraper:
     def test_fetch_events_no_table(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
-        
+
         scraper = InvestingCalendarScraper()
         scraper.navigate_with_fallback = MagicMock(return_value=True)
         scraper._fallback_forexfactory = MagicMock(return_value=[])
-        
-        mock_page.ele.return_value = None # Table not found
-        
+
+        mock_page.ele.return_value = None  # Table not found
+
         events = scraper.fetch_events()
         assert events == []
 
@@ -34,13 +35,16 @@ class TestInvestingCalendarScraper:
     def test_fetch_events_success(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
-        
+
         scraper = InvestingCalendarScraper()
         scraper.navigate_with_fallback = MagicMock(return_value=True)
-        
+
         # Mock popup element (not found)
-        mock_page.ele.side_effect = lambda sel, timeout: None if "sign-up" in sel else MagicMock(
-            inner_html="""
+        mock_page.ele.side_effect = lambda sel, timeout: (
+            None
+            if "sign-up" in sel
+            else MagicMock(
+                inner_html="""
             <table>
                 <tr>
                     <td>Check</td>
@@ -64,12 +68,14 @@ class TestInvestingCalendarScraper:
                 </tr>
             </table>
             """
+            )
         )
-        
+
         events = scraper.fetch_events()
         assert len(events) == 2
-        
+
         from database.adapters import parse_timestamp
+
         dt0 = parse_timestamp(events[0].time)
         assert dt0 is not None
         assert dt0.tzname() == "UTC"
@@ -77,7 +83,7 @@ class TestInvestingCalendarScraper:
         assert events[0].event_name == "NFP"
         assert events[0].impact == "Medium"
         assert events[0].actual == "100K"
-        
+
         dt1 = parse_timestamp(events[1].time)
         assert dt1 is not None
         assert dt1.tzname() == "UTC"
@@ -91,7 +97,7 @@ class TestInvestingCalendarScraper:
     def test_apply_time_filter_button_success(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
-        
+
         mock_btn = MagicMock()
         mock_btn.states.is_displayed = True
         mock_page.ele.return_value = mock_btn
@@ -108,12 +114,12 @@ class TestInvestingCalendarScraper:
 
         mock_custom_btn = MagicMock()
         mock_custom_btn.states.is_displayed = True
-        
+
         mock_container = MagicMock()
         mock_input1 = MagicMock()
         mock_input2 = MagicMock()
         mock_container.eles.return_value = [mock_input1, mock_input2]
-        
+
         mock_apply_btn = MagicMock()
 
         def fake_ele(sel, timeout=None):
@@ -168,5 +174,3 @@ class TestInvestingCalendarScraper:
         scraper._load_all_calendar_rows()
         # Verify run_js was used to query tr count efficiently
         assert mock_page.run_js.called
-
-

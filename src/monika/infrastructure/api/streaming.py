@@ -31,8 +31,8 @@ logger = logging.getLogger("TradingAgent.Streaming")
 
 class StreamTimeoutError(Exception):
     """Raised when streaming idle timeout exceeded (no chunks received)."""
-    def __init__(self, message: str, idle_seconds: float = 0.0,
-                 chunks_received: int = 0, partial_text: str = ""):
+
+    def __init__(self, message: str, idle_seconds: float = 0.0, chunks_received: int = 0, partial_text: str = ""):
         super().__init__(message)
         self.idle_seconds = idle_seconds
         self.chunks_received = chunks_received
@@ -41,20 +41,23 @@ class StreamTimeoutError(Exception):
 
 class StreamSafetyTimeoutError(StreamTimeoutError):
     """Raised when absolute safety timeout exceeded despite chunks still arriving."""
+
     pass
 
 
 @dataclass
 class StreamConfig:
     """Konfigurasi streaming timeout."""
-    idle_timeout: float = 45.0          # Timeout jika tidak ada chunk baru
-    safety_timeout: float = 600.0       # Safety net absolut
-    first_chunk_timeout: float = 90.0    # Timeout menunggu chunk pertama
+
+    idle_timeout: float = 45.0  # Timeout jika tidak ada chunk baru
+    safety_timeout: float = 600.0  # Safety net absolut
+    first_chunk_timeout: float = 90.0  # Timeout menunggu chunk pertama
 
 
 @dataclass
 class StreamResult:
     """Hasil akumulasi dari streaming response."""
+
     text: str = ""
     thinking_text: str = ""
     tool_calls: list = field(default_factory=list)
@@ -71,6 +74,7 @@ class StreamWriterFence:
     When a stream retry occurs, an older stream may still emit delayed chunks.
     This fence ensures those stale chunks are silently discarded.
     """
+
     def __init__(self):
         self._current_token: int = 0
 
@@ -99,6 +103,7 @@ class StreamingHeartbeatMonitor:
 
     async def _pulse_loop(self) -> None:
         import inspect
+
         while not self._stopped:
             try:
                 await asyncio.sleep(self.interval)
@@ -161,17 +166,11 @@ async def consume_sse_stream(
 
     try:
         while True:
-            effective_timeout = (
-                config.first_chunk_timeout if is_first_chunk
-                else config.idle_timeout
-            )
-            
+            effective_timeout = config.first_chunk_timeout if is_first_chunk else config.idle_timeout
+
             # Read chunk with per-chunk timeout
             try:
-                raw_bytes = await asyncio.wait_for(
-                    response.content.read(4096),
-                    timeout=effective_timeout
-                )
+                raw_bytes = await asyncio.wait_for(response.content.read(4096), timeout=effective_timeout)
             except asyncio.TimeoutError:
                 now = time.monotonic()
                 timeout_type = "first chunk" if is_first_chunk else "idle"
@@ -180,7 +179,7 @@ async def consume_sse_stream(
                     f"for {model_name} after {result.chunks_received} chunks",
                     idle_seconds=now - last_chunk_time,
                     chunks_received=result.chunks_received,
-                    partial_text=result.text[:500]
+                    partial_text=result.text[:500],
                 )
 
             if not raw_bytes:
@@ -203,7 +202,7 @@ async def consume_sse_stream(
                     f"after {result.chunks_received} chunks",
                     idle_seconds=now - last_chunk_time,
                     chunks_received=result.chunks_received,
-                    partial_text=result.text[:500]
+                    partial_text=result.text[:500],
                 )
 
             chunk_text = raw_bytes.decode("utf-8", errors="replace")
@@ -261,10 +260,7 @@ async def consume_sse_stream(
 
     except (aiohttp.ClientError, ConnectionError) as e:
         if result.chunks_received > 0:
-            logger.warning(
-                f"Stream connection lost for {model_name} after "
-                f"{result.chunks_received} chunks: {e}"
-            )
+            logger.warning(f"Stream connection lost for {model_name} after {result.chunks_received} chunks: {e}")
             result.total_duration = time.monotonic() - start_time
             return result
         raise
@@ -279,6 +275,7 @@ def _sanitize_url(url: str) -> str:
     """Masks sensitive query parameters (e.g. key, api_key, token) from URL."""
     try:
         from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+
         parsed = urlparse(str(url))
         if not parsed.query:
             return str(url)
@@ -317,39 +314,32 @@ async def streaming_request(
         async with session.post(url, json=payload, headers=headers) as response:
             if response.status == 429:
                 from monika.infrastructure.api.http_retry import RateLimitError, format_api_error_summary
+
                 body = await response.text()
                 retry_after = None
                 raw_ra = response.headers.get("Retry-After") or response.headers.get("retry-after")
                 if raw_ra:
                     try:
                         retry_after = float(raw_ra)
-                    except (ValueError, TypeError):
+                    except ValueError, TypeError:
                         pass
                 clean_msg = format_api_error_summary(429, body, clean_url)
-                raise RateLimitError(
-                    clean_msg, body=body,
-                    retry_after=retry_after, status=429
-                )
+                raise RateLimitError(clean_msg, body=body, retry_after=retry_after, status=429)
 
             if response.status != 200:
                 from monika.infrastructure.api.http_retry import APIStatusError, format_api_error_summary
+
                 body = await response.text()
                 retry_after = None
                 raw_ra = response.headers.get("Retry-After") or response.headers.get("retry-after")
                 if raw_ra:
                     try:
                         retry_after = float(raw_ra)
-                    except (ValueError, TypeError):
+                    except ValueError, TypeError:
                         pass
                 clean_msg = format_api_error_summary(response.status, body, clean_url)
                 raise APIStatusError(
-                    status=response.status,
-                    message=clean_msg,
-                    body=body,
-                    retry_after=retry_after,
-                    url=clean_url
+                    status=response.status, message=clean_msg, body=body, retry_after=retry_after, url=clean_url
                 )
 
-            return await consume_sse_stream(
-                response, config, parser, model_name
-            )
+            return await consume_sse_stream(response, config, parser, model_name)

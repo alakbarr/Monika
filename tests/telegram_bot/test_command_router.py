@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import os
 from telegram_bot.command_router import CommandRouter, CommandType, ParsedCommand
 
+
 class TestCommandRouter:
     @patch.dict(os.environ, {"TELEGRAM_ADMIN_CHAT_ID": "123", "TELEGRAM_ALLOWED_USERS": "123,456"})
     def test_init_from_env(self):
@@ -28,7 +29,7 @@ class TestCommandRouter:
         update = MagicMock()
         update.message = None
         assert router.parse(update) is None
-        
+
         update.message = MagicMock()
         update.message.text = ""
         assert router.parse(update) is None
@@ -72,7 +73,7 @@ class TestCommandRouter:
         update = MagicMock()
         update.message.text = "/kill"
         update.effective_user.id = 456
-        
+
         parsed = router.parse(update)
         assert parsed is not None
         assert parsed.command == "_unauthorized_admin"
@@ -114,7 +115,7 @@ class TestCommandRouter:
     def test_keyboards(self):
         kb1 = CommandRouter.build_confirm_keyboard("act123")
         assert kb1.inline_keyboard[0][0].callback_data == "confirm:act123"
-        
+
         kb2 = CommandRouter.build_close_keyboard(999)
         assert kb2.inline_keyboard[0][0].callback_data == "close:999"
 
@@ -153,5 +154,3 @@ class TestCommandRouter:
         assert parsed.args == ["eurusd_trend"]
         assert parsed.command_type == CommandType.ADMIN
         assert parsed.requires_admin
-
-

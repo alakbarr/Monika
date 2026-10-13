@@ -37,8 +37,14 @@ app = FastAPI(
 
 _allowed_origins_raw = os.getenv("GATEWAY_ALLOWED_ORIGINS") or os.getenv("DASHBOARD_ALLOWED_ORIGINS", "")
 _allowed_origins = [o.strip() for o in _allowed_origins_raw.split(",") if o.strip()] or [
-    "http://localhost:5173", "http://localhost:4173", "http://localhost:3000", "http://localhost:8000",
-    "http://127.0.0.1:5173", "http://127.0.0.1:4173", "http://127.0.0.1:3000", "http://127.0.0.1:8000",
+    "http://localhost:5173",
+    "http://localhost:4173",
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:4173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
 ]
 
 
@@ -164,6 +170,7 @@ def get_default_chat_agent():
     if _agent_instance is None:
         from monika.core.config.settings import load_settings
         from monika.application.agent.chat_agent import ChatAgent
+
         settings = load_settings()
         _agent_instance = ChatAgent(settings=settings, user_id="api_client", is_admin=True)
     return _agent_instance
@@ -178,7 +185,10 @@ async def execute_query(session_id: str, user_text: str, metadata: Dict[str, Any
         agent = get_default_chat_agent()
         reply, pending = await agent.handle(user_message=user_text, session_id=session_id)
         if pending:
-            action_desc = getattr(pending, "description", None) or f"{getattr(pending, 'direction', '')} {getattr(pending, 'symbol', '')}"
+            action_desc = (
+                getattr(pending, "description", None)
+                or f"{getattr(pending, 'direction', '')} {getattr(pending, 'symbol', '')}"
+            )
             reply += f"\n\n[Action Proposed]: {action_desc}"
         return reply
     except Exception as e:
@@ -389,7 +399,9 @@ async def terminal_websocket(websocket: WebSocket):
 
         # Terminal shell requires explicit token or ticket even on localhost to prevent CSWSH attacks
         if not client_key and not ticket_param:
-            logger.warning(f"[ApiServer] Rejected terminal shell connection on localhost without explicit token or ticket from {client_host}")
+            logger.warning(
+                f"[ApiServer] Rejected terminal shell connection on localhost without explicit token or ticket from {client_host}"
+            )
             await websocket.close(code=1008, reason="Forbidden: Terminal shell requires explicit ticket or API key")
             return
 
@@ -436,7 +448,9 @@ async def terminal_websocket(websocket: WebSocket):
                 if clean_data in ("help", "?"):
                     resp_text = "\r\nAvailable commands: status, positions, risk, kill, health, exit\r\nmonika> "
                 elif clean_data == "status":
-                    resp_text = "\r\n\x1b[32m[SYSTEM STATUS]\x1b[0m Fortress active, all engines operational.\r\nmonika> "
+                    resp_text = (
+                        "\r\n\x1b[32m[SYSTEM STATUS]\x1b[0m Fortress active, all engines operational.\r\nmonika> "
+                    )
                 elif clean_data == "health":
                     resp_text = "\r\n\x1b[32m[HEALTH]\x1b[0m Memory nominal, database connected.\r\nmonika> "
                 else:
@@ -449,5 +463,3 @@ async def terminal_websocket(websocket: WebSocket):
         logger.warning(f"[ApiServer] Terminal WebSocket error: {e}")
     finally:
         await manager.close_session(session.session_id)
-
-

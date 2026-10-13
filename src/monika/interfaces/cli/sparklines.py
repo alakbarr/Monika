@@ -49,7 +49,7 @@ def braille_sparkline(values: Sequence[float], width: int = 20) -> str:
             fv = float(v)
             if math.isfinite(fv):
                 clean_vals.append(fv)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             continue
 
     if not clean_vals:
@@ -121,7 +121,7 @@ def bar_gauge(
             ratio = 0.0
         else:
             ratio = min(max(fval / fmax, 0.0), 1.0)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         ratio = 0.0
 
     filled = int(round(ratio * width))

@@ -71,8 +71,20 @@ def test_moa_trace_persistence():
     with tempfile.TemporaryDirectory() as tmpdir:
         sid = "session_test_001"
         proposer_traces = [
-            slot_metrics({"model": "deepseek-v4-pro", "provider": "deepseek"}, label="DeepSeek-V4-Pro", output="Quant edge: Long", latency_ms=120.0, cost_usd=0.0004),
-            slot_metrics({"model": "gemini-3.8-flash", "provider": "google"}, label="Gemini-3.8-Flash", output="Macro context: Neutral", latency_ms=85.0, cost_usd=0.0001),
+            slot_metrics(
+                {"model": "deepseek-v4-pro", "provider": "deepseek"},
+                label="DeepSeek-V4-Pro",
+                output="Quant edge: Long",
+                latency_ms=120.0,
+                cost_usd=0.0004,
+            ),
+            slot_metrics(
+                {"model": "gemini-3.8-flash", "provider": "google"},
+                label="Gemini-3.8-Flash",
+                output="Macro context: Neutral",
+                latency_ms=85.0,
+                cost_usd=0.0001,
+            ),
         ]
         aggregator_trace = slot_metrics(
             {"model": "claude-sonnet-5", "provider": "anthropic"},
@@ -108,6 +120,7 @@ def test_moa_trace_persistence():
 def test_moa_loop_full_consensus():
     """Verify parallel proposer execution and synthesis by aggregator."""
     with tempfile.TemporaryDirectory() as tmpdir:
+
         def mock_llm(slot, messages):
             model = slot.get("model", "")
             if "deepseek-v4-pro" in model:
@@ -145,6 +158,7 @@ def test_moa_loop_full_consensus():
 def test_moa_loop_graceful_degradation_one_failed():
     """Verify that if one proposer crashes, the council proceeds smoothly in degraded mode."""
     with tempfile.TemporaryDirectory() as tmpdir:
+
         def mock_llm_with_failure(slot, messages):
             model = slot.get("model", "")
             if "deepseek-v4.1-flash" in model:
@@ -178,6 +192,7 @@ def test_moa_loop_graceful_degradation_one_failed():
 def test_moa_loop_all_proposers_failed():
     """Verify that if all proposers fail, aggregator runs in standalone mode."""
     with tempfile.TemporaryDirectory() as tmpdir:
+
         def mock_all_fail(slot, messages):
             model = slot.get("model", "")
             if "claude-sonnet-5" in model:
@@ -204,6 +219,7 @@ def test_moa_loop_all_proposers_failed():
 async def test_moa_async_execution():
     """Verify asynchronous MoA execution wrapper."""
     with tempfile.TemporaryDirectory() as tmpdir:
+
         def mock_llm(slot, messages):
             return f"Async response from {slot.get('label')}"
 

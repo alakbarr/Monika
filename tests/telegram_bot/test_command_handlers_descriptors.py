@@ -1,6 +1,7 @@
 """
 Unit tests for modular telegram command descriptors and routing (telegram_bot/handlers/).
 """
+
 import pytest
 from telegram_bot.handlers import (
     TRADING_COMMAND_DESCRIPTORS,

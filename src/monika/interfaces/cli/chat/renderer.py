@@ -99,21 +99,21 @@ class ThinkingScrubber:
                 # Check for opening <think> or <thought>
                 match = re.search(r"<\s*(?:think|thought)\s*>", self.buffer, re.IGNORECASE)
                 if match:
-                    before = self.buffer[:match.start()]
+                    before = self.buffer[: match.start()]
                     if before:
                         content_out.append(before)
                         self.content_buffer.append(before)
                     self.in_think = True
-                    self.buffer = self.buffer[match.end():]
+                    self.buffer = self.buffer[match.end() :]
                 else:
                     # Buffer trailing partial tag prefix like '<', '<t', '<th', etc.
                     partial_match = re.search(r"<[a-z]{0,7}$", self.buffer, re.IGNORECASE)
                     if partial_match:
-                        safe_before = self.buffer[:partial_match.start()]
+                        safe_before = self.buffer[: partial_match.start()]
                         if safe_before:
                             content_out.append(safe_before)
                             self.content_buffer.append(safe_before)
-                        self.buffer = self.buffer[partial_match.start():]
+                        self.buffer = self.buffer[partial_match.start() :]
                         break
                     else:
                         content_out.append(self.buffer)
@@ -123,22 +123,22 @@ class ThinkingScrubber:
                 # Check for closing </think> or </thought>
                 match = re.search(r"</\s*(?:think|thought)\s*>", self.buffer, re.IGNORECASE)
                 if match:
-                    think_text = self.buffer[:match.start()]
+                    think_text = self.buffer[: match.start()]
                     if think_text:
                         thinking_out.append(think_text)
                         self.think_buffer.append(think_text)
                     self.in_think = False
                     self.elapsed_time = time.time() - (self.start_time or time.time())
-                    self.buffer = self.buffer[match.end():]
+                    self.buffer = self.buffer[match.end() :]
                 else:
                     # Buffer trailing partial tag prefix like '<', '</', '</t', etc.
                     partial_match = re.search(r"</?[a-z]{0,7}$", self.buffer, re.IGNORECASE)
                     if partial_match:
-                        safe_think = self.buffer[:partial_match.start()]
+                        safe_think = self.buffer[: partial_match.start()]
                         if safe_think:
                             thinking_out.append(safe_think)
                             self.think_buffer.append(safe_think)
-                        self.buffer = self.buffer[partial_match.start():]
+                        self.buffer = self.buffer[partial_match.start() :]
                         break
                     else:
                         thinking_out.append(self.buffer)
@@ -180,9 +180,7 @@ class ChatRenderer:
         p = self.palette
         width = min(88, max(60, get_terminal_width() - 2))
 
-        service_badge = (
-            f"[bold {p.success}]● ONLINE[/]" if is_live_service else f"[{p.warning}]○ LOCAL ENGINE[/]"
-        )
+        service_badge = f"[bold {p.success}]● ONLINE[/]" if is_live_service else f"[{p.warning}]○ LOCAL ENGINE[/]"
         mode_badge = f"[bold {p.danger}]LIVE[/]" if mode.lower() == "live" else f"[{p.accent}]PAPER[/]"
 
         grid = Table.grid(expand=True)
@@ -290,17 +288,12 @@ class ChatRenderer:
     ) -> None:
         """Render tool completion outcome as tree branch."""
         p = self.palette
-        badge = (
-            f"[bold {p.danger}]{GLYPH_ERROR} FAILED[/]"
-            if is_error
-            else f"[bold {p.success}]{GLYPH_SUCCESS} OK[/]"
-        )
+        badge = f"[bold {p.danger}]{GLYPH_ERROR} FAILED[/]" if is_error else f"[bold {p.success}]{GLYPH_SUCCESS} OK[/]"
         duration_str = f" [dim {p.muted}]({duration_ms:.0f}ms)[/]" if duration_ms > 0 else ""
         desc = f": [dim {p.text}]{summary[:65]}[/]" if summary else ""
 
         self.console.print(
-            f"  [dim {p.tool_dim}]{BOX_ROUND_BOTTOM_LEFT}{BOX_HORIZONTAL}[/] "
-            f"{badge}{duration_str}{desc}"
+            f"  [dim {p.tool_dim}]{BOX_ROUND_BOTTOM_LEFT}{BOX_HORIZONTAL}[/] {badge}{duration_str}{desc}"
         )
 
     def render_agent_header(self, model_name: Optional[str] = None) -> None:

@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #89.
 
 Formula (paper appendix): Ts_Rank(decay_linear(correlation(low, adv10, 7), 6), 4) - Ts_Rank(decay_linear(delta(IndNeutralize(vwap, industry),3),10),15)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_089"
 
 __alpha_meta__ = {
-    'id': 'alpha101_089',
-    'nickname': 'Kakushadze Alpha #89',
-    'theme': ['volume', 'momentum'],
-    'formula_latex': 'Ts_Rank(decay_linear(correlation(low, adv10, 7), 6), 4) - Ts_Rank(decay_linear(delta(IndNeutralize(vwap, industry),3),10),15)',
-    'columns_required': ['low', 'volume', 'vwap', 'close'],
-    'extras_required': [],
-    'requires_sector': True,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 30,
-    'notes': "Industry neutralization implemented via per-row sector group demean (panel['sector'] required). When sector tag is absent the registry rejects via SkipAlpha; the compute() also has a degraded global demean fallback. This is a partial approximation of the paper's IndClass.industry/subindustry/sector neutralization.",
+    "id": "alpha101_089",
+    "nickname": "Kakushadze Alpha #89",
+    "theme": ["volume", "momentum"],
+    "formula_latex": "Ts_Rank(decay_linear(correlation(low, adv10, 7), 6), 4) - Ts_Rank(decay_linear(delta(IndNeutralize(vwap, industry),3),10),15)",
+    "columns_required": ["low", "volume", "vwap", "close"],
+    "extras_required": [],
+    "requires_sector": True,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 30,
+    "notes": "Industry neutralization implemented via per-row sector group demean (panel['sector'] required). When sector tag is absent the registry rejects via SkipAlpha; the compute() also has a degraded global demean fallback. This is a partial approximation of the paper's IndClass.industry/subindustry/sector neutralization.",
 }
 
 

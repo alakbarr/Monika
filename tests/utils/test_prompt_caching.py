@@ -16,9 +16,7 @@ def test_anthropic_cache_breakpoints():
     messages = [{"role": "user", "content": "Analyze EURUSD"}]
 
     sys_blocks, cached_tools, cached_msgs = PromptCacheManager.apply_anthropic_cache(
-        system_prompt=system_prompt,
-        tools=tools,
-        messages=messages
+        system_prompt=system_prompt, tools=tools, messages=messages
     )
 
     # Verify system block has ephemeral cache control
@@ -39,9 +37,7 @@ def test_prompt_partition_3tier():
     dynamic = "Market Data: EURUSD 1.0850, Time: 2026-09-06T00:00:00Z"
 
     prefix, suffix = PromptCacheManager.partition_3tier_prompt(
-        identity_soul=soul,
-        instructions_guidelines=guidelines,
-        dynamic_context=dynamic
+        identity_soul=soul, instructions_guidelines=guidelines, dynamic_context=dynamic
     )
 
     assert "Identity: Sovereign Trading Agent." in prefix

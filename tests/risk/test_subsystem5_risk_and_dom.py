@@ -14,9 +14,10 @@ def test_dom_ladder_walk_vwap():
 
     mock_info = MagicMock(point=0.0001, digits=4)
 
-    with patch("MetaTrader5.market_book_get", return_value=[mock_item1, mock_item2, mock_item3]), \
-         patch("MetaTrader5.symbol_info", return_value=mock_info):
-
+    with (
+        patch("MetaTrader5.market_book_get", return_value=[mock_item1, mock_item2, mock_item3]),
+        patch("MetaTrader5.symbol_info", return_value=mock_info),
+    ):
         # Test 1: Order for 4.0 lots BUY
         # Takes 2.0 @ 1.1000 and 2.0 @ 1.1005
         # VWAP = (2*1.1000 + 2*1.1005) / 4 = 1.10025
@@ -62,7 +63,9 @@ async def test_risk_gate_adv_liquidity_floor():
         rr_ratio=2.0,
         is_valid=True,
     )
-    ok, reason = await rg._check_adv_liquidity(session, "EURUSD", sizing_excessive, as_of=datetime(2026, 1, 1, 14, 0, tzinfo=timezone.utc))
+    ok, reason = await rg._check_adv_liquidity(
+        session, "EURUSD", sizing_excessive, as_of=datetime(2026, 1, 1, 14, 0, tzinfo=timezone.utc)
+    )
     assert ok is False
     assert "exceeds 1.0% of 20-day ADV" in reason
 
@@ -84,7 +87,9 @@ async def test_risk_gate_adv_liquidity_floor():
         rr_ratio=2.0,
         is_valid=True,
     )
-    ok_pass, msg = await rg._check_adv_liquidity(session, "EURUSD", sizing_ok, as_of=datetime(2026, 1, 1, 14, 0, tzinfo=timezone.utc))
+    ok_pass, msg = await rg._check_adv_liquidity(
+        session, "EURUSD", sizing_ok, as_of=datetime(2026, 1, 1, 14, 0, tzinfo=timezone.utc)
+    )
     assert ok_pass is True
 
 
@@ -164,11 +169,16 @@ async def test_risk_gate_evidence_gate():
     mock_analysis.strategy_id = "failing_alpha"
     mock_analysis.market_regime = "ranging"
 
-    with patch("analysis.strategies.evidence_store.EvidenceStore.validate_strategy_for_trade", return_value=(False, "Negative expectancy -0.22")):
+    with patch(
+        "analysis.strategies.evidence_store.EvidenceStore.validate_strategy_for_trade",
+        return_value=(False, "Negative expectancy -0.22"),
+    ):
         ok, reason = await rg._check_evidence_gate(session, "EURUSD", analysis=mock_analysis)
         assert ok is False
         assert "Negative expectancy" in reason
 
-    with patch("analysis.strategies.evidence_store.EvidenceStore.validate_strategy_for_trade", return_value=(True, "Approved")):
+    with patch(
+        "analysis.strategies.evidence_store.EvidenceStore.validate_strategy_for_trade", return_value=(True, "Approved")
+    ):
         ok, reason = await rg._check_evidence_gate(session, "EURUSD", analysis=mock_analysis)
         assert ok is True

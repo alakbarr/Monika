@@ -29,6 +29,7 @@ logger = logging.getLogger("TradingAgent.FinnhubCalendar")
 
 try:
     import requests
+
     HAS_REQUESTS = True
 except ImportError:
     requests = None
@@ -40,16 +41,32 @@ from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
 
 # Pemetaan dampak Finnhub ke sistem 3 level kita
 _IMPACT_MAP = {
-    "high":   "High",
+    "high": "High",
     "medium": "Medium",
-    "low":    "Low",
-    "na":     "Low",
+    "low": "Low",
+    "na": "Low",
 }
 
 COUNTRY_TO_CURRENCY = {
-    "US": "USD", "USA": "USD", "EZ": "EUR", "EU": "EUR", "EMU": "EUR", "DE": "EUR", "FR": "EUR", "IT": "EUR",
-    "GB": "GBP", "UK": "GBP", "JP": "JPY", "JPN": "JPY", "AU": "AUD", "AUS": "AUD",
-    "CA": "CAD", "CAN": "CAD", "CH": "CHF", "NZ": "NZD", "CN": "CNY"
+    "US": "USD",
+    "USA": "USD",
+    "EZ": "EUR",
+    "EU": "EUR",
+    "EMU": "EUR",
+    "DE": "EUR",
+    "FR": "EUR",
+    "IT": "EUR",
+    "GB": "GBP",
+    "UK": "GBP",
+    "JP": "JPY",
+    "JPN": "JPY",
+    "AU": "AUD",
+    "AUS": "AUD",
+    "CA": "CAD",
+    "CAN": "CAD",
+    "CH": "CHF",
+    "NZ": "NZD",
+    "CN": "CNY",
 }
 
 
@@ -67,6 +84,7 @@ class FinnhubCalendarScraper:
         if not api_key and not os.getenv("FINNHUB_API_KEY"):
             try:
                 from dotenv import load_dotenv
+
                 load_dotenv()
             except Exception:
                 pass
@@ -112,9 +130,9 @@ class FinnhubCalendarScraper:
                 resp = requests.get(
                     self.BASE_URL,
                     params={
-                        "from":   start_date.isoformat(),
-                        "to":     end.isoformat(),
-                        "token":  self.api_key,
+                        "from": start_date.isoformat(),
+                        "to": end.isoformat(),
+                        "token": self.api_key,
                     },
                     timeout=15,
                 )
@@ -131,16 +149,16 @@ class FinnhubCalendarScraper:
                     continue
 
                 if resp.status_code in (500, 502, 503, 504):
-                    logger.warning(f"Finnhub server error {resp.status_code}, retry {attempt+1}/{max_retries}")
-                    time.sleep(1.0 * (2 ** attempt))
+                    logger.warning(f"Finnhub server error {resp.status_code}, retry {attempt + 1}/{max_retries}")
+                    time.sleep(1.0 * (2**attempt))
                     continue
 
                 resp.raise_for_status()
                 data = resp.json()
                 break
             except Exception as e:
-                logger.warning(f"Finnhub calendar fetch attempt {attempt+1}/{max_retries} failed: {e}")
-                time.sleep(1.0 * (2 ** attempt))
+                logger.warning(f"Finnhub calendar fetch attempt {attempt + 1}/{max_retries} failed: {e}")
+                time.sleep(1.0 * (2**attempt))
 
         if data is None:
             logger.error("Finnhub calendar fetch failed after all retries")
@@ -151,6 +169,7 @@ class FinnhubCalendarScraper:
         logger.info(f"FinnhubCalendarScraper: fetched {len(events)} events ({today} to {end})")
         try:
             from monika.infrastructure.data_ingestion.sources.circuit_breaker import record_feed_heartbeat
+
             record_feed_heartbeat("finnhub", metadata={"events_count": len(events)})
             record_feed_heartbeat("economic_calendar", metadata={"source": "finnhub", "events_count": len(events)})
         except Exception:
@@ -165,7 +184,9 @@ class FinnhubCalendarScraper:
                 ev = CalendarEvent(
                     event_name=item.get("event", "Unknown Event"),
                     time=item.get("time", ""),
-                    currency=COUNTRY_TO_CURRENCY.get((item.get("country") or "").upper(), (item.get("country") or "").upper() or "USD"),
+                    currency=COUNTRY_TO_CURRENCY.get(
+                        (item.get("country") or "").upper(), (item.get("country") or "").upper() or "USD"
+                    ),
                     impact=_IMPACT_MAP.get(str(item.get("impact", "low")).lower(), "Low"),
                     actual=str(item.get("actual", "")) if item.get("actual") is not None else None,
                     forecast=str(item.get("estimate", "")) if item.get("estimate") is not None else None,
@@ -233,16 +254,16 @@ class FinnhubCalendarScraper:
                             continue
 
                         if resp.status in (500, 502, 503, 504):
-                            logger.warning(f"Finnhub server error {resp.status}, retry {attempt+1}/{max_retries}")
-                            await asyncio.sleep(1.0 * (2 ** attempt))
+                            logger.warning(f"Finnhub server error {resp.status}, retry {attempt + 1}/{max_retries}")
+                            await asyncio.sleep(1.0 * (2**attempt))
                             continue
 
                         resp.raise_for_status()
                         data = await resp.json()
                         break
             except Exception as e:
-                logger.warning(f"Finnhub async calendar fetch attempt {attempt+1}/{max_retries} failed: {e}")
-                await asyncio.sleep(1.0 * (2 ** attempt))
+                logger.warning(f"Finnhub async calendar fetch attempt {attempt + 1}/{max_retries} failed: {e}")
+                await asyncio.sleep(1.0 * (2**attempt))
 
         if data is None:
             logger.error("Finnhub async calendar fetch failed after all retries")
@@ -253,6 +274,7 @@ class FinnhubCalendarScraper:
         logger.info(f"FinnhubCalendarScraper (async): fetched {len(events)} events ({today} to {end})")
         try:
             from monika.infrastructure.data_ingestion.sources.circuit_breaker import record_feed_heartbeat
+
             record_feed_heartbeat("finnhub", metadata={"events_count": len(events)})
             record_feed_heartbeat("economic_calendar", metadata={"source": "finnhub", "events_count": len(events)})
         except Exception:
@@ -263,7 +285,9 @@ class FinnhubCalendarScraper:
     fetch_events = fetch_today_events
     afetch_events = afetch_today_events
 
-    def fetch_earnings_calendar(self, symbol: str | None = None, from_date: str | None = None, to_date: str | None = None) -> List[dict]:
+    def fetch_earnings_calendar(
+        self, symbol: str | None = None, from_date: str | None = None, to_date: str | None = None
+    ) -> List[dict]:
         """Fetch corporate earnings calendar from Finnhub."""
         if not self.api_key or not HAS_REQUESTS or requests is None:
             return []
@@ -283,7 +307,9 @@ class FinnhubCalendarScraper:
             logger.debug(f"Finnhub earnings fetch error: {e}")
         return []
 
-    async def afetch_earnings_calendar(self, symbol: str | None = None, from_date: str | None = None, to_date: str | None = None) -> List[dict]:
+    async def afetch_earnings_calendar(
+        self, symbol: str | None = None, from_date: str | None = None, to_date: str | None = None
+    ) -> List[dict]:
         """Async fetch corporate earnings calendar from Finnhub."""
         if not self.api_key:
             return []

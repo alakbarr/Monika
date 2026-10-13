@@ -23,13 +23,33 @@ async def test_run_tier_deep_research_parallel_workers():
         mock_client.model_name = "test-model"
         mock_client.run_chat_loop.side_effect = [
             # Worker 1: Macro
-            {"reply": "Macro findings: Yields falling, dovish Fed.", "input_tokens": 100, "output_tokens": 50, "tool_calls_made": 2},
+            {
+                "reply": "Macro findings: Yields falling, dovish Fed.",
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "tool_calls_made": 2,
+            },
             # Worker 2: Tech
-            {"reply": "Tech findings: Bullish FVG at 2650.", "input_tokens": 120, "output_tokens": 60, "tool_calls_made": 3},
+            {
+                "reply": "Tech findings: Bullish FVG at 2650.",
+                "input_tokens": 120,
+                "output_tokens": 60,
+                "tool_calls_made": 3,
+            },
             # Worker 3: Sentiment
-            {"reply": "Sentiment findings: Retail 80% short.", "input_tokens": 90, "output_tokens": 40, "tool_calls_made": 1},
+            {
+                "reply": "Sentiment findings: Retail 80% short.",
+                "input_tokens": 90,
+                "output_tokens": 40,
+                "tool_calls_made": 1,
+            },
             # Synthesizer
-            {"reply": "Executive Brief: Strong bullish confluence on XAUUSD.", "input_tokens": 300, "output_tokens": 150, "tool_calls_made": 0},
+            {
+                "reply": "Executive Brief: Strong bullish confluence on XAUUSD.",
+                "input_tokens": 300,
+                "output_tokens": 150,
+                "tool_calls_made": 0,
+            },
         ]
         mock_get_client.return_value = mock_client
 
@@ -169,11 +189,26 @@ async def test_run_tier_deep_research_synthesizer_tools_and_trading_plan():
         # Return mock responses for 3 specialists + 1 synthesizer
         mock_client.run_chat_loop.side_effect = [
             # Worker 1: Macro
-            {"reply": "Macro findings: FedWatch 89% hike priced-in.", "input_tokens": 150, "output_tokens": 80, "tool_calls_made": 2},
+            {
+                "reply": "Macro findings: FedWatch 89% hike priced-in.",
+                "input_tokens": 150,
+                "output_tokens": 80,
+                "tool_calls_made": 2,
+            },
             # Worker 2: Tech
-            {"reply": "Tech findings: DXY resistance at 104.50.", "input_tokens": 130, "output_tokens": 70, "tool_calls_made": 2},
+            {
+                "reply": "Tech findings: DXY resistance at 104.50.",
+                "input_tokens": 130,
+                "output_tokens": 70,
+                "tool_calls_made": 2,
+            },
             # Worker 3: Sentiment
-            {"reply": "Sentiment findings: Extreme hawkish positioning.", "input_tokens": 110, "output_tokens": 60, "tool_calls_made": 1},
+            {
+                "reply": "Sentiment findings: Extreme hawkish positioning.",
+                "input_tokens": 110,
+                "output_tokens": 60,
+                "tool_calls_made": 1,
+            },
             # Synthesizer
             {
                 "reply": "Executive Brief: 3-Scenario Trading Plan formulated.",
@@ -254,6 +289,9 @@ async def test_system_prompt_relaxed_character_limit():
 
         # Verify relaxed institutional-grade multi-chunk phrasing is present
         assert "For standard conversational turns, keep response length concise (<= 3000 characters)" in static_prompt
-        assert "For deep research, comprehensive macro event probability analyses, or complex strategic investigations" in static_prompt
+        assert (
+            "For deep research, comprehensive macro event probability analyses, or complex strategic investigations"
+            in static_prompt
+        )
         assert "exhaustive institutional-grade briefs without arbitrary character limits" in static_prompt
         assert "multi-chunk message delivery" in static_prompt

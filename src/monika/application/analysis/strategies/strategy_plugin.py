@@ -22,6 +22,7 @@ class StrategyPlugin(TradingPlugin, ABC):
     Contract for pluggable quantitative alpha strategies in Monika.
     Bridges between the harness plugin lifecycle and the EdgeStrategy execution engine.
     """
+
     metadata: PluginMetadata
 
     def __init__(self, *args, **kwargs):
@@ -38,6 +39,7 @@ class StrategyPlugin(TradingPlugin, ABC):
         """Auto-register the strategy class into StrategyRegistry upon plugin load."""
         await super().on_register(container, event_bus)
         from monika.application.analysis.strategies.registry import StrategyRegistry
+
         strat_cls = self.get_strategy_class()
         StrategyRegistry.register(strat_cls)
         logger.info(f"[StrategyPlugin] Registered strategy '{strat_cls.strategy_id}' via plugin '{self.metadata.id}'")

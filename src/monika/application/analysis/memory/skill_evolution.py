@@ -58,7 +58,7 @@ class MicroPlaybookCompiler:
     ) -> List[Dict[str, Any]]:
         """
         Scans DecisionReflection and PaperTradeRecord to compile qualifying micro-playbooks.
-        
+
         Returns:
             List of compiled playbook metadata dicts.
         """
@@ -72,13 +72,19 @@ class MicroPlaybookCompiler:
 
         for sym in symbols:
             # Query resolved reflections with specific lessons
-            reflections = (await session.execute(
-                select(DecisionReflection)
-                .where(DecisionReflection.symbol == sym)
-                .where(DecisionReflection.status == "resolved")
-                .order_by(desc(DecisionReflection.resolved_at))
-                .limit(50)
-            )).scalars().all()
+            reflections = (
+                (
+                    await session.execute(
+                        select(DecisionReflection)
+                        .where(DecisionReflection.symbol == sym)
+                        .where(DecisionReflection.status == "resolved")
+                        .order_by(desc(DecisionReflection.resolved_at))
+                        .limit(50)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             if not reflections:
                 continue
@@ -129,10 +135,14 @@ class MicroPlaybookCompiler:
                         lesson_txt = getattr(t, "specific_lesson", None) or getattr(t, "alpha_lesson", None)
                         adj = getattr(t, "next_trade_adjustment", None)
                         if lesson_txt:
-                            top_lessons.append(f"- **Lesson**: {lesson_txt}" + (f" -> *Adjustment*: {adj}" if adj else ""))
+                            top_lessons.append(
+                                f"- **Lesson**: {lesson_txt}" + (f" -> *Adjustment*: {adj}" if adj else "")
+                            )
 
                     distinct_lessons = list(dict.fromkeys(top_lessons))[:5]
-                    lessons_block = "\n".join(distinct_lessons) if distinct_lessons else "- Follow baseline SMC structure."
+                    lessons_block = (
+                        "\n".join(distinct_lessons) if distinct_lessons else "- Follow baseline SMC structure."
+                    )
 
                     linter_regime = regime if regime in PlaybookLinter.VALID_REGIMES else "ANY"
 
@@ -145,7 +155,7 @@ win_rate: {win_rate:.2f}
 sample_size: {len(trades)}
 ---
 # Micro-Playbook: {sym} in {regime} Regime
-*Compiled autonomously by SkillEvolutionCompiler on {clock.now().strftime('%Y-%m-%d %H:%M UTC')}*
+*Compiled autonomously by SkillEvolutionCompiler on {clock.now().strftime("%Y-%m-%d %H:%M UTC")}*
 
 ## Entry Conditions & Triggers
 {lessons_block}
@@ -170,7 +180,7 @@ sample_size: {len(trades)}
                             playbook_name=playbook_name,
                             content=content,
                             action=action,
-                            reason=f"Empirical compilation ({len(trades)} trades, {win_rate*100:.1f}% WR)",
+                            reason=f"Empirical compilation ({len(trades)} trades, {win_rate * 100:.1f}% WR)",
                             author="micro_playbook_compiler",
                         )
 
@@ -179,30 +189,42 @@ sample_size: {len(trades)}
                         os.replace(tmp_path, playbook_path)
                         invalidate_cache()
                     try:
-                        from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
+                        from monika.application.analysis.memory.playbook_lifecycle import (
+                            PlaybookLifecycleManager,
+                            PlaybookStatus,
+                        )
+
                         lifecycle = PlaybookLifecycleManager()
                         lifecycle.register_playbook(playbook_name, status=PlaybookStatus.ACTIVE)
                     except Exception as lm_err:
-                        logger.warning(f"MicroPlaybookCompiler: Failed to register '{playbook_name}' in lifecycle FSM: {lm_err}")
-                    logger.info(f"MicroPlaybookCompiler: Compiled & promoted '{playbook_name}.md' (hash={blob_hash[:8]}, {win_rate*100:.0f}% WR).")
+                        logger.warning(
+                            f"MicroPlaybookCompiler: Failed to register '{playbook_name}' in lifecycle FSM: {lm_err}"
+                        )
+                    logger.info(
+                        f"MicroPlaybookCompiler: Compiled & promoted '{playbook_name}.md' (hash={blob_hash[:8]}, {win_rate * 100:.0f}% WR)."
+                    )
 
                     # Log to activity log
-                    session.add(ActivityLog(
-                        timestamp=clock.now(),
-                        category="learning",
-                        description=f"Autonomous Skill Compiler: Promoted micro-playbook '{playbook_name}.md' ({len(trades)} trades, {win_rate*100:.1f}% WR, hash={blob_hash[:8]})",
-                        actor="skill_compiler"
-                    ))
+                    session.add(
+                        ActivityLog(
+                            timestamp=clock.now(),
+                            category="learning",
+                            description=f"Autonomous Skill Compiler: Promoted micro-playbook '{playbook_name}.md' ({len(trades)} trades, {win_rate * 100:.1f}% WR, hash={blob_hash[:8]})",
+                            actor="skill_compiler",
+                        )
+                    )
                     await session.commit()
 
-                    compiled_playbooks.append({
-                        "symbol": sym,
-                        "regime": regime,
-                        "filename": f"{playbook_name}.md",
-                        "win_rate": win_rate,
-                        "trades": len(trades),
-                        "streak": consecutive_wins,
-                        "blob_hash": blob_hash,
-                    })
+                    compiled_playbooks.append(
+                        {
+                            "symbol": sym,
+                            "regime": regime,
+                            "filename": f"{playbook_name}.md",
+                            "win_rate": win_rate,
+                            "trades": len(trades),
+                            "streak": consecutive_wins,
+                            "blob_hash": blob_hash,
+                        }
+                    )
 
         return compiled_playbooks

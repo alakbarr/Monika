@@ -72,9 +72,7 @@ class OrderStateMachine:
             )
 
         if curr != target and not curr.can_transition_to(target):
-            raise InvalidOrderStateTransitionError(
-                f"Illegal order state transition: {curr.value} -> {target.value}"
-            )
+            raise InvalidOrderStateTransitionError(f"Illegal order state transition: {curr.value} -> {target.value}")
 
         order.status = target
         return {
@@ -105,6 +103,7 @@ class OrderStateMachine:
         Delegates persistence and event orchestration to OrderLifecycleService.
         """
         from monika.application.execution.service.order_lifecycle_service import OrderLifecycleService
+
         return await OrderLifecycleService.transition_order_state(
             session=session,
             order=order,

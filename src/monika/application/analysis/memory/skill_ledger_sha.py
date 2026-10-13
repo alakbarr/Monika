@@ -32,7 +32,7 @@ class ShaLedgerBlock:
     timestamp: float
     skill_id: str
     mutation_type: str  # 'CREATE', 'UPDATE', 'DEPRECATE', 'ROLLBACK'
-    author_role: str    # 'macro_specialist', 'quant_arbiter', 'learning_loop'
+    author_role: str  # 'macro_specialist', 'quant_arbiter', 'learning_loop'
     content_sha256: str
     content_text: str
     metadata: Dict[str, Any]
@@ -55,6 +55,7 @@ class ShaSkillLedger:
 
     def __init__(self, ledger_file: Optional[Path] = None):
         from monika.infrastructure.infra.paths import DATA_DIR
+
         self.ledger_file = ledger_file or (DATA_DIR / "skill_ledger_sha.jsonl")
         self._chain: List[ShaLedgerBlock] = []
         self._load_ledger()
@@ -117,8 +118,7 @@ class ShaSkillLedger:
             f.write(json.dumps(asdict(temp_block)) + "\n")
 
         logger.info(
-            f"[ShaSkillLedger] Block #{index} committed for '{skill_id}' "
-            f"type={mutation_type} hash={block_hash[:12]}"
+            f"[ShaSkillLedger] Block #{index} committed for '{skill_id}' type={mutation_type} hash={block_hash[:12]}"
         )
         return temp_block
 
@@ -136,7 +136,10 @@ class ShaSkillLedger:
                 return False, f"Sequence error at index {i}: block.index={block.index}"
 
             if block.prev_hash != expected_prev_hash:
-                return False, f"Broken chain at index {i}: expected prev_hash={expected_prev_hash[:12]}, got={block.prev_hash[:12]}"
+                return (
+                    False,
+                    f"Broken chain at index {i}: expected prev_hash={expected_prev_hash[:12]}, got={block.prev_hash[:12]}",
+                )
 
             # Verify content hash matches text
             actual_content_hash = hashlib.sha256(block.content_text.encode("utf-8")).hexdigest()
@@ -146,7 +149,10 @@ class ShaSkillLedger:
             # Verify block hash
             calc_hash = block.calculate_expected_hash()
             if calc_hash != block.block_hash:
-                return False, f"Tampered block hash at index {i}: expected {calc_hash[:12]}, got {block.block_hash[:12]}"
+                return (
+                    False,
+                    f"Tampered block hash at index {i}: expected {calc_hash[:12]}, got {block.block_hash[:12]}",
+                )
 
             expected_prev_hash = block.block_hash
 

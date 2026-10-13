@@ -27,7 +27,7 @@ class ColumnSpec:
     min_width: int
     max_width: int
     priority: int = 1  # 1 = Essential (never drop), 2 = Normal, 3 = Low (drop if narrow)
-    flex: int = 1      # Relative weight for distributing extra width
+    flex: int = 1  # Relative weight for distributing extra width
 
 
 def compute_progressive_width_budget(

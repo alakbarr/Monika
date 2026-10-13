@@ -79,14 +79,20 @@ class PlaybookCurator:
         since = now - timedelta(days=60)
 
         # 1. Fetch profitable paper trades
-        trades = (await session.execute(
-            select(PaperTradeRecord)
-            .where(PaperTradeRecord.symbol == clean_sym)
-            .where(PaperTradeRecord.status == "closed")
-            .where(PaperTradeRecord.closed_at >= since)
-            .order_by(desc(PaperTradeRecord.closed_at))
-            .limit(50)
-        )).scalars().all()
+        trades = (
+            (
+                await session.execute(
+                    select(PaperTradeRecord)
+                    .where(PaperTradeRecord.symbol == clean_sym)
+                    .where(PaperTradeRecord.status == "closed")
+                    .where(PaperTradeRecord.closed_at >= since)
+                    .order_by(desc(PaperTradeRecord.closed_at))
+                    .limit(50)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         if not trades:
             return None
@@ -102,18 +108,28 @@ class PlaybookCurator:
             return None
 
         # 2. Fetch reflections for winning trades
-        reflections = (await session.execute(
-            select(DecisionReflection)
-            .where(DecisionReflection.symbol == clean_sym)
-            .where(DecisionReflection.status == "resolved")
-            .where(DecisionReflection.was_profitable == True)
-            .order_by(desc(DecisionReflection.resolved_at))
-            .limit(30)
-        )).scalars().all()
+        reflections = (
+            (
+                await session.execute(
+                    select(DecisionReflection)
+                    .where(DecisionReflection.symbol == clean_sym)
+                    .where(DecisionReflection.status == "resolved")
+                    .where(DecisionReflection.was_profitable == True)
+                    .order_by(desc(DecisionReflection.resolved_at))
+                    .limit(30)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         raw_lessons = []
         for r in reflections:
-            txt = getattr(r, "specific_lesson", None) or getattr(r, "alpha_lesson", None) or getattr(r, "reflection_text", "")
+            txt = (
+                getattr(r, "specific_lesson", None)
+                or getattr(r, "alpha_lesson", None)
+                or getattr(r, "reflection_text", "")
+            )
             if txt:
                 raw_lessons.append(txt)
 
@@ -131,8 +147,12 @@ class PlaybookCurator:
 
         # Ensure we have at least 3 substantive declarative rules
         if len(declarative_rules) < 3:
-            declarative_rules.append(f"- Empirical observation: Momentum confluence on H4 confirms directional edge for {clean_sym}.")
-            declarative_rules.append(f"- Historical precedent: Avoiding high-impact news releases within 30 minutes protects trailing profit.")
+            declarative_rules.append(
+                f"- Empirical observation: Momentum confluence on H4 confirms directional edge for {clean_sym}."
+            )
+            declarative_rules.append(
+                f"- Historical precedent: Avoiding high-impact news releases within 30 minutes protects trailing profit."
+            )
 
         rules_body = "\n".join(declarative_rules)
 

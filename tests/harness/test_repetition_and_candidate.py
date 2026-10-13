@@ -8,7 +8,7 @@ from analysis.harness.verification_evidence_ledger import VerificationEvidenceLe
 def test_repetition_guard_detects_loop():
     repeated_pattern = "EURUSD order block identified at 1.0850. Confirming setup. " * 5
     text = f"Initial thoughts. {repeated_pattern} More thoughts."
-    
+
     is_loop, sample = detect_text_repetition(text, min_phrase_len=30, min_repeats=3)
     assert is_loop is True
     assert "EURUSD" in sample
@@ -27,14 +27,16 @@ def test_repetition_guard_passes_normal_text():
 
 def test_candidate_preservation_downgrade_logic():
     # Test TradeStopGate detecting an unverified trade proposal
-    unverified_reply = json.dumps({
-        "action": "BUY",
-        "direction": "BUY",
-        "confidence": 0.85,
-        "entry_price": 1.0850,
-        "stop_loss": 1.0820,
-        "take_profit": 1.0895,
-    })
+    unverified_reply = json.dumps(
+        {
+            "action": "BUY",
+            "direction": "BUY",
+            "confidence": 0.85,
+            "entry_price": 1.0850,
+            "stop_loss": 1.0820,
+            "take_profit": 1.0895,
+        }
+    )
 
     empty_ledger = VerificationEvidenceLedger()
 
@@ -62,15 +64,15 @@ def test_candidate_preservation_downgrade_logic():
 
 def test_durable_failed_turn_sealing():
     # Test turn sealing logic: user message followed by synthetic assistant turn on fatal exception
-    current_messages = [
-        {"role": "user", "content": "Analyze EURUSD setup"}
-    ]
+    current_messages = [{"role": "user", "content": "Analyze EURUSD setup"}]
 
     if current_messages and current_messages[-1].get("role") == "user":
-        current_messages.append({
-            "role": "assistant",
-            "content": "[Analysis turn terminated prematurely due to provider error. State preserved.]"
-        })
+        current_messages.append(
+            {
+                "role": "assistant",
+                "content": "[Analysis turn terminated prematurely due to provider error. State preserved.]",
+            }
+        )
 
     assert len(current_messages) == 2
     assert current_messages[-1]["role"] == "assistant"

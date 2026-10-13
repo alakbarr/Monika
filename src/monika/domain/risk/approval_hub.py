@@ -39,7 +39,6 @@ class ApprovalStatus(str, Enum):
     EXPIRED = "expired"
 
 
-
 @dataclass
 class ApprovalRequest:
     token: str
@@ -119,6 +118,7 @@ class BoundedMandate:
     Enforces a strict 30-day operator authorization window, symbol scope,
     and portfolio risk boundaries with cryptographic tamper-evidence.
     """
+
     mandate_id: str
     operator: str
     authorized_symbols: List[str] = field(default_factory=lambda: ["ALL"])
@@ -141,6 +141,7 @@ class BoundedMandate:
     def compute_signature(self, secret: str = "monika_mandate_sec") -> str:
         import hashlib
         import json
+
         payload = {
             "mandate_id": self.mandate_id,
             "operator": self.operator,
@@ -494,9 +495,7 @@ class ApprovalHub:
         """Returns active, non-expired pending requests."""
         now = time.time()
         return [
-            req
-            for req in self._requests.values()
-            if req.status == ApprovalStatus.PENDING and now <= req.expires_at
+            req for req in self._requests.values() if req.status == ApprovalStatus.PENDING and now <= req.expires_at
         ]
 
     def get_pending_requests(self) -> List[ApprovalRequest]:
@@ -654,6 +653,7 @@ class ApprovalHub:
             "```json",
         ]
         import json
+
         lines.append(json.dumps(req.details, indent=2))
         lines.append("```")
         lines.append("")
@@ -731,7 +731,10 @@ class ApprovalHub:
         if not target_id or target_id not in self._mandates:
             revoked_list = [m for m in self._mandates.values() if m.status == "revoked"]
             if revoked_list:
-                return False, f"Operator mandate '{revoked_list[-1].mandate_id}' has been revoked. Re-authorization required."
+                return (
+                    False,
+                    f"Operator mandate '{revoked_list[-1].mandate_id}' has been revoked. Re-authorization required.",
+                )
             return False, "No active operator mandate found. Re-authorization required."
 
         mandate = self._mandates[target_id]
@@ -750,13 +753,15 @@ class ApprovalHub:
         # Check symbol authorization
         auth_upper = [s.upper() for s in mandate.authorized_symbols]
         if "ALL" not in auth_upper and symbol.upper() not in auth_upper:
-            return False, f"Symbol '{symbol}' not authorized under mandate '{target_id}'. Allowed: {mandate.authorized_symbols}."
+            return (
+                False,
+                f"Symbol '{symbol}' not authorized under mandate '{target_id}'. Allowed: {mandate.authorized_symbols}.",
+            )
 
         # Check risk percent
         if risk_pct > mandate.max_risk_per_trade_pct:
             return False, (
-                f"Proposed risk {risk_pct:.2f}% exceeds mandate limit "
-                f"{mandate.max_risk_per_trade_pct:.2f}%."
+                f"Proposed risk {risk_pct:.2f}% exceeds mandate limit {mandate.max_risk_per_trade_pct:.2f}%."
             )
 
         # Check concurrent positions limit
@@ -773,10 +778,7 @@ class ApprovalHub:
 
         # Check leverage limit
         if leverage > mandate.max_leverage:
-            return False, (
-                f"Leverage {leverage:.1f}x exceeds mandate ceiling "
-                f"{mandate.max_leverage:.1f}x."
-            )
+            return False, (f"Leverage {leverage:.1f}x exceeds mandate ceiling {mandate.max_leverage:.1f}x.")
 
         return True, f"Trade complies with Bounded Mandate '{target_id}'."
 
@@ -820,6 +822,7 @@ class ApprovalHub:
 
 
 _global_approval_hub: Optional[ApprovalHub] = None
+
 
 def get_approval_hub() -> ApprovalHub:
     return ApprovalHub.get_instance()

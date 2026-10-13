@@ -37,6 +37,7 @@ def truncate_middle_text(text: str, max_chars: int) -> str:
 @dataclass
 class TrajectoryCompressionConfig:
     """Configuration options for trajectory compaction."""
+
     target_max_tokens: int = 8192
     protect_first_system: bool = True
     protect_first_user: bool = True
@@ -176,12 +177,22 @@ class DatasetTrajectoryCompressor:
                         # Convert ShareGPT back to role format, compress, then re-format
                         temp_msgs = []
                         for turn in record["conversations"]:
-                            role = "user" if turn.get("from") == "human" else "assistant" if turn.get("from") == "gpt" else "system"
+                            role = (
+                                "user"
+                                if turn.get("from") == "human"
+                                else "assistant"
+                                if turn.get("from") == "gpt"
+                                else "system"
+                            )
                             temp_msgs.append({"role": role, "content": turn.get("value", "")})
                         compressed_temp = self.compress(temp_msgs)
                         record["conversations"] = [
                             {
-                                "from": "human" if m["role"] == "user" else "gpt" if m["role"] == "assistant" else "system",
+                                "from": "human"
+                                if m["role"] == "user"
+                                else "gpt"
+                                if m["role"] == "assistant"
+                                else "system",
                                 "value": m["content"],
                             }
                             for m in compressed_temp

@@ -103,7 +103,7 @@ def test_macro_regime_oracle_evaluation():
         "expected_outcome": {
             "valid_regimes": ["RISK_ON", "NEUTRAL"],
             "expected_cb_stance": "hawkish",
-        }
+        },
     }
 
     # Case 1: Valid regime & policy stance

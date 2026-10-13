@@ -49,7 +49,7 @@ class OfflineEvalRunner:
         all_violations = geo_result["violations"] + risk_result["violations"] + disc_result["violations"]
         all_passed_checks = geo_result["checks_passed"] + risk_result["checks_passed"] + disc_result["checks_passed"]
 
-        is_passed = (len(all_violations) == 0)
+        is_passed = len(all_violations) == 0
 
         return {
             "scenario_id": fixture.get("scenario_id", "unknown"),
@@ -62,7 +62,7 @@ class OfflineEvalRunner:
                 "smc_geometry": geo_result,
                 "risk_compliance": risk_result,
                 "trade_discipline": disc_result,
-            }
+            },
         }
 
     def run_suite(self, candidate_decisions: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
@@ -81,13 +81,15 @@ class OfflineEvalRunner:
             dec_data = candidate_decisions.get(scen_id)
             if not dec_data:
                 # If no explicit candidate provided, test against fixture baseline
-                results.append({
-                    "scenario_id": scen_id,
-                    "scenario_name": fix.get("name"),
-                    "passed": False,
-                    "violations": [f"No candidate decision provided for scenario {scen_id}"],
-                    "passed_checks": [],
-                })
+                results.append(
+                    {
+                        "scenario_id": scen_id,
+                        "scenario_name": fix.get("name"),
+                        "passed": False,
+                        "violations": [f"No candidate decision provided for scenario {scen_id}"],
+                        "passed_checks": [],
+                    }
+                )
                 continue
 
             eval_res = self.evaluate_decision(fix, dec_data)
@@ -115,16 +117,16 @@ def get_default_golden_candidates() -> Dict[str, Dict[str, Any]]:
             "symbol": "EURUSD",
             "decision": "BUY",
             "entry_price": 1.08500,
-            "stop_loss": 1.08200,      # sl_dist = 0.00300 (>= 0.8 * atr 0.00350 = 0.00280)
-            "take_profit": 1.08950,     # tp_dist = 0.00450 (R:R = 1.5 >= 1.3)
+            "stop_loss": 1.08200,  # sl_dist = 0.00300 (>= 0.8 * atr 0.00350 = 0.00280)
+            "take_profit": 1.08950,  # tp_dist = 0.00450 (R:R = 1.5 >= 1.3)
             "reason": "Bullish BOS displacement into unmitigated FVG discount",
         },
         "smc_bear_sweep_01": {
             "symbol": "XAUUSD",
             "decision": "SELL",
             "entry_price": 2345.00,
-            "stop_loss": 2353.00,      # sl_dist = 8.00 (>= 0.8 * atr 5.80 = 4.64)
-            "take_profit": 2325.00,     # tp_dist = 20.00 (R:R = 2.5 >= 1.3, <= max_tp 2325.00)
+            "stop_loss": 2353.00,  # sl_dist = 8.00 (>= 0.8 * atr 5.80 = 4.64)
+            "take_profit": 2325.00,  # tp_dist = 20.00 (R:R = 2.5 >= 1.3, <= max_tp 2325.00)
             "reason": "Asian high sweep rejection and CHoCH structural breakdown",
         },
         "smc_choppy_trap_01": {
@@ -151,7 +153,9 @@ if __name__ == "__main__":
     print(f"Loaded {len(fixtures)} fixtures from {FIXTURES_DIR}")
     golden = get_default_golden_candidates()
     report = runner.run_suite(golden)
-    print(f"Eval Suite Scorecard: {report['passed_count']}/{report['total_scenarios']} passed ({report['pass_rate_pct']}%)")
+    print(
+        f"Eval Suite Scorecard: {report['passed_count']}/{report['total_scenarios']} passed ({report['pass_rate_pct']}%)"
+    )
     for r in report["results"]:
         status = "PASS" if r["passed"] else "FAIL"
         print(f"[{status}] {r['scenario_id']}: {r['scenario_name']}")

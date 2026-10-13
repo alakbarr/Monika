@@ -219,13 +219,14 @@ def get_default_risk_data_provider(
     # Dynamic fallback resolution
     try:
         import sys
+
         mod = sys.modules.get("monika.infrastructure.database.repositories.risk_repository")
         if mod and hasattr(mod, "SqlAlchemyRiskRepository"):
             return mod.SqlAlchemyRiskRepository(session=session, settings=settings)
         import importlib
+
         mod = importlib.import_module("monika.infrastructure.database.repositories.risk_repository")
         repo_cls = getattr(mod, "SqlAlchemyRiskRepository")
         return repo_cls(session=session, settings=settings)
     except Exception:
         return None
-

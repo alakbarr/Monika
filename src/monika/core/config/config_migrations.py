@@ -55,7 +55,7 @@ DEFAULT_SUBSETS: Dict[str, Any] = {
 def migrate_settings(raw_settings: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     """
     Applies schema migrations to in-memory settings dictionary.
-    
+
     Returns:
         (migrated_settings, list_of_applied_migrations)
     """
@@ -110,6 +110,7 @@ def check_and_migrate_file(config_path: str) -> bool:
         return False
 
     import yaml
+
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
@@ -126,6 +127,7 @@ def check_and_migrate_file(config_path: str) -> bool:
             logger.info(f"[ConfigMigration] Applying {len(applied)} migrations to {config_path}: {applied}")
             try:
                 from monika.core.config.atomic_writer import AtomicConfigWriter
+
                 AtomicConfigWriter.write(config_path, migrated, create_backup=True)
             except Exception as w_err:
                 logger.warning(f"Atomic write failed in migration ({w_err}), falling back to standard write.")

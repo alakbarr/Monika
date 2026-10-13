@@ -12,12 +12,15 @@ class DummyProvider(BaseLLMClient):
         self.recorded_calls = []
 
     async def run_tool_agent(self, messages, tools, system_prompt):
-        self.recorded_calls.append({
-            "messages": [dict(m) for m in messages],
-            "tools": list(tools) if tools else [],
-            "system_prompt": system_prompt,
-        })
+        self.recorded_calls.append(
+            {
+                "messages": [dict(m) for m in messages],
+                "tools": list(tools) if tools else [],
+                "system_prompt": system_prompt,
+            }
+        )
         from analysis.providers.base_provider import MockResponse, MockBlock
+
         return MockResponse(
             content=[MockBlock("text", text="All analysis done.")],
             stop_reason="end_turn",
@@ -36,13 +39,7 @@ class DummyProvider(BaseLLMClient):
 
 
 def test_tool_schema_recursive_canonicalization():
-    raw_schema = {
-        "z_prop": {"b_sub": 2, "a_sub": 1},
-        "a_prop": [
-            {"d": 4, "c": 3},
-            {"b": 2, "a": 1}
-        ]
-    }
+    raw_schema = {"z_prop": {"b_sub": 2, "a_sub": 1}, "a_prop": [{"d": 4, "c": 3}, {"b": 2, "a": 1}]}
     canonical = _canonicalize_schema(raw_schema)
     assert list(canonical.keys()) == ["a_prop", "z_prop"]
     assert list(canonical["z_prop"].keys()) == ["a_sub", "b_sub"]
@@ -107,9 +104,7 @@ async def test_harness_negative_prompt_cache_rollback_on_failure():
     client = FailingMockClient()
     harness = AgentHarness(llm_client=client, settings={})
 
-    initial_messages = [
-        {"role": "user", "content": "Analyze USDJPY liquidity"}
-    ]
+    initial_messages = [{"role": "user", "content": "Analyze USDJPY liquidity"}]
 
     res = await harness.run_agent_from_messages(
         session=None,
@@ -124,4 +119,3 @@ async def test_harness_negative_prompt_cache_rollback_on_failure():
     # Input messages passed in initial_messages remain unmodified (clean checkpoint preserved)
     assert len(initial_messages) == 1
     assert initial_messages[0]["content"] == "Analyze USDJPY liquidity"
-

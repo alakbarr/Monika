@@ -39,8 +39,14 @@ class CostTracker:
         task_roles = s.get("llm", {}).get("task_roles", {})
         analysis_cfg = s.get("analysis", {}) or s.get("claude", {})
         def_model = s.get("llm", {}).get("default_model", "")
-        stage1_model = task_roles.get("stage1_fundamental", {}).get("primary") or analysis_cfg.get("fundamental_model") or def_model
-        stage2_model = task_roles.get("stage2_per_asset_primary", {}).get("primary") or analysis_cfg.get("model") or def_model
+        stage1_model = (
+            task_roles.get("stage1_fundamental", {}).get("primary")
+            or analysis_cfg.get("fundamental_model")
+            or def_model
+        )
+        stage2_model = (
+            task_roles.get("stage2_per_asset_primary", {}).get("primary") or analysis_cfg.get("model") or def_model
+        )
 
         calculated_cost: Optional[float] = None
 
@@ -48,10 +54,12 @@ class CostTracker:
         if cycle_id:
             try:
                 from monika.infrastructure.database.models import TokenUsageLog
-                db_cycle_cost = (await session.execute(
-                    select(func.sum(TokenUsageLog.cost_estimate))
-                    .where(TokenUsageLog.cycle_id == str(cycle_id))
-                )).scalar()
+
+                db_cycle_cost = (
+                    await session.execute(
+                        select(func.sum(TokenUsageLog.cost_estimate)).where(TokenUsageLog.cycle_id == str(cycle_id))
+                    )
+                ).scalar()
                 if db_cycle_cost is not None:
                     calculated_cost = round(float(db_cycle_cost), 4)
             except Exception as e:
@@ -60,8 +68,11 @@ class CostTracker:
         # 2. Fallback ke kalkulasi manual jika belum terhitung
         if calculated_cost is None:
             from monika.core.analytics.pricing import cost_usd, infer_provider_from_model
+
             p1 = task_roles.get("stage1_fundamental", {}).get("provider") or infer_provider_from_model(stage1_model)
-            p2 = task_roles.get("stage2_per_asset_primary", {}).get("provider") or infer_provider_from_model(stage2_model)
+            p2 = task_roles.get("stage2_per_asset_primary", {}).get("provider") or infer_provider_from_model(
+                stage2_model
+            )
             cost_stage1 = cost_usd(stage1_model, stage1_input, stage1_output, provider=p1)
             cost_stage2 = cost_usd(stage2_model, stage2_input, stage2_output, provider=p2)
             calculated_cost = round(cost_stage1 + cost_stage2, 4)
@@ -79,9 +90,9 @@ class CostTracker:
         }
 
         # Load existing history for backup tracking
-        cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == "api_cost_tracking")
-        )).scalar_one_or_none()
+        cfg = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "api_cost_tracking"))
+        ).scalar_one_or_none()
 
         history = []
         if cfg and cfg.value:
@@ -99,11 +110,15 @@ class CostTracker:
             session.add(SystemConfig(key="api_cost_tracking", value=json.dumps(history)))
 
         await session.commit()
-        logger.info(f"Cycle API cost logged: ${calculated_cost:.4f} ({stage1_input + stage2_input} in, {stage1_output + stage2_output} out)")
+        logger.info(
+            f"Cycle API cost logged: ${calculated_cost:.4f} ({stage1_input + stage2_input} in, {stage1_output + stage2_output} out)"
+        )
 
         # --- Budget alert check ---
         if settings:
-            await CostTracker.check_and_update_budget_status(session, settings, history=history, latest_cost=calculated_cost)
+            await CostTracker.check_and_update_budget_status(
+                session, settings, history=history, latest_cost=calculated_cost
+            )
 
         return calculated_cost
 
@@ -117,12 +132,13 @@ class CostTracker:
         """
         Evaluasi pengeluaran bulan berjalan & harian vs anggaran secara dinamis (SSOT: TokenUsageLog).
         Memperbarui SystemConfig(key='budget_pause') dan cache memory CostTracker.
-        
+
         Returns:
             dict ringkasan status budget (mtd_cost, monthly_budget, usage_pct, daily_cost, daily_budget, is_paused).
         """
         cost_cfg = (settings or {}).get("cost_tracking", {})
         from monika.core.config.settings import DEFAULT_MONTHLY_BUDGET_USD
+
         budget_usd: float = float(cost_cfg.get("monthly_budget_usd", DEFAULT_MONTHLY_BUDGET_USD))
         if not budget_usd or budget_usd <= 0:
             budget_usd = DEFAULT_MONTHLY_BUDGET_USD
@@ -160,23 +176,22 @@ class CostTracker:
                 return default
 
             db_mtd_res = await session.execute(
-                select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0))
-                .where(TokenUsageLog.timestamp >= month_start)
+                select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0)).where(
+                    TokenUsageLog.timestamp >= month_start
+                )
             )
             mtd_cost = _extract_scalar(db_mtd_res, 0.0)
 
             db_daily_res = await session.execute(
-                select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0))
-                .where(TokenUsageLog.timestamp >= day_start_dt)
+                select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0)).where(
+                    TokenUsageLog.timestamp >= day_start_dt
+                )
             )
             daily_cost_usd = _extract_scalar(db_daily_res, 0.0)
 
             # Agregasi token harian riil per provider
             provider_token_res = await session.execute(
-                select(
-                    func.lower(TokenUsageLog.provider),
-                    func.coalesce(func.sum(TokenUsageLog.total_tokens), 0)
-                )
+                select(func.lower(TokenUsageLog.provider), func.coalesce(func.sum(TokenUsageLog.total_tokens), 0))
                 .where(TokenUsageLog.timestamp >= day_start_dt)
                 .group_by(func.lower(TokenUsageLog.provider))
             )
@@ -184,10 +199,14 @@ class CostTracker:
             token_map = {}
             if isinstance(provider_token_rows, (list, tuple)):
                 for row in provider_token_rows:
-                    if isinstance(row, (list, tuple)) and len(row) >= 2 and not isinstance(row[0], (MagicMock, AsyncMock)):
+                    if (
+                        isinstance(row, (list, tuple))
+                        and len(row) >= 2
+                        and not isinstance(row[0], (MagicMock, AsyncMock))
+                    ):
                         try:
                             token_map[str(row[0])] = int(row[1])
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
             daily_anthropic = token_map.get("anthropic", 0)
             daily_gemini = token_map.get("gemini", 0)
@@ -196,9 +215,9 @@ class CostTracker:
             logger.warning(f"TokenUsageLog SSOT query failed, falling back to history JSON: {db_err}")
             if not isinstance(history, list):
                 try:
-                    cfg = (await session.execute(
-                        select(SystemConfig).where(SystemConfig.key == "api_cost_tracking")
-                    )).scalar_one_or_none()
+                    cfg = (
+                        await session.execute(select(SystemConfig).where(SystemConfig.key == "api_cost_tracking"))
+                    ).scalar_one_or_none()
                     parsed = json.loads(cfg.value) if cfg and cfg.value else []
                     history = parsed if isinstance(parsed, list) else []
                 except Exception:
@@ -215,14 +234,16 @@ class CostTracker:
                 if isinstance(e, dict) and e.get("cycle_date", "").startswith(current_day)
             )
             daily_anthropic = sum(
-                (e.get("stage1_tokens", 0) if "claude" in str(e.get("stage1_model", "")).lower() else 0) +
-                (e.get("stage2_tokens", 0) if "claude" in str(e.get("stage2_model", "")).lower() else 0)
-                for e in (history or []) if e.get("cycle_date", "").startswith(current_day)
+                (e.get("stage1_tokens", 0) if "claude" in str(e.get("stage1_model", "")).lower() else 0)
+                + (e.get("stage2_tokens", 0) if "claude" in str(e.get("stage2_model", "")).lower() else 0)
+                for e in (history or [])
+                if e.get("cycle_date", "").startswith(current_day)
             )
             daily_gemini = sum(
-                (e.get("stage1_tokens", 0) if "gemini" in str(e.get("stage1_model", "")).lower() else 0) +
-                (e.get("stage2_tokens", 0) if "gemini" in str(e.get("stage2_model", "")).lower() else 0)
-                for e in (history or []) if e.get("cycle_date", "").startswith(current_day)
+                (e.get("stage1_tokens", 0) if "gemini" in str(e.get("stage1_model", "")).lower() else 0)
+                + (e.get("stage2_tokens", 0) if "gemini" in str(e.get("stage2_model", "")).lower() else 0)
+                for e in (history or [])
+                if e.get("cycle_date", "").startswith(current_day)
             )
 
         # Enforce Monotonic Invariant: MTD harus selalu >= Daily
@@ -234,9 +255,11 @@ class CostTracker:
         is_daily_budget_exceeded = daily_budget_usd > 0 and daily_cost_usd >= daily_budget_usd
         alerts = []
         if daily_anthropic >= limit_anthropic * 0.9:
-            alerts.append(f"Anthropic limit at {daily_anthropic/limit_anthropic*100:.1f}% ({daily_anthropic}/{limit_anthropic})")
+            alerts.append(
+                f"Anthropic limit at {daily_anthropic / limit_anthropic * 100:.1f}% ({daily_anthropic}/{limit_anthropic})"
+            )
         if daily_gemini >= limit_gemini * 0.9:
-            alerts.append(f"Gemini limit at {daily_gemini/limit_gemini*100:.1f}% ({daily_gemini}/{limit_gemini})")
+            alerts.append(f"Gemini limit at {daily_gemini / limit_gemini * 100:.1f}% ({daily_gemini}/{limit_gemini})")
         if is_daily_budget_exceeded:
             alerts.append(f"Daily dollar spend limit reached: ${daily_cost_usd:.2f} >= ${daily_budget_usd:.2f}")
 
@@ -263,10 +286,10 @@ class CostTracker:
                 logger.warning(f"Could not send budget alert: {e}")
 
         should_pause = (usage_pct >= 95) or is_daily_budget_exceeded
-        
-        pause_cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == "budget_pause")
-        )).scalar_one_or_none()
+
+        pause_cfg = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "budget_pause"))
+        ).scalar_one_or_none()
 
         if should_pause:
             if pause_cfg:
@@ -279,7 +302,9 @@ class CostTracker:
             if is_daily_budget_exceeded and not (usage_pct >= 95):
                 try:
                     notifier = AgentNotifier()
-                    await notifier.send_critical(f"[STOP] <b>DAILY SPEND CIRCUIT BREAKER TRIPPED</b>\nDaily AI spend (${daily_cost_usd:.2f}) reached daily limit (${daily_budget_usd:.2f}). System paused.")
+                    await notifier.send_critical(
+                        f"[STOP] <b>DAILY SPEND CIRCUIT BREAKER TRIPPED</b>\nDaily AI spend (${daily_cost_usd:.2f}) reached daily limit (${daily_budget_usd:.2f}). System paused."
+                    )
                 except Exception:
                     pass
         else:
@@ -287,7 +312,9 @@ class CostTracker:
             if pause_cfg and pause_cfg.value == "true":
                 pause_cfg.value = "false"
                 await session.commit()
-                logger.info(f"Budget pause auto-cleared: MTD ${mtd_cost:.4f}/${budget_usd:.2f}, Daily ${daily_cost_usd:.4f}/${daily_budget_usd:.2f}")
+                logger.info(
+                    f"Budget pause auto-cleared: MTD ${mtd_cost:.4f}/${budget_usd:.2f}, Daily ${daily_cost_usd:.4f}/${daily_budget_usd:.2f}"
+                )
             CostTracker._cached_pause_state = False
             CostTracker._cached_pause_time = now
 
@@ -345,21 +372,27 @@ class CostTracker:
         Jika settings disediakan atau cache kedaluwarsa, melakukan re-evaluasi dinamis.
         """
         now = datetime.now(timezone.utc)
-        
+
         # Jika settings disediakan dan (dipaksa atau cache kadaluwarsa > 60s), re-evaluasi dinamis
         if settings is not None:
-            is_stale = (CostTracker._cached_pause_time is None) or ((now - CostTracker._cached_pause_time).total_seconds() >= 60)
+            is_stale = (CostTracker._cached_pause_time is None) or (
+                (now - CostTracker._cached_pause_time).total_seconds() >= 60
+            )
             if force_recheck or is_stale:
                 status = await CostTracker.check_and_update_budget_status(session, settings)
                 return status["is_paused"]
 
-        if not force_recheck and CostTracker._cached_pause_time and (now - CostTracker._cached_pause_time).total_seconds() < 60:
+        if (
+            not force_recheck
+            and CostTracker._cached_pause_time
+            and (now - CostTracker._cached_pause_time).total_seconds() < 60
+        ):
             return bool(CostTracker._cached_pause_state)
-            
-        cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == "budget_pause")
-        )).scalar_one_or_none()
-        
+
+        cfg = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "budget_pause"))
+        ).scalar_one_or_none()
+
         is_paused = cfg is not None and cfg.value == "true"
         CostTracker._cached_pause_state = is_paused
         CostTracker._cached_pause_time = now
@@ -368,9 +401,9 @@ class CostTracker:
     @staticmethod
     async def clear_budget_pause(session: AsyncSession) -> None:
         """Menghapus flag pause anggaran (dipanggil setelah user mereset anggaran)."""
-        cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == "budget_pause")
-        )).scalar_one_or_none()
+        cfg = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "budget_pause"))
+        ).scalar_one_or_none()
         if cfg:
             cfg.value = "false"
         else:
@@ -388,14 +421,21 @@ class CostTracker:
 
         try:
             from monika.infrastructure.database.models import TokenUsageLog
-            cost_7d_db = (await session.execute(
-                select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0))
-                .where(TokenUsageLog.timestamp >= seven_days_ago)
-            )).scalar_one()
-            cycles_7d_db = (await session.execute(
-                select(func.count(func.distinct(TokenUsageLog.cycle_id)))
-                .where(TokenUsageLog.timestamp >= seven_days_ago, TokenUsageLog.cycle_id.isnot(None))
-            )).scalar_one()
+
+            cost_7d_db = (
+                await session.execute(
+                    select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0)).where(
+                        TokenUsageLog.timestamp >= seven_days_ago
+                    )
+                )
+            ).scalar_one()
+            cycles_7d_db = (
+                await session.execute(
+                    select(func.count(func.distinct(TokenUsageLog.cycle_id))).where(
+                        TokenUsageLog.timestamp >= seven_days_ago, TokenUsageLog.cycle_id.isnot(None)
+                    )
+                )
+            ).scalar_one()
 
             total_7d = float(cost_7d_db or 0.0)
             cycles_cnt = int(cycles_7d_db or 0)
@@ -407,10 +447,10 @@ class CostTracker:
             }
         except Exception as db_err:
             logger.debug(f"Rolling 7-day TokenUsageLog query failed, using history fallback: {db_err}")
-            cfg = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key == "api_cost_tracking")
-            )).scalar_one_or_none()
-            
+            cfg = (
+                await session.execute(select(SystemConfig).where(SystemConfig.key == "api_cost_tracking"))
+            ).scalar_one_or_none()
+
             history = []
             if cfg and cfg.value:
                 try:
@@ -426,7 +466,7 @@ class CostTracker:
                         recent.append(entry)
                 except Exception:
                     continue
-                    
+
             total_7d = sum(float(e.get("total_cost_usd", 0.0) or 0.0) for e in recent)
             return {
                 "cost_7d": round(total_7d, 4),

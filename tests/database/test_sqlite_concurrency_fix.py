@@ -2,6 +2,7 @@
 Test suite verifying SQLite concurrency resilience, BEGIN IMMEDIATE isolation,
 and prevention of cascading PendingRollbackErrors across background tasks.
 """
+
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
@@ -121,11 +122,10 @@ async def test_fetch_and_save_all_resilient_to_pair_failure():
     mock_session.rollback = AsyncMock()
     mock_session.expunge_all = MagicMock()
 
-    sample_df = pd.DataFrame([
-        {"time": 1700000000, "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.05, "volume": 100}
-    ])
+    sample_df = pd.DataFrame([{"time": 1700000000, "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.05, "volume": 100}])
 
     call_count = 0
+
     async def mock_get_ohlcv(symbol, tf, count):
         return sample_df
 
@@ -224,9 +224,11 @@ async def test_startup_checks_sqlite_no_deadlock(tmp_path):
     sm = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
     checker = StartupChecker({"paper_trading": {"enabled": True}}, db_engine=engine)
-    with patch("database.db.AsyncSessionLocal", sm), \
-         patch("database.db.get_engine", return_value=engine), \
-         patch("database.db.engine", engine):
+    with (
+        patch("database.db.AsyncSessionLocal", sm),
+        patch("database.db.get_engine", return_value=engine),
+        patch("database.db.engine", engine),
+    ):
         ok, warnings = await checker._check_db_schema()
 
     assert ok is True
@@ -266,4 +268,3 @@ async def test_sqlite_read_only_execution_option(tmp_path):
 
     assert begins == ["BEGIN IMMEDIATE", "BEGIN DEFERRED"]
     await engine.dispose()
-

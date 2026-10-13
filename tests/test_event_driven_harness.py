@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit tests for Phase 2: Event-Driven Core & Unified Agent Harness.
 Covers:
@@ -38,6 +39,7 @@ from database.models import Position, SystemConfig
 # ==============================================================================
 # 1. EventBus Unit Tests
 # ==============================================================================
+
 
 class TestEventBusCore:
     def setup_method(self):
@@ -93,14 +95,18 @@ class TestEventBusCore:
             received.append(evt)
 
         self.bus.subscribe(BarClosedEvent, handler)
-        bar1 = BarClosedEvent(symbol="BTCUSD", timeframe="H1", open=60000, high=61000, low=59500, close=60500, volume=120)
+        bar1 = BarClosedEvent(
+            symbol="BTCUSD", timeframe="H1", open=60000, high=61000, low=59500, close=60500, volume=120
+        )
         await self.bus.publish(bar1)
         assert len(received) == 1
 
         unsub_ok = self.bus.unsubscribe(BarClosedEvent, handler)
         assert unsub_ok is True
 
-        bar2 = BarClosedEvent(symbol="BTCUSD", timeframe="H1", open=60500, high=62000, low=60000, close=61500, volume=150)
+        bar2 = BarClosedEvent(
+            symbol="BTCUSD", timeframe="H1", open=60500, high=62000, low=60000, close=61500, volume=150
+        )
         await self.bus.publish(bar2)
         assert len(received) == 1  # No additional event received
 
@@ -191,6 +197,7 @@ class TestEventBusCore:
     def test_event_dataclasses_immutability(self):
         """Verify frozen immutability of domain events."""
         from dataclasses import FrozenInstanceError
+
         tick = TickPriceEvent(symbol="XAUUSD", bid=2000.0, ask=2000.5)
         with pytest.raises(FrozenInstanceError):
             tick.bid = 2005.0  # Cannot mutate frozen dataclass
@@ -200,8 +207,10 @@ class TestEventBusCore:
 # 2. AgentHarness Unit Tests
 # ==============================================================================
 
+
 class DummyLLMClient(BaseLLMClient):
     """Mock LLM client for harness testing."""
+
     def __init__(self, responses: list):
         super().__init__(model="test-llm")
         self.responses = responses
@@ -228,9 +237,7 @@ class TestAgentHarness:
         """Verify standard 2-turn execution: tool call then final completion."""
         # Turn 1: call tool get_atr_H4
         resp1 = MockResponse(
-            content=[
-                MockBlock(type="tool_use", id="call_1", name="get_atr_H4", input={"symbol": "XAUUSD"})
-            ],
+            content=[MockBlock(type="tool_use", id="call_1", name="get_atr_H4", input={"symbol": "XAUUSD"})],
             stop_reason="tool_use",
             input_tokens=100,
             output_tokens=50,
@@ -239,7 +246,12 @@ class TestAgentHarness:
         resp2 = MockResponse(
             content=[
                 MockBlock(type="text", text="Based on ATR, market is steady."),
-                MockBlock(type="tool_use", id="call_2", name="submit_asset_analysis", input={"symbol": "XAUUSD", "decision": "wait"})
+                MockBlock(
+                    type="tool_use",
+                    id="call_2",
+                    name="submit_asset_analysis",
+                    input={"symbol": "XAUUSD", "decision": "wait"},
+                ),
             ],
             stop_reason="tool_use",
             input_tokens=150,
@@ -257,10 +269,7 @@ class TestAgentHarness:
         harness = AgentHarness(client, settings={}, max_tool_turns=5)
 
         mock_executor = AsyncMock()
-        mock_executor.execute = AsyncMock(side_effect=[
-            {"atr_14": 15.5},
-            {"status": "submitted", "decision": "wait"}
-        ])
+        mock_executor.execute = AsyncMock(side_effect=[{"atr_14": 15.5}, {"status": "submitted", "decision": "wait"}])
 
         result = await harness.run_agent(
             session=None,
@@ -285,7 +294,9 @@ class TestAgentHarness:
         # Turn 1: tool call get_smc_zones
         resp1 = MockResponse(
             content=[
-                MockBlock(type="tool_use", id="call_1", name="get_smc_zones", input={"symbol": "EURUSD", "timeframe": "M15"})
+                MockBlock(
+                    type="tool_use", id="call_1", name="get_smc_zones", input={"symbol": "EURUSD", "timeframe": "M15"}
+                )
             ],
             stop_reason="tool_use",
             input_tokens=100,
@@ -294,7 +305,9 @@ class TestAgentHarness:
         # Turn 2: exact duplicate tool call get_smc_zones
         resp2 = MockResponse(
             content=[
-                MockBlock(type="tool_use", id="call_2", name="get_smc_zones", input={"symbol": "EURUSD", "timeframe": "M15"})
+                MockBlock(
+                    type="tool_use", id="call_2", name="get_smc_zones", input={"symbol": "EURUSD", "timeframe": "M15"}
+                )
             ],
             stop_reason="tool_use",
             input_tokens=120,
@@ -302,9 +315,7 @@ class TestAgentHarness:
         )
         # Turn 3: model concludes after receiving suppression notice
         resp3 = MockResponse(
-            content=[
-                MockBlock(type="text", text="Decision concluded after suppression.")
-            ],
+            content=[MockBlock(type="text", text="Decision concluded after suppression.")],
             stop_reason="end_turn",
             input_tokens=150,
             output_tokens=40,
@@ -349,7 +360,12 @@ class TestAgentHarness:
         # Turn 2: After being nudged, calls submit_asset_analysis
         resp2 = MockResponse(
             content=[
-                MockBlock(type="tool_use", id="submit_call", name="submit_asset_analysis", input={"symbol": "XAUUSD", "decision": "buy"})
+                MockBlock(
+                    type="tool_use",
+                    id="submit_call",
+                    name="submit_asset_analysis",
+                    input={"symbol": "XAUUSD", "decision": "buy"},
+                )
             ],
             stop_reason="tool_use",
             input_tokens=150,
@@ -395,17 +411,24 @@ class TestAgentHarness:
         messages = [
             {"role": "user", "content": "Initial prompt " * 10},
             {"role": "assistant", "content": [MockBlock(type="tool_use", id="c1", name="t1", input={})]},
-            {"role": "user", "content": [
-                {"type": "tool_result", "content": json.dumps({"atr_14": 18.25, "trend_5d": "bullish"})}
-            ]},
+            {
+                "role": "user",
+                "content": [{"type": "tool_result", "content": json.dumps({"atr_14": 18.25, "trend_5d": "bullish"})}],
+            },
             {"role": "assistant", "content": [MockBlock(type="tool_use", id="c2", name="t2", input={})]},
-            {"role": "user", "content": [
-                {"type": "tool_result", "content": json.dumps({"risk_sentiment": "risk_on", "latest": {"close": 2040.5, "date": "2026-09-05"}})}
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "content": json.dumps(
+                            {"risk_sentiment": "risk_on", "latest": {"close": 2040.5, "date": "2026-09-05"}}
+                        ),
+                    }
+                ],
+            },
             {"role": "assistant", "content": [MockBlock(type="tool_use", id="c3", name="t3", input={})]},
-            {"role": "user", "content": [
-                {"type": "tool_result", "content": "some intermediate data " * 20}
-            ]},
+            {"role": "user", "content": [{"type": "tool_result", "content": "some intermediate data " * 20}]},
             {"role": "assistant", "content": [MockBlock(type="text", text="Recent turn 1")]},
             {"role": "user", "content": "Recent turn 2"},
             {"role": "assistant", "content": [MockBlock(type="text", text="Recent turn 3")]},
@@ -448,6 +471,7 @@ class TestAgentHarness:
 # 3. Schedulers & Runtime Integration Tests
 # ==============================================================================
 
+
 class TestSchedulerEventBusIntegration:
     @pytest.mark.asyncio
     async def test_flash_crash_detector_on_tick(self):
@@ -471,7 +495,9 @@ class TestSchedulerEventBusIntegration:
         await detector.on_tick(tick1)
 
         # Extreme 2.7% drop on tick 2
-        tick2 = TickPriceEvent(symbol="EURUSD", bid=1.0600, ask=1.0602, last=1.0601, timestamp=now + timedelta(seconds=10))
+        tick2 = TickPriceEvent(
+            symbol="EURUSD", bid=1.0600, ask=1.0602, last=1.0601, timestamp=now + timedelta(seconds=10)
+        )
 
         detector.check = AsyncMock(return_value=[{"symbol": "EURUSD", "range_move": 0.0300}])
 
@@ -526,8 +552,10 @@ class TestSchedulerEventBusIntegration:
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
 
-        with patch("scheduler.trailing_stop_manager.get_session", return_value=mock_ctx), \
-             patch("database.db.get_session", return_value=mock_ctx):
+        with (
+            patch("scheduler.trailing_stop_manager.get_session", return_value=mock_ctx),
+            patch("database.db.get_session", return_value=mock_ctx),
+        ):
             tick = TickPriceEvent(symbol="XAUUSD", bid=2020.0, ask=2020.5, last=2020.25)
             await manager.on_tick(tick)
 
@@ -546,14 +574,14 @@ class TestSchedulerEventBusIntegration:
         mock_cfg = MagicMock()
         mock_cfg.value = "true"
         mock_session = create_mock_async_session()
-        mock_session.execute.return_value = MagicMock(
-            scalar_one_or_none=MagicMock(return_value=mock_cfg)
-        )
+        mock_session.execute.return_value = MagicMock(scalar_one_or_none=MagicMock(return_value=mock_cfg))
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
 
-        with patch("scheduler.position_guardian.get_session", return_value=mock_ctx), \
-             patch("database.db.get_session", return_value=mock_ctx):
+        with (
+            patch("scheduler.position_guardian.get_session", return_value=mock_ctx),
+            patch("database.db.get_session", return_value=mock_ctx),
+        ):
             tick = TickPriceEvent(symbol="EURUSD", bid=1.0850, ask=1.0852)
             await guardian.on_tick(tick)
 
@@ -569,14 +597,14 @@ class TestSchedulerEventBusIntegration:
         mock_cfg = MagicMock()
         mock_cfg.value = "true"
         mock_session = create_mock_async_session()
-        mock_session.execute.return_value = MagicMock(
-            scalar_one_or_none=MagicMock(return_value=mock_cfg)
-        )
+        mock_session.execute.return_value = MagicMock(scalar_one_or_none=MagicMock(return_value=mock_cfg))
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
 
-        with patch("scheduler.position_guardian.get_session", return_value=mock_ctx), \
-             patch("database.db.get_session", return_value=mock_ctx):
+        with (
+            patch("scheduler.position_guardian.get_session", return_value=mock_ctx),
+            patch("database.db.get_session", return_value=mock_ctx),
+        ):
             # 1. Multiple ticks with kill_switch=true
             tick1 = TickPriceEvent(symbol="EURUSD", bid=1.0850, ask=1.0852)
             tick2 = TickPriceEvent(symbol="GBPUSD", bid=1.2850, ask=1.2852)
@@ -615,14 +643,14 @@ class TestSchedulerEventBusIntegration:
         mock_cfg = MagicMock()
         mock_cfg.value = "true"
         mock_session = create_mock_async_session()
-        mock_session.execute.return_value = MagicMock(
-            scalar_one_or_none=MagicMock(return_value=mock_cfg)
-        )
+        mock_session.execute.return_value = MagicMock(scalar_one_or_none=MagicMock(return_value=mock_cfg))
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
 
-        with patch("scheduler.position_guardian.get_session", return_value=mock_ctx), \
-             patch("database.db.get_session", return_value=mock_ctx):
+        with (
+            patch("scheduler.position_guardian.get_session", return_value=mock_ctx),
+            patch("database.db.get_session", return_value=mock_ctx),
+        ):
             res1 = await guardian.check_and_protect()
             assert res1.get("kill_switch_active") is True
             assert mock_exec.kill_switch.call_count == 1
@@ -669,11 +697,12 @@ class TestSchedulerEventBusIntegration:
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
 
-        with patch("database.db.get_session", return_value=mock_ctx), \
-             patch("scheduler.market_data_scheduler.is_forex_market_closed", return_value=False), \
-             patch("scheduler.market_data_scheduler.TechnicalIndicatorCalculator", return_value=mock_calc), \
-             patch("scheduler.market_data_scheduler.MarketStructureAnalyzer", return_value=mock_analyzer):
-            
+        with (
+            patch("database.db.get_session", return_value=mock_ctx),
+            patch("scheduler.market_data_scheduler.is_forex_market_closed", return_value=False),
+            patch("scheduler.market_data_scheduler.TechnicalIndicatorCalculator", return_value=mock_calc),
+            patch("scheduler.market_data_scheduler.MarketStructureAnalyzer", return_value=mock_analyzer),
+        ):
             res = await scheduler.sync_now()
             assert res["status"] == "success"
             assert len(ticks_received) == 1
@@ -694,13 +723,14 @@ class TestSchedulerEventBusIntegration:
             "execution": {"mt5_common_dir": ""},
         }
 
-        with patch("execution.mt5_client.MT5Client"), \
-             patch("execution.execution_service.ExecutionService"), \
-             patch("analysis.stages.fundamental_stage.FundamentalStage"), \
-             patch("analysis.stages.per_asset_stage.PerAssetStage"), \
-             patch("scheduler.graph_cycle_scheduler.GraphCycleScheduler"), \
-             patch("telegram_bot.bot.TelegramBot"):
-
+        with (
+            patch("execution.mt5_client.MT5Client"),
+            patch("execution.execution_service.ExecutionService"),
+            patch("analysis.stages.fundamental_stage.FundamentalStage"),
+            patch("analysis.stages.per_asset_stage.PerAssetStage"),
+            patch("scheduler.graph_cycle_scheduler.GraphCycleScheduler"),
+            patch("telegram_bot.bot.TelegramBot"),
+        ):
             agent = TradingAgent(settings, dry_run=True)
             agent._init_components()
 
@@ -726,9 +756,11 @@ class TestSchedulerEventBusIntegration:
             mock_session = create_mock_async_session()
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__.return_value = mock_session
-            with patch("scheduler.trailing_stop_manager.get_session", return_value=mock_ctx), \
-                 patch("scheduler.position_guardian.get_session", return_value=mock_ctx), \
-                 patch("database.db.get_session", return_value=mock_ctx):
+            with (
+                patch("scheduler.trailing_stop_manager.get_session", return_value=mock_ctx),
+                patch("scheduler.position_guardian.get_session", return_value=mock_ctx),
+                patch("database.db.get_session", return_value=mock_ctx),
+            ):
                 await agent.publish_tick(symbol="XAUUSD", bid=2030.0, ask=2030.6, last=2030.3)
 
             assert len(test_ticks) == 1
@@ -742,9 +774,19 @@ class TestSchedulerEventBusIntegration:
 # 4. Deep Edge-Case & Robustness Tests
 # ==============================================================================
 
+
 class OpenAIChatCompletionMock:
     """Mock simulating OpenAI / OpenRouter / DeepSeek ChatCompletion response structure."""
-    def __init__(self, content=None, tool_calls=None, reasoning_content=None, finish_reason="stop", prompt_tokens=100, completion_tokens=25):
+
+    def __init__(
+        self,
+        content=None,
+        tool_calls=None,
+        reasoning_content=None,
+        finish_reason="stop",
+        prompt_tokens=100,
+        completion_tokens=25,
+    ):
         class FunctionCall:
             def __init__(self, name, arguments):
                 self.name = name
@@ -775,7 +817,10 @@ class OpenAIChatCompletionMock:
 
         t_calls = None
         if tool_calls:
-            t_calls = [ToolCall(tc.get("id", f"call_{i}"), tc.get("name"), tc.get("args", {})) for i, tc in enumerate(tool_calls)]
+            t_calls = [
+                ToolCall(tc.get("id", f"call_{i}"), tc.get("name"), tc.get("args", {}))
+                for i, tc in enumerate(tool_calls)
+            ]
 
         msg = Message(content=content, tool_calls=t_calls, reasoning=reasoning_content)
         self.choices = [Choice(msg, finish_reason)]
@@ -789,12 +834,16 @@ class TestEventDrivenHarnessEdgeCases:
         turn1_resp = OpenAIChatCompletionMock(
             content="Checking technical indicators and order structure...",
             reasoning_content="The user wants analysis of EURUSD. First step is to check SMC zones.",
-            tool_calls=[{"id": "call_abc123", "name": "get_smc_zones", "args": {"symbol": "EURUSD", "timeframe": "M15"}}],
+            tool_calls=[
+                {"id": "call_abc123", "name": "get_smc_zones", "args": {"symbol": "EURUSD", "timeframe": "M15"}}
+            ],
             finish_reason="tool_calls",
         )
         turn2_resp = OpenAIChatCompletionMock(
             content="Analysis complete.",
-            tool_calls=[{"id": "call_sub999", "name": "submit_asset_analysis", "args": {"symbol": "EURUSD", "decision": "wait"}}],
+            tool_calls=[
+                {"id": "call_sub999", "name": "submit_asset_analysis", "args": {"symbol": "EURUSD", "decision": "wait"}}
+            ],
             finish_reason="tool_calls",
         )
         turn3_resp = OpenAIChatCompletionMock(
@@ -808,10 +857,12 @@ class TestEventDrivenHarnessEdgeCases:
         mock_client.run_tool_agent = AsyncMock(side_effect=[turn1_resp, turn2_resp, turn3_resp])
 
         mock_executor = MagicMock()
-        mock_executor.execute = AsyncMock(side_effect=[
-            {"zones": [{"price": 1.0850}]},
-            {"status": "submitted", "decision": "wait"},
-        ])
+        mock_executor.execute = AsyncMock(
+            side_effect=[
+                {"zones": [{"price": 1.0850}]},
+                {"status": "submitted", "decision": "wait"},
+            ]
+        )
 
         harness = AgentHarness(mock_client, settings={}, max_tool_turns=5)
         res = await harness.run_agent(
@@ -830,14 +881,19 @@ class TestEventDrivenHarnessEdgeCases:
         hist = res["context_messages"]
         ast_msgs = [m for m in hist if m.get("role") == "assistant"]
         assert len(ast_msgs) >= 1
-        assert ast_msgs[0].get("reasoning_content") == "The user wants analysis of EURUSD. First step is to check SMC zones."
+        assert (
+            ast_msgs[0].get("reasoning_content")
+            == "The user wants analysis of EURUSD. First step is to check SMC zones."
+        )
 
     @pytest.mark.asyncio
     async def test_agent_harness_billing_error_classification(self):
         """Verify AgentHarness flags is_billing_error=True on credit balance exhaustion."""
         mock_client = MagicMock()
         mock_client.model = "claude-3-5-sonnet"
-        mock_client.run_tool_agent = AsyncMock(side_effect=Exception("Your credit balance is too low to access the Claude API"))
+        mock_client.run_tool_agent = AsyncMock(
+            side_effect=Exception("Your credit balance is too low to access the Claude API")
+        )
 
         harness = AgentHarness(mock_client, settings={})
         res = await harness.run_agent(
@@ -1003,7 +1059,9 @@ class TestEventDrivenHarnessEdgeCases:
         await detector.on_tick(tick1)
 
         # 3% crash on live tick
-        tick2 = TickPriceEvent(symbol="EURUSD", bid=1.0670, ask=1.0672, last=1.0671, timestamp=now + timedelta(seconds=5))
+        tick2 = TickPriceEvent(
+            symbol="EURUSD", bid=1.0670, ask=1.0672, last=1.0671, timestamp=now + timedelta(seconds=5)
+        )
 
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -1035,13 +1093,16 @@ class TestEventDrivenHarnessEdgeCases:
         mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
-        mock_session.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
+        mock_session.execute = AsyncMock(
+            return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))))
+        )
 
-        with patch("scheduler.trailing_stop_manager.get_session", return_value=mock_ctx), \
-             patch("database.db.get_session", return_value=mock_ctx):
+        with (
+            patch("scheduler.trailing_stop_manager.get_session", return_value=mock_ctx),
+            patch("database.db.get_session", return_value=mock_ctx),
+        ):
             await manager.on_tick(tick1)
             await manager.on_tick(tick2)
 
         # mock_session should be accessed only ONCE because tick2 was throttled
         assert mock_session.execute.await_count == 1
-

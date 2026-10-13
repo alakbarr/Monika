@@ -44,7 +44,7 @@ def test_llm_factory_parses_list_fallback_chain():
                 "gemini-3.5-flash-lite": {"provider": "gemini"},
                 "gemini-3.1-flash-lite": {"provider": "gemini"},
                 "groq-compound": {"provider": "groq"},
-            }
+            },
         }
     }
     factory = LLMFactory(settings)
@@ -71,7 +71,7 @@ def test_llm_factory_combines_list_and_numbered_fallbacks():
                 "gemini-3.5-flash-lite": {"provider": "gemini"},
                 "gemini-3.1-flash-lite": {"provider": "gemini"},
                 "groq-compound": {"provider": "groq"},
-            }
+            },
         }
     }
     factory = LLMFactory(settings)

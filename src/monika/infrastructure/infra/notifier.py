@@ -25,6 +25,7 @@ from monika.interfaces.telegram.sanitizer import sanitize_telegram_html
 
 class AgentNotifier:
     """Mengirim notifikasi atau alert kritis ke admin via Telegram dengan Outbox Retry Queue persisten."""
+
     _outbox: ClassVar[deque] = deque(maxlen=50)
     _loaded_from_disk: ClassVar[bool] = False
 
@@ -73,7 +74,7 @@ class AgentNotifier:
                     clean_html = sanitize_telegram_html(msg_text)
                     await self.bot.send_message(chat_id=self.admin_id, text=clean_html, parse_mode="HTML")
                 except TelegramError:
-                    plain_text = re.sub(r'<[^>]+>', '', msg_text)
+                    plain_text = re.sub(r"<[^>]+>", "", msg_text)
                     await self.bot.send_message(chat_id=self.admin_id, text=plain_text)
                 self._outbox.popleft()
                 sent_count += 1
@@ -100,7 +101,7 @@ class AgentNotifier:
         if not self.bot or not self.admin_id:
             logger.debug(f"Notifier skipping message (no token/admin): {message}")
             return
-            
+
         full_msg = f"{prefix}\n{message}" if prefix else message
         # Flush any previously pending outbox messages first
         await self.flush_outbox()
@@ -123,7 +124,7 @@ class AgentNotifier:
                     )
             except TelegramError as e:
                 logger.warning(f"HTML parse failed on Telegram notification ({e}), retrying plain text...")
-                plain_text = re.sub(r'<[^>]+>', '', full_msg)
+                plain_text = re.sub(r"<[^>]+>", "", full_msg)
                 if reply_markup is not None:
                     await self.bot.send_message(
                         chat_id=self.admin_id,
@@ -135,20 +136,21 @@ class AgentNotifier:
                         chat_id=self.admin_id,
                         text=plain_text,
                     )
-            
+
             # Forward notification to Discord webhook if configured
             discord_url = os.getenv("DISCORD_WEBHOOK_URL")
             if discord_url:
                 try:
                     import urllib.request
-                    plain_content = re.sub(r'<[^>]+>', '', full_msg)
+
+                    plain_content = re.sub(r"<[^>]+>", "", full_msg)
 
                     def _dispatch_discord_sync(url: str, text: str) -> None:
                         req_data = json.dumps({"content": text[:2000]}).encode("utf-8")
                         d_req = urllib.request.Request(
                             url,
                             data=req_data,
-                            headers={"Content-Type": "application/json", "User-Agent": "Monika-Notifier/1.0"}
+                            headers={"Content-Type": "application/json", "User-Agent": "Monika-Notifier/1.0"},
                         )
                         with urllib.request.urlopen(d_req, timeout=5.0):
                             pass
@@ -161,18 +163,20 @@ class AgentNotifier:
             try:
                 from monika.infrastructure.database.db import get_session
                 from monika.infrastructure.database.models import ActivityLog
-                
+
                 async with get_session() as session:
-                    clean_msg = re.sub(r'<[^>]+>', '', full_msg)
-                    session.add(ActivityLog(
-                        category="telegram",
-                        description=clean_msg[:500],
-                        actor="system",
-                    ))
+                    clean_msg = re.sub(r"<[^>]+>", "", full_msg)
+                    session.add(
+                        ActivityLog(
+                            category="telegram",
+                            description=clean_msg[:500],
+                            actor="system",
+                        )
+                    )
                     await session.commit()
             except Exception as log_err:
                 logger.debug(f"Failed to log Telegram message to DB: {log_err}")
-                
+
         except (TelegramError, Exception) as e:
             logger.error(f"Failed to send Telegram notification: {e}. Enqueuing to outbox.")
             self._outbox.append({"text": full_msg, "prefix": prefix})
@@ -218,7 +222,7 @@ class AgentNotifier:
             lines.append(f"• Durasi: {summary['elapsed_total_s']:.1f} detik")
         if "api_cost_usd" in summary:
             lines.append(f"• Biaya API: ${summary['api_cost_usd']:.4f}")
-            
+
         assets = summary.get("per_asset", {})
         if assets:
             lines.append("\n<b>Keputusan Analisis Aset:</b>")
@@ -228,18 +232,24 @@ class AgentNotifier:
                     conf = r.get("confidence", 0)
                     if decision == "SKIP":
                         reason = (
-                            "cooldown" if r.get("skipped_by_cooldown")
-                            else "prescreen" if r.get("skipped_by_prescreen")
-                            else "data_quality" if r.get("skipped_by_data_quality")
-                            else "weekend" if r.get("skipped_by_weekend_guard")
-                            else "stale_brief" if r.get("skipped_by_brief_staleness")
-                            else "no_brief" if r.get("skipped_no_brief")
+                            "cooldown"
+                            if r.get("skipped_by_cooldown")
+                            else "prescreen"
+                            if r.get("skipped_by_prescreen")
+                            else "data_quality"
+                            if r.get("skipped_by_data_quality")
+                            else "weekend"
+                            if r.get("skipped_by_weekend_guard")
+                            else "stale_brief"
+                            if r.get("skipped_by_brief_staleness")
+                            else "no_brief"
+                            if r.get("skipped_no_brief")
                             else "bypassed"
                         )
                         lines.append(f"• {sym}: DILEWATI ({reason})")
                     else:
                         lines.append(f"• {sym}: {decision} (keyakinan: {conf:.2f})")
-                    
+
         await self._send("\n".join(lines))
 
     @staticmethod
@@ -247,18 +257,19 @@ class AgentNotifier:
         """Create inline keyboard for AI action proposal confirmation (3-Tier Session Gate)."""
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-        return InlineKeyboardMarkup([
+        return InlineKeyboardMarkup(
             [
-                InlineKeyboardButton("[OK] Allow Once", callback_data=f"confirm:{action_id}"),
-                InlineKeyboardButton("[PROSES] Allow for Session (4h)", callback_data=f"allow_session:{action_id}"),
-            ],
-            [
-                InlineKeyboardButton("[GAGAL] Deny", callback_data=f"reject:{action_id}"),
-            ],
-        ])
+                [
+                    InlineKeyboardButton("[OK] Allow Once", callback_data=f"confirm:{action_id}"),
+                    InlineKeyboardButton("[PROSES] Allow for Session (4h)", callback_data=f"allow_session:{action_id}"),
+                ],
+                [
+                    InlineKeyboardButton("[GAGAL] Deny", callback_data=f"reject:{action_id}"),
+                ],
+            ]
+        )
 
 
 def get_notifier() -> AgentNotifier:
     """Helper factory function to get an AgentNotifier instance."""
     return AgentNotifier()
-

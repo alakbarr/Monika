@@ -25,6 +25,7 @@ logger = logging.getLogger("TradingAgent.SubagentSpawner")
 @dataclass
 class SubagentSpec:
     """Specification for an ad-hoc subagent worker."""
+
     worker_id: str
     role: str
     system_prompt: str
@@ -42,6 +43,7 @@ class SubagentSpec:
 @dataclass
 class SubagentResult:
     """Standardized result returned by a SubagentWorker."""
+
     worker_id: str
     role: str
     success: bool
@@ -126,9 +128,7 @@ class SubagentWorker:
                         tools=self.spec.tools,
                     )
                 else:
-                    raw_text = await client.generate(
-                        prompt=f"{self.spec.system_prompt}\n\n{self.spec.query}"
-                    )
+                    raw_text = await client.generate(prompt=f"{self.spec.system_prompt}\n\n{self.spec.query}")
                     return {"reply": raw_text}
 
             # Enforce strict execution timeout
@@ -244,8 +244,7 @@ class DynamicSubagentPool:
 
         if not spec.can_spawn and spec.spawn_depth > 0:
             logger.warning(
-                f"[SubagentPool] Blocked worker {spec.worker_id} ({spec.role}): "
-                f"leaf role restriction (can_spawn=False)"
+                f"[SubagentPool] Blocked worker {spec.worker_id} ({spec.role}): leaf role restriction (can_spawn=False)"
             )
             return SubagentResult(
                 worker_id=spec.worker_id,
@@ -290,15 +289,9 @@ class DynamicSubagentPool:
         if not specs:
             return []
 
-        logger.info(
-            f"DynamicSubagentPool: Launching {len(specs)} workers "
-            f"(max concurrency: {self.max_concurrency})..."
-        )
+        logger.info(f"DynamicSubagentPool: Launching {len(specs)} workers (max concurrency: {self.max_concurrency})...")
 
-        tasks = [
-            self.spawn_worker(spec, client=client, progress_callback=progress_callback)
-            for spec in specs
-        ]
+        tasks = [self.spawn_worker(spec, client=client, progress_callback=progress_callback) for spec in specs]
         results = await asyncio.gather(*tasks, return_exceptions=False)
         return list(results)
 
@@ -318,41 +311,80 @@ class DynamicSubagentPool:
 
         # 1. Macro & Rates toolset
         macro_names = {
-            "get_market_session", "get_fundamental_brief", "get_economic_calendar",
-            "get_news_items", "get_news_digest", "get_vix", "get_dxy",
-            "get_cot_report", "get_bond_yield_spreads", "get_spread_snapshot", "web_search",
-            "get_fedwatch_probabilities", "get_treasury_yields", "get_interest_rates",
-            "get_eia_oil_inventory"
+            "get_market_session",
+            "get_fundamental_brief",
+            "get_economic_calendar",
+            "get_news_items",
+            "get_news_digest",
+            "get_vix",
+            "get_dxy",
+            "get_cot_report",
+            "get_bond_yield_spreads",
+            "get_spread_snapshot",
+            "web_search",
+            "get_fedwatch_probabilities",
+            "get_treasury_yields",
+            "get_interest_rates",
+            "get_eia_oil_inventory",
         }
         # 2. Technical & SMC toolset
         tech_names = {
-            "get_chart", "get_price_history", "get_technical_indicators",
-            "get_multi_timeframe_summary", "get_atr", "get_swing_points",
-            "get_structure_breaks", "get_smc_zones", "get_fibonacci_levels",
-            "get_price_momentum", "get_daily_range_context", "get_optimal_intraday_levels",
-            "get_market_regime", "get_timesfm_forecast"
+            "get_chart",
+            "get_price_history",
+            "get_technical_indicators",
+            "get_multi_timeframe_summary",
+            "get_atr",
+            "get_swing_points",
+            "get_structure_breaks",
+            "get_smc_zones",
+            "get_fibonacci_levels",
+            "get_price_momentum",
+            "get_daily_range_context",
+            "get_optimal_intraday_levels",
+            "get_market_regime",
+            "get_timesfm_forecast",
         }
         # 3. Sentiment & Positioning toolset
         sent_names = {
-            "get_retail_sentiment", "get_forex_sentiment", "get_fxssi_sentiment",
-            "get_funding_rate", "get_fear_greed", "get_structured_sentiment",
-            "get_cot_report", "save_market_intelligence", "list_active_intelligence"
+            "get_retail_sentiment",
+            "get_forex_sentiment",
+            "get_fxssi_sentiment",
+            "get_funding_rate",
+            "get_fear_greed",
+            "get_structured_sentiment",
+            "get_cot_report",
+            "save_market_intelligence",
+            "list_active_intelligence",
         }
         # 4. Cross-Asset & Correlation toolset
         cross_asset_names = {
-            "get_dxy", "get_vix", "get_bond_yield_spreads", "get_spread_snapshot",
-            "get_multi_timeframe_summary", "get_chart", "get_technical_indicators",
-            "web_search", "get_treasury_yields"
+            "get_dxy",
+            "get_vix",
+            "get_bond_yield_spreads",
+            "get_spread_snapshot",
+            "get_multi_timeframe_summary",
+            "get_chart",
+            "get_technical_indicators",
+            "web_search",
+            "get_treasury_yields",
         }
         # 5. Order Flow & Liquidity Sweep toolset
         order_flow_names = {
-            "get_smc_zones", "get_structure_breaks", "get_swing_points",
-            "get_technical_indicators", "get_chart", "get_price_momentum"
+            "get_smc_zones",
+            "get_structure_breaks",
+            "get_swing_points",
+            "get_technical_indicators",
+            "get_chart",
+            "get_price_momentum",
         }
         # 6. Geopolitical & News Drift toolset
         news_drift_names = {
-            "get_news_items", "get_news_digest", "get_economic_calendar",
-            "get_vix", "web_search", "save_market_intelligence"
+            "get_news_items",
+            "get_news_digest",
+            "get_economic_calendar",
+            "get_vix",
+            "web_search",
+            "save_market_intelligence",
         }
 
         def _filter_tools(names: Set[str]) -> List[Dict[str, Any]]:
@@ -364,6 +396,7 @@ class DynamicSubagentPool:
         cb_framework_text = ""
         try:
             from monika.application.skills.loader import load_skill
+
             cb_skill = load_skill("central_banks_framework")
             if cb_skill:
                 cb_framework_text = f"\n\n[AUTHORITATIVE CENTRAL BANK KNOWLEDGE]\n{cb_skill}\n"
@@ -433,18 +466,56 @@ class DynamicSubagentPool:
         )
 
         # --- Dynamic Specialist 4 (Context-Triggered) ---
-        has_cross_asset = any(k in q_lower for k in [
-            "korelasi", "correlation", "cross-asset", "intermarket", "dxy", "yield",
-            "emas vs", "gold vs", "btc vs", "oil vs", "hubungan"
-        ])
-        has_order_flow = any(k in q_lower for k in [
-            "order flow", "orderflow", "dom", "depth", "cvd", "absorpsi", "absorption",
-            "sweep", "liquidity sweep", "stop hunt"
-        ])
-        has_news_drift = any(k in q_lower for k in [
-            "breaking", "geopolitik", "perang", "konflik", "tarif", "drift", "whisper",
-            "konsensus", "bocor", "kejutan", "pre-event", "nfp", "fomc", "cpi"
-        ])
+        has_cross_asset = any(
+            k in q_lower
+            for k in [
+                "korelasi",
+                "correlation",
+                "cross-asset",
+                "intermarket",
+                "dxy",
+                "yield",
+                "emas vs",
+                "gold vs",
+                "btc vs",
+                "oil vs",
+                "hubungan",
+            ]
+        )
+        has_order_flow = any(
+            k in q_lower
+            for k in [
+                "order flow",
+                "orderflow",
+                "dom",
+                "depth",
+                "cvd",
+                "absorpsi",
+                "absorption",
+                "sweep",
+                "liquidity sweep",
+                "stop hunt",
+            ]
+        )
+        has_news_drift = any(
+            k in q_lower
+            for k in [
+                "breaking",
+                "geopolitik",
+                "perang",
+                "konflik",
+                "tarif",
+                "drift",
+                "whisper",
+                "konsensus",
+                "bocor",
+                "kejutan",
+                "pre-event",
+                "nfp",
+                "fomc",
+                "cpi",
+            ]
+        )
 
         if has_order_flow:
             specs.append(

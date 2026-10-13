@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit tests for Phase 4: Microstructure Alpha, Observability Live Feed & DB Partitioning.
 """
@@ -17,6 +18,7 @@ from fastapi.testclient import TestClient
 # ==============================================================================
 # 1. TimesFM Quantile Asymmetry Skew Alpha Tests
 # ==============================================================================
+
 
 class TestTimesFMAlphaCalculator:
     def test_skew_ratio_bullish_expansion(self):
@@ -40,7 +42,7 @@ class TestTimesFMAlphaCalculator:
         quantiles = {
             "q10": 90.0,
             "q50": 98.0,  # lower expansion = 8.0
-            "q90": 100.0, # upper expansion = 2.0 -> skew = 2.0 / 8.0 = 0.25
+            "q90": 100.0,  # upper expansion = 2.0 -> skew = 2.0 / 8.0 = 0.25
         }
         res = TimesFMAlphaCalculator.calculate_skew_from_quantiles(quantiles, current_price=99.0)
         assert res["valid"] is True
@@ -103,12 +105,15 @@ class TestTimesFMAlphaCalculator:
         assert TimesFMAlphaCalculator.calculate_skew_from_quantiles({})["valid"] is False
         assert TimesFMAlphaCalculator.calculate_skew_from_quantiles({"q10": 100})["valid"] is False
         # Inverted quantiles (Q10 > Q50)
-        assert TimesFMAlphaCalculator.calculate_skew_from_quantiles({"q10": 110, "q50": 100, "q90": 120})["valid"] is False
+        assert (
+            TimesFMAlphaCalculator.calculate_skew_from_quantiles({"q10": 110, "q50": 100, "q90": 120})["valid"] is False
+        )
 
 
 # ==============================================================================
 # 2. Dashboard WebSocket Live Feed Tests
 # ==============================================================================
+
 
 class TestDashboardWebSocketLiveFeed:
     def test_websocket_connect_and_ping_pong(self):
@@ -145,6 +150,7 @@ class TestDashboardWebSocketLiveFeed:
 # 3. Database Table Partition Pruning Tests
 # ==============================================================================
 
+
 class TestDatabasePartitionPruning:
     @pytest.mark.asyncio
     async def test_drop_expired_partitions_sqlite_noop(self):
@@ -166,9 +172,9 @@ class TestDatabasePartitionPruning:
         mock_session.bind = mock_bind
 
         # Return 2 partitions: 1 very old (2024-01), 1 current (2026-09)
-        mock_session.execute = AsyncMock(return_value=MagicMock(
-            fetchall=lambda: [("price_ohlcv_y2024_m01",), ("price_ohlcv_y2026_m09",)]
-        ))
+        mock_session.execute = AsyncMock(
+            return_value=MagicMock(fetchall=lambda: [("price_ohlcv_y2024_m01",), ("price_ohlcv_y2026_m09",)])
+        )
 
         dropped = await drop_expired_partitions(mock_session, older_than_days=180)
         assert dropped == 1
@@ -181,17 +187,14 @@ class TestDatabasePartitionPruning:
 # 4. Telegram Deep Research Progress Streaming Tests
 # ==============================================================================
 
+
 class TestTelegramDeepResearchProgress:
     @pytest.mark.asyncio
     async def test_deep_research_calls_status_callback(self):
         """Verify _run_tier_deep_research invokes status_callback across its workflow."""
         from telegram_bot.chat_agent import ChatAgent
 
-        settings = {
-            "telegram": {"admin_chat_id": 123},
-            "analysis": {},
-            "llm": {"task_roles": {}}
-        }
+        settings = {"telegram": {"admin_chat_id": 123}, "analysis": {}, "llm": {"task_roles": {}}}
         agent = ChatAgent(settings, user_id=123)
 
         mock_client = AsyncMock()
@@ -200,6 +203,7 @@ class TestTelegramDeepResearchProgress:
         agent._client_deep = mock_client
 
         progress_calls = []
+
         async def mock_callback(msg: str):
             progress_calls.append(msg)
 
@@ -221,8 +225,8 @@ class TestTelegramDeepResearchProgress:
 # 5. TimesFM Alpha & Observability End-to-End Wiring Tests
 # ==============================================================================
 
-class TestTimesFMAlphaIntegration:
 
+class TestTimesFMAlphaIntegration:
     @pytest.mark.asyncio
     async def test_position_sizer_applies_timesfm_skew_multiplier(self):
         """Verify PositionSizer fetches TimesFM forecast and applies directional skew multiplier."""
@@ -250,20 +254,21 @@ class TestTimesFMAlphaIntegration:
             "volatility_expansion_ratio": 1.1,
             "quantiles": {
                 "q10": 1.0800,
-                "q50": 1.0820, # lower = 0.0020
-                "q90": 1.0880, # upper = 0.0060 -> skew = 3.0 (BULLISH_EXPANSION)
-            }
+                "q50": 1.0820,  # lower = 0.0020
+                "q90": 1.0880,  # upper = 0.0060 -> skew = 3.0 (BULLISH_EXPANSION)
+            },
         }
 
         mock_provider = MagicMock()
         mock_provider.get_latest_timesfm_forecast = AsyncMock(return_value=mock_fc)
         mock_provider.get_loss_streak = AsyncMock(return_value=0)
 
-        with patch.object(sizer, "_get_instrument_spec_dynamic", new=AsyncMock(return_value=mock_spec)), \
-             patch.object(sizer, "_get_regime_size_multiplier", new=AsyncMock(return_value=1.0)), \
-             patch("monika.domain.risk.ports.get_default_risk_data_provider", return_value=mock_provider), \
-             patch("indicators.timesfm_engine.TimesFMEngine.get_latest_forecast", new=AsyncMock(return_value=mock_fc)):
-
+        with (
+            patch.object(sizer, "_get_instrument_spec_dynamic", new=AsyncMock(return_value=mock_spec)),
+            patch.object(sizer, "_get_regime_size_multiplier", new=AsyncMock(return_value=1.0)),
+            patch("monika.domain.risk.ports.get_default_risk_data_provider", return_value=mock_provider),
+            patch("indicators.timesfm_engine.TimesFMEngine.get_latest_forecast", new=AsyncMock(return_value=mock_fc)),
+        ):
             # BUY order should receive 1.15x multiplier
             res_buy = await sizer.calculate_with_session(
                 session=mock_session,
@@ -313,14 +318,16 @@ class TestTimesFMAlphaIntegration:
             "quantiles": {
                 "q10": [1.0800],
                 "q50": [1.0850],
-                "q90": [1.0950], # upper = 0.0100, lower = 0.0050 -> skew = 2.0 (BULLISH_EXPANSION)
+                "q90": [1.0950],  # upper = 0.0100, lower = 0.0050 -> skew = 2.0 (BULLISH_EXPANSION)
             },
             "expected_range": 0.0150,
             "quantile_skew": 2.0,
             "volatility_expansion_ratio": 1.0,
         }
 
-        with patch("indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new=AsyncMock(return_value=mock_fc)):
+        with patch(
+            "indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new=AsyncMock(return_value=mock_fc)
+        ):
             res = await executor._tool_get_timesfm_forecast(symbol="EURUSD")
             assert res["status"] == "success"
             assert "alpha_analysis" in res
@@ -339,29 +346,36 @@ class TestTimesFMAlphaIntegration:
         bus = get_event_bus()
 
         broadcasted = []
+
         async def mock_broadcast(evt_type, payload):
             broadcasted.append((evt_type, payload))
 
         with patch.object(api, "broadcast_live_event", side_effect=mock_broadcast):
             # Wire listeners as in main.py
             async def _on_live_tick(evt: TickPriceEvent):
-                await api.broadcast_live_event("tick", {
-                    "symbol": evt.symbol,
-                    "bid": evt.bid,
-                    "ask": evt.ask,
-                    "spread": evt.spread,
-                    "timestamp": str(evt.timestamp),
-                })
+                await api.broadcast_live_event(
+                    "tick",
+                    {
+                        "symbol": evt.symbol,
+                        "bid": evt.bid,
+                        "ask": evt.ask,
+                        "spread": evt.spread,
+                        "timestamp": str(evt.timestamp),
+                    },
+                )
 
             async def _on_live_order(evt: OrderStateChangedEvent):
-                await api.broadcast_live_event("order_state_change", {
-                    "order_id": evt.order_id,
-                    "symbol": evt.symbol,
-                    "old_state": evt.old_state,
-                    "new_state": evt.new_state,
-                    "details": evt.details,
-                    "timestamp": str(evt.timestamp),
-                })
+                await api.broadcast_live_event(
+                    "order_state_change",
+                    {
+                        "order_id": evt.order_id,
+                        "symbol": evt.symbol,
+                        "old_state": evt.old_state,
+                        "new_state": evt.new_state,
+                        "details": evt.details,
+                        "timestamp": str(evt.timestamp),
+                    },
+                )
 
             bus.subscribe(TickPriceEvent, _on_live_tick, priority=1)
             bus.subscribe(OrderStateChangedEvent, _on_live_order, priority=1)
@@ -372,7 +386,11 @@ class TestTimesFMAlphaIntegration:
 
             # Publish an OrderStateChangedEvent
             order_ev = OrderStateChangedEvent(
-                order_id="ORD-001", symbol="EURUSD", old_state="submitted", new_state="filled", details={"price": 1.0852}
+                order_id="ORD-001",
+                symbol="EURUSD",
+                old_state="submitted",
+                new_state="filled",
+                details={"price": 1.0852},
             )
             await bus.publish(order_ev)
 
@@ -387,4 +405,3 @@ class TestTimesFMAlphaIntegration:
             assert broadcasted[1][1]["new_state"] == "filled"
 
         reset_event_bus()
-

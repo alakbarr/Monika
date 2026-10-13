@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #36.
 
 Formula (paper appendix): weighted sum; see paper
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_036"
 
 __alpha_meta__ = {
-    'id': 'alpha101_036',
-    'nickname': 'Kakushadze Alpha #36',
-    'theme': ['momentum', 'volume'],
-    'formula_latex': 'weighted sum; see paper',
-    'columns_required': ['open', 'close', 'volume', 'vwap'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 200,
-    'notes': 'Very long lookback (>= ~100 bars); produces NaN warmup on short panels which may trigger the >95% NaN registry guard.',
+    "id": "alpha101_036",
+    "nickname": "Kakushadze Alpha #36",
+    "theme": ["momentum", "volume"],
+    "formula_latex": "weighted sum; see paper",
+    "columns_required": ["open", "close", "volume", "vwap"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 200,
+    "notes": "Very long lookback (>= ~100 bars); produces NaN warmup on short panels which may trigger the >95% NaN registry guard.",
 }
 
 

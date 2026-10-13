@@ -26,10 +26,10 @@ def _safe_num(val: Any, default: float = 0.0) -> float:
         return default
     try:
         if isinstance(val, str):
-            val = re.sub(r'[$€£¥,]', '', val).strip()
+            val = re.sub(r"[$€£¥,]", "", val).strip()
         f = float(val)
         return default if (math.isnan(f) or math.isinf(f)) else f
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return default
 
 
@@ -80,9 +80,14 @@ async def resolve_and_repair_levels(
 
     if entry_p <= 0.0:
         try:
-            bar_close = (await session.execute(
-                select(PriceOHLCV.close).where(PriceOHLCV.symbol == symbol).order_by(PriceOHLCV.timestamp.desc()).limit(1)
-            )).scalar_one_or_none()
+            bar_close = (
+                await session.execute(
+                    select(PriceOHLCV.close)
+                    .where(PriceOHLCV.symbol == symbol)
+                    .order_by(PriceOHLCV.timestamp.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
             if bar_close and float(bar_close) > 0.0:
                 entry_p = float(bar_close)
         except Exception:
@@ -105,7 +110,8 @@ async def resolve_and_repair_levels(
         r["take_profit"] = tp_p
 
     levels_invalid = (
-        sl_p <= 0.0 or tp_p <= 0.0
+        sl_p <= 0.0
+        or tp_p <= 0.0
         or (dec_u == "BUY" and (sl_p >= entry_p or tp_p <= entry_p))
         or (dec_u == "SELL" and (sl_p <= entry_p or tp_p >= entry_p))
     )
@@ -114,6 +120,7 @@ async def resolve_and_repair_levels(
         # Try IntradayLevelOptimizer first
         try:
             from monika.application.analysis.calculators.intraday_level_optimizer import compute_optimal_levels
+
             calc_res = await compute_optimal_levels(
                 session=session,
                 symbol=symbol,
@@ -126,24 +133,36 @@ async def resolve_and_repair_levels(
             if calc_res:
                 top_sl = calc_res.get("top_sl_candidates")
                 top_tp = calc_res.get("top_tp_candidates")
-                if top_sl and (sl_p <= 0.0 or (dec_u == "BUY" and sl_p >= entry_p) or (dec_u == "SELL" and sl_p <= entry_p)):
+                if top_sl and (
+                    sl_p <= 0.0 or (dec_u == "BUY" and sl_p >= entry_p) or (dec_u == "SELL" and sl_p <= entry_p)
+                ):
                     sl_p = float(top_sl[0]["price"])
                     r["stop_loss"] = sl_p
-                if top_tp and (tp_p <= 0.0 or (dec_u == "BUY" and tp_p <= entry_p) or (dec_u == "SELL" and tp_p >= entry_p)):
+                if top_tp and (
+                    tp_p <= 0.0 or (dec_u == "BUY" and tp_p <= entry_p) or (dec_u == "SELL" and tp_p >= entry_p)
+                ):
                     tp_p = float(top_tp[0]["price"])
                     r["take_profit"] = tp_p
-                logger.info(f"[LevelSynthesizer] Computed structural levels for arbitrated {symbol} ({dec_u}): SL={sl_p}, TP={tp_p}")
+                logger.info(
+                    f"[LevelSynthesizer] Computed structural levels for arbitrated {symbol} ({dec_u}): SL={sl_p}, TP={tp_p}"
+                )
         except Exception as opt_err:
             logger.debug(f"[LevelSynthesizer] Level optimizer failed for {symbol}: {opt_err}")
 
         # Fallback to ATR-based calculation if structural calculation failed or levels still invalid
         if (
-            sl_p <= 0.0 or tp_p <= 0.0
+            sl_p <= 0.0
+            or tp_p <= 0.0
             or (dec_u == "BUY" and (sl_p >= entry_p or tp_p <= entry_p))
             or (dec_u == "SELL" and (sl_p <= entry_p or tp_p >= entry_p))
         ):
             atr_val = _safe_num(r.get("atr") or r.get("atr_14"))
-            if atr_val <= 0.0 and ana and getattr(ana, "indicators", None) and not hasattr(ana.indicators, "_mock_name"):
+            if (
+                atr_val <= 0.0
+                and ana
+                and getattr(ana, "indicators", None)
+                and not hasattr(ana.indicators, "_mock_name")
+            ):
                 try:
                     inds = json.loads(ana.indicators) if isinstance(ana.indicators, str) else ana.indicators
                     if isinstance(inds, dict):

@@ -44,6 +44,7 @@ class BasePlugin:
     Abstract base class for modular plugins.
     Allows plugins to cleanly encapsulate lifecycle hooks, custom tools, and state.
     """
+
     name: str = ""
     version: str = "1.0.0"
     description: str = ""
@@ -100,6 +101,7 @@ class PluginManager:
 
         def disposer() -> bool:
             return self.unregister_hook(event, handler)
+
         return disposer
 
     def unregister_hook(self, event: str, handler: Callable) -> bool:
@@ -117,7 +119,7 @@ class PluginManager:
         handlers = list(self._hooks.get(event, []))
         results = []
         for handler in handlers:
-            handler_name = getattr(handler, '__name__', str(handler))
+            handler_name = getattr(handler, "__name__", str(handler))
             call_kwargs = _filter_kwargs_for_handler(handler, kwargs)
             try:
                 async with asyncio.timeout(timeout_seconds):
@@ -127,16 +129,27 @@ class PluginManager:
                         res = handler(**call_kwargs)
                 results.append(res)
             except TimeoutError:
-                logger.error(f"[PluginManager] Timeout ({timeout_seconds}s) executing hook '{handler_name}' on '{event}'.")
+                logger.error(
+                    f"[PluginManager] Timeout ({timeout_seconds}s) executing hook '{handler_name}' on '{event}'."
+                )
                 if event == "pre_tool_call":
-                    results.append({"abort": True, "reason": f"pre_tool_call hook '{handler_name}' timed out after {timeout_seconds}s"})
+                    results.append(
+                        {
+                            "abort": True,
+                            "reason": f"pre_tool_call hook '{handler_name}' timed out after {timeout_seconds}s",
+                        }
+                    )
             except Exception as e:
-                logger.error(f"[PluginManager] Error executing hook '{handler_name}' on event '{event}': {e}", exc_info=True)
+                logger.error(
+                    f"[PluginManager] Error executing hook '{handler_name}' on event '{event}': {e}", exc_info=True
+                )
                 if event == "pre_tool_call":
                     results.append({"abort": True, "reason": f"pre_tool_call hook error: {e}"})
         return results
 
-    async def emit_waterfall(self, event: str, payload: Any, timeout_seconds: float = 5.0, **kwargs: Any) -> tuple[bool, Any]:
+    async def emit_waterfall(
+        self, event: str, payload: Any, timeout_seconds: float = 5.0, **kwargs: Any
+    ) -> tuple[bool, Any]:
         """
         Waterfall interceptor middleware for critical lifecycle events (e.g. PRE_ORDER, PRE_RISK_GATE).
         Handlers execute sequentially with cooperative timeout boundaries.
@@ -144,7 +157,7 @@ class PluginManager:
         handlers = list(self._hooks.get(event, []))
         current = payload
         for handler in handlers:
-            handler_name = getattr(handler, '__name__', str(handler))
+            handler_name = getattr(handler, "__name__", str(handler))
             call_kwargs = _filter_kwargs_for_handler(handler, kwargs)
             try:
                 async with asyncio.timeout(timeout_seconds):
@@ -162,10 +175,15 @@ class PluginManager:
                 if res is not None and not isinstance(res, bool):
                     current = res
             except TimeoutError:
-                logger.error(f"[PluginManager] Timeout ({timeout_seconds}s) in waterfall hook '{handler_name}' on '{event}'.")
+                logger.error(
+                    f"[PluginManager] Timeout ({timeout_seconds}s) in waterfall hook '{handler_name}' on '{event}'."
+                )
                 return False, f"Waterfall hook '{handler_name}' timed out after {timeout_seconds}s"
             except Exception as e:
-                logger.error(f"[PluginManager] Error executing waterfall handler '{handler_name}' on '{event}': {e}", exc_info=True)
+                logger.error(
+                    f"[PluginManager] Error executing waterfall handler '{handler_name}' on '{event}': {e}",
+                    exc_info=True,
+                )
         return True, current
 
     async def apply_filter(self, event: str, payload: Any, **kwargs: Any) -> Any:
@@ -185,8 +203,10 @@ class PluginManager:
                 if res is not None:
                     current = res
             except Exception as e:
-                handler_name = getattr(handler, '__name__', str(handler))
-                logger.error(f"[PluginManager] Error executing filter '{handler_name}' on '{event}': {e}", exc_info=True)
+                handler_name = getattr(handler, "__name__", str(handler))
+                logger.error(
+                    f"[PluginManager] Error executing filter '{handler_name}' on '{event}': {e}", exc_info=True
+                )
         return current
 
     def register_tool(
@@ -204,6 +224,7 @@ class PluginManager:
         """
         try:
             from monika.application.analysis.tools.unified_registry import unified_tool_registry, ToolEntry
+
             desc = description or (getattr(input_model, "__doc__", None) or getattr(handler, "__doc__", "")).strip()
             is_async = inspect.iscoroutinefunction(handler)
             entry = ToolEntry(
@@ -228,6 +249,7 @@ class PluginManager:
         """Unregister a previously registered custom tool."""
         try:
             from monika.application.analysis.tools.unified_registry import unified_tool_registry
+
             if name in unified_tool_registry._tools:
                 del unified_tool_registry._tools[name]
                 if name in self._registered_tools:
@@ -246,6 +268,7 @@ class PluginManager:
         """Execute a registered custom or unified tool."""
         try:
             from monika.application.analysis.tools.unified_registry import unified_tool_registry
+
             entry = unified_tool_registry._tools.get(tool_name)
             if entry:
                 if entry.is_async:
@@ -256,6 +279,7 @@ class PluginManager:
 
         try:
             from monika.application.analysis.tools.registry import ToolRegistry
+
             tool = ToolRegistry.get_instance()._tools.get(tool_name)
             if tool:
                 res = tool.handler(**kwargs)

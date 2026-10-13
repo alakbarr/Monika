@@ -1,6 +1,7 @@
 """
 Unit tests for analysis/grounding/provenance_tagger.py.
 """
+
 import pytest
 from analysis.grounding.provenance_tagger import ProvenanceLedger, ObservedFact
 

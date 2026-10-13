@@ -33,6 +33,7 @@ def fetch_external_wire_feed(args: Dict[str, Any]) -> Dict[str, Any]:
 
 class ExampleScraperPlugin(TradingPlugin):
     """External news scraper reference plugin for market data feeds."""
+
     metadata = PluginMetadata(
         id="example_scraper_plugin",
         name="Example Scraper Plugin",
@@ -53,4 +54,3 @@ def initialize(manager: Optional[Any] = None, config: Optional[Dict[str, Any]] =
 
 def pre_tool_call(tool_name: str = "", args: Optional[Dict[str, Any]] = None, *a, **kwargs) -> Optional[Dict[str, Any]]:
     return args
-

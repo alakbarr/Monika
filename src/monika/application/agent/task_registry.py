@@ -51,6 +51,7 @@ def set_emergency_exit_code(code: Optional[int]) -> None:
     global _EMERGENCY_EXIT_CODE
     _EMERGENCY_EXIT_CODE = code
     import sys
+
     for mod_name in ("main", "__main__"):
         main_mod = sys.modules.get(mod_name)
         if main_mod is not None:
@@ -79,6 +80,7 @@ def mark_clean_shutdown():
 async def _safe_notify_warning(msg: str) -> None:
     try:
         from monika.infrastructure.infra.notifier import AgentNotifier
+
         notifier = AgentNotifier()
         await asyncio.wait_for(notifier.send_warning(msg), timeout=3.0)
     except Exception as notify_err:
@@ -88,6 +90,7 @@ async def _safe_notify_warning(msg: str) -> None:
 async def _safe_notify_critical(msg: str) -> None:
     try:
         from monika.infrastructure.infra.notifier import AgentNotifier
+
         notifier = AgentNotifier()
         await asyncio.wait_for(notifier.send_critical(msg), timeout=3.0)
     except Exception as notify_err:
@@ -95,20 +98,30 @@ async def _safe_notify_critical(msg: str) -> None:
 
 
 PERMANENT_ERRORS = [
-    "AuthenticationError", "invalid_api_key", "API key",
-    "Invalid model", "model_not_found",
-    "DATABASE_URL", "could not connect to database",
+    "AuthenticationError",
+    "invalid_api_key",
+    "API key",
+    "Invalid model",
+    "model_not_found",
+    "DATABASE_URL",
+    "could not connect to database",
     'relation ".*" does not exist',
     'column ".*" does not exist',
-    "No section: ", "No option ", "settings.yaml",
+    "No section: ",
+    "No option ",
+    "settings.yaml",
     "CERTIFICATE_VERIFY_FAILED",
-    "billing_hard_limit_reached", "quota_exceeded_permanently",
+    "billing_hard_limit_reached",
+    "quota_exceeded_permanently",
 ]
 
 LONG_RETRY_ERRORS = [
     "Connection reset by peer",
-    "SSL:", "timeout",
-    "overloaded", "529", "503",
+    "SSL:",
+    "timeout",
+    "overloaded",
+    "529",
+    "503",
     "rate_limit",
 ]
 
@@ -154,12 +167,16 @@ async def _run_with_restart(
             restarts += 1
             if restarts > max_restarts:
                 if name in CORE_TRADING_TASKS:
-                    logger.critical(f"[EMERGENCY] Core trading task {name} exited cleanly {max_restarts} times unexpectedly. Initiating emergency shutdown.")
+                    logger.critical(
+                        f"[EMERGENCY] Core trading task {name} exited cleanly {max_restarts} times unexpectedly. Initiating emergency shutdown."
+                    )
                     set_emergency_exit_code(2)
                     shutdown_event.set()
                     break
                 else:
-                    logger.warning(f"[DEGRADED] Auxiliary subsystem {name} exited {max_restarts} times. Isolating with 300s cooldown.")
+                    logger.warning(
+                        f"[DEGRADED] Auxiliary subsystem {name} exited {max_restarts} times. Isolating with 300s cooldown."
+                    )
                     await _safe_notify_warning(
                         f"[PERINGATAN] <b>[DEGRADED] Subsystem {name} exited unexpectedly</b>\n"
                         f"Subsystem auxiliary masuk status DEGRADED dengan cooldown 300s."
@@ -194,14 +211,18 @@ async def _run_with_restart(
             if is_permanent:
                 if name in CORE_TRADING_TASKS:
                     error_msg = f"[DARURAT] <b>FATAL CORE TASK CRASH (PERMANENT)</b>\nSubsystem inti <code>{name}</code> gagal permanen:\n{e}\nAplikasi melakukan shutdown darurat."
-                    logger.critical(f"[EMERGENCY] Core trading subsystem {name} failed permanently: {e}. Initiating emergency shutdown.")
+                    logger.critical(
+                        f"[EMERGENCY] Core trading subsystem {name} failed permanently: {e}. Initiating emergency shutdown."
+                    )
                     await _safe_notify_critical(error_msg)
                     set_emergency_exit_code(2)
                     shutdown_event.set()
                     break
                 else:
                     warn_msg = f"[PERINGATAN] <b>[DEGRADED] Auxiliary subsystem {name} failed (permanent error)</b>\nError: {e}\nSubsystem auxiliary diisolasi (cooldown 300s)."
-                    logger.warning(f"[DEGRADED] Auxiliary subsystem {name} failed. Isolating error without shutting down: {e}")
+                    logger.warning(
+                        f"[DEGRADED] Auxiliary subsystem {name} failed. Isolating error without shutting down: {e}"
+                    )
                     await _safe_notify_warning(warn_msg)
                     restarts = 0
                     try:
@@ -219,14 +240,18 @@ async def _run_with_restart(
             if restarts > max_restarts:
                 if name in CORE_TRADING_TASKS:
                     error_msg = f"[DARURAT] <b>FATAL CORE TASK CRASH (MAX RESTARTS EXCEEDED)</b>\nSubsystem inti <code>{name}</code> gagal {max_restarts}x berulang.\nError terakhir: {e}\nAplikasi melakukan shutdown darurat."
-                    logger.critical(f"[EMERGENCY] Core trading subsystem {name} exceeded max restarts: {e}. Initiating emergency shutdown.")
+                    logger.critical(
+                        f"[EMERGENCY] Core trading subsystem {name} exceeded max restarts: {e}. Initiating emergency shutdown."
+                    )
                     await _safe_notify_critical(error_msg)
                     set_emergency_exit_code(2)
                     shutdown_event.set()
                     break
                 else:
                     warn_msg = f"[PERINGATAN] <b>[DEGRADED] Auxiliary subsystem {name} hit max restarts ({max_restarts}x)</b>\nError: {e}\nSubsystem diisolasi (cooldown 300s)."
-                    logger.warning(f"[DEGRADED] Auxiliary subsystem {name} exceeded max restarts. Isolating error without shutting down: {e}")
+                    logger.warning(
+                        f"[DEGRADED] Auxiliary subsystem {name} exceeded max restarts. Isolating error without shutting down: {e}"
+                    )
                     await _safe_notify_warning(warn_msg)
                     restarts = 0
                     try:
@@ -335,14 +360,16 @@ class TaskRegistry:
                 else:
                     is_alive = True
                     state_str = "RUNNING"
-            rows.append({
-                "name": name,
-                "task_id": defn.task_id,
-                "is_core": defn.is_core,
-                "is_alive": is_alive,
-                "status": state_str,
-                "max_restarts": defn.max_restarts,
-            })
+            rows.append(
+                {
+                    "name": name,
+                    "task_id": defn.task_id,
+                    "is_core": defn.is_core,
+                    "is_alive": is_alive,
+                    "status": state_str,
+                    "max_restarts": defn.max_restarts,
+                }
+            )
         return rows
 
     @classmethod
@@ -360,6 +387,7 @@ class TaskRegistry:
         for r in rows:
             st_icon = "[AKTIF]" if r["is_alive"] else ("[NONAKTIF]" if r["status"] == "REGISTERED" else "[KRITIS]")
             core_badge = " `[CORE]`" if r["is_core"] else ""
-            lines.append(f"{st_icon} *{r['name']}*{core_badge}\n  Status: `{r['status']}` | Max Restarts: `{r['max_restarts']}`")
+            lines.append(
+                f"{st_icon} *{r['name']}*{core_badge}\n  Status: `{r['status']}` | Max Restarts: `{r['max_restarts']}`"
+            )
         return "\n".join(lines)
-

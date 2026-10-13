@@ -81,7 +81,9 @@ class BankIndonesiaFetcher:
 
                 # 3. Targeted regex fallback across page with keyword proximity
                 if rate_val is None:
-                    matches = re.finditer(r"(?:BI-Rate|BI 7-Day|Suku Bunga)[^%\d]{0,50}?(\d+[\.,]\d+)\s*%", html, re.IGNORECASE)
+                    matches = re.finditer(
+                        r"(?:BI-Rate|BI 7-Day|Suku Bunga)[^%\d]{0,50}?(\d+[\.,]\d+)\s*%", html, re.IGNORECASE
+                    )
                     for match in matches:
                         val = float(match.group(1).replace(",", "."))
                         if 4.0 <= val <= 9.0:
@@ -102,6 +104,7 @@ class BankIndonesiaFetcher:
         # Fallback via financial search
         try:
             from monika.infrastructure.data_ingestion.sources.web_search import WebSearchService
+
             ws = WebSearchService()
             search_out = await ws.search("Bank Indonesia BI Rate suku bunga terkini persen", max_results=3)
             results = search_out.get("results", []) if isinstance(search_out, dict) else []
@@ -165,13 +168,16 @@ class BankIndonesiaFetcher:
         # Fallback to Yahoo Finance IDR=X
         try:
             import yfinance as yf
+
             loop = asyncio.get_running_loop()
+
             def _get_yf():
                 t = yf.Ticker("IDR=X")
                 hist = t.history(period="2d", interval="1d")
                 if not hist.empty:
                     return float(hist["Close"].iloc[-1])
                 return None
+
             yf_rate = await loop.run_in_executor(None, _get_yf)
             if yf_rate and yf_rate > 10000:
                 return {

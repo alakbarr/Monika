@@ -2,6 +2,7 @@
 Provenance Tagger & Ledger: Tracks numeric provenance of tool outputs
 and cross-verifies figures cited by LLM agents.
 """
+
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
@@ -14,6 +15,7 @@ logger = logging.getLogger("TradingAgent.ProvenanceTagger")
 @dataclass(frozen=True)
 class ObservedFact:
     """Single numeric fact extracted from tool output."""
+
     field: str
     value: float
     tool_name: str
@@ -35,9 +37,7 @@ class ProvenanceLedger:
         count = 0
         now = datetime.now(timezone.utc)
         for key, val in numerics.items():
-            self._facts.append(
-                ObservedFact(field=key, value=val, tool_name=tool_name, timestamp=now)
-            )
+            self._facts.append(ObservedFact(field=key, value=val, tool_name=tool_name, timestamp=now))
             count += 1
         return count
 
@@ -72,9 +72,7 @@ class ProvenanceLedger:
 
         return best
 
-    def verify_text_citations(
-        self, text: str, tolerance: float = 1e-3
-    ) -> Tuple[int, int, List[float]]:
+    def verify_text_citations(self, text: str, tolerance: float = 1e-3) -> Tuple[int, int, List[float]]:
         """
         Scan text for numbers and verify against ledger facts.
         Returns: (verified_count, unverified_count, unverified_numbers)
@@ -122,10 +120,11 @@ class ProvenanceLedger:
         if not text:
             return text, []
 
-        common_allowed = set(allowed_common_ints) if allowed_common_ints is not None else {
-            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
-            14.0, 20.0, 50.0, 100.0, 200.0
-        }
+        common_allowed = (
+            set(allowed_common_ints)
+            if allowed_common_ints is not None
+            else {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 14.0, 20.0, 50.0, 100.0, 200.0}
+        )
 
         redacted_nums: List[float] = []
 
@@ -337,8 +336,12 @@ class ProvenanceLedger:
         entry_price = proposal.get("entry_price") or proposal.get("entry")
         stop_loss = proposal.get("stop_loss") or proposal.get("sl")
         lot_size = proposal.get("lot_size") or proposal.get("lots")
-        account_equity = proposal.get("account_equity") or market_snapshot.get("account_equity") or market_snapshot.get("equity")
-        free_margin = proposal.get("free_margin") or market_snapshot.get("free_margin") or market_snapshot.get("margin_free")
+        account_equity = (
+            proposal.get("account_equity") or market_snapshot.get("account_equity") or market_snapshot.get("equity")
+        )
+        free_margin = (
+            proposal.get("free_margin") or market_snapshot.get("free_margin") or market_snapshot.get("margin_free")
+        )
         empirical_spread = market_snapshot.get("spread") or market_snapshot.get("tick_spread")
         cited_spread = proposal.get("spread")
 

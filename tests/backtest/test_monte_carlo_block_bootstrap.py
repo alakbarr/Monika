@@ -1,6 +1,7 @@
 """
 Unit tests for backtest/monte_carlo_engine.py verifying Circular Block Bootstrap and equity compounding.
 """
+
 import pytest
 import numpy as np
 from backtest.monte_carlo_engine import MonteCarloStressTester
@@ -13,10 +14,7 @@ def test_monte_carlo_block_bootstrap():
     trade_returns = [0.015, -0.010, 0.020, -0.008, 0.012, -0.015, 0.005, -0.002] * 5
 
     res = tester.simulate_trade_sequence(
-        trade_returns=trade_returns,
-        num_simulations=200,
-        initial_equity=10000.0,
-        mode="block_bootstrap"
+        trade_returns=trade_returns, num_simulations=200, initial_equity=10000.0, mode="block_bootstrap"
     )
 
     assert res["num_simulations"] == 200
@@ -33,10 +31,7 @@ def test_monte_carlo_equity_compounding_ruin_protection():
     catastrophic_returns = [-0.80, -0.80, -0.80, -0.80, -0.80]
 
     res = tester.simulate_trade_sequence(
-        trade_returns=catastrophic_returns,
-        num_simulations=100,
-        initial_equity=10000.0,
-        mode="permutation"
+        trade_returns=catastrophic_returns, num_simulations=100, initial_equity=10000.0, mode="permutation"
     )
 
     assert res["ruin_probability_pct"] == 100.0

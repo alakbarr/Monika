@@ -47,8 +47,7 @@ class TokenBudgetManager:
 
         # Usage counters
         self._usage_by_subsystem: Dict[str, Dict[str, int]] = {
-            sub: {"prompt": 0, "completion": 0, "cached": 0, "total": 0}
-            for sub in SUBSYSTEM_SHARES
+            sub: {"prompt": 0, "completion": 0, "cached": 0, "total": 0} for sub in SUBSYSTEM_SHARES
         }
         self._usage_by_model: Dict[str, int] = {}
         self._total_spent = 0
@@ -68,8 +67,7 @@ class TokenBudgetManager:
             logger.info(f"[TokenBudgeter] New UTC day ({today}). Resetting daily token counters.")
             self._current_day = today
             self._usage_by_subsystem = {
-                sub: {"prompt": 0, "completion": 0, "cached": 0, "total": 0}
-                for sub in SUBSYSTEM_SHARES
+                sub: {"prompt": 0, "completion": 0, "cached": 0, "total": 0} for sub in SUBSYSTEM_SHARES
             }
             self._usage_by_model.clear()
             self._total_spent = 0
@@ -121,6 +119,7 @@ class TokenBudgetManager:
 
             try:
                 from monika.core.telemetry.metrics_exporter import metrics
+
                 metrics.inc_counter(
                     "llm_tokens_consumed_total",
                     float(total),
@@ -191,7 +190,9 @@ class TokenBudgetManager:
                     "completion": usage["completion"],
                     "cached": usage["cached"],
                     "pct_used": round((usage["total"] / max(1, quota)) * 100.0, 1),
-                    "tier": "normal" if usage["total"] < 0.7 * quota else ("compressed" if usage["total"] < 0.9 * quota else "degraded"),
+                    "tier": "normal"
+                    if usage["total"] < 0.7 * quota
+                    else ("compressed" if usage["total"] < 0.9 * quota else "degraded"),
                 }
 
             return {

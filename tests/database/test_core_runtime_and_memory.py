@@ -44,6 +44,7 @@ def temp_db():
 # 1. Session DB WAL Soft-Rewind & Active Filtering Tests
 # ==============================================================================
 
+
 def test_session_db_wal_active_column_and_filtering(temp_db):
     session_id = "test_sess_active"
     temp_db.create_or_touch_session(session_id)
@@ -76,6 +77,7 @@ def test_session_db_wal_active_column_and_filtering(temp_db):
 # 2. FTS5 Indexing 8192 Char Bound & Auto-Sync Triggers
 # ==============================================================================
 
+
 def test_fts5_indexing_truncation_and_triggers(temp_db):
     conn = temp_db.get_connection()
     fts = Fts5SessionSearch(conn)
@@ -99,6 +101,7 @@ def test_fts5_indexing_truncation_and_triggers(temp_db):
 # ==============================================================================
 # 3. Session Lifecycle In-Place Soft Rewind
 # ==============================================================================
+
 
 def test_session_lifecycle_soft_rewind(temp_db):
     mgr = SessionLifecycleManager(temp_db)
@@ -137,6 +140,7 @@ def test_session_lifecycle_soft_rewind(temp_db):
 # 4. Crash Repair Ledger
 # ==============================================================================
 
+
 def test_repair_ledger_orphaned_tool_calls(temp_db):
     repair = RepairLedger(temp_db)
     session_id = "test_sess_repair"
@@ -169,13 +173,13 @@ def test_repair_ledger_orphaned_tool_calls(temp_db):
 # 5. Trajectory Compressor Boundary Snapping & Tail Watermarking
 # ==============================================================================
 
+
 def test_trajectory_compressor_boundary_snapping_and_watermark():
     compressor = TrajectoryCompressor(
         max_tool_output_chars=100,
         preserve_recent_turns=1,
         summarize_intermediate_threshold=2,
     )
-
 
     # Create a conversation with system, initial user, intermediate turns, and tool calls
     messages = [

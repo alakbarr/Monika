@@ -1,11 +1,11 @@
-
 """GTJA Alpha 128 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     100-100/(1+SUM(((H+L+C)/3*V) if up else 0,14)/SUM((... if down else 0),14))
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_128"
 
 __alpha_meta__ = {
-    'id': 'gtja191_128',
-    'theme': ['momentum'],
-    'formula_latex': 'see body',
-    'columns_required': ['open', 'high', 'low', 'close', 'volume'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 14,
-    'min_warmup_bars': 16,
-    'notes': '',
+    "id": "gtja191_128",
+    "theme": ["momentum"],
+    "formula_latex": "see body",
+    "columns_required": ["open", "high", "low", "close", "volume"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 14,
+    "min_warmup_bars": 16,
+    "notes": "",
 }
 
 

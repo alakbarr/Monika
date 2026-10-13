@@ -9,7 +9,7 @@ from typing import Dict, Any, List
 def evaluate_risk_compliance(fixture: Dict[str, Any], decision_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Zero-LLM mechanical verification of institutional risk gate compliance.
-    
+
     Verifies that hard risk constraints (spread limits, daily drawdown limits,
     portfolio heat caps, emergency triggers) are strictly obeyed without LLM hallucination
     or unauthorized bypass.
@@ -19,24 +19,20 @@ def evaluate_risk_compliance(fixture: Dict[str, Any], decision_data: Dict[str, A
 
     expected = fixture.get("expected_outcome", {})
     requires_risk_veto = expected.get("requires_risk_veto", False)
-    
+
     decision = str(decision_data.get("decision", "")).upper()
     reason = str(decision_data.get("reason", "") or decision_data.get("veto_reason", "")).lower()
 
     if requires_risk_veto:
         if decision in ("BUY", "SELL"):
-            violations.append(
-                f"Risk Gate Violation: Scenario requires binary VETO, but decision was '{decision}'"
-            )
+            violations.append(f"Risk Gate Violation: Scenario requires binary VETO, but decision was '{decision}'")
         else:
             checks_passed.append(f"Correctly honored risk gate veto with decision: {decision}")
 
         expected_veto = expected.get("veto_reason", "").lower()
         if expected_veto and expected_veto not in reason:
             # Also check reason or notes
-            violations.append(
-                f"Veto rationale missing expected risk factor '{expected_veto}' (got: '{reason}')"
-            )
+            violations.append(f"Veto rationale missing expected risk factor '{expected_veto}' (got: '{reason}')")
         else:
             checks_passed.append(f"Veto rationale correctly cited: {expected_veto}")
 

@@ -151,12 +151,13 @@ class ProfileManager:
     def export_profile(self, name: str, export_zip_path: str) -> str:
         """Exports profile directory to a zip archive."""
         import zipfile
+
         clean_name = name.strip().lower()
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         if clean_name == "default":
             # Export default settings and data folder safely without packing other profiles
-            with zipfile.ZipFile(export_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            with zipfile.ZipFile(export_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
                 default_cfg = os.path.join(base_dir, "config", "settings.yaml")
                 if os.path.exists(default_cfg):
                     zipf.write(default_cfg, "settings.yaml")
@@ -174,7 +175,7 @@ class ProfileManager:
         if not os.path.exists(p_dir):
             raise FileNotFoundError(f"Profile '{clean_name}' does not exist.")
 
-        with zipfile.ZipFile(export_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        with zipfile.ZipFile(export_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
             for root, _, files in os.walk(p_dir):
                 for file in files:
                     file_path = os.path.join(root, file)
@@ -187,6 +188,7 @@ class ProfileManager:
     def import_profile(self, zip_path: str, new_name: Optional[str] = None) -> str:
         """Imports profile from a zip archive with Zip Slip path traversal protection."""
         import zipfile
+
         if not os.path.exists(zip_path):
             raise FileNotFoundError(f"Zip archive not found: {zip_path}")
 
@@ -199,7 +201,7 @@ class ProfileManager:
             raise FileExistsError(f"Profile '{target_name}' already exists.")
 
         os.makedirs(target_dir, exist_ok=True)
-        with zipfile.ZipFile(zip_path, 'r') as zipf:
+        with zipfile.ZipFile(zip_path, "r") as zipf:
             for member in zipf.infolist():
                 member_path = os.path.abspath(os.path.join(target_dir, member.filename))
                 if not member_path.startswith(target_dir + os.sep) and member_path != target_dir:
@@ -239,4 +241,3 @@ class ProfileManager:
             d_dir = os.path.join(self.root_dir, active, "data")
         os.makedirs(d_dir, exist_ok=True)
         return d_dir
-

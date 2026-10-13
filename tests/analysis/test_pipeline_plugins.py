@@ -80,12 +80,8 @@ async def test_swappable_analysis_pipeline_in_engine():
             "directories": [],
             "analysis_pipeline": {
                 "active": "technical_scalping",
-                "options": {
-                    "technical_scalping": {
-                        "timeframes": ["M15"]
-                    }
-                }
-            }
+                "options": {"technical_scalping": {"timeframes": ["M15"]}},
+            },
         }
     }
 

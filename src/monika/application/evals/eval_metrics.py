@@ -163,7 +163,11 @@ def compare_ab_evaluations(
     # REJECT if directional accuracy drops significantly (< -3%) or oracle pass rate drops (< -3%)
     if delta_acc < -3.0 or delta_orc < -3.0 or delta_grnd < -5.0:
         recommendation = "REJECT"
-    elif delta_acc >= 0.0 and delta_orc >= 0.0 and (delta_acc > 0 or delta_orc > 0 or tok_save >= 10.0 or cost_save >= 10.0):
+    elif (
+        delta_acc >= 0.0
+        and delta_orc >= 0.0
+        and (delta_acc > 0 or delta_orc > 0 or tok_save >= 10.0 or cost_save >= 10.0)
+    ):
         recommendation = "PROMOTE"
     elif delta_acc >= -1.0 and delta_orc >= 0.0 and tok_save >= 15.0:
         recommendation = "PROMOTE"

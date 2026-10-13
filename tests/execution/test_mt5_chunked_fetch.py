@@ -14,14 +14,14 @@ from execution.mt5_client import MT5Client
 
 def _make_dummy_rates(start_ts: int, count: int):
     dtype = [
-        ('time', '<i8'),
-        ('open', '<f8'),
-        ('high', '<f8'),
-        ('low', '<f8'),
-        ('close', '<f8'),
-        ('tick_volume', '<i8'),
-        ('spread', '<i4'),
-        ('real_volume', '<i8')
+        ("time", "<i8"),
+        ("open", "<f8"),
+        ("high", "<f8"),
+        ("low", "<f8"),
+        ("close", "<f8"),
+        ("tick_volume", "<i8"),
+        ("spread", "<i4"),
+        ("real_volume", "<i8"),
     ]
     arr = np.zeros(count, dtype=dtype)
     for i in range(count):

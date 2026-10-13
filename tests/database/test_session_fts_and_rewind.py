@@ -24,6 +24,7 @@ from agent.state_rewind import (
 # 1. SessionDbWal Tests
 # ==============================================================================
 
+
 def test_session_db_wal_mode_and_message_crud():
     with tempfile.TemporaryDirectory() as tmp_dir:
         db_path = Path(tmp_dir) / "test_sessions.sqlite"
@@ -53,6 +54,7 @@ def test_session_db_wal_mode_and_message_crud():
 # 2. FTS5 CJK Bigram Tokenizer Tests
 # ==============================================================================
 
+
 def test_cjk_bigram_tokenizer():
     # Pure latin
     res1 = tokenize_cjk_bigram("EURUSD breakout strategy")
@@ -80,8 +82,12 @@ def test_fts5_indexing_and_search():
         fts = Fts5SessionSearch(conn)
 
         # Index multiple messages
-        fts.index_message(row_id=1, session_id="s1", role="user", content="Berapa stop loss ideal untuk EURUSD hari ini?")
-        fts.index_message(row_id=2, session_id="s1", role="assistant", content="Gunakan 25 pips stop loss di bawah support 1.0820.")
+        fts.index_message(
+            row_id=1, session_id="s1", role="user", content="Berapa stop loss ideal untuk EURUSD hari ini?"
+        )
+        fts.index_message(
+            row_id=2, session_id="s1", role="assistant", content="Gunakan 25 pips stop loss di bawah support 1.0820."
+        )
         fts.index_message(row_id=3, session_id="s1", role="user", content="XAUUSD 黄金 突破 策略 分析")
 
         # Search Latin query
@@ -103,6 +109,7 @@ def test_fts5_indexing_and_search():
 # 3. Carrier-Aware State Rewind Tests (/undo)
 # ==============================================================================
 
+
 def test_state_rewind_normal_turn():
     with tempfile.TemporaryDirectory() as tmp_dir:
         db_path = Path(tmp_dir) / "test_rewind.sqlite"
@@ -119,7 +126,14 @@ def test_state_rewind_normal_turn():
         db.append_message(s_id, role="assistant", content="Turn 2 Assistant Answer", turn_ordinal=2)
 
         # Record normal tool call (no side effect)
-        db.record_tool_execution(s_id, turn_ordinal=2, tool_name="get_market_quote", arguments={"sym": "EURUSD"}, output="1.0850", has_side_effects=False)
+        db.record_tool_execution(
+            s_id,
+            turn_ordinal=2,
+            tool_name="get_market_quote",
+            arguments={"sym": "EURUSD"},
+            output="1.0850",
+            has_side_effects=False,
+        )
 
         # Rewind Turn 2 (user_ordinal = -1)
         outcome = rewind_mgr.rewind_session(s_id, user_ordinal=-1)

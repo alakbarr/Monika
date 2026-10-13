@@ -48,13 +48,7 @@ async def test_reactive_debate_node_fails_closed_on_error():
         "actionable_trades": [mock_trade],
         "symbols": ["EURUSD"],
     }
-    config = {
-        "configurable": {
-            "settings": {
-                "trading": {"enable_debate": True}
-            }
-        }
-    }
+    config = {"configurable": {"settings": {"trading": {"enable_debate": True}}}}
 
     # Simulate debate subgraph raising an unhandled exception
     with patch("graph.nodes.debate.subgraph.build_debate_subgraph") as mock_build:

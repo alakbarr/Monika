@@ -49,6 +49,7 @@ async def test_event_bus_bail_dispatch():
 
     # Handler 3: should never run because h_block bailed
     h3_ran = False
+
     async def h_never(evt: PreRiskGateEvent):
         nonlocal h3_ran
         h3_ran = True

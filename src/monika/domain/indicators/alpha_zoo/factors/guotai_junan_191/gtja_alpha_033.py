@@ -1,4 +1,3 @@
-
 """GTJA Alpha #33.
 
 Formula: ((((-1*TSMIN(LOW,5))+DELAY(TSMIN(LOW,5),5))*RANK(((SUM(RET,240)-SUM(RET,20))/220)))*TSRANK(VOLUME,5))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_033",
-    "theme": ['momentum', 'volume'],
-    "formula_latex": '((((-1*TSMIN(LOW,5))+DELAY(TSMIN(LOW,5),5))*RANK(((SUM(RET,240)-SUM(RET,20))/220)))*TSRANK(VOLUME,5))',
-    "columns_required": ['low', 'close', 'volume'],
+    "theme": ["momentum", "volume"],
+    "formula_latex": "((((-1*TSMIN(LOW,5))+DELAY(TSMIN(LOW,5),5))*RANK(((SUM(RET,240)-SUM(RET,20))/220)))*TSRANK(VOLUME,5))",
+    "columns_required": ["low", "close", "volume"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 5,
     "min_warmup_bars": 61,
-    "notes": '240d/20d long-window approximated with 60d/20d (warmup feasibility).',
+    "notes": "240d/20d long-window approximated with 60d/20d (warmup feasibility).",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     l = panel["low"]

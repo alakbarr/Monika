@@ -128,18 +128,25 @@ async def invoke_json(model_name, settings, system_prompt, prompt, schema, **rol
         )
 
 
-async def invoke_agent(model_name, settings, session, system_prompt, user_message, tools, stage_name, **role_kwargs) -> InvokeResult:
+async def invoke_agent(
+    model_name, settings, session, system_prompt, user_message, tools, stage_name, **role_kwargs
+) -> InvokeResult:
     client = make_client(model_name, settings, **role_kwargs)
     usage = _attach_usage_capture(client)
     t0 = time.monotonic()
     try:
-        result = await client.run_agent(session=session, system_prompt=system_prompt,
-                                         user_message=user_message, tools=tools, stage_name=stage_name)
+        result = await client.run_agent(
+            session=session, system_prompt=system_prompt, user_message=user_message, tools=tools, stage_name=stage_name
+        )
         elapsed = time.monotonic() - t0
         in_tok = (result.get("input_tokens") if isinstance(result, dict) else None) or usage.get("input_tokens", 0)
         out_tok = (result.get("output_tokens") if isinstance(result, dict) else None) or usage.get("output_tokens", 0)
-        cached_tok = (result.get("cached_tokens") if isinstance(result, dict) else None) or usage.get("cached_tokens", 0)
-        thinking_tok = (result.get("thinking_tokens") if isinstance(result, dict) else None) or usage.get("thinking_tokens", 0)
+        cached_tok = (result.get("cached_tokens") if isinstance(result, dict) else None) or usage.get(
+            "cached_tokens", 0
+        )
+        thinking_tok = (result.get("thinking_tokens") if isinstance(result, dict) else None) or usage.get(
+            "thinking_tokens", 0
+        )
         if not (isinstance(result, dict) and result.get("success")):
             err_msg = result.get("error", "agent run failed") if isinstance(result, dict) else "agent run failed"
             return InvokeResult(
@@ -186,13 +193,18 @@ async def invoke_chat(model_name, settings, system_prompt, history, message, too
     usage = _attach_usage_capture(client)
     t0 = time.monotonic()
     try:
-        result = await client.run_chat_loop(system_prompt=system_prompt, conversation_history=history,
-                                             new_user_message=message, tools=tools)
+        result = await client.run_chat_loop(
+            system_prompt=system_prompt, conversation_history=history, new_user_message=message, tools=tools
+        )
         elapsed = time.monotonic() - t0
         in_tok = (result.get("input_tokens") if isinstance(result, dict) else None) or usage.get("input_tokens", 0)
         out_tok = (result.get("output_tokens") if isinstance(result, dict) else None) or usage.get("output_tokens", 0)
-        cached_tok = (result.get("cached_tokens") if isinstance(result, dict) else None) or usage.get("cached_tokens", 0)
-        thinking_tok = (result.get("thinking_tokens") if isinstance(result, dict) else None) or usage.get("thinking_tokens", 0)
+        cached_tok = (result.get("cached_tokens") if isinstance(result, dict) else None) or usage.get(
+            "cached_tokens", 0
+        )
+        thinking_tok = (result.get("thinking_tokens") if isinstance(result, dict) else None) or usage.get(
+            "thinking_tokens", 0
+        )
         if isinstance(result, dict) and not result.get("success", True):
             return InvokeResult(
                 model_name=model_name,
@@ -275,6 +287,7 @@ async def invoke_system_one(
     Supports TypeSafe JEV natively, or fast generative LLMs in strict JSON classification mode.
     """
     import json
+
     role_kwargs.setdefault("max_tokens", 1024)
     role_kwargs.setdefault("temperature", 0.0)
     role_kwargs.setdefault("thinking", "none")
@@ -283,7 +296,9 @@ async def invoke_system_one(
     usage = _attach_usage_capture(client)
     t0 = time.monotonic()
     try:
-        if hasattr(client, "classify_json") and ("typesafe" in client.__class__.__name__.lower() or "jev" in model_name.lower()):
+        if hasattr(client, "classify_json") and (
+            "typesafe" in client.__class__.__name__.lower() or "jev" in model_name.lower()
+        ):
             # Native TypeSafe JEV System One path
             out = await client.classify_json(
                 prompt=prompt or "Evaluate state against questions",
@@ -349,5 +364,3 @@ async def invoke_system_one(
             latency_s=time.monotonic() - t0,
             error=str(e),
         )
-
-

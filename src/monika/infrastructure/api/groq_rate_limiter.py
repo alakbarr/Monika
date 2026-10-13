@@ -2,6 +2,7 @@
 GroqRateLimiter — In-memory rate limiter untuk Groq API.
 Groq memiliki limit sangat ketat: RPM 30, RPD 250-1000.
 """
+
 import asyncio
 import time
 import logging
@@ -11,26 +12,28 @@ from typing import ClassVar, Optional
 
 logger = logging.getLogger("TradingAgent.GroqRateLimiter")
 
+
 def get_api_keys() -> list[str]:
     """Parse GROQ_API_KEYS env var. Fallback ke GROQ_API_KEY (backward compat)."""
     raw = os.getenv("GROQ_API_KEYS", os.getenv("GROQ_API_KEY", ""))
     return [k.strip() for k in raw.split(",") if k.strip()]
 
+
 _num_keys = max(1, len(get_api_keys()))
 
 # Quota per model alias (per individual key)
 GROQ_QUOTA_PER_KEY = {
-    "groq/compound":       {"rpm": 30, "rpd": 250,  "tpm": 70000},
-    "groq/compound-mini":  {"rpm": 30, "rpd": 250,  "tpm": 70000},
-    "groq-compound":       {"rpm": 30, "rpd": 250,  "tpm": 70000},
+    "groq/compound": {"rpm": 30, "rpd": 250, "tpm": 70000},
+    "groq/compound-mini": {"rpm": 30, "rpd": 250, "tpm": 70000},
+    "groq-compound": {"rpm": 30, "rpd": 250, "tpm": 70000},
     "openai/gpt-oss-120b": {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
-    "openai/gpt-oss-20b":  {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
-    "groq-gpt-oss-120b":   {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
-    "groq-gpt-oss-20b":    {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
-    "qwen/qwen3.6-27b":    {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
-    "qwen/qwen3.8-27b":    {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 2000000},
-    "groq-qwen3.8-27b":    {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 2000000},
-    "groq-qwen3.6-27b":    {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
+    "openai/gpt-oss-20b": {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
+    "groq-gpt-oss-120b": {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
+    "groq-gpt-oss-20b": {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
+    "qwen/qwen3.6-27b": {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
+    "qwen/qwen3.8-27b": {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 2000000},
+    "groq-qwen3.8-27b": {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 2000000},
+    "groq-qwen3.6-27b": {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
 }
 DEFAULT_QUOTA_PER_KEY = {"rpm": 30, "rpd": 250, "tpm": 70000}
 
@@ -45,8 +48,10 @@ from monika.infrastructure.infra.paths import DATA_DIR
 
 _STATE_FILE = DATA_DIR / "groq_rate_limit_state.json"
 
+
 class GroqRateLimiter:
     """Sliding window rate limiter untuk Groq API — keyed per (model, key_id)."""
+
     _rpm_windows: ClassVar[dict] = defaultdict(deque)
     _daily_counts: ClassVar[dict] = {}
     _cooldowns: ClassVar[dict] = {}
@@ -79,19 +84,9 @@ class GroqRateLimiter:
     def _save_state(cls):
         try:
             _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-            daily_payload = {
-                f"{k[0]}||{k[1]}": v for k, v in cls._daily_counts.items()
-            }
-            cooldown_payload = {
-                f"{k[0]}||{k[1]}": v for k, v in cls._cooldowns.items() if v > time.time()
-            }
-            data = {
-                "groq": {
-                    "daily_counts": daily_payload,
-                    "cooldowns": cooldown_payload,
-                    "updated_at": time.time()
-                }
-            }
+            daily_payload = {f"{k[0]}||{k[1]}": v for k, v in cls._daily_counts.items()}
+            cooldown_payload = {f"{k[0]}||{k[1]}": v for k, v in cls._cooldowns.items() if v > time.time()}
+            data = {"groq": {"daily_counts": daily_payload, "cooldowns": cooldown_payload, "updated_at": time.time()}}
             tmp_file = _STATE_FILE.with_suffix(".tmp")
             tmp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
             os.replace(tmp_file, _STATE_FILE)

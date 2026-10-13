@@ -16,9 +16,7 @@ INJECTION_PATTERNS = [
     )
 ]
 
-EXFILTRATION_PATTERNS = [
-    p.pattern for p, _, _ in PromptInjectionScanner.EXFILTRATION_PATTERNS
-]
+EXFILTRATION_PATTERNS = [p.pattern for p, _, _ in PromptInjectionScanner.EXFILTRATION_PATTERNS]
 
 
 class ThreatDetector:
@@ -40,26 +38,32 @@ class ThreatDetector:
 
         for p_label in result.detected_patterns:
             if "invisible_unicode" in p_label:
-                findings.append({
-                    "type": "invisible_unicode",
-                    "char": "unicode_control",
-                    "pos": 0,
-                    "severity": "high",
-                })
+                findings.append(
+                    {
+                        "type": "invisible_unicode",
+                        "char": "unicode_control",
+                        "pos": 0,
+                        "severity": "high",
+                    }
+                )
             elif "exfiltration" in p_label or "env_file" in p_label or "ssh_key" in p_label:
-                findings.append({
-                    "type": "exfiltration_threat",
-                    "pattern": p_label,
-                    "match": p_label,
-                    "severity": "critical",
-                })
+                findings.append(
+                    {
+                        "type": "exfiltration_threat",
+                        "pattern": p_label,
+                        "match": p_label,
+                        "severity": "critical",
+                    }
+                )
             else:
-                findings.append({
-                    "type": "prompt_injection",
-                    "pattern": p_label,
-                    "match": p_label,
-                    "severity": "critical",
-                })
+                findings.append(
+                    {
+                        "type": "prompt_injection",
+                        "pattern": p_label,
+                        "match": p_label,
+                        "severity": "critical",
+                    }
+                )
 
         return findings
 

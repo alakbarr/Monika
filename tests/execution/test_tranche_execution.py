@@ -7,6 +7,7 @@ Verifies:
 - Leg 2 failure with successful rollback.
 - Leg 2 failure with failed rollback (orphan position marked with status 'orphan_pending_close').
 """
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass
@@ -56,7 +57,6 @@ def mock_session():
     return create_mock_async_session()
 
 
-
 def make_mock_sizing(lots=0.20):
     sizing = MagicMock()
     sizing.symbol = "EURUSD"
@@ -75,10 +75,12 @@ async def test_tranche_order_success(base_analysis, mock_session):
     settings = {"execution": {"max_spread_multiplier": {"EURUSD": 10.0}}}
 
     mock_adapter = AsyncMock()
-    mock_adapter.submit_order = AsyncMock(side_effect=[
-        {"success": True, "ticket": 111111, "price": 1.0850, "error": None},
-        {"success": True, "ticket": 222222, "price": 1.0850, "error": None},
-    ])
+    mock_adapter.submit_order = AsyncMock(
+        side_effect=[
+            {"success": True, "ticket": 111111, "price": 1.0850, "error": None},
+            {"success": True, "ticket": 222222, "price": 1.0850, "error": None},
+        ]
+    )
 
     mock_effect_gate = AsyncMock()
     mock_effect_gate.admit = AsyncMock(side_effect=lambda fn, **kw: fn())
@@ -104,9 +106,7 @@ async def test_tranche_order_leg1_failure(base_analysis, mock_session):
     """Verify Leg 1 failure rejects order, halts, and does not submit Leg 2."""
     settings = {"execution": {}}
     mock_adapter = AsyncMock()
-    mock_adapter.submit_order = AsyncMock(return_value={
-        "success": False, "error": "Insufficient margin"
-    })
+    mock_adapter.submit_order = AsyncMock(return_value={"success": False, "error": "Insufficient margin"})
 
     executor = DummyExecutor(settings, broker_adapter=mock_adapter)
     executor.sizer.calculate_with_session = AsyncMock(return_value=make_mock_sizing(0.20))
@@ -125,10 +125,12 @@ async def test_tranche_order_leg2_failure_rollback_success(base_analysis, mock_s
     """Verify Leg 2 failure triggers Leg 1 rollback close via broker adapter."""
     settings = {"execution": {}}
     mock_adapter = AsyncMock()
-    mock_adapter.submit_order = AsyncMock(side_effect=[
-        {"success": True, "ticket": 333333, "price": 1.0850, "error": None},
-        {"success": False, "error": "Broker timeout"},
-    ])
+    mock_adapter.submit_order = AsyncMock(
+        side_effect=[
+            {"success": True, "ticket": 333333, "price": 1.0850, "error": None},
+            {"success": False, "error": "Broker timeout"},
+        ]
+    )
     mock_adapter.close_position = AsyncMock(return_value={"success": True})
 
     executor = DummyExecutor(settings, broker_adapter=mock_adapter)
@@ -148,10 +150,12 @@ async def test_tranche_order_leg2_failure_rollback_failed_persists_orphan(base_a
     """Verify Leg 2 failure with failed Leg 1 rollback persists orphan record with status 'orphan_pending_close'."""
     settings = {"execution": {}}
     mock_adapter = AsyncMock()
-    mock_adapter.submit_order = AsyncMock(side_effect=[
-        {"success": True, "ticket": 444444, "price": 1.0850, "error": None},
-        {"success": False, "error": "Order rejected by gateway"},
-    ])
+    mock_adapter.submit_order = AsyncMock(
+        side_effect=[
+            {"success": True, "ticket": 444444, "price": 1.0850, "error": None},
+            {"success": False, "error": "Order rejected by gateway"},
+        ]
+    )
     mock_adapter.close_position = AsyncMock(return_value={"success": False, "error": "Terminal disconnected"})
 
     orphan_pos = MagicMock(spec=Position)
@@ -193,4 +197,3 @@ async def test_tranche_order_tiny_lots_fallback_to_single(base_analysis, mock_se
     res = await executor.execute_tranche_order(mock_session, base_analysis, account_equity=10000.0)
     assert res["single_execution"] is True
     assert res["success"] is True
-

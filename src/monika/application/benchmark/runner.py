@@ -31,7 +31,11 @@ async def ensure_tables():
         eng = get_engine()
         async with eng.begin() as conn:
             await conn.run_sync(
-                lambda c: Base.metadata.create_all(c, tables=cast(Sequence[Table], [BenchmarkRun.__table__, BenchmarkResult.__table__]), checkfirst=True)
+                lambda c: Base.metadata.create_all(
+                    c,
+                    tables=cast(Sequence[Table], [BenchmarkRun.__table__, BenchmarkResult.__table__]),
+                    checkfirst=True,
+                )
             )
     except Exception as e:
         logger.warning("ensure_tables failed (DB might be offline or unmigrated): %s", e)
@@ -55,8 +59,16 @@ def _detect_route(model_name: str) -> str:
 
 
 def _err_row(run_id, task_id, category, model_name, msg):
-    return BenchmarkResult(run_id=run_id, task_id=task_id, category=category, model_name=model_name,
-                            provider="?", context_key="?", error=msg, provider_route=_detect_route(model_name))
+    return BenchmarkResult(
+        run_id=run_id,
+        task_id=task_id,
+        category=category,
+        model_name=model_name,
+        provider="?",
+        context_key="?",
+        error=msg,
+        provider_route=_detect_route(model_name),
+    )
 
 
 async def _build_case_once(task_id, symbol, base_settings):
@@ -76,9 +88,19 @@ async def _build_case_once(task_id, symbol, base_settings):
             return None, per_settings, f"build_case error: {e}"
 
 
-async def run_one_model_for_case(run_id, task_id, category, mode, model_name, case, settings,
-                                  judge_model, semaphore, judge_models: list[str] | None = None,
-                                  mock_llm: bool = False):
+async def run_one_model_for_case(
+    run_id,
+    task_id,
+    category,
+    mode,
+    model_name,
+    case,
+    settings,
+    judge_model,
+    semaphore,
+    judge_models: list[str] | None = None,
+    mock_llm: bool = False,
+):
     async with semaphore:
         async with get_session() as session:
             role_kwargs = case.role_kwargs
@@ -87,39 +109,121 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                 try:
                     if mock_llm:
                         if mode == "agent":
-                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output={"decision": "wait", "confidence": 0.85}, input_tokens=1500, output_tokens=300, latency_s=0.05)
-                            captured = {"tool": "submit_asset_analysis", "payload": {"decision": "wait", "confidence": 0.85, "rationale": "Mock analysis verified with SMC FVG structure.", "symbol": getattr(case, "context_key", "EURUSD") or "EURUSD"}}
+                            inv = InvokeResult(
+                                model_name=model_name,
+                                provider="mock",
+                                raw_output={"decision": "wait", "confidence": 0.85},
+                                input_tokens=1500,
+                                output_tokens=300,
+                                latency_s=0.05,
+                            )
+                            captured = {
+                                "tool": "submit_asset_analysis",
+                                "payload": {
+                                    "decision": "wait",
+                                    "confidence": 0.85,
+                                    "rationale": "Mock analysis verified with SMC FVG structure.",
+                                    "symbol": getattr(case, "context_key", "EURUSD") or "EURUSD",
+                                },
+                            }
                         elif mode == "chat":
-                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output="Mock chat response based on account status.", input_tokens=800, output_tokens=150, latency_s=0.04)
+                            inv = InvokeResult(
+                                model_name=model_name,
+                                provider="mock",
+                                raw_output="Mock chat response based on account status.",
+                                input_tokens=800,
+                                output_tokens=150,
+                                latency_s=0.04,
+                            )
                             captured = {"tool": "answer_user_query", "payload": {"answer": "Mock chat response."}}
                         elif mode == "json":
-                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output={"status": "approved", "confidence": 0.85, "reasoning": "Mock verification pass"}, input_tokens=1200, output_tokens=250, latency_s=0.05)
+                            inv = InvokeResult(
+                                model_name=model_name,
+                                provider="mock",
+                                raw_output={
+                                    "status": "approved",
+                                    "confidence": 0.85,
+                                    "reasoning": "Mock verification pass",
+                                },
+                                input_tokens=1200,
+                                output_tokens=250,
+                                latency_s=0.05,
+                            )
                         elif mode == "text":
-                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output="Mock synthesized macro report based on golden fixtures.", input_tokens=2500, output_tokens=500, latency_s=0.06)
+                            inv = InvokeResult(
+                                model_name=model_name,
+                                provider="mock",
+                                raw_output="Mock synthesized macro report based on golden fixtures.",
+                                input_tokens=2500,
+                                output_tokens=500,
+                                latency_s=0.06,
+                            )
                         elif mode == "system_one":
-                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output=case.expected_answers or {"status": "ok"}, input_tokens=400, output_tokens=80, latency_s=0.02)
+                            inv = InvokeResult(
+                                model_name=model_name,
+                                provider="mock",
+                                raw_output=case.expected_answers or {"status": "ok"},
+                                input_tokens=400,
+                                output_tokens=80,
+                                latency_s=0.02,
+                            )
                         elif mode == "custom":
-                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output={"passed": True, "verdict": "PROCEED", "risk_pct": 1.0}, input_tokens=1000, output_tokens=200, latency_s=0.04)
+                            inv = InvokeResult(
+                                model_name=model_name,
+                                provider="mock",
+                                raw_output={"passed": True, "verdict": "PROCEED", "risk_pct": 1.0},
+                                input_tokens=1000,
+                                output_tokens=200,
+                                latency_s=0.04,
+                            )
                         else:
-                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output="Mock default.", input_tokens=500, output_tokens=100, latency_s=0.03)
+                            inv = InvokeResult(
+                                model_name=model_name,
+                                provider="mock",
+                                raw_output="Mock default.",
+                                input_tokens=500,
+                                output_tokens=100,
+                                latency_s=0.03,
+                            )
                     elif mode == "agent":
                         async with _AGENT_LOCK:
                             with guarded_tool_executor() as box:
-                                inv = await invoke_agent(model_name, settings, session, case.system_prompt,
-                                                          case.user_prompt, case.tools, case.stage_name, **role_kwargs)
+                                inv = await invoke_agent(
+                                    model_name,
+                                    settings,
+                                    session,
+                                    case.system_prompt,
+                                    case.user_prompt,
+                                    case.tools,
+                                    case.stage_name,
+                                    **role_kwargs,
+                                )
                                 captured = box.get("result")
                     elif mode == "chat":
                         async with _AGENT_LOCK:
                             with guarded_tool_executor() as box:
-                                inv = await invoke_chat(model_name, settings, case.system_prompt, case.history or [],
-                                                         case.user_prompt, case.tools, **role_kwargs)
+                                inv = await invoke_chat(
+                                    model_name,
+                                    settings,
+                                    case.system_prompt,
+                                    case.history or [],
+                                    case.user_prompt,
+                                    case.tools,
+                                    **role_kwargs,
+                                )
                                 captured = box.get("result")
                     elif mode == "json":
-                        inv = await invoke_json(model_name, settings, case.system_prompt, case.user_prompt, case.schema, **role_kwargs)
+                        inv = await invoke_json(
+                            model_name, settings, case.system_prompt, case.user_prompt, case.schema, **role_kwargs
+                        )
                     elif mode == "text":
-                        inv = await invoke_text(model_name, settings, case.system_prompt, case.user_prompt, **role_kwargs)
+                        inv = await invoke_text(
+                            model_name, settings, case.system_prompt, case.user_prompt, **role_kwargs
+                        )
                     elif mode == "custom":
-                        inv = await invoke_custom(model_name, settings, case.custom_fn, *case.custom_args, **role_kwargs)
+                        inv = await invoke_custom(
+                            model_name, settings, case.custom_fn, *case.custom_args, **role_kwargs
+                        )
                     elif mode == "system_one":
                         inv = await invoke_system_one(
                             model_name,
@@ -149,12 +253,16 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                 else:
                     output_for_judge = inv.raw_output
 
-                schema_valid = bool(captured) if mode in ("agent", "chat") else bool(inv.raw_output) and inv.error is None
+                schema_valid = (
+                    bool(captured) if mode in ("agent", "chat") else bool(inv.raw_output) and inv.error is None
+                )
 
                 deterministic = None
                 if category == "trade_decision" and captured and captured.get("tool") == "submit_asset_analysis":
                     try:
-                        deterministic = await score_trade_payload(session, settings, case.context_key, captured["payload"])
+                        deterministic = await score_trade_payload(
+                            session, settings, case.context_key, captured["payload"]
+                        )
                     except Exception as e:
                         logger.debug(f"deterministic score gagal: {e}")
 
@@ -179,15 +287,26 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                         active_judges = judge_models or [judge_model]
                         if len(active_judges) > 1:
                             from .judge import judge_output_ensemble
+
                             judge_scores, judge_overall, _ji, _jo = await judge_output_ensemble(
-                                active_judges, settings, category, case.context_summary, output_for_judge)
+                                active_judges, settings, category, case.context_summary, output_for_judge
+                            )
                         else:
                             judge_scores, judge_overall, _ji, _jo = await judge_output(
-                                active_judges[0], settings, category, case.context_summary, output_for_judge)
+                                active_judges[0], settings, category, case.context_summary, output_for_judge
+                            )
                     except Exception as e:
                         logger.warning(f"judge gagal untuk {task_id}/{model_name}: {e}")
 
-                det_pass = deterministic["pass_rate"] if deterministic else (judge_scores.get("accuracy_score", 0.0) / 10.0 if mode == "system_one" and judge_scores else None)
+                det_pass = (
+                    deterministic["pass_rate"]
+                    if deterministic
+                    else (
+                        judge_scores.get("accuracy_score", 0.0) / 10.0
+                        if mode == "system_one" and judge_scores
+                        else None
+                    )
+                )
                 overall = None
                 if mode == "system_one" and judge_overall is not None:
                     overall = judge_overall
@@ -236,41 +355,57 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                 cost = cost_with_cache if actual_cached > 0 else cost_no_cache
 
                 row = BenchmarkResult(
-                    run_id=run_id, task_id=task_id, category=category, model_name=model_name,
-                    provider=inv.provider, context_key=case.context_key,
-                    input_tokens=inv.input_tokens or 0, output_tokens=inv.output_tokens or 0,
-                    cached_tokens=actual_cached, thinking_tokens=thinking_tok, provider_route=route,
+                    run_id=run_id,
+                    task_id=task_id,
+                    category=category,
+                    model_name=model_name,
+                    provider=inv.provider,
+                    context_key=case.context_key,
+                    input_tokens=inv.input_tokens or 0,
+                    output_tokens=inv.output_tokens or 0,
+                    cached_tokens=actual_cached,
+                    thinking_tokens=thinking_tok,
+                    provider_route=route,
                     cost_usd=round(cost, 6),
                     cost_usd_no_cache=round(cost_no_cache, 6),
                     cost_usd_with_cache=round(cost_with_cache, 6),
-                    latency_s=round(inv.latency_s, 2), schema_valid=schema_valid,
-                    deterministic_score=det_pass, judge_scores_json=json.dumps(judge_scores),
-                    judge_overall=judge_overall, overall_score=overall,
+                    latency_s=round(inv.latency_s, 2),
+                    schema_valid=schema_valid,
+                    deterministic_score=det_pass,
+                    judge_scores_json=json.dumps(judge_scores),
+                    judge_overall=judge_overall,
+                    overall_score=overall,
                     raw_output=json.dumps(output_for_judge, default=str)[:8000] if output_for_judge else None,
                     error=inv.error,
                 )
                 session.add(row)
                 await session.commit()
-                logger.info(f"[{task_id}] {model_name}: cost=${cost:.5f} (no-cache=${cost_no_cache:.5f}, with-cache=${cost_with_cache:.5f}) "
-                            f"tok={inv.input_tokens}/{inv.output_tokens} score={overall} err={inv.error}")
+                logger.info(
+                    f"[{task_id}] {model_name}: cost=${cost:.5f} (no-cache=${cost_no_cache:.5f}, with-cache=${cost_with_cache:.5f}) "
+                    f"tok={inv.input_tokens}/{inv.output_tokens} score={overall} err={inv.error}"
+                )
 
                 try:
                     from monika.application.analysis.event_broadcaster import emit_analysis_event
-                    emit_analysis_event("benchmark_model_done", {
-                        "run_id": run_id,
-                        "task_id": task_id,
-                        "model_name": model_name,
-                        "provider_route": route,
-                        "score": round(overall, 3) if overall is not None else None,
-                        "latency_s": round(inv.latency_s, 2),
-                        "cost_usd_no_cache": round(cost_no_cache, 6),
-                        "cost_usd_with_cache": round(cost_with_cache, 6),
-                        "input_tokens": inv.input_tokens or 0,
-                        "output_tokens": inv.output_tokens or 0,
-                        "cached_tokens": actual_cached,
-                        "schema_valid": schema_valid,
-                        "error": inv.error,
-                    })
+
+                    emit_analysis_event(
+                        "benchmark_model_done",
+                        {
+                            "run_id": run_id,
+                            "task_id": task_id,
+                            "model_name": model_name,
+                            "provider_route": route,
+                            "score": round(overall, 3) if overall is not None else None,
+                            "latency_s": round(inv.latency_s, 2),
+                            "cost_usd_no_cache": round(cost_no_cache, 6),
+                            "cost_usd_with_cache": round(cost_with_cache, 6),
+                            "input_tokens": inv.input_tokens or 0,
+                            "output_tokens": inv.output_tokens or 0,
+                            "cached_tokens": actual_cached,
+                            "schema_valid": schema_valid,
+                            "error": inv.error,
+                        },
+                    )
                 except Exception:
                     pass
 
@@ -286,12 +421,19 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                 return row
 
 
-async def run_benchmark(task_ids: list[str], model_names: list[str], symbols: list[str] | None = None,
-                         judge_model: str = "claude-sonnet-5", reference_model: str = "claude-sonnet-5", concurrency: int = 4,
-                         judge_models: list[str] | None = None,
-                         use_fixtures: bool = False,
-                         mock_llm: bool = False) -> int:
+async def run_benchmark(
+    task_ids: list[str],
+    model_names: list[str],
+    symbols: list[str] | None = None,
+    judge_model: str = "claude-sonnet-5",
+    reference_model: str = "claude-sonnet-5",
+    concurrency: int = 4,
+    judge_models: list[str] | None = None,
+    use_fixtures: bool = False,
+    mock_llm: bool = False,
+) -> int:
     from monika.core.config.settings import load_all_config
+
     base_settings = load_all_config()
     base_settings["_benchmark_reference_model"] = reference_model
     base_settings["_use_fixtures"] = use_fixtures or base_settings.get("benchmark", {}).get("use_fixtures", False)
@@ -299,9 +441,12 @@ async def run_benchmark(task_ids: list[str], model_names: list[str], symbols: li
     semaphore = asyncio.Semaphore(concurrency)
 
     async with get_session() as session:
-        run = BenchmarkRun(judge_model=(", ".join(judge_models) if judge_models else judge_model),
-                           reference_model=reference_model,
-                           tasks_json=json.dumps(task_ids), models_json=json.dumps(model_names))
+        run = BenchmarkRun(
+            judge_model=(", ".join(judge_models) if judge_models else judge_model),
+            reference_model=reference_model,
+            tasks_json=json.dumps(task_ids),
+            models_json=json.dumps(model_names),
+        )
         session.add(run)
         await session.commit()
         run_id = run.id
@@ -319,9 +464,21 @@ async def run_benchmark(task_ids: list[str], model_names: list[str], symbols: li
                     await session.commit()
                 continue
             for model_name in model_names:
-                jobs.append(run_one_model_for_case(run_id, task_id, task.category, task.mode,
-                                                    model_name, case, per_settings, judge_model, semaphore,
-                                                    judge_models=judge_models, mock_llm=mock_llm))
+                jobs.append(
+                    run_one_model_for_case(
+                        run_id,
+                        task_id,
+                        task.category,
+                        task.mode,
+                        model_name,
+                        case,
+                        per_settings,
+                        judge_model,
+                        semaphore,
+                        judge_models=judge_models,
+                        mock_llm=mock_llm,
+                    )
+                )
     results = await asyncio.gather(*jobs, return_exceptions=True)
     for idx, res in enumerate(results):
         if isinstance(res, Exception):
@@ -330,8 +487,8 @@ async def run_benchmark(task_ids: list[str], model_names: list[str], symbols: li
     async with get_session() as session:
         run = await session.get(BenchmarkRun, run_id)
         import monika.core.primitives.clock as clock
+
         if run is not None:
             run.finished_at = clock.now()
             await session.commit()
     return run_id
-

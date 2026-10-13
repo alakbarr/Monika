@@ -23,7 +23,6 @@ def _build_mock_session_and_resp(status=200, json_data=None, text_data=None):
 
 
 class TestWebSearchService:
-
     def test_key_loading_travily_keys(self):
         with patch.dict(os.environ, {"TRAVILY_API_KEYS": "key1, key2 , key3"}, clear=True):
             svc = WebSearchService(settings={})
@@ -47,7 +46,9 @@ class TestWebSearchService:
                 "brave_api_key": "${BRAVE_API_KEY:}",
             }
         }
-        with patch.dict(os.environ, {"TAVILY_API_KEY": "tvly-fallback-key", "BRAVE_API_KEY": "brave-fallback"}, clear=True):
+        with patch.dict(
+            os.environ, {"TAVILY_API_KEY": "tvly-fallback-key", "BRAVE_API_KEY": "brave-fallback"}, clear=True
+        ):
             svc = WebSearchService(settings=settings)
             assert svc.tavily_keys == ["tvly-fallback-key"]
             assert svc.brave_api_key == "brave-fallback"
@@ -64,14 +65,14 @@ class TestWebSearchService:
     async def test_tavily_search_success(self):
         with patch.dict(os.environ, {"TAVILY_API_KEYS": "k1"}, clear=True):
             svc = WebSearchService(settings={})
-            
+
             mock_response_data = {
                 "results": [
                     {
                         "title": "Fed Holds Rates",
                         "url": "https://example.com/fed",
                         "content": "Federal Reserve kept interest rates unchanged.",
-                        "score": 0.95
+                        "score": 0.95,
                     }
                 ]
             }
@@ -90,7 +91,7 @@ class TestWebSearchService:
     async def test_tavily_failover_on_429(self):
         with patch.dict(os.environ, {"TAVILY_API_KEYS": "k1,k2"}, clear=True):
             svc = WebSearchService(settings={})
-            
+
             # Key 1 returns 429, Key 2 returns 200
             resp_429 = MagicMock()
             resp_429.status = 429
@@ -99,9 +100,11 @@ class TestWebSearchService:
 
             resp_200 = MagicMock()
             resp_200.status = 200
-            resp_200.json = AsyncMock(return_value={
-                "results": [{"title": "Success on Key 2", "url": "https://example.com/2", "content": "Ok"}]
-            })
+            resp_200.json = AsyncMock(
+                return_value={
+                    "results": [{"title": "Success on Key 2", "url": "https://example.com/2", "content": "Ok"}]
+                }
+            )
             resp_200.__aenter__ = AsyncMock(return_value=resp_200)
             resp_200.__aexit__ = AsyncMock(return_value=None)
 
@@ -128,7 +131,7 @@ class TestWebSearchService:
                         {
                             "title": "Brave ECB Decision",
                             "url": "https://brave.com/ecb",
-                            "description": "ECB cuts deposit rate by 25bps"
+                            "description": "ECB cuts deposit rate by 25bps",
                         }
                     ]
                 }
@@ -174,10 +177,12 @@ class TestWebSearchService:
     async def test_ttl_cache(self):
         with patch.dict(os.environ, {"TAVILY_API_KEYS": "k1"}, clear=True):
             svc = WebSearchService(settings={})
-            
+
             mock_session, _ = _build_mock_session_and_resp(
                 status=200,
-                json_data={"results": [{"title": "Cached Title", "url": "https://example.com", "content": "Cached Content"}]}
+                json_data={
+                    "results": [{"title": "Cached Title", "url": "https://example.com", "content": "Cached Content"}]
+                },
             )
 
             with patch("aiohttp.ClientSession", return_value=mock_session):
@@ -199,6 +204,7 @@ class TestWebSearchService:
         assert svc._max_cache_size == 3
 
         import utils.clock as clock
+
         t0 = clock.now()
         svc._put_cache("k1", (t0, {"q": 1}))
         svc._put_cache("k2", (t0, {"q": 2}))

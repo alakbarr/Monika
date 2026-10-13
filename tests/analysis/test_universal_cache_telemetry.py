@@ -9,7 +9,7 @@ def test_openai_extract_usage_with_cached_tokens():
         completion_tokens=250,
         prompt_tokens_details=SimpleNamespace(cached_tokens=1024),
         completion_tokens_details=SimpleNamespace(reasoning_tokens=128),
-        total_cost=0.0045
+        total_cost=0.0045,
     )
     inp, outp, cached, thinking, exact_cost, cache_creation = OpenAIProvider._extract_usage(usage_obj)
     assert inp == 1500
@@ -27,7 +27,7 @@ def test_deepseek_extract_usage_with_cache_hit_and_miss():
         "completion_tokens": 400,
         "prompt_cache_hit_tokens": 2800,
         "prompt_cache_miss_tokens": 200,
-        "completion_tokens_details": {"reasoning_tokens": 350}
+        "completion_tokens_details": {"reasoning_tokens": 350},
     }
     inp, outp, cached, thinking, exact_cost, cache_creation = OpenAIProvider._extract_usage(deepseek_usage)
     assert inp == 3000

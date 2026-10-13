@@ -10,6 +10,7 @@ from typing import List, Optional, Union, Dict, Any, Tuple
 @dataclass
 class PromptTier:
     """Represents a tier of system prompt content with cache stability metadata."""
+
     content: str
     cache_control: Optional[dict] = None  # e.g., {"type": "ephemeral"} for Anthropic
 
@@ -22,35 +23,42 @@ class TieredSystemPrompt:
     Tier 2 CONTEXT: Changes only when workspace/project changes (skills catalog, instrument list).
     Tier 3 VOLATILE: Frozen snapshot at session/cycle start (chronicle, macro reality, timestamps).
     """
-    tier1_stable: str = ""       # Agent identity, behavioral rules, core tool guidelines
-    tier2_context: str = ""      # Skills catalog, instrument list, project context
-    tier3_volatile: str = ""     # Chronicle, macro reality snapshot, session state
+
+    tier1_stable: str = ""  # Agent identity, behavioral rules, core tool guidelines
+    tier2_context: str = ""  # Skills catalog, instrument list, project context
+    tier3_volatile: str = ""  # Chronicle, macro reality snapshot, session state
 
     def assemble(self, provider: str = "default", quarantine_volatile: bool = False) -> Union[str, List[dict]]:
         """Assemble prompt for the specific provider's caching capabilities.
-        
+
         When quarantine_volatile is True, tier3_volatile is excluded from the system prompt
         and should be placed into the trailing user message to keep the system prompt KV-cache invariant.
         """
         if provider == "anthropic":
             blocks: List[dict] = []
             if self.tier1_stable:
-                blocks.append({
-                    "type": "text",
-                    "text": self.tier1_stable,
-                    "cache_control": {"type": "ephemeral"},
-                })
+                blocks.append(
+                    {
+                        "type": "text",
+                        "text": self.tier1_stable,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                )
             if self.tier2_context:
-                blocks.append({
-                    "type": "text",
-                    "text": self.tier2_context,
-                    "cache_control": {"type": "ephemeral"},
-                })
+                blocks.append(
+                    {
+                        "type": "text",
+                        "text": self.tier2_context,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                )
             if self.tier3_volatile and not quarantine_volatile:
-                blocks.append({
-                    "type": "text",
-                    "text": self.tier3_volatile,
-                })
+                blocks.append(
+                    {
+                        "type": "text",
+                        "text": self.tier3_volatile,
+                    }
+                )
             return blocks
 
         # Default (OpenAI, Gemini, Ollama, Groq):
@@ -90,6 +98,7 @@ class TieredSystemPrompt:
 @dataclass
 class TieredPrompt:
     """Represents a structured 3-tier prompt."""
+
     tier1_identity: str = ""
     tier2_domain: str = ""
     tier3_runtime: str = ""

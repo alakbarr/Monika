@@ -122,7 +122,7 @@ class TrajectoryCompressor:
                     compacted_tools += 1
                     if len(content) > self.max_tool_output_chars:
                         content = (
-                            content[:self.max_tool_output_chars]
+                            content[: self.max_tool_output_chars]
                             + f"\n... [Output truncated ({len(content)} chars total)]"
                         )
                 m["content"] = content

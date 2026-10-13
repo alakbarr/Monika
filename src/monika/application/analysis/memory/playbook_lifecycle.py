@@ -136,7 +136,9 @@ class PlaybookLifecycleFSM:
                 derived_from=derived_from,
             )
             self._save_state()
-            logger.info(f"[PlaybookLifecycle] Registered '{name}' as {chosen_state.value} (derived_from: {derived_from})")
+            logger.info(
+                f"[PlaybookLifecycle] Registered '{name}' as {chosen_state.value} (derived_from: {derived_from})"
+            )
         return self._state[name]
 
     def validate_parent_freshness(self, parent_name: str) -> Tuple[bool, str]:
@@ -150,7 +152,10 @@ class PlaybookLifecycleFSM:
         if parent.state != PlaybookState.ACTIVE:
             return False, f"Parent playbook '{parent_name}' is currently {parent.state.value} (must be ACTIVE)."
         if parent.trades_count >= 5 and parent.win_rate < 0.50:
-            return False, f"Parent playbook '{parent_name}' win rate ({parent.win_rate:.1%}) is below 50% baseline threshold."
+            return (
+                False,
+                f"Parent playbook '{parent_name}' win rate ({parent.win_rate:.1%}) is below 50% baseline threshold.",
+            )
         return True, f"Parent '{parent_name}' evidence is fresh and active."
 
     def register_derived_playbook(
@@ -215,9 +220,7 @@ class PlaybookLifecycleFSM:
         now_ts = time.time()
         if not force and meta.stale_until_ts and now_ts < meta.stale_until_ts:
             remaining_hours = (meta.stale_until_ts - now_ts) / 3600.0
-            logger.info(
-                f"[PlaybookLifecycle] Cannot revalidate '{name}': still in cooldown for {remaining_hours:.1f}h"
-            )
+            logger.info(f"[PlaybookLifecycle] Cannot revalidate '{name}': still in cooldown for {remaining_hours:.1f}h")
             return False
 
         meta.state = PlaybookState.CANDIDATE

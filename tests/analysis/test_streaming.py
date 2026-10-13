@@ -21,6 +21,7 @@ from analysis.providers.gemini_provider import _gemini_stream_parser
 
 class MockStreamReader:
     """Mock aiohttp response.content StreamReader."""
+
     def __init__(self, chunks: list[bytes], delays: list[float] = None):
         self.chunks = list(chunks)
         self.delays = list(delays) if delays else [0.0] * len(chunks)
@@ -39,6 +40,7 @@ class MockStreamReader:
 
 class MockClientResponse:
     """Mock aiohttp.ClientResponse."""
+
     def __init__(self, chunks: list[bytes], delays: list[float] = None, status: int = 200):
         self.status = status
         self.content = MockStreamReader(chunks, delays)
@@ -49,8 +51,8 @@ class MockClientResponse:
 async def test_consume_sse_basic():
     """Test standard SSE stream consumption and text aggregation."""
     sse_data = (
-        b"data: {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"Hello \"}]}}]}\n\n"
-        b"data: {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"World!\"}]}, \"finishReason\": \"STOP\"}], \"usageMetadata\": {\"promptTokenCount\": 10, \"candidatesTokenCount\": 5}}\n\n"
+        b'data: {"candidates": [{"content": {"parts": [{"text": "Hello "}]}}]}\n\n'
+        b'data: {"candidates": [{"content": {"parts": [{"text": "World!"}]}, "finishReason": "STOP"}], "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 5}}\n\n'
     )
     resp = MockClientResponse([sse_data])
     config = StreamConfig(idle_timeout=5.0, safety_timeout=10.0, first_chunk_timeout=5.0)
@@ -67,6 +69,7 @@ async def test_consume_sse_basic():
 @pytest.mark.asyncio
 async def test_consume_sse_done_marker():
     """Test standard OpenAI/Groq [DONE] marker."""
+
     def openai_dummy_parser(chunk: dict, res: StreamResult) -> bool:
         for c in chunk.get("choices", []):
             delta = c.get("delta", {})
@@ -75,8 +78,8 @@ async def test_consume_sse_done_marker():
         return False
 
     sse_data = (
-        b"data: {\"choices\": [{\"delta\": {\"content\": \"Signal: \"}}]}\n\n"
-        b"data: {\"choices\": [{\"delta\": {\"content\": \"BUY EURUSD\"}}]}\n\n"
+        b'data: {"choices": [{"delta": {"content": "Signal: "}}]}\n\n'
+        b'data: {"choices": [{"delta": {"content": "BUY EURUSD"}}]}\n\n'
         b"data: [DONE]\n\n"
     )
     resp = MockClientResponse([sse_data])
@@ -92,8 +95,8 @@ async def test_consume_sse_done_marker():
 async def test_consume_sse_idle_timeout():
     """Test that idle timeout raises StreamTimeoutError when chunks stop arriving."""
     chunks = [
-        b"data: {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"Part 1\"}]}}]}\n\n",
-        b"data: {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"Part 2\"}]}}]}\n\n",
+        b'data: {"candidates": [{"content": {"parts": [{"text": "Part 1"}]}}]}\n\n',
+        b'data: {"candidates": [{"content": {"parts": [{"text": "Part 2"}]}}]}\n\n',
     ]
     # First chunk instant, second chunk delayed 0.5s with idle timeout 0.1s
     delays = [0.0, 0.5]
@@ -111,7 +114,7 @@ async def test_consume_sse_idle_timeout():
 async def test_consume_sse_first_chunk_timeout():
     """Test that first_chunk_timeout raises StreamTimeoutError when model takes too long to start."""
     chunks = [
-        b"data: {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"First\"}]}}]}\n\n",
+        b'data: {"candidates": [{"content": {"parts": [{"text": "First"}]}}]}\n\n',
     ]
     delays = [0.4]
     resp = MockClientResponse(chunks, delays)
@@ -130,7 +133,7 @@ async def test_consume_sse_comment_keepalive():
     chunks = [
         b": OPENROUTER PROCESSING\n\n",
         b": OPENROUTER PROCESSING\n\n",
-        b"data: {\"choices\": [{\"delta\": {\"content\": \"Result arrived!\"}}]}\n\n",
+        b'data: {"choices": [{"delta": {"content": "Result arrived!"}}]}\n\n',
         b"data: [DONE]\n\n",
     ]
     # Each chunk delayed 0.15s, idle_timeout 0.25s
@@ -155,32 +158,25 @@ async def test_gemini_parser_thinking_and_tool_call():
     result = StreamResult()
 
     chunk_thought = {
-        "candidates": [{
-            "content": {
-                "parts": [{"thought": True, "text": "Analyzing macro regime..."}],
-                "role": "model"
-            }
-        }]
+        "candidates": [
+            {"content": {"parts": [{"thought": True, "text": "Analyzing macro regime..."}], "role": "model"}}
+        ]
     }
     _gemini_stream_parser(chunk_thought, result)
     assert result.thinking_text == "Analyzing macro regime..."
     assert result.text == ""
 
     chunk_tool = {
-        "candidates": [{
-            "content": {
-                "parts": [{
-                    "functionCall": {"name": "get_dxy", "args": {}},
-                    "thoughtSignature": "sig_12345"
-                }],
-                "role": "model"
-            },
-            "finishReason": "STOP"
-        }],
-        "usageMetadata": {
-            "promptTokenCount": 50,
-            "candidatesTokenCount": 20
-        }
+        "candidates": [
+            {
+                "content": {
+                    "parts": [{"functionCall": {"name": "get_dxy", "args": {}}, "thoughtSignature": "sig_12345"}],
+                    "role": "model",
+                },
+                "finishReason": "STOP",
+            }
+        ],
+        "usageMetadata": {"promptTokenCount": 50, "candidatesTokenCount": 20},
     }
     is_done = _gemini_stream_parser(chunk_tool, result)
     assert is_done is True

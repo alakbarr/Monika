@@ -83,7 +83,7 @@ def resample_candles(h1_candles: List[CandleDict], factor: int) -> List[CandleDi
     """Resamples H1 candles into higher timeframe (e.g. factor=4 for H4, factor=24 for D1)."""
     if not h1_candles:
         return []
-    
+
     first_time = h1_candles[0].get("time")
     if isinstance(first_time, datetime) and factor in (4, 24):
         chunks = []
@@ -119,15 +119,19 @@ def resample_candles(h1_candles: List[CandleDict], factor: int) -> List[CandleDi
         c_low = min(c.low for c in chunk)
         c_close = chunk[-1].close
         c_vol = sum(getattr(c, "volume", 0.0) or 0.0 for c in chunk)
-        res.append(CandleDict({
-            "timestamp": chunk[-1].timestamp,
-            "time": chunk[-1].get("time"),
-            "open": float(c_open),
-            "high": float(c_high),
-            "low": float(c_low),
-            "close": float(c_close),
-            "volume": float(c_vol),
-        }))
+        res.append(
+            CandleDict(
+                {
+                    "timestamp": chunk[-1].timestamp,
+                    "time": chunk[-1].get("time"),
+                    "open": float(c_open),
+                    "high": float(c_high),
+                    "low": float(c_low),
+                    "close": float(c_close),
+                    "volume": float(c_vol),
+                }
+            )
+        )
     return res
 
 
@@ -327,7 +331,9 @@ class ZeroLookaheadSliceSession(AsyncSession):
                 candles = h1_candles
 
         # If scalar column like .close was queried (e.g. tsm_momentum):
-        if "PRICEOHLCV.CLOSE" in stmt_str or (".CLOSE" in stmt_str and ".HIGH" not in stmt_str and ".OPEN" not in stmt_str):
+        if "PRICEOHLCV.CLOSE" in stmt_str or (
+            ".CLOSE" in stmt_str and ".HIGH" not in stmt_str and ".OPEN" not in stmt_str
+        ):
             float_closes = [float(c.close) for c in candles]
             return _SliceScalarResult(float_closes)
         elif "PRICEOHLCV.VOLUME" in stmt_str and ".CLOSE" not in stmt_str:
@@ -432,15 +438,19 @@ class IsolatedStrategyBacktestHarness:
             chronological_rows = list(rows)
 
         candles = [
-            CandleDict({
-                "timestamp": r.timestamp.isoformat() if hasattr(r, "timestamp") and hasattr(r.timestamp, "isoformat") else str(getattr(r, "timestamp", "")),
-                "time": getattr(r, "timestamp", None),
-                "open": float(getattr(r, "open", 0.0)),
-                "high": float(getattr(r, "high", 0.0)),
-                "low": float(getattr(r, "low", 0.0)),
-                "close": float(getattr(r, "close", 0.0)),
-                "volume": float(getattr(r, "volume", 0.0) or 0.0),
-            })
+            CandleDict(
+                {
+                    "timestamp": r.timestamp.isoformat()
+                    if hasattr(r, "timestamp") and hasattr(r.timestamp, "isoformat")
+                    else str(getattr(r, "timestamp", "")),
+                    "time": getattr(r, "timestamp", None),
+                    "open": float(getattr(r, "open", 0.0)),
+                    "high": float(getattr(r, "high", 0.0)),
+                    "low": float(getattr(r, "low", 0.0)),
+                    "close": float(getattr(r, "close", 0.0)),
+                    "volume": float(getattr(r, "volume", 0.0) or 0.0),
+                }
+            )
             for r in chronological_rows
         ]
         return candles
@@ -568,7 +578,11 @@ class IsolatedStrategyBacktestHarness:
             session=session, timeframe="M15", start_date=start_date, end_date=end_date, limit=lookback_candles * 4
         )
         h4_candles = await self.fetch_historical_candles(
-            session=session, timeframe="H4", start_date=start_date, end_date=end_date, limit=max(100, lookback_candles // 4)
+            session=session,
+            timeframe="H4",
+            start_date=start_date,
+            end_date=end_date,
+            limit=max(100, lookback_candles // 4),
         )
         if not h4_candles:
             h4_candles = resample_candles(primary_candles, 4)
@@ -623,7 +637,9 @@ class IsolatedStrategyBacktestHarness:
                 i += 1
                 continue
 
-            if sig is not None and ("error" in getattr(sig, "tags", []) or "evaluation_error" in getattr(sig, "tags", [])):
+            if sig is not None and (
+                "error" in getattr(sig, "tags", []) or "evaluation_error" in getattr(sig, "tags", [])
+            ):
                 if self.fail_fast_on_error:
                     return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
                 i += 1
@@ -652,9 +668,7 @@ class IsolatedStrategyBacktestHarness:
                 tp = float(sig.take_profit)
             else:
                 if self.fail_fast_on_error:
-                    logger.debug(
-                        f"[IsolatedHarness] Signal without SL/TP rejected under fail_fast for {self.symbol}"
-                    )
+                    logger.debug(f"[IsolatedHarness] Signal without SL/TP rejected under fail_fast for {self.symbol}")
                     return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
                 sl, tp = self._resolve_sl_tp(sig, entry_price, atr, strat_instance)
 
@@ -748,9 +762,7 @@ class IsolatedStrategyBacktestHarness:
 
     run_single_window = run_simulation
 
-    def _compute_metrics(
-        self, returns: List[float], records: List[StrategyTradeRecord]
-    ) -> HarnessMetrics:
+    def _compute_metrics(self, returns: List[float], records: List[StrategyTradeRecord]) -> HarnessMetrics:
         """Calculates comprehensive institutional performance metrics."""
         if not returns:
             return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
@@ -767,7 +779,9 @@ class IsolatedStrategyBacktestHarness:
 
         mean_ret = float(np.mean(returns))
         std_ret = float(np.std(returns, ddof=1)) if len(returns) > 1 else 1e-6
-        ann_factor = math.sqrt(252.0 * 24.0 / max(1.0, np.mean([r.bars_held for r in records]))) if records else math.sqrt(252.0)
+        ann_factor = (
+            math.sqrt(252.0 * 24.0 / max(1.0, np.mean([r.bars_held for r in records]))) if records else math.sqrt(252.0)
+        )
         sharpe_ratio = round(float((mean_ret / (std_ret + 1e-9)) * ann_factor), 2)
 
         downside_var = sum(r * r for r in losses) / max(1, total_trades) if losses else 0.0
@@ -778,7 +792,7 @@ class IsolatedStrategyBacktestHarness:
         peak = 1.0
         max_dd = 0.0
         for r in returns:
-            equity *= (1.0 + r)
+            equity *= 1.0 + r
             if equity > peak:
                 peak = equity
             dd = ((peak - equity) / peak) * 100.0 if peak > 0 else 0.0
@@ -816,9 +830,7 @@ class IsolatedStrategyBacktestHarness:
         Applies Deflated Sharpe Ratio (DSR) and AlphaValidation across stitched OOS trades.
         Ensures zero-lookahead, full dataset coverage, and optional fold-level plateau optimization.
         """
-        all_candles = await self.fetch_historical_candles(
-            session=session, timeframe="H1", limit=total_candles
-        )
+        all_candles = await self.fetch_historical_candles(session=session, timeframe="H1", limit=total_candles)
 
         if len(all_candles) < min_candles:
             return {
@@ -858,6 +870,7 @@ class IsolatedStrategyBacktestHarness:
             if param_specs and len(is_candles) >= 30:
                 try:
                     from monika.application.analysis.calculators.quant_plateau_optimizer import QuantPlateauOptimizer
+
                     async def _eval_fold_plateau(params: Dict[str, Any]) -> Dict[str, Any]:
                         self.strategy_params = params
                         m = await self._run_simulation_on_candles(is_candles)
@@ -867,6 +880,7 @@ class IsolatedStrategyBacktestHarness:
                             "trade_returns": [t.pnl_pct / 100.0 for t in m.trades],
                             "pnl_pct": m.total_pnl_pct,
                         }
+
                     fold_opt = QuantPlateauOptimizer(
                         param_space=param_specs,
                         n_trials=8,
@@ -899,7 +913,9 @@ class IsolatedStrategyBacktestHarness:
 
         # Deflated Sharpe Ratio (DSR) using actual observed OOS trades with consistent trade-level scale
         oos_returns = [t.pnl_pct / 100.0 for t in all_oos_trades]
-        _, _, oos_skew, oos_kurt = compute_sample_moments(oos_returns) if len(oos_returns) >= 3 else (0.0, 0.0, 0.0, 0.0)
+        _, _, oos_skew, oos_kurt = (
+            compute_sample_moments(oos_returns) if len(oos_returns) >= 3 else (0.0, 0.0, 0.0, 0.0)
+        )
 
         if len(oos_returns) >= 3 and np.std(oos_returns, ddof=1) > 1e-9:
             trade_sr = float(np.mean(oos_returns) / np.std(oos_returns, ddof=1))
@@ -992,7 +1008,11 @@ class IsolatedStrategyBacktestHarness:
                 break
             next_bar = candles[i + 1]
             base_price = float(next_bar.get("open") or 0.0) if isinstance(next_bar, dict) else float(next_bar.open)
-            entry_price = base_price + (self.spread_cost / 2.0) + self.slippage_cost if sig.direction == "buy" else base_price - (self.spread_cost / 2.0) - self.slippage_cost
+            entry_price = (
+                base_price + (self.spread_cost / 2.0) + self.slippage_cost
+                if sig.direction == "buy"
+                else base_price - (self.spread_cost / 2.0) - self.slippage_cost
+            )
             atr = self._calculate_atr(h1_slice, period=14)
 
             if sig.stop_loss is not None and sig.take_profit is not None:
@@ -1054,7 +1074,9 @@ class IsolatedStrategyBacktestHarness:
                         break
             else:
                 last_bar = candles[max_eval_bar - 1]
-                exit_price = float(last_bar.get("close") or 0.0) if isinstance(last_bar, dict) else float(last_bar.close)
+                exit_price = (
+                    float(last_bar.get("close") or 0.0) if isinstance(last_bar, dict) else float(last_bar.close)
+                )
 
             ret_equity, ret_pct, r_mult = self._calculate_trade_pnl(
                 direction=sig.direction,
@@ -1114,4 +1136,3 @@ class IsolatedStrategyBacktestHarness:
         if alpha_val and hasattr(alpha_val, "details"):
             lines.append(f"  - Validation Details: {alpha_val.details}")
         return "\n".join(lines)
-

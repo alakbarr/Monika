@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Master Unit & Integration Test Suite for Round 2 Phase 2 Remediation.
 
@@ -18,10 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook
 from analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
-from utils.market.dynamic_correlation import (
-    is_crypto_or_commodity_symbol,
-    get_correlation_uncertainty_multiplier
-)
+from utils.market.dynamic_correlation import is_crypto_or_commodity_symbol, get_correlation_uncertainty_multiplier
 from risk.risk_gate import get_trading_day_start
 from scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
 
@@ -30,11 +28,12 @@ from scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
 # 1. Lesson Consolidator Symbol Partitioning (AX6-06)
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_lesson_consolidator_symbol_partitioning():
     """Verify consolidate_lessons_to_playbook queries partitions per symbol in asset_universe."""
     mock_session = create_mock_async_session()
-    
+
     # Mock reflections returned for EURUSD, GBPUSD, BTCUSD
     def make_reflection(sym, idx):
         m = MagicMock()
@@ -53,9 +52,9 @@ async def test_lesson_consolidator_symbol_partitioning():
     sym_lists = [
         [make_reflection("EURUSD", i) for i in range(20)],
         [make_reflection("GBPUSD", i) for i in range(20)],
-        [make_reflection("BTCUSD", i) for i in range(20)]
+        [make_reflection("BTCUSD", i) for i in range(20)],
     ]
-    
+
     mock_results = []
     for s_list in sym_lists:
         res = MagicMock()
@@ -64,11 +63,7 @@ async def test_lesson_consolidator_symbol_partitioning():
 
     mock_session.execute.side_effect = mock_results
 
-    settings = {
-        "trading": {
-            "asset_universe": ["EURUSD", "GBPUSD", "BTCUSD"]
-        }
-    }
+    settings = {"trading": {"asset_universe": ["EURUSD", "GBPUSD", "BTCUSD"]}}
 
     mock_client = AsyncMock()
     mock_client.generate.return_value = "## EURUSD\n- Rule 1\n## GBPUSD\n- Rule 2\n## BTCUSD\n- Rule 3"
@@ -86,17 +81,13 @@ async def test_lesson_consolidator_symbol_partitioning():
 # 2. Signal Arbitrator Concordant Entry Price ATR Gap Guard (AX1-08)
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_signal_arbitrator_concordant_atr_gap_guard_quant_priority():
     """Verify ATR gap guard selects Quant levels when Quant has superior R:R and gap > 0.5 ATR."""
-    arbitrator = SignalArbitrator(settings={
-        "trading": {
-            "arbitration": {
-                "concordant_boost_conf": 0.05,
-                "concordant_risk_multiplier": 1.15
-            }
-        }
-    })
+    arbitrator = SignalArbitrator(
+        settings={"trading": {"arbitration": {"concordant_boost_conf": 0.05, "concordant_risk_multiplier": 1.15}}}
+    )
 
     # Quant setup: Entry 1.1000, SL 1.0950 (Risk 0.0050), TP 1.1150 (Reward 0.0150) -> R:R = 3.0
     quant_sig = MagicMock(
@@ -107,7 +98,7 @@ async def test_signal_arbitrator_concordant_atr_gap_guard_quant_priority():
         entry_price=1.1000,
         stop_loss=1.0950,
         take_profit=1.1150,
-        meta={"atr": 0.0020}
+        meta={"atr": 0.0020},
     )
 
     # LLM setup: Stale/Divergent Entry 1.1050 (Gap = 0.0050 > 0.5*0.0020=0.0010)
@@ -118,7 +109,7 @@ async def test_signal_arbitrator_concordant_atr_gap_guard_quant_priority():
         "entry_price": 1.1050,
         "stop_loss": 1.1020,
         "take_profit": 1.1080,
-        "risk_multiplier": 1.0
+        "risk_multiplier": 1.0,
     }
 
     mock_session = create_mock_async_session()
@@ -129,7 +120,7 @@ async def test_signal_arbitrator_concordant_atr_gap_guard_quant_priority():
             symbol="EURUSD",
             quant_signal=quant_sig,
             llm_decision=llm_dec,
-            market_regime="trending_bullish"
+            market_regime="trending_bullish",
         )
 
         assert res.decision == "buy"
@@ -145,20 +136,23 @@ async def test_signal_arbitrator_concordant_atr_gap_guard_quant_priority():
 # 3. Signal Arbitrator Dynamic Bayesian Concordant Boost (AX1-09)
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_signal_arbitrator_dynamic_bayesian_boost():
     """Verify concordant boost scales dynamically based on calibrated confidence."""
-    arbitrator = SignalArbitrator(settings={
-        "trading": {
-            "signal_arbitration": {
-                "concordant_boost_conf": 0.05,
-                "quant_weight": 0.5,
-                "llm_weight": 0.5,
-                "dynamic_brier_weighting": False,
-                "dynamic_bayesian_boost": True
+    arbitrator = SignalArbitrator(
+        settings={
+            "trading": {
+                "signal_arbitration": {
+                    "concordant_boost_conf": 0.05,
+                    "quant_weight": 0.5,
+                    "llm_weight": 0.5,
+                    "dynamic_brier_weighting": False,
+                    "dynamic_bayesian_boost": True,
+                }
             }
         }
-    })
+    )
 
     quant_sig = MagicMock(
         symbol="EURUSD",
@@ -167,7 +161,7 @@ async def test_signal_arbitrator_dynamic_bayesian_boost():
         strategy_id="xau_trend",
         entry_price=1.1000,
         stop_loss=1.0950,
-        take_profit=1.1100
+        take_profit=1.1100,
     )
 
     llm_dec = {
@@ -176,7 +170,7 @@ async def test_signal_arbitrator_dynamic_bayesian_boost():
         "entry_price": 1.1000,
         "stop_loss": 1.0950,
         "take_profit": 1.1100,
-        "risk_multiplier": 1.0
+        "risk_multiplier": 1.0,
     }
 
     mock_session = create_mock_async_session()
@@ -188,7 +182,7 @@ async def test_signal_arbitrator_dynamic_bayesian_boost():
             symbol="EURUSD",
             quant_signal=quant_sig,
             llm_decision=llm_dec,
-            market_regime="trending_bullish"
+            market_regime="trending_bullish",
         )
 
         assert res.meta.get("dynamic_boost") >= 0.07
@@ -199,6 +193,7 @@ async def test_signal_arbitrator_dynamic_bayesian_boost():
 # 4. Dynamic Correlation Crypto Uncertainty Buffer (R2-F02)
 # ==============================================================================
 
+
 def test_dynamic_correlation_crypto_uncertainty_buffer():
     """Verify get_correlation_uncertainty_multiplier applies 0.8x haircut on crypto static fallback."""
     assert is_crypto_or_commodity_symbol("BTCUSD") is True
@@ -207,15 +202,21 @@ def test_dynamic_correlation_crypto_uncertainty_buffer():
     assert is_crypto_or_commodity_symbol("EURUSD") is False
 
     # Crypto static fallback -> 0.80 multiplier
-    mult_crypto_fallback = get_correlation_uncertainty_multiplier("BTCUSD", "EURUSD", "static_fallback_insufficient_history")
+    mult_crypto_fallback = get_correlation_uncertainty_multiplier(
+        "BTCUSD", "EURUSD", "static_fallback_insufficient_history"
+    )
     assert mult_crypto_fallback == 0.80
 
     # Commodity static fallback -> 0.80 multiplier
-    mult_gold_fallback = get_correlation_uncertainty_multiplier("XAUUSD", "USDJPY", "static_fallback_insufficient_overlap")
+    mult_gold_fallback = get_correlation_uncertainty_multiplier(
+        "XAUUSD", "USDJPY", "static_fallback_insufficient_overlap"
+    )
     assert mult_gold_fallback == 0.80
 
     # Forex static fallback -> 1.00 multiplier
-    mult_forex_fallback = get_correlation_uncertainty_multiplier("EURUSD", "GBPUSD", "static_fallback_insufficient_history")
+    mult_forex_fallback = get_correlation_uncertainty_multiplier(
+        "EURUSD", "GBPUSD", "static_fallback_insufficient_history"
+    )
     assert mult_forex_fallback == 1.00
 
     # Dynamic correlation -> 1.00 multiplier
@@ -227,16 +228,10 @@ def test_dynamic_correlation_crypto_uncertainty_buffer():
 # 5. RiskGate Broker Timezone Dynamic DST Configuration (R2-F03)
 # ==============================================================================
 
+
 def test_risk_gate_broker_timezone_configuration():
     """Verify get_trading_day_start respects broker_timezone and NY DST transition."""
-    settings = {
-        "trading": {
-            "risk": {
-                "broker_timezone": "America/New_York",
-                "broker_rollover_hour": 17
-            }
-        }
-    }
+    settings = {"trading": {"risk": {"broker_timezone": "America/New_York", "broker_rollover_hour": 17}}}
 
     # Summer EDT (UTC-4) on Aug 28, 2026 at 22:30 UTC -> after 17:00 NY (21:00 UTC)
     now_edt = datetime(2026, 8, 28, 22, 30, tzinfo=timezone.utc)
@@ -249,13 +244,7 @@ def test_risk_gate_broker_timezone_configuration():
     assert start_est == datetime(2026, 1, 15, 22, 0, tzinfo=timezone.utc)
 
     # Explicit midnight UTC configuration
-    settings_midnight = {
-        "trading": {
-            "risk": {
-                "daily_rollover_utc_hour": 0
-            }
-        }
-    }
+    settings_midnight = {"trading": {"risk": {"daily_rollover_utc_hour": 0}}}
     start_midnight = get_trading_day_start(settings_midnight, now=now_edt)
     assert start_midnight == datetime(2026, 8, 28, 0, 0, tzinfo=timezone.utc)
 
@@ -264,20 +253,23 @@ def test_risk_gate_broker_timezone_configuration():
 # 6. FXSSI Retail Sentiment Time-Series History Persistence (AXIS4-09)
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_fxssi_sentiment_time_series_history_persistence():
     """Verify FXSSISentimentFetcher persists latest snapshot and append to time-series history."""
     mock_session = create_mock_async_session()
 
     fetcher = FXSSISentimentFetcher(session=mock_session, headless=True)
-    fetcher.fetch_sync = MagicMock(return_value={
-        "source": "fxssi",
-        "fetched_at": "2026-08-29T10:00:00Z",
-        "ratios": {
-            "EURUSD": {"long_percent": 45.0, "short_percent": 55.0, "long_short_ratio": 0.8182},
-            "XAUUSD": {"long_percent": 70.0, "short_percent": 30.0, "long_short_ratio": 2.3333}
+    fetcher.fetch_sync = MagicMock(
+        return_value={
+            "source": "fxssi",
+            "fetched_at": "2026-08-29T10:00:00Z",
+            "ratios": {
+                "EURUSD": {"long_percent": 45.0, "short_percent": 55.0, "long_short_ratio": 0.8182},
+                "XAUUSD": {"long_percent": 70.0, "short_percent": 30.0, "long_short_ratio": 2.3333},
+            },
         }
-    })
+    )
 
     # Mock execute queries for SystemConfig
     mock_exec_res = MagicMock()

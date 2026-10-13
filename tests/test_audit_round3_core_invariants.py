@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 # Test 1: F0-1 Unicode NFKC & Word Boundary Sanitization
 # ---------------------------------------------------------------------------
 
+
 def test_f0_1_unicode_nfkc_and_word_boundary_sanitization():
     """Verify NFKC normalization and word-boundary truncation for news title sanitization."""
     import unicodedata
@@ -17,10 +18,15 @@ def test_f0_1_unicode_nfkc_and_word_boundary_sanitization():
 
     # Input with fullwidth characters, zero-width space, and long text
     raw_title = "ＵＳ\u200b Ｉｎｆｌａｔｉｏｎ Ｒａｔｅ ｅｘｃｅｅｄｓ ｆｏｒｅｃａｓｔ ｗｉｔｈ ｓｉｇｎｉｆｉｃａｎｔ ｕｐｗａｒｄ ｐｒｅｓｓｕｒｅ ａｃｒｏｓｓ ａｌｌ ｓｅｃｔｏｒｓ ａｎｄ ｃｏｍｍｏｄｉｔｉｅｓ ａｓ ｒｅｐｏｒｔｅｄ ｂｙ ｔｈｅ Ｂｕｒｅａｕ ｏｆ Ｌａｂｏｒ Ｓｔａｔｉｓｔｉｃｓ"
-    
+
     normalized = unicodedata.normalize("NFKC", raw_title)
     # Zero-width space should be cleanable
-    cleaned = normalized.replace("\u200b", "").replace("<untrusted_external_content>", "").replace("</untrusted_external_content>", "").strip()
+    cleaned = (
+        normalized.replace("\u200b", "")
+        .replace("<untrusted_external_content>", "")
+        .replace("</untrusted_external_content>", "")
+        .strip()
+    )
     short_title = textwrap.shorten(cleaned, width=150, placeholder="...") if len(cleaned) > 150 else cleaned
     safe_title = f"<untrusted_external_content>{short_title}</untrusted_external_content>"
 
@@ -35,9 +41,11 @@ def test_f0_1_unicode_nfkc_and_word_boundary_sanitization():
 # Test 2: F0-2 RSS Robust Date Parsing
 # ---------------------------------------------------------------------------
 
+
 def test_f0_2_rss_robust_date_parsing():
     """Verify universal ISO-8601 UTC date parsing in RssBaseScraper."""
     from scrapers.news.rss_base import RssBaseScraper
+
     scraper = RssBaseScraper("TestRSS", "http://example.com/rss")
 
     mock_feed = MagicMock()
@@ -46,14 +54,14 @@ def test_f0_2_rss_robust_date_parsing():
             "link": "https://example.com/news/1",
             "title": "Fed announces rate hike",
             "published": "Wed, 28 Aug 2026 14:30:00 GMT",
-            "summary": "Interest rate raised by 25bps."
+            "summary": "Interest rate raised by 25bps.",
         },
         {
             "link": "https://example.com/news/2",
             "title": "ECB maintains current stance",
             "pubDate": "2026-08-28T15:00:00+02:00",
-            "description": "European Central Bank statement."
-        }
+            "description": "European Central Bank statement.",
+        },
     ]
 
     with patch("feedparser.parse", return_value=mock_feed):
@@ -68,6 +76,7 @@ def test_f0_2_rss_robust_date_parsing():
 # ---------------------------------------------------------------------------
 # Test 3: F0-3 Dashboard API IP Whitelisting
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_f0_3_dashboard_api_ip_whitelisting():
@@ -85,30 +94,28 @@ async def test_f0_3_dashboard_api_ip_whitelisting():
     mock_eng = MagicMock()
     mock_eng.connect.return_value.__aenter__.return_value = AsyncMock()
     mock_eng.connect.return_value.__aexit__.return_value = None
-    with patch.dict(os.environ, {
-        "DASHBOARD_API_KEY": "secret_key_123",
-        "DASHBOARD_ALLOWED_IPS": "192.168.1.100,10.0.0.5"
-    }), patch("database.db.engine", mock_eng):
-
+    with (
+        patch.dict(
+            os.environ, {"DASHBOARD_API_KEY": "secret_key_123", "DASHBOARD_ALLOWED_IPS": "192.168.1.100,10.0.0.5"}
+        ),
+        patch("database.db.engine", mock_eng),
+    ):
         # Unauthorized remote IP
         resp_blocked = client.get(
-            "/api/health",
-            headers={"X-Forwarded-For": "203.0.113.1", "X-API-Key": "secret_key_123"}
+            "/api/health", headers={"X-Forwarded-For": "203.0.113.1", "X-API-Key": "secret_key_123"}
         )
         assert resp_blocked.status_code == 403
         assert "not authorized" in resp_blocked.json().get("detail", "")
 
         # Authorized remote IP with valid key
-        resp_ok = client.get(
-            "/api/health",
-            headers={"X-Forwarded-For": "192.168.1.100", "X-API-Key": "secret_key_123"}
-        )
+        resp_ok = client.get("/api/health", headers={"X-Forwarded-For": "192.168.1.100", "X-API-Key": "secret_key_123"})
         assert resp_ok.status_code == 200
 
 
 # ---------------------------------------------------------------------------
 # Test 4: F1-1 Signal Arbitrator Dynamic Brier Weighting
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_f1_1_signal_arbitrator_dynamic_brier_weighting():
@@ -151,16 +158,31 @@ async def test_f1_1_signal_arbitrator_dynamic_brier_weighting():
     }
     arbitrator = SignalArbitrator(settings=settings)
     quant_sig = EdgeSignal(
-        strategy_id="xau_trend", symbol="XAUUSD", direction="buy", valid=True,
-        confidence=0.80, rationale="Trend buy", exit_style="trend_trailing",
-        entry_price=2650.0, stop_loss=2635.0, take_profit=2685.0
+        strategy_id="xau_trend",
+        symbol="XAUUSD",
+        direction="buy",
+        valid=True,
+        confidence=0.80,
+        rationale="Trend buy",
+        exit_style="trend_trailing",
+        entry_price=2650.0,
+        stop_loss=2635.0,
+        take_profit=2685.0,
     )
     llm_decision = {
-        "decision": "buy", "confidence": 0.75, "risk_multiplier": 1.0,
-        "entry_price": 2650.0, "stop_loss": 2635.0, "take_profit": 2685.0, "rationale": "Bullish"
+        "decision": "buy",
+        "confidence": 0.75,
+        "risk_multiplier": 1.0,
+        "entry_price": 2650.0,
+        "stop_loss": 2635.0,
+        "take_profit": 2685.0,
+        "rationale": "Bullish",
     }
 
-    with patch("analysis.arbitration.signal_arbitrator.compute_empirical_arbitrator_weights", AsyncMock(return_value=(0.30, 0.70))):
+    with patch(
+        "analysis.arbitration.signal_arbitrator.compute_empirical_arbitrator_weights",
+        AsyncMock(return_value=(0.30, 0.70)),
+    ):
         with patch("utils.calibration.confidence_calibrator.get_calibrated_confidence", AsyncMock(return_value=0.75)):
             res = await arbitrator.arbitrate(
                 session=mock_session,
@@ -168,7 +190,7 @@ async def test_f1_1_signal_arbitrator_dynamic_brier_weighting():
                 quant_signal=quant_sig,
                 llm_decision=llm_decision,
                 vix_level=16.0,
-                regime_info={"regime": "trending_bull"}
+                regime_info={"regime": "trending_bull"},
             )
             assert res.decision == "buy"
             assert res.selected_source == "concordant"
@@ -179,6 +201,7 @@ async def test_f1_1_signal_arbitrator_dynamic_brier_weighting():
 # ---------------------------------------------------------------------------
 # Test 5: F1-2 Notifier Persistent Disk Outbox
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_f1_2_notifier_persistent_disk_outbox(tmp_path):
@@ -229,6 +252,7 @@ async def test_f1_2_notifier_persistent_disk_outbox(tmp_path):
 # ---------------------------------------------------------------------------
 # Test 6: F1-3 Multi-Regime Partitioned Calibration
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_f1_3_multi_regime_partitioned_calibration():
@@ -288,6 +312,7 @@ async def test_f1_3_multi_regime_partitioned_calibration():
 # Test 7: F1-6 Monte Carlo Drawdown Simulation in ReportGenerator
 # ---------------------------------------------------------------------------
 
+
 def test_f1_6_monte_carlo_drawdown_simulation():
     """Verify Monte Carlo 10,000 permutation drawdown analyzer in ReportGenerator."""
     from backtest.report_generator import ReportGenerator
@@ -312,7 +337,7 @@ def test_f1_6_monte_carlo_drawdown_simulation():
         trades=trades,
         equity_curve=[{"timestamp": t.entry_time, "equity": 10000.0 + i * 50} for i, t in enumerate(trades)],
         start_date=mock_run.start_date,
-        end_date=mock_run.end_date
+        end_date=mock_run.end_date,
     )
 
     mc_results = generator.compute_monte_carlo_drawdowns(num_simulations=500)

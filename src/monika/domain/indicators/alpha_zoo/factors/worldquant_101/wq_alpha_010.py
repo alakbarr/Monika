@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #10.
 
 Formula (paper appendix): rank((0<ts_min(delta(close,1),4))?delta(close,1):((ts_max(delta(close,1),4)<0)?delta(close,1):(-1*delta(close,1))))
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_010"
 
 __alpha_meta__ = {
-    'id': 'alpha101_010',
-    'nickname': 'Kakushadze Alpha #10',
-    'theme': ['momentum'],
-    'formula_latex': 'rank((0<ts_min(delta(close,1),4))?delta(close,1):((ts_max(delta(close,1),4)<0)?delta(close,1):(-1*delta(close,1))))',
-    'columns_required': ['close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 5,
-    'notes': '',
+    "id": "alpha101_010",
+    "nickname": "Kakushadze Alpha #10",
+    "theme": ["momentum"],
+    "formula_latex": "rank((0<ts_min(delta(close,1),4))?delta(close,1):((ts_max(delta(close,1),4)<0)?delta(close,1):(-1*delta(close,1))))",
+    "columns_required": ["close"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 5,
+    "notes": "",
 }
 
 
@@ -77,7 +76,6 @@ def _where_ternary(cond: Any, a: Any, b: Any) -> Any:
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
     close = panel["close"]
-
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
     where_ternary = _where_ternary

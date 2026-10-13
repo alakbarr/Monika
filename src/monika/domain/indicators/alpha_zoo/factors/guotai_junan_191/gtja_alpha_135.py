@@ -1,11 +1,11 @@
-
 """GTJA Alpha 135 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     SMA(DELAY(CLOSE/DELAY(CLOSE,20),1),20,1)
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_135"
 
 __alpha_meta__ = {
-    'id': 'gtja191_135',
-    'theme': ['momentum'],
-    'formula_latex': 'sma(delay(c/delay(c,20),1),20,1)',
-    'columns_required': ['close'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 20,
-    'min_warmup_bars': 22,
-    'notes': '',
+    "id": "gtja191_135",
+    "theme": ["momentum"],
+    "formula_latex": "sma(delay(c/delay(c,20),1),20,1)",
+    "columns_required": ["close"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 20,
+    "min_warmup_bars": 22,
+    "notes": "",
 }
 
 
@@ -54,9 +54,11 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     Returns:
         pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
     """
+
     def _sma(x, n, m):
         """SMA(x, n, m) per GTJA convention -> ewm with alpha = m/n."""
         return x.ewm(alpha=m / n, adjust=False).mean()
+
     c = panel["close"]
     ratio = safe_div(c, c.shift(20)).shift(1)
     out = _sma(ratio, 20, 1)

@@ -1,6 +1,7 @@
 """
 Comprehensive Backtest Report Generator with Daily-Resampled Sharpe & Sortino Ratios.
 """
+
 import logging
 import math
 from typing import List, Dict, Any, Optional
@@ -69,7 +70,9 @@ class ReportGenerator:
         gross_profit = sum(p for p in trade_pnls if p > 0)
         gross_loss = abs(sum(p for p in trade_pnls if p < 0))
 
-        self.run.profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else (99.0 if gross_profit > 0 else 0.0)
+        self.run.profit_factor = (
+            round(gross_profit / gross_loss, 2) if gross_loss > 0 else (99.0 if gross_profit > 0 else 0.0)
+        )
 
         # 1. Resample equity curve to Daily Return Series
         daily_returns = self._resample_daily_returns(initial_eq)
@@ -78,7 +81,7 @@ class ReportGenerator:
         crypto_symbols = ("BTC", "ETH", "SOL", "XRP", "BNB")
         total_t_count = len(self.trades)
         crypto_t_count = sum(1 for t in self.trades if any(c in t.symbol.upper() for c in crypto_symbols))
-        
+
         has_crypto = crypto_t_count > 0
         crypto_fraction = (crypto_t_count / total_t_count) if total_t_count > 0 else 0.0
         ann_factor = round(252.0 + (crypto_fraction * (365.0 - 252.0)), 2)
@@ -111,15 +114,26 @@ class ReportGenerator:
         avg_win_pct = sum(t.pnl_pct for t in wins if t.pnl_pct) / len(wins) if wins else 0.0
         win_rate_dec = len(wins) / len(self.trades)
         loss_rate_dec = 1.0 - win_rate_dec
-        self.expectancy_r = round((win_rate_dec * (avg_win_pct / avg_loss_pct) - loss_rate_dec), 2) if avg_loss_pct > 0 else 0.0
+        self.expectancy_r = (
+            round((win_rate_dec * (avg_win_pct / avg_loss_pct) - loss_rate_dec), 2) if avg_loss_pct > 0 else 0.0
+        )
 
         # 5. Max Drawdown %
-        curve_to_use = [p for p in self.equity_curve] if (self.equity_curve and isinstance(self.equity_curve, list)) else []
+        curve_to_use = (
+            [p for p in self.equity_curve] if (self.equity_curve and isinstance(self.equity_curve, list)) else []
+        )
         if not curve_to_use and self.trades:
             cur_eq = initial_eq
             first_ts = self.start_date or getattr(self.trades[0], "entry_time", datetime.now(timezone.utc))
             curve_to_use = [{"timestamp": first_ts, "equity": initial_eq}]
-            for t in sorted(self.trades, key=lambda tr: getattr(tr, "exit_time", None) or getattr(tr, "entry_time", None) or datetime.min.replace(tzinfo=timezone.utc)):
+            for t in sorted(
+                self.trades,
+                key=lambda tr: (
+                    getattr(tr, "exit_time", None)
+                    or getattr(tr, "entry_time", None)
+                    or datetime.min.replace(tzinfo=timezone.utc)
+                ),
+            ):
                 pnl = getattr(t, "pnl_usd", None)
                 if pnl is None:
                     pnl = (float(getattr(t, "pnl_pct", 0.0) or 0.0) / 100.0) * initial_eq
@@ -128,7 +142,9 @@ class ReportGenerator:
                 curve_to_use.append({"timestamp": ts, "equity": cur_eq})
 
         if curve_to_use:
-            equities = [p.get("equity", initial_eq) if isinstance(p, dict) else float(p) for p in curve_to_use if p is not None]
+            equities = [
+                p.get("equity", initial_eq) if isinstance(p, dict) else float(p) for p in curve_to_use if p is not None
+            ]
             if equities:
                 peak = initial_eq
                 max_dd = 0.0
@@ -153,9 +169,9 @@ class ReportGenerator:
             z = 1.96  # 95% CI
             n = float(self.run.total_trades)
             p = float(len(wins)) / n
-            denominator = 1.0 + (z ** 2) / n
-            centre_adjusted = p + (z ** 2) / (2.0 * n)
-            adjusted_std = np.sqrt((p * (1.0 - p) + (z ** 2) / (4.0 * n)) / n)
+            denominator = 1.0 + (z**2) / n
+            centre_adjusted = p + (z**2) / (2.0 * n)
+            adjusted_std = np.sqrt((p * (1.0 - p) + (z**2) / (4.0 * n)) / n)
             self.wilson_lower = max(0.0, float((centre_adjusted - z * adjusted_std) / denominator))
             self.wilson_upper = min(1.0, float((centre_adjusted + z * adjusted_std) / denominator))
         else:
@@ -173,7 +189,9 @@ class ReportGenerator:
         if len(daily_returns) > 0:
             pos_excess = sum(max(r, 0.0) for r in daily_returns)
             neg_excess = sum(max(-r, 0.0) for r in daily_returns)
-            self.omega_ratio = round(float(pos_excess / neg_excess), 2) if neg_excess > 1e-8 else (99.0 if pos_excess > 0 else 0.0)
+            self.omega_ratio = (
+                round(float(pos_excess / neg_excess), 2) if neg_excess > 1e-8 else (99.0 if pos_excess > 0 else 0.0)
+            )
         else:
             self.omega_ratio = 0.0
 
@@ -185,7 +203,7 @@ class ReportGenerator:
                 if eq > peak:
                     peak = eq
                 dd_pct = ((peak - eq) / peak) * 100.0 if peak > 0 else 0.0
-                dd_sq.append(dd_pct ** 2)
+                dd_sq.append(dd_pct**2)
             self.ulcer_index = round(float(np.sqrt(np.mean(dd_sq))), 2) if dd_sq else 0.0
         else:
             self.ulcer_index = 0.0
@@ -204,6 +222,7 @@ class ReportGenerator:
         Runs Monte Carlo trade permutation to estimate 95% and 99% VaR Max Drawdown.
         """
         from monika.application.backtest.monte_carlo_engine import MonteCarloStressTester
+
         tester = MonteCarloStressTester(seed=42)
         initial_eq = float(getattr(self.run, "initial_equity", 10000.0) or 10000.0)
         # Use actual fractional equity returns (dollar PnL / initial equity) rather than unleveraged price %
@@ -216,9 +235,7 @@ class ReportGenerator:
             trade_returns = [float(t.pnl_pct or 0.0) / 100.0 for t in self.trades]
 
         res = tester.run_permutation_drawdown_test(
-            trade_returns=trade_returns,
-            num_simulations=num_simulations,
-            initial_equity=initial_eq
+            trade_returns=trade_returns, num_simulations=num_simulations, initial_equity=initial_eq
         )
         self.monte_carlo_results = {
             "var_95_drawdown_pct": res.get("var_95_drawdown_pct", 0.0),
@@ -270,20 +287,20 @@ class ReportGenerator:
         # Build continuous day series (preserve weekends if crypto was traded or weekend equity shifted)
         crypto_symbols = ("BTC", "ETH", "SOL", "XRP", "BNB")
         has_crypto = bool(self.trades) and any(any(c in t.symbol.upper() for c in crypto_symbols) for t in self.trades)
-        
+
         full_series: List[float] = []
         running_eq = initial_equity
         for d in range(total_days):
             cur_date = start_dt + timedelta(days=d)
             day_date = cur_date.isoformat()
-            
+
             is_weekend = cur_date.weekday() >= 5
             has_weekend_activity = day_date in daily_equity
-            
+
             # If not crypto and it's weekend with no trading activity, skip
             if is_weekend and not has_crypto and not has_weekend_activity:
                 continue
-                
+
             if day_date in daily_equity:
                 running_eq = daily_equity[day_date]
             full_series.append(running_eq)
@@ -320,13 +337,17 @@ class ReportGenerator:
 
     def print_summary(self):
         """Prints the summary report to console."""
-        print(f"\n{'='*55}")
+        print(f"\n{'=' * 55}")
         print(f"  INSTITUTIONAL BACKTEST REPORT ({self.run.mode.upper()} MODE)")
-        print(f"{'='*55}")
+        print(f"{'=' * 55}")
         if self.run.start_date and self.run.end_date:
-            print(f"Period:       {self.run.start_date.strftime('%Y-%m-%d')} to {self.run.end_date.strftime('%Y-%m-%d')}")
+            print(
+                f"Period:       {self.run.start_date.strftime('%Y-%m-%d')} to {self.run.end_date.strftime('%Y-%m-%d')}"
+            )
         print(f"Total Trades: {self.run.total_trades}")
-        print(f"Win Rate:     {self.run.win_rate:.2f}% (95% CI: {self.wilson_lower*100:.1f}% - {self.wilson_upper*100:.1f}%)")
+        print(
+            f"Win Rate:     {self.run.win_rate:.2f}% (95% CI: {self.wilson_lower * 100:.1f}% - {self.wilson_upper * 100:.1f}%)"
+        )
         print(f"Profit Factor:{self.run.profit_factor:.2f}")
         print(f"Sharpe (Ann): {self.run.sharpe_ratio:.2f}")
         print(f"Sortino:      {self.sortino_ratio:.2f}")
@@ -340,5 +361,4 @@ class ReportGenerator:
             print(f"MC 95% VaR DD:{self.monte_carlo_results.get('var_95_drawdown_pct', 0.0):.2f}%")
         print(f"Initial Eq:   ${self.run.initial_equity:,.2f}")
         print(f"Final Equity: ${self.run.final_equity:,.2f}")
-        print(f"{'='*55}\n")
-
+        print(f"{'=' * 55}\n")

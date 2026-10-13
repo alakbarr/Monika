@@ -1,4 +1,3 @@
-
 """GTJA Alpha #9.
 
 Formula: SMA(((HIGH+LOW)/2-(DELAY(HIGH,1)+DELAY(LOW,1))/2)*(HIGH-LOW)/VOLUME,7,2)
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_009",
-    "theme": ['volume', 'microstructure'],
-    "formula_latex": 'SMA(((HIGH+LOW)/2-(DELAY(HIGH,1)+DELAY(LOW,1))/2)*(HIGH-LOW)/VOLUME,7,2)',
-    "columns_required": ['high', 'low', 'volume'],
+    "theme": ["volume", "microstructure"],
+    "formula_latex": "SMA(((HIGH+LOW)/2-(DELAY(HIGH,1)+DELAY(LOW,1))/2)*(HIGH-LOW)/VOLUME,7,2)",
+    "columns_required": ["high", "low", "volume"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 7,
     "min_warmup_bars": 8,
-    "notes": 'SMA(n=7, m=2) of midpoint change times range / volume.',
+    "notes": "SMA(n=7, m=2) of midpoint change times range / volume.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     h = panel["high"]

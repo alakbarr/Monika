@@ -34,7 +34,10 @@ def test_prompt_assembler_injects_discipline():
 def test_stop_as_truncated_heuristic():
     # Natural ending with stop finish_reason -> not truncated
     resp_complete = {"finish_reason": "stop"}
-    assert AgentHarness._check_truncation(resp_complete, stop_reason="stop", content="Analysis complete. Concluding WAIT.") is False
+    assert (
+        AgentHarness._check_truncation(resp_complete, stop_reason="stop", content="Analysis complete. Concluding WAIT.")
+        is False
+    )
 
     # Abrupt cut mid-sentence with stop finish_reason -> flagged as truncated!
     truncated_text = "I have evaluated the ATR and current market structure. Based on the 4-hour order block, the recommended entry price is"
