@@ -134,7 +134,7 @@ def compute_roll_effective_spread(
     # Rolling covariance
     cov = dp.rolling(window).cov(dp_lag)
     # Roll spread is 2 * sqrt(-cov) when cov < 0, else 0.0
-    roll_spread = 2.0 * np.sqrt(np.maximum(0.0, -cov))
+    roll_spread = pd.Series(2.0 * np.sqrt(np.maximum(0.0, -cov)), index=close.index)
     return roll_spread.fillna(0.0)
 
 
@@ -180,8 +180,8 @@ def compute_kyle_lambda(
         return float(np.sum(x_dm * y_dm) / denom)
 
     res = pd.Series(index=price_changes.index, dtype=float)
-    y_vals = price_changes.values
-    x_vals = signed_volume.values
+    y_vals = np.asarray(price_changes, dtype=np.float64)
+    x_vals = np.asarray(signed_volume, dtype=np.float64)
 
     for i in range(window - 1, len(price_changes)):
         sl = slice(i - window + 1, i + 1)
@@ -208,28 +208,28 @@ def get_microstructure_metrics(
 
     # 2. Kyle's Lambda for Forex pairs
     if sym in KYLE_SYMBOLS and ohlcv_df is not None and len(ohlcv_df) >= 20:
-        close = ohlcv_df["close"].astype(float)
-        vol = ohlcv_df["volume"].astype(float)
-        price_chg = close.diff().fillna(0.0)
-        signed_vol = vol * np.sign(price_chg)
+        close = pd.Series(ohlcv_df["close"], dtype=float)
+        vol = pd.Series(ohlcv_df["volume"], dtype=float)
+        price_chg = pd.Series(close.diff().fillna(0.0))
+        signed_vol = pd.Series(vol * np.sign(price_chg))
         k_series = compute_kyle_lambda(price_chg, signed_vol, window=20)
         val_k = k_series.iloc[-1] if not k_series.empty else 0.0
         metrics["kyle_lambda"] = round(0.0 if pd.isna(val_k) else float(val_k), 6)
 
     # 3. Amihud Illiquidity for Commodities (with MT5 contract size)
     if sym in AMIHUD_SYMBOLS and ohlcv_df is not None and len(ohlcv_df) >= 20:
-        close = ohlcv_df["close"].astype(float)
-        vol = ohlcv_df["volume"].astype(float)
+        close = pd.Series(ohlcv_df["close"], dtype=float)
+        vol = pd.Series(ohlcv_df["volume"], dtype=float)
         contract_size = MT5_CONTRACT_SIZES.get(sym, 1.0)
-        rets = close.pct_change().fillna(0.0)
-        dollar_vol = vol * contract_size * close
+        rets = pd.Series(close.pct_change().fillna(0.0))
+        dollar_vol = pd.Series(vol * contract_size * close)
         amihud_series = compute_amihud_illiquidity(rets, dollar_vol, window=20)
         val_am = amihud_series.iloc[-1]
         metrics["amihud_illiquidity"] = round(0.0 if pd.isna(val_am) else float(val_am), 8)
 
     # 4. Roll Effective Spread for all instruments
     if ohlcv_df is not None and len(ohlcv_df) >= 20:
-        roll_s = compute_roll_effective_spread(ohlcv_df["close"].astype(float), window=20)
+        roll_s = compute_roll_effective_spread(pd.Series(ohlcv_df["close"], dtype=float), window=20)
         val_roll = roll_s.iloc[-1]
         metrics["roll_spread"] = round(0.0 if pd.isna(val_roll) else float(val_roll), 5)
 
@@ -267,10 +267,10 @@ def calculate_kyles_lambda_ols(
     """
     Computes Kyle's Lambda via OLS regression of price changes on signed volume.
     """
-    close = df["close"].astype(float)
-    vol = df["volume"].astype(float)
-    price_chg = close.diff().fillna(0.0)
-    signed_vol = vol * np.sign(price_chg)
+    close = pd.Series(df["close"], dtype=float)
+    vol = pd.Series(df["volume"], dtype=float)
+    price_chg = pd.Series(close.diff().fillna(0.0))
+    signed_vol = pd.Series(vol * np.sign(price_chg))
     k_series = compute_kyle_lambda(price_chg, signed_vol, window=window)
     val = float(k_series.iloc[-1]) if not k_series.empty else 0.0
     return {"kyles_lambda": 0.0 if np.isnan(val) else val}
@@ -284,10 +284,10 @@ def calculate_amihud_illiquidity_mt5(
     """
     Computes Amihud illiquidity normalized by MT5 contract size.
     """
-    close = df["close"].astype(float)
-    vol = df["volume"].astype(float)
-    rets = close.pct_change().fillna(0.0)
-    dollar_vol = vol * contract_size * close
+    close = pd.Series(df["close"], dtype=float)
+    vol = pd.Series(df["volume"], dtype=float)
+    rets = pd.Series(close.pct_change().fillna(0.0))
+    dollar_vol = pd.Series(vol * contract_size * close)
     amihud_series = compute_amihud_illiquidity(rets, dollar_vol, window=window)
     val = float(amihud_series.iloc[-1]) if not amihud_series.empty else 0.0
     return {"amihud_illiquidity": max(0.0, 0.0 if np.isnan(val) else val)}

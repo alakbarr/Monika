@@ -47,4 +47,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     signed = v.where(c > pc, -v.where(c < pc, 0.0))
     # A missing close, prior close or volume is not a flat day (#1463).
     signed = signed.where(c.notna() & pc.notna() & v.notna())
-    return signed.rolling(20, min_periods=20).sum()
+    res = signed.rolling(20, min_periods=20).sum()
+    if isinstance(res, (pd.DataFrame, pd.Series)):
+        return res
+    return pd.Series(res)

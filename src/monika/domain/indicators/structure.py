@@ -429,7 +429,7 @@ class MarketStructureAnalyzer:
         if not swing_highs.empty:
             for _, row in swing_highs.iterrows():
                 ts = row["timestamp"]
-                price = float(row["price"])
+                price = float(np.asarray(row["price"]).item())
                 buffer = (atr_val * 0.15) if atr_val > 0 else (price * 0.001)
                 subsequent_df = df[df.index > ts]
                 if subsequent_df.empty or subsequent_df['high'].max() <= price:
@@ -446,7 +446,7 @@ class MarketStructureAnalyzer:
         if not swing_lows.empty:
             for _, row in swing_lows.iterrows():
                 ts = row["timestamp"]
-                price = float(row["price"])
+                price = float(np.asarray(row["price"]).item())
                 buffer = (atr_val * 0.15) if atr_val > 0 else (price * 0.001)
                 subsequent_df = df[df.index > ts]
                 if subsequent_df.empty or subsequent_df['low'].min() >= price:
@@ -688,12 +688,14 @@ class MarketStructureAnalyzer:
             ob_mid = (ob.price_high + ob.price_low) / 2.0
             
             for _, bar in future_bars.iterrows():
-                if ob.direction == "bullish" and bar['low'] <= ob_mid:
-                    ob.mitigated_at = bar['timestamp']
-                    break
-                elif ob.direction == "bearish" and bar['high'] >= ob_mid:
-                    ob.mitigated_at = bar['timestamp']
-                    break
+                bar_ts = pd.Timestamp(str(bar['timestamp'])).to_pydatetime()
+                if isinstance(bar_ts, datetime):
+                    if ob.direction == "bullish" and bar['low'] <= ob_mid:
+                        ob.mitigated_at = bar_ts
+                        break
+                    elif ob.direction == "bearish" and bar['high'] >= ob_mid:
+                        ob.mitigated_at = bar_ts
+                        break
                     
         # Keep only most recent unmitigated OBs, limit count
         unmitigated_bullish = [ob for ob in sorted(bullish_obs, key=lambda x: x.formed_at, reverse=True) 
@@ -715,9 +717,9 @@ class MarketStructureAnalyzer:
         breaks: list[StructureBreakData] = []
         swings = []
         for _, row in swing_highs.iterrows():
-            swings.append((row['timestamp'], float(row['price']), 'high'))
+            swings.append((row['timestamp'], float(np.asarray(row['price']).item()), 'high'))
         for _, row in swing_lows.iterrows():
-            swings.append((row['timestamp'], float(row['price']), 'low'))
+            swings.append((row['timestamp'], float(np.asarray(row['price']).item()), 'low'))
             
         swings.sort(key=lambda x: x[0])
         current_trend = "ranging"
@@ -727,10 +729,10 @@ class MarketStructureAnalyzer:
         for ts, price, typ in swings:
             if typ == 'high':
                 if last_high and price > last_high:
-                    subsequent = df[df.index >= ts]
-                    breaking_candles = subsequent[subsequent['close'] > last_high]
+                    subsequent = df.loc[df.index >= ts]
+                    breaking_candles = subsequent.loc[subsequent['close'] > last_high]
                     if not breaking_candles.empty:
-                        break_ts = breaking_candles.index[0]
+                        break_ts = pd.to_datetime(breaking_candles.index[0]).to_pydatetime()
                         break_type = "ChoCH" if current_trend == "bearish" else "BOS"
                         breaks.append(StructureBreakData(
                             symbol=symbol, timeframe=timeframe, type=break_type, 
@@ -742,10 +744,10 @@ class MarketStructureAnalyzer:
                 last_high = price
             else:
                 if last_low and price < last_low:
-                    subsequent = df[df.index >= ts]
-                    breaking_candles = subsequent[subsequent['close'] < last_low]
+                    subsequent = df.loc[df.index >= ts]
+                    breaking_candles = subsequent.loc[subsequent['close'] < last_low]
                     if not breaking_candles.empty:
-                        break_ts = breaking_candles.index[0]
+                        break_ts = pd.to_datetime(breaking_candles.index[0]).to_pydatetime()
                         break_type = "ChoCH" if current_trend == "bullish" else "BOS"
                         breaks.append(StructureBreakData(
                             symbol=symbol, timeframe=timeframe, type=break_type, 
@@ -780,13 +782,13 @@ class MarketStructureAnalyzer:
         for _, row in highs.iterrows():
             self.session.add(SwingPoint(
                 symbol=symbol, timeframe=timeframe,
-                timestamp=row["timestamp"], type="high", price=float(row["price"])
+                timestamp=pd.Timestamp(str(row["timestamp"])).to_pydatetime(), type="high", price=float(np.asarray(row["price"]).item())
             ))
             saved += 1
         for _, row in lows.iterrows():
             self.session.add(SwingPoint(
                 symbol=symbol, timeframe=timeframe,
-                timestamp=row["timestamp"], type="low", price=float(row["price"])
+                timestamp=pd.Timestamp(str(row["timestamp"])).to_pydatetime(), type="low", price=float(np.asarray(row["price"]).item())
             ))
             saved += 1
 

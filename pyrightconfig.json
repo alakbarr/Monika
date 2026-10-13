@@ -12,7 +12,6 @@
     "logs",
     "data",
     "frontend",
-    "src/monika/domain/indicators",
     "**/site-packages",
     "**/dist",
     ".git"

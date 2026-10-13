@@ -46,4 +46,4 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     pc = c.shift(1)
     ret = safe_div(c - pc, pc)
     prod = o.rolling(5, min_periods=5).sum() * ret.rolling(5, min_periods=5).sum()
-    return -1.0 * rank(prod - prod.shift(10))
+    return -1.0 * rank(delta(prod, 10))

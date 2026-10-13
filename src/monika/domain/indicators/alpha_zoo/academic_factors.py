@@ -44,10 +44,10 @@ from monika.domain.indicators.factor_primitives import safe_div, ts_mean, ts_std
     )
 )
 def academic_betting_against_beta(df: pd.DataFrame) -> pd.Series:
-    ret = df["close"].pct_change()
-    market_ret = ret.rolling(20).mean() # Baseline rolling benchmark
-    cov = ret.rolling(60).cov(market_ret)
-    var = market_ret.rolling(60).var()
+    ret = pd.Series(df["close"]).pct_change()
+    market_ret = pd.Series(ret.rolling(20).mean()) # Baseline rolling benchmark
+    cov = pd.Series(ret.rolling(60).cov(market_ret))
+    var = pd.Series(market_ret.rolling(60).var())
     beta = safe_div(cov, var)
     return - (beta - 1.0)
 
@@ -69,9 +69,9 @@ def academic_betting_against_beta(df: pd.DataFrame) -> pd.Series:
     )
 )
 def academic_carhart_momentum(df: pd.DataFrame) -> pd.Series:
-    c = df["close"]
-    past_12m = c.shift(21)
-    past_start = c.shift(252)
+    c = pd.Series(df["close"])
+    past_12m = pd.Series(c.shift(21))
+    past_start = pd.Series(c.shift(252))
     return safe_div(past_12m - past_start, past_start)
 
 
@@ -92,8 +92,9 @@ def academic_carhart_momentum(df: pd.DataFrame) -> pd.Series:
     )
 )
 def academic_proximity_52w_high(df: pd.DataFrame) -> pd.Series:
-    rolling_high = df["high"].rolling(252, min_periods=60).max()
-    return safe_div(df["close"], rolling_high)
+    c = pd.Series(df["close"])
+    rolling_high = pd.Series(df["high"]).rolling(252, min_periods=60).max()
+    return safe_div(c, pd.Series(rolling_high))
 
 
 # ==============================================================================
@@ -113,10 +114,12 @@ def academic_proximity_52w_high(df: pd.DataFrame) -> pd.Series:
     )
 )
 def academic_amihud_illiquidity_premium(df: pd.DataFrame) -> pd.Series:
-    ret = df["close"].pct_change().abs()
-    dollar_vol = df["close"] * (df["volume"] + 1.0)
-    ratio = safe_div(ret, dollar_vol)
-    return ratio.rolling(20, min_periods=5).mean()
+    c = pd.Series(df["close"])
+    v = pd.Series(df["volume"])
+    ret = c.pct_change().abs()
+    dollar_vol = c * (v + 1.0)
+    ratio = pd.Series(safe_div(ret, dollar_vol))
+    return pd.Series(ratio.rolling(20, min_periods=5).mean())
 
 
 # ==============================================================================

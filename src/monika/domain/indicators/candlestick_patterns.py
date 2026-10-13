@@ -15,12 +15,12 @@ from typing import List, Dict, Any, Optional
 import math
 
 
-def detect_candlestick_patterns(candles: List[Dict[str, Any]], lookback: int = 5) -> Dict[str, Any]:
+def detect_candlestick_patterns(candles: Any, lookback: int = 5) -> Dict[str, Any]:
     """
     Analyzes candlestick sequence to detect classical price action patterns.
 
     Args:
-        candles: List of dicts with keys: 'open', 'high', 'low', 'close', 'time'/'timestamp'
+        candles: List of dicts or DataFrame with keys: 'open', 'high', 'low', 'close', 'time'/'timestamp'
         lookback: Number of recent candles to evaluate for patterns (default: 5)
 
     Returns:
@@ -36,10 +36,17 @@ def detect_candlestick_patterns(candles: List[Dict[str, Any]], lookback: int = 5
         }
 
     # Convert DataFrame to list of dicts if needed
-    if hasattr(candles, "to_dict"):
-        candle_list = candles.to_dict(orient="records")
-    else:
+    candle_list: List[Any]
+    if hasattr(candles, "to_dict") and callable(getattr(candles, "to_dict", None)):
+        raw_records = getattr(candles, "to_dict")(orient="records")
+        candle_list = list(raw_records) if isinstance(raw_records, (list, tuple)) else []
+    elif isinstance(candles, (list, tuple)):
         candle_list = list(candles)
+    else:
+        try:
+            candle_list = list(candles)
+        except TypeError:
+            candle_list = []
 
     formatted_candles = []
     for c in candle_list:

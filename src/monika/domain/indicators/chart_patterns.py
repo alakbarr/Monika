@@ -205,8 +205,8 @@ def scan_all_chart_patterns(df: pd.DataFrame, order: int = 5) -> Dict[str, Any]:
     if df is None or len(df) < 25:
         return {"patterns": [], "count": 0, "message": "Insufficient bars for pattern scanning"}
 
-    highs = df["high"].values
-    lows = df["low"].values
+    highs = np.asarray(df["high"], dtype=np.float64)
+    lows = np.asarray(df["low"], dtype=np.float64)
     pivots = find_swing_pivots(highs, lows, order=order)
 
     double_patterns = detect_double_tops_bottoms(pivots)

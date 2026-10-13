@@ -31,7 +31,7 @@ class RegistryError(Exception):
     pass
 
 
-FactorCallable = Callable[[pd.DataFrame], Union[pd.Series, pd.DataFrame]]
+FactorCallable = Callable[..., Union[pd.Series, pd.DataFrame]]
 
 
 def load_alpha_meta_from_py(file_path: Union[str, Path]) -> AlphaMeta:

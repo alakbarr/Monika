@@ -192,7 +192,7 @@ def detect_breaker_blocks(
                 swings.append({"type": "low", "price": float(df["low"].iloc[i]), "time": str(df.index[i])})
 
     for ob in order_blocks:
-        ob_type = getattr(ob, "type", "") or (ob.get("type") if isinstance(ob, dict) else "")
+        ob_type = str(getattr(ob, "type", "") or (ob.get("type") if isinstance(ob, dict) else "") or "")
         price_low = getattr(ob, "price_low", 0.0) or (ob.get("price_low", 0.0) if isinstance(ob, dict) else 0.0)
         price_high = getattr(ob, "price_high", 0.0) or (ob.get("price_high", 0.0) if isinstance(ob, dict) else 0.0)
         ob_time = str(getattr(ob, "time", "") or (ob.get("time", "") if isinstance(ob, dict) else ""))
@@ -276,7 +276,7 @@ def detect_inverted_fvg(
     last_close = float(df["close"].iloc[-1])
 
     for fvg in fvg_zones:
-        fvg_type = getattr(fvg, "type", "") or (fvg.get("type") if isinstance(fvg, dict) else "")
+        fvg_type = str(getattr(fvg, "type", "") or (fvg.get("type") if isinstance(fvg, dict) else "") or "")
         price_low = getattr(fvg, "price_low", 0.0) or (fvg.get("price_low", 0.0) if isinstance(fvg, dict) else 0.0)
         price_high = getattr(fvg, "price_high", 0.0) or (fvg.get("price_high", 0.0) if isinstance(fvg, dict) else 0.0)
         fvg_time = str(getattr(fvg, "time", "") or (fvg.get("time", "") if isinstance(fvg, dict) else ""))
@@ -358,10 +358,10 @@ def detect_judas_swing(
             except Exception:
                 pass
 
-        bar_high = float(row["high"])
-        bar_low = float(row["low"])
-        bar_open = float(row["open"])
-        bar_close = float(row["close"])
+        bar_high = float(np.asarray(row["high"]).item())
+        bar_low = float(np.asarray(row["low"]).item())
+        bar_open = float(np.asarray(row["open"]).item())
+        bar_close = float(np.asarray(row["close"]).item())
         candle_range = max(bar_high - bar_low, 1e-6)
 
         # Case 1: Bearish Trap (Swept Asian High)

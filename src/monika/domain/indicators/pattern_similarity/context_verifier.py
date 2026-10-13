@@ -228,7 +228,8 @@ INSTRUCTIONS:
             if not search_res:
                 return ""
 
-            titles = [r.get("title", "") for r in search_res if r.get("title")]
+            items = search_res.get("results", []) if isinstance(search_res, dict) else (search_res if isinstance(search_res, list) else [])
+            titles = [str(r.get("title", "")) for r in items if isinstance(r, dict) and r.get("title")]
             joined = " | ".join(titles)
 
             if joined:

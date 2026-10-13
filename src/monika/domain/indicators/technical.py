@@ -265,8 +265,8 @@ class TechnicalIndicatorCalculator:
 
         # For D1, normalize timestamps to daily boundaries to prevent hour shifts from dropping candles
         if timeframe.upper() == "D1" and len(df) > 1:
-            df.index = pd.DatetimeIndex(df.index).normalize()
-            df = df[~df.index.duplicated(keep="last")]
+            df.index = pd.to_datetime([pd.Timestamp(t).strftime('%Y-%m-%d') for t in df.index])
+            df = df.loc[~df.index.duplicated(keep="last")]
             
         # Resample and forward-fill to handle missing candles without time distortion
         tf_freq_map = {
@@ -281,9 +281,11 @@ class TechnicalIndicatorCalculator:
         freq = tf_freq_map.get(timeframe.upper())
         if freq and len(df) > 1:
             try:
-                deduped = df[~df.index.duplicated(keep='first')]
-                resample_kwargs = {} if freq == "1D" else {"origin": "start"}
-                resampled = deduped.resample(freq, **resample_kwargs).asfreq()
+                deduped: pd.DataFrame = df.loc[~df.index.duplicated(keep='first')]
+                if freq == "1D":
+                    resampled = deduped.resample(freq).asfreq()
+                else:
+                    resampled = deduped.resample(freq, origin="start").asfreq()
                 # If resampling produced NaNs across the series, fallback to raw deduped data
                 if not resampled['close'].isna().all():
                     # Filter weekend market closure bars for Forex / Commodities (non-24/7 crypto)

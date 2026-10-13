@@ -162,10 +162,7 @@ def alpha_003(df: pd.DataFrame) -> pd.Series:
     description="Accumulation flow divergence: rolling correlation of open and volume.",
 )
 def alpha_006(df: pd.DataFrame) -> pd.Series:
-    df_open = pd.DataFrame({"s": df["open"]})
-    df_vol = pd.DataFrame({"s": df["volume"]})
-    corr = ts_corr(df_open, df_vol, 10)
-    return corr["s"]
+    return ts_corr(pd.Series(df["open"]), pd.Series(df["volume"]), 10)
 
 
 @MicroAlphaZoo.register(
@@ -221,7 +218,9 @@ def alpha_028(df: pd.DataFrame) -> pd.Series:
     description="Intraday candle body expansion: safe_div(close - open, close).",
 )
 def alpha_033(df: pd.DataFrame) -> pd.Series:
-    return safe_div(df["close"] - df["open"], df["close"])
+    c = pd.Series(df["close"])
+    o = pd.Series(df["open"])
+    return safe_div(c - o, c)
 
 
 @MicroAlphaZoo.register(
@@ -352,10 +351,12 @@ def alpha_liquidity_sweep_reversion(df: pd.DataFrame) -> pd.Series:
     description="Rolling 20-bar VWAP stretch z-score: (close - VWAP) / std(close, 20).",
 )
 def alpha_volume_vwap_deviation(df: pd.DataFrame) -> pd.Series:
-    pv = df["close"] * df["volume"]
-    vwap = pv.rolling(20, min_periods=20).sum() / df["volume"].rolling(20, min_periods=20).sum()
-    std = df["close"].rolling(20, min_periods=20).std()
-    return safe_div(df["close"] - vwap, std)
+    c = pd.Series(df["close"])
+    v = pd.Series(df["volume"])
+    pv = c * v
+    vwap = pd.Series(pv.rolling(20, min_periods=20).sum() / v.rolling(20, min_periods=20).sum())
+    std = pd.Series(c.rolling(20, min_periods=20).std())
+    return safe_div(c - vwap, std)
 
 
 @MicroAlphaZoo.register(
@@ -394,6 +395,5 @@ def alpha_range_efficiency(df: pd.DataFrame) -> pd.Series:
     description="Linearly decaying weighted momentum over 10 bars.",
 )
 def alpha_decay_trend_strength(df: pd.DataFrame) -> pd.Series:
-    d1 = pd.DataFrame({"d": delta(df["close"], 1)})
-    decay = decay_linear(d1, 10)
-    return decay["d"]
+    d1 = delta(pd.Series(df["close"]), 1)
+    return decay_linear(d1, 10)

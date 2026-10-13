@@ -393,7 +393,7 @@ class SystemDoctor:
                 db_url = db_cfg.get("url")
 
         if not db_url:
-            self._record("Database", "DATABASE_URL", "WARN", "DATABASE_URL is not set (will default to SQLite).")
+            self._record("DatabaseConfig", "DATABASE_URL", "WARN", "DATABASE_URL is not set (will default to SQLite).")
             return
 
         parsed = urllib.parse.urlparse(db_url)
@@ -407,10 +407,10 @@ class SystemDoctor:
         )
 
         if not any(scheme == s or scheme.startswith("sqlite") or scheme.startswith("postgresql") for s in valid_schemes):
-            self._record("Database", "DATABASE_URL", "FAIL", f"Unsupported database scheme: '{scheme}'.")
+            self._record("DatabaseConfig", "DATABASE_URL", "FAIL", f"Unsupported database scheme: '{scheme}'.")
             return
 
-        self._record("Database", "DATABASE_URL", "OK", f"Database URI scheme validated: {scheme}")
+        self._record("DatabaseConfig", "DATABASE_URL", "OK", f"Database URI scheme validated: {scheme}")
 
         if "sqlite" in scheme:
             db_path = parsed.path
@@ -429,22 +429,22 @@ class SystemDoctor:
                     res = cursor.fetchone()
                     conn.close()
                     if res and res[0] == "ok":
-                        self._record("Database", "SQLite-Integrity", "OK", f"Offline SQLite integrity verified ({file_path.name}).")
+                        self._record("DatabaseConfig", "SQLite-Integrity", "OK", f"Offline SQLite integrity verified ({file_path.name}).")
                     else:
-                        self._record("Database", "SQLite-Integrity", "WARN", f"Integrity check returned: {res}")
+                        self._record("DatabaseConfig", "SQLite-Integrity", "WARN", f"Integrity check returned: {res}")
                 except Exception as e:
-                    self._record("Database", "SQLite-Integrity", "WARN", f"Offline SQLite check failed: {e}")
+                    self._record("DatabaseConfig", "SQLite-Integrity", "WARN", f"Offline SQLite check failed: {e}")
             else:
                 parent_dir = file_path.parent
                 if parent_dir.exists() and os.access(parent_dir, os.W_OK):
-                    self._record("Database", "SQLite-Path", "OK", f"SQLite target file will be initialized in {parent_dir}.")
+                    self._record("DatabaseConfig", "SQLite-Path", "OK", f"SQLite target file will be initialized in {parent_dir}.")
                 else:
-                    self._record("Database", "SQLite-Path", "WARN", f"SQLite directory not writable or missing: {parent_dir}")
+                    self._record("DatabaseConfig", "SQLite-Path", "WARN", f"SQLite directory not writable or missing: {parent_dir}")
         elif "postgresql" in scheme:
             if not parsed.hostname:
-                self._record("Database", "PostgreSQL-Config", "WARN", "PostgreSQL URI lacks a valid hostname.")
+                self._record("DatabaseConfig", "PostgreSQL-Config", "WARN", "PostgreSQL URI lacks a valid hostname.")
             else:
-                self._record("Database", "PostgreSQL-Config", "OK", f"Target host: {parsed.hostname}:{parsed.port or 5432}, DB: {parsed.path.lstrip('/')}")
+                self._record("DatabaseConfig", "PostgreSQL-Config", "OK", f"Target host: {parsed.hostname}:{parsed.port or 5432}, DB: {parsed.path.lstrip('/')}")
 
     async def check_redis(self, settings: dict) -> None:
         """Verify Redis cache connectivity if configured or using localhost."""

@@ -7,6 +7,7 @@ Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 20.
 
 from __future__ import annotations
 
+from typing import Any
 import numpy as np
 import pandas as pd
 
@@ -46,7 +47,7 @@ __alpha_meta__ = {
 }
 
 
-def _delay(df: pd.DataFrame, n: int) -> pd.DataFrame:
+def _delay(df: Any, n: int) -> Any:
     """Backward shift by n (lookahead-safe; n>=1 required)."""
     if n < 1:
         raise ValueError("delay requires n >= 1 (lookahead ban)")
