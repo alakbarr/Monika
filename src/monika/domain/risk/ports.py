@@ -115,6 +115,7 @@ class RiskDataProviderProtocol(Protocol):
         timeframe: str = "H1",
         max_age_hours: float = 8.0,
         session: Optional[Any] = None,
+        as_of: Optional[datetime] = None,
     ) -> Optional[Dict[str, Any]]:
         """Retrieve most recent cached TimesFM forecast quantiles for symbol."""
         ...

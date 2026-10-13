@@ -214,18 +214,30 @@ def get_engine():
                         }
                     )
                 elif "sqlite" in db_url:
-                    engine_kwargs.update(
-                        {
-                            "pool_size": 20,
-                            "max_overflow": 30,
-                            "pool_timeout": 60.0,
-                            "pool_pre_ping": True,
-                            "pool_recycle": 1800,
-                            "connect_args": {
-                                "timeout": 60.0,
-                            },
-                        }
-                    )
+                    if ":memory:" in db_url:
+                        from sqlalchemy.pool import StaticPool
+
+                        engine_kwargs.update(
+                            {
+                                "poolclass": StaticPool,
+                                "connect_args": {
+                                    "check_same_thread": False,
+                                },
+                            }
+                        )
+                    else:
+                        engine_kwargs.update(
+                            {
+                                "pool_size": 20,
+                                "max_overflow": 30,
+                                "pool_timeout": 60.0,
+                                "pool_pre_ping": True,
+                                "pool_recycle": 1800,
+                                "connect_args": {
+                                    "timeout": 60.0,
+                                },
+                            }
+                        )
                 new_engine = create_async_engine(db_url, **engine_kwargs)
                 if "sqlite" in db_url:
                     from sqlalchemy import event

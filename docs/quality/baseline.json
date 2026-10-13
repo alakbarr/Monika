@@ -1,0 +1,56 @@
+{
+  "version": "2.0.0",
+  "generated_at": "2026-10-13T12:57:00Z",
+  "branch": "refactor/architecture-v2",
+  "baseline_tag": "baseline/pre-refactor",
+  "codebase_metrics": {
+    "src_files_count": 1542,
+    "src_total_loc": 294845,
+    "files_over_500_loc": 147,
+    "files_over_1000_loc": 52,
+    "files_over_2000_loc": 15
+  },
+  "quality_gate": {
+    "pytest": {
+      "passed": 3787,
+      "failed": 0,
+      "deselected": 5,
+      "subtests_passed": 35,
+      "duration_seconds": 336.66
+    },
+    "ruff": {
+      "active_config_errors": 0,
+      "expanded_ruleset_debt": 57805
+    },
+    "pyright": {
+      "errors": 0,
+      "warnings": 0,
+      "informations": 0
+    }
+  },
+  "architecture_debt": {
+    "layer_violations_count": 1860,
+    "top_violating_pairs": {
+      "infrastructure_to_interfaces": 688,
+      "domain_to_infrastructure": 214,
+      "domain_to_application": 312,
+      "core_to_domain_app_infra": 284
+    },
+    "strongly_connected_components": 42
+  },
+  "safety_critical_debt": {
+    "rbac_localhost_admin_bypass": "interfaces/dashboard/auth/rbac.py:130",
+    "unsandboxed_exec_session_kernel": "infrastructure/sandboxes/persistent_session_kernel.py:132",
+    "unfiltered_tools_trade_intel": "application/analysis/tools/handlers/trade_intel.py:2263",
+    "adv_liquidity_fail_open": "domain/risk/risk_gate.py:2062",
+    "nan_exposure_guard_gap": "domain/risk/risk_gate.py:930"
+  },
+  "persistence_debt": {
+    "active_sqlite_dbs": [
+      "data/monika.db",
+      "data/trading_agent.db",
+      "data/universal_cron.db"
+    ],
+    "float_monetary_columns": 92
+  }
+}
