@@ -5,76 +5,77 @@ This document provides an exhaustive structural index of all directories, files,
 ## Table of Contents
 *(Note: Line numbers are auto-updated by `scripts/update_index_toc.py`)*
 
-- [Root Directory: `Monika/`](#root-directory-monika) - Line 79
-  - [Folder: `.github`](#folder-github) - Line 137
-    - [Folder: `.github/ISSUE_TEMPLATE`](#folder-githubissue_template) - Line 142
-    - [Folder: `.github/workflows`](#folder-githubworkflows) - Line 150
-  - [Folder: `deploy`](#folder-deploy) - Line 155
-  - [Folder: `docs`](#folder-docs) - Line 169
-  - [Folder: `scripts`](#folder-scripts) - Line 174
-  - [Folder: `typings`](#folder-typings) - Line 179
-  - [Folder: `src`](#folder-src) - Line 192
-    - [Folder: `src/monika`](#folder-srcmonika) - Line 194
-    - [Folder: `src/monika/core`](#folder-srcmonikacore) - Line 198
-      - [Folder: `src/monika/core/config`](#folder-srcmonikacoreconfig) - Line 210
-      - [Folder: `src/monika/core/security`](#folder-srcmonikacoresecurity) - Line 231
-      - [Folder: `src/monika/core/telemetry`](#folder-srcmonikacoretelemetry) - Line 255
-      - [Folder: `src/monika/core/telemetry/tracing`](#folder-srcmonikacoretelemetrytracing) - Line 270
-      - [Folder: `src/monika/core/primitives`](#folder-srcmonikacoreprimitives) - Line 281
-      - [Folder: `src/monika/core/analytics`](#folder-srcmonikacoreanalytics) - Line 304
-      - [Folder: `src/monika/core/calibration`](#folder-srcmonikacorecalibration) - Line 315
-      - [Folder: `src/monika/core/streaming`](#folder-srcmonikacorestreaming) - Line 321
-      - [Folder: `src/monika/core/validation`](#folder-srcmonikacorevalidation) - Line 327
-    - [Folder: `src/monika/domain`](#folder-srcmonikadomain) - Line 334
-    - [Folder: `src/monika/domain/entities`](#folder-srcmonikadomainentities) - Line 338
-    - [Folder: `src/monika/domain/risk`](#folder-srcmonikadomainrisk) - Line 348
-    - [Folder: `src/monika/domain/execution`](#folder-srcmonikadomainexecution) - Line 442
-    - [Folder: `src/monika/domain/indicators`](#folder-srcmonikadomainindicators) - Line 487
-    - [Folder: `src/monika/domain/indicators/alpha_zoo`](#folder-srcmonikadomainindicatorsalpha_zoo) - Line 503
-    - [Folder: `src/monika/domain/market`](#folder-srcmonikadomainmarket) - Line 545
-    - [Folder: `src/monika/application`](#folder-srcmonikaapplication) - Line 555
-      - [Folder: `src/monika/application/agent`](#folder-srcmonikaapplicationagent) - Line 559
-      - [Folder: `src/monika/application/analysis`](#folder-srcmonikaapplicationanalysis) - Line 614
-      - [Folder: `src/monika/application/graph`](#folder-srcmonikaapplicationgraph) - Line 640
-    - [Folder: `src/monika/application/services`](#folder-srcmonikaapplicationservices) - Line 664
-      - [Folder: `src/monika/application/execution`](#folder-srcmonikaapplicationexecution) - Line 708
-      - [Folder: `src/monika/application/agent/harness`](#folder-srcmonikaapplicationagentharness) - Line 734
-      - [Folder: `src/monika/application/plugins/engine`](#folder-srcmonikaapplicationpluginsengine) - Line 746
-      - [Folder: `src/monika/application/skills`](#folder-srcmonikaapplicationskills) - Line 757
-      - [Folder: `src/monika/application/governance`](#folder-srcmonikaapplicationgovernance) - Line 770
-      - [Folder: `src/monika/application/scheduler`](#folder-srcmonikaapplicationscheduler) - Line 776
-      - [Folder: `src/monika/application/backtest`](#folder-srcmonikaapplicationbacktest) - Line 800
-      - [Folder: `src/monika/application/evals`](#folder-srcmonikaapplicationevals) - Line 821
-      - [Folder: `src/monika/application/benchmark`](#folder-srcmonikaapplicationbenchmark) - Line 832
-      - [Folder: `src/monika/application/plugins`](#folder-srcmonikaapplicationplugins) - Line 854
-      - [Folder: `src/monika/application/protocol`](#folder-srcmonikaapplicationprotocol) - Line 868
-    - [Folder: `src/monika/infrastructure`](#folder-srcmonikainfrastructure) - Line 887
-      - [Folder: `src/monika/infrastructure/brokers`](#folder-srcmonikainfrastructurebrokers) - Line 891
-      - [Folder: `src/monika/infrastructure/credentials`](#folder-srcmonikainfrastructurecredentials) - Line 917
-      - [Folder: `src/monika/infrastructure/database`](#folder-srcmonikainfrastructuredatabase) - Line 927
-      - [Folder: `src/monika/infrastructure/database/domain_models`](#folder-srcmonikainfrastructuredatabasedomain_models) - Line 955
-      - [Folder: `src/monika/infrastructure/database/repositories`](#folder-srcmonikainfrastructuredatabaserepositories) - Line 973
-      - [Folder: `src/monika/infrastructure/data_ingestion`](#folder-srcmonikainfrastructuredata_ingestion) - Line 987
-        - [Folder: `src/monika/infrastructure/data_ingestion/sources`](#folder-srcmonikainfrastructuredata_ingestionsources) - Line 991
-        - [Folder: `src/monika/infrastructure/data_ingestion/scrapers`](#folder-srcmonikainfrastructuredata_ingestionscrapers) - Line 1010
-          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/calendar`](#folder-srcmonikainfrastructuredata_ingestionscraperscalendar) - Line 1023
-          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/macro`](#folder-srcmonikainfrastructuredata_ingestionscrapersmacro) - Line 1032
-      - [Folder: `src/monika/infrastructure/graph/checkpointers`](#folder-srcmonikainfrastructuregraphcheckpointers) - Line 1044
-      - [Folder: `src/monika/infrastructure/ml`](#folder-srcmonikainfrastructureml) - Line 1054
-      - [Folder: `src/monika/infrastructure/providers`](#folder-srcmonikainfrastructureproviders) - Line 1060
-      - [Folder: `src/monika/infrastructure/sandboxes`](#folder-srcmonikainfrastructuresandboxes) - Line 1074
-      - [Folder: `src/monika/infrastructure/llm/rate_limiting`](#folder-srcmonikainfrastructurellmrate_limiting) - Line 1093
-      - [Folder: `src/monika/infrastructure/mcp`](#folder-srcmonikainfrastructuremcp) - Line 1103
-      - [Folder: `src/monika/infrastructure/notifications`](#folder-srcmonikainfrastructurenotifications) - Line 1113
-      - [Folder: `src/monika/infrastructure/infra`](#folder-srcmonikainfrastructureinfra) - Line 1118
-      - [Folder: `src/monika/infrastructure/llm`](#folder-srcmonikainfrastructurellm) - Line 1129
-      - [Folder: `src/monika/infrastructure/storage`](#folder-srcmonikainfrastructurestorage) - Line 1139
-    - [Folder: `src/monika/interfaces`](#folder-srcmonikainterfaces) - Line 1144
-      - [Folder: `src/monika/interfaces/cli`](#folder-srcmonikainterfacescli) - Line 1148
-      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1156
-      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1163
-      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1171
-      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1182
+- [Root Directory: `Monika/`](#root-directory-monika) - Line 80
+  - [Folder: `.github`](#folder-github) - Line 138
+    - [Folder: `.github/ISSUE_TEMPLATE`](#folder-githubissue_template) - Line 143
+    - [Folder: `.github/workflows`](#folder-githubworkflows) - Line 151
+  - [Folder: `deploy`](#folder-deploy) - Line 156
+  - [Folder: `docs`](#folder-docs) - Line 170
+  - [Folder: `scripts`](#folder-scripts) - Line 175
+  - [Folder: `typings`](#folder-typings) - Line 180
+  - [Folder: `src`](#folder-src) - Line 193
+    - [Folder: `src/monika`](#folder-srcmonika) - Line 195
+    - [Folder: `src/monika/core`](#folder-srcmonikacore) - Line 199
+      - [Folder: `src/monika/core/config`](#folder-srcmonikacoreconfig) - Line 211
+      - [Folder: `src/monika/core/security`](#folder-srcmonikacoresecurity) - Line 232
+      - [Folder: `src/monika/core/telemetry`](#folder-srcmonikacoretelemetry) - Line 256
+      - [Folder: `src/monika/core/telemetry/tracing`](#folder-srcmonikacoretelemetrytracing) - Line 271
+      - [Folder: `src/monika/core/primitives`](#folder-srcmonikacoreprimitives) - Line 282
+      - [Folder: `src/monika/core/analytics`](#folder-srcmonikacoreanalytics) - Line 305
+      - [Folder: `src/monika/core/calibration`](#folder-srcmonikacorecalibration) - Line 316
+      - [Folder: `src/monika/core/streaming`](#folder-srcmonikacorestreaming) - Line 322
+      - [Folder: `src/monika/core/validation`](#folder-srcmonikacorevalidation) - Line 328
+    - [Folder: `src/monika/domain`](#folder-srcmonikadomain) - Line 335
+    - [Folder: `src/monika/domain/entities`](#folder-srcmonikadomainentities) - Line 339
+    - [Folder: `src/monika/domain/risk`](#folder-srcmonikadomainrisk) - Line 349
+    - [Folder: `src/monika/domain/execution`](#folder-srcmonikadomainexecution) - Line 443
+    - [Folder: `src/monika/domain/indicators`](#folder-srcmonikadomainindicators) - Line 488
+    - [Folder: `src/monika/domain/indicators/alpha_zoo`](#folder-srcmonikadomainindicatorsalpha_zoo) - Line 504
+    - [Folder: `src/monika/domain/market`](#folder-srcmonikadomainmarket) - Line 546
+    - [Folder: `src/monika/application`](#folder-srcmonikaapplication) - Line 556
+      - [Folder: `src/monika/application/agent`](#folder-srcmonikaapplicationagent) - Line 560
+      - [Folder: `src/monika/application/analysis`](#folder-srcmonikaapplicationanalysis) - Line 615
+      - [Folder: `src/monika/application/graph`](#folder-srcmonikaapplicationgraph) - Line 641
+    - [Folder: `src/monika/application/services`](#folder-srcmonikaapplicationservices) - Line 665
+      - [Folder: `src/monika/application/execution`](#folder-srcmonikaapplicationexecution) - Line 709
+      - [Folder: `src/monika/application/agent/harness`](#folder-srcmonikaapplicationagentharness) - Line 735
+      - [Folder: `src/monika/application/plugins/engine`](#folder-srcmonikaapplicationpluginsengine) - Line 747
+      - [Folder: `src/monika/application/skills`](#folder-srcmonikaapplicationskills) - Line 758
+      - [Folder: `src/monika/application/governance`](#folder-srcmonikaapplicationgovernance) - Line 771
+      - [Folder: `src/monika/application/scheduler`](#folder-srcmonikaapplicationscheduler) - Line 777
+      - [Folder: `src/monika/application/backtest`](#folder-srcmonikaapplicationbacktest) - Line 801
+      - [Folder: `src/monika/application/evals`](#folder-srcmonikaapplicationevals) - Line 822
+      - [Folder: `src/monika/application/benchmark`](#folder-srcmonikaapplicationbenchmark) - Line 833
+      - [Folder: `src/monika/application/plugins`](#folder-srcmonikaapplicationplugins) - Line 855
+      - [Folder: `src/monika/application/protocol`](#folder-srcmonikaapplicationprotocol) - Line 869
+    - [Folder: `src/monika/infrastructure`](#folder-srcmonikainfrastructure) - Line 888
+      - [Folder: `src/monika/infrastructure/brokers`](#folder-srcmonikainfrastructurebrokers) - Line 892
+        - [Folder: `src/monika/infrastructure/brokers/mt5`](#folder-srcmonikainfrastructurebrokersmt5) - Line 903
+      - [Folder: `src/monika/infrastructure/credentials`](#folder-srcmonikainfrastructurecredentials) - Line 932
+      - [Folder: `src/monika/infrastructure/database`](#folder-srcmonikainfrastructuredatabase) - Line 942
+      - [Folder: `src/monika/infrastructure/database/domain_models`](#folder-srcmonikainfrastructuredatabasedomain_models) - Line 970
+      - [Folder: `src/monika/infrastructure/database/repositories`](#folder-srcmonikainfrastructuredatabaserepositories) - Line 988
+      - [Folder: `src/monika/infrastructure/data_ingestion`](#folder-srcmonikainfrastructuredata_ingestion) - Line 1002
+        - [Folder: `src/monika/infrastructure/data_ingestion/sources`](#folder-srcmonikainfrastructuredata_ingestionsources) - Line 1006
+        - [Folder: `src/monika/infrastructure/data_ingestion/scrapers`](#folder-srcmonikainfrastructuredata_ingestionscrapers) - Line 1025
+          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/calendar`](#folder-srcmonikainfrastructuredata_ingestionscraperscalendar) - Line 1038
+          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/macro`](#folder-srcmonikainfrastructuredata_ingestionscrapersmacro) - Line 1047
+      - [Folder: `src/monika/infrastructure/graph/checkpointers`](#folder-srcmonikainfrastructuregraphcheckpointers) - Line 1059
+      - [Folder: `src/monika/infrastructure/ml`](#folder-srcmonikainfrastructureml) - Line 1069
+      - [Folder: `src/monika/infrastructure/providers`](#folder-srcmonikainfrastructureproviders) - Line 1075
+      - [Folder: `src/monika/infrastructure/sandboxes`](#folder-srcmonikainfrastructuresandboxes) - Line 1089
+      - [Folder: `src/monika/infrastructure/llm/rate_limiting`](#folder-srcmonikainfrastructurellmrate_limiting) - Line 1108
+      - [Folder: `src/monika/infrastructure/mcp`](#folder-srcmonikainfrastructuremcp) - Line 1118
+      - [Folder: `src/monika/infrastructure/notifications`](#folder-srcmonikainfrastructurenotifications) - Line 1128
+      - [Folder: `src/monika/infrastructure/infra`](#folder-srcmonikainfrastructureinfra) - Line 1133
+      - [Folder: `src/monika/infrastructure/llm`](#folder-srcmonikainfrastructurellm) - Line 1144
+      - [Folder: `src/monika/infrastructure/storage`](#folder-srcmonikainfrastructurestorage) - Line 1154
+    - [Folder: `src/monika/interfaces`](#folder-srcmonikainterfaces) - Line 1159
+      - [Folder: `src/monika/interfaces/cli`](#folder-srcmonikainterfacescli) - Line 1163
+      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1171
+      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1178
+      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1186
+      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1197
 
 ## Root Directory: `Monika/`
 
@@ -895,8 +896,22 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `BrokerAdapter` (ABC), `SimulatedBrokerAdapter`, `OrderResult`, `PositionInfo`, `AccountInfo`
 
 **File:** `mt5_client.py`
-  - **Docstring**: Production MT5 Client with auto-reconnection and robust order execution.
+  - **Docstring**: Backward-compatible facade module re-exporting MT5Client and broker utilities.
   - **Classes**: `MT5Client`
+  - **Functions**: `get_mt5_client`, `format_mt5_error`
+
+###### Folder: `src/monika/infrastructure/brokers/mt5`
+
+- Modular MT5 broker subpackage decomposing connection, market data, and execution logic.
+- **Modules**:
+  - `constants.py`: MT5 constants, priority levels, profile mismatch errors, and symbol resolution utilities (`MT5ProfileMismatchError`, `_resolve_broker_symbol`, `_build_timeframe_map`).
+  - `primitives.py`: Low-level synchronous MT5 worker functions executed inside dedicated thread workers (`_connect`, `_disconnect`, `_get_last_tick`, `_calculate_dom_vwap`, `format_mt5_error`).
+  - `order_ops.py`: Synchronous order and position manipulation primitives (`_place_order`, `_modify_position`, `_close_position`, `_get_open_positions`, `_get_orders`, `_cancel_order`).
+  - `base.py`: Mixin base class and typing protocol for MT5 components (`MT5MixinBase`).
+  - `connection.py`: Connection lifecycle, priority worker queue, and secondary gateway failover (`MT5ConnectionMixin`).
+  - `market_data.py`: Market quotes, rates fetching, DOM VWAP, and tick poller (`MT5MarketDataMixin`).
+  - `execution.py`: Order placement, trade modification, position sync, and emergency liquidation (`MT5ExecutionMixin`).
+  - `client.py`: Composite MT5Client class coordinating mixins (`MT5Client`, `get_mt5_client`).
 
 **File:** `ibkr_adapter.py`
   - **Docstring**: Interactive Brokers (IBKR) execution adapter with graceful fallback.
