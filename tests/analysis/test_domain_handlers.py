@@ -77,14 +77,18 @@ async def test_macro_handlers_and_session_info():
     sess = await handlers.get_market_session()
     assert "active_sessions" in sess
 
-    with patch("data_sources.cftc_cot.CFTCCOTFetcher.fetch_all", new_callable=AsyncMock) as mock_cot:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.cftc_cot.CFTCCOTFetcher.fetch_all", new_callable=AsyncMock
+    ) as mock_cot:
         mock_cot.return_value = 5
         mock_session = create_mock_async_session()
         cot_res = await handlers.get_cot_report(session=mock_session)
         assert cot_res["status"] == "success"
         assert cot_res["new_records"] == 5
 
-    with patch("data_sources.vix_yfinance.VIXFetcher.fetch", new_callable=AsyncMock) as mock_vix:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher.fetch", new_callable=AsyncMock
+    ) as mock_vix:
         mock_vix.return_value = 3
         mock_session = create_mock_async_session()
         vix_res = await handlers.get_vix(session=mock_session)
@@ -97,14 +101,17 @@ async def test_sentiment_handlers():
     mock_session = create_mock_async_session()
 
     # get_fear_greed
-    with patch("data_sources.fear_greed.FearGreedFetcher.fetch", new_callable=AsyncMock) as mock_fg:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.fear_greed.FearGreedFetcher.fetch", new_callable=AsyncMock
+    ) as mock_fg:
         mock_fg.return_value = {"current_value": 45, "classification": "Neutral"}
         res = await handlers.get_fear_greed(session=mock_session)
         assert res["current_value"] == 45
 
     # get_retail_sentiment
     with patch(
-        "scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher.fetch", new_callable=AsyncMock
+        "monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher.fetch",
+        new_callable=AsyncMock,
     ) as mock_myfx:
         mock_myfx.return_value = {"symbol": "EURUSD", "long_pct": 40.0, "short_pct": 60.0}
         ret_res = await handlers.get_retail_sentiment("EURUSD", session=mock_session)
@@ -129,7 +136,9 @@ async def test_technical_handlers():
         rates = await handlers.get_price_history("EURUSD", "H4", 50)
         assert len(rates) == 1
 
-    with patch("indicators.technical.TechnicalIndicatorCalculator.get_snapshot", new_callable=AsyncMock) as mock_snap:
+    with patch(
+        "monika.domain.indicators.technical.TechnicalIndicatorCalculator.get_snapshot", new_callable=AsyncMock
+    ) as mock_snap:
         mock_snap.return_value = {"ATR": {"value": 0.0045}, "RSI": {"value": 55.0}}
         tech_res = await handlers.get_technical_indicators("EURUSD", "H4", session=mock_session)
         assert "indicators" in tech_res

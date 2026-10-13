@@ -55,7 +55,9 @@ async def test_debate_judge_fail_closed_on_adjudication_exception():
     }
 
     # Patch evaluate_debate to raise an unhandled exception
-    with patch("graph.nodes.debate.debate_judge_node.evaluate_debate", new_callable=AsyncMock) as mock_eval:
+    with patch(
+        "monika.application.graph.nodes.debate.debate_judge_node.evaluate_debate", new_callable=AsyncMock
+    ) as mock_eval:
         mock_eval.side_effect = RuntimeError("Simulated judge failure")
         result = await debate_judge_node(state)
 

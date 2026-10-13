@@ -23,10 +23,12 @@ async def test_bond_yield_ecb_fetch(db_session):
         "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y,B,U2,EUR,4F,G_N_A,SV_C_YM,SR_10Y,2026-08-27,2.41\n"
     )
 
-    with patch("data_sources.bond_yields_fetcher.fetch_with_retry", new_callable=AsyncMock) as mock_http:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.bond_yields_fetcher.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_http:
         mock_http.return_value = dummy_csv
         with patch(
-            "data_sources.central_bank_watch.CentralBankWatchFetcher.fetch_sovereign_yields",
+            "monika.infrastructure.data_ingestion.sources.central_bank_watch.CentralBankWatchFetcher.fetch_sovereign_yields",
             new_callable=AsyncMock,
             return_value={},
         ):
@@ -55,7 +57,7 @@ async def test_bond_yield_fred_fetch(db_session):
 
     with patch.object(fetcher, "_fetch_ecb_yield", new_callable=AsyncMock, return_value=1):
         with patch(
-            "data_sources.central_bank_watch.CentralBankWatchFetcher.fetch_sovereign_yields",
+            "monika.infrastructure.data_ingestion.sources.central_bank_watch.CentralBankWatchFetcher.fetch_sovereign_yields",
             new_callable=AsyncMock,
             return_value={},
         ):
@@ -84,7 +86,7 @@ async def test_bond_yield_cbw_priority_over_fred(db_session):
 
     with patch.object(fetcher, "_fetch_ecb_yield", new_callable=AsyncMock, return_value=1):
         with patch(
-            "data_sources.central_bank_watch.CentralBankWatchFetcher.fetch_sovereign_yields",
+            "monika.infrastructure.data_ingestion.sources.central_bank_watch.CentralBankWatchFetcher.fetch_sovereign_yields",
             new_callable=AsyncMock,
             return_value=cbw_mock_data,
         ):
@@ -108,7 +110,9 @@ async def test_bond_yield_deduplication(db_session):
         "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y,B,U2,EUR,4F,G_N_A,SV_C_YM,SR_10Y,2026-08-27,2.41\n"
     )
 
-    with patch("data_sources.bond_yields_fetcher.fetch_with_retry", new_callable=AsyncMock) as mock_http:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.bond_yields_fetcher.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_http:
         mock_http.return_value = dummy_csv
         first_save = await fetcher._fetch_ecb_yield()
         assert first_save == 1

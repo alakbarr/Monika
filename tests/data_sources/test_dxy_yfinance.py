@@ -10,7 +10,7 @@ from monika.infrastructure.database.models import DXYData
 
 class TestDXYFetcher:
     @pytest.mark.asyncio
-    @patch("data_sources.dxy_yfinance.DXYFetcher._fetch_yahoo_direct")
+    @patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.DXYFetcher._fetch_yahoo_direct")
     async def test_fetch_tier1_success(self, mock_direct):
         df = pd.DataFrame({"Close": [100.5]}, index=[pd.Timestamp("2024-01-01", tz="UTC")])
         mock_direct.return_value = df
@@ -27,8 +27,8 @@ class TestDXYFetcher:
         fetcher._fetch_yfinance.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("data_sources.dxy_yfinance.DXYFetcher._fetch_yahoo_direct")
-    @patch("data_sources.dxy_yfinance.DXYFetcher._fetch_yfinance")
+    @patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.DXYFetcher._fetch_yahoo_direct")
+    @patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.DXYFetcher._fetch_yfinance")
     async def test_fetch_tier2_yfinance_fallback(self, mock_yf, mock_direct):
         mock_direct.return_value = None
         df_yf = pd.DataFrame({"Close": [101.2]}, index=[pd.Timestamp("2024-01-01", tz="UTC")])
@@ -45,8 +45,8 @@ class TestDXYFetcher:
         fetcher._save.assert_awaited_once_with(df_yf)
 
     @pytest.mark.asyncio
-    @patch("data_sources.dxy_yfinance.DXYFetcher._fetch_yahoo_direct")
-    @patch("data_sources.dxy_yfinance.DXYFetcher._fetch_yfinance")
+    @patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.DXYFetcher._fetch_yahoo_direct")
+    @patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.DXYFetcher._fetch_yfinance")
     async def test_fetch_empty(self, mock_yf, mock_direct):
         mock_direct.return_value = None
         mock_yf.return_value = pd.DataFrame()
@@ -58,8 +58,8 @@ class TestDXYFetcher:
         assert res == 0
 
     @pytest.mark.asyncio
-    @patch("data_sources.dxy_yfinance.DXYFetcher._fetch_yahoo_direct")
-    @patch("data_sources.dxy_yfinance.DXYFetcher._fetch_yfinance")
+    @patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.DXYFetcher._fetch_yahoo_direct")
+    @patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.DXYFetcher._fetch_yfinance")
     async def test_fetch_all_tiers_failed(self, mock_yf, mock_direct):
         mock_direct.return_value = None
         mock_yf.return_value = None
@@ -71,7 +71,7 @@ class TestDXYFetcher:
         assert res == 0
 
     @pytest.mark.asyncio
-    @patch("data_sources.dxy_yfinance.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.fetch_with_retry")
     async def test_fetch_yahoo_direct_success(self, mock_fetch):
         mock_fetch.return_value = {
             "chart": {
@@ -89,7 +89,7 @@ class TestDXYFetcher:
         assert df.index[0] == pd.to_datetime(1704067200, unit="s", utc=True)
 
     @pytest.mark.asyncio
-    @patch("data_sources.dxy_yfinance.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.fetch_with_retry")
     async def test_fetch_yahoo_direct_missing_data(self, mock_fetch):
         mock_fetch.return_value = {"chart": {"result": []}}
         fetcher = DXYFetcher(MagicMock())
@@ -97,7 +97,7 @@ class TestDXYFetcher:
         assert df is None
 
     @pytest.mark.asyncio
-    @patch("data_sources.dxy_yfinance.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.fetch_with_retry")
     async def test_fetch_yahoo_direct_http_error(self, mock_fetch):
         mock_fetch.side_effect = Exception("Connection timeout")
         fetcher = DXYFetcher(MagicMock())
@@ -125,7 +125,7 @@ class TestDXYFetcher:
             assert df is None
 
     def test_download(self):
-        with patch("data_sources.dxy_yfinance.yf.download") as mock_download:
+        with patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.yf.download") as mock_download:
             mock_download.return_value = pd.DataFrame()
             fetcher = DXYFetcher(MagicMock())
             fetcher._download("5d")

@@ -142,7 +142,7 @@ class TestActivityLogger:
         secret_token = "7871591922:AAENRd20agWx3AZqMVnvokzGgCDoZ192sVY"
         httpx_logger.info(f'HTTP Request: POST https://api.telegram.org/bot{secret_token}/getUpdates "HTTP/1.1 200 OK"')
 
-        agent_log_path = os.path.join(log_dir, "monika.application.agent.log")
+        agent_log_path = os.path.join(log_dir, "agent.log")
         assert os.path.exists(agent_log_path)
         with open(agent_log_path, "r", encoding="utf-8") as f:
             content = f.read()

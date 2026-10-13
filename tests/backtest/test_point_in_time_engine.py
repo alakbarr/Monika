@@ -47,8 +47,8 @@ async def test_replay_mode():
     }
 
     with (
-        patch("backtest.point_in_time_engine.get_session") as mock_get_session,
-        patch("backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator),
+        patch("monika.application.backtest.point_in_time_engine.get_session") as mock_get_session,
+        patch("monika.application.backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator),
     ):
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -100,8 +100,8 @@ async def test_replay_mode_with_entry_zone_fallback():
     }
 
     with (
-        patch("backtest.point_in_time_engine.get_session") as mock_get_session,
-        patch("backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator),
+        patch("monika.application.backtest.point_in_time_engine.get_session") as mock_get_session,
+        patch("monika.application.backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator),
     ):
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -186,8 +186,8 @@ async def test_point_in_time_dynamic_equity_feedback():
         return res
 
     with (
-        patch("backtest.point_in_time_engine.get_session") as mock_get_session,
-        patch("backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator),
+        patch("monika.application.backtest.point_in_time_engine.get_session") as mock_get_session,
+        patch("monika.application.backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator),
         patch.object(engine.sizer, "calculate_with_session", side_effect=mock_calc),
     ):
         mock_get_session.return_value.__aenter__.return_value = mock_session

@@ -33,7 +33,7 @@ async def test_tool_get_timesfm_forecast_success(fake_forecast):
     executor = ToolExecutor(mock_session, settings={})
 
     with patch(
-        "indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new_callable=AsyncMock
+        "monika.domain.indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new_callable=AsyncMock
     ) as mock_get_fc:
         mock_get_fc.return_value = fake_forecast
 
@@ -56,7 +56,7 @@ async def test_tool_get_timesfm_forecast_positional_and_kwargs(fake_forecast):
     executor = ToolExecutor(mock_session, settings={})
 
     with patch(
-        "indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new_callable=AsyncMock
+        "monika.domain.indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new_callable=AsyncMock
     ) as mock_get_fc:
         mock_get_fc.return_value = fake_forecast
 

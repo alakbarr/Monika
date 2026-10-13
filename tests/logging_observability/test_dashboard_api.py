@@ -542,7 +542,7 @@ class TestDashboardAPI:
         }
 
         with patch.dict(os.environ, {"DASHBOARD_API_KEY": "test_adm_key"}):
-            with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
+            with patch("monika.core.telemetry.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
                 with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
                     mock_session = create_mock_async_session()
                     mock_session.add = MagicMock()
@@ -677,7 +677,7 @@ class TestDashboardAPI:
             "reason": "Update risk limit only",
         }
         with patch.dict(os.environ, {"DASHBOARD_API_KEY": "test_adm_key"}):
-            with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
+            with patch("monika.core.telemetry.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
                 with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
                     mock_session = create_mock_async_session()
                     mock_session.add = MagicMock()

@@ -23,7 +23,7 @@ class TestTriggerChecker:
         return t
 
     @pytest.mark.asyncio
-    @patch("scheduler.trigger_checker.get_session")
+    @patch("monika.application.scheduler.trigger_checker.get_session")
     async def test_run_once(self, mock_get_session, settings):
         mock_per_asset = MagicMock()
         mock_per_asset.run_one = AsyncMock(return_value={"status": "completed", "skipped_by_brief_staleness": False})
@@ -59,7 +59,7 @@ class TestTriggerChecker:
         )
 
     @pytest.mark.asyncio
-    @patch("scheduler.trigger_checker.get_session")
+    @patch("monika.application.scheduler.trigger_checker.get_session")
     async def test_fire_trigger(self, mock_get_session, settings):
         checker = TriggerChecker(settings)
         t1 = self._make_trigger("price_level", {"price": 100})
@@ -83,7 +83,7 @@ class TestTriggerChecker:
         mock_session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    @patch("scheduler.trigger_checker.get_session")
+    @patch("monika.application.scheduler.trigger_checker.get_session")
     async def test_check_price_level(self, mock_get_session, settings):
         checker = TriggerChecker(settings)
         t1 = self._make_trigger("price_level", {"price": 2000, "direction": "above", "symbol": "XAUUSD"})
@@ -112,7 +112,7 @@ class TestTriggerChecker:
         assert await checker._check_price_level(t2, json.loads(t2.condition_json))
 
     @pytest.mark.asyncio
-    @patch("scheduler.trigger_checker.get_session")
+    @patch("monika.application.scheduler.trigger_checker.get_session")
     async def test_check_indicator(self, mock_get_session, settings):
         checker = TriggerChecker(settings)
         t1 = self._make_trigger(
@@ -201,7 +201,7 @@ class TestTriggerChecker:
         assert await checker._evaluate_trigger(t_news_stale) == "expired"
 
     @pytest.mark.asyncio
-    @patch("scheduler.trigger_checker.get_session")
+    @patch("monika.application.scheduler.trigger_checker.get_session")
     async def test_expire_stale_triggers_batch(self, mock_get_session, settings):
         checker = TriggerChecker(settings)
         mock_session = create_mock_async_session()
@@ -214,7 +214,7 @@ class TestTriggerChecker:
         mock_session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    @patch("scheduler.trigger_checker.get_session")
+    @patch("monika.application.scheduler.trigger_checker.get_session")
     async def test_invalid_and_expired_triggers_commit(self, mock_get_session, settings):
         checker = TriggerChecker(settings)
         t_inv = self._make_trigger("price_level", {}, age_hours=1)

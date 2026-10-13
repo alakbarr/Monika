@@ -281,7 +281,7 @@ async def test_c1_persist_before_execute_event(mock_session):
         assert result["success"] is True
         assert mock_emit.call_count >= 1
         call_kwargs = mock_emit.call_args_list[0].kwargs
-        assert call_kwargs["event_type"] == "monika.application.agent.turn.pre_execute"
+        assert call_kwargs["event_type"] == "agent.turn.pre_execute"
         assert call_kwargs["correlation_id"] == "cycle_test_123"
         assert call_kwargs["payload"]["turn_index"] == 1
         assert len(call_kwargs["payload"]["tool_calls"]) == 1

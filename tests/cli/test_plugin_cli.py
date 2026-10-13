@@ -36,7 +36,7 @@ def test_cmd_plugin_info_found():
     dummy_plugin.status = "ACTIVE"
     dummy_plugin.config = {"foo": "bar"}
 
-    with patch("cli.plugins._create_engine") as mock_engine_fn:
+    with patch("monika.interfaces.cli.plugins._create_engine") as mock_engine_fn:
         mock_eng = MagicMock()
         mock_eng.get_plugin.return_value = dummy_plugin
         mock_engine_fn.return_value = mock_eng

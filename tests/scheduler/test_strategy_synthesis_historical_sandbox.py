@@ -61,7 +61,7 @@ async def test_run_historical_simulation_insufficient_candles():
         async def evaluate(self, session, symbol, settings):
             return None
 
-    with patch("scheduler.strategy_synthesis_scheduler.get_session") as mock_get_session:
+    with patch("monika.application.scheduler.strategy_synthesis_scheduler.get_session") as mock_get_session:
         mock_session = create_mock_async_session()
         mock_exec = MagicMock()
         # Return only 20 candles (less than 60 min_candles)
@@ -117,7 +117,7 @@ async def test_run_historical_simulation_detects_trades_with_friction():
         p = price + delta
         mock_candles.append(MockCandle(base_time + timedelta(hours=i), p - 0.0005, p + 0.0020, p - 0.0020, p))
 
-    with patch("scheduler.strategy_synthesis_scheduler.get_session") as mock_get_session:
+    with patch("monika.application.scheduler.strategy_synthesis_scheduler.get_session") as mock_get_session:
         mock_session = create_mock_async_session()
         mock_exec = MagicMock()
         mock_exec.scalars.return_value.all.return_value = mock_candles

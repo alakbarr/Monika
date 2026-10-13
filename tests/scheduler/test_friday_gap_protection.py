@@ -36,7 +36,7 @@ async def test_friday_close_protection_triggers_auto_close():
 
     with (
         clock.frozen_time(friday_time),
-        patch("scheduler.position_guardian.get_session") as mock_get_session,
+        patch("monika.application.scheduler.position_guardian.get_session") as mock_get_session,
         patch("monika.infrastructure.infra.notifier.AgentNotifier.send_info", new_callable=AsyncMock) as mock_notify,
     ):
         mock_session = create_mock_async_session()

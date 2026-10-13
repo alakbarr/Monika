@@ -84,7 +84,9 @@ async def test_evaluate_hypothesis_qualified(mock_settings):
     }
 
     with (
-        patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls,
+        patch(
+            "monika.application.scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness"
+        ) as mock_harness_cls,
         patch.object(scheduler, "_persist_proposal", new_callable=AsyncMock) as mock_persist,
     ):
         mock_instance = MagicMock()
@@ -139,7 +141,9 @@ async def test_evaluate_hypothesis_rejected_low_wfe(mock_settings):
         ],
     }
 
-    with patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls:
+    with patch(
+        "monika.application.scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness"
+    ) as mock_harness_cls:
         mock_instance = MagicMock()
         mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
         mock_harness_cls.return_value = mock_instance
@@ -172,7 +176,9 @@ async def test_run_discovery_cycle(mock_settings):
     }
 
     with (
-        patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls,
+        patch(
+            "monika.application.scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness"
+        ) as mock_harness_cls,
         patch.object(scheduler, "_persist_proposal", new_callable=AsyncMock),
     ):
         mock_instance = MagicMock()
@@ -260,7 +266,9 @@ async def test_evaluate_hypothesis_rejected_high_drawdown(mock_settings):
         ],
     }
 
-    with patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls:
+    with patch(
+        "monika.application.scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness"
+    ) as mock_harness_cls:
         mock_instance = MagicMock()
         mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
         mock_harness_cls.return_value = mock_instance

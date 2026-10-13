@@ -61,7 +61,7 @@ def test_sliding_cache_breakpoint_turn_n_minus_2():
             "content": [{"type": "tool_result", "content": "bars...", "cache_control": {"type": "ephemeral"}}],
         },
         {"role": "assistant", "content": "Tool call get_indicators"},
-        {"role": "user", "content": [{"type": "tool_result", "content": "indicators..."}]},
+        {"role": "user", "content": [{"type": "tool_result", "content": "monika.domain.indicators..."}]},
     ]
 
     # Apply sliding breakpoint

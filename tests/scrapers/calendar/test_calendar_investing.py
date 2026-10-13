@@ -4,7 +4,7 @@ from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing i
 
 
 class TestInvestingCalendarScraper:
-    @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
     def test_fetch_events_fail_navigate(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
@@ -17,7 +17,7 @@ class TestInvestingCalendarScraper:
         assert events == []
         scraper.navigate_with_fallback.assert_called_once()
 
-    @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
     def test_fetch_events_no_table(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
@@ -31,7 +31,7 @@ class TestInvestingCalendarScraper:
         events = scraper.fetch_events()
         assert events == []
 
-    @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
     def test_fetch_events_success(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
@@ -93,7 +93,7 @@ class TestInvestingCalendarScraper:
         assert events[1].actual is None
         assert events[1].forecast is None
 
-    @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
     def test_apply_time_filter_button_success(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
@@ -107,7 +107,7 @@ class TestInvestingCalendarScraper:
         assert res is True
         mock_btn.click.assert_called_once_with(by_js=True)
 
-    @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
     def test_apply_time_filter_custom_picker_fallback(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
@@ -141,13 +141,13 @@ class TestInvestingCalendarScraper:
         assert res is True
         mock_apply_btn.click.assert_called_once_with(by_js=True)
 
-    @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
     def test_investing_scraper_initializes_with_eager_and_no_imgs(self, mock_init):
         scraper = InvestingCalendarScraper()
         assert scraper.load_mode == "eager"
         assert scraper.no_imgs is True
 
-    @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
     def test_find_calendar_table_priority(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
@@ -162,7 +162,7 @@ class TestInvestingCalendarScraper:
         assert "datatable" in first_call[0][0]
         assert first_call[1]["timeout"] == 0.5
 
-    @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
     def test_load_all_calendar_rows_uses_fast_js_count(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page

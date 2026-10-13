@@ -13,7 +13,7 @@ from monika.infrastructure.database.models import VIXData
 
 class TestVIXFetcher:
     @pytest.mark.asyncio
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_yahoo_direct")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_yahoo_direct")
     async def test_fetch_tier1_success(self, mock_tier1):
         """Tier 1 Yahoo Direct succeeds, saves data, no further tiers invoked."""
         df = pd.DataFrame({"Close": [15.5]}, index=[pd.Timestamp("2024-01-01", tz="UTC")])
@@ -35,8 +35,8 @@ class TestVIXFetcher:
         fetcher._fetch_yfinance.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_yahoo_direct")
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_cboe_cdn")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_yahoo_direct")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_cboe_cdn")
     async def test_fetch_tier2_cboe_fallback(self, mock_cboe, mock_yahoo):
         """Tier 1 fails, Tier 2 CBOE succeeds."""
         mock_yahoo.return_value = None
@@ -58,9 +58,9 @@ class TestVIXFetcher:
         fetcher._fetch_yfinance.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_yahoo_direct")
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_cboe_cdn")
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_fred")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_yahoo_direct")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_cboe_cdn")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_fred")
     async def test_fetch_tier3_fred_fallback(self, mock_fred, mock_cboe, mock_yahoo):
         """Tier 1 & Tier 2 fail, Tier 3 FRED succeeds when fred_api_key is present."""
         mock_yahoo.return_value = None
@@ -80,9 +80,9 @@ class TestVIXFetcher:
         fetcher._fetch_yfinance.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_yahoo_direct")
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_cboe_cdn")
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_yfinance")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_yahoo_direct")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_cboe_cdn")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_yfinance")
     async def test_fetch_tier4_yfinance_fallback(self, mock_yf, mock_cboe, mock_yahoo):
         """Tiers 1-3 fail, Tier 4 yfinance succeeds."""
         mock_yahoo.return_value = None
@@ -100,9 +100,9 @@ class TestVIXFetcher:
         fetcher._save.assert_awaited_once_with(df_yf)
 
     @pytest.mark.asyncio
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_yahoo_direct")
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_cboe_cdn")
-    @patch("data_sources.vix_yfinance.VIXFetcher._fetch_yfinance")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_yahoo_direct")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_cboe_cdn")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher._fetch_yfinance")
     async def test_fetch_all_tiers_failed(self, mock_yf, mock_cboe, mock_yahoo):
         """All tiers fail gracefully returning 0 without raising exceptions."""
         mock_yahoo.return_value = None
@@ -118,7 +118,7 @@ class TestVIXFetcher:
         fetcher._save.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("data_sources.vix_yfinance.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.fetch_with_retry")
     async def test_fetch_yahoo_direct_parsing(self, mock_http):
         """Test parsing of direct Yahoo Finance chart v8 json payload."""
         mock_http.return_value = {
@@ -136,7 +136,7 @@ class TestVIXFetcher:
         assert df["Close"].iloc[1] == 15.2
 
     @pytest.mark.asyncio
-    @patch("data_sources.vix_yfinance.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.fetch_with_retry")
     async def test_fetch_cboe_cdn_parsing(self, mock_http):
         """Test parsing of CBOE daily price CSV."""
         mock_http.return_value = (
@@ -151,7 +151,7 @@ class TestVIXFetcher:
         assert df["Close"].iloc[-1] == 14.87
 
     @pytest.mark.asyncio
-    @patch("data_sources.vix_yfinance.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.fetch_with_retry")
     async def test_fetch_fred_parsing(self, mock_http):
         """Test parsing of FRED VIXCLS series json."""
         mock_http.return_value = {
@@ -238,7 +238,7 @@ class TestVIXFetcher:
         assert res is None
 
     def test_download(self):
-        with patch("data_sources.vix_yfinance.yf.download") as mock_download:
+        with patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.yf.download") as mock_download:
             mock_download.return_value = pd.DataFrame()
             fetcher = VIXFetcher(AsyncMock())
             fetcher._download("5d")

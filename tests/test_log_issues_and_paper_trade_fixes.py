@@ -103,7 +103,7 @@ async def test_trigger_checker_price_level_fallback():
 
     condition = {"symbol": "XAUUSD", "detail": "price breaks above 2400.0"}
 
-    with patch("scheduler.trigger_checker.get_session") as mock_get_sess:
+    with patch("monika.application.scheduler.trigger_checker.get_session") as mock_get_sess:
         mock_sess = AsyncMock()
         mock_get_sess.return_value.__aenter__.return_value = mock_sess
 
@@ -219,7 +219,7 @@ async def test_edge_strategy_runner_trend_trailing_rr_ratio():
             "monika.application.analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate",
             AsyncMock(return_value=mock_arb),
         ),
-        patch("graph.reactive_graph.get_reactive_graph", return_value=mock_graph),
+        patch("monika.application.graph.reactive_graph.get_reactive_graph", return_value=mock_graph),
     ):
         await runner._materialize_and_route(mock_session, sig)
 

@@ -95,7 +95,7 @@ class TestInjectMacroPlaybooksIdempotency:
                 return "Mocked Market Dynamics Framework Content"
             return None
 
-        with patch("skills.loader.load_skill", side_effect=mock_load_skill):
+        with patch("monika.application.skills.loader.load_skill", side_effect=mock_load_skill):
             # Call 1:
             p1 = agent._inject_macro_playbooks("Base prompt")
             assert "## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK" in p1
@@ -219,7 +219,7 @@ class TestLoadSkillGracefulDegradation:
         with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
 
-        with patch("skills.loader.load_skill", side_effect=RuntimeError("Disk failure")):
+        with patch("monika.application.skills.loader.load_skill", side_effect=RuntimeError("Disk failure")):
             raw_str = "Clean system prompt"
             result_str = agent._inject_macro_playbooks(raw_str)
             assert result_str == raw_str, "String prompt was altered despite both skills failing!"
@@ -240,7 +240,7 @@ class TestLoadSkillGracefulDegradation:
                 raise OSError("Permission denied on event_probability_playbook.md")
             return "Survived Market Dynamics Content"
 
-        with patch("skills.loader.load_skill", side_effect=mock_load):
+        with patch("monika.application.skills.loader.load_skill", side_effect=mock_load):
             res = agent._inject_macro_playbooks("Base prompt")
             assert "Base prompt" in res
             assert "## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK" in res
@@ -253,7 +253,7 @@ class TestLoadSkillGracefulDegradation:
                 raise ValueError("Corrupt file")
             return "Survived Event Playbook Content"
 
-        with patch("skills.loader.load_skill", side_effect=mock_load_2):
+        with patch("monika.application.skills.loader.load_skill", side_effect=mock_load_2):
             res2 = agent._inject_macro_playbooks("Base prompt")
             assert "Base prompt" in res2
             assert "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in res2
@@ -266,11 +266,11 @@ class TestLoadSkillGracefulDegradation:
         with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings, 12345)
 
-        with patch("skills.loader.load_skill", return_value=""):
+        with patch("monika.application.skills.loader.load_skill", return_value=""):
             res = agent._inject_macro_playbooks("Clean prompt")
             assert res == "Clean prompt"
 
-        with patch("skills.loader.load_skill", return_value=None):
+        with patch("monika.application.skills.loader.load_skill", return_value=None):
             res = agent._inject_macro_playbooks("Clean prompt")
             assert res == "Clean prompt"
 
@@ -296,7 +296,7 @@ class TestLoadSkillGracefulDegradation:
             mock_get_client.return_value = mock_client
             agent = ChatAgent(settings, 12345)
 
-            with patch("skills.loader.load_skill", side_effect=Exception("Critical disk error")):
+            with patch("monika.application.skills.loader.load_skill", side_effect=Exception("Critical disk error")):
                 res = await agent._run_tier_deep_research(
                     system_prompt="Base prompt",
                     history=[],

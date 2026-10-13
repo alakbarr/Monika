@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from monika.application.analysis.harness.context_compressor import (
+from monika.application.agent.harness.context_compressor import (
     TRADING_SUMMARY_SECTIONS,
     ContextCompressor,
     offload_historical_charts,

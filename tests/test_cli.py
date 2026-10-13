@@ -33,11 +33,11 @@ async def test_acli_run_paper_mode():
     mock_agent.start = AsyncMock()
 
     with (
-        patch("cli.main.acquire_single_instance_lock", return_value=True),
-        patch("cli.main.load_all_config", return_value=mock_settings),
-        patch("cli.main.init_db", AsyncMock()),
-        patch("cli.main.run_startup_checks", AsyncMock(return_value=True)),
-        patch("cli.main.TradingAgent", return_value=mock_agent) as MockAgentClass,
+        patch("monika.interfaces.cli.main.acquire_single_instance_lock", return_value=True),
+        patch("monika.interfaces.cli.main.load_all_config", return_value=mock_settings),
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.run_startup_checks", AsyncMock(return_value=True)),
+        patch("monika.interfaces.cli.main.TradingAgent", return_value=mock_agent) as MockAgentClass,
     ):
         await _acli_run(args)
 
@@ -57,11 +57,11 @@ async def test_acli_run_live_mode():
     mock_agent.start = AsyncMock()
 
     with (
-        patch("cli.main.acquire_single_instance_lock", return_value=True),
-        patch("cli.main.load_all_config", return_value=mock_settings),
-        patch("cli.main.init_db", AsyncMock()),
-        patch("cli.main.run_startup_checks", AsyncMock(return_value=True)),
-        patch("cli.main.TradingAgent", return_value=mock_agent) as MockAgentClass,
+        patch("monika.interfaces.cli.main.acquire_single_instance_lock", return_value=True),
+        patch("monika.interfaces.cli.main.load_all_config", return_value=mock_settings),
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.run_startup_checks", AsyncMock(return_value=True)),
+        patch("monika.interfaces.cli.main.TradingAgent", return_value=mock_agent) as MockAgentClass,
     ):
         await _acli_run(args)
 
@@ -85,7 +85,10 @@ async def test_cli_subcommand_status(capsys):
     mock_res.scalars.return_value = mock_scalars
     mock_session.execute = AsyncMock(return_value=mock_res)
 
-    with patch("cli.main.init_db", AsyncMock()), patch("cli.main.get_session") as mock_get_sess:
+    with (
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_get_sess,
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_status(args)
 
@@ -108,7 +111,10 @@ async def test_cli_subcommand_pause(capsys):
     mock_res.scalar_one_or_none.return_value = mock_cfg
     mock_session.execute = AsyncMock(return_value=mock_res)
 
-    with patch("cli.main.init_db", AsyncMock()), patch("cli.main.get_session") as mock_get_sess:
+    with (
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_get_sess,
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_pause(args)
 
@@ -131,7 +137,10 @@ async def test_cli_subcommand_resume_with_yes(capsys):
     mock_res.scalar_one_or_none.return_value = mock_cfg
     mock_session.execute = AsyncMock(return_value=mock_res)
 
-    with patch("cli.main.init_db", AsyncMock()), patch("cli.main.get_session") as mock_get_sess:
+    with (
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_get_sess,
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_resume(args)
 
@@ -165,8 +174,8 @@ async def test_cli_subcommand_kill(capsys):
     mock_http_sess.__aexit__ = AsyncMock(return_value=None)
 
     with (
-        patch("cli.main.init_db", AsyncMock()),
-        patch("cli.main.get_session") as mock_get_sess,
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_get_sess,
         patch("aiohttp.ClientSession", return_value=mock_http_sess),
     ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
@@ -192,7 +201,10 @@ async def test_cli_subcommand_positions(capsys):
     mock_res.scalars.return_value = mock_scalars
     mock_session.execute = AsyncMock(return_value=mock_res)
 
-    with patch("cli.main.init_db", AsyncMock()), patch("cli.main.get_session") as mock_get_sess:
+    with (
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_get_sess,
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_positions(args)
 
@@ -270,7 +282,7 @@ async def test_cli_subcommand_config_show(capsys):
         }
     }
 
-    with patch("cli.main.load_settings", return_value=mock_settings):
+    with patch("monika.interfaces.cli.main.load_settings", return_value=mock_settings):
         await _cmd_config_show(args)
 
     captured = capsys.readouterr().out
@@ -285,7 +297,7 @@ async def test_cli_subcommand_config_show_missing_section(capsys):
 
     args = parse_args(["config", "show", "nonexistent.section"])
 
-    with patch("cli.main.load_settings", return_value={"trading": {}}):
+    with patch("monika.interfaces.cli.main.load_settings", return_value={"trading": {}}):
         await _cmd_config_show(args)
 
     captured = capsys.readouterr().out
@@ -325,9 +337,9 @@ async def test_cli_subcommand_config_set_local_success(tmp_path, capsys):
     args = parse_args(["config", "set", "trading.risk.max_daily_drawdown_percent=4.0", "--config", str(dummy_file)])
 
     with (
-        patch("cli.main.load_settings", return_value=dummy_settings),
-        patch("cli.main.init_db", AsyncMock()),
-        patch("cli.main.get_session") as mock_sess,
+        patch("monika.interfaces.cli.main.load_settings", return_value=dummy_settings),
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_sess,
         patch("builtins.open", mock_open()),
         patch("shutil.copy2"),
         patch("os.replace") as mock_replace,
@@ -363,7 +375,10 @@ async def test_cli_subcommand_sessions(capsys):
 
     mock_session.execute.side_effect = [mock_res1, mock_res2]
 
-    with patch("cli.main.init_db", AsyncMock()), patch("cli.main.get_session") as mock_get_sess:
+    with (
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_get_sess,
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_sessions(args)
 
@@ -391,7 +406,10 @@ async def test_cli_subcommand_logs(capsys):
     mock_res.scalars.return_value.all.return_value = [mock_log]
     mock_session.execute.return_value = mock_res
 
-    with patch("cli.main.init_db", AsyncMock()), patch("cli.main.get_session") as mock_get_sess:
+    with (
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_get_sess,
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_logs(args)
 
@@ -504,9 +522,9 @@ async def test_cli_subcommand_config_set_json_list(tmp_path, capsys):
     args = parse_args(["config", "set", 'trading.symbols=["EURUSD","XAUUSD"]', "--config", str(dummy_file)])
 
     with (
-        patch("cli.main.load_settings", return_value=dummy_settings),
-        patch("cli.main.init_db", AsyncMock()),
-        patch("cli.main.get_session") as mock_sess,
+        patch("monika.interfaces.cli.main.load_settings", return_value=dummy_settings),
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_sess,
         patch("builtins.open", mock_open()) as mocked_file,
         patch("shutil.copy2"),
         patch("os.replace") as mock_replace,
@@ -541,7 +559,10 @@ async def test_cli_subcommand_sessions_source_cli(capsys):
 
     mock_session.execute.side_effect = [mock_res1, mock_res2]
 
-    with patch("cli.main.init_db", AsyncMock()), patch("cli.main.get_session") as mock_get_sess:
+    with (
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_get_sess,
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_sessions(args)
 
@@ -571,7 +592,10 @@ async def test_cli_subcommand_sessions_source_telegram(capsys):
 
     mock_session.execute.side_effect = [mock_res1, mock_res2]
 
-    with patch("cli.main.init_db", AsyncMock()), patch("cli.main.get_session") as mock_get_sess:
+    with (
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_get_sess,
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_sessions(args)
 
@@ -599,7 +623,10 @@ async def test_cli_subcommand_logs_with_severity(capsys):
     mock_res.scalars.return_value.all.return_value = [mock_log]
     mock_session.execute.return_value = mock_res
 
-    with patch("cli.main.init_db", AsyncMock()), patch("cli.main.get_session") as mock_get_sess:
+    with (
+        patch("monika.interfaces.cli.main.init_db", AsyncMock()),
+        patch("monika.interfaces.cli.main.get_session") as mock_get_sess,
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_logs(args)
 
@@ -615,7 +642,7 @@ async def test_cli_subcommand_chat_invocation():
 
     args = parse_args(["chat", "--model", "fast", "--offline", "--session-id", "sess_abc"])
 
-    with patch("cli.tui_chat.run_cli_chat", AsyncMock()) as mock_run:
+    with patch("monika.interfaces.cli.tui_chat.run_cli_chat", AsyncMock()) as mock_run:
         await _cmd_chat(args)
         mock_run.assert_awaited_once_with(
             api_url="http://127.0.0.1:8000",
@@ -771,7 +798,7 @@ async def test_run_cli_chat_fallback_on_ws_disconnect(capsys):
     with (
         patch.object(ChatPromptManager, "prompt_async", AsyncMock(side_effect=inputs)),
         patch("monika.interfaces.telegram.chat_agent.ChatAgent", return_value=mock_agent),
-        patch("config.settings.load_settings", return_value={}),
+        patch("monika.core.config.settings.load_settings", return_value={}),
     ):
         # Run with offline=True to trigger local engine directly
         await run_cli_chat(offline=True)
@@ -976,7 +1003,7 @@ async def test_cli_cmd_ask_one_shot_with_json_output(tmp_path):
 
     with (
         patch("monika.interfaces.telegram.chat_agent.ChatAgent.handle", new_callable=AsyncMock) as mock_handle,
-        patch("config.settings.load_all_config", return_value={}),
+        patch("monika.core.config.settings.load_all_config", return_value={}),
     ):
         mock_handle.return_value = ("pong response", None)
         await _cmd_ask(mock_args)
@@ -1016,12 +1043,12 @@ def test_is_daemon_running(monkeypatch):
     from monika.interfaces.cli.main import is_daemon_running
 
     # Case 1: PID is None and API fails -> False
-    monkeypatch.setattr("cli.main.get_daemon_pid", lambda: None)
+    monkeypatch.setattr("monika.interfaces.cli.main.get_daemon_pid", lambda: None)
     monkeypatch.setattr("urllib.request.urlopen", MagicMock(side_effect=Exception("Connection refused")))
     assert is_daemon_running("http://127.0.0.1:8999") is False
 
     # Case 2: get_daemon_pid returns an active PID -> True
-    monkeypatch.setattr("cli.main.get_daemon_pid", lambda: 12345)
+    monkeypatch.setattr("monika.interfaces.cli.main.get_daemon_pid", lambda: 12345)
     assert is_daemon_running("http://127.0.0.1:8999") is True
 
 
@@ -1043,7 +1070,7 @@ def test_ensure_daemon_running_when_already_running(monkeypatch):
     from monika.interfaces.cli.main import ensure_daemon_running
 
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-    monkeypatch.setattr("cli.main.is_daemon_running", lambda url=None: True)
+    monkeypatch.setattr("monika.interfaces.cli.main.is_daemon_running", lambda url=None: True)
 
     args = MagicMock()
     args.no_daemon = False
@@ -1059,8 +1086,10 @@ def test_ensure_daemon_running_spawns_process(monkeypatch):
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     monkeypatch.setattr("monika.infrastructure.infra.env_file_manager.EnvFileManager.is_configured", lambda: True)
     states = [False, True]
-    monkeypatch.setattr("cli.main.is_daemon_running", lambda url=None: states.pop(0) if states else True)
-    monkeypatch.setattr("cli.main.spawn_daemon_background", MagicMock(return_value=99999))
+    monkeypatch.setattr(
+        "monika.interfaces.cli.main.is_daemon_running", lambda url=None: states.pop(0) if states else True
+    )
+    monkeypatch.setattr("monika.interfaces.cli.main.spawn_daemon_background", MagicMock(return_value=99999))
     monkeypatch.setattr("time.sleep", lambda s: None)
 
     args = MagicMock()
@@ -1080,9 +1109,9 @@ async def test_cmd_stop_when_no_daemon(monkeypatch):
     """Verify _cmd_stop handles when no daemon is active."""
     from monika.interfaces.cli.main import _cmd_stop
 
-    monkeypatch.setattr("cli.main.get_daemon_pid", lambda: None)
+    monkeypatch.setattr("monika.interfaces.cli.main.get_daemon_pid", lambda: None)
     mock_console = MagicMock()
-    monkeypatch.setattr("cli.main.get_console", lambda: mock_console)
+    monkeypatch.setattr("monika.interfaces.cli.main.get_console", lambda: mock_console)
 
     args = MagicMock()
     args.force = False
@@ -1099,8 +1128,8 @@ async def test_cmd_stop_terminates_process(monkeypatch, tmp_path):
     with open(pid_file, "w", encoding="utf-8") as f:
         f.write("54321")
 
-    monkeypatch.setattr("cli.main.get_daemon_pid", lambda: 54321)
-    monkeypatch.setattr("cli.main.get_pid_file_path", lambda: pid_file)
+    monkeypatch.setattr("monika.interfaces.cli.main.get_daemon_pid", lambda: 54321)
+    monkeypatch.setattr("monika.interfaces.cli.main.get_pid_file_path", lambda: pid_file)
 
     mock_proc = MagicMock()
     mock_proc.is_running.return_value = True
@@ -1108,7 +1137,7 @@ async def test_cmd_stop_terminates_process(monkeypatch, tmp_path):
     monkeypatch.setattr("psutil.Process", lambda pid: mock_proc)
 
     mock_console = MagicMock()
-    monkeypatch.setattr("cli.main.get_console", lambda: mock_console)
+    monkeypatch.setattr("monika.interfaces.cli.main.get_console", lambda: mock_console)
 
     args = MagicMock()
     args.force = True

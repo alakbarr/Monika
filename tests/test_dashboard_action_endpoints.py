@@ -308,7 +308,9 @@ def test_market_structure_with_timesfm(client):
         mock_session.execute = AsyncMock(return_value=mock_exec_res)
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
-        with patch("indicators.timesfm_engine.TimesFMEngine.get_latest_forecast", new_callable=AsyncMock) as mock_fc:
+        with patch(
+            "monika.domain.indicators.timesfm_engine.TimesFMEngine.get_latest_forecast", new_callable=AsyncMock
+        ) as mock_fc:
             mock_fc.return_value = {
                 "generated_at": "2026-10-06T12:00:00Z",
                 "quantiles": {"q50": [1.086, 1.087]},

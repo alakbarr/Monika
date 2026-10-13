@@ -101,7 +101,7 @@ async def test_load_dynamic_parameters_calls_log_summary():
 
     with patch.object(StrategyRegistry, "log_summary") as mock_summary:
         with patch(
-            "scheduler.strategy_synthesis_scheduler.StrategySynthesisScheduler.compile_strategy_class"
+            "monika.application.scheduler.strategy_synthesis_scheduler.StrategySynthesisScheduler.compile_strategy_class"
         ) as mock_compile:
 
             class DummyCompiled(EdgeStrategy):

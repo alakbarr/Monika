@@ -207,7 +207,7 @@ async def test_benchmark_judge_ensemble():
         90,
     )
 
-    with patch("benchmark.judge.judge_output", side_effect=[mock_result_1, mock_result_2]):
+    with patch("monika.application.benchmark.judge.judge_output", side_effect=[mock_result_1, mock_result_2]):
         verdict, score, total_in, total_out = await judge_output_ensemble(
             judge_models=["model_a", "model_b"],
             settings={},

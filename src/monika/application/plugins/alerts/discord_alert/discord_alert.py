@@ -5,13 +5,15 @@ Demonstrates custom notification and risk alert dispatch plugin.
 
 from typing import Any, Dict, Optional
 
-from monika.application.harness.contract import (
-    OrderStateChangedEvent,
+from monika.application.plugins.engine.contract import (
     PluginCategory,
     PluginMetadata,
     PluginOrigin,
-    RiskBreachEvent,
     TradingPlugin,
+)
+from monika.application.protocol.event_bus import (
+    OrderStateChangedEvent,
+    RiskBreachEvent,
 )
 
 

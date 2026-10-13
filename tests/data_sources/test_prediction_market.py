@@ -55,7 +55,9 @@ def mock_gamma_events():
 @pytest.mark.asyncio
 async def test_fetch_macro_events_parsing(mock_gamma_events):
     client = PredictionMarketClient()
-    with patch("data_sources.prediction_market.fetch_with_retry", new_callable=AsyncMock) as mock_fetch:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.prediction_market.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_fetch:
         mock_fetch.return_value = mock_gamma_events
         events = await client.fetch_macro_events()
 
@@ -79,7 +81,9 @@ async def test_fetch_clob_orderbook():
         "bids": [{"price": "0.71", "size": "1000"}],
         "asks": [{"price": "0.74", "size": "800"}],
     }
-    with patch("data_sources.prediction_market.fetch_with_retry", new_callable=AsyncMock) as mock_fetch:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.prediction_market.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_fetch:
         mock_fetch.return_value = mock_book
         ob = await client.fetch_clob_orderbook("token_123")
 
@@ -97,7 +101,9 @@ async def test_ingest_and_persist_classification(mock_gamma_events):
     session = create_mock_async_session()
 
     client = PredictionMarketClient(session=session)
-    with patch("data_sources.prediction_market.fetch_with_retry", new_callable=AsyncMock) as mock_fetch:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.prediction_market.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_fetch:
         mock_fetch.return_value = mock_gamma_events
         with patch("monika.infrastructure.database.safe_ops.safe_commit", new_callable=AsyncMock):
             result = await client.ingest_and_persist()

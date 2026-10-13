@@ -9,7 +9,7 @@ import sys
 
 class TestMain:
     @pytest.mark.asyncio
-    @patch("main.os.getenv")
+    @patch("monika.application.main.os.getenv")
     @patch("sqlalchemy.ext.asyncio.AsyncEngine.connect")
     @patch("anthropic.AsyncAnthropic")
     @patch("monika.infrastructure.brokers.mt5_client.MT5Client")
@@ -202,7 +202,7 @@ class TestMain:
         agent.edge_strategy_runner.start = AsyncMock(side_effect=block_until_shutdown)
 
         with (
-            patch("main.close_db", new_callable=AsyncMock) as mock_close_db,
+            patch("monika.application.main.close_db", new_callable=AsyncMock) as mock_close_db,
             patch("monika.infrastructure.database.db.get_session") as mock_get_session,
         ):
             mock_session = create_mock_async_session()
@@ -279,7 +279,7 @@ class TestMain:
         asyncio.create_task(trigger_shutdown())
 
         with (
-            patch("main.close_db", new_callable=AsyncMock) as mock_close_db,
+            patch("monika.application.main.close_db", new_callable=AsyncMock) as mock_close_db,
             patch("monika.infrastructure.database.db.get_session") as mock_get_session,
         ):
             mock_session = create_mock_async_session()
@@ -354,12 +354,12 @@ class TestMain:
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
         with (
-            patch("main.datetime") as mock_dt,
+            patch("monika.application.main.datetime") as mock_dt,
             patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
         ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-            with patch("main.asyncio.sleep", new=AsyncMock()):
+            with patch("monika.application.main.asyncio.sleep", new=AsyncMock()):
                 await agent._post_restart_recovery()
             await asyncio.sleep(0.01)
 
@@ -402,12 +402,12 @@ class TestMain:
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
         with (
-            patch("main.datetime") as mock_dt,
+            patch("monika.application.main.datetime") as mock_dt,
             patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
         ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-            with patch("main.asyncio.sleep", new=AsyncMock()):
+            with patch("monika.application.main.asyncio.sleep", new=AsyncMock()):
                 await agent._post_restart_recovery()
             await asyncio.sleep(0.01)
 
@@ -450,12 +450,12 @@ class TestMain:
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
         with (
-            patch("main.datetime") as mock_dt,
+            patch("monika.application.main.datetime") as mock_dt,
             patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
         ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-            with patch("main.asyncio.sleep", new=AsyncMock()):
+            with patch("monika.application.main.asyncio.sleep", new=AsyncMock()):
                 await agent._post_restart_recovery()
             await asyncio.sleep(0.01)
 
@@ -498,12 +498,12 @@ class TestMain:
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
         with (
-            patch("main.datetime") as mock_dt,
+            patch("monika.application.main.datetime") as mock_dt,
             patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
         ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-            with patch("main.asyncio.sleep", new=AsyncMock()):
+            with patch("monika.application.main.asyncio.sleep", new=AsyncMock()):
                 await agent._post_restart_recovery()
             await asyncio.sleep(0.01)
 
@@ -543,12 +543,12 @@ class TestMain:
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=None)
 
         with (
-            patch("main.datetime") as mock_dt,
+            patch("monika.application.main.datetime") as mock_dt,
             patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
         ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-            with patch("main.asyncio.sleep", new=AsyncMock()):
+            with patch("monika.application.main.asyncio.sleep", new=AsyncMock()):
                 await agent._post_restart_recovery()
             await asyncio.sleep(0.01)
 
@@ -587,12 +587,12 @@ class TestMain:
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief_null_gen)
 
         with (
-            patch("main.datetime") as mock_dt,
+            patch("monika.application.main.datetime") as mock_dt,
             patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
         ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-            with patch("main.asyncio.sleep", new=AsyncMock()):
+            with patch("monika.application.main.asyncio.sleep", new=AsyncMock()):
                 await agent._post_restart_recovery()
             await asyncio.sleep(0.01)
 
@@ -615,9 +615,9 @@ class TestMain:
         mock_loop.add_signal_handler.side_effect = fake_add_signal_handler
 
         with (
-            patch("main.asyncio.get_running_loop", return_value=mock_loop),
-            patch("main.signal.SIGHUP", fake_sighup, create=True),
-            patch("config.settings.load_all_config", return_value={"test_key": "reloaded_val"}),
+            patch("monika.application.main.asyncio.get_running_loop", return_value=mock_loop),
+            patch("monika.application.main.signal.SIGHUP", fake_sighup, create=True),
+            patch("monika.core.config.settings.load_all_config", return_value={"test_key": "reloaded_val"}),
         ):
             agent._register_signals()
 

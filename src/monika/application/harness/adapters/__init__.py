@@ -1,12 +1,9 @@
-# ==============================================================================
-# File: harness/adapters/__init__.py
-# ==============================================================================
-
 """
-Plugin adapters and bridges for standalone functional script plugins.
+Backward-compatibility facade for harness adapters.
+Canonical location: monika.application.plugins.engine.adapters
 """
 
-from monika.application.harness.adapters.functional_adapter import (
+from monika.application.plugins.engine.adapters.functional_adapter import (
     FunctionalPluginBridge,
     install_compatibility_shims,
     script_constants,

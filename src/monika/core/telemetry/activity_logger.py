@@ -37,7 +37,7 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 # ---------------------------------------------------------------------------
 
 from monika.core.security.credential_vault import SensitiveMaskingFilter
-from monika.infrastructure.infra.log_redactor import RedactingFormatter
+from monika.core.security.log_redactor import RedactingFormatter
 
 _queue_listener: logging.handlers.QueueListener | None = None
 

@@ -114,9 +114,9 @@ async def test_round_robin_risk_consensus_chain():
     }
 
     with (
-        patch("graph.nodes.debate.round_robin_risk_nodes.get_session", side_effect=MockSession),
+        patch("monika.application.graph.nodes.debate.round_robin_risk_nodes.get_session", side_effect=MockSession),
         patch(
-            "graph.nodes.debate.round_robin_risk_nodes.compute_actual_risk_state",
+            "monika.application.graph.nodes.debate.round_robin_risk_nodes.compute_actual_risk_state",
             AsyncMock(return_value={"current_drawdown_pct": 0.2}),
         ),
     ):

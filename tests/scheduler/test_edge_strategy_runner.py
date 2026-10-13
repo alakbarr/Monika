@@ -39,9 +39,15 @@ class TestEdgeStrategyRunner:
 
         # Mock validate_data_freshness -> ready: True
         with (
-            patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
-            patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])),
-            patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
+            patch(
+                "monika.application.scheduler.edge_strategy_runner.validate_data_freshness",
+                AsyncMock(return_value={"ready": True}),
+            ),
+            patch(
+                "monika.application.scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all",
+                AsyncMock(return_value=[signal]),
+            ),
+            patch("monika.application.scheduler.edge_strategy_runner.get_session") as mock_get_session,
         ):
             mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -77,9 +83,15 @@ class TestEdgeStrategyRunner:
         mock_session = create_mock_async_session()
 
         with (
-            patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
-            patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])),
-            patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
+            patch(
+                "monika.application.scheduler.edge_strategy_runner.validate_data_freshness",
+                AsyncMock(return_value={"ready": True}),
+            ),
+            patch(
+                "monika.application.scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all",
+                AsyncMock(return_value=[signal]),
+            ),
+            patch("monika.application.scheduler.edge_strategy_runner.get_session") as mock_get_session,
         ):
             mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -127,7 +139,7 @@ class TestEdgeStrategyRunner:
 
         mock_graph.ainvoke = AsyncMock(side_effect=mock_ainvoke)
 
-        with patch("graph.reactive_graph.get_reactive_graph", return_value=mock_graph):
+        with patch("monika.application.graph.reactive_graph.get_reactive_graph", return_value=mock_graph):
             await runner._materialize_and_route(mock_session, signal)
 
         # Verify execute_analysis was called
@@ -152,9 +164,15 @@ class TestEdgeStrategyRunner:
         mock_session = create_mock_async_session()
 
         with (
-            patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
-            patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])),
-            patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
+            patch(
+                "monika.application.scheduler.edge_strategy_runner.validate_data_freshness",
+                AsyncMock(return_value={"ready": True}),
+            ),
+            patch(
+                "monika.application.scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all",
+                AsyncMock(return_value=[signal]),
+            ),
+            patch("monika.application.scheduler.edge_strategy_runner.get_session") as mock_get_session,
         ):
             mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -215,13 +233,20 @@ class TestEdgeStrategyRunner:
 
         gate_reason = "balanced volume regime blocks pure trend-following"
         with (
-            patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
-            patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
-            patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])),
+            patch("monika.application.scheduler.edge_strategy_runner.get_session") as mock_get_session,
             patch(
-                "scheduler.edge_strategy_runner.evaluate_pretrade_gate", AsyncMock(return_value=(False, gate_reason))
+                "monika.application.scheduler.edge_strategy_runner.validate_data_freshness",
+                AsyncMock(return_value={"ready": True}),
             ),
-            patch("scheduler.edge_strategy_runner.logger") as mock_logger,
+            patch(
+                "monika.application.scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all",
+                AsyncMock(return_value=[signal]),
+            ),
+            patch(
+                "monika.application.scheduler.edge_strategy_runner.evaluate_pretrade_gate",
+                AsyncMock(return_value=(False, gate_reason)),
+            ),
+            patch("monika.application.scheduler.edge_strategy_runner.logger") as mock_logger,
         ):
             mock_get_session.return_value.__aenter__.return_value = mock_session
 

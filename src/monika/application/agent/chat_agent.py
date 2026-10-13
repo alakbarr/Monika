@@ -383,7 +383,7 @@ class ChatAgent:
         if getattr(self, "_mcp_synced", False):
             return
         try:
-            from monika.application.analysis.mcp.client import McpClientManager
+            from monika.infrastructure.mcp.client import McpClientManager
             from monika.application.analysis.tools.unified_registry import unified_tool_registry
 
             mgr = McpClientManager.get_instance(self.settings)

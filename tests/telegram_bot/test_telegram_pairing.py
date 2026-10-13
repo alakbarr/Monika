@@ -30,7 +30,7 @@ def temp_pairing_mgr():
     with tempfile.TemporaryDirectory() as tmpdir:
         store_file = os.path.join(tmpdir, "test_paired_users.json")
         mgr = PairingManager(store_path=store_file)
-        with patch("gateway.pairing._GLOBAL_PAIRING_MANAGER", mgr):
+        with patch("monika.interfaces.gateway.pairing._GLOBAL_PAIRING_MANAGER", mgr):
             yield mgr
         reset_pairing_manager()
 

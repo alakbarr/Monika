@@ -199,7 +199,7 @@ class TestDynamicMicroSkills:
 
 class TestDeterministicTriggerEngine:
     @pytest.mark.asyncio
-    @patch("scheduler.trigger_checker.get_session")
+    @patch("monika.application.scheduler.trigger_checker.get_session")
     async def test_trigger_checker_executes_preplanned_order(self, mock_get_session):
         """When preplanned_order is present, execute_preplanned_order is called directly without waiting for LLM."""
         mock_exec_service = AsyncMock()

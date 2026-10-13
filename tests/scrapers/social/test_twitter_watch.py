@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 
 
 class TestTwitterWatchScraper:
-    @patch("scrapers.social.twitter_watch.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.social.twitter_watch.BaseScraper._initialize_browser")
     def test_load_cookies_success(self, mock_init, tmp_path):
         scraper = TwitterWatchScraper()
 
@@ -18,7 +18,7 @@ class TestTwitterWatchScraper:
         assert any(c.get("name") == "test" and c.get("value") == "1" for c in cookies)
         assert any(c.get("name") == "lang" and c.get("value") == "en" for c in cookies)
 
-    @patch("scrapers.social.twitter_watch.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.social.twitter_watch.BaseScraper._initialize_browser")
     def test_load_cookies_forces_lang_en_from_id(self, mock_init, tmp_path):
         scraper = TwitterWatchScraper()
 
@@ -38,7 +38,7 @@ class TestTwitterWatchScraper:
         assert isinstance(cookies_list, list)
         assert cookies_list[0]["value"] == "en"
 
-    @patch("scrapers.social.twitter_watch.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.social.twitter_watch.BaseScraper._initialize_browser")
     def test_pick_session_no_sessions(self, mock_init, tmp_path):
         scraper = TwitterWatchScraper()
         scraper.session_dir = tmp_path
@@ -46,7 +46,7 @@ class TestTwitterWatchScraper:
         session = scraper._pick_session()
         assert session is None
 
-    @patch("scrapers.social.twitter_watch.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.social.twitter_watch.BaseScraper._initialize_browser")
     def test_pick_session_with_sessions(self, mock_init, tmp_path):
         scraper = TwitterWatchScraper()
         scraper.session_dir = tmp_path
@@ -69,7 +69,7 @@ class TestTwitterWatchScraper:
             state = json.load(f)
             assert str(tmp_path / "twitter_session_2.json") in state["used"]
 
-    @patch("scrapers.social.twitter_watch.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.social.twitter_watch.BaseScraper._initialize_browser")
     def test_fetch_latest_tweets_no_session(self, mock_init):
         scraper = TwitterWatchScraper()
         scraper._pick_session = MagicMock(return_value=None)
@@ -77,7 +77,7 @@ class TestTwitterWatchScraper:
         tweets = scraper.fetch_latest_tweets()
         assert tweets == []
 
-    @patch("scrapers.social.twitter_watch.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.social.twitter_watch.BaseScraper._initialize_browser")
     def test_fetch_latest_tweets_success(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page

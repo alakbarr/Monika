@@ -1,9 +1,12 @@
 """
-Structured error classification and recovery strategy assignment (Phase 3).
-Re-exports unified taxonomy from `provider.error_taxonomy`.
+Backward-compatibility facade for error_classifier.
+Canonical location: monika.application.agent.harness.error_classifier
 """
 
-from monika.infrastructure.credentials.error_taxonomy import (
+import sys
+import monika.application.agent.harness.error_classifier as _canonical
+
+from monika.application.agent.harness.error_classifier import (
     ClassifiedError,
     ErrorCategory,
     ErrorClassifier,
@@ -24,3 +27,5 @@ __all__ = [
     "fallback_multimodal_to_text",
     "_extract_retry_after",
 ]
+
+sys.modules[__name__] = _canonical

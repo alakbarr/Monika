@@ -19,7 +19,7 @@ class TestSettings:
         with pytest.raises(FileNotFoundError):
             load_settings("dummy_path")
 
-    @patch("config.settings.load_settings", return_value={"test_key": "test_val"})
+    @patch("monika.core.config.settings.load_settings", return_value={"test_key": "test_val"})
     def test_load_all_config(self, mock_load_settings):
         config = load_all_config()
         assert config["test_key"] == "test_val"

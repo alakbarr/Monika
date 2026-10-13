@@ -155,7 +155,9 @@ def test_migration_0003_downgrade():
     """Verify migration 0003 downgrade function is reversible and callable."""
     import importlib
 
-    mig_mod = importlib.import_module("database.migrations.versions.0003_add_benchmark_tables_and_cache_cost_columns")
+    mig_mod = importlib.import_module(
+        "monika.infrastructure.database.migrations.versions.0003_add_benchmark_tables_and_cache_cost_columns"
+    )
     downgrade = mig_mod.downgrade
 
     mock_op = MagicMock()

@@ -19,7 +19,7 @@ class TestMarketIntelligenceTools:
             "total_results": 1,
         }
 
-        with patch("data_sources.web_search.get_web_search_service") as mock_get_svc:
+        with patch("monika.infrastructure.data_ingestion.sources.web_search.get_web_search_service") as mock_get_svc:
             mock_svc = MagicMock()
             mock_svc.search = AsyncMock(return_value=mock_search_res)
             mock_get_svc.return_value = mock_svc

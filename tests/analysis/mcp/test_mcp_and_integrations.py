@@ -8,9 +8,9 @@ import os
 import tempfile
 import pytest
 
-from monika.application.analysis.mcp.mcp_death_supervisor import McpDeathSupervisor
-from monika.application.analysis.mcp.mcp_schema_cache import McpSchemaCache
-from monika.application.analysis.mcp.client import McpServerProcess
+from monika.infrastructure.mcp.mcp_death_supervisor import McpDeathSupervisor
+from monika.infrastructure.mcp.mcp_schema_cache import McpSchemaCache
+from monika.infrastructure.mcp.client import McpServerProcess
 from monika.infrastructure.data_ingestion.sources.web_search import SearchMemo
 from monika.application.analysis.tools.domain.multimodal_tools import (
     VisionImageProcessor,

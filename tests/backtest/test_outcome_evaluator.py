@@ -25,7 +25,7 @@ async def test_evaluate_buy_tp_hit():
     mock_result.scalars.return_value.all.return_value = [bar]
     mock_session.execute.return_value = mock_result
 
-    with patch("backtest.outcome_evaluator.get_session") as mock_get_session:
+    with patch("monika.application.backtest.outcome_evaluator.get_session") as mock_get_session:
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
         outcome = await evaluator.evaluate_trade(trade)
@@ -59,7 +59,7 @@ async def test_evaluate_buy_sl_hit():
     mock_result.scalars.return_value.all.return_value = [bar]
     mock_session.execute.return_value = mock_result
 
-    with patch("backtest.outcome_evaluator.get_session") as mock_get_session:
+    with patch("monika.application.backtest.outcome_evaluator.get_session") as mock_get_session:
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
         outcome = await evaluator.evaluate_trade(trade)
@@ -91,7 +91,7 @@ async def test_evaluate_buy_with_default_realistic_costs():
     mock_result.scalars.return_value.all.return_value = [bar]
     mock_session.execute.return_value = mock_result
 
-    with patch("backtest.outcome_evaluator.get_session") as mock_get_session:
+    with patch("monika.application.backtest.outcome_evaluator.get_session") as mock_get_session:
         mock_get_session.return_value.__aenter__.return_value = mock_session
         outcome = await evaluator.evaluate_trade(trade)
         assert outcome["exit_reason"] == "tp_hit"

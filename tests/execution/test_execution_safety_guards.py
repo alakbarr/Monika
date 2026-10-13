@@ -51,7 +51,7 @@ async def test_cw1_adhoc_scheduler_proxy_data_node():
 
     # When is_ad_hoc is True, fallback AdHocSchedulerProxy is created and executed
     with (
-        patch("graph.nodes.data_node.get_session") as mock_gs,
+        patch("monika.application.graph.nodes.data_node.get_session") as mock_gs,
         patch("monika.core.validation.data_validator.validate_data_freshness", new_callable=AsyncMock) as mock_vdf,
     ):
         mock_vdf.return_value = {"ready": True, "stale_assets": [], "warnings": [], "errors": []}

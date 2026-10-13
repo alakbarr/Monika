@@ -856,7 +856,7 @@ class PaperTracker:
                 )
 
                 try:
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     await AgentNotifier().send_warning(
                         f"[DIJEDA] <b>{symbol} Auto-Suspended</b>\n"
@@ -1295,7 +1295,7 @@ class PaperTracker:
 
             logger.warning(f"Win rate alert: {win_rate:.1f}% < {alert_threshold:.1f}%")
             try:
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 await AgentNotifier().send_critical(msg)
             except Exception:
@@ -1444,7 +1444,7 @@ class PaperTracker:
                 f"Consider pausing and reviewing recent analyses."
             )
             try:
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 await AgentNotifier().send_critical(msg)
             except Exception:

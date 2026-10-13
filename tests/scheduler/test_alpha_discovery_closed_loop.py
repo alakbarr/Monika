@@ -126,8 +126,10 @@ async def test_alpha_auto_deploy_promotes_to_paper_active_and_hot_reloads():
     }
 
     with (
-        patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls,
-        patch("scheduler.alpha_discovery_scheduler.get_session") as mock_get_session,
+        patch(
+            "monika.application.scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness"
+        ) as mock_harness_cls,
+        patch("monika.application.scheduler.alpha_discovery_scheduler.get_session") as mock_get_session,
     ):
         mock_instance = MagicMock()
         mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
@@ -184,7 +186,7 @@ async def test_manual_promote_to_paper_active():
     )
     scheduler.candidate_proposals.append(prop)
 
-    with patch("scheduler.alpha_discovery_scheduler.get_session") as mock_get_session:
+    with patch("monika.application.scheduler.alpha_discovery_scheduler.get_session") as mock_get_session:
         mock_db_session = AsyncMock()
         mock_db_session.add = MagicMock()
         mock_exec = MagicMock()

@@ -19,7 +19,7 @@ from monika.application.graph.reactive_graph import (
 
 @pytest.fixture(autouse=True)
 def mock_reactive_graph_session():
-    with patch("graph.reactive_graph.get_session") as mock_get_session:
+    with patch("monika.application.graph.reactive_graph.get_session") as mock_get_session:
         mock_sess = create_mock_async_session()
         mock_get_session.return_value.__aenter__.return_value = mock_sess
         yield mock_sess
@@ -117,7 +117,7 @@ async def test_reactive_graph_confluence_filter():
         }
     }
 
-    with patch("graph.reactive_graph.get_session", side_effect=MockSession):
+    with patch("monika.application.graph.reactive_graph.get_session", side_effect=MockSession):
         res = await confluence_filter_node(state, config=config)
 
     assert len(res["actionable_trades"]) == 1
@@ -160,7 +160,7 @@ async def test_reactive_graph_execution_auto_execute():
     state = {"actionable_trades": [("EURUSD", {"analysis_id": 101})], "summary": {}, "event_data": {}}
     config = {"configurable": {"scheduler": mock_scheduler}}
 
-    with patch("graph.reactive_graph.get_session", side_effect=MockSession):
+    with patch("monika.application.graph.reactive_graph.get_session", side_effect=MockSession):
         res = await reactive_execution_node(state, config=config)
 
     assert mock_ana.execution_status == "executed"

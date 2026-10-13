@@ -121,6 +121,7 @@ scripts/*
 !scripts/check_scrapers/
 !scripts/migrate_runtime_home.py
 !scripts/migrate_sqlite_to_canonical.py
+!scripts/audit_settings_keys.py
 contoh_pertanyaan.md
 prompt_benchmark.md
 

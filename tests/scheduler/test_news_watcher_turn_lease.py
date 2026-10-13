@@ -61,7 +61,7 @@ async def test_news_watcher_coalesces_into_active_turn_lease(settings):
     news_item = _make_news("BREAKING: Unexpected Fed Emergency Rate Cut 100bps")
 
     # Call _trigger_reanalysis with affected_symbols=["XAUUSD"]
-    with patch("scheduler.news_watcher.get_session") as mock_gs:
+    with patch("monika.application.scheduler.news_watcher.get_session") as mock_gs:
         mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session

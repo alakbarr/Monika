@@ -227,7 +227,7 @@ async def compute_edge_status(session: AsyncSession) -> dict:
 
                 # Kirim alert kritis via Telegram
                 try:
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     await AgentNotifier().send_critical(
                         f"[DARURAT] <b>EDGE TRACKER — AUTO PAUSE AKTIF</b>\n\n"

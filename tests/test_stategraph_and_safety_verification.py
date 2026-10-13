@@ -51,7 +51,7 @@ async def test_reactive_debate_node_fails_closed_on_error():
     config = {"configurable": {"settings": {"trading": {"enable_debate": True}}}}
 
     # Simulate debate subgraph raising an unhandled exception
-    with patch("graph.nodes.debate.subgraph.build_debate_subgraph") as mock_build:
+    with patch("monika.application.graph.nodes.debate.subgraph.build_debate_subgraph") as mock_build:
         mock_sub = AsyncMock()
         mock_sub.ainvoke.side_effect = RuntimeError("Simulated LLM API failure in debate subgraph")
         mock_build.return_value = mock_sub

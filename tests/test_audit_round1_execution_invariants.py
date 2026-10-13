@@ -129,7 +129,7 @@ async def test_walk_forward_engine_run_and_wfe_calculation():
         exit_reason="tp_hit",
     )
 
-    with patch("backtest.walk_forward_engine.PointInTimeBacktestEngine") as MockPITE:
+    with patch("monika.application.backtest.walk_forward_engine.PointInTimeBacktestEngine") as MockPITE:
         mock_inst = AsyncMock()
         # Returns simulated trades for IS and OOS
         mock_inst.run_simulation.side_effect = [

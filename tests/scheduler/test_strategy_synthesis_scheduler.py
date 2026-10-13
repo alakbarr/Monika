@@ -143,7 +143,7 @@ class HighAlphaStrategy(EdgeStrategy):
     # Pass returns giving Sharpe > 1.5, Max DD < 10%
     returns = [0.01, 0.02, -0.004, 0.015, 0.022, 0.008, 0.019]
 
-    with patch("scheduler.strategy_synthesis_scheduler.get_session") as mock_get_session:
+    with patch("monika.application.scheduler.strategy_synthesis_scheduler.get_session") as mock_get_session:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_exec = MagicMock()
@@ -559,7 +559,7 @@ async def test_run_historical_simulation_disqualifies_on_eval_error(scheduler):
         for i in range(100)
     ]
 
-    with patch("scheduler.strategy_synthesis_scheduler.get_session") as mock_get_session:
+    with patch("monika.application.scheduler.strategy_synthesis_scheduler.get_session") as mock_get_session:
         mock_session = create_mock_async_session()
         mock_exec = MagicMock()
         mock_exec.scalars.return_value.all.return_value = mock_candles
