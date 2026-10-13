@@ -1621,17 +1621,22 @@ Monika/
 │           │   └── webhook_ingress.py
 │           └── telegram
 │               ├── __init__.py
+│               ├── base.py
 │               ├── bot.py
 │               ├── chat_agent.py
 │               ├── chat_compaction.py
 │               ├── chat_tool_router.py
 │               ├── command_router.py
 │               ├── formatters
-│               │   └── __init__.py
+│               │   ├── __init__.py
+│               │   └── text_builders.py
 │               ├── fuzzy_router.py
 │               ├── handlers
 │               │   ├── __init__.py
+│               │   ├── admin_commands.py
+│               │   ├── callback_handler.py
 │               │   ├── market_commands.py
+│               │   ├── media_handlers.py
 │               │   ├── system_commands.py
 │               │   └── trading_commands.py
 │               ├── message_formatter.py

@@ -74,7 +74,7 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1126
       - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1133
       - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1141
-      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1149
+      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1152
 
 ## Root Directory: `Monika/`
 
@@ -1140,7 +1140,10 @@ This document provides an exhaustive structural index of all directories, files,
 
 ##### Folder: `src/monika/interfaces/telegram`
 - **Modules**:
-  - `bot.py`: Primary production Telegram bot controller with token-bucket outbound queue, RetryAfter backoff, offline disk buffer, callback router, and event notifier.
+  - `base.py`: Type-checking base mixin declaring static properties and cross-mixin signatures (`_TelegramBotMixinBase`).
+  - `bot.py`: Coordinator Telegram bot controller composing formatters, command handlers, and media/callback mixins with token-bucket outbound queue, RetryAfter backoff, offline disk buffer, and unbypassable authorization guard (`TelegramBot`, `TelegramController`).
+  - `formatters/`: Modular message builders and text chunkers (`TelegramFormatterMixin`, `text_builders.py`).
+  - `handlers/`: Domain command handlers and media/callback dispatchers (`TelegramTradingCommandsMixin`, `TelegramMarketCommandsMixin`, `TelegramSystemCommandsMixin`, `TelegramAdminCommandsMixin`, `TelegramCallbackHandlerMixin`, `TelegramMediaHandlerMixin`).
   - `command_router.py`: Command routing and RBAC authorization guard for Telegram.
   - `routers/`: Modular domain sub-routers (`trading_router.py`, `risk_router.py`, `market_router.py`, `quant_router.py`, `admin_router.py`).
   - `voice_handler.py`: Multimodal voice note processing, transcription, and command confirmation.
