@@ -71,7 +71,7 @@ async def test_prefetch_asset_fetches_d1_history_for_all_symbols(symbol, mock_as
         patch("monika.core.validation.data_validator.validate_data_freshness", new_callable=AsyncMock) as mock_fresh,
         patch("monika.core.validation.data_validator.check_data_coherence", new_callable=AsyncMock) as mock_coh,
         patch(
-            "monika.domain.indicators.timesfm_engine.TimesFMEngine.get_latest_forecast", new_callable=AsyncMock
+            "monika.infrastructure.ml.timesfm_engine.TimesFMEngine.get_latest_forecast", new_callable=AsyncMock
         ) as mock_tfm,
     ):
         mock_val.return_value = (True, {}, [])
