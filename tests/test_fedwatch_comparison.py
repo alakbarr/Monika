@@ -25,7 +25,7 @@ from monika.application.analysis.tools.handlers.macro_tools import (
 from monika.application.analysis.tools.handlers.news_tools import handle_get_news_items
 from monika.application.analysis.tools.handlers.market_data_tools import handle_get_price_history
 from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
-from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
+from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS
 
 
 class MockFedRow:
@@ -375,7 +375,7 @@ async def test_price_history_as_of_filter():
 
 def test_chat_tool_router_macro_tools():
     """Verify ChatToolRouter routes macro queries to include get_central_bank_expectations."""
-    router = ChatToolRouter(TELEGRAM_TOOLS)
+    router = ChatToolRouter(OPERATOR_INTERACTIVE_TOOLS)
     routed = router.route_tools_for_query(
         "berapa probabilitas suku bunga the fed berikutnya? bandingkan dengan sebelumnya"
     )

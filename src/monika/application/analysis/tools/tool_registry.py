@@ -14,9 +14,9 @@ from typing import Any, Dict, List, Optional
 from monika.application.analysis.tools.tools_definitions import (
     ALL_TOOLS,
     GET_MARKET_QUOTE,
-    STAGE1_TOOLS,
-    STAGE2_TOOLS,
-    TELEGRAM_TOOLS,
+    MACRO_ANALYSIS_TOOLS,
+    PER_ASSET_ANALYSIS_TOOLS,
+    OPERATOR_INTERACTIVE_TOOLS,
     _tool,
 )
 

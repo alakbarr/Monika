@@ -384,7 +384,7 @@ async def handle_get_structure_breaks(args: dict, **ctx) -> dict:
 
 
 async def handle_get_sr_zones(args: dict, **ctx) -> dict:
-    """Standalone Support/Resistance zones query (referenced by TELEGRAM_TOOLS binding)."""
+    """Standalone Support/Resistance zones query (referenced by OPERATOR_INTERACTIVE_TOOLS binding)."""
     session, symbol, _ = _get_session_and_symbol(args, ctx)
     if not symbol:
         return {"error": "Missing required parameter 'symbol'"}

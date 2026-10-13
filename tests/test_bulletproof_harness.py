@@ -11,7 +11,7 @@ from monika.application.analysis.schemas.pydantic_schemas import SubmitFundament
 from monika.application.analysis.stages.fundamental_stage_recovery import recover_fundamental_brief_from_text
 from monika.application.benchmark.db_access import BenchmarkFixtureDispatcher, guarded_tool_executor
 from monika.application.analysis.tools.tool_executor import ToolExecutor
-from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS
+from monika.application.analysis.tools.tools_definitions import MACRO_ANALYSIS_TOOLS
 from monika.application.analysis.prefetch.stage1_prefetcher import CORE_STAGE1_PREFETCH_TOOLS, prune_stage1_tools
 
 
@@ -160,7 +160,7 @@ def test_prune_stage1_tools_healthy_prefetch():
         "get_funding_rate",
         "get_market_session",
     }
-    pruned = prune_stage1_tools(STAGE1_TOOLS, healthy_satisfied)
+    pruned = prune_stage1_tools(MACRO_ANALYSIS_TOOLS, healthy_satisfied)
     names = [t["name"] for t in pruned]
     assert names == ["submit_fundamental_brief"]
 
@@ -172,7 +172,7 @@ def test_prune_stage1_tools_partial_prefetch_failure():
         "get_dxy",
         "get_news_digest",
     }
-    pruned = prune_stage1_tools(STAGE1_TOOLS, partial_satisfied)
+    pruned = prune_stage1_tools(MACRO_ANALYSIS_TOOLS, partial_satisfied)
     names = [t["name"] for t in pruned]
     assert "submit_fundamental_brief" in names
     assert "get_treasury_yields" in names
@@ -183,8 +183,8 @@ def test_prune_stage1_tools_partial_prefetch_failure():
 
 def test_prune_stage1_tools_zero_prefetch_fallback():
     """Verify that zero prefetch preserves all base tools untouched."""
-    pruned = prune_stage1_tools(STAGE1_TOOLS, set())
-    assert len(pruned) == len(STAGE1_TOOLS)
+    pruned = prune_stage1_tools(MACRO_ANALYSIS_TOOLS, set())
+    assert len(pruned) == len(MACRO_ANALYSIS_TOOLS)
     names = [t["name"] for t in pruned]
     assert "submit_fundamental_brief" in names
     assert "get_treasury_yields" in names

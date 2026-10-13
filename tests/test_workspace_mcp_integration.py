@@ -13,7 +13,7 @@ import pytest
 from monika.core.config.settings import load_settings
 from monika.infrastructure.mcp.client import McpClientManager
 from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
-from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
+from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
 from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.interfaces.workspace.journal_helper import (
@@ -44,7 +44,7 @@ async def test_mcp_workspace_end_to_end():
     assert "mcp_google_workspace_gsheets_append_row" in mcp_tools
 
     # 3. Verify ChatToolRouter Intent Matching
-    router = ChatToolRouter(TELEGRAM_TOOLS)
+    router = ChatToolRouter(OPERATOR_INTERACTIVE_TOOLS)
     mcp_tool_defs = [
         entry.get_anthropic_schema() for name, entry in unified_tool_registry._tools.items() if name.startswith("mcp_")
     ]

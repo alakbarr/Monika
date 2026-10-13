@@ -502,14 +502,14 @@ class TestFedWatchProbabilitiesStress:
 
 
 class TestEndToEndRoutingAndMacroIntegration:
-    """End-to-end integration stress tests connecting ChatToolRouter, TELEGRAM_TOOLS, and DynamicSubagentPool."""
+    """End-to-end integration stress tests connecting ChatToolRouter, OPERATOR_INTERACTIVE_TOOLS, and DynamicSubagentPool."""
 
     def test_contoh_pertanyaan_end_to_end_worker_macro_pipeline(self):
         """Verify real-world macro prompt from contoh_pertanyaan.md propagates all 4 tools and checklist to worker_macro."""
-        from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
+        from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS
         from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
 
-        router = ChatToolRouter(TELEGRAM_TOOLS)
+        router = ChatToolRouter(OPERATOR_INTERACTIVE_TOOLS)
         real_query = (
             "Analisis peluang kemungkinan keputusan suku bunga The Fed 16/17 September 2026 yang akan "
             "diumumkan dalam beberapa jam ke depan. Di CME Fedwatch proyeksinya 89% The Fed akan menaikkan suku bunga. "

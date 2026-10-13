@@ -11,7 +11,7 @@ from monika.application.analysis.tools.tools_definitions import (
     GET_TECHNICAL_ANALYSIS,
     GET_PRICE_DATA,
     GET_INSTITUTIONAL_DATA,
-    STAGE2_EXPANDED_TOOLS,
+    ASSET_EXPANDED_TOOLS,
 )
 
 
@@ -47,8 +47,8 @@ async def test_composite_tools_execution():
 
 
 def test_stage2_expanded_tools_definitions():
-    assert len(STAGE2_EXPANDED_TOOLS) >= 9
-    tool_names = [t["name"] for t in STAGE2_EXPANDED_TOOLS]
+    assert len(ASSET_EXPANDED_TOOLS) >= 9
+    tool_names = [t["name"] for t in ASSET_EXPANDED_TOOLS]
     assert "get_technical_analysis" in tool_names
     assert "get_price_data" in tool_names
     assert "get_institutional_data" in tool_names

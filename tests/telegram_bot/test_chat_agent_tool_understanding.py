@@ -11,9 +11,9 @@ from monika.interfaces.telegram.chat_agent import ChatAgent, PendingAction
 from monika.application.skills.loader import load_skill
 from monika.infrastructure.database.models import PaperTradeRecord, TradeTrigger, PriceOHLCV
 from monika.application.analysis.tools.tools_definitions import (
-    STAGE1_TOOLS,
-    STAGE2_TOOLS,
-    TELEGRAM_TOOLS,
+    MACRO_ANALYSIS_TOOLS,
+    PER_ASSET_ANALYSIS_TOOLS,
+    OPERATOR_INTERACTIVE_TOOLS,
     PROPOSE_ACTION,
     GET_FUNDING_RATE,
 )
@@ -246,11 +246,11 @@ class TestChatAgentToolUnderstanding:
         assert "not found" in msg.lower()
 
     def test_propose_action_scoping_isolation(self):
-        """Memastikan PROPOSE_ACTION hanya ada di TELEGRAM_TOOLS dan tidak bocor ke STAGE1/STAGE2."""
-        assert PROPOSE_ACTION in TELEGRAM_TOOLS
-        assert PROPOSE_ACTION not in STAGE1_TOOLS
-        assert PROPOSE_ACTION not in STAGE2_TOOLS
+        """Memastikan PROPOSE_ACTION hanya ada di OPERATOR_INTERACTIVE_TOOLS dan tidak bocor ke STAGE1/STAGE2."""
+        assert PROPOSE_ACTION in OPERATOR_INTERACTIVE_TOOLS
+        assert PROPOSE_ACTION not in MACRO_ANALYSIS_TOOLS
+        assert PROPOSE_ACTION not in PER_ASSET_ANALYSIS_TOOLS
 
     def test_stage1_tools_includes_funding_rate(self):
-        """Memastikan GET_FUNDING_RATE tersedia di STAGE1_TOOLS untuk analisis makro komprehensif."""
-        assert GET_FUNDING_RATE in STAGE1_TOOLS
+        """Memastikan GET_FUNDING_RATE tersedia di MACRO_ANALYSIS_TOOLS untuk analisis makro komprehensif."""
+        assert GET_FUNDING_RATE in MACRO_ANALYSIS_TOOLS

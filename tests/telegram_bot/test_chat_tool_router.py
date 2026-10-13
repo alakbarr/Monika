@@ -1,11 +1,11 @@
 import pytest
 from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
-from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
+from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS
 
 
 @pytest.fixture
 def router():
-    return ChatToolRouter(TELEGRAM_TOOLS)
+    return ChatToolRouter(OPERATOR_INTERACTIVE_TOOLS)
 
 
 def test_greeting_zero_tools(router):
@@ -49,7 +49,7 @@ def test_multi_domain_fallback(router):
     tools = router.route_tools_for_query(
         "Berapa saldo PnL saya, bagaimana berita FOMC dan kalender ekonomi, tolong cek chart EURUSD rsi, dan berapa biaya token server?"
     )
-    assert len(tools) == len(TELEGRAM_TOOLS)
+    assert len(tools) == len(OPERATOR_INTERACTIVE_TOOLS)
 
 
 def test_macro_intent_routes_fedwatch_and_yields(router):

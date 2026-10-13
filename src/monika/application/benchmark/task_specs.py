@@ -38,7 +38,7 @@ from monika.application.analysis.stages.per_asset_stage import (
     PerAssetStage,
     _render_specialist_prompt,
 )
-from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE2_TOOLS, TELEGRAM_TOOLS
+from monika.application.analysis.tools.tools_definitions import MACRO_ANALYSIS_TOOLS, PER_ASSET_ANALYSIS_TOOLS, OPERATOR_INTERACTIVE_TOOLS
 from monika.application.analysis.validators.fundamental_verifier import (
     FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT,
     VERIFIER_SCHEMA,
@@ -203,7 +203,7 @@ async def _case_stage1_fundamental(session, settings, ex) -> BenchmarkCase:
         "macro",
         _stage1_system_prompt(settings),
         user_msg,
-        tools=STAGE1_TOOLS,
+        tools=MACRO_ANALYSIS_TOOLS,
         stage_name="benchmark_stage1_fundamental",
         role_kwargs=dict(max_tokens=12000, max_tool_turns=8, thinking="high"),
         context_summary=bundle,
@@ -244,7 +244,7 @@ async def _case_stage1_escalation(session, settings, ex) -> BenchmarkCase:
         "macro",
         _stage1_system_prompt(settings),
         user_msg,
-        tools=STAGE1_TOOLS,
+        tools=MACRO_ANALYSIS_TOOLS,
         stage_name="benchmark_stage1_escalation",
         role_kwargs=dict(max_tokens=16000, max_tool_turns=8, thinking="high"),
         context_summary=bundle[:6000],
@@ -415,7 +415,7 @@ async def _build_stage2_case(session, settings, symbol: str, stage_tag: str) -> 
         "trade_decision",
         sysp,
         user_msg,
-        tools=STAGE2_TOOLS,
+        tools=PER_ASSET_ANALYSIS_TOOLS,
         stage_name=f"benchmark_{stage_tag}_{symbol}",
         role_kwargs=dict(max_tokens=12000, max_tool_turns=10, thinking="high"),
         context_summary=bundle_text[:6000],
@@ -1348,7 +1348,7 @@ async def _build_chat_case(session, settings, ex, idx: int) -> BenchmarkCase:
         "chat",
         sysp,
         msg,
-        tools=TELEGRAM_TOOLS,
+        tools=OPERATOR_INTERACTIVE_TOOLS,
         history=[],
         role_kwargs=dict(max_tokens=3000, max_tool_turns=8, thinking="medium"),
         context_summary=msg,
