@@ -19,6 +19,8 @@ from typing import Dict, Any, Optional
 import aiohttp
 from bs4 import BeautifulSoup
 
+from monika.infrastructure.api.http_retry import fetch_with_retry
+
 logger = logging.getLogger("TradingAgent.Scrapers.BankIndonesia")
 
 
@@ -26,7 +28,7 @@ class BankIndonesiaFetcher:
     """Fetcher for Bank Indonesia policy rate and USD/IDR reference JISDOR."""
 
     def __init__(self, timeout_seconds: int = 15):
-        self.timeout = aiohttp.ClientTimeout(total=timeout_seconds)
+        self.timeout_seconds = timeout_seconds
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -40,23 +42,60 @@ class BankIndonesiaFetcher:
         """
         url = "https://www.bi.go.id/id/statistik/indikator/bi-rate.aspx"
         try:
-            async with aiohttp.ClientSession(timeout=self.timeout, headers=self.headers) as session:
-                async with session.get(url) as resp:
-                    if resp.status == 200:
-                        html = await resp.text(errors="replace")
-                        soup = BeautifulSoup(html, "html.parser")
-                        # Look for percentage pattern near BI-Rate
-                        text = soup.get_text()
-                        match = re.search(r"(\d+[\.,]\d+)\s*%", text)
-                        if match:
-                            rate_val = float(match.group(1).replace(",", "."))
-                            return {
-                                "central_bank": "Bank Indonesia",
-                                "rate_name": "BI-Rate (7-Day Reverse Repo Rate)",
-                                "rate_pct": rate_val,
-                                "source": url,
-                                "status": "success",
-                            }
+            html = await fetch_with_retry(
+                url,
+                headers=self.headers,
+                timeout=self.timeout_seconds,
+                response_type="text",
+                max_retries=2,
+            )
+            if html and isinstance(html, str):
+                soup = BeautifulSoup(html, "html.parser")
+                rate_val: Optional[float] = None
+
+                # 1. Targeted search in table rows/indicators
+                tables = soup.find_all("table")
+                for table in tables:
+                    for row in table.find_all("tr"):
+                        row_text = row.get_text()
+                        if any(k in row_text for k in ("BI-Rate", "BI 7-Day", "Reverse Repo", "Suku Bunga")):
+                            m = re.search(r"(\d+[\.,]\d+)\s*%", row_text)
+                            if m:
+                                val = float(m.group(1).replace(",", "."))
+                                if 4.0 <= val <= 9.0:
+                                    rate_val = val
+                                    break
+                    if rate_val is not None:
+                        break
+
+                # 2. Targeted search in indicator cards/containers
+                if rate_val is None:
+                    containers = soup.select(".bi-rate, .indicator-card, .table-responsive, .content-indikator")
+                    for cont in containers:
+                        m = re.search(r"(\d+[\.,]\d+)\s*%", cont.get_text())
+                        if m:
+                            val = float(m.group(1).replace(",", "."))
+                            if 4.0 <= val <= 9.0:
+                                rate_val = val
+                                break
+
+                # 3. Targeted regex fallback across page with keyword proximity
+                if rate_val is None:
+                    matches = re.finditer(r"(?:BI-Rate|BI 7-Day|Suku Bunga)[^%\d]{0,50}?(\d+[\.,]\d+)\s*%", html, re.IGNORECASE)
+                    for match in matches:
+                        val = float(match.group(1).replace(",", "."))
+                        if 4.0 <= val <= 9.0:
+                            rate_val = val
+                            break
+
+                if rate_val is not None and 4.0 <= rate_val <= 9.0:
+                    return {
+                        "central_bank": "Bank Indonesia",
+                        "rate_name": "BI-Rate (7-Day Reverse Repo Rate)",
+                        "rate_pct": rate_val,
+                        "source": url,
+                        "status": "success",
+                    }
         except Exception as e:
             logger.debug(f"Direct BI Rate scrape note: {e}")
 
@@ -99,22 +138,27 @@ class BankIndonesiaFetcher:
         """
         url = "https://www.bi.go.id/id/statistik/informasi-kurs/jisdor/default.aspx"
         try:
-            async with aiohttp.ClientSession(timeout=self.timeout, headers=self.headers) as session:
-                async with session.get(url) as resp:
-                    if resp.status == 200:
-                        html = await resp.text(errors="replace")
-                        # Look for JISDOR rate (e.g. 15,800 or 16,200)
-                        matches = re.findall(r"1[5-7]\s*[\.,]\s*\d{3}", html)
-                        if matches:
-                            clean_str = matches[0].replace(".", "").replace(",", "").replace(" ", "")
-                            jisdor_val = float(clean_str)
-                            return {
-                                "currency_pair": "USD/IDR",
-                                "reference_rate": "JISDOR",
-                                "rate": jisdor_val,
-                                "source": url,
-                                "status": "success",
-                            }
+            html = await fetch_with_retry(
+                url,
+                headers=self.headers,
+                timeout=self.timeout_seconds,
+                response_type="text",
+                max_retries=2,
+            )
+            if html and isinstance(html, str):
+                # Look for JISDOR rate (e.g. 15,800 or 16,200)
+                matches = re.findall(r"1[5-7]\s*[\.,]\s*\d{3}", html)
+                if matches:
+                    clean_str = matches[0].replace(".", "").replace(",", "").replace(" ", "")
+                    jisdor_val = float(clean_str)
+                    if 14000.0 <= jisdor_val <= 18000.0:
+                        return {
+                            "currency_pair": "USD/IDR",
+                            "reference_rate": "JISDOR",
+                            "rate": jisdor_val,
+                            "source": url,
+                            "status": "success",
+                        }
         except Exception as e:
             logger.debug(f"Direct JISDOR scrape note: {e}")
 

@@ -1042,6 +1042,26 @@ class MT5Client:
                             'retcode': 10009,
                             'recovered_from_timeout': True
                         }
+
+                # Also inspect active pending orders (limit/stop) if position was not directly filled
+                active_orders = await self.get_orders(symbol)
+                for ord_item in active_orders:
+                    ord_type = str(ord_item.get('direction', '')).lower()
+                    raw_time = ord_item.get('time', 0)
+                    ord_ts = raw_time.timestamp() if isinstance(raw_time, datetime) else float(raw_time or 0.0)
+                    if ord_type == expected_type and abs(float(ord_item.get('volume', 0.0)) - float(volume)) < 0.001 and (now_ts - ord_ts) < 15.0:
+                        logger.critical(f"MT5 in-flight reconciliation SUCCESS: Found active pending order ticket={ord_item.get('ticket')} for {symbol}")
+                        if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
+                            self.pending_action_manager.commit_action(pending_act.client_order_id, broker_ticket=ord_item.get('ticket'))
+                        return {
+                            'success': True,
+                            'ticket': ord_item.get('ticket'),
+                            'price': ord_item.get('price_open'),
+                            'sl': ord_item.get('sl'),
+                            'tp': ord_item.get('tp'),
+                            'retcode': 10009,
+                            'recovered_from_timeout': True
+                        }
             except Exception as rec_err:
                 logger.error(f"In-flight reconciliation error for {symbol}: {rec_err}")
             return {'success': False, 'error': f'MT5 order placement timed out for {symbol} (in-flight not detected)', 'retcode': -999}
@@ -2080,13 +2100,32 @@ def _close_position(ticket: Any, volume: Optional[float], comment: str, lots: Op
         return {'success': False, 'price': None, 'profit': None,
                 'error': str(mt5.last_error()), 'retcode': -1}
 
-    success = getattr(result, "retcode", -1) == getattr(mt5, "TRADE_RETCODE_DONE", 10009)
     res_retcode = getattr(result, "retcode", -1)
+    max_retries = 2
+    for retry_idx in range(max_retries):
+        if res_retcode in (10004, 10015, 10021):
+            logger.warning(
+                f"_close_position received requote/price-change retcode {res_retcode} for ticket {ticket_id}. "
+                f"Retrying ({retry_idx + 1}/{max_retries}) with updated tick price..."
+            )
+            time.sleep(0.1)
+            t_retry = mt5.symbol_info_tick(current.symbol)
+            if t_retry:
+                new_price = t_retry.bid if close_type == getattr(mt5, "ORDER_TYPE_SELL", 1) else t_retry.ask
+                request['price'] = float(new_price)
+            result = mt5.order_send(request)
+            if result is None:
+                break
+            res_retcode = getattr(result, "retcode", -1)
+        else:
+            break
+
+    success = res_retcode == getattr(mt5, "TRADE_RETCODE_DONE", 10009)
     return {
         'success': success,
-        'price': getattr(result, "price", None) if success else None,
+        'price': getattr(result, "price", None) if (result and success) else None,
         'profit': getattr(current, "profit", None) if success else None,
-        'error': None if success else format_mt5_error(res_retcode, getattr(result, "comment", "")),
+        'error': None if success else format_mt5_error(res_retcode, getattr(result, "comment", "") if result else "order_send failed"),
         'retcode': res_retcode,
     }
 

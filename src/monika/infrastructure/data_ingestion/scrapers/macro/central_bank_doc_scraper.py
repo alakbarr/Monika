@@ -333,23 +333,58 @@ class CentralBankDocScraper:
             "fetched_at": clock.now(),
         }
 
-        stmt = pg_insert(CentralBankDocument).values(record)
-        stmt = stmt.on_conflict_do_update(
-            index_elements=["bank", "doc_type", "meeting_date"],
-            set_={
-                "title": stmt.excluded.title,
-                "source_url": stmt.excluded.source_url,
-                "full_text": stmt.excluded.full_text,
-                "paragraphs_json": stmt.excluded.paragraphs_json,
-                "hawkish_dovish_score": stmt.excluded.hawkish_dovish_score,
-                "key_phrases_json": stmt.excluded.key_phrases_json,
-                "fetched_at": clock.now(),
-            },
-        )
-        await self.session.execute(stmt)
+        bind = getattr(self.session, "bind", None)
+        dialect_name = getattr(getattr(bind, "dialect", None), "name", "postgresql")
+
+        if dialect_name == "postgresql":
+            stmt = pg_insert(CentralBankDocument).values(record)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["bank", "doc_type", "meeting_date"],
+                set_={
+                    "title": stmt.excluded.title,
+                    "source_url": stmt.excluded.source_url,
+                    "full_text": stmt.excluded.full_text,
+                    "paragraphs_json": stmt.excluded.paragraphs_json,
+                    "hawkish_dovish_score": stmt.excluded.hawkish_dovish_score,
+                    "key_phrases_json": stmt.excluded.key_phrases_json,
+                    "fetched_at": clock.now(),
+                },
+            )
+            await self.session.execute(stmt)
+        elif dialect_name == "sqlite":
+            from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+            stmt = sqlite_insert(CentralBankDocument).values(record)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["bank", "doc_type", "meeting_date"],
+                set_={
+                    "title": stmt.excluded.title,
+                    "source_url": stmt.excluded.source_url,
+                    "full_text": stmt.excluded.full_text,
+                    "paragraphs_json": stmt.excluded.paragraphs_json,
+                    "hawkish_dovish_score": stmt.excluded.hawkish_dovish_score,
+                    "key_phrases_json": stmt.excluded.key_phrases_json,
+                    "fetched_at": clock.now(),
+                },
+            )
+            await self.session.execute(stmt)
+        else:
+            existing = (
+                await self.session.execute(
+                    select(CentralBankDocument).where(
+                        CentralBankDocument.bank == bank,
+                        CentralBankDocument.doc_type == doc_type,
+                        CentralBankDocument.meeting_date == meeting_date,
+                    )
+                )
+            ).scalar_one_or_none()
+            if existing:
+                for k, v in record.items():
+                    setattr(existing, k, v)
+            else:
+                self.session.add(CentralBankDocument(**record))
         await safe_commit(self.session)
 
-        logger.info(f"Persisted {bank} {doc_type} to PostgreSQL ({len(paragraphs)} paragraphs, score={tone_score:+.2f})")
+        logger.info(f"Persisted {bank} {doc_type} to database ({len(paragraphs)} paragraphs, score={tone_score:+.2f})")
         return record
 
     def _extract_clean_paragraphs(self, raw_html_or_text: str) -> List[str]:
