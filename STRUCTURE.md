@@ -1001,6 +1001,18 @@ Monika/
 │       │   │   ├── results
 │       │   │   ├── runner.py
 │       │   │   ├── system_one_scorer.py
+│       │   │   ├── task_specs
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── base.py
+│       │   │   │   ├── chat_cases.py
+│       │   │   │   ├── debate_cases.py
+│       │   │   │   ├── macro_cases.py
+│       │   │   │   ├── news_cases.py
+│       │   │   │   ├── reflex_cases.py
+│       │   │   │   ├── registry.py
+│       │   │   │   ├── risk_cases.py
+│       │   │   │   ├── specialist_cases.py
+│       │   │   │   └── stage2_cases.py
 │       │   │   ├── task_specs.py
 │       │   │   ├── token_drift_tracker.py
 │       │   │   └── trade_trajectory_logger.py
