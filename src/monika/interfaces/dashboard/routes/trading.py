@@ -1674,7 +1674,15 @@ async def action_close_batch(payload: BatchCloseRequest, request: Request):
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 
-    return {"status": "success", "result": res}
+    closed_c = res.get("closed_count", len(tickets)) if isinstance(res, dict) else len(tickets)
+    failed_c = res.get("failed_count", 0) if isinstance(res, dict) else 0
+    return {
+        "status": "success",
+        "message": f"Successfully processed batch close: {closed_c} closed",
+        "closed_count": closed_c,
+        "failed_count": failed_c,
+        "result": res,
+    }
 
 
 @trading_router.post("/api/orders/preview", tags=["Trading"])

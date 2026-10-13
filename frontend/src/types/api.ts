@@ -433,6 +433,9 @@ export interface ChatMessage {
   toolsUsed?: string[];
   pendingAction?: ChatProposedAction | null;
   status?: string;
+  thought?: string;
+  chart_image?: string;
+  file_download?: { url: string; filename: string };
 }
 
 export interface ChatToolEvent {
@@ -754,9 +757,6 @@ export interface SkillCatalogItem {
   is_playbook: boolean;
 }
 
-export interface PluginCatalogItem {
-  [key: string]: any;
-}
 
 export interface QuantTearsheetItem {
   initial_equity: number;

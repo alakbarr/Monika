@@ -119,6 +119,11 @@ class TelegramBot:
         )
 
         self._is_running: bool = False
+        self._outbound_queue: asyncio.Queue = asyncio.Queue()
+        self._outbound_worker_task: Optional[asyncio.Task] = None
+        self._last_send_global: float = 0.0
+        self._last_send_per_chat: dict[int, float] = {}
+        self._offline_queue_file: str = os.path.join("data", "telegram_offline_queue.jsonl")
 
         if not self.token or self.token.startswith("your_"):
             logger.warning("TELEGRAM_BOT_TOKEN not set — bot will not connect")
@@ -308,6 +313,8 @@ class TelegramBot:
                 logger.debug(f"Failed to set bot commands: {e}")
 
             self._is_running = True
+            self._outbound_worker_task = asyncio.create_task(self._process_outbound_queue())
+            await self._flush_offline_queue()
             logger.info(f"Telegram Bot online. Admin: {self.admin_chat_id}")
             
             # Block until cancelled
@@ -316,6 +323,12 @@ class TelegramBot:
             logger.info("Stopping Telegram Bot...")
         finally:
             self._is_running = False
+            if self._outbound_worker_task and not self._outbound_worker_task.done():
+                self._outbound_worker_task.cancel()
+                try:
+                    await self._outbound_worker_task
+                except (asyncio.CancelledError, Exception):
+                    pass
             if self._app:
                 try:
                     updater = getattr(self._app, "updater", None)
@@ -330,6 +343,12 @@ class TelegramBot:
     async def stop(self) -> None:
         """Stop the telegram bot application cleanly."""
         self._is_running = False
+        if self._outbound_worker_task and not self._outbound_worker_task.done():
+            self._outbound_worker_task.cancel()
+            try:
+                await self._outbound_worker_task
+            except (asyncio.CancelledError, Exception):
+                pass
         if self._app:
             try:
                 updater = getattr(self._app, "updater", None)
@@ -341,18 +360,141 @@ class TelegramBot:
             except Exception as e:
                 logger.debug(f"Telegram bot stop cleanup: {e}")
 
+    async def _process_outbound_queue(self) -> None:
+        """Background worker consuming outbound queue with token-bucket rate limiter and RetryAfter backoff."""
+        from telegram.error import RetryAfter
+        while self._is_running:
+            try:
+                item = await self._outbound_queue.get()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                await asyncio.sleep(0.1)
+                continue
+
+            chat_id = item.get("chat_id")
+            text = item.get("text", "")
+            raw_text = item.get("raw_text", text)
+            parse_mode = item.get("parse_mode")
+            extra_kwargs = item.get("extra_kwargs", {})
+            is_critical = item.get("is_critical", False)
+
+            # Global rate limit: 25 msgs/sec -> min interval 0.04s
+            now = time.time()
+            global_delta = now - self._last_send_global
+            if global_delta < 0.04:
+                await asyncio.sleep(0.04 - global_delta)
+
+            # Per-chat rate limit: 1 msg/sec -> min interval 1.0s
+            if chat_id is not None:
+                chat_delta = time.time() - self._last_send_per_chat.get(chat_id, 0.0)
+                if chat_delta < 1.0:
+                    await asyncio.sleep(1.0 - chat_delta)
+
+            try:
+                if self._app and self._app.bot and chat_id is not None:
+                    await self._app.bot.send_message(
+                        chat_id=chat_id,
+                        text=text,
+                        parse_mode=parse_mode,
+                        **extra_kwargs,
+                    )
+                    self._last_send_global = time.time()
+                    self._last_send_per_chat[chat_id] = time.time()
+            except RetryAfter as ra:
+                raw_retry = getattr(ra, "retry_after", 1.0)
+                if isinstance(raw_retry, timedelta):
+                    retry_seconds = float(raw_retry.total_seconds())
+                else:
+                    try:
+                        retry_seconds = float(raw_retry)
+                    except (TypeError, ValueError):
+                        retry_seconds = 1.0
+                logger.warning(
+                    f"[TelegramOutbound] FloodControl RetryAfter({retry_seconds}s). Pausing queue..."
+                )
+                await asyncio.sleep(retry_seconds + 0.1)
+                await self._outbound_queue.put(item)
+            except Exception as send_err:
+                if parse_mode == ParseMode.HTML and "can't parse entities" in str(send_err).lower():
+                    try:
+                        if self._app and self._app.bot and chat_id is not None:
+                            await self._app.bot.send_message(
+                                chat_id=chat_id,
+                                text=raw_text,
+                                parse_mode=None,
+                                **extra_kwargs,
+                            )
+                            self._last_send_global = time.time()
+                            self._last_send_per_chat[chat_id] = time.time()
+                    except Exception as plain_err:
+                        logger.error(f"[TelegramOutbound] Plain text retry failed: {plain_err}")
+                        if is_critical:
+                            self._save_to_offline_buffer(item)
+                else:
+                    logger.error(f"[TelegramOutbound] Failed to send message to {chat_id}: {send_err}")
+                    if is_critical:
+                        self._save_to_offline_buffer(item)
+            finally:
+                self._outbound_queue.task_done()
+
+    def _save_to_offline_buffer(self, item: dict) -> None:
+        """Persist unsent critical alerts to disk buffer during network drop."""
+        try:
+            os.makedirs(os.path.dirname(self._offline_queue_file), exist_ok=True)
+            with open(self._offline_queue_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "chat_id": item.get("chat_id"),
+                    "text": item.get("raw_text") or item.get("text"),
+                    "parse_mode": item.get("parse_mode"),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }) + "\n")
+            logger.critical(f"[TelegramOutbound] Critical alert saved to offline buffer ({self._offline_queue_file})")
+        except Exception as disk_err:
+            logger.error(f"[TelegramOutbound] Failed to write offline buffer: {disk_err}")
+
+    async def _flush_offline_queue(self) -> None:
+        """Drain and send cached offline alerts once Telegram connection restores."""
+        if not os.path.exists(self._offline_queue_file):
+            return
+        try:
+            with open(self._offline_queue_file, "r", encoding="utf-8") as f:
+                lines = [line.strip() for line in f if line.strip()]
+            if not lines:
+                return
+            logger.info(f"[TelegramOutbound] Flushing {len(lines)} offline buffered messages...")
+            for line in lines:
+                try:
+                    entry = json.loads(line)
+                    await self._outbound_queue.put({
+                        "chat_id": entry.get("chat_id") or self.admin_chat_id,
+                        "text": f"⚠️ [RECOVERED OFFLINE ALERT - {entry.get('timestamp')}]\n\n{entry.get('text')}",
+                        "raw_text": entry.get("text"),
+                        "parse_mode": None,
+                        "is_critical": False,
+                    })
+                except Exception:
+                    pass
+            os.remove(self._offline_queue_file)
+        except Exception as flush_err:
+            logger.error(f"[TelegramOutbound] Error flushing offline queue: {flush_err}")
+
     async def send_notification(
         self,
         text: str,
         parse_mode: str = ParseMode.HTML,
         message_thread_id: Optional[int] = None,
+        is_critical: bool = False,
     ) -> None:
-        """Mengirim pesan notifikasi ke admin (digunakan scheduler/risk gate)."""
+        """Mengirim pesan notifikasi ke admin melalui outbound queue."""
         if not self._app or not self.admin_chat_id or not self._is_running:
             return
 
         is_html = (parse_mode == ParseMode.HTML)
         chunks = self._chunk_text(text, max_len=4000, sanitize_format=False, is_html=is_html)
+        critical_alert = is_critical or any(
+            k in text for k in ("RiskGate", "KILL", "DARURAT", "EMERGENCY", "Breach", "Liquidation", "DRAWDOW")
+        )
 
         for chunk in chunks:
             if not self._is_running:
@@ -360,32 +502,39 @@ class TelegramBot:
             extra_kwargs = {}
             if message_thread_id is not None:
                 extra_kwargs["message_thread_id"] = message_thread_id
-            try:
-                formatted_chunk = sanitize_telegram_html(chunk) if parse_mode == ParseMode.HTML else chunk
-                await self._app.bot.send_message(
-                    chat_id=self.admin_chat_id,
-                    text=formatted_chunk,
-                    parse_mode=parse_mode,
-                    **extra_kwargs,
-                )
-            except RuntimeError as r_err:
-                logger.debug(f"Telegram notification suppressed (client uninitialized or shutting down): {r_err}")
-                return
-            except Exception as e:
-                # H-4: Fallback to plain text on Markdown formatting failure
-                logger.warning(f"Notification send failed with {parse_mode} ({e}), retrying as plain text...")
+            formatted_chunk = sanitize_telegram_html(chunk) if parse_mode == ParseMode.HTML else chunk
+
+            if (
+                hasattr(self, "_outbound_queue")
+                and self._outbound_queue is not None
+                and self._outbound_worker_task is not None
+                and not self._outbound_worker_task.done()
+            ):
+                await self._outbound_queue.put({
+                    "chat_id": self.admin_chat_id,
+                    "text": formatted_chunk,
+                    "raw_text": chunk,
+                    "parse_mode": parse_mode,
+                    "extra_kwargs": extra_kwargs,
+                    "is_critical": critical_alert,
+                })
+            else:
                 try:
                     await self._app.bot.send_message(
                         chat_id=self.admin_chat_id,
-                        text=chunk,
-                        parse_mode=None,
+                        text=formatted_chunk,
+                        parse_mode=parse_mode,
                         **extra_kwargs,
                     )
-                except RuntimeError as r_err:
-                    logger.debug(f"Telegram plain text retry suppressed (client shutting down): {r_err}")
-                    return
-                except Exception as retry_err:
-                    logger.error(f"Notification plain text retry failed: {retry_err}")
+                except Exception as e:
+                    logger.warning(f"Direct send notification failed: {e}")
+                    if critical_alert:
+                        self._save_to_offline_buffer({
+                            "chat_id": self.admin_chat_id,
+                            "text": formatted_chunk,
+                            "raw_text": chunk,
+                            "parse_mode": parse_mode,
+                        })
 
     async def request_fallback_consent(self, prompt_text: str, tg_event: asyncio.Event, tg_result: dict) -> None:
         """Mengirim notifikasi inline keyboard untuk fallback consent ke admin."""
