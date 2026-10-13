@@ -118,7 +118,7 @@ class _WindowsCredManager:
             logger.debug(f"Failed to write credential to Windows Credential Manager: {e}")
             return False
 
-    def read_credential(self, target: str) -> Optional[str]:
+    def read_credential(self, target: str) -> str | None:
         if not self.available:
             return None
         try:
@@ -151,7 +151,7 @@ class _EncryptedFileVault:
     otherwise uses authenticated SHA256 keystream encryption with HMAC.
     """
 
-    def __init__(self, vault_path: Optional[Path] = None):
+    def __init__(self, vault_path: Path | None = None):
         if vault_path is None:
             from monika.infrastructure.infra.paths import DATA_DIR
 
@@ -163,7 +163,7 @@ class _EncryptedFileVault:
             self.key_path = self.vault_path.with_suffix(".key")
 
         self._fernet = None
-        self._raw_key: Optional[bytes] = None
+        self._raw_key: bytes | None = None
         self._init_backend()
 
     def _init_backend(self) -> None:
@@ -228,7 +228,7 @@ class _EncryptedFileVault:
         tag = hmac.new(self._raw_key, nonce + cipher, hashlib.sha256).digest()
         return nonce + tag + cipher
 
-    def _decrypt(self, ciphertext: bytes) -> Optional[str]:
+    def _decrypt(self, ciphertext: bytes) -> str | None:
         if not ciphertext or not self._raw_key:
             return None
         if self._fernet is not None:
@@ -274,7 +274,7 @@ class _EncryptedFileVault:
         plain = bytes(b ^ keystream[i] for i, b in enumerate(cipher))
         return plain.decode("utf-8", errors="replace")
 
-    def load_store(self) -> Dict[str, str]:
+    def load_store(self) -> dict[str, str]:
         if not self.vault_path.exists():
             return {}
         try:
@@ -286,7 +286,7 @@ class _EncryptedFileVault:
             logger.debug(f"Failed to read vault file: {e}")
         return {}
 
-    def save_store(self, data: Dict[str, str]) -> bool:
+    def save_store(self, data: dict[str, str]) -> bool:
         try:
             payload = json.dumps(data)
             encrypted = self._encrypt(payload)
@@ -311,15 +311,15 @@ class CredentialVault:
 
     TARGET_PREFIX = "MonikaTradingAgent:"
 
-    def __init__(self, target_prefix: Optional[str] = None):
+    def __init__(self, target_prefix: str | None = None):
         self.target_prefix = target_prefix or self.TARGET_PREFIX
-        self._mem_store: Dict[str, str] = {}
-        self._registered_secrets: Set[str] = set()
-        self._opaque_handles: Dict[str, str] = {}  # handle -> key
+        self._mem_store: dict[str, str] = {}
+        self._registered_secrets: set[str] = set()
+        self._opaque_handles: dict[str, str] = {}  # handle -> key
         self._win_mgr = _WindowsCredManager()
         self._file_vault = _EncryptedFileVault()
 
-    def get_secret(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    def get_secret(self, key: str, default: str | None = None) -> str | None:
         """
         Retrieve a secret by key.
         Checks:
@@ -416,7 +416,7 @@ class CredentialVault:
         self._opaque_handles[handle] = key
         return handle
 
-    def resolve_opaque_handle(self, handle: str) -> Optional[str]:
+    def resolve_opaque_handle(self, handle: str) -> str | None:
         """Resolve an opaque handle back to its secret value server-side."""
         if handle in self._opaque_handles:
             key = self._opaque_handles[handle]
@@ -471,7 +471,7 @@ class CredentialVault:
 class SensitiveMaskingFilter(logging.Filter):
     """Logging filter to automatically redact passwords and tokens from log records."""
 
-    def __init__(self, vault_instance: Optional[CredentialVault] = None):
+    def __init__(self, vault_instance: CredentialVault | None = None):
         super().__init__()
         self.vault = vault_instance or vault
 
@@ -498,7 +498,7 @@ class SensitiveMaskingFilter(logging.Filter):
 vault = CredentialVault()
 
 
-def get_secret(key: str, default: Optional[str] = None) -> Optional[str]:
+def get_secret(key: str, default: str | None = None) -> str | None:
     """Retrieve secret from global vault."""
     return vault.get_secret(key, default)
 
@@ -523,6 +523,6 @@ def create_opaque_handle(key: str) -> str:
     return vault.create_opaque_handle(key)
 
 
-def resolve_opaque_handle(handle: str) -> Optional[str]:
+def resolve_opaque_handle(handle: str) -> str | None:
     """Resolve opaque handle to plaintext secret."""
     return vault.resolve_opaque_handle(handle)

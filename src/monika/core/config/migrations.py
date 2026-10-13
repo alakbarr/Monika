@@ -4,7 +4,8 @@ Configuration schema versioning and forward-compatible migration engine.
 
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Any, Dict, Tuple, Union
+from collections.abc import Callable
 
 import yaml
 
@@ -14,20 +15,20 @@ CURRENT_CONFIG_VERSION = 3
 SUPPORT_FLOOR_VERSION = 1
 
 # Registry of version migrations: target_version -> callable(config) -> migrated_config
-MIGRATION_REGISTRY: Dict[int, Callable[[Dict[str, Any]], Dict[str, Any]]] = {}
+MIGRATION_REGISTRY: dict[int, Callable[[dict[str, Any]], dict[str, Any]]] = {}
 
 
 def register_migration(version: int):
     """Decorator to register a migration function for a specific target version."""
 
-    def decorator(fn: Callable[[Dict[str, Any]], Dict[str, Any]]):
+    def decorator(fn: Callable[[dict[str, Any]], dict[str, Any]]):
         MIGRATION_REGISTRY[version] = fn
         return fn
 
     return decorator
 
 
-def get_config_version(config: Dict[str, Any]) -> int:
+def get_config_version(config: dict[str, Any]) -> int:
     """Returns the integer schema version of the config dictionary."""
     if not isinstance(config, dict):
         return 0
@@ -57,7 +58,7 @@ def require_parseable_config(path: Union[str, Path]) -> None:
         ) from exc
 
 
-def migrate_config(config: Dict[str, Any]) -> Tuple[Dict[str, Any], bool]:
+def migrate_config(config: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     """
     Evaluates config schema version and applies sequential migrations up to CURRENT_CONFIG_VERSION.
     Returns (migrated_config_dict, was_modified).

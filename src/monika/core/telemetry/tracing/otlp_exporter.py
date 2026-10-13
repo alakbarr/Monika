@@ -33,7 +33,7 @@ class OTLPSpanExporter:
         self._flush_interval = flush_interval_s
         self._enabled = enabled
         self._buffer: deque = deque(maxlen=5000)
-        self._flush_thread: Optional[threading.Thread] = None
+        self._flush_thread: threading.Thread | None = None
 
         if self._enabled:
             self._start_flush_thread()
@@ -45,7 +45,7 @@ class OTLPSpanExporter:
     def is_enabled(self) -> bool:
         return self._enabled
 
-    def export_span(self, span_dict: Dict[str, Any]):
+    def export_span(self, span_dict: dict[str, Any]):
         """Queue a span for export. No-op if disabled."""
         if not self._enabled:
             return
@@ -53,7 +53,7 @@ class OTLPSpanExporter:
         if len(self._buffer) >= self._batch_size:
             self._flush()
 
-    def _to_otlp_span(self, span: Dict[str, Any]) -> Dict[str, Any]:
+    def _to_otlp_span(self, span: dict[str, Any]) -> dict[str, Any]:
         """Convert internal TraceRecord dict to OTLP span format."""
         attrs = []
         for k, v in span.get("attributes", {}).items():

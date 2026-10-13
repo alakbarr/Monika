@@ -44,7 +44,7 @@ def generate_candlestick_chart(
     timeframe: str = "H1",
     show_volume: bool = True,
     show_ma: tuple = (20, 50),
-    indicators: Optional[dict] = None,
+    indicators: dict | None = None,
 ) -> io.BytesIO:
     """
     Menghasilkan gambar PNG candlestick dari daftar baris data OHLCV.
@@ -147,7 +147,7 @@ async def generate_candlestick_chart_async(
     timeframe: str = "H1",
     show_volume: bool = True,
     show_ma: tuple = (20, 50),
-    indicators: Optional[dict] = None,
+    indicators: dict | None = None,
 ) -> io.BytesIO:
     """Async wrapper non-blocking untuk eksekusi render grafik di thread terpisah."""
     import asyncio
@@ -167,12 +167,12 @@ def generate_smc_candlestick_chart(
     ohlcv_rows: list[dict],
     symbol: str,
     timeframe: str = "H1",
-    fvg_list: Optional[list[dict]] = None,
-    swing_points: Optional[list[dict]] = None,
-    order_blocks: Optional[list[dict]] = None,
-    volume_profile: Optional[dict] = None,
+    fvg_list: list[dict] | None = None,
+    swing_points: list[dict] | None = None,
+    order_blocks: list[dict] | None = None,
+    volume_profile: dict | None = None,
     save_to_disk: bool = True,
-) -> tuple[io.BytesIO, Optional[str]]:
+) -> tuple[io.BytesIO, str | None]:
     """
     Renders dark-theme candlestick chart with SMC overlays:
     - Transparent Green/Red rectangles for Bullish/Bearish Fair Value Gaps (FVG)
@@ -321,7 +321,7 @@ def generate_equity_curve_chart(
     records: list[dict],
     title: str = "Monika Portfolio Equity Curve",
     save_to_disk: bool = True,
-) -> tuple[io.BytesIO, Optional[str]]:
+) -> tuple[io.BytesIO, str | None]:
     """
     Renders a dark-themed portfolio equity curve with drawdown fill band.
     """

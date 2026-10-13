@@ -23,7 +23,7 @@ CACHE_TTL_SECONDS = 86400  # 24 hours
 class ModelsDevSync:
     """Synchronizer for upstream dynamic LLM pricing data."""
 
-    _cached_data: Optional[Dict[str, Any]] = None
+    _cached_data: dict[str, Any] | None = None
     _last_checked: float = 0.0
 
     @classmethod
@@ -32,7 +32,7 @@ class ModelsDevSync:
         return CACHE_PATH
 
     @classmethod
-    def load_cache(cls) -> Dict[str, Any]:
+    def load_cache(cls) -> dict[str, Any]:
         """Load locally cached pricing data."""
         if cls._cached_data is not None and (time.time() - cls._last_checked < 300):
             return cls._cached_data
@@ -40,7 +40,7 @@ class ModelsDevSync:
         path = cls.get_cache_path()
         if os.path.exists(path):
             try:
-                with open(path, "r", encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     loaded = json.load(f)
                     if isinstance(loaded, dict):
                         cls._cached_data = loaded
@@ -51,7 +51,7 @@ class ModelsDevSync:
         return {}
 
     @classmethod
-    def save_cache(cls, data: Dict[str, Any], etag: Optional[str] = None):
+    def save_cache(cls, data: dict[str, Any], etag: str | None = None):
         """Persist pricing data and metadata to disk."""
         payload = {
             "_updated_at": time.time(),
@@ -68,7 +68,7 @@ class ModelsDevSync:
             logger.debug(f"[PricingSync] Failed saving pricing cache: {e}")
 
     @classmethod
-    async def sync_pricing(cls) -> Dict[str, Any]:
+    async def sync_pricing(cls) -> dict[str, Any]:
         """
         Conditionally fetch latest pricing using HTTP ETag validation.
         Returns the active models dictionary.
@@ -104,7 +104,7 @@ class ModelsDevSync:
         return cached.get("models", {})
 
     @classmethod
-    def get_model_pricing(cls, model_name: str) -> Optional[Dict[str, float]]:
+    def get_model_pricing(cls, model_name: str) -> dict[str, float] | None:
         """
         Lookup pricing rates (USD per 1M tokens) for a given model.
         Returns dict with keys: input, output, cache_read, cache_write (if found).

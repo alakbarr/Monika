@@ -9,7 +9,8 @@ import inspect
 import logging
 import random
 import time
-from typing import Any, Callable, Optional, Sequence, Tuple, Type, TypeVar, Union
+from typing import Any, Optional, Tuple, Type, TypeVar, Union
+from collections.abc import Callable, Sequence
 
 logger = logging.getLogger("TradingAgent.Utils.Retry")
 
@@ -39,9 +40,9 @@ def retryable(
     max_delay: float = 30.0,
     backoff_factor: float = 2.0,
     jitter: bool = True,
-    retryable_exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = (Exception,),
-    logger_instance: Optional[logging.Logger] = None,
-    on_retry_callback: Optional[Callable[[BaseException, int, float], None]] = None,
+    retryable_exceptions: Union[type[BaseException], tuple[type[BaseException], ...]] = (Exception,),
+    logger_instance: logging.Logger | None = None,
+    on_retry_callback: Callable[[BaseException, int, float], None] | None = None,
 ) -> Callable[[F], F]:
     """
     Decorator for retrying functions on transient failures with exponential backoff.
@@ -63,7 +64,7 @@ def retryable(
 
             @functools.wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-                last_exc: Optional[BaseException] = None
+                last_exc: BaseException | None = None
                 for attempt in range(max_retries + 1):
                     try:
                         return await func(*args, **kwargs)
@@ -92,7 +93,7 @@ def retryable(
 
             @functools.wraps(func)
             def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-                last_exc: Optional[BaseException] = None
+                last_exc: BaseException | None = None
                 for attempt in range(max_retries + 1):
                     try:
                         return func(*args, **kwargs)

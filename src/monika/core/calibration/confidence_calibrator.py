@@ -11,7 +11,7 @@ from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecor
 logger = logging.getLogger("TradingAgent.ConfidenceCalibrator")
 
 
-def fit_platt_scaling(confidences: List[float], outcomes: List[int], max_iter: int = 100) -> Tuple[float, float]:
+def fit_platt_scaling(confidences: list[float], outcomes: list[int], max_iter: int = 100) -> tuple[float, float]:
     """
     Fits logistic sigmoid parameters A and B using Newton-Raphson method with Platt's bayesian prior.
     Formula: P(Y=1 | z) = 1 / (1 + exp(-(A*z + B)))
@@ -64,7 +64,7 @@ def fit_platt_scaling(confidences: List[float], outcomes: List[int], max_iter: i
     return round(a, 4), round(b, 4)
 
 
-def fit_isotonic_pav(confidences: List[float], outcomes: List[int]) -> List[Dict[str, float]]:
+def fit_isotonic_pav(confidences: list[float], outcomes: list[int]) -> list[dict[str, float]]:
     """
     Pool-Adjacent-Violators (PAV) algorithm for non-parametric isotonic regression.
     Produces piecewise constant, monotonically non-decreasing calibrated probability mapping.
@@ -111,8 +111,8 @@ def fit_isotonic_pav(confidences: List[float], outcomes: List[int]) -> List[Dict
 
 def calibrate_probability(
     raw_conf: float,
-    platt_params: Optional[Tuple[float, float]] = None,
-    pav_bins: Optional[List[Dict[str, float]]] = None,
+    platt_params: tuple[float, float] | None = None,
+    pav_bins: list[dict[str, float]] | None = None,
 ) -> float:
     """
     Evaluates calibrated probability from raw model confidence using Platt Scaling or Isotonic PAV.
@@ -282,7 +282,7 @@ async def compute_confidence_calibration(session: AsyncSession) -> dict:
     }
 
 
-async def get_calibrated_confidence(session: AsyncSession, raw_conf: float, regime: Optional[str] = None) -> float:
+async def get_calibrated_confidence(session: AsyncSession, raw_conf: float, regime: str | None = None) -> float:
     """Reads saved Platt parameters from SystemConfig and returns calibrated probability."""
     if not session:
         return round(min(raw_conf - 0.05, 0.65), 4) if raw_conf >= 0.50 else round(max(raw_conf - 0.05, 0.0), 4)

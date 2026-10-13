@@ -30,8 +30,8 @@ class SubagentWorktree:
 
     def __init__(
         self,
-        subagent_id: Optional[str] = None,
-        base_dir: Optional[Path] = None,
+        subagent_id: str | None = None,
+        base_dir: Path | None = None,
         use_git: bool = True,
         auto_cleanup: bool = True,
     ):

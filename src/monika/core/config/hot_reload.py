@@ -17,14 +17,14 @@ class ConfigReloader:
         risk_gate=None,
         notifier=None,
         check_interval_seconds: float = 10.0,
-        subscribers: Optional[list] = None,
+        subscribers: list | None = None,
     ):
         self.config_path = config_path
         self.risk_gate = risk_gate
         self.notifier = notifier
         self.check_interval_seconds = check_interval_seconds
         self.subscribers = list(subscribers or [])
-        self.last_mtime: Optional[float] = None
+        self.last_mtime: float | None = None
         if os.path.exists(self.config_path):
             try:
                 self.last_mtime = os.path.getmtime(self.config_path)
@@ -46,7 +46,7 @@ class ConfigReloader:
             if self.last_mtime is not None and current_mtime <= self.last_mtime:
                 return False
 
-            with open(self.config_path, "r", encoding="utf-8") as f:
+            with open(self.config_path, encoding="utf-8") as f:
                 new_config = yaml.safe_load(f)
 
             if new_config and isinstance(new_config, dict):
@@ -102,7 +102,7 @@ class ConfigReloader:
             logger.error(f"[HotReload] Error reloading config from {self.config_path}: {e}")
         return False
 
-    async def watch_and_reload(self, shutdown_event: Optional[asyncio.Event] = None):
+    async def watch_and_reload(self, shutdown_event: asyncio.Event | None = None):
         """Continuous background task watching config file."""
         while shutdown_event is None or not shutdown_event.is_set():
             try:
@@ -137,7 +137,7 @@ class AtomicConfigWriter:
             os.path.join(base_dir, self.config_path) if not os.path.isabs(self.config_path) else self.config_path
         )
 
-        with open(target_path, "r", encoding="utf-8") as f:
+        with open(target_path, encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
 
         parts = dot_key.split(".")

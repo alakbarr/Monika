@@ -7,7 +7,7 @@ storing feedback events linked directly into the cycle event log for model evalu
 import logging
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Any, Dict, List, Optional
 
 from monika.core.telemetry.trading_cycle_event_log import (
@@ -27,10 +27,10 @@ class AnalysisFeedback:
     note: str
     created_at: str
     operator_id: str = "operator"
-    symbol: Optional[str] = None
-    target_event_seq: Optional[int] = None
+    symbol: str | None = None
+    target_event_seq: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -38,7 +38,7 @@ class OperatorFeedbackManager:
     """Manages operator feedback capture and persistence."""
 
     def __init__(self):
-        self._feedback_store: List[AnalysisFeedback] = []
+        self._feedback_store: list[AnalysisFeedback] = []
 
     def submit_feedback(
         self,
@@ -47,8 +47,8 @@ class OperatorFeedbackManager:
         category: str,
         note: str,
         operator_id: str = "operator",
-        symbol: Optional[str] = None,
-        target_event_seq: Optional[int] = None,
+        symbol: str | None = None,
+        target_event_seq: int | None = None,
     ) -> AnalysisFeedback:
         """Record human operator feedback and append it into the cycle event stream."""
         if not (1 <= rating <= 5):
@@ -60,7 +60,7 @@ class OperatorFeedbackManager:
             rating=rating,
             category=category,
             note=note,
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
             operator_id=operator_id,
             symbol=symbol,
             target_event_seq=target_event_seq,
@@ -82,13 +82,13 @@ class OperatorFeedbackManager:
         )
         return feedback
 
-    def get_feedback_for_cycle(self, cycle_id: str) -> List[AnalysisFeedback]:
+    def get_feedback_for_cycle(self, cycle_id: str) -> list[AnalysisFeedback]:
         """Return all feedback records for a given cycle."""
         return [fb for fb in self._feedback_store if fb.cycle_id == cycle_id]
 
 
 # Singleton instance
-_default_feedback_mgr: Optional[OperatorFeedbackManager] = None
+_default_feedback_mgr: OperatorFeedbackManager | None = None
 
 
 def get_operator_feedback_manager() -> OperatorFeedbackManager:

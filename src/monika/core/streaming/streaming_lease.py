@@ -20,7 +20,8 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, Callable, Dict, Optional
+from typing import Any, Dict, Optional
+from collections.abc import AsyncIterator, Callable
 
 logger = logging.getLogger("TradingAgent.Utils.StreamingLease")
 
@@ -53,8 +54,8 @@ class StreamWriterLeaseCoordinator:
 
     def __init__(self, default_duration_sec: float = 30.0):
         self.default_duration_sec = default_duration_sec
-        self._locks: Dict[str, asyncio.Lock] = {}
-        self._active_leases: Dict[str, LeaseRecord] = {}
+        self._locks: dict[str, asyncio.Lock] = {}
+        self._active_leases: dict[str, LeaseRecord] = {}
         self._master_lock = asyncio.Lock()
 
     async def _get_surface_lock(self, surface_id: str) -> asyncio.Lock:
@@ -69,7 +70,7 @@ class StreamWriterLeaseCoordinator:
         surface_id: str,
         owner: str = "default_worker",
         timeout_sec: float = 10.0,
-        duration_sec: Optional[float] = None,
+        duration_sec: float | None = None,
     ) -> AsyncIterator[StreamWriterLeaseHandle]:
         """
         Acquires an exclusive single-writer stream lease for a designated surface ID.
@@ -79,7 +80,7 @@ class StreamWriterLeaseCoordinator:
 
         try:
             await asyncio.wait_for(surface_lock.acquire(), timeout=timeout_sec)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise LeaseAcquisitionTimeoutError(
                 f"Timed out after {timeout_sec:.1f}s waiting for stream lease on surface '{surface_id}'."
             )
@@ -142,7 +143,7 @@ class StreamWriterLeaseHandle:
     async def write(
         self,
         chunk: str,
-        writer_fn: Optional[Callable[[str], Any]] = None,
+        writer_fn: Callable[[str], Any] | None = None,
     ) -> None:
         """
         Dispatches a chunk through writer_fn if lease is valid and active.

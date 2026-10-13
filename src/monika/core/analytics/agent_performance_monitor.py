@@ -3,7 +3,7 @@ Agent Performance Monitor - tracks accuracy metrics per agent type.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +17,7 @@ async def compute_agent_accuracy_report(
     session: AsyncSession, days_back: int = 30, horizon_start_h: int = 4, horizon_end_h: int = 8
 ) -> dict:
     """Compute accuracy metrics for each agent stage."""
-    since = datetime.now(timezone.utc) - timedelta(days=days_back)
+    since = datetime.now(UTC) - timedelta(days=days_back)
 
     # Stage 1 accuracy: Did currency bias align with subsequent price movement?
     from monika.infrastructure.database.models import FundamentalBrief, PriceOHLCV
@@ -59,7 +59,7 @@ async def compute_agent_accuracy_report(
             confidence = b_data.get("confidence", 0.5)
             brief_time = brief.generated_at
             if brief_time.tzinfo is None:
-                brief_time = brief_time.replace(tzinfo=timezone.utc)
+                brief_time = brief_time.replace(tzinfo=UTC)
 
             check_time_start = brief_time + timedelta(hours=horizon_start_h)
             check_time_end = brief_time + timedelta(hours=horizon_end_h)
@@ -161,7 +161,7 @@ async def compute_agent_accuracy_report(
                 else "BELOW_RANDOM - review Stage 1 prompts"
             ),
         },
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "days_analyzed": days_back,
     }
 

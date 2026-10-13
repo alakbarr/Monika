@@ -39,7 +39,7 @@ except ImportError:
 
 logger = logging.getLogger("TradingAgent.Risk.PortfolioOptimizer")
 
-DEFAULT_GROUP_MAP: Dict[str, str] = {
+DEFAULT_GROUP_MAP: dict[str, str] = {
     "EURUSD": "USD_MAJORS",
     "GBPUSD": "USD_MAJORS",
     "USDJPY": "USD_MAJORS",
@@ -55,7 +55,7 @@ DEFAULT_GROUP_MAP: Dict[str, str] = {
     "ETHUSD": "CRYPTO",
 }
 
-DEFAULT_GROUP_CAPS: Dict[str, float] = {
+DEFAULT_GROUP_CAPS: dict[str, float] = {
     "USD_MAJORS": 0.40,
     "METALS": 0.25,
     "ENERGY": 0.15,
@@ -65,7 +65,7 @@ DEFAULT_GROUP_CAPS: Dict[str, float] = {
 
 @dataclass(frozen=True)
 class OptimizationResult:
-    weights: Dict[str, float]
+    weights: dict[str, float]
     expected_return: float
     volatility: float
     sharpe_ratio: float
@@ -81,9 +81,9 @@ class PortfolioOptimizer:
 
     def __init__(
         self,
-        symbols: List[str],
+        symbols: list[str],
         cov_matrix: np.ndarray,
-        expected_returns: Optional[np.ndarray] = None,
+        expected_returns: np.ndarray | None = None,
     ):
         self.symbols = list(symbols)
         self.cov_matrix = np.asarray(cov_matrix, dtype=np.float64)
@@ -236,12 +236,12 @@ class PortfolioOptimizer:
 
     def solve_turnover_aware(
         self,
-        prev_weights: Optional[Union[Dict[str, float], np.ndarray]] = None,
+        prev_weights: Union[dict[str, float], np.ndarray] | None = None,
         churn_penalty: float = 0.5,
         lambda_risk: float = 1.0,
         max_weight: float = 0.40,
-        group_map: Optional[Dict[str, str]] = None,
-        group_caps: Optional[Dict[str, float]] = None,
+        group_map: dict[str, str] | None = None,
+        group_caps: dict[str, float] | None = None,
     ) -> OptimizationResult:
         """
         Turnover-aware quadratic utility optimizer:
@@ -390,7 +390,7 @@ class PortfolioOptimizer:
         )
 
     @staticmethod
-    def risk_parity(cov_matrix: np.ndarray, symbols: List[str]) -> OptimizationResult:
+    def risk_parity(cov_matrix: np.ndarray, symbols: list[str]) -> OptimizationResult:
         return PortfolioOptimizer(symbols, cov_matrix).solve_risk_parity_erc()
 
     @staticmethod
@@ -398,12 +398,12 @@ class PortfolioOptimizer:
         expected_returns: np.ndarray,
         cov_matrix: np.ndarray,
         current_weights: np.ndarray,
-        symbols: List[str],
+        symbols: list[str],
         lambda_risk: float = 1.0,
         gamma_turnover: float = 0.5,
         max_weight: float = 0.40,
-        group_map: Optional[Dict[str, str]] = None,
-        group_caps: Optional[Dict[str, float]] = None,
+        group_map: dict[str, str] | None = None,
+        group_caps: dict[str, float] | None = None,
     ) -> OptimizationResult:
         return PortfolioOptimizer(symbols, cov_matrix, expected_returns).solve_turnover_aware(
             prev_weights=current_weights,

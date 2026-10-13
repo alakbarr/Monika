@@ -17,16 +17,16 @@ import os
 import subprocess
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Observability.RunCard")
 
 
-def _get_git_info(repo_dir: str) -> Dict[str, Any]:
+def _get_git_info(repo_dir: str) -> dict[str, Any]:
     """Retrieves current Git commit hash, branch, and dirty status."""
-    info: Dict[str, Any] = {
+    info: dict[str, Any] = {
         "commit_hash": "unknown",
         "branch": "unknown",
         "is_dirty": False,
@@ -87,16 +87,16 @@ class RunCardGenerator:
 
     @staticmethod
     def generate(
-        settings: Optional[Dict[str, Any]] = None,
-        base_dir: Optional[str] = None,
-        output_path: Optional[str] = None,
-        extra_metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        settings: dict[str, Any] | None = None,
+        base_dir: str | None = None,
+        output_path: str | None = None,
+        extra_metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Builds a signed cryptographic run card dictionary.
         """
         now = time.time()
-        now_dt = datetime.now(timezone.utc).isoformat()
+        now_dt = datetime.now(UTC).isoformat()
         run_id = f"runcard_{int(now)}_{uuid.uuid4().hex[:8]}"
 
         root_dir = base_dir or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -184,7 +184,7 @@ class RunCardGenerator:
         return card
 
     @staticmethod
-    def verify(card_data: Dict[str, Any]) -> Tuple[bool, str]:
+    def verify(card_data: dict[str, Any]) -> tuple[bool, str]:
         """
         Validates the integrity and signature of a cryptographic run card.
         """
@@ -217,7 +217,7 @@ class RunCardGenerator:
         return True, f"Run card '{card_data.get('run_id')}' signature verified successfully."
 
     @staticmethod
-    def save(card_data: Dict[str, Any], filepath: str = "run_card.json") -> str:
+    def save(card_data: dict[str, Any], filepath: str = "run_card.json") -> str:
         """Saves run card dictionary to disk."""
         target = Path(filepath)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -226,21 +226,21 @@ class RunCardGenerator:
         return str(target.resolve())
 
     @staticmethod
-    def load(filepath: str = "run_card.json") -> Dict[str, Any]:
+    def load(filepath: str = "run_card.json") -> dict[str, Any]:
         """Loads run card dictionary from disk."""
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             return json.load(f)
 
 
 def generate_run_card(
-    settings: Optional[Dict[str, Any]] = None,
-    base_dir: Optional[str] = None,
-    output_path: Optional[str] = None,
-) -> Dict[str, Any]:
+    settings: dict[str, Any] | None = None,
+    base_dir: str | None = None,
+    output_path: str | None = None,
+) -> dict[str, Any]:
     """Top-level convenience function."""
     return RunCardGenerator.generate(settings=settings, base_dir=base_dir, output_path=output_path)
 
 
-def verify_run_card(card_data: Dict[str, Any]) -> Tuple[bool, str]:
+def verify_run_card(card_data: dict[str, Any]) -> tuple[bool, str]:
     """Top-level convenience function."""
     return RunCardGenerator.verify(card_data)

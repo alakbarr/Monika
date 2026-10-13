@@ -13,7 +13,7 @@ from .risk_gate_invariant import InvariantViolationError
 logger = logging.getLogger("TradingAgent.StateInvariants")
 
 
-def compute_state_digest(state: Dict[str, Any], protected_keys: tuple = ("symbol", "cycle_id", "macro_brief")) -> str:
+def compute_state_digest(state: dict[str, Any], protected_keys: tuple = ("symbol", "cycle_id", "macro_brief")) -> str:
     """Computes a deterministic hash of protected state keys."""
     sub_dict = {k: state.get(k) for k in protected_keys if k in state}
     try:
@@ -28,7 +28,7 @@ class StateFreezeGuard:
 
     def __init__(
         self,
-        state: Dict[str, Any],
+        state: dict[str, Any],
         protected_keys: tuple = ("symbol", "cycle_id", "macro_brief"),
         node_name: str = "node",
     ):
@@ -37,7 +37,7 @@ class StateFreezeGuard:
         self.node_name = node_name
         self.initial_digest: str = ""
 
-    def __enter__(self) -> "StateFreezeGuard":
+    def __enter__(self) -> StateFreezeGuard:
         self.initial_digest = compute_state_digest(self.state, self.protected_keys)
         return self
 
@@ -53,7 +53,7 @@ class StateFreezeGuard:
 
 
 def assert_state_immutability(
-    initial_state: Dict[str, Any], current_state: Dict[str, Any], protected_keys: tuple = ("symbol", "cycle_id")
+    initial_state: dict[str, Any], current_state: dict[str, Any], protected_keys: tuple = ("symbol", "cycle_id")
 ) -> None:
     """Asserts that protected keys in current_state match initial_state."""
     d1 = compute_state_digest(initial_state, protected_keys)

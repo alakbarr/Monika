@@ -14,12 +14,12 @@ from typesafe_sdk import Choice, ChoiceAnswer, Noul, NoulAnswer, Score, ScoreAns
 logger = logging.getLogger("TradingAgent.JevPrimitives")
 
 
-def schema_to_jev_questions(schema: dict, base_prompt: str = "") -> Dict[str, Union[Choice, Score, Noul]]:
+def schema_to_jev_questions(schema: dict, base_prompt: str = "") -> dict[str, Union[Choice, Score, Noul]]:
     """
     Dynamically converts a JSON Schema (commonly passed to classify_json)
     into a dictionary of TypeSafe Jev Questions (Choice, Score, Noul).
     """
-    questions: Dict[str, Union[Choice, Score, Noul]] = {}
+    questions: dict[str, Union[Choice, Score, Noul]] = {}
     if not isinstance(schema, dict):
         return questions
 
@@ -97,7 +97,7 @@ def schema_to_jev_questions(schema: dict, base_prompt: str = "") -> Dict[str, Un
     return questions
 
 
-from typing import Mapping
+from collections.abc import Mapping
 
 
 def jev_questions_to_schema(questions: Mapping[str, Any]) -> dict:
@@ -105,8 +105,8 @@ def jev_questions_to_schema(questions: Mapping[str, Any]) -> dict:
     Reverse schema synthesis: transforms a dictionary of TypeSafe Jev Questions (Choice, Score, Noul)
     into a strictly validated JSON Schema suitable for fallback LLMs (Gemini, Groq, Anthropic).
     """
-    properties: Dict[str, Any] = {}
-    required: List[str] = []
+    properties: dict[str, Any] = {}
+    required: list[str] = []
     if not isinstance(questions, dict):
         return {"type": "object", "properties": properties, "required": required}
 
@@ -149,9 +149,9 @@ def jev_questions_to_schema(questions: Mapping[str, Any]) -> dict:
     return {"type": "object", "properties": properties, "required": required, "additionalProperties": False}
 
 
-def list_to_jev_questions(questions_list: list) -> Dict[str, Union[Choice, Score, Noul]]:
+def list_to_jev_questions(questions_list: list) -> dict[str, Union[Choice, Score, Noul]]:
     """Convert a list of question specifications into a dictionary of Jev Questions."""
-    q_dict: Dict[str, Union[Choice, Score, Noul]] = {}
+    q_dict: dict[str, Union[Choice, Score, Noul]] = {}
     if not isinstance(questions_list, list):
         return q_dict
 
@@ -179,15 +179,15 @@ def list_to_jev_questions(questions_list: list) -> Dict[str, Union[Choice, Score
 
 
 def parse_jev_response_to_dict(
-    response: SystemOneResponse, schema: Optional[dict] = None, default_confidence_threshold: float = 0.7
-) -> Dict[str, Any]:
+    response: SystemOneResponse, schema: dict | None = None, default_confidence_threshold: float = 0.7
+) -> dict[str, Any]:
     """
     Transforms a Jev SystemOneResponse into the standard dict expected by classify_json callers.
     Preserves confidence scores and probabilities under metadata keys.
     """
-    result: Dict[str, Any] = {}
-    confidences: Dict[str, float] = {}
-    probabilities: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
+    confidences: dict[str, float] = {}
+    probabilities: dict[str, Any] = {}
     overall_confidence: float = 1.0
 
     properties = (schema or {}).get("properties", {}) if isinstance(schema, dict) else {}
@@ -260,7 +260,7 @@ def parse_jev_response_to_dict(
     return result
 
 
-def is_high_confidence(result: Dict[str, Any], min_confidence: float = 0.70) -> bool:
+def is_high_confidence(result: dict[str, Any], min_confidence: float = 0.70) -> bool:
     """Helper to check if a Jev result satisfies a confidence threshold."""
     if not isinstance(result, dict):
         return False
@@ -273,7 +273,7 @@ def is_high_confidence(result: Dict[str, Any], min_confidence: float = 0.70) -> 
 # ==============================================================================
 
 
-def build_news_classification_questions() -> Dict[str, Union[Choice, Score, Noul]]:
+def build_news_classification_questions() -> dict[str, Union[Choice, Score, Noul]]:
     """
     Speculative fan-out question set for financial news categorization & market impact.
     Single parallel pass answering 4 core dimensions.
@@ -316,7 +316,7 @@ def build_news_classification_questions() -> Dict[str, Union[Choice, Score, Noul
     }
 
 
-def build_prescreen_questions(symbol: str) -> Dict[str, Union[Noul, Score]]:
+def build_prescreen_questions(symbol: str) -> dict[str, Union[Noul, Score]]:
     """
     Fast prescreen check determining whether an asset setup warrants full Stage 2 analysis.
     """
@@ -341,7 +341,7 @@ def build_prescreen_questions(symbol: str) -> Dict[str, Union[Noul, Score]]:
     }
 
 
-def build_shadow_check_questions() -> Dict[str, Union[Noul, Score]]:
+def build_shadow_check_questions() -> dict[str, Union[Noul, Score]]:
     """
     Shadow consistency and hallucination detection questions for Stage 1 fundamental briefs.
     Decomposes macro validity checks into atomic snap judgments.
@@ -372,7 +372,7 @@ def build_shadow_check_questions() -> Dict[str, Union[Noul, Score]]:
     }
 
 
-def build_adjudication_questions() -> Dict[str, Union[Choice, Noul, Score]]:
+def build_adjudication_questions() -> dict[str, Union[Choice, Noul, Score]]:
     """
     Verification questions for Stage 2 specialist debate adjudication.
     Directly aligns with ADJUDICATION_VERIFY_SCHEMA while maintaining backwards compatibility.
@@ -443,7 +443,7 @@ def build_adjudication_questions() -> Dict[str, Union[Choice, Noul, Score]]:
     }
 
 
-def build_realtime_news_questions(open_positions: Optional[List[str]] = None) -> Dict[str, Union[Score, Noul]]:
+def build_realtime_news_questions(open_positions: list[str] | None = None) -> dict[str, Union[Score, Noul]]:
     """
     Instant news evaluation questions for active PositionGuardian & NewsWatcher protection.
     """
@@ -468,7 +468,7 @@ def build_realtime_news_questions(open_positions: Optional[List[str]] = None) ->
     }
 
 
-def build_fundamental_verifier_questions() -> Dict[str, Union[Noul, Score, Choice]]:
+def build_fundamental_verifier_questions() -> dict[str, Union[Noul, Score, Choice]]:
     """
     Evaluates internal logical consistency of macro fundamental brief.
     Replaces free-text contradiction strings with 4 atomic Noul contradiction types.
@@ -543,7 +543,7 @@ def build_fundamental_verifier_questions() -> Dict[str, Union[Noul, Score, Choic
     }
 
 
-def build_news_classification_verify_questions() -> Dict[str, Union[Choice, Noul]]:
+def build_news_classification_verify_questions() -> dict[str, Union[Choice, Noul]]:
     """
     Sub-100ms verification and calibration for classified news items.
     Handles High/Medium boundary calibration and Breaking downgrade skeptical check.
@@ -578,7 +578,7 @@ def build_news_classification_verify_questions() -> Dict[str, Union[Choice, Noul
     }
 
 
-def build_digest_consistency_questions() -> Dict[str, Union[Noul, Score, Choice]]:
+def build_digest_consistency_questions() -> dict[str, Union[Noul, Score, Choice]]:
     """
     Gating questions for News Digest internal consistency.
     Determines whether expensive LLM reconciliation is needed.
@@ -617,7 +617,7 @@ def build_digest_consistency_questions() -> Dict[str, Union[Noul, Score, Choice]
     }
 
 
-def build_position_guard_questions(symbol: str, direction: str) -> Dict[str, Union[Noul, Score]]:
+def build_position_guard_questions(symbol: str, direction: str) -> dict[str, Union[Noul, Score]]:
     """
     Real-time position threat assessment questions for PositionGuardian.
     """
@@ -644,7 +644,7 @@ def build_position_guard_questions(symbol: str, direction: str) -> Dict[str, Uni
     }
 
 
-def build_telegram_intent_questions() -> Dict[str, Union[Choice, Noul]]:
+def build_telegram_intent_questions() -> dict[str, Union[Choice, Noul]]:
     """
     Routes Telegram chat messages to appropriate model tier or direct handler.
     """
@@ -677,7 +677,7 @@ def build_telegram_intent_questions() -> Dict[str, Union[Choice, Noul]]:
     }
 
 
-def build_risk_gate_neutral_questions(symbol: str, direction: str) -> Dict[str, Union[Score, Noul, Choice]]:
+def build_risk_gate_neutral_questions(symbol: str, direction: str) -> dict[str, Union[Score, Noul, Choice]]:
     """
     System One questions for neutral/balanced risk gate evaluation.
     Replaces generative LLM with structured score & confidence gating.
@@ -725,7 +725,7 @@ def build_risk_gate_neutral_questions(symbol: str, direction: str) -> Dict[str, 
     }
 
 
-def build_risk_gate_conservative_questions(symbol: str, direction: str) -> Dict[str, Union[Score, Noul, Choice]]:
+def build_risk_gate_conservative_questions(symbol: str, direction: str) -> dict[str, Union[Score, Noul, Choice]]:
     """
     System One questions for conservative risk evaluation (capital preservation priority).
     """
@@ -767,7 +767,7 @@ def build_risk_gate_conservative_questions(symbol: str, direction: str) -> Dict[
     }
 
 
-def build_risk_gate_aggressive_questions(symbol: str, direction: str) -> Dict[str, Union[Score, Noul, Choice]]:
+def build_risk_gate_aggressive_questions(symbol: str, direction: str) -> dict[str, Union[Score, Noul, Choice]]:
     """
     System One questions for aggressive risk persona (alpha capture & asymmetric upside).
     """
@@ -807,7 +807,7 @@ def build_risk_gate_aggressive_questions(symbol: str, direction: str) -> Dict[st
 
 def build_pattern_context_questions(
     symbol: str = "", match_date_str: str = ""
-) -> Dict[str, Union[Choice, Noul, Score]]:
+) -> dict[str, Union[Choice, Noul, Score]]:
     """
     Fast System One verification of macroeconomic comparability for historical chart pattern matches.
     """
@@ -839,7 +839,7 @@ def build_pattern_context_questions(
     }
 
 
-def build_confluence_gate_questions(symbol: str = "", setup_type: str = "") -> Dict[str, Union[Noul, Choice, Score]]:
+def build_confluence_gate_questions(symbol: str = "", setup_type: str = "") -> dict[str, Union[Noul, Choice, Score]]:
     """
     Sub-100ms multi-factor confluence gate before committing compute or capital to a setup.
     """
@@ -873,7 +873,7 @@ def build_confluence_gate_questions(symbol: str = "", setup_type: str = "") -> D
 
 def build_session_timing_questions(
     session: str = "", minutes_to_close: int = 0
-) -> Dict[str, Union[Noul, Choice, Score]]:
+) -> dict[str, Union[Noul, Choice, Score]]:
     """
     Session timing and execution window evaluation for liquidity and slippage protection.
     """
@@ -905,7 +905,7 @@ def build_session_timing_questions(
     }
 
 
-def build_debate_evaluator_questions() -> Dict[str, Union[Noul, Choice, Score]]:
+def build_debate_evaluator_questions() -> dict[str, Union[Noul, Choice, Score]]:
     """
     Structured System One evaluation of specialist debate coherence and consensus stability.
     """
@@ -937,7 +937,7 @@ def build_debate_evaluator_questions() -> Dict[str, Union[Noul, Choice, Score]]:
     }
 
 
-def build_exit_review_prescreen(symbol: str, direction: str, thesis: str = "") -> Dict[str, Union[Noul, Score]]:
+def build_exit_review_prescreen(symbol: str, direction: str, thesis: str = "") -> dict[str, Union[Noul, Score]]:
     """
     Pre-screen questions for PositionExitReviewer to avoid full Stage 2 runs if thesis remains intact.
     """
@@ -962,7 +962,7 @@ def build_exit_review_prescreen(symbol: str, direction: str, thesis: str = "") -
     }
 
 
-def build_scenario_branch_questions() -> Dict[str, Union[Choice, Score]]:
+def build_scenario_branch_questions() -> dict[str, Union[Choice, Score]]:
     """
     Scenario Tree branch classifier for dominant market path and conviction.
     """
@@ -988,7 +988,7 @@ def build_scenario_branch_questions() -> Dict[str, Union[Choice, Score]]:
     }
 
 
-def build_adversarial_check_questions(symbol: str = "") -> Dict[str, Union[Choice, Noul, Score]]:
+def build_adversarial_check_questions(symbol: str = "") -> dict[str, Union[Choice, Noul, Score]]:
     """
     Structured System One questions for adversarial trade checks.
     Avoids free-text fields and evaluates risks via typed primitives.
@@ -1058,10 +1058,10 @@ async def classify_news_batch_with_jev(
     client: Any,
     batch: list,
     now_utc: Any,
-    calendar_priors: Optional[dict] = None,
+    calendar_priors: dict | None = None,
     macro_context: str = "",
     min_confidence: float = 0.60,
-) -> Optional[List[Dict[str, Any]]]:
+) -> list[dict[str, Any]] | None:
     """
     Classifies a batch of NewsItem instances using TypeSafe Jev System One in parallel.
     Option C: Hybrid Jev System 1 Triage + Gemini Escalation.
@@ -1108,7 +1108,7 @@ async def classify_news_batch_with_jev(
     if not hasattr(raw_jev, "system_one"):
         return None
 
-    async def _classify_item(idx: int, item: Any) -> Optional[Dict[str, Any]]:
+    async def _classify_item(idx: int, item: Any) -> dict[str, Any] | None:
         t_sys = round((now_utc - item.fetched_at).total_seconds() / 60) if getattr(item, "fetched_at", None) else None
         prior = calendar_priors.get(idx)
 
@@ -1131,7 +1131,7 @@ async def classify_news_batch_with_jev(
             "macro_context": macro_context[:500] if macro_context else None,
         }
 
-        questions: Dict[str, Union[Choice, Score, Noul]] = {
+        questions: dict[str, Union[Choice, Score, Noul]] = {
             "impact": Choice(
                 instructions="Classify the market impact level for financial trading (FX, Gold, Oil, Crypto, Equities):",
                 criteria={
@@ -1235,7 +1235,7 @@ async def classify_news_batch_with_jev(
                 impact_val = "MEDIUM"
 
             # Sentiments compilation
-            sentiments: List[str] = []
+            sentiments: list[str] = []
 
             # 1. Asset directional biases
             for asset in detected_assets[:5]:

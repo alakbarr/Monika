@@ -50,7 +50,7 @@ HARDLINE_BLOCKLIST_PATTERNS = [
 ]
 
 # Sensitive file and directory names that agent is forbidden from writing or deleting
-PROTECTED_TARGETS: Set[str] = {
+PROTECTED_TARGETS: set[str] = {
     ".env",
     ".env.example",
     "id_rsa",
@@ -63,7 +63,7 @@ PROTECTED_TARGETS: Set[str] = {
     "AIAgent_EA.mq5",  # Protected MQL5 EA source code
 }
 
-PROTECTED_DIRECTORIES: Set[str] = {
+PROTECTED_DIRECTORIES: set[str] = {
     ".ssh",
     ".aws",
     ".gnupg",
@@ -127,7 +127,7 @@ def unwrap_command_quotes(cmd_line: str) -> str:
     return cleaned
 
 
-def is_hardline_blocked_command(cmd_line: str) -> Tuple[bool, str]:
+def is_hardline_blocked_command(cmd_line: str) -> tuple[bool, str]:
     """
     Evaluate command line string against hardline blocklist.
     Checks raw command, unwrapped command, and de-obfuscated representations.
@@ -158,7 +158,7 @@ def _resolve_repo_root() -> Path:
     return p.parents[4] if len(p.parents) > 4 else p.parents[-1]
 
 
-def assert_safe_write_path(target_path: str, safe_root: Optional[str] = None) -> str:
+def assert_safe_write_path(target_path: str, safe_root: str | None = None) -> str:
     """
     Ensure the target write path is inside MONIKA_WRITE_SAFE_ROOT and does not target
     protected credentials or system files.
@@ -236,7 +236,7 @@ def is_secret_credential_file(filename: str) -> bool:
     return False
 
 
-def assert_safe_read_path(target_path: str, safe_root: Optional[str] = None) -> str:
+def assert_safe_read_path(target_path: str, safe_root: str | None = None) -> str:
     """
     Ensure the target read path is inside designated roots and does not read
     credentials, secret keys, or sensitive OS system files.

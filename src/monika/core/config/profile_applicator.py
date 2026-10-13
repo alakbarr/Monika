@@ -115,7 +115,7 @@ class ProfileApplicator:
     """Generates complete 49-role LLM configuration dictionary based on profile and available keys."""
 
     @staticmethod
-    def detect_available_providers(env_dict: Optional[Dict[str, str]] = None) -> Dict[str, bool]:
+    def detect_available_providers(env_dict: dict[str, str] | None = None) -> dict[str, bool]:
         """Detect which providers have valid API keys in environment or supplied dictionary."""
         env = env_dict if env_dict is not None else os.environ
         return {
@@ -132,8 +132,8 @@ class ProfileApplicator:
     def build_task_roles_config(
         cls,
         profile_key: str = "low_latency_cheap",
-        available_providers: Optional[Dict[str, bool]] = None,
-    ) -> Dict[str, Any]:
+        available_providers: dict[str, bool] | None = None,
+    ) -> dict[str, Any]:
         """
         Build complete task_roles dictionary for all 49 roles deterministically.
         Ensures NO orphan role falls back to an unconfigured provider.
@@ -252,7 +252,7 @@ class ProfileApplicator:
             "jev_debate_evaluator",
         }
 
-        task_roles_config: Dict[str, Any] = {}
+        task_roles_config: dict[str, Any] = {}
 
         for role in ALL_TASK_ROLES:
             if role == "chat_interactive_fast":
@@ -316,7 +316,7 @@ class ProfileApplicator:
         cls,
         settings_path: str,
         profile_key: str,
-        available_providers: Optional[Dict[str, bool]] = None,
+        available_providers: dict[str, bool] | None = None,
     ) -> bool:
         """
         Atomically applies profile to settings.yaml, fully replacing task_roles

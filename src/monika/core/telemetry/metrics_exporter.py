@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 class MetricsCollector:
     """Singleton thread-safe in-memory metric collector yang menghasilkan format Prometheus."""
 
-    _instance: Optional["MetricsCollector"] = None
+    _instance: MetricsCollector | None = None
     _lock = threading.RLock()
 
     def __new__(cls):
@@ -26,11 +26,11 @@ class MetricsCollector:
             return cls._instance
 
     def _init_metrics(self):
-        self._counters: Dict[str, float] = {}
-        self._gauges: Dict[str, float] = {}
-        self._labeled_counters: Dict[str, Dict[str, float]] = {}
-        self._labeled_gauges: Dict[str, Dict[str, float]] = {}
-        self._histograms: Dict[str, List[float]] = {}
+        self._counters: dict[str, float] = {}
+        self._gauges: dict[str, float] = {}
+        self._labeled_counters: dict[str, dict[str, float]] = {}
+        self._labeled_gauges: dict[str, dict[str, float]] = {}
+        self._histograms: dict[str, list[float]] = {}
 
         # Inisialisasi default baseline
         self.set_gauge("agent_uptime_seconds", 0.0)
@@ -42,7 +42,7 @@ class MetricsCollector:
         self.set_gauge("mt5_secondary_connected", 0.0)
         self.set_gauge("active_gateway_is_primary", 1.0)
 
-    def inc_counter(self, name: str, value: float = 1.0, labels: Optional[Dict[str, str]] = None):
+    def inc_counter(self, name: str, value: float = 1.0, labels: dict[str, str] | None = None):
         with self._lock:
             if labels:
                 label_key = ",".join(f'{k}="{v}"' for k, v in sorted(labels.items()))
@@ -52,7 +52,7 @@ class MetricsCollector:
             else:
                 self._counters[name] = self._counters.get(name, 0.0) + value
 
-    def set_gauge(self, name: str, value: float, labels: Optional[Dict[str, str]] = None):
+    def set_gauge(self, name: str, value: float, labels: dict[str, str] | None = None):
         with self._lock:
             if labels:
                 label_key = ",".join(f'{k}="{v}"' for k, v in sorted(labels.items()))

@@ -99,7 +99,7 @@ def assert_risk_gate_invariants(
             raise InvariantViolationError(f"Corrupt numerical parameters in proposal: {conv_err}")
 
 
-def check_risk_gate_invariant(context: Dict[str, Any]) -> Any:
+def check_risk_gate_invariant(context: dict[str, Any]) -> Any:
     """
     InvariantRegistry adapter for risk gate invariant.
     Returns InvariantResult.

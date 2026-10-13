@@ -40,9 +40,9 @@ class ExecutionSimulationResult:
     edge_to_drag_ratio: float
     median_spread: float
     current_spread: float
-    scenarios: Dict[str, SlippageScenario]
-    rejection_reason: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    scenarios: dict[str, SlippageScenario]
+    rejection_reason: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 class ExecutionSimulator:
@@ -50,7 +50,7 @@ class ExecutionSimulator:
     Pre-execution sandbox for simulating tick slippage resilience.
     """
 
-    def __init__(self, settings: Optional[dict] = None, mt5_client: Optional[Any] = None):
+    def __init__(self, settings: dict | None = None, mt5_client: Any | None = None):
         self.settings = settings or {}
         risk_cfg = self.settings.get("trading", {}).get("risk", {})
         self.min_edge_to_drag_ratio = float(risk_cfg.get("min_edge_to_slippage_ratio", 1.1))
@@ -58,13 +58,13 @@ class ExecutionSimulator:
         self.mt5_client = mt5_client
 
     async def fetch_recent_ticks(
-        self, symbol: str, count: int = 100, session: Optional[AsyncSession] = None
-    ) -> List[Dict[str, float]]:
+        self, symbol: str, count: int = 100, session: AsyncSession | None = None
+    ) -> list[dict[str, float]]:
         """
         Retrieves up to `count` recent price ticks.
         Queries MT5 COM API if available; otherwise derives micro-ticks from recent OHLCV bars.
         """
-        ticks: List[Dict[str, float]] = []
+        ticks: list[dict[str, float]] = []
 
         # 1. Try MT5 COM API
         if self.mt5_client is not None:
@@ -117,8 +117,8 @@ class ExecutionSimulator:
         stop_loss: float,
         take_profit: float,
         volume: float = 0.1,
-        ticks: Optional[List[Dict[str, float]]] = None,
-        session: Optional[AsyncSession] = None,
+        ticks: list[dict[str, float]] | None = None,
+        session: AsyncSession | None = None,
     ) -> ExecutionSimulationResult:
         """
         Runs tick-level market replay and stress tests across 3 slippage scenarios.
@@ -161,7 +161,7 @@ class ExecutionSimulator:
         # Scenario 2: Elevated (1.5x median spread)
         # Scenario 3: Stress Liquidity Shock (3.0x median spread)
         multipliers = {"baseline": 1.0, "elevated": 1.5, "stress": 3.0}
-        scenarios: Dict[str, SlippageScenario] = {}
+        scenarios: dict[str, SlippageScenario] = {}
 
         for sc_name, mult in multipliers.items():
             sc_spread = median_spread * mult

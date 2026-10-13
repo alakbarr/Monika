@@ -53,11 +53,11 @@ class StatefulStreamScrubber:
 
         self._buffer: str = ""
         self._in_think: bool = False
-        self._in_internal_tag: Optional[str] = None
-        self._accumulated_thinking: List[str] = []
+        self._in_internal_tag: str | None = None
+        self._accumulated_thinking: list[str] = []
 
         # Build set of monitored tags
-        self._target_tags: Set[str] = set()
+        self._target_tags: set[str] = set()
         if self.strip_thinking:
             self._target_tags.update(["think", "thought"])
         if self.strip_internal_tags:
@@ -79,7 +79,7 @@ class StatefulStreamScrubber:
             return ""
 
         self._buffer += delta
-        output_chunks: List[str] = []
+        output_chunks: list[str] = []
 
         while self._buffer:
             if self._in_think:

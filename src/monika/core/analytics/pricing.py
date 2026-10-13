@@ -33,8 +33,8 @@ class Price:
     cached_input: float  # $ / 1M cached input token (prompt caching)
     output: float  # $ / 1M output token
     note: str = ""
-    tier: Optional[PricingTier] = None
-    cache_write: Optional[float] = None  # $ / 1M cache creation tokens
+    tier: PricingTier | None = None
+    cache_write: float | None = None  # $ / 1M cache creation tokens
 
     @property
     def effective_cache_write(self) -> float:
@@ -44,7 +44,7 @@ class Price:
 
 
 # Harga resmi USD per 1.000.000 token
-PRICING: Dict[str, Price] = {
+PRICING: dict[str, Price] = {
     # --- Anthropic Claude Models ---
     "claude-opus-5": Price(5.00, 0.50, 25.00),
     "opus-5": Price(5.00, 0.50, 25.00),
@@ -152,7 +152,7 @@ PRICING: Dict[str, Price] = {
 _FREE = Price(0.0, 0.0, 0.0, "Free tier / Local execution ($0)")
 
 # Pemetaan alias dan format OpenRouter (e.g. org/model -> model_key)
-OPENROUTER_PRICING_MAP: Dict[str, str] = {
+OPENROUTER_PRICING_MAP: dict[str, str] = {
     # Anthropic
     "anthropic/claude-opus-5": "claude-opus-5",
     "anthropic/claude-sonnet-5": "claude-sonnet-5",
@@ -376,7 +376,7 @@ def infer_provider_from_model(model_name: str) -> str:
     return "unknown"
 
 
-def is_free_tier(model_name: str, provider: Optional[str] = None, is_direct_free_tier: Optional[bool] = None) -> bool:
+def is_free_tier(model_name: str, provider: str | None = None, is_direct_free_tier: bool | None = None) -> bool:
     """
     Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
     Mendukung Gemini (GEMINI_API_KEYS), Groq Developer Tier, OpenRouter :free & openrouter/free, Ollama, dan 9Router Free Tier.
@@ -521,9 +521,9 @@ def cost_usd(
     input_tokens: int,
     output_tokens: int,
     cached_tokens: int = 0,
-    provider: Optional[str] = None,
-    is_direct_free_tier: Optional[bool] = None,
-    is_already_uncached: Optional[bool] = None,
+    provider: str | None = None,
+    is_direct_free_tier: bool | None = None,
+    is_already_uncached: bool | None = None,
     cache_creation_tokens: int = 0,
 ) -> float:
     """
@@ -596,7 +596,7 @@ def cost_usd(
 def cost_from_canonical(
     model_name: str,
     usage: CanonicalUsage,
-    provider: Optional[str] = None,
+    provider: str | None = None,
 ) -> float:
     """Calculate USD cost directly from CanonicalUsage."""
     return cost_usd(
@@ -610,7 +610,7 @@ def cost_from_canonical(
     )
 
 
-async def fetch_openrouter_pricing_async(cache_path: Optional[str] = None) -> Dict[str, Price]:
+async def fetch_openrouter_pricing_async(cache_path: str | None = None) -> dict[str, Price]:
     """
     Fetches live model pricing from OpenRouter API (/api/v1/models) with local disk caching.
     Provides instant fallback to static PRICING dictionary on network failure or rate limit.
@@ -628,7 +628,7 @@ async def fetch_openrouter_pricing_async(cache_path: Optional[str] = None) -> Di
     if cache_file.exists():
         try:
             if time.time() - cache_file.stat().st_mtime < 86400:
-                with open(cache_file, "r", encoding="utf-8") as f:
+                with open(cache_file, encoding="utf-8") as f:
                     data = json.load(f)
                     res = {}
                     for m_id, p in data.items():
@@ -649,7 +649,7 @@ async def fetch_openrouter_pricing_async(cache_path: Optional[str] = None) -> Di
                 if resp.status == 200:
                     body = await resp.json()
                     models_data = body.get("data", [])
-                    extracted: Dict[str, Dict[str, float]] = {}
+                    extracted: dict[str, dict[str, float]] = {}
                     for item in models_data:
                         mid = item.get("id")
                         pricing = item.get("pricing", {})

@@ -26,24 +26,24 @@ class RiskDataProviderProtocol(Protocol):
     async def get_open_positions(
         self,
         is_paper: bool = False,
-        session: Optional[Any] = None,
-    ) -> List[Dict[str, Any]]:
+        session: Any | None = None,
+    ) -> list[dict[str, Any]]:
         """Return list of active open positions as standardized dictionary records."""
         ...
 
     async def get_account_equity_and_balance(
         self,
         is_paper: bool = False,
-        session: Optional[Any] = None,
-    ) -> Tuple[float, float]:
+        session: Any | None = None,
+    ) -> tuple[float, float]:
         """Return (equity, balance) in account base currency (USD)."""
         ...
 
     async def get_daily_trades_count(
         self,
-        symbol: Optional[str] = None,
+        symbol: str | None = None,
         is_paper: bool = False,
-        session: Optional[Any] = None,
+        session: Any | None = None,
     ) -> int:
         """Return number of executed trades for today."""
         ...
@@ -51,15 +51,15 @@ class RiskDataProviderProtocol(Protocol):
     async def get_recent_drawdown(
         self,
         is_paper: bool = False,
-        session: Optional[Any] = None,
+        session: Any | None = None,
     ) -> float:
         """Return current intraday drawdown percentage relative to peak equity."""
         ...
 
     async def get_recent_vix(
         self,
-        session: Optional[Any] = None,
-    ) -> Optional[float]:
+        session: Any | None = None,
+    ) -> float | None:
         """Return latest available VIX index level."""
         ...
 
@@ -67,7 +67,7 @@ class RiskDataProviderProtocol(Protocol):
         self,
         key: str,
         default: Any = None,
-        session: Optional[Any] = None,
+        session: Any | None = None,
     ) -> Any:
         """Retrieve dynamic configuration override by key."""
         ...
@@ -76,7 +76,7 @@ class RiskDataProviderProtocol(Protocol):
         self,
         key: str,
         default: Any = None,
-        session: Optional[Any] = None,
+        session: Any | None = None,
     ) -> Any:
         """Retrieve user configuration preference value."""
         ...
@@ -86,15 +86,15 @@ class RiskDataProviderProtocol(Protocol):
         symbol: str,
         timeframe: str = "H1",
         limit: int = 100,
-        session: Optional[Any] = None,
-    ) -> List[Dict[str, Any]]:
+        session: Any | None = None,
+    ) -> list[dict[str, Any]]:
         """Retrieve OHLCV price bars for volatility, correlation, or indicator checks."""
         ...
 
     async def get_loss_streak(
         self,
         is_paper: bool = False,
-        session: Optional[Any] = None,
+        session: Any | None = None,
     ) -> int:
         """Return count of consecutive realized losses."""
         ...
@@ -103,9 +103,9 @@ class RiskDataProviderProtocol(Protocol):
         self,
         start_time: datetime,
         end_time: datetime,
-        currencies: Optional[List[str]] = None,
-        session: Optional[Any] = None,
-    ) -> List[Dict[str, Any]]:
+        currencies: list[str] | None = None,
+        session: Any | None = None,
+    ) -> list[dict[str, Any]]:
         """Retrieve high and medium impact economic calendar events in time window."""
         ...
 
@@ -114,23 +114,23 @@ class RiskDataProviderProtocol(Protocol):
         symbol: str,
         timeframe: str = "H1",
         max_age_hours: float = 8.0,
-        session: Optional[Any] = None,
-        as_of: Optional[datetime] = None,
-    ) -> Optional[Dict[str, Any]]:
+        session: Any | None = None,
+        as_of: datetime | None = None,
+    ) -> dict[str, Any] | None:
         """Retrieve most recent cached TimesFM forecast quantiles for symbol."""
         ...
 
     async def get_latest_risk_state(
         self,
-        session: Optional[Any] = None,
-    ) -> Optional[Dict[str, Any]]:
+        session: Any | None = None,
+    ) -> dict[str, Any] | None:
         """Retrieve latest recorded RiskState row as a dictionary."""
         ...
 
     async def record_risk_state(
         self,
-        payload: Dict[str, Any],
-        session: Optional[Any] = None,
+        payload: dict[str, Any],
+        session: Any | None = None,
     ) -> None:
         """Persist or update current daily RiskState metrics."""
         ...
@@ -139,7 +139,7 @@ class RiskDataProviderProtocol(Protocol):
         self,
         key: str,
         value: Any,
-        session: Optional[Any] = None,
+        session: Any | None = None,
     ) -> None:
         """Update or insert a dynamic configuration value."""
         ...
@@ -147,8 +147,8 @@ class RiskDataProviderProtocol(Protocol):
     async def get_conflicting_order(
         self,
         symbol: str,
-        session: Optional[Any] = None,
-    ) -> Optional[Dict[str, Any]]:
+        session: Any | None = None,
+    ) -> dict[str, Any] | None:
         """Retrieve any pending or submitted order for symbol to prevent double submission."""
         ...
 
@@ -156,18 +156,18 @@ class RiskDataProviderProtocol(Protocol):
         self,
         symbol: str,
         window_minutes: int = 60,
-        session: Optional[Any] = None,
+        session: Any | None = None,
     ) -> int:
         """Count realized stop-loss hits in the last window_minutes for cooldown."""
         ...
 
     async def get_symbol_closes(
         self,
-        symbols: List[str],
+        symbols: list[str],
         timeframe: str = "H1",
         limit: int = 100,
-        session: Optional[Any] = None,
-    ) -> Dict[str, List[float]]:
+        session: Any | None = None,
+    ) -> dict[str, list[float]]:
         """Retrieve closing prices series for multiple symbols for correlation calculation."""
         ...
 
@@ -178,7 +178,7 @@ class InstrumentRegistryProtocol(Protocol):
     Protocol for looking up instrument trading specifications (tick value, min lots, step).
     """
 
-    def get_instrument_spec(self, symbol: str) -> Optional[Dict[str, Any]]:
+    def get_instrument_spec(self, symbol: str) -> dict[str, Any] | None:
         """Return trading specification dict for symbol or None if unlisted."""
         ...
 
@@ -189,16 +189,16 @@ class ApprovalTransportProtocol(Protocol):
     Protocol for cryptographic sealing and transport verification of approval requests.
     """
 
-    def seal_request(self, payload: Dict[str, Any]) -> str:
+    def seal_request(self, payload: dict[str, Any]) -> str:
         """Create deterministic tamper-proof signature or token for approval payload."""
         ...
 
-    def verify_decision(self, request_payload: Dict[str, Any], token: str) -> bool:
+    def verify_decision(self, request_payload: dict[str, Any], token: str) -> bool:
         """Verify authenticity and integrity of approved decision token."""
         ...
 
 
-_risk_data_provider_factory: Optional[Any] = None
+_risk_data_provider_factory: Any | None = None
 
 
 def register_risk_data_provider_factory(factory: Any) -> None:
@@ -208,8 +208,8 @@ def register_risk_data_provider_factory(factory: Any) -> None:
 
 
 def get_default_risk_data_provider(
-    settings: Optional[Dict[str, Any]] = None,
-    session: Optional[Any] = None,
+    settings: dict[str, Any] | None = None,
+    session: Any | None = None,
 ) -> Any:
     """Dynamically resolves default RiskDataProvider without static infrastructure coupling."""
     global _risk_data_provider_factory

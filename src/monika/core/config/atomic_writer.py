@@ -70,7 +70,7 @@ class AtomicConfigWriter:
         return False
 
     @classmethod
-    def _sync_dict_to_ruamel(cls, dest: Any, src: Dict[str, Any], preserve_env_templates: bool = True) -> None:
+    def _sync_dict_to_ruamel(cls, dest: Any, src: dict[str, Any], preserve_env_templates: bool = True) -> None:
         """Recursively synchronizes a dictionary into a ruamel.yaml CommentedMap while preserving comments."""
         if not hasattr(dest, "items"):
             return
@@ -87,7 +87,7 @@ class AtomicConfigWriter:
                 del dest[k]
 
     @classmethod
-    def backup(cls, path: Union[str, Path], max_backups: int = DEFAULT_MAX_BACKUPS) -> Optional[Path]:
+    def backup(cls, path: Union[str, Path], max_backups: int = DEFAULT_MAX_BACKUPS) -> Path | None:
         """Creates a timestamped backup of the target config file in a 'backups' subdirectory."""
         target = Path(path).resolve()
         if not target.exists():
@@ -121,7 +121,7 @@ class AtomicConfigWriter:
     def write(
         cls,
         path: Union[str, Path],
-        data: Dict[str, Any],
+        data: dict[str, Any],
         *,
         create_backup: bool = True,
     ) -> Path:
@@ -151,7 +151,7 @@ class AtomicConfigWriter:
 
             if target.exists():
                 try:
-                    with open(target, "r", encoding="utf-8") as f:
+                    with open(target, encoding="utf-8") as f:
                         doc = ryaml.load(f)
                     if isinstance(doc, dict):
                         cls._sync_dict_to_ruamel(doc, sanitized_data)
@@ -198,7 +198,7 @@ class AtomicConfigWriter:
     def update_in_place(
         cls,
         path: Union[str, Path],
-        update_dict: Dict[str, Any],
+        update_dict: dict[str, Any],
         *,
         create_backup: bool = True,
     ) -> Path:
@@ -219,14 +219,14 @@ class AtomicConfigWriter:
         ryaml.preserve_quotes = True
 
         if target.exists():
-            with open(target, "r", encoding="utf-8") as f:
+            with open(target, encoding="utf-8") as f:
                 doc = ryaml.load(f) or {}
         else:
             doc = {}
 
         sanitized_update = cls._sanitize_scalars(update_dict)
 
-        def _recursive_merge(dest: Any, src: Dict[str, Any]):
+        def _recursive_merge(dest: Any, src: dict[str, Any]):
             for k, v in src.items():
                 if k in dest and cls._is_env_template(dest[k]) and isinstance(v, str) and not cls._is_env_template(v):
                     continue

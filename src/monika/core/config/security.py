@@ -6,7 +6,7 @@ Prevents unauthorized modifications to critical system variables.
 
 from typing import FrozenSet
 
-BLOCKED_ENV_VARS: FrozenSet[str] = frozenset(
+BLOCKED_ENV_VARS: frozenset[str] = frozenset(
     {"PATH", "PYTHONPATH", "LD_PRELOAD", "SHELL", "COMSPEC", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "DATABASE_URL"}
 )
 

@@ -14,8 +14,9 @@ import asyncio
 import inspect
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Set, Type, TypeVar, Union
+from datetime import datetime, timezone, UTC
+from typing import Any, Dict, List, Optional, Set, Type, TypeVar, Union
+from collections.abc import Callable, Coroutine
 
 logger = logging.getLogger("TradingAgent.EventBus")
 
@@ -31,7 +32,7 @@ E = TypeVar("E", bound="AppEvent")
 class AppEvent:
     """Base class for all application domain events."""
 
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True)
@@ -74,7 +75,7 @@ class RiskBreachEvent(AppEvent):
     """Risk gate or drawndown threshold breach event."""
 
     breach_type: str = ""
-    symbol: Optional[str] = None
+    symbol: str | None = None
     details: dict = field(default_factory=dict)
     severity: str = "warning"  # 'warning', 'critical', 'fatal'
 
@@ -112,11 +113,11 @@ class PreOrderEvent(AppEvent):
 class PostFillEvent(AppEvent):
     """Domain hook triggered immediately after order fill confirmation."""
 
-    ticket: Optional[int] = None
+    ticket: int | None = None
     symbol: str = ""
     volume: float = 0.0
     price: float = 0.0
-    fill_time: Optional[datetime] = None
+    fill_time: datetime | None = None
     context: dict = field(default_factory=dict)
 
 
@@ -129,7 +130,7 @@ class PostFillEvent(AppEvent):
 class Subscription:
     """Handler subscription record with priority ordering."""
 
-    event_type: Type[AppEvent]
+    event_type: type[AppEvent]
     handler: Callable[..., Union[Coroutine[Any, Any, None], Any]]
     priority: int = 0  # Higher integer = earlier execution
 
@@ -150,13 +151,13 @@ class EventBus:
     - Queue-based buffered streaming
     """
 
-    _default_instance: Optional["EventBus"] = None
+    _default_instance: EventBus | None = None
 
     def __init__(self):
-        self._subscribers: Dict[Type[AppEvent], List[Subscription]] = {}
-        self._queues: Dict[str, asyncio.Queue] = {}
-        self._queue_stats: Dict[str, Dict[str, int]] = {}
-        self._worker_tasks: Dict[str, asyncio.Task] = {}
+        self._subscribers: dict[type[AppEvent], list[Subscription]] = {}
+        self._queues: dict[str, asyncio.Queue] = {}
+        self._queue_stats: dict[str, dict[str, int]] = {}
+        self._worker_tasks: dict[str, asyncio.Task] = {}
         self._running: bool = True
 
     # --------------------------------------------------------------------------
@@ -165,7 +166,7 @@ class EventBus:
 
     def subscribe(
         self,
-        event_type: Type[E],
+        event_type: type[E],
         handler: Callable[[E], Union[Coroutine[Any, Any, None], Any]],
         priority: int = 0,
     ) -> Callable[[E], Union[Coroutine[Any, Any, None], Any]]:
@@ -198,7 +199,7 @@ class EventBus:
 
     def unsubscribe(
         self,
-        event_type: Type[E],
+        event_type: type[E],
         handler: Callable[[E], Union[Coroutine[Any, Any, None], Any]],
     ) -> bool:
         """
@@ -219,9 +220,9 @@ class EventBus:
             )
         return removed
 
-    def get_subscribers(self, event_type: Type[AppEvent]) -> List[Subscription]:
+    def get_subscribers(self, event_type: type[AppEvent]) -> list[Subscription]:
         """Get all subscriptions matching the event type, including polymorphic bases."""
-        matching: List[Subscription] = []
+        matching: list[Subscription] = []
         for registered_type, subs in self._subscribers.items():
             if issubclass(event_type, registered_type):
                 matching.extend(subs)
@@ -229,7 +230,7 @@ class EventBus:
         matching.sort(key=lambda s: s.priority, reverse=True)
         # Deduplicate by handler preserving highest registered priority
         seen_handlers = set()
-        deduped: List[Subscription] = []
+        deduped: list[Subscription] = []
         for s in matching:
             if s.handler not in seen_handlers:
                 seen_handlers.add(s.handler)
@@ -240,7 +241,7 @@ class EventBus:
     # Publishing & Dispatch
     # --------------------------------------------------------------------------
 
-    async def publish(self, event: AppEvent) -> List[Any]:
+    async def publish(self, event: AppEvent) -> list[Any]:
         """
         Publish an event to all matching subscribers with full exception isolation.
 
@@ -261,13 +262,13 @@ class EventBus:
             return []
 
         # Group by priority to respect order while allowing parallel execution within same priority
-        priority_groups: Dict[int, List[Subscription]] = {}
+        priority_groups: dict[int, list[Subscription]] = {}
         for sub in subscriptions:
             priority_groups.setdefault(sub.priority, []).append(sub)
 
         # Priorities descending
         sorted_priorities = sorted(priority_groups.keys(), reverse=True)
-        all_results: List[Any] = []
+        all_results: list[Any] = []
 
         for p in sorted_priorities:
             group = priority_groups[p]
@@ -295,7 +296,7 @@ class EventBus:
 
         return all_results
 
-    def publish_nowait(self, event: AppEvent) -> Optional[asyncio.Task]:
+    def publish_nowait(self, event: AppEvent) -> asyncio.Task | None:
         """
         Non-blocking fire-and-forget publish scheduled on the active asyncio event loop.
         Attaches a done callback to capture and log any unhandled task exceptions.
@@ -319,7 +320,7 @@ class EventBus:
             logger.warning("[EventBus] publish_nowait called without running event loop.")
             return None
 
-    def publish_threadsafe(self, event: AppEvent, loop: Optional[asyncio.AbstractEventLoop] = None) -> Any:
+    def publish_threadsafe(self, event: AppEvent, loop: asyncio.AbstractEventLoop | None = None) -> Any:
         """
         Thread-safe publish for external background threads (MT5 COM worker, EA bridge).
         Dispatches coroutine safely to the main asyncio loop.
@@ -374,7 +375,7 @@ class EventBus:
                 )
         return current_val
 
-    async def publish_bail(self, event: AppEvent) -> Optional[Any]:
+    async def publish_bail(self, event: AppEvent) -> Any | None:
         """
         Bail dispatch mode: invokes subscribers sequentially in priority order,
         stopping and returning immediately upon the first truthy / non-None result.
@@ -419,7 +420,7 @@ class EventBus:
             }
         return self._queues[queue_name]
 
-    def get_queue_stats(self, queue_name: str = "default") -> Dict[str, Any]:
+    def get_queue_stats(self, queue_name: str = "default") -> dict[str, Any]:
         """Returns statistics for a named queue (current size, maxsize, dropped count, high watermark)."""
         queue = self._queues.get(queue_name)
         stats = self._queue_stats.get(queue_name, {"queued_count": 0, "dropped_count": 0, "high_watermark": 0})
@@ -437,7 +438,7 @@ class EventBus:
         event: AppEvent,
         queue_name: str = "default",
         backpressure_mode: str = "drop_oldest",
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> bool:
         """
         Put event into buffered queue with backpressure policies.
@@ -482,7 +483,7 @@ class EventBus:
                 stats["queued_count"] += 1
                 stats["high_watermark"] = max(stats["high_watermark"], queue.qsize())
                 return True
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 stats["dropped_count"] += 1
                 logger.warning(f"[EventBus] Timeout waiting to put event into full queue '{queue_name}'.")
                 return False
@@ -547,7 +548,7 @@ class EventBus:
     # --------------------------------------------------------------------------
 
     @classmethod
-    def get_default_bus(cls) -> "EventBus":
+    def get_default_bus(cls) -> EventBus:
         """Get or initialize singleton default EventBus instance."""
         if cls._default_instance is None:
             cls._default_instance = EventBus()
@@ -556,7 +557,7 @@ class EventBus:
     @classmethod
     def subscribe_default(
         cls,
-        event_type: Type[E],
+        event_type: type[E],
         handler: Callable[[E], Union[Coroutine[Any, Any, None], Any]],
         priority: int = 0,
     ) -> Callable[[E], Union[Coroutine[Any, Any, None], Any]]:
@@ -565,13 +566,13 @@ class EventBus:
     @classmethod
     def unsubscribe_default(
         cls,
-        event_type: Type[E],
+        event_type: type[E],
         handler: Callable[[E], Union[Coroutine[Any, Any, None], Any]],
     ) -> bool:
         return cls.get_default_bus().unsubscribe(event_type, handler)
 
     @classmethod
-    async def publish_default(cls, event: AppEvent) -> List[Any]:
+    async def publish_default(cls, event: AppEvent) -> list[Any]:
         return await cls.get_default_bus().publish(event)
 
 
@@ -594,7 +595,7 @@ class ServicePredicate:
     Provides Service.check() mechanism for conditional dispatch and graceful degradation.
     """
 
-    _predicates: Dict[str, Callable[[], bool]] = {}
+    _predicates: dict[str, Callable[[], bool]] = {}
 
     @classmethod
     def register(cls, service_name: str, check_fn: Callable[[], bool]) -> None:
@@ -614,7 +615,7 @@ class ServicePredicate:
             return False
 
     @classmethod
-    def check_all(cls) -> Dict[str, bool]:
+    def check_all(cls) -> dict[str, bool]:
         """Return status mapping for all registered service predicates."""
         return {name: cls.check(name) for name in cls._predicates}
 

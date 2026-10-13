@@ -4,7 +4,7 @@ Menyediakan agregasi per task role, subsystem, symbol, model/provider, dan cycle
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import case, desc, func, select
@@ -19,9 +19,9 @@ class TokenAuditor:
     """Layanan audit komprehensif untuk melacak dan menganalisis konsumsi token AI."""
 
     @staticmethod
-    async def get_summary(hours: int = 24) -> Dict[str, Any]:
+    async def get_summary(hours: int = 24) -> dict[str, Any]:
         """Mengembalikan ringkasan global konsumsi token dan estimasi biaya."""
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
         async with get_session() as session:
             stmt = select(
                 func.count(TokenUsageLog.id).label("total_calls"),
@@ -89,9 +89,9 @@ class TokenAuditor:
             }
 
     @staticmethod
-    async def get_role_breakdown(hours: int = 24) -> List[Dict[str, Any]]:
+    async def get_role_breakdown(hours: int = 24) -> list[dict[str, Any]]:
         """Mengembalikan rincian konsumsi token yang dikelompokkan per task role."""
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
         async with get_session() as session:
             effective_role = func.coalesce(TokenUsageLog.task_role, TokenUsageLog.task_name)
             stmt = (
@@ -143,9 +143,9 @@ class TokenAuditor:
             return results
 
     @staticmethod
-    async def get_subsystem_breakdown(hours: int = 24) -> List[Dict[str, Any]]:
+    async def get_subsystem_breakdown(hours: int = 24) -> list[dict[str, Any]]:
         """Mengembalikan rincian konsumsi token per kategori subsistem."""
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
         async with get_session() as session:
             effective_subsystem = func.coalesce(TokenUsageLog.subsystem, "system")
             stmt = (
@@ -192,9 +192,9 @@ class TokenAuditor:
             return results
 
     @staticmethod
-    async def get_symbol_breakdown(hours: int = 24) -> List[Dict[str, Any]]:
+    async def get_symbol_breakdown(hours: int = 24) -> list[dict[str, Any]]:
         """Mengembalikan rincian konsumsi token per instrumen aset / simbol."""
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
         async with get_session() as session:
             effective_symbol = func.coalesce(TokenUsageLog.symbol, "GLOBAL_MACRO")
             stmt = (
@@ -227,9 +227,9 @@ class TokenAuditor:
             return results
 
     @staticmethod
-    async def get_provider_breakdown(hours: int = 24) -> List[Dict[str, Any]]:
+    async def get_provider_breakdown(hours: int = 24) -> list[dict[str, Any]]:
         """Mengembalikan rincian utilisasi per provider & model AI."""
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
         async with get_session() as session:
             stmt = (
                 select(
@@ -267,7 +267,7 @@ class TokenAuditor:
             return results
 
     @staticmethod
-    async def get_recent_logs(limit: int = 50) -> List[Dict[str, Any]]:
+    async def get_recent_logs(limit: int = 50) -> list[dict[str, Any]]:
         """Mengambil record log token terbaru dengan metadata lengkap."""
         async with get_session() as session:
             stmt = select(TokenUsageLog).order_by(desc(TokenUsageLog.timestamp)).limit(limit)
@@ -297,9 +297,9 @@ class TokenAuditor:
             ]
 
     @staticmethod
-    async def get_stage_and_slot_breakdown(hours: int = 24) -> List[Dict[str, Any]]:
+    async def get_stage_and_slot_breakdown(hours: int = 24) -> list[dict[str, Any]]:
         """Mengembalikan rincian konsumsi token yang dikelompokkan per stage subsistem dan slot model (primary vs fallback)."""
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
         async with get_session() as session:
             effective_subsystem = func.coalesce(TokenUsageLog.subsystem, "system")
             effective_slot = func.coalesce(TokenUsageLog.slot_name, "primary")
@@ -341,9 +341,9 @@ class TokenAuditor:
             return results
 
     @staticmethod
-    async def get_cache_performance_audit(hours: int = 24) -> Dict[str, Any]:
+    async def get_cache_performance_audit(hours: int = 24) -> dict[str, Any]:
         """Audit komprehensif performa cache prompt (rasio hit cache per model dan global)."""
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
         async with get_session() as session:
             stmt_global = select(
                 func.count(TokenUsageLog.id).label("total_calls"),
@@ -397,11 +397,11 @@ class TokenAuditor:
             }
 
     @staticmethod
-    async def get_cycle_cost_breakdown(cycle_id: Optional[str] = None, hours: int = 24) -> Dict[str, Any]:
+    async def get_cycle_cost_breakdown(cycle_id: str | None = None, hours: int = 24) -> dict[str, Any]:
         """
         PR-21: Return hierarchical cost accumulation per cycle, per model, and per role.
         """
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
         async with get_session() as session:
             effective_cycle = func.coalesce(TokenUsageLog.cycle_id, "unknown_cycle")
             effective_model = func.coalesce(TokenUsageLog.model_name, "unknown_model")
@@ -422,7 +422,7 @@ class TokenAuditor:
 
             rows = (await session.execute(stmt)).all()
 
-            cycles_dict: Dict[str, Any] = {}
+            cycles_dict: dict[str, Any] = {}
             total_cost = 0.0
             total_turns = 0
             total_tokens = 0

@@ -9,7 +9,7 @@ Otomatis menghasilkan 'lessons learned' (evaluasi) & perbarui file skills/tradin
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from pathlib import Path
 from typing import Optional
 
@@ -28,7 +28,7 @@ FUNDAMENTAL_PERFORMANCE_NOTES_PATH = (
 )
 
 
-async def generate_fundamental_performance_review(session: AsyncSession) -> Optional[str]:
+async def generate_fundamental_performance_review(session: AsyncSession) -> str | None:
     """
     Analisa akurasi Stage 1 Fundamental Bias dan hasilkan evaluasi.
     Buat file markdown (catatan evaluasi performa fundamental) & kembalikan kontennya.
@@ -54,7 +54,7 @@ async def generate_fundamental_performance_review(session: AsyncSession) -> Opti
         "tags: [performance, fundamental, stage1, accuracy, brier_score, currency_bias]",
         "---",
         "",
-        f"# Fundamental Stage Performance Notes — Auto-Generated {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+        f"# Fundamental Stage Performance Notes — Auto-Generated {datetime.now(UTC).strftime('%Y-%m-%d')}",
         "",
         f"## Overall Macro Bias Accuracy (Last 30 Days)",
         f"- **Accuracy**: {stage1.get('overall', 0)}% (over {stage1.get('total_checked', 0)} briefs)",
@@ -98,12 +98,12 @@ async def generate_fundamental_performance_review(session: AsyncSession) -> Opti
         return None
 
 
-async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optional[str]:
+async def generate_weekly_review(session: AsyncSession, settings: dict) -> str | None:
     """
     Analisa riwayat paper trade 30 hari terakhir.
     Buat file markdown (catatan evaluasi performa) & kembalikan kontennya.
     """
-    since = datetime.now(timezone.utc) - timedelta(days=30)
+    since = datetime.now(UTC) - timedelta(days=30)
 
     from monika.core.analytics.paper_tracker import PaperTracker
 
@@ -141,7 +141,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
         )
 
     # Generate markdown content
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     lines = [
         "---",
         "name: performance-notes",
@@ -517,8 +517,8 @@ async def should_regenerate_fundamental_notes(session: AsyncSession) -> tuple[bo
         try:
             last_time = datetime.fromisoformat(cfg.value)
             if last_time.tzinfo is None:
-                last_time = last_time.replace(tzinfo=timezone.utc)
-            hours_since = (datetime.now(timezone.utc) - last_time).total_seconds() / 3600
+                last_time = last_time.replace(tzinfo=UTC)
+            hours_since = (datetime.now(UTC) - last_time).total_seconds() / 3600
         except Exception:
             pass
     if accuracy < 45 and hours_since >= 12:
@@ -530,7 +530,7 @@ async def should_regenerate_fundamental_notes(session: AsyncSession) -> tuple[bo
     return (False, "no_trigger")
 
 
-async def evaluate_candidate_lessons(session: AsyncSession, settings: Optional[dict] = None) -> dict:
+async def evaluate_candidate_lessons(session: AsyncSession, settings: dict | None = None) -> dict:
     """
     Evaluates CandidateLesson records in shadow mode against out-of-sample holdout trades.
     Promotes only candidate lessons with verified positive performance delta (N >= 30).

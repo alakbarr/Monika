@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from sqlalchemy import select
 
@@ -11,7 +11,7 @@ async def compute_strategy_pair_stats(session, settings: dict) -> dict:
     days_back = int(
         settings.get("trading", {}).get("edge_strategy", {}).get("stats_tracker", {}).get("review_days_back", 60)
     )
-    since = datetime.now(timezone.utc) - timedelta(days=days_back)
+    since = datetime.now(UTC) - timedelta(days=days_back)
     rows = (
         await session.execute(
             select(PaperTradeRecord, AssetAnalysis)

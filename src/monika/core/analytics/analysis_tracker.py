@@ -9,7 +9,7 @@ Menganalisa kualitas trading (win rate) berdasarkan faktor/kondisi analisis (mis
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,7 +88,7 @@ async def compute_analysis_quality_report(session: AsyncSession, days_back: int 
         },
         "by_symbol": formatted_by_symbol,
         "by_symbol_direction": formatted_by_symbol_dir,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
     # Save to SystemConfig for dashboard access
@@ -193,7 +193,7 @@ async def analyze_debate_impact(session: AsyncSession, days_back: int = 30) -> d
     (Phase 3): Analyzes the impact of the multi-agent debate stage.
     Compares the win rates of trades that were modified by debate vs those that were not.
     """
-    since = datetime.now(timezone.utc) - timedelta(days=days_back)
+    since = datetime.now(UTC) - timedelta(days=days_back)
 
     # Using the new was_debate_modified field
     records = (
@@ -231,7 +231,7 @@ async def analyze_debate_impact(session: AsyncSession, days_back: int = 30) -> d
         "debate_modified": get_stats(debate_modified_trades),
         "original_unmodified": get_stats(original_trades),
         "total_analyzed": len(records),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -239,7 +239,7 @@ async def compute_factor_effectiveness(session: AsyncSession, days_back: int = 6
     """
     Analisa efektivitas faktor konfluensi dari confluence_factors_json.
     """
-    since = datetime.now(timezone.utc) - timedelta(days=days_back)
+    since = datetime.now(UTC) - timedelta(days=days_back)
 
     records = (
         await session.execute(
@@ -342,7 +342,7 @@ async def compute_factor_effectiveness(session: AsyncSession, days_back: int = 6
         "overall_win_rate": round(p0 * 100, 1),
         "factor_effectiveness": results_sorted,
         "insight": f"Applied Benjamini-Hochberg FDR (alpha={alpha}). Factors marked SIGNIFICANT truly differ from overall baseline.",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -411,7 +411,7 @@ async def get_confluence_calibration_status(session: AsyncSession) -> dict:
         "recommendation": recommendation,
         "calibration_data": calibration_data,
         "breakeven_win_rate_used": BREAKEVEN_WIN_RATE,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -420,7 +420,7 @@ async def get_direction_accuracy_report(session: AsyncSession, days_back: int = 
     Menghitung akurasi prediksi arah market (ground truth), terlepas dari hit SL/TP.
     Berguna untuk mengukur apakah market understanding model sebenarnya bagus tapi eksekusinya salah.
     """
-    since = datetime.now(timezone.utc) - timedelta(days=days_back)
+    since = datetime.now(UTC) - timedelta(days=days_back)
 
     analyses = (
         (
@@ -489,7 +489,7 @@ async def get_direction_accuracy_report(session: AsyncSession, days_back: int = 
         "mean_brier_score": mean_brier,
         "brier_score": mean_brier,
         "by_symbol": {},
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
     for sym, data in by_symbol.items():
@@ -507,7 +507,7 @@ async def detect_score_inflation(session: AsyncSession, days_back: int = 30) -> 
     Deteksi apakah model secara sistematis meningkatkan/menurunkan
     confluence score dari waktu ke waktu (score drift).
     """
-    since = datetime.now(timezone.utc) - timedelta(days=days_back)
+    since = datetime.now(UTC) - timedelta(days=days_back)
 
     analyses = (
         await session.execute(
@@ -596,7 +596,7 @@ async def compute_factor_weights_recommendation(session: AsyncSession, min_trade
         "prompt_update_suggestion": "Review factors in 'drop_factors' and consider removing them from AI prompt instructions as they negatively correlate with success."
         if recommendations["drop_factors"]
         else "Current factor weights are performing adequately.",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -632,7 +632,7 @@ async def compute_model_source_performance(session: AsyncSession, days_back: int
     (model LLM mana — primary/fallback — yang benar-benar menghasilkan
     keputusan) untuk mendeteksi apakah fallback chain menghasilkan
     keputusan berkualitas setara dengan model primer."""
-    since = datetime.now(timezone.utc) - timedelta(days=days_back)
+    since = datetime.now(UTC) - timedelta(days=days_back)
     records = (
         await session.execute(
             select(PaperTradeRecord, AssetAnalysis)
@@ -661,7 +661,7 @@ async def compute_model_source_performance(session: AsyncSession, days_back: int
     return {
         "days_analyzed": days_back,
         "by_decision_source": out,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -694,7 +694,7 @@ async def compute_and_persist_factor_point_overrides(session: AsyncSession, min_
 
     cfg_key = "dynamic_factor_point_overrides"
     cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key))).scalar_one_or_none()
-    val = json.dumps({"overrides": overrides, "computed_at": datetime.now(timezone.utc).isoformat()})
+    val = json.dumps({"overrides": overrides, "computed_at": datetime.now(UTC).isoformat()})
     if cfg:
         cfg.value = val
     else:

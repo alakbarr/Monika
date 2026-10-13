@@ -4,7 +4,7 @@
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Any, Dict, Optional
 
 from monika.core.telemetry.tracing.context import (
@@ -32,36 +32,36 @@ class Span:
         self,
         name: str,
         kind: str = "internal",
-        parent_span_id: Optional[str] = None,
-        trace_id: Optional[str] = None,
-        attributes: Optional[Dict[str, Any]] = None,
+        parent_span_id: str | None = None,
+        trace_id: str | None = None,
+        attributes: dict[str, Any] | None = None,
     ):
         self.name = name
         self.kind = kind
         self.span_id = generate_id()
         self.trace_id = trace_id or get_current_trace_id()
         self.parent_span_id = parent_span_id or get_current_span_id()
-        self.attributes: Dict[str, Any] = attributes or {}
+        self.attributes: dict[str, Any] = attributes or {}
 
         cycle_id = get_current_cycle_id()
         if cycle_id and "cycle_id" not in self.attributes:
             self.attributes["cycle_id"] = cycle_id
 
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now(UTC)
         self._start_perf = time.perf_counter()
-        self.end_time: Optional[datetime] = None
+        self.end_time: datetime | None = None
         self.duration_ms: float = 0.0
         self.status = "OK"
-        self.error: Optional[str] = None
+        self.error: str | None = None
         self._token_span_id = None
 
     def set_attribute(self, key: str, value: Any):
         self.attributes[key] = value
 
-    def set_attributes(self, attrs: Dict[str, Any]):
+    def set_attributes(self, attrs: dict[str, Any]):
         self.attributes.update(attrs)
 
-    def set_status(self, status: str, error: Optional[str] = None):
+    def set_status(self, status: str, error: str | None = None):
         self.status = status
         if error:
             self.error = error
@@ -75,7 +75,7 @@ class Span:
     def end(self):
         if self.end_time is not None:
             return
-        self.end_time = datetime.now(timezone.utc)
+        self.end_time = datetime.now(UTC)
         self.duration_ms = (time.perf_counter() - self._start_perf) * 1000.0
 
         record = TraceRecord(
@@ -130,9 +130,9 @@ class AgentTracer:
         self,
         name: str,
         kind: str = "internal",
-        attributes: Optional[Dict[str, Any]] = None,
-        trace_id: Optional[str] = None,
-        parent_span_id: Optional[str] = None,
+        attributes: dict[str, Any] | None = None,
+        trace_id: str | None = None,
+        parent_span_id: str | None = None,
     ) -> Span:
         return Span(
             name=name,

@@ -16,7 +16,7 @@ Provides real-time quota checks and dynamic degradation tier routing:
 
 import logging
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.TokenBudgeter")
@@ -35,25 +35,25 @@ DEFAULT_DAILY_BUDGET = 2_000_000  # Default 2M tokens/day
 class TokenBudgetManager:
     """Thread-safe token budget orchestrator with subsystem partitioning and degradation gates."""
 
-    _instance: Optional["TokenBudgetManager"] = None
+    _instance: TokenBudgetManager | None = None
     _lock = threading.Lock()
 
-    def __init__(self, settings: Optional[dict] = None):
+    def __init__(self, settings: dict | None = None):
         self.settings = settings or {}
         llm_cfg = self.settings.get("llm", {})
         self.daily_budget = int(llm_cfg.get("daily_token_budget", DEFAULT_DAILY_BUDGET))
-        self._current_day = datetime.now(timezone.utc).date()
+        self._current_day = datetime.now(UTC).date()
         self._mu = threading.Lock()
 
         # Usage counters
-        self._usage_by_subsystem: Dict[str, Dict[str, int]] = {
+        self._usage_by_subsystem: dict[str, dict[str, int]] = {
             sub: {"prompt": 0, "completion": 0, "cached": 0, "total": 0} for sub in SUBSYSTEM_SHARES
         }
-        self._usage_by_model: Dict[str, int] = {}
+        self._usage_by_model: dict[str, int] = {}
         self._total_spent = 0
 
     @classmethod
-    def get_instance(cls, settings: Optional[dict] = None) -> "TokenBudgetManager":
+    def get_instance(cls, settings: dict | None = None) -> TokenBudgetManager:
         with cls._lock:
             if cls._instance is None:
                 cls._instance = cls(settings)
@@ -62,7 +62,7 @@ class TokenBudgetManager:
             return cls._instance
 
     def _maybe_reset_daily(self) -> None:
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         if today > self._current_day:
             logger.info(f"[TokenBudgeter] New UTC day ({today}). Resetting daily token counters.")
             self._current_day = today
@@ -175,7 +175,7 @@ class TokenBudgetManager:
                 return "compressed"
             return "degraded"
 
-    def get_budget_summary(self) -> Dict[str, Any]:
+    def get_budget_summary(self) -> dict[str, Any]:
         """Provides a detailed JSON-serializable budget report."""
         with self._mu:
             self._maybe_reset_daily()
@@ -205,6 +205,6 @@ class TokenBudgetManager:
             }
 
 
-def get_token_budgeter(settings: Optional[dict] = None) -> TokenBudgetManager:
+def get_token_budgeter(settings: dict | None = None) -> TokenBudgetManager:
     """Convenience accessor for the singleton TokenBudgetManager."""
     return TokenBudgetManager.get_instance(settings)

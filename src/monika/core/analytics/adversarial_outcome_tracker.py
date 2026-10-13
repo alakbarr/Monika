@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +14,7 @@ async def compute_adversarial_check_correlation(session: AsyncSession, days_back
     from monika.core.analytics.edge_tracker import is_trade_win
     from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
 
-    since = datetime.now(timezone.utc) - timedelta(days=days_back)
+    since = datetime.now(UTC) - timedelta(days=days_back)
     rows = (
         (
             await session.execute(

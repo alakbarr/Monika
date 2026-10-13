@@ -42,7 +42,7 @@ class ContentDistiller:
     def __init__(
         self,
         max_chars: int = 16000,
-        spill_dir: Optional[Path] = None,
+        spill_dir: Path | None = None,
     ):
         self.max_chars = max_chars
         self.spill_dir = spill_dir or DEFAULT_SPILL_DIR
@@ -62,8 +62,8 @@ class ContentDistiller:
         raw_text: str,
         title: str = "",
         url: str = "",
-        budget: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        budget: int | None = None,
+    ) -> dict[str, Any]:
         """
         Processes and compresses content using 75/25 partitioning and disk spill.
         """

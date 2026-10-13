@@ -10,7 +10,7 @@ from .risk_gate_invariant import InvariantViolationError
 
 
 def assert_position_count_invariant(
-    open_positions: List[Any],
+    open_positions: list[Any],
     max_concurrent_positions: int = 5,
 ) -> None:
     """
@@ -24,7 +24,7 @@ def assert_position_count_invariant(
         )
 
 
-def check_position_count_invariant(context: Dict[str, Any]) -> InvariantResult:
+def check_position_count_invariant(context: dict[str, Any]) -> InvariantResult:
     """
     InvariantRegistry adapter checking position count.
     Expects 'open_positions' (list) and optional 'max_concurrent_positions' (int, default 5) in context.

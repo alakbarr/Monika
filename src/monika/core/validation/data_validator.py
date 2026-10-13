@@ -5,7 +5,7 @@
 """Validator Data — Cek kebaruan (freshness) data di DB sebelum analisis."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from typing import Optional
 
 from sqlalchemy import func, select
@@ -74,11 +74,11 @@ async def validate_data_freshness(
     session: AsyncSession,
     symbols: list[str],
     timeframes: list[str],
-    max_ohlcv_age_hours: Optional[dict] = None,
+    max_ohlcv_age_hours: dict | None = None,
     max_news_age_hours: float = 6.0,
     max_calendar_age_hours: float = 168.0,
-    max_indicator_age_hours: Optional[dict] = None,
-    max_macro_age_days: Optional[dict] = None,
+    max_indicator_age_hours: dict | None = None,
+    max_macro_age_days: dict | None = None,
     require_macro_data: bool = False,
     log_warning: bool = True,
 ) -> dict:
@@ -92,7 +92,7 @@ async def validate_data_freshness(
 
     now = get_clock_now()
     if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+        now = now.replace(tzinfo=UTC)
 
     ohlcv_thresholds = max_ohlcv_age_hours or DEFAULT_OHLCV_AGE
     ind_thresholds = max_indicator_age_hours or DEFAULT_IND_AGE
@@ -122,7 +122,7 @@ async def validate_data_freshness(
                 errors.append(f"No OHLCV data for {symbol}/{tf}")
             else:
                 if latest.tzinfo is None:
-                    latest = latest.replace(tzinfo=timezone.utc)
+                    latest = latest.replace(tzinfo=UTC)
                 age_hours = (now - latest).total_seconds() / 3600
 
                 # Jika pasar non-crypto sedang tutup akhir pekan, data penutupan Jumat adalah normal
@@ -163,7 +163,7 @@ async def validate_data_freshness(
                 errors.append(f"No TechnicalIndicator data for {symbol}/{tf}")
             else:
                 if latest_ind.tzinfo is None:
-                    latest_ind = latest_ind.replace(tzinfo=timezone.utc)
+                    latest_ind = latest_ind.replace(tzinfo=UTC)
                 ind_age_hours = (now - latest_ind).total_seconds() / 3600
 
                 if not is_crypto and forex_closed:
@@ -187,7 +187,7 @@ async def validate_data_freshness(
         errors.append("No news items in database")
     else:
         if latest_news.tzinfo is None:
-            latest_news = latest_news.replace(tzinfo=timezone.utc)
+            latest_news = latest_news.replace(tzinfo=UTC)
         news_age = (now - latest_news).total_seconds() / 3600
         eff_max_news_age = max_news_age_hours + (48.0 if forex_closed else 0.0)
         if news_age > eff_max_news_age:
@@ -209,7 +209,7 @@ async def validate_data_freshness(
     latest_cal = (await session.execute(select(func.max(EconomicCalendar.event_time)))).scalar_one_or_none()
     if latest_cal is not None:
         if latest_cal.tzinfo is None:
-            latest_cal = latest_cal.replace(tzinfo=timezone.utc)
+            latest_cal = latest_cal.replace(tzinfo=UTC)
         cal_age_days = (now - latest_cal).total_seconds() / 86400
         if cal_age_days > cal_max_days:
             msg = f"Economic calendar data is {cal_age_days:.1f} days old (stale, max {cal_max_days:.1f}d)"
@@ -230,12 +230,12 @@ async def validate_data_freshness(
     latest_vix = (await session.execute(select(func.max(VIXData.date)))).scalar_one_or_none()
     if latest_vix is not None:
         vix_dt = (
-            datetime.combine(latest_vix, datetime.min.time(), tzinfo=timezone.utc)
+            datetime.combine(latest_vix, datetime.min.time(), tzinfo=UTC)
             if isinstance(latest_vix, date) and not isinstance(latest_vix, datetime)
             else latest_vix
         )
         if vix_dt.tzinfo is None:
-            vix_dt = vix_dt.replace(tzinfo=timezone.utc)
+            vix_dt = vix_dt.replace(tzinfo=UTC)
         vix_age_days = (now - vix_dt).total_seconds() / 86400
         if vix_age_days > eff_vix_max_days:
             warnings.append(f"VIX data is {vix_age_days:.1f} days old (stale)")
@@ -252,12 +252,12 @@ async def validate_data_freshness(
     latest_yield = (await session.execute(select(func.max(TreasuryYield.date)))).scalar_one_or_none()
     if latest_yield is not None:
         y_dt = (
-            datetime.combine(latest_yield, datetime.min.time(), tzinfo=timezone.utc)
+            datetime.combine(latest_yield, datetime.min.time(), tzinfo=UTC)
             if isinstance(latest_yield, date) and not isinstance(latest_yield, datetime)
             else latest_yield
         )
         if y_dt.tzinfo is None:
-            y_dt = y_dt.replace(tzinfo=timezone.utc)
+            y_dt = y_dt.replace(tzinfo=UTC)
         yield_age_days = (now - y_dt).total_seconds() / 86400
         if yield_age_days > eff_yield_max:
             warnings.append(f"Treasury yield data is {yield_age_days:.1f} days old (stale)")
@@ -274,12 +274,12 @@ async def validate_data_freshness(
     latest_dxy = (await session.execute(select(func.max(DXYData.date)))).scalar_one_or_none()
     if latest_dxy is not None:
         d_dt = (
-            datetime.combine(latest_dxy, datetime.min.time(), tzinfo=timezone.utc)
+            datetime.combine(latest_dxy, datetime.min.time(), tzinfo=UTC)
             if isinstance(latest_dxy, date) and not isinstance(latest_dxy, datetime)
             else latest_dxy
         )
         if d_dt.tzinfo is None:
-            d_dt = d_dt.replace(tzinfo=timezone.utc)
+            d_dt = d_dt.replace(tzinfo=UTC)
         dxy_age_days = (now - d_dt).total_seconds() / 86400
         if dxy_age_days > eff_dxy_max:
             warnings.append(f"DXY data is {dxy_age_days:.1f} days old (stale)")
@@ -295,12 +295,12 @@ async def validate_data_freshness(
     latest_cot = (await session.execute(select(func.max(COTReport.report_date)))).scalar_one_or_none()
     if latest_cot is not None:
         cot_dt = (
-            datetime.combine(latest_cot, datetime.min.time(), tzinfo=timezone.utc)
+            datetime.combine(latest_cot, datetime.min.time(), tzinfo=UTC)
             if isinstance(latest_cot, date) and not isinstance(latest_cot, datetime)
             else latest_cot
         )
         if cot_dt.tzinfo is None:
-            cot_dt = cot_dt.replace(tzinfo=timezone.utc)
+            cot_dt = cot_dt.replace(tzinfo=UTC)
         cot_age_days = (now - cot_dt).total_seconds() / 86400
         if cot_age_days > cot_max_days:
             warnings.append(f"COT report data is {cot_age_days:.1f} days old (stale)")
@@ -312,7 +312,7 @@ async def validate_data_freshness(
     latest_fedwatch = (await session.execute(select(func.max(FedWatchProbability.fetched_at)))).scalar_one_or_none()
     if latest_fedwatch is not None:
         if latest_fedwatch.tzinfo is None:
-            latest_fedwatch = latest_fedwatch.replace(tzinfo=timezone.utc)
+            latest_fedwatch = latest_fedwatch.replace(tzinfo=UTC)
         fedwatch_age_days = (now - latest_fedwatch).total_seconds() / 86400
         if fedwatch_age_days > fedwatch_max_days:
             warnings.append(f"FedWatch probability data is {fedwatch_age_days:.1f} days old (stale)")
@@ -381,9 +381,9 @@ def is_spread_acceptable(symbol: str, bid: float, ask: float) -> bool:
 async def check_data_coherence(
     session: AsyncSession,
     symbol: str,
-    max_age_hours: Optional[float] = None,
-    max_ohlcv_age_hours: Optional[dict] = None,
-    max_indicator_age_hours: Optional[dict] = None,
+    max_age_hours: float | None = None,
+    max_ohlcv_age_hours: dict | None = None,
+    max_indicator_age_hours: dict | None = None,
 ) -> dict:
     """
     Pastikan semua data teknikal untuk satu simbol
@@ -397,7 +397,7 @@ async def check_data_coherence(
 
     now = get_clock_now()
     if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+        now = now.replace(tzinfo=UTC)
 
     issues = []
     is_crypto = is_crypto_symbol(symbol)
@@ -445,9 +445,9 @@ async def check_data_coherence(
 
         if latest_price and latest_ind:
             if latest_price.tzinfo is None:
-                latest_price = latest_price.replace(tzinfo=timezone.utc)
+                latest_price = latest_price.replace(tzinfo=UTC)
             if latest_ind.tzinfo is None:
-                latest_ind = latest_ind.replace(tzinfo=timezone.utc)
+                latest_ind = latest_ind.replace(tzinfo=UTC)
 
             price_age = (now - latest_price).total_seconds() / 3600
             ind_age = (now - latest_ind).total_seconds() / 3600

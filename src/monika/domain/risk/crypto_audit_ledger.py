@@ -23,7 +23,7 @@ import logging
 import os
 import sys
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -48,7 +48,7 @@ class AuditRecord:
     record_hash: str
     timestamp_utc: str
     action: str
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), sort_keys=True, separators=(",", ":"))
@@ -64,8 +64,8 @@ class CryptographicAuditLedger:
 
         self.ledger_path = Path(ledger_path)
         self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
-        self._last_record: Optional[AuditRecord] = None
-        self._load_error: Optional[str] = None
+        self._last_record: AuditRecord | None = None
+        self._load_error: str | None = None
         self._lock = threading.RLock()
         try:
             self._init_or_load()
@@ -104,14 +104,14 @@ class CryptographicAuditLedger:
         prev_hash: str,
         timestamp_utc: str,
         action: str,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
     ) -> str:
         """Deterministically hashes an audit entry using canonical JSON sorting."""
         payload_str = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         canonical_str = f"{seq}|{prev_hash}|{timestamp_utc}|{action}|{payload_str}"
         return hashlib.sha256(canonical_str.encode("utf-8")).hexdigest()
 
-    def append(self, action: str, payload: Dict[str, Any]) -> AuditRecord:
+    def append(self, action: str, payload: dict[str, Any]) -> AuditRecord:
         """
         Appends a new verified audit record with immediate fsync.
         Refuses to extend a broken/corrupted chain.
@@ -121,7 +121,7 @@ class CryptographicAuditLedger:
                 raise LedgerCorruptionError(f"Cannot append to corrupted audit ledger: {self._load_error}")
             seq = (self._last_record.seq + 1) if self._last_record is not None else 0
             prev_hash = self._last_record.record_hash if self._last_record is not None else GENESIS_PREV_HASH
-            ts_utc = datetime.now(timezone.utc).isoformat()
+            ts_utc = datetime.now(UTC).isoformat()
 
             rec_hash = self._compute_hash(seq, prev_hash, ts_utc, action, payload)
             record = AuditRecord(
@@ -164,13 +164,13 @@ class CryptographicAuditLedger:
             self._last_record = record
             return record
 
-    def read_all(self) -> List[AuditRecord]:
+    def read_all(self) -> list[AuditRecord]:
         """Reads all records from disk."""
         if not self.ledger_path.exists():
             return []
 
         records = []
-        with open(self.ledger_path, "r", encoding="utf-8") as f:
+        with open(self.ledger_path, encoding="utf-8") as f:
             for line_no, line in enumerate(f):
                 line = line.strip()
                 if not line:
@@ -200,7 +200,7 @@ class CryptographicAuditLedger:
             logger.error(f"Ledger integrity verification failed: {err}")
             return False
 
-    def verify_chain_integrity(self) -> Tuple[bool, str]:
+    def verify_chain_integrity(self) -> tuple[bool, str]:
         """
         Verifies the complete ledger from genesis to tail.
         Returns (is_valid, message).
@@ -214,7 +214,7 @@ class CryptographicAuditLedger:
             logger.error(f"Ledger integrity verification failed: {err}")
             return False, f"Tampered ledger: {err}"
 
-    def append_audit_record(self, action: str, payload: Dict[str, Any]) -> AuditRecord:
+    def append_audit_record(self, action: str, payload: dict[str, Any]) -> AuditRecord:
         """Alias for append."""
         return self.append(action, payload)
 

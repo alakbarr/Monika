@@ -9,7 +9,7 @@ memiliki positive edge atau sedang berjalan secara random/negative.
 
 import logging
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -185,7 +185,7 @@ async def compute_edge_status(session: AsyncSession) -> dict:
         "recent_20_win_rate": round(recent_wr * 100, 1),
         "breakeven_win_rate_pct": round(BREAKEVEN_WIN_RATE * 100, 1),
         "action": action,
-        "computed_at": datetime.now(timezone.utc).isoformat(),
+        "computed_at": datetime.now(UTC).isoformat(),
     }
 
     # Automatic trading pause enforcement when no edge is detected with significant negative z-score.

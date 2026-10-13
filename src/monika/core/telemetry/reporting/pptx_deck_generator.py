@@ -12,7 +12,7 @@ Slide 6: Conclusion & Research Disclaimer
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.PptxDeckGenerator")
@@ -27,10 +27,10 @@ class PptxDeckGenerator:
 
     def generate_pitch_deck(
         self,
-        metrics: Dict[str, Any],
+        metrics: dict[str, Any],
         title: str = "Monika Autonomous Trading Agent",
         subtitle: str = "Quantitative Architecture & Performance Deck",
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> str:
         """
         Builds and saves a PowerPoint presentation.
@@ -93,7 +93,7 @@ class PptxDeckGenerator:
         p2.space_before = Pt(12)
 
         p3 = tf1.add_paragraph()
-        now_str = datetime.now(timezone.utc).strftime("%B %Y")
+        now_str = datetime.now(UTC).strftime("%B %Y")
         p3.text = f"MetaTrader 5 Multi-Agent Execution Framework | {now_str}"
         p3.font.size = Pt(14)
         p3.font.italic = True
@@ -194,7 +194,7 @@ class PptxDeckGenerator:
 
         # Save File
         if not filename:
-            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             filename = f"monika_pitch_deck_{timestamp}.pptx"
         filepath = os.path.join(self.output_dir, filename)
         prs.save(filepath)
