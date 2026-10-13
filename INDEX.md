@@ -54,28 +54,28 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `src/monika/infrastructure/credentials`](#folder-srcmonikainfrastructurecredentials) - Line 933
       - [Folder: `src/monika/infrastructure/database`](#folder-srcmonikainfrastructuredatabase) - Line 943
       - [Folder: `src/monika/infrastructure/database/domain_models`](#folder-srcmonikainfrastructuredatabasedomain_models) - Line 971
-      - [Folder: `src/monika/infrastructure/database/repositories`](#folder-srcmonikainfrastructuredatabaserepositories) - Line 989
-      - [Folder: `src/monika/infrastructure/data_ingestion`](#folder-srcmonikainfrastructuredata_ingestion) - Line 1003
-        - [Folder: `src/monika/infrastructure/data_ingestion/sources`](#folder-srcmonikainfrastructuredata_ingestionsources) - Line 1007
-        - [Folder: `src/monika/infrastructure/data_ingestion/scrapers`](#folder-srcmonikainfrastructuredata_ingestionscrapers) - Line 1026
-          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/calendar`](#folder-srcmonikainfrastructuredata_ingestionscraperscalendar) - Line 1039
-          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/macro`](#folder-srcmonikainfrastructuredata_ingestionscrapersmacro) - Line 1048
-      - [Folder: `src/monika/infrastructure/graph/checkpointers`](#folder-srcmonikainfrastructuregraphcheckpointers) - Line 1060
-      - [Folder: `src/monika/infrastructure/ml`](#folder-srcmonikainfrastructureml) - Line 1070
-      - [Folder: `src/monika/infrastructure/providers`](#folder-srcmonikainfrastructureproviders) - Line 1076
-      - [Folder: `src/monika/infrastructure/sandboxes`](#folder-srcmonikainfrastructuresandboxes) - Line 1090
-      - [Folder: `src/monika/infrastructure/llm/rate_limiting`](#folder-srcmonikainfrastructurellmrate_limiting) - Line 1109
-      - [Folder: `src/monika/infrastructure/mcp`](#folder-srcmonikainfrastructuremcp) - Line 1119
-      - [Folder: `src/monika/infrastructure/notifications`](#folder-srcmonikainfrastructurenotifications) - Line 1129
-      - [Folder: `src/monika/infrastructure/infra`](#folder-srcmonikainfrastructureinfra) - Line 1134
-      - [Folder: `src/monika/infrastructure/llm`](#folder-srcmonikainfrastructurellm) - Line 1145
-      - [Folder: `src/monika/infrastructure/storage`](#folder-srcmonikainfrastructurestorage) - Line 1155
-    - [Folder: `src/monika/interfaces`](#folder-srcmonikainterfaces) - Line 1160
-      - [Folder: `src/monika/interfaces/cli`](#folder-srcmonikainterfacescli) - Line 1164
-      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1173
-      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1180
-      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1188
-      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1199
+      - [Folder: `src/monika/infrastructure/database/repositories`](#folder-srcmonikainfrastructuredatabaserepositories) - Line 1002
+      - [Folder: `src/monika/infrastructure/data_ingestion`](#folder-srcmonikainfrastructuredata_ingestion) - Line 1016
+        - [Folder: `src/monika/infrastructure/data_ingestion/sources`](#folder-srcmonikainfrastructuredata_ingestionsources) - Line 1020
+        - [Folder: `src/monika/infrastructure/data_ingestion/scrapers`](#folder-srcmonikainfrastructuredata_ingestionscrapers) - Line 1039
+          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/calendar`](#folder-srcmonikainfrastructuredata_ingestionscraperscalendar) - Line 1052
+          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/macro`](#folder-srcmonikainfrastructuredata_ingestionscrapersmacro) - Line 1061
+      - [Folder: `src/monika/infrastructure/graph/checkpointers`](#folder-srcmonikainfrastructuregraphcheckpointers) - Line 1073
+      - [Folder: `src/monika/infrastructure/ml`](#folder-srcmonikainfrastructureml) - Line 1083
+      - [Folder: `src/monika/infrastructure/providers`](#folder-srcmonikainfrastructureproviders) - Line 1089
+      - [Folder: `src/monika/infrastructure/sandboxes`](#folder-srcmonikainfrastructuresandboxes) - Line 1103
+      - [Folder: `src/monika/infrastructure/llm/rate_limiting`](#folder-srcmonikainfrastructurellmrate_limiting) - Line 1122
+      - [Folder: `src/monika/infrastructure/mcp`](#folder-srcmonikainfrastructuremcp) - Line 1132
+      - [Folder: `src/monika/infrastructure/notifications`](#folder-srcmonikainfrastructurenotifications) - Line 1142
+      - [Folder: `src/monika/infrastructure/infra`](#folder-srcmonikainfrastructureinfra) - Line 1147
+      - [Folder: `src/monika/infrastructure/llm`](#folder-srcmonikainfrastructurellm) - Line 1158
+      - [Folder: `src/monika/infrastructure/storage`](#folder-srcmonikainfrastructurestorage) - Line 1168
+    - [Folder: `src/monika/interfaces`](#folder-srcmonikainterfaces) - Line 1173
+      - [Folder: `src/monika/interfaces/cli`](#folder-srcmonikainterfacescli) - Line 1177
+      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1186
+      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1193
+      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1201
+      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1212
 
 ## Root Directory: `Monika/`
 
@@ -948,7 +948,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Functions**: `get_engine`, `get_session`, `get_write_session`, `get_sessionmaker`, `init_db`, `get_canonical_db_path`
 
 **File:** `models.py`
-  - **Docstring**: Canonical SQLAlchemy ORM declarative models including numeric financial fields (NUMERIC) and operational tables.
+  - **Docstring**: Backward-compatible facade proxying to modular domain models in `monika.infrastructure.database.domain_models`.
   - **Classes**: `Base`, `Trade`, `Order`, `Position`, `PriceOHLCV`, `AssetAnalysis`, `PaperTradeRecord`, `EquityDrawdownSnapshot`, `RiskState`, `CronJob`, `OutboxDelivery`, `DeliveryRecord`, `SessionToolRecord`, `RepairLedger`, `ScheduledJob`, `JobDelivery`
 
 **File:** `engine.py`
@@ -971,20 +971,33 @@ This document provides an exhaustive structural index of all directories, files,
 ##### Folder: `src/monika/infrastructure/database/domain_models`
 
 **File:** `base.py`
-  - **Docstring**: SQLAlchemy Declarative Base and common model mixins.
+  - **Docstring**: SQLAlchemy Declarative Base, UTC timestamp utility, and TSVECTOR definitions.
   - **Classes**: `Base`
+  - **Functions**: `_utcnow`
 
-**File:** `positions.py`
-  - **Docstring**: Position tracking ORM models.
-  - **Classes**: `Position`
+**File:** `news.py`
+  - **Docstring**: News items, LLM-compressed digests, rolling slices, and economic calendar models.
+  - **Classes**: `NewsItem`, `NewsDigest`, `NewsDigestSlice`, `EconomicCalendar`, `NewsClassificationOutcome`
 
-**File:** `trade_proposals.py`
-  - **Docstring**: Trade proposal audit ORM models.
-  - **Classes**: `TradeProposal`
+**File:** `market.py`
+  - **Docstring**: Treasury yields, interest rates, central bank expectations, COT reports, VIX/DXY, OHLCV, and SMC technical indicator models.
+  - **Classes**: `TreasuryYield`, `InterestRate`, `FedWatchProbability`, `CentralBankRateExpectation`, `COTReport`, `VIXData`, `DXYData`, `BondYieldData`, `EconomicReportDecomposition`, `CentralBankDocument`, `MacroLiquidityCreditMetric`, `PriceOHLCV`, `TechnicalIndicator`, `SwingPoint`, `SRZone`, `LiquidityZone`, `FVGZone`, `OrderBlock`, `StructureBreak`, `PatternScreeningCache`
 
-**File:** `activity_logs.py`
-  - **Docstring**: Activity and audit log ORM models.
-  - **Classes**: `ActivityLog`
+**File:** `analysis.py`
+  - **Docstring**: Fundamental briefs, per-asset stage-2 decisions, prescreen logs, cycle performance, and TimesFM forecasts.
+  - **Classes**: `FundamentalBrief`, `AssetAnalysis`, `PrescreenLog`, `CyclePerformance`, `ConfluenceFactorOutcome`, `PlaybookRuleAttribution`, `TimesFMForecast`
+
+**File:** `trading.py`
+  - **Docstring**: Orders, order events, positions, trade outcomes, paper trades, trade execution plans, and backtest models.
+  - **Classes**: `Trade`, `TradeTrigger`, `MT5Signal`, `Order`, `OrderEvent`, `Position`, `TradeOutcome`, `PaperTradeRecord`, `EquityDrawdownSnapshot`, `TradePlan`, `TradePlanLeg`, `OrderLog`, `TradingStateLog`, `BacktestRun`, `BacktestTrade`, `OrderStatus`
+
+**File:** `memory.py`
+  - **Docstring**: Market chronicles, decision reflections, backtest memories, candidate lessons, and user market intel.
+  - **Classes**: `MarketChronicle`, `DecisionReflection`, `DecisionMemory`, `CandidateLesson`, `ContextSpillBlob`, `UserMarketIntel`, `CycleEvent`
+
+**File:** `system.py`
+  - **Docstring**: System configuration, risk states, Telegram conversations/topics, event stores, token usage logs, agent sessions, and detached scheduler models.
+  - **Classes**: `RiskState`, `TelegramConversation`, `TelegramTopicBinding`, `ActivityLog`, `TradingEvent`, `TokenUsageLog`, `SystemConfig`, `SystemPrompt`, `AgentSession`, `AgentSessionMessage`, `UserPreference`, `UserJournalEntry`, `CronJob`, `OutboxDelivery`, `DeliveryRecord`, `SessionToolRecord`, `RepairLedger`, `ScheduledJob`, `JobDelivery`
 
 ##### Folder: `src/monika/infrastructure/database/repositories`
 

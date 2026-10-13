@@ -5,6 +5,7 @@
 
 import inspect
 import sys
+from typing import Any
 from unittest.mock import patch, MagicMock
 import pytest
 
@@ -91,3 +92,49 @@ def test_headless_callers_do_not_import_telegram_bot_chat_agent():
 
     cli_src = inspect.getsource(cli_main_mod._cmd_ask)
     assert "monika.application.agent.chat_agent" in cli_src or "from agent.chat_agent import ChatAgent" in cli_src
+
+
+def test_models_decomposition_facade_and_submodules():
+    """Verify that models.py and all domain_models submodules are <= 800 lines and synchronized."""
+    from pathlib import Path
+    from monika.infrastructure.database import models
+    from monika.infrastructure.database import domain_models
+
+    dm_dir = Path("src/monika/infrastructure/database/domain_models")
+    assert dm_dir.is_dir()
+
+    for py_file in dm_dir.glob("*.py"):
+        line_count = len(py_file.read_text(encoding="utf-8").splitlines())
+        assert line_count <= 800, f"{py_file} exceeds 800 LOC ({line_count} lines)"
+
+    models_path = Path("src/monika/infrastructure/database/models.py")
+    models_lines = len(models_path.read_text(encoding="utf-8").splitlines())
+    assert models_lines <= 800, f"models.py exceeds 800 LOC ({models_lines} lines)"
+
+    # Identity check
+    assert models.Base is domain_models.Base
+    assert models.Trade is domain_models.Trade
+    assert models.Order is domain_models.Order
+    assert models.Position is domain_models.Position
+    assert models.PriceOHLCV is domain_models.PriceOHLCV
+    assert models.AssetAnalysis is domain_models.AssetAnalysis
+    assert models.SystemConfig is domain_models.SystemConfig
+
+    # Total classes parity
+    assert len(models.__all__) >= 74
+    for sym in models.__all__:
+        assert hasattr(models, sym), f"Missing {sym} on models"
+        assert hasattr(domain_models, sym), f"Missing {sym} on domain_models"
+
+    # Monkeypatch synchronization
+    original = models.Trade
+    try:
+        dummy: Any = object()
+        setattr(models, "Trade", dummy)
+        assert domain_models.Trade is dummy
+        assert domain_models.trading.Trade is dummy
+    finally:
+        setattr(models, "Trade", original)
+        assert domain_models.Trade is original
+
+
