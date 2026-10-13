@@ -4,7 +4,7 @@ System Config Repository.
 Encapsulates database access for dynamic runtime configurations and safety flags.
 """
 
-from typing import Optional
+from typing import Optional, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +36,12 @@ class SystemConfigRepository(SystemConfigRepositoryPort):
     async def set(self, key: str, value: str, description: Optional[str] = None) -> SystemConfig:
         """Upsert a configuration entry atomically."""
         return await SystemConfig.upsert(self.session, key=key, value=value, description=description)
+
+    async def get_all(self) -> Sequence[SystemConfig]:
+        """Fetch all configuration entries."""
+        stmt = select(SystemConfig)
+        res = await self.session.execute(stmt)
+        return list(res.scalars().all())
 
     async def is_kill_switch_active(self) -> bool:
         """Check whether the global emergency kill switch is engaged."""

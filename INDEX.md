@@ -695,13 +695,13 @@ This document provides an exhaustive structural index of all directories, files,
     - `OrderPreviewResult`
     - `TradeExecutionResult`
     - `TradingService`
-      - *Methods*: `generate_preview_token(symbol, action, volume, expires_at)`, `verify_preview_token(token, symbol, action, volume, expires_at)`, `preview_manual_order(session, symbol, action, volume, entry_price, stop_loss, take_profit, is_paper)`, `submit_order(session, symbol, action, volume, entry_price, stop_loss, take_profit, is_paper, preview_token, token_expires_at, actor, broker_adapter)`, `close_position(session, ticket, reason, actor, broker_adapter)`, `emergency_kill(session, reason, actor)`
+      - *Methods*: `generate_preview_token(symbol, action, volume, expires_at)`, `verify_preview_token(token, symbol, action, volume, expires_at)`, `preview_manual_order(session, symbol, action, volume, entry_price, stop_loss, take_profit, is_paper)`, `submit_order(session, symbol, action, volume, entry_price, stop_loss, take_profit, is_paper, preview_token, token_expires_at, actor, broker_adapter)`, `close_position(session, ticket, reason, actor, broker_adapter)`, `modify_position(session, ticket, sl, tp, actor, broker_adapter)`, `close_positions_batch(session, tickets, reason, actor, broker_adapter)`, `bulk_breakeven(session, symbol, actor)`, `set_trailing_override(session, ticket, override_data, reset_to_default, actor)`, `emergency_kill(session, reason, actor)`
 
 **File:** `portfolio_service.py`
   - **Docstring**: Canonical Portfolio & Position Application Service. Consolidates position queries, performance metrics, and order history across UI layers.
   - **Classes**:
     - `PortfolioService`
-      - *Methods*: `get_open_positions(session, symbol, is_paper)`, `get_closed_positions(session, limit, symbol, is_paper)`, `get_portfolio_metrics(session, is_paper)`, `get_active_orders(session, symbol, limit)`, `get_portfolio_exposure(session, is_paper)`
+      - *Methods*: `get_open_positions(session, symbol, is_paper)`, `get_closed_positions(session, limit, symbol, is_paper)`, `get_portfolio_metrics(session, is_paper)`, `get_active_orders(session, symbol, limit)`, `get_order_logs(session, limit, action)`, `get_portfolio_exposure(session, is_paper)`
 
 **File:** `market_intel_service.py`
   - **Docstring**: Canonical Market Intelligence & Alpha Application Service. Bridges OHLCV data to VectorFactorEngine alpha evaluation.

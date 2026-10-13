@@ -12,7 +12,7 @@ all user interfaces (CLI, TUI, Telegram, Web Dashboard).
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,6 +65,16 @@ class PortfolioService:
         """Fetch pending or in-flight orders."""
         repo = PositionRepository(session)
         return list(await repo.get_active_orders(symbol=symbol, limit=limit))
+
+    @staticmethod
+    async def get_order_logs(
+        session: AsyncSession,
+        limit: int = 50,
+        action: Optional[str] = None,
+    ) -> Sequence[Any]:
+        """Fetch latest raw broker order audit logs."""
+        repo = PositionRepository(session)
+        return await repo.get_recent_order_logs(limit=limit, action=action)
 
     @staticmethod
     async def get_portfolio_exposure(
