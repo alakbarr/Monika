@@ -1158,7 +1158,7 @@ This document provides an exhaustive structural index of all directories, files,
   - `api.py`: FastAPI application server orchestrating WebSocket telemetry, REST APIs, strict CORS origin controls (`localhost:5173`, `127.0.0.1:5173`), and modern SPA frontend static file resolution.
   - `rbac.py`: Role-Based Access Control enforcing role boundaries (ADMIN, TRADER, VIEWER).
   - `pty_bridge.py`: WebSocket pseudo-terminal bridge for web console execution.
-  - `routes/`: Modular API endpoints (`trading.py` synchronized batch close contracts, `config.py`, `system.py`, `intelligence.py`, `backtest.py`, `benchmark.py`, `tokens.py`, `websocket.py`).
+  - `routes/`: Modular API endpoints (`config.py`, `system.py`, `intelligence.py`, `backtest.py`, `benchmark.py`, `tokens.py`, `websocket.py`), and decomposed modular trading routes (`trading.py` facade and `trading_endpoints/`: `overview.py`, `positions.py`, `orders.py`, `risk.py`, `analysis.py`, `actions.py`, `market_data.py`).
 
 ##### Folder: `src/monika/interfaces/gateway`
 - **Modules**:
