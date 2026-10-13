@@ -28,7 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.agent.chat_tool_router import ChatToolRouter
-from monika.application.analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE, TELEGRAM_TOOLS
+from monika.application.analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE, OPERATOR_INTERACTIVE_TOOLS
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import (
     ActivityLog,
@@ -185,7 +185,7 @@ class ChatAgent:
         self._pending_charts: list[Any] = []
         self._pending_files: list[tuple[str, Any]] = []
         self.last_active: Optional[datetime] = None
-        self._tool_router = ChatToolRouter(TELEGRAM_TOOLS)
+        self._tool_router = ChatToolRouter(OPERATOR_INTERACTIVE_TOOLS)
 
         from monika.application.analysis.tools.tool_guardrails import ToolGuardrailController
 
@@ -1422,7 +1422,7 @@ class ChatAgent:
 
         system_prompt = self._inject_macro_playbooks(system_prompt, user_query=message)
 
-        all_mapped = {t.get("name"): t for t in TELEGRAM_TOOLS if t.get("name")}
+        all_mapped = {t.get("name"): t for t in OPERATOR_INTERACTIVE_TOOLS if t.get("name")}
         all_tools = list(all_mapped.values())
 
         async def _notify_progress(text: str):

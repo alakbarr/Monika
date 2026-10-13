@@ -1,10 +1,10 @@
 import pytest
 from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
-from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
+from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS
 
 
 def test_chat_tool_router_intent_matching():
-    router = ChatToolRouter(TELEGRAM_TOOLS)
+    router = ChatToolRouter(OPERATOR_INTERACTIVE_TOOLS)
 
     # 1. Diagnostic intent ("Kenapa bot gak buka posisi dari pagi?", "Kenapa tadi kena SL?")
     diag_bundle = router.route_tools_for_query("Kenapa bot gak buka posisi dari pagi?")

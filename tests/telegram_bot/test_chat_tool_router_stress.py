@@ -13,12 +13,12 @@ All stress test scenarios execute as full assertion tests verifying 100% routing
 
 import pytest
 from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
-from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
+from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS
 
 
 @pytest.fixture(scope="module")
 def router():
-    return ChatToolRouter(TELEGRAM_TOOLS)
+    return ChatToolRouter(OPERATOR_INTERACTIVE_TOOLS)
 
 
 # ============================================================================
@@ -274,7 +274,7 @@ def test_multi_domain_complex_fallback(router):
         "cek chart EURUSD RSI (technical), dan bagaimana status server token (system)?"
     )
     tools = router.route_tools_for_query(query)
-    assert len(tools) == len(TELEGRAM_TOOLS), "Multi-domain query (>=3) must fall back to full toolset"
+    assert len(tools) == len(OPERATOR_INTERACTIVE_TOOLS), "Multi-domain query (>=3) must fall back to full toolset"
 
 
 @pytest.mark.parametrize(
@@ -303,21 +303,21 @@ def test_trade_intent_hijacking_research_and_macro(router, query, expected_tool)
 
 def test_empty_input_returns_all_tools(router):
     """Empty string must return all tools as safe fallback."""
-    assert len(router.route_tools_for_query("")) == len(TELEGRAM_TOOLS)
+    assert len(router.route_tools_for_query("")) == len(OPERATOR_INTERACTIVE_TOOLS)
 
 
 def test_whitespace_input_returns_all_tools(router):
     """Whitespace-only input should return all tools, consistent with empty string."""
-    assert len(router.route_tools_for_query("   ")) == len(TELEGRAM_TOOLS)
-    assert len(router.route_tools_for_query("\n\t\r")) == len(TELEGRAM_TOOLS)
+    assert len(router.route_tools_for_query("   ")) == len(OPERATOR_INTERACTIVE_TOOLS)
+    assert len(router.route_tools_for_query("\n\t\r")) == len(OPERATOR_INTERACTIVE_TOOLS)
 
 
 def test_non_string_inputs(router):
     """Non-string inputs should not crash and should return all tools."""
-    assert len(router.route_tools_for_query(None)) == len(TELEGRAM_TOOLS)
-    assert len(router.route_tools_for_query(12345)) == len(TELEGRAM_TOOLS)
-    assert len(router.route_tools_for_query(["buy", "eurusd"])) == len(TELEGRAM_TOOLS)
-    assert len(router.route_tools_for_query({"query": "macro"})) == len(TELEGRAM_TOOLS)
+    assert len(router.route_tools_for_query(None)) == len(OPERATOR_INTERACTIVE_TOOLS)
+    assert len(router.route_tools_for_query(12345)) == len(OPERATOR_INTERACTIVE_TOOLS)
+    assert len(router.route_tools_for_query(["buy", "eurusd"])) == len(OPERATOR_INTERACTIVE_TOOLS)
+    assert len(router.route_tools_for_query({"query": "macro"})) == len(OPERATOR_INTERACTIVE_TOOLS)
 
 
 def test_ultra_long_input(router):

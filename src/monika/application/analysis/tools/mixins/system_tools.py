@@ -664,25 +664,25 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
         symbol = inp.get("symbol", "")
 
         from monika.application.analysis.subagent.isolated_harness import IsolatedSubagentRunner
-        from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE2_ESSENTIAL_TOOLS
+        from monika.application.analysis.tools.tools_definitions import MACRO_ANALYSIS_TOOLS, ASSET_CORE_TOOLS
         from monika.infrastructure.providers.llm_factory import get_client_for_task
 
         runner = IsolatedSubagentRunner(settings=self.settings)
         if role == "macro_specialist":
             client = get_client_for_task("stage1_fundamental", self.settings)
-            tools = STAGE1_TOOLS
+            tools = MACRO_ANALYSIS_TOOLS
             sys_prompt = "You are an institutional macro specialist. Deliver concise, evidence-grounded macro analysis."
         elif role == "sentiment_specialist":
             client = get_client_for_task("sentiment_analyst", self.settings)
-            tools = STAGE1_TOOLS
+            tools = MACRO_ANALYSIS_TOOLS
             sys_prompt = "You are a market sentiment specialist. Deliver concise sentiment and positioning analysis."
         elif role == "risk_specialist":
             client = get_client_for_task("risk_gate", self.settings)
-            tools = STAGE2_ESSENTIAL_TOOLS
+            tools = ASSET_CORE_TOOLS
             sys_prompt = "You are a quantitative risk specialist. Evaluate structural levels, invalidation, and R:R."
         else:
             client = get_client_for_task("stage2_per_asset_primary", self.settings)
-            tools = STAGE2_ESSENTIAL_TOOLS
+            tools = ASSET_CORE_TOOLS
             sys_prompt = (
                 "You are an SMC technical specialist. Analyze market structure, order blocks, and key liquidity zones."
             )

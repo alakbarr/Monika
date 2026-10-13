@@ -1,11 +1,11 @@
 import pytest
 from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
-from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
+from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS
 
 
 @pytest.fixture
 def router():
-    return ChatToolRouter(TELEGRAM_TOOLS)
+    return ChatToolRouter(OPERATOR_INTERACTIVE_TOOLS)
 
 
 def test_command_fast_regex_routing(router):

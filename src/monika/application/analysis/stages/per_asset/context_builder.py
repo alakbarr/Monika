@@ -23,11 +23,11 @@ def _get_clock():
 
 
 from monika.application.analysis.tools.tools_definitions import (
-    STAGE2_ESSENTIAL_TOOLS,
-    STAGE2_EXPANDED_TOOLS,
-    STAGE2_FROZEN_TOOLS,
-    STAGE2_PRESCREEN_TOOLS,
-    STAGE2_TOOLS,
+    ASSET_CORE_TOOLS,
+    ASSET_EXPANDED_TOOLS,
+    ASSET_RESTRICTED_TOOLS,
+    ASSET_PRESCREEN_TOOLS,
+    PER_ASSET_ANALYSIS_TOOLS,
 )
 
 try:

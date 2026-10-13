@@ -26,8 +26,8 @@ from monika.application.analysis.prefetch.stage1_prefetcher import (
     prune_stage1_tools,
 )
 from monika.application.analysis.tools.tools_definitions import (
-    STAGE1_TOOLS,
-    STAGE1_TOOLS_WEEKEND_BTC,
+    MACRO_ANALYSIS_TOOLS,
+    WEEKEND_CRYPTO_MACRO_TOOLS,
     minify_tool_definitions,
 )
 from monika.application.analysis.validators.fundamental_verifier import verify_fundamental_brief
@@ -656,7 +656,7 @@ class FundamentalStage:
         result = None
         last_error = None
 
-        base_tools = STAGE1_TOOLS_WEEKEND_BTC if weekend_btc_only_mode else STAGE1_TOOLS
+        base_tools = WEEKEND_CRYPTO_MACRO_TOOLS if weekend_btc_only_mode else MACRO_ANALYSIS_TOOLS
         is_prefetch_healthy = bool(
             prefetch_satisfied_tools and CORE_STAGE1_PREFETCH_TOOLS.issubset(prefetch_satisfied_tools)
         )

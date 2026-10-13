@@ -29,11 +29,11 @@ from monika.application.analysis.stages.per_asset.verifiers import (
 )
 from monika.application.analysis.stages.preflight_gate import PreFlightTurnGate
 from monika.application.analysis.tools.tools_definitions import (
-    STAGE2_ESSENTIAL_TOOLS,
-    STAGE2_EXPANDED_TOOLS,
-    STAGE2_FROZEN_TOOLS,
-    STAGE2_PRESCREEN_TOOLS,
-    STAGE2_TOOLS,
+    ASSET_CORE_TOOLS,
+    ASSET_EXPANDED_TOOLS,
+    ASSET_RESTRICTED_TOOLS,
+    ASSET_PRESCREEN_TOOLS,
+    PER_ASSET_ANALYSIS_TOOLS,
     minify_tool_definitions,
 )
 from monika.infrastructure.database.models import ActivityLog, AssetAnalysis
@@ -1268,7 +1268,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             logger.debug(f"Failed to fetch market regime for prompt injection: {e}")
 
         # SOTA Frozen Tool Selection: Deterministic 9 pinned tools permanently preserving 100% KV-Cache prefix hit rate across all symbols and turns
-        dynamic_tools = minify_tool_definitions(STAGE2_FROZEN_TOOLS)
+        dynamic_tools = minify_tool_definitions(ASSET_RESTRICTED_TOOLS)
 
         ineffective_factors_note = ""
         try:

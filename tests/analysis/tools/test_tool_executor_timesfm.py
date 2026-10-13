@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, patch
 from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.application.analysis.tools.tools_definitions import (
     GET_TIMESFM_FORECAST,
-    STAGE2_TOOLS,
-    TELEGRAM_TOOLS,
+    PER_ASSET_ANALYSIS_TOOLS,
+    OPERATOR_INTERACTIVE_TOOLS,
     ALL_TOOLS,
 )
 
@@ -84,6 +84,6 @@ async def test_tool_get_timesfm_forecast_missing_symbol():
 
 def test_tool_definition_registration():
     assert GET_TIMESFM_FORECAST["name"] == "get_timesfm_forecast"
-    assert any(t["name"] == "get_timesfm_forecast" for t in STAGE2_TOOLS)
-    assert any(t["name"] == "get_timesfm_forecast" for t in TELEGRAM_TOOLS)
+    assert any(t["name"] == "get_timesfm_forecast" for t in PER_ASSET_ANALYSIS_TOOLS)
+    assert any(t["name"] == "get_timesfm_forecast" for t in OPERATOR_INTERACTIVE_TOOLS)
     assert any(t["name"] == "get_timesfm_forecast" for t in ALL_TOOLS)

@@ -204,11 +204,11 @@ def test_new_tools_registration():
         "search_social_sentiment",
     ]
 
-    telegram_names = {t["name"] for t in td.TELEGRAM_TOOLS if isinstance(t, dict)}
+    telegram_names = {t["name"] for t in td.OPERATOR_INTERACTIVE_TOOLS if isinstance(t, dict)}
     all_names = {t["name"] for t in td.ALL_TOOLS if isinstance(t, dict)}
 
     for t in tools_to_verify:
-        assert t in telegram_names, f"Tool '{t}' missing from TELEGRAM_TOOLS"
+        assert t in telegram_names, f"Tool '{t}' missing from OPERATOR_INTERACTIVE_TOOLS"
         assert t in all_names, f"Tool '{t}' missing from ALL_TOOLS"
 
 
@@ -271,10 +271,10 @@ async def test_tool_executor_dispatch():
 
 
 def test_chat_tool_router_routing():
-    from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
+    from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS
     from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
 
-    router = ChatToolRouter(TELEGRAM_TOOLS)
+    router = ChatToolRouter(OPERATOR_INTERACTIVE_TOOLS)
 
     test_queries = [
         ("pivot points gold hari ini", "get_pivot_points"),

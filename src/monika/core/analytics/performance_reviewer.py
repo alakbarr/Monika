@@ -420,7 +420,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> str |
             else:
                 session.add(SystemConfig(key=cfg_key, value=json.dumps(new_negative_weeks)))
 
-            # Save dropped_final so per_asset_stage.py can read it and mutate STAGE2_TOOLS
+            # Save dropped_final so per_asset_stage.py can read it and mutate PER_ASSET_ANALYSIS_TOOLS
             final_key = "confluence_dropped_factors"
             final_row = (
                 await session.execute(select(SystemConfig).where(SystemConfig.key == final_key))

@@ -8,7 +8,7 @@ import json
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from monika.application.analysis.tools.tool_executor import ToolExecutor
-from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS, ALL_TOOLS
+from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS, ALL_TOOLS
 from monika.infrastructure.database.models import (
     PaperTradeRecord,
     Position,
@@ -26,8 +26,8 @@ from monika.infrastructure.database.models import (
 class TestTelegramToolsIntegration:
     @pytest.mark.asyncio
     async def test_telegram_tools_presence(self):
-        """Pastikan semua tool baru terdaftar di TELEGRAM_TOOLS dan ALL_TOOLS."""
-        tool_names = {t["name"] for t in TELEGRAM_TOOLS}
+        """Pastikan semua tool baru terdaftar di OPERATOR_INTERACTIVE_TOOLS dan ALL_TOOLS."""
+        tool_names = {t["name"] for t in OPERATOR_INTERACTIVE_TOOLS}
         expected = {
             "get_paper_trading_performance",
             "get_trade_history",
@@ -53,7 +53,7 @@ class TestTelegramToolsIntegration:
             "get_structured_sentiment",
         }
         for name in expected:
-            assert name in tool_names, f"Tool {name} missing from TELEGRAM_TOOLS"
+            assert name in tool_names, f"Tool {name} missing from OPERATOR_INTERACTIVE_TOOLS"
 
     @pytest.mark.asyncio
     async def test_get_paper_trading_performance(self):

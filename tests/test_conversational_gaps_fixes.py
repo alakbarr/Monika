@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
 from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
 from monika.application.analysis.tools.tools_definitions import (
-    TELEGRAM_TOOLS,
+    OPERATOR_INTERACTIVE_TOOLS,
     CALCULATE_POSITION_SIZE,
     GET_LIQUIDITY_SWEEP_CONTEXT,
     SCAN_PATTERN_SIMILARITY,
@@ -22,20 +22,20 @@ from monika.application.analysis.tools.tools_definitions import (
 
 
 def test_telegram_tools_registration():
-    """Verify all missing tools are registered in TELEGRAM_TOOLS."""
-    tool_names = [t.get("name") or t.get("function", {}).get("name") for t in TELEGRAM_TOOLS]
+    """Verify all missing tools are registered in OPERATOR_INTERACTIVE_TOOLS."""
+    tool_names = [t.get("name") or t.get("function", {}).get("name") for t in OPERATOR_INTERACTIVE_TOOLS]
 
-    assert "calculate_position_size" in tool_names, "CALCULATE_POSITION_SIZE must be in TELEGRAM_TOOLS"
-    assert "get_liquidity_sweep_context" in tool_names, "GET_LIQUIDITY_SWEEP_CONTEXT must be in TELEGRAM_TOOLS"
-    assert "scan_pattern_similarity" in tool_names, "SCAN_PATTERN_SIMILARITY must be in TELEGRAM_TOOLS"
-    assert "calculate_margin" in tool_names, "CALCULATE_MARGIN must be in TELEGRAM_TOOLS"
-    assert "create_price_alert" in tool_names, "CREATE_PRICE_ALERT must be in TELEGRAM_TOOLS"
-    assert "get_market_quote" in tool_names, "GET_MARKET_QUOTE must be in TELEGRAM_TOOLS"
+    assert "calculate_position_size" in tool_names, "CALCULATE_POSITION_SIZE must be in OPERATOR_INTERACTIVE_TOOLS"
+    assert "get_liquidity_sweep_context" in tool_names, "GET_LIQUIDITY_SWEEP_CONTEXT must be in OPERATOR_INTERACTIVE_TOOLS"
+    assert "scan_pattern_similarity" in tool_names, "SCAN_PATTERN_SIMILARITY must be in OPERATOR_INTERACTIVE_TOOLS"
+    assert "calculate_margin" in tool_names, "CALCULATE_MARGIN must be in OPERATOR_INTERACTIVE_TOOLS"
+    assert "create_price_alert" in tool_names, "CREATE_PRICE_ALERT must be in OPERATOR_INTERACTIVE_TOOLS"
+    assert "get_market_quote" in tool_names, "GET_MARKET_QUOTE must be in OPERATOR_INTERACTIVE_TOOLS"
 
 
 def test_chat_tool_router_regex_patterns():
     """Verify ChatToolRouter correctly routes trade, research, technical, and portfolio intents."""
-    router = ChatToolRouter(all_tools=TELEGRAM_TOOLS)
+    router = ChatToolRouter(all_tools=OPERATOR_INTERACTIVE_TOOLS)
 
     # 1. Trade intent: sizing & margin & alert
     t_trade = router.route_tools_for_query("Berapa lot size yang tepat untuk EURUSD dengan risk 1%?")

@@ -2,10 +2,10 @@ import pytest
 from monika.application.analysis.tools.tools_definitions import (
     _tool,
     ALL_TOOLS,
-    STAGE1_TOOLS,
-    STAGE2_TOOLS,
-    STAGE2_PRESCREEN_TOOLS,
-    TELEGRAM_TOOLS,
+    MACRO_ANALYSIS_TOOLS,
+    PER_ASSET_ANALYSIS_TOOLS,
+    ASSET_PRESCREEN_TOOLS,
+    OPERATOR_INTERACTIVE_TOOLS,
 )
 
 
@@ -30,18 +30,18 @@ def test_all_tools_valid_schema():
 
 
 def test_stage_tools_lists():
-    assert len(STAGE1_TOOLS) > 0
-    assert len(STAGE2_TOOLS) > 0
-    assert len(STAGE2_PRESCREEN_TOOLS) > 0
-    assert len(TELEGRAM_TOOLS) > 0
+    assert len(MACRO_ANALYSIS_TOOLS) > 0
+    assert len(PER_ASSET_ANALYSIS_TOOLS) > 0
+    assert len(ASSET_PRESCREEN_TOOLS) > 0
+    assert len(OPERATOR_INTERACTIVE_TOOLS) > 0
 
     # check that submit_fundamental_brief is in stage 1
-    names1 = [t["name"] for t in STAGE1_TOOLS]
+    names1 = [t["name"] for t in MACRO_ANALYSIS_TOOLS]
     assert "submit_fundamental_brief" in names1
 
     # check that submit_asset_analysis is in stage 2
-    names2 = [t["name"] for t in STAGE2_TOOLS]
+    names2 = [t["name"] for t in PER_ASSET_ANALYSIS_TOOLS]
     assert "submit_asset_analysis" in names2
 
-    names_pre = [t["name"] for t in STAGE2_PRESCREEN_TOOLS]
+    names_pre = [t["name"] for t in ASSET_PRESCREEN_TOOLS]
     assert "submit_asset_analysis" in names_pre

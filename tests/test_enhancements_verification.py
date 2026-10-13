@@ -19,11 +19,11 @@ from monika.application.analysis.tools.handlers.position_mgmt import handle_calc
 from monika.application.analysis.tools.handlers.market_data_tools import handle_get_synthetic_cross_rate
 from monika.application.analysis.tools.handlers.trade_intel import handle_simulate_price_shock, handle_read_system_logs
 from monika.application.analysis.tools.handlers.db_tools import handle_query_database_sql
-from monika.application.analysis.tools.tools_definitions import ALL_TOOLS, TELEGRAM_TOOLS
+from monika.application.analysis.tools.tools_definitions import ALL_TOOLS, OPERATOR_INTERACTIVE_TOOLS
 
 
 def test_tool_definitions():
-    telegram_names = {t["name"] for t in TELEGRAM_TOOLS}
+    telegram_names = {t["name"] for t in OPERATOR_INTERACTIVE_TOOLS}
     all_names = {t["name"] for t in ALL_TOOLS}
     required = [
         "query_database_sql",
@@ -34,13 +34,13 @@ def test_tool_definitions():
         "get_smt_divergence",
     ]
     for r in required:
-        assert r in telegram_names, f"{r} missing from TELEGRAM_TOOLS"
+        assert r in telegram_names, f"{r} missing from OPERATOR_INTERACTIVE_TOOLS"
         assert r in all_names, f"{r} missing from ALL_TOOLS"
     print("PASS: test_tool_definitions")
 
 
 def test_router_intents():
-    router = ChatToolRouter(TELEGRAM_TOOLS)
+    router = ChatToolRouter(OPERATOR_INTERACTIVE_TOOLS)
 
     # Q25: ditolak
     tools_q25 = router.route_tools_for_query("Kenapa order saya ditolak oleh sistem tadi pagi?")

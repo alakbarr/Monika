@@ -1,12 +1,12 @@
 import pytest
 from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
-from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
+from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS
 
 
 def test_chat_tool_router_progressive_loading():
     """Memastikan ChatToolRouter memuat tool secara progresif tanpa membakar token."""
-    router = ChatToolRouter(TELEGRAM_TOOLS)
-    total_tools_count = len(TELEGRAM_TOOLS)
+    router = ChatToolRouter(OPERATOR_INTERACTIVE_TOOLS)
+    total_tools_count = len(OPERATOR_INTERACTIVE_TOOLS)
     assert total_tools_count >= 30, f"Total tools seharusnya >= 30, terdeteksi: {total_tools_count}"
 
     # 1. Kueri portofolio tunggal -> hanya tool portofolio (< 10 tools)
