@@ -2,7 +2,12 @@ from tests.conftest import create_mock_async_session
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from analysis.providers.llm_factory import LLMFactory, FallbackClientWrapper, get_client_for_task, create_client
+from monika.infrastructure.providers.llm_factory import (
+    LLMFactory,
+    FallbackClientWrapper,
+    get_client_for_task,
+    create_client,
+)
 
 
 @pytest.fixture
@@ -33,7 +38,7 @@ def test_resolve_provider(mock_settings):
     assert factory._resolve_provider("gpt-4") == "openai"  # Guess
 
 
-@patch("analysis.providers.anthropic_provider.AnthropicProvider")
+@patch("monika.infrastructure.providers.anthropic_provider.AnthropicProvider")
 def test_create_client_instance_anthropic(mock_anthropic, mock_settings):
     factory = LLMFactory(mock_settings)
     client = factory._create_client_instance("claude-sonnet-5", {"max_tokens": 50})
@@ -41,7 +46,7 @@ def test_create_client_instance_anthropic(mock_anthropic, mock_settings):
     mock_anthropic.assert_called_once()
 
 
-@patch("analysis.providers.gemini_provider.GeminiProvider")
+@patch("monika.infrastructure.providers.gemini_provider.GeminiProvider")
 def test_create_client_instance_gemini(mock_gemini, mock_settings):
     factory = LLMFactory(mock_settings)
     client = factory._create_client_instance("gemini-3.5-flash-lite", {"max_tokens": 50})
@@ -113,7 +118,7 @@ async def test_fallback_wrapper_generate_content(mock_settings):
 
 
 def test_flatten_system_prompt():
-    from analysis.providers.base_provider import _flatten_system_prompt
+    from monika.infrastructure.providers.base_provider import _flatten_system_prompt
 
     assert _flatten_system_prompt(None) == ""
     assert _flatten_system_prompt("simple string") == "simple string"
@@ -164,7 +169,7 @@ async def test_fallback_wrapper_deepcopy_isolation(mock_settings):
 
 
 def test_safe_clone_unpicklable_and_nested():
-    from analysis.providers.llm_factory import _safe_clone
+    from monika.infrastructure.providers.llm_factory import _safe_clone
 
     class FakeAsyncSession:
         pass
@@ -289,7 +294,7 @@ async def test_fallback_wrapper_dynamic_thinking_level():
 @pytest.mark.asyncio
 async def test_fallback_wrapper_activity_log_recorded():
     import asyncio
-    from database.models import ActivityLog
+    from monika.infrastructure.database.models import ActivityLog
     from contextlib import asynccontextmanager
 
     settings = {
@@ -326,7 +331,7 @@ async def test_fallback_wrapper_activity_log_recorded():
 
     with (
         patch.object(factory, "_create_client_instance", side_effect=side_effect),
-        patch("database.db.get_session", mock_get_session),
+        patch("monika.infrastructure.database.db.get_session", mock_get_session),
     ):
         wrapper = FallbackClientWrapper(
             factory, "claude-sonnet-5", ["gemini-3.5-flash-lite"], settings["llm"]["task_roles"]["audit_task"]
@@ -382,8 +387,8 @@ async def test_fallback_wrapper_typesafe_array_schema_skip_audit():
 
     with (
         patch.object(factory, "_create_client_instance", side_effect=side_effect),
-        patch("database.db.get_session", mock_get_session),
-        patch("analysis.providers.llm_factory.logger") as mock_logger,
+        patch("monika.infrastructure.database.db.get_session", mock_get_session),
+        patch("monika.infrastructure.providers.llm_factory.logger") as mock_logger,
     ):
         wrapper = FallbackClientWrapper(
             factory,

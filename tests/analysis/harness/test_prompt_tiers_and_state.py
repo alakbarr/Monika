@@ -1,13 +1,13 @@
 """Unit tests for prompt tiers and harness state machine (Phase 4)."""
 
 import pytest
-from utils.llm.prompt_tiers import (
+from monika.infrastructure.llm.prompt_tiers import (
     PromptTier,
     TieredSystemPrompt,
     TieredPrompt,
     build_tiered_prompt,
 )
-from analysis.harness.harness_state import (
+from monika.application.analysis.harness.harness_state import (
     PhaseAction,
     PhaseVerdict,
     HarnessState,
@@ -104,7 +104,7 @@ def test_phase_verdict():
 
 
 def test_prepare_turn_phase():
-    from analysis.harness.harness_state import prepare_turn_phase
+    from monika.application.analysis.harness.harness_state import prepare_turn_phase
 
     state = HarnessState(max_turns=3)
     msgs = [{"role": "user", "content": "hello"}]
@@ -118,7 +118,7 @@ def test_prepare_turn_phase():
 
 
 def test_evaluate_response_phase_and_handle_error_phase():
-    from analysis.harness.harness_state import evaluate_response_phase, handle_error_phase
+    from monika.application.analysis.harness.harness_state import evaluate_response_phase, handle_error_phase
 
     state = HarnessState()
 
@@ -151,8 +151,8 @@ def test_evaluate_response_phase_and_handle_error_phase():
 
 
 def test_prompt_assembler_tiered_integration():
-    from utils.llm.prompt_assembler import PromptAssembler
-    from utils.llm.prompt_tiers import TieredSystemPrompt
+    from monika.infrastructure.llm.prompt_assembler import PromptAssembler
+    from monika.infrastructure.llm.prompt_tiers import TieredSystemPrompt
 
     assembler = PromptAssembler()
     tiered_s1 = assembler.assemble_stage1_tiered(core_memory="Sample memory")

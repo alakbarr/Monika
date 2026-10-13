@@ -16,10 +16,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from execution.ea_bridge.heartbeat_writer import HeartbeatManager
-from utils.infra.notifier import AgentNotifier
-from agent.task_registry import TaskRegistry
-from analysis.memory.playbook_ledger import get_playbook_async_lock, PlaybookLedger
+from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager
+from monika.infrastructure.infra.notifier import AgentNotifier
+from monika.application.agent.task_registry import TaskRegistry
+from monika.application.analysis.memory.playbook_ledger import get_playbook_async_lock, PlaybookLedger
 
 
 @pytest.mark.asyncio
@@ -60,7 +60,7 @@ async def test_notifier_discord_asyncio_to_thread():
 @pytest.mark.asyncio
 async def test_mt5_client_pending_order_retcode_10008():
     """Verify MT5Client treats TRADE_RETCODE_PLACED (10008) as success."""
-    from execution.mt5_client import _place_order
+    from monika.infrastructure.brokers.mt5_client import _place_order
 
     mock_mt5 = MagicMock()
     mock_mt5.symbol_info.return_value = MagicMock(

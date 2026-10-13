@@ -2,8 +2,8 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from execution.execution_service import ExecutionService, ExecutionResult
-from database.models import AssetAnalysis, Position
+from monika.application.execution.execution_service import ExecutionService, ExecutionResult
+from monika.infrastructure.database.models import AssetAnalysis, Position
 
 
 class TestExecutionResult:
@@ -65,8 +65,8 @@ class TestExecutionService:
         return ExecutionService({}, mt5_client=AsyncMock(), dry_run=False)
 
     @pytest.mark.asyncio
-    @patch("execution.execution_service.PositionSizer")
-    @patch("execution.execution_service.RiskGate")
+    @patch("monika.application.execution.execution_service.PositionSizer")
+    @patch("monika.application.execution.execution_service.RiskGate")
     async def test_execute_analysis_skip_wait(self, mock_risk_cls, mock_sizer_cls, svc):
         session = create_mock_async_session()
         session.add = MagicMock()
@@ -82,7 +82,7 @@ class TestExecutionService:
 
     @pytest.mark.asyncio
     async def test_execute_analysis_success(self):
-        from execution.execution_service import _EXECUTED_ANALYSIS_IDS
+        from monika.application.execution.execution_service import _EXECUTED_ANALYSIS_IDS
 
         _EXECUTED_ANALYSIS_IDS.clear()
 
@@ -128,7 +128,9 @@ class TestExecutionService:
             rationale="Test rationale",
         )
 
-        with patch("analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock) as mock_adv:
+        with patch(
+            "monika.application.analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock
+        ) as mock_adv:
             mock_adv.return_value = {"approve": True, "hard_block": False}
             res = await svc.execute_analysis(session, analysis)
 
@@ -140,7 +142,7 @@ class TestExecutionService:
 
     @pytest.mark.asyncio
     async def test_limit_order_execution_and_drift_validation(self):
-        from execution.execution_service import _EXECUTED_ANALYSIS_IDS
+        from monika.application.execution.execution_service import _EXECUTED_ANALYSIS_IDS
 
         _EXECUTED_ANALYSIS_IDS.clear()
 
@@ -193,7 +195,9 @@ class TestExecutionService:
             rationale="Limit order pullback entry",
         )
 
-        with patch("analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock) as mock_adv:
+        with patch(
+            "monika.application.analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock
+        ) as mock_adv:
             mock_adv.return_value = {"approve": True, "hard_block": False}
             res = await svc.execute_analysis(session, analysis)
 
@@ -252,7 +256,7 @@ class TestExecutionService:
         mock_result.scalar_one_or_none.return_value = mock_pos
         mock_session.execute = AsyncMock(return_value=mock_result)
 
-        with patch("execution.execution_service.get_session") as mock_get_session:
+        with patch("monika.application.execution.execution_service.get_session") as mock_get_session:
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__.return_value = mock_session
             mock_get_session.return_value = mock_ctx
@@ -271,7 +275,7 @@ class TestExecutionService:
         svc = ExecutionService({}, mt5_client=mock_mt5)
         svc.gate = AsyncMock()
 
-        with patch("execution.execution_service.get_session") as mock_get_session:
+        with patch("monika.application.execution.execution_service.get_session") as mock_get_session:
             mock_ctx = AsyncMock()
             mock_session = create_mock_async_session()
             mock_session.add = MagicMock()
@@ -314,7 +318,7 @@ class TestExecutionService:
 
     @pytest.mark.asyncio
     async def test_news_blackout_circuit_breaker_triggered_for_matching_currency(self):
-        from database.models import EconomicCalendar
+        from monika.infrastructure.database.models import EconomicCalendar
 
         svc = ExecutionService({"trading": {"risk": {"news_window_minutes": 30}}}, mt5_client=AsyncMock(), dry_run=True)
         session = create_mock_async_session()
@@ -343,7 +347,7 @@ class TestExecutionService:
 
     @pytest.mark.asyncio
     async def test_news_blackout_circuit_breaker_ignored_for_unrelated_currency(self):
-        from execution.execution_service import _EXECUTED_ANALYSIS_IDS
+        from monika.application.execution.execution_service import _EXECUTED_ANALYSIS_IDS
 
         _EXECUTED_ANALYSIS_IDS.clear()
 
@@ -380,7 +384,9 @@ class TestExecutionService:
         session.execute = AsyncMock(side_effect=mock_execute)
 
         analysis = AssetAnalysis(id=777, symbol="GBPUSD", decision="buy", stop_loss=1.25, take_profit=1.27)
-        with patch("analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock) as mock_adv:
+        with patch(
+            "monika.application.analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock
+        ) as mock_adv:
             mock_adv.return_value = {"approve": True, "hard_block": False}
             res = await svc.execute_analysis(session, analysis)
 
@@ -390,10 +396,10 @@ class TestExecutionService:
 
     @pytest.mark.asyncio
     async def test_execute_analysis_with_6h_old_brief_accepted(self):
-        from database.models import AssetAnalysis, FundamentalBrief
+        from monika.infrastructure.database.models import AssetAnalysis, FundamentalBrief
         from datetime import datetime, timezone, timedelta
         import time
-        from execution.execution_service import _EXECUTED_ANALYSIS_IDS
+        from monika.application.execution.execution_service import _EXECUTED_ANALYSIS_IDS
 
         _EXECUTED_ANALYSIS_IDS.clear()
 
@@ -454,9 +460,13 @@ class TestExecutionService:
             confidence=0.8,
         )
         with (
-            patch("execution.execution_service.get_session", return_value=brief_ctx),
-            patch("analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock) as mock_adv,
-            patch("analysis.validators.confluence_verifier.verify_confluence", new_callable=AsyncMock) as mock_conf,
+            patch("monika.application.execution.execution_service.get_session", return_value=brief_ctx),
+            patch(
+                "monika.application.analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock
+            ) as mock_adv,
+            patch(
+                "monika.application.analysis.validators.confluence_verifier.verify_confluence", new_callable=AsyncMock
+            ) as mock_conf,
         ):
             mock_adv.return_value = {"approve": True, "hard_block": False}
             mock_conf.return_value = {"verified": True, "blocking_issues": []}
@@ -468,7 +478,7 @@ class TestExecutionService:
 
     @pytest.mark.asyncio
     async def test_execute_analysis_with_13h_old_brief_rejected(self):
-        from database.models import AssetAnalysis, FundamentalBrief
+        from monika.infrastructure.database.models import AssetAnalysis, FundamentalBrief
         from datetime import datetime, timezone, timedelta
 
         settings = {"paper_trading": {"enabled": True}}
@@ -493,7 +503,7 @@ class TestExecutionService:
         brief_ctx.__aenter__.return_value = brief_session
 
         analysis = AssetAnalysis(id=889, symbol="GBPUSD", decision="buy", brief_id=11, stop_loss=1.25, take_profit=1.27)
-        with patch("execution.execution_service.get_session", return_value=brief_ctx):
+        with patch("monika.application.execution.execution_service.get_session", return_value=brief_ctx):
             res = await svc.execute_analysis(session, analysis)
 
         assert res.risk_approved is False
@@ -502,7 +512,7 @@ class TestExecutionService:
 
     @pytest.mark.asyncio
     async def test_kill_switch_paper_reconciliation_and_de_arming(self):
-        from database.models import Position, SystemConfig
+        from monika.infrastructure.database.models import Position, SystemConfig
 
         mock_mt5 = AsyncMock()
         mock_mt5.close_all_positions.return_value = {"closed": 0, "failed": 0, "total": 0}
@@ -515,7 +525,7 @@ class TestExecutionService:
         p2 = Position(id=2, symbol="GBPUSD", direction="sell", status="open", volume=0.1, is_paper=True)
 
         with (
-            patch("execution.execution_service.get_session") as mock_get_session,
+            patch("monika.application.execution.execution_service.get_session") as mock_get_session,
             patch.object(svc, "_close_paper_position", new_callable=AsyncMock) as mock_close_p,
         ):
             mock_close_p.return_value = {"success": True, "ticket": 1}
@@ -550,7 +560,7 @@ class TestExecutionService:
 
     @pytest.mark.asyncio
     async def test_resume_trading_clears_gates_and_state(self):
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
 
         mock_mt5 = AsyncMock()
         mock_mt5.is_connected = True

@@ -6,17 +6,17 @@ import asyncio
 import pytest
 from typing import Dict, Any, List
 
-from harness.contract import (
+from monika.application.harness.contract import (
     TradingPlugin,
     PluginMetadata,
     PluginCategory,
     PluginOrigin,
 )
-from harness.context import PluginContext
-from harness.engine import PluginEngine
-from utils.infra.container import ServiceContainer
-from utils.protocol.event_bus import EventBus
-from analysis.prompt_sections import prompt_section_registry
+from monika.application.harness.context import PluginContext
+from monika.application.harness.engine import PluginEngine
+from monika.infrastructure.infra.container import ServiceContainer
+from monika.application.protocol.event_bus import EventBus
+from monika.application.analysis.prompt_sections import prompt_section_registry
 
 
 class MockManifestPlugin(TradingPlugin):

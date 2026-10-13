@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from pathlib import Path
-from scheduler.playbook_curator import PlaybookCurator
+from monika.application.scheduler.playbook_curator import PlaybookCurator
 
 
 @pytest.mark.asyncio
@@ -31,7 +31,7 @@ async def test_playbook_curator_successful_curation(tmp_path):
     curator.playbooks_dir.mkdir(parents=True, exist_ok=True)
     curator.crystallized_dir.mkdir(parents=True, exist_ok=True)
 
-    from analysis.memory.playbook_ledger import PlaybookLedger
+    from monika.application.analysis.memory.playbook_ledger import PlaybookLedger
 
     curator.ledger = PlaybookLedger(str(curator.playbooks_dir))
 

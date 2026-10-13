@@ -4,13 +4,13 @@ Unit test verifying StateGraph memory optimization and fail-closed safety alignm
 
 import pytest
 from unittest.mock import patch, AsyncMock
-from graph.nodes.state_pruner import (
+from monika.application.graph.nodes.state_pruner import (
     prune_after_fundamental,
     prune_after_debate,
     _cap_archived_payloads,
     MAX_ARCHIVED_PAYLOAD_ENTRIES,
 )
-from graph.reactive_graph import fast_debate_node
+from monika.application.graph.reactive_graph import fast_debate_node
 
 
 def test_state_pruner_ring_buffer_cap():

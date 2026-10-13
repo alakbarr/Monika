@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
-from risk.risk_gate import RiskGate, RiskVerdict
-from risk.position_sizing import SizingResult
+from monika.domain.risk.risk_gate import RiskGate, RiskVerdict
+from monika.domain.risk.position_sizing import SizingResult
 
 from tests.conftest import create_mock_async_session
 
@@ -246,7 +246,7 @@ class TestRiskGate:
         existing_state.trading_paused = False
         mock_session.execute.return_value.scalar_one_or_none.return_value = existing_state
 
-        with patch("utils.infra.notifier.AgentNotifier") as mock_notifier:
+        with patch("monika.infrastructure.infra.notifier.AgentNotifier") as mock_notifier:
             mock_notifier.return_value.send_critical = AsyncMock()
             # -100 pnl -> total drawdown = -350 -> 3.5% >= 3.0%
             await gate.update_risk_state(mock_session, -100.0, 10000.0)
@@ -281,7 +281,7 @@ class TestRiskGate:
 
         # Saturday at 10:00 UTC (weekday == 5, hour == 10)
         saturday_dt = datetime(2026, 8, 22, 10, 0, 0, tzinfo=timezone.utc)
-        with patch("utils.clock.now", return_value=saturday_dt):
+        with patch("monika.core.primitives.clock.now", return_value=saturday_dt):
             # Non-exempt symbol (EURUSD) must be blocked on Saturday
             ok, reason = await gate.assess_weekend_gap_risk(mock_session, "EURUSD")
             assert not ok
@@ -303,7 +303,7 @@ class TestRiskGate:
         mock_session = self._setup_mock_session(mock_vix)
         monday_dt = datetime(2026, 8, 31, 7, 3, 52, tzinfo=timezone.utc)  # 3.29 days old
 
-        with patch("utils.clock.now", return_value=monday_dt):
+        with patch("monika.core.primitives.clock.now", return_value=monday_dt):
             ok, reason = await gate._check_vix_threshold(mock_session, as_of=monday_dt)
             assert ok is True
             assert "VIX=14.5" in reason
@@ -321,7 +321,7 @@ class TestRiskGate:
         mock_session = self._setup_mock_session(mock_vix)
         wednesday_dt = datetime(2026, 9, 2, 12, 0, 0, tzinfo=timezone.utc)  # 5.5 days old
 
-        with patch("utils.clock.now", return_value=wednesday_dt):
+        with patch("monika.core.primitives.clock.now", return_value=wednesday_dt):
             ok, reason = await gate._check_vix_threshold(mock_session, as_of=wednesday_dt)
             assert ok is True
             assert "defaulting to 25.0" in reason
@@ -329,7 +329,7 @@ class TestRiskGate:
     @pytest.mark.asyncio
     async def test_get_daily_risk_cutoff_and_state(self, settings):
         """Verify get_daily_risk_cutoff and get_current_risk_state work seamlessly."""
-        from risk.risk_gate import get_daily_risk_cutoff, get_current_risk_state
+        from monika.domain.risk.risk_gate import get_daily_risk_cutoff, get_current_risk_state
 
         now_dt = datetime(2026, 9, 3, 14, 0, 0, tzinfo=timezone.utc)
         cutoff = get_daily_risk_cutoff(now_dt, {"daily_rollover_utc_hour": 21})

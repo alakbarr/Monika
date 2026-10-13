@@ -5,7 +5,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from analysis.harness.context_compressor import (
+from monika.application.analysis.harness.context_compressor import (
     ContextCompressor,
     safe_unicode_tail,
     prune_tool_result_content,
@@ -189,7 +189,7 @@ async def test_iterative_summary_chaining():
 
 
 def test_warm_prefix_preservation():
-    from analysis.harness.context_compressor import ContextCompressor
+    from monika.application.analysis.harness.context_compressor import ContextCompressor
 
     compressor = ContextCompressor(settings={})
     messages = [
@@ -215,7 +215,7 @@ def test_warm_prefix_preservation():
 
 
 def test_safe_unicode_slice():
-    from analysis.harness.context_compressor import safe_unicode_slice
+    from monika.application.analysis.harness.context_compressor import safe_unicode_slice
 
     # Japanese text & currency symbols & emoji
     text = "東京市場 分析  EURUSD €1.0850 ¥155.20"
@@ -227,7 +227,7 @@ def test_safe_unicode_slice():
 
 
 def test_offload_historical_charts():
-    from analysis.harness.context_compressor import offload_historical_charts
+    from monika.application.analysis.harness.context_compressor import offload_historical_charts
 
     messages = [
         {"role": "user", "content": "Show chart"},

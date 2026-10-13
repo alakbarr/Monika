@@ -1,9 +1,9 @@
 import pytest
 from datetime import datetime, timezone
-from analysis.arbitration.signal_arbitrator import SignalArbitrator
-from analysis.strategies.base_strategy import EdgeSignal
-from indicators.timesfm_engine import TimesFMEngine
-import utils.clock as clock
+from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator
+from monika.application.analysis.strategies.base_strategy import EdgeSignal
+from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
+import monika.core.primitives.clock as clock
 
 
 @pytest.mark.asyncio

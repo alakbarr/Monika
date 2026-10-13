@@ -13,11 +13,11 @@ import time
 from pathlib import Path
 import pytest
 
-from logging_observability.dashboard.ws_ticket import (
+from monika.interfaces.dashboard.ws_ticket import (
     WsTicketManager,
     get_ws_ticket_manager,
 )
-from logging_observability.dashboard.log_streamer import (
+from monika.interfaces.dashboard.log_streamer import (
     LogStreamer,
     parse_log_line_level,
 )

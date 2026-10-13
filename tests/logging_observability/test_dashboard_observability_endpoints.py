@@ -6,14 +6,14 @@ from tests.conftest import create_mock_async_session
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch, MagicMock
-from logging_observability.dashboard.api import app
-from logging_observability.tracing.exporters import global_trace_store
+from monika.interfaces.dashboard.api import app
+from monika.core.telemetry.tracing.exporters import global_trace_store
 
 client = TestClient(app)
 
 
 class TestObservabilityEndpoints:
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_playbook_tree(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
@@ -41,7 +41,7 @@ class TestObservabilityEndpoints:
         assert "children" in data
         assert any(c["name"] == "XAUUSD" for c in data["children"])
 
-    @patch("database.db.AsyncSessionLocal")
+    @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_prompt_cache_metrics(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
@@ -68,7 +68,7 @@ class TestObservabilityEndpoints:
         assert data["cycles"][0]["hit_rate_pct"] == 80.0
 
     def test_get_tool_latencies(self):
-        from logging_observability.tracing.exporters import TraceRecord
+        from monika.core.telemetry.tracing.exporters import TraceRecord
 
         rec = TraceRecord(
             trace_id="test-trace",

@@ -7,7 +7,7 @@ Tests live credit fetching for OpenRouter & DeepSeek, daily quota calculation, a
 
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from utils.api.credit_balance_tracker import CreditBalanceTracker
+from monika.infrastructure.api.credit_balance_tracker import CreditBalanceTracker
 
 
 @pytest.mark.asyncio

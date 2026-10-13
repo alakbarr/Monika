@@ -3,7 +3,7 @@ Unit tests for backtest/statistical_tests.py (PSR, E[max], DSR, sample moments).
 """
 
 import pytest
-from backtest.statistical_tests import (
+from monika.application.backtest.statistical_tests import (
     probabilistic_sharpe_ratio,
     expected_max_sharpe,
     deflated_sharpe_ratio,

@@ -3,7 +3,7 @@ import pytest
 import logging
 import os
 from unittest.mock import AsyncMock, patch, MagicMock
-from logging_observability.activity_logger import (
+from monika.core.telemetry.activity_logger import (
     setup_logging,
     shutdown_logging,
     ActivityLogger,
@@ -35,7 +35,7 @@ class TestActivityLogger:
         assert logger1 is logger2
 
     @pytest.mark.asyncio
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     async def test_log_success(self, mock_get_session):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -58,7 +58,7 @@ class TestActivityLogger:
         mock_session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     async def test_log_invalid_category(self, mock_get_session):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -74,7 +74,7 @@ class TestActivityLogger:
         assert added_entry.category == "system"
 
     @pytest.mark.asyncio
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     async def test_log_exception(self, mock_get_session):
         # Simulate DB exception
         mock_get_session.side_effect = Exception("DB Error")
@@ -108,7 +108,7 @@ class TestActivityLogger:
             mock_log.assert_called_with("telegram", "test", None, "telegram", session=None)
 
     @pytest.mark.asyncio
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     async def test_bulk(self, mock_get_session):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -142,7 +142,7 @@ class TestActivityLogger:
         secret_token = "7871591922:AAENRd20agWx3AZqMVnvokzGgCDoZ192sVY"
         httpx_logger.info(f'HTTP Request: POST https://api.telegram.org/bot{secret_token}/getUpdates "HTTP/1.1 200 OK"')
 
-        agent_log_path = os.path.join(log_dir, "agent.log")
+        agent_log_path = os.path.join(log_dir, "monika.application.agent.log")
         assert os.path.exists(agent_log_path)
         with open(agent_log_path, "r", encoding="utf-8") as f:
             content = f.read()

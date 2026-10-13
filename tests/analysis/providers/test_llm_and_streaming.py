@@ -6,20 +6,20 @@ import asyncio
 import time
 import pytest
 
-from analysis.providers.provider_profile import (
+from monika.infrastructure.providers.provider_profile import (
     ProviderProfile,
     NormalizedResponse,
     NormalizedToolCall,
     TokenUsage,
     get_provider_profile,
 )
-from utils.streaming.streaming_lease import (
+from monika.core.streaming.streaming_lease import (
     StreamWriterLeaseCoordinator,
     StreamWriterLeaseHandle,
     LeaseAcquisitionTimeoutError,
     LeaseExpiredOrInvalidError,
 )
-from provider.credential_pool import KeyHealth, CredentialPool
+from monika.infrastructure.credentials.credential_pool import KeyHealth, CredentialPool
 
 
 def test_provider_profile_normalize_string_and_think_tags():

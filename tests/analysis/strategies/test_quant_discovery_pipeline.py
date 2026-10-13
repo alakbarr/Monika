@@ -7,21 +7,21 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analysis.strategies.decay_monitor import StrategyDecayMonitor, StrategyHealth, DecayState
-from analysis.strategies.base_strategy import EdgeSignal, EdgeStrategy
-from analysis.strategies.registry import StrategyRegistry
-from analysis.calculators.quant_plateau_optimizer import (
+from monika.application.analysis.strategies.decay_monitor import StrategyDecayMonitor, StrategyHealth, DecayState
+from monika.application.analysis.strategies.base_strategy import EdgeSignal, EdgeStrategy
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.application.analysis.calculators.quant_plateau_optimizer import (
     QuantPlateauOptimizer,
     ParameterSpec,
     PlateauOptimizationResult,
 )
-from scheduler.alpha_discovery_scheduler import (
+from monika.application.scheduler.alpha_discovery_scheduler import (
     AlphaDiscoveryScheduler,
     AlphaHypothesis,
     CandidateAlphaProposal,
     STRATEGY_PARAM_SPACES,
 )
-from analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
+from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
 
 
 class MockPlateauStrategy(EdgeStrategy):
@@ -100,7 +100,7 @@ def test_strategy_decay_monitor_incubation_failure_low_win_rate():
 @pytest.mark.asyncio
 async def test_xau_trend_engine_numeric_parsing():
     """Bug 1: Verifies XAUTrendEngine parses JSON dict values safely without TypeError."""
-    from analysis.strategies.xau_trend_engine import XAUTrendEngine
+    from monika.application.analysis.strategies.xau_trend_engine import XAUTrendEngine
 
     strat = XAUTrendEngine({"trading": {}})
 
@@ -139,7 +139,7 @@ async def test_xau_trend_engine_numeric_parsing():
 @pytest.mark.asyncio
 async def test_btc_donchian_breakout_abstract_contract():
     """Bug 2: Verifies BTCDonchianBreakout implements evaluate() and returns EdgeSignal."""
-    from analysis.strategies.btc_donchian_breakout import BTCDonchianBreakout
+    from monika.application.analysis.strategies.btc_donchian_breakout import BTCDonchianBreakout
 
     strat = BTCDonchianBreakout({"trading": {}})
 
@@ -164,7 +164,7 @@ async def test_btc_donchian_breakout_abstract_contract():
 
 def test_harness_true_range_and_r_multiple():
     """Bug 3 & 9: Verifies TR includes (high - low) and returns are calculated as risk-normalized R-multiples."""
-    from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness, CandleDict
+    from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness, CandleDict
     from datetime import datetime, timezone
 
     harness = IsolatedStrategyBacktestHarness(
@@ -190,8 +190,8 @@ def test_harness_true_range_and_r_multiple():
 
 def test_harness_dynamic_parameters_applied():
     """Bug 4: Verifies harness applies dynamic sl_atr_multiplier and tp_sl_multiplier."""
-    from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
-    from analysis.strategies.base_strategy import EdgeSignal
+    from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+    from monika.application.analysis.strategies.base_strategy import EdgeSignal
 
     harness = IsolatedStrategyBacktestHarness(
         strategy=MockPlateauStrategy,
@@ -284,18 +284,18 @@ async def test_quant_signal_arbitrator_concordance():
 @pytest.mark.asyncio
 async def test_context_builder_quant_edge_injection():
     """Bug 6: Verifies context_builder uses classify_market_regime to evaluate StrategyRegistry with compatible regime."""
-    from analysis.stages.per_asset.context_builder import ContextBuilder
+    from monika.application.analysis.stages.per_asset.context_builder import ContextBuilder
 
     cb = ContextBuilder(settings={"trading": {}})
     mock_session = create_mock_async_session()
 
     with (
         patch(
-            "analysis.calculators.regime_classifier.classify_market_regime",
+            "monika.application.analysis.calculators.regime_classifier.classify_market_regime",
             new=AsyncMock(return_value={"regime": "TREND"}),
         ),
         patch(
-            "analysis.strategies.registry.StrategyRegistry.evaluate_all",
+            "monika.application.analysis.strategies.registry.StrategyRegistry.evaluate_all",
             new=AsyncMock(
                 return_value=[
                     EdgeSignal(
@@ -305,7 +305,7 @@ async def test_context_builder_quant_edge_injection():
             ),
         ),
     ):
-        from analysis.calculators.regime_classifier import classify_market_regime
+        from monika.application.analysis.calculators.regime_classifier import classify_market_regime
 
         reg_info = await classify_market_regime(mock_session, "EURUSD", cb.settings)
         assert reg_info["regime"] == "TREND"
@@ -319,7 +319,7 @@ async def test_context_builder_quant_edge_injection():
 
 def test_edge_strategy_runner_symbol_hot_reload():
     """Bug 8: Verifies EdgeStrategyRunner.hot_reload_strategy supports symbol-partitioned parameter overrides."""
-    from scheduler.edge_strategy_runner import EdgeStrategyRunner
+    from monika.application.scheduler.edge_strategy_runner import EdgeStrategyRunner
 
     settings = {"trading": {"edge_strategy": {}}}
     runner = EdgeStrategyRunner(settings=settings)

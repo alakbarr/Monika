@@ -1,12 +1,12 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.tools.composite_tools import (
+from monika.application.analysis.tools.composite_tools import (
     execute_market_context,
     execute_technical_analysis,
     execute_price_data,
     execute_institutional_data,
 )
-from analysis.tools.tools_definitions import (
+from monika.application.analysis.tools.tools_definitions import (
     GET_MARKET_CONTEXT,
     GET_TECHNICAL_ANALYSIS,
     GET_PRICE_DATA,

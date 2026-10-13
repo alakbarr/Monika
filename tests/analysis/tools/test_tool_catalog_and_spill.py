@@ -5,8 +5,8 @@ Test suite for HybridToolCatalog, ToolSpillStorage, and CSV Market Data.
 import os
 import pytest
 from pathlib import Path
-from analysis.tools.tool_catalog import HybridToolCatalog
-from analysis.tools.tool_spill import ToolSpillStorage, truncate_head_tail
+from monika.application.analysis.tools.tool_catalog import HybridToolCatalog
+from monika.application.analysis.tools.tool_spill import ToolSpillStorage, truncate_head_tail
 
 
 def test_hybrid_tool_catalog():

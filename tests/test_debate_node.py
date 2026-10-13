@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from graph.state import TradingState
-from graph.nodes.debate_node import debate_node
+from monika.application.graph.state import TradingState
+from monika.application.graph.nodes.debate_node import debate_node
 
 
 @pytest.mark.asyncio

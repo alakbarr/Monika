@@ -2,8 +2,8 @@ import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from analysis.providers.openrouter_provider import OpenRouterProvider
-from analysis.providers.llm_factory import LLMFactory, create_client, get_client_for_task
+from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
+from monika.infrastructure.providers.llm_factory import LLMFactory, create_client, get_client_for_task
 
 
 @pytest.fixture(autouse=True)
@@ -123,7 +123,7 @@ async def test_openrouter_token_logging():
     provider = OpenRouterProvider(model="claude-sonnet-5", api_key="test-key")
 
     mock_session = create_mock_async_session()
-    with patch("database.models.TokenUsageLog") as mock_log_cls:
+    with patch("monika.infrastructure.database.models.TokenUsageLog") as mock_log_cls:
         await provider._save_token_usage(
             model_name="claude-sonnet-5",
             task_name="test_task",
@@ -397,7 +397,7 @@ def test_openrouter_per_model_cooldown_isolation():
 @pytest.mark.asyncio
 async def test_openrouter_rate_limiter_module():
     """Memverifikasi OpenRouterRateLimiter try_acquire dan get_usage."""
-    from utils.api.openrouter_rate_limiter import OpenRouterRateLimiter, is_free_tier_model
+    from monika.infrastructure.api.openrouter_rate_limiter import OpenRouterRateLimiter, is_free_tier_model
 
     assert is_free_tier_model("ox-alpha") is True
     assert is_free_tier_model("google/gemma-4-31b-it:free") is True
@@ -415,7 +415,7 @@ async def test_openrouter_rate_limiter_module():
 def test_openrouter_handle_rate_limit_classification():
     """Memverifikasi presisi klasifikasi rate limit OpenRouter (Generic 429 vs Retry hint vs Upstream vs RPD)."""
     import time
-    from utils.api.openrouter_rate_limiter import OpenRouterRateLimiter
+    from monika.infrastructure.api.openrouter_rate_limiter import OpenRouterRateLimiter
 
     OpenRouterProvider.reset_cooldowns()
 
@@ -489,7 +489,7 @@ def test_openrouter_handle_rate_limit_classification():
 
 def test_openrouter_logger_name():
     """Memverifikasi namespace logger adalah TradingAgent.OpenRouterProvider."""
-    from analysis.providers.openrouter_provider import logger
+    from monika.infrastructure.providers.openrouter_provider import logger
 
     assert logger.name == "TradingAgent.OpenRouterProvider"
 
@@ -566,7 +566,7 @@ def test_llm_factory_openrouter_paid_model_uses_paid_key_not_free_pool():
     LLMFactory TIDAK boleh menyuntikkan free key dari CredentialPool ke model berbayar OpenRouter.
     Model seperti z-ai/glm-5.3 atau claude-sonnet-5 HARUS menggunakan OPENROUTER_PAID_API_KEY.
     """
-    from analysis.providers.llm_factory import LLMFactory
+    from monika.infrastructure.providers.llm_factory import LLMFactory
 
     env = {
         "OPENROUTER_PAID_API_KEY": "sk-or-paid-secret",

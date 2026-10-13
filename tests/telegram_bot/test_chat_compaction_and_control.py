@@ -5,8 +5,8 @@ Unit tests for Chat Compaction (H1), Denial Circuit Breaker (M3), and Turn Inter
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
-from telegram_bot.chat_compaction import ChatMicroCompactor
-from telegram_bot.chat_agent import ChatAgent
+from monika.interfaces.telegram.chat_compaction import ChatMicroCompactor
+from monika.interfaces.telegram.chat_agent import ChatAgent
 
 
 def test_h1_chat_compactor_preserves_user_messages():

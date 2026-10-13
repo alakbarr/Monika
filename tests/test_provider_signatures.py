@@ -1,14 +1,14 @@
 import inspect
-from analysis.providers.base_provider import BaseLLMClient
-from analysis.providers.anthropic_provider import AnthropicProvider
-from analysis.providers.gemini_provider import GeminiProvider
-from analysis.providers.openai_provider import OpenAIProvider
-from analysis.providers.openrouter_provider import OpenRouterProvider
-from analysis.providers.deepseek_provider import DeepSeekProvider
-from analysis.providers.groq_provider import GroqProvider
+from monika.infrastructure.providers.base_provider import BaseLLMClient
+from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
+from monika.infrastructure.providers.gemini_provider import GeminiProvider
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
+from monika.infrastructure.providers.deepseek_provider import DeepSeekProvider
+from monika.infrastructure.providers.groq_provider import GroqProvider
 
-from analysis.providers.ollama_provider import OllamaProvider
-from analysis.providers.llm_factory import FallbackClientWrapper
+from monika.infrastructure.providers.ollama_provider import OllamaProvider
+from monika.infrastructure.providers.llm_factory import FallbackClientWrapper
 
 
 def test_all_providers_accept_temperature_kwarg():

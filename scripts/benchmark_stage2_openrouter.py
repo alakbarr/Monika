@@ -19,12 +19,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _src_dir = REPO_ROOT / "src"
 if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
 os.chdir(str(REPO_ROOT))
 
 # Ensure stdout handles UTF-8 on Windows
@@ -35,14 +29,14 @@ if sys.stdout.encoding != "utf-8":
     except Exception:
         pass
 
-from config.settings import load_all_config
-from database.db import init_db, get_session
-from benchmark.task_specs import _stage2_system_prompt
-from benchmark.fixture_loader import get_synthetic_stage2_bundle
-from analysis.tools.tools_definitions import STAGE2_FROZEN_TOOLS, minify_tool_definitions
-from benchmark.db_access import guarded_tool_executor
-from analysis.providers.openrouter_provider import OpenRouterProvider
-from utils.analytics.pricing import cost_usd
+from monika.core.config.settings import load_all_config
+from monika.infrastructure.database.db import init_db, get_session
+from monika.application.benchmark.task_specs import _stage2_system_prompt
+from monika.application.benchmark.fixture_loader import get_synthetic_stage2_bundle
+from monika.application.analysis.tools.tools_definitions import STAGE2_FROZEN_TOOLS, minify_tool_definitions
+from monika.application.benchmark.db_access import guarded_tool_executor
+from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
+from monika.core.analytics.pricing import cost_usd
 
 # Evaluated models (Claude Opus 5.5 and Grok 4.6 explicitly excluded)
 MODELS_TO_BENCHMARK = [
@@ -416,7 +410,7 @@ async def main():
     settings["stall_warning_threshold"] = 30
 
     # Freeze simulated clock to benchmark evaluation scenario time
-    import utils.clock as clock
+    import monika.core.primitives.clock as clock
 
     clock.set_simulated_now(datetime(2026, 10, 4, 19, 0, 0, tzinfo=timezone.utc))
 

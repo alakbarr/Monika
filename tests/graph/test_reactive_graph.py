@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
 
-from graph.reactive_graph import (
+from monika.application.graph.reactive_graph import (
     build_reactive_graph,
     get_reactive_graph,
     ReactiveState,
@@ -171,7 +171,7 @@ async def test_reactive_graph_execution_auto_execute():
 @pytest.mark.asyncio
 async def test_reactive_graph_edge_signal_routes_to_risk_gate():
     """Verify that edge_signal events route to risk_gate rather than bypassing directly to execution."""
-    from graph.reactive_graph import (
+    from monika.application.graph.reactive_graph import (
         route_after_ingest,
         route_after_confluence,
         route_after_debate,

@@ -1,6 +1,6 @@
 import pytest
-from config.settings import load_settings
-from analysis.providers.llm_factory import LLMFactory
+from monika.core.config.settings import load_settings
+from monika.infrastructure.providers.llm_factory import LLMFactory
 
 
 EXPECTED_MODELS_ORDER = [
@@ -58,7 +58,7 @@ def test_settings_task_roles_hierarchy_and_thinking_high():
 
 def test_groq_aliases_include_qwen():
     """Verify Groq provider aliases include qwen3.8-27b and qwen3.6-27b."""
-    from analysis.providers.groq_provider import GROQ_MODEL_ALIASES
+    from monika.infrastructure.providers.groq_provider import GROQ_MODEL_ALIASES
 
     assert "qwen3.8-27b" in GROQ_MODEL_ALIASES
     assert "qwen3.6-27b" in GROQ_MODEL_ALIASES
@@ -70,7 +70,7 @@ async def test_fallback_client_wrapper_per_model_timeout():
     """Verify FallbackClientWrapper moves to next fallback model when primary times out."""
     import asyncio
     from unittest.mock import AsyncMock, patch, MagicMock
-    from analysis.providers.llm_factory import LLMFactory, FallbackClientWrapper
+    from monika.infrastructure.providers.llm_factory import LLMFactory, FallbackClientWrapper
 
     settings = {
         "llm": {
@@ -133,7 +133,7 @@ def test_unknown_name_never_routes_to_ollama():
 
 def test_startup_check_fails_on_ollama_tool_role():
     """_check_model_roles must fail fast when a tool-bearing role resolves to ollama."""
-    from agent.startup_checks import StartupChecker
+    from monika.application.agent.startup_checks import StartupChecker
 
     settings = load_settings()
     checker = StartupChecker(settings)

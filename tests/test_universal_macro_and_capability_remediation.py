@@ -14,25 +14,25 @@ import pytest
 import pandas as pd
 from datetime import datetime, timezone
 
-from database.db import get_engine, get_session
-from database.models import (
+from monika.infrastructure.database.db import get_engine, get_session
+from monika.infrastructure.database.models import (
     Base,
     EconomicReportDecomposition,
     CentralBankDocument,
     MacroLiquidityCreditMetric,
 )
-from risk.position_sizing import PositionSizer
-from analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
-from analysis.calculators.universal_cb_differ import UniversalCentralBankDiffer
-from analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
-from analysis.tools.handlers.behavioral_alert_tool import handle_create_behavioral_alert
-from analysis.tools.handlers.broker_profile_tool import handle_compare_broker_spread_profiles
-from analysis.tools.handlers.trade_intel import (
+from monika.domain.risk.position_sizing import PositionSizer
+from monika.application.analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
+from monika.application.analysis.calculators.universal_cb_differ import UniversalCentralBankDiffer
+from monika.application.analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
+from monika.application.analysis.tools.handlers.behavioral_alert_tool import handle_create_behavioral_alert
+from monika.application.analysis.tools.handlers.broker_profile_tool import handle_compare_broker_spread_profiles
+from monika.application.analysis.tools.handlers.trade_intel import (
     handle_export_trades_to_excel,
     handle_generate_docx_report,
     handle_generate_pptx_deck,
 )
-from utils.chart_generator import generate_smc_candlestick_chart
+from monika.core.analytics.chart_generator import generate_smc_candlestick_chart
 import json
 from unittest.mock import MagicMock, AsyncMock
 

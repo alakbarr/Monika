@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 from sqlalchemy import select
 
-from database.models import CentralBankRateExpectation, BondYieldData, InterestRate
-from data_sources.central_bank_watch import CentralBankWatchFetcher
+from monika.infrastructure.database.models import CentralBankRateExpectation, BondYieldData, InterestRate
+from monika.infrastructure.data_ingestion.sources.central_bank_watch import CentralBankWatchFetcher
 
 
 SAMPLE_CBW_HOME_HTML = """

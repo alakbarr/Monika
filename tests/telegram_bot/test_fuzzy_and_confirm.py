@@ -5,9 +5,9 @@ Test suite for TurnMarkerManager, FuzzyCommandRouter, and TradeConfirmManager.
 import time
 import pytest
 from pathlib import Path
-from utils.turn_marker import TurnMarker, TurnMarkerManager
-from telegram_bot.fuzzy_router import FuzzyCommandRouter, TRADING_COMMAND_REGISTRY
-from execution.service.trade_confirm import TradeConfirmManager, PendingTradeAction
+from monika.core.primitives.turn_marker import TurnMarker, TurnMarkerManager
+from monika.interfaces.telegram.fuzzy_router import FuzzyCommandRouter, TRADING_COMMAND_REGISTRY
+from monika.application.execution.service.trade_confirm import TradeConfirmManager, PendingTradeAction
 
 
 def test_turn_marker_lifecycle(tmp_path):

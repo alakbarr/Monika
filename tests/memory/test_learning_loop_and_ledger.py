@@ -13,9 +13,9 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from analysis.memory.skill_ast_audit import SkillAstAuditor
-from analysis.memory.skill_ledger_sha import ShaSkillLedger, ShaLedgerBlock
-from analysis.memory.background_review_fork import BackgroundReviewFork
+from monika.application.analysis.memory.skill_ast_audit import SkillAstAuditor
+from monika.application.analysis.memory.skill_ledger_sha import ShaSkillLedger, ShaLedgerBlock
+from monika.application.analysis.memory.background_review_fork import BackgroundReviewFork
 
 
 # ==============================================================================

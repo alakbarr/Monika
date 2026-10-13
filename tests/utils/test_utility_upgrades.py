@@ -1,8 +1,8 @@
 import pytest
-from database.models import CycleEvent
-from analysis.tools.base_handler import DisaggregatedToolResult
-from utils.analytics.models_dev_sync import ModelsDevSync
-from utils.llm.deferred_dispatcher import DeferredLLMDispatcher, DeferredRequest
+from monika.infrastructure.database.models import CycleEvent
+from monika.application.analysis.tools.base_handler import DisaggregatedToolResult
+from monika.core.analytics.models_dev_sync import ModelsDevSync
+from monika.infrastructure.llm.deferred_dispatcher import DeferredLLMDispatcher, DeferredRequest
 
 
 def test_cycle_event_model():

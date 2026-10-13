@@ -17,11 +17,14 @@ import json
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook
-from analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
-from utils.market.dynamic_correlation import is_crypto_or_commodity_symbol, get_correlation_uncertainty_multiplier
-from risk.risk_gate import get_trading_day_start
-from scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
+from monika.application.analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook
+from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
+from monika.domain.market.dynamic_correlation import (
+    is_crypto_or_commodity_symbol,
+    get_correlation_uncertainty_multiplier,
+)
+from monika.domain.risk.risk_gate import get_trading_day_start
+from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
 
 
 # ==============================================================================
@@ -68,7 +71,7 @@ async def test_lesson_consolidator_symbol_partitioning():
     mock_client = AsyncMock()
     mock_client.generate.return_value = "## EURUSD\n- Rule 1\n## GBPUSD\n- Rule 2\n## BTCUSD\n- Rule 3"
 
-    with patch("analysis.providers.llm_factory.get_client_for_task", return_value=mock_client):
+    with patch("monika.infrastructure.providers.llm_factory.get_client_for_task", return_value=mock_client):
         result = await consolidate_lessons_to_playbook(mock_session, settings, auto_propose_only=True)
         assert result is not None
         assert "## EURUSD" in result
@@ -113,7 +116,9 @@ async def test_signal_arbitrator_concordant_atr_gap_guard_quant_priority():
     }
 
     mock_session = create_mock_async_session()
-    with patch("utils.calibration.confidence_calibrator.get_calibrated_confidence", new_callable=AsyncMock) as mock_cal:
+    with patch(
+        "monika.core.calibration.confidence_calibrator.get_calibrated_confidence", new_callable=AsyncMock
+    ) as mock_cal:
         mock_cal.return_value = 0.75
         res = await arbitrator.arbitrate(
             session=mock_session,
@@ -174,7 +179,9 @@ async def test_signal_arbitrator_dynamic_bayesian_boost():
     }
 
     mock_session = create_mock_async_session()
-    with patch("utils.calibration.confidence_calibrator.get_calibrated_confidence", new_callable=AsyncMock) as mock_cal:
+    with patch(
+        "monika.core.calibration.confidence_calibrator.get_calibrated_confidence", new_callable=AsyncMock
+    ) as mock_cal:
         # High calibrated confidence triggers dynamic boost +0.02 (0.05 -> 0.07)
         mock_cal.return_value = 0.85
         res = await arbitrator.arbitrate(

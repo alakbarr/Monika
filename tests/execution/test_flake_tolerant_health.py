@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from execution.health_check import FlakeTolerantHealthChecker
+from monika.application.execution.health_check import FlakeTolerantHealthChecker
 
 
 @pytest.mark.asyncio

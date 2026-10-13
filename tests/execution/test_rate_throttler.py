@@ -5,7 +5,7 @@
 import asyncio
 import pytest
 import time
-from execution.rate_throttler import RateThrottler, ThrottleVerdict
+from monika.infrastructure.brokers.rate_throttler import RateThrottler, ThrottleVerdict
 
 
 @pytest.mark.asyncio
@@ -139,7 +139,7 @@ async def test_rate_throttler_invalid_zero_limit_clamping():
 @pytest.mark.asyncio
 async def test_position_synchronizer_throttling():
     from unittest.mock import AsyncMock, MagicMock, patch
-    from execution.service.position_synchronizer import PositionSynchronizerMixin
+    from monika.application.execution.service.position_synchronizer import PositionSynchronizerMixin
     from tests.conftest import create_mock_async_session
 
     class DummySyncService(PositionSynchronizerMixin):
@@ -149,7 +149,7 @@ async def test_position_synchronizer_throttling():
             self.mt5.modify_position = AsyncMock(return_value={"success": True})
             self.rate_throttler = throttler
 
-    with patch("execution.service.position_synchronizer.get_session") as mock_get_session:
+    with patch("monika.application.execution.service.position_synchronizer.get_session") as mock_get_session:
         mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session

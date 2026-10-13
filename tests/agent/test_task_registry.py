@@ -6,7 +6,7 @@ import os
 import sys
 import types
 import pytest
-from agent.task_registry import (
+from monika.application.agent.task_registry import (
     CORE_TRADING_TASKS,
     TaskDefinition,
     TaskRegistry,

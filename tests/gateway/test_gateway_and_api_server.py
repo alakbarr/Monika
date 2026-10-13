@@ -15,12 +15,12 @@ from pathlib import Path
 import pytest
 from httpx import AsyncClient, ASGITransport
 
-from database.session_db_wal import SessionDbWal
-from gateway.channel_router import ChannelRouter
-from gateway.platforms.webhook_adapter import WebhookPlatformAdapter
-from gateway.platforms.discord_adapter import DiscordPlatformAdapter
-from gateway.platforms.telegram_adapter import TelegramPlatformAdapter
-from gateway.api_server import app as api_server_app
+from monika.infrastructure.database.session_db_wal import SessionDbWal
+from monika.interfaces.gateway.channel_router import ChannelRouter
+from monika.interfaces.gateway.platforms.webhook_adapter import WebhookPlatformAdapter
+from monika.interfaces.gateway.platforms.discord_adapter import DiscordPlatformAdapter
+from monika.interfaces.gateway.platforms.telegram_adapter import TelegramPlatformAdapter
+from monika.interfaces.gateway.api_server import app as api_server_app
 from unittest.mock import MagicMock, AsyncMock, patch
 
 
@@ -166,7 +166,7 @@ async def test_api_server_chat_completions_streaming():
 
 @pytest.mark.asyncio
 async def test_api_server_custom_runner_dispatch():
-    from gateway.api_server import set_agent_runner
+    from monika.interfaces.gateway.api_server import set_agent_runner
 
     async def mock_pipeline(session_id: str, user_text: str, metadata: dict) -> str:
         return f"Custom pipeline answered: {user_text}"
@@ -190,7 +190,7 @@ async def test_api_server_custom_runner_dispatch():
 
 @pytest.mark.asyncio
 async def test_discord_platform_adapter_webhook_and_interactions(monkeypatch):
-    from gateway.platforms.discord_adapter import DiscordPlatformAdapter
+    from monika.interfaces.gateway.platforms.discord_adapter import DiscordPlatformAdapter
 
     adapter = DiscordPlatformAdapter(webhook_url="https://discord.com/api/webhooks/mock_test")
     await adapter.start()
@@ -241,7 +241,7 @@ async def test_discord_platform_adapter_webhook_and_interactions(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_slack_platform_adapter_webhook_and_events(monkeypatch):
-    from gateway.platforms.slack_adapter import SlackPlatformAdapter
+    from monika.interfaces.gateway.platforms.slack_adapter import SlackPlatformAdapter
 
     adapter = SlackPlatformAdapter(webhook_url="https://hooks.slack.com/services/mock_test")
     await adapter.start()

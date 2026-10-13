@@ -19,21 +19,21 @@ import tempfile
 import time
 import pytest
 
-from gateway.delivery_ledger import DeliveryLedger, DeliveryStatus
-from gateway.webhook_ingress import (
+from monika.interfaces.gateway.delivery_ledger import DeliveryLedger, DeliveryStatus
+from monika.interfaces.gateway.webhook_ingress import (
     WebhookIngressRouter,
     WebhookIngressStatus,
     WebhookSignatureVerifier,
 )
-from gateway.acp_server import AcpServer
-from risk.approval_transport import (
+from monika.interfaces.gateway.acp_server import AcpServer
+from monika.infrastructure.brokers.approval_transport import (
     ApprovalDecisionPayload,
     ApprovalRequestPayload,
     ApprovalTransport,
     canonical_json,
     compute_sha256_digest,
 )
-from risk.approval_hub import ApprovalHub, ApprovalStatus
+from monika.domain.risk.approval_hub import ApprovalHub, ApprovalStatus
 
 
 # ==============================================================================

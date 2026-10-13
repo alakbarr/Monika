@@ -7,8 +7,8 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from database.models import PriceOHLCV, TechnicalIndicator, Position, SystemConfig
-from scheduler.flash_crash_detector import FlashCrashDetector
+from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator, Position, SystemConfig
+from monika.application.scheduler.flash_crash_detector import FlashCrashDetector
 
 
 @pytest.mark.asyncio

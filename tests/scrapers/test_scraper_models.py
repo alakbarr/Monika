@@ -1,5 +1,11 @@
 import pytest
-from scrapers.models import CalendarEvent, ScrapedNews, ScrapedTweet, FedProbability, FedMeeting
+from monika.infrastructure.data_ingestion.scrapers.models import (
+    CalendarEvent,
+    ScrapedNews,
+    ScrapedTweet,
+    FedProbability,
+    FedMeeting,
+)
 
 
 def test_calendar_event():

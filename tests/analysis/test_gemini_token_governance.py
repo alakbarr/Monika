@@ -2,7 +2,7 @@ import pytest
 import unittest
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from analysis.providers.gemini_provider import GeminiProvider
+from monika.infrastructure.providers.gemini_provider import GeminiProvider
 
 
 class TestGeminiTokenGovernance(unittest.IsolatedAsyncioTestCase):
@@ -20,9 +20,11 @@ class TestGeminiTokenGovernance(unittest.IsolatedAsyncioTestCase):
         provider.max_tokens = 10000
 
         with (
-            patch("analysis.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock) as mock_fetch,
-            patch("analysis.providers.gemini_provider.get_session"),
-            patch("analysis.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True),
+            patch(
+                "monika.infrastructure.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock
+            ) as mock_fetch,
+            patch("monika.infrastructure.providers.gemini_provider.get_session"),
+            patch("monika.infrastructure.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True),
         ):
             mock_fetch.return_value = {
                 "candidates": [{"content": {"parts": [{"text": '{"result": "ok"}'}]}, "finishReason": "STOP"}]
@@ -40,9 +42,11 @@ class TestGeminiTokenGovernance(unittest.IsolatedAsyncioTestCase):
         provider.max_tokens = 36000
 
         with (
-            patch("analysis.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock) as mock_fetch,
-            patch("analysis.providers.gemini_provider.get_session"),
-            patch("analysis.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True),
+            patch(
+                "monika.infrastructure.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock
+            ) as mock_fetch,
+            patch("monika.infrastructure.providers.gemini_provider.get_session"),
+            patch("monika.infrastructure.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True),
         ):
             mock_fetch.return_value = {
                 "candidates": [{"content": {"parts": [{"text": "analysis text"}]}, "finishReason": "STOP"}]
@@ -94,7 +98,10 @@ class TestGeminiTokenGovernance(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch.object(provider, "run_tool_agent", side_effect=[turn1_resp, turn2_resp, turn3_resp]) as mock_run_tool,
-            patch("analysis.tools.tool_executor.ToolExecutor.execute", return_value={"status": "recorded"}),
+            patch(
+                "monika.application.analysis.tools.tool_executor.ToolExecutor.execute",
+                return_value={"status": "recorded"},
+            ),
             patch.object(provider, "_save_token_usage", new_callable=AsyncMock),
             patch.object(provider, "_log_tool_call", new_callable=AsyncMock),
         ):

@@ -1,8 +1,8 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.memory.counterfactual_simulator import CounterfactualSimulator
-from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
+from monika.application.analysis.memory.counterfactual_simulator import CounterfactualSimulator
+from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
 
 
 @pytest.mark.asyncio

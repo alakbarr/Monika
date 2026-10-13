@@ -1,5 +1,5 @@
 import pytest
-from utils.llm.deferred_dispatcher import (
+from monika.infrastructure.llm.deferred_dispatcher import (
     DeferredLLMDispatcher,
     DeferredRequest,
     DispatchMode,

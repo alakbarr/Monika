@@ -14,11 +14,11 @@ import tempfile
 import pytest
 from pathlib import Path
 
-from analysis.memory.sharegpt_exporter import (
+from monika.application.analysis.memory.sharegpt_exporter import (
     ShareGptExporter,
     convert_scratchpad_to_think,
 )
-from analysis.memory.trajectory_compressor import (
+from monika.application.analysis.memory.trajectory_compressor import (
     TrajectoryCompressor,
     TrajectoryCompressionConfig,
     estimate_tokens,

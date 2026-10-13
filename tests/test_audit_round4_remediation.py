@@ -10,18 +10,18 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock, AsyncMock, patch
 
 from tests.conftest import create_mock_async_session
-from utils.validation.data_validator import is_spread_acceptable
-from analysis.strategies.gap_fade import DailyReopenGapFade
-from analysis.strategies.base_strategy import EdgeSignal
-from analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
-from telegram_bot.bot import TelegramBot
-from telegram_bot.chat_tool_router import ChatToolRouter
-from utils.market.swap_estimator import estimate_swap_cost
-from utils.market.bias_utils import normalize_bias
-from execution.ea_bridge.heartbeat_writer import HeartbeatWriter
-from analysis.calculators.invariant_calculator import extract_price_precision
-from utils.protocol.enhanced_cds import get_signal_threshold
-from utils.analytics.paper_tracker import PaperTracker
+from monika.core.validation.data_validator import is_spread_acceptable
+from monika.application.analysis.strategies.gap_fade import DailyReopenGapFade
+from monika.application.analysis.strategies.base_strategy import EdgeSignal
+from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
+from monika.interfaces.telegram.bot import TelegramBot
+from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
+from monika.domain.market.swap_estimator import estimate_swap_cost
+from monika.domain.market.bias_utils import normalize_bias
+from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatWriter
+from monika.application.analysis.calculators.invariant_calculator import extract_price_precision
+from monika.application.protocol.enhanced_cds import get_signal_threshold
+from monika.core.analytics.paper_tracker import PaperTracker
 
 
 def test_is_spread_acceptable_canonical_assets():
@@ -56,7 +56,7 @@ async def test_gap_fade_no_name_error():
     strat = DailyReopenGapFade(settings={})
     session = create_mock_async_session()
 
-    with patch("utils.clock.now") as mock_now:
+    with patch("monika.core.primitives.clock.now") as mock_now:
         mock_now.return_value = datetime(2026, 9, 14, 8, 30, tzinfo=timezone.utc)
 
         bar_today = MagicMock()
@@ -211,7 +211,7 @@ def test_paper_tracker_brent_spread():
 
 def test_route_ordering_trace_search():
     """Memverifikasi trace_search_router dipasang sebelum observability_router di all_routers."""
-    from logging_observability.dashboard.routes import all_routers, trace_search_router, observability_router
+    from monika.interfaces.dashboard.routes import all_routers, trace_search_router, observability_router
 
     idx_search = all_routers.index(trace_search_router)
     idx_obs = all_routers.index(observability_router)

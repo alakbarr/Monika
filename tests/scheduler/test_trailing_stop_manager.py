@@ -1,7 +1,7 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from scheduler.trailing_stop_manager import TrailingStopManager
+from monika.application.scheduler.trailing_stop_manager import TrailingStopManager
 
 
 @pytest.mark.asyncio

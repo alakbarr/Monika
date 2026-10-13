@@ -3,11 +3,11 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from tests.conftest import create_mock_async_session
-from analysis.memory.session_search import SessionSearchEngine
-from utils.llm.spill_subsystem import PostgresSpillSubsystem
-from analysis.memory.lesson_consolidator import enforce_declarative_memory_rule
-from skills.loader import get_dynamic_micro_skills
-from analysis.validators.precommit_gate import TradePreCommitGate
+from monika.application.analysis.memory.session_search import SessionSearchEngine
+from monika.infrastructure.llm.spill_subsystem import PostgresSpillSubsystem
+from monika.application.analysis.memory.lesson_consolidator import enforce_declarative_memory_rule
+from monika.application.skills.loader import get_dynamic_micro_skills
+from monika.application.analysis.validators.precommit_gate import TradePreCommitGate
 
 
 def test_declarative_memory_rule_transformation():
@@ -153,7 +153,7 @@ async def test_precommit_gate_geometry_and_staleness():
 @pytest.mark.asyncio
 async def test_tool_executor_read_before_act_and_mandatory_tool():
     """Verify ToolExecutor blocks submit_asset_analysis without required data reads & position sizing."""
-    from analysis.tools.tool_executor import ToolExecutor
+    from monika.application.analysis.tools.tool_executor import ToolExecutor
 
     mock_session = create_mock_async_session()
     executor = ToolExecutor(session=mock_session, symbol="EURUSD")

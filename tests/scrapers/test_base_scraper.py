@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch, ANY
-from scrapers.base_scraper import BaseScraper
+from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 
 
 class TestBaseScraper:
@@ -101,7 +101,7 @@ class TestBaseScraper:
         assert scraper.browser_pid is None
 
     def test_kill_process_tree_invalid_inputs(self):
-        from scrapers.base_scraper import kill_process_tree
+        from monika.infrastructure.data_ingestion.scrapers.base_scraper import kill_process_tree
 
         assert kill_process_tree(None) is False
         assert kill_process_tree(0) is False
@@ -114,7 +114,7 @@ class TestBaseScraper:
     @patch("psutil.wait_procs")
     @patch("psutil.Process")
     def test_kill_process_tree_psutil(self, mock_proc_cls, mock_wait):
-        from scrapers.base_scraper import kill_process_tree
+        from monika.infrastructure.data_ingestion.scrapers.base_scraper import kill_process_tree
 
         mock_parent = MagicMock()
         mock_child1 = MagicMock()
@@ -136,7 +136,7 @@ class TestBaseScraper:
         import platform
 
         monkeypatch.setattr(platform, "system", lambda: "Windows")
-        from scrapers.base_scraper import kill_process_tree
+        from monika.infrastructure.data_ingestion.scrapers.base_scraper import kill_process_tree
 
         res = kill_process_tree(8888)
         assert res is True

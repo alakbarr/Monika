@@ -1,6 +1,6 @@
 import pytest
-from telegram_bot.chat_tool_router import ChatToolRouter
-from analysis.tools.tools_definitions import TELEGRAM_TOOLS
+from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
+from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
 
 
 def test_chat_tool_router_intent_matching():

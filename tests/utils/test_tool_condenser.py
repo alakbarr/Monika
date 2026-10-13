@@ -1,7 +1,7 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock
-from utils.llm.tool_condenser import ToolObservationCondenser
+from monika.infrastructure.llm.tool_condenser import ToolObservationCondenser
 
 
 @pytest.mark.asyncio

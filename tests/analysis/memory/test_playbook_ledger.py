@@ -1,7 +1,7 @@
 import pytest
 import os
 import tempfile
-from analysis.memory.playbook_ledger import PlaybookLedger
+from monika.application.analysis.memory.playbook_ledger import PlaybookLedger
 
 
 def test_playbook_ledger_lifecycle():

@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from analysis.calculators.copula_tail_risk import (
+from monika.application.analysis.calculators.copula_tail_risk import (
     empirical_cdf,
     clayton_copula_cdf,
     gumbel_copula_cdf,

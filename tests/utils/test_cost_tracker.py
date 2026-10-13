@@ -2,9 +2,9 @@ from tests.conftest import create_mock_async_session
 import pytest
 import json
 from unittest.mock import MagicMock, AsyncMock, patch
-from utils.analytics.cost_tracker import CostTracker
-from utils.analytics.pricing import cost_usd, get_price, is_free_tier, infer_provider_from_model
-from database.models import SystemConfig
+from monika.core.analytics.cost_tracker import CostTracker
+from monika.core.analytics.pricing import cost_usd, get_price, is_free_tier, infer_provider_from_model
+from monika.infrastructure.database.models import SystemConfig
 from datetime import datetime, timezone
 
 
@@ -193,7 +193,7 @@ class TestCostTracker:
             }
         }
 
-        with patch("utils.infra.notifier.AgentNotifier.send_critical", AsyncMock()):
+        with patch("monika.infrastructure.infra.notifier.AgentNotifier.send_critical", AsyncMock()):
             status = await CostTracker.check_and_update_budget_status(mock_session, settings)
 
         assert status["is_paused"] is True

@@ -3,7 +3,7 @@
 # ==============================================================================
 
 import pytest
-from utils.llm.prompt_caching import PromptCacheManager, PromptCacheTracker
+from monika.infrastructure.llm.prompt_caching import PromptCacheManager, PromptCacheTracker
 
 
 def test_anthropic_cache_breakpoints():

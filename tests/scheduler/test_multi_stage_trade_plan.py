@@ -1,8 +1,8 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from database.models import Position, TradePlan, TradePlanLeg
-from scheduler.trailing_stop_manager import TrailingStopManager
+from monika.infrastructure.database.models import Position, TradePlan, TradePlanLeg
+from monika.application.scheduler.trailing_stop_manager import TrailingStopManager
 
 
 @pytest.mark.asyncio

@@ -24,8 +24,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pytest
 
-from utils import clock
-from database.models import (
+from monika.core.primitives import clock
+from monika.infrastructure.database.models import (
     PriceOHLCV,
     TechnicalIndicator,
     VIXData,
@@ -36,14 +36,14 @@ from database.models import (
     NewsDigest,
     SystemConfig,
 )
-from risk.risk_gate import RiskGate
-from risk.position_sizing import PositionSizer
-from indicators.technical import TechnicalIndicatorCalculator
-from analysis.schemas.pydantic_schemas import coerce_float
-from analysis.prefetch.news_digest import _format_news_item_for_prompt
-from analysis.calculators.macro_priced_in_calculator import calculate_macro_priced_in_baseline
-from analysis.arbitration.signal_arbitrator import compute_empirical_arbitrator_weights
-from utils.analytics.cost_tracker import CostTracker
+from monika.domain.risk.risk_gate import RiskGate
+from monika.domain.risk.position_sizing import PositionSizer
+from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+from monika.application.analysis.schemas.pydantic_schemas import coerce_float
+from monika.application.analysis.prefetch.news_digest import _format_news_item_for_prompt
+from monika.application.analysis.calculators.macro_priced_in_calculator import calculate_macro_priced_in_baseline
+from monika.application.analysis.arbitration.signal_arbitrator import compute_empirical_arbitrator_weights
+from monika.core.analytics.cost_tracker import CostTracker
 
 
 # ==============================================================================
@@ -137,7 +137,7 @@ async def test_technical_resample_forex_weekend_filtered():
 @pytest.mark.asyncio
 async def test_active_calendar_poller_scraper_close():
     """Verify InvestingCalendarScraper is closed in finally block when poller runs."""
-    from scheduler.active_calendar_poller import ActiveCalendarPoller
+    from monika.application.scheduler.active_calendar_poller import ActiveCalendarPoller
 
     poller = ActiveCalendarPoller(settings={})
     poller.running = True
@@ -178,7 +178,7 @@ async def test_active_calendar_poller_scraper_close():
 @pytest.mark.asyncio
 async def test_main_db_health_check_sends_telegram_alert():
     """Verify that failure in DB health check triggers AgentNotifier.send_critical."""
-    from main import TradingAgent
+    from monika.application.main import TradingAgent
 
     agent = TradingAgent(settings={}, dry_run=True)
     agent.shutdown_event = asyncio.Event()
@@ -190,8 +190,8 @@ async def test_main_db_health_check_sends_telegram_alert():
     mock_notifier.send_critical = AsyncMock()
 
     with (
-        patch("database.db.engine", mock_engine),
-        patch("utils.infra.notifier.AgentNotifier", return_value=mock_notifier),
+        patch("monika.infrastructure.database.db.engine", mock_engine),
+        patch("monika.infrastructure.infra.notifier.AgentNotifier", return_value=mock_notifier),
     ):
         # Run 1 iteration of health check
         task = asyncio.create_task(agent._run_db_health_check())
@@ -223,7 +223,7 @@ async def test_cost_tracker_nested_config_reading():
     # Settings with root-level cost_tracking
     settings = {"cost_tracking": {"monthly_budget_usd": 250.0, "alert_threshold_pct": 80.0}}
 
-    with patch("utils.analytics.cost_tracker.AgentNotifier", return_value=mock_notifier):
+    with patch("monika.core.analytics.cost_tracker.AgentNotifier", return_value=mock_notifier):
         # 240 / 250 = 96% -> should trigger budget exceeded alert
         await CostTracker._check_budget(mock_session, history=[], latest_cost=1.0, settings=settings)
         mock_notifier.send_critical.assert_awaited_once()
@@ -236,7 +236,7 @@ async def test_cost_tracker_nested_config_reading():
 
 def test_forexfactory_date_parse_fallback():
     """Verify ForexFactory parser falls back to current_date_str at 00:00:00Z on time parse failure."""
-    from scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
+    from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
 
     scraper = ForexFactoryCalendarScraper.__new__(ForexFactoryCalendarScraper)
     scraper.headless = True
@@ -297,7 +297,7 @@ def test_position_sizing_invalid_returns_zero_lots():
 
 def test_point_in_time_engine_enforces_risk_gate():
     """Verify PointInTimeBacktestEngine initializes RiskGate by default."""
-    from backtest.point_in_time_engine import PointInTimeBacktestEngine
+    from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine
 
     engine = PointInTimeBacktestEngine(
         mode="replay",

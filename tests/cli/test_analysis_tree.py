@@ -4,7 +4,7 @@
 # ==============================================================================
 
 import pytest
-from cli.analysis_tree import AnalysisCycleTree
+from monika.interfaces.cli.analysis_tree import AnalysisCycleTree
 
 
 def test_analysis_cycle_tree_init():

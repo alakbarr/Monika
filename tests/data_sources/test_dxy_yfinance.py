@@ -4,8 +4,8 @@ import pandas as pd
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from data_sources.dxy_yfinance import DXYFetcher
-from database.models import DXYData
+from monika.infrastructure.data_ingestion.sources.dxy_yfinance import DXYFetcher
+from monika.infrastructure.database.models import DXYData
 
 
 class TestDXYFetcher:
@@ -204,7 +204,7 @@ class TestDXYFetcher:
 
         df = pd.DataFrame({"Close": [105.0]}, index=[pd.Timestamp("2024-01-01")])
 
-        with patch("database.safe_ops.safe_commit", new_callable=AsyncMock) as mock_safe_commit:
+        with patch("monika.infrastructure.database.safe_ops.safe_commit", new_callable=AsyncMock) as mock_safe_commit:
             mock_safe_commit.return_value = False
             fetcher = DXYFetcher(mock_session)
             res = await fetcher._save(df)

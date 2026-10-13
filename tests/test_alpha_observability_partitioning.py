@@ -9,9 +9,9 @@ from datetime import datetime, timezone
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
-from database.cleanup import drop_expired_partitions
-from logging_observability.dashboard.api import app, broadcast_live_event, _active_websockets
+from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
+from monika.infrastructure.database.cleanup import drop_expired_partitions
+from monika.interfaces.dashboard.api import app, broadcast_live_event, _active_websockets
 from fastapi.testclient import TestClient
 
 
@@ -192,7 +192,7 @@ class TestTelegramDeepResearchProgress:
     @pytest.mark.asyncio
     async def test_deep_research_calls_status_callback(self):
         """Verify _run_tier_deep_research invokes status_callback across its workflow."""
-        from telegram_bot.chat_agent import ChatAgent
+        from monika.interfaces.telegram.chat_agent import ChatAgent
 
         settings = {"telegram": {"admin_chat_id": 123}, "analysis": {}, "llm": {"task_roles": {}}}
         agent = ChatAgent(settings, user_id=123)
@@ -230,7 +230,7 @@ class TestTimesFMAlphaIntegration:
     @pytest.mark.asyncio
     async def test_position_sizer_applies_timesfm_skew_multiplier(self):
         """Verify PositionSizer fetches TimesFM forecast and applies directional skew multiplier."""
-        from risk.position_sizing import PositionSizer
+        from monika.domain.risk.position_sizing import PositionSizer
         from unittest.mock import patch, MagicMock, AsyncMock
 
         sizer = PositionSizer({"trading": {"risk": {"risk_percent_per_trade": 1.0}}})
@@ -306,7 +306,7 @@ class TestTimesFMAlphaIntegration:
     @pytest.mark.asyncio
     async def test_tool_executor_timesfm_forecast_returns_alpha(self):
         """Verify _tool_get_timesfm_forecast enriches return dict with alpha_analysis."""
-        from analysis.tools.tool_executor import ToolExecutor
+        from monika.application.analysis.tools.tool_executor import ToolExecutor
         from unittest.mock import patch, MagicMock, AsyncMock
 
         mock_session = create_mock_async_session()
@@ -339,8 +339,13 @@ class TestTimesFMAlphaIntegration:
     @pytest.mark.asyncio
     async def test_event_bus_live_feed_forwarder_wiring(self):
         """Verify EventBus ticks and orders are cleanly forwarded to broadcast_live_event."""
-        from utils.protocol.event_bus import get_event_bus, reset_event_bus, TickPriceEvent, OrderStateChangedEvent
-        import logging_observability.dashboard.api as api
+        from monika.application.protocol.event_bus import (
+            get_event_bus,
+            reset_event_bus,
+            TickPriceEvent,
+            OrderStateChangedEvent,
+        )
+        import monika.interfaces.dashboard.api as api
 
         reset_event_bus()
         bus = get_event_bus()

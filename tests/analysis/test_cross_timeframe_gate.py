@@ -4,7 +4,7 @@ Verifies directional alignment across H4, H1, and M15 entry decisions.
 """
 
 import pytest
-from analysis.validators.cross_timeframe_gate import CrossTimeframeConfirmationGate
+from monika.application.analysis.validators.cross_timeframe_gate import CrossTimeframeConfirmationGate
 
 
 def test_non_directional_decision_passes():

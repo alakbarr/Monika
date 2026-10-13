@@ -11,12 +11,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.console import Console
 
-from cli.chat.commands import ChatCommandRouter, CommandResult, MODEL_ALIASES
-from cli.chat.completer import ChatCommandCompleter
-from cli.chat.prompt import ChatPromptManager
-from cli.chat.renderer import ChatRenderer, ThinkingScrubber
-from cli.chat.session import ChatReplSession
-from cli.chat.theme import (
+from monika.interfaces.cli.chat.commands import ChatCommandRouter, CommandResult, MODEL_ALIASES
+from monika.interfaces.cli.chat.completer import ChatCommandCompleter
+from monika.interfaces.cli.chat.prompt import ChatPromptManager
+from monika.interfaces.cli.chat.renderer import ChatRenderer, ThinkingScrubber
+from monika.interfaces.cli.chat.session import ChatReplSession
+from monika.interfaces.cli.chat.theme import (
     GLYPH_AGENT,
     GLYPH_THINK,
     GLYPH_TOOL,

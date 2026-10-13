@@ -4,7 +4,7 @@ Unit tests for progressive tool disclosure execution via ToolExecutor.
 
 import pytest
 from unittest.mock import MagicMock
-from analysis.tools.executor import ToolExecutor
+from monika.application.analysis.tools.executor import ToolExecutor
 
 
 @pytest.mark.asyncio

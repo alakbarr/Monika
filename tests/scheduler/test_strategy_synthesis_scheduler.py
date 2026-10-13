@@ -2,8 +2,8 @@ import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from analysis.strategies.registry import StrategyRegistry
-from scheduler.strategy_synthesis_scheduler import (
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.application.scheduler.strategy_synthesis_scheduler import (
     StrategySynthesisScheduler,
     SynthesizedStrategyCandidate,
 )
@@ -177,7 +177,7 @@ class HighAlphaStrategy(EdgeStrategy):
         assert (tmp_path / "high_alpha_quant_1.py").exists()
 
         # Verify ActivityLog entry was added with related_id=None
-        from database.models import ActivityLog
+        from monika.infrastructure.database.models import ActivityLog
 
         added_activities = [
             call.args[0] for call in mock_session.add.call_args_list if isinstance(call.args[0], ActivityLog)
@@ -351,7 +351,7 @@ class KwargsOnlyStrategy(EdgeStrategy):
 @pytest.mark.asyncio
 async def test_strategy_registry_evaluate_all_isolation():
     """Verifies that an error in one strategy does not crash evaluate_all for other strategies."""
-    from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+    from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 
     class BrokenInitStrategy(EdgeStrategy):
         strategy_id = "broken_init_strat"
@@ -383,7 +383,7 @@ async def test_strategy_registry_evaluate_all_isolation():
 @pytest.mark.asyncio
 async def test_edge_strategy_get_historical_candles():
     """Verifies that EdgeStrategy.get_historical_candles returns formatted candles from PriceOHLCV."""
-    from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+    from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
     from datetime import datetime, timezone
 
     class MockStrategy(EdgeStrategy):
@@ -422,7 +422,7 @@ async def test_edge_strategy_get_historical_candles():
 def test_candle_dict_item_and_attribute_access():
     """Verifies CandleDict acts as dict while permitting attribute access and DataFrame compatibility."""
     import pandas as pd
-    from analysis.strategies.base_strategy import CandleDict
+    from monika.application.analysis.strategies.base_strategy import CandleDict
 
     c = CandleDict({"open": 2500.0, "high": 2520.0, "low": 2490.0, "close": 2515.0, "volume": 100.0})
     assert isinstance(c, dict)
@@ -447,9 +447,13 @@ def test_candle_dict_item_and_attribute_access():
 @pytest.mark.asyncio
 async def test_synthesized_strategies_with_candle_dict():
     """Verifies that synthesized strategies accessing c.high evaluate without 'dict' object has no attribute 'high'."""
-    from analysis.strategies.base_strategy import CandleDict
-    from analysis.strategies.synthesized.alpha_xauusd_96d26b import SynthesizedStrategy_alpha_xauusd_96d26b
-    from analysis.strategies.synthesized.alpha_xauusd_5044bf import SynthesizedStrategy_alpha_xauusd_5044bf
+    from monika.application.analysis.strategies.base_strategy import CandleDict
+    from monika.application.analysis.strategies.synthesized.alpha_xauusd_96d26b import (
+        SynthesizedStrategy_alpha_xauusd_96d26b,
+    )
+    from monika.application.analysis.strategies.synthesized.alpha_xauusd_5044bf import (
+        SynthesizedStrategy_alpha_xauusd_5044bf,
+    )
 
     strat1 = SynthesizedStrategy_alpha_xauusd_96d26b({})
     strat2 = SynthesizedStrategy_alpha_xauusd_5044bf({})
@@ -530,8 +534,8 @@ class NoReturnStrategy(EdgeStrategy):
 @pytest.mark.asyncio
 async def test_run_historical_simulation_disqualifies_on_eval_error(scheduler):
     """Verifies that historical simulation returns [] immediately if evaluate() raises error or returns error tags."""
-    from analysis.strategies.base_strategy import EdgeStrategy
-    from database.models import PriceOHLCV
+    from monika.application.analysis.strategies.base_strategy import EdgeStrategy
+    from monika.infrastructure.database.models import PriceOHLCV
     from datetime import datetime, timezone
 
     class ErrorRaisingStrategy(EdgeStrategy):

@@ -5,7 +5,7 @@ Unit tests for indicators/regime_detector.py (SchmittRegimeDetector hysteresis t
 import numpy as np
 import pandas as pd
 import pytest
-from indicators.regime_detector import SchmittRegimeDetector, RegimeState
+from monika.domain.indicators.regime_detector import SchmittRegimeDetector, RegimeState
 
 
 def test_schmitt_regime_detector_transitions():

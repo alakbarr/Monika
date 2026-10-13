@@ -6,11 +6,11 @@
 from datetime import datetime, timezone, timedelta
 import pytest
 
-from analysis.strategies.hypothesis_registry import (
+from monika.application.analysis.strategies.hypothesis_registry import (
     HypothesisRegistry,
     HypothesisStatus,
 )
-from analysis.strategies.evidence_store import (
+from monika.application.analysis.strategies.evidence_store import (
     StrategyEvidenceStore,
     EvidenceStatus,
     compute_sizing_corrected_breakeven_bps,

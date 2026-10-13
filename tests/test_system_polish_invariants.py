@@ -8,18 +8,18 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from graph.state import merge_lists
-from utils.api.credential_pool import APICredentialPool, CredentialPool as APICredentialPoolAlias
-from utils.llm.credential_pool import LLMCredentialPool, CredentialPool as LLMCredentialPoolAlias
-from analysis.providers.pricing_catalog import get_model_pricing, calculate_cost, cost_usd
-from analysis.harness.agent_harness import calculate_turn_cost_usd
-from data_sources.academic_search import ARXIV_API_URL, AcademicSearchClient
-from skills.loader import load_skill, _sanitize_skill_name
+from monika.application.graph.state import merge_lists
+from monika.infrastructure.api.credential_pool import APICredentialPool, CredentialPool as APICredentialPoolAlias
+from monika.infrastructure.llm.credential_pool import LLMCredentialPool, CredentialPool as LLMCredentialPoolAlias
+from monika.infrastructure.providers.pricing_catalog import get_model_pricing, calculate_cost, cost_usd
+from monika.application.analysis.harness.agent_harness import calculate_turn_cost_usd
+from monika.infrastructure.data_ingestion.sources.academic_search import ARXIV_API_URL, AcademicSearchClient
+from monika.application.skills.loader import load_skill, _sanitize_skill_name
 
 
 def test_l1_drawdown_monitor_safe_fallback():
     """L-1: Drawdown monitor falls back safely to initial_balance on missing/zero balance."""
-    from agent.monitors.drawdown_monitor import run_floating_drawdown_monitor
+    from monika.application.agent.monitors.drawdown_monitor import run_floating_drawdown_monitor
 
     # Verify logic directly: check agent with missing balance
     mock_agent = MagicMock()
@@ -81,7 +81,7 @@ def test_l3_default_api_url_env_parameterized(monkeypatch):
 
 def test_l4_trading_agent_explicit_attributes():
     """L-4: TradingAgent has explicit dynamic attribute annotations and initializations."""
-    from main import TradingAgent
+    from monika.application.main import TradingAgent
 
     agent = TradingAgent(settings={}, dry_run=True)
     assert hasattr(agent, "mt5_health_checker")
@@ -114,8 +114,8 @@ def test_l5_pricing_catalog_routing():
 
 def test_l6_bond_yields_fetcher_and_backward_compatible_shim():
     """L-6: bond_yields_fetcher is the new module and bond_yields_yfinance re-exports it."""
-    from data_sources.bond_yields_fetcher import BondYieldFetcher as Fetcher1
-    from data_sources.bond_yields_yfinance import BondYieldFetcher as Fetcher2
+    from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import BondYieldFetcher as Fetcher1
+    from monika.infrastructure.data_ingestion.sources.bond_yields_yfinance import BondYieldFetcher as Fetcher2
 
     assert Fetcher1 is Fetcher2
 
@@ -129,7 +129,7 @@ def test_l7_credential_pool_name_disambiguation():
 
 def test_l8_extension_loader_no_sys_path_mutation(tmp_path):
     """L-8: Extension loader does not modify sys.path."""
-    from utils.plugins.extension_loader import load_single_plugin
+    from monika.application.plugins.manager.extension_loader import load_single_plugin
 
     plugin_dir = tmp_path / "test_plugin"
     plugin_dir.mkdir()

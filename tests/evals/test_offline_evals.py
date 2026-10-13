@@ -1,8 +1,8 @@
 import pytest
-from evals.runner import OfflineEvalRunner, get_default_golden_candidates
-from evals.oracles.smc_geometry_oracle import evaluate_smc_geometry
-from evals.oracles.risk_compliance_oracle import evaluate_risk_compliance
-from evals.oracles.trade_discipline_oracle import evaluate_trade_discipline
+from monika.application.evals.runner import OfflineEvalRunner, get_default_golden_candidates
+from monika.application.evals.oracles.smc_geometry_oracle import evaluate_smc_geometry
+from monika.application.evals.oracles.risk_compliance_oracle import evaluate_risk_compliance
+from monika.application.evals.oracles.trade_discipline_oracle import evaluate_trade_discipline
 
 
 def test_offline_eval_runner_full_suite():

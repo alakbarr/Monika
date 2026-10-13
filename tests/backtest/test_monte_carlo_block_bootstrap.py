@@ -4,7 +4,7 @@ Unit tests for backtest/monte_carlo_engine.py verifying Circular Block Bootstrap
 
 import pytest
 import numpy as np
-from backtest.monte_carlo_engine import MonteCarloStressTester
+from monika.application.backtest.monte_carlo_engine import MonteCarloStressTester
 
 
 def test_monte_carlo_block_bootstrap():

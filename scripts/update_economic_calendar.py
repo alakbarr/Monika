@@ -19,13 +19,6 @@ _src_dir = os.path.join(_root_dir, "src")
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(message)s",
@@ -35,9 +28,9 @@ logger = logging.getLogger("UpdateEconomicCalendar")
 
 
 async def update_calendar(headless: bool = True) -> dict:
-    from database.db import init_db, get_session, close_db
-    from database.adapters import batch_save_calendar
-    from database.models import EconomicCalendar, SystemConfig
+    from monika.infrastructure.database.db import init_db, get_session, close_db
+    from monika.infrastructure.database.adapters import batch_save_calendar
+    from monika.infrastructure.database.models import EconomicCalendar, SystemConfig
     from sqlalchemy import select, func
 
     logger.info("Initializing database connection...")
@@ -49,7 +42,7 @@ async def update_calendar(headless: bool = True) -> dict:
     # 1. Fetch from Investing.com (primary source: covers this week and next week)
     logger.info("Fetching economic calendar events from Investing.com (This Week & Next Week)...")
     try:
-        from scrapers.calendar.calendar_investing import InvestingCalendarScraper
+        from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import InvestingCalendarScraper
 
         scraper = InvestingCalendarScraper(headless=headless)
         try:
@@ -68,7 +61,9 @@ async def update_calendar(headless: bool = True) -> dict:
         logger.info("Falling back to ForexFactory scraper...")
         source = "forexfactory"
         try:
-            from scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
+            from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
+                ForexFactoryCalendarScraper,
+            )
 
             ff = ForexFactoryCalendarScraper(headless=headless)
             try:
@@ -86,7 +81,7 @@ async def update_calendar(headless: bool = True) -> dict:
         logger.info("Falling back to Finnhub calendar scraper...")
         source = "finnhub"
         try:
-            from scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
+            from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
 
             fh = FinnhubCalendarScraper()
             if hasattr(fh, "afetch_today_events"):

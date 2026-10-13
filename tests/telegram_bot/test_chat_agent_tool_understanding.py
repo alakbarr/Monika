@@ -7,10 +7,10 @@ import pytest
 import re
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
-from telegram_bot.chat_agent import ChatAgent, PendingAction
-from skills.loader import load_skill
-from database.models import PaperTradeRecord, TradeTrigger, PriceOHLCV
-from analysis.tools.tools_definitions import (
+from monika.interfaces.telegram.chat_agent import ChatAgent, PendingAction
+from monika.application.skills.loader import load_skill
+from monika.infrastructure.database.models import PaperTradeRecord, TradeTrigger, PriceOHLCV
+from monika.application.analysis.tools.tools_definitions import (
     STAGE1_TOOLS,
     STAGE2_TOOLS,
     TELEGRAM_TOOLS,
@@ -32,7 +32,7 @@ class TestChatAgentToolUnderstanding:
         assert "Standard Telegram Output Templates" in persona
 
     @pytest.mark.asyncio
-    @patch("telegram_bot.chat_agent.get_client_for_task")
+    @patch("monika.interfaces.telegram.chat_agent.get_client_for_task")
     async def test_system_prompt_enrichment(self, mock_get_client):
         """Memastikan system prompt chat agent menyertakan snapshot portofolio dan persona playbook."""
         settings = {
@@ -64,7 +64,9 @@ class TestChatAgentToolUnderstanding:
             ]
         )
 
-        with patch("utils.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock) as mock_stats:
+        with patch(
+            "monika.core.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock
+        ) as mock_stats:
             mock_stats.return_value = {"total_trades": 10, "win_rate_pct": 70.0, "total_pnl_pct": 5.4}
             prompt = await agent._build_system_prompt(mock_session)
             full_prompt = "\n".join(prompt) if isinstance(prompt, tuple) else prompt
@@ -75,7 +77,7 @@ class TestChatAgentToolUnderstanding:
             assert "get_paper_trading_performance" in full_prompt
 
     @pytest.mark.asyncio
-    @patch("telegram_bot.chat_agent.get_client_for_task")
+    @patch("monika.interfaces.telegram.chat_agent.get_client_for_task")
     async def test_classify_query_complexity_domains(self, mock_get_client):
         """Memastikan router mengenali domain query dengan tingkat kompleksitas yang sesuai."""
         settings = {"llm": {}}
@@ -116,7 +118,7 @@ class TestChatAgentToolUnderstanding:
         # Chat biasa tanpa angka harga
         assert check("Halo, saya siap membantu menganalisis pasar.", tool_calls_made=0) is False
 
-    @patch("telegram_bot.chat_agent.get_client_for_task")
+    @patch("monika.interfaces.telegram.chat_agent.get_client_for_task")
     def test_pending_action_creation(self, mock_get_client):
         """Memastikan factory membuat objek PendingAction untuk semua tipe aksi yang didukung."""
         agent = ChatAgent({}, user_id=123)
@@ -140,7 +142,7 @@ class TestChatAgentToolUnderstanding:
         assert agent._create_pending_action(invalid_proposed) is None
 
     @pytest.mark.asyncio
-    @patch("telegram_bot.chat_agent.get_client_for_task")
+    @patch("monika.interfaces.telegram.chat_agent.get_client_for_task")
     async def test_execute_action_paper_trade_close(self, mock_get_client):
         """Memastikan eksekusi close_paper_trade menutup record dan menghitung realized PnL."""
         agent = ChatAgent({}, user_id=123)
@@ -171,9 +173,11 @@ class TestChatAgentToolUnderstanding:
         mock_session.execute = AsyncMock(side_effect=[m_trade_res, m_bar_res])
         mock_session.commit = AsyncMock()
 
-        with patch("telegram_bot.chat_agent.get_session") as mock_get_session:
+        with patch("monika.interfaces.telegram.chat_agent.get_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_session
-            with patch("utils.analytics.paper_tracker.PaperTracker._close_linked_position", new_callable=AsyncMock):
+            with patch(
+                "monika.core.analytics.paper_tracker.PaperTracker._close_linked_position", new_callable=AsyncMock
+            ):
                 result = await agent._execute_action(action)
                 assert "[OK] Paper trade #5 (XAUUSD) closed manually @ 2650.00000" in result
                 assert "Realized PnL: +1.92%" in result
@@ -181,7 +185,7 @@ class TestChatAgentToolUnderstanding:
                 assert trade.exit_price == 2650.0
 
     @pytest.mark.asyncio
-    @patch("telegram_bot.chat_agent.get_client_for_task")
+    @patch("monika.interfaces.telegram.chat_agent.get_client_for_task")
     async def test_execute_action_cancel_trigger(self, mock_get_client):
         """Memastikan eksekusi cancel_trigger mengubah status trigger menjadi cancelled."""
         agent = ChatAgent({}, user_id=123)
@@ -200,15 +204,15 @@ class TestChatAgentToolUnderstanding:
         mock_session.execute = AsyncMock(return_value=m_trig_res)
         mock_session.commit = AsyncMock()
 
-        with patch("telegram_bot.chat_agent.get_session") as mock_get_session:
+        with patch("monika.interfaces.telegram.chat_agent.get_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_session
             result = await agent._execute_action(action)
             assert "[OK] Trigger #12 cancelled." in result
             assert trigger.status == "cancelled"
 
     @pytest.mark.asyncio
-    @patch("telegram_bot.chat_agent.get_session")
-    @patch("telegram_bot.chat_agent.get_client_for_task")
+    @patch("monika.interfaces.telegram.chat_agent.get_session")
+    @patch("monika.interfaces.telegram.chat_agent.get_client_for_task")
     async def test_pending_action_expiry_rejection(self, mock_get_client, mock_get_session):
         """Memastikan confirm_action menolak aksi yang telah melewati batas 5 menit."""
         mock_sess = create_mock_async_session()
@@ -229,8 +233,8 @@ class TestChatAgentToolUnderstanding:
         assert "act-exp-1" not in agent._pending_actions
 
     @pytest.mark.asyncio
-    @patch("telegram_bot.chat_agent.get_session")
-    @patch("telegram_bot.chat_agent.get_client_for_task")
+    @patch("monika.interfaces.telegram.chat_agent.get_session")
+    @patch("monika.interfaces.telegram.chat_agent.get_client_for_task")
     async def test_pending_action_unknown_rejection(self, mock_get_client, mock_get_session):
         """Memastikan confirm_action menolak action_id yang tidak ditemukan."""
         mock_sess = create_mock_async_session()

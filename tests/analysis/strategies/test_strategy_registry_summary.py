@@ -2,8 +2,8 @@ from tests.conftest import create_mock_async_session
 import pytest
 import logging
 from unittest.mock import AsyncMock, patch, MagicMock
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-from analysis.strategies.registry import StrategyRegistry
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.registry import StrategyRegistry
 
 
 @pytest.fixture(autouse=True)

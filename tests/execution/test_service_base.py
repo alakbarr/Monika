@@ -3,12 +3,12 @@
 # ==============================================================================
 
 import pytest
-from execution.service.base import _ExecutionServiceMixinBase
-from execution.service.emergency_manager import EmergencyManagerMixin
-from execution.service.position_synchronizer import PositionSynchronizerMixin
-from execution.service.order_executor import OrderExecutorMixin
-from execution.service.risk_evaluator import RiskEvaluatorMixin
-from execution.execution_service import ExecutionService
+from monika.domain.execution.base import _ExecutionServiceMixinBase
+from monika.application.execution.service.emergency_manager import EmergencyManagerMixin
+from monika.application.execution.service.position_synchronizer import PositionSynchronizerMixin
+from monika.application.execution.service.order_executor import OrderExecutorMixin
+from monika.application.execution.service.risk_evaluator import RiskEvaluatorMixin
+from monika.application.execution.execution_service import ExecutionService
 
 
 def test_execution_service_mixin_base_inheritance():

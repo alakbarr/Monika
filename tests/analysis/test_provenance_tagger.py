@@ -3,7 +3,7 @@ Unit tests for analysis/grounding/provenance_tagger.py.
 """
 
 import pytest
-from analysis.grounding.provenance_tagger import ProvenanceLedger, ObservedFact
+from monika.application.analysis.grounding.provenance_tagger import ProvenanceLedger, ObservedFact
 
 
 def test_provenance_ledger_registration():

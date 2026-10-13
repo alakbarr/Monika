@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import MagicMock
-from graph.nodes.state_pruner import (
+from monika.application.graph.nodes.state_pruner import (
     prune_after_fundamental,
     prune_after_debate,
     prune_before_execution,
 )
-from graph.workflow import build_trading_graph
+from monika.application.graph.workflow import build_trading_graph
 
 
 def test_prune_after_fundamental_cleans_raw_conversations():

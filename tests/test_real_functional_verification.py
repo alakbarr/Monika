@@ -29,7 +29,7 @@ async def verify_module_1_live_feeds() -> Dict[str, Any]:
     results = {}
 
     # 1.1 Crypto L2 Depth
-    from data_sources.crypto_orderbook_depth import CryptoOrderbookDepth
+    from monika.infrastructure.data_ingestion.sources.crypto_orderbook_depth import CryptoOrderbookDepth
 
     t0 = time.perf_counter()
     snap = await CryptoOrderbookDepth.fetch_snapshot("BTCUSD", limit=20)
@@ -50,7 +50,7 @@ async def verify_module_1_live_feeds() -> Dict[str, Any]:
     results["crypto_l2"] = {"mid": snap.mid_price, "spread_bps": snap.spread_bps, "imbalance": snap.imbalance_score}
 
     # 1.2 Sovereign Yield Spreads (Yahoo Finance Macro Rates)
-    from data_sources.sovereign_yield_spreads import SovereignYieldSpreads
+    from monika.infrastructure.data_ingestion.sources.sovereign_yield_spreads import SovereignYieldSpreads
 
     t0 = time.perf_counter()
     yields = await SovereignYieldSpreads.get_spreads()
@@ -73,7 +73,7 @@ async def verify_module_1_live_feeds() -> Dict[str, Any]:
     results["sovereign_yields"] = yields
 
     # 1.3 Physical Gold Bullion Radar
-    from data_sources.gold_physical_radar import GoldPhysicalRadar
+    from monika.infrastructure.data_ingestion.sources.gold_physical_radar import GoldPhysicalRadar
 
     t0 = time.perf_counter()
     gold_radar = await GoldPhysicalRadar.fetch_radar()
@@ -93,7 +93,7 @@ async def verify_module_1_live_feeds() -> Dict[str, Any]:
     results["gold_radar"] = gold_radar
 
     # 1.4 Primary Calendar Feed
-    from scrapers.calendar.calendar_investing import InvestingCalendarScraper
+    from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import InvestingCalendarScraper
 
     scraper = InvestingCalendarScraper(headless=True)
     events = scraper._fallback_forexfactory()
@@ -115,7 +115,7 @@ def verify_module_2_quantlib_and_alpha() -> Dict[str, Any]:
     print("MODULE 2: QUANTLIB PURE STDLIB ENGINE & TRI-CONVERGENT ALPHA")
     print("=" * 70)
 
-    from analysis.calculators.quantlib_core import QuantLibCore
+    from monika.application.analysis.calculators.quantlib_core import QuantLibCore
 
     results = {}
 
@@ -188,7 +188,7 @@ def verify_module_2_quantlib_and_alpha() -> Dict[str, Any]:
     print(f"     Basel Committee VaR Traffic Light (4 exceptions/250 days): Zone={basel_zone}")
 
     # 2.4 Tri-Convergent Alpha Strategy Factor Computation
-    from analysis.strategies.tri_convergent_alpha import TriConvergentAlphaStrategy
+    from monika.application.analysis.strategies.tri_convergent_alpha import TriConvergentAlphaStrategy
 
     np.random.seed(42)
     n_bars = 120
@@ -240,10 +240,10 @@ def verify_module_3_shadow_account() -> Dict[str, Any]:
     print("MODULE 3: COGNITIVE OPERATOR TWIN & SHADOW ATTRIBUTION ENGINE")
     print("=" * 70)
 
-    from analysis.journal.journal_parser import JournalParser, BrokerTrade
-    from analysis.journal.behavioral_diagnostics import BehavioralDiagnosticsEngine
-    from analysis.journal.shadow_extractor import ShadowRuleExtractor
-    from analysis.journal.attribution_engine import AttributionEngine
+    from monika.application.analysis.journal.journal_parser import JournalParser, BrokerTrade
+    from monika.application.analysis.journal.behavioral_diagnostics import BehavioralDiagnosticsEngine
+    from monika.application.analysis.journal.shadow_extractor import ShadowRuleExtractor
+    from monika.application.analysis.journal.attribution_engine import AttributionEngine
 
     # 3.1 Statement Parsing (Simulated CSV text from live MT5 / cTrader export)
     sample_csv = (
@@ -311,8 +311,8 @@ def verify_module_4_swarm_desks() -> Dict[str, Any]:
     print("MODULE 4: MULTI-AGENT SWARM DESKS & GROUND TRUTH ENGINE")
     print("=" * 70)
 
-    from graph.team_compiler import TeamCompiler
-    from graph.grounding import MarketGroundingEngine
+    from monika.application.graph.team_compiler import TeamCompiler
+    from monika.application.graph.grounding import MarketGroundingEngine
 
     # 4.1 Compile all available YAML desks
     available_desks = TeamCompiler.list_available_desks()
@@ -362,10 +362,10 @@ def verify_module_5_backtest_and_execution() -> Dict[str, Any]:
     print("MODULE 5: MULTI-MARKET SIMULATION & CANCEL-BEFORE-FLATTEN SAFETY")
     print("=" * 70)
 
-    from backtest.engines.forex_engine import ForexEngine
-    from backtest.engines.crypto_engine import CryptoEngine
-    from backtest.engines.equity_engine import EquityEngine
-    from backtest.engines.futures_engine import FuturesEngine
+    from monika.application.backtest.engines.forex_engine import ForexEngine
+    from monika.application.backtest.engines.crypto_engine import CryptoEngine
+    from monika.application.backtest.engines.equity_engine import EquityEngine
+    from monika.application.backtest.engines.futures_engine import FuturesEngine
 
     # 5.1.1 Forex Engine: Dynamic Spread Multipliers & Wednesday 3x Swap
     # Rollover hour (21:00 UTC) spread widening
@@ -467,8 +467,8 @@ def verify_module_6_governance_and_ledger() -> Dict[str, Any]:
     print("MODULE 6: GOVERNANCE RUN MANIFEST & TAMPER-EVIDENT AUDIT LEDGER")
     print("=" * 70)
 
-    from governance.run_manifest import RunManifestGenerator
-    from risk.crypto_audit_ledger import CryptographicAuditLedger
+    from monika.application.governance.run_manifest import RunManifestGenerator
+    from monika.domain.risk.crypto_audit_ledger import CryptographicAuditLedger
 
     # 6.1 Content-Addressed Run Manifest
     manifest = RunManifestGenerator.generate(

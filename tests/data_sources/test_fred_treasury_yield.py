@@ -2,8 +2,8 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timezone
-from data_sources.fred_treasury_yield import FREDDataFetcher
-from database.models import TreasuryYield, InterestRate
+from monika.infrastructure.data_ingestion.sources.fred_treasury_yield import FREDDataFetcher
+from monika.infrastructure.database.models import TreasuryYield, InterestRate
 
 
 class TestFREDDataFetcher:

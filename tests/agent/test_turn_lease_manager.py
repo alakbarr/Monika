@@ -1,7 +1,7 @@
 import asyncio
 import pytest
 from unittest.mock import MagicMock
-from agent.turn_lease_manager import SymbolTurnLeaseManager, get_symbol_lease_manager
+from monika.application.agent.turn_lease_manager import SymbolTurnLeaseManager, get_symbol_lease_manager
 
 
 @pytest.mark.asyncio

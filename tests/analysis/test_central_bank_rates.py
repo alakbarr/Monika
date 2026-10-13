@@ -1,20 +1,20 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone, timedelta, date
-from utils import clock
+from monika.core.primitives import clock
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.calculators.macro_bias_filter import (
+from monika.application.analysis.calculators.macro_bias_filter import (
     _NEUTRAL_RATE_ESTIMATES,
     _rate_score,
     compute_currency_macro_score,
 )
-from analysis.tools.handlers.macro_tools import (
+from monika.application.analysis.tools.handlers.macro_tools import (
     handle_get_interest_rates,
     handle_get_central_bank_expectations,
     handle_get_bond_yield_spreads,
 )
-from analysis.calculators.economic_surprise import compute_surprise_scores
-from database.models import (
+from monika.application.analysis.calculators.economic_surprise import compute_surprise_scores
+from monika.infrastructure.database.models import (
     InterestRate,
     EconomicCalendar,
     CentralBankRateExpectation,

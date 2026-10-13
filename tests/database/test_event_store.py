@@ -5,8 +5,8 @@ Unit tests for Targeted Event Store (H5).
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from database.event_store import TradingEventStore
-from database.models import TradingEvent
+from monika.infrastructure.database.event_store import TradingEventStore
+from monika.infrastructure.database.models import TradingEvent
 
 
 @pytest.mark.asyncio
@@ -43,7 +43,7 @@ async def test_h5_event_store_emit():
     # Emit child event with causation_id pointing to event1
     event_id2 = await TradingEventStore.emit(
         session=mock_session,
-        event_type="risk.verdict",
+        event_type="monika.domain.risk.verdict",
         payload={"approved": True, "recommended_lots": 0.15},
         correlation_id="c_123",
         causation_id=event_id1,
@@ -53,7 +53,7 @@ async def test_h5_event_store_emit():
     assert mock_session.add.call_count == 2
     child_event: TradingEvent = mock_session.add.call_args[0][0]
     assert child_event.id == event_id2
-    assert child_event.event_type == "risk.verdict"
+    assert child_event.event_type == "monika.domain.risk.verdict"
     assert child_event.correlation_id == "c_123"
     assert child_event.causation_id == event_id1
 

@@ -2,14 +2,14 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
 from tests.conftest import create_mock_async_session
-from agent.turn_lease_manager import SymbolTurnLeaseManager
-from scheduler.news_watcher import NewsWatcher
-from database.models import NewsItem
+from monika.application.agent.turn_lease_manager import SymbolTurnLeaseManager
+from monika.application.scheduler.news_watcher import NewsWatcher
+from monika.infrastructure.database.models import NewsItem
 
 
 @pytest.fixture(autouse=True)
 def reset_turn_lease_singleton():
-    import agent.turn_lease_manager as tlm
+    import monika.application.agent.turn_lease_manager as tlm
 
     tlm._GLOBAL_LEASE_MANAGER = None
     yield

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from scrapers.calendar.calendar_investing import InvestingCalendarScraper
+from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import InvestingCalendarScraper
 
 
 class TestInvestingCalendarScraper:
@@ -74,7 +74,7 @@ class TestInvestingCalendarScraper:
         events = scraper.fetch_events()
         assert len(events) == 2
 
-        from database.adapters import parse_timestamp
+        from monika.infrastructure.database.adapters import parse_timestamp
 
         dt0 = parse_timestamp(events[0].time)
         assert dt0 is not None

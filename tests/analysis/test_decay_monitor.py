@@ -6,7 +6,7 @@ recovery logic, and is_tradeable gating.
 
 import pytest
 from tests.conftest import create_mock_async_session
-from analysis.strategies.decay_monitor import (
+from monika.application.analysis.strategies.decay_monitor import (
     StrategyDecayMonitor,
     DecayState,
     get_strategy_decay_monitor,
@@ -89,8 +89,8 @@ def test_decay_monitor_recovery():
 @pytest.mark.asyncio
 async def test_decay_monitor_suppresses_registry_evaluation():
     from unittest.mock import AsyncMock
-    from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-    from analysis.strategies.registry import StrategyRegistry
+    from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+    from monika.application.analysis.strategies.registry import StrategyRegistry
 
     class MockDecayingStrategy(EdgeStrategy):
         strategy_id = "test_decay_strat"
@@ -138,7 +138,7 @@ async def test_decay_monitor_suppresses_registry_evaluation():
 @pytest.mark.asyncio
 async def test_paper_tracker_records_decay_outcome():
     from unittest.mock import AsyncMock, MagicMock
-    from utils.analytics.paper_tracker import PaperTracker
+    from monika.core.analytics.paper_tracker import PaperTracker
 
     monitor = get_strategy_decay_monitor()
     strat_id = "test_paper_alpha"
@@ -166,7 +166,7 @@ async def test_paper_tracker_records_decay_outcome():
 
 
 def test_decay_monitor_serialization():
-    from analysis.strategies.decay_monitor import StrategyDecayMonitor, DecayState
+    from monika.application.analysis.strategies.decay_monitor import StrategyDecayMonitor, DecayState
 
     mon = StrategyDecayMonitor()
     strat = "alpha_serialized"
@@ -192,7 +192,7 @@ def test_decay_monitor_serialization():
 async def test_decay_monitor_db_persistence():
     import json
     from unittest.mock import AsyncMock, MagicMock
-    from analysis.strategies.decay_monitor import StrategyDecayMonitor, DecayState
+    from monika.application.analysis.strategies.decay_monitor import StrategyDecayMonitor, DecayState
 
     mon = StrategyDecayMonitor()
     strat = "db_alpha"
@@ -213,7 +213,7 @@ async def test_decay_monitor_db_persistence():
 
     from unittest.mock import patch
 
-    with patch("database.models.SystemConfig.upsert", side_effect=mock_upsert):
+    with patch("monika.infrastructure.database.models.SystemConfig.upsert", side_effect=mock_upsert):
         await mon.save_to_db(mock_session)
 
     assert saved_payload is not None

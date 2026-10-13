@@ -6,7 +6,7 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from execution.execution_service import ExecutionService, ExecutionResult
+from monika.application.execution.execution_service import ExecutionService, ExecutionResult
 
 
 @pytest.mark.asyncio
@@ -52,7 +52,10 @@ async def test_execution_service_lock_contention_handling():
             pass
 
     with (
-        patch("execution.execution_service.transactional_advisory_lock", return_value=MockLockedContext()),
+        patch(
+            "monika.application.execution.execution_service.transactional_advisory_lock",
+            return_value=MockLockedContext(),
+        ),
         patch.object(service, "_get_current_price", AsyncMock(return_value=(1.0850, False, 1.0))),
     ):
         result = await service._execute_analysis_internal(

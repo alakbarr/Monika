@@ -7,9 +7,9 @@ import time
 import pytest
 from pathlib import Path
 
-from scheduler.universal_cron_scheduler import UniversalCronScheduler, CronJob
-from analysis.tools.domain.cron_tool import handle_manage_cron, CronActionInput
-from analysis.tools.unified_registry import unified_tool_registry
+from monika.application.scheduler.universal_cron_scheduler import UniversalCronScheduler, CronJob
+from monika.application.analysis.tools.domain.cron_tool import handle_manage_cron, CronActionInput
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
 
 
 def test_universal_cron_anti_suicide_protection(tmp_path):
@@ -123,9 +123,9 @@ async def test_schedule_cron_job_tool_aliases():
 @pytest.mark.asyncio
 async def test_cli_and_bot_cron_command_routing():
     from unittest.mock import MagicMock
-    from cli.chat.commands import ChatCommandRouter
-    from cli.chat.renderer import ChatRenderer
-    from cli.chat.prompt import ChatPromptManager
+    from monika.interfaces.cli.chat.commands import ChatCommandRouter
+    from monika.interfaces.cli.chat.renderer import ChatRenderer
+    from monika.interfaces.cli.chat.prompt import ChatPromptManager
 
     renderer = MagicMock()
     prompt_mgr = MagicMock(spec=ChatPromptManager)

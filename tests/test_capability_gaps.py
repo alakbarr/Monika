@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 
 def test_pivot_points_calculation():
-    from indicators.technical import compute_pivot_points
+    from monika.domain.indicators.technical import compute_pivot_points
 
     high, low, close = 2660.0, 2640.0, 2650.0
 
@@ -57,7 +57,7 @@ def test_pivot_points_calculation():
 
 
 def test_ichimoku_calculation():
-    from indicators.technical import compute_ichimoku
+    from monika.domain.indicators.technical import compute_ichimoku
 
     # Create synthetic OHLCV data (100 bars)
     np.random.seed(42)
@@ -85,7 +85,7 @@ def test_ichimoku_calculation():
 
 
 def test_chart_patterns_scanner():
-    from indicators.chart_patterns import scan_all_chart_patterns
+    from monika.domain.indicators.chart_patterns import scan_all_chart_patterns
 
     # Generate test DataFrame
     n = 120
@@ -109,7 +109,7 @@ def test_chart_patterns_scanner():
 
 
 def test_seasonality_calculator():
-    from analysis.calculators.seasonality import SeasonalityCalculator
+    from monika.application.analysis.calculators.seasonality import SeasonalityCalculator
 
     # Create 3 years of daily bars
     dates = pd.date_range(start="2022-01-01", end="2024-12-31", freq="D")
@@ -137,7 +137,7 @@ def test_seasonality_calculator():
 
 
 def test_skills_hub_discovery():
-    from skills.skills_hub import SkillsHub
+    from monika.application.skills.skills_hub import SkillsHub
 
     hub = SkillsHub()
     total = len(hub._skills)
@@ -161,7 +161,7 @@ def test_skills_hub_discovery():
 
 
 def test_dynamic_skills_matching():
-    from skills.unified_runtime import get_skills_runtime
+    from monika.application.skills.unified_runtime import get_skills_runtime
 
     runtime = get_skills_runtime()
 
@@ -184,7 +184,7 @@ def test_dynamic_skills_matching():
 
 
 def test_new_tools_registration():
-    from analysis.tools import tools_definitions as td
+    from monika.application.analysis.tools import tools_definitions as td
 
     tools_to_verify = [
         "get_pivot_points",
@@ -214,8 +214,8 @@ def test_new_tools_registration():
 
 @pytest.mark.asyncio
 async def test_tool_executor_dispatch():
-    from analysis.tools.executor import ToolExecutor
-    from config.settings import load_settings
+    from monika.application.analysis.tools.executor import ToolExecutor
+    from monika.core.config.settings import load_settings
 
     settings = load_settings()
     executor = ToolExecutor(None, settings=settings)
@@ -253,12 +253,12 @@ async def test_tool_executor_dispatch():
         if not found and hasattr(executor, f"_tool_{t}"):
             found = True
         if not found:
-            from analysis.tools.unified_registry import unified_tool_registry
+            from monika.application.analysis.tools.unified_registry import unified_tool_registry
 
             if unified_tool_registry.get_tool(t) is not None:
                 found = True
         if not found:
-            from analysis.tools.registry import default_tool_registry
+            from monika.application.analysis.tools.registry import default_tool_registry
 
             if default_tool_registry.get(t, settings=settings) is not None:
                 found = True
@@ -271,8 +271,8 @@ async def test_tool_executor_dispatch():
 
 
 def test_chat_tool_router_routing():
-    from analysis.tools.tools_definitions import TELEGRAM_TOOLS
-    from telegram_bot.chat_tool_router import ChatToolRouter
+    from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
+    from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
 
     router = ChatToolRouter(TELEGRAM_TOOLS)
 
@@ -305,7 +305,7 @@ def test_chat_tool_router_routing():
 
 @pytest.mark.asyncio
 async def test_saved_scripts_lifecycle():
-    from analysis.tools.domain.code_execution_tool import (
+    from monika.application.analysis.tools.domain.code_execution_tool import (
         handle_save_script,
         handle_list_saved_scripts,
         handle_run_saved_script,

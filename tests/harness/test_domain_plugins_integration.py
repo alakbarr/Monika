@@ -5,17 +5,17 @@ from tests.conftest import create_mock_async_session
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from harness.contract import PluginCategory, PluginMetadata, TradingPlugin
-from harness.engine import PluginEngine
-from analysis.strategies.strategy_plugin import StrategyPlugin, wrap_strategy_as_plugin
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-from analysis.strategies.registry import StrategyRegistry
-from risk.risk_rule_plugin import IRiskRulePlugin, ModularRiskRegistry, RiskRuleVerdict
-from analysis.tools.tool_plugin import ToolPlugin
-from analysis.tools.registry import ToolRegistry
-from analysis.macro_pipeline_plugin import MacroToAssetPipeline
-from execution.broker_registry import BrokerAdapterRegistry
-from analysis.providers.provider_registry import ProviderRegistry
+from monika.application.harness.contract import PluginCategory, PluginMetadata, TradingPlugin
+from monika.application.harness.engine import PluginEngine
+from monika.application.analysis.strategies.strategy_plugin import StrategyPlugin, wrap_strategy_as_plugin
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.domain.risk.risk_rule_plugin import IRiskRulePlugin, ModularRiskRegistry, RiskRuleVerdict
+from monika.application.analysis.tools.tool_plugin import ToolPlugin
+from monika.application.analysis.tools.registry import ToolRegistry
+from monika.application.analysis.macro_pipeline_plugin import MacroToAssetPipeline
+from monika.application.execution.broker_registry import BrokerAdapterRegistry
+from monika.infrastructure.providers.provider_registry import ProviderRegistry
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 import asyncio
 from datetime import datetime, timezone
-from main import run_startup_checks, TradingAgent, _run_with_restart
+from monika.application.main import run_startup_checks, TradingAgent, _run_with_restart
 from tests.conftest import create_mock_async_session
 import sys
 
@@ -12,8 +12,8 @@ class TestMain:
     @patch("main.os.getenv")
     @patch("sqlalchemy.ext.asyncio.AsyncEngine.connect")
     @patch("anthropic.AsyncAnthropic")
-    @patch("execution.mt5_client.MT5Client")
-    @patch("utils.analytics.paper_tracker.PaperTracker")
+    @patch("monika.infrastructure.brokers.mt5_client.MT5Client")
+    @patch("monika.core.analytics.paper_tracker.PaperTracker")
     async def test_startup_checks_success(self, mock_tracker, mock_mt5, mock_anthropic, mock_connect, mock_getenv):
         mock_tracker_inst = MagicMock()
         mock_tracker_inst.get_statistics = AsyncMock(return_value={"total_trades": 60, "win_rate_pct": 55.0})
@@ -33,7 +33,7 @@ class TestMain:
 
         mock_getenv.side_effect = mock_getenv_func
 
-        from database.models import Base
+        from monika.infrastructure.database.models import Base
 
         all_tables = [
             ("news_items",),
@@ -77,7 +77,7 @@ class TestMain:
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 return None
 
-        with patch("database.db.AsyncSessionLocal", return_value=MockAsyncSessionCM()):
+        with patch("monika.infrastructure.database.db.AsyncSessionLocal", return_value=MockAsyncSessionCM()):
             assert (
                 await run_startup_checks({"paper_trading": {"enabled": True, "tp_detection_method": "close_price"}})
                 is True
@@ -103,7 +103,7 @@ class TestMain:
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 return None
 
-        with patch("database.db.AsyncSessionLocal", return_value=MockAsyncSessionCM()):
+        with patch("monika.infrastructure.database.db.AsyncSessionLocal", return_value=MockAsyncSessionCM()):
             assert (
                 await run_startup_checks({"paper_trading": {"enabled": True, "tp_detection_method": "close_price"}})
                 is False
@@ -203,7 +203,7 @@ class TestMain:
 
         with (
             patch("main.close_db", new_callable=AsyncMock) as mock_close_db,
-            patch("database.db.get_session") as mock_get_session,
+            patch("monika.infrastructure.database.db.get_session") as mock_get_session,
         ):
             mock_session = create_mock_async_session()
             mock_session.execute.return_value.scalars.return_value.all.return_value = []
@@ -280,7 +280,7 @@ class TestMain:
 
         with (
             patch("main.close_db", new_callable=AsyncMock) as mock_close_db,
-            patch("database.db.get_session") as mock_get_session,
+            patch("monika.infrastructure.database.db.get_session") as mock_get_session,
         ):
             mock_session = create_mock_async_session()
             mock_session.execute.return_value.scalars.return_value.all.return_value = []
@@ -319,7 +319,7 @@ class TestMain:
 
     @pytest.mark.asyncio
     async def test_post_restart_recovery_at_0300_no_false_cycle(self):
-        from database.models import CyclePerformance, FundamentalBrief
+        from monika.infrastructure.database.models import CyclePerformance, FundamentalBrief
         from datetime import datetime, timezone, timedelta
 
         agent = TradingAgent(
@@ -353,7 +353,10 @@ class TestMain:
 
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
-        with patch("main.datetime") as mock_dt, patch("database.db.get_session", return_value=mock_ctx):
+        with (
+            patch("main.datetime") as mock_dt,
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
+        ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
             with patch("main.asyncio.sleep", new=AsyncMock()):
@@ -364,7 +367,7 @@ class TestMain:
 
     @pytest.mark.asyncio
     async def test_post_restart_recovery_at_0300_missed_2000_cycle(self):
-        from database.models import CyclePerformance, FundamentalBrief
+        from monika.infrastructure.database.models import CyclePerformance, FundamentalBrief
         from datetime import datetime, timezone, timedelta
 
         agent = TradingAgent(
@@ -398,7 +401,10 @@ class TestMain:
 
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
-        with patch("main.datetime") as mock_dt, patch("database.db.get_session", return_value=mock_ctx):
+        with (
+            patch("main.datetime") as mock_dt,
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
+        ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
             with patch("main.asyncio.sleep", new=AsyncMock()):
@@ -409,7 +415,7 @@ class TestMain:
 
     @pytest.mark.asyncio
     async def test_post_restart_recovery_at_0715_missed_0700_cycle(self):
-        from database.models import CyclePerformance, FundamentalBrief
+        from monika.infrastructure.database.models import CyclePerformance, FundamentalBrief
         from datetime import datetime, timezone, timedelta
 
         agent = TradingAgent(
@@ -443,7 +449,10 @@ class TestMain:
 
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
-        with patch("main.datetime") as mock_dt, patch("database.db.get_session", return_value=mock_ctx):
+        with (
+            patch("main.datetime") as mock_dt,
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
+        ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
             with patch("main.asyncio.sleep", new=AsyncMock()):
@@ -454,7 +463,7 @@ class TestMain:
 
     @pytest.mark.asyncio
     async def test_post_restart_recovery_at_0645_upcoming_0700_cycle(self):
-        from database.models import CyclePerformance, FundamentalBrief
+        from monika.infrastructure.database.models import CyclePerformance, FundamentalBrief
         from datetime import datetime, timezone, timedelta
 
         agent = TradingAgent(
@@ -488,7 +497,10 @@ class TestMain:
 
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
-        with patch("main.datetime") as mock_dt, patch("database.db.get_session", return_value=mock_ctx):
+        with (
+            patch("main.datetime") as mock_dt,
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
+        ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
             with patch("main.asyncio.sleep", new=AsyncMock()):
@@ -501,7 +513,7 @@ class TestMain:
     @pytest.mark.asyncio
     async def test_post_restart_recovery_missing_brief_with_last_cycle(self):
         """Verify recovery is triggered without TypeError when last_cycle exists but brief is None."""
-        from database.models import CyclePerformance
+        from monika.infrastructure.database.models import CyclePerformance
         from datetime import datetime, timezone
 
         agent = TradingAgent(
@@ -530,7 +542,10 @@ class TestMain:
 
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=None)
 
-        with patch("main.datetime") as mock_dt, patch("database.db.get_session", return_value=mock_ctx):
+        with (
+            patch("main.datetime") as mock_dt,
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
+        ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
             with patch("main.asyncio.sleep", new=AsyncMock()):
@@ -543,7 +558,7 @@ class TestMain:
     @pytest.mark.asyncio
     async def test_post_restart_recovery_brief_null_generated_at(self):
         """Verify recovery is triggered when brief exists but has null generated_at."""
-        from database.models import CyclePerformance, FundamentalBrief
+        from monika.infrastructure.database.models import CyclePerformance, FundamentalBrief
         from datetime import datetime, timezone
 
         agent = TradingAgent(
@@ -571,7 +586,10 @@ class TestMain:
 
         mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief_null_gen)
 
-        with patch("main.datetime") as mock_dt, patch("database.db.get_session", return_value=mock_ctx):
+        with (
+            patch("main.datetime") as mock_dt,
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
+        ):
             mock_dt.now.return_value = simulated_now
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
             with patch("main.asyncio.sleep", new=AsyncMock()):

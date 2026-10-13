@@ -23,13 +23,6 @@ _src_dir = os.path.join(_repo_dir, "src")
 sys.path.insert(0, _repo_dir)
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
-
 # Muat environment variables dari file .env
 try:
     from dotenv import load_dotenv
@@ -43,7 +36,7 @@ try:
 except Exception:
     pass
 
-from scrapers.models import ScrapedNews
+from monika.infrastructure.data_ingestion.scrapers.models import ScrapedNews
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("CheckNews")
@@ -72,7 +65,7 @@ def print_news_table(news_list: List[ScrapedNews], max_display: int = 5):
 def check_kitco(headless: bool = False, limit: int = 5, pause: int = 3) -> dict:
     """Menguji KitcoNewsScraper."""
     logger.info(f"==> Menguji KitcoNewsScraper (Headless: {headless}, Limit: {limit})")
-    from scrapers.news.kitco_news import KitcoNewsScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.kitco_news import KitcoNewsScraper
 
     scraper = None
     start_time = time.time()
@@ -105,7 +98,7 @@ def check_kitco(headless: bool = False, limit: int = 5, pause: int = 3) -> dict:
 def check_tradingview(headless: bool = False, limit: int = 5, pause: int = 3) -> dict:
     """Menguji TradingViewNewsScraper."""
     logger.info(f"==> Menguji TradingViewNewsScraper (Headless: {headless}, Limit: {limit})")
-    from scrapers.news.tradingview_news import TradingViewNewsScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.tradingview_news import TradingViewNewsScraper
 
     scraper = None
     start_time = time.time()
@@ -136,22 +129,22 @@ def check_tradingview(headless: bool = False, limit: int = 5, pause: int = 3) ->
 
 
 def get_rss_map():
-    from scrapers.news.rss_fed import FedRssScraper
-    from scrapers.news.rss_ecb import EcbRssScraper
-    from scrapers.news.rss_boe import BoeRssScraper
-    from scrapers.news.rss_boj import BojRssScraper
-    from scrapers.news.rss_rba import RbaRssScraper
-    from scrapers.news.rss_bloomberg import BloombergRssScraper
-    from scrapers.news.rss_wsj import WsjRssScraper
-    from scrapers.news.rss_marketwatch import MarketwatchRssScraper
-    from scrapers.news.rss_dow_jones import DowJonesRssScraper
-    from scrapers.news.rss_forexlive import ForexliveRssScraper
-    from scrapers.news.rss_fxstreet import FxstreetRssScraper
-    from scrapers.news.rss_investing import InvestingRssScraper
-    from scrapers.news.rss_coindesk import CoindeskRssScraper
-    from scrapers.news.rss_reuters import ReutersRssScraper
-    from scrapers.news.rss_cnbc import CnbcRssScraper
-    from scrapers.news.rss_ft import FinancialTimesRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_fed import FedRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_ecb import EcbRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_boe import BoeRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_boj import BojRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_rba import RbaRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_bloomberg import BloombergRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_wsj import WsjRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_marketwatch import MarketwatchRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_dow_jones import DowJonesRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_forexlive import ForexliveRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_fxstreet import FxstreetRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_investing import InvestingRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_coindesk import CoindeskRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_reuters import ReutersRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_cnbc import CnbcRssScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_ft import FinancialTimesRssScraper
 
     return {
         "fed": ("Federal Reserve RSS", FedRssScraper),

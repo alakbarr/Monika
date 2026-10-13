@@ -2,15 +2,15 @@ from tests.conftest import create_mock_async_session
 import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.strategies.registry import StrategyRegistry
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-from scheduler.alpha_discovery_scheduler import (
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.scheduler.alpha_discovery_scheduler import (
     AlphaDiscoveryScheduler,
     AlphaHypothesis,
     CandidateAlphaProposal,
 )
-from scheduler.edge_strategy_runner import EdgeStrategyRunner
-from backtest.walk_forward_engine import WalkForwardResult
+from monika.application.scheduler.edge_strategy_runner import EdgeStrategyRunner
+from monika.application.backtest.walk_forward_engine import WalkForwardResult
 
 
 class MockDynamicStrategy(EdgeStrategy):

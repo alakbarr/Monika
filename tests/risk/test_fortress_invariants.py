@@ -20,13 +20,13 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from tests.conftest import create_mock_async_session
-from risk.risk_gate import RiskGate, RiskVerdict
-from risk.position_sizing import PositionSizer
-from database.session_db_wal import SessionDbWal
-from agent.state_rewind import StateRewindManager, CARRIER_SIDE_EFFECT_PERSISTED
-from agent.moa_loop import MoARuntime, MoAResult
-from analysis.memory.skill_ast_audit import SkillAstAuditor
-from utils.security.supply_chain_quarantine import SupplyChainQuarantine
+from monika.domain.risk.risk_gate import RiskGate, RiskVerdict
+from monika.domain.risk.position_sizing import PositionSizer
+from monika.infrastructure.database.session_db_wal import SessionDbWal
+from monika.application.agent.state_rewind import StateRewindManager, CARRIER_SIDE_EFFECT_PERSISTED
+from monika.application.agent.moa_loop import MoARuntime, MoAResult
+from monika.application.analysis.memory.skill_ast_audit import SkillAstAuditor
+from monika.core.security.supply_chain_quarantine import SupplyChainQuarantine
 
 
 @pytest.fixture
@@ -233,7 +233,7 @@ class BreakoutAlpha:
 
 def test_invariant_registry_duplicate_warning(caplog):
     import logging
-    from risk.invariants.registry import InvariantRegistry, InvariantResult, InvariantStatus
+    from monika.domain.risk.invariants.registry import InvariantRegistry, InvariantResult, InvariantStatus
 
     registry = InvariantRegistry()
     dummy1 = lambda ctx: InvariantResult("test_inv", InvariantStatus.PASS)

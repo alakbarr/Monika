@@ -6,9 +6,12 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from database.models import CandidateLesson, PaperTradeRecord
-from utils.analytics.performance_reviewer import evaluate_candidate_lessons
-from analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook, auto_promote_high_confidence_rules
+from monika.infrastructure.database.models import CandidateLesson, PaperTradeRecord
+from monika.core.analytics.performance_reviewer import evaluate_candidate_lessons
+from monika.application.analysis.memory.lesson_consolidator import (
+    consolidate_lessons_to_playbook,
+    auto_promote_high_confidence_rules,
+)
 
 
 @pytest.mark.asyncio
@@ -35,7 +38,7 @@ async def test_consolidate_lessons_creates_shadow_candidate_in_db():
 
     settings = {"llm": {"task_roles": {"trade_reflection": {"primary": "claude-haiku-3.5"}}}}
 
-    with patch("analysis.providers.llm_factory.get_client_for_task", return_value=mock_client):
+    with patch("monika.infrastructure.providers.llm_factory.get_client_for_task", return_value=mock_client):
         res = await consolidate_lessons_to_playbook(mock_session, settings, auto_propose_only=True)
         assert res is not None
         assert "## XAUUSD" in res
@@ -97,7 +100,7 @@ async def test_evaluate_candidate_lessons_promotes_on_positive_delta():
     mock_session.execute.side_effect = [mock_exec1, mock_exec2, mock_exec3]
 
     with patch(
-        "analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock
+        "monika.application.analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock
     ) as mock_promote:
         summary = await evaluate_candidate_lessons(mock_session)
         assert summary["promoted"] == 1
@@ -131,7 +134,7 @@ async def test_auto_promote_high_confidence_rules():
     mock_session.execute.return_value = mock_exec
 
     with patch(
-        "analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock
+        "monika.application.analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock
     ) as mock_promote:
         promoted = await auto_promote_high_confidence_rules(mock_session)
         assert 10 in promoted

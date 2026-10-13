@@ -7,8 +7,8 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from indicators.order_flow import OrderFlowEngine, OrderFlowSnapshot, fetch_latest_order_flow
-from database.models import PriceOHLCV, TechnicalIndicator
+from monika.domain.indicators.order_flow import OrderFlowEngine, OrderFlowSnapshot, fetch_latest_order_flow
+from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
 
 
 @pytest.mark.asyncio

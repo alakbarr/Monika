@@ -6,7 +6,7 @@
 
 import re
 import unittest
-from skills.loader import load_skill, invalidate_cache
+from monika.application.skills.loader import load_skill, invalidate_cache
 
 
 class TestPlaybookStressChallenge(unittest.TestCase):

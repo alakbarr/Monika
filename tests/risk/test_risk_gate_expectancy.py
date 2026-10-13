@@ -1,9 +1,9 @@
 import pytest
 from datetime import datetime, timezone
-from risk.risk_gate import RiskGate
-from risk.position_sizing import SizingResult
-from indicators.timesfm_engine import TimesFMEngine
-import utils.clock as clock
+from monika.domain.risk.risk_gate import RiskGate
+from monika.domain.risk.position_sizing import SizingResult
+from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
+import monika.core.primitives.clock as clock
 
 
 @pytest.mark.asyncio

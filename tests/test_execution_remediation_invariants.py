@@ -7,13 +7,13 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from utils import clock
-from utils.clock import frozen_time
-from backtest.outcome_evaluator import OutcomeEvaluator
-from database.models import BacktestTrade
-from analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
-from analysis.strategies.base_strategy import EdgeSignal
-from database.db import transactional_advisory_lock
+from monika.core.primitives import clock
+from monika.core.primitives.clock import frozen_time
+from monika.application.backtest.outcome_evaluator import OutcomeEvaluator
+from monika.infrastructure.database.models import BacktestTrade
+from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
+from monika.application.analysis.strategies.base_strategy import EdgeSignal
+from monika.infrastructure.database.db import transactional_advisory_lock
 
 
 def test_clock_frozen_time_context_manager():
@@ -87,7 +87,7 @@ async def test_signal_arbitrator_concordant_boost():
         "decision_source": "llm_debate",
     }
 
-    with patch("utils.calibration.confidence_calibrator.get_calibrated_confidence", AsyncMock(return_value=0.75)):
+    with patch("monika.core.calibration.confidence_calibrator.get_calibrated_confidence", AsyncMock(return_value=0.75)):
         result = await arbitrator.arbitrate(
             session=mock_session, symbol="BTCUSD", quant_signal=quant_sig, llm_decision=llm_dec, vix_level=16.0
         )
@@ -178,7 +178,7 @@ async def test_transactional_advisory_lock_fallback():
 @pytest.mark.asyncio
 async def test_benchmark_judge_ensemble():
     """Verify judge_output_ensemble aggregates scores across multiple judge models."""
-    from benchmark.judge import judge_output_ensemble
+    from monika.application.benchmark.judge import judge_output_ensemble
 
     mock_result_1 = (
         {

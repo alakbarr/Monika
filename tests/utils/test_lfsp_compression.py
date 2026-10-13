@@ -1,6 +1,6 @@
 import pytest
 import json
-from utils.llm.prompt_compressor import truncate_to_budget
+from monika.infrastructure.llm.prompt_compressor import truncate_to_budget
 
 
 def test_lfsp_preserves_unmitigated_zones_over_mitigated():

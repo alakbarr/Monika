@@ -18,7 +18,7 @@ from datetime import datetime, timezone, timedelta
 
 def test_mt5_actionable_error_mapping():
     """Verify P6.3: MT5 error code mapping returns actionable Indonesian diagnostics."""
-    from execution.mt5_client import format_mt5_error, MT5_RETCODE_DESCRIPTIONS
+    from monika.infrastructure.brokers.mt5_client import format_mt5_error, MT5_RETCODE_DESCRIPTIONS
 
     # Test known codes
     err_margin = format_mt5_error(10019, "No money")
@@ -41,7 +41,7 @@ def test_mt5_actionable_error_mapping():
 
 def test_tradingview_payload_normalization():
     """Verify P6.4: TradingView webhook normalizer converts various alert formats."""
-    from gateway.webhook_ingress import normalize_tradingview_payload
+    from monika.interfaces.gateway.webhook_ingress import normalize_tradingview_payload
 
     # 1. Standard Pine Script JSON payload
     tv_json = {
@@ -77,7 +77,7 @@ def test_tradingview_payload_normalization():
 
 def test_currency_conversion_helpers():
     """Verify P4.6: IDR dual currency formatting helpers."""
-    from telegram_bot.message_formatter import (
+    from monika.interfaces.telegram.message_formatter import (
         convert_usd_to_idr,
         format_idr_currency,
         format_currency_dual,
@@ -99,9 +99,9 @@ def test_currency_conversion_helpers():
 @pytest.mark.asyncio
 async def test_paper_tracker_suspension():
     """Verify P4.7: PaperTracker symbol suspension."""
-    from utils.analytics.paper_tracker import PaperTracker
+    from monika.core.analytics.paper_tracker import PaperTracker
     from unittest.mock import AsyncMock, MagicMock
-    from database.models import SystemConfig
+    from monika.infrastructure.database.models import SystemConfig
 
     mock_session = create_mock_async_session()
     mock_execute_result = MagicMock()
@@ -125,7 +125,7 @@ async def test_paper_tracker_suspension():
 @pytest.mark.asyncio
 async def test_doctor_redis_check():
     """Verify P6.1: Doctor includes Redis connectivity check."""
-    from cli.doctor import SystemDoctor
+    from monika.interfaces.cli.doctor import SystemDoctor
 
     doc = SystemDoctor()
     await doc.check_redis({})
@@ -137,7 +137,7 @@ async def test_doctor_redis_check():
 
 def test_indonesian_intent_routing_patterns():
     """Verify P5: Indonesian NLP routing for debate, memory, and skill creation."""
-    from telegram_bot.chat_tool_router import ChatToolRouter
+    from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
     import re
 
     # Test intelligence pattern ("ingat bahwa...")
@@ -153,7 +153,7 @@ def test_indonesian_intent_routing_patterns():
 
 def test_command_router_includes_all_remediation_commands():
     """Verify all newly wired commands appear in CommandRouter help documentation."""
-    from telegram_bot.command_router import CommandRouter, DIRECT_COMMANDS, COMMAND_HELP
+    from monika.interfaces.telegram.command_router import CommandRouter, DIRECT_COMMANDS, COMMAND_HELP
 
     required_commands = [
         "suspend",
@@ -179,8 +179,8 @@ def test_command_router_includes_all_remediation_commands():
 
 def test_backtest_engines_accept_symbol_and_strategy_filters():
     """Verify PointInTimeBacktestEngine and WalkForwardEngine accept and initialize symbol & strategy filters."""
-    from backtest.point_in_time_engine import PointInTimeBacktestEngine
-    from backtest.walk_forward_engine import WalkForwardEngine
+    from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine
+    from monika.application.backtest.walk_forward_engine import WalkForwardEngine
     from datetime import datetime, timezone
 
     start = datetime(2026, 1, 1, tzinfo=timezone.utc)

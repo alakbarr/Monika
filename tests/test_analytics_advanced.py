@@ -7,8 +7,8 @@ Unit tests for Advanced Analytics: Macro Cross-Asset Correlation & Coinglass Ope
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
-from utils.market.dynamic_correlation import compute_cross_asset_macro_correlation
-from data_sources.coinglass_funding import CoinglasFundingFetcher
+from monika.domain.market.dynamic_correlation import compute_cross_asset_macro_correlation
+from monika.infrastructure.data_ingestion.sources.coinglass_funding import CoinglasFundingFetcher
 
 
 @pytest.mark.asyncio

@@ -3,7 +3,7 @@ Unit tests for InvariantRegistry and invariant listeners.
 """
 
 import pytest
-from risk.invariants import (
+from monika.domain.risk.invariants import (
     InvariantRegistry,
     InvariantResult,
     InvariantStatus,

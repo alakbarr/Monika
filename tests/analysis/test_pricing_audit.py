@@ -6,8 +6,8 @@ serta audit kelengkapan 100% model di settings.yaml.
 import os
 import yaml
 from pathlib import Path
-from utils.analytics.pricing import cost_usd, get_price, PRICING, OPENROUTER_PRICING_MAP, FREE_TIER_MODELS
-import benchmark.pricing as benchmark_pricing
+from monika.core.analytics.pricing import cost_usd, get_price, PRICING, OPENROUTER_PRICING_MAP, FREE_TIER_MODELS
+import monika.application.benchmark.pricing as benchmark_pricing
 
 
 def test_pricing_without_cache():

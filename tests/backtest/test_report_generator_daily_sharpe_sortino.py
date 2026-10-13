@@ -4,8 +4,8 @@ Unit Tests for ReportGenerator Daily-Resampled Sharpe & Sortino Calculations.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from database.models import BacktestRun, BacktestTrade
-from backtest.report_generator import ReportGenerator
+from monika.infrastructure.database.models import BacktestRun, BacktestTrade
+from monika.application.backtest.report_generator import ReportGenerator
 
 
 def test_report_generator_daily_sharpe_and_sortino():

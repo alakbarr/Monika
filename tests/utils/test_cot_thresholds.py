@@ -1,5 +1,5 @@
 import pytest
-from utils.calibration.cot_thresholds import cot_extreme_score
+from monika.core.calibration.cot_thresholds import cot_extreme_score
 
 
 def test_cot_extreme_score_eurusd():

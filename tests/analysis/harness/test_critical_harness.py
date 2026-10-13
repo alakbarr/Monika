@@ -6,8 +6,8 @@ import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from analysis.harness.agent_harness import AgentHarness
-from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
+from monika.application.analysis.harness.agent_harness import AgentHarness
+from monika.infrastructure.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
 
 
 class DummyHarnessClient(BaseLLMClient):
@@ -265,7 +265,9 @@ async def test_c1_persist_before_execute_event(mock_session):
     )
     client.mock_run_tool_agent.side_effect = [resp1, resp2]
 
-    with patch("database.event_store.TradingEventStore.emit", new_callable=AsyncMock) as mock_emit:
+    with patch(
+        "monika.infrastructure.database.event_store.TradingEventStore.emit", new_callable=AsyncMock
+    ) as mock_emit:
         result = await harness.run_agent_from_messages(
             session=mock_session,
             system_prompt="System",
@@ -279,7 +281,7 @@ async def test_c1_persist_before_execute_event(mock_session):
         assert result["success"] is True
         assert mock_emit.call_count >= 1
         call_kwargs = mock_emit.call_args_list[0].kwargs
-        assert call_kwargs["event_type"] == "agent.turn.pre_execute"
+        assert call_kwargs["event_type"] == "monika.application.agent.turn.pre_execute"
         assert call_kwargs["correlation_id"] == "cycle_test_123"
         assert call_kwargs["payload"]["turn_index"] == 1
         assert len(call_kwargs["payload"]["tool_calls"]) == 1

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from scrapers.macro.cme_fedwatch import FedWatchScraper
+from monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch import FedWatchScraper
 
 
 class TestFedWatchScraper:

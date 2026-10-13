@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 def test_event_loop_is_selector_on_windows():
     """Verify that on Windows configure_event_loop provides SelectorEventLoop (required by psycopg)."""
-    from utils.infra.platform_compat import configure_event_loop, IS_WINDOWS
+    from monika.infrastructure.infra.platform_compat import configure_event_loop, IS_WINDOWS
 
     if IS_WINDOWS:
         factory_dict = configure_event_loop()
@@ -21,7 +21,7 @@ def test_event_loop_is_selector_on_windows():
 @pytest.mark.asyncio
 async def test_telegram_bot_lifecycle_and_send_notification_resilience():
     """Verify that TelegramBot.send_notification gracefully suppresses errors when bot is stopped."""
-    from telegram_bot.bot import TelegramBot
+    from monika.interfaces.telegram.bot import TelegramBot
 
     settings = {"trading": {}}
     bot = TelegramBot(settings)
@@ -53,7 +53,7 @@ async def test_telegram_bot_lifecycle_and_send_notification_resilience():
 @pytest.mark.asyncio
 async def test_run_with_restart_clean_shutdown_behavior():
     """Verify that _run_with_restart stops cleanly when component is intentionally stopped or shutdown_event is set."""
-    from main import _run_with_restart
+    from monika.application.main import _run_with_restart
 
     shutdown_event = asyncio.Event()
 

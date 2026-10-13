@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch
-from utils.llm.embedding import generate_gemini_embedding
+from monika.infrastructure.llm.embedding import generate_gemini_embedding
 
 
 @pytest.mark.asyncio
@@ -10,7 +10,7 @@ async def test_generate_gemini_embedding_empty():
 
 
 @pytest.mark.asyncio
-@patch("utils.llm.embedding.fetch_with_retry")
+@patch("monika.infrastructure.llm.embedding.fetch_with_retry")
 async def test_generate_gemini_embedding_success(mock_fetch):
     mock_fetch.return_value = {"embedding": {"values": [0.1, 0.2, -0.3, 0.4]}}
     vec = await generate_gemini_embedding("EURUSD bullish breakout above 1.0850", api_key="mock_test_key")
@@ -22,7 +22,7 @@ async def test_generate_gemini_embedding_success(mock_fetch):
 
 
 @pytest.mark.asyncio
-@patch("utils.llm.embedding.fetch_with_retry")
+@patch("monika.infrastructure.llm.embedding.fetch_with_retry")
 async def test_generate_gemini_embedding_api_error(mock_fetch):
     mock_fetch.return_value = {"error": {"code": 400, "message": "Invalid request"}}
     vec = await generate_gemini_embedding("test query", api_key="mock_test_key")
@@ -30,7 +30,7 @@ async def test_generate_gemini_embedding_api_error(mock_fetch):
 
 
 @pytest.mark.asyncio
-@patch("utils.llm.embedding.fetch_with_retry")
+@patch("monika.infrastructure.llm.embedding.fetch_with_retry")
 async def test_generate_gemini_embedding_default_model_and_dimensions(mock_fetch):
     mock_fetch.return_value = {"embedding": {"values": [0.1] * 768}}
     vec = await generate_gemini_embedding("test prompt", api_key="test_key")
@@ -42,7 +42,7 @@ async def test_generate_gemini_embedding_default_model_and_dimensions(mock_fetch
 
 
 @pytest.mark.asyncio
-@patch("utils.llm.embedding.fetch_with_retry")
+@patch("monika.infrastructure.llm.embedding.fetch_with_retry")
 async def test_generate_gemini_embedding_legacy_migration(mock_fetch):
     mock_fetch.return_value = {"embedding": {"values": [0.5] * 768}}
     vec = await generate_gemini_embedding("test prompt", model="text-embedding-004", api_key="test_key")
@@ -54,7 +54,7 @@ async def test_generate_gemini_embedding_legacy_migration(mock_fetch):
 
 
 @pytest.mark.asyncio
-@patch("utils.llm.embedding.fetch_with_retry")
+@patch("monika.infrastructure.llm.embedding.fetch_with_retry")
 async def test_generate_gemini_embedding_preview_alias_migration(mock_fetch):
     mock_fetch.return_value = {"embedding": {"values": [0.3] * 768}}
     vec = await generate_gemini_embedding("test prompt", model="gemini-embedding-2-preview", api_key="test_key")

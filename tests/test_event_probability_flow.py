@@ -17,10 +17,10 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from telegram_bot.chat_agent import ChatAgent, PendingAction
-from analysis.subagent_spawner import DynamicSubagentPool
-from analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
-from skills.loader import load_skill
+from monika.interfaces.telegram.chat_agent import ChatAgent, PendingAction
+from monika.application.analysis.subagent_spawner import DynamicSubagentPool
+from monika.application.analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
+from monika.application.skills.loader import load_skill
 
 
 DEFAULT_BENCHMARK_PROMPT = (
@@ -87,7 +87,7 @@ class TestBenchmarkQueryClassification:
     @pytest.mark.asyncio
     async def test_exact_benchmark_prompt_classified_as_deep_research(self):
         exact_prompt, _ = _load_benchmark_query()
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_get_client.return_value = mock_client
             agent = ChatAgent(settings={}, user_id=99901)
@@ -100,7 +100,7 @@ class TestBenchmarkQueryClassification:
     @pytest.mark.asyncio
     async def test_full_benchmark_file_classified_as_deep_research(self):
         _, full_content = _load_benchmark_query()
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_get_client.return_value = mock_client
             agent = ChatAgent(settings={}, user_id=99901)
@@ -122,7 +122,7 @@ class TestBenchmarkQueryClassification:
             "What is the probability of a rate hike in CME FedWatch for the upcoming FOMC meeting?",
             "Analisis kebijakan suku bunga bank sentral, dot plot SEP, dan press conference Jerome Powell",
         ]
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_get_client.return_value = mock_client
             agent = ChatAgent(settings={}, user_id=99901)
@@ -144,7 +144,7 @@ class TestIsMacroEventQuery:
 
     def test_benchmark_query_returns_true(self):
         exact_prompt, full_content = _load_benchmark_query()
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings={}, user_id=99902)
 
             assert agent._is_macro_event_query(exact_prompt) is True
@@ -169,7 +169,7 @@ class TestIsMacroEventQuery:
             "Alan Greenspan 1994 bond market surprise",
             "Ben Bernanke 2013 no-taper surprise scenario",
         ]
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings={}, user_id=99902)
             for s in sentences:
                 assert agent._is_macro_event_query(s) is True, f"Failed detection for: '{s}'"
@@ -190,7 +190,7 @@ class TestIsMacroEventQuery:
             "\n\t",
             "",
         ]
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings={}, user_id=99902)
             for neg in negatives:
                 assert agent._is_macro_event_query(neg) is False, f"False positive for: '{neg}'"
@@ -208,7 +208,7 @@ class TestInjectMacroPlaybooks:
     """Verify loading and injection of event_probability_playbook and market_dynamics_framework."""
 
     def test_inject_macro_playbooks_loads_both_skills_string_prompt(self):
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings={}, user_id=99903)
             base_prompt = "System anchor: You are Monika quantitative trading agent."
 
@@ -228,7 +228,7 @@ class TestInjectMacroPlaybooks:
             assert "INSTITUTIONAL" in injected or "TEMPLATE OUTPUT" in injected
 
     def test_inject_macro_playbooks_tuple_format(self):
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings={}, user_id=99903)
             static_prefix = "Static system prompt."
             dynamic_snapshot = "Dynamic session data: equity=10000, margin=500."
@@ -244,7 +244,7 @@ class TestInjectMacroPlaybooks:
             assert dynamic_out == dynamic_snapshot
 
     def test_inject_macro_playbooks_idempotent(self):
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings={}, user_id=99903)
             base_prompt = "Base prompt."
 
@@ -330,7 +330,7 @@ class TestDeepResearchSynthesizer:
     @pytest.mark.asyncio
     async def test_synthesizer_runs_with_tools_and_tool_executor(self):
         exact_prompt, _ = _load_benchmark_query()
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_client.model = "test-model"
             mock_client.model_name = "test-model"
@@ -421,7 +421,7 @@ class TestSaveMarketIntelligencePendingAction:
     """Verify ChatAgent captures proposed save_market_intelligence and instantiates PendingAction."""
 
     def test_create_pending_action_from_save_market_intelligence(self):
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings={}, user_id=99905)
 
             proposed = {
@@ -448,7 +448,7 @@ class TestSaveMarketIntelligencePendingAction:
     async def test_deep_research_reply_captures_pending_action_in_agent(self):
         """Simulate ChatAgent handle response with proposed save_market_intelligence action."""
         exact_prompt, _ = _load_benchmark_query()
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_client.model = "test-model"
             mock_client.model_name = "test-model"
@@ -502,7 +502,7 @@ class TestSaveMarketIntelligencePendingAction:
     @pytest.mark.asyncio
     async def test_execute_action_dispatches_to_tool_save_market_intelligence(self):
         """Verify _execute_action routes save_market_intelligence to tool_executor."""
-        with patch("telegram_bot.chat_agent.get_client_for_task"):
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings={}, user_id=99905)
 
             action = PendingAction(
@@ -531,8 +531,8 @@ class TestSaveMarketIntelligencePendingAction:
             from tests.conftest import create_mock_async_session
 
             with (
-                patch("telegram_bot.chat_agent.get_session") as mock_gs,
-                patch("analysis.tools.tool_executor.ToolExecutor", return_value=mock_executor),
+                patch("monika.interfaces.telegram.chat_agent.get_session") as mock_gs,
+                patch("monika.application.analysis.tools.tool_executor.ToolExecutor", return_value=mock_executor),
             ):
                 mock_sess = create_mock_async_session()
                 mock_gs.return_value.__aenter__.return_value = mock_sess
@@ -555,7 +555,7 @@ class TestFullEventProbabilityEndToEndIntegration:
     async def test_full_pipeline_flow(self):
         exact_prompt, _ = _load_benchmark_query()
 
-        with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+        with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
             mock_client = AsyncMock()
             mock_client.model = "test-model"
             mock_client.model_name = "test-model"

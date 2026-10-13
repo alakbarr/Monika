@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from graph.nodes.debate_node import debate_node
-from database.models import AssetAnalysis
+from monika.application.graph.nodes.debate_node import debate_node
+from monika.infrastructure.database.models import AssetAnalysis
 
 
 @pytest.mark.asyncio

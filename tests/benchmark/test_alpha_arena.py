@@ -3,7 +3,7 @@ Unit tests for benchmark/alpha_arena.py (Elo rating calculations and tournament 
 """
 
 import pytest
-from benchmark.alpha_arena import (
+from monika.application.benchmark.alpha_arena import (
     AlphaArenaTournament,
     update_elo,
 )

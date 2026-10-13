@@ -5,11 +5,15 @@
 import os
 import tempfile
 import pytest
-from graph.nodes.state_pruner import prune_after_fundamental, prune_after_debate, prune_before_execution
-from graph.checkpointers.sqlite_checkpointer import SqliteCheckpointSaver
+from monika.application.graph.nodes.state_pruner import (
+    prune_after_fundamental,
+    prune_after_debate,
+    prune_before_execution,
+)
+from monika.infrastructure.graph.checkpointers.sqlite_checkpointer import SqliteCheckpointSaver
 
 
-from graph.state import merge_dicts
+from monika.application.graph.state import merge_dicts
 
 
 def test_prune_after_fundamental():

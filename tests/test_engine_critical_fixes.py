@@ -8,9 +8,9 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from fastapi import HTTPException, Request
 
-from telegram_bot.voice_safety_gate import VoiceSafetyGate
-from logging_observability.dashboard.rbac import require_role, Role
-from telegram_bot.chat_agent import ChatAgent
+from monika.interfaces.telegram.voice_safety_gate import VoiceSafetyGate
+from monika.interfaces.dashboard.rbac import require_role, Role
+from monika.interfaces.telegram.chat_agent import ChatAgent
 
 
 def test_voice_safety_gate_lot_parsing_does_not_capture_price():

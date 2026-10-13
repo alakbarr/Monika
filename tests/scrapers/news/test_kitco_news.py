@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from scrapers.news.kitco_news import KitcoNewsScraper
+from monika.infrastructure.data_ingestion.scrapers.news.kitco_news import KitcoNewsScraper
 
 
 class TestKitcoNewsScraper:

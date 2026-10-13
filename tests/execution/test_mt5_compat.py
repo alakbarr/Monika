@@ -18,7 +18,7 @@ import types
 from unittest.mock import MagicMock, patch
 import pytest
 
-from execution.mt5_compat import (
+from monika.infrastructure.brokers.mt5_compat import (
     MT5_CONSTANTS,
     is_native_mt5_available,
     is_mt5linux_available,
@@ -183,7 +183,7 @@ def test_platform_check_helpers():
 
 def test_ensure_mt5_module_on_linux_simulation(monkeypatch):
     """Simulate non-Windows platform without native MT5, verifying proxy/fallback behavior."""
-    import execution.mt5_compat as compat
+    import monika.infrastructure.brokers.mt5_compat as compat
 
     monkeypatch.setattr(compat, "is_native_mt5_available", lambda: False)
     monkeypatch.setattr(compat, "_active_mt5_module", None)
@@ -208,7 +208,7 @@ def test_ensure_mt5_module_on_linux_simulation(monkeypatch):
 
 def test_ensure_mt5_fallback_when_no_bridge(monkeypatch):
     """Simulate non-Windows platform with neither native nor bridge package available."""
-    import execution.mt5_compat as compat
+    import monika.infrastructure.brokers.mt5_compat as compat
 
     monkeypatch.setattr(compat, "is_native_mt5_available", lambda: False)
     monkeypatch.setattr(compat, "is_mt5linux_available", lambda: False)

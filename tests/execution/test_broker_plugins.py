@@ -4,16 +4,16 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from execution.broker_plugin import (
+from monika.domain.execution.broker_plugin import (
     BrokerPlugin,
     TickData,
     InstrumentSpec,
     PositionData,
     AccountInfo,
 )
-from plugins.brokers.paper_trading.paper_plugin import PaperTradingBrokerPlugin
-from plugins.brokers.mt5_local.mt5_plugin import MT5LocalBrokerPlugin
-from harness.contract import PluginCategory
+from monika.application.plugins.brokers.paper_trading.paper_plugin import PaperTradingBrokerPlugin
+from monika.application.plugins.brokers.mt5_local.mt5_plugin import MT5LocalBrokerPlugin
+from monika.application.harness.contract import PluginCategory
 
 
 @pytest.mark.asyncio

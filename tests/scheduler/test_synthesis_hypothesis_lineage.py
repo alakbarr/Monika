@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from pathlib import Path
-from scheduler.strategy_synthesis_scheduler import (
+from monika.application.scheduler.strategy_synthesis_scheduler import (
     StrategySynthesisScheduler,
     SynthesizedStrategyCandidate,
 )
-from analysis.strategies.hypothesis_registry import HypothesisRegistry, HypothesisStatus
+from monika.application.analysis.strategies.hypothesis_registry import HypothesisRegistry, HypothesisStatus
 
 
 @pytest.fixture

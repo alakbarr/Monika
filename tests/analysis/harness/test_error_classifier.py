@@ -1,7 +1,7 @@
 """Unit tests for structured error classification pipeline (Phase 3)."""
 
 import pytest
-from analysis.harness.error_classifier import (
+from monika.application.analysis.harness.error_classifier import (
     ErrorCategory,
     RecoveryAction,
     ClassifiedError,
@@ -152,7 +152,7 @@ def test_classify_response_clean():
 
 
 def test_sanitize_unicode_surrogates():
-    from analysis.harness.error_classifier import sanitize_unicode_surrogates
+    from monika.application.analysis.harness.error_classifier import sanitize_unicode_surrogates
 
     dirty = "EURUSD \ud83d\ude00 price \ud800\udc00 valid text"
     clean = sanitize_unicode_surrogates(dirty)
@@ -169,7 +169,7 @@ def test_sanitize_unicode_surrogates():
 
 
 def test_fallback_multimodal_to_text():
-    from analysis.harness.error_classifier import fallback_multimodal_to_text
+    from monika.application.analysis.harness.error_classifier import fallback_multimodal_to_text
 
     messages = [
         {"role": "user", "content": "Check chart below"},

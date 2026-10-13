@@ -14,7 +14,7 @@ import asyncio
 import numpy as np
 from unittest.mock import MagicMock, AsyncMock, patch
 from datetime import datetime, timezone, timedelta
-from utils import clock
+from monika.core.primitives import clock
 
 
 # =========================================================================
@@ -22,8 +22,8 @@ from utils import clock
 # =========================================================================
 @pytest.mark.asyncio
 async def test_signal_arbitrator_dynamic_empirical_brier_weighting():
-    from analysis.arbitration.signal_arbitrator import compute_empirical_arbitrator_weights
-    from database.models import PaperTradeRecord, AssetAnalysis
+    from monika.application.analysis.arbitration.signal_arbitrator import compute_empirical_arbitrator_weights
+    from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis
 
     mock_session = create_mock_async_session()
 
@@ -62,8 +62,8 @@ async def test_signal_arbitrator_dynamic_empirical_brier_weighting():
 # =========================================================================
 @pytest.mark.asyncio
 async def test_performance_reviewer_causal_setup_attribution():
-    from utils.analytics.performance_reviewer import evaluate_candidate_lessons
-    from database.models import CandidateLesson, PaperTradeRecord
+    from monika.core.analytics.performance_reviewer import evaluate_candidate_lessons
+    from monika.infrastructure.database.models import CandidateLesson, PaperTradeRecord
 
     mock_session = create_mock_async_session()
     now = datetime(2026, 8, 29, 12, 0, 0, tzinfo=timezone.utc)
@@ -118,7 +118,7 @@ async def test_performance_reviewer_causal_setup_attribution():
     ]
 
     with patch(
-        "analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock
+        "monika.application.analysis.memory.lesson_consolidator.promote_lesson_to_playbook", new_callable=AsyncMock
     ) as mock_promote:
         summary = await evaluate_candidate_lessons(mock_session)
         assert summary["promoted"] == 1
@@ -131,7 +131,7 @@ async def test_performance_reviewer_causal_setup_attribution():
 # =========================================================================
 @pytest.mark.asyncio
 async def test_adaptive_policy_rolling_window_sample_cap():
-    from analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
+    from monika.application.analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
 
     settings = {
         "trading": {
@@ -165,8 +165,8 @@ async def test_adaptive_policy_rolling_window_sample_cap():
 # 4. TST-03: ReportGenerator Asset-Weighted Mixed Annualization
 # =========================================================================
 def test_report_generator_asset_weighted_mixed_annualization():
-    from backtest.report_generator import ReportGenerator
-    from database.models import BacktestRun
+    from monika.application.backtest.report_generator import ReportGenerator
+    from monika.infrastructure.database.models import BacktestRun
 
     # Scenario: Mixed portfolio with 8 FX trades and 2 Crypto trades (20% crypto)
     trades = []

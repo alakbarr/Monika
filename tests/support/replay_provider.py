@@ -7,7 +7,7 @@ without making any external network requests or requiring API keys.
 import json
 import os
 from typing import Any, Dict, List, Optional
-from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
+from monika.infrastructure.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
 
 
 class ReplayLLMProvider(BaseLLMClient):

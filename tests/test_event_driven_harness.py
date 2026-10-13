@@ -15,7 +15,7 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from utils.protocol.event_bus import (
+from monika.application.protocol.event_bus import (
     AppEvent,
     TickPriceEvent,
     BarClosedEvent,
@@ -26,14 +26,14 @@ from utils.protocol.event_bus import (
     get_event_bus,
     reset_event_bus,
 )
-from analysis.harness.agent_harness import AgentHarness
-from analysis.providers.base_provider import BaseLLMClient, MockBlock, MockResponse
-from scheduler.flash_crash_detector import FlashCrashDetector
-from scheduler.trailing_stop_manager import TrailingStopManager
-from scheduler.position_guardian import PositionGuardian
-from scheduler.market_data_scheduler import MarketDataScheduler
-from main import TradingAgent
-from database.models import Position, SystemConfig
+from monika.application.analysis.harness.agent_harness import AgentHarness
+from monika.infrastructure.providers.base_provider import BaseLLMClient, MockBlock, MockResponse
+from monika.application.scheduler.flash_crash_detector import FlashCrashDetector
+from monika.application.scheduler.trailing_stop_manager import TrailingStopManager
+from monika.application.scheduler.position_guardian import PositionGuardian
+from monika.application.scheduler.market_data_scheduler import MarketDataScheduler
+from monika.application.main import TradingAgent
+from monika.infrastructure.database.models import Position, SystemConfig
 
 
 # ==============================================================================
@@ -513,7 +513,7 @@ class TestSchedulerEventBusIntegration:
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
 
-        with patch("database.db.get_session", return_value=mock_ctx):
+        with patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx):
             await detector.on_tick(tick2)
 
         detector.check.assert_awaited_once()
@@ -554,7 +554,7 @@ class TestSchedulerEventBusIntegration:
 
         with (
             patch("scheduler.trailing_stop_manager.get_session", return_value=mock_ctx),
-            patch("database.db.get_session", return_value=mock_ctx),
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
         ):
             tick = TickPriceEvent(symbol="XAUUSD", bid=2020.0, ask=2020.5, last=2020.25)
             await manager.on_tick(tick)
@@ -580,7 +580,7 @@ class TestSchedulerEventBusIntegration:
 
         with (
             patch("scheduler.position_guardian.get_session", return_value=mock_ctx),
-            patch("database.db.get_session", return_value=mock_ctx),
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
         ):
             tick = TickPriceEvent(symbol="EURUSD", bid=1.0850, ask=1.0852)
             await guardian.on_tick(tick)
@@ -603,7 +603,7 @@ class TestSchedulerEventBusIntegration:
 
         with (
             patch("scheduler.position_guardian.get_session", return_value=mock_ctx),
-            patch("database.db.get_session", return_value=mock_ctx),
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
         ):
             # 1. Multiple ticks with kill_switch=true
             tick1 = TickPriceEvent(symbol="EURUSD", bid=1.0850, ask=1.0852)
@@ -649,7 +649,7 @@ class TestSchedulerEventBusIntegration:
 
         with (
             patch("scheduler.position_guardian.get_session", return_value=mock_ctx),
-            patch("database.db.get_session", return_value=mock_ctx),
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
         ):
             res1 = await guardian.check_and_protect()
             assert res1.get("kill_switch_active") is True
@@ -698,7 +698,7 @@ class TestSchedulerEventBusIntegration:
         mock_ctx.__aenter__.return_value = mock_session
 
         with (
-            patch("database.db.get_session", return_value=mock_ctx),
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
             patch("scheduler.market_data_scheduler.is_forex_market_closed", return_value=False),
             patch("scheduler.market_data_scheduler.TechnicalIndicatorCalculator", return_value=mock_calc),
             patch("scheduler.market_data_scheduler.MarketStructureAnalyzer", return_value=mock_analyzer),
@@ -724,12 +724,12 @@ class TestSchedulerEventBusIntegration:
         }
 
         with (
-            patch("execution.mt5_client.MT5Client"),
-            patch("execution.execution_service.ExecutionService"),
-            patch("analysis.stages.fundamental_stage.FundamentalStage"),
-            patch("analysis.stages.per_asset_stage.PerAssetStage"),
+            patch("monika.infrastructure.brokers.mt5_client.MT5Client"),
+            patch("monika.application.execution.execution_service.ExecutionService"),
+            patch("monika.application.analysis.stages.fundamental_stage.FundamentalStage"),
+            patch("monika.application.analysis.stages.per_asset_stage.PerAssetStage"),
             patch("scheduler.graph_cycle_scheduler.GraphCycleScheduler"),
-            patch("telegram_bot.bot.TelegramBot"),
+            patch("monika.interfaces.telegram.bot.TelegramBot"),
         ):
             agent = TradingAgent(settings, dry_run=True)
             agent._init_components()
@@ -759,7 +759,7 @@ class TestSchedulerEventBusIntegration:
             with (
                 patch("scheduler.trailing_stop_manager.get_session", return_value=mock_ctx),
                 patch("scheduler.position_guardian.get_session", return_value=mock_ctx),
-                patch("database.db.get_session", return_value=mock_ctx),
+                patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
             ):
                 await agent.publish_tick(symbol="XAUUSD", bid=2030.0, ask=2030.6, last=2030.3)
 
@@ -1069,7 +1069,7 @@ class TestEventDrivenHarnessEdgeCases:
         mock_ctx.__aenter__.return_value = mock_session
         mock_session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None)))
 
-        with patch("database.db.get_session", return_value=mock_ctx):
+        with patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx):
             await detector.on_tick(tick2)
 
         # Protection MUST have run directly
@@ -1099,7 +1099,7 @@ class TestEventDrivenHarnessEdgeCases:
 
         with (
             patch("scheduler.trailing_stop_manager.get_session", return_value=mock_ctx),
-            patch("database.db.get_session", return_value=mock_ctx),
+            patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
         ):
             await manager.on_tick(tick1)
             await manager.on_tick(tick2)

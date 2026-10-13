@@ -7,10 +7,10 @@ import asyncio
 import pytest
 from unittest.mock import MagicMock
 
-from agent.turn_liveness import TurnLivenessWatchdog
-from agent.empty_response_guard import EmptyResponseGuard, EmptyRecoveryAction
-from analysis.providers.streaming_think_scrubber import StreamingThinkScrubber
-from telegram_bot.command_router import DIRECT_COMMANDS, CommandType
+from monika.application.agent.turn_liveness import TurnLivenessWatchdog
+from monika.application.agent.empty_response_guard import EmptyResponseGuard, EmptyRecoveryAction
+from monika.infrastructure.providers.streaming_think_scrubber import StreamingThinkScrubber
+from monika.interfaces.telegram.command_router import DIRECT_COMMANDS, CommandType
 
 
 @pytest.mark.asyncio

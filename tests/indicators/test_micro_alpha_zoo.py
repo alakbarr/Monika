@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from indicators.micro_alpha_zoo import MicroAlphaZoo
+from monika.domain.indicators.micro_alpha_zoo import MicroAlphaZoo
 
 
 @pytest.fixture

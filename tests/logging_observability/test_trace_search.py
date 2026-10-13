@@ -1,5 +1,5 @@
 import pytest
-from logging_observability.tracing.exporters import InMemoryTraceStore, TraceRecord
+from monika.core.telemetry.tracing.exporters import InMemoryTraceStore, TraceRecord
 
 
 @pytest.fixture

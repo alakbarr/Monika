@@ -2,8 +2,8 @@ from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.strategies.xti_pairs_readiness import XTIPairsReadiness
-from analysis.strategies.base_strategy import EdgeSignal
+from monika.application.analysis.strategies.xti_pairs_readiness import XTIPairsReadiness
+from monika.application.analysis.strategies.base_strategy import EdgeSignal
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,7 @@ Unit Tests for Benchmark Multi-Judge Ensemble.
 
 import pytest
 from unittest.mock import AsyncMock, patch
-from benchmark.judge import judge_output_ensemble
+from monika.application.benchmark.judge import judge_output_ensemble
 
 
 @pytest.mark.asyncio

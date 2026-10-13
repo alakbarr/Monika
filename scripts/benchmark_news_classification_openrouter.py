@@ -20,12 +20,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _src_dir = REPO_ROOT / "src"
 if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
 os.chdir(str(REPO_ROOT))
 
 # Ensure stdout handles UTF-8 on Windows
@@ -37,8 +31,8 @@ if sys.stdout.encoding != "utf-8":
         pass
 
 import httpx
-from benchmark.system_one_scorer import score_system_one
-from utils.api.openrouter_rate_limiter import get_paid_key
+from monika.application.benchmark.system_one_scorer import score_system_one
+from monika.infrastructure.api.openrouter_rate_limiter import get_paid_key
 
 DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions"
 FIXTURE_PATH = (

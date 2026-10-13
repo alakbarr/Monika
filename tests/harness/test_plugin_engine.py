@@ -6,20 +6,20 @@ import pytest
 import asyncio
 from typing import Tuple, List, Dict, Any
 
-from harness.contract import (
+from monika.application.harness.contract import (
     TradingPlugin,
     PluginMetadata,
     PluginCategory,
     PluginOrigin,
 )
-from harness.engine import (
+from monika.application.harness.engine import (
     PluginEngine,
     topological_sort_plugins,
     MissingDependencyError,
     CircularDependencyError,
 )
-from utils.infra.container import ServiceContainer
-from utils.protocol.event_bus import EventBus, TickPriceEvent
+from monika.infrastructure.infra.container import ServiceContainer
+from monika.application.protocol.event_bus import EventBus, TickPriceEvent
 
 
 class DummyPluginA(TradingPlugin):
@@ -297,7 +297,7 @@ async def test_plugin_config_reload_propagation():
 
 @pytest.mark.asyncio
 async def test_plugin_timeout_isolation_non_core(monkeypatch):
-    import harness.engine as eng
+    import monika.application.harness.engine as eng
 
     monkeypatch.setattr(eng, "LIFECYCLE_TIMEOUT_PREFLIGHT", 0.05)
 

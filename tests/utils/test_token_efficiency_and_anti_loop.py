@@ -1,7 +1,7 @@
 import json
 import pytest
-from utils.llm.context_compaction import ContextCompactionEngine
-from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
 
 def test_lossless_structural_pruning_ohlcv():
@@ -110,7 +110,7 @@ def test_cache_breakpoint_wrap_classify_json_padded_anchor():
 
 def test_truncate_to_budget_embedded_json_preservation():
     import json
-    from utils.llm.prompt_compressor import truncate_to_budget
+    from monika.infrastructure.llm.prompt_compressor import truncate_to_budget
 
     raw_payload = {
         "symbol": "EURUSD",
@@ -132,7 +132,7 @@ def test_truncate_to_budget_embedded_json_preservation():
 
 def test_extract_decisive_state_extended_coverage():
     import json
-    from utils.llm.context_compaction import ContextCompactionEngine
+    from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
 
     engine = ContextCompactionEngine()
 

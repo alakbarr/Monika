@@ -4,8 +4,8 @@ import tempfile
 import yaml
 import pytest
 from unittest.mock import MagicMock
-from risk.risk_gate import RiskGate
-from config.hot_reload import RiskParameterReloader
+from monika.domain.risk.risk_gate import RiskGate
+from monika.core.config.hot_reload import RiskParameterReloader
 
 
 def test_risk_gate_update_parameters():

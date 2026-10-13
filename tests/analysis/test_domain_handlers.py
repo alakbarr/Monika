@@ -6,27 +6,27 @@ from datetime import datetime, timezone
 import pandas as pd
 from tests.conftest import create_mock_async_session
 
-from analysis.tools.domain.execution_handlers import ExecutionToolHandlers
-from analysis.tools.domain.position_handlers import PositionToolHandlers
-from analysis.tools.domain.macro_handlers import MacroToolHandlers
-from analysis.tools.domain.sentiment_handlers import SentimentToolHandlers
-from analysis.tools.domain.technical_handlers import TechnicalToolHandlers
-from utils.market.session_info import get_current_market_session
-from risk.position_sizing import calculate_lot_size
-from risk.risk_gate import get_current_risk_state
-from backtest.decision_memory import DecisionMemoryManager
-from backtest.offline_signal_engine import OfflineSignalEngine
+from monika.application.analysis.tools.domain.execution_handlers import ExecutionToolHandlers
+from monika.application.analysis.tools.domain.position_handlers import PositionToolHandlers
+from monika.application.analysis.tools.domain.macro_handlers import MacroToolHandlers
+from monika.application.analysis.tools.domain.sentiment_handlers import SentimentToolHandlers
+from monika.application.analysis.tools.domain.technical_handlers import TechnicalToolHandlers
+from monika.domain.market.session_info import get_current_market_session
+from monika.domain.risk.position_sizing import calculate_lot_size
+from monika.domain.risk.risk_gate import get_current_risk_state
+from monika.application.backtest.decision_memory import DecisionMemoryManager
+from monika.application.backtest.offline_signal_engine import OfflineSignalEngine
 
 
 @pytest.mark.asyncio
 async def test_execution_handlers():
     handlers = ExecutionToolHandlers()
-    with patch("risk.position_sizing.calculate_lot_size", new_callable=AsyncMock) as mock_calc:
+    with patch("monika.domain.risk.position_sizing.calculate_lot_size", new_callable=AsyncMock) as mock_calc:
         mock_calc.return_value = {"recommended_lots": 0.5, "is_valid": True}
         res = await handlers.calculate_position_size("EURUSD", 1.1000, 1.0950, risk_pct=1.0)
         assert res["recommended_lots"] == 0.5
 
-    with patch("execution.mt5_client.get_mt5_client") as mock_get_client:
+    with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client") as mock_get_client:
         mock_client = MagicMock()
         mock_client.get_spread = AsyncMock(return_value={"symbol": "EURUSD", "spread_points": 12})
         mock_get_client.return_value = mock_client
@@ -37,7 +37,7 @@ async def test_execution_handlers():
 @pytest.mark.asyncio
 async def test_position_handlers():
     handlers = PositionToolHandlers()
-    with patch("execution.mt5_client.get_mt5_client") as mock_get_client:
+    with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client") as mock_get_client:
         mock_client = MagicMock()
         mock_client.get_open_positions = AsyncMock(return_value=[{"ticket": 12345}])
         mock_client.get_account_info = AsyncMock(return_value={"equity": 10500.0})
@@ -50,7 +50,7 @@ async def test_position_handlers():
         acc = await handlers.get_account_info()
         assert acc["equity"] == 10500.0
 
-    with patch("risk.risk_gate.get_current_risk_state", new_callable=AsyncMock) as mock_risk:
+    with patch("monika.domain.risk.risk_gate.get_current_risk_state", new_callable=AsyncMock) as mock_risk:
         mock_risk.return_value = {"current_drawdown_pct": 0.5, "is_trading_paused": False}
         r_state = await handlers.get_risk_state()
         assert r_state["is_trading_paused"] is False
@@ -111,7 +111,7 @@ async def test_sentiment_handlers():
         assert ret_res["long_pct"] == 40.0
 
     # get_funding_rate
-    with patch("utils.api.http_retry.fetch_with_retry", new_callable=AsyncMock) as mock_retry:
+    with patch("monika.infrastructure.api.http_retry.fetch_with_retry", new_callable=AsyncMock) as mock_retry:
         mock_retry.return_value = [{"fundingRate": "0.0001", "fundingTime": 1720000000}]
         fund_res = await handlers.get_funding_rate("BTCUSD")
         assert fund_res["funding_rate"] == 0.0001
@@ -122,7 +122,7 @@ async def test_technical_handlers():
     handlers = TechnicalToolHandlers()
     mock_session = create_mock_async_session()
 
-    with patch("execution.mt5_client.get_mt5_client") as mock_get_client:
+    with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client") as mock_get_client:
         mock_client = MagicMock()
         mock_client.get_rates = AsyncMock(return_value=[{"time": 1, "close": 1.1000}])
         mock_get_client.return_value = mock_client

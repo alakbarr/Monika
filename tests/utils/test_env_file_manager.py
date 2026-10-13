@@ -5,7 +5,7 @@ Unit tests for EnvFileManager.
 import os
 import tempfile
 import pytest
-from utils.infra.env_file_manager import EnvFileManager
+from monika.infrastructure.infra.env_file_manager import EnvFileManager
 
 
 def test_update_env_values_preserves_comments_and_updates():

@@ -4,7 +4,7 @@ Unit tests for AtomicConfigWriter (comment preservation, fsync, and backups).
 
 import os
 from pathlib import Path
-from config.atomic_writer import AtomicConfigWriter
+from monika.core.config.atomic_writer import AtomicConfigWriter
 
 
 def test_atomic_writer_preserves_comments(tmp_path: Path):

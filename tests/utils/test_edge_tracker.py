@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 import math
 from unittest.mock import AsyncMock, MagicMock
-from utils.analytics.edge_tracker import compute_edge_status, binomial_confidence_interval
+from monika.core.analytics.edge_tracker import compute_edge_status, binomial_confidence_interval
 
 
 def test_binomial_confidence_interval():

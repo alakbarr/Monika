@@ -9,14 +9,14 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from utils.api.streaming import (
+from monika.infrastructure.api.streaming import (
     consume_sse_stream,
     StreamConfig,
     StreamResult,
     StreamTimeoutError,
     StreamSafetyTimeoutError,
 )
-from analysis.providers.gemini_provider import _gemini_stream_parser
+from monika.infrastructure.providers.gemini_provider import _gemini_stream_parser
 
 
 class MockStreamReader:

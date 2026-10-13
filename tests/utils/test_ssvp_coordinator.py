@@ -1,5 +1,5 @@
 import pytest
-from utils.protocol.ssvp_coordinator import SSVPCoordinator
+from monika.application.protocol.ssvp_coordinator import SSVPCoordinator
 
 
 @pytest.fixture

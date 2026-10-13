@@ -5,8 +5,8 @@ import numpy as np
 import json
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
-from indicators.technical import TechnicalIndicatorCalculator
-from database.models import TechnicalIndicator
+from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+from monika.infrastructure.database.models import TechnicalIndicator
 
 
 class TestTechnicalIndicatorCalculator:
@@ -187,7 +187,7 @@ class TestTechnicalIndicatorCalculator:
         assert not any(ts.dayofweek == 6 and ts.hour < 21 for ts in resampled_filtered.index)
 
     def test_compute_yang_zhang_volatility(self):
-        from indicators.technical import compute_yang_zhang_volatility
+        from monika.domain.indicators.technical import compute_yang_zhang_volatility
 
         # Insufficient data
         short_df = pd.DataFrame({"open": [1.0] * 5, "high": [1.1] * 5, "low": [0.9] * 5, "close": [1.0] * 5})
@@ -216,7 +216,7 @@ class TestTechnicalIndicatorCalculator:
         assert (vol.iloc[11:] > 0.0).any()
 
     def test_compute_lag1_autocorrelation(self):
-        from indicators.technical import compute_lag1_autocorrelation
+        from monika.domain.indicators.technical import compute_lag1_autocorrelation
 
         # Insufficient data
         short_close = pd.Series([1.0, 2.0, 3.0])

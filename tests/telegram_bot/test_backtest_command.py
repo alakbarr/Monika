@@ -7,13 +7,13 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from telegram_bot.bot import TelegramBot
+from monika.interfaces.telegram.bot import TelegramBot
 
 
 @pytest.fixture
 def mock_bot():
     with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "123:test", "TELEGRAM_ADMIN_CHAT_ID": "123"}):
-        with patch("telegram_bot.bot.ApplicationBuilder"):
+        with patch("monika.interfaces.telegram.bot.ApplicationBuilder"):
             bot = TelegramBot({})
             bot._is_authorized = MagicMock(return_value=True)
             bot._is_admin = MagicMock(return_value=True)

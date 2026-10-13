@@ -2,12 +2,12 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 import os
 from tests.conftest import create_mock_async_session
-from utils.infra.notifier import AgentNotifier
+from monika.infrastructure.infra.notifier import AgentNotifier
 
 
 class TestNotifier:
     @patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "test_token", "TELEGRAM_ADMIN_CHAT_ID": "123"})
-    @patch("utils.infra.notifier.Bot")
+    @patch("monika.infrastructure.infra.notifier.Bot")
     def test_init(self, mock_bot):
         notifier = AgentNotifier()
         assert notifier.token == "test_token"
@@ -16,8 +16,8 @@ class TestNotifier:
 
     @pytest.mark.asyncio
     @patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "test_token", "TELEGRAM_ADMIN_CHAT_ID": "123"})
-    @patch("database.db.get_session")
-    @patch("utils.infra.notifier.Bot")
+    @patch("monika.infrastructure.database.db.get_session")
+    @patch("monika.infrastructure.infra.notifier.Bot")
     async def test_send_messages(self, mock_bot, mock_get_session):
         mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
@@ -68,7 +68,7 @@ class TestNotifier:
         {"TELEGRAM_BOT_TOKEN": "test_token", "TELEGRAM_ADMIN_ID": "456", "TELEGRAM_ADMIN_CHAT_ID": ""},
         clear=False,
     )
-    @patch("utils.infra.notifier.Bot")
+    @patch("monika.infrastructure.infra.notifier.Bot")
     def test_old_env_var_does_not_work(self, mock_bot):
         """Verify that old TELEGRAM_ADMIN_ID env var no longer works (migration test)."""
         notifier = AgentNotifier()
@@ -76,7 +76,7 @@ class TestNotifier:
         assert notifier.admin_id is None
 
     @patch.dict(os.environ, {}, clear=True)
-    @patch("utils.infra.notifier.Bot", side_effect=Exception("No token"))
+    @patch("monika.infrastructure.infra.notifier.Bot", side_effect=Exception("No token"))
     def test_init_no_token(self, mock_bot):
         """AgentNotifier should handle missing token gracefully."""
         notifier = AgentNotifier()
@@ -84,7 +84,7 @@ class TestNotifier:
 
 
 def test_sanitize_telegram_html():
-    from utils.infra.notifier import sanitize_telegram_html
+    from monika.infrastructure.infra.notifier import sanitize_telegram_html
 
     # Valid tags must be preserved
     text = "<b>Bold</b> <code>Code</code> <i>Italic</i> <a href='https://example.com'>Link</a>"

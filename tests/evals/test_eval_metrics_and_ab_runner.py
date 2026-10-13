@@ -5,15 +5,15 @@ and A/B comparison logic across baseline and candidate variants.
 """
 
 import pytest
-from evals.eval_metrics import (
+from monika.application.evals.eval_metrics import (
     DecisionEvaluation,
     AggregateMetrics,
     compute_brier_score,
     aggregate_eval_metrics,
     compare_ab_evaluations,
 )
-from evals.eval_runner import ABEvalRunner
-from evals.runner import get_default_golden_candidates
+from monika.application.evals.eval_runner import ABEvalRunner
+from monika.application.evals.runner import get_default_golden_candidates
 
 
 def test_brier_score_calculation():

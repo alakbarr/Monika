@@ -2,7 +2,7 @@ import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from analysis.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
 
 @pytest.mark.asyncio
@@ -92,7 +92,7 @@ async def test_openai_token_logging():
 
 
 def test_extract_and_parse_json_with_trailing_braces():
-    from analysis.providers.base_provider import extract_and_parse_json
+    from monika.infrastructure.providers.base_provider import extract_and_parse_json
 
     raw_text = """{
   "adjudication_rule_correctly_applied": true,
@@ -110,7 +110,7 @@ Explanation: The specialist biases and confidence inputs are empty ({}), meaning
 
 
 def test_extract_and_parse_json_with_unescaped_quotes():
-    from analysis.providers.base_provider import extract_and_parse_json
+    from monika.infrastructure.providers.base_provider import extract_and_parse_json
 
     raw_text = """```json
 {
@@ -133,7 +133,7 @@ def test_extract_and_parse_json_with_unescaped_quotes():
 
 
 def test_extract_and_parse_json_truncated_ox_alpha_log():
-    from analysis.providers.base_provider import extract_and_parse_json
+    from monika.infrastructure.providers.base_provider import extract_and_parse_json
 
     raw_text = """```json
 {
@@ -151,7 +151,7 @@ def test_extract_and_parse_json_truncated_ox_alpha_log():
 
 
 def test_extract_and_parse_json_truncated_nested_arrays():
-    from analysis.providers.base_provider import extract_and_parse_json
+    from monika.infrastructure.providers.base_provider import extract_and_parse_json
 
     raw_text = '{"status": "ok", "items": [{"id": 1, "name": "foo"}, {"id": 2, "name": "bar'
     parsed = extract_and_parse_json(raw_text)
@@ -322,7 +322,9 @@ async def test_openai_run_agent_from_messages_tool_tracking():
 
     with patch.object(provider, "run_tool_agent", new_callable=AsyncMock) as mock_run:
         mock_run.side_effect = [mock_resp_1, mock_resp_2]
-        with patch("analysis.tools.tool_executor.ToolExecutor.execute", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "monika.application.analysis.tools.tool_executor.ToolExecutor.execute", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {"status": "ok"}
             with patch.object(provider, "_log_tool_call", new_callable=AsyncMock):
                 res = await provider.run_agent_from_messages(

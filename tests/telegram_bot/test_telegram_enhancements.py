@@ -18,11 +18,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-from database.models import Base, TelegramConversation, TelegramTopicBinding
-from telegram_bot.chat_agent import ChatAgent
-from telegram_bot.topic_manager import TopicManager
-from telegram_bot.voice_handler import VoiceHandler
-from telegram_bot.bot import TelegramBot
+from monika.infrastructure.database.models import Base, TelegramConversation, TelegramTopicBinding
+from monika.interfaces.telegram.chat_agent import ChatAgent
+from monika.interfaces.telegram.topic_manager import TopicManager
+from monika.interfaces.telegram.voice_handler import VoiceHandler
+from monika.interfaces.telegram.bot import TelegramBot
 
 
 # ---------------------------------------------------------------------------
@@ -176,7 +176,7 @@ class TestStreamingMessageEdit:
         assert "".join(fb_chunks) == "Fallback Gemini"
 
     @pytest.mark.asyncio
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     async def test_handle_with_stream_flag(self, mock_get_session):
         """Verify calling handle(..., stream=True, update=...) delegates to _stream_response."""
         mock_session = create_mock_async_session()
@@ -285,7 +285,7 @@ class TestBotTopicRouting:
     """Tests for routing updates with message_thread_id to topic-specific sessions."""
 
     @pytest.mark.asyncio
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     async def test_handle_chat_routes_topic_thread_id(self, mock_get_session):
         """Verify updates with message_thread_id create topic session and route to isolated agent."""
         mock_session = create_mock_async_session()
@@ -311,7 +311,7 @@ class TestBotTopicRouting:
 
         ctx = MagicMock()
 
-        with patch("telegram_bot.chat_agent.ChatAgent.handle", new_callable=AsyncMock) as mock_handle:
+        with patch("monika.interfaces.telegram.chat_agent.ChatAgent.handle", new_callable=AsyncMock) as mock_handle:
             mock_handle.return_value = ("Jawaban topic", None)
             await bot._handle_chat(update, ctx)
 
@@ -441,7 +441,7 @@ class TestVoiceMemoTranscription:
 
         vh._transcribe = AsyncMock(return_value="cek balance")
 
-        with patch("telegram_bot.chat_agent.ChatAgent.handle", new_callable=AsyncMock) as mock_handle:
+        with patch("monika.interfaces.telegram.chat_agent.ChatAgent.handle", new_callable=AsyncMock) as mock_handle:
             await vh.handle_voice(update, MagicMock())
             mock_tm.get_session_for_topic.assert_called_once_with(555, 12)
             assert mock_handle.call_args[1].get("session_id") == "tg_topic_555_12"
@@ -537,7 +537,7 @@ class TestVoiceMemoTranscription:
     @pytest.mark.asyncio
     async def test_voice_handler_forwards_agent_reply_and_action_keyboard(self):
         """Verify VoiceHandler sends the AI reply and proposal keyboard back to the user."""
-        from telegram_bot.chat_agent import PendingAction
+        from monika.interfaces.telegram.chat_agent import PendingAction
 
         mock_pending = PendingAction("act_123", "place_order", {"symbol": "EURUSD"}, "Buy 0.1 EURUSD")
 

@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone
-from analysis.calculators.daily_range_calculator import compute_daily_range_context
+from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
 
 class DummyRow:

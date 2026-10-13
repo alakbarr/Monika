@@ -2,7 +2,7 @@
 Unit tests for threat_scanner (prompt injection and trade manipulation detection).
 """
 
-from utils.security.threat_scanner import scan_content, sanitize_or_block
+from monika.core.security.threat_scanner import scan_content, sanitize_or_block
 
 
 def test_threat_scanner_detects_instruction_override():

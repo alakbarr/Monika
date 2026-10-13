@@ -3,7 +3,7 @@
 # ==============================================================================
 
 import pytest
-from utils.market.instrument_identity import resolve_instrument_identity
+from monika.domain.market.instrument_identity import resolve_instrument_identity
 
 
 def test_resolve_instrument_identity_known_commodities():

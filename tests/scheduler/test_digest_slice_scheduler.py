@@ -2,8 +2,8 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
-from scheduler.digest_slice_scheduler import DigestSliceScheduler
-from database.models import NewsDigestSlice
+from monika.application.scheduler.digest_slice_scheduler import DigestSliceScheduler
+from monika.infrastructure.database.models import NewsDigestSlice
 
 
 class TestDigestSliceScheduler:

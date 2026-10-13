@@ -3,8 +3,8 @@ import json
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from analysis.tools.tool_executor import ToolExecutor
-from database.models import (
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.infrastructure.database.models import (
     EconomicCalendar,
     TechnicalIndicator,
     PriceOHLCV,
@@ -210,7 +210,7 @@ class TestToolExecutor:
         assert res["indicators"]["RSI"]["value"] == 60.5
 
     @pytest.mark.asyncio
-    @patch("analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
+    @patch("monika.application.analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
     async def test_submit_asset_analysis_validation_failure(self, mock_calc_conf):
         mock_calc_conf.return_value = {"computed_score": 0}
 
@@ -333,7 +333,7 @@ class TestToolExecutor:
         )
 
     @pytest.mark.asyncio
-    @patch("analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
+    @patch("monika.application.analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
     async def test_submit_asset_analysis_success(self, mock_calc_conf):
         mock_calc_conf.return_value = {"computed_score": 8, "max_score": 14, "components": [], "issues": []}
 
@@ -434,7 +434,7 @@ class TestToolExecutor:
         assert mock_session.add.call_count >= 1
 
     @pytest.mark.asyncio
-    @patch("analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
+    @patch("monika.application.analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
     async def test_submit_asset_analysis_session_idempotent_update(self, mock_calc_conf):
         """Test that retrying within the same ToolExecutor instance updates existing analysis."""
         mock_calc_conf.return_value = {"computed_score": 8, "max_score": 14, "components": [], "issues": []}
@@ -523,7 +523,7 @@ class TestToolExecutor:
         assert mock_session.add.call_count == 2
 
     @pytest.mark.asyncio
-    @patch("analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
+    @patch("monika.application.analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
     async def test_submit_asset_analysis_cancels_superseded_triggers(self, mock_calc_conf):
         """Test that submitting a new analysis cancels older pending triggers for the same symbol."""
         mock_calc_conf.return_value = {"computed_score": 8, "max_score": 14, "components": [], "issues": []}
@@ -887,7 +887,7 @@ class TestToolExecutor:
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         # Payload during weekend mode (only crypto active, no FX COT)
-        with patch("analysis.tools.tool_executor.clock.now") as mock_now:
+        with patch("monika.application.analysis.tools.tool_executor.clock.now") as mock_now:
             from datetime import datetime, timezone
 
             # Sunday 2026-08-23
@@ -984,9 +984,9 @@ class TestToolExecutor:
 
         # Mock weekday Tuesday
         with (
-            patch("analysis.tools.tool_executor.clock.now") as mock_now,
+            patch("monika.application.analysis.tools.tool_executor.clock.now") as mock_now,
             patch(
-                "analysis.calculators.macro_priced_in_calculator.calculate_macro_priced_in_baseline",
+                "monika.application.analysis.calculators.macro_priced_in_calculator.calculate_macro_priced_in_baseline",
                 new_callable=AsyncMock,
             ) as mock_baseline,
         ):
@@ -1091,7 +1091,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_submit_fundamental_brief_schema_required_counter_thesis(self):
         """Verify that SUBMIT_FUNDAMENTAL_BRIEF tool schema strictly requires strongest_counter_thesis with minLength 50."""
-        from analysis.tools.tools_definitions import SUBMIT_FUNDAMENTAL_BRIEF
+        from monika.application.analysis.tools.tools_definitions import SUBMIT_FUNDAMENTAL_BRIEF
 
         schema = SUBMIT_FUNDAMENTAL_BRIEF["input_schema"]
         required_fields = schema.get("required", [])

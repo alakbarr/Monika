@@ -2,14 +2,14 @@ from tests.conftest import create_mock_async_session
 import pytest
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.strategies.base_strategy import EdgeSignal, EdgeStrategy
-from analysis.strategies.registry import StrategyRegistry
-from analysis.strategies.tsm_momentum import TimeSeriesMomentum
-from analysis.strategies.gap_fade import DailyReopenGapFade
-from risk.risk_gate import RiskGate
-from scheduler.edge_strategy_runner import EdgeStrategyRunner
-from scheduler.trigger_checker import TriggerChecker
-from database.models import Position, PaperTradeRecord, TradeTrigger
+from monika.application.analysis.strategies.base_strategy import EdgeSignal, EdgeStrategy
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.application.analysis.strategies.tsm_momentum import TimeSeriesMomentum
+from monika.application.analysis.strategies.gap_fade import DailyReopenGapFade
+from monika.domain.risk.risk_gate import RiskGate
+from monika.application.scheduler.edge_strategy_runner import EdgeStrategyRunner
+from monika.application.scheduler.trigger_checker import TriggerChecker
+from monika.infrastructure.database.models import Position, PaperTradeRecord, TradeTrigger
 
 
 class DummyTrendStrategy(EdgeStrategy):
@@ -53,7 +53,7 @@ class DummyFadeStrategy(EdgeStrategy):
 
 @pytest.mark.asyncio
 async def test_regime_classifier_probabilities():
-    from analysis.calculators.regime_classifier import classify_market_regime
+    from monika.application.analysis.calculators.regime_classifier import classify_market_regime
 
     mock_session = create_mock_async_session()
     mock_res = MagicMock()
@@ -61,10 +61,16 @@ async def test_regime_classifier_probabilities():
     mock_session.execute.return_value = mock_res
 
     with (
-        patch("analysis.calculators.regime_classifier._get_latest_adx", AsyncMock(return_value={"adx": 32.5})),
-        patch("analysis.calculators.regime_classifier._get_atr_series", AsyncMock(return_value=[1.2] * 20)),
         patch(
-            "analysis.calculators.regime_classifier.compute_bollinger_donchian_chop",
+            "monika.application.analysis.calculators.regime_classifier._get_latest_adx",
+            AsyncMock(return_value={"adx": 32.5}),
+        ),
+        patch(
+            "monika.application.analysis.calculators.regime_classifier._get_atr_series",
+            AsyncMock(return_value=[1.2] * 20),
+        ),
+        patch(
+            "monika.application.analysis.calculators.regime_classifier.compute_bollinger_donchian_chop",
             AsyncMock(return_value={"chop_block": False}),
         ),
     ):
@@ -208,7 +214,8 @@ async def test_edge_strategy_runner_ensemble_conflict_suppression():
     with (
         patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
         patch(
-            "analysis.calculators.regime_classifier.classify_market_regime", AsyncMock(return_value={"regime": "trend"})
+            "monika.application.analysis.calculators.regime_classifier.classify_market_regime",
+            AsyncMock(return_value={"regime": "trend"}),
         ),
         patch(
             "scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[sig_buy, sig_sell])
@@ -266,7 +273,8 @@ async def test_edge_strategy_runner_ensemble_concordance_boost():
     with (
         patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
         patch(
-            "analysis.calculators.regime_classifier.classify_market_regime", AsyncMock(return_value={"regime": "trend"})
+            "monika.application.analysis.calculators.regime_classifier.classify_market_regime",
+            AsyncMock(return_value={"regime": "trend"}),
         ),
         patch(
             "scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[sig_buy1, sig_buy2])

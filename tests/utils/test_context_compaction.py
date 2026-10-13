@@ -1,6 +1,6 @@
 import pytest
 import json
-from utils.llm.context_compaction import ContextCompactionEngine
+from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
 
 
 def test_micro_prune_order():

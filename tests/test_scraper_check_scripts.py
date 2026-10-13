@@ -4,7 +4,13 @@
 
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
-from scrapers.models import CalendarEvent, ScrapedNews, FedMeeting, FedProbability, ScrapedTweet
+from monika.infrastructure.data_ingestion.scrapers.models import (
+    CalendarEvent,
+    ScrapedNews,
+    FedMeeting,
+    FedProbability,
+    ScrapedTweet,
+)
 
 # Import helper functions from check scripts
 from scripts.check_scrapers.check_calendar import check_forexfactory, check_investing, check_finnhub, print_events_table

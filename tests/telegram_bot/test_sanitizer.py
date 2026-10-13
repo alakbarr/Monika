@@ -4,7 +4,7 @@
 # ==============================================================================
 
 import pytest
-from telegram_bot.sanitizer import strip_emojis_and_emoticons, sanitize_telegram_html
+from monika.interfaces.telegram.sanitizer import strip_emojis_and_emoticons, sanitize_telegram_html
 
 
 def test_strip_unicode_emojis():

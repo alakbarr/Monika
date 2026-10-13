@@ -4,8 +4,8 @@ Unit tests for SetupWizard and SystemDoctor enhancements.
 
 import pytest
 from unittest.mock import MagicMock, patch
-from cli.doctor import SystemDoctor
-from cli.main import MonikaArgumentParser
+from monika.interfaces.cli.doctor import SystemDoctor
+from monika.interfaces.cli.main import MonikaArgumentParser
 
 
 def test_monika_argument_parser_fuzzy_suggestions(capsys):
@@ -40,7 +40,7 @@ async def test_system_doctor_offline_probes():
 
 
 def test_setup_wizard_clean_terminal_input():
-    from cli.setup_wizard import clean_terminal_input
+    from monika.interfaces.cli.setup_wizard import clean_terminal_input
 
     assert clean_terminal_input("  normal_input  ") == "normal_input"
     # Bracketed paste sequence
@@ -49,7 +49,7 @@ def test_setup_wizard_clean_terminal_input():
 
 
 def test_setup_wizard_missing_items():
-    from cli.setup_wizard import SetupWizard
+    from monika.interfaces.cli.setup_wizard import SetupWizard
 
     missing = SetupWizard.get_missing_setup_items()
     assert "mt5" in missing
@@ -58,7 +58,7 @@ def test_setup_wizard_missing_items():
 
 
 def test_setup_wizard_headless_guard():
-    from cli.setup_wizard import SetupWizard
+    from monika.interfaces.cli.setup_wizard import SetupWizard
 
     wizard = SetupWizard()
     with patch("sys.stdin.isatty", return_value=False):

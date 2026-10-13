@@ -15,7 +15,7 @@ Adversarial testing covering:
 import concurrent.futures
 import re
 import unittest
-from skills.loader import (
+from monika.application.skills.loader import (
     load_skill,
     list_skills,
     compose_system_prompt,

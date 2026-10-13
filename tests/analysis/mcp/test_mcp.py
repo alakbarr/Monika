@@ -2,7 +2,7 @@ import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analysis.mcp.protocol import (
+from monika.application.analysis.mcp.protocol import (
     JsonRpcRequest,
     JsonRpcResponse,
     make_error_response,
@@ -10,9 +10,9 @@ from analysis.mcp.protocol import (
     PARSE_ERROR,
     METHOD_NOT_FOUND,
 )
-from analysis.mcp.server import MonikaMcpServer
-from analysis.mcp.client import McpClientManager, McpServerProcess, McpBridgeHandler
-from analysis.tools.registry import default_tool_registry
+from monika.application.analysis.mcp.server import MonikaMcpServer
+from monika.application.analysis.mcp.client import McpClientManager, McpServerProcess, McpBridgeHandler
+from monika.application.analysis.tools.registry import default_tool_registry
 
 
 def test_mcp_protocol_messages():

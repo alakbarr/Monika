@@ -6,11 +6,11 @@ import pytest
 import asyncio
 import tempfile
 import os
-from utils.infra.log_redactor import redact_sensitive_text
-from utils.infra.container import ServiceContainer
-from utils.llm.context_compaction import spill_tool_output
-from utils.plugins.manager import PluginManager, PluginHook
-from utils.api.credential_pool import CredentialPool
+from monika.infrastructure.infra.log_redactor import redact_sensitive_text
+from monika.infrastructure.infra.container import ServiceContainer
+from monika.infrastructure.llm.context_compaction import spill_tool_output
+from monika.application.plugins.manager.manager import PluginManager, PluginHook
+from monika.infrastructure.api.credential_pool import CredentialPool
 
 
 def test_h7_log_redactor_masks_secrets():

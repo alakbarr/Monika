@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.subagent.adhoc_manager import AdHocSubagentManager, AdHocInvestigationVerdict
-from analysis.tools.quant_sandbox.rpc_server import QuantSandboxRpcServer, QuantSandboxClient
+from monika.application.analysis.subagent.adhoc_manager import AdHocSubagentManager, AdHocInvestigationVerdict
+from monika.application.analysis.tools.quant_sandbox.rpc_server import QuantSandboxRpcServer, QuantSandboxClient
 
 
 @pytest.mark.asyncio

@@ -2,8 +2,8 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from analysis.stages.fundamental_stage import FundamentalStage
-from database.models import ActivityLog
+from monika.application.analysis.stages.fundamental_stage import FundamentalStage
+from monika.infrastructure.database.models import ActivityLog
 
 
 class TestFundamentalStage:
@@ -21,20 +21,30 @@ class TestFundamentalStage:
 
         with (
             patch(
-                "analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data",
+                "monika.application.analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data",
                 AsyncMock(return_value=("{}", set())),
             ),
             patch(
-                "analysis.stages.fundamental_stage.verify_fundamental_brief",
+                "monika.application.analysis.stages.fundamental_stage.verify_fundamental_brief",
                 AsyncMock(return_value={"internally_consistent": True, "counter_thesis_is_substantive": True}),
             ),
-            patch("analysis.stages.fundamental_stage.get_client_for_task", side_effect=fake_get_client),
-            patch("analysis.memory.reflector.get_client_for_task", side_effect=fake_get_client),
-            patch("analysis.memory.chronicle_writer.get_client_for_task", side_effect=fake_get_client),
-            patch("analysis.debate.macro_bull_analyst.run_bull_analyst", AsyncMock(return_value={"thesis": "bull"})),
-            patch("analysis.debate.macro_bear_analyst.run_bear_analyst", AsyncMock(return_value={"thesis": "bear"})),
             patch(
-                "analysis.debate.macro_judge.run_macro_judge",
+                "monika.application.analysis.stages.fundamental_stage.get_client_for_task", side_effect=fake_get_client
+            ),
+            patch("monika.application.analysis.memory.reflector.get_client_for_task", side_effect=fake_get_client),
+            patch(
+                "monika.application.analysis.memory.chronicle_writer.get_client_for_task", side_effect=fake_get_client
+            ),
+            patch(
+                "monika.application.analysis.debate.macro_bull_analyst.run_bull_analyst",
+                AsyncMock(return_value={"thesis": "bull"}),
+            ),
+            patch(
+                "monika.application.analysis.debate.macro_bear_analyst.run_bear_analyst",
+                AsyncMock(return_value={"thesis": "bear"}),
+            ),
+            patch(
+                "monika.application.analysis.debate.macro_judge.run_macro_judge",
                 AsyncMock(return_value={"winner": "TIE", "escalation_required": False}),
             ),
         ):
@@ -58,7 +68,7 @@ class TestFundamentalStage:
         assert stage.client.max_tool_turns == 10
 
     def test_init_defaults(self):
-        from config.settings import load_all_config
+        from monika.core.config.settings import load_all_config
 
         settings = load_all_config()
         stage = FundamentalStage(settings)
@@ -232,9 +242,9 @@ class TestFundamentalStage:
         stage._log = AsyncMock()
 
         with (
-            patch("analysis.stages.fundamental_stage.get_client_for_task") as mock_get_client,
+            patch("monika.application.analysis.stages.fundamental_stage.get_client_for_task") as mock_get_client,
             patch(
-                "analysis.stages.fundamental_stage.verify_fundamental_brief",
+                "monika.application.analysis.stages.fundamental_stage.verify_fundamental_brief",
                 AsyncMock(return_value={"internally_consistent": True, "counter_thesis_is_substantive": True}),
             ),
         ):
@@ -293,10 +303,11 @@ class TestFundamentalStage:
 
         with (
             patch(
-                "analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data", AsyncMock(return_value="{}")
+                "monika.application.analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data",
+                AsyncMock(return_value="{}"),
             ),
             patch(
-                "analysis.stages.fundamental_stage.get_currency_confidence_ceiling",
+                "monika.application.analysis.stages.fundamental_stage.get_currency_confidence_ceiling",
                 AsyncMock(return_value={"JPY": 0.50, "USD": 0.85}),
             ),
         ):
@@ -381,16 +392,17 @@ class TestFundamentalStage:
 
         with (
             patch(
-                "analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_esc_client
+                "monika.application.analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_esc_client
             ) as mock_get_client,
-            patch("analysis.stages.fundamental_stage.create_client", return_value=mock_cross_client),
-            patch("analysis.stages.fundamental_stage.get_session", mock_get_session),
-            patch("utils.analytics.cost_tracker.CostTracker.is_budget_paused", AsyncMock(return_value=False)),
+            patch("monika.application.analysis.stages.fundamental_stage.create_client", return_value=mock_cross_client),
+            patch("monika.application.analysis.stages.fundamental_stage.get_session", mock_get_session),
+            patch("monika.core.analytics.cost_tracker.CostTracker.is_budget_paused", AsyncMock(return_value=False)),
             patch(
-                "analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data", AsyncMock(return_value="{}")
+                "monika.application.analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data",
+                AsyncMock(return_value="{}"),
             ),
             patch(
-                "analysis.stages.fundamental_stage.verify_fundamental_brief",
+                "monika.application.analysis.stages.fundamental_stage.verify_fundamental_brief",
                 AsyncMock(return_value={"internally_consistent": True, "counter_thesis_is_substantive": True}),
             ),
         ):
@@ -440,13 +452,15 @@ class TestFundamentalStage:
 
         with (
             patch(
-                "analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_shadow_client
+                "monika.application.analysis.stages.fundamental_stage.get_client_for_task",
+                return_value=mock_shadow_client,
             ) as mock_get_client,
             patch(
-                "analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data", AsyncMock(return_value="{}")
+                "monika.application.analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data",
+                AsyncMock(return_value="{}"),
             ),
             patch(
-                "analysis.stages.fundamental_stage.verify_fundamental_brief",
+                "monika.application.analysis.stages.fundamental_stage.verify_fundamental_brief",
                 AsyncMock(return_value={"internally_consistent": True, "counter_thesis_is_substantive": True}),
             ),
         ):
@@ -507,15 +521,16 @@ class TestFundamentalStage:
 
         with (
             patch(
-                "analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_esc_client
+                "monika.application.analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_esc_client
             ) as mock_get_client,
-            patch("analysis.stages.fundamental_stage.get_session", mock_get_session),
-            patch("utils.analytics.cost_tracker.CostTracker.is_budget_paused", AsyncMock(return_value=True)),
+            patch("monika.application.analysis.stages.fundamental_stage.get_session", mock_get_session),
+            patch("monika.core.analytics.cost_tracker.CostTracker.is_budget_paused", AsyncMock(return_value=True)),
             patch(
-                "analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data", AsyncMock(return_value="{}")
+                "monika.application.analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data",
+                AsyncMock(return_value="{}"),
             ),
             patch(
-                "analysis.stages.fundamental_stage.verify_fundamental_brief",
+                "monika.application.analysis.stages.fundamental_stage.verify_fundamental_brief",
                 AsyncMock(return_value={"internally_consistent": True, "counter_thesis_is_substantive": True}),
             ),
         ):
@@ -554,7 +569,8 @@ class TestFundamentalStage:
 
         with (
             patch(
-                "analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data", AsyncMock(return_value="{}")
+                "monika.application.analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data",
+                AsyncMock(return_value="{}"),
             ),
             patch.object(stage, "_run_macro_debate", AsyncMock(return_value={})),
         ):
@@ -594,7 +610,8 @@ class TestFundamentalStage:
 
         with (
             patch(
-                "analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data", AsyncMock(return_value="{}")
+                "monika.application.analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data",
+                AsyncMock(return_value="{}"),
             ),
             patch.object(stage, "_run_macro_debate", AsyncMock(return_value={})),
         ):

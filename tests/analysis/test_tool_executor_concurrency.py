@@ -2,9 +2,9 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
-from analysis.tools.executor import ToolExecutor
-from analysis.providers.base_provider import BaseLLMClient
-from analysis.providers.anthropic_provider import AnthropicProvider
+from monika.application.analysis.tools.executor import ToolExecutor
+from monika.infrastructure.providers.base_provider import BaseLLMClient
+from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
 
 
 @pytest.mark.asyncio
@@ -96,7 +96,7 @@ async def test_base_provider_log_tool_call_uses_isolated_session():
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return None
 
-    with patch("database.db.get_session", return_value=AsyncContextManagerMock()):
+    with patch("monika.infrastructure.database.db.get_session", return_value=AsyncContextManagerMock()):
         with patch.object(BaseLLMClient, "__abstractmethods__", set()):
             provider = BaseLLMClient(model="test_model", settings={})
             await provider._log_tool_call(caller_session, "fundamental", "get_dxy", {}, {"result": 1})
@@ -128,7 +128,7 @@ async def test_anthropic_provider_log_tool_call_uses_isolated_session():
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return None
 
-    with patch("database.db.get_session", return_value=AsyncContextManagerMock()):
+    with patch("monika.infrastructure.database.db.get_session", return_value=AsyncContextManagerMock()):
         with patch.object(AnthropicProvider, "__init__", lambda self, *args, **kwargs: None):
             provider = AnthropicProvider()
             await provider._log_tool_call(caller_session, "fundamental", "get_treasury_yields", {}, {"status": "ok"})

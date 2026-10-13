@@ -7,9 +7,9 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 import pytest
 
-from database.models import Order, OrderStatus, OrderEvent, AssetAnalysis
-from execution.effect_gate import EffectGate, AbortRequested
-from execution.execution_service import ExecutionService
+from monika.infrastructure.database.models import Order, OrderStatus, OrderEvent, AssetAnalysis
+from monika.application.execution.effect_gate import EffectGate, AbortRequested
+from monika.application.execution.execution_service import ExecutionService
 
 
 def test_order_model_two_phase_fields_and_transitions():
@@ -76,7 +76,7 @@ def test_order_transition_to_interrupted_is_terminal():
 @pytest.mark.asyncio
 async def test_execution_service_blocks_when_effect_gate_aborted():
     from unittest.mock import patch
-    from execution.execution_service import _EXECUTED_ANALYSIS_IDS
+    from monika.application.execution.execution_service import _EXECUTED_ANALYSIS_IDS
 
     _EXECUTED_ANALYSIS_IDS.clear()
 
@@ -132,7 +132,9 @@ async def test_execution_service_blocks_when_effect_gate_aborted():
 
     svc.broker_adapter.submit_order = AsyncMock()
 
-    with patch("analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock) as mock_adv:
+    with patch(
+        "monika.application.analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock
+    ) as mock_adv:
         mock_adv.return_value = {"approve": True, "hard_block": False}
         res = await svc.execute_analysis(session, analysis)
 

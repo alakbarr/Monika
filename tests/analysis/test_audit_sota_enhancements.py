@@ -1,8 +1,8 @@
 import pytest
-from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
-from utils.llm.prompt_compressor import truncate_to_budget
-from analysis.debate.bull_analyst import generate_bull_advocacy
-from analysis.debate.bear_analyst import generate_bear_dissent
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+from monika.infrastructure.llm.prompt_compressor import truncate_to_budget
+from monika.application.analysis.debate.bull_analyst import generate_bull_advocacy
+from monika.application.analysis.debate.bear_analyst import generate_bear_dissent
 from unittest.mock import AsyncMock, MagicMock
 
 

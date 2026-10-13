@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 @pytest.mark.asyncio
 async def test_f2_1_mt5_redundant_failover_and_fallback():
     """Verify automated failover to secondary MT5 gateway and fallback to primary."""
-    from execution.mt5_client import MT5Client
+    from monika.infrastructure.brokers.mt5_client import MT5Client
 
     with patch.dict(
         os.environ,
@@ -59,7 +59,7 @@ async def test_f2_1_mt5_redundant_failover_and_fallback():
 
 def test_f2_2_prometheus_metrics_export():
     """Verify Prometheus metric collection and string formatting."""
-    from logging_observability.metrics_exporter import MetricsCollector
+    from monika.core.telemetry.metrics_exporter import MetricsCollector
 
     collector = MetricsCollector()
     collector.set_gauge("test_equity", 15420.50)
@@ -79,7 +79,7 @@ def test_f2_2_prometheus_metrics_export():
 def test_f2_2_dashboard_api_metrics_endpoint():
     """Verify FastAPI /api/metrics endpoint returns Prometheus formatted text."""
     from fastapi.testclient import TestClient
-    from logging_observability.dashboard.api import app
+    from monika.interfaces.dashboard.api import app
 
     client = TestClient(app)
     resp = client.get("/api/metrics")
@@ -95,7 +95,7 @@ def test_f2_2_dashboard_api_metrics_endpoint():
 
 def test_f2_3_monte_carlo_stress_tester_comprehensive():
     """Verify Monte Carlo 10,000 permutations, ruin probability, and slippage shock."""
-    from backtest.monte_carlo_engine import MonteCarloStressTester
+    from monika.application.backtest.monte_carlo_engine import MonteCarloStressTester
 
     tester = MonteCarloStressTester(seed=123)
 
@@ -130,12 +130,17 @@ def test_f2_3_monte_carlo_stress_tester_comprehensive():
 @pytest.mark.asyncio
 async def test_f2_4_systemic_correlation_matrix_and_usd_exposure():
     """Verify NxN correlation matrix computation and USD concentration capping."""
-    from risk.portfolio_correlation_gate import compute_portfolio_correlation_matrix, filter_correlated_proposals
+    from monika.domain.risk.portfolio_correlation_gate import (
+        compute_portfolio_correlation_matrix,
+        filter_correlated_proposals,
+    )
 
     mock_session = create_mock_async_session()
 
     symbols = ["EURUSD", "GBPUSD", "USDJPY"]
-    with patch("risk.portfolio_correlation_gate.get_rolling_correlation", AsyncMock(return_value=(0.75, "db"))):
+    with patch(
+        "monika.domain.risk.portfolio_correlation_gate.get_rolling_correlation", AsyncMock(return_value=(0.75, "db"))
+    ):
         matrix = await compute_portfolio_correlation_matrix(mock_session, symbols)
         assert len(matrix) == 3
         assert matrix["EURUSD"]["EURUSD"] == 1.0
@@ -150,7 +155,9 @@ async def test_f2_4_systemic_correlation_matrix_and_usd_exposure():
         ("AUDUSD", {"decision": "buy", "confidence": 0.70}),
     ]
 
-    with patch("risk.portfolio_correlation_gate.get_rolling_correlation", AsyncMock(return_value=(0.20, "db"))):
+    with patch(
+        "monika.domain.risk.portfolio_correlation_gate.get_rolling_correlation", AsyncMock(return_value=(0.20, "db"))
+    ):
         # max_usd_exposure = 3 -> 4th trade should be rejected by systemic concentration cap
         kept, rejected = await filter_correlated_proposals(mock_session, proposals, threshold=0.65, max_usd_exposure=3)
         assert len(kept) == 3

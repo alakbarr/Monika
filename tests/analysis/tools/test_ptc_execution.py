@@ -4,7 +4,7 @@ Unit tests for Programmatic Tool Calling (PTC) execution (H2).
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.tools.handlers.ptc_handler import PTCHandler
+from monika.application.analysis.tools.handlers.ptc_handler import PTCHandler
 
 
 @pytest.mark.asyncio

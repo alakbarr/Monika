@@ -1,5 +1,5 @@
 import pytest
-from scrapers.news.rss_forexlive import ForexliveRssScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_forexlive import ForexliveRssScraper
 
 
 def test_init():

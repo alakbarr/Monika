@@ -4,9 +4,9 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from execution.broker_plugin import OrderRequest, normalize_order_request, InstrumentSpec, TickData
-from execution.broker_registry import BrokerAdapterRegistry
-from execution.broker_adapter import SimulatedBrokerAdapter, MT5LiveAdapter
+from monika.domain.execution.broker_plugin import OrderRequest, normalize_order_request, InstrumentSpec, TickData
+from monika.application.execution.broker_registry import BrokerAdapterRegistry
+from monika.infrastructure.brokers.broker_adapter import SimulatedBrokerAdapter, MT5LiveAdapter
 
 
 def test_order_request_and_normalization():

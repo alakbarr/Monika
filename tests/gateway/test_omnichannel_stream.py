@@ -14,10 +14,10 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 import pytest
 
-from gateway.stream_consumer import ensure_closed_code_fences, LiveStreamConsumer
-from gateway.channel_router import ChannelRouter
-from gateway.platform_base import BasePlatformAdapter
-from database.session_db_wal import SessionDbWal
+from monika.interfaces.gateway.stream_consumer import ensure_closed_code_fences, LiveStreamConsumer
+from monika.interfaces.gateway.channel_router import ChannelRouter
+from monika.interfaces.gateway.platform_base import BasePlatformAdapter
+from monika.infrastructure.database.session_db_wal import SessionDbWal
 
 
 # ==============================================================================

@@ -1,8 +1,8 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch
-from analysis.tools.tool_executor import ToolExecutor
-from analysis.tools.tools_definitions import (
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.application.analysis.tools.tools_definitions import (
     GET_TIMESFM_FORECAST,
     STAGE2_TOOLS,
     TELEGRAM_TOOLS,

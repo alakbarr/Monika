@@ -5,14 +5,14 @@ Tests exponential cooldown backoff, FailoverReason integration, cost tracking, a
 
 import time
 import pytest
-from provider.credential_pool import (
+from monika.infrastructure.credentials.credential_pool import (
     CredentialPool,
     APICredentialPool,
     LLMCredentialPool,
     KeyHealth,
     get_credential_pool,
 )
-from provider.error_taxonomy import FailoverReason
+from monika.infrastructure.credentials.error_taxonomy import FailoverReason
 
 
 def test_credential_pool_exponential_backoff():

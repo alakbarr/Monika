@@ -1,8 +1,8 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.tools.tool_executor import ToolExecutor
-from database.models import AssetAnalysis, TradeTrigger
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.infrastructure.database.models import AssetAnalysis, TradeTrigger
 
 
 @pytest.mark.asyncio
@@ -52,12 +52,16 @@ async def test_mechanical_risk_gate_classification_and_synthetic_trigger():
     # Patch macro bias & volatility regime gate check to return a gate error
     with (
         patch(
-            "analysis.calculators.regime_classifier.compute_bollinger_donchian_chop", new_callable=AsyncMock
+            "monika.application.analysis.calculators.regime_classifier.compute_bollinger_donchian_chop",
+            new_callable=AsyncMock,
         ) as mock_chop,
         patch(
-            "analysis.calculators.daily_range_calculator.compute_daily_range_context", new_callable=AsyncMock
+            "monika.application.analysis.calculators.daily_range_calculator.compute_daily_range_context",
+            new_callable=AsyncMock,
         ) as mock_adr,
-        patch("analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock) as mock_conf,
+        patch(
+            "monika.application.analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock
+        ) as mock_conf,
     ):
         mock_chop.return_value = {"chop_block": True, "reason": "BB width @ 20th pct (<=25) no breakout"}
         mock_adr.return_value = {"error": "skip"}

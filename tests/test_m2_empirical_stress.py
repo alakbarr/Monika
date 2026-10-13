@@ -17,13 +17,13 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from analysis.subagent_spawner import (
+from monika.application.analysis.subagent_spawner import (
     DynamicSubagentPool,
     SubagentResult,
     SubagentSpec,
     SubagentWorker,
 )
-from analysis.tools.handlers.macro_tools import handle_get_fedwatch_probabilities
+from monika.application.analysis.tools.handlers.macro_tools import handle_get_fedwatch_probabilities
 
 
 # ==============================================================================
@@ -506,8 +506,8 @@ class TestEndToEndRoutingAndMacroIntegration:
 
     def test_contoh_pertanyaan_end_to_end_worker_macro_pipeline(self):
         """Verify real-world macro prompt from contoh_pertanyaan.md propagates all 4 tools and checklist to worker_macro."""
-        from analysis.tools.tools_definitions import TELEGRAM_TOOLS
-        from telegram_bot.chat_tool_router import ChatToolRouter
+        from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
+        from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
 
         router = ChatToolRouter(TELEGRAM_TOOLS)
         real_query = (

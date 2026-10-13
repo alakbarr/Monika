@@ -8,8 +8,8 @@ Memvalidasi:
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.tools.handlers.ptc_handler import PTCHandler
-from analysis.tools.kernel.sandbox_runner import validate_code_ast
+from monika.application.analysis.tools.handlers.ptc_handler import PTCHandler
+from monika.application.analysis.tools.kernel.sandbox_runner import validate_code_ast
 
 
 def test_ptc_ast_blocks_rce_and_broker_access():
@@ -76,7 +76,7 @@ def test_sandbox_runner_ast_blocks_dangerous_operations():
 @pytest.mark.asyncio
 async def test_db_health_safe_get_engine():
     """Verify db_health.py uses get_engine() safely without NoneType attribute error."""
-    from agent.monitors.db_health import run_db_health_check
+    from monika.application.agent.monitors.db_health import run_db_health_check
 
     agent = MagicMock()
     agent.shutdown_event.is_set.side_effect = [False, True]
@@ -86,6 +86,6 @@ async def test_db_health_safe_get_engine():
     mock_conn = AsyncMock()
     mock_engine.connect.return_value.__aenter__.return_value = mock_conn
 
-    with patch("database.db.get_engine", return_value=mock_engine):
+    with patch("monika.infrastructure.database.db.get_engine", return_value=mock_engine):
         await run_db_health_check(agent)
         mock_conn.execute.assert_awaited_once()

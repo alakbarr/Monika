@@ -5,7 +5,7 @@ Unit tests for Jev-powered news classification, news watcher shock eval, and tri
 import pytest
 import unittest.mock as mock
 from datetime import datetime, timezone, timedelta
-from utils.typesafe.jev_primitives import classify_news_batch_with_jev
+from monika.core.primitives.jev_primitives import classify_news_batch_with_jev
 from typesafe_sdk import SystemOneResponse, ChoiceAnswer, NoulAnswer, ScoreAnswer
 from typesafe_sdk._core.response_types import Usage
 
@@ -133,11 +133,11 @@ async def test_calendar_prior_lifts_impact():
 
 @pytest.mark.asyncio
 async def test_news_watcher_realtime_shock():
-    from scheduler.news_watcher import NewsWatcher
+    from monika.application.scheduler.news_watcher import NewsWatcher
 
     nw = NewsWatcher(settings={})
 
-    with mock.patch("analysis.providers.llm_factory.get_client_for_task") as mock_get_client:
+    with mock.patch("monika.infrastructure.providers.llm_factory.get_client_for_task") as mock_get_client:
         mock_client = mock.AsyncMock()
         mock_client.classify_json.return_value = {
             "market_sentiment": 1.2,
@@ -155,12 +155,12 @@ async def test_news_watcher_realtime_shock():
 
 @pytest.mark.asyncio
 async def test_trigger_checker_validate_trigger():
-    from scheduler.trigger_checker import TriggerChecker
-    from database.models import TradeTrigger
+    from monika.application.scheduler.trigger_checker import TriggerChecker
+    from monika.infrastructure.database.models import TradeTrigger
 
     tc = TriggerChecker(settings={})
 
-    with mock.patch("analysis.providers.llm_factory.get_client_for_task") as mock_get_client:
+    with mock.patch("monika.infrastructure.providers.llm_factory.get_client_for_task") as mock_get_client:
         mock_client = mock.AsyncMock()
         mock_client.classify_json.return_value = {
             "is_still_valid": "YES",

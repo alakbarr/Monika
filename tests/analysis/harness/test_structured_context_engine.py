@@ -4,7 +4,7 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.harness.context_compressor import ContextCompressor, TRADING_SUMMARY_SECTIONS
+from monika.application.analysis.harness.context_compressor import ContextCompressor, TRADING_SUMMARY_SECTIONS
 
 
 def test_structured_8_section_trading_summary_constants():

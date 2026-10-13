@@ -3,12 +3,12 @@ Unit tests for modular telegram command descriptors and routing (telegram_bot/ha
 """
 
 import pytest
-from telegram_bot.handlers import (
+from monika.interfaces.telegram.handlers import (
     TRADING_COMMAND_DESCRIPTORS,
     MARKET_COMMAND_DESCRIPTORS,
     SYSTEM_COMMAND_DESCRIPTORS,
 )
-from telegram_bot.command_router import DIRECT_COMMANDS
+from monika.interfaces.telegram.command_router import DIRECT_COMMANDS
 
 
 def test_trading_command_descriptors_integrity():

@@ -1,6 +1,6 @@
 import pytest
 import time
-from utils.llm.cache_miss_detector import CacheMissDetector, CacheMissReport
+from monika.infrastructure.llm.cache_miss_detector import CacheMissDetector, CacheMissReport
 
 
 def test_first_call_not_miss():

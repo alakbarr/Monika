@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from analysis.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
 
 def test_openai_extract_usage_with_cached_tokens():

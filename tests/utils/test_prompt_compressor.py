@@ -1,5 +1,5 @@
 import pytest
-from utils.llm.prompt_compressor import estimate_tokens, truncate_to_budget, ContextCompressor
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget, ContextCompressor
 
 
 def test_estimate_tokens():

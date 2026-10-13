@@ -3,8 +3,8 @@ import math
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
 from tests.conftest import create_mock_async_session
-from analysis.memory.layered_memory import compute_ebbinghaus_retention
-from analysis.memory.counterfactual_simulator import CounterfactualSimulator
+from monika.application.analysis.memory.layered_memory import compute_ebbinghaus_retention
+from monika.application.analysis.memory.counterfactual_simulator import CounterfactualSimulator
 
 
 def test_ebbinghaus_retention_decay():
@@ -68,8 +68,8 @@ async def test_counterfactual_simulator_robustness_gating():
 
 @pytest.mark.asyncio
 async def test_reflector_dual_branch_negative_constraint():
-    from analysis.memory.reflector import TradeReflector
-    from database.models import DecisionReflection
+    from monika.application.analysis.memory.reflector import TradeReflector
+    from monika.infrastructure.database.models import DecisionReflection
 
     reflector = TradeReflector(settings={})
     session = create_mock_async_session()
@@ -106,8 +106,8 @@ async def test_reflector_dual_branch_negative_constraint():
     reflector.llm_client = mock_llm
 
     with (
-        patch("database.safe_ops.safe_commit", new=AsyncMock()),
-        patch("database.event_store.TradingEventStore.emit", new=AsyncMock()),
+        patch("monika.infrastructure.database.safe_ops.safe_commit", new=AsyncMock()),
+        patch("monika.infrastructure.database.event_store.TradingEventStore.emit", new=AsyncMock()),
     ):
         await reflector.reflect_on_trade(session, 1)
 

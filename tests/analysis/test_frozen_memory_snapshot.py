@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timezone, timedelta
-from analysis.memory.frozen_snapshot import (
+from monika.application.analysis.memory.frozen_snapshot import (
     FrozenMemorySnapshot,
     FrozenSnapshotManager,
     get_frozen_snapshot_manager,
@@ -78,7 +78,7 @@ async def test_frozen_snapshot_manager_caching_and_rehydration():
 
 @pytest.mark.asyncio
 async def test_layered_memory_manager_integration():
-    from analysis.memory.layered_memory import LayeredMemoryManager
+    from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
 
     lmm = LayeredMemoryManager(settings={})
     snapshot = await lmm.get_frozen_snapshot()

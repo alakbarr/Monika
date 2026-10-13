@@ -1,7 +1,7 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.strategies.tsm_momentum import TimeSeriesMomentum
+from monika.application.analysis.strategies.tsm_momentum import TimeSeriesMomentum
 
 
 @pytest.mark.asyncio

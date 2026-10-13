@@ -16,25 +16,30 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from tests.conftest import create_mock_async_session
-from execution.broker_adapter import SimulatedBrokerAdapter, BrokerAdapter, MT5RemoteGatewayAdapter, _get_contract_size
-from execution.service.emergency_manager import EmergencyManagerMixin
-from risk.position_sizing import PositionSizer
-from risk.risk_gate import RiskGate
-from analysis.tools.domain.sentiment_handlers import SentimentToolHandlers
-from scheduler.trigger_checker import TriggerChecker
-from scheduler.position_guardian import PositionGuardian
-from scheduler.alpha_discovery_scheduler import AlphaDiscoveryScheduler
-from scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
-from scheduler.digest_slice_scheduler import DigestSliceScheduler
-from scheduler.macro_data_scheduler import MacroDataScheduler
-from scheduler.position_exit_reviewer import PositionExitReviewer
-from scheduler.market_data_scheduler import MarketDataScheduler
-from scheduler.news_watcher import NewsWatcher
-from scheduler.post_release_analyzer import PostReleaseAnalyzer
-from scheduler.trailing_stop_manager import TrailingStopManager
-from database.models import DecisionReflection, Position
-from config.settings import load_settings
-from config.schemas import PaperTradingConfig
+from monika.infrastructure.brokers.broker_adapter import (
+    SimulatedBrokerAdapter,
+    BrokerAdapter,
+    MT5RemoteGatewayAdapter,
+    _get_contract_size,
+)
+from monika.application.execution.service.emergency_manager import EmergencyManagerMixin
+from monika.domain.risk.position_sizing import PositionSizer
+from monika.domain.risk.risk_gate import RiskGate
+from monika.application.analysis.tools.domain.sentiment_handlers import SentimentToolHandlers
+from monika.application.scheduler.trigger_checker import TriggerChecker
+from monika.application.scheduler.position_guardian import PositionGuardian
+from monika.application.scheduler.alpha_discovery_scheduler import AlphaDiscoveryScheduler
+from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
+from monika.application.scheduler.digest_slice_scheduler import DigestSliceScheduler
+from monika.application.scheduler.macro_data_scheduler import MacroDataScheduler
+from monika.application.scheduler.position_exit_reviewer import PositionExitReviewer
+from monika.application.scheduler.market_data_scheduler import MarketDataScheduler
+from monika.application.scheduler.news_watcher import NewsWatcher
+from monika.application.scheduler.post_release_analyzer import PostReleaseAnalyzer
+from monika.application.scheduler.trailing_stop_manager import TrailingStopManager
+from monika.infrastructure.database.models import DecisionReflection, Position
+from monika.core.config.settings import load_settings
+from monika.core.config.schemas import PaperTradingConfig
 
 
 class DummyExecutionService(EmergencyManagerMixin):
@@ -78,7 +83,7 @@ class TestBrokerAdapterRemediation:
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
-        with patch("execution.service.emergency_manager.get_session") as mock_get_sess:
+        with patch("monika.application.execution.service.emergency_manager.get_session") as mock_get_sess:
             mock_get_sess.return_value.__aenter__.return_value = mock_session
             res = await manager.kill_switch(reason="Test kill switch")
 
@@ -266,7 +271,7 @@ class TestDatabaseAndConfigRemediation:
 
     def test_domain_models_exports(self):
         """database.domain_models should export BacktestRun, BacktestTrade, TradePlanLeg, etc."""
-        import database.domain_models as dm
+        import monika.infrastructure.database.domain_models as dm
 
         assert hasattr(dm, "BacktestRun")
         assert hasattr(dm, "BacktestTrade")

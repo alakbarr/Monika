@@ -7,8 +7,8 @@ import os
 import tempfile
 import pytest
 
-from analysis.tools.unified_registry import unified_tool_registry
-from analysis.tools.domain.file_tools import (
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
+from monika.application.analysis.tools.domain.file_tools import (
     ReadFileInput,
     WriteFileInput,
     PatchFileInput,
@@ -16,19 +16,19 @@ from analysis.tools.domain.file_tools import (
     handle_write_file,
     handle_patch,
 )
-from analysis.tools.domain.terminal_tools import (
+from monika.application.analysis.tools.domain.terminal_tools import (
     TerminalInput,
     ProcessManageInput,
     handle_terminal,
     handle_process_manage,
 )
-from analysis.tools.domain.skill_tools import (
+from monika.application.analysis.tools.domain.skill_tools import (
     SkillsListInput,
     SkillViewInput,
     handle_skills_list,
     handle_skill_view,
 )
-from analysis.tools.domain.tool_search_tools import (
+from monika.application.analysis.tools.domain.tool_search_tools import (
     ToolSearchInput,
     DescribeToolInput,
     LoadToolCategoryInput,

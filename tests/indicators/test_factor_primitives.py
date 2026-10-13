@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import pandas as pd
-from indicators.factor_primitives import (
+from monika.domain.indicators.factor_primitives import (
     safe_div,
     rank,
     zscore,

@@ -9,12 +9,12 @@ translasi otomatis di seluruh layer browser scraper.
 
 import pytest
 from unittest.mock import MagicMock, patch
-from scrapers.base_scraper import BaseScraper
-from scrapers.social.twitter_watch import TwitterWatchScraper
-from scrapers.news.tradingview_news import TradingViewNewsScraper
-from scrapers.news.kitco_news import KitcoNewsScraper
-from scrapers.calendar.calendar_investing import InvestingCalendarScraper
-from scrapers.macro.cme_fedwatch import FedWatchScraper
+from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
+from monika.infrastructure.data_ingestion.scrapers.social.twitter_watch import TwitterWatchScraper
+from monika.infrastructure.data_ingestion.scrapers.news.tradingview_news import TradingViewNewsScraper
+from monika.infrastructure.data_ingestion.scrapers.news.kitco_news import KitcoNewsScraper
+from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import InvestingCalendarScraper
+from monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch import FedWatchScraper
 
 
 class TestScraperLanguageIsolation:

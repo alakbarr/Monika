@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timezone
-from database.models import (
+from monika.infrastructure.database.models import (
     _utcnow,
     NewsItem,
     EconomicCalendar,
@@ -213,7 +213,7 @@ def test_model_instantiation():
     assert ptr.symbol == "GBPUSD"
     assert ptr.was_debate_modified is False
 
-    from database.models import (
+    from monika.infrastructure.database.models import (
         TokenUsageLog,
         NewsDigest,
         NewsDigestSlice,

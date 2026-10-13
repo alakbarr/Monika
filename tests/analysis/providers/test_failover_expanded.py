@@ -1,5 +1,5 @@
 import pytest
-from analysis.providers.provider_failover_classifier import classify_error, FailoverReason
+from monika.infrastructure.providers.provider_failover_classifier import classify_error, FailoverReason
 
 
 def test_classify_waf_and_cloudflare_blocked():
@@ -44,7 +44,7 @@ def test_classify_image_multimodal_errors():
 
 
 def test_classify_completion_ceiling_exceeded():
-    from analysis.providers.provider_failover_classifier import extract_completion_ceiling
+    from monika.infrastructure.providers.provider_failover_classifier import extract_completion_ceiling
 
     err = Exception("BadRequestError: max_tokens is too large: 32000 > 8192")
     reason, detail = classify_error(err)
@@ -80,7 +80,7 @@ def test_classify_transient_rate_limit():
 
 
 def test_resolve_effective_context_window_cascade():
-    from analysis.providers.capabilities import resolve_effective_context_window
+    from monika.infrastructure.providers.capabilities import resolve_effective_context_window
 
     # Tier 1: Proxy limit overrides everything
     assert resolve_effective_context_window("gemini-2.5-pro", proxy_limit=16384) == 16384
@@ -108,7 +108,7 @@ def test_resolve_effective_context_window_cascade():
 
 
 def test_extract_retry_after_headers_and_strings():
-    from analysis.providers.base_provider import extract_retry_after
+    from monika.infrastructure.providers.base_provider import extract_retry_after
 
     # 1. Standard Retry-After header
     assert extract_retry_after({"headers": {"retry-after": "12.5"}}) == 12.5
@@ -129,7 +129,7 @@ def test_extract_retry_after_headers_and_strings():
 
 
 def test_endpoint_blackhole_lifecycle():
-    from analysis.providers.llm_factory import EndpointBlackhole
+    from monika.infrastructure.providers.llm_factory import EndpointBlackhole
     import time
 
     EndpointBlackhole.reset()

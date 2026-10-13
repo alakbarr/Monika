@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
+from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
 
 
 @pytest.mark.asyncio

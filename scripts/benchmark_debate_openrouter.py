@@ -22,12 +22,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _src_dir = REPO_ROOT / "src"
 if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
 os.chdir(str(REPO_ROOT))
 
 # Ensure stdout handles UTF-8 on Windows
@@ -38,14 +32,14 @@ if sys.stdout.encoding != "utf-8":
     except Exception:
         pass
 
-from config.settings import load_all_config
-from analysis.providers.openrouter_provider import OpenRouterProvider
-from utils.api.openrouter_rate_limiter import get_paid_key
-from utils.analytics.pricing import cost_usd
-from analysis.debate.bull_analyst import generate_bull_advocacy
-from analysis.debate.bear_analyst import generate_bear_dissent
-from analysis.debate.investment_judge import evaluate_debate
-from analysis.debate.exact_decimal_math import to_exact_decimal, exact_rr_ratio
+from monika.core.config.settings import load_all_config
+from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
+from monika.infrastructure.api.openrouter_rate_limiter import get_paid_key
+from monika.core.analytics.pricing import cost_usd
+from monika.application.analysis.debate.bull_analyst import generate_bull_advocacy
+from monika.application.analysis.debate.bear_analyst import generate_bear_dissent
+from monika.application.analysis.debate.investment_judge import evaluate_debate
+from monika.application.analysis.debate.exact_decimal_math import to_exact_decimal, exact_rr_ratio
 
 # Evaluated models (Claude Opus 5.5 and Grok 4.6 explicitly excluded)
 MODELS_TO_BENCHMARK = [

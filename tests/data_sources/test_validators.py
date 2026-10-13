@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timezone, timedelta
-from data_sources.validators import (
+from monika.infrastructure.data_ingestion.sources.validators import (
     validate_ohlcv_freshness,
     is_intraday_cache_expired,
     NoMarketDataError,

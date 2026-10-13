@@ -4,8 +4,8 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from telegram_bot.bot import TelegramBot
-from telegram_bot.chat_agent import ChatAgent
+from monika.interfaces.telegram.bot import TelegramBot
+from monika.interfaces.telegram.chat_agent import ChatAgent
 
 
 def test_telegram_bot_html_chunk_balancing():
@@ -75,7 +75,7 @@ async def test_telegram_bot_cmd_orders():
     ctx = MagicMock()
     ctx.args = []
 
-    with patch("execution.mt5_client._get_orders", return_value=[]):
+    with patch("monika.infrastructure.brokers.mt5_client._get_orders", return_value=[]):
         await bot._cmd_orders(update, ctx)
         update.message.reply_text.assert_called_once()
         call_arg = update.message.reply_text.call_args[0][0]

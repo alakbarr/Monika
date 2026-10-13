@@ -1,10 +1,10 @@
 import pytest
-from utils.llm.constrained_sampling import (
+from monika.infrastructure.llm.constrained_sampling import (
     ConstrainedSamplingConfig,
     make_strict_json_schema,
     resolve_grammar_for_provider,
 )
-from analysis.providers.base_provider import BaseLLMClient
+from monika.infrastructure.providers.base_provider import BaseLLMClient
 
 
 class ConcreteClient(BaseLLMClient):

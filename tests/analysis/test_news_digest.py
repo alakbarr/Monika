@@ -1,14 +1,14 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.prefetch.news_digest import NewsDigestProcessor
-from database.models import NewsItem, NewsDigest
+from monika.application.analysis.prefetch.news_digest import NewsDigestProcessor
+from monika.infrastructure.database.models import NewsItem, NewsDigest
 from datetime import datetime, timezone
 
 
 class TestNewsDigestProcessor:
     def test_init(self):
-        from config.settings import load_all_config
+        from monika.core.config.settings import load_all_config
 
         settings = load_all_config()
         processor = NewsDigestProcessor(settings)
@@ -135,7 +135,7 @@ class TestNewsDigestProcessor:
         mock_session.commit.assert_awaited()
 
     def test_resolve_item_index_variations(self):
-        from analysis.prefetch.news_digest import _resolve_item_index
+        from monika.application.analysis.prefetch.news_digest import _resolve_item_index
 
         item1 = NewsItem(id=101, title="Item 1")
         item2 = NewsItem(id=102, title="Item 2")
@@ -346,7 +346,7 @@ class TestNewsDigestProcessor:
         assert mock_session.commit.await_count >= 1
 
     def test_extract_numeric_claims(self):
-        from analysis.prefetch.news_digest import _extract_numeric_claims
+        from monika.application.analysis.prefetch.news_digest import _extract_numeric_claims
 
         text = (
             "Gold spot traded at $4,550 after reaching 4550.50 earlier. "
@@ -366,7 +366,7 @@ class TestNewsDigestProcessor:
         assert "1.5M" in claims or "$1.5M" in claims
 
     def test_normalize_num_variants(self):
-        from analysis.prefetch.news_digest import _normalize_num_variants
+        from monika.application.analysis.prefetch.news_digest import _normalize_num_variants
 
         # Percentages
         v_pct = _normalize_num_variants("50%")
@@ -390,7 +390,7 @@ class TestNewsDigestProcessor:
         assert 1500000.0 in v_m
 
     def test_flag_ungrounded_numbers_no_false_positives(self):
-        from analysis.prefetch.news_digest import _flag_ungrounded_numbers
+        from monika.application.analysis.prefetch.news_digest import _flag_ungrounded_numbers
 
         # Test Case 1: 4-digit number in source without comma (4550) vs LLM with comma ($4,550)
         source_news = "Gold touched 4550 intraday high amid safe-haven flows."
@@ -410,7 +410,7 @@ class TestNewsDigestProcessor:
         assert ungrounded_macro == []
 
     def test_format_news_item_for_prompt(self):
-        from analysis.prefetch.news_digest import _format_news_item_for_prompt
+        from monika.application.analysis.prefetch.news_digest import _format_news_item_for_prompt
 
         # Case 1: Standard news item with full summary and key data point
         item = NewsItem(
@@ -443,7 +443,7 @@ class TestNewsDigestProcessor:
         assert len(formatted_long) < 450
 
     def test_flag_ungrounded_numbers_btc_jpy_macro_hallucinations(self):
-        from analysis.prefetch.news_digest import _flag_ungrounded_numbers
+        from monika.application.analysis.prefetch.news_digest import _flag_ungrounded_numbers
 
         # BTC Hallucination scenario from user log
         btc_source = "Bitcoin ETF demand remained resilient with positive sentiment across crypto desks."
@@ -468,7 +468,7 @@ class TestNewsDigestProcessor:
         assert macro_ungrounded == []
 
     def test_normalize_num_variants_financial_words_and_abbreviations(self):
-        from analysis.prefetch.news_digest import _normalize_num_variants
+        from monika.application.analysis.prefetch.news_digest import _normalize_num_variants
 
         # Millions variations
         for token in ["16 million", "16 millions", "16M", "16m", "16 mln", "16 mio", "16 mm"]:
@@ -501,7 +501,7 @@ class TestNewsDigestProcessor:
         assert 0.025 in _normalize_num_variants("2.5%")
 
     def test_flag_ungrounded_numbers_live_payload_scenarios(self):
-        from analysis.prefetch.news_digest import _flag_ungrounded_numbers
+        from monika.application.analysis.prefetch.news_digest import _flag_ungrounded_numbers
 
         # Skenario USD & XTI: 16 million barrels -> 16M
         src_usd = "@barakravid: Around 40 tankers transited. Around 16 million barrels of oil moved out of the strait on Friday night."
@@ -534,7 +534,7 @@ class TestNewsDigestProcessor:
         assert "$888B" in ungrounded_fake or "888B" in ungrounded_fake
 
     def test_normalize_contradictions_various_keys(self):
-        from analysis.prefetch.news_digest import _normalize_contradictions
+        from monika.application.analysis.prefetch.news_digest import _normalize_contradictions
 
         # Test 1: Empty or non-list
         assert _normalize_contradictions(None) == []
@@ -583,7 +583,7 @@ class TestNewsDigestProcessor:
 
     @pytest.mark.asyncio
     async def test_news_digest_consistency_and_reconcile_malformed_keys(self):
-        from analysis.prefetch.news_digest import NewsDigestProcessor
+        from monika.application.analysis.prefetch.news_digest import NewsDigestProcessor
 
         processor = NewsDigestProcessor({})
 

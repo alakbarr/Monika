@@ -1,5 +1,5 @@
 import pytest
-from utils.market.currency_utils import get_symbol_currencies, SYMBOL_CURRENCIES
+from monika.domain.market.currency_utils import get_symbol_currencies, SYMBOL_CURRENCIES
 
 
 def test_get_symbol_currencies_known_symbols():

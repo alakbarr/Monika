@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock
 from tests.conftest import create_mock_async_session
-from analysis.prefetch.stage2_prefetcher import Stage2DataBundler
+from monika.application.analysis.prefetch.stage2_prefetcher import Stage2DataBundler
 
 
 @pytest.mark.asyncio
@@ -55,7 +55,7 @@ async def test_stage2_bundle_truncation_preserves_smc_zones():
     from unittest.mock import patch
 
     with patch(
-        "analysis.validators.core_data_validator.CoreDataValidator.validate_and_fetch_core_data",
+        "monika.application.analysis.validators.core_data_validator.CoreDataValidator.validate_and_fetch_core_data",
         new_callable=AsyncMock,
         return_value=(True, {}, []),
     ):

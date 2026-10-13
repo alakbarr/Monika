@@ -3,13 +3,13 @@ Unit test untuk TokenAuditor service.
 """
 
 import pytest
-from utils.analytics.token_auditor import TokenAuditor
+from monika.core.analytics.token_auditor import TokenAuditor
 
 
 from contextlib import asynccontextmanager
 from unittest.mock import patch
 from datetime import datetime, timezone
-from database.models import TokenUsageLog
+from monika.infrastructure.database.models import TokenUsageLog
 
 
 @pytest.mark.asyncio
@@ -41,7 +41,7 @@ async def test_token_auditor_summary_and_breakdowns(db_session):
     async def mock_get_session():
         yield db_session
 
-    with patch("utils.analytics.token_auditor.get_session", side_effect=mock_get_session):
+    with patch("monika.core.analytics.token_auditor.get_session", side_effect=mock_get_session):
         summary = await TokenAuditor.get_summary(hours=24)
         assert isinstance(summary, dict)
         assert summary["total_calls"] == 1
@@ -103,8 +103,8 @@ async def test_token_auditor_summary_and_breakdowns(db_session):
 
 @pytest.mark.asyncio
 async def test_activity_logger_fallback_event(db_session):
-    from logging_observability.activity_logger import ActivityLogger
-    from database.models import ActivityLog
+    from monika.core.telemetry.activity_logger import ActivityLogger
+    from monika.infrastructure.database.models import ActivityLog
     from sqlalchemy import select
 
     logger_instance = ActivityLogger()

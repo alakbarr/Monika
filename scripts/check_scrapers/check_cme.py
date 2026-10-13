@@ -23,13 +23,6 @@ _src_dir = os.path.join(_repo_dir, "src")
 sys.path.insert(0, _repo_dir)
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
-
 # Muat environment variables dari file .env
 try:
     from dotenv import load_dotenv
@@ -43,7 +36,7 @@ try:
 except Exception:
     pass
 
-from scrapers.models import FedMeeting
+from monika.infrastructure.data_ingestion.scrapers.models import FedMeeting
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("CheckCME")
@@ -73,7 +66,7 @@ def print_fed_meetings(meetings: List[FedMeeting]):
 def check_cme_fedwatch(headless: bool = False, pause: int = 3) -> dict:
     """Menguji FedWatchScraper."""
     logger.info(f"==> Menguji FedWatchScraper (Headless: {headless})")
-    from scrapers.macro.cme_fedwatch import FedWatchScraper
+    from monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch import FedWatchScraper
 
     scraper = None
     start_time = time.time()

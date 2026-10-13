@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from analysis.validators.precommit_gate import TradePreCommitGate
+from monika.application.analysis.validators.precommit_gate import TradePreCommitGate
 
 
 @pytest.mark.asyncio
@@ -39,11 +39,11 @@ async def test_precommit_gate_geometry_validation():
     # 3. Valid SELL geometry -> PASS
     with (
         patch(
-            "analysis.validators.market_snapshot.VerifiedMarketSnapshot.compute",
+            "monika.application.analysis.validators.market_snapshot.VerifiedMarketSnapshot.compute",
             new=AsyncMock(return_value={"latest_close": 83000.0}),
         ),
         patch(
-            "analysis.validators.market_snapshot.VerifiedMarketSnapshot.validate_plan_against_snapshot",
+            "monika.application.analysis.validators.market_snapshot.VerifiedMarketSnapshot.validate_plan_against_snapshot",
             return_value=(True, []),
         ),
     ):
@@ -58,11 +58,11 @@ async def test_precommit_gate_geometry_validation():
     # 4. Valid BUY geometry -> PASS
     with (
         patch(
-            "analysis.validators.market_snapshot.VerifiedMarketSnapshot.compute",
+            "monika.application.analysis.validators.market_snapshot.VerifiedMarketSnapshot.compute",
             new=AsyncMock(return_value={"latest_close": 83000.0}),
         ),
         patch(
-            "analysis.validators.market_snapshot.VerifiedMarketSnapshot.validate_plan_against_snapshot",
+            "monika.application.analysis.validators.market_snapshot.VerifiedMarketSnapshot.validate_plan_against_snapshot",
             return_value=(True, []),
         ),
     ):

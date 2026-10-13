@@ -4,8 +4,8 @@ Unit tests for WalkForwardEngine purging, embargo, DSR, and AlphaValidation inte
 
 from datetime import datetime, timezone, timedelta
 import pytest
-from backtest.walk_forward_engine import WalkForwardEngine, WalkForwardFold, WalkForwardResult
-from database.models import BacktestTrade
+from monika.application.backtest.walk_forward_engine import WalkForwardEngine, WalkForwardFold, WalkForwardResult
+from monika.infrastructure.database.models import BacktestTrade
 
 
 def test_walk_forward_folds_purge_and_embargo():

@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
 
-from analysis.stages.fundamental_stage import FundamentalStage
+from monika.application.analysis.stages.fundamental_stage import FundamentalStage
 
 
 @pytest.mark.asyncio
@@ -44,10 +44,13 @@ async def test_macro_debate_concurrent_execution():
         }
 
     with (
-        patch("analysis.debate.macro_bull_analyst.run_bull_analyst", side_effect=mock_bull),
-        patch("analysis.debate.macro_bear_analyst.run_bear_analyst", side_effect=mock_bear),
-        patch("analysis.debate.macro_judge.run_macro_judge", side_effect=mock_judge),
-        patch("analysis.debate.macro_debate_validator.validate_macro_judge_output", side_effect=lambda j, b, be: j),
+        patch("monika.application.analysis.debate.macro_bull_analyst.run_bull_analyst", side_effect=mock_bull),
+        patch("monika.application.analysis.debate.macro_bear_analyst.run_bear_analyst", side_effect=mock_bear),
+        patch("monika.application.analysis.debate.macro_judge.run_macro_judge", side_effect=mock_judge),
+        patch(
+            "monika.application.analysis.debate.macro_debate_validator.validate_macro_judge_output",
+            side_effect=lambda j, b, be: j,
+        ),
     ):
         outcome = await stage._run_macro_debate(mock_session, mock_brief)
 
@@ -93,10 +96,13 @@ async def test_macro_debate_exception_resilience():
         }
 
     with (
-        patch("analysis.debate.macro_bull_analyst.run_bull_analyst", side_effect=mock_bull_error),
-        patch("analysis.debate.macro_bear_analyst.run_bear_analyst", side_effect=mock_bear_success),
-        patch("analysis.debate.macro_judge.run_macro_judge", side_effect=mock_judge),
-        patch("analysis.debate.macro_debate_validator.validate_macro_judge_output", side_effect=lambda j, b, be: j),
+        patch("monika.application.analysis.debate.macro_bull_analyst.run_bull_analyst", side_effect=mock_bull_error),
+        patch("monika.application.analysis.debate.macro_bear_analyst.run_bear_analyst", side_effect=mock_bear_success),
+        patch("monika.application.analysis.debate.macro_judge.run_macro_judge", side_effect=mock_judge),
+        patch(
+            "monika.application.analysis.debate.macro_debate_validator.validate_macro_judge_output",
+            side_effect=lambda j, b, be: j,
+        ),
     ):
         outcome = await stage._run_macro_debate(mock_session, mock_brief)
 

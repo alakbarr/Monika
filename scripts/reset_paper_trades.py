@@ -28,12 +28,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC_DIR = os.path.join(BASE_DIR, "src")
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
 
 
 async def main():
@@ -64,9 +58,16 @@ async def main():
 
     load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-    from database.db import AsyncSessionLocal
-    from database.models import PaperTradeRecord, Position, MT5Signal, DecisionReflection, SystemConfig, RiskState
-    from database.cleanup import reset_paper_trading_history
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import (
+        PaperTradeRecord,
+        Position,
+        MT5Signal,
+        DecisionReflection,
+        SystemConfig,
+        RiskState,
+    )
+    from monika.infrastructure.database.cleanup import reset_paper_trading_history
     from sqlalchemy import select, func
 
     print("=" * 65)

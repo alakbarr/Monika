@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Optional
 import pytest
 
-from logging_observability.reporting.tearsheet_generator import (
+from monika.core.telemetry.reporting.tearsheet_generator import (
     QuantTearsheetGenerator,
     TearsheetResult,
 )

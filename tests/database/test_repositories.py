@@ -3,8 +3,8 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-from database.models import Base
-from database.repositories import (
+from monika.infrastructure.database.models import Base
+from monika.infrastructure.database.repositories import (
     PositionRepository,
     ActivityLogRepository,
     SystemConfigRepository,

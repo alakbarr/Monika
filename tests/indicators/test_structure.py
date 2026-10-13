@@ -3,8 +3,16 @@ import pytest
 import pandas as pd
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
-from database.models import PriceOHLCV, FVGZone, OrderBlock, SwingPoint, SRZone, LiquidityZone, StructureBreak
-from indicators.structure import MarketStructureAnalyzer
+from monika.infrastructure.database.models import (
+    PriceOHLCV,
+    FVGZone,
+    OrderBlock,
+    SwingPoint,
+    SRZone,
+    LiquidityZone,
+    StructureBreak,
+)
+from monika.domain.indicators.structure import MarketStructureAnalyzer
 
 
 class TestMarketStructureAnalyzer:
@@ -147,7 +155,7 @@ class TestMarketStructureAnalyzer:
 
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from database.models import Base, PriceOHLCV
+from monika.infrastructure.database.models import Base, PriceOHLCV
 
 
 @pytest_asyncio.fixture

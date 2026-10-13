@@ -8,11 +8,11 @@ import tempfile
 import time
 import pytest
 
-from gateway.delivery_ledger import DeliveryLedger, DeliveryStatus
-from gateway.turn_lease import TurnLeaseManager
-from gateway.bot_loop_guard import BotLoopGuard
-from gateway.stream_consumer import LiveStreamConsumer, scrub_thinking_tags, ensure_closed_code_fences
-from risk.approval_hub import ApprovalHub, ApprovalStatus
+from monika.interfaces.gateway.delivery_ledger import DeliveryLedger, DeliveryStatus
+from monika.interfaces.gateway.turn_lease import TurnLeaseManager
+from monika.interfaces.gateway.bot_loop_guard import BotLoopGuard
+from monika.interfaces.gateway.stream_consumer import LiveStreamConsumer, scrub_thinking_tags, ensure_closed_code_fences
+from monika.domain.risk.approval_hub import ApprovalHub, ApprovalStatus
 
 
 def test_delivery_ledger_idempotency_and_deduplication():

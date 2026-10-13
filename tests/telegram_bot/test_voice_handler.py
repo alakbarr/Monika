@@ -4,7 +4,7 @@ Unit test for VoiceHandler header authentication (H-18).
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from telegram_bot.voice_handler import VoiceHandler
+from monika.interfaces.telegram.voice_handler import VoiceHandler
 
 
 @pytest.mark.asyncio
@@ -24,7 +24,9 @@ async def test_voice_handler_passes_x_goog_api_key_header():
 
     with (
         patch("aiohttp.ClientSession.post") as mock_post,
-        patch("analysis.providers.llm_factory.get_client_for_task", side_effect=Exception("No LLM client")),
+        patch(
+            "monika.infrastructure.providers.llm_factory.get_client_for_task", side_effect=Exception("No LLM client")
+        ),
     ):
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_resp
@@ -72,7 +74,9 @@ async def test_voice_handler_uses_task_role_and_live_models():
 
     with (
         patch("aiohttp.ClientSession.post") as mock_post,
-        patch("analysis.providers.llm_factory.get_client_for_task", side_effect=Exception("No LLM client")),
+        patch(
+            "monika.infrastructure.providers.llm_factory.get_client_for_task", side_effect=Exception("No LLM client")
+        ),
     ):
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_resp

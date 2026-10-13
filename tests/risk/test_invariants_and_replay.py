@@ -3,11 +3,11 @@ Unit tests for Runtime Invariants (Phase 5.6) and Keyless Session Replay (Phase 
 """
 
 import pytest
-from risk.invariants.risk_gate_invariant import (
+from monika.domain.risk.invariants.risk_gate_invariant import (
     assert_risk_gate_invariants,
     InvariantViolationError,
 )
-from risk.invariants.state_immutability_invariant import (
+from monika.domain.risk.invariants.state_immutability_invariant import (
     assert_state_immutability,
     StateFreezeGuard,
 )

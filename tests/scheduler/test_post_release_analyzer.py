@@ -4,7 +4,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import MagicMock
 from datetime import datetime, timezone
-from scheduler.post_release_analyzer import PostReleaseAnalyzer, CURRENCY_TO_SYMBOLS
+from monika.application.scheduler.post_release_analyzer import PostReleaseAnalyzer, CURRENCY_TO_SYMBOLS
 
 
 class TestCurrencyMapping:
@@ -86,7 +86,7 @@ class TestPostReleaseAnalyzer:
         mock_res.scalars.return_value.all.return_value = []
         mock_session.execute.return_value = mock_res
 
-        with patch("database.db.get_session") as mock_get_sess:
+        with patch("monika.infrastructure.database.db.get_session") as mock_get_sess:
             mock_get_sess.return_value.__aenter__.return_value = mock_session
             await self.analyzer._check_releases()
 
@@ -111,7 +111,7 @@ class TestPostReleaseAnalyzer:
         self.analyzer._settle_seconds = 0
         self.analyzer._run_targeted_reanalysis = AsyncMock()
 
-        with patch("database.db.get_session") as mock_get_sess:
+        with patch("monika.infrastructure.database.db.get_session") as mock_get_sess:
             mock_get_sess.return_value.__aenter__.return_value = mock_session
             await self.analyzer._check_releases()
 

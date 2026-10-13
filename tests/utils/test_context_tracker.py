@@ -4,7 +4,7 @@
 # ==============================================================================
 
 import pytest
-from utils.llm.context_tracker import ContextTracker, get_context_tracker
+from monika.infrastructure.llm.context_tracker import ContextTracker, get_context_tracker
 
 
 def test_context_tracker_initial_state():

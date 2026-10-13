@@ -7,8 +7,8 @@ import pytest
 import pandas as pd
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
-from data_sources.vix_yfinance import VIXFetcher
-from database.models import VIXData
+from monika.infrastructure.data_ingestion.sources.vix_yfinance import VIXFetcher
+from monika.infrastructure.database.models import VIXData
 
 
 class TestVIXFetcher:
@@ -315,7 +315,7 @@ class TestVIXFetcher:
 
         df = pd.DataFrame({"Close": [20.0]}, index=[pd.Timestamp("2024-01-01")])
 
-        with patch("database.safe_ops.safe_commit", new_callable=AsyncMock) as mock_safe_commit:
+        with patch("monika.infrastructure.database.safe_ops.safe_commit", new_callable=AsyncMock) as mock_safe_commit:
             mock_safe_commit.return_value = False
             fetcher = VIXFetcher(mock_session)
             res = await fetcher._save(df)

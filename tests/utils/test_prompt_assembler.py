@@ -1,6 +1,6 @@
 import pytest
-from utils.llm.prompt_assembler import PromptAssembler
-from utils.llm.prompt_compressor import estimate_tokens
+from monika.infrastructure.llm.prompt_assembler import PromptAssembler
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens
 
 
 def test_assemble_stage1():
@@ -81,7 +81,7 @@ def test_assemble_stage2_tiers_cache_invariance():
 
 
 def test_canonical_prompt_section_ordering():
-    from utils.llm.prompt_assembler import (
+    from monika.infrastructure.llm.prompt_assembler import (
         SECTION_ORDERS,
         PromptSection,
         compare_sections,

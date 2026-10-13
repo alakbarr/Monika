@@ -5,12 +5,12 @@ and their discovery, loading, and tool execution.
 
 from pathlib import Path
 import pytest
-from plugins.loader import PluginLoader
-from utils.plugins.manager import PluginManager
+from monika.application.plugins.loader import PluginLoader
+from monika.application.plugins.manager.manager import PluginManager
 
-from plugins.indicators.custom_indicator.custom_indicator import calculate_vwap_deviation
-from plugins.scrapers.example_scraper.example_scraper import fetch_external_wire_feed
-from plugins.alerts.discord_alert.discord_alert import dispatch_discord_alert
+from monika.application.plugins.indicators.custom_indicator.custom_indicator import calculate_vwap_deviation
+from monika.application.plugins.scrapers.example_scraper.example_scraper import fetch_external_wire_feed
+from monika.application.plugins.alerts.discord_alert.discord_alert import dispatch_discord_alert
 
 
 def _get_plugins_dir() -> Path:
@@ -72,10 +72,10 @@ def test_discord_alert_dispatch():
 
 @pytest.mark.asyncio
 async def test_trading_plugin_classes_integration():
-    from plugins.alerts.discord_alert.discord_alert import DiscordAlertPlugin
-    from plugins.indicators.custom_indicator.custom_indicator import CustomIndicatorPlugin
-    from plugins.scrapers.example_scraper.example_scraper import ExampleScraperPlugin
-    from harness.contract import OrderStateChangedEvent, RiskBreachEvent
+    from monika.application.plugins.alerts.discord_alert.discord_alert import DiscordAlertPlugin
+    from monika.application.plugins.indicators.custom_indicator.custom_indicator import CustomIndicatorPlugin
+    from monika.application.plugins.scrapers.example_scraper.example_scraper import ExampleScraperPlugin
+    from monika.application.harness.contract import OrderStateChangedEvent, RiskBreachEvent
 
     # Discord alert plugin
     alert_p = DiscordAlertPlugin()

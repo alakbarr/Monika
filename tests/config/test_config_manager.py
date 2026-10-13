@@ -7,10 +7,10 @@ import json
 import asyncio
 import pytest
 from pathlib import Path
-from config.security import validate_env_mutation, BLOCKED_ENV_VARS
-from config.config_manager import ConfigManager
-from cli.onboarding_trader import TraderProfile, TraderOnboarding
-from cli.setup_wizard import SetupWizard
+from monika.core.config.security import validate_env_mutation, BLOCKED_ENV_VARS
+from monika.core.config.config_manager import ConfigManager
+from monika.interfaces.cli.onboarding_trader import TraderProfile, TraderOnboarding
+from monika.interfaces.cli.setup_wizard import SetupWizard
 
 
 def test_security_blocked_env_vars():

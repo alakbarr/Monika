@@ -1,6 +1,6 @@
 import pytest
-from analysis.prefetch.sentiment_aggregator import SentimentAggregator
-from analysis.schemas.pydantic_schemas import SentimentBand, ConfidenceLevel
+from monika.application.analysis.prefetch.sentiment_aggregator import SentimentAggregator
+from monika.application.analysis.schemas.pydantic_schemas import SentimentBand, ConfidenceLevel
 
 
 def test_sentiment_aggregator():

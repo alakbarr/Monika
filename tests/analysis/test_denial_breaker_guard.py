@@ -2,7 +2,7 @@
 Unit tests for DenialCircuitBreakerGuard and ToolGuardrailController integration.
 """
 
-from analysis.tools.tool_guardrails import ToolGuardrailController, DenialCircuitBreakerGuard
+from monika.application.analysis.tools.tool_guardrails import ToolGuardrailController, DenialCircuitBreakerGuard
 
 
 def test_denial_circuit_breaker_standalone():

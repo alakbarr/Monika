@@ -8,15 +8,18 @@ from datetime import datetime, timezone
 # Ensure path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from telegram_bot.chat_tool_router import ChatToolRouter
-from indicators.technical import detect_rsi_divergence
-from indicators.smc_advanced import detect_smt_divergence
-from analysis.tools.handlers.system_info import handle_get_server_telemetry, handle_capture_terminal_screenshot
-from analysis.tools.handlers.position_mgmt import handle_calculate_position_size
-from analysis.tools.handlers.market_data_tools import handle_get_synthetic_cross_rate
-from analysis.tools.handlers.trade_intel import handle_simulate_price_shock, handle_read_system_logs
-from analysis.tools.handlers.db_tools import handle_query_database_sql
-from analysis.tools.tools_definitions import ALL_TOOLS, TELEGRAM_TOOLS
+from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
+from monika.domain.indicators.technical import detect_rsi_divergence
+from monika.domain.indicators.smc_advanced import detect_smt_divergence
+from monika.application.analysis.tools.handlers.system_info import (
+    handle_get_server_telemetry,
+    handle_capture_terminal_screenshot,
+)
+from monika.application.analysis.tools.handlers.position_mgmt import handle_calculate_position_size
+from monika.application.analysis.tools.handlers.market_data_tools import handle_get_synthetic_cross_rate
+from monika.application.analysis.tools.handlers.trade_intel import handle_simulate_price_shock, handle_read_system_logs
+from monika.application.analysis.tools.handlers.db_tools import handle_query_database_sql
+from monika.application.analysis.tools.tools_definitions import ALL_TOOLS, TELEGRAM_TOOLS
 
 
 def test_tool_definitions():

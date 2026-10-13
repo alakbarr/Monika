@@ -11,9 +11,9 @@ import pytest
 from pathlib import Path
 import yaml
 
-from skills.loader import load_skill, list_skills, parse_skill_frontmatter
-from skills.skills_hub import SkillsHub
-from skills.trading_skill_linter import TradingSkillLinter
+from monika.application.skills.loader import load_skill, list_skills, parse_skill_frontmatter
+from monika.application.skills.skills_hub import SkillsHub
+from monika.application.skills.trading_skill_linter import TradingSkillLinter
 
 EXPECTED_TRADING_SKILLS = [
     "adjudication-framework",

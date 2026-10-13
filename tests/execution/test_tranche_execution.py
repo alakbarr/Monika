@@ -12,9 +12,9 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass
 
-from execution.service.order_executor import OrderExecutorMixin
-from database.models import Order, OrderStatus, Position, AssetAnalysis
-from risk.position_sizing import SizingResult
+from monika.application.execution.service.order_executor import OrderExecutorMixin
+from monika.infrastructure.database.models import Order, OrderStatus, Position, AssetAnalysis
+from monika.domain.risk.position_sizing import SizingResult
 
 
 class DummyExecutor(OrderExecutorMixin):
@@ -168,7 +168,7 @@ async def test_tranche_order_leg2_failure_rollback_failed_persists_orphan(base_a
     executor.sizer.calculate_with_session = AsyncMock(return_value=make_mock_sizing(0.20))
     executor.gate.check = AsyncMock(return_value=MagicMock(approved=True))
 
-    with patch("execution.service.order_executor.AgentNotifier") as mock_notifier:
+    with patch("monika.application.execution.service.order_executor.AgentNotifier") as mock_notifier:
         mock_notifier.return_value.send_critical = AsyncMock()
         res = await executor.execute_tranche_order(mock_session, base_analysis, account_equity=10000.0)
 

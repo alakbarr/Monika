@@ -2,8 +2,8 @@ from tests.conftest import create_mock_async_session
 import pytest
 import json
 from unittest.mock import AsyncMock, patch
-from analysis.providers.groq_provider import GroqProvider, GROQ_MODEL_ALIASES
-from analysis.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.providers.groq_provider import GroqProvider, GROQ_MODEL_ALIASES
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
 
 @pytest.mark.asyncio
@@ -21,7 +21,7 @@ async def test_groq_provider_model_alias_resolution():
 async def test_groq_provider_reads_multi_keys():
     """Provider harus baca GROQ_API_KEYS plural, bukan GROQ_API_KEY."""
     with patch.dict("os.environ", {"GROQ_API_KEYS": "key1,key2,key3"}, clear=True):
-        from utils.api.groq_rate_limiter import get_api_keys
+        from monika.infrastructure.api.groq_rate_limiter import get_api_keys
 
         keys = get_api_keys()
         assert keys == ["key1", "key2", "key3"]
@@ -67,7 +67,7 @@ async def test_groq_generate_rotates_on_429():
             raise Exception("429 rate limit per minute")
         return "success"
 
-    with patch("analysis.providers.groq_provider._groq_limiter") as mock_limiter:
+    with patch("monika.infrastructure.providers.groq_provider._groq_limiter") as mock_limiter:
         mock_limiter.try_acquire = AsyncMock(return_value=True)
         with patch.object(OpenAIProvider, "generate", side_effect=mock_super_generate):
             result = await provider.generate("test")
@@ -87,7 +87,7 @@ async def test_groq_provider_generate():
     mock_response.usage.prompt_tokens = 10
     mock_response.usage.completion_tokens = 5
 
-    with patch("analysis.providers.groq_provider._groq_limiter") as mock_limiter:
+    with patch("monika.infrastructure.providers.groq_provider._groq_limiter") as mock_limiter:
         mock_limiter.try_acquire = AsyncMock(return_value=True)
         with patch.object(OpenAIProvider, "generate", return_value="Hello from Groq"):
             result = await provider.generate("Say hello")
@@ -100,7 +100,7 @@ async def test_groq_rate_limit_blocks_call():
     """Ketika rate limit tercapai, generate() harus return None."""
     provider = GroqProvider(model="groq-compound", api_key="test-key")
 
-    with patch("analysis.providers.groq_provider._groq_limiter") as mock_limiter:
+    with patch("monika.infrastructure.providers.groq_provider._groq_limiter") as mock_limiter:
         mock_limiter.try_acquire = AsyncMock(return_value=False)
         result = await provider.generate("Say hello")
 
@@ -130,7 +130,7 @@ def test_all_groq_aliases_defined():
 
 def test_groq_qwen_quotas():
     """Memverifikasi kuota spesifik untuk qwen3.6-27b dan qwen3.8-27b."""
-    from utils.api.groq_rate_limiter import GROQ_QUOTA, _num_keys
+    from monika.infrastructure.api.groq_rate_limiter import GROQ_QUOTA, _num_keys
 
     q36 = GROQ_QUOTA.get("qwen/qwen3.6-27b")
     q38 = GROQ_QUOTA.get("qwen/qwen3.8-27b")
@@ -193,7 +193,7 @@ async def test_groq_client_pooling():
 @pytest.mark.asyncio
 async def test_groq_run_agent_no_keys():
     """Jika tidak ada API key yang dikonfigurasi, run_agent harus mengembalikan pesan error jelas."""
-    with patch("analysis.providers.groq_provider.get_api_keys", return_value=[]):
+    with patch("monika.infrastructure.providers.groq_provider.get_api_keys", return_value=[]):
         provider = GroqProvider(model="groq-compound", api_key=None)
         res = await provider.run_agent(
             session=create_mock_async_session(),

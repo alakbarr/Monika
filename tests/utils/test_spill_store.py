@@ -5,7 +5,7 @@ Unit tests for Output Spill Store (Phase 7.4).
 import tempfile
 from pathlib import Path
 import pytest
-from utils.storage.spill_store import SpillStore
+from monika.infrastructure.storage.spill_store import SpillStore
 
 
 def test_spill_store_text_artifact():

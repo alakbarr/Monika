@@ -1,10 +1,10 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.validators.in_harness_grounding import InHarnessGroundingValidator
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-from analysis.strategies.registry import StrategyRegistry
-from scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
+from monika.application.analysis.validators.in_harness_grounding import InHarnessGroundingValidator
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
 
 
 def test_in_harness_grounding_symmetric_wait_validation():
@@ -41,7 +41,7 @@ def test_in_harness_grounding_symmetric_wait_validation():
 
 @pytest.mark.asyncio
 async def test_unified_threshold_hard_ceiling_7():
-    from analysis.calculators.unified_threshold_calculator import (
+    from monika.application.analysis.calculators.unified_threshold_calculator import (
         compute_unified_confluence_threshold,
         MAX_TOTAL_ADJUSTMENT,
     )

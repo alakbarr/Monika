@@ -3,10 +3,12 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
-from analysis.strategies.registry import StrategyRegistry
-from analysis.strategies.synthesized.alpha_eurusd_6d622a import SynthesizedStrategy_alpha_eurusd_6d622a
-from scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.application.analysis.strategies.synthesized.alpha_eurusd_6d622a import (
+    SynthesizedStrategy_alpha_eurusd_6d622a,
+)
+from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
 
 
 @pytest.mark.asyncio
@@ -182,10 +184,18 @@ class SynthesizedStrategy_alpha_test_fillna(EdgeStrategy):
 @pytest.mark.asyncio
 async def test_repaired_synthesized_strategies_execution():
     """Verify repaired strategies evaluate without NDFrame.fillna error on mock candles."""
-    from analysis.strategies.synthesized.alpha_xtiusd_f30ff5 import SynthesizedStrategy_alpha_xtiusd_f30ff5
-    from analysis.strategies.synthesized.alpha_xbrusd_e55dbf import SynthesizedStrategy_alpha_xbrusd_e55dbf
-    from analysis.strategies.synthesized.alpha_xauusd_94ad53 import SynthesizedStrategy_alpha_xauusd_94ad53
-    from analysis.strategies.synthesized.alpha_usdjpy_13a603 import SynthesizedStrategy_alpha_usdjpy_13a603
+    from monika.application.analysis.strategies.synthesized.alpha_xtiusd_f30ff5 import (
+        SynthesizedStrategy_alpha_xtiusd_f30ff5,
+    )
+    from monika.application.analysis.strategies.synthesized.alpha_xbrusd_e55dbf import (
+        SynthesizedStrategy_alpha_xbrusd_e55dbf,
+    )
+    from monika.application.analysis.strategies.synthesized.alpha_xauusd_94ad53 import (
+        SynthesizedStrategy_alpha_xauusd_94ad53,
+    )
+    from monika.application.analysis.strategies.synthesized.alpha_usdjpy_13a603 import (
+        SynthesizedStrategy_alpha_usdjpy_13a603,
+    )
 
     mock_candles = [
         CandleDict(
@@ -338,7 +348,7 @@ async def test_synthesize_code_falls_back_on_syntax_error():
     # Simulate LLM returning unfixable syntax error (e.g., broken brackets and unclosed tokens)
     mock_llm_client.generate = AsyncMock(return_value="```python\ndef broken(\n  (((bad\n```")
 
-    with patch("analysis.providers.llm_factory.get_client_for_task", return_value=mock_llm_client):
+    with patch("monika.infrastructure.providers.llm_factory.get_client_for_task", return_value=mock_llm_client):
         res = await scheduler.synthesize_code("EURUSD", "Test Concept")
         assert res is None
 
@@ -452,7 +462,7 @@ class SynthesizedStrategy_alpha_eurusd_testfail(EdgeStrategy):
     mock_llm_client = AsyncMock()
     mock_llm_client.generate = AsyncMock(return_value=code_no_evaluate)
 
-    with patch("analysis.providers.llm_factory.get_client_for_task", return_value=mock_llm_client):
+    with patch("monika.infrastructure.providers.llm_factory.get_client_for_task", return_value=mock_llm_client):
         res = await scheduler.synthesize_code("EURUSD", "Test Concept")
         assert res is None
 
@@ -580,7 +590,7 @@ async def test_strategy_registry_blacklists_and_purges_stub_synthesized_strategy
     """Verify StrategyRegistry detects stub, records in _blacklisted_ids, and purges from DB."""
     import json
     from unittest.mock import MagicMock
-    from database.models import SystemConfig
+    from monika.infrastructure.database.models import SystemConfig
 
     StrategyRegistry._blacklisted_ids.clear()
     s_id = "alpha_test_blacklisted_stub_999"
@@ -648,7 +658,7 @@ async def test_strategy_registry_quarantines_uncompilable_strategy():
     """Verify that a synthesized strategy failing compilation without disk file is quarantined into _blacklisted_ids."""
     import json
     from unittest.mock import MagicMock
-    from database.models import SystemConfig
+    from monika.infrastructure.database.models import SystemConfig
 
     StrategyRegistry._blacklisted_ids.clear()
     s_id = "alpha_uncompilable_broken_xyz"
@@ -682,7 +692,7 @@ async def test_strategy_registry_self_heals_from_disk(tmp_path):
     import json
     from pathlib import Path
     from unittest.mock import MagicMock
-    from database.models import SystemConfig
+    from monika.infrastructure.database.models import SystemConfig
     from sqlalchemy.sql.dml import Update
 
     StrategyRegistry._blacklisted_ids.clear()
@@ -832,8 +842,8 @@ class SynthesizedStrategy_alpha_test_replace(EdgeStrategy):
     assert "df.replace([np.inf, -np.inf], np.nan)" in sanitized
 
     # Now verify compilation and canary execution with 120 candles
-    from database.models import PriceOHLCV
-    from scheduler.strategy_synthesis_scheduler import HistoricalSliceSession
+    from monika.infrastructure.database.models import PriceOHLCV
+    from monika.application.scheduler.strategy_synthesis_scheduler import HistoricalSliceSession
     import datetime
 
     sched = StrategySynthesisScheduler(settings={})

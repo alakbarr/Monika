@@ -5,8 +5,8 @@
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from execution.order_emulator import ClientOrderEmulator, TrackedPosition
-from utils.protocol.event_bus import EventBus, TickPriceEvent
+from monika.domain.execution.order_emulator import ClientOrderEmulator, TrackedPosition
+from monika.application.protocol.event_bus import EventBus, TickPriceEvent
 
 
 @pytest.mark.asyncio
@@ -286,7 +286,7 @@ async def test_order_emulator_trailing_activates_breakeven():
 
 def test_evaluate_pending_order_gap_slippage():
     from types import SimpleNamespace
-    from execution.order_emulator import evaluate_pending_order, PendingOrder
+    from monika.domain.execution.order_emulator import evaluate_pending_order, PendingOrder
 
     # 1. Buy stop with gap up
     order_buy_stop = PendingOrder(ticket=1, symbol="EURUSD", type="buy_stop", price=1.0850)

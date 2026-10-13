@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from tests.conftest import create_mock_async_session
-from analysis.memory.skill_evolution import MicroPlaybookCompiler, PLAYBOOKS_DIR
+from monika.application.analysis.memory.skill_evolution import MicroPlaybookCompiler, PLAYBOOKS_DIR
 
 
 @pytest.mark.asyncio

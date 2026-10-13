@@ -15,19 +15,19 @@ import threading
 from pathlib import Path
 import pytest
 
-from database.session_db_wal import (
+from monika.infrastructure.database.session_db_wal import (
     SessionDbWal,
     SessionDbReadPool,
     FileLockGuard,
     check_fd_headroom,
 )
-from database.fts5_cjk import tokenize_cjk_bigram, sanitize_fts5_term, Fts5SessionSearch
-from database.session_lifecycle import (
+from monika.infrastructure.database.fts5_cjk import tokenize_cjk_bigram, sanitize_fts5_term, Fts5SessionSearch
+from monika.infrastructure.database.session_lifecycle import (
     SessionLifecycleManager,
     derive_session_title,
     EXPORT_SCHEMA_VERSION,
 )
-from agent.state_rewind import StateRewindManager, CARRIER_SIDE_EFFECT_PERSISTED
+from monika.application.agent.state_rewind import StateRewindManager, CARRIER_SIDE_EFFECT_PERSISTED
 
 
 # ==============================================================================

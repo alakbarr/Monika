@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone, timedelta
 
-from risk.risk_gate import RiskGate
+from monika.domain.risk.risk_gate import RiskGate
 
 
 @pytest.fixture

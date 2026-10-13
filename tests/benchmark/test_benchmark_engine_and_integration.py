@@ -10,9 +10,9 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
-from logging_observability.dashboard.rbac import Role
+from monika.interfaces.dashboard.rbac import Role
 
-from benchmark.fixture_loader import (
+from monika.application.benchmark.fixture_loader import (
     load_fixture_json,
     get_synthetic_market_snapshot,
     get_synthetic_stage1_bundle,
@@ -21,22 +21,22 @@ from benchmark.fixture_loader import (
     get_synthetic_news_items,
     get_synthetic_risk_context,
 )
-from benchmark.system_one_scorer import (
+from monika.application.benchmark.system_one_scorer import (
     score_system_one,
     _score_accuracy,
     _score_latency,
     _score_calibration,
     _score_schema,
 )
-from benchmark.model_registry import (
+from monika.application.benchmark.model_registry import (
     get_candidate_models,
     get_tier_models,
     get_router_matrix,
     make_role_config,
     CANDIDATE_MODELS,
 )
-from benchmark.task_specs import TASKS, TaskSpec, BenchmarkCase
-from logging_observability.dashboard.routes.benchmark import benchmark_router
+from monika.application.benchmark.task_specs import TASKS, TaskSpec, BenchmarkCase
+from monika.interfaces.dashboard.routes.benchmark import benchmark_router
 
 
 # ==========================================
@@ -407,7 +407,7 @@ def test_api_get_compare_task_benchmarks(test_client):
 
 
 def test_benchmark_result_columns():
-    from benchmark.db_models import BenchmarkResult
+    from monika.application.benchmark.db_models import BenchmarkResult
 
     cols = [c.name for c in BenchmarkResult.__table__.columns]
     assert "cached_tokens" in cols
@@ -421,7 +421,7 @@ def test_benchmark_result_columns():
 async def test_all_53_roles_case_builder_with_fixtures():
     """Verify that every task_role defined in settings.yaml builds an accurate realistic case."""
     import yaml
-    from benchmark.task_specs import TASKS
+    from monika.application.benchmark.task_specs import TASKS
 
     from pathlib import Path
 
@@ -451,7 +451,7 @@ async def test_all_53_roles_case_builder_with_fixtures():
 
 
 def test_rich_payload_generators():
-    from benchmark.fixture_loader import (
+    from monika.application.benchmark.fixture_loader import (
         get_synthetic_compaction_payload,
         get_synthetic_session_reports_payload,
         get_synthetic_fomc_transcript_payload,

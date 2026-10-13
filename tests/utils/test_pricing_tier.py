@@ -1,5 +1,5 @@
 import pytest
-from utils.analytics.pricing import (
+from monika.core.analytics.pricing import (
     Price,
     PricingTier,
     cost_usd,

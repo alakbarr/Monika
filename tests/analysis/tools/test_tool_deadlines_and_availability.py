@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from analysis.tools.registry import ToolDefinition
+from monika.application.analysis.tools.registry import ToolDefinition
 
 
 @pytest.mark.asyncio

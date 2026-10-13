@@ -13,12 +13,12 @@ Test Categories:
 import os
 import pytest
 from unittest.mock import AsyncMock, patch
-from telegram_bot.chat_agent import ChatAgent
+from monika.interfaces.telegram.chat_agent import ChatAgent
 
 
 @pytest.fixture
 def agent():
-    with patch("telegram_bot.chat_agent.get_client_for_task") as mock_get_client:
+    with patch("monika.interfaces.telegram.chat_agent.get_client_for_task") as mock_get_client:
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
         return ChatAgent({}, 12345)

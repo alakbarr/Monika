@@ -6,8 +6,8 @@ import asyncio
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 
-from main import TradingAgent
-from config.settings import load_settings
+from monika.application.main import TradingAgent
+from monika.core.config.settings import load_settings
 
 
 @pytest.mark.asyncio
@@ -15,9 +15,9 @@ async def test_trading_agent_plugin_engine_wiring():
     settings = load_settings()
     # Mock MT5Client, TelegramBot, DB to avoid connecting to live services during unit test
     with (
-        patch("execution.mt5_client.MT5Client") as mock_mt5,
-        patch("telegram_bot.bot.TelegramBot") as mock_tg,
-        patch("execution.execution_service.ExecutionService") as mock_exec,
+        patch("monika.infrastructure.brokers.mt5_client.MT5Client") as mock_mt5,
+        patch("monika.interfaces.telegram.bot.TelegramBot") as mock_tg,
+        patch("monika.application.execution.execution_service.ExecutionService") as mock_exec,
     ):
         mock_mt5.return_value = MagicMock()
         mock_tg.return_value = MagicMock()

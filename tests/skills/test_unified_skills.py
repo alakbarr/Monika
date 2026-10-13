@@ -10,7 +10,7 @@ and Financial/Research Skill Catalog.
 
 import pytest
 
-from skills.unified_runtime import UnifiedSkillsRuntime, get_skills_runtime
+from monika.application.skills.unified_runtime import UnifiedSkillsRuntime, get_skills_runtime
 
 
 def test_skills_runtime_discovery():

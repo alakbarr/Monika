@@ -1,5 +1,5 @@
 import pytest
-from utils.plugins.manager import PluginManager, PluginHook, get_plugin_manager
+from monika.application.plugins.manager.manager import PluginManager, PluginHook, get_plugin_manager
 
 
 @pytest.mark.asyncio

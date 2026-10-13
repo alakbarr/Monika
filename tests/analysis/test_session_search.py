@@ -1,8 +1,8 @@
 import pytest
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from database.models import Base, DecisionReflection
-from analysis.memory.session_search import SessionSearchEngine
+from monika.infrastructure.database.models import Base, DecisionReflection
+from monika.application.analysis.memory.session_search import SessionSearchEngine
 
 
 @pytest.mark.asyncio

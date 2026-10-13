@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from risk.execution_simulator import ExecutionSimulator, ExecutionSimulationResult, SlippageScenario
-from database.models import PriceOHLCV
+from monika.domain.risk.execution_simulator import ExecutionSimulator, ExecutionSimulationResult, SlippageScenario
+from monika.infrastructure.database.models import PriceOHLCV
 from datetime import datetime, timezone
 
 

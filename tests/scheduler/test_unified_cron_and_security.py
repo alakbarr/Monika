@@ -14,13 +14,13 @@ import tempfile
 import time
 import pytest
 
-from gateway.pairing import PairingManager, PairedUserRecord
-from scheduler.unified_cron_engine import (
+from monika.interfaces.gateway.pairing import PairingManager, PairedUserRecord
+from monika.application.scheduler.unified_cron_engine import (
     UnifiedCronEngine,
     UnifiedCronJob,
     compute_next_cron_timestamp,
 )
-from security.terminal_guard import (
+from monika.core.security.terminal_guard import (
     CommandSecurityViolationError,
     deobfuscate_command,
     is_hardline_blocked_command,

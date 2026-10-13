@@ -7,7 +7,7 @@ import json
 from unittest.mock import AsyncMock, patch
 import pytest
 
-from data_sources.prediction_market import PredictionMarketClient
+from monika.infrastructure.data_ingestion.sources.prediction_market import PredictionMarketClient
 
 
 @pytest.fixture
@@ -99,7 +99,7 @@ async def test_ingest_and_persist_classification(mock_gamma_events):
     client = PredictionMarketClient(session=session)
     with patch("data_sources.prediction_market.fetch_with_retry", new_callable=AsyncMock) as mock_fetch:
         mock_fetch.return_value = mock_gamma_events
-        with patch("database.safe_ops.safe_commit", new_callable=AsyncMock):
+        with patch("monika.infrastructure.database.safe_ops.safe_commit", new_callable=AsyncMock):
             result = await client.ingest_and_persist()
 
             assert result["source"] == "Polymarket"

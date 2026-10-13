@@ -2,8 +2,8 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timezone
-from data_sources.cftc_cot import CFTCCOTFetcher, DISAGGREGATED_URL, FINANCIAL_URL
-from database.models import COTReport
+from monika.infrastructure.data_ingestion.sources.cftc_cot import CFTCCOTFetcher, DISAGGREGATED_URL, FINANCIAL_URL
+from monika.infrastructure.database.models import COTReport
 
 
 class TestCFTCCOTFetcher:

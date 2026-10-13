@@ -5,22 +5,22 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from analysis.tools.handlers.category_loader import (
+from monika.application.analysis.tools.handlers.category_loader import (
     handle_load_tool_category,
     handle_get_market_context,
     handle_get_institutional_data,
 )
-from analysis.tools.handlers.market_data import (
+from monika.application.analysis.tools.handlers.market_data import (
     GetPriceDataHandler,
     GetTechnicalAnalysisHandler,
 )
-from analysis.tools.handlers.sentiment_data import (
+from monika.application.analysis.tools.handlers.sentiment_data import (
     WebSearchHandler,
     GetForexSentimentHandler,
     GetFxssiSentimentHandler,
 )
-from analysis.tools.handlers.timesfm import handle_get_timesfm_forecast
-from analysis.tools.handlers.ptc_handler import PTCHandler
+from monika.application.analysis.tools.handlers.timesfm import handle_get_timesfm_forecast
+from monika.application.analysis.tools.handlers.ptc_handler import PTCHandler
 
 
 @pytest.mark.asyncio

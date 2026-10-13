@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import os
-from telegram_bot.command_router import CommandRouter, CommandType, ParsedCommand
+from monika.interfaces.telegram.command_router import CommandRouter, CommandType, ParsedCommand
 
 
 class TestCommandRouter:

@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from utils.calibration.confidence_calibrator import compute_confidence_calibration
+from monika.core.calibration.confidence_calibrator import compute_confidence_calibration
 
 
 @pytest.mark.asyncio

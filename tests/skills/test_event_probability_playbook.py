@@ -4,7 +4,7 @@
 """Unit tests for the Event Probability Playbook skill."""
 
 import unittest
-from skills.loader import load_skill, list_skills, compose_system_prompt, invalidate_cache
+from monika.application.skills.loader import load_skill, list_skills, compose_system_prompt, invalidate_cache
 
 
 class TestEventProbabilityPlaybook(unittest.TestCase):

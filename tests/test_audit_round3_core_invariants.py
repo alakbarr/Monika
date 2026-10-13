@@ -44,7 +44,7 @@ def test_f0_1_unicode_nfkc_and_word_boundary_sanitization():
 
 def test_f0_2_rss_robust_date_parsing():
     """Verify universal ISO-8601 UTC date parsing in RssBaseScraper."""
-    from scrapers.news.rss_base import RssBaseScraper
+    from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
     scraper = RssBaseScraper("TestRSS", "http://example.com/rss")
 
@@ -82,7 +82,7 @@ def test_f0_2_rss_robust_date_parsing():
 async def test_f0_3_dashboard_api_ip_whitelisting():
     """Verify IP whitelisting in Dashboard API verify_api_key middleware."""
     from fastapi.testclient import TestClient
-    from logging_observability.dashboard.api import app
+    from monika.interfaces.dashboard.api import app
 
     client = TestClient(app)
 
@@ -98,7 +98,7 @@ async def test_f0_3_dashboard_api_ip_whitelisting():
         patch.dict(
             os.environ, {"DASHBOARD_API_KEY": "secret_key_123", "DASHBOARD_ALLOWED_IPS": "192.168.1.100,10.0.0.5"}
         ),
-        patch("database.db.engine", mock_eng),
+        patch("monika.infrastructure.database.db.engine", mock_eng),
     ):
         # Unauthorized remote IP
         resp_blocked = client.get(
@@ -120,8 +120,11 @@ async def test_f0_3_dashboard_api_ip_whitelisting():
 @pytest.mark.asyncio
 async def test_f1_1_signal_arbitrator_dynamic_brier_weighting():
     """Verify dynamic Brier score weighting calculation and integration."""
-    from analysis.arbitration.signal_arbitrator import compute_empirical_arbitrator_weights, SignalArbitrator
-    from analysis.strategies.base_strategy import EdgeSignal
+    from monika.application.analysis.arbitration.signal_arbitrator import (
+        compute_empirical_arbitrator_weights,
+        SignalArbitrator,
+    )
+    from monika.application.analysis.strategies.base_strategy import EdgeSignal
 
     mock_session = create_mock_async_session()
 
@@ -180,10 +183,12 @@ async def test_f1_1_signal_arbitrator_dynamic_brier_weighting():
     }
 
     with patch(
-        "analysis.arbitration.signal_arbitrator.compute_empirical_arbitrator_weights",
+        "monika.application.analysis.arbitration.signal_arbitrator.compute_empirical_arbitrator_weights",
         AsyncMock(return_value=(0.30, 0.70)),
     ):
-        with patch("utils.calibration.confidence_calibrator.get_calibrated_confidence", AsyncMock(return_value=0.75)):
+        with patch(
+            "monika.core.calibration.confidence_calibrator.get_calibrated_confidence", AsyncMock(return_value=0.75)
+        ):
             res = await arbitrator.arbitrate(
                 session=mock_session,
                 symbol="XAUUSD",
@@ -206,11 +211,11 @@ async def test_f1_1_signal_arbitrator_dynamic_brier_weighting():
 @pytest.mark.asyncio
 async def test_f1_2_notifier_persistent_disk_outbox(tmp_path):
     """Verify that failed Telegram alerts are safely saved to disk and reloaded on start."""
-    from utils.infra.notifier import AgentNotifier
+    from monika.infrastructure.infra.notifier import AgentNotifier
 
     test_outbox_file = tmp_path / "notifier_outbox.json"
 
-    with patch("utils.infra.notifier._OUTBOX_FILE", test_outbox_file):
+    with patch("monika.infrastructure.infra.notifier._OUTBOX_FILE", test_outbox_file):
         # Reset class state
         AgentNotifier._outbox.clear()
         AgentNotifier._loaded_from_disk = False
@@ -257,7 +262,7 @@ async def test_f1_2_notifier_persistent_disk_outbox(tmp_path):
 @pytest.mark.asyncio
 async def test_f1_3_multi_regime_partitioned_calibration():
     """Verify regime-partitioned Platt calibration fitting and retrieval."""
-    from utils.calibration.confidence_calibrator import compute_confidence_calibration, get_calibrated_confidence
+    from monika.core.calibration.confidence_calibrator import compute_confidence_calibration, get_calibrated_confidence
 
     mock_session = create_mock_async_session()
 
@@ -315,7 +320,7 @@ async def test_f1_3_multi_regime_partitioned_calibration():
 
 def test_f1_6_monte_carlo_drawdown_simulation():
     """Verify Monte Carlo 10,000 permutation drawdown analyzer in ReportGenerator."""
-    from backtest.report_generator import ReportGenerator
+    from monika.application.backtest.report_generator import ReportGenerator
 
     mock_run = MagicMock()
     mock_run.mode = "full"

@@ -9,8 +9,8 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from tests.conftest import create_mock_async_session
-from telegram_bot.chat_tool_router import ChatToolRouter
-from analysis.tools.tools_definitions import (
+from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
+from monika.application.analysis.tools.tools_definitions import (
     TELEGRAM_TOOLS,
     CALCULATE_POSITION_SIZE,
     GET_LIQUIDITY_SWEEP_CONTEXT,
@@ -85,8 +85,8 @@ def test_is_action_query_safety_regex():
 @pytest.mark.asyncio
 async def test_reflection_formatting_no_truncation():
     """Verify DecisionReflection formatter does not truncate lessons."""
-    from analysis.memory.session_search import SessionSearchEngine
-    from database.models import DecisionReflection
+    from monika.application.analysis.memory.session_search import SessionSearchEngine
+    from monika.infrastructure.database.models import DecisionReflection
     from datetime import datetime, timezone
 
     searcher = SessionSearchEngine()
@@ -115,14 +115,14 @@ async def test_reflection_formatting_no_truncation():
 @pytest.mark.asyncio
 async def test_tool_executor_dispatches_remediated_tools():
     """Verify ToolExecutor properly routes and executes newly registered and remediated tools."""
-    from analysis.tools.executor import ToolExecutor
+    from monika.application.analysis.tools.executor import ToolExecutor
     from unittest.mock import AsyncMock, MagicMock
 
     mock_session = create_mock_async_session()
     executor = ToolExecutor(session=mock_session, settings={"trading": {"symbols": ["EURUSD", "XAUUSD"]}})
 
     # 1. calculate_margin
-    with patch("execution.mt5_client.get_mt5_client") as mock_mt5_getter:
+    with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client") as mock_mt5_getter:
         mock_client = MagicMock()
         mock_client.calc_margin = MagicMock(return_value={"symbol": "XAUUSD", "lot": 0.5, "required_margin": 250.0})
         mock_client.get_symbol_info_tick = MagicMock(return_value=MagicMock(ask=2650.0, bid=2649.8))
@@ -140,7 +140,7 @@ async def test_tool_executor_dispatches_remediated_tools():
     assert "recommended_lots" in pos_res or "lot_size" in pos_res or "suggested_lot" in pos_res
 
     # 3. get_risk_state
-    with patch("execution.mt5_client.get_mt5_client") as mock_mt5_getter:
+    with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client") as mock_mt5_getter:
         mock_client = MagicMock()
         mock_client.get_account_info = AsyncMock(return_value={"equity": 10500.0, "balance": 10000.0})
         mock_mt5_getter.return_value = mock_client
@@ -152,7 +152,7 @@ async def test_tool_executor_dispatches_remediated_tools():
 @pytest.mark.asyncio
 async def test_chat_agent_pause_fast_path_interceptor():
     """Verify ChatAgent immediately returns confirmation card for conversational pause."""
-    from telegram_bot.chat_agent import ChatAgent
+    from monika.interfaces.telegram.chat_agent import ChatAgent
 
     agent = ChatAgent(settings={"trading": {"symbols": ["EURUSD"]}}, user_id="12345", is_admin=True)
 
@@ -166,7 +166,7 @@ async def test_chat_agent_pause_fast_path_interceptor():
 @pytest.mark.asyncio
 async def test_plugin_catalog_index_callback():
     """Verify plugin catalog index mapping callback data fits within Telegram 64-byte limit."""
-    from telegram_bot.bot import TelegramBot
+    from monika.interfaces.telegram.bot import TelegramBot
 
     bot = TelegramBot(settings={})
     mock_plugin_service = MagicMock()
@@ -194,8 +194,11 @@ async def test_plugin_catalog_index_callback():
 async def test_create_and_query_price_alerts_db():
     """Verify create_price_alert inserts and get_active_triggers retrieves standalone user price alerts."""
     from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-    from database.models import Base
-    from analysis.tools.handlers.trade_intel import handle_create_price_alert, handle_get_active_triggers
+    from monika.infrastructure.database.models import Base
+    from monika.application.analysis.tools.handlers.trade_intel import (
+        handle_create_price_alert,
+        handle_get_active_triggers,
+    )
 
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
     try:

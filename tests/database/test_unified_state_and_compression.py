@@ -7,15 +7,15 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from database.session_db_wal import SessionDbWal, FileLockGuard, check_fd_headroom
-from database.models import AgentSession, AgentSessionMessage, SystemPrompt
-from analysis.memory.prompt_cache_boundary import (
+from monika.infrastructure.database.session_db_wal import SessionDbWal, FileLockGuard, check_fd_headroom
+from monika.infrastructure.database.models import AgentSession, AgentSessionMessage, SystemPrompt
+from monika.application.analysis.memory.prompt_cache_boundary import (
     PromptCacheBoundaryPlanner,
     PromptCacheProfile,
     CacheBoundaryPlan,
 )
-from agent.three_part_context_compressor import ThreePartContextCompressor
-from agent.state_rewind import (
+from monika.application.agent.three_part_context_compressor import ThreePartContextCompressor
+from monika.application.agent.state_rewind import (
     StateRewindManager,
     RewindOutcome,
     ConcurrencyConflictError,

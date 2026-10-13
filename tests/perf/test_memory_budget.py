@@ -5,7 +5,7 @@ Verifies that agent turn loops and context maintenance operate strictly under 25
 
 import tracemalloc
 import pytest
-from utils.llm.context_compaction import ContextCompactionEngine
+from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
 
 
 def test_agent_context_memory_budget():

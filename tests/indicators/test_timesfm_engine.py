@@ -1,8 +1,8 @@
 import pytest
 from datetime import datetime, timezone, timedelta
-from database.models import PriceOHLCV, TechnicalIndicator, TimesFMForecast
-from indicators.timesfm_engine import TimesFMEngine
-import utils.clock as clock
+from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator, TimesFMForecast
+from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
+import monika.core.primitives.clock as clock
 
 
 @pytest.mark.asyncio

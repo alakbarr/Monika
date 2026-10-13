@@ -7,18 +7,18 @@ import sys
 import tempfile
 import pytest
 
-from analysis.tools.terminal_process_engine import (
+from monika.application.analysis.tools.terminal_process_engine import (
     TerminalProcessEngine,
     PtyQueryResponder,
     rewrite_sudo_command,
 )
-from analysis.tools.file_patch_engine import (
+from monika.application.analysis.tools.file_patch_engine import (
     FilePatchEngine,
     V4APatchParser,
     PatchOperation,
     SyntaxLinter,
 )
-from analysis.tools.tool_search_engine import ToolSearchEngine
+from monika.application.analysis.tools.tool_search_engine import ToolSearchEngine
 
 
 def test_pty_query_responder():

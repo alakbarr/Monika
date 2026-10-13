@@ -1,7 +1,7 @@
 import pytest
-from analysis.tools.handlers.skills_tools import handle_skills_list, handle_skill_view
-from analysis.tools.registry import default_tool_registry
-import analysis.tools.handlers  # Trigger auto-registration
+from monika.application.analysis.tools.handlers.skills_tools import handle_skills_list, handle_skill_view
+from monika.application.analysis.tools.registry import default_tool_registry
+import monika.application.analysis.tools.handlers  # Trigger auto-registration
 
 
 @pytest.mark.asyncio

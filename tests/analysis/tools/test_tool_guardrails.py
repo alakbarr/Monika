@@ -3,7 +3,7 @@
 # ==============================================================================
 
 import pytest
-from analysis.tools.tool_guardrails import (
+from monika.application.analysis.tools.tool_guardrails import (
     ToolCallSignature,
     AntiOscillationGuard,
     MonotonicRiskGuard,

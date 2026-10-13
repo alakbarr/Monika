@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from risk.position_sizing import PositionSizer, InstrumentSpec, DEFAULT_INSTRUMENTS
+from monika.domain.risk.position_sizing import PositionSizer, InstrumentSpec, DEFAULT_INSTRUMENTS
 
 
 class TestPositionSizing:
@@ -153,7 +153,7 @@ class TestPositionSizing:
     @pytest.mark.asyncio
     async def test_calculate_lot_size_resolves_live_mt5_equity(self, settings):
         from unittest.mock import AsyncMock, MagicMock
-        from risk.position_sizing import calculate_lot_size
+        from monika.domain.risk.position_sizing import calculate_lot_size
 
         mock_mt5 = MagicMock()
         mock_mt5.get_account_info = AsyncMock(return_value={"equity": 76849.91, "balance": 76849.91})

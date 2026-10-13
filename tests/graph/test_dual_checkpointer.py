@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from graph.checkpointers.dual_checkpointer import DualCheckpointSaver
+from monika.infrastructure.graph.checkpointers.dual_checkpointer import DualCheckpointSaver
 
 
 def test_dual_checkpointer_dual_write():

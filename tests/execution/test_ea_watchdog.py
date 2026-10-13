@@ -10,8 +10,8 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from execution.ea_bridge.heartbeat_writer import HeartbeatManager
-from execution.ea_bridge.watchdog import EAWatchdog
+from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager
+from monika.infrastructure.brokers.ea_bridge.watchdog import EAWatchdog
 
 
 def test_watchdog_fresh_heartbeat(tmp_path: Path):

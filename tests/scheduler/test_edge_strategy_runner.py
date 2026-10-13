@@ -2,8 +2,8 @@ import pytest
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from scheduler.edge_strategy_runner import EdgeStrategyRunner
-from analysis.strategies.base_strategy import EdgeSignal
+from monika.application.scheduler.edge_strategy_runner import EdgeStrategyRunner
+from monika.application.analysis.strategies.base_strategy import EdgeSignal
 
 
 class TestEdgeStrategyRunner:
@@ -179,7 +179,7 @@ class TestEdgeStrategyRunner:
         assert len(runner._signal_cooldowns) == 0
 
         from datetime import datetime, timezone, timedelta
-        from utils import clock
+        from monika.core.primitives import clock
 
         recent_dt = clock.now() - timedelta(minutes=10)
 

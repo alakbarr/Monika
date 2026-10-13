@@ -6,7 +6,7 @@ from tests.conftest import create_mock_async_session
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from agent.agent_loop import SystemAgentLoop
+from monika.application.agent.agent_loop import SystemAgentLoop
 
 
 def test_system_agent_loop_normalize_symbol():
@@ -59,7 +59,7 @@ async def test_system_agent_loop_execute_ad_hoc_mock_graph():
     async def track_progress(msg: str):
         progress_log.append(msg)
 
-    with patch("agent.agent_loop.build_trading_graph", return_value=mock_graph) as mock_builder:
+    with patch("monika.application.agent.agent_loop.build_trading_graph", return_value=mock_graph) as mock_builder:
         res = await loop.execute_ad_hoc_analysis("XAUUSD", progress_callback=track_progress)
 
         assert res["success"] is True
@@ -85,7 +85,7 @@ async def test_system_agent_loop_error_handling():
     mock_graph = MagicMock()
     mock_graph.ainvoke = AsyncMock(side_effect=RuntimeError("Data pipeline offline"))
 
-    with patch("agent.agent_loop.build_trading_graph", return_value=mock_graph):
+    with patch("monika.application.agent.agent_loop.build_trading_graph", return_value=mock_graph):
         res = await loop.execute_ad_hoc_analysis("EURUSD")
         assert res["success"] is False
         assert res["symbol"] == "EURUSD"
@@ -95,8 +95,8 @@ async def test_system_agent_loop_error_handling():
 
 @pytest.mark.asyncio
 async def test_adhoc_scheduler_proxy_get_symbol_paper_stats():
-    from agent.agent_loop import AdHocSchedulerProxy
-    from database.models import PaperTradeRecord
+    from monika.application.agent.agent_loop import AdHocSchedulerProxy
+    from monika.infrastructure.database.models import PaperTradeRecord
 
     proxy = AdHocSchedulerProxy(settings={}, symbols=["XAUUSD"])
 
@@ -143,7 +143,7 @@ async def test_adhoc_scheduler_proxy_get_symbol_paper_stats():
 
 @pytest.mark.asyncio
 async def test_paper_tracker_get_statistics_accepts_symbol():
-    from utils.analytics.paper_tracker import PaperTracker
+    from monika.core.analytics.paper_tracker import PaperTracker
 
     tracker = PaperTracker()
     mock_session = create_mock_async_session()

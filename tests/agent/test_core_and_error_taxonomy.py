@@ -4,17 +4,17 @@
 
 import asyncio
 import pytest
-from agent.error_classifier import FailoverReason, classify_api_error
-from agent.deadline import SuspectableBackend, run_bounded_async, run_bounded_sync
-from agent.bounded_response import truncate_text_middle
-from agent.thinking_timeout_guidance import detect_thinking_timeout
-from agent.turn_stop_gates import (
+from monika.application.agent.error_classifier import FailoverReason, classify_api_error
+from monika.application.agent.deadline import SuspectableBackend, run_bounded_async, run_bounded_sync
+from monika.application.agent.bounded_response import truncate_text_middle
+from monika.application.agent.thinking_timeout_guidance import detect_thinking_timeout
+from monika.application.agent.turn_stop_gates import (
     StopGateContext,
     TradingRiskStopGate,
     CodeVerifyStopGate,
     apply_stop_gates,
 )
-from agent.turn_phase_machine import (
+from monika.application.agent.turn_phase_machine import (
     IterationBudget,
     TurnPhaseMachine,
     TurnState,

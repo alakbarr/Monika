@@ -9,8 +9,8 @@ import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 
-from logging_observability.dashboard.api import app
-from utils.analytics.token_auditor import TokenAuditor
+from monika.interfaces.dashboard.api import app
+from monika.core.analytics.token_auditor import TokenAuditor
 
 
 @pytest.mark.asyncio
@@ -61,7 +61,7 @@ async def test_token_auditor_get_cycle_cost_breakdown():
     mock_result.all.return_value = sample_rows
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("utils.analytics.token_auditor.get_session") as mock_get_session:
+    with patch("monika.core.analytics.token_auditor.get_session") as mock_get_session:
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx

@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
-from analysis.validators.output_verifier import OutputVerifier
+from monika.application.analysis.validators.output_verifier import OutputVerifier
 
 
 @pytest.mark.asyncio

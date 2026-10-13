@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from analysis.validators.adjudication_verifier import verify_adjudication
+from monika.application.analysis.validators.adjudication_verifier import verify_adjudication
 
 
 @pytest.mark.asyncio
@@ -23,7 +23,9 @@ async def test_adjudication_trust_weights():
         "mismatch_explanation": "Technical trust weight is low (0.3).",
     }
 
-    with patch("analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client):
+    with patch(
+        "monika.application.analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client
+    ):
         result = await verify_adjudication(
             settings,
             symbol,
@@ -60,7 +62,9 @@ async def test_adjudication_full_bullish_alignment_buy():
         "mismatch_explanation": "",
     }
 
-    with patch("analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client):
+    with patch(
+        "monika.application.analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client
+    ):
         result = await verify_adjudication(
             settings,
             symbol,
@@ -101,7 +105,9 @@ async def test_adjudication_full_bullish_alignment_conditional_wait():
         "mismatch_explanation": "Valid conditional wait for pullback to key support.",
     }
 
-    with patch("analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client):
+    with patch(
+        "monika.application.analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client
+    ):
         result = await verify_adjudication(
             settings,
             symbol,
@@ -142,7 +148,9 @@ async def test_adjudication_full_bullish_alignment_contradiction_sell():
         "mismatch_explanation": "Direct contradiction: All specialists are bullish, but decision is SELL.",
     }
 
-    with patch("analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client):
+    with patch(
+        "monika.application.analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client
+    ):
         result = await verify_adjudication(
             settings,
             symbol,
@@ -176,7 +184,9 @@ async def test_adjudication_prompt_extras_passed():
         "mismatch_explanation": "",
     }
 
-    with patch("analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client):
+    with patch(
+        "monika.application.analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client
+    ):
         await verify_adjudication(
             settings,
             symbol,
@@ -205,7 +215,9 @@ async def test_adjudication_unverified_on_exception():
     mock_client = AsyncMock()
     mock_client.classify_json.side_effect = RuntimeError("API connection timeout")
 
-    with patch("analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client):
+    with patch(
+        "monika.application.analysis.validators.adjudication_verifier.get_client_for_task", return_value=mock_client
+    ):
         result = await verify_adjudication(
             settings, "XAUUSD", {"technical": "bullish"}, {"technical": "high"}, "buy", "Rationale"
         )

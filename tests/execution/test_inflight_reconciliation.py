@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from tests.conftest import create_mock_async_session
 
-from database.models import Order, OrderStatus
-from execution.execution_service import ExecutionService
+from monika.infrastructure.database.models import Order, OrderStatus
+from monika.application.execution.execution_service import ExecutionService
 
 
 @pytest.mark.asyncio
@@ -20,7 +20,7 @@ async def test_reconcile_inflight_orders_none_found():
     mock_result.scalars.return_value.all.return_value = []
     session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("execution.service.position_synchronizer.get_session") as mock_get_session:
+    with patch("monika.application.execution.service.position_synchronizer.get_session") as mock_get_session:
         mock_get_session.return_value.__aenter__.return_value = session
         res = await svc.reconcile_inflight_orders()
 
@@ -61,8 +61,8 @@ async def test_reconcile_inflight_orders_matched_at_broker():
     )
 
     with (
-        patch("execution.service.position_synchronizer.get_session") as mock_get_session,
-        patch("execution.service.position_synchronizer.AgentNotifier") as mock_notif_cls,
+        patch("monika.application.execution.service.position_synchronizer.get_session") as mock_get_session,
+        patch("monika.application.execution.service.position_synchronizer.AgentNotifier") as mock_notif_cls,
     ):
         mock_get_session.return_value.__aenter__.return_value = session
         mock_notifier = MagicMock()
@@ -102,8 +102,8 @@ async def test_reconcile_inflight_orders_not_at_broker_marked_interrupted():
     svc.broker_adapter.get_positions = AsyncMock(return_value=[])
 
     with (
-        patch("execution.service.position_synchronizer.get_session") as mock_get_session,
-        patch("execution.service.position_synchronizer.AgentNotifier") as mock_notif_cls,
+        patch("monika.application.execution.service.position_synchronizer.get_session") as mock_get_session,
+        patch("monika.application.execution.service.position_synchronizer.AgentNotifier") as mock_notif_cls,
     ):
         mock_get_session.return_value.__aenter__.return_value = session
         mock_notifier = MagicMock()
@@ -121,7 +121,7 @@ async def test_reconcile_inflight_orders_not_at_broker_marked_interrupted():
 
 @pytest.mark.asyncio
 async def test_reconcile_inflight_orders_creates_position_record():
-    from database.models import Position
+    from monika.infrastructure.database.models import Position
 
     svc = ExecutionService(settings={}, dry_run=True)
 
@@ -153,8 +153,8 @@ async def test_reconcile_inflight_orders_creates_position_record():
     )
 
     with (
-        patch("execution.service.position_synchronizer.get_session") as mock_get_session,
-        patch("execution.service.position_synchronizer.AgentNotifier"),
+        patch("monika.application.execution.service.position_synchronizer.get_session") as mock_get_session,
+        patch("monika.application.execution.service.position_synchronizer.AgentNotifier"),
     ):
         mock_get_session.return_value.__aenter__.return_value = session
         res = await svc.reconcile_inflight_orders()
@@ -201,8 +201,8 @@ async def test_reconcile_inflight_orders_pending_order_retains_submitted():
     )
 
     with (
-        patch("execution.service.position_synchronizer.get_session") as mock_get_session,
-        patch("execution.service.position_synchronizer.AgentNotifier"),
+        patch("monika.application.execution.service.position_synchronizer.get_session") as mock_get_session,
+        patch("monika.application.execution.service.position_synchronizer.AgentNotifier"),
     ):
         mock_get_session.return_value.__aenter__.return_value = session
         res = await svc.reconcile_inflight_orders()

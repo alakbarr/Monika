@@ -2,7 +2,7 @@
 Unit tests for generation-tracked data fetch deduplication.
 """
 
-from utils.llm.data_dedup import DataFetchDeduplicator
+from monika.infrastructure.llm.data_dedup import DataFetchDeduplicator
 
 
 def test_data_fetch_deduplication():

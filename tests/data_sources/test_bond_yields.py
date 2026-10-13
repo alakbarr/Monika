@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
 from sqlalchemy import select
 
-from database.models import BondYieldData
-from data_sources.bond_yields_fetcher import BondYieldFetcher
+from monika.infrastructure.database.models import BondYieldData
+from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import BondYieldFetcher
 
 
 @pytest.mark.asyncio

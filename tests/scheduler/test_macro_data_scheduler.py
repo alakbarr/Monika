@@ -2,7 +2,7 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from scheduler.macro_data_scheduler import MacroDataScheduler
+from monika.application.scheduler.macro_data_scheduler import MacroDataScheduler
 
 
 class TestMacroDataScheduler:

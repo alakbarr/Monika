@@ -2,12 +2,12 @@ from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.schemas.pydantic_schemas import ReevaluationTrigger, SubmitAssetAnalysisSchema
-from utils.protocol.enhanced_cds import get_cds_thresholds, compute_temporal_cds
-from analysis.tools.tool_executor import ToolExecutor
-from scheduler.trigger_checker import TriggerChecker
-from database.models import TradeTrigger, PaperTradeRecord, AssetAnalysis, PriceOHLCV
-from utils.analytics.paper_tracker import PaperTracker
+from monika.application.analysis.schemas.pydantic_schemas import ReevaluationTrigger, SubmitAssetAnalysisSchema
+from monika.application.protocol.enhanced_cds import get_cds_thresholds, compute_temporal_cds
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.application.scheduler.trigger_checker import TriggerChecker
+from monika.infrastructure.database.models import TradeTrigger, PaperTradeRecord, AssetAnalysis, PriceOHLCV
+from monika.core.analytics.paper_tracker import PaperTracker
 
 
 def test_enhanced_cds_new_thresholds():
@@ -155,9 +155,9 @@ async def test_paper_trade_open_and_close_simulation():
 @pytest.mark.asyncio
 async def test_edge_strategy_runner_trend_trailing_rr_ratio():
     """Verify trend_trailing generates realistic SL (1.5x ATR) and TP (2.5x SL) resulting in ~1:2.5 R:R through EdgeStrategyRunner."""
-    from scheduler.edge_strategy_runner import EdgeStrategyRunner
-    from analysis.strategies.base_strategy import EdgeSignal
-    from analysis.arbitration.signal_arbitrator import ArbitrationResult
+    from monika.application.scheduler.edge_strategy_runner import EdgeStrategyRunner
+    from monika.application.analysis.strategies.base_strategy import EdgeSignal
+    from monika.application.analysis.arbitration.signal_arbitrator import ArbitrationResult
 
     settings = {
         "trading": {
@@ -204,16 +204,21 @@ async def test_edge_strategy_runner_trend_trailing_rr_ratio():
     mock_graph.ainvoke = AsyncMock(return_value={})
 
     with (
-        patch("analysis.calculators.intraday_level_optimizer._get_atr", AsyncMock(return_value=0.0020)),
         patch(
-            "analysis.calculators.daily_range_calculator.compute_daily_range_context",
+            "monika.application.analysis.calculators.intraday_level_optimizer._get_atr", AsyncMock(return_value=0.0020)
+        ),
+        patch(
+            "monika.application.analysis.calculators.daily_range_calculator.compute_daily_range_context",
             AsyncMock(return_value={"adr": 0.0080}),
         ),
         patch(
-            "analysis.calculators.macro_bias_filter.evaluate_macro_alignment",
+            "monika.application.analysis.calculators.macro_bias_filter.evaluate_macro_alignment",
             AsyncMock(return_value={"aligned": True, "score": 1.0, "reason": "ok"}),
         ),
-        patch("analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate", AsyncMock(return_value=mock_arb)),
+        patch(
+            "monika.application.analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate",
+            AsyncMock(return_value=mock_arb),
+        ),
         patch("graph.reactive_graph.get_reactive_graph", return_value=mock_graph),
     ):
         await runner._materialize_and_route(mock_session, sig)
@@ -228,8 +233,8 @@ async def test_edge_strategy_runner_trend_trailing_rr_ratio():
 
 def test_invalidation_direction_schema_no_ambiguity():
     """Verify invalidation_direction schema does not contain type: [string, null] alongside enum."""
-    from analysis.schemas.schemas import get_tool_schema
-    from analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema
+    from monika.application.analysis.schemas.schemas import get_tool_schema
+    from monika.application.analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema
 
     schema = get_tool_schema(SubmitAssetAnalysisSchema)
     inv = schema["properties"]["invalidation_direction"]
@@ -271,8 +276,8 @@ def test_reevaluation_trigger_auto_fallback_buy_and_wait():
 
 def test_confluence_factors_microstructure_and_pattern_recognized():
     """Verify microstructure and pattern confluence factors are accepted."""
-    from analysis.tools.executor import FACTOR_POINT_MAP
-    from analysis.harness.tool_repair import coerce_tool_arguments
+    from monika.application.analysis.tools.executor import FACTOR_POINT_MAP
+    from monika.application.analysis.harness.tool_repair import coerce_tool_arguments
 
     assert "microstructure_ok" in FACTOR_POINT_MAP
     assert "historical_pattern_consensus" in FACTOR_POINT_MAP

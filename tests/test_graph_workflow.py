@@ -4,8 +4,8 @@ import pytest
 pytest.importorskip("langgraph")
 
 from unittest.mock import AsyncMock, MagicMock, patch
-from graph.workflow import build_trading_graph
-from graph.state import TradingState
+from monika.application.graph.workflow import build_trading_graph
+from monika.application.graph.state import TradingState
 
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_graph_compilation_and_execution():
 @pytest.mark.asyncio
 async def test_graph_state_dict():
     """Memastikan bahwa state reducer dan struktur bisa memuat data"""
-    from graph.state import merge_dicts
+    from monika.application.graph.state import merge_dicts
 
     # Test reducer
     a = {"EURUSD": {"decision": "buy"}}
@@ -60,7 +60,7 @@ async def test_graph_state_dict():
 @pytest.mark.asyncio
 async def test_data_node_calendar_freshness_timedelta_safety():
     """Memastikan bahwa modul data_node mengimpor timedelta dan mengeksekusi logika kalender tanpa NameError."""
-    import graph.nodes.data_node as dn
+    import monika.application.graph.nodes.data_node as dn
     from datetime import datetime, timezone, timedelta
     from unittest.mock import patch
 
@@ -89,7 +89,7 @@ async def test_data_node_calendar_freshness_timedelta_safety():
 @pytest.mark.asyncio
 async def test_per_asset_node_preserves_skipped_metadata():
     """Verify that per_asset_analysis_node preserves skipped_by_cooldown and error in summary."""
-    from graph.nodes.per_asset_node import per_asset_analysis_node
+    from monika.application.graph.nodes.per_asset_node import per_asset_analysis_node
 
     mock_scheduler = MagicMock()
     mock_scheduler.settings = {"trading": {"auto_execute": False}}
@@ -179,7 +179,7 @@ async def test_cycle_performance_calculation_with_skipped_asset():
 @pytest.mark.asyncio
 async def test_trading_summary_typed_dict_keys():
     """Verify that TradingSummary can hold all required metrics without typing errors."""
-    from graph.state import TradingSummary
+    from monika.application.graph.state import TradingSummary
 
     summary: TradingSummary = {
         "scraping": {"status": "ok"},
@@ -226,7 +226,7 @@ async def test_trading_summary_typed_dict_keys():
 @pytest.mark.asyncio
 async def test_workflow_build_options():
     """Verify build_trading_graph with None db_url and postgres db_url."""
-    from graph.workflow import build_trading_graph
+    from monika.application.graph.workflow import build_trading_graph
 
     graph_memory = build_trading_graph(None)
     assert graph_memory is not None
@@ -238,7 +238,7 @@ async def test_workflow_build_options():
 @pytest.mark.asyncio
 async def test_data_node_scheduler_none_guard():
     """Verify fetch_data_node returns paused when scheduler is missing."""
-    from graph.nodes.data_node import fetch_data_node
+    from monika.application.graph.nodes.data_node import fetch_data_node
 
     state: TradingState = {
         "symbols": ["EURUSD"],
@@ -280,7 +280,7 @@ async def test_data_node_scheduler_none_guard():
 @pytest.mark.asyncio
 async def test_fundamental_node_scheduler_none_guard():
     """Verify fundamental_analysis_node returns paused when scheduler is missing."""
-    from graph.nodes.fundamental_node import fundamental_analysis_node
+    from monika.application.graph.nodes.fundamental_node import fundamental_analysis_node
 
     state: TradingState = {
         "symbols": ["EURUSD"],
@@ -322,7 +322,7 @@ async def test_fundamental_node_scheduler_none_guard():
 @pytest.mark.asyncio
 async def test_per_asset_node_scheduler_none_guard():
     """Verify per_asset_analysis_node returns safely when scheduler is missing."""
-    from graph.nodes.per_asset_node import per_asset_analysis_node
+    from monika.application.graph.nodes.per_asset_node import per_asset_analysis_node
 
     state: TradingState = {
         "symbols": ["EURUSD"],
@@ -364,7 +364,7 @@ async def test_per_asset_node_scheduler_none_guard():
 @pytest.mark.asyncio
 async def test_plan_refinement_node_execution():
     """Verify that plan_refinement_node successfully adjusts SL, TP, and risk_multiplier."""
-    from graph.nodes.plan_refinement_node import plan_refinement_node
+    from monika.application.graph.nodes.plan_refinement_node import plan_refinement_node
 
     state = {
         "refinement_count": 0,
@@ -411,11 +411,11 @@ async def test_plan_refinement_node_execution():
 @pytest.mark.asyncio
 async def test_execution_node_slippage_sandbox_rejection(db_session):
     """Verify execution_node rejects trade when ExecutionSimulator deems edge-to-drag unfavorable."""
-    from graph.nodes.execution_node import execution_node
-    from database.models import AssetAnalysis
-    from risk.execution_simulator import ExecutionSimulationResult
+    from monika.application.graph.nodes.execution_node import execution_node
+    from monika.infrastructure.database.models import AssetAnalysis
+    from monika.domain.risk.execution_simulator import ExecutionSimulationResult
     from contextlib import asynccontextmanager
-    import utils.clock as clock
+    import monika.core.primitives.clock as clock
 
     # Create dummy AssetAnalysis
     analysis = AssetAnalysis(
@@ -493,7 +493,8 @@ async def test_execution_node_slippage_sandbox_rejection(db_session):
     with (
         patch("graph.nodes.execution_node.get_session", mock_session),
         patch(
-            "risk.execution_simulator.ExecutionSimulator.simulate_execution", AsyncMock(return_value=unresilient_res)
+            "monika.domain.risk.execution_simulator.ExecutionSimulator.simulate_execution",
+            AsyncMock(return_value=unresilient_res),
         ),
     ):
         res = await execution_node(state, config)

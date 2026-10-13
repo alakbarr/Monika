@@ -5,7 +5,7 @@ Unit tests for indicators/microstructure.py (VPIN, Kyle's Lambda, Amihud, asset 
 import numpy as np
 import pandas as pd
 import pytest
-from indicators.microstructure import (
+from monika.domain.indicators.microstructure import (
     compute_vpin,
     compute_amihud_illiquidity,
     compute_kyle_lambda,

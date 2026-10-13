@@ -8,8 +8,8 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 
-from logging_observability.dashboard.api import app
-from logging_observability.dashboard.routes.intelligence import intelligence_router
+from monika.interfaces.dashboard.api import app
+from monika.interfaces.dashboard.routes.intelligence import intelligence_router
 
 
 @pytest.fixture
@@ -260,7 +260,7 @@ def test_curate_skills_endpoint(client):
     with patch("logging_observability.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         with patch(
-            "analysis.memory.skill_crystallizer.SkillCrystallizer.curate_and_prune_skills",
+            "monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer.curate_and_prune_skills",
             new_callable=AsyncMock,
             return_value=[],
         ):
@@ -280,7 +280,9 @@ def test_deprecate_skill_endpoint(client):
 
     with patch("logging_observability.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        with patch("analysis.memory.skill_crystallizer.SkillCrystallizer.deprecate_skill", return_value=True):
+        with patch(
+            "monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer.deprecate_skill", return_value=True
+        ):
             response = client.post("/api/skills/test_skill/deprecate", json={"reason": "Test deprecation"})
             assert response.status_code == 200
             data = response.json()
@@ -294,7 +296,7 @@ def test_crystallize_skills_now_endpoint(client):
     with patch("logging_observability.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         with patch(
-            "analysis.memory.skill_crystallizer.SkillCrystallizer.evaluate_and_crystallize",
+            "monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer.evaluate_and_crystallize",
             new_callable=AsyncMock,
             return_value=[{"name": "test_cryst"}],
         ):

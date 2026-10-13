@@ -13,15 +13,15 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analysis.debate.portfolio_manager import evaluate_portfolio_impact, make_portfolio_decision
-from execution.service.risk_evaluator import RiskEvaluatorMixin
-from graph.nodes.debate.debate_judge_node import debate_judge_node
-from agent.turn_tool_round import TurnToolRoundCoordinator, ToolCallSpec
-from skills.skills_guard import SkillsGuard
-from skills.skills_hub import SkillsHub
-from risk.risk_gate import RiskGate
-from risk.trade_proposal import TradeProposal
-from database.models import Position
+from monika.application.analysis.debate.portfolio_manager import evaluate_portfolio_impact, make_portfolio_decision
+from monika.application.execution.service.risk_evaluator import RiskEvaluatorMixin
+from monika.application.graph.nodes.debate.debate_judge_node import debate_judge_node
+from monika.application.agent.turn_tool_round import TurnToolRoundCoordinator, ToolCallSpec
+from monika.application.skills.skills_guard import SkillsGuard
+from monika.application.skills.skills_hub import SkillsHub
+from monika.domain.risk.risk_gate import RiskGate
+from monika.domain.risk.trade_proposal import TradeProposal
+from monika.infrastructure.database.models import Position
 
 
 @pytest.mark.asyncio
@@ -83,7 +83,7 @@ async def test_kelly_criterion_zero_allocation_on_negative_expectancy():
 
     mock_session = AsyncMock()
     # Mock PaperTracker stats with win_rate = 20% (Kelly = 0.2 - (0.8/1.3) = -0.415 <= 0)
-    with patch("utils.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock) as mock_stats:
+    with patch("monika.core.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock) as mock_stats:
         mock_stats.return_value = {
             "by_symbol": {
                 "EURUSD": {

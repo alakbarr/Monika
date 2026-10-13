@@ -11,8 +11,8 @@ import math
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from risk.trade_proposal import TradeProposal, FortressAdmissionValidator
-from risk.risk_gate import RiskGate, RiskVerdict
+from monika.domain.risk.trade_proposal import TradeProposal, FortressAdmissionValidator
+from monika.domain.risk.risk_gate import RiskGate, RiskVerdict
 
 
 def test_valid_buy_proposal():

@@ -7,8 +7,8 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
 
-from data_sources.coinglass_funding import CoinglasFundingFetcher
-from analysis.tools.tool_executor import ToolExecutor
+from monika.infrastructure.data_ingestion.sources.coinglass_funding import CoinglasFundingFetcher
+from monika.application.analysis.tools.tool_executor import ToolExecutor
 
 
 # ==============================================================================

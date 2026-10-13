@@ -1,15 +1,15 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
-from scheduler.cycle_scheduler import CycleScheduler
-from analysis.tools.tool_executor import ToolExecutor
+from monika.application.scheduler.cycle_scheduler import CycleScheduler
+from monika.application.analysis.tools.tool_executor import ToolExecutor
 
 
 class TestReportAndSafeHaven:
     @pytest.mark.asyncio
-    @patch("analysis.providers.llm_factory.get_client_for_task")
-    @patch("utils.infra.notifier.AgentNotifier.send_markdown")
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.providers.llm_factory.get_client_for_task")
+    @patch("monika.infrastructure.infra.notifier.AgentNotifier.send_markdown")
+    @patch("monika.infrastructure.database.db.get_session")
     async def test_weekly_edge_assessment_synthesizer(self, mock_get_session, mock_send_markdown, mock_get_client):
         """Test that _send_weekly_edge_assessment invokes report_synthesizer LLM role."""
         mock_client = MagicMock()
@@ -34,15 +34,15 @@ class TestReportAndSafeHaven:
 
         with (
             patch(
-                "utils.analytics.analysis_tracker.get_direction_accuracy_report",
+                "monika.core.analytics.analysis_tracker.get_direction_accuracy_report",
                 AsyncMock(return_value={"direction_accuracy_4h": 65.0}),
             ),
             patch(
-                "utils.analytics.analysis_tracker.compute_factor_effectiveness",
+                "monika.core.analytics.analysis_tracker.compute_factor_effectiveness",
                 AsyncMock(return_value={"yields": {"win_rate": 70}}),
             ),
             patch(
-                "utils.analytics.edge_tracker.compute_edge_status",
+                "monika.core.analytics.edge_tracker.compute_edge_status",
                 AsyncMock(
                     return_value={
                         "status": "positive_edge",
@@ -54,16 +54,16 @@ class TestReportAndSafeHaven:
                 ),
             ),
             patch(
-                "utils.analytics.analysis_tracker.analyze_debate_impact",
+                "monika.core.analytics.analysis_tracker.analyze_debate_impact",
                 AsyncMock(return_value={"judge_alignment_pct": 75}),
             ),
             patch(
-                "utils.protocol.coherence_flag_tracker.compute_coherence_override_impact",
+                "monika.application.protocol.coherence_flag_tracker.compute_coherence_override_impact",
                 AsyncMock(return_value={"insufficient_data": True}),
             ),
-            patch("utils.llm.memory_compressor.compress_agent_memory", AsyncMock()),
+            patch("monika.infrastructure.llm.memory_compressor.compress_agent_memory", AsyncMock()),
             patch(
-                "utils.analytics.specialist_tracker.check_specialist_model_quality",
+                "monika.core.analytics.specialist_tracker.check_specialist_model_quality",
                 AsyncMock(return_value={"alerts": []}),
             ),
         ):
@@ -76,9 +76,9 @@ class TestReportAndSafeHaven:
         assert "Executive Synthesis:" in sent_text
 
     @pytest.mark.asyncio
-    @patch("analysis.providers.llm_factory.get_client_for_task")
-    @patch("utils.infra.notifier.AgentNotifier.send_info")
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.providers.llm_factory.get_client_for_task")
+    @patch("monika.infrastructure.infra.notifier.AgentNotifier.send_info")
+    @patch("monika.infrastructure.database.db.get_session")
     async def test_daily_report_synthesizer(self, mock_get_session, mock_send_info, mock_get_client):
         """Test that _send_daily_report invokes report_synthesizer LLM role."""
         mock_client = MagicMock()
@@ -116,7 +116,7 @@ class TestReportAndSafeHaven:
     @pytest.mark.asyncio
     async def test_vix_safe_haven_exemption(self):
         """Test that VIX >= 35 skips normal symbols but exempts safe-haven symbols (XAUUSD, USDJPY) with normalization."""
-        from analysis.stages.per_asset_stage import PerAssetStage
+        from monika.application.analysis.stages.per_asset_stage import PerAssetStage
 
         stage = PerAssetStage(settings={"trading": {"asset_universe": ["EURUSD", "XAUUSD", "USDJPY"]}})
         mock_session = create_mock_async_session()
@@ -137,7 +137,7 @@ class TestReportAndSafeHaven:
         mock_session.execute.side_effect = mock_execute_fn
 
         with patch(
-            "utils.calibration.prescreen_calibrator.compute_prescreen_skip_quality",
+            "monika.core.calibration.prescreen_calibrator.compute_prescreen_skip_quality",
             AsyncMock(return_value={"local_heuristic": {"false_skip_rate_pct": 10.0}}),
         ):
             # EURUSD and EUR/USD should be skipped due to non-safe-haven pause

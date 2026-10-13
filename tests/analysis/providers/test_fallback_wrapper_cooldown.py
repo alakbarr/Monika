@@ -6,7 +6,7 @@ import time
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.providers.llm_factory import FallbackClientWrapper
+from monika.infrastructure.providers.llm_factory import FallbackClientWrapper
 
 
 @pytest.mark.asyncio

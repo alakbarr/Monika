@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from analysis.calculators.hierarchical_risk_parity import (
+from monika.application.analysis.calculators.hierarchical_risk_parity import (
     correlation_distance_matrix,
     compute_hrp_weights,
 )

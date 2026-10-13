@@ -1,5 +1,5 @@
 import pytest
-from analysis.providers.capabilities import (
+from monika.infrastructure.providers.capabilities import (
     ModelCapabilities,
     MODEL_CAPABILITIES,
     get_model_capabilities,

@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 import math
 from unittest.mock import AsyncMock, MagicMock, patch
-from risk.portfolio_correlation_gate import (
+from monika.domain.risk.portfolio_correlation_gate import (
     _get_usd_directional_delta,
     compute_portfolio_correlation_matrix,
     filter_correlated_proposals,
@@ -32,7 +32,10 @@ async def test_compute_portfolio_correlation_matrix():
     session = create_mock_async_session()
     symbols = ["EURUSD", "GBPUSD"]
 
-    with patch("risk.portfolio_correlation_gate.get_rolling_correlation", new=AsyncMock(return_value=(0.85, "db"))):
+    with patch(
+        "monika.domain.risk.portfolio_correlation_gate.get_rolling_correlation",
+        new=AsyncMock(return_value=(0.85, "db")),
+    ):
         matrix = await compute_portfolio_correlation_matrix(session, symbols)
         assert matrix["EURUSD"]["EURUSD"] == 1.0
         assert matrix["GBPUSD"]["GBPUSD"] == 1.0
@@ -58,7 +61,8 @@ async def test_filter_correlated_proposals_nan_handling():
 
     # Return float('nan') to trigger math.isnan check
     with patch(
-        "risk.portfolio_correlation_gate.get_rolling_correlation", new=AsyncMock(return_value=(float("nan"), "test"))
+        "monika.domain.risk.portfolio_correlation_gate.get_rolling_correlation",
+        new=AsyncMock(return_value=(float("nan"), "test")),
     ):
         kept, rejected = await filter_correlated_proposals(session, actionable, threshold=0.7)
         assert len(kept) == 1

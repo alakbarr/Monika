@@ -1,5 +1,5 @@
 import pytest
-from benchmark.prompt_evolution import GEPAFullEvolver
+from monika.application.benchmark.prompt_evolution import GEPAFullEvolver
 
 
 def test_gepa_evolution_triggers():

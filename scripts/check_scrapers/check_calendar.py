@@ -23,13 +23,6 @@ _src_dir = os.path.join(_repo_dir, "src")
 sys.path.insert(0, _repo_dir)
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
-try:
-    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
-
-    install_legacy_compat()
-except Exception:
-    pass
-
 # Muat environment variables dari file .env
 try:
     from dotenv import load_dotenv
@@ -43,7 +36,7 @@ try:
 except Exception:
     pass
 
-from scrapers.models import CalendarEvent
+from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("CheckCalendar")
@@ -80,7 +73,7 @@ def print_events_table(events: List[CalendarEvent], max_display: int = 10):
 def check_forexfactory(headless: bool = False, pause: int = 3) -> dict:
     """Menguji scraper ForexFactory."""
     logger.info(f"==> Menguji ForexFactoryCalendarScraper (Headless: {headless})")
-    from scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
+    from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
 
     scraper = None
     start_time = time.time()
@@ -112,7 +105,7 @@ def check_forexfactory(headless: bool = False, pause: int = 3) -> dict:
 def check_investing(headless: bool = False, pause: int = 3) -> dict:
     """Menguji scraper Investing.com."""
     logger.info(f"==> Menguji InvestingCalendarScraper (Headless: {headless})")
-    from scrapers.calendar.calendar_investing import InvestingCalendarScraper
+    from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import InvestingCalendarScraper
 
     scraper = None
     start_time = time.time()
@@ -144,7 +137,7 @@ def check_investing(headless: bool = False, pause: int = 3) -> dict:
 def check_finnhub() -> dict:
     """Menguji scraper Finnhub Calendar (REST API)."""
     logger.info("==> Menguji FinnhubCalendarScraper (REST API)")
-    from scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
+    from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
 
     start_time = time.time()
     try:

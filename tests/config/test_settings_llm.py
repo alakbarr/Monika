@@ -1,5 +1,5 @@
 import pytest
-from config.settings import load_all_config
+from monika.core.config.settings import load_all_config
 from unittest.mock import patch, mock_open
 
 

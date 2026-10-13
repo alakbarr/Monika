@@ -10,13 +10,13 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
 
-from analysis.tools.domain.spill_reader_tool import (
+from monika.application.analysis.tools.domain.spill_reader_tool import (
     handle_retrieve_spilled_context,
     RetrieveSpilledContextInput,
     unified_retrieve_spilled_context,
 )
-from analysis.tools.unified_registry import unified_tool_registry
-from analysis.tools.registry import default_tool_registry
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
+from monika.application.analysis.tools.registry import default_tool_registry
 
 
 @pytest.mark.asyncio
@@ -77,7 +77,7 @@ async def test_retrieve_spilled_context_disk_fallback(tmp_path):
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
 
-    with patch("analysis.tools.domain.spill_reader_tool.Path") as mock_path:
+    with patch("monika.application.analysis.tools.domain.spill_reader_tool.Path") as mock_path:
         # Route to tmp_path
         def side_effect(p):
             if "data/cache/spillover" in str(p):

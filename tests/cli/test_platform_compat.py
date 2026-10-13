@@ -8,7 +8,7 @@ import sys
 from unittest.mock import patch
 import pytest
 
-from cli.platform_compat import (
+from monika.interfaces.cli.platform_compat import (
     ColorDepth,
     ensure_utf8_streams,
     detect_color_depth,

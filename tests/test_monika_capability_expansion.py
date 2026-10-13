@@ -11,26 +11,26 @@ import numpy as np
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analysis.strategies.registry import StrategyRegistry, STRATEGY_REGISTRY
-from backtest.isolated_strategy_harness import HarnessMetrics
-from indicators.candlestick_patterns import detect_candlestick_patterns
-from utils.chart_generator import generate_smc_candlestick_chart
-from analysis.calculators.daily_range_calculator import compute_daily_range_context
-from analysis.calculators.volume_profile import compute_anchored_vwap
-from analysis.calculators.intraday_level_optimizer import compute_optimal_levels
-from analysis.strategies.smc_fvg import SMCFairValueGapStrategy
-from analysis.strategies.bb_volume_profile import BBVolumeProfileMeanReversion
-from analysis.memory.counterfactual_simulator import CounterfactualSimulator
-from analysis.tools.handlers.trade_intel import (
+from monika.application.analysis.strategies.registry import StrategyRegistry, STRATEGY_REGISTRY
+from monika.application.backtest.isolated_strategy_harness import HarnessMetrics
+from monika.domain.indicators.candlestick_patterns import detect_candlestick_patterns
+from monika.core.analytics.chart_generator import generate_smc_candlestick_chart
+from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
+from monika.application.analysis.calculators.volume_profile import compute_anchored_vwap
+from monika.application.analysis.calculators.intraday_level_optimizer import compute_optimal_levels
+from monika.application.analysis.strategies.smc_fvg import SMCFairValueGapStrategy
+from monika.application.analysis.strategies.bb_volume_profile import BBVolumeProfileMeanReversion
+from monika.application.analysis.memory.counterfactual_simulator import CounterfactualSimulator
+from monika.application.analysis.tools.handlers.trade_intel import (
     handle_get_pnl_summary,
     handle_run_adhoc_symbol_debate,
     handle_run_hostile_stress_test,
 )
-from analysis.tools.handlers.db_tools import handle_read_database_records
-from utils.market.dynamic_correlation import compute_cross_asset_macro_correlation
-from data_sources.coinglass_funding import CoinglasFundingFetcher
-from agent.socket_lifecycle_guard import get_socket_guard_diagnostics
-from agent.task_registry import TaskRegistry, CORE_TRADING_TASKS
+from monika.application.analysis.tools.handlers.db_tools import handle_read_database_records
+from monika.domain.market.dynamic_correlation import compute_cross_asset_macro_correlation
+from monika.infrastructure.data_ingestion.sources.coinglass_funding import CoinglasFundingFetcher
+from monika.application.agent.socket_lifecycle_guard import get_socket_guard_diagnostics
+from monika.application.agent.task_registry import TaskRegistry, CORE_TRADING_TASKS
 
 
 # ==============================================================================
@@ -150,10 +150,15 @@ async def test_optimal_levels_trade_style():
     mock_session = create_mock_async_session()
     with (
         patch(
-            "analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock
+            "monika.application.analysis.calculators.intraday_level_optimizer.compute_daily_range_context",
+            new_callable=AsyncMock,
         ) as mock_adr,
-        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as mock_atr,
-        patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as mock_zones,
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock
+        ) as mock_atr,
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock
+        ) as mock_zones,
     ):
         mock_adr.return_value = {"adr": 20.0, "current_range": 5.0, "status": "ok"}
         mock_atr.return_value = 2.0

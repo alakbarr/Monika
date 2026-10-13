@@ -6,7 +6,7 @@ Verifies fail-closed behavior and real concurrent access serialization.
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from database.db import transactional_advisory_lock
+from monika.infrastructure.database.db import transactional_advisory_lock
 
 
 @pytest.mark.asyncio

@@ -18,7 +18,7 @@ def test_group_a_inspect_iscoroutinefunction():
 
 
 def test_cw4_task_registry_core_tasks():
-    from agent.task_registry import CORE_TRADING_TASKS
+    from monika.application.agent.task_registry import CORE_TRADING_TASKS
 
     required_tasks = {
         "MT5HealthMonitor",
@@ -35,8 +35,8 @@ def test_cw4_task_registry_core_tasks():
 
 @pytest.mark.asyncio
 async def test_cw1_adhoc_scheduler_proxy_data_node():
-    from agent.agent_loop import AdHocSchedulerProxy
-    from graph.nodes.data_node import fetch_data_node
+    from monika.application.agent.agent_loop import AdHocSchedulerProxy
+    from monika.application.graph.nodes.data_node import fetch_data_node
 
     proxy = AdHocSchedulerProxy({"trading": {"symbols": ["XAUUSD"]}}, ["XAUUSD"])
     assert proxy.asset_universe == ["XAUUSD"]
@@ -52,13 +52,13 @@ async def test_cw1_adhoc_scheduler_proxy_data_node():
     # When is_ad_hoc is True, fallback AdHocSchedulerProxy is created and executed
     with (
         patch("graph.nodes.data_node.get_session") as mock_gs,
-        patch("utils.validation.data_validator.validate_data_freshness", new_callable=AsyncMock) as mock_vdf,
+        patch("monika.core.validation.data_validator.validate_data_freshness", new_callable=AsyncMock) as mock_vdf,
     ):
         mock_vdf.return_value = {"ready": True, "stale_assets": [], "warnings": [], "errors": []}
         mock_sess = create_mock_async_session()
         mock_gs.return_value.__aenter__.return_value = mock_sess
         with patch(
-            "analysis.calculators.economic_surprise.compute_surprise_scores", new_callable=AsyncMock
+            "monika.application.analysis.calculators.economic_surprise.compute_surprise_scores", new_callable=AsyncMock
         ) as mock_css:
             mock_css.return_value = 0
             res = await fetch_data_node(
@@ -71,7 +71,7 @@ async def test_cw1_adhoc_scheduler_proxy_data_node():
 
 
 def test_sc5_trigger_checker_properties():
-    from scheduler.trigger_checker import TriggerChecker
+    from monika.application.scheduler.trigger_checker import TriggerChecker
 
     settings = {"trading": {"symbols": ["EURUSD", "GBPUSD"], "risk": {"max_concurrent_positions": 5}}}
     checker = TriggerChecker(settings)
@@ -82,8 +82,8 @@ def test_sc5_trigger_checker_properties():
 
 @pytest.mark.asyncio
 async def test_ex7_ex8_simulated_broker_adapter_parity_and_pending_sltp():
-    from execution.broker_adapter import SimulatedBrokerAdapter
-    from database.models import Order
+    from monika.infrastructure.brokers.broker_adapter import SimulatedBrokerAdapter
+    from monika.infrastructure.database.models import Order
 
     adapter = SimulatedBrokerAdapter(initial_balance=10000.0)
     adapter.set_tick("EURUSD", bid=1.08000, ask=1.08010)
@@ -159,7 +159,7 @@ async def test_ex7_ex8_simulated_broker_adapter_parity_and_pending_sltp():
 
 @pytest.mark.asyncio
 async def test_ex9_order_emulator_sell_breakeven_guard():
-    from execution.order_emulator import ClientOrderEmulator
+    from monika.domain.execution.order_emulator import ClientOrderEmulator
 
     emulator = ClientOrderEmulator()
     pos = await emulator.register_position(
@@ -175,9 +175,9 @@ async def test_ex9_order_emulator_sell_breakeven_guard():
 
 @pytest.mark.asyncio
 async def test_db10_risk_gate_flush_not_commit():
-    from risk.risk_gate import RiskGate
-    from risk.position_sizing import SizingResult
-    from risk.risk_gate import RiskVerdict
+    from monika.domain.risk.risk_gate import RiskGate
+    from monika.domain.risk.position_sizing import SizingResult
+    from monika.domain.risk.risk_gate import RiskVerdict
 
     gate = RiskGate({})
     mock_session = create_mock_async_session()
@@ -215,10 +215,12 @@ async def test_db10_risk_gate_flush_not_commit():
 
 @pytest.mark.asyncio
 async def test_db9_portfolio_correlation_gate_negative_correlation():
-    from risk.portfolio_correlation_gate import filter_correlated_proposals
+    from monika.domain.risk.portfolio_correlation_gate import filter_correlated_proposals
 
     mock_session = create_mock_async_session()
-    with patch("risk.portfolio_correlation_gate.get_rolling_correlation", new_callable=AsyncMock) as mock_corr:
+    with patch(
+        "monika.domain.risk.portfolio_correlation_gate.get_rolling_correlation", new_callable=AsyncMock
+    ) as mock_corr:
         mock_corr.return_value = (-0.85, "dynamic_rolling")
         actionable = [
             ("EURUSD", {"decision": "buy", "confidence": 0.8, "analysis_id": 1}),
@@ -233,7 +235,7 @@ async def test_db9_portfolio_correlation_gate_negative_correlation():
 
 @pytest.mark.asyncio
 async def test_an3_adversarial_check_prompt_initialization():
-    from analysis.validators.adversarial_check import run_adversarial_check
+    from monika.application.analysis.validators.adversarial_check import run_adversarial_check
 
     mock_session = create_mock_async_session()
     analysis = MagicMock()
@@ -251,14 +253,17 @@ async def test_an3_adversarial_check_prompt_initialization():
     analysis.invalidation = "below 2290"
     analysis.id = 101
 
-    with patch("analysis.validators.adversarial_check.get_client_for_task", side_effect=RuntimeError("LLM down")):
+    with patch(
+        "monika.application.analysis.validators.adversarial_check.get_client_for_task",
+        side_effect=RuntimeError("LLM down"),
+    ):
         res = await run_adversarial_check(mock_session, analysis, {})
         assert res["approve"] is True
         assert "Adversarial check unavailable" in res["strongest_counter_argument"]
 
 
 def test_an8_fundamental_brief_schema_harmonization():
-    from analysis.schemas.pydantic_schemas import FundamentalBriefSchema
+    from monika.application.analysis.schemas.pydantic_schemas import FundamentalBriefSchema
 
     payload = {
         "macro_narrative": "US economy expanding moderately.",
@@ -274,7 +279,7 @@ def test_an8_fundamental_brief_schema_harmonization():
 
 
 def test_lu3_credential_pool_groq_multikey():
-    from utils.api.credential_pool import CredentialPool
+    from monika.infrastructure.api.credential_pool import CredentialPool
 
     with patch.dict(os.environ, {"GROQ_API_KEYS": "gsk_1, gsk_2, gsk_3"}):
         pool = CredentialPool()

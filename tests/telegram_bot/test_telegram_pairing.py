@@ -20,9 +20,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from telegram import Update, User, Message, Chat
 from telegram.ext import ContextTypes
 
-from telegram_bot.command_router import CommandRouter, CommandType
-from telegram_bot.bot import TelegramBot
-from gateway.pairing import PairingManager, get_pairing_manager, reset_pairing_manager
+from monika.interfaces.telegram.command_router import CommandRouter, CommandType
+from monika.interfaces.telegram.bot import TelegramBot
+from monika.interfaces.gateway.pairing import PairingManager, get_pairing_manager, reset_pairing_manager
 
 
 @pytest.fixture

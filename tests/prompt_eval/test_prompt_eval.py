@@ -7,7 +7,7 @@ confluence calculations against golden test fixtures without incurring API token
 import json
 import pytest
 from pathlib import Path
-from analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema, TradeDirection
+from monika.application.analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema, TradeDirection
 
 FIXTURES_PATH = Path(__file__).parent / "fixtures" / "smc_ict_fixtures.json"
 

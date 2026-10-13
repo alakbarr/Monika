@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from scheduler.position_exit_reviewer import PositionExitReviewer
+from monika.application.scheduler.position_exit_reviewer import PositionExitReviewer
 
 
 @pytest.mark.asyncio

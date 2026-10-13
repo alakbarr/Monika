@@ -1,5 +1,5 @@
 import pytest
-from scrapers.news.rss_wsj import WsjRssScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_wsj import WsjRssScraper
 
 
 def test_init():

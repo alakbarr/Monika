@@ -5,11 +5,11 @@
 
 import os
 from unittest.mock import MagicMock
-from cli.analysis_tree import AnalysisCycleTree
-from cli.chat.renderer import ChatRenderer
-from cli.chat.session import acquire_cli_session_lock, release_cli_session_lock
-from cli.tui import StatusBar
-from cli.width_budget import ColumnSpec, compute_progressive_width_budget
+from monika.interfaces.cli.analysis_tree import AnalysisCycleTree
+from monika.interfaces.cli.chat.renderer import ChatRenderer
+from monika.interfaces.cli.chat.session import acquire_cli_session_lock, release_cli_session_lock
+from monika.interfaces.cli.tui import StatusBar
+from monika.interfaces.cli.width_budget import ColumnSpec, compute_progressive_width_budget
 
 
 def test_analysis_tree_per_asset_alias_isolated():

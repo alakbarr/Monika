@@ -3,7 +3,7 @@ import pytest
 import json
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.calculators.macro_priced_in_calculator import calculate_macro_priced_in_baseline
+from monika.application.analysis.calculators.macro_priced_in_calculator import calculate_macro_priced_in_baseline
 
 
 @pytest.mark.asyncio
@@ -14,7 +14,8 @@ async def test_calculate_macro_priced_in_baseline_defaults():
     mock_session.execute.return_value = mock_result
 
     with patch(
-        "analysis.calculators.macro_priced_in_calculator.compute_usd_strength_proxy", new_callable=AsyncMock
+        "monika.application.analysis.calculators.macro_priced_in_calculator.compute_usd_strength_proxy",
+        new_callable=AsyncMock,
     ) as mock_proxy:
         mock_proxy.return_value = {"error": "no data"}
         result = await calculate_macro_priced_in_baseline(
@@ -50,7 +51,8 @@ async def test_calculate_macro_priced_in_baseline_high_fedwatch_and_momentum():
     mock_session.execute.side_effect = [mock_fw_res, mock_empty_res, mock_empty_res]
 
     with patch(
-        "analysis.calculators.macro_priced_in_calculator.compute_usd_strength_proxy", new_callable=AsyncMock
+        "monika.application.analysis.calculators.macro_priced_in_calculator.compute_usd_strength_proxy",
+        new_callable=AsyncMock,
     ) as mock_proxy:
         mock_proxy.return_value = {"weighted_usd_change_pct": 3.5, "direction": "bullish"}
         result = await calculate_macro_priced_in_baseline(

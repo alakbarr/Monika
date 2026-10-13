@@ -7,10 +7,15 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analysis.mcp.client import McpClientManager, MCPClientManager, McpBridgeHandler, McpServerProcess
-from analysis.tools.registry import default_tool_registry
-from analysis.tools.unified_registry import unified_tool_registry
-from harness.context import PluginContext
+from monika.application.analysis.mcp.client import (
+    McpClientManager,
+    MCPClientManager,
+    McpBridgeHandler,
+    McpServerProcess,
+)
+from monika.application.analysis.tools.registry import default_tool_registry
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
+from monika.application.harness.context import PluginContext
 
 
 @pytest.fixture(autouse=True)

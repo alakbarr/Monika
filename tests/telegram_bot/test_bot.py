@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 import os
-from telegram_bot.bot import TelegramBot
+from monika.interfaces.telegram.bot import TelegramBot
 
 
 class TestTelegramBot:
@@ -10,7 +10,7 @@ class TestTelegramBot:
         os.environ,
         {"TELEGRAM_BOT_TOKEN": "123:test", "TELEGRAM_ADMIN_CHAT_ID": "123", "TELEGRAM_ALLOWED_USERS": "123,456"},
     )
-    @patch("telegram_bot.bot.ApplicationBuilder")
+    @patch("monika.interfaces.telegram.bot.ApplicationBuilder")
     def test_init(self, mock_builder):
         bot = TelegramBot({})
         assert bot.token == "123:test"
@@ -25,7 +25,7 @@ class TestTelegramBot:
 
     @pytest.mark.asyncio
     @patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "123:test", "TELEGRAM_ADMIN_CHAT_ID": "123"})
-    @patch("telegram_bot.bot.ApplicationBuilder")
+    @patch("monika.interfaces.telegram.bot.ApplicationBuilder")
     async def test_start(self, mock_builder):
         mock_app = AsyncMock()
         mock_app.add_handler = MagicMock()
@@ -128,8 +128,8 @@ class TestTelegramBot:
         assert update.message.reply_text.call_count == 6
 
     @pytest.mark.asyncio
-    @patch("database.db.get_session")
-    @patch("risk.risk_gate.RiskGate")
+    @patch("monika.infrastructure.database.db.get_session")
+    @patch("monika.domain.risk.risk_gate.RiskGate")
     async def test_cmd_pause_resume(self, mock_risk_gate_cls, mock_get_session):
         bot = TelegramBot({})
         bot._is_authorized = MagicMock(return_value=True)
@@ -184,7 +184,7 @@ class TestTelegramBot:
         assert update.message.reply_text.call_count == 5
 
     @pytest.mark.asyncio
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     async def test_handle_chat(self, mock_get_session):
         mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
@@ -209,7 +209,7 @@ class TestTelegramBot:
         assert update.message.reply_text.call_count == 2  # 1 for reply, 1 for proposed action
 
     @pytest.mark.asyncio
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     async def test_handle_callback(self, mock_get_session):
         mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
@@ -284,7 +284,7 @@ class TestTelegramBot:
         assert bot._chunk_text("Variable `USD_JPY")[0] == "Variable `USD_JPY`"
 
     @pytest.mark.asyncio
-    @patch("database.db.get_session")
+    @patch("monika.infrastructure.database.db.get_session")
     async def test_cmd_tearsheet(self, mock_get_session):
         bot = TelegramBot({})
         bot._is_authorized = MagicMock(return_value=True)
@@ -293,7 +293,7 @@ class TestTelegramBot:
         mock_result = MagicMock()
 
         from datetime import datetime, timezone
-        from database.models import PaperTradeRecord
+        from monika.infrastructure.database.models import PaperTradeRecord
 
         mock_trade = MagicMock(spec=PaperTradeRecord)
         mock_trade.symbol = "EURUSD"

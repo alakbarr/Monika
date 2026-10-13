@@ -1,8 +1,8 @@
 from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from analysis.strategies.gap_fade import DailyReopenGapFade
-from database.models import PriceOHLCV
+from monika.application.analysis.strategies.gap_fade import DailyReopenGapFade
+from monika.infrastructure.database.models import PriceOHLCV
 
 
 @pytest.mark.asyncio
@@ -12,7 +12,7 @@ async def test_gap_fade_reject_outside_window():
 
     # Mock clock to be outside session window (e.g., 2 hours after EURUSD open)
     # EURUSD open is 8 UTC. So let's mock clock.now()
-    import utils.clock as clock
+    import monika.core.primitives.clock as clock
     import datetime
 
     # Assume we are at 11:00 UTC

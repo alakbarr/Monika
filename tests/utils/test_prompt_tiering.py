@@ -1,5 +1,5 @@
 import pytest
-from utils.llm.prompt_tiering import build_tiered_prompt, TieredPrompt
+from monika.infrastructure.llm.prompt_tiering import build_tiered_prompt, TieredPrompt
 
 
 def test_tiered_prompt_assembly():

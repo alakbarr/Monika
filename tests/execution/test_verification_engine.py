@@ -1,5 +1,5 @@
 import pytest
-from execution.verification_engine import EvidenceFirstVerifier
+from monika.domain.execution.verification_engine import EvidenceFirstVerifier
 
 
 @pytest.mark.asyncio

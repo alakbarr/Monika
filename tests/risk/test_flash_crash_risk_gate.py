@@ -5,9 +5,9 @@
 import pytest
 from datetime import datetime, timezone, timedelta
 
-from risk.risk_gate import RiskGate
-from risk.position_sizing import SizingResult
-from scheduler.flash_crash_detector import FlashCrashDetector
+from monika.domain.risk.risk_gate import RiskGate
+from monika.domain.risk.position_sizing import SizingResult
+from monika.application.scheduler.flash_crash_detector import FlashCrashDetector
 
 
 @pytest.mark.asyncio

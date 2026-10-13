@@ -4,25 +4,25 @@
 
 import socket
 import pytest
-from agent.socket_lifecycle_guard import (
+from monika.application.agent.socket_lifecycle_guard import (
     retire_socket_ownership_safe,
     clear_socket_graveyard,
     drain_transports_after_abandonment,
 )
-from agent.turn_phase_machine import (
+from monika.application.agent.turn_phase_machine import (
     TurnPhaseMachine,
     TurnState,
     TurnVerdict,
     TurnPhase,
     IterationBudget,
 )
-from agent.auxiliary_model_router import (
+from monika.application.agent.auxiliary_model_router import (
     AuxiliaryModelRouter,
     AuxiliaryTaskType,
     ParameterRejectionLadder,
     ReasoningFloorManager,
 )
-from agent.three_part_context_compressor import ThreePartContextCompressor
+from monika.application.agent.three_part_context_compressor import ThreePartContextCompressor
 
 
 def test_socket_lifecycle_guard():

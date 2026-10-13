@@ -16,10 +16,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from database.db import get_session
-from database.models import Position, PaperTradeRecord, SystemConfig, RiskState, ActivityLog
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import Position, PaperTradeRecord, SystemConfig, RiskState, ActivityLog
 from sqlalchemy import select
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("HealKillSwitch")

@@ -6,15 +6,15 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 import pytest
 
-from analysis.tools.unified_registry import (
+from monika.application.analysis.tools.unified_registry import (
     unified_tool_registry,
     TRADING_TOOLSET,
     DEVELOPER_TOOLSET,
     RESEARCH_TOOLSET,
     TOOLSETS,
 )
-from logging_observability.dashboard.pty_bridge import PtySession
-from utils.llm.context_compressor import (
+from monika.interfaces.dashboard.pty_bridge import PtySession
+from monika.infrastructure.llm.context_compressor import (
     get_context_compressor,
     compress_context,
     prune_oversized_tool_results,

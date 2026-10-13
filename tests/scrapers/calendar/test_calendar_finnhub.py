@@ -4,12 +4,12 @@ Unit tests for FinnhubCalendarScraper asynchronous scraping (H-19).
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
+from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
 
 
 @pytest.fixture(autouse=True)
 def reset_endpoint_flag():
-    from utils.api.http_retry import _CIRCUIT_BREAKER
+    from monika.infrastructure.api.http_retry import _CIRCUIT_BREAKER
 
     FinnhubCalendarScraper._endpoint_403_detected = False
     FinnhubCalendarScraper._endpoint_403_until = 0.0

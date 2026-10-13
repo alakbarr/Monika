@@ -6,18 +6,18 @@ import os
 import pytest
 from pathlib import Path
 
-from utils.security.nt_guard import (
+from monika.core.security.nt_guard import (
     is_dangerous_nt_namespace,
     assert_safe_nt_path,
     SecurityViolationError,
 )
-from security.terminal_guard import (
+from monika.core.security.terminal_guard import (
     is_hardline_blocked_command,
     unwrap_command_quotes,
     assert_safe_write_path,
     DenialCircuitBreaker,
 )
-from security.credential_vault import (
+from monika.core.security.credential_vault import (
     CredentialVault,
     create_opaque_handle,
     resolve_opaque_handle,

@@ -1,6 +1,6 @@
 import pytest
 import time
-from agent.monitors.startup_watchdog import StartupWatchdog
+from monika.application.agent.monitors.startup_watchdog import StartupWatchdog
 
 
 def test_watchdog_disarm_on_complete():

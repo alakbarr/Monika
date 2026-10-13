@@ -1,12 +1,12 @@
 import pytest
-from analysis.schemas.pydantic_schemas import (
+from monika.application.analysis.schemas.pydantic_schemas import (
     SubmitAssetAnalysisSchema,
     FundamentalBriefSchema,
     make_openai_strict_schema,
 )
-from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
-from utils.llm.context_compaction import ContextCompactionEngine
-from utils.llm.adaptive_thinking import PerSymbolAdaptiveThinkingAllocator
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
+from monika.infrastructure.llm.adaptive_thinking import PerSymbolAdaptiveThinkingAllocator
 
 
 def test_make_openai_strict_schema_submit_asset():

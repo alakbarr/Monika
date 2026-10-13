@@ -6,12 +6,12 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analysis.tools.handlers.market_data_tools import handle_get_market_quote
-from analysis.tools.domain.technical_handlers import TechnicalToolHandlers
-from analysis.tools.executor import ToolExecutor
-from analysis.tools.registry import default_tool_registry
-from analysis.tools.tool_registry import ProgressiveToolRegistry
-from analysis.tools.tools_definitions import ALL_TOOLS
+from monika.application.analysis.tools.handlers.market_data_tools import handle_get_market_quote
+from monika.application.analysis.tools.domain.technical_handlers import TechnicalToolHandlers
+from monika.application.analysis.tools.executor import ToolExecutor
+from monika.application.analysis.tools.registry import default_tool_registry
+from monika.application.analysis.tools.tool_registry import ProgressiveToolRegistry
+from monika.application.analysis.tools.tools_definitions import ALL_TOOLS
 
 
 @pytest.mark.asyncio
@@ -28,7 +28,7 @@ async def test_get_market_quote_mt5_success():
         }
     )
 
-    with patch("execution.mt5_client.get_mt5_client", return_value=mock_mt5):
+    with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client", return_value=mock_mt5):
         res = await handle_get_market_quote({"symbol": "EURUSD"})
 
     assert res["status"] == "success"
@@ -62,7 +62,7 @@ async def test_get_market_quote_db_fallback():
     mock_result.scalar_one_or_none.return_value = mock_bar
     mock_session.execute.return_value = mock_result
 
-    with patch("execution.mt5_client.get_mt5_client", return_value=mock_mt5):
+    with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client", return_value=mock_mt5):
         res = await handle_get_market_quote({"symbol": "XAUUSD"}, session=mock_session)
 
     assert res["status"] == "success"
@@ -85,7 +85,7 @@ async def test_get_market_quote_no_data():
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
 
-    with patch("execution.mt5_client.get_mt5_client", return_value=mock_mt5):
+    with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client", return_value=mock_mt5):
         res = await handle_get_market_quote({"symbol": "GBPUSD"}, session=mock_session)
 
     assert res["status"] == "no_data"
@@ -117,7 +117,7 @@ async def test_technical_domain_handler():
     )
 
     handler = TechnicalToolHandlers(settings={})
-    with patch("execution.mt5_client.get_mt5_client", return_value=mock_mt5):
+    with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client", return_value=mock_mt5):
         res = await handler.get_market_quote("BTCUSD")
 
     assert res["status"] == "success"
@@ -142,7 +142,7 @@ async def test_tool_executor_dispatch_and_aliases():
         }
     )
 
-    with patch("execution.mt5_client.get_mt5_client", return_value=mock_mt5):
+    with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client", return_value=mock_mt5):
         # Direct call
         res1 = await executor.execute("get_market_quote", {"symbol": "EURUSD"})
         assert res1["status"] == "success"
