@@ -309,13 +309,19 @@ class PluginManager:
             self.unregister_tool(tool_name)
         self._registered_tools.clear()
 
+    _instance: Optional["PluginManager"] = None
 
-_GLOBAL_PLUGIN_MANAGER: Optional[PluginManager] = None
+    @classmethod
+    def get_instance(cls) -> "PluginManager":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_plugin_manager() -> PluginManager:
     """Returns the singleton instance of PluginManager."""
-    global _GLOBAL_PLUGIN_MANAGER
-    if _GLOBAL_PLUGIN_MANAGER is None:
-        _GLOBAL_PLUGIN_MANAGER = PluginManager()
-    return _GLOBAL_PLUGIN_MANAGER
+    return PluginManager.get_instance()

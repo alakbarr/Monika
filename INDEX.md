@@ -375,7 +375,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 **File:** `ports.py`
   - **Docstring**: Pure domain risk ports and protocols decoupling risk logic from database persistence.
-  - **Classes**: `RiskDataProviderProtocol`, `InstrumentRegistryProtocol`, `ApprovalTransportProtocol`
+  - **Classes**: `RiskDataProviderProtocol`, `InstrumentRegistryProtocol`, `ApprovalTransportProtocol`, `RiskPortRegistry`
 
 **File:** `approval_transport.py`
   - **Docstring**: Cryptographic approval payload transport and canonical serialization primitives.

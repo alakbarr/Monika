@@ -155,32 +155,51 @@ async def _generate_stream_chunks(
     yield "data: [DONE]\n\n"
 
 
-_agent_runner: Optional[Callable[[str, str, Dict[str, Any]], Awaitable[str]]] = None
-_agent_instance: Optional[Any] = None
+class GatewayAgentRuntime:
+    """Manages injected runner and lazy singleton ChatAgent instance for the gateway API."""
+
+    _runner: Optional[Callable[[str, str, Dict[str, Any]], Awaitable[str]]] = None
+    _agent_instance: Optional[Any] = None
+
+    @classmethod
+    def get_runner(cls) -> Optional[Callable[[str, str, Dict[str, Any]], Awaitable[str]]]:
+        return cls._runner
+
+    @classmethod
+    def set_runner(cls, runner: Optional[Callable[[str, str, Dict[str, Any]], Awaitable[str]]]) -> None:
+        cls._runner = runner
+
+    @classmethod
+    def get_default_chat_agent(cls) -> Any:
+        if cls._agent_instance is None:
+            from monika.application.agent.chat_agent import ChatAgent
+            from monika.core.config.settings import load_settings
+
+            settings = load_settings()
+            cls._agent_instance = ChatAgent(settings=settings, user_id="api_client", is_admin=True)
+        return cls._agent_instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._runner = None
+        cls._agent_instance = None
 
 
 def set_agent_runner(runner: Optional[Callable[[str, str, Dict[str, Any]], Awaitable[str]]]) -> None:
     """Inject a custom agent execution pipeline or mock runner."""
-    global _agent_runner
-    _agent_runner = runner
+    GatewayAgentRuntime.set_runner(runner)
 
 
 def get_default_chat_agent():
     """Lazily load and cache the default ChatAgent instance."""
-    global _agent_instance
-    if _agent_instance is None:
-        from monika.application.agent.chat_agent import ChatAgent
-        from monika.core.config.settings import load_settings
-
-        settings = load_settings()
-        _agent_instance = ChatAgent(settings=settings, user_id="api_client", is_admin=True)
-    return _agent_instance
+    return GatewayAgentRuntime.get_default_chat_agent()
 
 
 async def execute_query(session_id: str, user_text: str, metadata: Dict[str, Any]) -> str:
     """Dispatches query to registered runner or ChatAgent, with graceful fallback."""
-    if _agent_runner is not None:
-        return await _agent_runner(session_id, user_text, metadata)
+    runner = GatewayAgentRuntime.get_runner()
+    if runner is not None:
+        return await runner(session_id, user_text, metadata)
 
     try:
         agent = get_default_chat_agent()

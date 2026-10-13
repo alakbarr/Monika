@@ -115,12 +115,18 @@ class UnifiedSkillsRuntime:
     def list_skills(self) -> List[Dict[str, Any]]:
         return self.hub.list_skills()
 
+    _instance: Optional["UnifiedSkillsRuntime"] = None
 
-_GLOBAL_SKILLS_RUNTIME: Optional[UnifiedSkillsRuntime] = None
+    @classmethod
+    def get_instance(cls) -> "UnifiedSkillsRuntime":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_skills_runtime() -> UnifiedSkillsRuntime:
-    global _GLOBAL_SKILLS_RUNTIME
-    if _GLOBAL_SKILLS_RUNTIME is None:
-        _GLOBAL_SKILLS_RUNTIME = UnifiedSkillsRuntime()
-    return _GLOBAL_SKILLS_RUNTIME
+    return UnifiedSkillsRuntime.get_instance()

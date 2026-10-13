@@ -246,17 +246,22 @@ class DataFeedCircuitBreaker:
         except Exception as e:
             logger.debug(f"[DataFeedCircuitBreaker] EventBus publish non-fatal error: {e}")
 
+    _instance: Optional["DataFeedCircuitBreaker"] = None
 
-# Global Singleton Accessor
-_GLOBAL_FEED_BREAKER: Optional[DataFeedCircuitBreaker] = None
+    @classmethod
+    def get_instance(cls) -> "DataFeedCircuitBreaker":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset_instance(cls) -> None:
+        cls._instance = None
 
 
 def get_data_feed_circuit_breaker() -> DataFeedCircuitBreaker:
     """Return the global DataFeedCircuitBreaker singleton."""
-    global _GLOBAL_FEED_BREAKER
-    if _GLOBAL_FEED_BREAKER is None:
-        _GLOBAL_FEED_BREAKER = DataFeedCircuitBreaker()
-    return _GLOBAL_FEED_BREAKER
+    return DataFeedCircuitBreaker.get_instance()
 
 
 def record_feed_heartbeat(

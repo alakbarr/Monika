@@ -22,15 +22,27 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger("TradingAgent.Memory.PlaybookLedger")
 
 _PLAYBOOK_THREAD_LOCK = threading.Lock()
-_PLAYBOOK_ASYNC_LOCK: Optional[asyncio.Lock] = None
+
+
+class PlaybookLockRuntime:
+    """Manages process-wide async locks for playbook mutations."""
+
+    _async_lock: Optional[asyncio.Lock] = None
+
+    @classmethod
+    def get_async_lock(cls) -> asyncio.Lock:
+        if cls._async_lock is None:
+            cls._async_lock = asyncio.Lock()
+        return cls._async_lock
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._async_lock = None
 
 
 def get_playbook_async_lock() -> asyncio.Lock:
     """Returns or creates the process-wide asyncio lock for playbook mutations."""
-    global _PLAYBOOK_ASYNC_LOCK
-    if _PLAYBOOK_ASYNC_LOCK is None:
-        _PLAYBOOK_ASYNC_LOCK = asyncio.Lock()
-    return _PLAYBOOK_ASYNC_LOCK
+    return PlaybookLockRuntime.get_async_lock()
 
 
 class PlaybookState(str, Enum):

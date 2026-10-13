@@ -99,22 +99,50 @@ _LAST_CLEANUP_TIME = time.time()
 _EXECUTION_LOCK = asyncio.Lock()
 
 
+class AnalysisPrunerState:
+    """Manages TTL prune state and timestamp tracking for executed analysis IDs."""
+
+    last_cleanup_time: float = _LAST_CLEANUP_TIME
+
+    @classmethod
+    def get_last_cleanup_time(cls) -> float:
+        mod = sys.modules.get(__name__)
+        if mod and hasattr(mod, "_LAST_CLEANUP_TIME"):
+            return float(getattr(mod, "_LAST_CLEANUP_TIME"))
+        return cls.last_cleanup_time
+
+    @classmethod
+    def set_last_cleanup_time(cls, ts: float) -> None:
+        cls.last_cleanup_time = ts
+        mod = sys.modules.get(__name__)
+        if mod:
+            setattr(mod, "_LAST_CLEANUP_TIME", ts)
+
+    @classmethod
+    def reset(cls) -> None:
+        now = time.time()
+        cls.last_cleanup_time = now
+        mod = sys.modules.get(__name__)
+        if mod:
+            setattr(mod, "_LAST_CLEANUP_TIME", now)
+
+
 def _prune_executed_analysis_ids(ttl_seconds: float = 86400.0) -> None:
     """
     Prune entries in _EXECUTED_ANALYSIS_IDS older than ttl_seconds (default 24h / 86,400s)
     to prevent memory leak over weeks of 24/7 uptime (M-8).
     Mutates dictionary in-place to preserve reference identity across imports.
     """
-    global _LAST_CLEANUP_TIME
     now = time.time()
-    if (now - _LAST_CLEANUP_TIME) >= 60.0 or len(_EXECUTED_ANALYSIS_IDS) > 200:
+    last_cleanup = AnalysisPrunerState.get_last_cleanup_time()
+    if (now - last_cleanup) >= 60.0 or len(_EXECUTED_ANALYSIS_IDS) > 200:
         expired = []
         for aid, ts in list(_EXECUTED_ANALYSIS_IDS.items()):
             if not isinstance(ts, (int, float)) or isinstance(ts, bool) or (now - ts) >= ttl_seconds:
                 expired.append(aid)
         for aid in expired:
             _EXECUTED_ANALYSIS_IDS.pop(aid, None)
-        _LAST_CLEANUP_TIME = now
+        AnalysisPrunerState.set_last_cleanup_time(now)
 
 
 from monika.application.execution.service.executors.analysis_executor import AnalysisOrderMixin

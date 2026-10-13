@@ -29,7 +29,25 @@ from typing import Any, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Bootstrap")
 
-_BOOTSTRAP_INITIALIZED = False
+
+class BootstrapRuntime:
+    """Encapsulates runtime bootstrap state and reset hooks."""
+
+    _initialized: bool = False
+
+    @classmethod
+    def is_initialized(cls) -> bool:
+        return cls._initialized
+
+    @classmethod
+    def set_initialized(cls, val: bool = True) -> None:
+        cls._initialized = val
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._initialized = False
+
+
 _DEFAULT_TIMEOUT: Any = getattr(socket, "_GLOBAL_DEFAULT_TIMEOUT", object())
 _HAPPY_EYEBALLS_DELAY_S = 0.25
 
@@ -218,14 +236,13 @@ def _install_console_guards() -> None:
 
 def bootstrap_runtime() -> None:
     """One-shot idempotent runtime bootstrapper."""
-    global _BOOTSTRAP_INITIALIZED
-    if _BOOTSTRAP_INITIALIZED:
+    if BootstrapRuntime.is_initialized():
         return
 
     _install_console_guards()
     _install_happy_eyeballs()
 
-    _BOOTSTRAP_INITIALIZED = True
+    BootstrapRuntime.set_initialized(True)
     logger.debug("Runtime bootstrap initialized: UTF-8 hardened, RFC 8305 Happy Eyeballs active.")
 
 

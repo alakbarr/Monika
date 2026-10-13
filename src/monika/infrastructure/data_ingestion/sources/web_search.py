@@ -461,14 +461,21 @@ class WebSearchService:
         }
 
 
-_global_web_search_service: Optional[WebSearchService] = None
+    _instance: Optional["WebSearchService"] = None
+
+    @classmethod
+    def get_instance(cls, settings: Optional[dict] = None) -> "WebSearchService":
+        if cls._instance is None:
+            cls._instance = cls(settings=settings)
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_web_search_service(settings: Optional[dict] = None) -> WebSearchService:
-    global _global_web_search_service
-    if _global_web_search_service is None:
-        _global_web_search_service = WebSearchService(settings=settings)
-    return _global_web_search_service
+    return WebSearchService.get_instance(settings=settings)
 
 
 # Alias for backward compatibility and clean consumer usage

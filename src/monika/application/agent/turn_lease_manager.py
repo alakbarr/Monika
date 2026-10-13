@@ -45,6 +45,18 @@ class SymbolTurnLeaseManager:
     Coordinates per-symbol execution leases and manages dynamic event coalescence.
     """
 
+    _instance: Optional["SymbolTurnLeaseManager"] = None
+
+    @classmethod
+    def get_instance(cls) -> "SymbolTurnLeaseManager":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
+
     def __init__(self):
         self._leases: Dict[str, SymbolLease] = {}
         self._lock = asyncio.Lock()
@@ -154,19 +166,6 @@ class SymbolTurnLeaseManager:
                 return existing.holder_id
             return None
 
-    @classmethod
-    def get_instance(cls) -> "SymbolTurnLeaseManager":
-        """Retrieve the global singleton instance."""
-        return get_symbol_lease_manager()
-
-
-# Global singleton instance
-_GLOBAL_LEASE_MANAGER: Optional[SymbolTurnLeaseManager] = None
-
-
 def get_symbol_lease_manager() -> SymbolTurnLeaseManager:
     """Get or initialize global SymbolTurnLeaseManager singleton."""
-    global _GLOBAL_LEASE_MANAGER
-    if _GLOBAL_LEASE_MANAGER is None:
-        _GLOBAL_LEASE_MANAGER = SymbolTurnLeaseManager()
-    return _GLOBAL_LEASE_MANAGER
+    return SymbolTurnLeaseManager.get_instance()

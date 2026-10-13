@@ -40,25 +40,41 @@ CORE_TRADING_TASKS: Set[str] = {
 }
 
 CLEAN_SHUTDOWN_FLAG = os.path.join("data", "clean_shutdown.flag")
-_EMERGENCY_EXIT_CODE: Optional[int] = None
+
+
+class EmergencyExitCoordinator:
+    """Coordinates fail-closed emergency exit codes across daemon modules."""
+
+    exit_code: Optional[int] = None
+
+    @classmethod
+    def get_code(cls) -> Optional[int]:
+        return cls.exit_code
+
+    @classmethod
+    def set_code(cls, code: Optional[int]) -> None:
+        cls.exit_code = code
+        import sys
+
+        for mod_name in ("main", "__main__"):
+            main_mod = sys.modules.get(mod_name)
+            if main_mod is not None:
+                try:
+                    setattr(main_mod, "_EMERGENCY_EXIT_CODE", code)
+                except Exception:
+                    pass
+
+    @classmethod
+    def reset(cls) -> None:
+        cls.exit_code = None
 
 
 def get_emergency_exit_code() -> Optional[int]:
-    return _EMERGENCY_EXIT_CODE
+    return EmergencyExitCoordinator.get_code()
 
 
 def set_emergency_exit_code(code: Optional[int]) -> None:
-    global _EMERGENCY_EXIT_CODE
-    _EMERGENCY_EXIT_CODE = code
-    import sys
-
-    for mod_name in ("main", "__main__"):
-        main_mod = sys.modules.get(mod_name)
-        if main_mod is not None:
-            try:
-                setattr(main_mod, "_EMERGENCY_EXIT_CODE", code)
-            except Exception:
-                pass
+    EmergencyExitCoordinator.set_code(code)
 
 
 def mark_clean_shutdown():
@@ -138,7 +154,6 @@ async def _run_with_restart(
     Supervises a background task with bulkhead isolation, exponential backoff,
     and fail-closed emergency shutdown for core tasks.
     """
-    global _EMERGENCY_EXIT_CODE
     restarts = 0
     last_success_time = _time.monotonic()
 
@@ -284,18 +299,20 @@ class TaskDefinition:
     max_delay: float = 300.0
 
 
-_global_task_registry: Optional["TaskRegistry"] = None
-
-
 class TaskRegistry:
     """Registry and orchestrator for background tasks."""
 
+    _instance: Optional["TaskRegistry"] = None
+
     def __init__(self, shutdown_event: asyncio.Event):
-        global _global_task_registry
         self.shutdown_event = shutdown_event
         self._tasks: Dict[str, TaskDefinition] = {}
         self._active_tasks: Dict[str, asyncio.Task] = {}
-        _global_task_registry = self
+        TaskRegistry._instance = self
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
     def register(
         self,
@@ -374,11 +391,11 @@ class TaskRegistry:
 
     @classmethod
     def get_global_instance(cls) -> Optional["TaskRegistry"]:
-        return _global_task_registry
+        return cls._instance
 
     @classmethod
     def get_formatted_status_table(cls, registry: Optional["TaskRegistry"] = None) -> str:
-        inst = registry or _global_task_registry
+        inst = registry or cls._instance
         if not inst or not inst._tasks:
             return "[INFO] *Background Tasks:* Belum ada worker aktif yang terdaftar di TaskRegistry."
 

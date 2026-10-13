@@ -197,12 +197,17 @@ class TradingPlugin(ABC):
 
 
 __all__ = [
+    "BarClosedEvent",
+    "CircuitBreakerEvent",
     "EventBusProtocol",
+    "OrderStateChangedEvent",
     "PluginCategory",
     "PluginMetadata",
     "PluginOrigin",
     "PluginState",
+    "RiskBreachEvent",
     "ServiceContainerProtocol",
     "TaskRegistryProtocol",
+    "TickPriceEvent",
     "TradingPlugin",
 ]

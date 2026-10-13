@@ -235,6 +235,18 @@ class CredentialPool:
     exponential cooldown backoff, model-level cooldowns, and usage telemetry.
     """
 
+    _instance: Optional["CredentialPool"] = None
+
+    @classmethod
+    def get_instance(cls) -> "CredentialPool":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
+
     def __init__(
         self,
         base_cooldown_seconds: float = 60.0,
@@ -623,12 +635,7 @@ class LLMCredentialPool:
 # Compatibility Aliases
 APICredentialPool = CredentialPool
 
-_GLOBAL_CREDENTIAL_POOL: Optional[CredentialPool] = None
-
 
 def get_credential_pool() -> CredentialPool:
     """Get singleton CredentialPool instance."""
-    global _GLOBAL_CREDENTIAL_POOL
-    if _GLOBAL_CREDENTIAL_POOL is None:
-        _GLOBAL_CREDENTIAL_POOL = CredentialPool()
-    return _GLOBAL_CREDENTIAL_POOL
+    return CredentialPool.get_instance()

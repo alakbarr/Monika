@@ -102,18 +102,26 @@ class ServiceContainer:
         return self.get("plugin_manager")
 
 
+    _instance: Optional["ServiceContainer"] = None
+
+    @classmethod
+    def get_instance(cls) -> "ServiceContainer":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
+
+
 # Backward compatibility alias for ServiceContainer
 Context = ServiceContainer
-
-_GLOBAL_CONTAINER: Optional[ServiceContainer] = None
 
 
 def get_container() -> ServiceContainer:
     """Get the global ServiceContainer singleton."""
-    global _GLOBAL_CONTAINER
-    if _GLOBAL_CONTAINER is None:
-        _GLOBAL_CONTAINER = ServiceContainer()
-    return _GLOBAL_CONTAINER
+    return ServiceContainer.get_instance()
 
 
 __all__ = [

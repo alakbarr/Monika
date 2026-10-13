@@ -19,6 +19,18 @@ DEFAULT_SPILL_DIR = Path("data/spill_store")
 class SpillStore:
     """Local artifact store for offloading bulky contextual data with preview generation."""
 
+    _instance: Optional["SpillStore"] = None
+
+    @classmethod
+    def get_instance(cls, base_dir: Optional[Union[str, Path]] = None, max_preview_chars: int = 1200) -> "SpillStore":
+        if cls._instance is None:
+            cls._instance = cls(base_dir=base_dir, max_preview_chars=max_preview_chars)
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
+
     def __init__(self, base_dir: Optional[Union[str, Path]] = None, max_preview_chars: int = 1200):
         self.base_dir = Path(base_dir) if base_dir else DEFAULT_SPILL_DIR
         self.base_dir.mkdir(parents=True, exist_ok=True)
@@ -108,13 +120,6 @@ class SpillStore:
         return raw
 
 
-# Default singleton instance
-_default_spill_store: Optional[SpillStore] = None
-
-
 def get_spill_store() -> SpillStore:
     """Get or instantiate default SpillStore singleton."""
-    global _default_spill_store
-    if _default_spill_store is None:
-        _default_spill_store = SpillStore()
-    return _default_spill_store
+    return SpillStore.get_instance()

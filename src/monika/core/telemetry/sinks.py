@@ -27,15 +27,29 @@ class TelemetrySink(Protocol):
         ...
 
 
-_DEFAULT_SINK: TelemetrySink | None = None
+class TelemetrySinkRegistry:
+    """Centralized, resettable registry for telemetry sink."""
+
+    default_sink: TelemetrySink | None = None
+
+    @classmethod
+    def set(cls, sink: TelemetrySink | None) -> None:
+        cls.default_sink = sink
+
+    @classmethod
+    def get(cls) -> TelemetrySink | None:
+        return cls.default_sink
+
+    @classmethod
+    def reset(cls) -> None:
+        cls.default_sink = None
 
 
 def set_telemetry_sink(sink: TelemetrySink | None) -> None:
     """Set the active global telemetry sink."""
-    global _DEFAULT_SINK
-    _DEFAULT_SINK = sink
+    TelemetrySinkRegistry.set(sink)
 
 
 def get_telemetry_sink() -> TelemetrySink | None:
     """Get the active global telemetry sink, or None."""
-    return _DEFAULT_SINK
+    return TelemetrySinkRegistry.get()

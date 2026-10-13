@@ -171,12 +171,9 @@ def topological_sort_plugins(plugins: List[TradingPlugin]) -> List[TradingPlugin
     return [name_map[pid] for pid in sorted_ids]
 
 
-_GLOBAL_ENGINE: Optional["PluginEngine"] = None
-
-
 def get_plugin_engine() -> Optional["PluginEngine"]:
     """Retrieve active global PluginEngine instance."""
-    return _GLOBAL_ENGINE
+    return PluginEngine.get_instance()
 
 
 class PluginEngine:
@@ -184,13 +181,14 @@ class PluginEngine:
     Central orchestrator for discovering, loading, and managing plugin lifecycles.
     """
 
+    _instance: Optional["PluginEngine"] = None
+
     def __init__(
         self,
         container: Optional[ServiceContainer] = None,
         event_bus: Optional[EventBus] = None,
         task_registry: Optional[TaskRegistry] = None,
     ):
-        global _GLOBAL_ENGINE
         self.container = container or get_container()
         self.event_bus = event_bus or get_event_bus()
         self.task_registry = task_registry
@@ -203,7 +201,7 @@ class PluginEngine:
         self._system_commands: Dict[str, Tuple[Callable, str, str]] = {}
         self._cli_commands: Dict[str, Dict[str, Any]] = {}
         self._is_started = False
-        _GLOBAL_ENGINE = self
+        PluginEngine._instance = self
 
     @property
     def registry(self) -> Dict[str, TradingPlugin]:
@@ -218,7 +216,12 @@ class PluginEngine:
     @classmethod
     def get_instance(cls) -> Optional["PluginEngine"]:
         """Retrieve singleton PluginEngine."""
-        return _GLOBAL_ENGINE
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        """Reset singleton PluginEngine instance."""
+        cls._instance = None
 
     def get_context(self, plugin_id: str) -> Optional[PluginContext]:
         """Retrieve PluginContext for a plugin."""

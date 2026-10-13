@@ -14,7 +14,7 @@ client = TestClient(app)
 
 
 class TestDashboardMemoryRoutes:
-    @patch("monika.core.telemetry.dashboard.routes.memory.AsyncSessionLocal")
+    @patch("monika.interfaces.dashboard.routes.memory.AsyncSessionLocal")
     def test_get_reflections(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
@@ -56,7 +56,7 @@ class TestDashboardMemoryRoutes:
         assert data[0]["was_profitable"] is True
         assert data[0]["outcome_pnl_usd"] == 150.50
 
-    @patch("monika.core.telemetry.dashboard.routes.memory.AsyncSessionLocal")
+    @patch("monika.interfaces.dashboard.routes.memory.AsyncSessionLocal")
     def test_get_lessons(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
@@ -87,7 +87,7 @@ class TestDashboardMemoryRoutes:
         assert data[0]["status"] == "shadow"
         assert "CPI" in data[0]["lesson_text"]
 
-    @patch("monika.core.telemetry.dashboard.routes.memory.AsyncSessionLocal")
+    @patch("monika.interfaces.dashboard.routes.memory.AsyncSessionLocal")
     def test_get_playbooks(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
@@ -107,7 +107,7 @@ class TestDashboardMemoryRoutes:
         assert len(data) == 1
         assert data[0]["rule_hash"] == "abc123hash"
 
-    @patch("monika.core.telemetry.dashboard.routes.memory.AsyncSessionLocal")
+    @patch("monika.interfaces.dashboard.routes.memory.AsyncSessionLocal")
     def test_search_memory(self, mock_session_local):
         mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session

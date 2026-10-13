@@ -87,13 +87,19 @@ class OperatorFeedbackManager:
         return [fb for fb in self._feedback_store if fb.cycle_id == cycle_id]
 
 
-# Singleton instance
-_default_feedback_mgr: OperatorFeedbackManager | None = None
+    _instance: Optional["OperatorFeedbackManager"] = None
+
+    @classmethod
+    def get_instance(cls) -> "OperatorFeedbackManager":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_operator_feedback_manager() -> OperatorFeedbackManager:
     """Singleton getter for OperatorFeedbackManager."""
-    global _default_feedback_mgr
-    if _default_feedback_mgr is None:
-        _default_feedback_mgr = OperatorFeedbackManager()
-    return _default_feedback_mgr
+    return OperatorFeedbackManager.get_instance()

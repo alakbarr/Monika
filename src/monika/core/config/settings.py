@@ -351,11 +351,16 @@ def load_settings(
             return model
 
     # Cache last-known-good configuration in memory
-    global _LKG_SETTINGS_CACHE
     if isinstance(settings, dict) and settings:
-        _LKG_SETTINGS_CACHE = dict(settings)
+        _LKG_SETTINGS_CACHE.clear()
+        _LKG_SETTINGS_CACHE.update(settings)
 
     return settings
+
+
+def reset_lkg_settings_cache() -> None:
+    """Reset last-known-good settings cache (for testing isolation)."""
+    _LKG_SETTINGS_CACHE.clear()
 
 
 def load_settings_with_lkg(
@@ -367,7 +372,6 @@ def load_settings_with_lkg(
     Resilient settings loader: attempts normal load_settings, but falls back to
     _LKG_SETTINGS_CACHE if reading or parsing encounters runtime file errors.
     """
-    global _LKG_SETTINGS_CACHE
     try:
         return load_settings(path, validate=validate, return_model=return_model)
     except Exception as exc:

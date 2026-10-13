@@ -145,6 +145,18 @@ class WebhookIngressRouter:
     High-reliability webhook ingress processor with idempotency cache and async dispatch.
     """
 
+    _instance: Optional["WebhookIngressRouter"] = None
+
+    @classmethod
+    def get_instance(cls, enforce_signature: bool = False, enforce_timestamp: bool = False) -> "WebhookIngressRouter":
+        if cls._instance is None:
+            cls._instance = cls(enforce_signature=enforce_signature, enforce_timestamp=enforce_timestamp)
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
+
     def __init__(
         self,
         verifier: Optional[WebhookSignatureVerifier] = None,
@@ -432,12 +444,6 @@ def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
     }
 
 
-_default_webhook_router: Optional[WebhookIngressRouter] = None
-
-
 def get_webhook_router() -> WebhookIngressRouter:
     """Singleton getter for the global WebhookIngressRouter."""
-    global _default_webhook_router
-    if _default_webhook_router is None:
-        _default_webhook_router = WebhookIngressRouter(enforce_signature=False, enforce_timestamp=False)
-    return _default_webhook_router
+    return WebhookIngressRouter.get_instance(enforce_signature=False, enforce_timestamp=False)

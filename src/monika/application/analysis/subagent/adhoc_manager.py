@@ -180,12 +180,18 @@ class AdHocSubagentManager:
             )
             return verdict
 
+    _instance: Optional["AdHocSubagentManager"] = None
 
-_global_adhoc_manager: Optional[AdHocSubagentManager] = None
+    @classmethod
+    def get_instance(cls, settings: Optional[dict] = None) -> "AdHocSubagentManager":
+        if cls._instance is None:
+            cls._instance = cls(settings=settings)
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_adhoc_manager(settings: Optional[dict] = None) -> AdHocSubagentManager:
-    global _global_adhoc_manager
-    if _global_adhoc_manager is None:
-        _global_adhoc_manager = AdHocSubagentManager(settings=settings)
-    return _global_adhoc_manager
+    return AdHocSubagentManager.get_instance(settings=settings)

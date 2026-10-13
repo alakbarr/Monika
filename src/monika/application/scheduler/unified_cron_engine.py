@@ -897,17 +897,22 @@ class UnifiedCronEngine:
             metadata=json.loads(row[17]) if row[17] else {},
         )
 
+    _instance: Optional["UnifiedCronEngine"] = None
 
-# Global singleton instance
-_GLOBAL_CRON_ENGINE: Optional[UnifiedCronEngine] = None
+    @classmethod
+    def get_instance(cls, db_path: str = DEFAULT_CRON_DB) -> "UnifiedCronEngine":
+        if cls._instance is None:
+            cls._instance = cls(db_path=db_path)
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._instance = None
 
 
 def get_unified_cron_engine(db_path: str = DEFAULT_CRON_DB) -> UnifiedCronEngine:
     """Returns global singleton UnifiedCronEngine instance."""
-    global _GLOBAL_CRON_ENGINE
-    if _GLOBAL_CRON_ENGINE is None:
-        _GLOBAL_CRON_ENGINE = UnifiedCronEngine(db_path=db_path)
-    return _GLOBAL_CRON_ENGINE
+    return UnifiedCronEngine.get_instance(db_path=db_path)
 
 
 # Backward Compatibility Alias

@@ -12,23 +12,33 @@ This module re-exports them for application and external plugin backwards-compat
 from __future__ import annotations
 
 from monika.core.contracts.plugin import (
+    BarClosedEvent,
+    CircuitBreakerEvent,
     EventBusProtocol,
+    OrderStateChangedEvent,
     PluginCategory,
     PluginMetadata,
     PluginOrigin,
     PluginState,
+    RiskBreachEvent,
     ServiceContainerProtocol,
     TaskRegistryProtocol,
+    TickPriceEvent,
     TradingPlugin,
 )
 
 __all__ = [
+    "BarClosedEvent",
+    "CircuitBreakerEvent",
     "EventBusProtocol",
+    "OrderStateChangedEvent",
     "PluginCategory",
     "PluginMetadata",
     "PluginOrigin",
     "PluginState",
+    "RiskBreachEvent",
     "ServiceContainerProtocol",
     "TaskRegistryProtocol",
+    "TickPriceEvent",
     "TradingPlugin",
 ]

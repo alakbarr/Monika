@@ -40,7 +40,7 @@ def test_backtest_rbac_protection(client):
         assert "operator" in res.json()["detail"].lower()
 
         # 2. Operator role CAN trigger backtest POST
-        with patch("monika.core.telemetry.dashboard.routes.backtest._execute_background_backtest"):
+        with patch("monika.interfaces.dashboard.routes.backtest._execute_background_backtest"):
             res_post_ok = client.post(
                 "/api/backtest/run",
                 headers={"X-API-Key": "ops_key"},
@@ -50,7 +50,7 @@ def test_backtest_rbac_protection(client):
             assert res_post_ok.json()["status"] == "queued"
 
         # 3. Viewer CAN access read endpoints
-        with patch("monika.core.telemetry.dashboard.routes.backtest.get_session") as mock_get_sess:
+        with patch("monika.interfaces.dashboard.routes.backtest.get_session") as mock_get_sess:
             mock_sess = create_mock_async_session()
             mock_get_sess.return_value.__aenter__.return_value = mock_sess
 
@@ -155,7 +155,7 @@ def test_get_risk_enriched_fields(mock_session_local, client):
         settings={"trading": {"risk": {"risk_percent_per_trade": 1.5, "max_concurrent_positions": 4}}},
     )
 
-    with patch("monika.core.telemetry.dashboard.rbac.resolve_role", return_value=Role.VIEWER):
+    with patch("monika.interfaces.dashboard.rbac.resolve_role", return_value=Role.VIEWER):
         res = client.get("/api/risk")
         assert res.status_code == 200
         data = res.json()
