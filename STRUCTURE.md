@@ -1297,6 +1297,10 @@ Monika/
 │       │   │   └── trade_trigger.py
 │       │   ├── ports
 │       │   │   ├── __init__.py
+│       │   │   ├── execution.py
+│       │   │   ├── llm.py
+│       │   │   ├── market_data.py
+│       │   │   ├── notifier.py
 │       │   │   ├── repository.py
 │       │   │   └── unit_of_work.py
 │       │   ├── execution
