@@ -9,6 +9,7 @@ Menggunakan SQLAlchemy 2.0 DeclarativeBase dengan pola async.
 """
 
 import uuid
+from decimal import Decimal
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from typing import Any, Dict, Optional, Set, Union
@@ -24,6 +25,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -77,6 +79,13 @@ class Trade(Base):
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     pnl: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     rationale: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Numeric expanded columns (Phase 5 dual-read)
+    entry_price_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    take_profit_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    stop_loss_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    volume_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), nullable=True)
+    pnl_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
 
 
 # =============================================================================
@@ -320,6 +329,13 @@ class PriceOHLCV(Base):
     close: Mapped[float] = mapped_column(Float)
     volume: Mapped[float] = mapped_column(Float)
 
+    # Numeric expanded columns (Phase 5 dual-read)
+    open_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    high_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    low_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    close_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    volume_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
+
     __table_args__ = (
         Index("idx_price_sym_tf_ts", "symbol", "timeframe", "timestamp"),
         UniqueConstraint("symbol", "timeframe", "timestamp", name="uq_price_sym_tf_ts"),
@@ -539,6 +555,13 @@ class AssetAnalysis(Base):
     market_regime_at_analysis: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     risk_multiplier: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=1.0)
 
+    # Numeric expanded columns (Phase 5 dual-read)
+    confidence_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    stop_loss_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    take_profit_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    invalidation_price_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    risk_multiplier_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+
     # Debate Results
     debate_bull_thesis: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     debate_bear_dissent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -708,6 +731,13 @@ class Order(Base):
     slippage_pips: Mapped[float] = mapped_column(Float, default=0.0)
     requested_volume: Mapped[float] = mapped_column(Float, nullable=False)
     filled_volume: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Numeric expanded columns (Phase 5 dual-read)
+    requested_price_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    executed_price_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    slippage_pips_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
+    requested_volume_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), nullable=True)
+    filled_volume_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), nullable=True)
     status: Mapped[OrderStatus] = mapped_column(
         SQLAlchemyEnum(OrderStatus, native_enum=False, length=30), default=OrderStatus.PENDING_SUBMIT, index=True
     )
@@ -858,6 +888,15 @@ class Position(Base):
     sl_slippage_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.0)
     entry_session: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     market_regime: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    # Numeric expanded columns (Phase 5 dual-read)
+    volume_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), nullable=True)
+    initial_volume_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), nullable=True)
+    entry_price_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    sl_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    tp_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    pnl_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
+    slippage_pips_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
 
     # Relationship
     order = relationship("Order", backref="positions", lazy="raise")
@@ -1014,6 +1053,15 @@ class PaperTradeRecord(Base):
     entry_session: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     market_regime: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
+    # Numeric expanded columns (Phase 5 dual-read)
+    entry_price_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    stop_loss_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    take_profit_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    exit_price_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    risk_pct_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    pnl_pct_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    requested_lot_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), nullable=True)
+
     __table_args__ = (
         Index("idx_paper_trade_status", "status"),
         Index("idx_paper_trade_symbol", "symbol"),
@@ -1055,6 +1103,14 @@ class EquityDrawdownSnapshot(Base):
     drawdown_pct: Mapped[float] = mapped_column(Float, default=0.0)
     peak_equity: Mapped[float] = mapped_column(Float, default=0.0)
     open_positions_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Numeric expanded columns (Phase 5 dual-read)
+    balance_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
+    equity_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
+    floating_pnl_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
+    drawdown_usd_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
+    drawdown_pct_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
+    peak_equity_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
 
     __table_args__ = (Index("idx_equity_snapshot_ts", "timestamp"),)
 
@@ -1158,6 +1214,10 @@ class RiskState(Base):
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     daily_pnl: Mapped[float] = mapped_column(Float, default=0.0)
     current_drawdown: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Numeric expanded columns (Phase 5 dual-read)
+    daily_pnl_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
+    current_drawdown_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4), nullable=True)
     trading_paused: Mapped[bool] = mapped_column(Boolean, default=False)
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     unpause_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -1998,3 +2058,145 @@ class MacroLiquidityCreditMetric(Base):
         UniqueConstraint("metric_type", "country", "record_date", name="uq_macro_liq_metric"),
         Index("idx_liq_lookup", "metric_type", "record_date"),
     )
+
+
+# =============================================================================
+# 23: Operational & Background Pipeline State (Consolidated Phase 5)
+# =============================================================================
+
+
+class CronJob(Base):
+    """Persistent job registry for UnifiedCronEngine."""
+
+    __tablename__ = "cron_jobs"
+
+    job_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), default="")
+    schedule_expression: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    target_delivery: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_destination: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    workdir: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    monitor_script: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    last_monitor_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    next_run_at: Mapped[float] = mapped_column(Float, nullable=False, index=True)
+    last_run_at: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    last_exit_code: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    last_output: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: Mapped[int] = mapped_column(Integer, default=1, index=True)
+    no_agent: Mapped[int] = mapped_column(Integer, default=0)
+    pending_slot: Mapped[int] = mapped_column(Integer, default=0)
+    timeout_seconds: Mapped[float] = mapped_column(Float, default=300.0)
+    metadata_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class OutboxDelivery(Base):
+    """Transactional outbox delivery tracking for outbound notifications."""
+
+    __tablename__ = "outbox_deliveries"
+
+    delivery_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    job_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    channel: Mapped[str] = mapped_column(String(64), nullable=False)
+    destination: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    payload: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="pending", index=True)
+    lease_expires_at: Mapped[float] = mapped_column(Float, default=0.0, index=True)
+    created_at: Mapped[float] = mapped_column(Float, nullable=False)
+    updated_at: Mapped[float] = mapped_column(Float, nullable=False)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (Index("idx_outbox_status_lease", "status", "lease_expires_at"),)
+
+
+class DeliveryRecord(Base):
+    """Idempotent delivery ledger for gateway and webhook platforms."""
+
+    __tablename__ = "delivery_records"
+
+    idempotency_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    platform: Mapped[str] = mapped_column(String(32), nullable=False)
+    recipient_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    created_at: Mapped[float] = mapped_column(Float, nullable=False)
+    updated_at: Mapped[float] = mapped_column(Float, nullable=False)
+    delivered_at: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    payload_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    flood_not_before: Mapped[float] = mapped_column(Float, default=0.0, index=True)
+
+    __table_args__ = (
+        Index("idx_delivery_status", "status"),
+        Index("idx_delivery_flood", "flood_not_before"),
+    )
+
+
+class SessionToolRecord(Base):
+    """Detailed tool execution ledger accompanying session messages."""
+
+    __tablename__ = "session_tool_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    turn_ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    arguments_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    output_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_error: Mapped[int] = mapped_column(Integer, default=0)
+    has_side_effects: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[float] = mapped_column(Float, nullable=False)
+
+    __table_args__ = (Index("idx_str_lookup", "session_id", "turn_ordinal"),)
+
+
+class RepairLedger(Base):
+    """Audit trail for automatic schema, state, and database repair actions."""
+
+    __tablename__ = "repair_ledger"
+
+    repair_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[Optional[str]] = mapped_column(String(64), index=True, nullable=True)
+    issue_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    action_taken: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="RESOLVED")
+    details_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[float] = mapped_column(Float, nullable=False)
+
+    __table_args__ = (Index("idx_repair_session", "session_id"),)
+
+
+class ScheduledJob(Base):
+    """Detached scheduler background job registration."""
+
+    __tablename__ = "scheduled_jobs"
+
+    job_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    schedule_expr: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    interval_seconds: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    handler_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    target_platform: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    target_channel: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    last_run: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    next_run: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    is_active: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[float] = mapped_column(Float, nullable=False)
+
+
+class JobDelivery(Base):
+    """Detached scheduler execution delivery outcome."""
+
+    __tablename__ = "job_deliveries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("scheduled_jobs.job_id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    output_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    delivered_at: Mapped[float] = mapped_column(Float, nullable=False)

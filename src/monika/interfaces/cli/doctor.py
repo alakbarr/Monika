@@ -481,6 +481,23 @@ class SystemDoctor:
                     f"Target host: {parsed.hostname}:{parsed.port or 5432}, DB: {parsed.path.lstrip('/')}",
                 )
 
+        # Offline Alembic Head Verification
+        try:
+            from alembic.config import Config
+            from alembic.script import ScriptDirectory
+            from monika.infrastructure.infra.paths import get_repo_root
+
+            alembic_ini = get_repo_root() / "alembic.ini"
+            if alembic_ini.exists():
+                cfg = Config(str(alembic_ini))
+                script = ScriptDirectory.from_config(cfg)
+                head = script.get_current_head()
+                self._record("DatabaseConfig", "Alembic-Head", "OK", f"Alembic canonical head: {head}")
+            else:
+                self._record("DatabaseConfig", "Alembic-Head", "WARN", f"alembic.ini missing at {alembic_ini}")
+        except Exception as exc:
+            self._record("DatabaseConfig", "Alembic-Head", "WARN", f"Unable to read Alembic head: {exc}")
+
     async def check_redis(self, settings: dict) -> None:
         """Verify Redis cache connectivity if configured or using localhost."""
         redis_cfg = settings.get("redis", {}) if isinstance(settings, dict) else {}

@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Sequence, cast
 
-from sqlalchemy import Table
+from sqlalchemy import text
 
 from monika.infrastructure.database.db import get_engine, get_session
 from monika.infrastructure.database.models import Base
@@ -27,18 +27,13 @@ _AGENT_LOCK = asyncio.Lock()
 
 
 async def ensure_tables():
+    """Verify database connection for benchmark execution."""
     try:
         eng = get_engine()
-        async with eng.begin() as conn:
-            await conn.run_sync(
-                lambda c: Base.metadata.create_all(
-                    c,
-                    tables=cast(Sequence[Table], [BenchmarkRun.__table__, BenchmarkResult.__table__]),
-                    checkfirst=True,
-                )
-            )
+        async with eng.connect() as conn:
+            await conn.execute(text("SELECT 1"))
     except Exception as e:
-        logger.warning("ensure_tables failed (DB might be offline or unmigrated): %s", e)
+        logger.warning("Database connectivity check failed: %s", e)
 
 
 def _detect_route(model_name: str) -> str:

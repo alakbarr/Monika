@@ -133,6 +133,7 @@ Monika/
 │   ├── generate_model_quadrant.py
 │   ├── heal_kill_switch_state.py
 │   ├── migrate_runtime_home.py
+│   ├── migrate_sqlite_to_canonical.py
 │   ├── reset_paper_trades.py
 │   ├── run_tests.bat
 │   ├── run_tests.sh
@@ -1278,6 +1279,7 @@ Monika/
 │       │   │   ├── clean_stale_proposals.py
 │       │   │   ├── compat.py
 │       │   │   ├── connection.py
+│       │   │   ├── db.py
 │       │   │   ├── domain_models
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── activity_logs.py
@@ -1294,6 +1296,7 @@ Monika/
 │       │   │   │   ├── env.py
 │       │   │   │   ├── script.py.mako
 │       │   │   │   └── versions
+│       │   │   │       ├── 0006_consolidate_and_numeric.py
 │       │   │   │       ├── 001_initial_schema.py
 │       │   │   │       ├── 002_add_fts5_virtual_tables.py
 │       │   │   │       ├── 003_add_session_wal_and_pruning.py
@@ -1302,6 +1305,7 @@ Monika/
 │       │   │   │       ├── 006_add_phase3_runtime.py
 │       │   │   │       ├── 007_add_phase4_rewind.py
 │       │   │   │       └── 008_foreign_key_audit.py
+│       │   │   ├── models.py
 │       │   │   ├── phase2_compaction.py
 │       │   │   ├── phase2_prune_ledger.py
 │       │   │   ├── phase3_runtime.py
@@ -1313,6 +1317,7 @@ Monika/
 │       │   │   │   ├── system_config_repository.py
 │       │   │   │   └── trade_proposal_repository.py
 │       │   │   ├── session_db.py
+│       │   │   ├── session_db_wal.py
 │       │   │   ├── sqlite_concurrency.py
 │       │   │   └── user_market_intel.py
 │       │   ├── data_ingestion

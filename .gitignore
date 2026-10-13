@@ -120,6 +120,7 @@ scripts/*
 !scripts/audit_token_usage.py
 !scripts/check_scrapers/
 !scripts/migrate_runtime_home.py
+!scripts/migrate_sqlite_to_canonical.py
 contoh_pertanyaan.md
 prompt_benchmark.md
 
