@@ -5,6 +5,7 @@
 Monika/
 ├── .dockerignore
 ├── .env.example
+├── .git-blame-ignore-revs
 ├── .gitattributes
 ├── .github
 │   ├── ISSUE_TEMPLATE
@@ -14,6 +15,8 @@ Monika/
 │   └── workflows
 │       └── ci.yml
 ├── .gitignore
+├── .importlinter
+├── .pre-commit-config.yaml
 ├── AGENTS.md
 ├── CHANGELOG.md
 ├── CODE_OF_CONDUCT.md
@@ -143,7 +146,20 @@ Monika/
 ├── typings
 │   ├── MetaTrader5
 │   │   └── __init__.pyi
-│   └── ib_insync
+│   ├── bottleneck
+│   │   └── __init__.pyi
+│   ├── concurrent_log_handler
+│   │   └── __init__.pyi
+│   ├── hmmlearn
+│   │   ├── __init__.pyi
+│   │   └── hmm.pyi
+│   ├── ib_insync
+│   │   └── __init__.pyi
+│   ├── mt5linux
+│   │   └── __init__.pyi
+│   ├── uvloop
+│   │   └── __init__.pyi
+│   └── weasyprint
 │       └── __init__.pyi
 ├── src
 │   └── monika
