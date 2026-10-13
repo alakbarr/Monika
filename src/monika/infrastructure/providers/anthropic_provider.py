@@ -21,11 +21,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from monika.infrastructure.api.claude_rate_limiter import ClaudeRateLimiter
 from monika.infrastructure.api.streaming import StreamConfig, StreamTimeoutError, StreamSafetyTimeoutError
 
-from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.infrastructure.database.models import ActivityLog
 from monika.infrastructure.providers.base_provider import BaseLLMClient, MockResponse
 
 logger = logging.getLogger("TradingAgent.AnthropicProvider")
+
+
+def __getattr__(name: str) -> Any:
+    if name == "ToolExecutor":
+        import importlib
+        return importlib.import_module("monika.application.analysis.tools.tool_executor").ToolExecutor
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 def _build_system_blocks(system_prompt) -> list[dict]:
     """
@@ -524,7 +530,12 @@ class AnthropicProvider(BaseLLMClient):
         
         from monika.infrastructure.database.db import get_session
         async with get_session() as session:
-            executor = ToolExecutor(session, settings=self.settings, model_name=self.model)
+            if tool_executor is not None:
+                executor = tool_executor
+            else:
+                import importlib
+                tool_executor_cls = importlib.import_module("monika.application.analysis.tools.tool_executor").ToolExecutor
+                executor = tool_executor_cls(session, settings=self.settings, model_name=self.model)
 
             messages = []
             for msg in conversation_history:

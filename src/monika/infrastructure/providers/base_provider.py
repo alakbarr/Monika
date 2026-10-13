@@ -273,24 +273,7 @@ def extract_and_parse_json(text: str) -> Optional[dict]:
     return None
 
 
-def _flatten_system_prompt(system_prompt: Any) -> str:
-    """
-    Safely convert str, tuple, list, or dict-blocks system prompts into a single clean string.
-    Useful for providers that only accept plain string system prompts.
-    """
-    if system_prompt is None:
-        return ""
-    if isinstance(system_prompt, (tuple, list)):
-        parts = []
-        for p in system_prompt:
-            if isinstance(p, dict):
-                parts.append(str(p.get("text", "")).strip())
-            elif p:
-                parts.append(str(p).strip())
-        return "\n\n".join(part for part in parts if part)
-    if isinstance(system_prompt, dict):
-        return str(system_prompt.get("text", "")).strip()
-    return str(system_prompt)
+from monika.core.primitives import _flatten_system_prompt
 
 
 class MockBlock(dict):
@@ -529,6 +512,13 @@ class BaseLLMClient(ABC):
         """Low-level multi-turn tool-calling. Returns MockResponse or native Message."""
         pass
 
+    _agent_harness_factory: Optional[Any] = None
+
+    @classmethod
+    def register_agent_harness_factory(cls, factory: Any) -> None:
+        """Register the AgentHarness factory to avoid infrastructure -> application cyclic imports."""
+        cls._agent_harness_factory = factory
+
     async def run_agent(self, session, system_prompt: str | tuple[str, str] | Any, user_message: str,
                         tools: list, stage_name: str = "unknown",
                         extra_context: Optional[str] = None,
@@ -541,8 +531,11 @@ class BaseLLMClient(ABC):
                   "error": str|None, "context_messages": list|None,
                   "is_billing_error": bool|None}
         """
-        from monika.application.analysis.harness.agent_harness import AgentHarness
-        harness = AgentHarness(
+        factory = self._agent_harness_factory
+        if factory is None:
+            import importlib
+            factory = importlib.import_module("monika.application.analysis.harness.agent_harness").AgentHarness
+        harness = factory(
             llm_client=self,
             settings=self.settings,
             max_tool_turns=kwargs.get("max_tool_turns", self.max_tool_turns),
@@ -576,8 +569,11 @@ class BaseLLMClient(ABC):
                                        prefetch_satisfied_tools: Optional[set] = None,
                                        **kwargs) -> dict:
         """Continue agent from existing messages via AgentHarness."""
-        from monika.application.analysis.harness.agent_harness import AgentHarness
-        harness = AgentHarness(
+        factory = self._agent_harness_factory
+        if factory is None:
+            import importlib
+            factory = importlib.import_module("monika.application.analysis.harness.agent_harness").AgentHarness
+        harness = factory(
             llm_client=self,
             settings=self.settings,
             max_tool_turns=max_tool_turns or self.max_tool_turns,

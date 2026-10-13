@@ -12,6 +12,7 @@ from .clock import (
 )
 from .constants import *  # noqa: F401, F403
 from .event_bus import AppEvent, EventBus, get_event_bus, reset_event_bus
+from .prompt_primitives import _flatten_system_prompt, estimate_tokens
 from .retry import retryable
 from .turn_marker import TurnMarker
 
@@ -30,4 +31,6 @@ __all__ = [
     "reset_event_bus",
     "retryable",
     "TurnMarker",
+    "_flatten_system_prompt",
+    "estimate_tokens",
 ]

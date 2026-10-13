@@ -1789,3 +1789,8 @@ class AgentHarness:
             "is_billing_error": False,
             "length_truncated": length_truncated,
         }
+
+
+# Register AgentHarness factory with BaseLLMClient to decouple infrastructure from application
+from monika.infrastructure.providers.base_provider import BaseLLMClient
+BaseLLMClient.register_agent_harness_factory(AgentHarness)

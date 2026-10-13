@@ -703,8 +703,8 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     # ── Hook Interception: pre_llm_call & prompt section injection ──
                     try:
-                        from monika.application.harness.engine import get_plugin_engine
-                        engine = get_plugin_engine()
+                        import importlib
+                        engine = importlib.import_module("monika.application.harness.engine").get_plugin_engine()
                         if engine:
                             await engine.emit_hook(
                                 "pre_llm_call",
@@ -717,8 +717,8 @@ class FallbackClientWrapper(BaseLLMClient):
                         logger.debug(f"[LLMDispatch] pre_llm_call notice: {h_err}")
 
                     try:
-                        from monika.application.analysis.prompt_sections import get_prompt_section_registry
-                        psr = get_prompt_section_registry()
+                        import importlib
+                        psr = importlib.import_module("monika.application.analysis.prompt_sections").get_prompt_section_registry()
                         ctx_info = {"task_role": self.task_role, "model": model}
 
                         def _format_system_prompt(sys_val):
@@ -798,8 +798,8 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     # ── Hook Interception: post_llm_call ──
                     try:
-                        from monika.application.harness.engine import get_plugin_engine
-                        engine = get_plugin_engine()
+                        import importlib
+                        engine = importlib.import_module("monika.application.harness.engine").get_plugin_engine()
                         if engine:
                             await engine.emit_hook(
                                 "post_llm_call",

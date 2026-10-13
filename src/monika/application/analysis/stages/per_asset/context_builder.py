@@ -48,10 +48,7 @@ SYMBOL_TO_COT: dict[str, str] = {
 
 
 
-def _flatten_system_prompt(sp) -> str:
-    if isinstance(sp, tuple):
-        return sp[0] + sp[1]
-    return sp
+from monika.core.primitives import _flatten_system_prompt
 
 SYSTEM_PROMPT_STATIC = """You are a professional multi-asset SMC/ICT technical analyst.
 Produce a structured, high-confidence trading decision following the loaded playbook.
