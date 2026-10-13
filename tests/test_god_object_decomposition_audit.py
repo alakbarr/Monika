@@ -133,7 +133,9 @@ def test_models_decomposition_facade_and_submodules():
         dummy: Any = object()
         setattr(models, "Trade", dummy)
         assert domain_models.Trade is dummy
-        assert domain_models.trading.Trade is dummy
+        import monika.infrastructure.database.domain_models.trading as dm_trading
+
+        assert dm_trading.Trade is dummy
     finally:
         setattr(models, "Trade", original)
         assert domain_models.Trade is original
@@ -172,9 +174,42 @@ def test_tui_decomposition_facade_and_submodules():
         dummy: Any = object()
         setattr(tui, "TradingDashboard", dummy)
         assert tui_app.TradingDashboard is dummy
-        assert tui_app.dashboard.TradingDashboard is dummy
+        import monika.interfaces.cli.tui_app.dashboard as tui_dashboard
+
+        assert tui_dashboard.TradingDashboard is dummy
     finally:
         setattr(tui, "TradingDashboard", original)
         assert tui_app.TradingDashboard is original
+
+
+def test_per_asset_runner_decomposition_and_submodules():
+    """Verify application/analysis/stages/per_asset/runner.py decomposition into runner_mixins <= 800 LOC."""
+    from monika.application.analysis.stages.per_asset import runner
+    from monika.application.analysis.stages.per_asset import runner_mixins
+    from monika.application.analysis.stages.per_asset_stage import PerAssetStage
+
+    runner_mixins_dir = Path("src/monika/application/analysis/stages/per_asset/runner_mixins")
+    assert runner_mixins_dir.is_dir()
+
+    for py_file in runner_mixins_dir.rglob("*.py"):
+        line_count = len(py_file.read_text(encoding="utf-8").splitlines())
+        assert line_count <= 800, f"{py_file} exceeds 800 LOC ({line_count} lines)"
+
+    runner_path = Path("src/monika/application/analysis/stages/per_asset/runner.py")
+    runner_lines = len(runner_path.read_text(encoding="utf-8").splitlines())
+    assert runner_lines <= 800, f"runner.py exceeds 800 LOC ({runner_lines} lines)"
+
+    # Verify inheritance structure
+    assert issubclass(runner.PerAssetRunner, runner_mixins.BatchOrchestratorMixin)
+    assert issubclass(runner.PerAssetRunner, runner_mixins.PrescreenMixin)
+    assert issubclass(runner.PerAssetRunner, runner_mixins.RecoveryMixin)
+    assert issubclass(runner.PerAssetRunner, runner_mixins.PostProcessVerificationMixin)
+    assert issubclass(runner.PerAssetRunner, runner_mixins.SingleAssetAnalysisMixin)
+    assert issubclass(PerAssetStage, runner.PerAssetRunner)
+
+    # Verify functions
+    assert callable(runner._get_asyncio)
+    assert callable(runner._get_clock)
+
 
 
