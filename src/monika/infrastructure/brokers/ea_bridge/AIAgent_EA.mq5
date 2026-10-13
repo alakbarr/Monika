@@ -369,7 +369,7 @@ void WriteEAHeartbeat()
         return;
     }
 
-    int handle = FileOpen(HEARTBEAT_FILE_EA, FILE_WRITE | FILE_TXT | FILE_COMMON | FILE_ANSI);
+    int handle = FileOpen(HEARTBEAT_FILE_EA, FILE_WRITE | FILE_TXT | FILE_COMMON | FILE_ANSI | FILE_SHARE_READ);
     if(handle == INVALID_HANDLE)
     {
         Print("[AIAgent EA] Cannot write EA heartbeat file.");
@@ -395,7 +395,7 @@ void ExportActiveChartObjects()
 {
     string sym = _Symbol;
     string fileName = "chart_objects_" + sym + ".json";
-    int handle = FileOpen(fileName, FILE_WRITE | FILE_TXT | FILE_COMMON | FILE_ANSI);
+    int handle = FileOpen(fileName, FILE_WRITE | FILE_TXT | FILE_COMMON | FILE_ANSI | FILE_SHARE_READ);
     if(handle == INVALID_HANDLE) return;
 
     string json = "{\n";

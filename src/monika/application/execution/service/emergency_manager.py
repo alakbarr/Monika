@@ -103,17 +103,27 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
             logger.info(
                 f"Closing position {ticket} (requested_by={requested_by}, reason={reason}, volume={close_lots})"
             )
-            if hasattr(self, "broker_adapter") and self.broker_adapter:
-                result = await self.broker_adapter.close_position(ticket=ticket, lots=close_lots)
-                if result.get("profit") is None and result.get("pnl") is not None:
-                    result["profit"] = result["pnl"]
-            else:
-                result = await self.mt5.close_position(
-                    ticket=ticket,
-                    volume=close_lots,
-                    lots=close_lots,
-                    comment=f"Close:{requested_by}"[:31],
-                )
+            try:
+                if hasattr(self, "broker_adapter") and self.broker_adapter:
+                    result = await asyncio.wait_for(
+                        self.broker_adapter.close_position(ticket=ticket, lots=close_lots),
+                        timeout=15.0,
+                    )
+                    if result.get("profit") is None and result.get("pnl") is not None:
+                        result["profit"] = result["pnl"]
+                else:
+                    result = await asyncio.wait_for(
+                        self.mt5.close_position(
+                            ticket=ticket,
+                            volume=close_lots,
+                            lots=close_lots,
+                            comment=f"Close:{requested_by}"[:31],
+                        ),
+                        timeout=15.0,
+                    )
+            except (TimeoutError, asyncio.TimeoutError):
+                logger.critical(f"Liquidation timed out after 15.0s for ticket {ticket}")
+                result = {"success": False, "error": f"Liquidation timed out after 15.0s for ticket {ticket}"}
 
             async with get_session() as session:
                 # Update DB position record
@@ -374,13 +384,16 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                     logger.error(f"Error canceling pending orders during kill switch: {ce}")
 
             for attempt in range(max_retries):
-                # 1. Broker terminal liquidation
-                if adapter and hasattr(adapter, "close_all_positions"):
-                    result = await adapter.close_all_positions(comment="KillSwitch")
-                elif hasattr(self, "mt5") and hasattr(self.mt5, "close_all_positions"):
-                    result = await self.mt5.close_all_positions(comment="KillSwitch")
-                else:
-                    result = {"closed": 0, "failed": 0, "total": 0, "errors": []}
+                try:
+                    if adapter and hasattr(adapter, "close_all_positions"):
+                        result = await asyncio.wait_for(adapter.close_all_positions(comment="KillSwitch"), timeout=15.0)
+                    elif hasattr(self, "mt5") and hasattr(self.mt5, "close_all_positions"):
+                        result = await asyncio.wait_for(self.mt5.close_all_positions(comment="KillSwitch"), timeout=15.0)
+                    else:
+                        result = {"closed": 0, "failed": 0, "total": 0, "errors": []}
+                except (TimeoutError, asyncio.TimeoutError):
+                    logger.critical("Broker terminal liquidation timed out after 15.0s!")
+                    result = {"closed": 0, "failed": 1, "total": 1, "errors": ["Liquidation timed out after 15.0s"]}
 
                 broker_closed = result.get("closed", 0)
                 live_closed_count = max(live_closed_count, broker_closed)

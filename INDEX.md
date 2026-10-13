@@ -967,7 +967,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `CentralBankDocScraper`
 **File:** `bank_indonesia.py`
   - **Docstring**: Bank Indonesia monetary policy and macro indicator scraper.
-  - **Classes**: `BankIndonesiaScraper`
+  - **Classes**: `BankIndonesiaFetcher`
 **File:** `sovereign_yield_spreads.py`
   - **Docstring**: Global sovereign bond yield spreads scraper and calculator.
   - **Classes**: `SovereignYieldSpreadsScraper`
