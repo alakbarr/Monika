@@ -315,15 +315,21 @@ def build_trading_graph(db_url: Optional[str] = None, checkpointer: Optional[Any
                     checkpointer = pg_checkpointer
                     logger.info("LangGraph: Authoritative PostgreSQL checkpointer created (setup pending)")
                 except ImportError:
-                    logger.warning("langgraph-checkpoint-postgres not installed, using MemorySaver fallback")
-                    checkpointer = MemorySaver() if MemorySaver is not None else None
+                    logger.warning("langgraph-checkpoint-postgres not installed, using SqliteCheckpointSaver fallback")
                 except Exception as e:
-                    logger.error(f"PostgreSQL checkpointer init failed: {e}. Using MemorySaver fallback.")
-                    checkpointer = MemorySaver() if MemorySaver is not None else None
-            else:
+                    logger.error(f"PostgreSQL checkpointer init failed: {e}. Using SqliteCheckpointSaver fallback.")
+
+        if checkpointer is None:
+            try:
+                from monika.core.paths import get_data_dir
+                from monika.infrastructure.graph.checkpointers.sqlite_checkpointer import SqliteCheckpointSaver
+
+                sqlite_cp_path = str(get_data_dir() / "checkpoints.sqlite")
+                checkpointer = SqliteCheckpointSaver(db_path=sqlite_cp_path)
+                logger.info(f"LangGraph: Resilient SqliteCheckpointSaver created at {sqlite_cp_path}")
+            except Exception as e:
+                logger.warning(f"SqliteCheckpointSaver init failed: {e}, using MemorySaver fallback")
                 checkpointer = MemorySaver() if MemorySaver is not None else None
-        else:
-            checkpointer = MemorySaver() if MemorySaver is not None else None
 
     workflow = StateGraph(TradingState)
 

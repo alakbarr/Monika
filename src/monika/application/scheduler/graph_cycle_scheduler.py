@@ -163,25 +163,28 @@ class GraphCycleScheduler(CycleScheduler):
                     await conn.close()
                 except Exception:
                     pass
-        logger.critical(
+        logger.warning(
             f"PostgreSQL checkpointer failed after {MAX_RETRIES} attempts. "
-            f"Falling back to MemorySaver (state will NOT persist across restarts). "
-            f"Check DB connectivity and verify DATABASE_URL environment variable."
+            f"Attempting fallback to local SqliteCheckpointSaver."
         )
-        if hasattr(self, "notifier") and self.notifier:
-            try:
-                await self.notifier.send_alert(
-                    f"[PERINGATAN] CRITICAL: Graph state persistence unavailable. MemorySaver fallback active. "
-                    f"State will be LOST on restart."
-                )
-            except Exception:
-                pass
         try:
-            from langgraph.checkpoint.memory import MemorySaver
+            from monika.core.paths import get_data_dir
+            from monika.infrastructure.graph.checkpointers.sqlite_checkpointer import SqliteCheckpointSaver
 
-            self.graph.checkpointer = MemorySaver()
-        except ImportError:
-            pass
+            sqlite_cp_path = str(get_data_dir() / "checkpoints.sqlite")
+            self.graph.checkpointer = SqliteCheckpointSaver(db_path=sqlite_cp_path)
+            logger.info(f"LangGraph: Resilient SqliteCheckpointSaver fallback active at {sqlite_cp_path}")
+        except Exception as fallback_err:
+            logger.critical(
+                f"SqliteCheckpointSaver fallback failed: {fallback_err}. "
+                f"Falling back to MemorySaver (state will NOT persist across restarts)."
+            )
+            try:
+                from langgraph.checkpoint.memory import MemorySaver
+
+                self.graph.checkpointer = MemorySaver()
+            except ImportError:
+                pass
         self._checkpointer_ready = True
 
         # Kirim alert Telegram agar operator tahu state persistence terdegradasi
@@ -191,7 +194,7 @@ class GraphCycleScheduler(CycleScheduler):
             await AgentNotifier().send_warning(
                 "[PERINGATAN] <b>LangGraph: PostgreSQL Checkpointer Gagal</b>\n\n"
                 f"Setup gagal setelah {MAX_RETRIES} percobaan.\n"
-                "Fallback ke MemorySaver - state tidak persisten antar restart.\n\n"
+                f"Aktif menggunakan checkpointer: {type(self.graph.checkpointer).__name__}.\n\n"
                 "Periksa koneksi DB dan variabel DATABASE_URL."
             )
         except Exception:

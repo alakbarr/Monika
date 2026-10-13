@@ -62,7 +62,7 @@ def __getattr__(name: str) -> Any:
 
 engine = None
 _async_session_factory = None
-_engine_lock = threading.Lock()
+_engine_lock = threading.RLock()
 
 
 class _AsyncSessionLocalProxy:
@@ -165,7 +165,9 @@ def get_tier() -> str:
 
 def get_canonical_db_path() -> Path:
     """Return absolute canonical database file path for Monika SQLite database."""
-    base_data_dir = _cur_dir.parent / "data"
+    from monika.core.paths import get_data_dir
+
+    base_data_dir = get_data_dir()
     base_data_dir.mkdir(parents=True, exist_ok=True)
     return (base_data_dir / "monika.db").resolve()
 
@@ -276,10 +278,11 @@ def get_sessionmaker():
     """Lazy sessionmaker factory bound to engine (thread-safe)."""
     global _async_session_factory
     if _async_session_factory is None:
+        eng = get_engine()
         with _engine_lock:
             if _async_session_factory is None:
                 _async_session_factory = async_sessionmaker(
-                    bind=get_engine(),
+                    bind=eng,
                     class_=AsyncSession,
                     expire_on_commit=False,
                 )
