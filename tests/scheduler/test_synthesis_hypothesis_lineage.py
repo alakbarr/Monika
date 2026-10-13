@@ -31,7 +31,7 @@ async def test_synthesis_tracks_hypothesis_and_lineage(tmp_hypothesis_file):
     scheduler.hypothesis_registry = reg
 
     valid_code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -98,7 +98,7 @@ async def test_synthesis_rejects_and_deduplicates(tmp_hypothesis_file):
     scheduler.hypothesis_registry = reg
 
     valid_code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 

@@ -53,13 +53,10 @@ async def test_debate_node_does_not_crash_with_actionable_trade():
     mock_client.generate_content = AsyncMock(return_value=MagicMock(content="{}", text="{}"))
 
     with (
-        patch("graph.nodes.debate_node.get_session") as mock_gs,
-        patch("graph.nodes.debate_node.get_client_for_task", return_value=mock_client),
+        patch("monika.application.graph.nodes.debate_node.get_session") as mock_gs,
+        patch("monika.application.graph.nodes.debate_node.get_client_for_task", return_value=mock_client),
     ):
         mock_gs.return_value.__aenter__.return_value = mock_session
-        try:
-            await debate_node(fake_state, config)
-        except NameError as e:
-            pytest.fail(f"debate_node crashed with NameError (regression!): {e}")
-        except Exception:
-            pass  # exception lain dari mock DB itu wajar, bukan target test ini
+        result = await debate_node(fake_state, config)
+        assert isinstance(result, dict)
+        assert "actionable_trades" in result

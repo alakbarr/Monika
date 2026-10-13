@@ -120,4 +120,5 @@ async def test_risk_evaluator_negative_expectancy_returns_zero():
 def test_update_index_toc_check_mode():
     """Verify update_index_toc check_only does not fail when INDEX.md is synced."""
     # Running check_only on clean INDEX.md should not raise SystemExit
-    generate_toc(check_only=True)
+    result = generate_toc(check_only=True)
+    assert result is None

@@ -21,6 +21,7 @@ class StrategyRegistry:
     _last_load_time: float = 0.0
     _load_interval: float = 60.0
     MAX_SYNTHESIZED_PER_SYMBOL: int = 5
+    SYNTHESIZED_DIR: Path = Path(__file__).resolve().parent / "synthesized"
 
     @classmethod
     def register(cls, strategy_cls: Type[EdgeStrategy], overwrite: bool = True) -> Type[EdgeStrategy]:
@@ -244,7 +245,7 @@ class StrategyRegistry:
                                 symbol_active_synths[sym] = symbol_active_synths.get(sym, 0) + 1
                         else:
                             # Self-healing fallback: Check if a valid version exists on disk
-                            disk_path = Path(__file__).resolve().parent / "synthesized" / f"{s_id}.py"
+                            disk_path = cls.SYNTHESIZED_DIR / f"{s_id}.py"
                             healed = False
                             if disk_path.exists():
                                 try:

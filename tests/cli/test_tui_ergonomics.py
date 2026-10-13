@@ -168,5 +168,7 @@ def test_cli_session_lock_twin_lifecycle(tmp_path):
 def test_chat_renderer_thinking_spinner():
     """Verify thinking spinner helper executes without unhandled errors."""
     renderer = ChatRenderer(theme_name="retro_vintage")
+    assert renderer.theme_name == "retro_vintage"
+    assert renderer.console is not None
     renderer.render_thinking_spinner("Evaluating market structure...")
     renderer.clear_thinking_spinner()

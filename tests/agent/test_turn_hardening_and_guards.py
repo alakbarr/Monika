@@ -49,6 +49,14 @@ from monika.infrastructure.llm.prompt_caching import PromptCacheManager
 from monika.infrastructure.providers.capabilities import get_model_capabilities
 
 
+@pytest.fixture(autouse=True)
+def isolate_estop_to_tmp(tmp_path, monkeypatch):
+    """Isolate ESTOP sentinel file to temporary test directory."""
+    monkeypatch.setenv("MONIKA_HOME", str(tmp_path))
+    yield
+    disarm_estop()
+
+
 # ==============================================================================
 # 1. Repetition Guard Tests
 # ==============================================================================

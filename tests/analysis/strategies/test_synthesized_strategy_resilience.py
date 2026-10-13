@@ -46,7 +46,7 @@ async def test_alpha_eurusd_6d622a_evaluates_without_nan_casting_error():
 async def test_compile_strategy_class_safe_evaluate_boundary():
     """Verify compile_strategy_class wraps evaluate() with safe_evaluate to catch any unhandled exception."""
     buggy_code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -134,7 +134,7 @@ from app.something import helper
     assert "df['a'].bfill()" in sanitized
     assert (
         "from monika.application.analysis.strategies.base_strategy import helper" in sanitized
-        or "from analysis.strategies.base_strategy import helper" in sanitized
+        or "from monika.application.analysis.strategies.base_strategy import helper" in sanitized
     )
 
 
@@ -142,7 +142,7 @@ from app.something import helper
 async def test_compile_strategy_with_deprecated_fillna_succeeds():
     """Verify compiling and evaluating code with deprecated fillna works due to auto-sanitization."""
     code_with_deprecated_fillna = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 import pandas as pd
@@ -228,7 +228,7 @@ async def test_repaired_synthesized_strategies_execution():
 def test_sanitize_strategy_code_repairs_missing_except_at_eof():
     """Verify StrategySynthesisScheduler.sanitize_strategy_code auto-repairs missing except/finally at EOF."""
     code_with_missing_except = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -265,7 +265,7 @@ class SynthesizedStrategy_alpha_eof_repair(EdgeStrategy):
 def test_sanitize_strategy_code_repairs_inline_unclosed_try():
     """Verify StrategySynthesisScheduler.sanitize_strategy_code auto-repairs unclosed try inside loop."""
     code_with_loop_try = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -303,7 +303,7 @@ class SynthesizedStrategy_alpha_loop_repair(EdgeStrategy):
 async def test_compile_strategy_with_missing_except_repaired():
     """Verify compile_strategy_class compiles and evaluates code that omitted except block."""
     code_missing_except = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -356,7 +356,7 @@ async def test_synthesize_code_falls_back_on_syntax_error():
 def test_sanitize_strategy_reindents_unindented_evaluate():
     """Verify sanitize_strategy_code re-indents 'async def evaluate' placed at column 0."""
     unindented_code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -393,7 +393,7 @@ async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str,
 async def test_compile_strategy_resolves_method_alias():
     """Verify compile_strategy_class maps common alias 'generate_signals' to 'evaluate'."""
     alias_code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -426,7 +426,7 @@ class SynthesizedStrategy_alpha_alias_test(EdgeStrategy):
 def test_compile_strategy_rejects_missing_evaluate_cleanly():
     """Verify compile_strategy_class returns None if class completely lacks evaluate/aliases."""
     code_without_evaluate = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -447,7 +447,7 @@ class SynthesizedStrategy_alpha_no_evaluate(EdgeStrategy):
 async def test_synthesize_code_falls_back_on_missing_evaluate():
     """Verify synthesize_code falls back to deterministic template when LLM code lacks evaluate."""
     code_no_evaluate = """```python
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -470,7 +470,7 @@ class SynthesizedStrategy_alpha_eurusd_testfail(EdgeStrategy):
 def test_sanitize_strategy_repairs_unclosed_paren_at_line_24():
     """Verify sanitize_strategy_code auto-repairs '(' was never closed on nested call at line 24."""
     code_with_unclosed_paren = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -510,7 +510,7 @@ class SynthesizedStrategy_alpha_unclosed_paren(EdgeStrategy):
 def test_sanitize_strategy_repairs_multiline_unclosed_call():
     """Verify sanitize_strategy_code auto-repairs unclosed multi-line call."""
     multiline_unclosed = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -552,7 +552,7 @@ class SynthesizedStrategy_alpha_multiline_call(EdgeStrategy):
 async def test_compile_strategy_with_unclosed_paren_succeeds():
     """Verify compile_strategy_class compiles and evaluates candidate with unclosed paren."""
     code_with_unclosed = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -687,7 +687,7 @@ async def test_strategy_registry_quarantines_uncompilable_strategy():
 
 
 @pytest.mark.asyncio
-async def test_strategy_registry_self_heals_from_disk(tmp_path):
+async def test_strategy_registry_self_heals_from_disk(tmp_path, monkeypatch):
     """Verify that a synthesized strategy with corrupt DB code self-heals if disk has valid code."""
     import json
     from pathlib import Path
@@ -701,7 +701,7 @@ async def test_strategy_registry_self_heals_from_disk(tmp_path):
 
     corrupt_db_code = "broken syntax !@#"
     valid_disk_code = f"""
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 
@@ -729,12 +729,9 @@ class {cls_name}(EdgeStrategy):
     mock_result.scalars.return_value = mock_scalars
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    # Resolve synth_dir dynamically from StrategyRegistry's actual module location
-    import monika.application.analysis.strategies.registry as _reg_mod
-
-    synth_dir = Path(_reg_mod.__file__).resolve().parent / "synthesized"
-    synth_dir.mkdir(parents=True, exist_ok=True)
-    test_disk_file = synth_dir / f"{s_id}.py"
+    # Isolate synth_dir strictly to tmp_path to prevent writing into src/
+    monkeypatch.setattr(StrategyRegistry, "SYNTHESIZED_DIR", tmp_path)
+    test_disk_file = tmp_path / f"{s_id}.py"
     try:
         test_disk_file.write_text(valid_disk_code, encoding="utf-8")
 
@@ -750,8 +747,6 @@ class {cls_name}(EdgeStrategy):
         ]
         assert len(update_calls) >= 1
     finally:
-        if test_disk_file.exists():
-            test_disk_file.unlink()
         StrategyRegistry._registry.pop(s_id, None)
         StrategyRegistry._blacklisted_ids.discard(s_id)
 
@@ -759,7 +754,7 @@ class {cls_name}(EdgeStrategy):
 def test_sanitize_strategy_code_repairs_dunder_dict_and_vars():
     """Verify that c.__dict__ and vars(c) are auto-repaired and pass AST security checks."""
     raw_code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 import pandas as pd
 from typing import Optional, Dict, Any
@@ -801,7 +796,7 @@ class SynthesizedStrategy_alpha_dict_test(EdgeStrategy):
 async def test_sanitize_strategy_code_repairs_invalid_replace():
     """Verify StrategySynthesisScheduler.sanitize_strategy_code auto-repairs invalid replace calls with Series/methods."""
     raw_code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
 import pandas as pd

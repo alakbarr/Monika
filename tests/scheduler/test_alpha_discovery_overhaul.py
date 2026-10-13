@@ -101,7 +101,7 @@ def test_signal_integrity_in_synthesis_scheduler():
     sched = StrategySynthesisScheduler({})
     # Code that returns valid=True but direction=None
     code = """
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 class DummyStrategy(EdgeStrategy):
     strategy_id = "dummy_strat"
     applicable_symbols = {"EURUSD"}

@@ -125,9 +125,13 @@ async def test_cli_cmd_kill_non_interactive_guard():
     from monika.interfaces.cli.main import _cmd_kill
 
     args = argparse.Namespace(yes=False)
-    with patch("sys.stdin.isatty", return_value=False):
+    with (
+        patch("sys.stdin.isatty", return_value=False),
+        patch("monika.interfaces.cli.main.init_db") as mock_init_db,
+    ):
         # Non-interactive without --yes must return without killing
         await _cmd_kill(args)
+        mock_init_db.assert_not_called()
 
 
 # ==============================================================================
@@ -146,7 +150,8 @@ async def test_main_shutdown_mt5_bounded_timeout():
     mock_mt5.disconnect = slow_disconnect
 
     # Must complete within bounded timeout
-    await asyncio.wait_for(mock_mt5.disconnect(), timeout=5.0)
+    res = await asyncio.wait_for(mock_mt5.disconnect(), timeout=5.0)
+    assert res is True
 
 
 # ==============================================================================

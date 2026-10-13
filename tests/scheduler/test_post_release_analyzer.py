@@ -89,6 +89,7 @@ class TestPostReleaseAnalyzer:
         with patch("monika.infrastructure.database.db.get_session") as mock_get_sess:
             mock_get_sess.return_value.__aenter__.return_value = mock_session
             await self.analyzer._check_releases()
+            mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_check_releases_with_handled_events(self):
