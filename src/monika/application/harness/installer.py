@@ -9,14 +9,15 @@ community catalog curation, and unified status inspection across Web UI, TUI,
 and Telegram bot surfaces.
 """
 
+import logging
 import os
 import re
-import sys
-import yaml
-import logging
 import subprocess
+import sys
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Any, Dict, List, Optional, Tuple
+
+import yaml
 
 from monika.application.harness.contract import PluginCategory, PluginOrigin
 from monika.application.harness.engine import PluginEngine, get_plugin_engine

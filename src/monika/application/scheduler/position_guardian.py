@@ -13,13 +13,15 @@ Opsi perlindungan (diatur di settings.yaml):
 
 import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
-from datetime import datetime, timezone, timedelta
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import Position, EconomicCalendar, ActivityLog
+
 import monika.core.primitives.clock as clock
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import ActivityLog, EconomicCalendar, Position
 
 logger = logging.getLogger("TradingAgent.PositionGuardian")
 
@@ -518,9 +520,10 @@ class PositionGuardian:
             return
         self._last_tick_check[sym_clean] = now_ts
 
+        from sqlalchemy import select
+
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import Position, SystemConfig
-        from sqlalchemy import select
 
         try:
             async with get_session() as session:
@@ -581,8 +584,8 @@ class PositionGuardian:
         Evaluates adverse momentum and stop-loss vulnerability without generating text.
         """
         try:
-            from monika.infrastructure.providers.llm_factory import get_client_for_task
             from monika.core.primitives.jev_primitives import build_position_guard_questions
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
 
             client = get_client_for_task("jev_position_guard", self.settings)
             if not hasattr(client, "classify_json"):

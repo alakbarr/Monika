@@ -1,7 +1,9 @@
 import logging
 from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.infrastructure.database.models import PriceOHLCV
 
 logger = logging.getLogger("TradingAgent.VolumeProfile")
@@ -13,10 +15,10 @@ def _recent_anchor(now: datetime) -> tuple[int, str]:
     return c[-1] if c else _ANCHORS_UTC[-1]
 
 
-from monika.core.validation.indicator_sanitizer import safe_float
-
 from typing import Optional
+
 import monika.core.primitives.clock as clock
+from monika.core.validation.indicator_sanitizer import safe_float
 
 
 async def compute_anchored_vwap(

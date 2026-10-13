@@ -15,14 +15,14 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import NewsItem, ActivityLog
+from monika.infrastructure.database.models import ActivityLog, NewsItem
 
 logger = logging.getLogger("TradingAgent.NewsWatcher")
 
@@ -32,7 +32,6 @@ logger = logging.getLogger("TradingAgent.NewsWatcher")
 # =============================================================================
 
 from monika.domain.market.news_impact_keywords import HIGH_IMPACT_KEYWORDS, SHOCK_KEYWORDS
-
 
 # Kata kunci Medium-Impact — dipantau tapi tidak memicu re-analisis instan
 MEDIUM_IMPACT_KEYWORDS = [
@@ -168,7 +167,8 @@ class NewsWatcher:
 
     def _load_persistent_state(self) -> None:
         """FIX-4: Load persisted state from disk on startup."""
-        import json, os
+        import json
+        import os
 
         try:
             if os.path.exists(self._state_file):
@@ -191,7 +191,8 @@ class NewsWatcher:
 
     def _save_persistent_state(self) -> None:
         """FIX-4: Save state to disk after each run_once."""
-        import json, os
+        import json
+        import os
 
         try:
             os.makedirs(os.path.dirname(self._state_file) or ".", exist_ok=True)
@@ -498,8 +499,9 @@ class NewsWatcher:
     async def _matches_recent_calendar_window(self, news: NewsItem) -> bool:
         """Cek apakah berita ini berdekatan (+/-2h) dengan event kalender high-impact."""
         try:
+            from sqlalchemy import func, select
+
             from monika.infrastructure.database.models import EconomicCalendar
-            from sqlalchemy import select, func
 
             check_time = news.fetched_at or datetime.now(timezone.utc)
             async with get_session() as session:
@@ -575,9 +577,11 @@ class NewsWatcher:
         self, high_items: list[NewsItem], affected_symbols: list[str], fallback_mode: bool = False
     ) -> None:
         # --- NEW: Check daily trade count before triggering ---
-        from monika.infrastructure.database.models import TradeOutcome, Position
-        from sqlalchemy import select, func
         from datetime import timedelta
+
+        from sqlalchemy import func, select
+
+        from monika.infrastructure.database.models import Position, TradeOutcome
 
         try:
             async with get_session() as session_inner:
@@ -903,8 +907,9 @@ class NewsWatcher:
         if not self._execution_service or not affected_symbols:
             return
         try:
-            from monika.infrastructure.database.models import Position
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import Position
 
             async with get_session() as session:
                 positions = (
@@ -1000,8 +1005,8 @@ class NewsWatcher:
     async def evaluate_realtime_news_shock(self, news_item: Any, open_positions: Optional[list] = None) -> dict:
         """Instant sub-100ms news impact & position threat assessment via TypeSafe Jev System One."""
         try:
-            from monika.infrastructure.providers.llm_factory import get_client_for_task
             from monika.core.primitives.jev_primitives import build_realtime_news_questions
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
 
             client = get_client_for_task("jev_news_realtime", self.settings)
             questions = build_realtime_news_questions(open_positions=open_positions)

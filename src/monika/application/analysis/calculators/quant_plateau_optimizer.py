@@ -12,15 +12,16 @@ Plateau Fitness:
 Uses pure NumPy/SciPy for zero external pip dependency overhead.
 """
 
+import asyncio
+import logging
 import math
 import random
-import logging
-import asyncio
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Callable, Awaitable, Union, Sequence
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence, Union
+
 import numpy as np
 
-from monika.application.backtest.statistical_tests import deflated_sharpe_ratio, compute_sample_moments
+from monika.application.backtest.statistical_tests import compute_sample_moments, deflated_sharpe_ratio
 
 logger = logging.getLogger("TradingAgent.QuantPlateauOptimizer")
 

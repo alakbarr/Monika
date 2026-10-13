@@ -7,9 +7,9 @@ Prometheus / OpenMetrics Exporter untuk AI Trading Agent.
 Menyediakan metrik operasional, latensi analisis, biaya LLM, status MT5, dan metrik risiko.
 """
 
-import time
 import threading
-from typing import Dict, List, Any, Optional
+import time
+from typing import Any, Dict, List, Optional
 
 
 class MetricsCollector:

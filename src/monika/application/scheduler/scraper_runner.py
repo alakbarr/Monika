@@ -12,13 +12,13 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Optional
 
-from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.adapters import (
-    batch_save_news,
     batch_save_calendar,
-    batch_save_tweets,
     batch_save_fedwatch,
+    batch_save_news,
+    batch_save_tweets,
 )
+from monika.infrastructure.database.db import get_session
 
 logger = logging.getLogger("TradingAgent.ScraperRunner")
 
@@ -406,23 +406,23 @@ class ScraperRunner:
 
     async def _run_rss_scrapers(self) -> dict:
         from monika.infrastructure.data_ingestion.scrapers.news.rss_bloomberg import BloombergRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_wsj import WsjRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_marketwatch import MarketwatchRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_dow_jones import DowJonesRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_forexlive import ForexliveRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_fxstreet import FxstreetRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_investing import InvestingRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_coindesk import CoindeskRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_reuters import ReutersRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_boe import BoeRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_boj import BojRssScraper
         from monika.infrastructure.data_ingestion.scrapers.news.rss_cnbc import CnbcRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_ft import FinancialTimesRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_coindesk import CoindeskRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_dow_jones import DowJonesRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_ecb import EcbRssScraper
 
         # Feed resmi bank sentral — prioritas tertinggi, tanpa risiko pemblokiran scraping
         from monika.infrastructure.data_ingestion.scrapers.news.rss_fed import FedRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_ecb import EcbRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_boe import BoeRssScraper
-        from monika.infrastructure.data_ingestion.scrapers.news.rss_boj import BojRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_forexlive import ForexliveRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_ft import FinancialTimesRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_fxstreet import FxstreetRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_investing import InvestingRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_marketwatch import MarketwatchRssScraper
         from monika.infrastructure.data_ingestion.scrapers.news.rss_rba import RbaRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_reuters import ReutersRssScraper
+        from monika.infrastructure.data_ingestion.scrapers.news.rss_wsj import WsjRssScraper
 
         rss_classes = [
             # Feed resmi bank sentral — prioritas tertinggi, aktif secara default

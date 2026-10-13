@@ -8,7 +8,7 @@ Data models and dataclasses for multi-timeframe pattern similarity screening.
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 
 @dataclass

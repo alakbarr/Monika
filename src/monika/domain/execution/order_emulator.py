@@ -20,7 +20,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List, Callable, Awaitable, Sequence
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence
 
 from monika.application.protocol.event_bus import EventBus, TickPriceEvent
 

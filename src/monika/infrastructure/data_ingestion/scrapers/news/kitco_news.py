@@ -4,8 +4,8 @@
 
 import logging
 import time
-from datetime import datetime, timezone, timedelta
-from typing import List, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, List
 
 from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 from monika.infrastructure.data_ingestion.scrapers.models import ScrapedNews

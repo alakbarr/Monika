@@ -12,8 +12,7 @@ import asyncio
 import sys
 from typing import Any, Dict
 
-
-from monika.infrastructure.infra.platform_compat import configure_event_loop, IS_WINDOWS
+from monika.infrastructure.infra.platform_compat import IS_WINDOWS, configure_event_loop
 
 
 def get_loop_factory() -> Dict[str, Any]:

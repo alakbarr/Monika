@@ -13,18 +13,20 @@ Evaluates post-trade reflections and execution records from DecisionMemory:
 Transforms passive reflections into active procedural memory.
 """
 
-import os
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
 import logging
+import os
 from collections import defaultdict
-from sqlalchemy import select, desc
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 import monika.core.primitives.clock as clock
-from monika.application.skills.loader import invalidate_cache
-from monika.application.analysis.memory.playbook_linter import PlaybookLinter
 from monika.application.analysis.memory.playbook_ledger import PlaybookLedger, get_playbook_async_lock
+from monika.application.analysis.memory.playbook_linter import PlaybookLinter
+from monika.application.skills.loader import invalidate_cache
 from monika.infrastructure.infra.paths import get_skills_dir
 
 logger = logging.getLogger("TradingAgent.SkillEvolution")
@@ -62,7 +64,7 @@ class MicroPlaybookCompiler:
         Returns:
             List of compiled playbook metadata dicts.
         """
-        from monika.infrastructure.database.models import DecisionReflection, PaperTradeRecord, ActivityLog
+        from monika.infrastructure.database.models import ActivityLog, DecisionReflection, PaperTradeRecord
 
         cls.ensure_playbooks_dir()
         cfg = settings or getattr(cls, "_default_settings", {}) or {}

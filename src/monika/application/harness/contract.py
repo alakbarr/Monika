@@ -7,12 +7,12 @@ Universal Plugin Contract for Monika Trading Harness.
 Provides standardized interfaces, lifecycle stages, and typed reactive hooks.
 """
 
+import inspect
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Tuple, Dict, Any, Optional, Callable, Coroutine, Protocol, runtime_checkable
-import inspect
-import logging
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Protocol, Tuple, runtime_checkable
 
 try:
     from monika.infrastructure.infra.container import ServiceContainer
@@ -21,12 +21,12 @@ except ImportError:
 
 try:
     from monika.application.protocol.event_bus import (
-        EventBus,
-        TickPriceEvent,
         BarClosedEvent,
+        CircuitBreakerEvent,
+        EventBus,
         OrderStateChangedEvent,
         RiskBreachEvent,
-        CircuitBreakerEvent,
+        TickPriceEvent,
     )
 except ImportError:
     EventBus = Any

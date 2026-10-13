@@ -8,13 +8,15 @@ API Gratis: https://fapi.binance.com/futures/data/globalLongShortAccountRatio
 Berguna untuk sentimen Kripto (BTCUSDT, ETHUSDT) sebagai proksi sentimen risiko.
 """
 
-import logging
 import json
+import logging
 from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import SystemConfig
+
 from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import SystemConfig
 
 logger = logging.getLogger("TradingAgent.BinanceSentiment")
 

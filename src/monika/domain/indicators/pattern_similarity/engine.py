@@ -11,25 +11,25 @@ forward outcome analysis, and multi-timeframe consensus aggregation.
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional, List, Dict, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
 import numpy as np
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .context_scorer import ContextScorer
+from .context_verifier import PatternContextVerifier
+from .feature_extractor import FeatureExtractor
 from .models import (
+    MarketContext,
+    MultiTimeframeScreeningResult,
     PatternMatch,
     SingleTimeframeResult,
-    MultiTimeframeScreeningResult,
-    MarketContext,
 )
 from .normalizer import PriceNormalizer
-from .feature_extractor import FeatureExtractor
-from .scanner import SimilarityScanner
-from .context_scorer import ContextScorer
 from .outcome_analyzer import OutcomeAnalyzer
-from .context_verifier import PatternContextVerifier
+from .scanner import SimilarityScanner
 
 logger = logging.getLogger("TradingAgent.PatternSimilarityEngine")
 
@@ -110,11 +110,13 @@ class PatternSimilarityEngine:
         window_size: int = 30,
     ) -> str:
         """Compares current market pattern against an exact historical date window (Q044)."""
-        import numpy as np
         from datetime import timezone
+
+        import numpy as np
         from dateutil import parser
-        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import PriceOHLCV
 
         try:
             target_dt = parser.parse(target_date_str)

@@ -19,39 +19,36 @@ Jika ADA SATU SAJA yang gagal → order ditolak dan dicatat di orders_log.
 """
 
 import asyncio
-from decimal import Decimal
 import json
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
 import math
-from typing import Optional, Any, List, Tuple, Dict
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
 from monika.domain.entities.order_status import OrderStatus
 
-
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from monika.infrastructure.database.models import (
-        Position,
-        RiskState,
-        EconomicCalendar,
-        OrderLog,
-        TradeOutcome,
-        PaperTradeRecord,
         AssetAnalysis,
-        SystemConfig,
+        EconomicCalendar,
         Order,
+        OrderLog,
+        PaperTradeRecord,
+        Position,
         PriceOHLCV,
-        VIXData,
-        UserPreference,
+        RiskState,
+        SystemConfig,
         TechnicalIndicator,
         TimesFMForecast,
+        TradeOutcome,
+        UserPreference,
+        VIXData,
     )
 else:
 
@@ -98,7 +95,6 @@ logger = logging.getLogger("TradingAgent.RiskGate")
 
 # Simpler: track per base-currency exposure
 from monika.domain.market.currency_utils import SYMBOL_CURRENCIES, get_symbol_currencies
-
 
 # ---------------------------------------------------------------------------
 # Verdict dataclass
@@ -330,7 +326,7 @@ class RiskGate:
             )
 
         try:
-            from monika.application.plugins.manager.manager import get_plugin_manager, PluginHook
+            from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
 
             await get_plugin_manager().emit(
                 PluginHook.PRE_RISK_GATE,
@@ -686,7 +682,7 @@ class RiskGate:
         if not session:
             return None
         try:
-            from sqlalchemy import select, desc
+            from sqlalchemy import desc, select
 
             stmt = select(RiskState).order_by(desc(RiskState.date)).limit(1)
             return (await session.execute(stmt)).scalar_one_or_none()
@@ -746,8 +742,9 @@ class RiskGate:
             if not q:
                 # Lightweight database query without loading TimesFMEngine or PyTorch
                 import json
-                from datetime import datetime, timezone, timedelta
-                from sqlalchemy import select, desc
+                from datetime import datetime, timedelta, timezone
+
+                from sqlalchemy import desc, select
 
                 max_age = float(tfm_cfg.get("cache_ttl_hours", 8.0))
                 cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age)
@@ -1904,9 +1901,10 @@ class RiskGate:
         self, session: AsyncSession, symbol1: str, symbol2: str, as_of: Optional[datetime] = None
     ) -> tuple[float, float]:
         """Hitung korelasi harian secara dinamis berdasar PriceOHLCV, return (corr, std_dev2)."""
-        from monika.domain.market.dynamic_correlation import get_rolling_correlation
         import pandas as pd
         from sqlalchemy import select
+
+        from monika.domain.market.dynamic_correlation import get_rolling_correlation
 
         sim_time = as_of or clock.now()
         corr, source = await get_rolling_correlation(session, symbol1, symbol2, as_of=sim_time)
@@ -2299,7 +2297,7 @@ class RiskGate:
         if is_backtest:
             return True, "schmitt_regime_backtest_exempt"
         try:
-            from monika.domain.indicators.regime_detector import get_schmitt_regime_detector, RegimeState
+            from monika.domain.indicators.regime_detector import RegimeState, get_schmitt_regime_detector
 
             detector = get_schmitt_regime_detector()
             if detector.state == RegimeState.FUSED:
@@ -2432,8 +2430,9 @@ class RiskGate:
             if not active_symbols:
                 return True, "No concurrent portfolio positions for tail dependency"
 
-            from monika.application.analysis.calculators.copula_tail_risk import fit_clayton_copula
             import numpy as np
+
+            from monika.application.analysis.calculators.copula_tail_risk import fit_clayton_copula
 
             now = as_of or clock.now()
             cutoff = now - timedelta(days=60)
@@ -2534,7 +2533,7 @@ class RiskGate:
         open_count = len(simulated_positions) if simulated_positions is not None else 0
         if simulated_positions is None and session:
             try:
-                from sqlalchemy import select, func
+                from sqlalchemy import func, select
 
                 stmt = select(func.count(Position.id)).where(Position.status == "open")
                 res = await session.execute(stmt)

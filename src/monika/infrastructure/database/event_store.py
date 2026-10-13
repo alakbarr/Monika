@@ -5,11 +5,13 @@ Events emitted at key decision points with correlation/causation chain.
 Supports post-mortem replay and audit trail queries.
 """
 
-import uuid
 import logging
+import uuid
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.infrastructure.database.models import TradingEvent
 
 logger = logging.getLogger("TradingAgent.EventStore")
@@ -71,7 +73,7 @@ class TradingEventStore:
         correlation_id: str,
     ) -> List[TradingEvent]:
         """Get all events in a correlation chain, ordered by creation time."""
-        from sqlalchemy import select, asc
+        from sqlalchemy import asc, select
 
         q = (
             select(TradingEvent)

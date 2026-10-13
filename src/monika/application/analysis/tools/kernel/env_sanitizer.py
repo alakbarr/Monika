@@ -9,9 +9,9 @@ Guarantees that broker passwords, database connections, and API keys are never l
 into user-facing script runners or arbitrary code execution environments.
 """
 
+import logging
 import os
 import sys
-import logging
 from typing import Dict, Optional
 
 logger = logging.getLogger("TradingAgent.Tools.EnvSanitizer")

@@ -10,13 +10,14 @@ Implements always-on dual-write persistence:
 import asyncio
 import logging
 from typing import Any, AsyncIterator, Iterator, Optional, Sequence
+
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import (
     BaseCheckpointSaver,
+    ChannelVersions,
     Checkpoint,
     CheckpointMetadata,
     CheckpointTuple,
-    ChannelVersions,
 )
 
 logger = logging.getLogger("TradingAgent.DualCheckpointSaver")

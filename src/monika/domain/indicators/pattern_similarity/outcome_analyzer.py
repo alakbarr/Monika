@@ -9,10 +9,11 @@ Pure Python and NumPy implementation. Zero external statistical package dependen
 """
 
 import math
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+
 import numpy as np
 
-from .models import PatternMatch, PatternOutcome, OutcomeStatistics
+from .models import OutcomeStatistics, PatternMatch, PatternOutcome
 
 
 class OutcomeAnalyzer:

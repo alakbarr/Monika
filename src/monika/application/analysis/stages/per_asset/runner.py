@@ -3,42 +3,41 @@
 # ==============================================================================
 
 import asyncio
-import logging
 import json
+import logging
 import sys
 from datetime import datetime, timezone
-from typing import Optional, Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 import monika.core.primitives.clock as clock
-
-from monika.infrastructure.providers.llm_factory import get_client_for_task, create_client
-from monika.application.analysis.tools.tools_definitions import (
-    STAGE2_TOOLS,
-    STAGE2_EXPANDED_TOOLS,
-    STAGE2_PRESCREEN_TOOLS,
-    STAGE2_ESSENTIAL_TOOLS,
-    STAGE2_FROZEN_TOOLS,
-    minify_tool_definitions,
-)
-from monika.application.analysis.stages.preflight_gate import PreFlightTurnGate
-from monika.infrastructure.database.models import ActivityLog, AssetAnalysis
-
 from monika.application.analysis.stages.per_asset.context_builder import (
-    ContextBuilderMixin,
-    ContextBuilder,
     SYMBOL_TO_COT,
     SYSTEM_PROMPT_TEMPLATE,
+    ContextBuilder,
+    ContextBuilderMixin,
     _flatten_system_prompt,
     _render_specialist_prompt,
 )
-from monika.application.analysis.stages.per_asset.specialist_pipeline import SpecialistPipelineMixin, SpecialistPipeline
+from monika.application.analysis.stages.per_asset.specialist_pipeline import SpecialistPipeline, SpecialistPipelineMixin
 from monika.application.analysis.stages.per_asset.verifiers import (
-    VerifiersMixin,
     VerifierService,
+    VerifiersMixin,
     _get_symbol_sl_streak,
 )
+from monika.application.analysis.stages.preflight_gate import PreFlightTurnGate
+from monika.application.analysis.tools.tools_definitions import (
+    STAGE2_ESSENTIAL_TOOLS,
+    STAGE2_EXPANDED_TOOLS,
+    STAGE2_FROZEN_TOOLS,
+    STAGE2_PRESCREEN_TOOLS,
+    STAGE2_TOOLS,
+    minify_tool_definitions,
+)
+from monika.infrastructure.database.models import ActivityLog, AssetAnalysis
+from monika.infrastructure.providers.llm_factory import create_client, get_client_for_task
 
 logger = logging.getLogger("TradingAgent.PerAssetStage")
 
@@ -109,9 +108,10 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         Fixes race condition where NewsWatcher/TriggerChecker/PositionExitReviewer call
         run_one() concurrently on the same instance and read stale cross-cycle values.
         """
-        from monika.infrastructure.database.models import FundamentalBrief
         from sqlalchemy import select
+
         from monika.core.calibration.confidence_calibrator import get_calibrated_confidence
+        from monika.infrastructure.database.models import FundamentalBrief
 
         try:
             brief = (
@@ -293,8 +293,9 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         """Multi-tier recovery jika LLM selesai tanpa memanggil submit_asset_analysis."""
         final_text = result.get("final_text", "")
         analysis = None
-        from monika.infrastructure.database.models import AssetAnalysis
         from datetime import timedelta
+
+        from monika.infrastructure.database.models import AssetAnalysis
 
         # --- TIER 1: Targeted Recovery Nudge Turn ---
         try:
@@ -333,7 +334,6 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         # --- TIER 2: Heuristic Text Extraction Fallback ---
         if not analysis and final_text:
             try:
-                import re
                 import re
 
                 text_lower = final_text.lower()
@@ -680,8 +680,9 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                 )
                 # Track for monitoring
                 try:
-                    from monika.infrastructure.database.models import SystemConfig
                     import json as _j
+
+                    from monika.infrastructure.database.models import SystemConfig
 
                     key = f"ai_compliance_missing_fields_{symbol}"
                     existing = (
@@ -838,8 +839,9 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
             significant_disagreement_flag = False
             try:
-                from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import select as _sel
+
+                from monika.infrastructure.database.models import SystemConfig
 
                 key = f"specialist_disagreement_{symbol}"
                 cfg = (await session.execute(_sel(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
@@ -1046,8 +1048,8 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
         # TimesFM 3.0 Quantile Skewness Alpha Injection
         try:
-            from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
             from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
+            from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
 
             tfm_engine = TimesFMEngine(self.settings)
             tfm_fc = await tfm_engine.get_latest_forecast(session, symbol, timeframe="H1", max_age_hours=8.0)
@@ -1150,8 +1152,9 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             should_analyze, screen_reason = await self._run_prescreen(session, symbol)
 
         try:
-            from monika.infrastructure.database.models import PrescreenLog, PriceOHLCV
             from sqlalchemy import select as _psel
+
+            from monika.infrastructure.database.models import PrescreenLog, PriceOHLCV
 
             last_price = (
                 await session.execute(
@@ -1525,8 +1528,9 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                 return {**result, "symbol": symbol, "elapsed_seconds": elapsed}
 
         # Pastikan analisis benar-benar tersimpan pada siklus/sesi saat ini
-        from monika.infrastructure.database.models import AssetAnalysis
         from datetime import timedelta
+
+        from monika.infrastructure.database.models import AssetAnalysis
 
         analysis = (
             await session.execute(
@@ -1682,8 +1686,9 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         risk_state: dict = {}
         # === NEW: FORCE-ANALYZE ON PRICE MOVEMENT ===
         try:
-            from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
 
             last_analysis_time = self._last_analysis_time.get(symbol)
             if last_analysis_time:
@@ -1743,9 +1748,11 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
             # If false skip rate is >35%, we disable local deterministic gates so we don't miss trades
             if local_false_skip_rate <= 35:
-                from monika.infrastructure.database.models import TechnicalIndicator, VIXData
-                from sqlalchemy import select
                 import json as _j
+
+                from sqlalchemy import select
+
+                from monika.infrastructure.database.models import TechnicalIndicator, VIXData
 
                 # Quick VIX check (system-level pause threshold)
                 vix_row = (
@@ -1783,10 +1790,12 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
         # === NEW P1 (Phase 2.7): Quick Calendar Prescreen ===
         try:
-            from monika.infrastructure.database.models import EconomicCalendar
-            from sqlalchemy import select as _sel_cal
             from datetime import timedelta as _td
+
+            from sqlalchemy import select as _sel_cal
+
             from monika.domain.market.currency_utils import get_symbol_currencies
+            from monika.infrastructure.database.models import EconomicCalendar
 
             sym_currencies = get_symbol_currencies(symbol)
             upcoming_cal = (
@@ -1852,8 +1861,9 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         # --- NEW: Extract nearest_zone_note ---
         nearest_zone_note = "active market structure"
         try:
-            from monika.infrastructure.database.models import SRZone, PriceOHLCV, SwingPoint
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import PriceOHLCV, SRZone, SwingPoint
 
             last_close = (
                 await session.execute(
@@ -1946,10 +1956,12 @@ Rule:
             elif resp and resp.get("decision") == "NO":
                 # --- NEW: BYPASS PRESCREEN IF HIGH CONFIDENCE OR BREAKING CATALYST ---
                 try:
-                    from monika.infrastructure.database.models import FundamentalBrief, NewsItem
-                    from sqlalchemy import select
-                    from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
                     from datetime import timedelta
+
+                    from sqlalchemy import select
+
+                    from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
+                    from monika.infrastructure.database.models import FundamentalBrief, NewsItem
 
                     brief = (
                         await session.execute(

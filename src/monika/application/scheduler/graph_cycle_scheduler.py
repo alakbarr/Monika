@@ -4,10 +4,10 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Optional, Any
+from typing import Any, Optional
 
-from monika.application.graph.workflow import build_trading_graph
 from monika.application.graph.state import merge_dicts
+from monika.application.graph.workflow import build_trading_graph
 from monika.application.scheduler.cycle_scheduler import CycleScheduler
 from monika.infrastructure.database.db import get_session
 
@@ -204,9 +204,11 @@ class GraphCycleScheduler(CycleScheduler):
         raise the threshold without waiting for the weekly performance review.
         """
         try:
-            from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
-            from sqlalchemy import select
             import json
+
+            from sqlalchemy import select
+
+            from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
 
             now_utc = datetime.now(timezone.utc)
             # 48-hour time-decay reset on existing adaptive thresholds
@@ -345,9 +347,10 @@ class GraphCycleScheduler(CycleScheduler):
 
         session_name = "asian_open" if is_asian_open else "london_open" if is_london_open else "ny_open"
 
-        from monika.infrastructure.database.db import get_session
-        from monika.infrastructure.database.models import SystemConfig, FundamentalBrief
         from sqlalchemy import select
+
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import FundamentalBrief, SystemConfig
 
         today = now.strftime("%Y-%m-%d")
         key = f"session_trigger_{session_name}_{today}"
@@ -646,9 +649,11 @@ class GraphCycleScheduler(CycleScheduler):
             prior_insights = {}
             try:
                 async with get_session() as session:
-                    from monika.infrastructure.database.models import SystemConfig
-                    from sqlalchemy import select
                     import json
+
+                    from sqlalchemy import select
+
+                    from monika.infrastructure.database.models import SystemConfig
 
                     cfg = (
                         await session.execute(select(SystemConfig).where(SystemConfig.key == "prior_cycle_state"))
@@ -661,7 +666,7 @@ class GraphCycleScheduler(CycleScheduler):
             except Exception as e:
                 logger.warning(f"Failed to load prior cycle state: {e}")
 
-            from monika.core.validation.data_validator import is_forex_market_closed, is_crypto_symbol
+            from monika.core.validation.data_validator import is_crypto_symbol, is_forex_market_closed
 
             weekend_symbols_override = None
             if is_forex_market_closed(start):
@@ -946,8 +951,9 @@ class GraphCycleScheduler(CycleScheduler):
 
                     # Count context drift events this cycle
                     try:
-                        from monika.infrastructure.database.models import SystemConfig
                         from sqlalchemy import select as _sel2
+
+                        from monika.infrastructure.database.models import SystemConfig
 
                         today_str = datetime.now(timezone.utc).strftime("%Y%m%d")
                         drift_keys = (
@@ -1043,9 +1049,11 @@ class GraphCycleScheduler(CycleScheduler):
                     )
 
                 async with get_session() as state_session:
-                    from monika.infrastructure.database.models import SystemConfig
-                    from sqlalchemy import select
                     import json
+
+                    from sqlalchemy import select
+
+                    from monika.infrastructure.database.models import SystemConfig
 
                     cfg = (
                         await state_session.execute(select(SystemConfig).where(SystemConfig.key == "prior_cycle_state"))
@@ -1061,9 +1069,10 @@ class GraphCycleScheduler(CycleScheduler):
 
             # Lesson Consolidation Check (weekly or when overdue)
             try:
+                from sqlalchemy import select
+
                 from monika.application.analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook
                 from monika.infrastructure.database.models import SystemConfig
-                from sqlalchemy import select
 
                 async with get_session() as session:
                     key = "lesson_consolidation_last_run"
@@ -1107,7 +1116,7 @@ class GraphCycleScheduler(CycleScheduler):
 
             # Emit POST_CYCLE plugin hook
             try:
-                from monika.application.plugins.manager.manager import get_plugin_manager, PluginHook
+                from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
 
                 await get_plugin_manager().emit(
                     PluginHook.POST_CYCLE,
@@ -1125,9 +1134,11 @@ class GraphCycleScheduler(CycleScheduler):
 
     async def _check_system_health_trend(self, session) -> None:
         """Detect if system health is degrading over recent cycles."""
-        from monika.infrastructure.database.models import CyclePerformance
-        from sqlalchemy import select
         from datetime import timedelta
+
+        from sqlalchemy import select
+
+        from monika.infrastructure.database.models import CyclePerformance
 
         try:
             from monika.core.analytics.paper_tracker import PaperTracker
@@ -1181,9 +1192,10 @@ class GraphCycleScheduler(CycleScheduler):
         2. Mark expired intel as deactivated.
         3. Record audit entry in ActivityLog.
         """
-        from monika.infrastructure.database.models import UserMarketIntel, ActivityLog
         from sqlalchemy import select
+
         import monika.core.primitives.clock as clock
+        from monika.infrastructure.database.models import ActivityLog, UserMarketIntel
 
         consumed_count = 0
         expired_count = 0

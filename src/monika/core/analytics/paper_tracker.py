@@ -8,16 +8,17 @@ Secara otomatis mencatat posisi setelah analisis disetujui (buy/sell),
 dan mensimulasikan hasil jika harga mengenai SL atau TP.
 """
 
+import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
-import monika.core.primitives.clock as clock
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, Dict, Any, List
-from monika.infrastructure.database.models import AssetAnalysis, PriceOHLCV, PaperTradeRecord, Position
-from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
 
-import asyncio
+import monika.core.primitives.clock as clock
+from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
+from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord, Position, PriceOHLCV
 
 logger = logging.getLogger("TradingAgent.PaperTracker")
 
@@ -33,7 +34,9 @@ class PaperTracker:
     def __init__(self, settings: Optional[dict] = None):
         if settings is None:
             try:
-                import os, yaml
+                import os
+
+                import yaml
 
                 base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 with open(os.path.join(base_dir, "config", "settings.yaml"), "r") as f:
@@ -227,9 +230,11 @@ class PaperTracker:
         if bar_timestamp is None:
             return False
         try:
-            from monika.infrastructure.database.models import EconomicCalendar
-            from sqlalchemy import select
             from datetime import timedelta
+
+            from sqlalchemy import select
+
+            from monika.infrastructure.database.models import EconomicCalendar
 
             # Extract base currency from symbol (e.g. EURUSD -> EUR, XAUUSD -> XAU)
             base_ccy = trade.symbol[:3] if len(trade.symbol) >= 6 else None
@@ -608,6 +613,7 @@ class PaperTracker:
     async def _record_factor_outcomes(self, session: AsyncSession, trade: PaperTradeRecord) -> None:
         """IMP-11: Record individual confluence factor outcomes after a trade closes."""
         import json as _json
+
         from monika.infrastructure.database.models import AssetAnalysis, ConfluenceFactorOutcome
 
         if not trade.analysis_id:
@@ -727,8 +733,9 @@ class PaperTracker:
 
     async def get_suspended_symbols(self, session: AsyncSession) -> list[str]:
         """Return list of symbols currently suspended due to poor performance"""
-        from monika.infrastructure.database.models import SystemConfig
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import SystemConfig
 
         cfg = (
             await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))
@@ -754,9 +761,11 @@ class PaperTracker:
         Returns list of newly suspended symbols.
         Respects trading.paper_trading.streak_loss_policy and prevents infinite re-suspension loop.
         """
-        from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
-        from sqlalchemy import select
         import json
+
+        from sqlalchemy import select
+
+        from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
 
         paper_cfg = settings.get("trading", {}).get("paper_trading", {})
         streak_policy = paper_cfg.get("streak_loss_policy", "warn_and_scale")
@@ -871,10 +880,12 @@ class PaperTracker:
         self, session: AsyncSession, symbol: str, duration_hours: float = 24.0, reason: str = "manual_command"
     ) -> dict:
         """Suspend trading untuk simbol tertentu secara manual dengan durasi waktu."""
-        from monika.infrastructure.database.models import SystemConfig
-        from sqlalchemy import select
         import json
         from datetime import timedelta
+
+        from sqlalchemy import select
+
+        from monika.infrastructure.database.models import SystemConfig
 
         sym_norm = symbol.strip().upper().replace("/", "")
         cfg = (
@@ -913,9 +924,11 @@ class PaperTracker:
 
     async def unsuspend_symbol(self, session: AsyncSession, symbol: str) -> bool:
         """Buka suspensi untuk simbol tertentu."""
-        from monika.infrastructure.database.models import SystemConfig
-        from sqlalchemy import select
         import json
+
+        from sqlalchemy import select
+
+        from monika.infrastructure.database.models import SystemConfig
 
         cfg = (
             await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))
@@ -936,9 +949,11 @@ class PaperTracker:
 
     async def unsuspend_all(self, session: AsyncSession) -> list[str]:
         """Buka suspensi untuk semua simbol."""
-        from monika.infrastructure.database.models import SystemConfig
-        from sqlalchemy import select
         import json
+
+        from sqlalchemy import select
+
+        from monika.infrastructure.database.models import SystemConfig
 
         cfg = (
             await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))
@@ -958,8 +973,9 @@ class PaperTracker:
 
     async def get_streak_status(self, session: AsyncSession, symbol: str) -> dict:
         """Mengambil status streak loss dan suspensi untuk simbol tertentu."""
-        from monika.infrastructure.database.models import PaperTradeRecord
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import PaperTradeRecord
 
         recent = (
             (
@@ -1004,8 +1020,9 @@ class PaperTracker:
         self, session: AsyncSession, days_back: Optional[int] = None, symbol: Optional[str] = None
     ) -> dict:
         """Hitung win rate dan statistik performa komprehensif."""
+        from datetime import datetime, timedelta, timezone
+
         from sqlalchemy import select
-        from datetime import datetime, timezone, timedelta
 
         query = (
             select(PaperTradeRecord, AssetAnalysis)
@@ -1289,8 +1306,9 @@ class PaperTracker:
         Returns (should_regenerate: bool, reason: str).
         Triggers on: win rate < 40% after 10+ trades, or 10+ new trades since last generation.
         """
-        from monika.infrastructure.database.models import SystemConfig
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import SystemConfig
 
         stats = await self.get_statistics(session)
         total = stats.get("total_trades", 0)

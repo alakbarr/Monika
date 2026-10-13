@@ -10,9 +10,9 @@ ON DELETE SET NULL on financial records, performance metrics, and cognitive refl
 """
 
 from typing import Sequence, Union
-from alembic import op
-import sqlalchemy as sa
 
+import sqlalchemy as sa
+from alembic import op
 
 revision: str = "0004_fk_cascade_integrity"
 down_revision: Union[str, Sequence[str], None] = "0003_benchmark_cache_cost"

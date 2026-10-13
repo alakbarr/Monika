@@ -14,10 +14,10 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Callable, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
-from monika.infrastructure.providers.llm_factory import get_client_for_task
 from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.SubagentSpawner")
 

@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from monika.application.skills.skills_guard import SkillsGuard, AuditReport
+from monika.application.skills.skills_guard import AuditReport, SkillsGuard
 
 logger = logging.getLogger("TradingAgent.Skills.SkillsHub")
 

@@ -9,11 +9,12 @@ Restores state on startup and matches local records with broker reality.
 
 import logging
 import time
-from typing import Set, Dict, Any, List
-from sqlalchemy import select, desc
+from typing import Any, Dict, List, Set
+
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import Position, MT5Signal, Order
+from monika.infrastructure.database.models import MT5Signal, Order, Position
 
 logger = logging.getLogger("TradingAgent.ExecutionService.Reconciliation")
 

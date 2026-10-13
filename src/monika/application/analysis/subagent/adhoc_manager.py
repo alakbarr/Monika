@@ -8,12 +8,12 @@ telemetry for consumption by Trading Committee nodes.
 
 import asyncio
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
-from monika.infrastructure.providers.llm_factory import get_client_for_task
 from monika.application.analysis.subagent.isolated_harness import IsolatedSubagentRunner
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.AdHocSubagentManager")
 

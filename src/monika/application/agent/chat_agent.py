@@ -21,24 +21,23 @@ import json
 import logging
 import re
 import uuid
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Any, Union
-
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional, Union
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.application.agent.chat_tool_router import ChatToolRouter
+from monika.application.analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE, TELEGRAM_TOOLS
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import (
-    TelegramConversation,
     ActivityLog,
+    FundamentalBrief,
     Position,
     RiskState,
-    FundamentalBrief,
+    TelegramConversation,
 )
 from monika.infrastructure.providers.llm_factory import get_client_for_task
-from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS, PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
-from monika.application.agent.chat_tool_router import ChatToolRouter
 
 logger = logging.getLogger("TradingAgent.ChatAgent")
 
@@ -443,8 +442,9 @@ class ChatAgent:
     async def _delete_persisted_pending_action(self, action_id: str):
         """Remove persisted pending action from SystemConfig table."""
         try:
-            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import delete
+
+            from monika.infrastructure.database.models import SystemConfig
 
             async with get_session() as session:
                 await session.execute(delete(SystemConfig).where(SystemConfig.key == f"pending_action:{action_id}"))
@@ -458,8 +458,9 @@ class ChatAgent:
         if action:
             return action
         try:
+            from sqlalchemy import delete, select
+
             from monika.infrastructure.database.models import SystemConfig
-            from sqlalchemy import select, delete
 
             async with get_session() as session:
                 cfg = (
@@ -1025,6 +1026,7 @@ class ChatAgent:
         """Logika internal pemrosesan pesan dari user."""
         self._last_turn_streamed = False
         import re
+
         from monika.application.analysis.tools.tool_executor import ToolExecutor
 
         # Synchronize active MCP tools into ChatToolRouter
@@ -1527,8 +1529,9 @@ class ChatAgent:
         # without polluting the chat turn with unprompted action confirmation buttons.
         if self._is_macro_event_query(message):
             try:
+                from datetime import datetime, timedelta, timezone
+
                 from monika.infrastructure.database.models import UserMarketIntel
-                from datetime import datetime, timezone, timedelta
 
                 clean_title = message.strip().replace("\n", " ")[:120]
                 reply_raw = synth_response.get("reply", "")
@@ -1965,9 +1968,9 @@ class ChatAgent:
             return "[ERROR] MT5 execution client unavailable."
 
         elif action.action_type == "close_paper_trade":
+            import monika.core.primitives.clock as clock
             from monika.core.analytics.paper_tracker import PaperTracker
             from monika.infrastructure.database.models import PaperTradeRecord, PriceOHLCV
-            import monika.core.primitives.clock as clock
 
             trade_id = params.get("trade_id") or params.get("ticket") or params.get("id")
             symbol = params.get("symbol")
@@ -2308,11 +2311,14 @@ class ChatAgent:
         if not getattr(self, "is_admin", False):
             return "[GAGAL] Eksekusi ditolak: Hanya Admin yang dapat memodifikasi database."
 
+        from datetime import date
+
+        from sqlalchemy import BigInteger, Integer
+        from sqlalchemy import inspect as sqla_inspect
+
         from monika.application.analysis.tools.handlers.db_tools import get_table_model_map
         from monika.application.analysis.tools.tool_guardrails import DATABASE_IMMUTABLE_TABLES
         from monika.infrastructure.database.models import ActivityLog
-        from sqlalchemy import inspect as sqla_inspect, Integer, BigInteger
-        from datetime import date
 
         table_name = str(params.get("table_name", "")).strip().lower()
         operation = str(params.get("operation", "")).strip().lower()

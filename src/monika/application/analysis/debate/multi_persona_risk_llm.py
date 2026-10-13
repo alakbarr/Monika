@@ -1,6 +1,7 @@
-import logging
 import json
-from typing import Dict, Any, Tuple
+import logging
+from typing import Any, Dict, Tuple
+
 from monika.infrastructure.providers.base_provider import BaseLLMClient, extract_and_parse_json
 
 logger = logging.getLogger("TradingAgent.MultiPersonaRisk")

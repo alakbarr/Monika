@@ -14,10 +14,11 @@ Detects:
 Uses swing pivot detection with standard Fibonacci tolerance ratios.
 """
 
-from typing import List, Dict, Any, Optional, Tuple
+import logging
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-import logging
 
 logger = logging.getLogger("TradingAgent.Indicators.ChartPatterns")
 

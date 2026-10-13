@@ -4,7 +4,7 @@
 # ==============================================================================
 
 import re
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 
 def evaluate_trade_discipline(fixture: Dict[str, Any], decision_data: Dict[str, Any]) -> Dict[str, Any]:

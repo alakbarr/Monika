@@ -21,11 +21,11 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp
 
+from monika.core.config.settings import load_settings
 from monika.interfaces.cli.chat.commands import ChatCommandRouter, CommandResult
 from monika.interfaces.cli.chat.prompt import ChatPromptManager
 from monika.interfaces.cli.chat.renderer import ChatRenderer, ThinkingScrubber
 from monika.interfaces.cli.chat.theme import get_chat_palette
-from monika.core.config.settings import load_settings
 
 logger = logging.getLogger("TradingAgent.CLI.Chat.Session")
 
@@ -54,9 +54,10 @@ def acquire_cli_session_lock(session_id: str) -> Optional[int]:
 
     Returns existing PID if locked by another active process, or None if lock acquired.
     """
-    import psutil
     import atexit
     import re
+
+    import psutil
 
     safe_id = re.sub(r"[^a-zA-Z0-9_\-]", "_", session_id)
     lock_file = Path("data/locks") / f"cli_chat_{safe_id}.pid"

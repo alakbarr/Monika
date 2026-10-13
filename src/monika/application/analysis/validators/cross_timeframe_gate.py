@@ -5,8 +5,8 @@ Enforces H4 + H1 directional alignment before allowing intraday (M15) trade entr
 Rejects counter-trend entries (e.g. M15 BUY into dual H4+H1 bearish structure).
 """
 
-from typing import Dict, Any, Tuple, Optional, List
 import logging
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Analysis.CrossTimeframeGate")
 

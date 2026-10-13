@@ -4,7 +4,7 @@ Defines descriptors, permissions, and handler dispatch mapping for market data a
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 @dataclass(frozen=True)

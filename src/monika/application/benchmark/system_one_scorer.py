@@ -4,15 +4,15 @@ Zero LLM Judge cost — 100% reproducible and fast.
 """
 
 from typing import Any, Dict, List, Optional
-from monika.application.benchmark.config import (
-    S1_WEIGHT_ACCURACY,
-    S1_WEIGHT_LATENCY,
-    S1_WEIGHT_CALIBRATION,
-    S1_WEIGHT_SCHEMA,
-    S1_LATENCY_TARGET_MS,
-    S1_LATENCY_CEILING_MS,
-)
 
+from monika.application.benchmark.config import (
+    S1_LATENCY_CEILING_MS,
+    S1_LATENCY_TARGET_MS,
+    S1_WEIGHT_ACCURACY,
+    S1_WEIGHT_CALIBRATION,
+    S1_WEIGHT_LATENCY,
+    S1_WEIGHT_SCHEMA,
+)
 
 IMPACT_ORDINAL_RANKS = {
     "BREAKING": 4,

@@ -3,13 +3,15 @@ Bayesian Multi-Armed Bandit (Thompson Sampling) & A/B testing framework for prom
 Allows testing new prompts against baseline with dynamic traffic allocation based on live performance rewards.
 """
 
-import random
-import logging
 import json
-from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any, Optional, Tuple
+import logging
+import random
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.infrastructure.database.models import SystemConfig
 
 logger = logging.getLogger("TradingAgent.PromptABTest")

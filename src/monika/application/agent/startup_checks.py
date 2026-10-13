@@ -183,7 +183,7 @@ class StartupChecker:
 
     def _check_preflight_baselines(self) -> Tuple[bool, List[str]]:
         try:
-            from monika.application.analysis.stages.preflight_gate import PreFlightTurnGate, EMPIRICAL_ACTIVE_MEDIANS
+            from monika.application.analysis.stages.preflight_gate import EMPIRICAL_ACTIVE_MEDIANS, PreFlightTurnGate
 
             if not EMPIRICAL_ACTIVE_MEDIANS:
                 raise ValueError("EMPIRICAL_ACTIVE_MEDIANS is empty")
@@ -283,8 +283,8 @@ class StartupChecker:
             warnings.append("min_paper_trades_before_live too low")
 
         try:
-            from monika.infrastructure.database.db import AsyncSessionLocal
             from monika.core.analytics.paper_tracker import PaperTracker
+            from monika.infrastructure.database.db import AsyncSessionLocal
 
             async with AsyncSessionLocal() as session:
                 tracker = PaperTracker(self.settings)
@@ -329,8 +329,9 @@ class StartupChecker:
         ok = True
         warnings = []
         try:
-            from monika.infrastructure.database.db import engine, get_engine
             from sqlalchemy import text
+
+            from monika.infrastructure.database.db import engine, get_engine
 
             eng = self.db_engine or engine or get_engine()
             eng_url = getattr(eng, "url", None)
@@ -474,9 +475,10 @@ class StartupChecker:
                         pass
 
             try:
-                from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import delete, select
+
                 from monika.infrastructure.database.db import AsyncSessionLocal
+                from monika.infrastructure.database.models import SystemConfig
                 from monika.infrastructure.database.safe_ops import safe_commit
 
                 async with AsyncSessionLocal() as startup_session:
@@ -499,6 +501,7 @@ class StartupChecker:
 
                     # Pre-boot integrity verification of synthesized strategies
                     import json
+
                     from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
 
                     synth_rows = (
@@ -741,8 +744,8 @@ class StartupChecker:
         try:
             from monika.infrastructure.brokers.mt5_compat import (
                 ensure_mt5_module,
-                is_native_mt5_available,
                 is_mt5linux_available,
+                is_native_mt5_available,
             )
 
             mt5 = ensure_mt5_module()
@@ -785,18 +788,18 @@ class StartupChecker:
         ok = True
         warnings = []
         try:
+            from monika.application.analysis.tools.registry import default_tool_registry
             from monika.application.analysis.tools.tool_executor import ToolExecutor
             from monika.application.analysis.tools.tools_definitions import ALL_TOOLS
             from monika.infrastructure.database.db import AsyncSessionLocal
-            from monika.application.analysis.tools.registry import default_tool_registry
 
             async with AsyncSessionLocal() as session:
                 executor = ToolExecutor(session)
 
             # Trigger full handler registration (decorators + module-level ToolDefinition lists)
             try:
-                import monika.application.analysis.tools.handlers  # noqa: F401
                 import monika.application.analysis.tools.domain  # noqa: F401
+                import monika.application.analysis.tools.handlers  # noqa: F401
             except Exception as reg_err:
                 logger.error(f"  [FAIL] Tool handler registration import: {reg_err}")
                 ok = False
@@ -850,6 +853,7 @@ class StartupChecker:
 
             try:
                 from sqlalchemy import text
+
                 from monika.infrastructure.database.db import engine, get_engine
 
                 eng = self.db_engine or engine or get_engine()
@@ -868,8 +872,8 @@ class StartupChecker:
         ok = True
         warnings = []
         try:
-            from monika.core.analytics.performance_reviewer import PERFORMANCE_NOTES_PATH
             from monika.application.skills.loader import _SKILLS_DIR
+            from monika.core.analytics.performance_reviewer import PERFORMANCE_NOTES_PATH
 
             if not PERFORMANCE_NOTES_PATH.resolve().is_relative_to(_SKILLS_DIR.resolve()):
                 logger.error(

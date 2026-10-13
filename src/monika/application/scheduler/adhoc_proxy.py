@@ -4,7 +4,7 @@ Decouples agent loop orchestration from monika.application.graph node dependenci
 """
 
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.Scheduler.AdHocProxy")
 
@@ -137,8 +137,9 @@ class AdHocSchedulerProxy:
         if not session:
             return {"sufficient": False, "trades": 0, "win_rate": 50.0, "blocked": False}
         try:
-            from monika.infrastructure.database.models import PaperTradeRecord
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import PaperTradeRecord
 
             stmt = (
                 select(PaperTradeRecord)

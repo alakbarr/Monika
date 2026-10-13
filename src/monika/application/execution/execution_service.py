@@ -18,23 +18,22 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from monika.infrastructure.database.db import get_session, transactional_advisory_lock
-from monika.infrastructure.brokers.mt5_client import MT5Client
-from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
-from monika.domain.risk.position_sizing import PositionSizer, SizingResult
-from monika.domain.risk.risk_gate import RiskGate
-
+from monika.application.execution.service.emergency_manager import EmergencyManagerMixin
 from monika.application.execution.service.order_executor import (
+    _EXECUTED_ANALYSIS_IDS,
+    _EXECUTION_LOCK,
+    _LAST_CLEANUP_TIME,
     ExecutionResult,
     OrderExecutorMixin,
-    _EXECUTION_LOCK,
-    _EXECUTED_ANALYSIS_IDS,
-    _LAST_CLEANUP_TIME,
 )
-from monika.application.execution.service.risk_evaluator import RiskEvaluatorMixin
 from monika.application.execution.service.position_synchronizer import PositionSynchronizerMixin
-from monika.application.execution.service.emergency_manager import EmergencyManagerMixin
+from monika.application.execution.service.risk_evaluator import RiskEvaluatorMixin
+from monika.domain.risk.position_sizing import PositionSizer, SizingResult
+from monika.domain.risk.risk_gate import RiskGate
+from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
+from monika.infrastructure.brokers.mt5_client import MT5Client
 from monika.infrastructure.brokers.rate_throttler import RateThrottler
+from monika.infrastructure.database.db import get_session, transactional_advisory_lock
 
 logger = logging.getLogger("TradingAgent.ExecutionService")
 
@@ -89,9 +88,9 @@ class ExecutionService(OrderExecutorMixin, RiskEvaluatorMixin, PositionSynchroni
         else:
             self.broker_adapter = MT5LiveAdapter(self.mt5, settings=self.settings, dry_run=self.dry_run, service=self)
 
-        from monika.domain.execution.verification_engine import EvidenceFirstVerifier
         from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
         from monika.application.execution.effect_gate import EffectGate
+        from monika.domain.execution.verification_engine import EvidenceFirstVerifier
         from monika.infrastructure.brokers.idempotency_guard import get_idempotency_guard
 
         self.evidence_verifier = EvidenceFirstVerifier(settings)

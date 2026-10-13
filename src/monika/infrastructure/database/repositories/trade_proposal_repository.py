@@ -6,11 +6,12 @@ Encapsulates database access for trade triggers, conditional orders, and MT5 sig
 
 from datetime import datetime, timezone
 from typing import Optional, Sequence
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import TradeTrigger, MT5Signal
 from monika.domain.entities.trade_trigger import TradeTriggerEntity
+from monika.infrastructure.database.models import MT5Signal, TradeTrigger
 
 
 class TradeProposalRepository:

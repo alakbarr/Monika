@@ -5,11 +5,11 @@ Ensures concise descriptions (<=80 chars), valid market regime tags,
 structural heading standards, and absence of conversational bloat.
 """
 
-import re
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger("TradingAgent.Skills.Linter")
 

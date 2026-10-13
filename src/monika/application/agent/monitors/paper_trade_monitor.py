@@ -17,10 +17,10 @@ async def run_paper_trade_monitor(agent: Any) -> None:
 
     while not agent.shutdown_event.is_set():
         try:
-            from monika.infrastructure.database.db import get_session
+            from monika.core.analytics.news_classification_tracker import resolve_pending_news_outcomes
             from monika.core.analytics.paper_tracker import PaperTracker
             from monika.core.calibration.prescreen_calibrator import resolve_pending_prescreen_logs
-            from monika.core.analytics.news_classification_tracker import resolve_pending_news_outcomes
+            from monika.infrastructure.database.db import get_session
 
             tracker = PaperTracker(agent.settings)
             async with get_session() as session:

@@ -7,12 +7,12 @@ Pluggable LLM Provider Registry & Plugin Specification (Phase 3b).
 Decouples LLM client creation from hardcoded if/elif chains into dynamic provider plugins.
 """
 
-from abc import ABC, abstractmethod
 import logging
 import os
-from typing import Dict, Any, Optional, List, Callable
+from abc import ABC, abstractmethod
+from typing import Any, Callable, Dict, List, Optional
 
-from monika.application.harness.contract import TradingPlugin, PluginCategory, PluginMetadata
+from monika.application.harness.contract import PluginCategory, PluginMetadata, TradingPlugin
 
 logger = logging.getLogger("TradingAgent.ProviderRegistry")
 

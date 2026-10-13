@@ -8,18 +8,18 @@ import asyncio
 import logging
 import os
 import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from monika.infrastructure.database.db import get_session
+import monika.core.primitives.clock as clock
 from monika.application.analysis.memory.lesson_consolidator import (
     cluster_lessons_semantically,
     enforce_declarative_memory_rule,
 )
-from monika.application.analysis.memory.playbook_linter import PlaybookLinter
 from monika.application.analysis.memory.playbook_ledger import PlaybookLedger, get_playbook_async_lock
-import monika.core.primitives.clock as clock
+from monika.application.analysis.memory.playbook_linter import PlaybookLinter
+from monika.infrastructure.database.db import get_session
 
 logger = logging.getLogger("TradingAgent.PlaybookCurator")
 
@@ -49,8 +49,9 @@ class PlaybookCurator:
             return await self._curate_all(new_session)
 
     async def _curate_all(self, session) -> Dict[str, Any]:
-        from sqlalchemy import select, desc
-        from monika.infrastructure.database.models import PaperTradeRecord, DecisionReflection
+        from sqlalchemy import desc, select
+
+        from monika.infrastructure.database.models import DecisionReflection, PaperTradeRecord
 
         universe = self.settings.get("trading", {}).get(
             "asset_universe", ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"]
@@ -71,8 +72,9 @@ class PlaybookCurator:
         """
         Scans closed trades with positive PnL for a symbol and generates a validated playbook.
         """
-        from sqlalchemy import select, desc
-        from monika.infrastructure.database.models import PaperTradeRecord, DecisionReflection
+        from sqlalchemy import desc, select
+
+        from monika.infrastructure.database.models import DecisionReflection, PaperTradeRecord
 
         clean_sym = symbol.strip().upper()
         now = clock.now()

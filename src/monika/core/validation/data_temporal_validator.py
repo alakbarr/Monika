@@ -6,8 +6,9 @@ timestamp antar data sources dalam analysis chain.
 
 import logging
 from datetime import datetime, timezone
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.DataTemporalValidator")
 
@@ -27,7 +28,7 @@ class DataTemporalValidator:
 
         Returns dict dengan gap analysis dan recommendations.
         """
-        from monika.infrastructure.database.models import PriceOHLCV, FundamentalBrief, VIXData, COTReport
+        from monika.infrastructure.database.models import COTReport, FundamentalBrief, PriceOHLCV, VIXData
 
         now = datetime.now(timezone.utc)
         gaps = []

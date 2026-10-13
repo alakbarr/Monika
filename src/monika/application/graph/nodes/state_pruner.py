@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict
+
 from monika.application.graph.state import TradingState
 
 logger = logging.getLogger("TradingAgent.StatePruner")

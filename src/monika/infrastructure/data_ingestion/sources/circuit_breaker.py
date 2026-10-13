@@ -6,10 +6,10 @@ and Economic Calendar. Automatically trips execution gates and alerts
 EventBus when critical feeds become stale or fail.
 """
 
-import time
 import logging
-from typing import Dict, List, Optional, Any
+import time
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.DataSources.CircuitBreaker")
 
@@ -233,7 +233,7 @@ class DataFeedCircuitBreaker:
     def _publish_event(self, component: str, reason: str, is_active: bool, cooldown: int = 0) -> None:
         """Best-effort async event emission to EventBus."""
         try:
-            from monika.application.protocol.event_bus import get_event_bus, CircuitBreakerEvent
+            from monika.application.protocol.event_bus import CircuitBreakerEvent, get_event_bus
 
             bus = get_event_bus()
             event = CircuitBreakerEvent(

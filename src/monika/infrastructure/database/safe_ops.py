@@ -12,7 +12,8 @@ with proper rollback on failure.
 import asyncio
 import inspect
 import logging
-from typing import TypeVar, Callable, Optional, Any
+from typing import Any, Callable, Optional, TypeVar
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.SafeOps")

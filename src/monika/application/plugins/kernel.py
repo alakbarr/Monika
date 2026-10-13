@@ -10,30 +10,30 @@ and reactive event dispatching.
 """
 
 from monika.application.harness.contract import (
-    TradingPlugin,
-    PluginMetadata,
+    EventBusProtocol,
     PluginCategory,
+    PluginMetadata,
     PluginOrigin,
     PluginState,
     ServiceContainerProtocol,
-    EventBusProtocol,
     TaskRegistryProtocol,
+    TradingPlugin,
 )
 from monika.application.harness.engine import PluginEngine, get_plugin_engine
 from monika.application.harness.installer import (
-    list_all_plugins_status,
-    toggle_plugin_state,
     get_community_catalog,
+    list_all_plugins_status,
     run_pip_install,
     run_pip_uninstall,
+    toggle_plugin_state,
     validate_package_spec,
 )
 from monika.application.harness.lifecycle import (
     ReplacementCoordinator,
     ReplacementLease,
+    get_plugin_storage_dir,
     get_replacement_coordinator,
     safe_dispatch_hook,
-    get_plugin_storage_dir,
 )
 
 __all__ = [

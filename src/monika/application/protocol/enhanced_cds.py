@@ -9,8 +9,9 @@ Implements 3-dimensional CDS per "Hallucination as Context Drift" research:
 import json
 import logging
 import math
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,8 +52,8 @@ async def compute_spatial_cds(
 
     Returns: 0.0 (no divergence) to 1.0 (maximum divergence)
     """
-    from monika.infrastructure.database.models import PriceOHLCV
     from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
+    from monika.infrastructure.database.models import PriceOHLCV
 
     signal_threshold = get_signal_threshold(symbol)
 
@@ -147,8 +148,8 @@ async def compute_temporal_cds(
 
     Returns: 0.0 (all data synchronized) to 1.0 (maximum temporal spread)
     """
-    from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator, FundamentalBrief, VIXData
     from monika.core.primitives.clock import now as get_clock_now
+    from monika.infrastructure.database.models import FundamentalBrief, PriceOHLCV, TechnicalIndicator, VIXData
 
     now = get_clock_now()
     weekday = now.weekday()  # 0=Monday, 5=Saturday, 6=Sunday
@@ -384,8 +385,9 @@ def get_cds_thresholds(settings: Optional[dict] = None) -> dict:
 
 async def get_cds_thresholds_async(session: AsyncSession, settings: Optional[dict] = None) -> dict:
     """Get CDS thresholds, prioritizing dynamic overrides from DB."""
-    from monika.infrastructure.database.models import SystemConfig
     import json
+
+    from monika.infrastructure.database.models import SystemConfig
 
     base = get_cds_thresholds(settings)
 

@@ -9,6 +9,7 @@ Zero external library dependencies.
 """
 
 from typing import List
+
 import numpy as np
 
 from .models import PatternMatch

@@ -6,7 +6,7 @@ Adopted from Pi's cache-stats.ts pattern.
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.CacheMissDetector")
 

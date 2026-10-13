@@ -15,13 +15,13 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from monika.application.analysis.tools.unified_registry import (
-    unified_tool_registry,
-    TRADING_TOOLSET,
     DEVELOPER_TOOLSET,
     RESEARCH_TOOLSET,
     TOOLSETS,
+    TRADING_TOOLSET,
+    unified_tool_registry,
 )
-from monika.infrastructure.sandboxes.pty_bridge import get_pty_bridge_manager, PtySession
+from monika.infrastructure.sandboxes.pty_bridge import PtySession, get_pty_bridge_manager
 
 logger = logging.getLogger("Monika.Application.GeneralHarnessService")
 

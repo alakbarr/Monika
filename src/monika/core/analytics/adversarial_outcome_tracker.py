@@ -1,6 +1,7 @@
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,8 +11,8 @@ logger = logging.getLogger("TradingAgent.AdversarialOutcomeTracker")
 async def compute_adversarial_check_correlation(session: AsyncSession, days_back: int = 60) -> dict:
     """Mengecek apakah verdict adversarial_check (approve/hard_block/recommend_block)
     benar-benar berkorelasi dengan outcome trade — untuk kalibrasi alert_on_extreme_only."""
-    from monika.infrastructure.database.models import SystemConfig, PaperTradeRecord
     from monika.core.analytics.edge_tracker import is_trade_win
+    from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
 
     since = datetime.now(timezone.utc) - timedelta(days=days_back)
     rows = (

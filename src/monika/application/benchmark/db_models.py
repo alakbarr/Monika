@@ -1,7 +1,9 @@
 from datetime import datetime
-import monika.core.primitives.clock as clock
-from sqlalchemy import Integer, String, Float, DateTime, Text, Boolean, ForeignKey
+
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
+
+import monika.core.primitives.clock as clock
 from monika.infrastructure.database.models import Base
 
 

@@ -16,8 +16,8 @@ import html
 import re
 
 from monika.core.streaming.sanitizer import (
-    EMOJI_PATTERN,
     ASCII_EMOTICON_PATTERN,
+    EMOJI_PATTERN,
     strip_emojis_and_emoticons,
 )
 

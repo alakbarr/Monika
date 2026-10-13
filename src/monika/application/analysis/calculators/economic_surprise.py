@@ -10,8 +10,10 @@ Menghitung selisih persentase antara nilai aktual dan ekspektasi (forecast).
 import logging
 import re
 from typing import Optional
+
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.infrastructure.database.models import EconomicCalendar
 
 logger = logging.getLogger("TradingAgent.EconomicSurprise")
@@ -139,9 +141,10 @@ async def compute_cesi_index(
     Menghitung Citigroup-style Economic Surprise Index (CESI) untuk suatu mata uang
     menggunakan pembobotan peluruhan eksponensial (exponential decay) selama window_days (default: 90 hari).
     """
-    from datetime import datetime, timezone, timedelta
-    import monika.core.primitives.clock as clock
     import math
+    from datetime import datetime, timedelta, timezone
+
+    import monika.core.primitives.clock as clock
 
     curr = currency.strip().upper()
     now = clock.now()

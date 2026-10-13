@@ -15,6 +15,7 @@ Features:
 
 import asyncio
 from typing import Any, Dict, Optional
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
@@ -22,9 +23,9 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, RichLog, Static
 
 from monika.application.harness.installer import (
-    validate_package_spec,
-    run_pip_install,
     get_community_catalog,
+    run_pip_install,
+    validate_package_spec,
 )
 
 

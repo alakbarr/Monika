@@ -4,7 +4,7 @@ Enforces hard mathematical ceilings and non-negotiable risk constraints.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.RiskInvariants")
 

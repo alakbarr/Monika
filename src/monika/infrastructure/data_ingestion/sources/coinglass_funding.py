@@ -10,12 +10,14 @@ Funding rate negatif -> bias short (sentimen bearish, risiko squeeze)
 """
 
 import logging
-from typing import Optional
 from datetime import datetime, timezone
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import SystemConfig
+
 from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import SystemConfig
 
 logger = logging.getLogger("TradingAgent.CoinglasFunding")
 

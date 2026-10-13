@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import Optional
+
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.AdjudicationVerifier")

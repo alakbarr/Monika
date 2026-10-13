@@ -8,9 +8,9 @@ Features:
 - Strict Financial Guardrails: Safeguards numerical tables, tickers, and price levels from destructive token classification.
 """
 
-import re
 import logging
-from typing import Optional, Dict, Any, List
+import re
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.LLMLinguaCompressor")
 

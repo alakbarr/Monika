@@ -11,24 +11,26 @@ Menggunakan SQLAlchemy 2.0 DeclarativeBase dengan pola async.
 import uuid
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
-from typing import Optional, Union, Dict, Set, Any
+from typing import Any, Dict, Optional, Set, Union
 
 from sqlalchemy import (
-    Column,
-    Integer,
-    BigInteger,
-    String,
-    Float,
-    DateTime,
-    Boolean,
-    Text,
-    Index,
-    ForeignKey,
-    UniqueConstraint,
-    JSON,
-    text,
-    func,
     ARRAY,
+    JSON,
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
+from sqlalchemy import (
     Enum as SQLAlchemyEnum,
 )
 
@@ -39,8 +41,7 @@ try:
 except ImportError:
     TSVECTOR_TYPE = Text
 TSVECTOR = TSVECTOR_TYPE
-from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, synonym, validates
-
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, synonym, validates
 
 from monika.core.primitives.clock import now as _clock_now
 
@@ -678,9 +679,9 @@ class MT5Signal(Base):
 # 17-19: Eksekusi & Risiko
 # =============================================================================
 from monika.domain.entities.order_status import (
-    OrderStatus,
-    InvalidOrderStateTransitionError,
     VALID_ORDER_TRANSITIONS,
+    InvalidOrderStateTransitionError,
+    OrderStatus,
 )
 
 

@@ -16,45 +16,45 @@ import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich import box
 
 from monika.interfaces.cli.chat.theme import (
-    GLYPH_USER,
-    GLYPH_AGENT,
-    GLYPH_THINK,
-    GLYPH_TOOL,
-    GLYPH_SUCCESS,
-    GLYPH_ERROR,
-    GLYPH_WARN,
-    GLYPH_CORNER,
-    BOX_ROUND_TOP_LEFT,
-    BOX_ROUND_TOP_RIGHT,
-    BOX_ROUND_BOTTOM_LEFT,
-    BOX_ROUND_BOTTOM_RIGHT,
-    BOX_HORIZONTAL,
-    BOX_VERTICAL,
-    BOX_DOUBLE_HORIZONTAL,
-    BOX_DOUBLE_VERTICAL,
-    BOX_DOUBLE_TOP_LEFT,
-    BOX_DOUBLE_TOP_RIGHT,
     BOX_DOUBLE_BOTTOM_LEFT,
     BOX_DOUBLE_BOTTOM_RIGHT,
+    BOX_DOUBLE_HORIZONTAL,
+    BOX_DOUBLE_TOP_LEFT,
+    BOX_DOUBLE_TOP_RIGHT,
+    BOX_DOUBLE_VERTICAL,
+    BOX_HORIZONTAL,
+    BOX_ROUND_BOTTOM_LEFT,
+    BOX_ROUND_BOTTOM_RIGHT,
+    BOX_ROUND_TOP_LEFT,
+    BOX_ROUND_TOP_RIGHT,
+    BOX_VERTICAL,
+    GLYPH_AGENT,
+    GLYPH_CORNER,
+    GLYPH_ERROR,
+    GLYPH_SUCCESS,
+    GLYPH_THINK,
+    GLYPH_TOOL,
+    GLYPH_USER,
+    GLYPH_WARN,
     ChatPalette,
     get_chat_palette,
 )
 from monika.interfaces.cli.theme import (
-    get_console,
-    stamp_ok,
-    stamp_err,
-    stamp_warn,
-    stamp_info,
-    stamp_exec,
     LEDGER_BOX,
+    get_console,
+    stamp_err,
+    stamp_exec,
+    stamp_info,
+    stamp_ok,
+    stamp_warn,
 )
 
 

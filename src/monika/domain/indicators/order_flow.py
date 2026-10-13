@@ -14,11 +14,11 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.OrderFlow")
 
@@ -237,6 +237,7 @@ class OrderFlowEngine:
         if any(sym_tag in symbol.upper() for sym_tag in ("BTC", "XAU")) and len(prices) >= 20:
             try:
                 import pandas as pd
+
                 from monika.domain.indicators.microstructure import compute_vpin
 
                 t_df = pd.DataFrame({"price": prices, "volume": volumes})

@@ -6,6 +6,7 @@ Guarantees validated structured outputs across multi-provider LLM invocations.
 import json
 import logging
 from typing import Any, Callable, Optional, Type
+
 from pydantic import BaseModel
 
 logger = logging.getLogger("TradingAgent.Harness.StructuredOutput")

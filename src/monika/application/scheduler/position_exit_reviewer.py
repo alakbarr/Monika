@@ -1,9 +1,11 @@
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
-from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import Position, AssetAnalysis, SystemConfig
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import select
+
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import AssetAnalysis, Position, SystemConfig
 
 logger = logging.getLogger("TradingAgent.PositionExitReviewer")
 
@@ -116,8 +118,8 @@ class PositionExitReviewer:
 
         # Jev System One Pre-Screen: Check if thesis is clearly intact to save expensive Stage 2 run
         try:
-            from monika.infrastructure.providers.llm_factory import get_client_for_task
             from monika.core.primitives.jev_primitives import build_exit_review_prescreen
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
 
             jev_exit_client = get_client_for_task("jev_exit_prescreen", self.settings)
             if hasattr(jev_exit_client, "classify_json"):

@@ -6,10 +6,12 @@ bar D1."""
 
 import logging
 import math
+
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import PriceOHLCV, DXYData, TreasuryYield
+
+from monika.infrastructure.database.models import DXYData, PriceOHLCV, TreasuryYield
 
 logger = logging.getLogger("TradingAgent.DynamicCorrelation")
 
@@ -199,9 +201,11 @@ async def compute_cross_asset_macro_correlation(
     Computes cross-asset macro correlations joining DB Treasury Yields (US10Y, US02Y),
     Gold (XAUUSD), and Forex pairs (USDJPY, EURUSD).
     """
-    from monika.infrastructure.database.models import TreasuryYield, PriceOHLCV
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
+
     import numpy as np
+
+    from monika.infrastructure.database.models import PriceOHLCV, TreasuryYield
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days + 30)
 

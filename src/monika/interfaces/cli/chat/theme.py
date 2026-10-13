@@ -9,20 +9,21 @@ Harmonized with Monika's institutional brass & phosphor amber aesthetic.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Any, Dict
+
 from monika.interfaces.cli.theme import (
-    PHOSPHOR_AMBER,
+    BEAR_LOSS,
+    BORDER,
     BRASS,
     BULL_PROFIT,
-    BEAR_LOSS,
-    MUTED,
-    DIM,
-    PAPER,
     CHARCOAL,
+    DIM,
+    MUTED,
+    PAPER,
+    PHOSPHOR_AMBER,
     SURFACE,
-    BORDER,
-    get_theme,
     ThemePack,
+    get_theme,
 )
 
 # Semantic UI Glyphs

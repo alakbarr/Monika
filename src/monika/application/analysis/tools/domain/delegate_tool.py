@@ -15,12 +15,13 @@ import logging
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field
 
-from monika.application.analysis.subagent_spawner import SubagentSpec, SubagentWorker, SubagentResult
+from monika.application.analysis.subagent_spawner import SubagentResult, SubagentSpec, SubagentWorker
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
-from monika.core.telemetry.delegation_live_log import LiveTranscriptWriter
 from monika.core.primitives.worktree import SubagentWorktree
+from monika.core.telemetry.delegation_live_log import LiveTranscriptWriter
 
 logger = logging.getLogger("TradingAgent.Tools.Delegate")
 

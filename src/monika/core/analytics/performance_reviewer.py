@@ -9,13 +9,15 @@ Otomatis menghasilkan 'lessons learned' (evaluasi) & perbarui file skills/tradin
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
-from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
+
 from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
+from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord, SystemConfig
 
 logger = logging.getLogger("TradingAgent.PerformanceReviewer")
 
@@ -367,9 +369,10 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
 
     # Phase 6 Task 1: Auto-drop NEGATIVE_PREDICTOR factors
     try:
+        import json
+
         from monika.core.analytics.analysis_tracker import compute_factor_weights_recommendation
         from monika.infrastructure.database.models import SystemConfig
-        import json
 
         weight_recs = await compute_factor_weights_recommendation(session, min_trades=30)
         if weight_recs.get("status") == "success":
@@ -495,9 +498,10 @@ async def analyze_failure_patterns(session: AsyncSession, records) -> list[str]:
 
 
 async def should_regenerate_fundamental_notes(session: AsyncSession) -> tuple[bool, str]:
+    from sqlalchemy import select
+
     from monika.core.analytics.agent_performance_monitor import compute_agent_accuracy_report
     from monika.infrastructure.database.models import SystemConfig
-    from sqlalchemy import select
 
     report = await compute_agent_accuracy_report(session, days_back=14)
     stage1 = report.get("stage1_bias_accuracy", {})
@@ -531,9 +535,9 @@ async def evaluate_candidate_lessons(session: AsyncSession, settings: Optional[d
     Evaluates CandidateLesson records in shadow mode against out-of-sample holdout trades.
     Promotes only candidate lessons with verified positive performance delta (N >= 30).
     """
-    from monika.infrastructure.database.models import CandidateLesson, PaperTradeRecord
-    from monika.application.analysis.memory.lesson_consolidator import promote_lesson_to_playbook
     import monika.core.primitives.clock as clock
+    from monika.application.analysis.memory.lesson_consolidator import promote_lesson_to_playbook
+    from monika.infrastructure.database.models import CandidateLesson, PaperTradeRecord
 
     now = clock.now()
     candidates = (

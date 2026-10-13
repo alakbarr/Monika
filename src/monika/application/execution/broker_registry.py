@@ -9,7 +9,7 @@ for live MT5, simulation, remote gateways, and custom BrokerPlugin implementatio
 """
 
 import logging
-from typing import Dict, Any, Optional, List, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 logger = logging.getLogger("TradingAgent.BrokerRegistry")
 

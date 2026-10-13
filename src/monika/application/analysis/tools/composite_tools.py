@@ -5,7 +5,7 @@ Reduces tool round-trips from 14 to 5, and shrinks schema footprint.
 
 import asyncio
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.CompositeTools")
 

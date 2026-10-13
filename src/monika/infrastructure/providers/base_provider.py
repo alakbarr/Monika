@@ -2,11 +2,11 @@
 Base LLM Client — interface abstrak yang WAJIB diimplementasikan oleh setiap provider.
 """
 
-from abc import ABC, abstractmethod
-from typing import Optional, Any, Dict
 import asyncio
 import json
 import logging
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -744,9 +744,10 @@ class BaseLLMClient(ABC):
     async def _log_tool_call(self, session, stage_name: str, tool_name: str, tool_input: dict, result: dict) -> None:
         """Save tool call audit trail to ActivityLog using isolated session."""
         try:
-            from monika.infrastructure.database.models import ActivityLog
-            from monika.infrastructure.database.db import get_session
             from datetime import datetime, timezone
+
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import ActivityLog
 
             actor_name = getattr(self, "role", getattr(self, "model", "llm"))
             entry = ActivityLog(
@@ -788,8 +789,8 @@ class BaseLLMClient(ABC):
         if input_tokens == 0 and output_tokens == 0:
             return
         try:
-            from monika.infrastructure.database.models import TokenUsageLog
             from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import TokenUsageLog
 
             resolved_role = task_role or getattr(self, "role", None) or getattr(self, "task_role", None)
             resolved_subsystem = (
@@ -867,7 +868,7 @@ class BaseLLMClient(ABC):
             # Tracing Integration: Record an 'llm' span in the active distributed trace
             if not kwargs.get("from_agent_harness", False):
                 try:
-                    from monika.core.telemetry.tracing.context import get_current_trace_id, get_current_span_id
+                    from monika.core.telemetry.tracing.context import get_current_span_id, get_current_trace_id
                     from monika.core.telemetry.tracing.tracer import get_tracer
 
                     current_trace = get_current_trace_id()

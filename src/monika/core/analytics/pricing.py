@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.Pricing")
 
@@ -450,7 +450,7 @@ def get_price(model_name: str) -> Price:
     return _FREE
 
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 
 @dataclass(frozen=True)
@@ -617,8 +617,9 @@ async def fetch_openrouter_pricing_async(cache_path: Optional[str] = None) -> Di
     """
     import json
     import os
-    import aiohttp
     from pathlib import Path
+
+    import aiohttp
 
     from monika.infrastructure.infra.paths import DATA_DIR
 

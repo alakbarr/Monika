@@ -1,8 +1,10 @@
 import logging
 from datetime import datetime, timezone
-import monika.core.primitives.clock as clock
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+import monika.core.primitives.clock as clock
 from monika.infrastructure.database.models import PriceOHLCV
 
 logger = logging.getLogger("TradingAgent.DailyRangeCalculator")

@@ -3,8 +3,9 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.ContextSnapshot")
 
@@ -19,7 +20,7 @@ async def compute_context_snapshot_id(session: AsyncSession) -> tuple[str, dict]
     Returns:
         (snapshot_id: str, snapshot_metadata: dict)
     """
-    from monika.infrastructure.database.models import FundamentalBrief, VIXData, DXYData
+    from monika.infrastructure.database.models import DXYData, FundamentalBrief, VIXData
 
     components = {}
 

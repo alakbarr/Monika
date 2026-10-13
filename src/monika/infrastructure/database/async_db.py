@@ -9,11 +9,13 @@ Provides AsyncSessionLocal and helper functions for async database sessions.
 
 from monika.infrastructure.database.db import (
     AsyncSessionLocal,
+    engine,
+    get_canonical_db_path,
     get_session,
     get_write_session,
-    get_canonical_db_path,
+)
+from monika.infrastructure.database.db import (
     get_engine as _get_db_engine,
-    engine,
 )
 
 

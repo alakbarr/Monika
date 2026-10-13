@@ -21,8 +21,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from monika.application.analysis.tools.kernel.env_sanitizer import get_sanitized_environment
-from monika.infrastructure.sandboxes.base import BaseTerminalBackend
 from monika.core.security.terminal_guard import assert_safe_write_path
+from monika.infrastructure.sandboxes.base import BaseTerminalBackend
 
 logger = logging.getLogger("TradingAgent.Execution.LocalBackend")
 

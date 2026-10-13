@@ -7,7 +7,8 @@ Plugin Manifest Definition & Schema Validation.
 Defines metadata, dependencies, custom tools, and 12 lifecycle hook endpoints.
 """
 
-from typing import Dict, List, Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+
 from pydantic import BaseModel, Field, field_validator
 
 # Core Monika lifecycle hooks

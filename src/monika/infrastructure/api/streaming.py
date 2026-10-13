@@ -19,10 +19,10 @@ Fitur:
 
 import asyncio
 import json
-import time
 import logging
-from typing import Optional, Callable, Any
+import time
 from dataclasses import dataclass, field
+from typing import Any, Callable, Optional
 
 import aiohttp
 
@@ -274,7 +274,7 @@ async def consume_sse_stream(
 def _sanitize_url(url: str) -> str:
     """Masks sensitive query parameters (e.g. key, api_key, token) from URL."""
     try:
-        from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+        from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
         parsed = urlparse(str(url))
         if not parsed.query:

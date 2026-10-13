@@ -29,23 +29,23 @@ Responsibilities:
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any, Set, Tuple
-
 from enum import Enum
-from sqlalchemy import select, or_
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
+from monika.application.protocol.event_bus import OrderStateChangedEvent, get_event_bus
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import (
+    AssetAnalysis,
     Order,
-    OrderStatus,
     OrderEvent,
+    OrderStatus,
     Position,
     TradeOutcome,
-    AssetAnalysis,
 )
-from monika.application.protocol.event_bus import get_event_bus, OrderStateChangedEvent
 
 logger = logging.getLogger("TradingAgent.OrderReconciler")
 
@@ -350,8 +350,9 @@ class OrderReconciler:
                 # Sync TradePlan legs if associated with order / analysis
                 if order.analysis_id:
                     try:
-                        from monika.infrastructure.database.models import TradePlan, TradePlanLeg
                         from sqlalchemy.orm import selectinload
+
+                        from monika.infrastructure.database.models import TradePlan, TradePlanLeg
 
                         plan_rec = (
                             await session.execute(

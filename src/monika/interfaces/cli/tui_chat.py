@@ -32,19 +32,19 @@ from textual.widgets import Footer, Header, Input, RichLog, Static
 
 from monika.core.config.settings import load_settings
 from monika.interfaces.cli.theme import (
-    build_chat_css,
-    get_console,
-    PHOSPHOR_AMBER,
+    BEAR_LOSS,
     BRASS,
     BULL_PROFIT,
-    BEAR_LOSS,
     MUTED,
     PAPER,
-    stamp_ok,
+    PHOSPHOR_AMBER,
+    build_chat_css,
+    get_console,
     stamp_err,
-    stamp_warn,
     stamp_exec,
     stamp_info,
+    stamp_ok,
+    stamp_warn,
 )
 
 logger = logging.getLogger("TradingAgent.TUI.Chat")
@@ -449,9 +449,9 @@ def _get_prompt_session():
         logger.debug(f"Falling back from standard prompt_toolkit: {e}")
         try:
             from prompt_toolkit import PromptSession
-            from prompt_toolkit.output.vt100 import Vt100_Output
             from prompt_toolkit.data_structures import Size
             from prompt_toolkit.history import InMemoryHistory
+            from prompt_toolkit.output.vt100 import Vt100_Output
 
             out = Vt100_Output(sys.stdout, lambda: Size(rows=24, columns=80))
             return PromptSession(output=out, history=InMemoryHistory())

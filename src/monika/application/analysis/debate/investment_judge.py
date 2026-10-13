@@ -1,8 +1,9 @@
-import logging
 import json
-from typing import Optional, Dict, Any
-from monika.infrastructure.providers.base_provider import BaseLLMClient
+import logging
+from typing import Any, Dict, Optional
+
 from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
+from monika.infrastructure.providers.base_provider import BaseLLMClient
 
 logger = logging.getLogger("TradingAgent.InvestmentJudge")
 

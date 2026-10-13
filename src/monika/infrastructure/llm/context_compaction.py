@@ -6,12 +6,13 @@ Layer 2: Cycle Synthesis (triggered at >=50% context window, structured summary)
 Layer 3: Emergency Guard (triggered at >=85% context window, hard deterministic truncation)
 """
 
+import hashlib
 import json
 import logging
-import re
 import os
-import hashlib
-from typing import List, Dict, Any, Optional
+import re
+from typing import Any, Dict, List, Optional
+
 from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
 
 logger = logging.getLogger("TradingAgent.ContextCompaction")

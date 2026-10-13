@@ -9,10 +9,10 @@ Generates beautifully structured Microsoft Word documents containing:
 5. LLM Synthesis & Strategic Recommendations
 """
 
-import os
 import logging
+import os
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.DocxReportGenerator")
 
@@ -39,11 +39,11 @@ class DocxReportGenerator:
         try:
             import docx
             from docx import Document
-            from docx.shared import Inches, Pt, RGBColor
-            from docx.enum.text import WD_ALIGN_PARAGRAPH
             from docx.enum.table import WD_TABLE_ALIGNMENT
-            from docx.oxml import parse_xml, OxmlElement
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+            from docx.oxml import OxmlElement, parse_xml
             from docx.oxml.ns import nsdecls, qn
+            from docx.shared import Inches, Pt, RGBColor
         except ImportError as e:
             logger.error(f"python-docx is not installed: {e}")
             raise ImportError(

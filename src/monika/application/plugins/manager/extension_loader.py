@@ -7,12 +7,14 @@ Plugin Extension Loader (M1).
 Discovers and loads external extensions via `plugin.yaml` manifests.
 """
 
+import importlib.util
+import logging
 import os
 import sys
+from typing import Any, Dict, List, Optional
+
 import yaml
-import logging
-import importlib.util
-from typing import Dict, List, Any, Optional
+
 from monika.application.plugins.manager.manager import PluginManager, get_plugin_manager
 
 logger = logging.getLogger("TradingAgent.PluginLoader")

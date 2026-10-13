@@ -1,16 +1,17 @@
+import json
 import logging
+from typing import Any, Dict, Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Dict, Any, Optional
-import json
 
 from monika.infrastructure.database.models import (
     AssetAnalysis,
-    TechnicalIndicator,
-    FVGZone,
-    OrderBlock,
     DXYData,
     FundamentalBrief,
+    FVGZone,
+    OrderBlock,
+    TechnicalIndicator,
 )
 
 logger = logging.getLogger("TradingAgent.FactSheet")
@@ -143,7 +144,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
             pass
 
     # Fetch historical win rate for this symbol
-    from monika.infrastructure.database.models import Position, PaperTradeRecord
+    from monika.infrastructure.database.models import PaperTradeRecord, Position
 
     historical_positions = (
         (

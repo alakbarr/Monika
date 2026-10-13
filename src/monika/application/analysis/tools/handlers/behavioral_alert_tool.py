@@ -10,16 +10,16 @@ Supports passive notification alerts and active trading cooldown/quarantine lock
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
+from monika.core.primitives import clock
 from monika.infrastructure.database.models import UserPreference
 from monika.infrastructure.database.safe_ops import safe_commit
-from monika.core.primitives import clock
 
 logger = logging.getLogger("TradingAgent.BehavioralAlert")
 

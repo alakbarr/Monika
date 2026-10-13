@@ -3,15 +3,15 @@ Dynamic Correlation Matrix and Portfolio Covariance Engine (Phase 8 - M7).
 Calculates rolling returns correlation and covariance matrices to evaluate portfolio heat.
 """
 
-from datetime import datetime, timezone
 import logging
 import math
-from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
 from monika.domain.risk.portfolio_correlation_gate import (
+    _get_usd_directional_delta,
     compute_portfolio_correlation_matrix,
     filter_correlated_proposals,
-    _get_usd_directional_delta,
 )
 
 logger = logging.getLogger("TradingAgent.Risk.CorrelationMatrix")

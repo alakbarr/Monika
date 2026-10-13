@@ -4,10 +4,10 @@ Tracks and records verifiable empirical evidence (risk gate checks, position siz
 spread verification) executed during an agent's multi-turn reasoning cycle.
 """
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, Set
-import logging
+from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger("TradingAgent.Harness.VerificationEvidence")
 

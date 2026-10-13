@@ -2,7 +2,7 @@ import hashlib
 import json
 import logging
 from collections import deque
-from typing import Any, Optional, Tuple, Set
+from typing import Any, Optional, Set, Tuple
 
 logger = logging.getLogger("TradingAgent.Harness.StallGuard")
 

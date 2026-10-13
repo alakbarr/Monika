@@ -1,6 +1,8 @@
 import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.infrastructure.database.models import DXYData, PriceOHLCV
 
 logger = logging.getLogger(__name__)

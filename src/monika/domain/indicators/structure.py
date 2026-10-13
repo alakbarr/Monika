@@ -17,22 +17,22 @@ Persists extracted structural features to relational storage.
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Sequence, Union, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import (
-    PriceOHLCV,
-    SwingPoint,
-    SRZone,
-    LiquidityZone,
     FVGZone,
+    LiquidityZone,
     OrderBlock,
+    PriceOHLCV,
+    SRZone,
     StructureBreak,
+    SwingPoint,
 )
 
 logger = logging.getLogger("TradingAgent.Structure")
@@ -274,7 +274,7 @@ class MarketStructureAnalyzer:
 
     async def _prune_old_data(self, symbol: str, timeframe: str) -> None:
         """Menghapus data lama (retensi FVG ditangani spesifik di _save_fvg)."""
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         cutoff = datetime.now(timezone.utc) - timedelta(days=90)
         try:

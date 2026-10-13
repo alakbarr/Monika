@@ -2,11 +2,12 @@
 # File: config/settings.py
 # ==============================================================================
 
-import yaml
+import logging
 import os
 import re
-import logging
-from typing import Dict, Any, Optional, Union, overload, Literal
+from typing import Any, Dict, Literal, Optional, Union, overload
+
+import yaml
 
 
 def _resolve_env_str(val: str) -> str:
@@ -45,25 +46,25 @@ def _resolve_env_vars(obj: Any) -> Any:
 
 
 try:
-    from monika.core.config.schemas import (
-        TradingAgentConfig,
-        RiskConfig,
-        PaperTradingConfig,
-        ExecutionConfig,
-        IndicatorsConfig,
-        TradingConfig,
-    )
     from monika.core.config.migrations import migrate_config, require_parseable_config
-except ImportError:
-    from .schemas import (
-        TradingAgentConfig,
-        RiskConfig,
-        PaperTradingConfig,
+    from monika.core.config.schemas import (
         ExecutionConfig,
         IndicatorsConfig,
+        PaperTradingConfig,
+        RiskConfig,
+        TradingAgentConfig,
         TradingConfig,
     )
+except ImportError:
     from .migrations import migrate_config, require_parseable_config
+    from .schemas import (
+        ExecutionConfig,
+        IndicatorsConfig,
+        PaperTradingConfig,
+        RiskConfig,
+        TradingAgentConfig,
+        TradingConfig,
+    )
 
 DEFAULT_MONTHLY_BUDGET_USD = 100.0
 
@@ -149,7 +150,8 @@ def load_settings(
         except Exception as read_err:
             logger.error(f"Failed to parse settings at {path}: {read_err}")
             try:
-                import time, shutil
+                import shutil
+                import time
 
                 corrupt_path = f"{path}.corrupt.{int(time.time())}"
                 if os.path.exists(path):

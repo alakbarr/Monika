@@ -10,13 +10,14 @@ Executes last-mile assertions on trade decisions before routing to Risk Gate or 
 
 import json
 import logging
-from typing import Dict, Any, List, Tuple, Optional
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, desc
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
+
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import PriceOHLCV, EconomicCalendar, VIXData, AssetAnalysis
 import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import AssetAnalysis, EconomicCalendar, PriceOHLCV, VIXData
 
 logger = logging.getLogger("TradingAgent.TradePreCommitGate")
 

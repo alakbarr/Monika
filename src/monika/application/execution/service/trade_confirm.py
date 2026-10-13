@@ -5,11 +5,11 @@ Enforces pop-before-execute pattern, single-use token guarantees, and pre-commit
 to eliminate race conditions and double-fill risks across Telegram and Dashboard channels.
 """
 
+import logging
 import time
 import uuid
-import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Callable, Awaitable, Tuple
+from typing import Any, Awaitable, Callable, Dict, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.TradeConfirm")
 

@@ -9,11 +9,13 @@ Menganalisa kualitas trading (win rate) berdasarkan faktor/kondisi analisis (mis
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, func
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import AssetAnalysis, TradeOutcome, SystemConfig, PaperTradeRecord
+
 from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
+from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord, SystemConfig, TradeOutcome
 
 logger = logging.getLogger("TradingAgent.AnalysisTracker")
 

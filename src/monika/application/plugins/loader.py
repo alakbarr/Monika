@@ -8,15 +8,16 @@ Orders plugins by dependency graph before initialization, preventing missing dep
 failures and detecting circular dependency cycles at startup.
 """
 
-import os
-import yaml
 import logging
-from typing import Dict, List, Tuple, Optional, Any, Set
+import os
 from collections import defaultdict, deque
+from typing import Any, Dict, List, Optional, Set, Tuple
 
-from monika.application.plugins.manifest import PluginManifest
-from monika.application.plugins.manager.manager import PluginManager, get_plugin_manager
+import yaml
+
 from monika.application.plugins.manager.extension_loader import load_single_plugin, teardown_single_plugin
+from monika.application.plugins.manager.manager import PluginManager, get_plugin_manager
+from monika.application.plugins.manifest import PluginManifest
 
 logger = logging.getLogger("TradingAgent.Plugins.Loader")
 

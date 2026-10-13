@@ -101,9 +101,9 @@ def migrate_config(config: Dict[str, Any]) -> Tuple[Dict[str, Any], bool]:
 
 # Unified bridge to config_migrations
 try:
-    from monika.core.config.config_migrations import migrate_settings, DEFAULT_SUBSETS
+    from monika.core.config.config_migrations import DEFAULT_SUBSETS, migrate_settings
 except ImportError:
-    from .config_migrations import migrate_settings, DEFAULT_SUBSETS
+    from .config_migrations import DEFAULT_SUBSETS, migrate_settings
 
 __all__ = [
     "CURRENT_CONFIG_VERSION",

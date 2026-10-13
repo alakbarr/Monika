@@ -4,10 +4,10 @@ Executes Baseline vs Candidate strategy configurations across identical historic
 computing Win Rate Lift, Profit Factor Delta, Expectancy Delta, and Token Cost Delta.
 """
 
-from dataclasses import dataclass, asdict
 import inspect
 import logging
 import math
+from dataclasses import asdict, dataclass
 from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.PairedEvaluator")

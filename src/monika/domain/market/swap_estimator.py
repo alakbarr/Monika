@@ -13,8 +13,8 @@ FALLBACK_SWAP = {
     "XBRUSD": {"long": -5.0, "short": -2.0},
 }
 
-from typing import Optional
 from datetime import datetime, timedelta
+from typing import Optional
 
 
 async def estimate_swap_cost(

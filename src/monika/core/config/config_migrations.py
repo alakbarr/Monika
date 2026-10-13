@@ -5,10 +5,10 @@ Automatically audits, heals, and applies schema updates across versions of setti
 Preserves existing user customizations while backfilling newly required institutional keys.
 """
 
-import os
 import copy
 import logging
-from typing import Dict, Any, List, Tuple
+import os
+from typing import Any, Dict, List, Tuple
 
 logger = logging.getLogger("TradingAgent.ConfigMigrations")
 

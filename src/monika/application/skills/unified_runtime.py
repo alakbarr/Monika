@@ -17,7 +17,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from monika.application.skills.skills_hub import SkillsHub, SkillMetadata
+from monika.application.skills.skills_hub import SkillMetadata, SkillsHub
 
 logger = logging.getLogger("TradingAgent.Skills.UnifiedRuntime")
 

@@ -19,15 +19,16 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import Position
-from monika.domain.risk.trade_proposal import TradeProposal
-from monika.infrastructure.database.repositories.position_repository import PositionRepository
-from monika.infrastructure.database.repositories.trade_proposal_repository import TradeProposalRepository
-from monika.infrastructure.database.repositories.activity_log_repository import ActivityLogRepository
-from monika.infrastructure.database.repositories.system_config_repository import SystemConfigRepository
 from monika.domain.risk.position_sizing import get_instrument_spec
+from monika.domain.risk.trade_proposal import TradeProposal
+from monika.infrastructure.database.models import Position
+from monika.infrastructure.database.repositories.activity_log_repository import ActivityLogRepository
+from monika.infrastructure.database.repositories.position_repository import PositionRepository
+from monika.infrastructure.database.repositories.system_config_repository import SystemConfigRepository
+from monika.infrastructure.database.repositories.trade_proposal_repository import TradeProposalRepository
 
 logger = logging.getLogger("Monika.Application.TradingService")
 
@@ -218,8 +219,8 @@ class TradingService:
                 if risk_gate is not None:
                     rg = risk_gate
                 else:
-                    from monika.domain.risk.risk_gate import RiskGate
                     from monika.core.config.settings import load_settings
+                    from monika.domain.risk.risk_gate import RiskGate
 
                     rg = RiskGate(settings=load_settings(), mt5_client=broker_adapter)
                 verdict = await rg.evaluate_proposal(session, proposal, is_paper=False)

@@ -4,18 +4,19 @@ Domain tool handler allowing the AI agent to read back spilled context or observ
 from PostgreSQL context_spill_blobs or disk spill cache on demand.
 """
 
-import os
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import ContextSpillBlob
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
+from monika.infrastructure.database.models import ContextSpillBlob
 
 logger = logging.getLogger("TradingAgent.Tools.SpillReader")
 

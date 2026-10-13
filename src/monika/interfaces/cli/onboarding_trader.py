@@ -5,10 +5,10 @@ Captures trader identity, style, risk parameters, and operational focus,
 persisting them to Layer 0 memory (TRADING_SOUL.md) and profile state.
 """
 
-import os
 import json
 import logging
-from dataclasses import dataclass, asdict
+import os
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import List, Optional
 
@@ -40,8 +40,9 @@ class TraderOnboarding:
 
     def run_interview(self) -> TraderProfile:
         """Executes terminal interview to establish trader persona."""
-        from monika.interfaces.cli.theme import get_console, PHOSPHOR_AMBER, BRASS, stamp_ok, stamp_info, MUTED
         from rich.prompt import Prompt
+
+        from monika.interfaces.cli.theme import BRASS, MUTED, PHOSPHOR_AMBER, get_console, stamp_info, stamp_ok
 
         console = get_console()
         console.print(f"\n[{PHOSPHOR_AMBER}]══════════════════════════════════════════════════════════════[/]")

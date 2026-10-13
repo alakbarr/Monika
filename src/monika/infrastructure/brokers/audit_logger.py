@@ -10,11 +10,12 @@ Records execution outcomes to ActivityLog and persists Position & MT5Signal reco
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Any
+from typing import Any, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import Position, MT5Signal, OrderLog, ActivityLog, AssetAnalysis
 from monika.domain.risk.position_sizing import SizingResult
+from monika.infrastructure.database.models import ActivityLog, AssetAnalysis, MT5Signal, OrderLog, Position
 
 logger = logging.getLogger("TradingAgent.ExecutionService.AuditLogger")
 

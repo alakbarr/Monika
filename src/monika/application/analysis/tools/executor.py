@@ -8,52 +8,51 @@ Integrates decorator-based ToolRegistry, domain handlers, dynamic tool dispatch,
 monotonic guards, LFSP condensation, and OpenTelemetry tracing.
 """
 
-from typing import Any, Dict, Optional, Set
 import inspect
 import json
 import logging
-from pydantic import ValidationError
-from monika.application.analysis.schemas.schemas import SubmitFundamentalBriefSchema, SubmitAssetAnalysisSchema
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional, Set
 
-from sqlalchemy import select, desc, and_, update
+from pydantic import ValidationError
+from sqlalchemy import and_, desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import (
-    NewsItem,
-    EconomicCalendar,
-    TreasuryYield,
-    InterestRate,
-    FedWatchProbability,
-    COTReport,
-    VIXData,
-    PriceOHLCV,
-    TechnicalIndicator,
-    SwingPoint,
-    SRZone,
-    LiquidityZone,
-    FVGZone,
-    FundamentalBrief,
-    AssetAnalysis,
-    TradeTrigger,
-    Position,
-    ActivityLog,
-    RiskState,
-    TelegramConversation,
-    OrderBlock,
-    StructureBreak,
-    SystemConfig,
-    DXYData,
-    NewsDigest,
-    PaperTradeRecord,
-    BondYieldData,
-    UserMarketIntel,
-    MarketChronicle,
-)
-
-import monika.core.primitives.clock as clock
-from monika.application.analysis.tools.registry import default_tool_registry, ToolRegistry
 import monika.application.analysis.tools.handlers  # Auto-registers all modular tool handlers
+import monika.core.primitives.clock as clock
+from monika.application.analysis.schemas.schemas import SubmitAssetAnalysisSchema, SubmitFundamentalBriefSchema
+from monika.application.analysis.tools.registry import ToolRegistry, default_tool_registry
+from monika.infrastructure.database.models import (
+    ActivityLog,
+    AssetAnalysis,
+    BondYieldData,
+    COTReport,
+    DXYData,
+    EconomicCalendar,
+    FedWatchProbability,
+    FundamentalBrief,
+    FVGZone,
+    InterestRate,
+    LiquidityZone,
+    MarketChronicle,
+    NewsDigest,
+    NewsItem,
+    OrderBlock,
+    PaperTradeRecord,
+    Position,
+    PriceOHLCV,
+    RiskState,
+    SRZone,
+    StructureBreak,
+    SwingPoint,
+    SystemConfig,
+    TechnicalIndicator,
+    TelegramConversation,
+    TradeTrigger,
+    TreasuryYield,
+    UserMarketIntel,
+    VIXData,
+)
 
 logger = logging.getLogger("TradingAgent.ToolExecutor")
 
@@ -135,8 +134,9 @@ class ToolExecutor:
             except Exception:
                 self.registry = None
         if settings is None:
-            import yaml
             import os
+
+            import yaml
 
             try:
                 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -148,8 +148,8 @@ class ToolExecutor:
             self.settings = settings
 
         from monika.application.analysis.tools.domain.execution_handlers import ExecutionToolHandlers
-        from monika.application.analysis.tools.domain.position_handlers import PositionToolHandlers
         from monika.application.analysis.tools.domain.macro_handlers import MacroToolHandlers
+        from monika.application.analysis.tools.domain.position_handlers import PositionToolHandlers
         from monika.application.analysis.tools.domain.sentiment_handlers import SentimentToolHandlers
         from monika.application.analysis.tools.domain.technical_handlers import TechnicalToolHandlers
 
@@ -189,8 +189,8 @@ class ToolExecutor:
         self, file_path: str, filename: Optional[str] = None, data: Optional[Any] = None, caption: Optional[str] = None
     ) -> None:
         """Queue a file (document/excel/pdf) to be delivered to the user interface."""
-        import os
         import io
+        import os
 
         if isinstance(filename, (bytes, io.BytesIO)) and data is None:
             data = filename
@@ -336,8 +336,9 @@ class ToolExecutor:
 
     async def _cleanup_stale_caches(self):
         """Hapus cache entries yang expired."""
-        from sqlalchemy import delete
         import json
+
+        from sqlalchemy import delete
 
         now = clock.now()
         cache_rows = (
@@ -1275,7 +1276,7 @@ class ToolExecutor:
         return await handle_get_weekly_macro_summary(inp, session=self.session, executor=self, settings=self.settings)
 
     async def _tool_manage_cron(self, inp: dict) -> dict:
-        from monika.application.analysis.tools.domain.cron_tool import handle_manage_cron, CronActionInput
+        from monika.application.analysis.tools.domain.cron_tool import CronActionInput, handle_manage_cron
 
         input_obj = CronActionInput(**inp) if isinstance(inp, dict) else inp
         return await handle_manage_cron(input_obj, context=self)
@@ -3755,9 +3756,10 @@ class ToolExecutor:
         # ============================================================
         if decision in ("buy", "sell"):
             try:
+                import json as _json
+
                 from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
                 from monika.domain.market.bias_utils import normalize_bias
-                import json as _json
 
                 pair_info = SYMBOL_CURRENCY_MAP.get(symbol)
 
@@ -3840,8 +3842,9 @@ class ToolExecutor:
             context_snapshot_id = None
             context_cds_score = None
             try:
-                from monika.application.protocol.context_snapshot import compute_context_snapshot_id
                 import json as _j
+
+                from monika.application.protocol.context_snapshot import compute_context_snapshot_id
 
                 context_snapshot_id, _ = await compute_context_snapshot_id(self.session)
                 now_str = clock.now().strftime("%Y%m%d_%H")
@@ -4256,8 +4259,8 @@ class ToolExecutor:
         symbol = inp.get("symbol", "")
 
         from monika.application.analysis.subagent.isolated_harness import IsolatedSubagentRunner
+        from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE2_ESSENTIAL_TOOLS
         from monika.infrastructure.providers.llm_factory import get_client_for_task
-        from monika.application.analysis.tools.tools_definitions import STAGE2_ESSENTIAL_TOOLS, STAGE1_TOOLS
 
         runner = IsolatedSubagentRunner(settings=self.settings)
         if role == "macro_specialist":

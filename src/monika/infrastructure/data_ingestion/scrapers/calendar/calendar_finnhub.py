@@ -21,6 +21,7 @@ import os
 import time
 from datetime import date, timedelta
 from typing import List
+
 import aiohttp
 
 from monika.infrastructure.api.http_retry import _CIRCUIT_BREAKER
@@ -37,7 +38,6 @@ except ImportError:
     logger.warning("requests not installed — FinnhubCalendarScraper unavailable")
 
 from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
-
 
 # Pemetaan dampak Finnhub ke sistem 3 level kita
 _IMPACT_MAP = {

@@ -7,11 +7,11 @@ Strict Financial Guardrails:
 3. Candle Anchor Invalidation: Caches are strictly bound to candle timestamps to prevent obsolete lookups.
 """
 
-import time
 import hashlib
 import logging
-from typing import Dict, Any, Optional, Tuple, Callable
+import time
 from datetime import datetime, timezone
+from typing import Any, Callable, Dict, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.SemanticCache")
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+
 from monika.domain.indicators.factor_primitives import safe_div, ts_corr
 
 __alpha_meta__ = {

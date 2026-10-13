@@ -8,9 +8,9 @@ disconnects, or fails to write its heartbeat within threshold.
 import asyncio
 import logging
 import time
-from typing import Optional, Callable, Dict, Any
+from typing import Any, Callable, Dict, Optional
 
-from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager, EA_STALE_THRESHOLD_SECONDS
+from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import EA_STALE_THRESHOLD_SECONDS, HeartbeatManager
 
 logger = logging.getLogger("TradingAgent.Execution.EAWatchdog")
 
@@ -109,7 +109,7 @@ class EAWatchdog:
     def _emit_trip_event(self, reason: str) -> None:
         """Emits circuit breaker trip on EventBus and invokes callback."""
         try:
-            from monika.application.protocol.event_bus import get_event_bus, CircuitBreakerEvent
+            from monika.application.protocol.event_bus import CircuitBreakerEvent, get_event_bus
 
             bus = get_event_bus()
             bus.publish_nowait(CircuitBreakerEvent(component="MQL5_EA_Bridge", reason=reason))

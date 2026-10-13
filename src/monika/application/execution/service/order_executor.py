@@ -3,44 +3,44 @@
 # ==============================================================================
 
 import asyncio
+import inspect
 import json
 import logging
 import math
-import uuid
-import time
 import sys
-import inspect
+import time
+import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any, List, Tuple
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock
 
-from sqlalchemy import select, func, desc, update
+from sqlalchemy import desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-import monika.core.primitives.clock as clock
 
+import monika.core.primitives.clock as clock
 import monika.infrastructure.database.db as _db_mod
-from monika.infrastructure.database.safe_ops import safe_commit
-from monika.infrastructure.database.models import (
-    AssetAnalysis,
-    Position,
-    OrderLog,
-    ActivityLog,
-    RiskState,
-    SystemConfig,
-    Order,
-    OrderStatus,
-    OrderEvent,
-    PaperTradeRecord,
-)
-from monika.infrastructure.brokers.mt5_client import MT5Client
-from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
+from monika.application.execution.effect_gate import AbortRequested, EffectGate
 from monika.domain.execution.order_creator import OrderCreator
 from monika.domain.execution.sizing_calculator import SizingCalculator
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult, get_instrument_spec
 from monika.domain.risk.risk_gate import RiskGate
+from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
+from monika.infrastructure.brokers.mt5_client import MT5Client
+from monika.infrastructure.database.models import (
+    ActivityLog,
+    AssetAnalysis,
+    Order,
+    OrderEvent,
+    OrderLog,
+    OrderStatus,
+    PaperTradeRecord,
+    Position,
+    RiskState,
+    SystemConfig,
+)
+from monika.infrastructure.database.safe_ops import safe_commit
 from monika.infrastructure.infra.notifier import AgentNotifier
-from monika.application.execution.effect_gate import EffectGate, AbortRequested
 
 
 def get_session(*args, **kwargs):
@@ -208,7 +208,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         If admitted and approved, executes order.
         """
         start = clock.now()
-        from monika.application.agent.estop import is_estop_active, get_estop_details
+        from monika.application.agent.estop import get_estop_details, is_estop_active
 
         if is_estop_active():
             estop_info = get_estop_details() or {}
@@ -1327,8 +1327,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         )
                 else:
                     if self.dry_run:
-                        import random
                         import hashlib
+                        import random
 
                         collision_seed_p = f"{primary.symbol}_{datetime.now(timezone.utc).isoformat()}_{random.randint(10000, 99999)}_LEG1"
                         dry_ticket_p = int(hashlib.md5(collision_seed_p.encode()).hexdigest(), 16) % 9000000 + 1000000
@@ -1433,8 +1433,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         )
                 else:
                     if self.dry_run:
-                        import random
                         import hashlib
+                        import random
 
                         collision_seed_h = f"{hedge.symbol}_{datetime.now(timezone.utc).isoformat()}_{random.randint(10000, 99999)}_LEG2"
                         dry_ticket_h = int(hashlib.md5(collision_seed_h.encode()).hexdigest(), 16) % 9000000 + 1000000
@@ -1727,7 +1727,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         )
                 else:
                     if self.dry_run:
-                        import random, hashlib
+                        import hashlib
+                        import random
 
                         t = (
                             int(
@@ -1944,7 +1945,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             )
 
         # Check ESTOP (Emergency Stop Sentinel)
-        from monika.application.agent.estop import is_estop_active, get_estop_details
+        from monika.application.agent.estop import get_estop_details, is_estop_active
 
         if is_estop_active():
             estop_info = get_estop_details() or {}
@@ -2105,8 +2106,9 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         # Check fundamental brief age — don't execute on outdated macro thesis
         if analysis.brief_id:
             try:
-                from monika.infrastructure.database.models import FundamentalBrief
                 from sqlalchemy import select as _sel
+
+                from monika.infrastructure.database.models import FundamentalBrief
 
                 async with get_session() as brief_session:
                     brief = await brief_session.get(FundamentalBrief, analysis.brief_id)
@@ -2145,8 +2147,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                             )
 
                         # Check jika ada high-impact event terjadi setelah brief dibuat
-                        from monika.infrastructure.database.models import EconomicCalendar
                         from monika.domain.market.currency_utils import get_symbol_currencies
+                        from monika.infrastructure.database.models import EconomicCalendar
 
                         sym_currencies = get_symbol_currencies(symbol)
                         brief_created = (
@@ -2325,8 +2327,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 is_post_release = True
 
         # News Blackout Check
-        from monika.infrastructure.database.models import EconomicCalendar
         from monika.domain.market.currency_utils import get_symbol_currencies
+        from monika.infrastructure.database.models import EconomicCalendar
 
         news_window_minutes = self.settings.get("trading", {}).get("risk", {}).get("news_window_minutes", 30)
         blackout_window = timedelta(minutes=news_window_minutes)
@@ -2880,8 +2882,10 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             # Concurrency safety: Re-check portfolio limits under execution lock
             # immediately prior to MT5 order placement to prevent concurrent execution races.
             try:
+                from sqlalchemy import func as _func
+                from sqlalchemy import select as _select
+
                 from monika.infrastructure.database.models import Position as _Position
-                from sqlalchemy import select as _select, func as _func
 
                 is_paper_mode = getattr(self, "dry_run", False) or bool(
                     self.settings.get("paper_trading", {}).get("enabled", True)
@@ -2920,7 +2924,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         elapsed_ms=elapsed,
                     )
 
-                from monika.infrastructure.database.models import Order as _Order, OrderStatus as _OrderStatus
+                from monika.infrastructure.database.models import Order as _Order
+                from monika.infrastructure.database.models import OrderStatus as _OrderStatus
 
                 re_check_open_count = (
                     await session.execute(
@@ -3418,7 +3423,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
                 # Stateful Multi-Phase Trade Plan (Probe 30%, Runner 70%)
                 try:
-                    from monika.infrastructure.database.models import TradePlan, TradePlanLeg, TechnicalIndicator
+                    from monika.infrastructure.database.models import TechnicalIndicator, TradePlan, TradePlanLeg
 
                     total_lots = sizing.recommended_lots
                     if total_lots <= 0.01:

@@ -7,14 +7,15 @@ and active market regimes to prevent recurring decision traps in Stage 2.
 
 import json
 import logging
-from typing import List, Dict, Any, Optional
-from sqlalchemy import select, desc
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.memory.failure_taxonomy import (
+    PREVENTATIVE_RULES,
     FailureCategory,
     FailureClassifier,
-    PREVENTATIVE_RULES,
     get_negative_constraints_for_regime,
 )
 

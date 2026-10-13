@@ -9,11 +9,11 @@ Allows offline zero-latency simulation of agent decision loops with frozen times
 exact time increments, controlled slippage, and synthetic bar progression.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional, Union
 import asyncio
 import logging
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger("TradingAgent.SimulationClock")
 

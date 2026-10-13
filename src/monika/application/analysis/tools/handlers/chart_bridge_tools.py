@@ -74,8 +74,8 @@ async def handle_capture_mt5_chart_screenshot(args: dict, **ctx) -> dict:
             return {"status": "error", "message": "Failed to capture chart filepath"}
         # Ingest into chart vision analyze
         from monika.application.analysis.tools.domain.multimodal_tools import (
-            handle_chart_vision_analyze,
             ChartVisionInput,
+            handle_chart_vision_analyze,
         )
 
         vision_input = ChartVisionInput(
@@ -100,7 +100,7 @@ async def handle_capture_mt5_chart_screenshot(args: dict, **ctx) -> dict:
 
 
 def register_chart_bridge_tools(registry=None):
-    from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition
+    from monika.application.analysis.tools.registry import ToolDefinition, ToolRegistry
 
     if registry is None:
         registry = ToolRegistry.get_instance()

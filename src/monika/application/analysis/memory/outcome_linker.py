@@ -1,11 +1,13 @@
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select
-from datetime import datetime, timezone, timedelta
-from monika.infrastructure.database.models import DecisionReflection, AssetAnalysis, PaperTradeRecord
-from monika.application.analysis.memory.reflector import TradeReflector
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.application.analysis.memory.alpha_calculator import AlphaCalculator
+from monika.application.analysis.memory.reflector import TradeReflector
+from monika.infrastructure.database.models import AssetAnalysis, DecisionReflection, PaperTradeRecord
 
 logger = logging.getLogger(__name__)
 
@@ -303,8 +305,9 @@ class OutcomeLinker:
         menyentuh SL atau TP terlebih dahulu (path-dependent evaluation).
         Returns: (sl_would_hit, tp_would_hit)
         """
-        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import PriceOHLCV
 
         # Fallback sl/tp jika tidak ditentukan atau bernilai non-positif dalam AssetAnalysis
         if proposed_sl is None or proposed_sl <= 0:

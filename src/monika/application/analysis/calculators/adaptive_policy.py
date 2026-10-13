@@ -1,9 +1,10 @@
 import logging
 import math
 from datetime import datetime
-from typing import Dict, Any, Tuple, Optional
+from typing import Any, Dict, Optional, Tuple
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +28,13 @@ class AdaptiveRiskPolicy:
         If the symbol has a statistically significant high win rate, we can lower the threshold.
         If the symbol has a low win rate, we increase the threshold.
         """
-        from monika.infrastructure.database.models import PaperTradeRecord
-        from sqlalchemy import cast, Integer
-
-        from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
-
         from datetime import timedelta
+
+        from sqlalchemy import Integer, cast
+
         import monika.core.primitives.clock as clock
+        from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
+        from monika.infrastructure.database.models import PaperTradeRecord
 
         lookback_days = int(self.settings.get("trading", {}).get("risk", {}).get("adaptive_policy_lookback_days", 60))
         max_trades_cap = int(self.settings.get("trading", {}).get("risk", {}).get("adaptive_policy_max_trades", 100))

@@ -8,9 +8,9 @@ Reduces tool declaration token overhead by 60-80%:
 4. Keeps search_tools / describe_tool available as a meta-escape hatch.
 """
 
-import re
 import logging
-from typing import List, Dict, Any, Set, Optional
+import re
+from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger("TradingAgent.ToolSelector")
 

@@ -3,10 +3,10 @@ Provenance Tagger & Ledger: Tracks numeric provenance of tool outputs
 and cross-verifies figures cited by LLM agents.
 """
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import logging
 import re
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 logger = logging.getLogger("TradingAgent.ProvenanceTagger")

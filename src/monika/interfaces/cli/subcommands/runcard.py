@@ -10,8 +10,9 @@ Generates and verifies tamper-evident execution run cards.
 import argparse
 import json
 from pathlib import Path
+
 from monika.interfaces.cli.subcommands.base import Subcommand
-from monika.interfaces.cli.theme import get_console, stamp_info, stamp_ok, stamp_err, stamp_warn
+from monika.interfaces.cli.theme import get_console, stamp_err, stamp_info, stamp_ok, stamp_warn
 
 
 class RunCardSubcommand(Subcommand):
@@ -34,8 +35,8 @@ class RunCardSubcommand(Subcommand):
         action = getattr(args, "runcard_action", "generate")
         console = get_console()
 
-        from monika.core.telemetry.run_card import RunCardGenerator
         from monika.core.config.settings import load_settings
+        from monika.core.telemetry.run_card import RunCardGenerator
 
         if action == "generate":
             out_path = getattr(args, "output", "run_card.json")

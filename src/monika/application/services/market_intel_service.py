@@ -13,16 +13,17 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, List, Optional
+
 import pandas as pd
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import EconomicCalendar, PriceOHLCV
 from monika.domain.indicators.alpha_zoo.vector_factor_engine import (
     VectorFactorEngine,
     VectorFactorResult,
     get_vector_factor_engine,
 )
+from monika.infrastructure.database.models import EconomicCalendar, PriceOHLCV
 
 logger = logging.getLogger("Monika.Application.MarketIntelService")
 

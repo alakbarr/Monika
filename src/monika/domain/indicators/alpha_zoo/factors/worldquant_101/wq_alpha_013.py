@@ -7,6 +7,7 @@ Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 13.
 from __future__ import annotations
 
 from typing import Any
+
 import numpy as np
 import pandas as pd
 

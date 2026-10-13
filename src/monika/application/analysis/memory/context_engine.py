@@ -20,8 +20,8 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from monika.application.analysis.memory.mechanical_anchor_index import MechanicalAnchorIndex
-from monika.infrastructure.providers.trajectory_compressor import TrajectoryCompressor
 from monika.infrastructure.llm.prompt_compressor import estimate_tokens
+from monika.infrastructure.providers.trajectory_compressor import TrajectoryCompressor
 
 logger = logging.getLogger("TradingAgent.Memory.ContextEngine")
 

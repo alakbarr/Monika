@@ -6,7 +6,8 @@ Direct execution without circular trampolines.
 import json
 import logging
 from typing import Any, Dict, Optional
-from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition
+
+from monika.application.analysis.tools.registry import ToolDefinition, ToolRegistry
 
 logger = logging.getLogger("TradingAgent.Tools.Trading")
 

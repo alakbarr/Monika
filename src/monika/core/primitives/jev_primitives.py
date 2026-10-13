@@ -5,10 +5,11 @@ Bridges existing JSON schemas and agent workflows into TypeSafe Jev System One
 decision primitives (Choice, Score, Noul).
 """
 
-from typing import Dict, Any, Optional, List, Union
 import logging
 import re
-from typesafe_sdk import Choice, Score, Noul, SystemOneResponse, ChoiceAnswer, ScoreAnswer, NoulAnswer
+from typing import Any, Dict, List, Optional, Union
+
+from typesafe_sdk import Choice, ChoiceAnswer, Noul, NoulAnswer, Score, ScoreAnswer, SystemOneResponse
 
 logger = logging.getLogger("TradingAgent.JevPrimitives")
 

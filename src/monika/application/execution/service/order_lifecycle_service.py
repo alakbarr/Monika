@@ -13,12 +13,13 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, Optional, Union
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.application.protocol.event_bus import OrderStateChangedEvent, get_event_bus
 from monika.domain.entities.order_status import OrderStatus
-from monika.infrastructure.database.models import Order, OrderEvent
 from monika.infrastructure.database.event_store import TradingEventStore
-from monika.application.protocol.event_bus import get_event_bus, OrderStateChangedEvent
+from monika.infrastructure.database.models import Order, OrderEvent
 
 logger = logging.getLogger("Monika.Application.Execution.OrderLifecycleService")
 

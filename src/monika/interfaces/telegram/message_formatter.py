@@ -13,8 +13,8 @@ Converts trading agent outputs into clean monospace banking ledgers / dispatch s
 - Zero emoji clutter or AI-slop gradients
 """
 
-from typing import Any, Dict, List, Optional, Sequence
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Sequence
 
 DEFAULT_USD_IDR_RATE = 16250.0
 DEFAULT_SLIP_WIDTH = 34

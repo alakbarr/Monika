@@ -5,11 +5,11 @@ Provides guided terminal prompts to configure credentials, MT5 settings, live br
 database connectivity, and risk limits with atomic comment-preserving persistence.
 """
 
-import os
-import sys
-import re
 import logging
-from typing import Dict, Any, Optional
+import os
+import re
+import sys
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.CLI.SetupWizard")
 
@@ -96,14 +96,14 @@ class SetupWizard:
     def _test_mt5_connection(self, account: str, password: str, server: str, path: str) -> bool:
         """Performs live MT5 terminal handshake and checks AlgoTrading status."""
         from monika.interfaces.cli.theme import (
-            get_console,
-            stamp_ok,
-            stamp_err,
-            stamp_warn,
-            stamp_info,
             BRASS,
-            PAPER,
             MUTED,
+            PAPER,
+            get_console,
+            stamp_err,
+            stamp_info,
+            stamp_ok,
+            stamp_warn,
         )
 
         console = get_console()
@@ -179,15 +179,16 @@ class SetupWizard:
 
     def _test_db_connection(self, db_url: str) -> bool:
         """Tests database connection string with simple SELECT 1."""
-        from monika.interfaces.cli.theme import get_console, stamp_ok, stamp_err, stamp_info
+        from monika.interfaces.cli.theme import get_console, stamp_err, stamp_info, stamp_ok
 
         console = get_console()
         console.print(f"{stamp_info('PROBE')} Testing database connectivity...")
         try:
             import asyncio
             import concurrent.futures
-            from sqlalchemy.ext.asyncio import create_async_engine
+
             from sqlalchemy import text
+            from sqlalchemy.ext.asyncio import create_async_engine
 
             async def _ping():
                 engine = create_async_engine(db_url, pool_pre_ping=True)
@@ -227,7 +228,7 @@ class SetupWizard:
 
     def _test_llm_connection(self, provider: str, api_key: str) -> bool:
         """Sends a 1-token lightweight completion to verify API key validity."""
-        from monika.interfaces.cli.theme import get_console, stamp_ok, stamp_err, stamp_info
+        from monika.interfaces.cli.theme import get_console, stamp_err, stamp_info, stamp_ok
 
         console = get_console()
         console.print(f"{stamp_info('PROBE')} Testing {provider} API key validity...")
@@ -272,20 +273,21 @@ class SetupWizard:
         return True
 
     def run_wizard(self, section: str = "all", quick: bool = False) -> bool:
-        from monika.interfaces.cli.theme import (
-            get_console,
-            PHOSPHOR_AMBER,
-            BRASS,
-            stamp_ok,
-            stamp_err,
-            stamp_warn,
-            stamp_info,
-            MUTED,
-            PAPER,
-        )
-        from rich.prompt import Prompt, Confirm
+        from rich.prompt import Confirm, Prompt
+
         from monika.core.config.atomic_writer import AtomicConfigWriter
         from monika.infrastructure.infra.env_file_manager import EnvFileManager
+        from monika.interfaces.cli.theme import (
+            BRASS,
+            MUTED,
+            PAPER,
+            PHOSPHOR_AMBER,
+            get_console,
+            stamp_err,
+            stamp_info,
+            stamp_ok,
+            stamp_warn,
+        )
 
         console = get_console()
         console.print(f"\n[{PHOSPHOR_AMBER}]══════════════════════════════════════════════════════════════[/]")
@@ -755,7 +757,7 @@ class SetupWizard:
                     )
 
                 # Model Architecture Profiles
-                from monika.core.config.profile_applicator import ProfileApplicator, PROFILE_METADATA
+                from monika.core.config.profile_applicator import PROFILE_METADATA, ProfileApplicator
 
                 console.print(
                     f"\n[bold {BRASS}]Select Model Configuration Profile (Automatically Maps All 49 Task Roles):[/]"

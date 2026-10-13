@@ -10,12 +10,13 @@ Pure quantitative and geometric algorithms for institutional market structure:
 6. Implied / Wick-to-Wick Fair Value Gaps
 """
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
-import logging
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 
 logger = logging.getLogger("TradingAgent.Indicators.SMCAdvanced")
 

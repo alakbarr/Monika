@@ -5,9 +5,9 @@ Saves oversized tool outputs (>3,000 chars) to disk and provides structured
 <persisted-output> summaries to prevent context window bloat and protect prompt caching.
 """
 
+import logging
 import os
 import time
-import logging
 from pathlib import Path
 from typing import Optional, Tuple
 

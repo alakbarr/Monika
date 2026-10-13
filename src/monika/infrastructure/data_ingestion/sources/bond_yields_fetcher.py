@@ -26,8 +26,8 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import BondYieldData
 from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import BondYieldData
 
 logger = logging.getLogger("TradingAgent.BondYields")
 

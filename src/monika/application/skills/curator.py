@@ -7,7 +7,7 @@ import logging
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Union, FrozenSet
+from typing import Dict, FrozenSet, List, Optional, Set, Union
 
 from monika.application.skills.usage_tracker import SkillUsageTracker
 

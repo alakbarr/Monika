@@ -13,15 +13,16 @@ Menghasilkan FundamentalBrief yang digunakan oleh analisis Tahap 2.
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any, Callable
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable, Dict, Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.providers.llm_factory import get_client_for_task, create_client
+import monika.core.primitives.clock as clock
 from monika.application.analysis.prefetch.stage1_prefetcher import (
-    Stage1DataBundler,
     CORE_STAGE1_PREFETCH_TOOLS,
+    Stage1DataBundler,
     prune_stage1_tools,
 )
 from monika.application.analysis.tools.tools_definitions import (
@@ -30,16 +31,16 @@ from monika.application.analysis.tools.tools_definitions import (
     minify_tool_definitions,
 )
 from monika.application.analysis.validators.fundamental_verifier import verify_fundamental_brief
-from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import ActivityLog, FundamentalBrief, SystemConfig, EconomicCalendar
+from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
 from monika.core.analytics.agent_performance_monitor import (
-    get_currency_confidence_ceiling,
     compute_dynamic_escalation_threshold,
+    get_currency_confidence_ceiling,
 )
 from monika.core.analytics.cost_tracker import CostTracker
-from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import ActivityLog, EconomicCalendar, FundamentalBrief, SystemConfig
 from monika.infrastructure.infra.notifier import AgentNotifier
-import monika.core.primitives.clock as clock
+from monika.infrastructure.providers.llm_factory import create_client, get_client_for_task
 
 logger = logging.getLogger("TradingAgent.FundamentalStage")
 
@@ -175,11 +176,12 @@ class FundamentalStage:
         if not self.settings.get("agent_architecture", {}).get("enable_debate", False):
             return outcome
         try:
-            from monika.application.analysis.debate.macro_bull_analyst import run_bull_analyst
-            from monika.application.analysis.debate.macro_bear_analyst import run_bear_analyst
-            from monika.application.analysis.debate.macro_judge import run_macro_judge
-            from monika.application.analysis.debate.macro_debate_validator import validate_macro_judge_output
             import json
+
+            from monika.application.analysis.debate.macro_bear_analyst import run_bear_analyst
+            from monika.application.analysis.debate.macro_bull_analyst import run_bull_analyst
+            from monika.application.analysis.debate.macro_debate_validator import validate_macro_judge_output
+            from monika.application.analysis.debate.macro_judge import run_macro_judge
 
             chronicle_bullets = ""
             try:
@@ -358,8 +360,8 @@ class FundamentalStage:
 
         # SOTA Cache-Optimized 4-Tier Prompt Assembly with Canonical Tier-0 Anchor (>= 4,150 tokens)
         try:
-            from monika.application.analysis.prompt.prompt_assembler import PromptAssembler
             from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+            from monika.application.analysis.prompt.prompt_assembler import PromptAssembler
 
             core_memory = await LayeredMemoryManager(self.settings).get_core_memory(session)
             assembler = PromptAssembler(self.settings)

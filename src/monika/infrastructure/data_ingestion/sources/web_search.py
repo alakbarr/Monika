@@ -19,7 +19,7 @@ import logging
 import os
 import re
 from collections import OrderedDict
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus, unquote
 
@@ -410,9 +410,10 @@ class WebSearchService:
 
         results = []
         try:
-            from bs4 import BeautifulSoup
-            from urllib.parse import unquote
             import re
+            from urllib.parse import unquote
+
+            from bs4 import BeautifulSoup
 
             timeout = aiohttp.ClientTimeout(total=15)
             async with aiohttp.ClientSession(timeout=timeout) as session:

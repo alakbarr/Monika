@@ -8,7 +8,7 @@ Adopted from Pi's constrained-sampling.ts pattern.
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.ConstrainedSampling")
 

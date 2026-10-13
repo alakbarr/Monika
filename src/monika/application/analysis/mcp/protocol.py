@@ -5,8 +5,8 @@
 # ==============================================================================
 
 import json
-from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Union
 
 # JSON-RPC 2.0 Standard Error Codes
 PARSE_ERROR = -32700

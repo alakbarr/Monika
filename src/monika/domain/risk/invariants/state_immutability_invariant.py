@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 from typing import Any, Dict
+
 from .risk_gate_invariant import InvariantViolationError
 
 logger = logging.getLogger("TradingAgent.StateInvariants")

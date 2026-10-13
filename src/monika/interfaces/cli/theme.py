@@ -570,6 +570,7 @@ ChatScreen {{
 def persist_theme_to_settings(theme_name: str, config_path: Optional[str] = None) -> bool:
     """Persist the selected theme name into settings.yaml under ui.theme (Q3)."""
     import os
+
     import yaml
 
     norm_name = theme_name.strip().lower().replace("-", "_")

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Optional, TypeVar, overload
+
 import numpy as np
 import pandas as pd
 from numpy.lib.stride_tricks import sliding_window_view

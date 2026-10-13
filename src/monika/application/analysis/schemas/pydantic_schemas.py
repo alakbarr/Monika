@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field, field_validator, model_validator
-from enum import Enum
-from typing import Optional, List, Dict, Literal, Any
 import copy
 import json
 import re
+from enum import Enum
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class TradeDirection(str, Enum):

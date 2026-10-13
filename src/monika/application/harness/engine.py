@@ -8,40 +8,39 @@ Provides entry-point & directory discovery, dependency resolution (Kahn's topolo
 lifecycle orchestration, and clean teardown via disposer stacks.
 """
 
-import os
-import sys
-import yaml
 import asyncio
-import inspect
-import logging
 import importlib
 import importlib.util
+import inspect
+import logging
+import os
+import sys
 from collections import defaultdict, deque
-from typing import Dict, List, Tuple, Optional, Any, Callable, Type, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
 
-from monika.application.harness.contract import (
-    TradingPlugin,
-    PluginMetadata,
-    PluginCategory,
-    PluginOrigin,
-    PluginState,
-)
-from monika.application.harness.context import PluginContext
-from monika.application.plugins.manager.manager import PluginManager, get_plugin_manager
-from monika.application.analysis.prompt_sections import get_prompt_section_registry
-from monika.infrastructure.infra.container import ServiceContainer, get_container
-from monika.application.protocol.event_bus import (
-    EventBus,
-    get_event_bus,
-    TickPriceEvent,
-    BarClosedEvent,
-    OrderStateChangedEvent,
-    RiskBreachEvent,
-    CircuitBreakerEvent,
-)
+import yaml
 
 from monika.application.agent.task_registry import TaskRegistry
-
+from monika.application.analysis.prompt_sections import get_prompt_section_registry
+from monika.application.harness.context import PluginContext
+from monika.application.harness.contract import (
+    PluginCategory,
+    PluginMetadata,
+    PluginOrigin,
+    PluginState,
+    TradingPlugin,
+)
+from monika.application.plugins.manager.manager import PluginManager, get_plugin_manager
+from monika.application.protocol.event_bus import (
+    BarClosedEvent,
+    CircuitBreakerEvent,
+    EventBus,
+    OrderStateChangedEvent,
+    RiskBreachEvent,
+    TickPriceEvent,
+    get_event_bus,
+)
+from monika.infrastructure.infra.container import ServiceContainer, get_container
 
 logger = logging.getLogger("TradingAgent.Harness.Engine")
 
@@ -261,7 +260,7 @@ class PluginEngine:
     ) -> bool:
         """Register tool into ToolRegistry with core override protection."""
         try:
-            from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition, CORE_PROTECTED_TOOLS
+            from monika.application.analysis.tools.registry import CORE_PROTECTED_TOOLS, ToolDefinition, ToolRegistry
 
             reg = ToolRegistry.get_instance()
 
@@ -471,8 +470,8 @@ class PluginEngine:
         # 3. Strategy Plugins
         if cat == PluginCategory.STRATEGY and hasattr(plugin, "get_strategy_class"):
             try:
-                from monika.application.analysis.strategies.registry import StrategyRegistry
                 from monika.application.analysis.strategies.base_strategy import EdgeStrategy
+                from monika.application.analysis.strategies.registry import StrategyRegistry
 
                 strat_fn = getattr(plugin, "get_strategy_class")
                 if callable(strat_fn):
@@ -486,9 +485,9 @@ class PluginEngine:
         if cat in (PluginCategory.RISK_RULE, PluginCategory.DYNAMIC_SIZING):
             try:
                 from monika.domain.risk.risk_rule_plugin import (
-                    ModularRiskRegistry,
-                    IRiskRulePlugin,
                     IDynamicSizingPlugin,
+                    IRiskRulePlugin,
+                    ModularRiskRegistry,
                 )
 
                 risk_reg = ModularRiskRegistry.get_instance()

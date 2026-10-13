@@ -7,13 +7,15 @@ Edge Tracker — Statistical significance testing untuk memantau apakah sistem
 memiliki positive edge atau sedang berjalan secara random/negative.
 """
 
-import math
 import logging
-from datetime import datetime, timezone, timedelta
+import math
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
+
 from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
+from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
 
 logger = logging.getLogger("TradingAgent.EdgeTracker")
 
@@ -191,8 +193,9 @@ async def compute_edge_status(session: AsyncSession) -> dict:
     AUTO_PAUSE_Z_THRESHOLD = -1.0
     if status == "no_edge" and z_score < AUTO_PAUSE_Z_THRESHOLD:
         try:
-            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import update
+
+            from monika.infrastructure.database.models import SystemConfig
 
             # Cek apakah trading sudah di-pause sebelumnya karena alasan ini
             existing_pause = (

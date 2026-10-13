@@ -8,8 +8,9 @@ Principle: NEVER assume an analysis or order execution succeeded without verifia
 import hashlib
 import json
 import logging
-from typing import Dict, Any, List, Tuple, Optional
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.EvidenceVerifier")

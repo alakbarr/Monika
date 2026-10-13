@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional, Any
+from typing import Any, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -70,8 +71,9 @@ class EdgeStrategy(ABC):
         limit: int = 100,
     ) -> list[CandleDict]:
         """Built-in helper for quantitative strategies to retrieve historical OHLCV candles."""
-        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import PriceOHLCV
 
         norm_tf = timeframe.upper()
         cache_key = (symbol, norm_tf)

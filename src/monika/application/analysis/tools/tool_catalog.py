@@ -5,10 +5,10 @@ Maintains 5-7 core tools pinned in prompt for KV-cache preservation while enabli
 on-demand discovery and parameter inspection for 40+ specialized quantitative tools.
 """
 
-import math
 import logging
+import math
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger("TradingAgent.ToolCatalog")
 

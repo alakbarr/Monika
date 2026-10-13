@@ -1,6 +1,9 @@
 import statistics
+
 from sqlalchemy import select
+
 from monika.infrastructure.database.db import get_session
+
 from .db_models import BenchmarkResult
 
 

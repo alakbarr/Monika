@@ -5,12 +5,12 @@
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select, desc, func
+from sqlalchemy import desc, func, select
 
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import BacktestRun, BacktestTrade
@@ -128,7 +128,7 @@ async def get_backtest_run_details(
 async def _execute_background_backtest(days: int, mode: str, initial_equity: float, step_hours: int):
     """Background task to run point-in-time backtest."""
     try:
-        from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine, BacktestMode
+        from monika.application.backtest.point_in_time_engine import BacktestMode, PointInTimeBacktestEngine
         from monika.core.config.settings import load_all_config
 
         settings = load_all_config()

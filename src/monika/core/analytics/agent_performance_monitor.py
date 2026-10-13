@@ -3,10 +3,12 @@ Agent Performance Monitor - tracks accuracy metrics per agent type.
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, func
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
+
+from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord, SystemConfig
 
 logger = logging.getLogger("TradingAgent.AgentPerformanceMonitor")
 

@@ -8,7 +8,8 @@ import asyncio
 import logging
 import os
 import ssl
-from typing import Optional, Callable, Any
+from typing import Any, Callable, Optional
+
 import aiohttp
 
 try:
@@ -20,11 +21,11 @@ try:
 except Exception:
     _DEFAULT_SSL_CONTEXT = ssl.create_default_context()
 
-import time
-import re
 import json
 import random
-from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
+import re
+import time
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 logger = logging.getLogger("TradingAgent.HTTPRetry")
 

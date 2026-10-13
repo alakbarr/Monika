@@ -20,8 +20,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import yaml
 
-from monika.application.harness.contract import PluginCategory, PluginMetadata, PluginOrigin, TradingPlugin
 from monika.application.harness.context import PluginContext
+from monika.application.harness.contract import PluginCategory, PluginMetadata, PluginOrigin, TradingPlugin
 
 logger = logging.getLogger("TradingAgent.Harness.FunctionalAdapter")
 

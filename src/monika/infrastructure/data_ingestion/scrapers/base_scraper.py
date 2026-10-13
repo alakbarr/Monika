@@ -1,19 +1,19 @@
 try:
-    from DrissionPage import ChromiumPage, ChromiumOptions
+    from DrissionPage import ChromiumOptions, ChromiumPage
 except ImportError:
     ChromiumPage = None
     ChromiumOptions = None
 
-import os
-import signal
-import platform
-import subprocess
 import logging
+import os
+import platform
+import signal
+import subprocess
+import tempfile
 import time
 import uuid
-import tempfile
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any, Optional
 
 logger = logging.getLogger("TradingAgent.Scraper")
 

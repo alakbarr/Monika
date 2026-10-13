@@ -9,15 +9,16 @@ Direct execution without circular trampolines.
 
 import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, func, desc
+
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
-from monika.infrastructure.database.models import RiskState, FundamentalBrief, ActivityLog, SystemConfig
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
+from monika.infrastructure.database.models import ActivityLog, FundamentalBrief, RiskState, SystemConfig
 
 logger = logging.getLogger("TradingAgent.SystemInfo")
 
@@ -90,8 +91,8 @@ async def handle_get_system_health(
         def _get_terminal_info():
             from monika.infrastructure.brokers.mt5_compat import (
                 ensure_mt5_module,
-                is_native_mt5_available,
                 is_mt5linux_available,
+                is_native_mt5_available,
             )
 
             mt5 = ensure_mt5_module()
@@ -136,8 +137,8 @@ async def handle_get_edge_tracker_status(
 
     days_back = int(args.get("days_back", 30))
     try:
-        from monika.core.analytics.edge_tracker import compute_edge_status
         from monika.core.analytics.analysis_tracker import compute_factor_effectiveness
+        from monika.core.analytics.edge_tracker import compute_edge_status
 
         edge = await compute_edge_status(effective_session)
         factors = await compute_factor_effectiveness(effective_session, days_back)
@@ -171,9 +172,10 @@ async def handle_get_calibration_status(
 
     try:
         import json as _j
-        from monika.core.analytics.specialist_tracker import compute_specialist_reliability
+
         from monika.application.protocol.enhanced_cds import get_cds_thresholds_async
         from monika.core.analytics.agent_performance_monitor import get_currency_confidence_ceiling
+        from monika.core.analytics.specialist_tracker import compute_specialist_reliability
 
         cal_cfg = (
             await effective_session.execute(
@@ -354,8 +356,9 @@ async def handle_restart_mt5_service(
 ) -> dict:
     """Safely cycle MT5 terminal connection and poller threads."""
     try:
-        from monika.infrastructure.brokers.mt5_client import get_mt5_client
         import asyncio
+
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         settings = getattr(executor, "settings", {}) or {}
         client = get_mt5_client(settings)
@@ -582,9 +585,11 @@ async def handle_get_server_telemetry(
 ) -> dict:
     """Retrieve detailed server hardware telemetry (CPU, RAM, disk usage, uptime, top PIDs)."""
     import os
-    import sys
-    import psutil
     import platform
+    import sys
+
+    import psutil
+
     import monika.core.primitives.clock as clock
 
     try:
@@ -668,6 +673,7 @@ async def handle_capture_terminal_screenshot(
     import os
     import time
     from pathlib import Path
+
     from PIL import Image, ImageDraw
 
     out_dir = Path("data/screenshots")

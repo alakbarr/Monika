@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from monika.infrastructure.infra.paths import resolve_config_path
 
 """
@@ -14,16 +15,18 @@ Layer 3 - VOLATILE CONTEXT (per-invocation, never persisted):
   Current data bundle, conversation history
 """
 
-import logging
 import json
+import logging
 import math
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
-from typing import Optional, List, Dict, Any
-from sqlalchemy import select, func, desc, or_
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
+
 from monika.application.analysis.memory.session_search import SessionSearchEngine
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
 
 logger = logging.getLogger("TradingAgent.LayeredMemory")
 
@@ -281,8 +284,8 @@ class LayeredMemoryManager:
         STALE and ARCHIVED playbooks are strictly excluded.
         """
         try:
-            from monika.application.analysis.memory.progressive_loader import ProgressiveMemoryLoader
             from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleFSM, PlaybookState
+            from monika.application.analysis.memory.progressive_loader import ProgressiveMemoryLoader
 
             clean_sym = symbol.strip().upper()
             fsm = PlaybookLifecycleFSM()
@@ -323,7 +326,7 @@ class LayeredMemoryManager:
         if not session:
             return "USD_NEUTRAL | VIX_NORMAL"
         try:
-            from monika.infrastructure.database.models import DXYData, VIXData, FundamentalBrief
+            from monika.infrastructure.database.models import DXYData, FundamentalBrief, VIXData
 
             # 1. DXY trend
             dxy_rows = (await session.execute(select(DXYData).order_by(desc(DXYData.date)).limit(5))).scalars().all()
@@ -377,7 +380,7 @@ class LayeredMemoryManager:
         if not session:
             return ["No revenge trade within 4h of SL", "Priced-in score >=8 requires WAIT"]
         try:
-            from monika.infrastructure.database.models import DecisionReflection, CandidateLesson
+            from monika.infrastructure.database.models import CandidateLesson, DecisionReflection
 
             seen_texts = set()
             scored_lessons: List[tuple[float, str]] = []

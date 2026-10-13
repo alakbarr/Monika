@@ -1,8 +1,10 @@
-import logging
 import asyncio
-from typing import Dict, Any, Optional
-from monika.application.graph.state import TradingState
+import logging
+from typing import Any, Dict, Optional
+
 from langchain_core.runnables.config import RunnableConfig
+
+from monika.application.graph.state import TradingState
 from monika.infrastructure.database.db import get_session
 
 logger = logging.getLogger("TradingAgent.Graph.FundamentalNode")
@@ -177,9 +179,11 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
 
         # --- FUNDAMENTAL NARRATIVE SHIFT DETECTION ---
         try:
-            from monika.infrastructure.database.models import FundamentalBrief, Position
-            from sqlalchemy import select
             import json
+
+            from sqlalchemy import select
+
+            from monika.infrastructure.database.models import FundamentalBrief, Position
 
             async with get_session() as session:
                 new_brief = (
@@ -284,9 +288,10 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
             logger.debug(f"Fundamental shift detection failed (non-fatal): {e}")
 
         # SSVP: Verify context coherence after Stage 1 completes
+        from sqlalchemy import select
+
         from monika.application.protocol.ssvp_coordinator import SSVPCoordinator
         from monika.infrastructure.database.models import FundamentalBrief
-        from sqlalchemy import select
 
         ssvp = SSVPCoordinator(settings=scheduler.settings)
         async with get_session() as ssvp_session:

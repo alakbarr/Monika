@@ -20,21 +20,21 @@ import json
 import logging
 import random
 import re
+from collections import deque
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union, cast
 
-from collections import deque
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.application.analysis.tools.tool_executor import ToolExecutor
-from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
 from monika.application.analysis.harness.tool_batch_planner import ToolBatchPlanner
 from monika.application.analysis.harness.tool_repair import (
-    repair_tool_name,
-    repair_tool_arguments,
     coerce_tool_arguments,
+    repair_tool_arguments,
+    repair_tool_name,
 )
+from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.core.telemetry.tracing.spans import llm_span
+from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
 
 logger = logging.getLogger("TradingAgent.AgentHarness")
 
@@ -863,8 +863,8 @@ class AgentHarness:
                         current_messages.append({"role": "user", "content": combined_steering})
 
             # 1. Layer 1/2 Context Compaction & Observation Masking
-            from monika.infrastructure.providers.capabilities import resolve_effective_context_window
             from monika.application.analysis.harness.context_compressor import offload_historical_charts
+            from monika.infrastructure.providers.capabilities import resolve_effective_context_window
 
             context_win = resolve_effective_context_window(
                 model_name=getattr(self.llm_client, "model", None),
@@ -906,7 +906,7 @@ class AgentHarness:
             )
 
             # 3. Provider Call with Transient Retry, Distributed Tracing, and Plugin Hooks
-            from monika.application.plugins.manager.manager import get_plugin_manager, PluginHook
+            from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
 
             plugin_mgr = get_plugin_manager()
             await plugin_mgr.emit(
@@ -1041,9 +1041,9 @@ class AgentHarness:
 
                         # ── Structured Error Recovery Pipeline (Phase 3) ──
                         from monika.application.analysis.harness.error_classifier import (
+                            ErrorCategory,
                             ErrorClassifier,
                             RecoveryAction,
-                            ErrorCategory,
                         )
 
                         classified = ErrorClassifier.classify(exc)
@@ -1746,7 +1746,7 @@ class AgentHarness:
                 called_tools.add(c_name)
                 res_obj = None
                 try:
-                    from monika.application.plugins.manager.manager import get_plugin_manager, PluginHook
+                    from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
 
                     plugin_mgr = get_plugin_manager()
                     await plugin_mgr.emit(

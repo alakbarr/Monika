@@ -1,9 +1,11 @@
 import inspect
 import logging
-import monika.core.primitives.clock as clock
-from typing import Dict, Any, Optional
-from monika.application.graph.state import TradingState
+from typing import Any, Dict, Optional
+
 from langchain_core.runnables.config import RunnableConfig
+
+import monika.core.primitives.clock as clock
+from monika.application.graph.state import TradingState
 from monika.infrastructure.database.db import get_session
 
 logger = logging.getLogger("TradingAgent.Graph.PerAssetNode")
@@ -59,9 +61,10 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     symbols_override = weekend_symbols_override or scheduler.asset_universe
 
     if auto_execute and is_outside_active_hours and is_weekday:
+        from sqlalchemy import func, select
+
         from monika.infrastructure.database.db import get_session as _gs_pos
         from monika.infrastructure.database.models import Position
-        from sqlalchemy import select, func
 
         async with _gs_pos() as session:
             open_count = (
@@ -246,10 +249,12 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     # Store failed analyses untuk potential retry next cycle
     if error_symbols:
         try:
+            import json as _j
+
+            from sqlalchemy import select
+
             from monika.infrastructure.database.db import get_session as _gs2
             from monika.infrastructure.database.models import SystemConfig
-            from sqlalchemy import select
-            import json as _j
 
             async with _gs2() as cfg_session:
                 failed_key = "last_cycle_failed_analyses"
@@ -293,8 +298,9 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
 
     # Context Version Split Detection (P1-B)
     try:
-        from monika.application.protocol.context_snapshot import detect_context_version_split
         from datetime import timedelta
+
+        from monika.application.protocol.context_snapshot import detect_context_version_split
 
         # P3-2: Use actual elapsed time from state if available, fallback to 1h
         elapsed_s = float(state.get("summary", {}).get("elapsed_total_s") or 3600.0)

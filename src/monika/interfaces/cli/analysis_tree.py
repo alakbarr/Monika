@@ -15,19 +15,20 @@ Features:
 
 import time
 from typing import Any, Dict, List, Optional
+
 from textual.reactive import reactive
 from textual.widget import Widget
 
 from monika.interfaces.cli.sparklines import braille_sparkline
 from monika.interfaces.cli.theme import (
-    ThemePack,
-    get_theme,
-    PHOSPHOR_AMBER,
+    BEAR_LOSS,
     BRASS,
     BULL_PROFIT,
-    BEAR_LOSS,
     MUTED,
     PAPER,
+    PHOSPHOR_AMBER,
+    ThemePack,
+    get_theme,
 )
 
 

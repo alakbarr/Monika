@@ -12,8 +12,8 @@ Gaya tampilan gelap (dark theme) yang selaras dengan terminal trading.
 
 import io
 import logging
-from typing import Optional, Any
 from datetime import datetime
+from typing import Any, Optional
 
 import matplotlib
 
@@ -181,9 +181,10 @@ def generate_smc_candlestick_chart(
     - Triangle markers for Swing Highs (red) and Swing Lows (green)
     Returns: (BytesIO buffer, Optional filepath on disk)
     """
-    import matplotlib.patches as patches
-    from pathlib import Path
     import os
+    from pathlib import Path
+
+    import matplotlib.patches as patches
 
     if not ohlcv_rows or len(ohlcv_rows) < 2:
         raise ValueError(f"Insufficient OHLCV data for {symbol}")

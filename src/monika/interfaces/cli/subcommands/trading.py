@@ -7,6 +7,7 @@ Trading Operations Subcommands (positions, unsuspend).
 """
 
 import argparse
+
 from monika.interfaces.cli.subcommands.base import Subcommand
 
 

@@ -13,7 +13,8 @@ import asyncio
 import logging
 import urllib.parse
 import xml.etree.ElementTree as ET
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 import aiohttp
 
 logger = logging.getLogger("TradingAgent.AcademicSearch")

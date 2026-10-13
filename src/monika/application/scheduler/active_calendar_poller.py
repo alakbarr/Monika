@@ -4,13 +4,15 @@
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
+
+from sqlalchemy import func, select
+
 import monika.core.primitives.clock as clock
-from sqlalchemy import select, func
+from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import InvestingCalendarScraper
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import EconomicCalendar, NewsItem
-from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import InvestingCalendarScraper
 
 logger = logging.getLogger("TradingAgent.CalendarPoller")
 

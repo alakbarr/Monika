@@ -1,9 +1,11 @@
-import logging
 import asyncio
 import json
-from typing import Dict, Any, Union
+import logging
+from typing import Any, Dict, Union
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.infrastructure.llm.caveman_compressor import compress_tool_payload
 
@@ -177,6 +179,7 @@ class Stage1DataBundler:
             events_by_time = {}
             if isinstance(ec_data, dict) and isinstance(ec_data.get("events"), list):
                 from datetime import datetime, timezone
+
                 import monika.core.primitives.clock as clock
 
                 now_utc = clock.now()

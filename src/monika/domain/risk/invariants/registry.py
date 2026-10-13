@@ -3,9 +3,9 @@ Runtime Invariant Registry Framework.
 Coordinates runtime checks, guarantees failure attribution, and enforces non-negotiable safety rules.
 """
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
-import logging
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from .risk_gate_invariant import InvariantViolationError
@@ -55,8 +55,8 @@ class InvariantRegistry:
     def register_defaults(self) -> None:
         """Register default built-in invariants."""
         try:
-            from .risk_gate_invariant import check_risk_gate_invariant
             from .position_count_invariant import check_position_count_invariant
+            from .risk_gate_invariant import check_risk_gate_invariant
 
             self.register("risk_gate_limits", check_risk_gate_invariant)
             self.register("position_count_ceiling", check_position_count_invariant)

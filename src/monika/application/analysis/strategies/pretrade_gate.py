@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
-import monika.core.primitives.clock as clock
-from monika.application.analysis.calculators.volume_profile import compute_volume_profile
-from monika.application.analysis.calculators.regime_classifier import (
-    compute_bollinger_donchian_chop,
-    classify_market_regime,
-)
-
 from typing import Optional
+
+import monika.core.primitives.clock as clock
+from monika.application.analysis.calculators.regime_classifier import (
+    classify_market_regime,
+    compute_bollinger_donchian_chop,
+)
+from monika.application.analysis.calculators.volume_profile import compute_volume_profile
 
 
 async def evaluate_pretrade_gate(

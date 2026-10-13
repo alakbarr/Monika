@@ -6,10 +6,10 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
-from monika.application.evals.oracles.smc_geometry_oracle import evaluate_smc_geometry
 from monika.application.evals.oracles.risk_compliance_oracle import evaluate_risk_compliance
+from monika.application.evals.oracles.smc_geometry_oracle import evaluate_smc_geometry
 from monika.application.evals.oracles.trade_discipline_oracle import evaluate_trade_discipline
 
 logger = logging.getLogger("TradingAgent.Evals.Runner")

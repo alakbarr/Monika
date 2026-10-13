@@ -16,9 +16,9 @@ import logging
 from typing import Any, Dict, Optional, Union
 
 from monika.domain.entities.order_status import (
-    OrderStatus,
-    InvalidOrderStateTransitionError,
     VALID_ORDER_TRANSITIONS,
+    InvalidOrderStateTransitionError,
+    OrderStatus,
 )
 
 logger = logging.getLogger("Monika.Domain.Execution.OrderStateMachine")

@@ -10,7 +10,7 @@ across all 8 architectural layers of Monika.
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, Tuple, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 

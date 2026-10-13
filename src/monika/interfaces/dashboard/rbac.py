@@ -17,12 +17,12 @@ Configuration via environment variables:
   If only DASHBOARD_API_KEY is set (singular), it maps to Role.ADMIN.
 """
 
-from enum import Enum
-from functools import wraps
 import inspect
 import logging
 import os
 import secrets
+from enum import Enum
+from functools import wraps
 from typing import Any, Callable, Dict, Optional
 
 from fastapi import HTTPException, Request

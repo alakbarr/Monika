@@ -13,10 +13,11 @@ without burning context window roundtrips.
 
 from __future__ import annotations
 
-import atexit
 import asyncio
+import atexit
 import logging
 from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field
 
 from monika.application.analysis.tools.kernel.code_execution_rpc import CodeExecutionRpcServer

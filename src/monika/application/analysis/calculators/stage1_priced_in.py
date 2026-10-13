@@ -1,4 +1,5 @@
 from typing import Optional
+
 from monika.core.calibration.cot_thresholds import cot_extreme_score
 
 

@@ -1,9 +1,11 @@
-import logging
 import json
+import logging
 from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
+
+from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord, SystemConfig
 
 logger = logging.getLogger("TradingAgent.TradeAutopsy")
 
@@ -143,9 +145,11 @@ async def summarize_recent_patterns(session: AsyncSession, hours_back: int = 24)
     Summarize recent failure patterns from trade autopsy records.
     Returns dict with has_critical_patterns bool and summary string.
     """
-    from datetime import datetime, timezone, timedelta
-    from monika.infrastructure.database.models import SystemConfig
+    from datetime import datetime, timedelta, timezone
+
     from sqlalchemy import select
+
+    from monika.infrastructure.database.models import SystemConfig
 
     since = datetime.now(timezone.utc) - timedelta(hours=hours_back)
     has_critical = False

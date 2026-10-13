@@ -1,7 +1,8 @@
 """Market session tracking and timing rules utility."""
 
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 import monika.core.primitives.clock as clock
 
 

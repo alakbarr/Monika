@@ -1,30 +1,32 @@
 import json
 import logging
+
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+
 from monika.infrastructure.database.models import (
-    StructureBreak,
+    COTReport,
+    DXYData,
+    FedWatchProbability,
+    FundamentalBrief,
     FVGZone,
     OrderBlock,
-    VIXData,
-    TechnicalIndicator,
-    FundamentalBrief,
-    DXYData,
-    COTReport,
-    SRZone,
-    FedWatchProbability,
-    PriceOHLCV,
-    SwingPoint,
     PatternScreeningCache,
+    PriceOHLCV,
+    SRZone,
+    StructureBreak,
+    SwingPoint,
+    TechnicalIndicator,
+    VIXData,
 )
 
 logger = logging.getLogger("TradingAgent.ConfluenceCalculator")
 
-from monika.core.calibration.cot_thresholds import cot_extreme_score
 from datetime import datetime, timezone
-import monika.core.primitives.clock as clock
-
 from typing import Optional
+
+import monika.core.primitives.clock as clock
+from monika.core.calibration.cot_thresholds import cot_extreme_score
 
 SYMBOL_TO_COT_CODE = {
     "EURUSD": "099741",

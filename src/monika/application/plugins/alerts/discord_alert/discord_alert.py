@@ -3,23 +3,22 @@ Discord & Webhook Alert Channel Reference Plugin for Monika.
 Demonstrates custom notification and risk alert dispatch plugin.
 """
 
-from typing import Dict, Any, Optional
-
+from typing import Any, Dict, Optional
 
 from monika.application.harness.contract import (
-    TradingPlugin,
-    PluginMetadata,
-    PluginCategory,
-    PluginOrigin,
     OrderStateChangedEvent,
+    PluginCategory,
+    PluginMetadata,
+    PluginOrigin,
     RiskBreachEvent,
+    TradingPlugin,
 )
 
 
 def dispatch_discord_alert(args: Dict[str, Any]) -> Dict[str, Any]:
     """Dispatches formatted message payload to configured webhook channel."""
-    import os
     import json
+    import os
     import urllib.request
 
     channel = str(args.get("channel", "trading-alerts"))

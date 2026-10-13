@@ -19,20 +19,20 @@ import json
 import logging
 import math
 import os
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any, List, Tuple
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
 from monika.infrastructure.database.models import (
+    DXYData,
     PriceOHLCV,
     TechnicalIndicator,
     TimesFMForecast,
-    DXYData,
     TreasuryYield,
 )
 

@@ -9,22 +9,22 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select, desc, func
+from sqlalchemy import desc, func, select
 
-from monika.infrastructure.database.db import get_session
-from monika.application.benchmark.db_models import BenchmarkRun, BenchmarkResult
-from monika.application.benchmark.task_specs import TASKS
+from monika.application.benchmark.db_models import BenchmarkResult, BenchmarkRun
 from monika.application.benchmark.model_registry import (
     CANDIDATE_MODELS,
     get_candidate_models,
-    get_tier_models,
     get_router_matrix,
+    get_tier_models,
 )
-from monika.application.benchmark.runner import run_benchmark
 from monika.application.benchmark.report import build_report
+from monika.application.benchmark.runner import run_benchmark
+from monika.application.benchmark.task_specs import TASKS
 from monika.core.config.settings import load_all_config
+from monika.infrastructure.database.db import get_session
 from monika.interfaces.dashboard.rbac import Role, require_role
 from monika.interfaces.dashboard.routes.common import _safe_json, broadcast_live_event
 

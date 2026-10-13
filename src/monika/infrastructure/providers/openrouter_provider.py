@@ -5,19 +5,20 @@ reasoning effort, prompt caching, dan Multi-Key Rotation (Free vs Paid Tier).
 Base URL: https://openrouter.ai/api/v1
 """
 
+import json
 import logging
 import os
 import time
-import json
-from typing import Optional, Dict, Any, ClassVar
-from monika.infrastructure.providers.openai_provider import OpenAIProvider
+from typing import Any, ClassVar, Dict, Optional
+
 from monika.infrastructure.api.openrouter_rate_limiter import (
     OpenRouterRateLimiter,
-    get_paid_key,
-    get_free_keys,
     get_all_keys,
+    get_free_keys,
+    get_paid_key,
     is_free_tier_model,
 )
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
 logger = logging.getLogger("TradingAgent.OpenRouterProvider")
 

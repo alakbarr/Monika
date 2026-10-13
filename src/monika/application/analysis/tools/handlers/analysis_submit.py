@@ -3,11 +3,11 @@
 # ==============================================================================
 
 from typing import Any, Dict, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
-
 
 FACTOR_POINT_MAP = {
     "fundamental_bias": 2,

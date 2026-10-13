@@ -15,7 +15,7 @@ import shlex
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
-from monika.core.security.nt_guard import is_dangerous_nt_namespace, SecurityViolationError
+from monika.core.security.nt_guard import SecurityViolationError, is_dangerous_nt_namespace
 
 # Hardline command patterns that MUST NEVER execute under any mode or posture
 HARDLINE_BLOCKLIST_PATTERNS = [

@@ -3,10 +3,11 @@
 # ==============================================================================
 
 import logging
-import time
 import re
+import time
 import urllib.request
 from typing import List
+
 from monika.infrastructure.data_ingestion.scrapers.models import ScrapedNews
 
 logger = logging.getLogger("TradingAgent.RssNewsScraper")
@@ -85,8 +86,9 @@ class RssBaseScraper:
                 normalized_ts = raw_published
                 if raw_published:
                     try:
-                        from dateutil import parser as dateutil_parser
                         from datetime import timezone
+
+                        from dateutil import parser as dateutil_parser
 
                         parsed_dt = dateutil_parser.parse(str(raw_published))
                         if parsed_dt.tzinfo is None:

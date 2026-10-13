@@ -9,8 +9,8 @@ Replaces quadratic O(N^2) multi-turn debate transcripts with an O(N) shared stru
 
 import json
 import logging
-from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.Debate.Blackboard")
 

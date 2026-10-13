@@ -1,11 +1,12 @@
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Any, Callable, AsyncGenerator
-from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import ActivityLog
+from datetime import datetime, timedelta, timezone
+from typing import Any, AsyncGenerator, Callable, Optional
+
 from monika.application.analysis.stages.fundamental_stage import FundamentalStage
 from monika.application.analysis.stages.per_asset_stage import PerAssetStage
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import ActivityLog
 
 logger = logging.getLogger("TradingAgent.CycleScheduler")
 
@@ -170,9 +171,10 @@ class CycleScheduler:
         min_paper_wr = self.settings.get("trading", {}).get("min_paper_win_rate_pct", 45.0)
         for attempt in range(2):
             try:
+                from sqlalchemy import select
+
                 from monika.core.analytics.paper_tracker import PaperTracker
                 from monika.infrastructure.database.models import SystemConfig
-                from sqlalchemy import select
 
                 async with get_session() as perf_session:
                     tracker = PaperTracker()
@@ -278,8 +280,9 @@ class CycleScheduler:
 
     async def _get_symbol_paper_stats(self, session: Any, symbol: str) -> dict:
         try:
-            from monika.infrastructure.database.models import PaperTradeRecord
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import PaperTradeRecord
 
             stmt = (
                 select(PaperTradeRecord)
@@ -306,8 +309,9 @@ class CycleScheduler:
 
     async def _should_skip_full_cycle(self) -> tuple[bool, str]:
         async with get_session() as session:
-            from monika.infrastructure.database.models import VIXData, TechnicalIndicator
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import TechnicalIndicator, VIXData
 
             vix = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
             if vix and vix.close > 35:
@@ -354,9 +358,10 @@ class CycleScheduler:
             return {}
         strategy = weekend_cfg.get("strategy", "alert_only")
         exempted_symbols = set(weekend_cfg.get("exempted_symbols", ["BTCUSD"]))
+        from sqlalchemy import select
+
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import Position
-        from sqlalchemy import select
 
         async with get_session() as session:
             open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
@@ -486,7 +491,7 @@ class CycleScheduler:
         loop siklus analisis utama agar waktunya presisi, tidak lagi
         tergantung kapan loop siklus utama kebetulan bangun dari sleep.
         """
-        from monika.application.scheduler.wall_clock import parse_time_list, sleep_until_next, get_tzinfo
+        from monika.application.scheduler.wall_clock import get_tzinfo, parse_time_list, sleep_until_next
 
         self._reports_running = True
         logger.info(
@@ -535,9 +540,10 @@ class CycleScheduler:
 
     async def _run_daily_calibrations(self) -> None:
         try:
+            from sqlalchemy import select
+
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.models import SystemConfig
-            from sqlalchemy import select
 
             async with get_session() as session:
                 logger.info("Running daily background calibrations...")
@@ -662,16 +668,17 @@ class CycleScheduler:
 
     async def _send_weekly_edge_assessment(self) -> None:
         try:
+            from sqlalchemy import select
+
+            from monika.application.protocol.coherence_flag_tracker import compute_coherence_override_impact
             from monika.core.analytics.analysis_tracker import (
-                get_direction_accuracy_report,
-                compute_factor_effectiveness,
                 analyze_debate_impact,
+                compute_factor_effectiveness,
+                get_direction_accuracy_report,
             )
             from monika.core.analytics.edge_tracker import compute_edge_status
-            from monika.infrastructure.llm.memory_compressor import compress_agent_memory
-            from monika.application.protocol.coherence_flag_tracker import compute_coherence_override_impact
             from monika.infrastructure.database.db import get_session
-            from sqlalchemy import select
+            from monika.infrastructure.llm.memory_compressor import compress_agent_memory
 
             async with get_session() as session:
                 dir_acc = await get_direction_accuracy_report(session, 14)
@@ -772,10 +779,12 @@ class CycleScheduler:
 
     async def _send_daily_report(self) -> None:
         try:
-            from monika.infrastructure.database.db import get_session
-            from monika.infrastructure.database.models import TradeOutcome, Position, EconomicCalendar, VIXData
-            from sqlalchemy import select, func
             from datetime import timedelta
+
+            from sqlalchemy import func, select
+
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import EconomicCalendar, Position, TradeOutcome, VIXData
 
             now = datetime.now(timezone.utc)
             yesterday = now - timedelta(days=1)
@@ -833,7 +842,7 @@ class CycleScheduler:
                     pass
 
                 last_7d = now - timedelta(days=7)
-                from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, CyclePerformance
+                from monika.infrastructure.database.models import AssetAnalysis, CyclePerformance, PaperTradeRecord
 
                 paper_7d = (
                     (
@@ -1042,7 +1051,7 @@ class CycleScheduler:
 
                 lines.append(f"\n<b> System Health:</b>")
                 try:
-                    from monika.application.scheduler.wall_clock import parse_time_list, next_occurrence
+                    from monika.application.scheduler.wall_clock import next_occurrence, parse_time_list
 
                     times = parse_time_list(self.cycle_times_local)
                     next_dt = next_occurrence(times, self.timezone_name, now)
@@ -1120,9 +1129,10 @@ class CycleScheduler:
 
                 # Phase 6: Active Calibration Directives & Confidence Ceilings
                 try:
-                    from monika.infrastructure.database.models import SystemConfig
                     import json as _json
+
                     from monika.core.analytics.agent_performance_monitor import get_currency_confidence_ceiling
+                    from monika.infrastructure.database.models import SystemConfig
 
                     cal_cfg = (
                         await session.execute(
@@ -1181,9 +1191,11 @@ class CycleScheduler:
         return await scheduler.refresh_macro_data()
 
     async def _update_analysis_ground_truth(self) -> None:
-        from monika.infrastructure.database.models import AssetAnalysis, PriceOHLCV, PaperTradeRecord
         from datetime import timedelta
-        from sqlalchemy import select, func
+
+        from sqlalchemy import func, select
+
+        from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord, PriceOHLCV
 
         now = datetime.now(timezone.utc)
         async with get_session() as session:

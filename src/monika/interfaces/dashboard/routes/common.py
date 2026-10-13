@@ -8,12 +8,12 @@ import json
 import logging
 import os
 import time
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import WebSocket
-from collections import deque
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Routes")

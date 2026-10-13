@@ -21,11 +21,12 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
-from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
-from monika.application.analysis.tools.unified_registry import unified_tool_registry
 from pydantic import BaseModel, Field
+
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
+from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 
 logger = logging.getLogger("TradingAgent.Tools.Browser")
 

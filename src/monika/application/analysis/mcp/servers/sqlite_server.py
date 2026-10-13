@@ -4,19 +4,19 @@
 # Exposes read-only SQLite database inspection over standard stdio JSON-RPC.
 # ==============================================================================
 
-import sys
+import asyncio
 import json
 import sqlite3
-import asyncio
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from monika.application.analysis.mcp.protocol import (
-    PARSE_ERROR,
-    INVALID_REQUEST,
-    METHOD_NOT_FOUND,
     INVALID_PARAMS,
+    INVALID_REQUEST,
     LATEST_PROTOCOL_VERSION,
+    METHOD_NOT_FOUND,
+    PARSE_ERROR,
     make_error_response,
     make_result_response,
 )

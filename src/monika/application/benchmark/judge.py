@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
-from .invoker import make_client, _attach_usage_capture
+
+from .invoker import _attach_usage_capture, make_client
 
 logger = logging.getLogger("Benchmark.Judge")
 

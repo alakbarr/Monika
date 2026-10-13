@@ -8,16 +8,17 @@ Calculates rolling Pearson correlation, historical z-scores, and decoupling regi
 - WTI Crude (XTIUSD) vs Brent Crude (XBRUSD)
 """
 
-from datetime import datetime, timezone, timedelta
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import PriceOHLCV, TreasuryYield, DXYData
 import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import DXYData, PriceOHLCV, TreasuryYield
 
 logger = logging.getLogger("TradingAgent.Calculators.RollingCorrelation")
 

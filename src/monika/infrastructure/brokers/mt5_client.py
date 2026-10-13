@@ -19,9 +19,9 @@ import math
 import os
 import sys
 import time
-from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Any, cast
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional, cast
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -1366,9 +1366,10 @@ class MT5Client:
 
     def get_chart_objects(self, symbol: str) -> dict:
         """Reads exported user chart objects from shared MT5 FILE_COMMON (Q151)."""
-        from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager
         import json
         from pathlib import Path
+
+        from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager
 
         common_path = HeartbeatManager().get_common_path()
         if not common_path:
@@ -1400,8 +1401,9 @@ class MT5Client:
         session: AsyncSession,
     ) -> dict:
         """Sinkronkan posisi terbuka dari MT5 ke DB lokal (perbarui status DB yang sudah tertutup di MT5)."""
-        from monika.infrastructure.database.models import Position
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import Position
 
         mt5_positions = await self.get_open_positions()
         mt5_orders = await self.get_orders()
@@ -1646,6 +1648,7 @@ def _market_book_release(symbol: str) -> bool:
 
 def _connect(path: str, account: int, password: str, server: str, expected_trade_mode: Optional[str] = None) -> bool:
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -1706,6 +1709,7 @@ def _connect(path: str, account: int, password: str, server: str, expected_trade
 
 def _disconnect():
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -1714,6 +1718,7 @@ def _disconnect():
 
 def _is_connected() -> bool:
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -1723,6 +1728,7 @@ def _is_connected() -> bool:
 
 def _get_account_info():
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -1731,6 +1737,7 @@ def _get_account_info():
 
 def _get_symbol_info(symbol: str):
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -1739,6 +1746,7 @@ def _get_symbol_info(symbol: str):
 
 def _copy_rates_from_pos(symbol: str, tf: int, start: int, count: int):
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -1747,6 +1755,7 @@ def _copy_rates_from_pos(symbol: str, tf: int, start: int, count: int):
 
 def _copy_rates_range(symbol: str, tf: int, date_from: Any, date_to: Any):
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -1755,6 +1764,7 @@ def _copy_rates_range(symbol: str, tf: int, date_from: Any, date_to: Any):
 
 def _get_last_tick(symbol: str):
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -1782,6 +1792,7 @@ def _calculate_dom_vwap(symbol: str, direction: str, volume: float) -> dict:
     and expected slippage vs Top-of-Book BBO.
     """
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -1900,6 +1911,7 @@ def _place_order(
     Handles MARKET (instant) and LIMIT/STOP (pending) order types.
     """
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -2131,6 +2143,7 @@ def _place_order(
 def _modify_position(ticket: Any, sl: Optional[float], tp: Optional[float]) -> dict:
     """Modify SL/TP on an existing open position."""
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -2185,6 +2198,7 @@ def _modify_position(ticket: Any, sl: Optional[float], tp: Optional[float]) -> d
 def _close_position(ticket: Any, volume: Optional[float], comment: str, lots: Optional[float] = None) -> dict:
     """Close an open position (fully or partially)."""
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -2301,6 +2315,7 @@ def _close_position(ticket: Any, volume: Optional[float], comment: str, lots: Op
 def _get_open_positions(symbol: Optional[str]) -> list[dict]:
     """Fetch all open positions from MT5."""
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -2341,6 +2356,7 @@ def _get_open_positions(symbol: Optional[str]) -> list[dict]:
 def _get_orders(symbol: Optional[str] = None) -> list[dict]:
     """Fetch all active pending orders from MT5."""
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -2386,6 +2402,7 @@ def _get_orders(symbol: Optional[str] = None) -> list[dict]:
 def _cancel_order(ticket: Any) -> dict:
     """Cancel pending order by ticket in MT5."""
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -2420,6 +2437,7 @@ def _cancel_order(ticket: Any) -> dict:
 
 def _get_deal_history(ticket: Any):
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -2434,6 +2452,7 @@ def _get_deal_history(ticket: Any):
 
 def _get_order_history(ticket: Any):
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5
@@ -2448,6 +2467,7 @@ def _get_order_history(ticket: Any):
 
 def _capture_chart_screenshot(symbol: str, tf: int, width: int, height: int, filepath: str) -> dict:
     from typing import Any
+
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5

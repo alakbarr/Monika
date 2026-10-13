@@ -8,6 +8,7 @@ Direct execution without circular trampolines.
 """
 
 from typing import Any, Dict, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.base_handler import ToolHandler

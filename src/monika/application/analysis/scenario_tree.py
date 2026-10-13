@@ -9,12 +9,13 @@ Replaces single-thesis analysis with a 3-branch scenario tree:
 Each branch is evaluated independently and converged into an Expected Value (EV) decision.
 """
 
-import uuid
 import json
 import logging
-from dataclasses import dataclass, field, asdict
-from typing import Optional, List, Dict, Any
+import uuid
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.ScenarioTree")

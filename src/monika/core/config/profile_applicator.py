@@ -13,9 +13,9 @@ Deterministic, multi-provider mapping for all 49 task roles across 6 operational
   6. low_latency_cheap:       Latensi Rendah — Murah / Hemat
 """
 
-import os
 import logging
-from typing import Dict, Any, List, Optional
+import os
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.ProfileApplicator")
 

@@ -24,7 +24,7 @@ import logging
 import os
 import sys
 import types
-from typing import Any, Optional, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.MT5Compat")
 

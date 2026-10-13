@@ -10,11 +10,12 @@ without running the multi-hour macro fundamental stage.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.pipeline_plugin import AnalysisPipelinePlugin
-from monika.application.harness.contract import PluginMetadata, PluginCategory, PluginOrigin
+from monika.application.harness.contract import PluginCategory, PluginMetadata, PluginOrigin
 from monika.domain.risk.trade_proposal import TradeProposal
 
 logger = logging.getLogger("TradingAgent.Plugins.TechnicalScalpingPipeline")

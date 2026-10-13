@@ -1,7 +1,9 @@
 import logging
-from typing import Dict, Any, List, Optional
-from monika.application.graph.state import TradingState
+from typing import Any, Dict, List, Optional
+
 from langchain_core.runnables.config import RunnableConfig
+
+from monika.application.graph.state import TradingState
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import AssetAnalysis
 

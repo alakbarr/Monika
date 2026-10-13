@@ -9,10 +9,10 @@ Each reason carries:
   - max_retries: max same-model retries for this error class
 """
 
-from enum import Enum
-from typing import Tuple
 import logging
 import re
+from enum import Enum
+from typing import Tuple
 
 logger = logging.getLogger("TradingAgent.ErrorClassifier")
 

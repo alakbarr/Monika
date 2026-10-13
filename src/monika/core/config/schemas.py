@@ -2,8 +2,9 @@
 Pydantic Schemas for strongly-typed configuration validation (H6, M-3, M-4).
 """
 
+from typing import Any, Dict, List, Optional, Union
+
 from pydantic import BaseModel, Field, SecretStr, model_validator
-from typing import Dict, List, Optional, Any, Union
 
 
 class SubscriptableConfig(BaseModel, extra="allow"):

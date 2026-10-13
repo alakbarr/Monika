@@ -14,9 +14,10 @@ logger = logging.getLogger("TradingAgent.ScraperLoop")
 async def run_scraper_loop(agent: Any) -> None:
     """Scraper background loop (interval: 1h, Stage 2 every 2h)."""
     logger.info("Scraper background loop started (interval: 1h, Stage 2 every 2h)")
+    from sqlalchemy import select as _sel_scraper
+
     from monika.infrastructure.database.db import get_session as _gs_scraper
     from monika.infrastructure.database.models import SystemConfig
-    from sqlalchemy import select as _sel_scraper
 
     min_interval_minutes = agent.settings.get("scraping", {}).get("min_interval_minutes", 45)
     cycle_count = 0

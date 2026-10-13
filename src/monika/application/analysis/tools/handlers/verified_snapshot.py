@@ -2,17 +2,18 @@
 # File: analysis/tools/handlers/verified_snapshot.py
 # ==============================================================================
 
-from datetime import datetime, timezone
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
-from sqlalchemy import select, desc
+
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
 from monika.infrastructure.database.models import PriceOHLCV, SRZone
-import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.VerifiedSnapshotHandler")
 
@@ -70,8 +71,8 @@ class VerifiedMarketSnapshotHandler(ToolHandler):
             }
             try:
                 from monika.infrastructure.data_ingestion.sources.validators import (
-                    validate_ohlcv_freshness,
                     StaleDataError,
+                    validate_ohlcv_freshness,
                 )
 
                 validate_ohlcv_freshness(

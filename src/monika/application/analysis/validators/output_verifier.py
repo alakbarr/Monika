@@ -7,9 +7,10 @@ Validates trade proposals with deterministic constraints before entering the deb
 - Synchronous error feedback injection for self-correction (up to max_retries).
 """
 
-import logging
 import json
-from typing import Optional, List, Tuple, Dict, Any
+import logging
+from typing import Any, Dict, List, Optional, Tuple
+
 from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
 logger = logging.getLogger("TradingAgent.OutputVerifier")

@@ -6,11 +6,12 @@ and Plane 2 (Financial Fortress: RiskGate, Invariants, and Execution).
 """
 
 import hashlib
-import uuid
 import math
+import uuid
 from datetime import datetime, timezone
-from typing import Literal, Optional, Dict, Any, List, Union
-from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
+from typing import Any, Dict, List, Literal, Optional, Union
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def _utcnow() -> datetime:

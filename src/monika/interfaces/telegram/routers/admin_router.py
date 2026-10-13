@@ -5,8 +5,8 @@ Handles /start, /auth, /pair, /status, /settings, /help, /pause, /resume, /run.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 import logging
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("Monika.Telegram.AdminRouter")
 

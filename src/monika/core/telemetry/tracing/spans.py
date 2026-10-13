@@ -6,12 +6,12 @@ from contextlib import contextmanager
 from typing import Any, Dict, Generator, List, Optional
 
 from monika.core.telemetry.tracing.context import (
+    _current_cycle_id,
+    _current_trace_id,
     generate_trace_id,
     set_trace_context,
-    _current_trace_id,
-    _current_cycle_id,
 )
-from monika.core.telemetry.tracing.tracer import get_tracer, Span
+from monika.core.telemetry.tracing.tracer import Span, get_tracer
 
 
 @contextmanager

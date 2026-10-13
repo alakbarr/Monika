@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import pandas as pd
+
 from monika.domain.indicators.factor_primitives import ts_argmax, ts_argmin
 
 __alpha_meta__ = {

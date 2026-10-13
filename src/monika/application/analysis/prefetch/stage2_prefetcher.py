@@ -11,15 +11,17 @@ Tujuan: Menghemat token & waktu dengan mengubah belasan panggilan tool menjadi s
 
 import json
 import logging
-from typing import Optional, Dict, Any, Tuple, List, Union
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from monika.application.analysis.tools.tool_executor import ToolExecutor
+
+import monika.core.primitives.clock as clock
 from monika.application.analysis.calculators.confluence_calculator import (
     calculate_confluence,
     calculate_priced_in_subscores,
 )
-import monika.core.primitives.clock as clock
+from monika.application.analysis.tools.tool_executor import ToolExecutor
 
 logger = logging.getLogger("TradingAgent.Stage2Prefetcher")
 
@@ -342,14 +344,14 @@ class Stage2DataBundler:
                 },
             )
             if "error" not in news_res:
-                import unicodedata
                 import textwrap
+                import unicodedata
 
                 compact_news = []
                 raw_items = news_res.get("news") or news_res.get("items") or news_res.get("news_items") or []
                 for n in raw_items[:8]:
-                    import re as _re
                     import html as _html
+                    import re as _re
 
                     raw_str = unicodedata.normalize("NFKC", str(n.get("title", "")))
                     cleaned_title = _re.sub(
@@ -724,6 +726,7 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                     }
                 )
                 from sqlalchemy import select
+
                 from monika.infrastructure.database.models import SystemConfig
 
                 existing_pi_cfg = (
@@ -741,8 +744,9 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
 
         # Inject alpha lessons
         try:
+            from sqlalchemy import desc, select
+
             from monika.infrastructure.database.models import DecisionReflection
-            from sqlalchemy import select, desc
 
             stmt = (
                 select(DecisionReflection)

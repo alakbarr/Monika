@@ -1,12 +1,12 @@
 """Memory, reflection, and chronicle models (Phase 7)."""
 
 from monika.infrastructure.database.models import (
-    DecisionReflection,
     CandidateLesson,
+    ContextSpillBlob,
+    DecisionMemory,
+    DecisionReflection,
     MarketChronicle,
     UserMarketIntel,
-    DecisionMemory,
-    ContextSpillBlob,
 )
 
 __all__ = [

@@ -19,8 +19,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, time as dtime, timedelta, timezone
-from typing import Sequence, Optional
+from datetime import datetime, timedelta, timezone
+from datetime import time as dtime
+from typing import Optional, Sequence
 
 logger = logging.getLogger("TradingAgent.WallClockScheduler")
 

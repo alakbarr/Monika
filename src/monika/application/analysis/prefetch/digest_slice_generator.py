@@ -11,18 +11,18 @@ Arsitektur:
    dan berurutan secara kronologis untuk dikonsumsi Stage 1 Fundamental Analysis.
 """
 
+import asyncio
 import json
 import logging
-import asyncio
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, List, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import NewsItem, NewsDigestSlice, NewsDigest, VIXData, DXYData
+from monika.application.analysis.prefetch.news_digest import _format_news_item_for_prompt, _jaccard_title_similarity
+from monika.infrastructure.database.models import DXYData, NewsDigest, NewsDigestSlice, NewsItem, VIXData
 from monika.infrastructure.providers.llm_factory import get_client_for_task
-from monika.application.analysis.prefetch.news_digest import _jaccard_title_similarity, _format_news_item_for_prompt
 
 logger = logging.getLogger("TradingAgent.DigestSliceGenerator")
 

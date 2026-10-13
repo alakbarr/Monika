@@ -3,14 +3,15 @@
 # ==============================================================================
 
 import asyncio
-import logging
 import json
+import logging
 import sys
 from datetime import datetime, timezone
-from typing import Optional, Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.PerAsset.Verifiers")
@@ -24,8 +25,9 @@ def _get_clock():
 
 
 async def _get_symbol_sl_streak(session, symbol: str) -> int:
-    from monika.infrastructure.database.models import PaperTradeRecord
     from sqlalchemy import select
+
+    from monika.infrastructure.database.models import PaperTradeRecord
 
     recent = (
         (
@@ -62,8 +64,9 @@ class VerifiersMixin:
         self, session: AsyncSession, symbol: str, start_time: datetime
     ) -> tuple[Optional[dict], Optional[Any], list[tuple[str, str]]]:
         """Memeriksa keberadaan, kesegaran, dan kualitas FundamentalBrief."""
-        from monika.infrastructure.database.models import FundamentalBrief
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import FundamentalBrief
 
         context_blocks: list[tuple[str, str]] = []
         brief_check = (
@@ -161,14 +164,15 @@ class VerifiersMixin:
         """Memeriksa koherensi konteks SSVP untuk mencegah drift/kontaminasi."""
         coherence_injection = ""
         try:
-            from monika.application.protocol.enhanced_cds import compute_composite_cds, get_cds_thresholds
-            from monika.application.protocol.brief_contamination_guard import (
-                _build_warning_context,
-                _build_contextmerge_prompt,
-            )
             import json as _j
-            from monika.infrastructure.database.models import SystemConfig, AssetAnalysis
+
+            from monika.application.protocol.brief_contamination_guard import (
+                _build_contextmerge_prompt,
+                _build_warning_context,
+            )
+            from monika.application.protocol.enhanced_cds import compute_composite_cds, get_cds_thresholds
             from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import AssetAnalysis, SystemConfig
 
             if brief_check and brief_check.structured_json:
                 b_data = _j.loads(brief_check.structured_json)
@@ -229,8 +233,9 @@ class VerifiersMixin:
 
     async def _check_minimum_data_quality(self, session: AsyncSession, symbol: str) -> tuple[bool, str]:
         """Check if minimum data quality requirements are met for analysis."""
-        from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
         from sqlalchemy import select
+
+        from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
 
         # Cek apakah ada data harga
         last_price = (
@@ -257,9 +262,11 @@ class VerifiersMixin:
 
     async def _verify_data_currency(self, session: AsyncSession, symbol: str) -> tuple[bool, str]:
         """Verify data freshness (H4 candle age)."""
-        from monika.infrastructure.database.models import PriceOHLCV
-        from sqlalchemy import select
         from datetime import datetime, timezone
+
+        from sqlalchemy import select
+
+        from monika.infrastructure.database.models import PriceOHLCV
 
         last_h4 = (
             await session.execute(
@@ -305,9 +312,11 @@ class VerifiersMixin:
 
     async def _check_data_coherence_for_analysis(self, session: AsyncSession, symbol: str) -> tuple[bool, str]:
         """Verify key data points are internally consistent."""
-        from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
-        from sqlalchemy import select
         import json
+
+        from sqlalchemy import select
+
+        from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
 
         atr_row = (
             await session.execute(

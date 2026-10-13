@@ -9,6 +9,7 @@ Provides inline suggestions with command descriptions using prompt_toolkit.
 """
 
 from typing import Iterable, List, Tuple
+
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.document import Document
 

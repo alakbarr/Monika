@@ -20,8 +20,10 @@ Benefits:
 """
 
 import logging
-from typing import Optional, List, Any
-from sqlalchemy import select, delete
+from typing import Any, List, Optional
+
+from sqlalchemy import delete, select
+
 from monika.infrastructure.database.models import TelegramTopicBinding
 
 logger = logging.getLogger("TradingAgent.TopicManager")

@@ -4,7 +4,7 @@ Defines descriptors, permissions, and handler dispatch mapping for execution and
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 @dataclass(frozen=True)
@@ -42,8 +42,8 @@ async def execute_trading_command(
     broker_adapter: Any = None,
 ) -> Dict[str, Any]:
     """Execute trading operational command through TradingService and PortfolioService."""
-    from monika.application.services.trading_service import TradingService
     from monika.application.services.portfolio_service import PortfolioService
+    from monika.application.services.trading_service import TradingService
 
     cmd = command.lower().strip()
     if cmd in ("kill", "emergency"):

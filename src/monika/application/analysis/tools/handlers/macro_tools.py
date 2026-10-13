@@ -9,31 +9,31 @@ market sessions, market regimes, funding rates, and economic surprises.
 Direct execution without circular trampolines.
 """
 
+import html as _html
 import json
 import logging
-import html as _html
-from datetime import datetime, timezone, timedelta, date
-from zoneinfo import ZoneInfo
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
+from monika.application.analysis.tools.registry import ToolDefinition, ToolRegistry
 from monika.infrastructure.database.models import (
-    EconomicCalendar,
-    TechnicalIndicator,
-    TreasuryYield,
     BondYieldData,
-    InterestRate,
-    FedWatchProbability,
     CentralBankRateExpectation,
     COTReport,
-    VIXData,
-    SystemConfig,
     DXYData,
+    EconomicCalendar,
+    FedWatchProbability,
+    InterestRate,
+    SystemConfig,
+    TechnicalIndicator,
+    TreasuryYield,
+    VIXData,
 )
-from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition
 
 logger = logging.getLogger("TradingAgent.Tools.Macro")
 
@@ -1565,8 +1565,9 @@ async def handle_get_fear_greed_index(args: dict, **ctx) -> dict:
 
         # Web search fallback for CNN Fear & Greed
         try:
-            from monika.infrastructure.data_ingestion.sources.web_search import WebSearch
             import re
+
+            from monika.infrastructure.data_ingestion.sources.web_search import WebSearch
 
             ws = WebSearch()
             search_res = await ws.search("CNN Fear and Greed Index score today", max_results=2)

@@ -3,14 +3,15 @@
 # ==============================================================================
 
 import asyncio
-import logging
 import json
+import logging
 import sys
 from datetime import datetime, timezone
-from typing import Optional, Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 import monika.core.primitives.clock as clock
 
 
@@ -21,12 +22,12 @@ def _get_clock():
     return clock
 
 
-from monika.infrastructure.providers.llm_factory import get_client_for_task
 from monika.application.analysis.stages.per_asset.context_builder import (
     SPECIALIST_PROMPTS,
-    _render_specialist_prompt,
     SYMBOL_TO_COT,
+    _render_specialist_prompt,
 )
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.PerAsset.SpecialistPipeline")
 
@@ -176,8 +177,9 @@ class SpecialistPipelineMixin:
 
             if isinstance(raw_bundle_data, dict) and "user_market_intel" not in raw_bundle_data:
                 try:
-                    from monika.infrastructure.database.models import UserMarketIntel
                     from sqlalchemy import or_
+
+                    from monika.infrastructure.database.models import UserMarketIntel
 
                     now_intel = _get_clock().now()
                     intel_rows = (
@@ -380,8 +382,9 @@ class SpecialistPipelineMixin:
             significant_disagreement = len(distinct_biases) >= 2 and weighted_bullish >= 0.6 and weighted_bearish >= 0.6
             if significant_disagreement:
                 try:
-                    from monika.infrastructure.database.models import SystemConfig
                     from sqlalchemy import select as _sel3
+
+                    from monika.infrastructure.database.models import SystemConfig
 
                     key = f"specialist_disagreement_{symbol}"
                     cfg = (
@@ -397,8 +400,9 @@ class SpecialistPipelineMixin:
                     logger.debug(f"Failed to persist specialist disagreement flag: {e}")
 
             try:
-                from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import select as _sel_biases
+
+                from monika.infrastructure.database.models import SystemConfig
 
                 biases_payload = json.dumps(
                     {

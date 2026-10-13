@@ -8,11 +8,11 @@ Compiles executive metrics, trade distribution, risk posture, and equity curves
 into publication-quality PDF documents using ReportLab (Q144).
 """
 
+import importlib.util
 import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-import importlib.util
 from typing import Any, Dict, List, Optional
 
 import monika.core.primitives.clock as clock

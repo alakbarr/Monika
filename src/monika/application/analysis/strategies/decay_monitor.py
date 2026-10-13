@@ -280,8 +280,9 @@ class StrategyDecayMonitor:
         if not session:
             return
         try:
-            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
+
+            from monika.infrastructure.database.models import SystemConfig
 
             stmt = select(SystemConfig).where(SystemConfig.key == "strategy_decay_health")
             res = session.execute(stmt)

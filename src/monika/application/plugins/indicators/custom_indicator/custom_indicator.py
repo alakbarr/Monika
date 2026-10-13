@@ -3,14 +3,13 @@ Custom Indicator Reference Plugin for Monika.
 Demonstrates custom volatility and VWAP indicator calculation without modifying core codebase.
 """
 
-from typing import Dict, Any, Optional
-
+from typing import Any, Dict, Optional
 
 from monika.application.harness.contract import (
-    TradingPlugin,
-    PluginMetadata,
     PluginCategory,
+    PluginMetadata,
     PluginOrigin,
+    TradingPlugin,
 )
 
 

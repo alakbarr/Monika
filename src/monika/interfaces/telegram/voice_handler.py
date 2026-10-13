@@ -15,7 +15,8 @@ import asyncio
 import base64
 import logging
 import os
-from typing import Optional, Any
+from typing import Any, Optional
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -81,8 +82,9 @@ class VoiceHandler:
                         await status_msg.edit_text(f'[SUARA] "{transcript}"\n\n[PERINGATAN] {proposal.error}')
                     return
 
-                from monika.domain.risk.approval_hub import ApprovalHub
                 import uuid
+
+                from monika.domain.risk.approval_hub import ApprovalHub
 
                 req_id = f"voice_{uuid.uuid4().hex[:8]}"
                 hub = ApprovalHub.get_instance()
@@ -99,7 +101,7 @@ class VoiceHandler:
                     },
                     ttl_minutes=3,
                 )
-                from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
                 from telegram.constants import ParseMode
 
                 sl_str = f" | SL: `{proposal.stop_loss}`" if proposal.stop_loss else ""
@@ -181,8 +183,9 @@ class VoiceHandler:
                     )
 
                     if not is_streaming and reply:
-                        from monika.interfaces.telegram.sanitizer import sanitize_telegram_html
                         from telegram.constants import ParseMode
+
+                        from monika.interfaces.telegram.sanitizer import sanitize_telegram_html
 
                         chunks = [reply]
                         if self.bot and hasattr(self.bot, "_chunk_text"):
@@ -203,8 +206,9 @@ class VoiceHandler:
                                 logger.warning(f"[VoiceHandler] Failed sending chart photo: {e}")
 
                     if pending:
-                        from monika.interfaces.telegram.command_router import CommandRouter
                         from telegram.constants import ParseMode
+
+                        from monika.interfaces.telegram.command_router import CommandRouter
 
                         keyboard = CommandRouter.build_confirm_keyboard(pending.action_id)
                         await update.message.reply_text(
@@ -291,7 +295,7 @@ class VoiceHandler:
         # Resolve API keys
         openrouter_key = self.settings.get("api_keys", {}).get("openrouter") or os.getenv("OPENROUTER_API_KEY")
         if not openrouter_key:
-            from monika.infrastructure.api.openrouter_rate_limiter import get_paid_key, get_free_keys
+            from monika.infrastructure.api.openrouter_rate_limiter import get_free_keys, get_paid_key
 
             openrouter_key = get_paid_key() or (get_free_keys()[0] if get_free_keys() else None)
 

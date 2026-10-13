@@ -8,12 +8,12 @@ Exports spans in OTLP/HTTP JSON format to any OTel-compatible backend
 ponytail: No-op when disabled. Single class, no heavy framework dependencies.
 """
 
-import logging
 import json
-import time
+import logging
 import threading
+import time
 from collections import deque
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.OTLPExporter")
 

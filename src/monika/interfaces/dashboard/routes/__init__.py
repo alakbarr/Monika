@@ -3,6 +3,8 @@
 # Description: Router Aggregation and Exports for Dashboard API
 # ==============================================================================
 
+from monika.interfaces.dashboard.routes.backtest import backtest_router
+from monika.interfaces.dashboard.routes.benchmark import benchmark_router
 from monika.interfaces.dashboard.routes.common import (
     ClosePositionRequest,
     CrystallizeSkillRequest,
@@ -21,21 +23,19 @@ from monika.interfaces.dashboard.routes.common import (
     set_dashboard_dependencies,
 )
 from monika.interfaces.dashboard.routes.config import config_router
+from monika.interfaces.dashboard.routes.intelligence import intelligence_router
+from monika.interfaces.dashboard.routes.mcp_server import mcp_router
+from monika.interfaces.dashboard.routes.memory import memory_router
 from monika.interfaces.dashboard.routes.observability import (
     _build_graph_state_for_cycle,
     observability_router,
 )
+from monika.interfaces.dashboard.routes.plugins import plugins_router
 from monika.interfaces.dashboard.routes.system import system_router
 from monika.interfaces.dashboard.routes.tokens import tokens_router
+from monika.interfaces.dashboard.routes.trace_search import trace_search_router
 from monika.interfaces.dashboard.routes.trading import trading_router
 from monika.interfaces.dashboard.routes.websocket import websocket_router
-from monika.interfaces.dashboard.routes.trace_search import trace_search_router
-from monika.interfaces.dashboard.routes.backtest import backtest_router
-from monika.interfaces.dashboard.routes.memory import memory_router
-from monika.interfaces.dashboard.routes.intelligence import intelligence_router
-from monika.interfaces.dashboard.routes.plugins import plugins_router
-from monika.interfaces.dashboard.routes.benchmark import benchmark_router
-from monika.interfaces.dashboard.routes.mcp_server import mcp_router
 
 all_routers = [
     system_router,

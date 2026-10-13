@@ -6,6 +6,7 @@ Generates dense vector embeddings using Google Gemini Embedding API (Gemini Embe
 import logging
 import os
 from typing import Any, Dict, List, Optional
+
 from monika.infrastructure.api.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.Embedding")

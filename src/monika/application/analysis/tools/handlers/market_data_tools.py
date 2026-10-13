@@ -6,23 +6,24 @@ Direct execution without circular trampolines.
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
-from sqlalchemy import select, desc
+
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
+from monika.application.analysis.tools.registry import ToolDefinition, ToolRegistry
 from monika.infrastructure.database.models import (
-    PriceOHLCV,
-    TechnicalIndicator,
-    SwingPoint,
-    StructureBreak,
-    SRZone,
-    OrderBlock,
-    FVGZone,
     DXYData,
+    FVGZone,
+    OrderBlock,
+    PriceOHLCV,
+    SRZone,
+    StructureBreak,
+    SwingPoint,
+    TechnicalIndicator,
 )
-from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition
 
 logger = logging.getLogger("TradingAgent.Tools.MarketData")
 
@@ -133,7 +134,7 @@ async def handle_get_technical_indicators(args: dict, **ctx) -> dict:
             rsi_divergence = None
             macd_divergence = None
             try:
-                from monika.domain.indicators.technical import detect_rsi_divergence, detect_macd_divergence
+                from monika.domain.indicators.technical import detect_macd_divergence, detect_rsi_divergence
 
                 df = await calc._load_ohlcv(symbol, timeframe)
                 if df is not None and len(df) >= 20:
@@ -755,10 +756,11 @@ async def handle_export_historical_data_csv(args: dict, **ctx) -> dict:
     days_back = int(args.get("days_back", 30))
     limit = int(args.get("limit", 5000))
 
-    from monika.infrastructure.database.models import PriceOHLCV
-    from datetime import timedelta
-    import os
     import csv
+    import os
+    from datetime import timedelta
+
+    from monika.infrastructure.database.models import PriceOHLCV
 
     since = clock.now() - timedelta(days=days_back)
     rows = []
@@ -1230,8 +1232,8 @@ async def handle_get_chart(args: dict, **ctx) -> dict:
         chart_buf = None
         if include_smc and session is not None:
             try:
-                from monika.infrastructure.database.models import FVGZone, SwingPoint
                 from monika.core.analytics.chart_generator import generate_smc_candlestick_chart
+                from monika.infrastructure.database.models import FVGZone, SwingPoint
 
                 fvg_rows = (
                     (
@@ -1690,8 +1692,8 @@ async def handle_plot_equity_curve(args: dict, **ctx) -> dict:
     days_back = int(args.get("days_back", 90))
     since = clock.now() - timedelta(days=days_back)
 
-    from monika.infrastructure.database.models import PaperTradeRecord, Position
     from monika.core.analytics.chart_generator import generate_equity_curve_chart
+    from monika.infrastructure.database.models import PaperTradeRecord, Position
 
     # Query closed trades
     records = []
@@ -2153,10 +2155,11 @@ async def handle_get_divergences(args: dict, **ctx) -> dict:
     if isinstance(tfs, str):
         tfs = [t.strip().upper() for t in tfs.split(",") if t.strip()]
 
-    from monika.application.services.market_data_service import MarketDataService
     import pandas as pd
     import ta
-    from monika.domain.indicators.technical import detect_rsi_divergence, detect_macd_divergence
+
+    from monika.application.services.market_data_service import MarketDataService
+    from monika.domain.indicators.technical import detect_macd_divergence, detect_rsi_divergence
 
     results = {}
     for tf in tfs:

@@ -7,15 +7,16 @@ Direct execution without circular trampolines.
 import asyncio
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, and_
+
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
+from monika.application.analysis.tools.registry import ToolDefinition, ToolRegistry
 from monika.core.primitives.retry import retryable
-from monika.infrastructure.database.models import NewsItem, NewsDigest, NewsDigestSlice
-from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition
+from monika.infrastructure.database.models import NewsDigest, NewsDigestSlice, NewsItem
 
 logger = logging.getLogger("TradingAgent.Tools.News")
 

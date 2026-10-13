@@ -11,8 +11,8 @@ Identifies high-probability reversal and continuation price action formations:
 - Morning Star & Evening Star
 """
 
-from typing import List, Dict, Any, Optional
 import math
+from typing import Any, Dict, List, Optional
 
 
 def detect_candlestick_patterns(candles: Any, lookback: int = 5) -> Dict[str, Any]:

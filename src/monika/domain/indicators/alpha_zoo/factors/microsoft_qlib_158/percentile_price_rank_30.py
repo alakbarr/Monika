@@ -5,7 +5,8 @@
 from __future__ import annotations
 
 import pandas as pd
-from monika.domain.indicators.factor_primitives import ts_rank, rank
+
+from monika.domain.indicators.factor_primitives import rank, ts_rank
 
 __alpha_meta__ = {
     "id": "qlib158_rank30",

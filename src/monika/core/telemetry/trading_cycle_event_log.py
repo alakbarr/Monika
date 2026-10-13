@@ -4,11 +4,11 @@ Provides append-only, structurally-typed, contiguous-sequence event logging per 
 enabling exact cycle replay and recursive provenance tracing from orders to signals.
 """
 
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
 import hashlib
 import json
 import logging
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 

@@ -18,14 +18,14 @@ Tindakan saat terdeteksi:
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator, Position, ActivityLog, SystemConfig
 import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import ActivityLog, Position, PriceOHLCV, SystemConfig, TechnicalIndicator
 
 logger = logging.getLogger("TradingAgent.FlashCrashDetector")
 
@@ -433,8 +433,9 @@ class FlashCrashDetector:
                         blocked_until = now + timedelta(minutes=self.cooldown_minutes)
                         self._blocked_symbols[sym_clean] = blocked_until
                         try:
-                            from monika.infrastructure.database.models import SystemConfig
                             from sqlalchemy import select
+
+                            from monika.infrastructure.database.models import SystemConfig
 
                             cfg_key = f"flash_crash_blocked_{sym_clean}"
                             existing_cfg = (
@@ -453,7 +454,7 @@ class FlashCrashDetector:
 
                     if alerts:
                         try:
-                            from monika.application.protocol.event_bus import get_event_bus, CircuitBreakerEvent
+                            from monika.application.protocol.event_bus import CircuitBreakerEvent, get_event_bus
 
                             bus = get_event_bus()
                             cb_event = CircuitBreakerEvent(

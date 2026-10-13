@@ -28,9 +28,10 @@ import logging
 import re
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+
 from pydantic import BaseModel, Field
 
-from monika.application.analysis.grounding.provenance_tagger import ProvenanceLedger, ObservedFact
+from monika.application.analysis.grounding.provenance_tagger import ObservedFact, ProvenanceLedger
 
 logger = logging.getLogger("TradingAgent.Grounding.DeclaredFigures")
 

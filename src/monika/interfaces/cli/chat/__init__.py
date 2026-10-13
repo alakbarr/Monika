@@ -15,7 +15,7 @@ from monika.interfaces.cli.chat.commands import ChatCommandRouter, CommandResult
 from monika.interfaces.cli.chat.completer import ChatCommandCompleter
 from monika.interfaces.cli.chat.prompt import ChatPromptManager
 from monika.interfaces.cli.chat.renderer import ChatRenderer, ThinkingScrubber
-from monika.interfaces.cli.chat.session import ChatReplSession, DEFAULT_API_URL
+from monika.interfaces.cli.chat.session import DEFAULT_API_URL, ChatReplSession
 from monika.interfaces.cli.chat.theme import ChatPalette, get_chat_palette
 
 

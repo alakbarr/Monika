@@ -14,9 +14,11 @@ Strategi:
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Any, Dict, List
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import Position, PriceOHLCV, TechnicalIndicator
 
@@ -136,9 +138,10 @@ class TrailingStopManager:
             return {}
 
         # Per-position news window check
+        from datetime import timedelta
+
         from monika.domain.market.currency_utils import get_symbol_currencies
         from monika.infrastructure.database.models import EconomicCalendar
-        from datetime import timedelta
 
         news_window_minutes = self.settings.get("trading", {}).get("risk", {}).get("news_window_minutes", 30)
         window = timedelta(minutes=news_window_minutes)
@@ -341,8 +344,9 @@ class TrailingStopManager:
         is_tp1_hit = profit_distance >= (1.0 * atr)
         if is_tp1_hit:
             try:
-                from monika.infrastructure.database.models import TradePlan, TradePlanLeg
                 from sqlalchemy.orm import selectinload
+
+                from monika.infrastructure.database.models import TradePlan, TradePlanLeg
 
                 tp_stmt = (
                     select(TradePlan)
@@ -509,9 +513,10 @@ class TrailingStopManager:
             return
         self._last_tick_check[sym_clean] = now_ts
 
+        from sqlalchemy import select
+
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import Position
-        from sqlalchemy import select
 
         try:
             async with get_session() as session:

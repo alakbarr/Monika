@@ -12,13 +12,13 @@ Verifies macroeconomic context relevance for top pattern matches using:
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import List, Optional, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, List, Optional
 
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import PatternMatch, MarketContext, ContextVerdict, MultiTimeframeScreeningResult
+from .models import ContextVerdict, MarketContext, MultiTimeframeScreeningResult, PatternMatch
 
 logger = logging.getLogger("TradingAgent.PatternContextVerifier")
 

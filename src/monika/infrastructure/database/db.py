@@ -2,19 +2,18 @@
 # File: database/db.py
 # ==============================================================================
 
-import os
 import asyncio
 import logging
+import os
 import threading
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Union, TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Union
 
 from dotenv import load_dotenv
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from monika.infrastructure.database.models import Base
-
-from pathlib import Path
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -292,8 +291,9 @@ async def init_db() -> None:
     logger.info("Initializing database schema...")
     if not is_running_under_test_suite():
         try:
-            from alembic.config import Config
             from alembic import command
+            from alembic.config import Config
+
             from monika.infrastructure.infra.paths import get_repo_root
 
             alembic_ini = get_repo_root() / "alembic.ini"
@@ -422,6 +422,7 @@ async def transactional_advisory_lock(
     Falls back gracefully to in-memory per-key asyncio.Lock for SQLite/mock test environments.
     """
     import hashlib
+
     from sqlalchemy import text
 
     bind = session.get_bind()

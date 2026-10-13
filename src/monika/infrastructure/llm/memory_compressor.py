@@ -1,8 +1,10 @@
 import logging
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, delete
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from monika.infrastructure.database.models import ActivityLog
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 

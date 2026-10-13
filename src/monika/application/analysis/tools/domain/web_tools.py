@@ -13,12 +13,13 @@ from __future__ import annotations
 import json
 import logging
 from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
-from monika.infrastructure.data_ingestion.sources.web_search import WebSearchService
-from monika.infrastructure.data_ingestion.sources.web_reader import WebReader
 from monika.core.primitives.content_distiller import ContentDistiller
+from monika.infrastructure.data_ingestion.sources.web_reader import WebReader
+from monika.infrastructure.data_ingestion.sources.web_search import WebSearchService
 
 logger = logging.getLogger("TradingAgent.Tools.WebTools")
 

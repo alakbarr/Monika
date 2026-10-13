@@ -2,53 +2,54 @@
 # File: graph/nodes/debate_node.py
 # ==============================================================================
 
-import sys
+import asyncio
 import json
 import logging
-import asyncio
-from typing import Dict, Any, Optional, cast
+import sys
+from typing import Any, Dict, Optional, cast
+
+from langchain_core.runnables.config import RunnableConfig
 
 import monika.core.primitives.clock as clock
-from monika.application.graph.state import TradingState
-from langchain_core.runnables.config import RunnableConfig
-from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import AssetAnalysis
+from monika.application.analysis.debate.adjustment_validator import validate_and_apply_judge_adjustments
+from monika.application.analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
+from monika.application.analysis.debate.bear_analyst import generate_bear_dissent
+
+# Re-export debate components for backward compatibility and test mock targeting
+from monika.application.analysis.debate.bull_analyst import generate_bull_advocacy, generate_bull_rebuttal
+from monika.application.analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
+from monika.application.analysis.debate.deterministic_risk import (
+    analyze_risk_aggressive,
+    analyze_risk_conservative,
+    analyze_risk_neutral,
+    make_portfolio_decision_deterministic,
+)
+from monika.application.analysis.debate.fact_sheet import build_fact_sheet
+from monika.application.analysis.debate.investment_judge import evaluate_debate
+from monika.application.analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
+from monika.application.analysis.debate.portfolio_manager import make_portfolio_decision
 from monika.application.analysis.memory.decision_log import DecisionLogger
-from monika.infrastructure.providers.llm_factory import get_client_for_task
+from monika.application.graph.nodes.debate.bear_dissent_node import bear_dissent_node
+from monika.application.graph.nodes.debate.bull_advocate_node import bull_advocate_node
+from monika.application.graph.nodes.debate.debate_judge_node import debate_judge_node
 
 # Import decomposed sub-agent nodes & helpers
 from monika.application.graph.nodes.debate.helpers import (
-    _get_recent_sl_streak,
-    _get_correlated_exposure_summary,
     _apply_deterministic_risk_clamp,
+    _get_correlated_exposure_summary,
+    _get_recent_sl_streak,
     _is_grounded,
     compute_actual_risk_state,
     inject_coherence_and_intel,
     sync_facade_patches,
 )
-from monika.application.graph.nodes.debate.bull_advocate_node import bull_advocate_node
-from monika.application.graph.nodes.debate.bear_dissent_node import bear_dissent_node
 from monika.application.graph.nodes.debate.rebuttal_node import rebuttal_node
-from monika.application.graph.nodes.debate.debate_judge_node import debate_judge_node
 from monika.application.graph.nodes.debate.risk_evaluator_node import risk_evaluator_node
 from monika.application.graph.nodes.debate.subgraph import build_debate_subgraph
-
-# Re-export debate components for backward compatibility and test mock targeting
-from monika.application.analysis.debate.bull_analyst import generate_bull_advocacy, generate_bull_rebuttal
-from monika.application.analysis.debate.bear_analyst import generate_bear_dissent
-from monika.application.analysis.debate.investment_judge import evaluate_debate
-from monika.application.analysis.debate.fact_sheet import build_fact_sheet
-from monika.application.analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
-from monika.application.analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
-from monika.application.analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
-from monika.application.analysis.debate.portfolio_manager import make_portfolio_decision
-from monika.application.analysis.debate.deterministic_risk import (
-    analyze_risk_conservative,
-    analyze_risk_aggressive,
-    analyze_risk_neutral,
-    make_portfolio_decision_deterministic,
-)
-from monika.application.analysis.debate.adjustment_validator import validate_and_apply_judge_adjustments
+from monika.application.graph.state import TradingState
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import AssetAnalysis
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.Graph.DebateNode")
 

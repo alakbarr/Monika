@@ -3,25 +3,25 @@
 # ==============================================================================
 
 import logging
-from typing import Optional, Any
+from typing import Any, Optional
 
-from monika.application.graph.state import TradingState
-from monika.application.graph.nodes.debate.bull_advocate_node import bull_advocate_node
 from monika.application.graph.nodes.debate.bear_dissent_node import bear_dissent_node
-from monika.application.graph.nodes.debate.rebuttal_node import rebuttal_node
+from monika.application.graph.nodes.debate.bull_advocate_node import bull_advocate_node
 from monika.application.graph.nodes.debate.debate_judge_node import debate_judge_node
+from monika.application.graph.nodes.debate.rebuttal_node import rebuttal_node
 from monika.application.graph.nodes.debate.round_robin_risk_nodes import (
-    conservative_risk_node,
     aggressive_risk_node,
+    conservative_risk_node,
     neutral_risk_node,
     portfolio_judge_node,
 )
+from monika.application.graph.state import TradingState
 
 logger = logging.getLogger("TradingAgent.Graph.Debate.Subgraph")
 
 try:
-    from langgraph.graph import StateGraph, END
     from langgraph.checkpoint.memory import MemorySaver
+    from langgraph.graph import END, StateGraph
 except ImportError:
     StateGraph = None
     END = "END"

@@ -16,14 +16,14 @@ Kode market dikonfigurasi di config/settings.yaml (data_sources.cftc_cot.markets
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Any
+from typing import Any, Optional
 
 import aiohttp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.database.models import COTReport
 from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import COTReport
 
 logger = logging.getLogger("TradingAgent.CFTC")
 
@@ -248,7 +248,9 @@ class CFTCCOTFetcher:
 
 async def _test():
     import os
+
     from dotenv import load_dotenv
+
     from monika.infrastructure.database.db import get_session, init_db
 
     load_dotenv()
