@@ -4,15 +4,16 @@
 
 """
 Backward-compatible facade for market data tool handlers.
-All implementations have been refactored into `monika.application.analysis.tools.handlers.market_data.*`.
+All implementations have been refactored into `monika.application.analysis.tools.handlers.market_data_handlers.*`.
 """
 
 import sys
 import types
 from typing import Any
 
-import monika.application.analysis.tools.handlers.market_data as _market_data_pkg
-from monika.application.analysis.tools.handlers.market_data import (
+import monika.application.analysis.tools.handlers.market_data as _legacy_market_data_mod
+import monika.application.analysis.tools.handlers.market_data_handlers as _market_data_pkg
+from monika.application.analysis.tools.handlers.market_data_handlers import (
     _get_session_and_symbol,
     base as _base_mod,
     charts as _charts_mod,
@@ -95,6 +96,7 @@ class _MarketDataToolsFacadeModule(types.ModuleType):
     def __setattr__(self, name: str, value: Any) -> None:
         super().__setattr__(name, value)
         for submodule in (
+            _legacy_market_data_mod,
             _market_data_pkg,
             _base_mod,
             _quotes_prices_mod,

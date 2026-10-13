@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy import select
 
 import monika.core.primitives.clock as clock
-from monika.application.analysis.tools.handlers.market_data.base import _get_session_and_symbol, logger
+from monika.application.analysis.tools.handlers.market_data_handlers.base import _get_session_and_symbol, logger
 from monika.infrastructure.database.models import PriceOHLCV
 
 

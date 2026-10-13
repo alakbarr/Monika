@@ -855,7 +855,8 @@ Monika/
 │       │   │       │   │   └── sentiment_commodities.py
 │       │   │       │   ├── macro_data.py
 │       │   │       │   ├── macro_tools.py
-│       │   │       │   ├── market_data
+│       │   │       │   ├── market_data.py
+│       │   │       │   ├── market_data_handlers
 │       │   │       │   │   ├── __init__.py
 │       │   │       │   │   ├── base.py
 │       │   │       │   │   ├── charts.py
@@ -863,7 +864,6 @@ Monika/
 │       │   │       │   │   ├── registration.py
 │       │   │       │   │   ├── structures_smc.py
 │       │   │       │   │   └── technicals.py
-│       │   │       │   ├── market_data.py
 │       │   │       │   ├── market_data_tools.py
 │       │   │       │   ├── news_tools.py
 │       │   │       │   ├── pattern_similarity_tools.py
@@ -1072,6 +1072,14 @@ Monika/
 │       │   │   ├── installer.py
 │       │   │   └── lifecycle.py
 │       │   ├── main.py
+│       │   ├── orchestrator
+│       │   │   ├── __init__.py
+│       │   │   ├── agent.py
+│       │   │   ├── builder.py
+│       │   │   ├── entrypoints.py
+│       │   │   ├── lifecycle.py
+│       │   │   ├── monitors.py
+│       │   │   └── recovery.py
 │       │   ├── plugins
 │       │   │   ├── __init__.py
 │       │   │   ├── alerts

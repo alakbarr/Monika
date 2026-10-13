@@ -8,12 +8,12 @@ Tool registration for market data tools into ToolRegistry.
 
 from typing import Optional
 
-from monika.application.analysis.tools.handlers.market_data.charts import (
+from monika.application.analysis.tools.handlers.market_data_handlers.charts import (
     handle_get_chart,
     handle_plot_equity_curve,
     handle_plot_price_chart,
 )
-from monika.application.analysis.tools.handlers.market_data.quotes_prices import (
+from monika.application.analysis.tools.handlers.market_data_handlers.quotes_prices import (
     handle_export_historical_data_csv,
     handle_get_market_quote,
     handle_get_price_history,
@@ -21,7 +21,7 @@ from monika.application.analysis.tools.handlers.market_data.quotes_prices import
     handle_get_symbol_specification,
     handle_get_synthetic_cross_rate,
 )
-from monika.application.analysis.tools.handlers.market_data.structures_smc import (
+from monika.application.analysis.tools.handlers.market_data_handlers.structures_smc import (
     handle_detect_candlestick_patterns,
     handle_get_fibonacci_levels,
     handle_get_optimal_intraday_levels,
@@ -31,7 +31,7 @@ from monika.application.analysis.tools.handlers.market_data.structures_smc impor
     handle_get_swing_points,
     handle_scan_chart_patterns,
 )
-from monika.application.analysis.tools.handlers.market_data.technicals import (
+from monika.application.analysis.tools.handlers.market_data_handlers.technicals import (
     handle_get_atr,
     handle_get_daily_range_context,
     handle_get_divergences,

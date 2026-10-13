@@ -48,34 +48,34 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `src/monika/application/benchmark`](#folder-srcmonikaapplicationbenchmark) - Line 833
       - [Folder: `src/monika/application/plugins`](#folder-srcmonikaapplicationplugins) - Line 855
       - [Folder: `src/monika/application/protocol`](#folder-srcmonikaapplicationprotocol) - Line 869
-    - [Folder: `src/monika/infrastructure`](#folder-srcmonikainfrastructure) - Line 888
-      - [Folder: `src/monika/infrastructure/brokers`](#folder-srcmonikainfrastructurebrokers) - Line 892
-        - [Folder: `src/monika/infrastructure/brokers/mt5`](#folder-srcmonikainfrastructurebrokersmt5) - Line 903
-      - [Folder: `src/monika/infrastructure/credentials`](#folder-srcmonikainfrastructurecredentials) - Line 932
-      - [Folder: `src/monika/infrastructure/database`](#folder-srcmonikainfrastructuredatabase) - Line 942
-      - [Folder: `src/monika/infrastructure/database/domain_models`](#folder-srcmonikainfrastructuredatabasedomain_models) - Line 970
-      - [Folder: `src/monika/infrastructure/database/repositories`](#folder-srcmonikainfrastructuredatabaserepositories) - Line 988
-      - [Folder: `src/monika/infrastructure/data_ingestion`](#folder-srcmonikainfrastructuredata_ingestion) - Line 1002
-        - [Folder: `src/monika/infrastructure/data_ingestion/sources`](#folder-srcmonikainfrastructuredata_ingestionsources) - Line 1006
-        - [Folder: `src/monika/infrastructure/data_ingestion/scrapers`](#folder-srcmonikainfrastructuredata_ingestionscrapers) - Line 1025
-          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/calendar`](#folder-srcmonikainfrastructuredata_ingestionscraperscalendar) - Line 1038
-          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/macro`](#folder-srcmonikainfrastructuredata_ingestionscrapersmacro) - Line 1047
-      - [Folder: `src/monika/infrastructure/graph/checkpointers`](#folder-srcmonikainfrastructuregraphcheckpointers) - Line 1059
-      - [Folder: `src/monika/infrastructure/ml`](#folder-srcmonikainfrastructureml) - Line 1069
-      - [Folder: `src/monika/infrastructure/providers`](#folder-srcmonikainfrastructureproviders) - Line 1075
-      - [Folder: `src/monika/infrastructure/sandboxes`](#folder-srcmonikainfrastructuresandboxes) - Line 1089
-      - [Folder: `src/monika/infrastructure/llm/rate_limiting`](#folder-srcmonikainfrastructurellmrate_limiting) - Line 1108
-      - [Folder: `src/monika/infrastructure/mcp`](#folder-srcmonikainfrastructuremcp) - Line 1118
-      - [Folder: `src/monika/infrastructure/notifications`](#folder-srcmonikainfrastructurenotifications) - Line 1128
-      - [Folder: `src/monika/infrastructure/infra`](#folder-srcmonikainfrastructureinfra) - Line 1133
-      - [Folder: `src/monika/infrastructure/llm`](#folder-srcmonikainfrastructurellm) - Line 1144
-      - [Folder: `src/monika/infrastructure/storage`](#folder-srcmonikainfrastructurestorage) - Line 1154
-    - [Folder: `src/monika/interfaces`](#folder-srcmonikainterfaces) - Line 1159
-      - [Folder: `src/monika/interfaces/cli`](#folder-srcmonikainterfacescli) - Line 1163
-      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1172
-      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1179
-      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1187
-      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1198
+    - [Folder: `src/monika/infrastructure`](#folder-srcmonikainfrastructure) - Line 889
+      - [Folder: `src/monika/infrastructure/brokers`](#folder-srcmonikainfrastructurebrokers) - Line 893
+        - [Folder: `src/monika/infrastructure/brokers/mt5`](#folder-srcmonikainfrastructurebrokersmt5) - Line 904
+      - [Folder: `src/monika/infrastructure/credentials`](#folder-srcmonikainfrastructurecredentials) - Line 933
+      - [Folder: `src/monika/infrastructure/database`](#folder-srcmonikainfrastructuredatabase) - Line 943
+      - [Folder: `src/monika/infrastructure/database/domain_models`](#folder-srcmonikainfrastructuredatabasedomain_models) - Line 971
+      - [Folder: `src/monika/infrastructure/database/repositories`](#folder-srcmonikainfrastructuredatabaserepositories) - Line 989
+      - [Folder: `src/monika/infrastructure/data_ingestion`](#folder-srcmonikainfrastructuredata_ingestion) - Line 1003
+        - [Folder: `src/monika/infrastructure/data_ingestion/sources`](#folder-srcmonikainfrastructuredata_ingestionsources) - Line 1007
+        - [Folder: `src/monika/infrastructure/data_ingestion/scrapers`](#folder-srcmonikainfrastructuredata_ingestionscrapers) - Line 1026
+          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/calendar`](#folder-srcmonikainfrastructuredata_ingestionscraperscalendar) - Line 1039
+          - [Folder: `src/monika/infrastructure/data_ingestion/scrapers/macro`](#folder-srcmonikainfrastructuredata_ingestionscrapersmacro) - Line 1048
+      - [Folder: `src/monika/infrastructure/graph/checkpointers`](#folder-srcmonikainfrastructuregraphcheckpointers) - Line 1060
+      - [Folder: `src/monika/infrastructure/ml`](#folder-srcmonikainfrastructureml) - Line 1070
+      - [Folder: `src/monika/infrastructure/providers`](#folder-srcmonikainfrastructureproviders) - Line 1076
+      - [Folder: `src/monika/infrastructure/sandboxes`](#folder-srcmonikainfrastructuresandboxes) - Line 1090
+      - [Folder: `src/monika/infrastructure/llm/rate_limiting`](#folder-srcmonikainfrastructurellmrate_limiting) - Line 1109
+      - [Folder: `src/monika/infrastructure/mcp`](#folder-srcmonikainfrastructuremcp) - Line 1119
+      - [Folder: `src/monika/infrastructure/notifications`](#folder-srcmonikainfrastructurenotifications) - Line 1129
+      - [Folder: `src/monika/infrastructure/infra`](#folder-srcmonikainfrastructureinfra) - Line 1134
+      - [Folder: `src/monika/infrastructure/llm`](#folder-srcmonikainfrastructurellm) - Line 1145
+      - [Folder: `src/monika/infrastructure/storage`](#folder-srcmonikainfrastructurestorage) - Line 1155
+    - [Folder: `src/monika/interfaces`](#folder-srcmonikainterfaces) - Line 1160
+      - [Folder: `src/monika/interfaces/cli`](#folder-srcmonikainterfacescli) - Line 1164
+      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1173
+      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1180
+      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1188
+      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1199
 
 ## Root Directory: `Monika/`
 
@@ -630,7 +630,7 @@ This document provides an exhaustive structural index of all directories, files,
   - `stages/`: Multi-stage analytical pipeline execution (`FundamentalStage`, `PerAssetStage`, `ContextBuilder`, `PerAssetRunner`).
   - `strategies/`: Quantitative alpha signal generation engines, institutional SMC/FVG models, statistical arbitrage pairs, and auto-synthesized dynamic strategies (`StrategyRegistry`, `EdgeStrategy`, `EdgeSignal`, `SMCFVGStrategy`, `BBVolumeProfileStrategy`, `XTIPairsReadiness`, `SynthesizedStrategy`).
   - `subagent/`: Isolated subagent spawner, lifecycle manager, and blackboard communication (`SubagentBlackboard`, `SubagentSpawner`).
-  - `tools/`: Dynamic tool registry, modular tool definitions subpackage (`definitions/`: `base`, `macro`, `market`, `smc`, `trading`, `intelligence`, `system`, `groups`), decomposed modular execution mixins (`FundamentalBriefMixin`, `AssetAnalysisValidationMixin`, `AssetAnalysisSubmissionMixin`, `SystemToolsMixin`, `_ToolExecutorMixinBase`), specialized handler subpackages (`handlers/trade_intel/`: `performance`, `simulation`, `debate`, `reporting`, `operations`, `registry`; `handlers/macro/`: `calendar`, `fixed_income`, `central_banks`, `sentiment_commodities`, `regime`, `registration`; `handlers/market_data/`: `quotes_prices`, `technicals`, `structures_smc`, `charts`, `registration`), multi-tier execution environments (in-process, persistent kernel, Docker), domain tools, and tool security dispatchers (`ToolRegistry`, `UnifiedToolRegistry`, `ToolExecutor`, `BaseToolHandler`, `Tier1InProcessEnvironment`, `Tier2KernelEnvironment`, `Tier3DockerEnvironment`).
+  - `tools/`: Dynamic tool registry, modular tool definitions subpackage (`definitions/`: `base`, `macro`, `market`, `smc`, `trading`, `intelligence`, `system`, `groups`), decomposed modular execution mixins (`FundamentalBriefMixin`, `AssetAnalysisValidationMixin`, `AssetAnalysisSubmissionMixin`, `SystemToolsMixin`, `_ToolExecutorMixinBase`), specialized handler subpackages (`handlers/trade_intel/`: `performance`, `simulation`, `debate`, `reporting`, `operations`, `registry`; `handlers/macro/`: `calendar`, `fixed_income`, `central_banks`, `sentiment_commodities`, `regime`, `registration`; `handlers/market_data_handlers/`: `quotes_prices`, `technicals`, `structures_smc`, `charts`, `registration`), multi-tier execution environments (in-process, persistent kernel, Docker), domain tools, and tool security dispatchers (`ToolRegistry`, `UnifiedToolRegistry`, `ToolExecutor`, `BaseToolHandler`, `Tier1InProcessEnvironment`, `Tier2KernelEnvironment`, `Tier3DockerEnvironment`).
   - `validators/`: Market data sanity, confluence verification, and precommit risk gates (`PrecommitGate`, `ConfluenceVerifier`, `CoreDataValidator`).
 - **Core Modules**:
   - `event_broadcaster.py`: Real-time WebSocket streaming of analysis steps and trade decisions.
@@ -882,7 +882,8 @@ This document provides an exhaustive structural index of all directories, files,
 - Master application bootstrap, daemon orchestrator, and CLI runner.
 - **Modules**:
   - `bootstrap.py`: Master asynchronous system runtime bootstrapper, network monkeypatches, and environment preparation (`bootstrap_system`).
-  - `main.py`: Main operational trading agent daemon and multi-service lifecycle orchestrator (`TradingAgentDaemon`).
+  - `main.py`: Backward-compatible facade for daemon orchestrator, entrypoints, and subsystem lifecycles.
+  - `orchestrator/`: Modular application orchestrator subpackage composing agent builder (`builder.py`), recovery & fallback consent (`recovery.py`), background monitors (`monitors.py`), process lifecycle & graceful shutdown (`lifecycle.py`), agent orchestrator (`agent.py`: `TradingAgent`), and CLI entrypoints & PID locking (`entrypoints.py`: `run_startup_checks`, `acquire_single_instance_lock`, `_amain`, `main`).
   - `run_benchmark.py`: Standalone CLI entrypoint for running benchmark suites and tournament evals (`main`).
 
 #### Folder: `src/monika/infrastructure`

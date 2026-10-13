@@ -233,3 +233,5 @@ def register_trade_intel_tools():
 
 
 __all__ = ["register_trade_intel_tools"]
+
+register_trade_intel_tools()
