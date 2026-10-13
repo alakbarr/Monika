@@ -126,10 +126,6 @@ def require_role(minimum: Role):
 
             role = getattr(request.state, "role", None)
             if role is None:
-                is_localhost = getattr(request.state, "is_localhost", False)
-                role = Role.ADMIN if is_localhost else None
-
-            if role is None:
                 raise HTTPException(status_code=401, detail="Unauthorized: Role not found or not authenticated")
 
             if isinstance(role, str):

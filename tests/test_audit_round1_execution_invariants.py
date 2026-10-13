@@ -291,3 +291,23 @@ async def test_performance_reviewer_structured_confluence_tag_matching():
         assert summary["promoted"] == 1
         assert candidate.status == "promoted"
         assert mock_promote.called
+
+
+@pytest.mark.asyncio
+async def test_batch_close_and_cancel_require_confirmation_in_live_mode():
+    """Verify live position batch close and cancel orders require confirmation (confirmed=True)."""
+    from monika.application.analysis.tools.handlers.trade_intel import (
+        handle_close_positions_batch,
+        handle_cancel_stale_pending_orders,
+    )
+
+    with patch("monika.core.config.settings.load_settings", return_value={"trading": {"paper_trading": {"enabled": False}}}):
+        # 1. Unconfirmed batch close in live mode
+        res_close = await handle_close_positions_batch({"filter_type": "all", "confirmed": False})
+        assert res_close["status"] == "requires_confirmation"
+        assert res_close["mode"] == "live"
+
+        # 2. Unconfirmed cancel stale orders in live mode
+        res_cancel = await handle_cancel_stale_pending_orders({"max_age_hours": 2.0, "confirmed": False})
+        assert res_cancel["status"] == "requires_confirmation"
+        assert res_cancel["mode"] == "live"

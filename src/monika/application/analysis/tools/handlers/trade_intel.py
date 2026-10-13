@@ -2207,12 +2207,56 @@ class GeneratePptxDeckHandler(ToolHandler):
 
 
 async def handle_cancel_stale_pending_orders(args: dict, **kwargs) -> dict:
-    """Cancels all resting pending orders older than max_age_hours."""
+    """Cancels all resting pending orders older than max_age_hours with confirmation protection."""
     max_age_hours = float(args.get("max_age_hours", 4.0))
     canceled_tickets = []
     failed_tickets = []
 
     try:
+        from monika.core.config.settings import load_settings
+
+        settings = load_settings() or {}
+        is_paper = bool(settings.get("trading", {}).get("paper_trading", {}).get("enabled", True))
+        if "paper_trading" in settings:
+            is_paper = bool(settings.get("paper_trading", {}).get("enabled", is_paper))
+
+        if is_paper:
+            # Paper mode: update pending orders in database
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import Order
+            from monika.domain.entities.order_status import OrderStatus
+
+            cutoff_ts = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+            async with get_session() as s:
+                stmt = select(Order).where(
+                    Order.status.in_([OrderStatus.PENDING_SUBMIT, OrderStatus.SUBMITTED]),
+                    Order.created_at <= cutoff_ts,
+                )
+                pending_orders = (await s.execute(stmt)).scalars().all()
+                for o in pending_orders:
+                    o.status = OrderStatus.CANCELLED
+                    canceled_tickets.append(o.id)
+                await s.commit()
+
+            return {
+                "status": "success",
+                "mode": "paper",
+                "canceled_count": len(canceled_tickets),
+                "failed_count": 0,
+                "canceled_tickets": canceled_tickets,
+                "failed_tickets": [],
+                "max_age_hours": max_age_hours,
+            }
+
+        # Live broker mode: require explicit confirmation
+        confirmed = bool(args.get("confirmed", False))
+        if not confirmed:
+            return {
+                "status": "requires_confirmation",
+                "mode": "live",
+                "message": "Canceling live pending orders requires explicit human operator confirmation (confirmed=True).",
+            }
+
         from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
@@ -2224,7 +2268,7 @@ async def handle_cancel_stale_pending_orders(args: dict, **kwargs) -> dict:
             setup_time = o.get("time_setup", 0)
             age_hours = (now_ts - setup_time) / 3600.0 if setup_time else 0.0
 
-            if age_hours >= max_age_hours:
+            if age_hours >= max_age_hours and ticket is not None:
                 ok = await client.cancel_order(ticket)
                 if ok:
                     canceled_tickets.append(ticket)
@@ -2233,6 +2277,7 @@ async def handle_cancel_stale_pending_orders(args: dict, **kwargs) -> dict:
 
         return {
             "status": "success",
+            "mode": "live",
             "canceled_count": len(canceled_tickets),
             "failed_count": len(failed_tickets),
             "canceled_tickets": canceled_tickets,
@@ -2263,7 +2308,7 @@ class CancelStalePendingOrdersHandler(ToolHandler):
 async def handle_close_positions_batch(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
-    """Close batch of positions filtered by profit, loss, or all without triggering full emergency pause."""
+    """Close batch of positions filtered by profit, loss, or all with confirmation in live mode."""
     filter_type = str(args.get("filter_type") or args.get("filter") or "all").lower().strip()
     reason = str(args.get("reason") or "User requested batch close")
 
@@ -2319,14 +2364,25 @@ async def handle_close_positions_batch(
                 "reason": reason,
             }
         else:
-            # Live broker mode: pass to MT5 client
-            from monika.infrastructure.brokers.mt5_client import get_mt5_client
+            # Live broker mode: require explicit confirmation
+            confirmed = bool(args.get("confirmed", False))
+            if not confirmed:
+                return {
+                    "status": "requires_confirmation",
+                    "mode": "live",
+                    "filter_type": filter_type,
+                    "message": "Batch closing live positions requires human operator confirmation (confirmed=True). Propose action first.",
+                }
 
-            client = get_mt5_client()
-            if hasattr(client, "close_positions_batch"):
-                res = await getattr(client, "close_positions_batch")(filter_type=filter_type, reason=reason)
-            else:
-                res = await client.close_all_positions(comment=f"AIAgent-Batch-{reason}")
+            # Delegate safely through ExecutionService with audit logging
+            from monika.application.execution.execution_service import ExecutionService
+
+            exec_svc = ExecutionService(settings=settings)
+            res = await exec_svc.close_positions_batch(
+                filter_type=filter_type,
+                requested_by="tool_call",
+                reason=reason,
+            )
             return {"status": "success", "mode": "live", "filter_type": filter_type, "result": res}
     except Exception as e:
         return {"status": "error", "filter_type": filter_type, "error": str(e)}
