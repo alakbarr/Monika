@@ -1421,13 +1421,13 @@ Monika/
 │       │   │   ├── db.py
 │       │   │   ├── domain_models
 │       │   │   │   ├── __init__.py
-│       │   │   │   ├── activity_logs.py
+│       │   │   │   ├── analysis.py
 │       │   │   │   ├── base.py
-│       │   │   │   ├── order_history.py
-│       │   │   │   ├── positions.py
-│       │   │   │   ├── price_data.py
-│       │   │   │   ├── system_config.py
-│       │   │   │   └── trade_proposals.py
+│       │   │   │   ├── market.py
+│       │   │   │   ├── memory.py
+│       │   │   │   ├── news.py
+│       │   │   │   ├── system.py
+│       │   │   │   └── trading.py
 │       │   │   ├── emergency_audit.py
 │       │   │   ├── engine.py
 │       │   │   ├── fts5_tokenizer.py

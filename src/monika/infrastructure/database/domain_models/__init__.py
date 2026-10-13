@@ -1,13 +1,13 @@
 """
 Modular domain model package.
 Re-exports models partitioned by functional domain:
-- base: Base declarative class
-- market: Price, indicators, SMC zones, yields
-- trading: Positions, orders, outcomes
-- memory: Reflections, lessons, chronicle
-- analysis: Briefs, asset analysis, prescreen
-- system: Events, tokens, system config, risk state
+- base: Base declarative class & timestamp helpers
 - news: News items, digests, economic calendar
+- market: Price, indicators, SMC zones, yields, macro metrics
+- analysis: Briefs, asset analysis, prescreen, performance
+- trading: Positions, orders, outcomes, trade plans, backtests
+- memory: Reflections, lessons, chronicle, user market intel
+- system: Events, tokens, system config, sessions, scheduler
 """
 
 from monika.infrastructure.database.domain_models.analysis import (
@@ -19,16 +19,24 @@ from monika.infrastructure.database.domain_models.analysis import (
     PrescreenLog,
     TimesFMForecast,
 )
-from monika.infrastructure.database.domain_models.base import Base, _utcnow
+from monika.infrastructure.database.domain_models.base import (
+    TSVECTOR,
+    TSVECTOR_TYPE,
+    Base,
+    _utcnow,
+)
 from monika.infrastructure.database.domain_models.market import (
     BondYieldData,
+    CentralBankDocument,
     CentralBankRateExpectation,
     COTReport,
     DXYData,
+    EconomicReportDecomposition,
     FedWatchProbability,
     FVGZone,
     InterestRate,
     LiquidityZone,
+    MacroLiquidityCreditMetric,
     OrderBlock,
     PatternScreeningCache,
     PriceOHLCV,
@@ -42,6 +50,7 @@ from monika.infrastructure.database.domain_models.market import (
 from monika.infrastructure.database.domain_models.memory import (
     CandidateLesson,
     ContextSpillBlob,
+    CycleEvent,
     DecisionMemory,
     DecisionReflection,
     MarketChronicle,
@@ -56,8 +65,18 @@ from monika.infrastructure.database.domain_models.news import (
 )
 from monika.infrastructure.database.domain_models.system import (
     ActivityLog,
+    AgentSession,
+    AgentSessionMessage,
+    CronJob,
+    DeliveryRecord,
+    JobDelivery,
+    OutboxDelivery,
+    RepairLedger,
     RiskState,
+    ScheduledJob,
+    SessionToolRecord,
     SystemConfig,
+    SystemPrompt,
     TelegramConversation,
     TelegramTopicBinding,
     TokenUsageLog,
@@ -68,6 +87,8 @@ from monika.infrastructure.database.domain_models.system import (
 from monika.infrastructure.database.domain_models.trading import (
     BacktestRun,
     BacktestTrade,
+    EquityDrawdownSnapshot,
+    InvalidOrderStateTransitionError,
     MT5Signal,
     Order,
     OrderEvent,
@@ -80,67 +101,96 @@ from monika.infrastructure.database.domain_models.trading import (
     TradePlan,
     TradePlanLeg,
     TradeTrigger,
+    TradingStateLog,
+    VALID_ORDER_TRANSITIONS,
 )
 
 __all__ = [
+    # Base
     "Base",
     "_utcnow",
+    "TSVECTOR",
+    "TSVECTOR_TYPE",
+    # News
+    "NewsItem",
+    "NewsDigest",
+    "NewsDigestSlice",
+    "EconomicCalendar",
+    "NewsClassificationOutcome",
+    # Market
+    "TreasuryYield",
+    "InterestRate",
+    "FedWatchProbability",
+    "CentralBankRateExpectation",
+    "COTReport",
+    "VIXData",
+    "DXYData",
+    "BondYieldData",
+    "EconomicReportDecomposition",
+    "CentralBankDocument",
+    "MacroLiquidityCreditMetric",
     "PriceOHLCV",
+    "TechnicalIndicator",
+    "SwingPoint",
+    "SRZone",
+    "LiquidityZone",
+    "FVGZone",
     "OrderBlock",
-    "Position",
-    "TradeOutcome",
-    "DecisionReflection",
+    "StructureBreak",
+    "PatternScreeningCache",
+    # Analysis
     "FundamentalBrief",
     "AssetAnalysis",
-    "TradingEvent",
-    "SystemConfig",
-    "NewsItem",
-    "EconomicCalendar",
+    "PrescreenLog",
+    "CyclePerformance",
+    "ConfluenceFactorOutcome",
+    "PlaybookRuleAttribution",
+    "TimesFMForecast",
+    # Trading
+    "Trade",
+    "TradeTrigger",
+    "MT5Signal",
+    "Order",
+    "OrderEvent",
+    "Position",
+    "TradeOutcome",
+    "PaperTradeRecord",
+    "EquityDrawdownSnapshot",
+    "TradePlan",
+    "TradePlanLeg",
+    "OrderLog",
+    "TradingStateLog",
     "BacktestRun",
     "BacktestTrade",
-    "TradePlanLeg",
-    "CentralBankRateExpectation",
-    "Trade",
-    "Order",
-    "OrderLog",
-    "OrderEvent",
-    "TradePlan",
-    "MT5Signal",
     "OrderStatus",
-    "PaperTradeRecord",
-    "TradeTrigger",
-    "ActivityLog",
+    "VALID_ORDER_TRANSITIONS",
+    "InvalidOrderStateTransitionError",
+    # Memory
+    "MarketChronicle",
+    "DecisionReflection",
+    "DecisionMemory",
+    "CandidateLesson",
+    "ContextSpillBlob",
+    "UserMarketIntel",
+    "CycleEvent",
+    # System
     "RiskState",
     "TelegramConversation",
     "TelegramTopicBinding",
+    "ActivityLog",
+    "TradingEvent",
     "TokenUsageLog",
-    "UserJournalEntry",
+    "SystemConfig",
+    "SystemPrompt",
+    "AgentSession",
+    "AgentSessionMessage",
     "UserPreference",
-    "CandidateLesson",
-    "ContextSpillBlob",
-    "DecisionMemory",
-    "MarketChronicle",
-    "UserMarketIntel",
-    "NewsDigest",
-    "NewsDigestSlice",
-    "NewsClassificationOutcome",
-    "BondYieldData",
-    "COTReport",
-    "DXYData",
-    "FedWatchProbability",
-    "FVGZone",
-    "InterestRate",
-    "LiquidityZone",
-    "PatternScreeningCache",
-    "SRZone",
-    "StructureBreak",
-    "SwingPoint",
-    "TechnicalIndicator",
-    "TreasuryYield",
-    "VIXData",
-    "ConfluenceFactorOutcome",
-    "CyclePerformance",
-    "PlaybookRuleAttribution",
-    "PrescreenLog",
-    "TimesFMForecast",
+    "UserJournalEntry",
+    "CronJob",
+    "OutboxDelivery",
+    "DeliveryRecord",
+    "SessionToolRecord",
+    "RepairLedger",
+    "ScheduledJob",
+    "JobDelivery",
 ]
