@@ -1628,6 +1628,14 @@ Monika/
 │           │   │   ├── renderer.py
 │           │   │   ├── session.py
 │           │   │   └── theme.py
+│           │   ├── commands
+│           │   │   ├── __init__.py
+│           │   │   ├── analysis_ctrl.py
+│           │   │   ├── benchmark_ctrl.py
+│           │   │   ├── config_ctrl.py
+│           │   │   ├── daemon_ctrl.py
+│           │   │   ├── inspect_ctrl.py
+│           │   │   └── parser.py
 │           │   ├── doctor.py
 │           │   ├── main.py
 │           │   ├── onboarding_trader.py
