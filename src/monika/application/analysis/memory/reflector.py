@@ -1,7 +1,5 @@
 from pathlib import Path
-def _get_trading_agent_dir() -> Path:
-    from monika.infrastructure.infra.paths import TRADING_AGENT_DIR
-    return TRADING_AGENT_DIR
+from monika.infrastructure.infra.paths import resolve_config_path
 
 import logging
 import json
@@ -61,10 +59,10 @@ REFLECTION_SCHEMA = {
 class TradeReflector:
     def __init__(self, settings: Optional[dict] = None, llm_client: Optional[Any] = None):
         if settings is None:
-            import yaml, os
-            base_dir = str(_get_trading_agent_dir())
+            import yaml
             try:
-                with open(os.path.join(base_dir, 'config', 'settings.yaml'), 'r') as f:
+                cfg_path = resolve_config_path('settings.yaml')
+                with open(cfg_path, 'r', encoding='utf-8') as f:
                     settings = yaml.safe_load(f)
             except Exception:
                 settings = {}

@@ -1,7 +1,7 @@
 # Monika — Multi-Agent Trading Research Framework for MetaTrader 5
 
 <p align="center">
-  <img src="docs/images/01_trading_desk_overview.png" alt="Monika Trading Desk Overview" width="100%" style="border-radius: 8px; box-shadow: 0 4px 25px rgba(0,0,0,0.4);" />
+  <img src="docs/images/dashboard/01_trading_desk_overview.png" alt="Monika Trading Desk Overview" width="100%" style="border-radius: 8px; box-shadow: 0 4px 25px rgba(0,0,0,0.4);" />
 </p>
 
 <p align="center">
@@ -246,7 +246,7 @@ The web dashboard is a local interface for inspecting system state, open demo po
 Monitors open demo positions, simulated equity curves, and system log events.
 
 <p align="center">
-  <img src="docs/images/01_trading_desk_overview.png" alt="Monika Trading Desk Overview" width="100%" style="border-radius: 8px; border: 1px solid #334155;" />
+  <img src="docs/images/dashboard/01_trading_desk_overview.png" alt="Monika Trading Desk Overview" width="100%" style="border-radius: 8px; border: 1px solid #334155;" />
 </p>
 
 ---
@@ -439,7 +439,7 @@ Monika offers two setup packages out of the box:
 
 > 💡 **Upgrade Anytime:** Start with the **Trial Package**. Whenever you are ready to unlock PostgreSQL, the React 19 Web Dashboard, and live MT5 bridges, run:
 > ```bash
-> python -m cli.main upgrade
+> python -m monika.interfaces.cli.main upgrade
 > ```
 
 ---
@@ -494,7 +494,7 @@ docker compose -f deploy/docker-compose.vps.yml up -d --build
 
 Run the offline diagnostic probe to verify environment and component health:
 ```bash
-python -m cli.main doctor --offline
+python -m monika.interfaces.cli.main doctor --offline
 ```
 
 ---
@@ -505,21 +505,21 @@ python -m cli.main doctor --offline
 
 | Command | Primary Function |
 | :--- | :--- |
-| `python -m cli.main setup` | Interactive terminal wizard to configure `.env` and broker parameters. |
-| `python -m cli.main upgrade` | Interactively upgrades Monika from Trial to Full package. |
-| `python -m cli.main doctor` | Runs diagnostic health checks for PostgreSQL, MT5, and LLM API keys. |
-| `python -m cli.main run` | Starts the background trading agent daemon. |
-| `python -m cli.main status` | Displays system health, active background tasks, and account equity. |
-| `python -m cli.main positions` | Lists open demo positions, active stops, and unrealized profit/loss. |
-| `python -m cli.main analyze [SYMBOL]` | Executes an on-demand analysis cycle for a specified instrument (e.g. `XAUUSD`). |
-| `python -m cli.main chat` | Starts an interactive chat REPL with the agent assistant. |
-| `python -m cli.main ask "QUERY"` | Executes a one-off query and prints the response. |
-| `python -m cli.main pause` | Pauses automated trade proposal execution. |
-| `python -m cli.main resume` | Resumes automated trade proposal execution. |
-| `python -m cli.main kill` | Emergency stop: closes open positions and terminates the daemon. |
-| `python -m cli.main tui` | Launches the full-screen terminal interface (Textual). |
-| `python -m cli.main backtest` | Runs strategy evaluations against historical price data. |
-| `python -m cli.main benchmark` | Evaluates and compares reasoning responses across configured models. |
+| `python -m monika.interfaces.cli.main setup` | Interactive terminal wizard to configure `.env` and broker parameters. |
+| `python -m monika.interfaces.cli.main upgrade` | Interactively upgrades Monika from Trial to Full package. |
+| `python -m monika.interfaces.cli.main doctor` | Runs diagnostic health checks for PostgreSQL, MT5, and LLM API keys. |
+| `python -m monika.interfaces.cli.main run` | Starts the background trading agent daemon. |
+| `python -m monika.interfaces.cli.main status` | Displays system health, active background tasks, and account equity. |
+| `python -m monika.interfaces.cli.main positions` | Lists open demo positions, active stops, and unrealized profit/loss. |
+| `python -m monika.interfaces.cli.main analyze [SYMBOL]` | Executes an on-demand analysis cycle for a specified instrument (e.g. `XAUUSD`). |
+| `python -m monika.interfaces.cli.main chat` | Starts an interactive chat REPL with the agent assistant. |
+| `python -m monika.interfaces.cli.main ask "QUERY"` | Executes a one-off query and prints the response. |
+| `python -m monika.interfaces.cli.main pause` | Pauses automated trade proposal execution. |
+| `python -m monika.interfaces.cli.main resume` | Resumes automated trade proposal execution. |
+| `python -m monika.interfaces.cli.main kill` | Emergency stop: closes open positions and terminates the daemon. |
+| `python -m monika.interfaces.cli.main tui` | Launches the full-screen terminal interface (Textual). |
+| `python -m monika.interfaces.cli.main backtest` | Runs strategy evaluations against historical price data. |
+| `python -m monika.interfaces.cli.main benchmark` | Evaluates and compares reasoning responses across configured models. |
 
 ---
 

@@ -33,5 +33,5 @@ tags: [devops, systemd, deployment, docker, monitoring, processes, vps]
 - **Process Supervision**: In Linux environments, supervise via systemd unit (`Restart=always`, `RestartSec=10s`, `LimitNOFILE=65536`).
 - **Post-Deploy Sanity Check**:
   ```bash
-  python -m cli.main doctor
+  python -m monika.interfaces.cli.main doctor
   ```

@@ -1,7 +1,5 @@
 from pathlib import Path
-def _get_trading_agent_dir() -> Path:
-    from monika.infrastructure.infra.paths import TRADING_AGENT_DIR
-    return TRADING_AGENT_DIR
+from monika.infrastructure.infra.paths import resolve_config_path
 
 """
 File: trading-agent/analysis/memory/frozen_snapshot.py
@@ -156,8 +154,7 @@ class FrozenSnapshotManager:
     async def _build_snapshot(self, session: Optional[AsyncSession] = None) -> FrozenMemorySnapshot:
         """Internal assembly of frozen snapshot from disk configs and database."""
         # 1. Load TRADING_SOUL.md
-        root_dir = _get_trading_agent_dir()
-        soul_path = root_dir / "config" / "TRADING_SOUL.md"
+        soul_path = resolve_config_path("TRADING_SOUL.md")
         soul_content = ""
         if soul_path.exists():
             try:
@@ -166,7 +163,7 @@ class FrozenSnapshotManager:
                 logger.warning(f"Failed to read TRADING_SOUL.md: {e}")
 
         # 2. Load MACRO_REALITY.md
-        macro_path = root_dir / "config" / "MACRO_REALITY.md"
+        macro_path = resolve_config_path("MACRO_REALITY.md")
         macro_content = ""
         if macro_path.exists():
             try:

@@ -1,7 +1,4 @@
 from pathlib import Path
-def _get_trading_agent_dir() -> Path:
-    from monika.infrastructure.infra.paths import TRADING_AGENT_DIR
-    return TRADING_AGENT_DIR
 
 """
 Autonomous Micro-Playbook Compiler.
@@ -28,10 +25,11 @@ import monika.core.primitives.clock as clock
 from monika.application.skills.loader import invalidate_cache
 from monika.application.analysis.memory.playbook_linter import PlaybookLinter
 from monika.application.analysis.memory.playbook_ledger import PlaybookLedger, get_playbook_async_lock
+from monika.infrastructure.infra.paths import get_skills_dir
 
 logger = logging.getLogger("TradingAgent.SkillEvolution")
 
-PLAYBOOKS_DIR = _get_trading_agent_dir() / "skills" / "trading" / "playbooks"
+PLAYBOOKS_DIR = get_skills_dir() / "trading" / "playbooks"
 
 
 class MicroPlaybookCompiler:

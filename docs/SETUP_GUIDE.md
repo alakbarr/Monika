@@ -34,7 +34,7 @@ Monika menyediakan dua profil paket instalasi yang dirancang untuk kebutuhan ber
 | Prediksi Volatilitas | ATR (14) dan Average Daily Range (ADR) | Google TimesFM 3.0 Neural Quantile Forecaster |
 
 > [!NOTE]
-> Sistem mendukung migrasi bertahap. Anda dapat menginstal Trial Package terlebih dahulu, lalu menjalankan perintah `python -m cli.main upgrade` saat siap beralih ke Full Package. Seluruh riwayat analisis akan dipertahankan.
+> Sistem mendukung migrasi bertahap. Anda dapat menginstal Trial Package terlebih dahulu, lalu menjalankan perintah `python -m monika.interfaces.cli.main upgrade` saat siap beralih ke Full Package. Seluruh riwayat analisis akan dipertahankan.
 
 ---
 
@@ -211,7 +211,7 @@ Jika Anda telah menguji Monika dalam mode Trial dan ingin mengaktifkan Web Dashb
 
 Jalankan perintah upgrade interaktif:
 ```bash
-python -m cli.main upgrade
+python -m monika.interfaces.cli.main upgrade
 ```
 
 ### Tahapan yang Dijalankan oleh Assistant Upgrade
@@ -228,14 +228,14 @@ python -m cli.main upgrade
 Sebelum mengoperasikan sistem dalam waktu lama, selalu jalankan modul diagnostik:
 
 ```bash
-python -m cli.main doctor
+python -m monika.interfaces.cli.main doctor
 ```
 
 ### Opsi Perintah Tambahan
-- Mode Offline (tanpa probe API): `python -m cli.main doctor --offline`
-- Perbaikan Otomatis: `python -m cli.main doctor --fix`  
+- Mode Offline (tanpa probe API): `python -m monika.interfaces.cli.main doctor --offline`
+- Perbaikan Otomatis: `python -m monika.interfaces.cli.main doctor --fix`  
   (Otomatis membuat folder yang hilang, memperbaiki izin file, dan menjalankan migrasi skema yang tertinggal).
-- Mode Detail: `python -m cli.main doctor -v`
+- Mode Detail: `python -m monika.interfaces.cli.main doctor -v`
 
 ---
 
@@ -247,7 +247,7 @@ python -m cli.main doctor
   1. Tambahkan 2 atau 3 API key tambahan di file `.env` pada variabel `GEMINI_API_KEYS=key1,key2,key3`.
   2. Ganti profil operasional ke mode hemat:
      ```bash
-     python -m cli.main setup --section llm
+     python -m monika.interfaces.cli.main setup --section llm
      ```
      Pilih profil **6 (Low Latency - Cost-Optimized)** yang mengarahkan tugas ringan ke Gemini Flash-Lite.
 
@@ -262,7 +262,7 @@ python -m cli.main doctor
 
 ### Masalah 4: SQLite Database Locked
 - **Penyebab**: Terjadi akses paralel terhadap file database SQLite saat multi-proses berjalan.
-- **Solusi**: Pastikan tidak ada dua instance Monika yang berjalan bersamaan. Untuk penggunaan multi-proses intensif, lakukan upgrade ke PostgreSQL menggunakan perintah `python -m cli.main upgrade`.
+- **Solusi**: Pastikan tidak ada dua instance Monika yang berjalan bersamaan. Untuk penggunaan multi-proses intensif, lakukan upgrade ke PostgreSQL menggunakan perintah `python -m monika.interfaces.cli.main upgrade`.
 
 ---
 
@@ -270,16 +270,16 @@ python -m cli.main doctor
 
 | Perintah | Deskripsi Fungsi |
 | :--- | :--- |
-| `python -m cli.main run` | Memulai daemon agen trading Monika |
-| `python -m cli.main setup` | Membuka wizard konfigurasi terminal |
-| `python -m cli.main upgrade` | Memulai wizard upgrade Trial ke Full Package |
-| `python -m cli.main doctor` | Menjalankan inspeksi kesehatan sistem dan dependensi |
-| `python -m cli.main status` | Menampilkan metrik operasional dan kesehatan subsistem |
-| `python -m cli.main positions` | Menampilkan tabel posisi trading aktif |
-| `python -m cli.main analyze [SYMBOL]` | Menjalankan satu siklus analisis ad-hoc untuk instrumen tertentu |
-| `python -m cli.main chat` | Membuka sesi percakapan interaktif berbasis teks dengan agen |
-| `python -m cli.main tui` | Membuka antarmuka Terminal UI berbasis Textual |
-| `python -m cli.main kill` | Perintah darurat: menutup seluruh posisi dan mematikan sistem |
+| `python -m monika.interfaces.cli.main run` | Memulai daemon agen trading Monika |
+| `python -m monika.interfaces.cli.main setup` | Membuka wizard konfigurasi terminal |
+| `python -m monika.interfaces.cli.main upgrade` | Memulai wizard upgrade Trial ke Full Package |
+| `python -m monika.interfaces.cli.main doctor` | Menjalankan inspeksi kesehatan sistem dan dependensi |
+| `python -m monika.interfaces.cli.main status` | Menampilkan metrik operasional dan kesehatan subsistem |
+| `python -m monika.interfaces.cli.main positions` | Menampilkan tabel posisi trading aktif |
+| `python -m monika.interfaces.cli.main analyze [SYMBOL]` | Menjalankan satu siklus analisis ad-hoc untuk instrumen tertentu |
+| `python -m monika.interfaces.cli.main chat` | Membuka sesi percakapan interaktif berbasis teks dengan agen |
+| `python -m monika.interfaces.cli.main tui` | Membuka antarmuka Terminal UI berbasis Textual |
+| `python -m monika.interfaces.cli.main kill` | Perintah darurat: menutup seluruh posisi dan mematikan sistem |
 
 ---
 ---
@@ -312,7 +312,7 @@ Monika provides two distinct operational profiles tailored for different deploym
 | Forecasting Engine | Technical Range Analytics (ATR / ADR) | Google TimesFM 3.0 Neural Quantile Forecaster |
 
 > [!NOTE]
-> The transition between tiers is fully non-destructive. You can evaluate the system using the Trial Package, then execute `python -m cli.main upgrade` to migrate to the Full Package. All session data and paper trades are preserved.
+> The transition between tiers is fully non-destructive. You can evaluate the system using the Trial Package, then execute `python -m monika.interfaces.cli.main upgrade` to migrate to the Full Package. All session data and paper trades are preserved.
 
 ---
 
@@ -489,7 +489,7 @@ To unlock the React 19 Web Dashboard, PostgreSQL storage, and live execution bri
 
 Execute the automated upgrade subcommand:
 ```bash
-python -m cli.main upgrade
+python -m monika.interfaces.cli.main upgrade
 ```
 
 ### Upgrade Pipeline Stages
@@ -506,14 +506,14 @@ python -m cli.main upgrade
 Verify your environment configuration before running extended operations:
 
 ```bash
-python -m cli.main doctor
+python -m monika.interfaces.cli.main doctor
 ```
 
 ### Advanced Diagnostic Flags
-- Offline Validation (skips API pings): `python -m cli.main doctor --offline`
-- Automated Remediation: `python -m cli.main doctor --fix`  
+- Offline Validation (skips API pings): `python -m monika.interfaces.cli.main doctor --offline`
+- Automated Remediation: `python -m monika.interfaces.cli.main doctor --fix`  
   (Automatically repairs missing directories, file permissions, and missing table migrations).
-- Verbose Inspection: `python -m cli.main doctor -v`
+- Verbose Inspection: `python -m monika.interfaces.cli.main doctor -v`
 
 ---
 
@@ -525,7 +525,7 @@ python -m cli.main doctor
   1. Add multiple keys to `.env`: `GEMINI_API_KEYS=key1,key2,key3`.
   2. Switch to cost-optimized routing:
      ```bash
-     python -m cli.main setup --section llm
+     python -m monika.interfaces.cli.main setup --section llm
      ```
      Select profile **6 (Low Latency - Cost-Optimized)** to route secondary tasks to Flash-Lite.
 
@@ -540,7 +540,7 @@ python -m cli.main doctor
 
 ### Issue 4: SQLite Database Locked
 - **Root Cause**: Concurrent read/write contention across processes on SQLite WAL files.
-- **Remediation**: Ensure only one agent instance runs against the database. For multi-process requirements, upgrade to PostgreSQL via `python -m cli.main upgrade`.
+- **Remediation**: Ensure only one agent instance runs against the database. For multi-process requirements, upgrade to PostgreSQL via `python -m monika.interfaces.cli.main upgrade`.
 
 ---
 
@@ -548,13 +548,13 @@ python -m cli.main doctor
 
 | Command | Operational Purpose |
 | :--- | :--- |
-| `python -m cli.main run` | Launch the core trading agent daemon |
-| `python -m cli.main setup` | Launch interactive terminal configuration wizard |
-| `python -m cli.main upgrade` | Launch interactive Trial-to-Full package upgrade |
-| `python -m cli.main doctor` | Execute system diagnostics and environment validation |
-| `python -m cli.main status` | Inspect system health, account metrics, and active tasks |
-| `python -m cli.main positions` | Print real-time table of open broker orders |
-| `python -m cli.main analyze [SYMBOL]` | Trigger an on-demand multi-timeframe analysis cycle |
-| `python -m cli.main chat` | Start interactive terminal conversation REPL with agent |
-| `python -m cli.main tui` | Launch the full-screen terminal interface (Textual) |
-| `python -m cli.main kill` | Emergency halt: liquidate exposure and terminate daemon |
+| `python -m monika.interfaces.cli.main run` | Launch the core trading agent daemon |
+| `python -m monika.interfaces.cli.main setup` | Launch interactive terminal configuration wizard |
+| `python -m monika.interfaces.cli.main upgrade` | Launch interactive Trial-to-Full package upgrade |
+| `python -m monika.interfaces.cli.main doctor` | Execute system diagnostics and environment validation |
+| `python -m monika.interfaces.cli.main status` | Inspect system health, account metrics, and active tasks |
+| `python -m monika.interfaces.cli.main positions` | Print real-time table of open broker orders |
+| `python -m monika.interfaces.cli.main analyze [SYMBOL]` | Trigger an on-demand multi-timeframe analysis cycle |
+| `python -m monika.interfaces.cli.main chat` | Start interactive terminal conversation REPL with agent |
+| `python -m monika.interfaces.cli.main tui` | Launch the full-screen terminal interface (Textual) |
+| `python -m monika.interfaces.cli.main kill` | Emergency halt: liquidate exposure and terminate daemon |

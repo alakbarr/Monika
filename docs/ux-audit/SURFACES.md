@@ -43,14 +43,14 @@ Daftar lengkap 44 surface hasil penelusuran kode (`navigation.ts`, `App.tsx`, ko
 | **WEB-DLG-APPROVAL** | Human Action Approval (`ApprovalModal.tsx`) | A9 Overlay | Pending sensitive execution | open, approved, rejected | — | Terinventarisasi |
 | **WEB-DLG-CONFIRM** | Action Confirmation (`ConfirmModal.tsx`) | A9 Overlay | Mutasi destruktif / Kill | open, confirmed, cancelled | T4 | Terinventarisasi |
 | **WEB-DLG-SHORTCUTS** | Keyboard Shortcuts (`KeyboardShortcutsPanel.tsx`)| A9 Overlay | Shortcut `?` | open, closed | — | Terinventarisasi |
-| **TUI-DASH-OVERVIEW** | TUI Overview (`cli/tui.py`) | A1 Monitor | Command: `python -m cli.main tui` | populated, empty, stale | T1 | Terinventarisasi |
+| **TUI-DASH-OVERVIEW** | TUI Overview (`cli/tui.py`) | A1 Monitor | Command: `python -m monika.interfaces.cli.main tui` | populated, empty, stale | T1 | Terinventarisasi |
 | **TUI-DASH-TREE** | TUI Analysis Tree (`cli/analysis_tree.py`) | A7 Chart/A8 | TUI Tab `Tree` | running-cycle, completed | T5 | Terinventarisasi |
 | **TUI-DASH-PERF** | TUI Performance (`cli/tui.py`) | A7 Chart/A2 | TUI Tab `Perf` | populated, empty | T1 | Terinventarisasi |
 | **TUI-DASH-SIGNALS** | TUI Candidate Signals (`cli/tui.py`) | A3 Queue | TUI Tab `Signals` | live, empty | T2 | Terinventarisasi |
 | **TUI-DASH-RISK** | TUI Risk & Drawdown (`cli/tui.py`) | A8 Health/A1 | TUI Tab `Risk` | normal, warning, breached | T1, T5 | Terinventarisasi |
 | **TUI-DASH-CHAT** | TUI Inline Chat (`cli/tui.py`) | A5 Console | TUI Tab `Chat` | idle, input-active, response | — | Terinventarisasi |
 | **TUI-DASH-KILLMODAL** | TUI Kill Modal (`KillConfirmModalScreen`) | A9 Overlay | Tombol `k` di TUI | open, confirmed, cancelled | T4 | Terinventarisasi |
-| **TUI-CHAT-STANDALONE** | TUI Standalone Chat (`cli/tui_chat.py`) | A5 Console | Command: `python -m cli.main chat`| idle, streaming, error | — | Terinventarisasi |
-| **TUI-WIZARD-SETUP** | Interactive Setup Wizard (`cli/setup_wizard.py`) | A6 Settings | Command: `python -m cli.main setup`| interactive, validating, done | — | Terinventarisasi |
-| **TUI-DOCTOR** | Host Health Diagnostics (`cli/doctor.py`) | A8 Health | Command: `python -m cli.main doctor`| checking, passed, failed | T5 | Terinventarisasi |
-| **TUI-ONBOARDING** | Trader Onboarding (`cli/onboarding_trader.py`) | A6 Settings | Command: `python -m cli.main setup`| interactive, saving, complete | — | Terinventarisasi |
+| **TUI-CHAT-STANDALONE** | TUI Standalone Chat (`cli/tui_chat.py`) | A5 Console | Command: `python -m monika.interfaces.cli.main chat`| idle, streaming, error | — | Terinventarisasi |
+| **TUI-WIZARD-SETUP** | Interactive Setup Wizard (`cli/setup_wizard.py`) | A6 Settings | Command: `python -m monika.interfaces.cli.main setup`| interactive, validating, done | — | Terinventarisasi |
+| **TUI-DOCTOR** | Host Health Diagnostics (`cli/doctor.py`) | A8 Health | Command: `python -m monika.interfaces.cli.main doctor`| checking, passed, failed | T5 | Terinventarisasi |
+| **TUI-ONBOARDING** | Trader Onboarding (`cli/onboarding_trader.py`) | A6 Settings | Command: `python -m monika.interfaces.cli.main setup`| interactive, saving, complete | — | Terinventarisasi |

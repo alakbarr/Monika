@@ -1,7 +1,5 @@
 from pathlib import Path
-def _get_trading_agent_dir() -> Path:
-    from monika.infrastructure.infra.paths import TRADING_AGENT_DIR
-    return TRADING_AGENT_DIR
+from monika.infrastructure.infra.paths import get_skills_dir
 
 # ==============================================================================
 # File: analysis/memory/progressive_loader.py
@@ -32,8 +30,7 @@ class ProgressivePlaybookLoader:
         if base_dir:
             self.base_dir = Path(base_dir)
         else:
-            root = _get_trading_agent_dir()
-            self.base_dir = root / "skills" / "trading"
+            self.base_dir = get_skills_dir() / "trading"
 
         self.playbooks_dir = self.base_dir / "playbooks"
         self.crystallized_dir = self.base_dir.parent / "crystallized"

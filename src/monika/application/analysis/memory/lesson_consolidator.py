@@ -1,7 +1,5 @@
 from pathlib import Path
-def _get_trading_agent_dir() -> Path:
-    from monika.infrastructure.infra.paths import TRADING_AGENT_DIR
-    return TRADING_AGENT_DIR
+from monika.infrastructure.infra.paths import get_skills_dir
 
 import re
 import logging
@@ -225,7 +223,7 @@ async def promote_lesson_to_playbook(content: str) -> None:
     from pathlib import Path
     import re
     now = clock.now()
-    base_skills = _get_trading_agent_dir() / 'skills' / 'trading'
+    base_skills = get_skills_dir() / 'trading'
     target_skill = base_skills / 'lessons-learned' / 'SKILL.md'
     legacy_skill = base_skills / 'lessons_learned.md'
     path = target_skill if target_skill.exists() or not legacy_skill.exists() else legacy_skill

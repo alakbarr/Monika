@@ -1733,7 +1733,7 @@ class MonikaArgumentParser(argparse.ArgumentParser):
             choices = [c.strip().strip("'") for c in m.group(2).split(",")]
             matches = difflib.get_close_matches(typo, choices, n=2, cutoff=0.5)
             suggestion = f"\nDid you mean: {', '.join(matches)}?" if matches else ""
-            sys.stderr.write(f"monika: error: '{typo}' is not a valid command.{suggestion}\nRun 'python -m cli.main --help' to view all commands.\n")
+            sys.stderr.write(f"monika: error: '{typo}' is not a valid command.{suggestion}\nRun 'python -m monika.interfaces.cli.main --help' to view all commands.\n")
             sys.exit(2)
         super().error(message)
 
@@ -2076,10 +2076,10 @@ async def _dispatch_cli(args):
                             console.print(f"{stamp_warn('ABORT')} Configuration incomplete. Exiting process.\n")
                             return
                     else:
-                        console.print("Run `python -m cli.main setup` to configure credentials.\n")
+                        console.print("Run `python -m monika.interfaces.cli.main setup` to configure credentials.\n")
                         return
                 else:
-                    logger.critical("Monika is not configured (missing MT5_ACCOUNT, DATABASE_URL, or LLM keys). Run 'python -m cli.main setup' first.")
+                    logger.critical("Monika is not configured (missing MT5_ACCOUNT, DATABASE_URL, or LLM keys). Run 'python -m monika.interfaces.cli.main setup' first.")
                     sys.exit(1)
 
             print(f"Starting Monika (MT5 Trading Agent) in {getattr(args, 'mode', 'paper').upper()} mode...")

@@ -1,7 +1,5 @@
 from pathlib import Path
-def _get_trading_agent_dir() -> Path:
-    from monika.infrastructure.infra.paths import TRADING_AGENT_DIR
-    return TRADING_AGENT_DIR
+from monika.infrastructure.infra.paths import get_skills_dir
 
 # ==============================================================================
 # File: analysis/memory/skill_curator.py
@@ -39,8 +37,7 @@ class SkillCurator:
         if playbooks_dir:
             self.playbooks_dir = playbooks_dir
         else:
-            base_dir = str(_get_trading_agent_dir())
-            self.playbooks_dir = os.path.join(base_dir, "skills", "trading", "playbooks")
+            self.playbooks_dir = str(get_skills_dir() / "trading" / "playbooks")
         self.archive_dir = os.path.join(self.playbooks_dir, "archive")
         os.makedirs(self.playbooks_dir, exist_ok=True)
         os.makedirs(self.archive_dir, exist_ok=True)

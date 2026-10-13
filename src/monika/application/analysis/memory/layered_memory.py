@@ -1,7 +1,5 @@
 from pathlib import Path
-def _get_trading_agent_dir() -> Path:
-    from monika.infrastructure.infra.paths import TRADING_AGENT_DIR
-    return TRADING_AGENT_DIR
+from monika.infrastructure.infra.paths import resolve_config_path
 
 """
 4-Layer Memory System.
@@ -76,7 +74,7 @@ class LayeredMemoryManager:
     def get_identity(self) -> str:
         """Layer 0: Permanent trading soul identity (100% cacheable)."""
         if self._soul_cache is None:
-            soul_path = _get_trading_agent_dir() / "config" / "TRADING_SOUL.md"
+            soul_path = resolve_config_path("TRADING_SOUL.md")
             if soul_path.exists():
                 try:
                     self._soul_cache = soul_path.read_text(encoding="utf-8")

@@ -1,7 +1,5 @@
 from pathlib import Path
-def _get_trading_agent_dir() -> Path:
-    from monika.infrastructure.infra.paths import TRADING_AGENT_DIR
-    return TRADING_AGENT_DIR
+from monika.infrastructure.infra.paths import get_skills_dir
 
 """
 Closed-Loop Skill Crystallizer.
@@ -62,7 +60,7 @@ class SkillCrystallizer:
     Crystallizes empirical trading successes into reusable skill definitions.
     """
 
-    SKILLS_DIR = _get_trading_agent_dir() / "skills" / "crystallized"
+    SKILLS_DIR = get_skills_dir() / "crystallized"
 
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}

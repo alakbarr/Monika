@@ -116,7 +116,7 @@ def cmd_plugin_list(args) -> int:
         )
 
     console.print(table)
-    console.print("\n[dim]To inspect a plugin: `python -m cli.main plugin info <plugin_id>`[/dim]")
+    console.print("\n[dim]To inspect a plugin: `python -m monika.interfaces.cli.main plugin info <plugin_id>`[/dim]")
     return 0
 
 

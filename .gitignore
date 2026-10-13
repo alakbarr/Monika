@@ -9,10 +9,8 @@
 settings.yaml
 config/settings.yaml
 config/settings.yaml.*
-trading-agent/config/settings.yaml
 !settings.example.yaml
 !config/settings.example.yaml
-!trading-agent/config/settings.example.yaml
 
 # Python Virtual Environments & Packages
 venv/
@@ -32,6 +30,8 @@ build/
 
 # Node / Frontend
 node_modules/
+frontend/node_modules/
+frontend/dist/
 
 # IDE & Editor files
 .vscode/
@@ -48,7 +48,6 @@ ehthumbs.db
 logs/
 *.log
 *.log.*
-trading-agent/logs/
 
 # Agent & Session State / Scratch files
 .monika_tier
@@ -60,22 +59,18 @@ trading-agent/logs/
 .runtime/
 moa-traces/
 audit_log/
-trading-agent/data/sessions/
-trading-agent/data/sessions/browser_profile/
 dummy_test_state.json
-trading-agent/dummy_test_state.json
 scratch/
-trading-agent/scratch/
 backups/
 audit_reports/
 scripts/test_results/
 audit_prompt.md
 jev_documentation/
-trading-agent/skills/trading/playbooks/.backups/
-trading-agent/skills/trading/playbooks/.curator_ledger.jsonl
-trading-agent/skills/trading/playbooks/.playbook_lifecycle.json
-trading-agent/analysis/strategies/synthesized/
-trading-agent/skills/crystallized/mt5_slippage_defense/
+temp_test_dir/
+**/.curator_ledger.jsonl
+**/.playbook_lifecycle.json
+src/monika/application/analysis/strategies/synthesized/
+src/monika/application/skills/crystallized/mt5_slippage_defense/
 
 # Database files & Backups
 *.sqlite
@@ -97,7 +92,7 @@ trading-agent/skills/crystallized/mt5_slippage_defense/
 !/data/alpha_catalog/
 !/data/alpha_catalog/*
 results/
-!src/monika/application/benchmark/results/
+src/monika/application/benchmark/results/
 src/monika/data/
 src/monika/application/data/
 **/.backups/
@@ -105,12 +100,10 @@ src/monika/application/data/
 # Scripts and Prompts
 scripts/*
 !scripts/compile_alphas_to_catalog.py
-!scripts/install.ps1
-!scripts/install.sh
-!scripts/install_uv_managed.ps1
 !scripts/download_timesfm_weights.py
 !scripts/check_env_keys.py
 !scripts/reset_paper_trades.py
+!scripts/heal_kill_switch_state.py
 !scripts/run_tests.bat
 !scripts/run_tests.sh
 !scripts/update_index_toc.py
@@ -124,16 +117,17 @@ scripts/*
 !scripts/update_economic_calendar.py
 !scripts/benchmark_debate_openrouter.py
 !scripts/benchmark_news_classification_openrouter.py
+!scripts/audit_token_usage.py
+!scripts/check_scrapers/
+!scripts/migrate_runtime_home.py
 contoh_pertanyaan.md
 prompt_benchmark.md
 
 # AI Assistant Rules & Instructions
 GEMINI.md
 AGENTS.md
-.geminiignore
 
 # Internal Design & Developer Notes
-DESIGN.md
 history_chat.md
 audit_prompt*.md
 bug_bounty_instruction.md
@@ -160,6 +154,3 @@ ai_cost_analysis*.md
 benchmark_report*.md
 model_*.csv
 model_quadrant_analysis.html
-
-# Database Migration Archives
-trading-agent/database/migrations/archive/
