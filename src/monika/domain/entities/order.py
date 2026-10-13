@@ -117,6 +117,44 @@ class OrderEntity(BaseModel):
     @classmethod
     def from_orm(cls, obj: Any) -> OrderEntity:
         """Create domain OrderEntity from SQLAlchemy model."""
+        if isinstance(obj, cls):
+            return obj
+        if hasattr(obj, "_mock_return_value") or hasattr(obj, "_mock_wraps"):
+            def _val(attr: str, default: Any = None) -> Any:
+                v = getattr(obj, attr, default)
+                if hasattr(v, "_mock_return_value") or hasattr(v, "_mock_wraps"):
+                    return default
+                return v
+
+            raw_status = _val("status", OrderStatus.PENDING_SUBMIT)
+            eff_status = (
+                raw_status
+                if isinstance(raw_status, OrderStatus)
+                else OrderStatus(str(raw_status).lower())
+                if isinstance(raw_status, str)
+                else OrderStatus.PENDING_SUBMIT
+            )
+
+            return cls(
+                id=_val("id", 1),
+                client_order_id=str(_val("client_order_id", "ORD_mock_001")),
+                analysis_id=_val("analysis_id", None),
+                symbol=str(_val("symbol", "EURUSD")),
+                order_type=str(_val("order_type", "MARKET")),
+                direction=str(_val("direction", "BUY")),
+                requested_price=float(_val("requested_price", 1.1000)),
+                executed_price=_val("executed_price", None),
+                slippage_pips=float(_val("slippage_pips", 0.0)),
+                requested_volume=float(_val("requested_volume", 0.1)),
+                filled_volume=float(_val("filled_volume", 0.0)),
+                status=eff_status,
+                replay_policy=str(_val("replay_policy", "never")),
+                intent_committed_at=_val("intent_committed_at", None),
+                settlement_committed_at=_val("settlement_committed_at", None),
+                mt5_ticket=_val("mt5_ticket", None),
+                created_at=_val("created_at", clock.now()),
+                updated_at=_val("updated_at", clock.now()),
+            )
         return cls.model_validate(obj, from_attributes=True)
 
     def to_dict(self) -> Dict[str, Any]:

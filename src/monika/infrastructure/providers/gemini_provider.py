@@ -158,10 +158,15 @@ class GeminiProvider(BaseLLMClient):
         self.thinking_level = thinking_level or "none"
         self.resolved_thinking_level = GEMINI_THINKING_LEVEL_MAP.get(str(self.thinking_level).lower(), "MINIMAL")
 
-        api_keys_raw = os.getenv("GEMINI_API_KEYS", "")
+        from monika.core.security.credential_vault import vault
+
+        api_keys_raw = vault.get_secret("GEMINI_API_KEYS") or os.getenv("GEMINI_API_KEYS", "")
         self.free_api_keys = [k.strip() for k in api_keys_raw.split(",") if k.strip()]
         cfg_api_key = (self.settings or {}).get("llm", {}).get("providers", {}).get("gemini", {}).get("api_key", "")
-        self.paid_api_key = os.getenv("GEMINI_PAID_API_KEY", os.getenv("GEMINI_API_KEY", cfg_api_key))
+        paid_key = vault.get_secret("GEMINI_PAID_API_KEY") or os.getenv("GEMINI_PAID_API_KEY")
+        if not paid_key:
+            paid_key = vault.get_secret("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", cfg_api_key)
+        self.paid_api_key = paid_key
         self.api_key: Optional[str] = kwargs.get("api_key") or cfg_api_key or None
         
         if not self.free_api_keys and not self.paid_api_key and not self.api_key:

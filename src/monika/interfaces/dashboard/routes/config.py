@@ -90,11 +90,40 @@ def _mask_yaml_text(text: str) -> str:
     """Mask sensitive values in raw YAML string representation."""
     if not text:
         return text
+
     pattern = re.compile(
-        r"^(\s*[\w\.\-_]*(?:api_key|secret_key|password|credential|private_key|auth_token)[\w\.\-_]*\s*:\s*)(['\"]?)(.+?)\2(\s*(?:#.*)?)$",
-        re.IGNORECASE | re.MULTILINE,
+        r"^(\s*([\w\.\-_]+)\s*:\s*)(['\"]?)(.+?)\3(\s*(?:#.*)?)$",
+        re.MULTILINE,
     )
-    return pattern.sub(r"\1\2********\2\4", text)
+
+    def _repl(match: re.Match) -> str:
+        prefix = match.group(1)
+        key_name = match.group(2).lower()
+        quote = match.group(3)
+        val = match.group(4)
+        comment = match.group(5)
+
+        # Skip non-sensitive tokens like max_tokens, token_budget
+        if key_name in NON_SENSITIVE_KEYS or any(
+            nsk in key_name for nsk in ("max_tokens", "token_budget", "tokens_per_")
+        ):
+            return match.group(0)
+
+        # Check if sensitive pattern matches key_name
+        if SENSITIVE_KEY_PATTERN.search(key_name):
+            if not val.strip():
+                return match.group(0)
+            return f"{prefix}{quote}********{quote}{comment}"
+
+        return match.group(0)
+
+    masked_text = pattern.sub(_repl, text)
+    try:
+        from monika.core.security.credential_vault import vault
+        masked_text = vault.redact(masked_text)
+    except Exception:
+        pass
+    return masked_text
 
 
 @router.get("/api/config/settings", tags=["Config"])

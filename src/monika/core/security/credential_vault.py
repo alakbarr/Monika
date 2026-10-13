@@ -443,6 +443,8 @@ class CredentialVault:
         for pattern in SECRET_PATTERNS:
             def _replace_match(m):
                 full_m = m.group(0)
+                if "[REDACTED" in full_m or "***[REDACTED]***" in full_m:
+                    return full_m
                 if len(m.groups()) >= 2:
                     k = m.group(1)
                     return f"{k}=***[REDACTED]***"
@@ -453,6 +455,10 @@ class CredentialVault:
             masked = pattern.sub(_replace_match, masked)
 
         return masked
+
+    def redact(self, text: str) -> str:
+        """Alias for mask_sensitive to redact sensitive text."""
+        return self.mask_sensitive(text)
 
 
 class SensitiveMaskingFilter(logging.Filter):

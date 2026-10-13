@@ -37,6 +37,7 @@ DATE_FORMAT        = "%Y-%m-%d %H:%M:%S"
 # ---------------------------------------------------------------------------
 
 from monika.infrastructure.infra.log_redactor import RedactingFormatter
+from monika.core.security.credential_vault import SensitiveMaskingFilter
 
 _queue_listener: Optional[logging.handlers.QueueListener] = None
 
@@ -135,7 +136,10 @@ def setup_logging(
     # --- Console handler ---
     console = logging.StreamHandler()
     console.setLevel(level)
-    console.setFormatter(RedactingFormatter(LOG_FORMAT_CONSOLE, datefmt=DATE_FORMAT))
+    masking_filter = SensitiveMaskingFilter()
+    file_handler.addFilter(masking_filter)
+    error_handler.addFilter(masking_filter)
+    console.addFilter(masking_filter)
 
     # Non-blocking QueueHandler / QueueListener (I3 & H7)
     if is_pytest:
@@ -149,6 +153,7 @@ def setup_logging(
     else:
         log_queue: queue.Queue = queue.Queue(maxsize=10000)
         queue_handler = logging.handlers.QueueHandler(log_queue)
+        queue_handler.addFilter(masking_filter)
         root.addHandler(queue_handler)
         root_logger.addHandler(queue_handler)
 

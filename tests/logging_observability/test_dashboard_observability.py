@@ -59,13 +59,13 @@ def test_resolve_role_single_key_backward_compat():
 
 
 def test_resolve_role_localhost_fallback():
-    """Verify unconfigured localhost dev access defaults to Role.ADMIN."""
+    """Verify unconfigured localhost dev access defaults to Role.VIEWER."""
     env = {
         "DASHBOARD_API_KEYS": "",
         "DASHBOARD_API_KEY": "",
     }
     with patch.dict(os.environ, env):
-        assert resolve_role("", is_localhost=True) == Role.ADMIN
+        assert resolve_role("", is_localhost=True) == Role.VIEWER
         with pytest.raises(PermissionError):
             resolve_role("", is_localhost=False)
 
@@ -191,18 +191,24 @@ def test_put_config_settings_success(client, tmp_path):
         "reason": "Adjust drawdown limits"
     }
 
-    with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
-        with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-            mock_session = create_mock_async_session()
-            mock_session.add = MagicMock()
-            mock_session_ctx.return_value.__aenter__.return_value = mock_session
+    env = {"DASHBOARD_API_KEYS": "admin:adm_key", "DASHBOARD_API_KEY": ""}
+    with patch.dict(os.environ, env):
+        with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
+            with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+                mock_session = create_mock_async_session()
+                mock_session.add = MagicMock()
+                mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
-            res = client.put("/api/config/settings", json=valid_payload)
-            assert res.status_code == 200
-            data = res.json()
-            assert data["status"] == "success"
-            assert data["reloaded"] is True
-            assert os.path.exists(str(dummy_yaml) + ".bak")
+                res = client.put(
+                    "/api/config/settings",
+                    headers={"X-API-Key": "adm_key"},
+                    json=valid_payload
+                )
+                assert res.status_code == 200
+                data = res.json()
+                assert data["status"] == "success"
+                assert data["reloaded"] is True
+                assert os.path.exists(str(dummy_yaml) + ".bak")
 
 
 def test_put_config_settings_role_forbidden(client):

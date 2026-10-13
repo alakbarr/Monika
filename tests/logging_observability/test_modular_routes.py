@@ -3,6 +3,7 @@
 # Description: Tests for Modular Dashboard Routers Structure & Integration
 # ==============================================================================
 
+import os
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
@@ -107,18 +108,19 @@ def test_context_tracker_endpoint():
 
 def test_steer_endpoint():
     """Verify /api/actions/steer accepts SteerRequest and records directive."""
-    client = TestClient(app)
-    with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
-        mock_session = create_mock_async_session()
-        mock_sess_cls.return_value.__aenter__.return_value = mock_session
-        response = client.post(
-            "/api/actions/steer",
-            json={"message": "Focus on DXY correlation during NFP", "mode": "steer", "symbols": ["EURUSD"]},
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "steered"
-        assert data["mode"] == "steer"
+    client = TestClient(app, headers={"X-API-Key": "test_adm_key"})
+    with patch.dict(os.environ, {"DASHBOARD_API_KEYS": "admin:test_adm_key"}):
+        with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
+            mock_session = create_mock_async_session()
+            mock_sess_cls.return_value.__aenter__.return_value = mock_session
+            response = client.post(
+                "/api/actions/steer",
+                json={"message": "Focus on DXY correlation during NFP", "mode": "steer", "symbols": ["EURUSD"]},
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "steered"
+            assert data["mode"] == "steer"
 
 
 def test_calendar_upcoming_endpoint():
@@ -158,31 +160,32 @@ def test_modify_position_request_model():
 
 def test_modify_position_endpoint():
     """Verify POST /api/positions/{ticket}/modify updates position SL/TP."""
-    client = TestClient(app)
-    with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
-        mock_session = create_mock_async_session()
-        mock_sess_cls.return_value.__aenter__.return_value = mock_session
+    client = TestClient(app, headers={"X-API-Key": "test_adm_key"})
+    with patch.dict(os.environ, {"DASHBOARD_API_KEYS": "admin:test_adm_key"}):
+        with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
+            mock_session = create_mock_async_session()
+            mock_sess_cls.return_value.__aenter__.return_value = mock_session
 
-        mock_pos = MagicMock()
-        mock_pos.id = 1
-        mock_pos.mt5_ticket = 99999
-        mock_pos.sl = 1.0500
-        mock_pos.tp = 1.0800
+            mock_pos = MagicMock()
+            mock_pos.id = 1
+            mock_pos.mt5_ticket = 99999
+            mock_pos.sl = 1.0500
+            mock_pos.tp = 1.0800
 
-        mock_res = MagicMock()
-        mock_res.scalar_one_or_none.return_value = mock_pos
-        mock_session.execute = AsyncMock(return_value=mock_res)
-        mock_session.commit = AsyncMock()
+            mock_res = MagicMock()
+            mock_res.scalar_one_or_none.return_value = mock_pos
+            mock_session.execute = AsyncMock(return_value=mock_res)
+            mock_session.commit = AsyncMock()
 
-        response = client.post(
-            "/api/positions/99999/modify",
-            json={"sl": 1.0550, "tp": 1.0850, "comment": "Tighter SL"},
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert mock_pos.sl == 1.0550
-        assert mock_pos.tp == 1.0850
+            response = client.post(
+                "/api/positions/99999/modify",
+                json={"sl": 1.0550, "tp": 1.0850, "comment": "Tighter SL"},
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "success"
+            assert mock_pos.sl == 1.0550
+            assert mock_pos.tp == 1.0850
 
 
 def test_market_indicators_endpoint():

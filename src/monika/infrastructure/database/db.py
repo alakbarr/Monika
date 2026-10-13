@@ -7,7 +7,7 @@ import asyncio
 import logging
 import threading
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Union
+from typing import Any, AsyncGenerator, Union, TYPE_CHECKING
 
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -25,7 +25,39 @@ for _cand in [Path.cwd() / ".env", _cur_dir.parent.parent / ".env", _cur_dir.par
     if _cand.exists():
         load_dotenv(dotenv_path=_cand, override=False)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///monika.db")
+
+def get_database_url() -> str:
+    """
+    Retrieve configured database connection URL lazily.
+    Checks:
+    1. settings.database.url (from central settings)
+    2. DATABASE_URL environment variable
+    3. Fallback: sqlite+aiosqlite:///monika.db
+    """
+    try:
+        from monika.core.config.settings import load_settings
+        settings = load_settings()
+        cfg_url = (settings.get("database") or {}).get("url")
+        if cfg_url and isinstance(cfg_url, str) and cfg_url.strip():
+            return cfg_url.strip()
+    except Exception:
+        pass
+
+    env_url = os.getenv("DATABASE_URL")
+    if env_url and env_url.strip():
+        return env_url.strip()
+
+    return "sqlite+aiosqlite:///monika.db"
+
+
+if TYPE_CHECKING:
+    DATABASE_URL: str
+
+
+def __getattr__(name: str) -> Any:
+    if name == "DATABASE_URL":
+        return get_database_url()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 engine = None
 _async_session_factory = None
@@ -148,7 +180,7 @@ def get_engine():
                     os.environ["MONIKA_TIER"] = "trial"
                     os.environ["PAPER_TRADING_MODE"] = "true"
                 else:
-                    db_url = env_url or DATABASE_URL
+                    db_url = env_url or get_database_url()
                 if db_url.startswith("sqlite://") and not db_url.startswith("sqlite+"):
                     db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
                 elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+"):

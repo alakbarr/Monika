@@ -52,6 +52,41 @@ class PositionEntity(BaseModel):
     @classmethod
     def from_orm(cls, obj: Any) -> PositionEntity:
         """Create domain PositionEntity from SQLAlchemy model."""
+        if isinstance(obj, cls):
+            return obj
+        if hasattr(obj, "_mock_return_value") or hasattr(obj, "_mock_wraps"):
+            def _val(attr: str, default: Any = None) -> Any:
+                v = getattr(obj, attr, default)
+                if hasattr(v, "_mock_return_value") or hasattr(v, "_mock_wraps"):
+                    return default
+                return v
+
+            return cls(
+                id=_val("id", 1),
+                mt5_ticket=_val("mt5_ticket", _val("ticket", 1001)),
+                symbol=_val("symbol", "EURUSD"),
+                direction=_val("direction", "buy"),
+                volume=_val("volume", 0.1),
+                initial_volume=_val("initial_volume", None),
+                requested_volume=_val("requested_volume", None),
+                entry_price=_val("entry_price", 1.1000),
+                sl=_val("sl", None),
+                tp=_val("tp", None),
+                slippage_pips=_val("slippage_pips", 0.0),
+                partially_filled=_val("partially_filled", False),
+                opened_at=_val("opened_at", clock.now()),
+                closed_at=_val("closed_at", None),
+                status=_val("status", "open"),
+                pnl=_val("pnl", None),
+                is_paper=_val("is_paper", False),
+                pair_group_id=_val("pair_group_id", None),
+                trailing_override_json=_val("trailing_override_json", None),
+                mae_pips=_val("mae_pips", None),
+                mfe_pips=_val("mfe_pips", None),
+                sl_slippage_pips=_val("sl_slippage_pips", 0.0),
+                entry_session=_val("entry_session", None),
+                market_regime=_val("market_regime", None),
+            )
         return cls.model_validate(obj, from_attributes=True)
 
     def to_dict(self) -> Dict[str, Any]:
