@@ -15,10 +15,11 @@ import sys
 from typing import Any, Dict, List, Optional
 
 import aiohttp
-from sqlalchemy import select
 
 import monika.interfaces.cli.main as cli_main
-from monika.infrastructure.database.models import PaperTradeRecord, Position, SystemConfig
+from monika.application.services.portfolio_service import PortfolioService
+from monika.application.services.trading_service import TradingService
+from monika.infrastructure.database.repositories.system_config_repository import SystemConfigRepository
 from monika.interfaces.cli.theme import (
     BEAR_LOSS,
     BRASS,
@@ -42,14 +43,13 @@ async def _cmd_status(args: Any) -> None:
     await cli_main.init_db()
     async with cli_main.get_session() as session:
         # 1. System configs
-        cfgs = (await session.execute(select(SystemConfig))).scalars().all()
+        cfg_repo = SystemConfigRepository(session)
+        cfgs = await cfg_repo.get_all()
         cfg_map = {c.key: c.value for c in cfgs}
 
         # 2. Positions
-        open_real = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
-        open_paper = (
-            (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open"))).scalars().all()
-        )
+        open_real = await PortfolioService.get_open_positions(session, is_paper=False)
+        open_paper = await PortfolioService.get_open_positions(session, is_paper=True)
 
         susp_raw = cfg_map.get("suspended_symbols") or "[]"
         import json as _json
@@ -105,13 +105,8 @@ async def _cmd_pause(args: Any) -> None:
     console = cli_main.get_console()
     await cli_main.init_db()
     async with cli_main.get_session() as session:
-        cfg = (
-            await session.execute(select(SystemConfig).where(SystemConfig.key == "system_paused"))
-        ).scalar_one_or_none()
-        if cfg:
-            cfg.value = "true"
-        else:
-            session.add(SystemConfig(key="system_paused", value="true"))
+        cfg_repo = SystemConfigRepository(session)
+        await cfg_repo.set_system_paused(True)
         await session.commit()
     try:
         import aiohttp
@@ -148,15 +143,10 @@ async def _cmd_resume(args: Any) -> None:
 
     await cli_main.init_db()
     async with cli_main.get_session() as session:
-        susp = (
-            await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))
-        ).scalar_one_or_none()
-        if susp:
-            susp.value = "[]"
+        cfg_repo = SystemConfigRepository(session)
+        await cfg_repo.set("suspended_symbols", "[]")
         for key in ("kill_switch", "system_paused", "budget_pause", "trading_paused", "manual_trading_paused"):
-            cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
-            if cfg:
-                cfg.value = "false"
+            await cfg_repo.set(key, "false")
         await session.commit()
     try:
         import aiohttp
@@ -242,14 +232,7 @@ async def _cmd_kill(args: Any) -> None:
 
     await cli_main.init_db()
     async with cli_main.get_session() as session:
-        cfg = (
-            await session.execute(select(SystemConfig).where(SystemConfig.key == "kill_switch"))
-        ).scalar_one_or_none()
-        if cfg:
-            cfg.value = "true"
-        else:
-            session.add(SystemConfig(key="kill_switch", value="true"))
-        await session.commit()
+        await TradingService.emergency_kill(session, reason="CLI Emergency Kill", actor="cli_admin")
     console.print(f"{stamp_err('EMERGENCY KILL SWITCH')} EMERGENCY KILL SWITCH FLAG SET TO TRUE.")
 
     # Route kill action through DB flag and Dashboard API safely (no second MT5Client instance)
@@ -348,10 +331,8 @@ async def _cmd_positions(args: Any) -> None:
     console = cli_main.get_console()
     await cli_main.init_db()
     async with cli_main.get_session() as session:
-        open_real = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
-        open_paper = (
-            (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open"))).scalars().all()
-        )
+        open_real = await PortfolioService.get_open_positions(session, is_paper=False)
+        open_paper = await PortfolioService.get_open_positions(session, is_paper=True)
 
         from rich.table import Table
 
@@ -372,12 +353,12 @@ async def _cmd_positions(args: Any) -> None:
                 side = p.direction.upper()
                 side_styled = f"[bold {BULL_PROFIT}]BUY[/]" if side == "BUY" else f"[bold {BEAR_LOSS}]SELL[/]"
                 tbl_real.add_row(
-                    str(p.id),
-                    str(getattr(p, "mt5_ticket", getattr(p, "ticket", "N/A"))),
+                    str(p.id or "-"),
+                    str(getattr(p, "mt5_ticket", "N/A")),
                     str(p.symbol),
                     side_styled,
                     f"{float(p.volume):.2f}",
-                    str(getattr(p, "entry_price", getattr(p, "open_price", "N/A"))),
+                    str(p.entry_price),
                     str(p.sl or "-"),
                     str(p.tp or "-"),
                 )
@@ -398,15 +379,15 @@ async def _cmd_positions(args: Any) -> None:
             for p in open_paper:
                 side = p.direction.upper()
                 side_styled = f"[bold {BULL_PROFIT}]BUY[/]" if side == "BUY" else f"[bold {BEAR_LOSS}]SELL[/]"
-                lots_val = getattr(p, "lots", getattr(p, "risk_pct", "N/A"))
+                lots_val = p.volume
                 tbl_paper.add_row(
-                    str(p.id),
+                    str(p.id or "-"),
                     str(p.symbol),
                     side_styled,
                     f"{float(lots_val):.2f}" if isinstance(lots_val, (int, float)) else str(lots_val),
                     str(p.entry_price),
-                    str(getattr(p, "stop_loss", getattr(p, "sl", "-"))),
-                    str(getattr(p, "take_profit", getattr(p, "tp", "-"))),
+                    str(p.sl or "-"),
+                    str(p.tp or "-"),
                 )
             console.print(tbl_paper)
         else:

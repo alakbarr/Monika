@@ -43,7 +43,6 @@ async def get_positions(
 ):
     """Daftar historis atau posisi yang masih terbuka dengan data yang diperkaya."""
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import Position
     from monika.infrastructure.database.repositories import PositionRepository
 
     mt5_client = get_dashboard_dependency("mt5_client")
@@ -109,10 +108,8 @@ async def get_positions(
 @require_role(Role.OPERATOR)
 async def action_close_position(payload: ClosePositionRequest, request: Request):
     """Close floating position in MT5/broker or synthetic paper trade (full or partial)."""
-    from sqlalchemy import select
-
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import Position
+    from monika.infrastructure.database.repositories import PositionRepository
 
     exec_svc = get_dashboard_dependency("execution_service")
     mt5_client = get_dashboard_dependency("mt5_client")
@@ -121,10 +118,9 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
     target_volume = payload.volume
 
     async with AsyncSessionLocal() as session:
+        pos_repo = PositionRepository(session)
         if target_ticket is None and payload.position_id is not None:
-            pos = (
-                await session.execute(select(Position).where(Position.id == payload.position_id))
-            ).scalar_one_or_none()
+            pos = await pos_repo.get_by_id(payload.position_id)
             if not pos:
                 return JSONResponse(
                     status_code=404,
@@ -140,9 +136,7 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
                     )
                     return {"status": "success", "result": res}
         elif target_ticket is not None and payload.percentage is not None and target_volume is None:
-            pos = (
-                await session.execute(select(Position).where(Position.mt5_ticket == target_ticket))
-            ).scalar_one_or_none()
+            pos = await pos_repo.get_by_ticket(target_ticket)
             if pos and pos.volume:
                 target_volume = round(float(pos.volume) * (float(payload.percentage) / 100.0), 2)
 
@@ -169,25 +163,18 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
             close_kwargs["volume"] = target_volume
         res = await mt5_client.close_position(**close_kwargs)
     else:
+        from monika.application.services.trading_service import TradingService
+
         async with AsyncSessionLocal() as session:
-            pos = (
-                await session.execute(select(Position).where(Position.mt5_ticket == target_ticket))
-            ).scalar_one_or_none()
-            if pos:
-                if target_volume and target_volume < float(pos.volume):
-                    pos.volume = float(pos.volume) - target_volume
-                    pos.partially_filled = True
-                    res = {
-                        "success": True,
-                        "ticket": target_ticket,
-                        "remaining_volume": pos.volume,
-                        "note": "Partially closed in DB",
-                    }
-                else:
-                    pos.status = "closed"
-                    pos.closed_at = datetime.now(timezone.utc)
-                    res = {"success": True, "ticket": target_ticket, "note": "Closed in DB (standalone mode)"}
-                await session.commit()
+            ok = await TradingService.close_position(
+                session=session,
+                ticket=target_ticket,
+                reason=payload.reason or "Closed via dashboard",
+                actor="operator:dashboard",
+                broker_adapter=mt5_client,
+            )
+            if ok:
+                res = {"success": True, "ticket": target_ticket, "note": "Closed via TradingService"}
             else:
                 return JSONResponse(
                     status_code=404, content={"status": "error", "message": f"Ticket {target_ticket} not found."}
@@ -218,15 +205,15 @@ async def action_position_breakeven(ticket: int, request: Request):
     from sqlalchemy import select
 
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import ActivityLog, Position
+    from monika.application.services.trading_service import TradingService
+    from monika.infrastructure.database.repositories import PositionRepository
 
     exec_svc = get_dashboard_dependency("execution_service")
     mt5_client = get_dashboard_dependency("mt5_client")
 
     async with AsyncSessionLocal() as session:
-        pos = (
-            await session.execute(select(Position).where(Position.mt5_ticket == ticket, Position.status == "open"))
-        ).scalar_one_or_none()
+        pos_repo = PositionRepository(session)
+        pos = await pos_repo.get_by_ticket(ticket, open_only=True)
 
         if not pos:
             return JSONResponse(
@@ -252,22 +239,14 @@ async def action_position_breakeven(ticket: int, request: Request):
             except Exception as e:
                 logger.warning(f"Execution service breakeven failed: {e}")
 
-        if not res and mt5_client and hasattr(mt5_client, "modify_position"):
-            try:
-                res = await mt5_client.modify_position(ticket=ticket, sl=entry_price, tp=pos.tp)
-            except Exception as e:
-                logger.warning(f"MT5 client breakeven failed: {e}")
-
-        pos.sl = entry_price
-        session.add(
-            ActivityLog(
-                category="trading",
-                description=f"Breakeven applied to position #{ticket} at {entry_price}",
-                actor="dashboard",
-                related_id=ticket,
-            )
+        await TradingService.modify_position(
+            session=session,
+            ticket=ticket,
+            sl=entry_price,
+            tp=pos.tp,
+            actor="dashboard",
+            broker_adapter=mt5_client,
         )
-        await session.commit()
 
     await broadcast_live_event(
         "position_breakeven",
@@ -302,29 +281,15 @@ async def action_bulk_breakeven(payload: BulkBreakevenRequest, request: Request)
             requested_by="dashboard_bulk_be",
         )
     else:
-        from sqlalchemy import select
-
+        from monika.application.services.trading_service import TradingService
         from monika.infrastructure.database.db import AsyncSessionLocal
-        from monika.infrastructure.database.models import ActivityLog, Position
 
         async with AsyncSessionLocal() as session:
-            stmt = select(Position).where(Position.status == "open")
-            if payload.symbol:
-                stmt = stmt.where(Position.symbol == payload.symbol.upper())
-            positions = (await session.execute(stmt)).scalars().all()
-            updated = 0
-            for p in positions:
-                p.sl = p.entry_price
-                updated += 1
-            session.add(
-                ActivityLog(
-                    category="trading",
-                    description=f"Bulk breakeven applied to {updated} positions (symbol={payload.symbol})",
-                    actor="dashboard",
-                )
+            res = await TradingService.bulk_breakeven(
+                session=session,
+                symbol=payload.symbol,
+                actor="dashboard",
             )
-            await session.commit()
-            res = {"success": True, "updated_count": updated, "message": f"Updated {updated} positions to BE."}
 
     await broadcast_live_event(
         "bulk_breakeven_applied",
@@ -341,46 +306,37 @@ async def action_bulk_breakeven(payload: BulkBreakevenRequest, request: Request)
 @require_role(Role.OPERATOR)
 async def action_trailing_override(ticket: int, payload: TrailingOverrideRequest, request: Request):
     """Set dynamic or static trailing stop override per position ticket."""
-    from sqlalchemy import select
-
+    from monika.application.services.trading_service import TradingService
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import ActivityLog, Position
+
+    if payload.reset_to_default:
+        override_data = None
+        msg = f"Reset trailing override to default for ticket #{ticket}"
+    else:
+        override_data = {}
+        if payload.enabled is False:
+            override_data["disabled"] = True
+        if payload.trailing_pips is not None:
+            override_data["trailing_pips"] = payload.trailing_pips
+        if payload.breakeven_pips is not None:
+            override_data["breakeven_pips"] = payload.breakeven_pips
+        if payload.trail_atr_multiple is not None:
+            override_data["trail_atr_multiple"] = payload.trail_atr_multiple
+        msg = f"Updated trailing override for ticket #{ticket}: {override_data}"
 
     async with AsyncSessionLocal() as session:
-        pos = (await session.execute(select(Position).where(Position.mt5_ticket == ticket))).scalar_one_or_none()
+        pos = await TradingService.set_trailing_override(
+            session=session,
+            ticket=ticket,
+            override_data=override_data,
+            reset_to_default=bool(payload.reset_to_default),
+            actor="dashboard",
+        )
 
         if not pos:
             return JSONResponse(
                 status_code=404, content={"status": "error", "message": f"Position #{ticket} not found."}
             )
-
-        if payload.reset_to_default:
-            pos.trailing_override_json = None
-            msg = f"Reset trailing override to default for ticket #{ticket}"
-            override_data = None
-        else:
-            override_data = {}
-            if payload.enabled is False:
-                override_data["disabled"] = True
-            if payload.trailing_pips is not None:
-                override_data["trailing_pips"] = payload.trailing_pips
-            if payload.breakeven_pips is not None:
-                override_data["breakeven_pips"] = payload.breakeven_pips
-            if payload.trail_atr_multiple is not None:
-                override_data["trail_atr_multiple"] = payload.trail_atr_multiple
-
-            pos.trailing_override_json = json.dumps(override_data)
-            msg = f"Updated trailing override for ticket #{ticket}: {override_data}"
-
-        session.add(
-            ActivityLog(
-                category="trading",
-                description=msg,
-                actor="dashboard",
-                related_id=ticket,
-            )
-        )
-        await session.commit()
 
     await broadcast_live_event(
         "trailing_override_updated",
@@ -398,24 +354,24 @@ async def action_trailing_override(ticket: int, payload: TrailingOverrideRequest
 @require_role(Role.OPERATOR)
 async def action_close_batch(payload: BatchCloseRequest, request: Request):
     """Close multiple positions selectively in a single batch request."""
+    from monika.application.services.trading_service import TradingService
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.repositories import PositionRepository
+
     tickets = list(payload.tickets or [])
     if not tickets:
-        from sqlalchemy import select
-
-        from monika.infrastructure.database.db import AsyncSessionLocal
-        from monika.infrastructure.database.models import Position
-
         async with AsyncSessionLocal() as session:
-            q = select(Position).where(Position.status == "open")
-            if payload.symbol:
-                q = q.where(Position.symbol == payload.symbol.upper())
-            positions = (await session.execute(q)).scalars().all()
-            for p in positions:
+            pos_repo = PositionRepository(session)
+            open_positions = await pos_repo.get_open_positions(
+                symbol=payload.symbol.upper() if payload.symbol else None
+            )
+            for p in open_positions:
                 if p.mt5_ticket is not None:
                     tickets.append(p.mt5_ticket)
 
     exec_svc = get_dashboard_dependency("execution_service")
     emergency = get_dashboard_dependency("emergency_manager") or exec_svc
+    mt5_client = get_dashboard_dependency("mt5_client")
 
     if emergency and hasattr(emergency, "close_positions_batch"):
         res = await emergency.close_positions_batch(
@@ -424,33 +380,14 @@ async def action_close_batch(payload: BatchCloseRequest, request: Request):
             reason=payload.reason or "Batch close via Dashboard",
         )
     else:
-        from sqlalchemy import select
-
-        from monika.infrastructure.database.db import AsyncSessionLocal
-        from monika.infrastructure.database.models import ActivityLog, Position
-
         async with AsyncSessionLocal() as session:
-            positions = (
-                (
-                    await session.execute(
-                        select(Position).where(Position.mt5_ticket.in_(tickets), Position.status == "open")
-                    )
-                )
-                .scalars()
-                .all()
+            res = await TradingService.close_positions_batch(
+                session=session,
+                tickets=tickets,
+                reason=payload.reason or "Batch close via Dashboard",
+                actor="dashboard",
+                broker_adapter=mt5_client,
             )
-            for p in positions:
-                p.status = "closed"
-                p.closed_at = datetime.now(timezone.utc)
-            session.add(
-                ActivityLog(
-                    category="trading",
-                    description=f"Batch closed {len(positions)} positions: {tickets}",
-                    actor="dashboard",
-                )
-            )
-            await session.commit()
-            res = {"success": True, "closed_count": len(positions), "tickets": tickets}
 
     await broadcast_live_event(
         "batch_positions_closed",
@@ -476,10 +413,8 @@ async def action_close_batch(payload: BatchCloseRequest, request: Request):
 @require_role(Role.OPERATOR)
 async def modify_position(ticket: int, payload: ModifyPositionRequest, request: Request):
     """Modify Stop Loss and Take Profit levels of an active position."""
-    from sqlalchemy import select
-
+    from monika.application.services.trading_service import TradingService
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import Position
 
     exec_svc = get_dashboard_dependency("execution_service")
     mt5_client = get_dashboard_dependency("mt5_client")
@@ -496,26 +431,17 @@ async def modify_position(ticket: int, payload: ModifyPositionRequest, request: 
         except Exception as e:
             logger.warning(f"Execution service modify failed: {e}")
 
-    if not res and mt5_client and hasattr(mt5_client, "modify_position"):
-        try:
-            res = await mt5_client.modify_position(
-                ticket=ticket,
-                sl=payload.sl,
-                tp=payload.tp,
-            )
-        except Exception as e:
-            logger.warning(f"MT5 client modify failed: {e}")
-
     async with AsyncSessionLocal() as session:
-        pos = (await session.execute(select(Position).where(Position.mt5_ticket == ticket))).scalar_one_or_none()
-        if pos:
-            if payload.sl is not None:
-                pos.sl = payload.sl
-            if payload.tp is not None:
-                pos.tp = payload.tp
-            await session.commit()
-            if not res:
-                res = {"success": True, "ticket": ticket, "note": "Updated in DB"}
+        ok = await TradingService.modify_position(
+            session=session,
+            ticket=ticket,
+            sl=payload.sl,
+            tp=payload.tp,
+            actor="dashboard",
+            broker_adapter=mt5_client,
+        )
+        if ok and not res:
+            res = {"success": True, "ticket": ticket, "note": "Updated via TradingService"}
 
     if not res:
         return JSONResponse(

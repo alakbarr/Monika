@@ -42,17 +42,11 @@ async def get_orders(
     action: Optional[str] = Query(default=None, description="Filter: place, modify, close"),
 ):
     """Audit trail percobaan order (sukses & gagal/tolak)."""
-    from sqlalchemy import select
-
+    from monika.application.services.portfolio_service import PortfolioService
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import OrderLog
 
     async with AsyncSessionLocal() as session:
-        q = select(OrderLog).order_by(OrderLog.timestamp.desc()).limit(limit)
-        if action:
-            q = q.where(OrderLog.action == action)
-
-        orders = (await session.execute(q)).scalars().all()
+        orders = await PortfolioService.get_order_logs(session=session, limit=limit, action=action)
 
         return [
             {
@@ -163,7 +157,7 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
 
     from monika.domain.risk.trade_proposal import TradeProposal
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import ActivityLog, Position
+    from monika.infrastructure.database.repositories import ActivityLogRepository
 
     risk_gate = get_dashboard_dependency("risk_gate")
     if not risk_gate:
@@ -197,12 +191,11 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
     async with AsyncSessionLocal() as session:
         verdict = await risk_gate.evaluate_proposal(session, proposal, is_paper=is_paper)
         if not verdict.approved:
-            session.add(
-                ActivityLog(
-                    category="risk",
-                    description=f"Manual order rejected by RiskGate: {direction.upper()} {volume} {sym} - {', '.join(verdict.rejection_reasons)}",
-                    actor="operator",
-                )
+            act_repo = ActivityLogRepository(session)
+            await act_repo.log_activity(
+                category="risk",
+                description=f"Manual order rejected by RiskGate: {direction.upper()} {volume} {sym} - {', '.join(verdict.rejection_reasons)}",
+                actor="operator",
             )
             await session.commit()
             return JSONResponse(

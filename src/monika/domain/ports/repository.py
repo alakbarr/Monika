@@ -93,6 +93,38 @@ class PositionRepositoryPort(Protocol):
         """Update volume and optionally status of a position by MT5 ticket."""
         ...
 
+    async def update_sl_tp(
+        self,
+        ticket: int,
+        sl: Optional[float] = None,
+        tp: Optional[float] = None,
+    ) -> Optional[PositionEntity]:
+        """Update SL and/or TP of an open position by MT5 ticket."""
+        ...
+
+    async def update_trailing_override(
+        self,
+        ticket: int,
+        override_json: Optional[str],
+    ) -> Optional[PositionEntity]:
+        """Update trailing override JSON for a position by MT5 ticket."""
+        ...
+
+    async def apply_bulk_breakeven(
+        self,
+        symbol: Optional[str] = None,
+    ) -> int:
+        """Update Stop Loss to entry price for all open positions matching symbol."""
+        ...
+
+    async def get_recent_order_logs(
+        self,
+        limit: int = 50,
+        action: Optional[str] = None,
+    ) -> Sequence[Any]:
+        """Fetch latest raw broker order audit logs."""
+        ...
+
     async def get_closed_positions(
         self,
         limit: int = 50,
@@ -213,6 +245,10 @@ class SystemConfigRepositoryPort(Protocol):
 
     async def set(self, key: str, value: str, description: Optional[str] = None) -> Any:
         """Upsert a configuration entry atomically."""
+        ...
+
+    async def get_all(self) -> Sequence[Any]:
+        """Fetch all configuration entries."""
         ...
 
     async def is_kill_switch_active(self) -> bool:

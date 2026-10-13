@@ -42,7 +42,8 @@ async def get_risk():
     from sqlalchemy import desc, select
 
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import PaperTradeRecord, Position, RiskState
+    from monika.infrastructure.database.models import PaperTradeRecord, RiskState
+    from monika.infrastructure.database.repositories import PositionRepository
 
     settings = get_dashboard_dependency("settings") or {}
     trading_risk = settings.get("trading", {}).get("risk", {}) if isinstance(settings, dict) else {}
@@ -87,8 +88,8 @@ async def get_risk():
                 break
 
         # Open positions count for exposure estimation
-        open_pos_count = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
-        active_pos_count = len(open_pos_count)
+        pos_repo = PositionRepository(session)
+        active_pos_count = await pos_repo.count_open_positions()
 
         # Margin and exposure calculations
         margin_used = 0.0
@@ -185,14 +186,12 @@ async def get_risk_scorecard(
 @require_role(Role.VIEWER)
 async def get_risk_correlation_matrix():
     """Compute rolling cross-asset correlation matrix and aggregate portfolio heat score."""
-    from sqlalchemy import select
-
+    from monika.application.services.portfolio_service import PortfolioService
     from monika.domain.risk.correlation_matrix import DynamicCorrelationMatrix
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import Position
 
     async with AsyncSessionLocal() as session:
-        open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+        open_positions = await PortfolioService.get_open_positions(session)
 
         pos_list = [
             {"symbol": p.symbol, "direction": p.direction, "volume": float(p.volume or 0.01)} for p in open_positions

@@ -156,9 +156,65 @@ class PositionRepository(PositionRepositoryPort):
         await self.session.flush()
         return PositionEntity.from_orm(pos)
 
-    async def get_recent_order_logs(self, limit: int = 50) -> Sequence[OrderLog]:
+    async def update_sl_tp(
+        self,
+        ticket: int,
+        sl: Optional[float] = None,
+        tp: Optional[float] = None,
+    ) -> Optional[PositionEntity]:
+        """Update SL and/or TP for an open position by MT5 ticket."""
+        stmt = select(Position).where(Position.mt5_ticket == ticket, Position.status == "open")
+        res = await self.session.execute(stmt)
+        pos = res.scalar_one_or_none()
+        if not pos:
+            return None
+        if sl is not None:
+            pos.sl = sl
+        if tp is not None:
+            pos.tp = tp
+        await self.session.flush()
+        return PositionEntity.from_orm(pos)
+
+    async def update_trailing_override(
+        self,
+        ticket: int,
+        override_json: Optional[str],
+    ) -> Optional[PositionEntity]:
+        """Update trailing override JSON for a position by MT5 ticket."""
+        stmt = select(Position).where(Position.mt5_ticket == ticket)
+        res = await self.session.execute(stmt)
+        pos = res.scalar_one_or_none()
+        if not pos:
+            return None
+        pos.trailing_override_json = override_json
+        await self.session.flush()
+        return PositionEntity.from_orm(pos)
+
+    async def apply_bulk_breakeven(
+        self,
+        symbol: Optional[str] = None,
+    ) -> int:
+        """Update Stop Loss to entry price for all open positions matching symbol."""
+        stmt = select(Position).where(Position.status == "open")
+        if symbol:
+            stmt = stmt.where(Position.symbol == symbol.upper())
+        positions = (await self.session.execute(stmt)).scalars().all()
+        updated = 0
+        for p in positions:
+            p.sl = p.entry_price
+            updated += 1
+        await self.session.flush()
+        return updated
+
+    async def get_recent_order_logs(
+        self,
+        limit: int = 50,
+        action: Optional[str] = None,
+    ) -> Sequence[OrderLog]:
         """Fetch latest raw broker order audit logs."""
         stmt = select(OrderLog).order_by(OrderLog.timestamp.desc()).limit(limit)
+        if action:
+            stmt = stmt.where(OrderLog.action == action)
         res = await self.session.execute(stmt)
         return res.scalars().all()
 

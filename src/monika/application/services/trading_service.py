@@ -18,10 +18,11 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.domain.entities.position import PositionEntity
 from monika.domain.ports import UnitOfWorkPort
 from monika.domain.risk.position_sizing import get_instrument_spec
 from monika.domain.risk.trade_proposal import TradeProposal
@@ -409,6 +410,163 @@ class TradingService:
         )
         await session.commit()
         return True
+
+    @classmethod
+    async def modify_position(
+        cls,
+        session: Union[AsyncSession, UnitOfWorkPort],
+        ticket: int,
+        sl: Optional[float] = None,
+        tp: Optional[float] = None,
+        actor: str = "operator",
+        broker_adapter: Any = None,
+    ) -> bool:
+        """Modify stop loss and/or take profit of an open position."""
+        if isinstance(session, UnitOfWorkPort):
+            pos_repo = session.positions
+            activity_repo = session.activity_logs
+        else:
+            pos_repo = PositionRepository(session)
+            activity_repo = ActivityLogRepository(session)
+
+        pos = await pos_repo.get_by_ticket(ticket, open_only=True)
+        if not pos:
+            logger.warning(f"[TradingService] Open position with ticket {ticket} not found.")
+            return False
+
+        if not pos.is_paper and broker_adapter is not None:
+            try:
+                if hasattr(broker_adapter, "modify_position"):
+                    await broker_adapter.modify_position(ticket=ticket, sl=sl, tp=tp)
+            except Exception as e:
+                logger.error(f"[TradingService] Broker modification failed for {ticket}: {e}")
+
+        await pos_repo.update_sl_tp(ticket=ticket, sl=sl, tp=tp)
+
+        await activity_repo.log_activity(
+            category="TRADING",
+            description=f"Modified position #{ticket}: SL={sl}, TP={tp}",
+            actor=actor,
+            related_id=ticket,
+        )
+        await session.commit()
+        return True
+
+    @classmethod
+    async def close_positions_batch(
+        cls,
+        session: Union[AsyncSession, UnitOfWorkPort],
+        tickets: Sequence[int],
+        reason: str = "Batch close",
+        actor: str = "operator",
+        broker_adapter: Any = None,
+    ) -> Dict[str, Any]:
+        """Close multiple positions selectively in a single batch request."""
+        if isinstance(session, UnitOfWorkPort):
+            pos_repo = session.positions
+            activity_repo = session.activity_logs
+        else:
+            pos_repo = PositionRepository(session)
+            activity_repo = ActivityLogRepository(session)
+
+        closed_count = 0
+        failed_count = 0
+        for ticket in tickets:
+            pos = await pos_repo.get_by_ticket(ticket, open_only=True)
+            if not pos:
+                failed_count += 1
+                continue
+            if not pos.is_paper and broker_adapter is not None:
+                try:
+                    await broker_adapter.close_position(ticket=ticket)
+                except Exception as e:
+                    logger.error(f"[TradingService] Failed to close live position {ticket}: {e}")
+                    failed_count += 1
+                    continue
+            await pos_repo.close_position(ticket=ticket, pnl=0.0)
+            closed_count += 1
+
+        await activity_repo.log_activity(
+            category="TRADING",
+            description=f"Batch closed {closed_count} positions (requested: {len(tickets)}): {reason}",
+            actor=actor,
+        )
+        await session.commit()
+        return {
+            "success": True,
+            "closed_count": closed_count,
+            "failed_count": failed_count,
+            "tickets": list(tickets),
+        }
+
+    @classmethod
+    async def bulk_breakeven(
+        cls,
+        session: Union[AsyncSession, UnitOfWorkPort],
+        symbol: Optional[str] = None,
+        actor: str = "operator",
+    ) -> Dict[str, Any]:
+        """Move Stop Loss to Entry Price across open positions."""
+        if isinstance(session, UnitOfWorkPort):
+            pos_repo = session.positions
+            activity_repo = session.activity_logs
+        else:
+            pos_repo = PositionRepository(session)
+            activity_repo = ActivityLogRepository(session)
+
+        updated = await pos_repo.apply_bulk_breakeven(symbol=symbol)
+        await activity_repo.log_activity(
+            category="TRADING",
+            description=f"Bulk breakeven applied to {updated} positions (symbol={symbol})",
+            actor=actor,
+        )
+        await session.commit()
+        return {
+            "success": True,
+            "updated_count": updated,
+            "message": f"Updated {updated} positions to BE.",
+        }
+
+    @classmethod
+    async def set_trailing_override(
+        cls,
+        session: Union[AsyncSession, UnitOfWorkPort],
+        ticket: int,
+        override_data: Optional[Dict[str, Any]] = None,
+        reset_to_default: bool = False,
+        actor: str = "operator",
+    ) -> Optional[PositionEntity]:
+        """Set or reset dynamic/static trailing stop override per position ticket."""
+        import json
+
+        if isinstance(session, UnitOfWorkPort):
+            pos_repo = session.positions
+            activity_repo = session.activity_logs
+        else:
+            pos_repo = PositionRepository(session)
+            activity_repo = ActivityLogRepository(session)
+
+        pos = await pos_repo.get_by_ticket(ticket)
+        if not pos:
+            logger.warning(f"[TradingService] Position #{ticket} not found for trailing override.")
+            return None
+
+        if reset_to_default:
+            override_json = None
+            msg = f"Reset trailing override to default for ticket #{ticket}"
+        else:
+            override_json = json.dumps(override_data) if override_data else None
+            msg = f"Updated trailing override for ticket #{ticket}: {override_data}"
+
+        updated_pos = await pos_repo.update_trailing_override(ticket=ticket, override_json=override_json)
+        await activity_repo.log_activity(
+            category="TRADING",
+            description=msg,
+            actor=actor,
+            related_id=ticket,
+        )
+        await session.commit()
+        return updated_pos
 
     @classmethod
     async def emergency_kill(
