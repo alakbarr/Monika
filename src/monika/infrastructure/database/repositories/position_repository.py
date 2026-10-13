@@ -12,10 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.domain.entities.order import OrderEntity
 from monika.domain.entities.position import PositionEntity
+from monika.domain.ports.repository import PositionRepositoryPort
 from monika.infrastructure.database.models import Order, OrderLog, Position
 
 
-class PositionRepository:
+class PositionRepository(PositionRepositoryPort):
     """Repository handling Position and Order domain entities."""
 
     def __init__(self, session: AsyncSession) -> None:
@@ -134,6 +135,24 @@ class PositionRepository:
         pos.status = "closed"
         pos.pnl = pnl
         pos.closed_at = closed_at or datetime.now(timezone.utc)
+        await self.session.flush()
+        return PositionEntity.from_orm(pos)
+
+    async def update_volume(
+        self,
+        ticket: int,
+        volume: float,
+        status: Optional[str] = None,
+    ) -> Optional[PositionEntity]:
+        """Update volume and optionally status of a position by MT5 ticket."""
+        stmt = select(Position).where(Position.mt5_ticket == ticket)
+        res = await self.session.execute(stmt)
+        pos = res.scalar_one_or_none()
+        if not pos:
+            return None
+        pos.volume = volume
+        if status:
+            pos.status = status
         await self.session.flush()
         return PositionEntity.from_orm(pos)
 
@@ -267,3 +286,25 @@ class PositionRepository:
             "average_trade_pnl": round(avg_pnl, 2),
             "total_volume": round(total_volume, 2),
         }
+
+    async def get_recent_executed_analysis_ids(self, limit: int = 500) -> Sequence[int]:
+        """Fetch recent executed asset analysis IDs from positions."""
+        stmt = (
+            select(Position.analysis_id)
+            .where(Position.analysis_id.isnot(None))
+            .order_by(Position.id.desc())
+            .limit(limit)
+        )
+        res = await self.session.execute(stmt)
+        return [int(aid) for aid in res.scalars().all() if aid is not None]
+
+    async def get_recent_order_executed_analysis_ids(self, limit: int = 500) -> Sequence[int]:
+        """Fetch recent executed asset analysis IDs from orders."""
+        stmt = (
+            select(Order.analysis_id)
+            .where(Order.analysis_id.isnot(None))
+            .order_by(Order.id.desc())
+            .limit(limit)
+        )
+        res = await self.session.execute(stmt)
+        return [int(aid) for aid in res.scalars().all() if aid is not None]

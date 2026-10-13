@@ -9,10 +9,11 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.domain.ports.repository import SystemConfigRepositoryPort
 from monika.infrastructure.database.models import SystemConfig
 
 
-class SystemConfigRepository:
+class SystemConfigRepository(SystemConfigRepositoryPort):
     """Repository managing SystemConfig key-value persistence."""
 
     def __init__(self, session: AsyncSession) -> None:

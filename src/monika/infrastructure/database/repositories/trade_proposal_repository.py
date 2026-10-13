@@ -11,10 +11,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.domain.entities.trade_trigger import TradeTriggerEntity
+from monika.domain.ports.repository import TradeProposalRepositoryPort
 from monika.infrastructure.database.models import MT5Signal, TradeTrigger
 
 
-class TradeProposalRepository:
+class TradeProposalRepository(TradeProposalRepositoryPort):
     """Repository managing TradeTrigger and MT5Signal domain entities."""
 
     def __init__(self, session: AsyncSession) -> None:
@@ -82,3 +83,14 @@ class TradeProposalRepository:
         stmt = select(MT5Signal).order_by(MT5Signal.id.desc()).limit(limit)
         res = await self.session.execute(stmt)
         return res.scalars().all()
+
+    async def get_recent_executed_analysis_ids(self, limit: int = 500) -> Sequence[int]:
+        """Fetch recent executed asset analysis IDs from signals."""
+        stmt = (
+            select(MT5Signal.asset_analysis_id)
+            .where(MT5Signal.asset_analysis_id.isnot(None))
+            .order_by(MT5Signal.id.desc())
+            .limit(limit)
+        )
+        res = await self.session.execute(stmt)
+        return [int(aid) for aid in res.scalars().all() if aid is not None]

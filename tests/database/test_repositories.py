@@ -153,3 +153,39 @@ async def test_trade_proposal_repository(async_session: AsyncSession):
     recent = await repo.get_recent_triggers(status="fired")
     assert len(recent) == 1
     assert recent[0].id == trigger.id
+
+
+@pytest.mark.asyncio
+async def test_unit_of_work_and_ports_compliance(async_session: AsyncSession):
+    from monika.domain.ports import (
+        ActivityLogRepositoryPort,
+        PositionRepositoryPort,
+        SystemConfigRepositoryPort,
+        TradeProposalRepositoryPort,
+        UnitOfWorkPort,
+    )
+    from monika.infrastructure.database.repositories import SqlAlchemyUnitOfWork
+
+    uow = SqlAlchemyUnitOfWork(session=async_session)
+    assert isinstance(uow, UnitOfWorkPort)
+    assert isinstance(uow.positions, PositionRepositoryPort)
+    assert isinstance(uow.trade_proposals, TradeProposalRepositoryPort)
+    assert isinstance(uow.system_config, SystemConfigRepositoryPort)
+    assert isinstance(uow.activity_logs, ActivityLogRepositoryPort)
+
+    async with uow:
+        # Create position through uow
+        pos = await uow.positions.create_position(
+            symbol="GBPUSD",
+            direction="SELL",
+            volume=0.2,
+            entry_price=1.2500,
+            mt5_ticket=2002,
+        )
+        assert pos.mt5_ticket == 2002
+        await uow.system_config.set("uow_test_key", "verified")
+        await uow.commit()
+
+    # Verify persisted
+    assert await uow.positions.count_open_positions() == 1
+    assert await uow.system_config.get("uow_test_key") == "verified"
