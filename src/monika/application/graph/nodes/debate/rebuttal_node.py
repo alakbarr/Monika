@@ -84,7 +84,9 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
                     'rebuttal': rebuttal_res,
                     'pro_rebuttal': rebuttal_res,
                     'turn': new_turn,
-                    'needs_rebuttal': False
+                    'needs_rebuttal': False,
+                    'divergence': 0.0,
+                    'disagreement': 0,
                 }
             except Exception as e:
                 logger.error(f"[{sym}] Rebuttal failed: {e}", exc_info=True)
@@ -92,6 +94,8 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
                 return sym, {
                     'turn': new_turn,
                     'needs_rebuttal': False,
+                    'divergence': 0.0,
+                    'disagreement': 0,
                     'rebuttal_error': str(e),
                 }
 

@@ -38,9 +38,7 @@ def should_continue_debate(state: TradingState) -> str:
         deb = deb_states.get(sym, {})
         turn = deb.get("turn", 1)
         max_rounds = int(deb.get("max_rounds", 2) or 2)
-        disagreement = deb.get("disagreement", 0)
-        divergence = deb.get("divergence", disagreement / 10.0)
-        if (divergence > 0.40 or deb.get("needs_rebuttal", False)) and turn < max_rounds:
+        if deb.get("needs_rebuttal", False) and turn < max_rounds:
             return "rebuttal"
     return "debate_judge"
 

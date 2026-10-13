@@ -166,8 +166,11 @@ async def handle_calculate_kelly_criterion(args: dict, **ctx) -> dict:
         kelly_fraction = 0.0
 
     half_kelly = max(0.0, kelly_fraction / 2.0)
-    # Clamp suggested risk percent between 0.25% and 2.5%
-    clamped_risk = round(min(2.5, max(0.25, half_kelly * 10.0)), 2)
+    # Clamp suggested risk percent between 0.25% and 2.5% if edge exists, else 0.0%
+    if half_kelly <= 0.0:
+        clamped_risk = 0.0
+    else:
+        clamped_risk = round(min(2.5, max(0.25, half_kelly * 10.0)), 2)
 
     has_edge = kelly_fraction > 0.0
 

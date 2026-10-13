@@ -6,16 +6,14 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from graph.state import TradingState
-from graph.nodes.debate import (
-    bull_advocate_node,
-    bear_dissent_node,
-    rebuttal_node,
-    debate_judge_node,
-    risk_evaluator_node,
-    build_debate_subgraph,
-)
-from graph.nodes.debate.helpers import (
+from monika.application.graph.state import TradingState
+from monika.application.graph.nodes.debate.bull_advocate_node import bull_advocate_node
+from monika.application.graph.nodes.debate.bear_dissent_node import bear_dissent_node
+from monika.application.graph.nodes.debate.rebuttal_node import rebuttal_node
+from monika.application.graph.nodes.debate.debate_judge_node import debate_judge_node
+from monika.application.graph.nodes.debate.risk_evaluator_node import risk_evaluator_node
+from monika.application.graph.nodes.debate.subgraph import build_debate_subgraph
+from monika.application.graph.nodes.debate.helpers import (
     _apply_deterministic_risk_clamp,
     _is_grounded,
 )

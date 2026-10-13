@@ -285,6 +285,20 @@ class PositionSizer:
         rejections: list[str] = []
 
         # 1. Basic sanity checks
+        if risk_pct <= 0:
+            return self._invalid(
+                symbol, direction, entry_price, stop_loss, take_profit,
+                account_equity, risk_pct,
+                ["risk_pct must be strictly positive (> 0); non-positive risk / negative expectancy allocated"]
+            )
+
+        if not account_equity or account_equity <= 0:
+            return self._invalid(
+                symbol, direction, entry_price, stop_loss, take_profit,
+                account_equity, risk_pct,
+                ["account_equity must be positive"]
+            )
+
         if entry_price <= 0 or stop_loss <= 0:
             return self._invalid(symbol, direction, entry_price, stop_loss, take_profit,
                                  account_equity, risk_pct, ["entry_price or stop_loss is zero/negative"])
@@ -299,9 +313,6 @@ class PositionSizer:
                 rejections.append("For BUY: take_profit must be above entry_price")
             elif direction == "sell" and take_profit >= entry_price:
                 rejections.append("For SELL: take_profit must be below entry_price")
-
-        if not account_equity or account_equity <= 0:
-            rejections.append("account_equity must be positive")
 
         # 2. Calculate SL distance using Decimal fixed-point precision
         d_entry = Decimal(str(entry_price))
@@ -341,7 +352,7 @@ class PositionSizer:
         # 5. Round to lot step and clamp
         recommended_lots = self._round_lots(raw_lots, spec.lot_step)
         max_risk_cap = float(self.settings.get("trading", {}).get("risk", {}).get("max_risk_amount_usd", 1000.0))
-        if recommended_lots < spec.min_lot:
+        if raw_lots > 0.0 and recommended_lots < spec.min_lot:
             min_lot_risk_usd = spec.min_lot * sl_distance_pips * spec.pip_value_per_lot
             if min_lot_risk_usd <= max_risk_cap:
                 recommended_lots = spec.min_lot
@@ -351,11 +362,17 @@ class PositionSizer:
                 )
             else:
                 rejections.append(f"Broker minimum lot ({spec.min_lot}) exceeds maximum risk limit (${max_risk_cap:.2f})")
+        elif raw_lots <= 0.0:
+            recommended_lots = 0.0
+            rejections.append("Calculated lot size is zero or non-positive")
         
         actual_risk_usd = recommended_lots * sl_distance_pips * spec.pip_value_per_lot
         if actual_risk_usd > max_risk_cap:
             rejections.append(f"Actual risk (${actual_risk_usd:.2f}) exceeds configured risk limit of ${max_risk_cap:.2f}")
-        recommended_lots = max(spec.min_lot, recommended_lots)
+        if raw_lots > 0.0:
+            recommended_lots = max(spec.min_lot, recommended_lots)
+        else:
+            recommended_lots = 0.0
         
         # TAMBAHKAN: cap to max_lot
         if spec.max_lot > 0:
@@ -550,6 +567,20 @@ class PositionSizer:
         rejections: list[str] = []
 
         # 1. Basic sanity checks
+        if risk_pct <= 0:
+            return self._invalid(
+                symbol, direction, entry_price, stop_loss, take_profit,
+                account_equity, risk_pct,
+                ["risk_pct must be strictly positive (> 0); non-positive risk / negative expectancy allocated"]
+            )
+
+        if not account_equity or account_equity <= 0:
+            return self._invalid(
+                symbol, direction, entry_price, stop_loss, take_profit,
+                account_equity, risk_pct,
+                ["account_equity must be positive"]
+            )
+
         if entry_price <= 0 or stop_loss <= 0:
             return self._invalid(symbol, direction, entry_price, stop_loss, take_profit,
                                  account_equity, risk_pct, ["entry_price or stop_loss is zero/negative"])
@@ -564,9 +595,6 @@ class PositionSizer:
                 rejections.append("For BUY: take_profit must be above entry_price")
             elif direction == "sell" and take_profit >= entry_price:
                 rejections.append("For SELL: take_profit must be below entry_price")
-
-        if not account_equity or account_equity <= 0:
-            rejections.append("account_equity must be positive")
 
         # 2. Calculate SL distance using Decimal fixed-point precision
         d_entry = Decimal(str(entry_price))
@@ -608,7 +636,7 @@ class PositionSizer:
         # 5. Round to lot step and clamp (Fix 4.14)
         recommended_lots = self._round_lots(raw_lots, spec.lot_step)
         max_risk_cap = float(self.settings.get("trading", {}).get("risk", {}).get("max_risk_amount_usd", 1000.0))
-        if recommended_lots < spec.min_lot:
+        if raw_lots > 0.0 and recommended_lots < spec.min_lot:
             min_lot_risk_usd = spec.min_lot * sl_distance_pips * spec.pip_value_per_lot
             if min_lot_risk_usd <= max_risk_cap:
                 recommended_lots = spec.min_lot
@@ -621,7 +649,13 @@ class PositionSizer:
                     f"Broker minimum lot ({spec.min_lot}) exceeds maximum risk limit "
                     f"(${max_risk_cap:.2f}): risk would be ${min_lot_risk_usd:.2f}"
                 )
-        recommended_lots = max(spec.min_lot, recommended_lots)
+        elif raw_lots <= 0.0:
+            recommended_lots = 0.0
+            rejections.append("Calculated lot size is zero or non-positive")
+        if raw_lots > 0.0:
+            recommended_lots = max(spec.min_lot, recommended_lots)
+        else:
+            recommended_lots = 0.0
 
         actual_risk_usd = recommended_lots * sl_distance_pips * spec.pip_value_per_lot
         if actual_risk_usd > max_risk_cap:
