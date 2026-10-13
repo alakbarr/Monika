@@ -4,6 +4,7 @@
 # ==============================================================================
 
 import inspect
+from pathlib import Path
 import sys
 from typing import Any
 from unittest.mock import patch, MagicMock
@@ -136,5 +137,44 @@ def test_models_decomposition_facade_and_submodules():
     finally:
         setattr(models, "Trade", original)
         assert domain_models.Trade is original
+
+
+def test_tui_decomposition_facade_and_submodules():
+    """Verify interfaces/cli/tui.py decomposition into tui_app with submodules <= 800 LOC."""
+    from monika.interfaces.cli import tui
+    from monika.interfaces.cli import tui_app
+
+    tui_app_dir = Path("src/monika/interfaces/cli/tui_app")
+    assert tui_app_dir.is_dir()
+
+    for py_file in tui_app_dir.rglob("*.py"):
+        line_count = len(py_file.read_text(encoding="utf-8").splitlines())
+        assert line_count <= 800, f"{py_file} exceeds 800 LOC ({line_count} lines)"
+
+    tui_path = Path("src/monika/interfaces/cli/tui.py")
+    tui_lines = len(tui_path.read_text(encoding="utf-8").splitlines())
+    assert tui_lines <= 800, f"tui.py exceeds 800 LOC ({tui_lines} lines)"
+
+    # Identity check
+    assert tui.TradingDashboard is tui_app.TradingDashboard
+    assert tui.TradingAgentApp is tui_app.TradingAgentApp
+    assert tui.LiveTickerBanner is tui_app.LiveTickerBanner
+    assert tui.StatusBar is tui_app.StatusBar
+    assert tui.KillConfirmModalScreen is tui_app.KillConfirmModalScreen
+    assert tui.run_tui is tui_app.run_tui
+    assert tui.DEFAULT_API_URL == tui_app.DEFAULT_API_URL
+    assert tui.COMMAND_SUGGESTIONS == tui_app.COMMAND_SUGGESTIONS
+    assert tui.DETERMINISTIC_RISK_CHECKS == tui_app.DETERMINISTIC_RISK_CHECKS
+
+    # Monkeypatch synchronization
+    original = tui.TradingDashboard
+    try:
+        dummy: Any = object()
+        setattr(tui, "TradingDashboard", dummy)
+        assert tui_app.TradingDashboard is dummy
+        assert tui_app.dashboard.TradingDashboard is dummy
+    finally:
+        setattr(tui, "TradingDashboard", original)
+        assert tui_app.TradingDashboard is original
 
 
