@@ -723,7 +723,7 @@ class TestPointInTimeBacktestParity:
 # 6. Deep Verification: Edge Cases, Robustness & State Machine Guards
 # ==============================================================================
 
-class TestPhase3EdgeCasesAndRobustness:
+class TestOrderStateMachineEdgeCasesAndRobustness:
 
     def test_invalid_state_transitions_raise_error(self):
         """Verify illegal order state transitions are rejected by the state machine."""

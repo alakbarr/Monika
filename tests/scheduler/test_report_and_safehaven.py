@@ -5,7 +5,7 @@ from scheduler.cycle_scheduler import CycleScheduler
 from analysis.tools.tool_executor import ToolExecutor
 
 
-class TestPhase4ReportAndSafeHaven:
+class TestReportAndSafeHaven:
 
     @pytest.mark.asyncio
     @patch("analysis.providers.llm_factory.get_client_for_task")

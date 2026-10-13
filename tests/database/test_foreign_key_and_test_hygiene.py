@@ -17,7 +17,7 @@ from database.models import (
 )
 
 
-class TestPhase5ForeignKeyIntegrity:
+class TestForeignKeyIntegrity:
     """Verifies that foreign key declarations have explicit, domain-appropriate ondelete policies."""
 
     def test_all_expected_foreign_keys_have_explicit_ondelete(self):

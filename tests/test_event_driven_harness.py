@@ -782,7 +782,7 @@ class OpenAIChatCompletionMock:
         self.usage = Usage(prompt_tokens, completion_tokens)
 
 
-class TestPhase2EdgeCases:
+class TestEventDrivenHarnessEdgeCases:
     @pytest.mark.asyncio
     async def test_agent_harness_openai_chat_completion_compatibility(self):
         """Verify AgentHarness natively unpacks OpenAI ChatCompletion with reasoning_content and tool_calls."""
