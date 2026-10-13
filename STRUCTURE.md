@@ -766,6 +766,16 @@ Monika/
 │       │   │       │   ├── definition.py
 │       │   │       │   ├── dispatcher.py
 │       │   │       │   └── toolset_registry.py
+│       │   │       ├── definitions
+│       │   │       │   ├── __init__.py
+│       │   │       │   ├── base.py
+│       │   │       │   ├── groups.py
+│       │   │       │   ├── intelligence.py
+│       │   │       │   ├── macro.py
+│       │   │       │   ├── market.py
+│       │   │       │   ├── smc.py
+│       │   │       │   ├── system.py
+│       │   │       │   └── trading.py
 │       │   │       ├── domain
 │       │   │       │   ├── __init__.py
 │       │   │       │   ├── browser_tool.py
