@@ -6,13 +6,9 @@ Enforces hard mathematical ceilings and non-negotiable risk constraints.
 import logging
 from typing import Any, Dict, Optional
 
+from .registry import InvariantRegistry, InvariantResult, InvariantStatus, InvariantViolationError
+
 logger = logging.getLogger("TradingAgent.RiskInvariants")
-
-
-class InvariantViolationError(RuntimeError):
-    """Raised when a non-negotiable trading safety invariant is breached."""
-
-    pass
 
 
 def assert_risk_gate_invariants(
@@ -104,8 +100,6 @@ def check_risk_gate_invariant(context: dict[str, Any]) -> Any:
     InvariantRegistry adapter for risk gate invariant.
     Returns InvariantResult.
     """
-    from .registry import InvariantResult, InvariantStatus
-
     proposal = context.get("proposal", {})
     current_drawdown_pct = float(context.get("current_drawdown_pct", 0.0))
     max_drawdown_limit = float(context.get("max_drawdown_limit", 3.0))
@@ -133,3 +127,8 @@ def check_risk_gate_invariant(context: dict[str, Any]) -> Any:
             details={"drawdown": current_drawdown_pct, "max_limit": max_drawdown_limit},
             package_name="risk.invariants.risk_gate",
         )
+
+
+InvariantRegistry.register_default_provider(
+    lambda reg: reg.register("risk_gate_limits", check_risk_gate_invariant)
+)

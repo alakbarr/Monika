@@ -91,12 +91,24 @@ class ActionsMixin(_TuiMixinBase):
             return
         activity_log = self.query_one("#activity_log", RichLog)
         activity_log.write("[bold yellow][DIJEDA] Pausing system trading...[/]")
-        from monika.interfaces.cli.main import _cmd_pause
+        from monika.application.services.trading_service import TradingService
+        from monika.infrastructure.database.db import get_session, init_db
 
-        class DummyArgs:
+        await init_db()
+        async with get_session() as session:
+            await TradingService.pause_trading(session, reason="TUI Pause Action", actor="tui_operator")
+        try:
+            import aiohttp
+
+            settings = load_settings()
+            port = settings.get("dashboard", {}).get("port", 8000)
+            async with aiohttp.ClientSession() as http_sess:
+                await http_sess.post(
+                    f"http://127.0.0.1:{port}/api/actions/pause",
+                    timeout=aiohttp.ClientTimeout(total=1.0),
+                )
+        except Exception:
             pass
-
-        await _cmd_pause(DummyArgs())
         await self.refresh_data()
 
     def action_kill(self) -> None:
@@ -114,12 +126,24 @@ class ActionsMixin(_TuiMixinBase):
         """Execute emergency kill switch after confirmation."""
         activity_log = self.query_one("#activity_log", RichLog)
         activity_log.write("[bold red][EMERGENCY] TRIGGERING EMERGENCY KILL SWITCH...[/]")
-        from monika.interfaces.cli.main import _cmd_kill
+        from monika.application.services.trading_service import TradingService
+        from monika.infrastructure.database.db import get_session, init_db
 
-        class DummyArgs:
-            yes = True
+        await init_db()
+        async with get_session() as session:
+            await TradingService.emergency_kill(session, reason="TUI Emergency Kill", actor="tui_operator")
+        try:
+            import aiohttp
 
-        await _cmd_kill(DummyArgs())
+            settings = load_settings()
+            port = settings.get("dashboard", {}).get("port", 8000)
+            async with aiohttp.ClientSession() as http_sess:
+                await http_sess.post(
+                    f"http://127.0.0.1:{port}/api/actions/kill",
+                    timeout=aiohttp.ClientTimeout(total=1.0),
+                )
+        except Exception:
+            pass
         await self.refresh_data()
 
     async def _send_inline_chat(self, prompt: str) -> None:
@@ -244,12 +268,24 @@ class ActionsMixin(_TuiMixinBase):
             await self.action_pause()
         elif cmd in ("res", "resume"):
             activity_log.write("[bold green]▶ Resuming system trading...[/]")
-            from monika.interfaces.cli.main import _cmd_resume
+            from monika.application.services.trading_service import TradingService
+            from monika.infrastructure.database.db import get_session, init_db
 
-            class DummyArgs:
-                yes = True
+            await init_db()
+            async with get_session() as session:
+                await TradingService.resume_trading(session, actor="tui_operator")
+            try:
+                import aiohttp
 
-            await _cmd_resume(DummyArgs())
+                settings = load_settings()
+                port = settings.get("dashboard", {}).get("port", 8000)
+                async with aiohttp.ClientSession() as http_sess:
+                    await http_sess.post(
+                        f"http://127.0.0.1:{port}/api/actions/resume",
+                        timeout=aiohttp.ClientTimeout(total=1.0),
+                    )
+            except Exception:
+                pass
             await self.refresh_data()
         elif cmd in ("k", "kill"):
             self.action_kill()

@@ -39,7 +39,7 @@ class DaemonSubcommand(Subcommand):
 
     async def execute(self, args: argparse.Namespace) -> int:
         action = getattr(args, "daemon_action", None) or getattr(args, "command", "status")
-        from monika.interfaces.cli.main import (
+        from monika.interfaces.cli.commands.daemon_ctrl import (
             _cmd_kill,
             _cmd_pause,
             _cmd_resume,

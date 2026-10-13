@@ -74,10 +74,10 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `src/monika/infrastructure/storage`](#folder-srcmonikainfrastructurestorage) - Line 1203
     - [Folder: `src/monika/interfaces`](#folder-srcmonikainterfaces) - Line 1208
       - [Folder: `src/monika/interfaces/cli`](#folder-srcmonikainterfacescli) - Line 1212
-      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1222
-      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1229
-      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1237
-      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1248
+      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1223
+      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1230
+      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1238
+      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1249
 
 ## Root Directory: `Monika/`
 
@@ -1212,6 +1212,7 @@ This document provides an exhaustive structural index of all directories, files,
 ##### Folder: `src/monika/interfaces/cli`
 - **Modules**:
   - `main.py`: Streamlined entrypoint (`monika` CLI) dispatching daemon, doctor, chat, tui, and admin subcommands.
+  - `context.py`: Decoupled CLI daemon lifecycle management, PID file handling, and runtime dispatch context proxy (`CliMainProxy`).
   - `commands/`: Modular command implementations and argument parser (`parser.py`, `daemon_ctrl.py`, `config_ctrl.py`, `inspect_ctrl.py`, `analysis_ctrl.py`, `benchmark_ctrl.py`).
   - `tui.py`: Backward-compatible facade delegating to modular `tui_app/` package for the Rich Textual dashboard.
   - `tui_app/`: Modular Textual dashboard package (`dashboard.py`, `entrypoints.py`, `widgets.py`, `constants.py`, `base.py`, and mixins: `navigation.py`, `plugins_benchmark.py`, `websocket.py`, `actions.py`, `data_sync.py`).

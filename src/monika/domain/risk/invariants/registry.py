@@ -9,7 +9,10 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from collections.abc import Callable
 
-from .risk_gate_invariant import InvariantViolationError
+class InvariantViolationError(RuntimeError):
+    """Raised when a non-negotiable trading safety invariant is breached."""
+
+    pass
 
 logger = logging.getLogger("TradingAgent.RiskInvariants.Registry")
 
@@ -41,9 +44,16 @@ class InvariantRegistry:
     """Registry coordinating non-negotiable quantitative and runtime invariants."""
 
     _instance: InvariantRegistry | None = None
+    _default_registrations: list[Callable[[InvariantRegistry], None]] = []
 
     def __init__(self):
         self._invariants: dict[str, Callable[[dict[str, Any]], InvariantResult]] = {}
+
+    @classmethod
+    def register_default_provider(cls, provider: Callable[[InvariantRegistry], None]) -> None:
+        """Register a callback that populates default invariants without circular imports."""
+        if provider not in cls._default_registrations:
+            cls._default_registrations.append(provider)
 
     @classmethod
     def get_instance(cls, with_defaults: bool = False) -> InvariantRegistry:
@@ -55,14 +65,11 @@ class InvariantRegistry:
 
     def register_defaults(self) -> None:
         """Register default built-in invariants."""
-        try:
-            from .position_count_invariant import check_position_count_invariant
-            from .risk_gate_invariant import check_risk_gate_invariant
-
-            self.register("risk_gate_limits", check_risk_gate_invariant)
-            self.register("position_count_ceiling", check_position_count_invariant)
-        except Exception as e:
-            logger.debug(f"[InvariantRegistry] Default registration non-fatal error: {e}")
+        for provider in self._default_registrations:
+            try:
+                provider(self)
+            except Exception as e:
+                logger.debug(f"[InvariantRegistry] Default registration non-fatal error: {e}")
 
     @classmethod
     def reset_instance(cls) -> None:

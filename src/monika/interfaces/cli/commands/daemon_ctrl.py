@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp
 
-import monika.interfaces.cli.main as cli_main
+from monika.interfaces.cli.context import cli_main
 from monika.application.services.portfolio_service import PortfolioService
 from monika.application.services.trading_service import TradingService
 from monika.infrastructure.database.repositories.system_config_repository import SystemConfigRepository
@@ -105,9 +105,7 @@ async def _cmd_pause(args: Any) -> None:
     console = cli_main.get_console()
     await cli_main.init_db()
     async with cli_main.get_session() as session:
-        cfg_repo = SystemConfigRepository(session)
-        await cfg_repo.set_system_paused(True)
-        await session.commit()
+        await TradingService.pause_trading(session, reason="CLI pause command", actor="cli_admin")
     try:
         import aiohttp
 
@@ -143,11 +141,7 @@ async def _cmd_resume(args: Any) -> None:
 
     await cli_main.init_db()
     async with cli_main.get_session() as session:
-        cfg_repo = SystemConfigRepository(session)
-        await cfg_repo.set("suspended_symbols", "[]")
-        for key in ("kill_switch", "system_paused", "budget_pause", "trading_paused", "manual_trading_paused"):
-            await cfg_repo.set(key, "false")
-        await session.commit()
+        await TradingService.resume_trading(session, actor="cli_admin")
     try:
         import aiohttp
 

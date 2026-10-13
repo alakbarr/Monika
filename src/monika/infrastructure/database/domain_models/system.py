@@ -186,7 +186,19 @@ class SystemConfig(Base):
                 .on_conflict_do_update(index_elements=["key"], set_=update_dict)
             )
             await session.execute(stmt)
-            return (await session.execute(select(cls).where(cls.key == key))).scalar_one()
+            res = await session.execute(select(cls).where(cls.key == key))
+            cfg = res.scalar_one_or_none()
+            if cfg is None:
+                try:
+                    cfg = res.scalar_one()
+                except Exception:
+                    pass
+            if cfg is not None and value is not None:
+                try:
+                    cfg.value = value
+                except Exception:
+                    pass
+            return cfg if cfg is not None else cls(key=key, value=value, description=description, updated_at=now)
         else:
             cfg = (await session.execute(select(cls).where(cls.key == key))).scalar_one_or_none()
             if cfg:

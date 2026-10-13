@@ -236,13 +236,6 @@ class PlaybookLedger:
         return True
 
 
-def __getattr__(name: str):
-    if name in ("PlaybookLifecycleFSM", "PlaybookLifecycleManager"):
-        from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleFSM, PlaybookLifecycleManager
-
-        return locals()[name]
-    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
-
 
 __all__ = [
     "LedgerEntry",

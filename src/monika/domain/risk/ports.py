@@ -199,7 +199,6 @@ class ApprovalTransportProtocol(Protocol):
 
 
 _risk_data_provider_factory: Any | None = None
-_broker_client_factory: Any | None = None
 
 
 def register_risk_data_provider_factory(factory: Any) -> None:
@@ -208,60 +207,17 @@ def register_risk_data_provider_factory(factory: Any) -> None:
     _risk_data_provider_factory = factory
 
 
-def register_broker_client_factory(factory: Any) -> None:
-    """Register concrete BrokerClient factory from infrastructure layer."""
-    global _broker_client_factory
-    _broker_client_factory = factory
-
-
 def get_default_risk_data_provider(
     settings: dict[str, Any] | None = None,
     session: Any | None = None,
 ) -> Any:
-    """Dynamically resolves default RiskDataProvider without static infrastructure coupling."""
+    """Resolves default RiskDataProvider registered by infrastructure layer."""
     global _risk_data_provider_factory
     if _risk_data_provider_factory is not None:
         return _risk_data_provider_factory(session=session, settings=settings)
-
-    # Dynamic fallback resolution
-    try:
-        import sys
-
-        mod = sys.modules.get("monika.infrastructure.database.repositories.risk_repository")
-        if mod and hasattr(mod, "SqlAlchemyRiskRepository"):
-            return mod.SqlAlchemyRiskRepository(session=session, settings=settings)
-        import importlib
-
-        mod = importlib.import_module("monika.infrastructure.database.repositories.risk_repository")
-        repo_cls = getattr(mod, "SqlAlchemyRiskRepository")
-        return repo_cls(session=session, settings=settings)
-    except Exception:
-        return None
-
-
-def get_default_broker_client(
-    settings: dict[str, Any] | None = None,
-) -> Any:
-    """Dynamically resolves default BrokerClient without static infrastructure coupling."""
-    global _broker_client_factory
-    if _broker_client_factory is not None:
-        return _broker_client_factory(settings=settings)
-
-    try:
-        import sys
-
-        mod = sys.modules.get("monika.infrastructure.brokers.mt5_client")
-        if mod and hasattr(mod, "get_mt5_client"):
-            return mod.get_mt5_client(settings)
-        import importlib
-
-        mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
-        fn = getattr(mod, "get_mt5_client", None)
-        if callable(fn):
-            return fn(settings)
-    except Exception:
-        return None
     return None
+
+
 
 
 _regime_classifier_fn: Any | None = None
@@ -467,5 +423,47 @@ def get_strategy_factor_family(strategy_id: str | None) -> str:
         return str(getattr(strat_cls, "factor_family", "trend")) if strat_cls else "trend"
     except Exception:
         return "trend"
+
+
+_broker_client_factory: Any = None
+
+
+def register_broker_client_factory(factory: Any) -> None:
+    """Register factory providing broker client implementation to domain risk."""
+    global _broker_client_factory
+    _broker_client_factory = factory
+
+
+def get_default_broker_client(settings: Any | None = None) -> Any:
+    """Dynamically resolves default broker client without static coupling."""
+    global _broker_client_factory
+    if _broker_client_factory is not None:
+        return _broker_client_factory(settings)
+    try:
+        import sys
+
+        mod = sys.modules.get("monika.application.execution.broker_registry")
+        if mod and hasattr(mod, "get_broker"):
+            broker_name = (
+                settings.get("broker", {}).get("active_broker", "mt5")
+                if isinstance(settings, dict)
+                else "mt5"
+            )
+            return mod.get_broker(broker_name)
+        import importlib
+
+        mod = importlib.import_module("monika.application.execution.broker_registry")
+        get_broker_fn = getattr(mod, "get_broker", None)
+        if get_broker_fn is not None:
+            broker_name = (
+                settings.get("broker", {}).get("active_broker", "mt5")
+                if isinstance(settings, dict)
+                else "mt5"
+            )
+            return get_broker_fn(broker_name)
+    except Exception:
+        pass
+    return None
+
 
 

@@ -17,7 +17,7 @@ import aiohttp
 from rich.table import Table
 from sqlalchemy import desc, func, select
 
-import monika.interfaces.cli.main as cli_main
+from monika.interfaces.cli.context import cli_main
 from monika.infrastructure.database.models import ActivityLog, TelegramConversation
 from monika.interfaces.cli.theme import (
     BRASS,

@@ -226,14 +226,7 @@ class ChatReplSession:
         try:
             from monika.application.agent.chat_agent import ChatAgent
 
-            _loader = load_settings
-            try:
-                import monika.interfaces.cli.tui_chat as tui_chat
-
-                _loader = getattr(tui_chat, "load_settings", load_settings)
-            except Exception:
-                pass
-
+            _loader = getattr(self, "_settings_loader", None) or load_settings
             settings = _loader()
             # Set mode telemetry based on paper trading setting
             mode_str = "PAPER" if settings.get("paper_trading", {}).get("enabled", True) else "LIVE"

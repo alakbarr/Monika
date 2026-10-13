@@ -5,8 +5,12 @@ Asserts that open position count does not breach maximum account limits.
 
 from typing import Any, Dict, List, Optional
 
-from .registry import InvariantResult, InvariantStatus
-from .risk_gate_invariant import InvariantViolationError
+from .registry import (
+    InvariantRegistry,
+    InvariantResult,
+    InvariantStatus,
+    InvariantViolationError,
+)
 
 
 def assert_position_count_invariant(
@@ -67,3 +71,8 @@ def check_position_count_invariant(context: dict[str, Any]) -> InvariantResult:
         details={"current_count": count, "max_limit": max_positions},
         package_name="risk.invariants.position_count",
     )
+
+
+InvariantRegistry.register_default_provider(
+    lambda reg: reg.register("position_count_ceiling", check_position_count_invariant)
+)
