@@ -35,7 +35,7 @@ class SimulationSubcommand(Subcommand):
         console = get_console()
 
         if action == "backtest":
-            from monika.interfaces.cli.main import _cmd_backtest
+            from monika.interfaces.cli.commands.analysis_ctrl import _cmd_backtest
 
             await _cmd_backtest(args)
         elif action == "scenario":

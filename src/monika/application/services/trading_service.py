@@ -583,10 +583,10 @@ class TradingService:
             cfg_repo = SystemConfigRepository(session)
             activity_repo = ActivityLogRepository(session)
 
-        await cfg_repo.set_kill_switch(True)
         await cfg_repo.set("emergency_kill_active", "true")
         await cfg_repo.set("emergency_kill_reason", reason)
         await cfg_repo.set("emergency_kill_timestamp", datetime.now(timezone.utc).isoformat())
+        await cfg_repo.set_kill_switch(True)
 
         await activity_repo.log_activity(
             category="SECURITY",
@@ -602,3 +602,55 @@ class TradingService:
             "actor": actor,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
+
+    @classmethod
+    async def pause_trading(
+        cls,
+        session: Union[AsyncSession, UnitOfWorkPort],
+        reason: str = "Trading paused",
+        actor: str = "operator",
+    ) -> Dict[str, Any]:
+        """Pause system trading proposals and persist state."""
+        if isinstance(session, UnitOfWorkPort):
+            cfg_repo = session.system_config
+            activity_repo = session.activity_logs
+        else:
+            cfg_repo = SystemConfigRepository(session)
+            activity_repo = ActivityLogRepository(session)
+
+        await cfg_repo.set_system_paused(True)
+        await activity_repo.log_activity(
+            category="TRADING",
+            description=f"System trading paused: {reason}",
+            actor=actor,
+        )
+        await session.commit()
+        logger.info(f"[TradingService] System trading paused by '{actor}': {reason}")
+        return {"status": "PAUSED", "reason": reason, "actor": actor}
+
+    @classmethod
+    async def resume_trading(
+        cls,
+        session: Union[AsyncSession, UnitOfWorkPort],
+        actor: str = "operator",
+    ) -> Dict[str, Any]:
+        """Resume system trading operations and lift pause flags."""
+        if isinstance(session, UnitOfWorkPort):
+            cfg_repo = session.system_config
+            activity_repo = session.activity_logs
+        else:
+            cfg_repo = SystemConfigRepository(session)
+            activity_repo = ActivityLogRepository(session)
+
+        await cfg_repo.set("suspended_symbols", "[]")
+        for key in ("kill_switch", "system_paused", "budget_pause", "trading_paused", "manual_trading_paused"):
+            await cfg_repo.set(key, "false")
+
+        await activity_repo.log_activity(
+            category="TRADING",
+            description="System trading resumed and pause flags cleared",
+            actor=actor,
+        )
+        await session.commit()
+        logger.info(f"[TradingService] System trading resumed by '{actor}'")
+        return {"status": "RESUMED", "actor": actor}

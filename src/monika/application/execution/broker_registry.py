@@ -104,7 +104,10 @@ def _register_builtins():
     def _create_multi_account(**kwargs):
         from monika.application.execution.service.multi_account_adapter import MultiAccountBrokerAdapter
 
-        return MultiAccountBrokerAdapter(**kwargs)
+        master = kwargs.pop("master_adapter", None)
+        if master is None:
+            master = BrokerAdapterRegistry.get("mt5_live") or BrokerAdapterRegistry.get("simulated")
+        return MultiAccountBrokerAdapter(master_adapter=master, **kwargs)
 
     BrokerAdapterRegistry.register("mt5_live", _create_mt5)
     BrokerAdapterRegistry.register("mt5", _create_mt5)

@@ -30,7 +30,7 @@ class TradingSubcommand(Subcommand):
 
     async def execute(self, args: argparse.Namespace) -> int:
         action = getattr(args, "trading_action", None) or getattr(args, "command", "positions")
-        from monika.interfaces.cli.main import _cmd_positions, _cmd_unsuspend
+        from monika.interfaces.cli.commands.daemon_ctrl import _cmd_positions, _cmd_unsuspend
 
         if action == "positions":
             await _cmd_positions(args)

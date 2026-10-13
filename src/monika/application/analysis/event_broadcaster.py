@@ -77,20 +77,6 @@ def emit_analysis_event(event_type: str, payload: Dict[str, Any]) -> None:
         if _event_listeners:
             for listener in list(_event_listeners):
                 _dispatch_to_listener(listener, event_type, enriched_payload)
-            return
-
-        # Fallback to direct dashboard broadcast if listeners not registered yet
-        try:
-            from monika.interfaces.dashboard.routes.common import broadcast_live_event
-
-            try:
-                loop = asyncio.get_running_loop()
-                if loop.is_running():
-                    loop.create_task(broadcast_live_event(event_type, enriched_payload))
-            except RuntimeError:
-                pass
-        except ImportError, Exception:
-            pass
 
     except Exception as exc:
         logger.debug(f"[EventBroadcaster] Failed emitting {event_type}: {exc}")
@@ -111,14 +97,6 @@ async def emit_analysis_event_async(event_type: str, payload: Dict[str, Any]) ->
                         await res
                 except Exception as exc:
                     logger.debug(f"[EventBroadcaster Async] Listener error: {exc}")
-            return
 
-        # Fallback
-        try:
-            from monika.interfaces.dashboard.routes.common import broadcast_live_event
-
-            await broadcast_live_event(event_type, enriched_payload)
-        except ImportError, Exception:
-            pass
     except Exception as exc:
         logger.debug(f"[EventBroadcaster Async] Failed emitting {event_type}: {exc}")

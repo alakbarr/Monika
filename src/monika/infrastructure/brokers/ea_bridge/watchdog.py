@@ -129,3 +129,6 @@ class EAWatchdog:
                 self.on_recover_callback()
             except Exception as e:
                 logger.error(f"[EAWatchdog] Error in on_recover_callback: {e}")
+
+
+HeartbeatManager.set_watchdog_factory(EAWatchdog)

@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp
 
-import monika.interfaces.cli.main as cli_main
+from monika.interfaces.cli.context import cli_main
 from monika.interfaces.cli.theme import (
     BRASS,
     PHOSPHOR_AMBER,

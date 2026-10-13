@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 from rich.table import Table
 from sqlalchemy import desc, select
 
-import monika.interfaces.cli.main as cli_main
+from monika.interfaces.cli.context import cli_main
 from monika.interfaces.cli.theme import (
     BRASS,
     LEDGER_BOX,

@@ -13,7 +13,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-import monika.interfaces.cli.main as cli_main
+from monika.interfaces.cli.context import cli_main
 from monika.interfaces.cli.theme import (
     BEAR_LOSS,
     BRASS,

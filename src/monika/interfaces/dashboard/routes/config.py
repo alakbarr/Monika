@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 import tempfile
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -33,13 +34,12 @@ config_router = router
 
 def _resolve_settings_path() -> str:
     """Resolve settings path, preferring patched api._get_settings_path if available."""
-    try:
-        import monika.interfaces.dashboard.api as api
-
-        if hasattr(api, "_get_settings_path"):
-            return api._get_settings_path()
-    except Exception:
-        pass
+    api_mod = sys.modules.get("monika.interfaces.dashboard.api")
+    if api_mod is not None and hasattr(api_mod, "_get_settings_path"):
+        try:
+            return api_mod._get_settings_path()
+        except Exception:
+            pass
     return default_get_settings_path()
 
 

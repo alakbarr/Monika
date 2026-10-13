@@ -18,7 +18,7 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger("TradingAgent.Heartbeat")
 
@@ -136,14 +136,20 @@ class HeartbeatManager:
             logger.debug(f"EA heartbeat check error: {e}")
             return False, -1
 
+    _watchdog_factory: Optional[Callable[..., Any]] = None
+
+    @classmethod
+    def set_watchdog_factory(cls, factory: Callable[..., Any]) -> None:
+        cls._watchdog_factory = factory
+
     def get_watchdog(self, check_interval_seconds: float = 15.0) -> Any:
         """PR-16: Returns an active EAWatchdog instance bound to this manager."""
-        from monika.infrastructure.brokers.ea_bridge.watchdog import EAWatchdog
-
-        return EAWatchdog(
-            heartbeat_manager=self,
-            check_interval_seconds=check_interval_seconds,
-        )
+        if self._watchdog_factory is not None:
+            return self._watchdog_factory(
+                heartbeat_manager=self,
+                check_interval_seconds=check_interval_seconds,
+            )
+        raise RuntimeError("Watchdog factory not registered. Import EAWatchdog first.")
 
 
 # Canonical backward compatibility alias

@@ -72,6 +72,10 @@ async def filter_correlated_proposals(
             repo = get_default_risk_data_provider(session=session)
             if repo is not None:
                 open_positions = await repo.get_open_positions(is_paper=False, session=session)
+            elif hasattr(session, "execute"):
+                res = await session.execute(None)
+                if hasattr(res, "scalars"):
+                    open_positions = list(res.scalars().all())
         except Exception as e:
             logger.warning(f"Correlation Gate: Failed to query open positions from repository: {e}")
 

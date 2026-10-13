@@ -53,11 +53,7 @@ class MultiAccountBrokerAdapter(BrokerAdapter):
 
     def _ensure_master(self) -> BrokerAdapter:
         if self.master_adapter is None:
-            from monika.application.execution.broker_registry import BrokerAdapterRegistry
-
-            self.master_adapter = BrokerAdapterRegistry.get("mt5_live") or BrokerAdapterRegistry.get("simulated")
-        if self.master_adapter is None:
-            raise RuntimeError("No master broker adapter found in registry (mt5_live or simulated)")
+            raise RuntimeError("No master broker adapter configured in MultiAccountBrokerAdapter")
         return self.master_adapter
 
     async def get_tick(self, symbol: str) -> dict:
