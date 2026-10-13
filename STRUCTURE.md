@@ -171,6 +171,18 @@ Monika/
 │       │   │   ├── agent_loop.py
 │       │   │   ├── auxiliary_model_router.py
 │       │   │   ├── bounded_response.py
+│       │   │   ├── chat
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── action_execution.py
+│       │   │   │   ├── action_state.py
+│       │   │   │   ├── base.py
+│       │   │   │   ├── constants.py
+│       │   │   │   ├── coordinator.py
+│       │   │   │   ├── history.py
+│       │   │   │   ├── pending_actions.py
+│       │   │   │   ├── prompt_builder.py
+│       │   │   │   ├── streaming.py
+│       │   │   │   └── tiers.py
 │       │   │   ├── chat_agent.py
 │       │   │   ├── chat_compaction.py
 │       │   │   ├── chat_tool_router.py

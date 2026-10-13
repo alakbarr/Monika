@@ -233,12 +233,26 @@ __all__ = [
 
 
 # Module proxy to mirror unittest.mock patches on telegram_bot.chat_agent
-# directly to agent.chat_agent for seamless backward compatibility.
+# directly to agent.chat_agent and modular chat submodules for seamless backward compatibility.
 class _TelegramChatAgentModule(sys.modules[__name__].__class__):
     def __setattr__(self, name: str, value: Any) -> None:
         super().__setattr__(name, value)
         if name in ("get_client_for_task", "get_session"):
             setattr(_core_agent, name, value)
+            if "monika.application.agent.chat" in sys.modules:
+                setattr(sys.modules["monika.application.agent.chat"], name, value)
+            for sub in (
+                "coordinator",
+                "action_state",
+                "action_execution",
+                "history",
+                "tiers",
+                "streaming",
+                "prompt_builder",
+            ):
+                m_name = f"monika.application.agent.chat.{sub}"
+                if m_name in sys.modules:
+                    setattr(sys.modules[m_name], name, value)
         elif name == "ChatAgent":
             if value is TelegramChatAgent:
                 setattr(_core_agent, "ChatAgent", CoreChatAgent)
