@@ -64,7 +64,9 @@ async def test_web_reader_body_stream_limit():
     mock_response.content.iter_chunked = mock_chunk_iter
     mock_response.get_encoding.return_value = "utf-8"
 
-    with patch("data_sources.web_reader.validate_url_ip", new_callable=AsyncMock) as mock_val:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.web_reader.validate_url_ip", new_callable=AsyncMock
+    ) as mock_val:
         mock_val.return_value = None  # SSRF pass
 
         with patch("aiohttp.ClientSession.get") as mock_get:
@@ -86,7 +88,9 @@ async def test_web_reader_browser_fallback_on_403_challenge():
     mock_response.status = 403
     mock_response.reason = "Forbidden"
 
-    with patch("data_sources.web_reader.validate_url_ip", new_callable=AsyncMock) as mock_val:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.web_reader.validate_url_ip", new_callable=AsyncMock
+    ) as mock_val:
         mock_val.return_value = None
 
         with patch("aiohttp.ClientSession.get") as mock_get:
@@ -126,7 +130,9 @@ async def test_web_reader_browser_fallback_on_challenge_content_in_200():
     mock_response.content.iter_chunked = mock_chunk_iter
     mock_response.get_encoding.return_value = "utf-8"
 
-    with patch("data_sources.web_reader.validate_url_ip", new_callable=AsyncMock) as mock_val:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.web_reader.validate_url_ip", new_callable=AsyncMock
+    ) as mock_val:
         mock_val.return_value = None
 
         with patch("aiohttp.ClientSession.get") as mock_get:
@@ -158,7 +164,9 @@ async def test_web_reader_browser_fallback_disabled():
     mock_response.status = 403
     mock_response.reason = "Forbidden"
 
-    with patch("data_sources.web_reader.validate_url_ip", new_callable=AsyncMock) as mock_val:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.web_reader.validate_url_ip", new_callable=AsyncMock
+    ) as mock_val:
         mock_val.return_value = None
 
         with patch("aiohttp.ClientSession.get") as mock_get:
@@ -182,7 +190,9 @@ async def test_web_reader_browser_fallback_graceful_failure():
     mock_response.status = 403
     mock_response.reason = "Forbidden"
 
-    with patch("data_sources.web_reader.validate_url_ip", new_callable=AsyncMock) as mock_val:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.web_reader.validate_url_ip", new_callable=AsyncMock
+    ) as mock_val:
         mock_val.return_value = None
 
         with patch("aiohttp.ClientSession.get") as mock_get:

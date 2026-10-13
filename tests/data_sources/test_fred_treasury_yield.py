@@ -79,7 +79,7 @@ class TestFREDDataFetcher:
         mock_session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    @patch("data_sources.fred_treasury_yield.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.fred_treasury_yield.fetch_with_retry")
     async def test_call_fred(self, mock_fetch):
         mock_fetch.return_value = {"observations": [{"date": "2024-01-01", "value": "1.0"}]}
 

@@ -31,7 +31,9 @@ async def test_funding_rate_fetcher_binance_primary_success():
         "interestRate": "0.000100",
     }
 
-    with patch("data_sources.coinglass_funding.fetch_with_retry", new_callable=AsyncMock) as mock_fetch:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.coinglass_funding.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_fetch:
         mock_fetch.return_value = binance_response
         result = await fetcher.fetch()
 
@@ -63,7 +65,9 @@ async def test_funding_rate_fetcher_bybit_fallback_success():
             return bybit_response
         return None
 
-    with patch("data_sources.coinglass_funding.fetch_with_retry", side_effect=side_effect_fetch):
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.coinglass_funding.fetch_with_retry", side_effect=side_effect_fetch
+    ):
         result = await fetcher.fetch()
 
         assert result.get("symbol") == "BTCUSD"
@@ -94,7 +98,10 @@ async def test_tool_get_funding_rate_on_demand_live_fallback():
         "source": "Binance",
     }
 
-    with patch("data_sources.coinglass_funding.CoinglasFundingFetcher.fetch", new_callable=AsyncMock) as mock_fetch:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.coinglass_funding.CoinglasFundingFetcher.fetch",
+        new_callable=AsyncMock,
+    ) as mock_fetch:
         mock_fetch.return_value = live_funding_data
         result = await executor._tool_get_funding_rate({})
 
@@ -113,7 +120,10 @@ async def test_tool_get_funding_rate_offline_neutral_baseline():
 
     executor = ToolExecutor(session=mock_session, settings={})
 
-    with patch("data_sources.coinglass_funding.CoinglasFundingFetcher.fetch", new_callable=AsyncMock) as mock_fetch:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.coinglass_funding.CoinglasFundingFetcher.fetch",
+        new_callable=AsyncMock,
+    ) as mock_fetch:
         mock_fetch.side_effect = Exception("Network offline")
         result = await executor._tool_get_funding_rate({})
 

@@ -115,7 +115,7 @@ print("new")
 
 def test_file_patch_engine_apply_multi_patch_success():
     with tempfile.TemporaryDirectory() as tmpdir:
-        f1 = os.path.join(tmpdir, "main.py")
+        f1 = os.path.join(tmpdir, "monika.application.main.py")
         with open(f1, "w", encoding="utf-8") as f:
             f.write("def calculate():\n    return 1\n")
 

@@ -43,7 +43,7 @@ class TestUserIntelCycleInjection:
         state = {"summary": {}, "symbols": ["EURUSD", "USDJPY"]}
         config = {"configurable": {"scheduler": mock_scheduler}}
 
-        with patch("graph.nodes.data_node.get_session") as mock_gs:
+        with patch("monika.application.graph.nodes.data_node.get_session") as mock_gs:
             mock_gs.return_value.__aenter__.return_value = mock_session
             with (
                 patch(
@@ -52,8 +52,8 @@ class TestUserIntelCycleInjection:
                 ),
                 patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor") as mock_nd,
                 patch("monika.application.analysis.prefetch.macro_preprocessor.MacroPreprocessor") as mock_mp,
-                patch("indicators.technical.TechnicalIndicatorCalculator") as mock_calc,
-                patch("indicators.structure.MarketStructureAnalyzer") as mock_analyzer,
+                patch("monika.domain.indicators.technical.TechnicalIndicatorCalculator") as mock_calc,
+                patch("monika.domain.indicators.structure.MarketStructureAnalyzer") as mock_analyzer,
                 patch(
                     "monika.core.validation.data_validator.validate_data_freshness",
                     new=AsyncMock(return_value={"errors": [], "warnings": []}),
@@ -257,7 +257,7 @@ class TestUserIntelCycleInjection:
 
         cycle_id = "cycle_test_123"
 
-        with patch("scheduler.graph_cycle_scheduler.build_trading_graph", return_value=MagicMock()):
+        with patch("monika.application.scheduler.graph_cycle_scheduler.build_trading_graph", return_value=MagicMock()):
             scheduler = GraphCycleScheduler(
                 settings={
                     "trading": {
@@ -272,7 +272,7 @@ class TestUserIntelCycleInjection:
                 macro_data_scheduler=MagicMock(),
             )
 
-            with patch("scheduler.graph_cycle_scheduler.get_session") as mock_gs:
+            with patch("monika.application.scheduler.graph_cycle_scheduler.get_session") as mock_gs:
                 mock_gs.return_value.__aenter__.return_value = mock_session
                 res = await scheduler.cleanup_user_market_intel(cycle_id)
 

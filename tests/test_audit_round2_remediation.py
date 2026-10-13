@@ -179,8 +179,8 @@ class TestPositionGuardianFridayClose:
 
         # Mock clock/time to Friday 20:30 UTC
         with (
-            patch("scheduler.position_guardian.clock.now") as mock_clock_now,
-            patch("scheduler.position_guardian.get_session") as mock_sess,
+            patch("monika.application.scheduler.position_guardian.clock.now") as mock_clock_now,
+            patch("monika.application.scheduler.position_guardian.get_session") as mock_sess,
         ):
             mock_now = MagicMock()
             mock_now.weekday.return_value = 4  # Friday
@@ -270,7 +270,7 @@ class TestDatabaseAndConfigRemediation:
         assert loaded["trading"]["schedule"]["analysis_cycle_hours"] == 6.0
 
     def test_domain_models_exports(self):
-        """database.domain_models should export BacktestRun, BacktestTrade, TradePlanLeg, etc."""
+        """monika.infrastructure.database.domain_models should export BacktestRun, BacktestTrade, TradePlanLeg, etc."""
         import monika.infrastructure.database.domain_models as dm
 
         assert hasattr(dm, "BacktestRun")

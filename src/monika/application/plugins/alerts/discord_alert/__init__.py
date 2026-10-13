@@ -1,0 +1,3 @@
+"""
+Discord Alert Plugin package.
+"""

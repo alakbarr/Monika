@@ -32,7 +32,7 @@ async def test_trailing_stop_manager_ignores_budget_pause():
 
     mock_session.execute.side_effect = execute_side_effect
 
-    with patch("scheduler.trailing_stop_manager.get_session") as mock_get_session:
+    with patch("monika.application.scheduler.trailing_stop_manager.get_session") as mock_get_session:
         mock_get_session.return_value.__aenter__.return_value = mock_session
         result = await manager.run_once()
 
@@ -66,7 +66,7 @@ async def test_trailing_stop_manager_paused_on_kill_switch():
 
     mock_session.execute.side_effect = execute_side_effect
 
-    with patch("scheduler.trailing_stop_manager.get_session") as mock_get_session:
+    with patch("monika.application.scheduler.trailing_stop_manager.get_session") as mock_get_session:
         mock_get_session.return_value.__aenter__.return_value = mock_session
         result = await manager.run_once()
 

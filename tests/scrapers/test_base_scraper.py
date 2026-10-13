@@ -4,8 +4,8 @@ from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScrap
 
 
 class TestBaseScraper:
-    @patch("scrapers.base_scraper.ChromiumPage")
-    @patch("scrapers.base_scraper.ChromiumOptions")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumOptions")
     def test_init_headless(self, mock_options, mock_page):
         scraper = BaseScraper(headless=True)
 
@@ -26,8 +26,8 @@ class TestBaseScraper:
         assert scraper.page == mock_page.return_value
 
     @patch.object(BaseScraper, "_cleanup_stale_profile_locks")
-    @patch("scrapers.base_scraper.ChromiumPage")
-    @patch("scrapers.base_scraper.ChromiumOptions")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumOptions")
     def test_init_profile(self, mock_options, mock_page, mock_cleanup):
         scraper = BaseScraper(headless=False, profile_name="test_profile")
 
@@ -40,8 +40,8 @@ class TestBaseScraper:
         assert mock_options_instance.set_user_data_path.called
         assert mock_cleanup.called
 
-    @patch("scrapers.base_scraper.ChromiumPage")
-    @patch("scrapers.base_scraper.ChromiumOptions")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumOptions")
     def test_navigate_success(self, mock_options, mock_page):
         scraper = BaseScraper(headless=True)
 
@@ -56,7 +56,7 @@ class TestBaseScraper:
         scraper.page.get.assert_called_with("http://test.com")
         mock_wait.ele_displayed.assert_called_with("div.content", timeout=30)
 
-    @patch("scrapers.base_scraper.ChromiumPage")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
     def test_navigate_fallback(self, mock_page, monkeypatch):
         monkeypatch.setenv("SCRAPER_ALLOW_GUI_FALLBACK", "true")
         # Allow patch of _initialize_browser to avoid calling real ChromiumPage again
@@ -77,8 +77,8 @@ class TestBaseScraper:
             assert not scraper.headless  # Fallback switches headless to False
             mock_init.assert_called_with(False, port=ANY)
 
-    @patch("scrapers.base_scraper.ChromiumPage")
-    @patch("scrapers.base_scraper.ChromiumOptions")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumOptions")
     def test_close(self, mock_options, mock_page):
         scraper = BaseScraper()
         scraper.close()
@@ -88,9 +88,9 @@ class TestBaseScraper:
         scraper.page.quit.side_effect = Exception("Test")
         scraper.close()  # should not raise
 
-    @patch("scrapers.base_scraper.kill_process_tree")
-    @patch("scrapers.base_scraper.ChromiumPage")
-    @patch("scrapers.base_scraper.ChromiumOptions")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.kill_process_tree")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumOptions")
     def test_close_kills_browser_pid(self, mock_options, mock_page, mock_kill):
         mock_page_inst = mock_page.return_value
         mock_page_inst.process_id = 12345
@@ -144,7 +144,7 @@ class TestBaseScraper:
         cmd = mock_subproc.call_args[0][0]
         assert cmd == ["taskkill", "/F", "/T", "/PID", "8888"]
 
-    @patch("scrapers.base_scraper.kill_process_tree")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.kill_process_tree")
     @patch("psutil.process_iter")
     def test_cleanup_stale_profile_processes(self, mock_proc_iter, mock_kill, tmp_path):
         fake_proc = MagicMock()

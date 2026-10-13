@@ -99,12 +99,13 @@ async def test_sub_agent_nodes_modular_execution():
             pass
 
     with (
-        patch("graph.nodes.debate.bull_advocate_node.get_session", side_effect=MockSession),
+        patch("monika.application.graph.nodes.debate.bull_advocate_node.get_session", side_effect=MockSession),
         patch(
-            "graph.nodes.debate.bull_advocate_node.build_fact_sheet", return_value={"symbol": "EURUSD", "atr": 0.0050}
+            "monika.application.graph.nodes.debate.bull_advocate_node.build_fact_sheet",
+            return_value={"symbol": "EURUSD", "atr": 0.0050},
         ),
         patch(
-            "graph.nodes.debate.bull_advocate_node.generate_bull_advocacy",
+            "monika.application.graph.nodes.debate.bull_advocate_node.generate_bull_advocacy",
             return_value={"thesis": "bull entry at 1.0850 target 1.0950", "strength_score": 9},
         ),
     ):
@@ -115,7 +116,7 @@ async def test_sub_agent_nodes_modular_execution():
     # 2. Bear Dissent with high disagreement (triggers rebuttal needed)
     state["debate_states"] = res_bull["debate_states"]
     with patch(
-        "graph.nodes.debate.bear_dissent_node.generate_bear_dissent",
+        "monika.application.graph.nodes.debate.bear_dissent_node.generate_bear_dissent",
         return_value={"dissent": "liquidity grab at 1.0850", "risk_severity": 9},
     ):
         res_bear = await bear_dissent_node(state, config)
@@ -127,7 +128,7 @@ async def test_sub_agent_nodes_modular_execution():
     # 3. Rebuttal Node
     state["debate_states"] = res_bear["debate_states"]
     with patch(
-        "graph.nodes.debate.rebuttal_node.generate_bull_rebuttal",
+        "monika.application.graph.nodes.debate.rebuttal_node.generate_bull_rebuttal",
         return_value={"rebuttal": "retested level 1.0850", "rebuttal_strength": 8},
     ):
         res_reb = await rebuttal_node(state, config)
@@ -136,12 +137,15 @@ async def test_sub_agent_nodes_modular_execution():
     # 4. Debate Judge Node (Approves)
     state["debate_states"] = res_reb["debate_states"]
     with (
-        patch("graph.nodes.debate.debate_judge_node.get_session", side_effect=MockSession),
+        patch("monika.application.graph.nodes.debate.debate_judge_node.get_session", side_effect=MockSession),
         patch(
-            "graph.nodes.debate.debate_judge_node.evaluate_debate",
+            "monika.application.graph.nodes.debate.debate_judge_node.evaluate_debate",
             return_value={"final_decision": "buy", "reason": "strong confluence", "risk_multiplier": 1.2},
         ),
-        patch("graph.nodes.debate.debate_judge_node.validate_and_apply_judge_adjustments", return_value=(True, None)),
+        patch(
+            "monika.application.graph.nodes.debate.debate_judge_node.validate_and_apply_judge_adjustments",
+            return_value=(True, None),
+        ),
     ):
         res_judge = await debate_judge_node(state, config)
         assert len(res_judge["actionable_trades"]) == 1
@@ -151,16 +155,25 @@ async def test_sub_agent_nodes_modular_execution():
     state["actionable_trades"] = res_judge["actionable_trades"]
     state["investment_verdicts"] = res_judge["investment_verdicts"]
     with (
-        patch("graph.nodes.debate.risk_evaluator_node.get_session", side_effect=MockSession),
+        patch("monika.application.graph.nodes.debate.risk_evaluator_node.get_session", side_effect=MockSession),
         patch(
-            "graph.nodes.debate.risk_evaluator_node.compute_actual_risk_state",
+            "monika.application.graph.nodes.debate.risk_evaluator_node.compute_actual_risk_state",
             return_value={"daily_pnl_pct": 0.5, "portfolio_heat_pct": 1.0, "risk_budget_remaining_pct": 95.0},
         ),
-        patch("graph.nodes.debate.risk_evaluator_node.analyze_risk_conservative", return_value={"veto_trade": False}),
-        patch("graph.nodes.debate.risk_evaluator_node.analyze_risk_aggressive", return_value={"veto_trade": False}),
-        patch("graph.nodes.debate.risk_evaluator_node.analyze_risk_neutral", return_value={"veto_trade": False}),
         patch(
-            "graph.nodes.debate.risk_evaluator_node.make_portfolio_decision_deterministic",
+            "monika.application.graph.nodes.debate.risk_evaluator_node.analyze_risk_conservative",
+            return_value={"veto_trade": False},
+        ),
+        patch(
+            "monika.application.graph.nodes.debate.risk_evaluator_node.analyze_risk_aggressive",
+            return_value={"veto_trade": False},
+        ),
+        patch(
+            "monika.application.graph.nodes.debate.risk_evaluator_node.analyze_risk_neutral",
+            return_value={"veto_trade": False},
+        ),
+        patch(
+            "monika.application.graph.nodes.debate.risk_evaluator_node.make_portfolio_decision_deterministic",
             return_value={"approval": True, "recommended_risk_multiplier": 1.0},
         ),
     ):
@@ -240,7 +253,7 @@ async def test_bear_dissent_round_2_evaluates_rebuttal():
         captured_context = ctx
         return {"risk_severity": 4, "dissent": "conceding minor risk at 1.0850"}
 
-    with patch("graph.nodes.debate.bear_dissent_node.generate_bear_dissent", side_effect=mock_bear):
+    with patch("monika.application.graph.nodes.debate.bear_dissent_node.generate_bear_dissent", side_effect=mock_bear):
         res = await bear_dissent_node(state, config)
         assert "bull_rebuttal" in captured_context
         deb = res["debate_states"]["EURUSD"]

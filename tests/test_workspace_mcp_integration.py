@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from monika.core.config.settings import load_settings
-from monika.application.analysis.mcp.client import McpClientManager
+from monika.infrastructure.mcp.client import McpClientManager
 from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
 from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
 from monika.application.analysis.tools.unified_registry import unified_tool_registry

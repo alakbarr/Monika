@@ -63,7 +63,7 @@ async def test_point_in_time_full_mode_step_execution():
         is_valid=True,
     )
 
-    with patch("backtest.point_in_time_engine.get_session") as mock_get_session:
+    with patch("monika.application.backtest.point_in_time_engine.get_session") as mock_get_session:
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx

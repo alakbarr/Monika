@@ -111,7 +111,7 @@ async def test_trading_agent_remote_gateway_wiring_and_shutdown():
 
     with (
         patch("monika.infrastructure.database.db.get_session", return_value=mock_ctx),
-        patch("main.close_db", new_callable=AsyncMock),
+        patch("monika.application.main.close_db", new_callable=AsyncMock),
     ):
         await agent._shutdown()
 

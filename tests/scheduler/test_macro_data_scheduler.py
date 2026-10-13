@@ -29,22 +29,38 @@ class TestMacroDataScheduler:
 
         mock_session = create_mock_async_session()
         with (
-            patch("scheduler.macro_data_scheduler.get_session") as mock_get_session,
-            patch("data_sources.coinglass_funding.CoinglasFundingFetcher") as mock_coinglass_cls,
-            patch("scrapers.sentiment.binance_sentiment.BinanceSentimentFetcher") as mock_binance_cls,
-            patch("scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher") as mock_myfx_cls,
-            patch("scrapers.sentiment.fxssi_sentiment.FXSSISentimentFetcher") as mock_fxssi_cls,
-            patch("data_sources.vix_yfinance.VIXFetcher") as mock_vix_cls,
-            patch("data_sources.fred_treasury_yield.FREDDataFetcher") as mock_fred_cls,
-            patch("data_sources.cftc_cot.CFTCCOTFetcher") as mock_cftc_cls,
-            patch("data_sources.dxy_yfinance.DXYFetcher") as mock_dxy_cls,
-            patch("data_sources.bond_yields_fetcher.BondYieldFetcher") as mock_bond_cls,
-            patch("data_sources.fear_greed.FearGreedFetcher") as mock_fg_cls,
-            patch("data_sources.eia_oil_inventory.EIAInventoryFetcher") as mock_eia_cls,
-            patch("data_sources.central_bank_watch.CentralBankWatchFetcher") as mock_cbw_cls,
-            patch("data_sources.fed_liquidity_h41_fetcher.FedLiquidityH41Fetcher") as mock_fed_liq_cls,
-            patch("data_sources.market_stress_auction_fetcher.MarketStressAuctionFetcher") as mock_stress_cls,
-            patch("scrapers.macro.macro_trigger_router.MacroTriggerRouter") as mock_router_cls,
+            patch("monika.application.scheduler.macro_data_scheduler.get_session") as mock_get_session,
+            patch(
+                "monika.infrastructure.data_ingestion.sources.coinglass_funding.CoinglasFundingFetcher"
+            ) as mock_coinglass_cls,
+            patch(
+                "monika.infrastructure.data_ingestion.scrapers.sentiment.binance_sentiment.BinanceSentimentFetcher"
+            ) as mock_binance_cls,
+            patch(
+                "monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher"
+            ) as mock_myfx_cls,
+            patch(
+                "monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment.FXSSISentimentFetcher"
+            ) as mock_fxssi_cls,
+            patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher") as mock_vix_cls,
+            patch("monika.infrastructure.data_ingestion.sources.fred_treasury_yield.FREDDataFetcher") as mock_fred_cls,
+            patch("monika.infrastructure.data_ingestion.sources.cftc_cot.CFTCCOTFetcher") as mock_cftc_cls,
+            patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.DXYFetcher") as mock_dxy_cls,
+            patch("monika.infrastructure.data_ingestion.sources.bond_yields_fetcher.BondYieldFetcher") as mock_bond_cls,
+            patch("monika.infrastructure.data_ingestion.sources.fear_greed.FearGreedFetcher") as mock_fg_cls,
+            patch("monika.infrastructure.data_ingestion.sources.eia_oil_inventory.EIAInventoryFetcher") as mock_eia_cls,
+            patch(
+                "monika.infrastructure.data_ingestion.sources.central_bank_watch.CentralBankWatchFetcher"
+            ) as mock_cbw_cls,
+            patch(
+                "monika.infrastructure.data_ingestion.sources.fed_liquidity_h41_fetcher.FedLiquidityH41Fetcher"
+            ) as mock_fed_liq_cls,
+            patch(
+                "monika.infrastructure.data_ingestion.sources.market_stress_auction_fetcher.MarketStressAuctionFetcher"
+            ) as mock_stress_cls,
+            patch(
+                "monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router.MacroTriggerRouter"
+            ) as mock_router_cls,
         ):
             mock_get_session.return_value.__aenter__.return_value = mock_session
 

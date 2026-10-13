@@ -18,8 +18,8 @@ from monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch import Fed
 
 
 class TestScraperLanguageIsolation:
-    @patch("scrapers.base_scraper.ChromiumPage")
-    @patch("scrapers.base_scraper.ChromiumOptions")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumOptions")
     def test_base_scraper_forces_english_locale(self, mock_options, mock_page):
         scraper = BaseScraper(headless=True)
         opt = mock_options.return_value
@@ -32,7 +32,7 @@ class TestScraperLanguageIsolation:
         opt.set_pref.assert_any_call("translate.enabled", False)
         opt.set_pref.assert_any_call("translate_whitelists", {})
 
-    @patch("scrapers.base_scraper.ChromiumPage")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
     def test_all_scrapers_inherit_english_settings(self, mock_page):
         with patch.object(BaseScraper, "_initialize_browser") as mock_init:
             mock_init.return_value = MagicMock()
@@ -45,7 +45,7 @@ class TestScraperLanguageIsolation:
             assert isinstance(investing, BaseScraper)
             assert isinstance(fedwatch, BaseScraper)
 
-    @patch("scrapers.social.twitter_watch.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.social.twitter_watch.BaseScraper._initialize_browser")
     def test_twitter_scraper_url_appends_lang_en(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
@@ -61,7 +61,7 @@ class TestScraperLanguageIsolation:
         # Verifikasi navigasi ke URL dengan query ?lang=en
         mock_page.get.assert_any_call("https://x.com/i/lists/12345?lang=en")
 
-    @patch("scrapers.news.tradingview_news.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.news.tradingview_news.BaseScraper._initialize_browser")
     def test_tradingview_scraper_injects_english_cookies(self, mock_init, tmp_path):
         mock_page = MagicMock()
         mock_init.return_value = mock_page

@@ -38,7 +38,7 @@ def test_list_backtest_runs():
     mock_res.scalars.return_value.all.return_value = [mock_run]
     mock_session.execute = AsyncMock(return_value=mock_res)
 
-    with patch("logging_observability.dashboard.routes.backtest.get_session") as mock_get_session:
+    with patch("monika.core.telemetry.dashboard.routes.backtest.get_session") as mock_get_session:
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
         resp = client.get("/api/backtest/runs")
@@ -92,7 +92,7 @@ def test_get_backtest_run_details():
     mock_res.scalars.return_value.all.return_value = [mock_trade]
     mock_session.execute = AsyncMock(return_value=mock_res)
 
-    with patch("logging_observability.dashboard.routes.backtest.get_session") as mock_get_session:
+    with patch("monika.core.telemetry.dashboard.routes.backtest.get_session") as mock_get_session:
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
         resp = client.get("/api/backtest/runs/42")
@@ -107,7 +107,7 @@ def test_get_backtest_run_details():
 def test_trigger_backtest_run():
     """Verify POST /api/backtest/run queues a background backtest execution."""
     with patch.dict(os.environ, {"DASHBOARD_API_KEYS": "admin:test_adm_key"}):
-        with patch("logging_observability.dashboard.routes.backtest._execute_background_backtest"):
+        with patch("monika.core.telemetry.dashboard.routes.backtest._execute_background_backtest"):
             resp = client.post(
                 "/api/backtest/run",
                 headers={"X-API-Key": "test_adm_key"},

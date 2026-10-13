@@ -27,7 +27,7 @@ from scripts.check_scrapers.check_twitter import check_twitter, print_tweets_tab
 
 
 class TestCheckCalendar:
-    @patch("scrapers.calendar.calendar_forexfactory.ForexFactoryCalendarScraper")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory.ForexFactoryCalendarScraper")
     def test_check_forexfactory_success(self, mock_scraper_cls):
         mock_instance = MagicMock()
         mock_instance.fetch_events.return_value = [
@@ -40,7 +40,7 @@ class TestCheckCalendar:
         assert res["count"] == 1
         mock_instance.close.assert_called_once()
 
-    @patch("scrapers.calendar.calendar_forexfactory.ForexFactoryCalendarScraper")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory.ForexFactoryCalendarScraper")
     def test_check_forexfactory_error(self, mock_scraper_cls):
         mock_instance = MagicMock()
         mock_instance.fetch_events.side_effect = RuntimeError("Network error")
@@ -50,7 +50,7 @@ class TestCheckCalendar:
         assert res["status"] == "FAILED"
         assert "Network error" in res["error"]
 
-    @patch("scrapers.calendar.calendar_investing.InvestingCalendarScraper")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing.InvestingCalendarScraper")
     def test_check_investing_success(self, mock_scraper_cls):
         mock_instance = MagicMock()
         mock_instance.fetch_events.return_value = [
@@ -63,7 +63,7 @@ class TestCheckCalendar:
         assert res["count"] == 1
         mock_instance.close.assert_called_once()
 
-    @patch("scrapers.calendar.calendar_finnhub.FinnhubCalendarScraper")
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_finnhub.FinnhubCalendarScraper")
     def test_check_finnhub_success(self, mock_scraper_cls):
         mock_instance = MagicMock()
         mock_instance.api_key = "mock_key"
@@ -85,7 +85,7 @@ class TestCheckCalendar:
 
 
 class TestCheckNews:
-    @patch("scrapers.news.kitco_news.KitcoNewsScraper")
+    @patch("monika.infrastructure.data_ingestion.scrapers.news.kitco_news.KitcoNewsScraper")
     def test_check_kitco_success(self, mock_scraper_cls):
         mock_instance = MagicMock()
         mock_instance.fetch_news.return_value = [
@@ -98,7 +98,7 @@ class TestCheckNews:
         assert res["count"] == 1
         mock_instance.close.assert_called_once()
 
-    @patch("scrapers.news.tradingview_news.TradingViewNewsScraper")
+    @patch("monika.infrastructure.data_ingestion.scrapers.news.tradingview_news.TradingViewNewsScraper")
     def test_check_tradingview_success(self, mock_scraper_cls):
         mock_instance = MagicMock()
         mock_instance.fetch_news.return_value = [
@@ -140,7 +140,7 @@ class TestCheckNews:
 
 
 class TestCheckCME:
-    @patch("scrapers.macro.cme_fedwatch.FedWatchScraper")
+    @patch("monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch.FedWatchScraper")
     def test_check_cme_fedwatch_success(self, mock_scraper_cls):
         mock_instance = MagicMock()
         mock_instance.fetch_probabilities.return_value = [
@@ -174,7 +174,7 @@ class TestCheckCME:
 
 
 class TestCheckSentiment:
-    @patch("scrapers.sentiment.fxssi_sentiment.FXSSISentimentFetcher")
+    @patch("monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment.FXSSISentimentFetcher")
     def test_check_fxssi_success(self, mock_fetcher_cls):
         mock_instance = MagicMock()
         mock_instance.fetch_sync.return_value = {
@@ -187,7 +187,7 @@ class TestCheckSentiment:
         assert res["status"] == "SUCCESS"
         assert res["count"] == 1
 
-    @patch("scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher")
+    @patch("monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher")
     def test_check_myfxbook_success(self, mock_fetcher_cls):
         mock_instance = MagicMock()
         mock_instance.fetch_sync.return_value = {
@@ -201,7 +201,7 @@ class TestCheckSentiment:
         assert res["count"] == 1
 
     @pytest.mark.asyncio
-    @patch("scrapers.sentiment.binance_sentiment.BinanceSentimentFetcher")
+    @patch("monika.infrastructure.data_ingestion.scrapers.sentiment.binance_sentiment.BinanceSentimentFetcher")
     async def test_check_binance_success(self, mock_fetcher_cls):
         mock_instance = MagicMock()
         mock_instance.fetch = AsyncMock(
@@ -225,7 +225,7 @@ class TestCheckSentiment:
 
 
 class TestCheckTwitter:
-    @patch("scrapers.social.twitter_watch.TwitterWatchScraper")
+    @patch("monika.infrastructure.data_ingestion.scrapers.social.twitter_watch.TwitterWatchScraper")
     def test_check_twitter_success(self, mock_scraper_cls, tmp_path):
         mock_instance = MagicMock()
         mock_instance.session_dir = tmp_path

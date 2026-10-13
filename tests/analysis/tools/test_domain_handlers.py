@@ -11,7 +11,9 @@ async def test_tool_executor_delegates_to_technical_handlers():
     executor = ToolExecutor(mock_session, settings={})
 
     fake_snapshot = {"ATR": {"value": 15.5}, "RSI": {"value": 55.0}}
-    with patch("indicators.technical.TechnicalIndicatorCalculator.get_snapshot", new_callable=AsyncMock) as mock_snap:
+    with patch(
+        "monika.domain.indicators.technical.TechnicalIndicatorCalculator.get_snapshot", new_callable=AsyncMock
+    ) as mock_snap:
         mock_snap.return_value = fake_snapshot
 
         res = await executor.execute("get_technical_indicators", {"symbol": "EURUSD", "timeframe": "H1"})
@@ -72,7 +74,9 @@ async def test_tool_executor_executes_read_url():
         "title": "Federal Reserve Monetary Policy",
         "content": "FOMC decisions, inflation targets, and discount window rate.",
     }
-    with patch("data_sources.web_reader.WebReader.read_url", new_callable=AsyncMock) as mock_read:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.web_reader.WebReader.read_url", new_callable=AsyncMock
+    ) as mock_read:
         mock_read.return_value = fake_page
 
         res = await executor.execute("read_url", {"url": "https://federalreserve.gov/monetarypolicy.htm"})
@@ -102,7 +106,8 @@ async def test_tool_executor_executes_search_academic():
         ],
     }
     with patch(
-        "data_sources.academic_search.AcademicSearchClient.search_papers", new_callable=AsyncMock
+        "monika.infrastructure.data_ingestion.sources.academic_search.AcademicSearchClient.search_papers",
+        new_callable=AsyncMock,
     ) as mock_search:
         mock_search.return_value = fake_papers
 

@@ -121,7 +121,9 @@ async def test_central_bank_watch_fetch_expectations(db_session):
 
     fetcher = CentralBankWatchFetcher(db_session)
 
-    with patch("data_sources.central_bank_watch.fetch_with_retry", new_callable=AsyncMock) as mock_http:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.central_bank_watch.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_http:
         mock_http.return_value = SAMPLE_CBW_HOME_HTML
         res = await fetcher.fetch_expectations()
 
@@ -164,7 +166,9 @@ async def test_central_bank_watch_fetch_sovereign_yields(db_session):
     """Verifikasi parser tabel sovereign yield 2Y dan 10Y dan upsert ke BondYieldData."""
     fetcher = CentralBankWatchFetcher(db_session)
 
-    with patch("data_sources.central_bank_watch.fetch_with_retry", new_callable=AsyncMock) as mock_http:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.central_bank_watch.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_http:
         mock_http.return_value = SAMPLE_CBW_YIELD_HTML
         yields = await fetcher.fetch_sovereign_yields()
 
@@ -184,7 +188,9 @@ async def test_central_bank_watch_fetch_sovereign_yields(db_session):
     assert len(rows) == 10
 
     # Uji idempotency / upsert saat di-fetch ulang
-    with patch("data_sources.central_bank_watch.fetch_with_retry", new_callable=AsyncMock) as mock_http:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.central_bank_watch.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_http:
         mock_http.return_value = SAMPLE_CBW_YIELD_HTML
         await fetcher.fetch_sovereign_yields()
 
@@ -214,7 +220,9 @@ async def test_central_bank_watch_error_handling(db_session):
     """Verifikasi penanganan graceful jika respons HTTP None atau kosong."""
     fetcher = CentralBankWatchFetcher(db_session)
 
-    with patch("data_sources.central_bank_watch.fetch_with_retry", new_callable=AsyncMock) as mock_http:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.central_bank_watch.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_http:
         mock_http.return_value = None
         exp = await fetcher.fetch_expectations()
         assert exp == {}
@@ -245,7 +253,9 @@ async def test_central_bank_watch_card_class_matcher(db_session):
     </div>
     """
     fetcher = CentralBankWatchFetcher(db_session)
-    with patch("data_sources.central_bank_watch.fetch_with_retry", new_callable=AsyncMock) as mock_http:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.central_bank_watch.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_http:
         mock_http.return_value = html
         res = await fetcher.fetch_expectations()
         assert "FED" in res

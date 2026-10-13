@@ -25,7 +25,7 @@ async def test_position_exit_reviewer_no_positions():
 
     reviewer = PositionExitReviewer(settings, mock_stage, mock_exec)
 
-    with patch("scheduler.position_exit_reviewer.get_session") as mock_session_ctx:
+    with patch("monika.application.scheduler.position_exit_reviewer.get_session") as mock_session_ctx:
         mock_session = create_mock_async_session()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 

@@ -628,7 +628,7 @@ class TestOrderReconcilerWorker:
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 return None
 
-        with patch("scheduler.order_reconciler.get_session", return_value=AsyncContextManagerMock()):
+        with patch("monika.application.scheduler.order_reconciler.get_session", return_value=AsyncContextManagerMock()):
             task = asyncio.create_task(reconciler.start())
             await asyncio.sleep(0.12)
             assert mock_adapter.get_orders.call_count >= 1
@@ -658,21 +658,21 @@ class TestMainOrchestrationIntegration:
             patch("monika.infrastructure.brokers.mt5_client.MT5Client"),
             patch("monika.application.execution.execution_service.ExecutionService"),
             patch("monika.infrastructure.brokers.ea_bridge.heartbeat_writer.HeartbeatManager"),
-            patch("scheduler.graph_cycle_scheduler.GraphCycleScheduler"),
-            patch("scheduler.news_watcher.NewsWatcher"),
+            patch("monika.application.scheduler.graph_cycle_scheduler.GraphCycleScheduler"),
+            patch("monika.application.scheduler.news_watcher.NewsWatcher"),
             patch("monika.interfaces.telegram.bot.TelegramBot"),
             patch("monika.application.analysis.stages.fundamental_stage.FundamentalStage"),
             patch("monika.application.analysis.stages.per_asset_stage.PerAssetStage"),
-            patch("scheduler.market_data_scheduler.MarketDataScheduler"),
-            patch("scheduler.macro_data_scheduler.MacroDataScheduler"),
-            patch("scheduler.trigger_checker.TriggerChecker"),
-            patch("scheduler.digest_slice_scheduler.DigestSliceScheduler"),
-            patch("harness.engine.PluginEngine"),
+            patch("monika.application.scheduler.market_data_scheduler.MarketDataScheduler"),
+            patch("monika.application.scheduler.macro_data_scheduler.MacroDataScheduler"),
+            patch("monika.application.scheduler.trigger_checker.TriggerChecker"),
+            patch("monika.application.scheduler.digest_slice_scheduler.DigestSliceScheduler"),
+            patch("monika.application.plugins.engine.engine.PluginEngine"),
             patch("monika.application.analysis.memory.background_review.BackgroundReviewEngine"),
-            patch("scheduler.universal_cron_scheduler.UniversalCronScheduler"),
-            patch("scheduler.alpha_discovery_scheduler.AlphaDiscoveryScheduler"),
-            patch("scheduler.strategy_synthesis_scheduler.StrategySynthesisScheduler"),
-            patch("scheduler.playbook_curator.PlaybookCurator"),
+            patch("monika.application.scheduler.universal_cron_scheduler.UniversalCronScheduler"),
+            patch("monika.application.scheduler.alpha_discovery_scheduler.AlphaDiscoveryScheduler"),
+            patch("monika.application.scheduler.strategy_synthesis_scheduler.StrategySynthesisScheduler"),
+            patch("monika.application.scheduler.playbook_curator.PlaybookCurator"),
             patch("monika.infrastructure.infra.notifier.AgentNotifier"),
         ):
             agent._init_components()

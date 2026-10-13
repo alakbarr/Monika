@@ -9,7 +9,7 @@ Provides unified interfaces, lifecycle state machine, dependency injection,
 and reactive event dispatching.
 """
 
-from monika.application.harness.contract import (
+from monika.application.plugins.engine.contract import (
     EventBusProtocol,
     PluginCategory,
     PluginMetadata,
@@ -19,8 +19,8 @@ from monika.application.harness.contract import (
     TaskRegistryProtocol,
     TradingPlugin,
 )
-from monika.application.harness.engine import PluginEngine, get_plugin_engine
-from monika.application.harness.installer import (
+from monika.application.plugins.engine.engine import PluginEngine, get_plugin_engine
+from monika.application.plugins.engine.installer import (
     get_community_catalog,
     list_all_plugins_status,
     run_pip_install,
@@ -28,7 +28,7 @@ from monika.application.harness.installer import (
     toggle_plugin_state,
     validate_package_spec,
 )
-from monika.application.harness.lifecycle import (
+from monika.application.plugins.engine.lifecycle import (
     ReplacementCoordinator,
     ReplacementLease,
     get_plugin_storage_dir,

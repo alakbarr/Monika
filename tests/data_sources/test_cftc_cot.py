@@ -14,7 +14,7 @@ class TestCFTCCOTFetcher:
         assert res == 0
 
     @pytest.mark.asyncio
-    @patch("data_sources.cftc_cot.asyncio.sleep", new_callable=AsyncMock)
+    @patch("monika.infrastructure.data_ingestion.sources.cftc_cot.asyncio.sleep", new_callable=AsyncMock)
     async def test_fetch_all_routing_and_code_query(self, mock_sleep):
         config = {
             "markets": {
@@ -53,7 +53,7 @@ class TestCFTCCOTFetcher:
         assert call2.args[3] == "096742"
 
     @pytest.mark.asyncio
-    @patch("data_sources.cftc_cot.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.cftc_cot.fetch_with_retry")
     async def test_fetch_and_save_tff_forex(self, mock_fetch):
         # Sample response from gpe5-46if for British Pound
         mock_fetch.return_value = [
@@ -96,7 +96,7 @@ class TestCFTCCOTFetcher:
         assert saved_record.dealer_short == 65165
 
     @pytest.mark.asyncio
-    @patch("data_sources.cftc_cot.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.cftc_cot.fetch_with_retry")
     async def test_fetch_and_save_commodity_managed_money(self, mock_fetch):
         # Sample response from kh3c-gbw2 for Gold
         mock_fetch.return_value = [
@@ -139,7 +139,7 @@ class TestCFTCCOTFetcher:
         assert saved_record.asset_mgr_short == 21857
 
     @pytest.mark.asyncio
-    @patch("data_sources.cftc_cot.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.cftc_cot.fetch_with_retry")
     async def test_fetch_and_save_existing_duplicate(self, mock_fetch):
         mock_fetch.return_value = [{"report_date_as_yyyy_mm_dd": "2026-08-18T00:00:00.000"}]
 
@@ -156,7 +156,7 @@ class TestCFTCCOTFetcher:
         mock_session.add.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("data_sources.cftc_cot.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.cftc_cot.fetch_with_retry")
     async def test_fetch_and_save_non_list_response(self, mock_fetch):
         mock_fetch.return_value = "<html>Error 500</html>"
 
@@ -168,7 +168,7 @@ class TestCFTCCOTFetcher:
         mock_session.add.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("data_sources.cftc_cot.fetch_with_retry")
+    @patch("monika.infrastructure.data_ingestion.sources.cftc_cot.fetch_with_retry")
     async def test_fetch_and_save_with_non_dict_row(self, mock_fetch):
         mock_fetch.return_value = [
             "malformed_string_row",

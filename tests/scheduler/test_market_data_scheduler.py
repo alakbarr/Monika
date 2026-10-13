@@ -28,10 +28,10 @@ class TestMarketDataScheduler:
         mock_session = create_mock_async_session()
 
         with (
-            patch("scheduler.market_data_scheduler.get_session") as mock_get_session,
-            patch("scheduler.market_data_scheduler.is_forex_market_closed", return_value=False),
-            patch("scheduler.market_data_scheduler.TechnicalIndicatorCalculator") as mock_calc_cls,
-            patch("scheduler.market_data_scheduler.MarketStructureAnalyzer") as mock_analyzer_cls,
+            patch("monika.application.scheduler.market_data_scheduler.get_session") as mock_get_session,
+            patch("monika.application.scheduler.market_data_scheduler.is_forex_market_closed", return_value=False),
+            patch("monika.application.scheduler.market_data_scheduler.TechnicalIndicatorCalculator") as mock_calc_cls,
+            patch("monika.application.scheduler.market_data_scheduler.MarketStructureAnalyzer") as mock_analyzer_cls,
         ):
             mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -79,10 +79,10 @@ class TestMarketDataScheduler:
         mock_session = create_mock_async_session()
 
         with (
-            patch("scheduler.market_data_scheduler.get_session") as mock_get_session,
-            patch("scheduler.market_data_scheduler.is_forex_market_closed", return_value=True),
-            patch("scheduler.market_data_scheduler.TechnicalIndicatorCalculator") as mock_calc_cls,
-            patch("scheduler.market_data_scheduler.MarketStructureAnalyzer") as mock_analyzer_cls,
+            patch("monika.application.scheduler.market_data_scheduler.get_session") as mock_get_session,
+            patch("monika.application.scheduler.market_data_scheduler.is_forex_market_closed", return_value=True),
+            patch("monika.application.scheduler.market_data_scheduler.TechnicalIndicatorCalculator") as mock_calc_cls,
+            patch("monika.application.scheduler.market_data_scheduler.MarketStructureAnalyzer") as mock_analyzer_cls,
         ):
             mock_get_session.return_value.__aenter__.return_value = mock_session
 

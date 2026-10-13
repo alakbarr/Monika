@@ -124,7 +124,7 @@ async def test_per_asset_node_preserves_skipped_metadata():
     state = {"summary": {}, "stale_assets": [], "weekend_symbols_override": None}
     config = {"configurable": {"scheduler": mock_scheduler}}
 
-    with patch("graph.nodes.per_asset_node.get_session") as mock_gs:
+    with patch("monika.application.graph.nodes.per_asset_node.get_session") as mock_gs:
         mock_session = create_mock_async_session()
         mock_gs.return_value.__aenter__.return_value = mock_session
         result = await per_asset_analysis_node(state, config)
@@ -491,7 +491,7 @@ async def test_execution_node_slippage_sandbox_rejection(db_session):
     config = {"configurable": {"scheduler": mock_scheduler}}
 
     with (
-        patch("graph.nodes.execution_node.get_session", mock_session),
+        patch("monika.application.graph.nodes.execution_node.get_session", mock_session),
         patch(
             "monika.domain.risk.execution_simulator.ExecutionSimulator.simulate_execution",
             AsyncMock(return_value=unresilient_res),

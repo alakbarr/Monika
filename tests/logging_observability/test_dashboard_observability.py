@@ -179,7 +179,7 @@ def test_put_config_settings_success(client, tmp_path):
 
     env = {"DASHBOARD_API_KEYS": "admin:adm_key", "DASHBOARD_API_KEY": ""}
     with patch.dict(os.environ, env):
-        with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
+        with patch("monika.core.telemetry.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
             with patch("monika.infrastructure.database.db.AsyncSessionLocal") as mock_session_ctx:
                 mock_session = create_mock_async_session()
                 mock_session.add = MagicMock()

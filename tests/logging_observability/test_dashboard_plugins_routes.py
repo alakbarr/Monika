@@ -38,7 +38,7 @@ def test_get_plugin_catalog_endpoint(client):
 
 
 def test_toggle_plugin_endpoint(client):
-    with patch("logging_observability.dashboard.routes.plugins.toggle_plugin_state") as mock_toggle:
+    with patch("monika.core.telemetry.dashboard.routes.plugins.toggle_plugin_state") as mock_toggle:
         mock_toggle.return_value = (True, "Plugin toggled successfully.")
 
         payload = {
@@ -62,7 +62,7 @@ def test_install_plugin_validation_rejection(client):
 
 
 def test_install_plugin_mock_success(client):
-    with patch("logging_observability.dashboard.routes.plugins.run_pip_install") as mock_pip:
+    with patch("monika.core.telemetry.dashboard.routes.plugins.run_pip_install") as mock_pip:
         mock_pip.return_value = (True, "Successfully installed monika-plugin-test-1.0.0")
 
         payload = {"package_name": "monika-plugin-test"}

@@ -133,7 +133,7 @@ def test_turn_stop_gates():
     # File mutation without verification
     ctx.has_unregistered_trade_proposals = False
     ctx.has_unverified_file_edits = True
-    ctx.mutated_files = ["main.py"]
+    ctx.mutated_files = ["monika.application.main.py"]
     can_stop_code, msg_code = apply_stop_gates("I have updated the file.", ctx)
     assert can_stop_code is False
     assert "Verification Invariant" in msg_code

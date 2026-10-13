@@ -32,7 +32,7 @@ def test_is_secret_credential_file():
 
     # .env.example must be allowed as an architectural template
     assert is_secret_credential_file(".env.example") is False
-    assert is_secret_credential_file("main.py") is False
+    assert is_secret_credential_file("monika.application.main.py") is False
     assert is_secret_credential_file("config.yaml") is False
 
 
@@ -55,11 +55,11 @@ def test_assert_safe_read_path_blocks_secrets(tmp_path):
         assert_safe_read_path(str(repo_root / "secrets" / "private.key"))
 
     # Reading a normal file inside repo should succeed
-    safe_path = str(repo_root / "src" / "monika" / "application" / "main.py")
+    safe_path = str(repo_root / "src" / "monika" / "application" / "monika.application.main.py")
     if not os.path.exists(safe_path):
-        safe_path = str(repo_root / "trading-agent" / "main.py")
+        safe_path = str(repo_root / "trading-agent" / "monika.application.main.py")
     res = assert_safe_read_path(safe_path)
-    assert os.path.exists(res) or "main.py" in res
+    assert os.path.exists(res) or "monika.application.main.py" in res
 
 
 def test_tier2_kernel_env_sanitization():

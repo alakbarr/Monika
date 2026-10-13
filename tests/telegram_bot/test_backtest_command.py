@@ -113,7 +113,7 @@ async def test_run_backtest_and_notify_success(mock_bot):
     mock_engine.run = AsyncMock(return_value=mock_record)
     mock_engine.trades = [mock_trade1]
 
-    with patch("backtest.point_in_time_engine.PointInTimeBacktestEngine", return_value=mock_engine):
+    with patch("monika.application.backtest.point_in_time_engine.PointInTimeBacktestEngine", return_value=mock_engine):
         await mock_bot._run_backtest_and_notify(update, 30)
 
         update.message.reply_text.assert_awaited_once()

@@ -178,6 +178,21 @@ Monika/
 │       │   │   ├── empty_response_guard.py
 │       │   │   ├── error_classifier.py
 │       │   │   ├── estop.py
+│       │   │   ├── harness
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── agent_harness.py
+│       │   │   │   ├── context_compressor.py
+│       │   │   │   ├── error_classifier.py
+│       │   │   │   ├── harness_state.py
+│       │   │   │   ├── message_repair.py
+│       │   │   │   ├── repetition_guard.py
+│       │   │   │   ├── stall_guard.py
+│       │   │   │   ├── structured_output.py
+│       │   │   │   ├── symbol_segment_planner.py
+│       │   │   │   ├── tool_batch_planner.py
+│       │   │   │   ├── tool_repair.py
+│       │   │   │   ├── trade_stop_gates.py
+│       │   │   │   └── verification_evidence_ledger.py
 │       │   │   ├── moa_alternation.py
 │       │   │   ├── moa_loop.py
 │       │   │   ├── moa_trace.py
@@ -980,6 +995,16 @@ Monika/
 │       │   │   │   └── paper_trading
 │       │   │   ├── indicators
 │       │   │   │   └── custom_indicator
+│       │   │   ├── engine
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── adapters
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   └── functional_adapter.py
+│       │   │   │   ├── context.py
+│       │   │   │   ├── contract.py
+│       │   │   │   ├── engine.py
+│       │   │   │   ├── installer.py
+│       │   │   │   └── lifecycle.py
 │       │   │   ├── kernel.py
 │       │   │   ├── loader.py
 │       │   │   ├── manifest.py
@@ -1428,7 +1453,28 @@ Monika/
 │       │   │   ├── samba_provider.py
 │       │   │   ├── streaming_think_scrubber.py
 │       │   │   ├── together_provider.py
-│       │   │   ├── universal_provider.py
+│       │   ├── mcp
+│       │   │   ├── __init__.py
+│       │   │   ├── client.py
+│       │   │   ├── dispatcher.py
+│       │   │   ├── event_bridge.py
+│       │   │   ├── mcp_death_supervisor.py
+│       │   │   ├── mcp_schema_cache.py
+│       │   │   ├── mcp_serve.py
+│       │   │   ├── oauth_handler.py
+│       │   │   ├── protocol.py
+│       │   │   ├── server.py
+│       │   │   └── servers
+│       │   │       ├── __init__.py
+│       │   │       ├── excel_server.py
+│       │   │       ├── fetch_server.py
+│       │   │       ├── filesystem_server.py
+│       │   │       ├── google_sheets_server.py
+│       │   │       └── sqlite_server.py
+│       │   ├── notifications
+│       │   │   ├── __init__.py
+│       │   │   ├── discord_notifier.py
+│       │   │   └── telegram_notifier.py
 │       │   ├── infra
 │       │   │   ├── __init__.py
 │       │   │   ├── audit_settings_keys.py
@@ -1444,6 +1490,16 @@ Monika/
 │       │   │   └── worktree_manager.py
 │       │   ├── llm
 │       │   │   ├── __init__.py
+│       │   │   ├── rate_limiting
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── claude_rate_limiter.py
+│       │   │   │   ├── credential_pool.py
+│       │   │   │   ├── credit_balance_tracker.py
+│       │   │   │   ├── gemini_rate_limiter.py
+│       │   │   │   ├── groq_rate_limiter.py
+│       │   │   │   ├── http_retry.py
+│       │   │   │   ├── openrouter_rate_limiter.py
+│       │   │   │   └── streaming.py
 │       │   │   ├── adaptive_thinking.py
 │       │   │   ├── cache_breakpoint_manager.py
 │       │   │   ├── cache_miss_detector.py

@@ -11,7 +11,7 @@ import os
 import time
 from typing import Any, Dict, Optional
 
-from monika.infrastructure.infra.paths import DATA_DIR
+from monika.core.paths import DATA_DIR
 
 logger = logging.getLogger("TradingAgent.PricingSync")
 

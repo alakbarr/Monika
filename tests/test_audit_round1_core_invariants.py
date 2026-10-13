@@ -155,8 +155,10 @@ async def test_active_calendar_poller_scraper_close():
     mock_session.execute.return_value = mock_res
 
     with (
-        patch("scheduler.active_calendar_poller.get_session") as mock_get_sess,
-        patch("scheduler.active_calendar_poller.InvestingCalendarScraper", return_value=mock_investing),
+        patch("monika.application.scheduler.active_calendar_poller.get_session") as mock_get_sess,
+        patch(
+            "monika.application.scheduler.active_calendar_poller.InvestingCalendarScraper", return_value=mock_investing
+        ),
     ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
 

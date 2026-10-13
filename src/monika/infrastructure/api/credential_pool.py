@@ -1,13 +1,12 @@
-# ==============================================================================
-# File: utils/api/credential_pool.py
-# ==============================================================================
-
 """
-Credential Pool & Multi-Key Health Tracker (M2).
-Re-exports unified APICredentialPool from `provider.credential_pool`.
+Backward-compatibility facade for credential_pool.
+Canonical location: monika.infrastructure.llm.rate_limiting.credential_pool
 """
 
-from monika.infrastructure.credentials.credential_pool import (
+import sys
+import monika.infrastructure.llm.rate_limiting.credential_pool as _canonical
+
+from monika.infrastructure.llm.rate_limiting.credential_pool import (
     APICredentialPool,
     CredentialPool,
     KeyHealth,
@@ -20,3 +19,5 @@ __all__ = [
     "CredentialPool",
     "get_credential_pool",
 ]
+
+sys.modules[__name__] = _canonical

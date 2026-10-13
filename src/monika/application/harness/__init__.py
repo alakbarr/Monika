@@ -1,13 +1,12 @@
-# ==============================================================================
-# File: harness/__init__.py
-# ==============================================================================
-
 """
-Monika Trading Harness Core.
-Provides microkernel architecture, universal plugin contracts, and topological engine.
+Backward-compatibility facade for Plugin Microkernel Harness.
+Canonical location: monika.application.plugins.engine
 """
 
-from monika.application.harness.contract import (
+import sys
+import monika.application.plugins.engine as _canonical
+
+from monika.application.plugins.engine.contract import (
     EventBusProtocol,
     PluginCategory,
     PluginMetadata,
@@ -17,7 +16,7 @@ from monika.application.harness.contract import (
     TaskRegistryProtocol,
     TradingPlugin,
 )
-from monika.application.harness.engine import PluginEngine
+from monika.application.plugins.engine.engine import PluginEngine, get_plugin_engine
 
 __all__ = [
     "PluginCategory",
@@ -29,4 +28,7 @@ __all__ = [
     "EventBusProtocol",
     "ServiceContainerProtocol",
     "PluginEngine",
+    "get_plugin_engine",
 ]
+
+sys.modules[__name__] = _canonical

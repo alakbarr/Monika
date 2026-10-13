@@ -1,9 +1,14 @@
 """
-Monika Model Context Protocol (MCP) package.
-Provides MCP Client Manager, Native MCP Server, and pre-built MCP servers.
+Backward-compatibility facade for monika.application.analysis.mcp.
+Canonical location: monika.infrastructure.mcp
 """
 
-from monika.application.analysis.mcp.client import McpClientManager
-from monika.application.analysis.mcp.server import MonikaMcpServer, run_mcp_server
+import sys
+import monika.infrastructure.mcp as _canonical
+
+from monika.infrastructure.mcp.client import McpClientManager
+from monika.infrastructure.mcp.server import MonikaMcpServer, run_mcp_server
 
 __all__ = ["McpClientManager", "MonikaMcpServer", "run_mcp_server"]
+
+sys.modules[__name__] = _canonical

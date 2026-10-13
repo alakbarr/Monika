@@ -4,7 +4,7 @@ from monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch import Fed
 
 
 class TestFedWatchScraper:
-    @patch("scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
     @patch("time.sleep", return_value=None)
     def test_fetch_probabilities_success(self, mock_sleep, mock_init):
         mock_page = MagicMock()
@@ -69,7 +69,7 @@ class TestFedWatchScraper:
         assert "HOLD (60.0%)" in meeting.most_likely
         assert len(meeting.probabilities) == 3
 
-    @patch("scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
     def test_fetch_probabilities_no_iframe(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
@@ -81,7 +81,7 @@ class TestFedWatchScraper:
             meetings = scraper.fetch_probabilities()
             assert len(meetings) == 0
 
-    @patch("scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
     @patch("time.sleep", return_value=None)
     def test_fetch_probabilities_dynamic_table_detection(self, mock_sleep, mock_init):
         """Verify dynamic table detection works when table is at index 0 with TARGET RATE header."""
@@ -115,7 +115,7 @@ class TestFedWatchScraper:
         assert len(meetings[0].probabilities) == 2
         assert "HOLD (80.0%)" in meetings[0].most_likely
 
-    @patch("scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
     @patch("time.sleep", return_value=None)
     def test_fetch_probabilities_dynamic_rate_fallback(self, mock_sleep, mock_init):
         """Verify dynamic rate is fetched when table has no (Current) marker."""

@@ -153,7 +153,7 @@ class _EncryptedFileVault:
 
     def __init__(self, vault_path: Path | None = None):
         if vault_path is None:
-            from monika.infrastructure.infra.paths import DATA_DIR
+            from monika.core.paths import DATA_DIR
 
             base_dir = DATA_DIR / "vault"
             self.vault_path = base_dir / "vault.enc"

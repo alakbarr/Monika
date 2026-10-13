@@ -51,7 +51,9 @@ async def test_judge_output_ensemble_consensus_calculation():
         45,
     )
 
-    with patch("benchmark.judge.judge_output", AsyncMock(side_effect=[mock_res_1, mock_res_2, mock_res_3])):
+    with patch(
+        "monika.application.benchmark.judge.judge_output", AsyncMock(side_effect=[mock_res_1, mock_res_2, mock_res_3])
+    ):
         verdict, score, total_in, total_out = await judge_output_ensemble(
             judge_models=judge_models,
             settings=settings,

@@ -31,7 +31,7 @@ class TestNewsWatcher:
 
     @pytest.mark.asyncio
     @pytest.mark.asyncio
-    @patch("scheduler.news_watcher.get_session")
+    @patch("monika.application.scheduler.news_watcher.get_session")
     @patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor")
     async def test_run_once_no_news(self, mock_processor, mock_get_session, settings):
         watcher = NewsWatcher(settings)
@@ -48,7 +48,7 @@ class TestNewsWatcher:
         assert not result["reanalysis_triggered"]
 
     @pytest.mark.asyncio
-    @patch("scheduler.news_watcher.get_session")
+    @patch("monika.application.scheduler.news_watcher.get_session")
     @patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor")
     async def test_run_once_with_news_fallback(self, mock_processor, mock_get_session, settings):
         watcher = NewsWatcher(settings)
@@ -81,7 +81,7 @@ class TestNewsWatcher:
         watcher._trigger_reanalysis.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("scheduler.news_watcher.get_session")
+    @patch("monika.application.scheduler.news_watcher.get_session")
     @patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor")
     async def test_run_once_with_gemini(self, mock_processor, mock_get_session, settings):
         watcher = NewsWatcher(settings)
@@ -159,7 +159,7 @@ class TestNewsWatcher:
 
     @pytest.mark.asyncio
     @patch("asyncio.sleep", new_callable=AsyncMock)
-    @patch("scheduler.news_watcher.get_session")
+    @patch("monika.application.scheduler.news_watcher.get_session")
     async def test_trigger_reanalysis(self, mock_get_sess, mock_sleep, settings):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -190,7 +190,7 @@ class TestNewsWatcher:
         assert mock_per_asset.run_all.call_count == 1
 
     @pytest.mark.asyncio
-    @patch("scheduler.news_watcher.get_session")
+    @patch("monika.application.scheduler.news_watcher.get_session")
     @patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor")
     async def test_run_once_narrative_exhaustion_suppressed(self, mock_processor, mock_get_session, settings):
         watcher = NewsWatcher(settings)

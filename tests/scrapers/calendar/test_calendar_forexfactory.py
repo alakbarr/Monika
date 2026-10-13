@@ -5,7 +5,9 @@ from monika.infrastructure.database.adapters import parse_timestamp
 
 
 class TestForexFactoryCalendarScraper:
-    @patch("scrapers.calendar.calendar_forexfactory.BaseScraper._initialize_browser")
+    @patch(
+        "monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory.BaseScraper._initialize_browser"
+    )
     def test_fetch_events_fail_navigate(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
@@ -17,7 +19,9 @@ class TestForexFactoryCalendarScraper:
         assert events == []
         assert scraper.navigate_with_fallback.call_count == 2
 
-    @patch("scrapers.calendar.calendar_forexfactory.BaseScraper._initialize_browser")
+    @patch(
+        "monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory.BaseScraper._initialize_browser"
+    )
     def test_fetch_events_success_with_utc_normalization(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
@@ -54,10 +58,17 @@ class TestForexFactoryCalendarScraper:
         assert dt.hour == 12
         assert dt.minute == 30
 
-    @patch("scrapers.calendar.calendar_forexfactory.BaseScraper._initialize_browser")
-    @patch("scrapers.calendar.calendar_forexfactory.ForexFactoryCalendarScraper._load_from_cache", return_value=None)
-    @patch("scrapers.calendar.calendar_forexfactory.ForexFactoryCalendarScraper._save_to_cache")
-    @patch("scrapers.calendar.calendar_forexfactory.urllib.request.urlopen")
+    @patch(
+        "monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory.BaseScraper._initialize_browser"
+    )
+    @patch(
+        "monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory.ForexFactoryCalendarScraper._load_from_cache",
+        return_value=None,
+    )
+    @patch(
+        "monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory.ForexFactoryCalendarScraper._save_to_cache"
+    )
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory.urllib.request.urlopen")
     def test_fetch_feed_events_success(self, mock_urlopen, mock_save, mock_load, mock_init):
         mock_resp = MagicMock()
         mock_resp.status = 200
@@ -98,7 +109,9 @@ class TestForexFactoryCalendarScraper:
         assert events[1].impact == "Medium"
         assert events[1].forecast is None
 
-    @patch("scrapers.calendar.calendar_forexfactory.BaseScraper._initialize_browser")
+    @patch(
+        "monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory.BaseScraper._initialize_browser"
+    )
     def test_fetch_feed_from_cache_hit(self, mock_init):
         scraper = ForexFactoryCalendarScraper()
         cached_data = [

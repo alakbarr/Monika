@@ -4,14 +4,14 @@ from monika.infrastructure.data_ingestion.scrapers.news.kitco_news import KitcoN
 
 
 class TestKitcoNewsScraper:
-    @patch("scrapers.news.kitco_news.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.news.kitco_news.BaseScraper._initialize_browser")
     def test_fetch_news_fail(self, mock_init):
         scraper = KitcoNewsScraper()
         scraper.navigate_with_fallback = MagicMock(return_value=False)
         news = scraper.fetch_news()
         assert news == []
 
-    @patch("scrapers.news.kitco_news.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.news.kitco_news.BaseScraper._initialize_browser")
     def test_fetch_news_success(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page

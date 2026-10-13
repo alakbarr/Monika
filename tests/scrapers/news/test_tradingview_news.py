@@ -4,14 +4,14 @@ from monika.infrastructure.data_ingestion.scrapers.news.tradingview_news import 
 
 
 class TestTradingViewNewsScraper:
-    @patch("scrapers.news.tradingview_news.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.news.tradingview_news.BaseScraper._initialize_browser")
     def test_fetch_news_fail(self, mock_init):
         scraper = TradingViewNewsScraper()
         scraper.navigate_with_fallback = MagicMock(return_value=False)
         news = scraper.fetch_news()
         assert news == []
 
-    @patch("scrapers.news.tradingview_news.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.news.tradingview_news.BaseScraper._initialize_browser")
     @patch("os.path.exists")
     def test_fetch_news_success(self, mock_exists, mock_init):
         mock_exists.return_value = False  # don't test json loading here
@@ -50,7 +50,7 @@ class TestTradingViewNewsScraper:
         assert news[0].timestamp == "1620000000"
         assert news[0].url == "https://www.tradingview.com/news/article-123"
 
-    @patch("scrapers.news.tradingview_news.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.news.tradingview_news.BaseScraper._initialize_browser")
     def test_fetch_news_aborts_when_closed(self, mock_init):
         scraper = TradingViewNewsScraper()
         scraper.navigate_with_fallback = MagicMock(return_value=True)
@@ -58,7 +58,7 @@ class TestTradingViewNewsScraper:
         news = scraper.fetch_news(limit=5)
         assert news == []
 
-    @patch("scrapers.news.tradingview_news.BaseScraper._initialize_browser")
+    @patch("monika.infrastructure.data_ingestion.scrapers.news.tradingview_news.BaseScraper._initialize_browser")
     def test_configurable_watchlist_id(self, mock_init):
         # 1. Custom parameter
         s1 = TradingViewNewsScraper(watchlist_id="999999")

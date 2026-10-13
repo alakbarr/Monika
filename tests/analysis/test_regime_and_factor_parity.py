@@ -212,15 +212,19 @@ async def test_edge_strategy_runner_ensemble_conflict_suppression():
     mock_session.execute.return_value = mock_res
 
     with (
-        patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+        patch(
+            "monika.application.scheduler.edge_strategy_runner.validate_data_freshness",
+            AsyncMock(return_value={"ready": True}),
+        ),
         patch(
             "monika.application.analysis.calculators.regime_classifier.classify_market_regime",
             AsyncMock(return_value={"regime": "trend"}),
         ),
         patch(
-            "scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[sig_buy, sig_sell])
+            "monika.application.scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all",
+            AsyncMock(return_value=[sig_buy, sig_sell]),
         ),
-        patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
+        patch("monika.application.scheduler.edge_strategy_runner.get_session") as mock_get_session,
         patch.object(runner, "_materialize_and_route", AsyncMock()) as mock_route,
     ):
         mock_get_session.return_value.__aenter__.return_value = mock_session
@@ -271,15 +275,19 @@ async def test_edge_strategy_runner_ensemble_concordance_boost():
     mock_session.execute.return_value = mock_res
 
     with (
-        patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+        patch(
+            "monika.application.scheduler.edge_strategy_runner.validate_data_freshness",
+            AsyncMock(return_value={"ready": True}),
+        ),
         patch(
             "monika.application.analysis.calculators.regime_classifier.classify_market_regime",
             AsyncMock(return_value={"regime": "trend"}),
         ),
         patch(
-            "scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[sig_buy1, sig_buy2])
+            "monika.application.scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all",
+            AsyncMock(return_value=[sig_buy1, sig_buy2]),
         ),
-        patch("scheduler.edge_strategy_runner.get_session") as mock_get_session,
+        patch("monika.application.scheduler.edge_strategy_runner.get_session") as mock_get_session,
         patch.object(runner, "_materialize_and_route", AsyncMock()) as mock_route,
     ):
         mock_get_session.return_value.__aenter__.return_value = mock_session
@@ -322,7 +330,7 @@ async def test_trigger_checker_cancel_pending_ttl():
 
     mock_session.execute.side_effect = [res_pos, res_paper]
 
-    with patch("scheduler.trigger_checker.get_session") as mock_get_session:
+    with patch("monika.application.scheduler.trigger_checker.get_session") as mock_get_session:
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
         await checker._handle_cancel_pending_order(trigger)

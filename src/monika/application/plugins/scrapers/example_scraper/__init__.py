@@ -1,0 +1,3 @@
+"""
+Example Scraper Plugin package.
+"""

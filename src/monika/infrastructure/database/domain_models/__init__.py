@@ -1,5 +1,5 @@
 """
-Modular domain model package (Phase 7).
+Modular domain model package.
 Re-exports models partitioned by functional domain:
 - base: Base declarative class
 - market: Price, indicators, SMC zones, yields
@@ -10,13 +10,77 @@ Re-exports models partitioned by functional domain:
 - news: News items, digests, economic calendar
 """
 
-from monika.infrastructure.database.domain_models.analysis import *  # noqa: F401, F403
+from monika.infrastructure.database.domain_models.analysis import (
+    AssetAnalysis,
+    ConfluenceFactorOutcome,
+    CyclePerformance,
+    FundamentalBrief,
+    PlaybookRuleAttribution,
+    PrescreenLog,
+    TimesFMForecast,
+)
 from monika.infrastructure.database.domain_models.base import Base, _utcnow
-from monika.infrastructure.database.domain_models.market import *  # noqa: F401, F403
-from monika.infrastructure.database.domain_models.memory import *  # noqa: F401, F403
-from monika.infrastructure.database.domain_models.news import *  # noqa: F401, F403
-from monika.infrastructure.database.domain_models.system import *  # noqa: F401, F403
-from monika.infrastructure.database.domain_models.trading import *  # noqa: F401, F403
+from monika.infrastructure.database.domain_models.market import (
+    BondYieldData,
+    CentralBankRateExpectation,
+    COTReport,
+    DXYData,
+    FedWatchProbability,
+    FVGZone,
+    InterestRate,
+    LiquidityZone,
+    OrderBlock,
+    PatternScreeningCache,
+    PriceOHLCV,
+    SRZone,
+    StructureBreak,
+    SwingPoint,
+    TechnicalIndicator,
+    TreasuryYield,
+    VIXData,
+)
+from monika.infrastructure.database.domain_models.memory import (
+    CandidateLesson,
+    ContextSpillBlob,
+    DecisionMemory,
+    DecisionReflection,
+    MarketChronicle,
+    UserMarketIntel,
+)
+from monika.infrastructure.database.domain_models.news import (
+    EconomicCalendar,
+    NewsClassificationOutcome,
+    NewsDigest,
+    NewsDigestSlice,
+    NewsItem,
+)
+from monika.infrastructure.database.domain_models.system import (
+    ActivityLog,
+    RiskState,
+    SystemConfig,
+    TelegramConversation,
+    TelegramTopicBinding,
+    TokenUsageLog,
+    TradingEvent,
+    UserJournalEntry,
+    UserPreference,
+)
+from monika.infrastructure.database.domain_models.trading import (
+    BacktestRun,
+    BacktestTrade,
+    MT5Signal,
+    Order,
+    OrderEvent,
+    OrderLog,
+    OrderStatus,
+    PaperTradeRecord,
+    Position,
+    Trade,
+    TradeOutcome,
+    TradePlan,
+    TradePlanLeg,
+    TradeTrigger,
+)
 
 __all__ = [
     "Base",
@@ -32,4 +96,51 @@ __all__ = [
     "SystemConfig",
     "NewsItem",
     "EconomicCalendar",
+    "BacktestRun",
+    "BacktestTrade",
+    "TradePlanLeg",
+    "CentralBankRateExpectation",
+    "Trade",
+    "Order",
+    "OrderLog",
+    "OrderEvent",
+    "TradePlan",
+    "MT5Signal",
+    "OrderStatus",
+    "PaperTradeRecord",
+    "TradeTrigger",
+    "ActivityLog",
+    "RiskState",
+    "TelegramConversation",
+    "TelegramTopicBinding",
+    "TokenUsageLog",
+    "UserJournalEntry",
+    "UserPreference",
+    "CandidateLesson",
+    "ContextSpillBlob",
+    "DecisionMemory",
+    "MarketChronicle",
+    "UserMarketIntel",
+    "NewsDigest",
+    "NewsDigestSlice",
+    "NewsClassificationOutcome",
+    "BondYieldData",
+    "COTReport",
+    "DXYData",
+    "FedWatchProbability",
+    "FVGZone",
+    "InterestRate",
+    "LiquidityZone",
+    "PatternScreeningCache",
+    "SRZone",
+    "StructureBreak",
+    "SwingPoint",
+    "TechnicalIndicator",
+    "TreasuryYield",
+    "VIXData",
+    "ConfluenceFactorOutcome",
+    "CyclePerformance",
+    "PlaybookRuleAttribution",
+    "PrescreenLog",
+    "TimesFMForecast",
 ]

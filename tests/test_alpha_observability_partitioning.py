@@ -267,7 +267,10 @@ class TestTimesFMAlphaIntegration:
             patch.object(sizer, "_get_instrument_spec_dynamic", new=AsyncMock(return_value=mock_spec)),
             patch.object(sizer, "_get_regime_size_multiplier", new=AsyncMock(return_value=1.0)),
             patch("monika.domain.risk.ports.get_default_risk_data_provider", return_value=mock_provider),
-            patch("indicators.timesfm_engine.TimesFMEngine.get_latest_forecast", new=AsyncMock(return_value=mock_fc)),
+            patch(
+                "monika.domain.indicators.timesfm_engine.TimesFMEngine.get_latest_forecast",
+                new=AsyncMock(return_value=mock_fc),
+            ),
         ):
             # BUY order should receive 1.15x multiplier
             res_buy = await sizer.calculate_with_session(
@@ -326,7 +329,8 @@ class TestTimesFMAlphaIntegration:
         }
 
         with patch(
-            "indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new=AsyncMock(return_value=mock_fc)
+            "monika.domain.indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast",
+            new=AsyncMock(return_value=mock_fc),
         ):
             res = await executor._tool_get_timesfm_forecast(symbol="EURUSD")
             assert res["status"] == "success"

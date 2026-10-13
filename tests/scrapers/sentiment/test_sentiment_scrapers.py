@@ -155,7 +155,8 @@ def test_myfxbook_fetch_sync_error_resilience():
 
     fetcher = MyFxBookSentimentFetcher(session=MagicMock())
     with patch(
-        "scrapers.sentiment.myfxbook_sentiment.BaseScraper", side_effect=Exception("浏览器连接失败。 127.0.0.1:16944")
+        "monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment.BaseScraper",
+        side_effect=Exception("浏览器连接失败。 127.0.0.1:16944"),
     ):
         res = fetcher.fetch_sync()
         assert "error" in res

@@ -7,7 +7,7 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from monika.application.analysis.mcp.client import (
+from monika.infrastructure.mcp.client import (
     McpClientManager,
     MCPClientManager,
     McpBridgeHandler,

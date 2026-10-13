@@ -98,11 +98,13 @@ async def test_debate_parallel_execution():
         async def commit(self):
             pass
 
-    with patch("graph.nodes.debate_node.get_session", side_effect=MockSession):
-        with patch("graph.nodes.debate_node.generate_bull_advocacy", side_effect=mock_advocacy):
-            with patch("graph.nodes.debate_node.generate_bear_dissent", side_effect=mock_dissent):
-                with patch("graph.nodes.debate_node.evaluate_debate", side_effect=mock_eval):
-                    with patch("graph.nodes.debate_node.build_fact_sheet", return_value={"symbol": "TEST"}):
+    with patch("monika.application.graph.nodes.debate_node.get_session", side_effect=MockSession):
+        with patch("monika.application.graph.nodes.debate_node.generate_bull_advocacy", side_effect=mock_advocacy):
+            with patch("monika.application.graph.nodes.debate_node.generate_bear_dissent", side_effect=mock_dissent):
+                with patch("monika.application.graph.nodes.debate_node.evaluate_debate", side_effect=mock_eval):
+                    with patch(
+                        "monika.application.graph.nodes.debate_node.build_fact_sheet", return_value={"symbol": "TEST"}
+                    ):
                         res = await debate_node(state, config)
 
     assert len(res["actionable_trades"]) > 0

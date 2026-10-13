@@ -42,9 +42,9 @@ class TestCycleScheduler:
             await scheduler.run_once()
 
     @pytest.mark.asyncio
-    @patch("scheduler.graph_cycle_scheduler.build_trading_graph")
+    @patch("monika.application.scheduler.graph_cycle_scheduler.build_trading_graph")
     @patch("monika.infrastructure.database.db.get_session")
-    @patch("scheduler.cycle_scheduler.get_session")
+    @patch("monika.application.scheduler.cycle_scheduler.get_session")
     async def test_run_once_success(
         self,
         mock_cycle_get_session,
@@ -114,9 +114,9 @@ class TestCycleScheduler:
         assert summary["per_asset"]["XAUUSD"]["decision"] == "buy"
 
     @pytest.mark.asyncio
-    @patch("scheduler.graph_cycle_scheduler.build_trading_graph")
+    @patch("monika.application.scheduler.graph_cycle_scheduler.build_trading_graph")
     @patch("monika.infrastructure.database.db.get_session")
-    @patch("scheduler.cycle_scheduler.get_session")
+    @patch("monika.application.scheduler.cycle_scheduler.get_session")
     async def test_run_once_fundamental_failure(
         self,
         mock_cycle_get_session,
@@ -171,21 +171,21 @@ class TestCycleScheduler:
         assert summary["fundamental"]["success"] is False
 
     @pytest.mark.asyncio
-    @patch("data_sources.central_bank_watch.CentralBankWatchFetcher")
-    @patch("data_sources.bond_yields_fetcher.BondYieldFetcher")
+    @patch("monika.infrastructure.data_ingestion.sources.central_bank_watch.CentralBankWatchFetcher")
+    @patch("monika.infrastructure.data_ingestion.sources.bond_yields_fetcher.BondYieldFetcher")
     @patch("monika.infrastructure.database.db.get_session")
-    @patch("scheduler.macro_data_scheduler.get_session")
-    @patch("scheduler.cycle_scheduler.get_session")
-    @patch("data_sources.coinglass_funding.CoinglasFundingFetcher")
-    @patch("scrapers.sentiment.binance_sentiment.BinanceSentimentFetcher")
-    @patch("scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher")
-    @patch("scrapers.sentiment.fxssi_sentiment.FXSSISentimentFetcher")
-    @patch("data_sources.fear_greed.FearGreedFetcher")
-    @patch("data_sources.eia_oil_inventory.EIAInventoryFetcher")
-    @patch("data_sources.vix_yfinance.VIXFetcher")
-    @patch("data_sources.fred_treasury_yield.FREDDataFetcher")
-    @patch("data_sources.cftc_cot.CFTCCOTFetcher")
-    @patch("data_sources.dxy_yfinance.DXYFetcher")
+    @patch("monika.application.scheduler.macro_data_scheduler.get_session")
+    @patch("monika.application.scheduler.cycle_scheduler.get_session")
+    @patch("monika.infrastructure.data_ingestion.sources.coinglass_funding.CoinglasFundingFetcher")
+    @patch("monika.infrastructure.data_ingestion.scrapers.sentiment.binance_sentiment.BinanceSentimentFetcher")
+    @patch("monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher")
+    @patch("monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment.FXSSISentimentFetcher")
+    @patch("monika.infrastructure.data_ingestion.sources.fear_greed.FearGreedFetcher")
+    @patch("monika.infrastructure.data_ingestion.sources.eia_oil_inventory.EIAInventoryFetcher")
+    @patch("monika.infrastructure.data_ingestion.sources.vix_yfinance.VIXFetcher")
+    @patch("monika.infrastructure.data_ingestion.sources.fred_treasury_yield.FREDDataFetcher")
+    @patch("monika.infrastructure.data_ingestion.sources.cftc_cot.CFTCCOTFetcher")
+    @patch("monika.infrastructure.data_ingestion.sources.dxy_yfinance.DXYFetcher")
     @patch("monika.core.analytics.paper_tracker.PaperTracker")
     async def test_refresh_data_sources(
         self,
@@ -241,9 +241,9 @@ class TestCycleScheduler:
         assert "API Error" in res["dxy"]["error"]
 
     @pytest.mark.asyncio
-    @patch("scheduler.graph_cycle_scheduler.build_trading_graph")
+    @patch("monika.application.scheduler.graph_cycle_scheduler.build_trading_graph")
     @patch("monika.infrastructure.database.db.get_session")
-    @patch("scheduler.cycle_scheduler.get_session")
+    @patch("monika.application.scheduler.cycle_scheduler.get_session")
     async def test_run_once_data_stale(
         self,
         mock_cycle_get_session,

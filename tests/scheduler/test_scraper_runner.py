@@ -24,8 +24,8 @@ class TestScraperRunner:
         }
 
     @pytest.mark.asyncio
-    @patch("scheduler.scraper_runner.ScraperRunner._run_rss_scrapers")
-    @patch("scheduler.scraper_runner.ScraperRunner._run_single")
+    @patch("monika.application.scheduler.scraper_runner.ScraperRunner._run_rss_scrapers")
+    @patch("monika.application.scheduler.scraper_runner.ScraperRunner._run_single")
     async def test_run_all_enabled(self, mock_single, mock_rss, settings):
         # _run_single used for all non-RSS scrapers
         mock_rss.return_value = {"saved": 10}
@@ -44,8 +44,8 @@ class TestScraperRunner:
         mock_rss.assert_awaited_once()
 
     @pytest.mark.asyncio
-    @patch("scheduler.scraper_runner.ScraperRunner._run_rss_scrapers")
-    @patch("scheduler.scraper_runner.ScraperRunner._run_single")
+    @patch("monika.application.scheduler.scraper_runner.ScraperRunner._run_rss_scrapers")
+    @patch("monika.application.scheduler.scraper_runner.ScraperRunner._run_single")
     async def test_run_all_disabled(self, mock_single, mock_rss, settings):
         settings["scraping"]["sources"]["investing_calendar"]["enabled"] = False
         settings["scraping"]["sources"]["tradingview"]["enabled"] = False
@@ -66,8 +66,8 @@ class TestScraperRunner:
         mock_single.assert_not_awaited()
 
     @pytest.mark.asyncio
-    @patch("scheduler.scraper_runner.get_session")
-    @patch("scheduler.scraper_runner.batch_save_news")
+    @patch("monika.application.scheduler.scraper_runner.get_session")
+    @patch("monika.application.scheduler.scraper_runner.batch_save_news")
     async def test_run_rss_scrapers(self, mock_save_news, mock_get_session, settings):
         # Only bloomberg=True — all others disabled explicitly
         settings["scraping"]["sources"] = {
@@ -108,8 +108,8 @@ class TestScraperRunner:
         assert res["saved"] == 5
 
     @pytest.mark.asyncio
-    @patch("scheduler.scraper_runner.get_session")
-    @patch("scheduler.scraper_runner.batch_save_calendar")
+    @patch("monika.application.scheduler.scraper_runner.get_session")
+    @patch("monika.application.scheduler.scraper_runner.batch_save_calendar")
     async def test_run_calendar(self, mock_save_cal, mock_get_session, settings):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
@@ -125,8 +125,8 @@ class TestScraperRunner:
         assert res["saved"] == 10
 
     @pytest.mark.asyncio
-    @patch("scheduler.scraper_runner.get_session")
-    @patch("scheduler.scraper_runner.batch_save_fedwatch")
+    @patch("monika.application.scheduler.scraper_runner.get_session")
+    @patch("monika.application.scheduler.scraper_runner.batch_save_fedwatch")
     async def test_run_fedwatch_error(self, mock_save_fedwatch, mock_get_session, settings):
         runner = ScraperRunner(settings)
         runner._run_in_executor = AsyncMock(side_effect=Exception("Failed to scrape"))
@@ -176,8 +176,8 @@ class TestScraperRunner:
         mock_scraper_2.close.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("scheduler.scraper_runner.get_session")
-    @patch("scheduler.scraper_runner.batch_save_calendar")
+    @patch("monika.application.scheduler.scraper_runner.get_session")
+    @patch("monika.application.scheduler.scraper_runner.batch_save_calendar")
     async def test_fetch_calendar_investing_success(self, mock_save_cal, mock_get_session, settings):
         mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
@@ -193,8 +193,8 @@ class TestScraperRunner:
         assert res["source"] == "investing"
 
     @pytest.mark.asyncio
-    @patch("scheduler.scraper_runner.get_session")
-    @patch("scheduler.scraper_runner.batch_save_calendar")
+    @patch("monika.application.scheduler.scraper_runner.get_session")
+    @patch("monika.application.scheduler.scraper_runner.batch_save_calendar")
     async def test_fetch_calendar_fallback_to_forexfactory(self, mock_save_cal, mock_get_session, settings):
         mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
@@ -227,7 +227,7 @@ class TestScraperRunner:
         res = await runner.run_all()
         assert res == {}
 
-    @patch("scrapers.base_scraper.kill_process_tree")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.kill_process_tree")
     def test_cleanup_timed_out_scrapers_kills_process_trees(self, mock_kill, settings):
         runner = ScraperRunner(settings)
         scraper1 = MagicMock()
@@ -247,7 +247,7 @@ class TestScraperRunner:
         mock_kill.assert_called_once_with(5555)
 
     @pytest.mark.asyncio
-    @patch("scrapers.base_scraper.kill_process_tree")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.kill_process_tree")
     async def test_run_single_timeout_triggers_cleanup(self, mock_kill, settings):
         runner = ScraperRunner(settings)
         scraper = MagicMock()

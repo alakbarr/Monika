@@ -126,7 +126,7 @@ def test_steer_endpoint():
 def test_calendar_upcoming_endpoint():
     """Verify /api/calendar/upcoming responds with event list."""
     client = TestClient(app)
-    with patch("logging_observability.dashboard.routes.intelligence.AsyncSessionLocal") as mock_sess_cls:
+    with patch("monika.core.telemetry.dashboard.routes.intelligence.AsyncSessionLocal") as mock_sess_cls:
         mock_session = create_mock_async_session()
         mock_sess_cls.return_value.__aenter__.return_value = mock_session
         mock_result = MagicMock()
@@ -141,9 +141,9 @@ def test_calendar_upcoming_endpoint():
 def test_skills_catalog_endpoint():
     """Verify /api/skills responds with skills list."""
     client = TestClient(app)
-    with patch("logging_observability.dashboard.routes.intelligence.list_skills", return_value=["test_skill"]):
+    with patch("monika.core.telemetry.dashboard.routes.intelligence.list_skills", return_value=["test_skill"]):
         with patch(
-            "logging_observability.dashboard.routes.intelligence.get_skill_metadata",
+            "monika.core.telemetry.dashboard.routes.intelligence.get_skill_metadata",
             return_value={"description": "Test"},
         ):
             response = client.get("/api/skills")
@@ -202,7 +202,10 @@ def test_market_indicators_endpoint():
         mock_res.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        with patch("indicators.technical.TechnicalIndicatorCalculator.get_snapshot", return_value={"RSI_14": 55.4}):
+        with patch(
+            "monika.domain.indicators.technical.TechnicalIndicatorCalculator.get_snapshot",
+            return_value={"RSI_14": 55.4},
+        ):
             response = client.get("/api/market/indicators/EURUSD?timeframe=H1")
             assert response.status_code == 200
             data = response.json()
@@ -236,7 +239,7 @@ def test_trade_trajectories_endpoint():
     """Verify GET /api/observability/trajectories returns records from TradeTrajectoryLogger."""
     client = TestClient(app)
     with patch(
-        "benchmark.trade_trajectory_logger.TradeTrajectoryLogger.load_recent_trajectories",
+        "monika.application.benchmark.trade_trajectory_logger.TradeTrajectoryLogger.load_recent_trajectories",
         return_value=[{"symbol": "EURUSD", "decision": "BUY", "ticket": 12345, "timestamp": "2026-09-24T00:00:00Z"}],
     ):
         response = client.get("/api/observability/trajectories?limit=10")
@@ -264,7 +267,7 @@ def test_cycle_decision_lineage_endpoint():
     mock_event_log.verify_cycle_integrity.return_value = (True, None)
     mock_event_log.trace_decision_lineage.return_value = []
 
-    with patch("logging_observability.trading_cycle_event_log.get_cycle_event_log", return_value=mock_event_log):
+    with patch("monika.core.telemetry.trading_cycle_event_log.get_cycle_event_log", return_value=mock_event_log):
         response = client.get("/api/observability/cycles/cycle-test-1/lineage?target_seq=2")
         assert response.status_code == 200
         data = response.json()

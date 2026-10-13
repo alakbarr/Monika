@@ -3,7 +3,7 @@ from monika.core.config.settings import load_all_config
 from unittest.mock import patch, mock_open
 
 
-@patch("config.settings.load_settings")
+@patch("monika.core.config.settings.load_settings")
 def test_load_all_config_adds_llm_default(mock_load_settings):
     # Test when llm is missing
     mock_load_settings.return_value = {"trading": {}}
@@ -16,7 +16,7 @@ def test_load_all_config_adds_llm_default(mock_load_settings):
     assert settings["llm"]["task_roles"] == {}
 
 
-@patch("config.settings.load_settings")
+@patch("monika.core.config.settings.load_settings")
 def test_load_all_config_preserves_llm(mock_load_settings):
     # Test when llm exists
     mock_load_settings.return_value = {

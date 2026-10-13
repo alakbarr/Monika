@@ -118,7 +118,7 @@ async def test_api_server_chat_completions_non_streaming():
     transport = ASGITransport(app=api_server_app)
     mock_agent = MagicMock()
     mock_agent.handle = AsyncMock(return_value=("Monika Trading Intelligence: USDJPY Analisis complete.", None))
-    with patch("gateway.api_server.get_default_chat_agent", return_value=mock_agent):
+    with patch("monika.interfaces.gateway.api_server.get_default_chat_agent", return_value=mock_agent):
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             req_body = {
                 "model": "monika-trader",
@@ -145,7 +145,7 @@ async def test_api_server_chat_completions_streaming():
     transport = ASGITransport(app=api_server_app)
     mock_agent = MagicMock()
     mock_agent.handle = AsyncMock(return_value=("Monika Trading Intelligence: Streamed market overview.", None))
-    with patch("gateway.api_server.get_default_chat_agent", return_value=mock_agent):
+    with patch("monika.interfaces.gateway.api_server.get_default_chat_agent", return_value=mock_agent):
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             req_body = {
                 "model": "monika-trader",
@@ -312,7 +312,7 @@ async def test_api_server_chat_completions_api_key_auth(monkeypatch):
     mock_agent = MagicMock()
     mock_agent.handle = AsyncMock(return_value=("Authenticated response.", None))
 
-    with patch("gateway.api_server.get_default_chat_agent", return_value=mock_agent):
+    with patch("monika.interfaces.gateway.api_server.get_default_chat_agent", return_value=mock_agent):
         transport = ASGITransport(app=api_server_app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             req_body = {

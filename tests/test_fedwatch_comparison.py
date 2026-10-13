@@ -471,10 +471,16 @@ async def test_stage1_databundler_correlates_recent_usd_event():
 
     # Patch secondary non-critical async routines
     with (
-        patch("data_sources.crypto_orderbook_depth.CryptoOrderbookDepth.fetch_snapshot", AsyncMock(return_value=None)),
-        patch("data_sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads", AsyncMock(return_value={})),
         patch(
-            "data_sources.gold_physical_radar.GoldPhysicalRadar.fetch_radar",
+            "monika.infrastructure.data_ingestion.sources.crypto_orderbook_depth.CryptoOrderbookDepth.fetch_snapshot",
+            AsyncMock(return_value=None),
+        ),
+        patch(
+            "monika.infrastructure.data_ingestion.sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads",
+            AsyncMock(return_value={}),
+        ),
+        patch(
+            "monika.infrastructure.data_ingestion.sources.gold_physical_radar.GoldPhysicalRadar.fetch_radar",
             AsyncMock(
                 return_value=MagicMock(
                     institutional_flow_bias="neutral", gld_1d_change_pct=0, xau_sentiment_conviction=0, summary=""
@@ -571,10 +577,16 @@ async def test_stage1_databundler_multi_event_correlation():
     bundler.executor.execute = AsyncMock(side_effect=mock_execute)
 
     with (
-        patch("data_sources.crypto_orderbook_depth.CryptoOrderbookDepth.fetch_snapshot", AsyncMock(return_value=None)),
-        patch("data_sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads", AsyncMock(return_value={})),
         patch(
-            "data_sources.gold_physical_radar.GoldPhysicalRadar.fetch_radar",
+            "monika.infrastructure.data_ingestion.sources.crypto_orderbook_depth.CryptoOrderbookDepth.fetch_snapshot",
+            AsyncMock(return_value=None),
+        ),
+        patch(
+            "monika.infrastructure.data_ingestion.sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads",
+            AsyncMock(return_value={}),
+        ),
+        patch(
+            "monika.infrastructure.data_ingestion.sources.gold_physical_radar.GoldPhysicalRadar.fetch_radar",
             AsyncMock(
                 return_value=MagicMock(
                     institutional_flow_bias="neutral", gld_1d_change_pct=0, xau_sentiment_conviction=0, summary=""

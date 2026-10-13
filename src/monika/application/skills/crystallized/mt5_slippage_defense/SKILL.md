@@ -3,7 +3,7 @@ name: mt5_slippage_defense
 description: Handling broker requotes during high NFP volatility
 version: 1.0.0
 category: CRYSTALLIZED
-learned_at: "2026-10-13 07:56:03"
+learned_at: "2026-10-13 17:31:59"
 platforms:
   - windows
   - linux

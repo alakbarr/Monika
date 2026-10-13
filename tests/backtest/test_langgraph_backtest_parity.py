@@ -52,9 +52,11 @@ async def test_point_in_time_langgraph_parity_mode():
     }
 
     with (
-        patch("graph.workflow.build_trading_graph", return_value=mock_graph),
-        patch("backtest.point_in_time_engine.get_session") as mock_get_session,
-        patch("backtest.outcome_evaluator.OutcomeEvaluator.evaluate_trade", new_callable=AsyncMock) as mock_eval,
+        patch("monika.application.graph.workflow.build_trading_graph", return_value=mock_graph),
+        patch("monika.application.backtest.point_in_time_engine.get_session") as mock_get_session,
+        patch(
+            "monika.application.backtest.outcome_evaluator.OutcomeEvaluator.evaluate_trade", new_callable=AsyncMock
+        ) as mock_eval,
     ):
         mock_session = create_mock_async_session()
         mock_get_session.return_value.__aenter__.return_value = mock_session

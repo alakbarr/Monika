@@ -18,16 +18,19 @@ async def test_stage1_prefetch_tuple_and_satisfied_tools():
     with (
         patch("monika.application.analysis.prefetch.stage1_prefetcher.ToolExecutor") as MockExecutor,
         patch(
-            "data_sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads",
+            "monika.infrastructure.data_ingestion.sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads",
             new_callable=AsyncMock,
             return_value={"status": "ok"},
         ),
         patch(
-            "data_sources.crypto_orderbook_depth.CryptoOrderbookDepth.fetch_snapshot",
+            "monika.infrastructure.data_ingestion.sources.crypto_orderbook_depth.CryptoOrderbookDepth.fetch_snapshot",
             new_callable=AsyncMock,
             return_value=None,
         ),
-        patch("data_sources.gold_physical_radar.GoldPhysicalRadar.fetch_radar", new_callable=AsyncMock) as mock_gold,
+        patch(
+            "monika.infrastructure.data_ingestion.sources.gold_physical_radar.GoldPhysicalRadar.fetch_radar",
+            new_callable=AsyncMock,
+        ) as mock_gold,
     ):
         mock_radar = MagicMock()
         mock_radar.institutional_flow_bias = "NEUTRAL"
