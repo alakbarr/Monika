@@ -24,6 +24,7 @@ from telegram import Bot
 from telegram.error import TelegramError
 
 from monika.core.paths import DATA_DIR
+from monika.domain.ports import NotifierPort
 from monika.interfaces.telegram.sanitizer import sanitize_telegram_html
 
 logger = logging.getLogger("TradingAgent.Notifier")
@@ -31,7 +32,7 @@ logger = logging.getLogger("TradingAgent.Notifier")
 _OUTBOX_FILE = DATA_DIR / "notifier_outbox.json"
 
 
-class AgentNotifier:
+class AgentNotifier(NotifierPort):
     """Mengirim notifikasi atau alert kritis ke admin via Telegram dengan Outbox Retry Queue persisten."""
 
     _outbox: ClassVar[deque] = deque(maxlen=50)

@@ -8,6 +8,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
+from monika.domain.ports import LlmPort
+
 logger = logging.getLogger(__name__)
 
 
@@ -413,7 +415,7 @@ def extract_retry_after(error_or_headers: Any) -> Optional[float]:
     return None
 
 
-class BaseLLMClient(ABC):
+class BaseLLMClient(LlmPort, ABC):
     """Abstract base — setiap provider WAJIB implement SEMUA method ini."""
 
     def __init__(
@@ -549,6 +551,16 @@ class BaseLLMClient(ABC):
     ) -> Optional[dict]:
         """Generate + parse JSON response."""
         pass
+
+    async def generate_json(
+        self,
+        prompt: str,
+        system: str = "",
+        schema: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Optional[Dict[str, Any]]:
+        """Generate validated structured JSON output (delegates to classify_json)."""
+        return await self.classify_json(prompt=prompt, system_prompt=system, schema=schema, **kwargs)
 
     # --- Compatibility wrappers (generasi lama) ---
 

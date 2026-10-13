@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import monika.core.primitives.clock as clock
 from monika.domain.execution.broker_plugin import OrderRequest, normalize_order_request
+from monika.domain.ports import BrokerPort, MarketDataPort
 from monika.infrastructure.database.models import Order, OrderStatus
 
 logger = logging.getLogger("TradingAgent.BrokerAdapter")
@@ -69,7 +70,7 @@ def _get_contract_size(symbol: str) -> float:
 # ==============================================================================
 
 
-class BrokerAdapter(ABC):
+class BrokerAdapter(BrokerPort, MarketDataPort, ABC):
     """
     Abstract base class defining the standardized broker execution interface.
     Guarantees that both live execution and backtest simulation adhere to the
@@ -84,6 +85,24 @@ class BrokerAdapter(ABC):
             dict with keys: 'symbol', 'bid', 'ask', 'last', 'spread', 'time'
         """
         pass
+
+    async def get_quote(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Fetch current quote for a symbol (delegates to get_tick)."""
+        tick = await self.get_tick(symbol)
+        return tick if tick else None
+
+    async def get_bars(
+        self,
+        symbol: str,
+        timeframe: str = "H1",
+        count: int = 100,
+    ) -> Any:
+        """Retrieve historical OHLCV price bars."""
+        return []
+
+    async def get_order_book(self, symbol: str) -> Dict[str, Any]:
+        """Retrieve current order book depth / market liquidity."""
+        return {}
 
     @abstractmethod
     async def submit_order(self, order: Any, **kwargs) -> dict:
@@ -274,6 +293,19 @@ class MT5LiveAdapter(BrokerAdapter):
                 "spread": 0.0,
                 "time": clock.now(),
             }
+
+    async def get_bars(
+        self,
+        symbol: str,
+        timeframe: str = "H1",
+        count: int = 100,
+    ) -> Any:
+        """Retrieve historical OHLCV price bars from MT5 client."""
+        try:
+            return await self.mt5.get_rates(symbol=symbol, timeframe=timeframe, count=count)
+        except Exception as e:
+            logger.debug(f"[MT5LiveAdapter] get_bars failed for {symbol}: {e}")
+            return []
 
     async def submit_order(self, order: Any, **kwargs) -> dict:
         order = normalize_order_request(order)
