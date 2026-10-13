@@ -341,7 +341,7 @@ def test_api_get_runs_and_leaderboard_empty_or_mocked(test_client):
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return None
 
-    with patch("monika.core.telemetry.dashboard.routes.benchmark.get_session", return_value=MockAsyncSessionCM()):
+    with patch("monika.interfaces.dashboard.routes.benchmark.get_session", return_value=MockAsyncSessionCM()):
         # Test runs list
         response = test_client.get("/api/benchmark/runs")
         assert response.status_code == 200
@@ -392,7 +392,7 @@ def test_api_get_compare_task_benchmarks(test_client):
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return None
 
-    with patch("monika.core.telemetry.dashboard.routes.benchmark.get_session", return_value=MockAsyncSessionCM()):
+    with patch("monika.interfaces.dashboard.routes.benchmark.get_session", return_value=MockAsyncSessionCM()):
         response = test_client.get("/api/benchmark/compare?task_id=stage1_fundamental")
         assert response.status_code == 200
         data = response.json()

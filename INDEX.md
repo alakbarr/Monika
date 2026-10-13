@@ -838,7 +838,7 @@ This document provides an exhaustive structural index of all directories, files,
   - `alpha_arena.py`: Head-to-head ELO tournament arena for alpha strategies and model comparisons (`AlphaArena`).
   - `judge.py`: Multi-persona consensus LLM judge ensemble (`ConsensusJudge`, `JudgeEnsemble`).
   - `invoker.py`: Resilient LLM client invoker with token telemetry and drift tracking (`LLMInvoker`).
-  - `task_specs.py`: Standardized benchmark task specifications across 53 trading agent roles (`TASK_SPECS`).
+  - `task_specs/` & `task_specs.py`: Standardized benchmark task specifications across 53+ trading agent roles decomposed into modular domain-focused case builders (`task_specs/`: `base`, `macro_cases`, `stage2_cases`, `specialist_cases`, `debate_cases`, `risk_cases`, `news_cases`, `chat_cases`, `reflex_cases`, `registry`) and backward-compatible facade (`BenchmarkCase`, `TaskSpec`, `TASKS`).
   - `prompt_evolution.py`: Genetic Evolutionary Prompt Adaptation (GEPA) engine for trading prompts (`GEPAPromptEvolver`).
   - `system_one_scorer.py`: System-1 intuitive latency and calibration scoring engine (`SystemOneScorer`).
   - `paired_evaluator.py`: Statistical paired model evaluation and bootstrap significance testing (`PairedEvaluator`).
