@@ -14,6 +14,7 @@ from typing import Union
 
 class SecurityViolationError(PermissionError):
     """Raised when an operation violates host security boundaries."""
+
     pass
 
 
@@ -55,9 +56,7 @@ def assert_safe_nt_path(path_input: Union[str, Path]) -> str:
     Returns string representation of safe path or raises SecurityViolationError.
     """
     if is_dangerous_nt_namespace(path_input):
-        raise SecurityViolationError(
-            f"Access denied: Dangerous Windows NT-namespace path detected: '{path_input}'."
-        )
+        raise SecurityViolationError(f"Access denied: Dangerous Windows NT-namespace path detected: '{path_input}'.")
     return str(path_input)
 
 

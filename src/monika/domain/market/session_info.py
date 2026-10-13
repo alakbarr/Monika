@@ -1,4 +1,5 @@
 """Market session tracking and timing rules utility."""
+
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 import monika.core.primitives.clock as clock
@@ -25,8 +26,8 @@ def get_current_market_session(dt: Optional[datetime] = None) -> Dict[str, Any]:
     if 21 <= time_val <= 24:
         active_sessions.append("Off-Peak")
 
-    is_london_ny_overlap = (13 <= time_val < 16)
-    is_off_peak = (21 <= time_val <= 24)
+    is_london_ny_overlap = 13 <= time_val < 16
+    is_off_peak = 21 <= time_val <= 24
     confluence_mod = 1 if is_london_ny_overlap else (-2 if is_off_peak else 0)
 
     return {
@@ -35,5 +36,5 @@ def get_current_market_session(dt: Optional[datetime] = None) -> Dict[str, Any]:
         "is_london_ny_overlap": is_london_ny_overlap,
         "is_off_peak": is_off_peak,
         "session_modifier": confluence_mod,
-        "status": "active"
+        "status": "active",
     }

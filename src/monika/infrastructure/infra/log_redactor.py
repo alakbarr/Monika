@@ -54,6 +54,7 @@ def redact_sensitive_text(text: str) -> str:
         sanitized = pattern.sub(replacement, sanitized)
     try:
         from monika.core.security.credential_vault import vault
+
         sanitized = vault.redact(sanitized)
     except Exception:
         pass

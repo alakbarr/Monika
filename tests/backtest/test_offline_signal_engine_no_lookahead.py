@@ -1,6 +1,7 @@
 """
 Unit tests for backtest/offline_signal_engine.py verifying zero look-ahead bias and column normalization.
 """
+
 import pytest
 import pandas as pd
 import numpy as np
@@ -15,7 +16,7 @@ def test_offline_signal_engine_column_casing():
         "high": [11.0, 12.0, 11.5, 12.5, 13.0],
         "low": [9.0, 9.5, 10.0, 10.5, 11.0],
         "close": [9.5, 10.5, 11.0, 11.2, 12.0],
-        "volume": [100.0] * 5
+        "volume": [100.0] * 5,
     }
     df = pd.DataFrame(data)
     atr = engine._calculate_atr(df, period=3)
@@ -34,12 +35,14 @@ def test_offline_signal_engine_no_lookahead_shift():
     lows = closes - np.abs(np.random.randn(n))
     opens = closes + np.random.randn(n) * 0.1
 
-    df = pd.DataFrame({
-        "open": opens,
-        "high": highs,
-        "low": lows,
-        "close": closes,
-    })
+    df = pd.DataFrame(
+        {
+            "open": opens,
+            "high": highs,
+            "low": lows,
+            "close": closes,
+        }
+    )
 
     sig_df = engine.generate_signals(df)
     assert "Signal" in sig_df.columns
@@ -62,14 +65,16 @@ def test_offline_signal_engine_atr_shifted_zero_lookahead():
     engine = OfflineSignalEngine({})
     # Create simple dataframe where ATR varies predictably
     # Bar 0, 1, 2, 3
-    df = pd.DataFrame({
-        "Open": [100.0, 101.0, 102.0, 103.0],
-        "High": [105.0, 106.0, 107.0, 115.0],  # Bar 3 has massive high (115.0)
-        "Low": [95.0, 96.0, 97.0, 90.0],       # Bar 3 has massive range
-        "Close": [101.0, 102.0, 103.0, 104.0],
-        "Signal": [0, 0, 0, 1],                # Buy signal executed at Bar 3
-        "ATR": [10.0, 10.0, 10.0, 25.0]        # Raw unshifted ATR at Bar 3 is 25.0
-    })
+    df = pd.DataFrame(
+        {
+            "Open": [100.0, 101.0, 102.0, 103.0],
+            "High": [105.0, 106.0, 107.0, 115.0],  # Bar 3 has massive high (115.0)
+            "Low": [95.0, 96.0, 97.0, 90.0],  # Bar 3 has massive range
+            "Close": [101.0, 102.0, 103.0, 104.0],
+            "Signal": [0, 0, 0, 1],  # Buy signal executed at Bar 3
+            "ATR": [10.0, 10.0, 10.0, 25.0],  # Raw unshifted ATR at Bar 3 is 25.0
+        }
+    )
 
     # At bar 3 execution, stops should use bar 2's ATR (10.0), NOT bar 3's unshifted ATR (25.0)!
     res = engine.calculate_stops_and_targets(df, risk_reward_ratio=2.0)
@@ -79,4 +84,3 @@ def test_offline_signal_engine_atr_shifted_zero_lookahead():
     # Expected TakeProfit = 103.0 + (10.0 * 1.5 * 2.0) = 133.0
     assert res.loc[3, "StopLoss"] == pytest.approx(88.0)
     assert res.loc[3, "TakeProfit"] == pytest.approx(133.0)
-

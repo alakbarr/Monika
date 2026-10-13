@@ -72,7 +72,7 @@ def acquire_cli_session_lock(session_id: str) -> Optional[int]:
                         proc = psutil.Process(existing_pid)
                         if proc.is_running() and "python" in proc.name().lower():
                             return existing_pid
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    except psutil.NoSuchProcess, psutil.AccessDenied:
                         pass
         except Exception:
             pass
@@ -228,6 +228,7 @@ class ChatReplSession:
             _loader = load_settings
             try:
                 import monika.interfaces.cli.tui_chat as tui_chat
+
                 _loader = getattr(tui_chat, "load_settings", load_settings)
             except Exception:
                 pass
@@ -313,25 +314,31 @@ class ChatReplSession:
             if self.pending_action_id:
                 choice = clean_text.lower()
                 if choice in ("1", "o", "allow", "yes", "y"):
-                    await self._submit_decision({
-                        "type": "approval_response",
-                        "action_id": self.pending_action_id,
-                        "decision": "allow_once",
-                    })
+                    await self._submit_decision(
+                        {
+                            "type": "approval_response",
+                            "action_id": self.pending_action_id,
+                            "decision": "allow_once",
+                        }
+                    )
                     continue
                 elif choice in ("2", "s", "session"):
-                    await self._submit_decision({
-                        "type": "approval_response",
-                        "action_id": self.pending_action_id,
-                        "decision": "allow_session",
-                    })
+                    await self._submit_decision(
+                        {
+                            "type": "approval_response",
+                            "action_id": self.pending_action_id,
+                            "decision": "allow_session",
+                        }
+                    )
                     continue
                 elif choice in ("3", "d", "deny", "no", "n"):
-                    await self._submit_decision({
-                        "type": "approval_response",
-                        "action_id": self.pending_action_id,
-                        "decision": "deny",
-                    })
+                    await self._submit_decision(
+                        {
+                            "type": "approval_response",
+                            "action_id": self.pending_action_id,
+                            "decision": "deny",
+                        }
+                    )
                     continue
 
             # Standard chat message turn
@@ -383,11 +390,13 @@ class ChatReplSession:
         self.renderer.render_agent_header(model)
         self.renderer.render_thinking_spinner("Formulating response...")
 
-        await self.ws.send_json({
-            "type": "message",
-            "text": text,
-            "model": model,
-        })
+        await self.ws.send_json(
+            {
+                "type": "message",
+                "text": text,
+                "model": model,
+            }
+        )
 
         try:
             while True:
@@ -474,7 +483,9 @@ class ChatReplSession:
                     if not thinking_rendered:
                         thinking_text = "".join(full_thinking_chunks) or scrubber.get_full_thinking()
                         if thinking_text:
-                            self.renderer.render_thinking_card(thinking_text, scrubber.elapsed_time or (time.time() - t0))
+                            self.renderer.render_thinking_card(
+                                thinking_text, scrubber.elapsed_time or (time.time() - t0)
+                            )
 
                     self.history.append({"sender": "agent", "text": full_reply})
 
@@ -623,7 +634,6 @@ class ChatReplSession:
         decision = payload.get("decision", "deny")
 
         if self.ws is not None and _is_ws_alive(self.ws):
-
             try:
                 await self.ws.send_json(payload)
                 msg = await asyncio.wait_for(self.ws.receive_json(), timeout=5.0)

@@ -33,16 +33,17 @@ logger = logging.getLogger("TradingAgent.PositionSizing")
 from monika.domain.risk.instruments.instruments import InstrumentSpec, DEFAULT_INSTRUMENTS  # noqa: F401 (re-exported)
 
 
-
 # ---------------------------------------------------------------------------
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SizingResult:
     """Hasil perhitungan ukuran posisi (lot)."""
+
     symbol: str
-    direction: str                  # "buy" or "sell"
+    direction: str  # "buy" or "sell"
     entry_price: float
     stop_loss: float
     take_profit: Optional[float]
@@ -52,18 +53,18 @@ class SizingResult:
     risk_percent: float
 
     # Derived
-    risk_amount_usd: float          # equity × risk_pct
-    sl_distance_price: float        # |entry - sl|
-    sl_distance_pips: float         # distance in pips
-    pip_value_per_lot: float        # USD per pip per 1.0 lot
-    raw_lots: float                 # unrounded result
-    recommended_lots: float         # rounded to lot_step, clamped to [min, max_lot]
+    risk_amount_usd: float  # equity × risk_pct
+    sl_distance_price: float  # |entry - sl|
+    sl_distance_pips: float  # distance in pips
+    pip_value_per_lot: float  # USD per pip per 1.0 lot
+    raw_lots: float  # unrounded result
+    recommended_lots: float  # rounded to lot_step, clamped to [min, max_lot]
 
     # Risk/reward
-    rr_ratio: Optional[float]       # take_profit distance / stop_loss distance
+    rr_ratio: Optional[float]  # take_profit distance / stop_loss distance
 
     # Status
-    is_valid: bool                  # False if any constraint violated
+    is_valid: bool  # False if any constraint violated
     rejection_reasons: list[str] = field(default_factory=list)
 
     # Metadata
@@ -91,6 +92,7 @@ class SizingResult:
 # Calculator
 # ---------------------------------------------------------------------------
 
+
 class PositionSizer:
     """Menghitung rekomendasi ukuran lot berdasarkan parameter risiko dan equity."""
 
@@ -103,25 +105,28 @@ class PositionSizer:
         """
         self.settings = settings
         risk_cfg = settings.get("trading", {}).get("risk", {})
-        self.risk_percent: float   = risk_cfg.get("risk_percent_per_trade", 1.0)
-        self.min_rr: float         = risk_cfg.get("min_rr_ratio", 1.3)
+        self.risk_percent: float = risk_cfg.get("risk_percent_per_trade", 1.0)
+        self.min_rr: float = risk_cfg.get("min_rr_ratio", 1.3)
         self._mt5 = mt5_client
 
     @classmethod
     def update_usdjpy_cache(cls, rate: float):
-        cls._usdjpy_rate_cache = {'rate': rate, 'ts': datetime.now(timezone.utc)}
+        cls._usdjpy_rate_cache = {"rate": rate, "ts": datetime.now(timezone.utc)}
 
     async def _get_regime_size_multiplier(self, session, symbol: str, as_of: Optional[datetime] = None) -> float:
         try:
             from monika.application.analysis.calculators.regime_classifier import classify_market_regime
+
             regime = await classify_market_regime(session, symbol, self.settings, as_of=as_of)
-            mult = regime.get('size_multiplier', 1.0)
+            mult = regime.get("size_multiplier", 1.0)
             if mult < 1.0:
-                logger.info(f"[{symbol}] Regime-based size reduction: {mult:.2f}x "
-                            f"(regime={regime['regime']}, quality={regime['composite_quality']:.2f})")
+                logger.info(
+                    f"[{symbol}] Regime-based size reduction: {mult:.2f}x "
+                    f"(regime={regime['regime']}, quality={regime['composite_quality']:.2f})"
+                )
             return mult
         except Exception as e:
-            logger.debug(f'Regime classification failed for sizing, defaulting to 1.0: {e}')
+            logger.debug(f"Regime classification failed for sizing, defaulting to 1.0: {e}")
             return 1.0
 
     async def calculate_with_session(
@@ -141,24 +146,29 @@ class PositionSizer:
         """Version baru dengan akses DB untuk pip value dinamis."""
         try:
             entry_price = float(entry_price)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             entry_price = 0.0
         try:
             stop_loss = float(stop_loss) if stop_loss is not None else 0.0
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             stop_loss = 0.0
         if take_profit is not None:
             try:
                 take_profit = float(take_profit)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 take_profit = None
 
         # Fail-closed protection for blown account:
         if account_equity is not None and account_equity <= 0:
             return self._invalid(
-                symbol, direction, entry_price, stop_loss, take_profit,
-                account_equity, risk_percent_override if risk_percent_override is not None else self.risk_percent,
-                ["Account equity is zero or negative (blown account protection)"]
+                symbol,
+                direction,
+                entry_price,
+                stop_loss,
+                take_profit,
+                account_equity,
+                risk_percent_override if risk_percent_override is not None else self.risk_percent,
+                ["Account equity is zero or negative (blown account protection)"],
             )
 
         is_cent = False
@@ -175,34 +185,43 @@ class PositionSizer:
                         live_equity = float(info.get("normalized_equity") if is_cent else (info.get("equity") or 0.0))
                         if live_equity <= 0:
                             return self._invalid(
-                                symbol, direction, entry_price, stop_loss, take_profit,
-                                live_equity, risk_percent_override if risk_percent_override is not None else self.risk_percent,
-                                ["Live account equity is zero or negative (blown account protection)"]
+                                symbol,
+                                direction,
+                                entry_price,
+                                stop_loss,
+                                take_profit,
+                                live_equity,
+                                risk_percent_override if risk_percent_override is not None else self.risk_percent,
+                                ["Live account equity is zero or negative (blown account protection)"],
                             )
                         account_equity = live_equity
                 except Exception as e:
                     logger.debug(f"Could not retrieve live MT5 equity for sizing: {e}")
             if account_equity is None or account_equity <= 0:
-                raw_bal = self.settings.get("paper_trading", {}).get("initial_balance") if isinstance(self.settings, dict) else None
+                raw_bal = (
+                    self.settings.get("paper_trading", {}).get("initial_balance")
+                    if isinstance(self.settings, dict)
+                    else None
+                )
                 account_equity = float(raw_bal) if raw_bal is not None else 10000.0
         elif is_cent and account_equity > 1000 and kwargs.get("normalize_cent", True):
             account_equity = account_equity / 100.0
 
         risk_pct = risk_percent_override if risk_percent_override is not None else self.risk_percent
-        
+
         # Apply VIX dynamic risk adjustment using settings thresholds
         risk_cfg = getattr(self, "settings", {}).get("trading", {}).get("risk", {})
         vix_thresholds = risk_cfg.get("vix_thresholds", {})
-        
+
         if risk_cfg.get("vix_risk_adjustment", True):
-            normal    = vix_thresholds.get("normal",    15)
-            caution   = vix_thresholds.get("caution",   20)
+            normal = vix_thresholds.get("normal", 15)
+            caution = vix_thresholds.get("caution", 20)
             defensive = vix_thresholds.get("defensive", 25)
-            pause_thr = vix_thresholds.get("pause",     30)
-            
+            pause_thr = vix_thresholds.get("pause", 30)
+
             # If VIX is unavailable, treat as defensive
             effective_vix = vix_level if vix_level is not None else defensive
-            
+
             if effective_vix < normal:
                 pass  # normal risk
             elif normal <= effective_vix < caution:
@@ -216,7 +235,7 @@ class PositionSizer:
 
         regime_multiplier = await self._get_regime_size_multiplier(session, symbol, as_of=as_of)
         risk_pct = risk_pct * regime_multiplier
-        
+
         if regime_multiplier < 1.0:
             logger.info(f"Regime-based size reduction for {symbol}: {regime_multiplier:.2f}x (ADX-based)")
 
@@ -224,19 +243,18 @@ class PositionSizer:
         try:
             from monika.domain.risk.ports import get_default_risk_data_provider
             from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
+
             provider = get_default_risk_data_provider(session=session)
             tfm_fc = await provider.get_latest_timesfm_forecast(
-                symbol=symbol,
-                timeframe='H1',
-                max_age_hours=8.0,
-                as_of=as_of,
-                session=session
+                symbol=symbol, timeframe="H1", max_age_hours=8.0, as_of=as_of, session=session
             )
             if tfm_fc:
-                vol_ratio = float(tfm_fc.get('volatility_expansion_ratio', 1.0))
+                vol_ratio = float(tfm_fc.get("volatility_expansion_ratio", 1.0))
                 if vol_ratio >= 1.40:
                     risk_pct *= 0.75
-                    logger.info(f"[{symbol}] TimesFM high dispersion tail-risk reduction applied: 0.75x (expansion_ratio={vol_ratio:.2f})")
+                    logger.info(
+                        f"[{symbol}] TimesFM high dispersion tail-risk reduction applied: 0.75x (expansion_ratio={vol_ratio:.2f})"
+                    )
 
                 # Quantile Asymmetry directional skew sizing multiplier
                 quantiles = tfm_fc.get("quantiles", {})
@@ -256,58 +274,91 @@ class PositionSizer:
 
         # Paper Trading Streak Loss Mitigation: scale down risk if losing streak >= 3 and policy == 'warn_and_scale'
         try:
-            paper_cfg = getattr(self, "settings", {}).get("trading", {}).get("paper_trading", {}) if isinstance(getattr(self, "settings", None), dict) else {}
+            paper_cfg = (
+                getattr(self, "settings", {}).get("trading", {}).get("paper_trading", {})
+                if isinstance(getattr(self, "settings", None), dict)
+                else {}
+            )
             streak_policy = paper_cfg.get("streak_loss_policy", "warn_and_scale")
             if streak_policy == "warn_and_scale":
                 from monika.domain.risk.ports import get_default_risk_data_provider
+
                 repo = get_default_risk_data_provider(session=session)
                 streak_count = await repo.get_loss_streak(is_paper=True, session=session)
                 if streak_count >= 3:
                     scale_mult = float(paper_cfg.get("streak_risk_scale_factor", 0.5))
                     risk_pct *= scale_mult
-                    logger.info(f"[{symbol}] Streak loss risk scaling applied: {scale_mult:.2f}x ({streak_count} consecutive losses)")
+                    logger.info(
+                        f"[{symbol}] Streak loss risk scaling applied: {scale_mult:.2f}x ({streak_count} consecutive losses)"
+                    )
         except Exception as streak_err:
             logger.debug(f"[{symbol}] Streak loss sizing adjustment non-fatal: {streak_err}")
 
         # Turnover-Aware Churn Penalty: Dampen sizing if recent trades indicate high churn
         try:
             from monika.domain.risk.ports import get_default_risk_data_provider
+
             repo = get_default_risk_data_provider(session=session)
             recent_count = await repo.get_daily_trades_count(symbol=symbol, is_paper=False, session=session)
             if recent_count >= 3:
                 churn_mult = max(0.4, 1.0 / (1.0 + 0.15 * float(recent_count - 2)))
                 risk_pct *= churn_mult
                 logger.info(
-                    f"[{symbol}] Turnover churn penalty applied: {churn_mult:.2f}x "
-                    f"(recent 24h trades={recent_count})"
+                    f"[{symbol}] Turnover churn penalty applied: {churn_mult:.2f}x (recent 24h trades={recent_count})"
                 )
         except Exception as turn_err:
             logger.debug(f"[{symbol}] Turnover churn check non-fatal: {turn_err}")
-                
+
         spec = await self._get_instrument_spec_dynamic(session, symbol)
         if spec is None:
-            return self._invalid(symbol, direction, entry_price, stop_loss, take_profit,
-                                 account_equity, risk_pct, [f"Instrument specifications unavailable for {symbol}"])
+            return self._invalid(
+                symbol,
+                direction,
+                entry_price,
+                stop_loss,
+                take_profit,
+                account_equity,
+                risk_pct,
+                [f"Instrument specifications unavailable for {symbol}"],
+            )
         rejections: list[str] = []
 
         # 1. Basic sanity checks
         if risk_pct <= 0:
             return self._invalid(
-                symbol, direction, entry_price, stop_loss, take_profit,
-                account_equity, risk_pct,
-                ["risk_pct must be strictly positive (> 0); non-positive risk / negative expectancy allocated"]
+                symbol,
+                direction,
+                entry_price,
+                stop_loss,
+                take_profit,
+                account_equity,
+                risk_pct,
+                ["risk_pct must be strictly positive (> 0); non-positive risk / negative expectancy allocated"],
             )
 
         if not account_equity or account_equity <= 0:
             return self._invalid(
-                symbol, direction, entry_price, stop_loss, take_profit,
-                account_equity, risk_pct,
-                ["account_equity must be positive"]
+                symbol,
+                direction,
+                entry_price,
+                stop_loss,
+                take_profit,
+                account_equity,
+                risk_pct,
+                ["account_equity must be positive"],
             )
 
         if entry_price <= 0 or stop_loss <= 0:
-            return self._invalid(symbol, direction, entry_price, stop_loss, take_profit,
-                                 account_equity, risk_pct, ["entry_price or stop_loss is zero/negative"])
+            return self._invalid(
+                symbol,
+                direction,
+                entry_price,
+                stop_loss,
+                take_profit,
+                account_equity,
+                risk_pct,
+                ["entry_price or stop_loss is zero/negative"],
+            )
 
         if direction == "buy" and stop_loss >= entry_price:
             rejections.append("For BUY: stop_loss must be below entry_price")
@@ -367,19 +418,23 @@ class PositionSizer:
                     f"(risk ${min_lot_risk_usd:.2f} <= cap ${max_risk_cap:.2f})"
                 )
             else:
-                rejections.append(f"Broker minimum lot ({spec.min_lot}) exceeds maximum risk limit (${max_risk_cap:.2f})")
+                rejections.append(
+                    f"Broker minimum lot ({spec.min_lot}) exceeds maximum risk limit (${max_risk_cap:.2f})"
+                )
         elif raw_lots <= 0.0:
             recommended_lots = 0.0
             rejections.append("Calculated lot size is zero or non-positive")
-        
+
         actual_risk_usd = recommended_lots * sl_distance_pips * spec.pip_value_per_lot
         if actual_risk_usd > max_risk_cap:
-            rejections.append(f"Actual risk (${actual_risk_usd:.2f}) exceeds configured risk limit of ${max_risk_cap:.2f}")
+            rejections.append(
+                f"Actual risk (${actual_risk_usd:.2f}) exceeds configured risk limit of ${max_risk_cap:.2f}"
+            )
         if raw_lots > 0.0:
             recommended_lots = max(spec.min_lot, recommended_lots)
         else:
             recommended_lots = 0.0
-        
+
         # TAMBAHKAN: cap to max_lot
         if spec.max_lot > 0:
             recommended_lots = min(spec.max_lot, recommended_lots)
@@ -398,13 +453,15 @@ class PositionSizer:
                 if effective_dist > 0:
                     desired_lot = target_usd / (effective_dist * value_per_unit)
                     if desired_lot < spec.min_lot:
-                        rejections.append(f"Volatility-parity lot ({desired_lot:.4f}) < broker min_lot ({spec.min_lot}); skipped to prevent oversizing")
+                        rejections.append(
+                            f"Volatility-parity lot ({desired_lot:.4f}) < broker min_lot ({spec.min_lot}); skipped to prevent oversizing"
+                        )
                         recommended_lots = 0.0
                     else:
                         recommended_lots = self._round_lots(desired_lot, spec.lot_step)
                         if spec.max_lot > 0:
                             recommended_lots = min(spec.max_lot, recommended_lots)
-            
+
         # TAMBAHKAN: sanity check — if lot size would create notional > 20% of equity, reduce
         if spec.contract_size > 0 and entry_price > 0:
             is_forex = len(symbol) == 6 and symbol[:3].isalpha() and symbol[3:].isalpha()
@@ -414,7 +471,7 @@ class PositionSizer:
                 notional = recommended_lots * spec.contract_size * 1.5  # safe upper bound for cross pairs
             else:
                 notional = recommended_lots * spec.contract_size * entry_price
-                
+
             max_notional = account_equity * 20  # max 20x equity (leverage cap)
             if notional > max_notional:
                 if is_forex and symbol.startswith("USD"):
@@ -423,20 +480,18 @@ class PositionSizer:
                     capped_lots = max_notional / (spec.contract_size * 1.5)
                 else:
                     capped_lots = max_notional / (spec.contract_size * entry_price)
-                
+
                 capped_lots = self._round_lots(capped_lots, spec.lot_step)
                 if capped_lots < spec.min_lot:
                     rejections.append(f"Notional cap reduced lot size below minimum ({spec.min_lot})")
                 capped_lots = max(spec.min_lot, capped_lots)
-                
+
                 if capped_lots < recommended_lots:
                     logger.info(
                         f"[{symbol}] Lot size capped from {recommended_lots} to {capped_lots} "
                         f"(notional exposure limit: {max_notional:.0f} USD)"
                     )
                     recommended_lots = capped_lots
-        
-
 
         # 6. R:R ratio check
         rr_ratio: Optional[float] = None
@@ -445,8 +500,7 @@ class PositionSizer:
             rr_ratio = tp_distance / sl_distance_price if sl_distance_price > 0 else None
             if rr_ratio is not None and rr_ratio < self.min_rr:
                 rejections.append(
-                    f"R:R ratio {rr_ratio:.2f} is below minimum {self.min_rr:.1f}. "
-                    f"Move TP or tighten SL."
+                    f"R:R ratio {rr_ratio:.2f} is below minimum {self.min_rr:.1f}. Move TP or tighten SL."
                 )
 
         is_valid = len(rejections) == 0
@@ -470,10 +524,10 @@ class PositionSizer:
             rr_ratio=rr_ratio,
             is_valid=is_valid,
             rejection_reasons=rejections,
-            instrument_spec_source=getattr(spec, '_source', 'default'),
+            instrument_spec_source=getattr(spec, "_source", "default"),
         )
 
-        is_backtest_run = bool(kwargs.get('is_backtest', False)) or (as_of is not None)
+        is_backtest_run = bool(kwargs.get("is_backtest", False)) or (as_of is not None)
         log_level = logging.DEBUG if is_backtest_run else (logging.INFO if is_valid else logging.WARNING)
         logger.log(log_level, f"PositionSizing: {result.summary()}")
         return result
@@ -493,21 +547,21 @@ class PositionSizer:
     ) -> SizingResult:
         """
         Menghitung lot untuk trade yang diusulkan (synchronous fallback).
-        
-        PERINGATAN (R-7): Method synchronous ini TIDAK menerapkan ADX regime sizing 
+
+        PERINGATAN (R-7): Method synchronous ini TIDAK menerapkan ADX regime sizing
         multiplier (0.5x di ranging market / ADX < 20). Untuk production, selalu gunakan
         `calculate_with_session()` yang memiliki akses DB dan menerapkan semua multipliers.
-        
+
         Gunakan `calculate()` HANYA untuk:
         - Testing / unit tests (tanpa DB)
         - Kalkulasi preview/estimasi (bukan untuk eksekusi nyata)
-        
+
         Untuk eksekusi nyata, lihat execution_service.py yang sudah menggunakan
         `calculate_with_session()`.
         """
         logger.warning(
-            '[PositionSizer] calculate() (sync) called — ADX regime multiplier NOT applied. '
-            'Use calculate_with_session() for production trading.'
+            "[PositionSizer] calculate() (sync) called — ADX regime multiplier NOT applied. "
+            "Use calculate_with_session() for production trading."
         )
         risk_pct = risk_percent_override if risk_percent_override is not None else self.risk_percent
         is_cent = False
@@ -517,28 +571,28 @@ class PositionSizer:
             account_equity = account_equity / 100.0
         try:
             entry_price = float(entry_price)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             entry_price = 0.0
         try:
             stop_loss = float(stop_loss)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             stop_loss = 0.0
         if take_profit is not None:
             try:
                 take_profit = float(take_profit)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 take_profit = None
-        
+
         # Apply VIX dynamic risk adjustment using settings thresholds
         risk_cfg = getattr(self, "settings", {}).get("trading", {}).get("risk", {})
         vix_thresholds = risk_cfg.get("vix_thresholds", {})
-        
+
         if risk_cfg.get("vix_risk_adjustment", True) and vix_level is not None:
-            normal    = vix_thresholds.get("normal",    15)
-            caution   = vix_thresholds.get("caution",   20)
+            normal = vix_thresholds.get("normal", 15)
+            caution = vix_thresholds.get("caution", 20)
             defensive = vix_thresholds.get("defensive", 25)
-            pause_thr = vix_thresholds.get("pause",     30)
-            
+            pause_thr = vix_thresholds.get("pause", 30)
+
             if vix_level < normal:
                 pass  # normal risk
             elif normal <= vix_level < caution:
@@ -550,46 +604,72 @@ class PositionSizer:
             else:
                 risk_pct *= 0.25
 
-                
         spec = self._get_instrument_spec(symbol)
         if spec is None:
-            return self._invalid(symbol, direction, entry_price, stop_loss, take_profit,
-                                 account_equity, risk_pct, [f"Instrument specifications unavailable for {symbol}"])
-        
+            return self._invalid(
+                symbol,
+                direction,
+                entry_price,
+                stop_loss,
+                take_profit,
+                account_equity,
+                risk_pct,
+                [f"Instrument specifications unavailable for {symbol}"],
+            )
+
         # Dynamic pip value untuk JPY pairs berdasarkan last known rate
-        if symbol == 'USDJPY' and self._mt5 is None:
+        if symbol == "USDJPY" and self._mt5 is None:
             # Coba ambil dari cache terakhir
             try:
                 import asyncio, json
+
                 # Gunakan class variable untuk cache sederhana
-                cached_rate = getattr(PositionSizer, '_usdjpy_rate_cache', None)
-                if cached_rate and cached_rate.get('rate', 0) > 0:
+                cached_rate = getattr(PositionSizer, "_usdjpy_rate_cache", None)
+                if cached_rate and cached_rate.get("rate", 0) > 0:
                     import dataclasses
-                    spec = dataclasses.replace(spec, 
-                        pip_value_usd=round(100000 * 0.01 / cached_rate['rate'], 4))
+
+                    spec = dataclasses.replace(spec, pip_value_usd=round(100000 * 0.01 / cached_rate["rate"], 4))
             except Exception:
                 pass  # fallback to static
-                
+
         rejections: list[str] = []
 
         # 1. Basic sanity checks
         if risk_pct <= 0:
             return self._invalid(
-                symbol, direction, entry_price, stop_loss, take_profit,
-                account_equity, risk_pct,
-                ["risk_pct must be strictly positive (> 0); non-positive risk / negative expectancy allocated"]
+                symbol,
+                direction,
+                entry_price,
+                stop_loss,
+                take_profit,
+                account_equity,
+                risk_pct,
+                ["risk_pct must be strictly positive (> 0); non-positive risk / negative expectancy allocated"],
             )
 
         if not account_equity or account_equity <= 0:
             return self._invalid(
-                symbol, direction, entry_price, stop_loss, take_profit,
-                account_equity, risk_pct,
-                ["account_equity must be positive"]
+                symbol,
+                direction,
+                entry_price,
+                stop_loss,
+                take_profit,
+                account_equity,
+                risk_pct,
+                ["account_equity must be positive"],
             )
 
         if entry_price <= 0 or stop_loss <= 0:
-            return self._invalid(symbol, direction, entry_price, stop_loss, take_profit,
-                                 account_equity, risk_pct, ["entry_price or stop_loss is zero/negative"])
+            return self._invalid(
+                symbol,
+                direction,
+                entry_price,
+                stop_loss,
+                take_profit,
+                account_equity,
+                risk_pct,
+                ["entry_price or stop_loss is zero/negative"],
+            )
 
         if direction == "buy" and stop_loss >= entry_price:
             rejections.append("For BUY: stop_loss must be below entry_price")
@@ -665,7 +745,9 @@ class PositionSizer:
 
         actual_risk_usd = recommended_lots * sl_distance_pips * spec.pip_value_per_lot
         if actual_risk_usd > max_risk_cap:
-            rejections.append(f"Actual risk (${actual_risk_usd:.2f}) exceeds configured risk limit of ${max_risk_cap:.2f}")
+            rejections.append(
+                f"Actual risk (${actual_risk_usd:.2f}) exceeds configured risk limit of ${max_risk_cap:.2f}"
+            )
 
         # Volatility-Budget Parity Sizing (Enhancement 10)
         vol_parity_cfg = self.settings.get("trading", {}).get("risk", {}).get("volatility_parity", {})
@@ -681,13 +763,15 @@ class PositionSizer:
                 if effective_dist > 0:
                     desired_lot = target_usd / (effective_dist * value_per_unit)
                     if desired_lot < spec.min_lot:
-                        rejections.append(f"Volatility-parity lot ({desired_lot:.4f}) < broker min_lot ({spec.min_lot}); skipped to prevent oversizing")
+                        rejections.append(
+                            f"Volatility-parity lot ({desired_lot:.4f}) < broker min_lot ({spec.min_lot}); skipped to prevent oversizing"
+                        )
                         recommended_lots = 0.0
                     else:
                         recommended_lots = self._round_lots(desired_lot, spec.lot_step)
                         if spec.max_lot > 0:
                             recommended_lots = min(spec.max_lot, recommended_lots)
-        
+
         # TAMBAHKAN: cap to configured max lot and spec max lot
         max_lot_cfg = self.settings.get("trading", {}).get("risk", {}).get("max_lot_per_symbol")
         if max_lot_cfg is None:
@@ -696,7 +780,7 @@ class PositionSizer:
             recommended_lots = min(float(max_lot_cfg), recommended_lots)
         if spec.max_lot > 0:
             recommended_lots = min(spec.max_lot, recommended_lots)
-            
+
         # TAMBAHKAN: sanity check — if lot size would create notional > 20% of equity, reduce
         if spec.contract_size > 0 and entry_price > 0:
             is_forex = len(symbol) == 6 and symbol[:3].isalpha() and symbol[3:].isalpha()
@@ -706,7 +790,7 @@ class PositionSizer:
                 notional = recommended_lots * spec.contract_size * 1.5  # safe upper bound for cross pairs
             else:
                 notional = recommended_lots * spec.contract_size * entry_price
-                
+
             max_notional = account_equity * 20  # max 20x equity (leverage cap)
             if notional > max_notional:
                 if is_forex and symbol.startswith("USD"):
@@ -715,20 +799,18 @@ class PositionSizer:
                     capped_lots = max_notional / (spec.contract_size * 1.5)
                 else:
                     capped_lots = max_notional / (spec.contract_size * entry_price)
-                
+
                 capped_lots = self._round_lots(capped_lots, spec.lot_step)
                 if capped_lots < spec.min_lot:
                     rejections.append(f"Notional cap reduced lot size below minimum ({spec.min_lot})")
                 capped_lots = max(spec.min_lot, capped_lots)
-                
+
                 if capped_lots < recommended_lots:
                     logger.info(
                         f"[{symbol}] Lot size capped from {recommended_lots} to {capped_lots} "
                         f"(notional exposure limit: {max_notional:.0f} USD)"
                     )
                     recommended_lots = capped_lots
-        
-
 
         # 6. R:R ratio check
         rr_ratio: Optional[float] = None
@@ -737,8 +819,7 @@ class PositionSizer:
             rr_ratio = tp_distance / sl_distance_price if sl_distance_price > 0 else None
             if rr_ratio is not None and rr_ratio < self.min_rr:
                 rejections.append(
-                    f"R:R ratio {rr_ratio:.2f} is below minimum {self.min_rr:.1f}. "
-                    f"Move TP or tighten SL."
+                    f"R:R ratio {rr_ratio:.2f} is below minimum {self.min_rr:.1f}. Move TP or tighten SL."
                 )
 
         is_valid = len(rejections) == 0
@@ -762,10 +843,10 @@ class PositionSizer:
             rr_ratio=rr_ratio,
             is_valid=is_valid,
             rejection_reasons=rejections,
-            instrument_spec_source=getattr(spec, '_source', 'default'),
+            instrument_spec_source=getattr(spec, "_source", "default"),
         )
 
-        is_backtest_run = is_backtest or bool(kwargs.get('is_backtest', False))
+        is_backtest_run = is_backtest or bool(kwargs.get("is_backtest", False))
         log_level = logging.DEBUG if is_backtest_run else (logging.INFO if is_valid else logging.WARNING)
         logger.log(log_level, f"PositionSizing: {result.summary()}")
         return result
@@ -783,26 +864,26 @@ class PositionSizer:
             try:
                 info = await self._mt5.get_symbol_info(symbol)
                 if info is not None:
-                    digits = info.get('digits', 5)
-                    point = info.get('point', 0.00001)
+                    digits = info.get("digits", 5)
+                    point = info.get("point", 0.00001)
                     point_multiplier = 10 if digits in (5, 3) else 1
                     pip_size = point * point_multiplier
-                    
-                    stops_pts = info.get('stops_level', 0)
+
+                    stops_pts = info.get("stops_level", 0)
                     stops_pips = (stops_pts * point) / pip_size if stops_pts > 0 and pip_size > 0 else 0.0
-                    
-                    tick_value = info.get('tick_value', 1.0)
-                    tick_size = info.get('tick_size', 0.00001) or 0.00001
+
+                    tick_value = info.get("tick_value", 1.0)
+                    tick_size = info.get("tick_size", 0.00001) or 0.00001
                     pip_value_usd = tick_value * (1 / tick_size) * pip_size
-                    
+
                     spec = InstrumentSpec(
                         symbol=symbol,
                         pip_size=pip_size,
                         pip_value_usd=pip_value_usd,
-                        contract_size=info.get('contract_size') or info.get('trade_contract_size', 100000),
-                        min_lot=info.get('volume_min', 0.01),
-                        max_lot=info.get('volume_max', 100.0),
-                        lot_step=info.get('volume_step', 0.01),
+                        contract_size=info.get("contract_size") or info.get("trade_contract_size", 100000),
+                        min_lot=info.get("volume_min", 0.01),
+                        max_lot=info.get("volume_max", 100.0),
+                        lot_step=info.get("volume_step", 0.01),
                         digits=digits,
                         stops_level_pips=stops_pips,
                     )
@@ -814,17 +895,19 @@ class PositionSizer:
         # Fallback
         if symbol in DEFAULT_INSTRUMENTS:
             import dataclasses
+
             spec = dataclasses.replace(DEFAULT_INSTRUMENTS[symbol])
-            
+
             # Update USD-base pip value berdasarkan harga terkini dari DB
             if symbol in ("USDJPY", "USDCAD", "USDCHF"):
                 from monika.domain.risk.ports import get_default_risk_data_provider
+
                 repo = get_default_risk_data_provider(session=session)
                 bars = await repo.get_recent_price_bars(symbol=symbol, timeframe="H4", limit=1, session=session)
                 if bars and bars[-1].get("close", 0) > 0:
                     dynamic_pip_value = (spec.contract_size * spec.pip_size) / float(bars[-1]["close"])
                     spec = dataclasses.replace(spec, pip_value_usd=round(dynamic_pip_value, 4))
-            
+
             spec._source = "default"
             return spec
 
@@ -838,6 +921,7 @@ class PositionSizer:
         if self._mt5 is not None:
             try:
                 import MetaTrader5 as mt5
+
                 mt5_symbol_info: Any = getattr(mt5, "symbol_info", None)
                 info: Any = mt5_symbol_info(symbol) if callable(mt5_symbol_info) else None
                 if info is not None:
@@ -845,18 +929,18 @@ class PositionSizer:
                     point = float(getattr(info, "point", 0.00001))
                     point_multiplier = 10 if digits in (5, 3) else 1
                     pip_size = point * point_multiplier
-                    
+
                     # stops_level is usually in points
-                    stops_pts = float(getattr(info, 'trade_stops_level', 0) or 0)
+                    stops_pts = float(getattr(info, "trade_stops_level", 0) or 0)
                     stops_pips = (stops_pts * point) / pip_size if stops_pts > 0 and pip_size > 0 else 0.0
-                    
-                    tick_size = float(getattr(info, 'trade_tick_size', 0.00001) or 0.00001)
-                    tick_value = float(getattr(info, 'trade_tick_value', 1.0) or 1.0)
-                    contract_size = float(getattr(info, 'trade_contract_size', 100_000) or 100_000)
-                    min_lot = float(getattr(info, 'volume_min', 0.01) or 0.01)
-                    max_lot = float(getattr(info, 'volume_max', 100.0) or 100.0)
-                    lot_step = float(getattr(info, 'volume_step', 0.01) or 0.01)
-                    
+
+                    tick_size = float(getattr(info, "trade_tick_size", 0.00001) or 0.00001)
+                    tick_value = float(getattr(info, "trade_tick_value", 1.0) or 1.0)
+                    contract_size = float(getattr(info, "trade_contract_size", 100_000) or 100_000)
+                    min_lot = float(getattr(info, "volume_min", 0.01) or 0.01)
+                    max_lot = float(getattr(info, "volume_max", 100.0) or 100.0)
+                    lot_step = float(getattr(info, "volume_step", 0.01) or 0.01)
+
                     spec = InstrumentSpec(
                         symbol=symbol,
                         pip_size=pip_size,
@@ -886,21 +970,30 @@ class PositionSizer:
     @staticmethod
     def _round_lots(raw: float, step: float) -> float:
         """Bulatkan ke bawah ke step lot terdekat (demi keamanan), dengan strict floor snapping dan Decimal fixed-point precision."""
-        if raw is None or step is None or math.isnan(raw) or math.isinf(raw) or math.isnan(step) or math.isinf(step) or step <= 0 or raw <= 0:
+        if (
+            raw is None
+            or step is None
+            or math.isnan(raw)
+            or math.isinf(raw)
+            or math.isnan(step)
+            or math.isinf(step)
+            or step <= 0
+            or raw <= 0
+        ):
             return 0.0
-        
+
         # Strict floor snapping using math.floor with 1e-9 epsilon to prevent float precision drift
         steps = math.floor((float(raw) / float(step)) + 1e-9)
         if steps <= 0:
             return 0.0
-            
+
         # Determine number of decimals from step
         decimals = 2
         if step < 0.01:
             decimals = 3
         elif step >= 1.0:
             decimals = 0
-            
+
         d_steps = Decimal(str(steps))
         d_step = Decimal(str(step))
         rounded = (d_steps * d_step).quantize(Decimal(10) ** -decimals, rounding=ROUND_FLOOR)
@@ -933,19 +1026,24 @@ class PositionSizer:
         return spec.min_lot if spec else 0.01
 
     @staticmethod
-    def _invalid(
-        symbol, direction, entry, sl, tp,
-        equity, risk_pct, reasons
-    ) -> "SizingResult":
+    def _invalid(symbol, direction, entry, sl, tp, equity, risk_pct, reasons) -> "SizingResult":
         """Pintasan untuk langsung mengembalikan hasil invalid."""
         return SizingResult(
-            symbol=symbol, direction=direction,
-            entry_price=entry, stop_loss=sl, take_profit=tp,
-            account_equity=equity, risk_percent=risk_pct,
-            risk_amount_usd=0, sl_distance_price=0,
-            sl_distance_pips=0, pip_value_per_lot=0,
-            raw_lots=0, recommended_lots=0,
-            rr_ratio=None, is_valid=False,
+            symbol=symbol,
+            direction=direction,
+            entry_price=entry,
+            stop_loss=sl,
+            take_profit=tp,
+            account_equity=equity,
+            risk_percent=risk_pct,
+            risk_amount_usd=0,
+            sl_distance_price=0,
+            sl_distance_pips=0,
+            pip_value_per_lot=0,
+            raw_lots=0,
+            recommended_lots=0,
+            rr_ratio=None,
+            is_valid=False,
             rejection_reasons=reasons,
         )
 
@@ -960,7 +1058,7 @@ async def calculate_lot_size(
     settings: Optional[dict] = None,
     mt5_client: Optional[Any] = None,
     account_equity: Optional[float] = None,
-    **kwargs
+    **kwargs,
 ) -> dict:
     """Helper fungsi publik untuk perhitungan lot size deterministik."""
     avg_atr = kwargs.get("avg_atr") or kwargs.get("atr")
@@ -974,6 +1072,7 @@ async def calculate_lot_size(
     if mt5_client is None and settings:
         try:
             import importlib
+
             broker_mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
             get_client_fn = getattr(broker_mod, "get_mt5_client", None)
             if callable(get_client_fn):
@@ -992,7 +1091,9 @@ async def calculate_lot_size(
                 logger.debug(f"Could not retrieve MT5 equity for calculate_lot_size: {e}")
 
     if equity is None or equity <= 0:
-        raw_bal = (settings or {}).get("paper_trading", {}).get("initial_balance") if isinstance(settings, dict) else None
+        raw_bal = (
+            (settings or {}).get("paper_trading", {}).get("initial_balance") if isinstance(settings, dict) else None
+        )
         equity = float(raw_bal) if raw_bal is not None else 10000.0
 
     sizer = PositionSizer(settings=settings or {}, mt5_client=mt5_client)
@@ -1004,7 +1105,7 @@ async def calculate_lot_size(
         stop_loss=stop_loss,
         account_equity=equity,
         risk_percent_override=risk_pct,
-        **kwargs
+        **kwargs,
     )
     return {
         "symbol": res.symbol,
@@ -1017,7 +1118,7 @@ async def calculate_lot_size(
         "pip_value": res.pip_value_per_lot,
         "is_valid": res.is_valid,
         "rejection_reasons": res.rejection_reasons,
-        "summary": res.summary()
+        "summary": res.summary(),
     }
 
 
@@ -1038,20 +1139,27 @@ def get_instrument_spec(symbol: str, mt5_client=None) -> InstrumentSpec:
             pass
 
     import dataclasses
+
     if clean_sym in DEFAULT_INSTRUMENTS:
         return dataclasses.replace(DEFAULT_INSTRUMENTS[clean_sym])
 
     # Heuristik cerdas untuk instrumen dinamis di luar default map
     if "JPY" in clean_sym:
-        return InstrumentSpec(symbol=clean_sym, pip_size=0.01, pip_value_usd=1000.0 / 150.0, contract_size=100_000, digits=3)
+        return InstrumentSpec(
+            symbol=clean_sym, pip_size=0.01, pip_value_usd=1000.0 / 150.0, contract_size=100_000, digits=3
+        )
     elif "XAU" in clean_sym or "GOLD" in clean_sym:
         return InstrumentSpec(symbol=clean_sym, pip_size=0.01, pip_value_usd=1.0, contract_size=100, digits=2)
     elif "XAG" in clean_sym or "SILVER" in clean_sym:
         return InstrumentSpec(symbol=clean_sym, pip_size=0.001, pip_value_usd=5.0, contract_size=5000, digits=3)
     elif "ETH" in clean_sym:
-        return InstrumentSpec(symbol=clean_sym, pip_size=0.1, pip_value_usd=1.0, contract_size=10, min_lot=0.01, max_lot=50.0, digits=2)
+        return InstrumentSpec(
+            symbol=clean_sym, pip_size=0.1, pip_value_usd=1.0, contract_size=10, min_lot=0.01, max_lot=50.0, digits=2
+        )
     elif "BTC" in clean_sym or "CRYPTO" in clean_sym or "SOL" in clean_sym:
-        return InstrumentSpec(symbol=clean_sym, pip_size=1.0, pip_value_usd=1.0, contract_size=1, min_lot=0.01, max_lot=10.0, digits=2)
+        return InstrumentSpec(
+            symbol=clean_sym, pip_size=1.0, pip_value_usd=1.0, contract_size=1, min_lot=0.01, max_lot=10.0, digits=2
+        )
     elif "OIL" in clean_sym or "XTI" in clean_sym or "XBR" in clean_sym or "CL" in clean_sym:
         return InstrumentSpec(symbol=clean_sym, pip_size=0.01, pip_value_usd=10.0, contract_size=1000, digits=2)
     elif "US30" in clean_sym or "SPX" in clean_sym or "NAS" in clean_sym or "USTEC" in clean_sym:
@@ -1060,5 +1168,3 @@ def get_instrument_spec(symbol: str, mt5_client=None) -> InstrumentSpec:
         return InstrumentSpec(symbol=clean_sym, pip_size=0.0001, pip_value_usd=10.0, contract_size=100_000, digits=5)
 
     return InstrumentSpec(symbol=clean_sym, pip_size=0.0001, pip_value_usd=10.0, contract_size=100_000, digits=5)
-
-

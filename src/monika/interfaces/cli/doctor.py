@@ -139,7 +139,9 @@ class SystemDoctor:
                     f"MetaTrader5 native Python package installed (v{getattr(mt5, '__version__', 'unknown')}).",
                 )
             elif is_mt5linux_available():
-                self._record("Dependencies", "MetaTrader5-Pkg", "OK", "MetaTrader5 Linux RPC bridge (mt5linux) available.")
+                self._record(
+                    "Dependencies", "MetaTrader5-Pkg", "OK", "MetaTrader5 Linux RPC bridge (mt5linux) available."
+                )
             elif tier == "trial":
                 self._record(
                     "Dependencies",
@@ -176,7 +178,12 @@ class SystemDoctor:
         # Forex closes Friday ~21:00 UTC and reopens Sunday ~21:00 UTC
         is_weekend = (weekday == 5) or (weekday == 4 and hour >= 21) or (weekday == 6 and hour < 21)
         if is_weekend:
-            self._record("Market", "SessionStatus", "WARN", "Forex market currently CLOSED for weekend. Evaluation & crypto active.")
+            self._record(
+                "Market",
+                "SessionStatus",
+                "WARN",
+                "Forex market currently CLOSED for weekend. Evaluation & crypto active.",
+            )
         else:
             self._record("Market", "SessionStatus", "OK", "Forex & global financial markets are OPEN.")
 
@@ -187,7 +194,9 @@ class SystemDoctor:
             if isinstance(pt, dict) and pt.get("enabled") is True:
                 self._record("Config", "paper_trading", "OK", "Safety guard active (paper_trading.enabled: true).")
             else:
-                self._record("Config", "paper_trading", "WARN", "paper_trading.enabled is False or missing. Live trading mode!")
+                self._record(
+                    "Config", "paper_trading", "WARN", "paper_trading.enabled is False or missing. Live trading mode!"
+                )
 
             llm_cfg = settings.get("llm", {})
             roles = llm_cfg.get("task_roles", {})
@@ -285,7 +294,9 @@ class SystemDoctor:
                             f"Detected {len(blocked_rows)} blocked transaction(s) in PostgreSQL.",
                         )
                     else:
-                        self._record("Database", "PostgreSQL-Locks", "OK", "No deadlocks or blocked transactions detected.")
+                        self._record(
+                            "Database", "PostgreSQL-Locks", "OK", "No deadlocks or blocked transactions detected."
+                        )
                 except Exception:
                     pass
 
@@ -376,7 +387,9 @@ class SystemDoctor:
                 res = cursor.fetchone()
                 conn.close()
                 if res and res[0] == "ok":
-                    self._record("DatabaseWAL", f"wal:{db_file.name}", "OK", f"Integrity check passed ({db_file.name}).")
+                    self._record(
+                        "DatabaseWAL", f"wal:{db_file.name}", "OK", f"Integrity check passed ({db_file.name})."
+                    )
                 else:
                     self._record("DatabaseWAL", f"wal:{db_file.name}", "WARN", f"Integrity check returned: {res}")
             except Exception as e:
@@ -406,7 +419,9 @@ class SystemDoctor:
             "postgresql+psycopg2",
         )
 
-        if not any(scheme == s or scheme.startswith("sqlite") or scheme.startswith("postgresql") for s in valid_schemes):
+        if not any(
+            scheme == s or scheme.startswith("sqlite") or scheme.startswith("postgresql") for s in valid_schemes
+        ):
             self._record("DatabaseConfig", "DATABASE_URL", "FAIL", f"Unsupported database scheme: '{scheme}'.")
             return
 
@@ -429,7 +444,12 @@ class SystemDoctor:
                     res = cursor.fetchone()
                     conn.close()
                     if res and res[0] == "ok":
-                        self._record("DatabaseConfig", "SQLite-Integrity", "OK", f"Offline SQLite integrity verified ({file_path.name}).")
+                        self._record(
+                            "DatabaseConfig",
+                            "SQLite-Integrity",
+                            "OK",
+                            f"Offline SQLite integrity verified ({file_path.name}).",
+                        )
                     else:
                         self._record("DatabaseConfig", "SQLite-Integrity", "WARN", f"Integrity check returned: {res}")
                 except Exception as e:
@@ -437,14 +457,29 @@ class SystemDoctor:
             else:
                 parent_dir = file_path.parent
                 if parent_dir.exists() and os.access(parent_dir, os.W_OK):
-                    self._record("DatabaseConfig", "SQLite-Path", "OK", f"SQLite target file will be initialized in {parent_dir}.")
+                    self._record(
+                        "DatabaseConfig",
+                        "SQLite-Path",
+                        "OK",
+                        f"SQLite target file will be initialized in {parent_dir}.",
+                    )
                 else:
-                    self._record("DatabaseConfig", "SQLite-Path", "WARN", f"SQLite directory not writable or missing: {parent_dir}")
+                    self._record(
+                        "DatabaseConfig",
+                        "SQLite-Path",
+                        "WARN",
+                        f"SQLite directory not writable or missing: {parent_dir}",
+                    )
         elif "postgresql" in scheme:
             if not parsed.hostname:
                 self._record("DatabaseConfig", "PostgreSQL-Config", "WARN", "PostgreSQL URI lacks a valid hostname.")
             else:
-                self._record("DatabaseConfig", "PostgreSQL-Config", "OK", f"Target host: {parsed.hostname}:{parsed.port or 5432}, DB: {parsed.path.lstrip('/')}")
+                self._record(
+                    "DatabaseConfig",
+                    "PostgreSQL-Config",
+                    "OK",
+                    f"Target host: {parsed.hostname}:{parsed.port or 5432}, DB: {parsed.path.lstrip('/')}",
+                )
 
     async def check_redis(self, settings: dict) -> None:
         """Verify Redis cache connectivity if configured or using localhost."""

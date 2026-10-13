@@ -35,10 +35,10 @@ _VAULT_REDACTION_VALUES: collections.deque = collections.deque(maxlen=1000)
 
 # Common API key and credential patterns
 SECRET_PATTERNS = [
-    re.compile(r"sk-ant-[a-zA-Z0-9_\-]{20,}"),          # Anthropic
-    re.compile(r"sk-[a-zA-Z0-9_\-]{20,}"),              # OpenAI
-    re.compile(r"AIza[0-9A-Za-z\-_]{20,}"),             # Google Gemini
-    re.compile(r"gsk_[a-zA-Z0-9_\-]{20,}"),             # Groq
+    re.compile(r"sk-ant-[a-zA-Z0-9_\-]{20,}"),  # Anthropic
+    re.compile(r"sk-[a-zA-Z0-9_\-]{20,}"),  # OpenAI
+    re.compile(r"AIza[0-9A-Za-z\-_]{20,}"),  # Google Gemini
+    re.compile(r"gsk_[a-zA-Z0-9_\-]{20,}"),  # Groq
     re.compile(r"(password|passwd|pwd|token|api_key|secret)\s*[:=]\s*['\"]?([^'\"\s,}&]+)", re.IGNORECASE),
 ]
 
@@ -57,18 +57,18 @@ class _WindowsCredManager:
 
             class CREDENTIALW(ctypes.Structure):
                 _fields_ = [
-                    ('Flags', wintypes.DWORD),
-                    ('Type', wintypes.DWORD),
-                    ('TargetName', wintypes.LPWSTR),
-                    ('Comment', wintypes.LPWSTR),
-                    ('LastWritten', wintypes.FILETIME),
-                    ('CredentialBlobSize', wintypes.DWORD),
-                    ('CredentialBlob', ctypes.c_char_p),
-                    ('Persist', wintypes.DWORD),
-                    ('AttributeCount', wintypes.DWORD),
-                    ('Attributes', ctypes.c_void_p),
-                    ('TargetAlias', wintypes.LPWSTR),
-                    ('UserName', wintypes.LPWSTR),
+                    ("Flags", wintypes.DWORD),
+                    ("Type", wintypes.DWORD),
+                    ("TargetName", wintypes.LPWSTR),
+                    ("Comment", wintypes.LPWSTR),
+                    ("LastWritten", wintypes.FILETIME),
+                    ("CredentialBlobSize", wintypes.DWORD),
+                    ("CredentialBlob", ctypes.c_char_p),
+                    ("Persist", wintypes.DWORD),
+                    ("AttributeCount", wintypes.DWORD),
+                    ("Attributes", ctypes.c_void_p),
+                    ("TargetAlias", wintypes.LPWSTR),
+                    ("UserName", wintypes.LPWSTR),
                 ]
 
             self.CREDENTIALW = CREDENTIALW
@@ -81,7 +81,12 @@ class _WindowsCredManager:
             self.CredWriteW.restype = wintypes.BOOL
 
             self.CredReadW = advapi32.CredReadW
-            self.CredReadW.argtypes = [wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(ctypes.POINTER(CREDENTIALW))]
+            self.CredReadW.argtypes = [
+                wintypes.LPWSTR,
+                wintypes.DWORD,
+                wintypes.DWORD,
+                ctypes.POINTER(ctypes.POINTER(CREDENTIALW)),
+            ]
             self.CredReadW.restype = wintypes.BOOL
 
             self.CredDeleteW = advapi32.CredDeleteW
@@ -120,10 +125,7 @@ class _WindowsCredManager:
             p_cred = self.ctypes.POINTER(self.CREDENTIALW)()
             res = self.CredReadW(target, 1, 0, self.ctypes.byref(p_cred))
             if res and p_cred:
-                raw_bytes = self.ctypes.string_at(
-                    p_cred.contents.CredentialBlob,
-                    p_cred.contents.CredentialBlobSize
-                )
+                raw_bytes = self.ctypes.string_at(p_cred.contents.CredentialBlob, p_cred.contents.CredentialBlobSize)
                 self.CredFree(p_cred)
                 return raw_bytes.decode("utf-8")
             return None
@@ -152,6 +154,7 @@ class _EncryptedFileVault:
     def __init__(self, vault_path: Optional[Path] = None):
         if vault_path is None:
             from monika.infrastructure.infra.paths import DATA_DIR
+
             base_dir = DATA_DIR / "vault"
             self.vault_path = base_dir / "vault.enc"
             self.key_path = base_dir / "vault.key"
@@ -182,6 +185,7 @@ class _EncryptedFileVault:
             else:
                 # Generate new 32-byte key
                 import secrets
+
                 self._raw_key = secrets.token_bytes(32)
                 try:
                     self.key_path.write_bytes(self._raw_key)
@@ -194,10 +198,11 @@ class _EncryptedFileVault:
             try:
                 import base64
                 import importlib
+
                 Fernet = importlib.import_module("cryptography.fernet").Fernet
                 b64_key = base64.urlsafe_b64encode(hashlib.sha256(self._raw_key).digest())
                 self._fernet = Fernet(b64_key)
-            except (ImportError, Exception):
+            except ImportError, Exception:
                 self._fernet = None
         except Exception as e:
             logger.debug(f"EncryptedFileVault init skipped: {e}")
@@ -206,12 +211,13 @@ class _EncryptedFileVault:
         data = plaintext.encode("utf-8")
         if self._fernet is not None:
             return self._fernet.encrypt(data)
-        
+
         if not self._raw_key:
             return b""
 
         # Authenticated CTR-Mode Keystream Fallback (Random Nonce + HMAC)
         import secrets
+
         nonce = secrets.token_bytes(16)
         keystream = bytearray()
         counter = 0
@@ -230,7 +236,7 @@ class _EncryptedFileVault:
                 return self._fernet.decrypt(ciphertext).decode("utf-8")
             except Exception:
                 pass
-        
+
         # Authenticated CTR-Mode Keystream Fallback Decrypt
         if len(ciphertext) < 48:
             # Check legacy 32-byte tag format
@@ -441,6 +447,7 @@ class CredentialVault:
 
         # 2. Mask known regex key patterns
         for pattern in SECRET_PATTERNS:
+
             def _replace_match(m):
                 full_m = m.group(0)
                 if "[REDACTED" in full_m or "***[REDACTED]***" in full_m:
@@ -474,9 +481,14 @@ class SensitiveMaskingFilter(logging.Filter):
                 record.msg = self.vault.mask_sensitive(record.msg)
             if record.args:
                 if isinstance(record.args, dict):
-                    record.args = {k: self.vault.mask_sensitive(str(v)) if isinstance(v, str) else v for k, v in record.args.items()}
+                    record.args = {
+                        k: self.vault.mask_sensitive(str(v)) if isinstance(v, str) else v
+                        for k, v in record.args.items()
+                    }
                 elif isinstance(record.args, tuple):
-                    record.args = tuple(self.vault.mask_sensitive(str(a)) if isinstance(a, str) else a for a in record.args)
+                    record.args = tuple(
+                        self.vault.mask_sensitive(str(a)) if isinstance(a, str) else a for a in record.args
+                    )
         except Exception:
             pass
         return True

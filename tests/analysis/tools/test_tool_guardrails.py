@@ -97,14 +97,12 @@ def test_read_before_act_guard():
     v_prefetch = guard_fresh.evaluate(
         "submit_asset_analysis",
         {"decision": "buy", "symbol": "BTCUSD"},
-        context={"prefetch_satisfied_tools": ["get_price_history"]}
+        context={"prefetch_satisfied_tools": ["get_price_history"]},
     )
     assert v_prefetch.allowed is True
 
     v_bundle = guard_fresh.evaluate(
-        "submit_asset_analysis",
-        {"decision": "buy", "symbol": "BTCUSD"},
-        context={"raw_bundle_data": {"price": 83000}}
+        "submit_asset_analysis", {"decision": "buy", "symbol": "BTCUSD"}, context={"raw_bundle_data": {"price": 83000}}
     )
     assert v_bundle.allowed is True
 

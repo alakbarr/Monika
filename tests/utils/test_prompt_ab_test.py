@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from utils.llm.prompt_ab_test import PromptABTest, OfflinePromptOptimizer
 
+
 class TestPromptABTest:
     def test_init_and_sync_variant(self):
         ab = PromptABTest(test_name="entry_prompt_test", variant_a_pct=1.0)
@@ -17,6 +18,7 @@ class TestPromptABTest:
         # None session falls back to sync get_variant
         res = await ab.get_variant_bandit(None)
         assert res in ("A", "B")
+
 
 class TestOfflinePromptOptimizer:
     def test_select_champion_empty(self):
@@ -70,4 +72,3 @@ class TestOfflinePromptOptimizer:
         assert metrics["win_rate"] == 66.67
         assert metrics["profit_factor"] == 3.0
         assert metrics["total_pnl"] == 100.0
-

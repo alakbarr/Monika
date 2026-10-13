@@ -22,10 +22,10 @@ from typing import Optional
 @dataclass(frozen=True, slots=True)
 class EquityMarketRules:
     round_lot_size: int = 100
-    settlement_days: int = 1         # T+1 US equities settlement regime
+    settlement_days: int = 1  # T+1 US equities settlement regime
     sec_fee_rate: float = 0.0000278  # $27.80 per million dollars of principal
-    finra_taf_per_share: float = 0.000166 # $0.000166 per share sold (max $8.30)
-    hard_to_borrow_rate_annual: float = 0.03 # 3% annual short borrow fee
+    finra_taf_per_share: float = 0.000166  # $0.000166 per share sold (max $8.30)
+    hard_to_borrow_rate_annual: float = 0.03  # 3% annual short borrow fee
 
 
 class EquityEngine:

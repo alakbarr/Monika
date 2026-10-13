@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Comprehensive Empirical Stress-Test Suite for Milestone 2 (M2).
 Evaluates:
@@ -130,10 +131,7 @@ class TestSubagentSpawnerStress:
 
     def test_worker_macro_strict_domain_isolation(self):
         """Verify worker_macro receives zero non-macro tools even when 50 foreign tools provided."""
-        foreign_tools = [
-            {"name": f"foreign_tool_{i}", "description": f"Foreign tool {i}"}
-            for i in range(30)
-        ] + [
+        foreign_tools = [{"name": f"foreign_tool_{i}", "description": f"Foreign tool {i}"} for i in range(30)] + [
             {"name": "get_chart"},
             {"name": "get_smc_zones"},
             {"name": "get_order_blocks"},
@@ -302,8 +300,10 @@ class TestSubagentSpawnerStress:
 # Category B: macro_tools.py:handle_get_fedwatch_probabilities Stress Tests
 # ==============================================================================
 
+
 class MockDbRecord:
     """Mock for FedWatchProbability database model row."""
+
     def __init__(self, id_: int, meeting_date: str, probabilities_json: str, fetched_at: datetime):
         self.id = id_
         self.meeting_date = meeting_date
@@ -542,4 +542,3 @@ class TestEndToEndRoutingAndMacroIntegration:
             assert res.get("fallback_tool") == "web_search"
             assert "suggested_query" in res
             assert "error" in res
-

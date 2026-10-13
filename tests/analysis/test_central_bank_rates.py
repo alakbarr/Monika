@@ -22,13 +22,15 @@ from database.models import (
     BondYieldData,
 )
 
+
 def test_neutral_rate_estimates_exist():
     """All 5 major central bank currency neutral rates must be configured."""
-    for ccy in ['USD', 'EUR', 'GBP', 'JPY', 'AUD']:
+    for ccy in ["USD", "EUR", "GBP", "JPY", "AUD"]:
         assert ccy in _NEUTRAL_RATE_ESTIMATES
         assert isinstance(_NEUTRAL_RATE_ESTIMATES[ccy], (int, float))
-    assert _NEUTRAL_RATE_ESTIMATES['JPY'] < _NEUTRAL_RATE_ESTIMATES['USD']
-    assert _NEUTRAL_RATE_ESTIMATES['AUD'] > _NEUTRAL_RATE_ESTIMATES['EUR']
+    assert _NEUTRAL_RATE_ESTIMATES["JPY"] < _NEUTRAL_RATE_ESTIMATES["USD"]
+    assert _NEUTRAL_RATE_ESTIMATES["AUD"] > _NEUTRAL_RATE_ESTIMATES["EUR"]
+
 
 @pytest.mark.asyncio
 async def test_rate_score_calculation():
@@ -42,9 +44,10 @@ async def test_rate_score_calculation():
     mock_res.scalar_one_or_none.return_value = mock_row
     mock_session.execute.return_value = mock_res
 
-    score = await _rate_score(mock_session, 'USD')
+    score = await _rate_score(mock_session, "USD")
     # (5.25 - 2.75) / 3.0 = 2.50 / 3.0 = 0.833
     assert 0.80 <= score <= 0.85
+
 
 @pytest.mark.asyncio
 async def test_handle_get_interest_rates_with_differentials(db_session):
@@ -57,12 +60,14 @@ async def test_handle_get_interest_rates_with_differentials(db_session):
         ("RBA", 4.35),
     ]
     for bank, r_pct in rates_data:
-        db_session.add(InterestRate(
-            bank=bank,
-            rate_percent=r_pct,
-            effective_date=datetime(2026, 6, 1, tzinfo=timezone.utc),
-            next_meeting_date=datetime(2026, 7, 15, tzinfo=timezone.utc),
-        ))
+        db_session.add(
+            InterestRate(
+                bank=bank,
+                rate_percent=r_pct,
+                effective_date=datetime(2026, 6, 1, tzinfo=timezone.utc),
+                next_meeting_date=datetime(2026, 7, 15, tzinfo=timezone.utc),
+            )
+        )
     await db_session.commit()
 
     args = {}
@@ -72,7 +77,7 @@ async def test_handle_get_interest_rates_with_differentials(db_session):
     assert res["count"] == 5
     assert "rate_differentials" in res
     diffs = res["rate_differentials"]
-    
+
     # EURUSD spread = 3.75 - 5.00 = -1.25
     assert "EURUSD" in diffs
     assert diffs["EURUSD"]["spread_pct"] == -1.25
@@ -109,6 +114,7 @@ async def test_handle_get_interest_rates_with_date_object():
     assert "data_age_days" in res
     assert isinstance(res["data_age_days"], int)
     assert res["data_age_days"] >= 0
+
 
 @pytest.mark.asyncio
 async def test_economic_surprise_inverts_unemployment():
@@ -277,4 +283,3 @@ async def test_handle_get_bond_yield_spreads_with_2y_and_10y(db_session):
     spread_2y_jp = res["yield_spreads_2y"].get("JP_2Y")
     assert spread_2y_jp is not None
     assert spread_2y_jp["current_spread"] == 3.50
-

@@ -1,4 +1,3 @@
-
 """GTJA Alpha #15.
 
 Formula: (OPEN/DELAY(CLOSE,1) - 1)
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_015",
-    "theme": ['reversal'],
-    "formula_latex": '(OPEN/DELAY(CLOSE,1) - 1)',
-    "columns_required": ['open', 'close'],
+    "theme": ["reversal"],
+    "formula_latex": "(OPEN/DELAY(CLOSE,1) - 1)",
+    "columns_required": ["open", "close"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 1,
     "min_warmup_bars": 2,
-    "notes": 'Overnight gap return.',
+    "notes": "Overnight gap return.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     o = panel["open"]

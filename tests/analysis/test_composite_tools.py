@@ -4,15 +4,16 @@ from analysis.tools.composite_tools import (
     execute_market_context,
     execute_technical_analysis,
     execute_price_data,
-    execute_institutional_data
+    execute_institutional_data,
 )
 from analysis.tools.tools_definitions import (
     GET_MARKET_CONTEXT,
     GET_TECHNICAL_ANALYSIS,
     GET_PRICE_DATA,
     GET_INSTITUTIONAL_DATA,
-    STAGE2_EXPANDED_TOOLS
+    STAGE2_EXPANDED_TOOLS,
 )
+
 
 @pytest.mark.asyncio
 async def test_composite_tools_execution():
@@ -43,6 +44,7 @@ async def test_composite_tools_execution():
     assert "cot_report" in inst
     assert "fear_greed" in inst
     assert "funding_rate" in inst
+
 
 def test_stage2_expanded_tools_definitions():
     assert len(STAGE2_EXPANDED_TOOLS) >= 9

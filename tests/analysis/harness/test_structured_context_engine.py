@@ -60,7 +60,11 @@ def test_tool_pair_snapping_openai_format():
     messages = [
         {"role": "system", "content": "You are Monika."},
         {"role": "user", "content": "Analyze XAUUSD"},
-        {"role": "assistant", "content": "Fetching quotes", "tool_calls": [{"id": "c1", "function": {"name": "get_quote"}}]},
+        {
+            "role": "assistant",
+            "content": "Fetching quotes",
+            "tool_calls": [{"id": "c1", "function": {"name": "get_quote"}}],
+        },
         {"role": "tool", "content": '{"symbol": "XAUUSD", "price": 2650.0}', "tool_call_id": "c1"},
         {"role": "assistant", "content": "Analyzing structure"},
         {"role": "user", "content": "Proceed"},

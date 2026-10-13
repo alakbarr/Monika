@@ -27,7 +27,7 @@ class GEPALiteEvolver:
         session=None,
         population_size: int = 3,
         generations: int = 2,
-        target_component: str = "stage2_system_prompt"
+        target_component: str = "stage2_system_prompt",
     ) -> Dict[str, Any]:
         """Evolves prompt variants programmatically."""
         from monika.infrastructure.providers.llm_factory import get_client_for_task
@@ -38,24 +38,22 @@ class GEPALiteEvolver:
         except Exception:
             client = None
 
-        best_result = {
-            "prompt": current_best,
-            "score": 8.0,
-            "tokens": estimate_tokens(current_best),
-            "generation": 0
-        }
+        best_result = {"prompt": current_best, "score": 8.0, "tokens": estimate_tokens(current_best), "generation": 0}
 
         if client:
             for gen in range(generations):
                 mutations = await self._generate_mutations(client, current_best, population_size)
                 for mutation in mutations:
                     from monika.application.benchmark.deterministic import verify_invariant_compliance
+
                     passes_invariant, inv_reasons = verify_invariant_compliance(mutation)
                     if not passes_invariant:
                         continue
 
                     tok_len = estimate_tokens(mutation)
-                    compression_ratio = min(1.0, float(tok_len) / float(best_result["tokens"])) if best_result["tokens"] > 0 else 1.0
+                    compression_ratio = (
+                        min(1.0, float(tok_len) / float(best_result["tokens"])) if best_result["tokens"] > 0 else 1.0
+                    )
                     compression_score = 7.0 + (1.0 - compression_ratio) * 3.0
                     evaluated_score = round(0.5 * compression_score + 0.5 * 10.0, 2)
 
@@ -111,6 +109,7 @@ class GEPALiteEvolver:
         if component == "stage2_system_prompt":
             try:
                 from monika.application.analysis.stages.per_asset_stage import SYSTEM_PROMPT_TEMPLATE
+
                 return SYSTEM_PROMPT_TEMPLATE
             except Exception:
                 pass
@@ -133,10 +132,7 @@ class GEPAFullEvolver:
         self.lite_evolver = GEPALiteEvolver(settings)
 
     def check_evolution_triggers(
-        self,
-        closed_trades_count: int = 0,
-        rolling_drawdown_pct: float = 0.0,
-        days_since_last_evolution: int = 0
+        self, closed_trades_count: int = 0, rolling_drawdown_pct: float = 0.0, days_since_last_evolution: int = 0
     ) -> Tuple[bool, str]:
         """
         Determines whether a GEPA evolution round should be initiated.
@@ -145,10 +141,16 @@ class GEPAFullEvolver:
             return False, f"In cooldown period ({days_since_last_evolution}/{self.MIN_COOLDOWN_DAYS} days)."
 
         if rolling_drawdown_pct >= self.DRAWDOWN_BREAKER_PCT:
-            return True, f"Emergency trigger: Drawdown ({rolling_drawdown_pct:.1f}%) exceeded breaker ({self.DRAWDOWN_BREAKER_PCT}%)."
+            return (
+                True,
+                f"Emergency trigger: Drawdown ({rolling_drawdown_pct:.1f}%) exceeded breaker ({self.DRAWDOWN_BREAKER_PCT}%).",
+            )
 
         if closed_trades_count >= self.TRADE_COUNT_THRESHOLD:
-            return True, f"Sample trigger: {closed_trades_count} closed trades reached threshold ({self.TRADE_COUNT_THRESHOLD})."
+            return (
+                True,
+                f"Sample trigger: {closed_trades_count} closed trades reached threshold ({self.TRADE_COUNT_THRESHOLD}).",
+            )
 
         if days_since_last_evolution >= self.SCHEDULED_INTERVAL_DAYS:
             return True, f"Scheduled cadence trigger: {days_since_last_evolution} days elapsed since last run."
@@ -177,8 +179,9 @@ class GEPAFullEvolver:
                 o_inv = other.get("invariant_score", 1.0)
 
                 # other dominates candidate if >= in all metrics and strictly > in at least one
-                if (o_score >= c_score and o_tokens <= c_tokens and o_inv >= c_inv) and \
-                   (o_score > c_score or o_tokens < c_tokens or o_inv > c_inv):
+                if (o_score >= c_score and o_tokens <= c_tokens and o_inv >= c_inv) and (
+                    o_score > c_score or o_tokens < c_tokens or o_inv > c_inv
+                ):
                     is_dominated = True
                     break
 

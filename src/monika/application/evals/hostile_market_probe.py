@@ -137,26 +137,30 @@ class HostileMarketProbe:
             try:
                 allowed, reason = risk_validator(payload)
                 # Fail-closed invariant: Hostile ticks must NEVER be allowed!
-                is_safe = (allowed is False)
+                is_safe = allowed is False
                 if not is_safe:
                     all_passed = False
 
-                results.append({
-                    "scenario": scenario.scenario_name,
-                    "anomaly_type": scenario.anomaly_type,
-                    "allowed": allowed,
-                    "reason": reason,
-                    "is_resilient": is_safe,
-                })
+                results.append(
+                    {
+                        "scenario": scenario.scenario_name,
+                        "anomaly_type": scenario.anomaly_type,
+                        "allowed": allowed,
+                        "reason": reason,
+                        "is_resilient": is_safe,
+                    }
+                )
             except Exception as exc:
                 # If it raises an exception, it successfully blocked execution, but clean rejection is preferred
-                results.append({
-                    "scenario": scenario.scenario_name,
-                    "anomaly_type": scenario.anomaly_type,
-                    "allowed": False,
-                    "reason": f"Exception raised: {exc}",
-                    "is_resilient": True,
-                })
+                results.append(
+                    {
+                        "scenario": scenario.scenario_name,
+                        "anomaly_type": scenario.anomaly_type,
+                        "allowed": False,
+                        "reason": f"Exception raised: {exc}",
+                        "is_resilient": True,
+                    }
+                )
 
         return {
             "all_resilient": all_passed,

@@ -5,27 +5,31 @@ from unittest.mock import AsyncMock, patch
 from analysis.providers.groq_provider import GroqProvider, GROQ_MODEL_ALIASES
 from analysis.providers.openai_provider import OpenAIProvider
 
+
 @pytest.mark.asyncio
 async def test_groq_provider_model_alias_resolution():
     """Model alias harus di-resolve ke Groq model ID aktual."""
-    with patch.dict('os.environ', {'GROQ_API_KEYS': 'test-key'}):
+    with patch.dict("os.environ", {"GROQ_API_KEYS": "test-key"}):
         provider = GroqProvider(model="groq-qwen3.8-27b")
         assert provider.model == "qwen/qwen3.8-27b"
         # Decommissioned models must gracefully redirect to active qwen3.8-27b
         provider_legacy = GroqProvider(model="groq-compound")
         assert provider_legacy.model == "qwen/qwen3.8-27b"
 
+
 @pytest.mark.asyncio
 async def test_groq_provider_reads_multi_keys():
     """Provider harus baca GROQ_API_KEYS plural, bukan GROQ_API_KEY."""
-    with patch.dict('os.environ', {'GROQ_API_KEYS': 'key1,key2,key3'}, clear=True):
+    with patch.dict("os.environ", {"GROQ_API_KEYS": "key1,key2,key3"}, clear=True):
         from utils.api.groq_rate_limiter import get_api_keys
+
         keys = get_api_keys()
-        assert keys == ['key1', 'key2', 'key3']
+        assert keys == ["key1", "key2", "key3"]
+
 
 def test_groq_key_rotation_round_robin():
     """Round-robin pilih key berbeda tiap call."""
-    with patch.dict('os.environ', {'GROQ_API_KEYS': 'key-a,key-b,key-c'}, clear=True):
+    with patch.dict("os.environ", {"GROQ_API_KEYS": "key-a,key-b,key-c"}, clear=True):
         provider = GroqProvider(model="groq-compound")
         assert len(provider._api_keys) == 3
         k1 = provider._get_api_key()
@@ -33,77 +37,89 @@ def test_groq_key_rotation_round_robin():
         k3 = provider._get_api_key()
         assert len({k1, k2, k3}) == 3  # Semua 3 key berbeda
 
+
 @pytest.mark.asyncio
 async def test_groq_key_cooldown_skips_to_next():
     """Key yang cooldown harus di-skip, pakai key berikutnya."""
     import time
-    with patch.dict('os.environ', {'GROQ_API_KEYS': 'bad-key,good-key'}, clear=True):
+
+    with patch.dict("os.environ", {"GROQ_API_KEYS": "bad-key,good-key"}, clear=True):
         provider = GroqProvider(model="groq-compound")
-        GroqProvider._key_cooldowns['bad-key'] = time.time() + 9999
+        GroqProvider._key_cooldowns["bad-key"] = time.time() + 9999
         chosen = provider._get_api_key()
-        assert chosen == 'good-key'
+        assert chosen == "good-key"
+
 
 @pytest.mark.asyncio
 async def test_groq_generate_rotates_on_429():
     """Jika key pertama 429, generate() retry dengan key berikutnya."""
-    with patch.dict('os.environ', {'GROQ_API_KEYS': 'key-a,key-b'}, clear=True):
+    with patch.dict("os.environ", {"GROQ_API_KEYS": "key-a,key-b"}, clear=True):
         provider = GroqProvider(model="groq-compound")
     GroqProvider._key_cooldowns.clear()
     GroqProvider._key_index = 0
 
     call_count = 0
+
     async def mock_super_generate(prompt, system=None, temperature=None, max_tokens=None, **kwargs):
         nonlocal call_count
         call_count += 1
         if call_count == 1:
             raise Exception("429 rate limit per minute")
         return "success"
-    
-    with patch('analysis.providers.groq_provider._groq_limiter') as mock_limiter:
+
+    with patch("analysis.providers.groq_provider._groq_limiter") as mock_limiter:
         mock_limiter.try_acquire = AsyncMock(return_value=True)
-        with patch.object(OpenAIProvider, 'generate', side_effect=mock_super_generate):
+        with patch.object(OpenAIProvider, "generate", side_effect=mock_super_generate):
             result = await provider.generate("test")
-    
+
     assert result == "success"
     assert call_count == 2
+
 
 @pytest.mark.asyncio
 async def test_groq_provider_generate():
     """GroqProvider.generate() harus bisa memanggil API."""
     provider = GroqProvider(model="groq-compound", api_key="test-key")
-    
+
     mock_response = AsyncMock()
     mock_response.choices = [AsyncMock()]
     mock_response.choices[0].message.content = "Hello from Groq"
     mock_response.usage.prompt_tokens = 10
     mock_response.usage.completion_tokens = 5
-    
-    with patch('analysis.providers.groq_provider._groq_limiter') as mock_limiter:
+
+    with patch("analysis.providers.groq_provider._groq_limiter") as mock_limiter:
         mock_limiter.try_acquire = AsyncMock(return_value=True)
-        with patch.object(OpenAIProvider, 'generate', return_value="Hello from Groq"):
+        with patch.object(OpenAIProvider, "generate", return_value="Hello from Groq"):
             result = await provider.generate("Say hello")
-    
+
     assert result == "Hello from Groq"
+
 
 @pytest.mark.asyncio
 async def test_groq_rate_limit_blocks_call():
     """Ketika rate limit tercapai, generate() harus return None."""
     provider = GroqProvider(model="groq-compound", api_key="test-key")
-    
-    with patch('analysis.providers.groq_provider._groq_limiter') as mock_limiter:
+
+    with patch("analysis.providers.groq_provider._groq_limiter") as mock_limiter:
         mock_limiter.try_acquire = AsyncMock(return_value=False)
         result = await provider.generate("Say hello")
-    
+
     assert result is None
+
 
 def test_all_groq_aliases_defined():
     """Semua model Groq harus terdefinisi di GROQ_MODEL_ALIASES."""
     expected = {
-        "groq-compound", "groq-compound-mini",
-        "groq/compound", "groq/compound-mini",
-        "groq-gpt-oss-120b", "groq-gpt-oss-20b",
-        "groq-qwen3.6-27b", "groq-qwen3.8-27b",
-        "qwen3.6-27b", "qwen3.8-27b",
+        "groq-compound",
+        "groq-compound-mini",
+        "groq/compound",
+        "groq/compound-mini",
+        "groq-gpt-oss-120b",
+        "groq-gpt-oss-20b",
+        "groq-qwen3.6-27b",
+        "groq-qwen3.8-27b",
+        "qwen3.6-27b",
+        "qwen3.8-27b",
         "qwen/qwen3.6-27b",
         "whisper-large-v3",
     }
@@ -115,6 +131,7 @@ def test_all_groq_aliases_defined():
 def test_groq_qwen_quotas():
     """Memverifikasi kuota spesifik untuk qwen3.6-27b dan qwen3.8-27b."""
     from utils.api.groq_rate_limiter import GROQ_QUOTA, _num_keys
+
     q36 = GROQ_QUOTA.get("qwen/qwen3.6-27b")
     q38 = GROQ_QUOTA.get("qwen/qwen3.8-27b")
     assert q36 is not None
@@ -133,16 +150,21 @@ def test_groq_qwen_quotas():
 def test_groq_handle_rate_limit_classification():
     """Memverifikasi presisi klasifikasi rate limit Groq (RPM/TPM vs Wait time vs RPD vs Server Overload)."""
     import time
+
     GroqProvider._key_cooldowns.clear()
 
     # 1. Groq RPM error format with retry wait time
-    err_rpm = Exception("Rate limit reached for model `llama-3.1-8b-instant` on requests per minute (RPM): Limit 30, Used 30, Requested 1. Please try again in 1.969s.")
+    err_rpm = Exception(
+        "Rate limit reached for model `llama-3.1-8b-instant` on requests per minute (RPM): Limit 30, Used 30, Requested 1. Please try again in 1.969s."
+    )
     GroqProvider._handle_rate_limit_error("groq-key-1", err_rpm, "generate")
     cd1 = GroqProvider._key_cooldowns.get("groq-key-1", 0) - time.time()
     assert 3.0 <= cd1 <= 5.0, f"Expected ~4.0s cooldown, got {cd1}"
 
     # 2. Groq RPD error format
-    err_rpd = Exception("Rate limit reached for model `llama-3.1-8b-instant` on requests per day (RPD): Limit 14400, Used 14400. Please try again in 12h30m.")
+    err_rpd = Exception(
+        "Rate limit reached for model `llama-3.1-8b-instant` on requests per day (RPD): Limit 14400, Used 14400. Please try again in 12h30m."
+    )
     GroqProvider._handle_rate_limit_error("groq-key-2", err_rpd, "generate")
     cd2 = GroqProvider._key_cooldowns.get("groq-key-2", 0) - time.time()
     assert 86390.0 <= cd2 <= 86405.0, f"Expected ~86400s cooldown, got {cd2}"
@@ -171,14 +193,14 @@ async def test_groq_client_pooling():
 @pytest.mark.asyncio
 async def test_groq_run_agent_no_keys():
     """Jika tidak ada API key yang dikonfigurasi, run_agent harus mengembalikan pesan error jelas."""
-    with patch('analysis.providers.groq_provider.get_api_keys', return_value=[]):
+    with patch("analysis.providers.groq_provider.get_api_keys", return_value=[]):
         provider = GroqProvider(model="groq-compound", api_key=None)
         res = await provider.run_agent(
             session=create_mock_async_session(),
             system_prompt="sys",
             user_message="user",
             tools=[],
-            stage_name="stage1_fundamental"
+            stage_name="stage1_fundamental",
         )
         assert res["success"] is False
         assert "Groq API key not configured" in res["error"]
@@ -187,7 +209,7 @@ async def test_groq_run_agent_no_keys():
 @pytest.mark.asyncio
 async def test_groq_run_agent_success():
     """run_agent pada GroqProvider harus menginisialisasi client dan memanggil agent loop dengan sukses."""
-    with patch.dict('os.environ', {'GROQ_API_KEYS': 'test-groq-key'}, clear=True):
+    with patch.dict("os.environ", {"GROQ_API_KEYS": "test-groq-key"}, clear=True):
         provider = GroqProvider(model="qwen3.8-27b", api_key="test-groq-key")
         assert provider.client is not None
 
@@ -199,16 +221,16 @@ async def test_groq_run_agent_success():
             "turns": 2,
             "input_tokens": 100,
             "output_tokens": 50,
-            "thinking_tokens": 0
+            "thinking_tokens": 0,
         }
 
-        with patch.object(OpenAIProvider, 'run_agent', return_value=mock_result) as mock_super_run:
+        with patch.object(OpenAIProvider, "run_agent", return_value=mock_result) as mock_super_run:
             res = await provider.run_agent(
                 session=mock_session,
                 system_prompt="sys",
                 user_message="user",
                 tools=[],
-                stage_name="stage1_fundamental"
+                stage_name="stage1_fundamental",
             )
             assert res["success"] is True
             assert res["final_text"] == "Fundamental brief done"
@@ -241,6 +263,7 @@ async def test_openai_provider_auto_heals_on_token_limit_400():
     provider = OpenAIProvider(model="groq/compound", max_tokens=32000, api_key="test-key")
 
     call_count = 0
+
     async def mock_create(**kwargs):
         nonlocal call_count
         call_count += 1
@@ -251,10 +274,15 @@ async def test_openai_provider_auto_heals_on_token_limit_400():
             )
             from openai import BadRequestError
             from httpx import Response, Request
+
             req = Request("POST", "https://api.groq.com/openai/v1/chat/completions")
-            resp = Response(400, request=req, json={"error": {"message": err_msg, "type": "invalid_request_error", "param": "max_completion_tokens"}})
+            resp = Response(
+                400,
+                request=req,
+                json={"error": {"message": err_msg, "type": "invalid_request_error", "param": "max_completion_tokens"}},
+            )
             raise BadRequestError(message=err_msg, response=resp, body={"error": {"message": err_msg}})
-        
+
         # Second call should succeed with healed kwargs
         assert kwargs.get("max_completion_tokens") == 8192
         mock_resp = AsyncMock()
@@ -266,11 +294,7 @@ async def test_openai_provider_auto_heals_on_token_limit_400():
 
     provider.client.chat.completions.create = AsyncMock(side_effect=mock_create)
     resp = await provider._call_chat_completions_with_recovery(
-        messages=[{"role": "user", "content": "ping"}],
-        max_completion_tokens=32000
+        messages=[{"role": "user", "content": "ping"}], max_completion_tokens=32000
     )
     assert resp.choices[0].message.content == "recovered successfully"
     assert call_count == 2
-
-
-

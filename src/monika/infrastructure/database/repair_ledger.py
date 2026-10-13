@@ -67,10 +67,13 @@ class RepairLedger:
         conn = self.db.get_connection()
         now = time.time()
         with conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO repair_ledger (session_id, issue_type, action_taken, status, details_json, created_at)
                 VALUES (?, ?, ?, ?, ?, ?);
-            """, (session_id, issue_type, action_taken, status, json.dumps(details or {}), now))
+            """,
+                (session_id, issue_type, action_taken, status, json.dumps(details or {}), now),
+            )
             return cursor.lastrowid or 0
 
     def cleanup_stale_lockfiles(self, max_age_seconds: float = 30.0) -> int:
@@ -88,9 +91,7 @@ class RepairLedger:
                     try:
                         os.remove(lock_path)
                         cleaned += 1
-                        logger.warning(
-                            f"[RepairLedger] Cleaned up stale lockfile '{lock_path}' (age: {age:.1f}s)."
-                        )
+                        logger.warning(f"[RepairLedger] Cleaned up stale lockfile '{lock_path}' (age: {age:.1f}s).")
                         self.record_repair(
                             session_id=None,
                             issue_type="STALE_LOCKFILE",
@@ -136,7 +137,7 @@ class RepairLedger:
                     continue
 
                 # Check following messages for corresponding tool responses
-                remaining = messages[i + 1:]
+                remaining = messages[i + 1 :]
                 provided_ids = set()
                 for r_msg in remaining:
                     if r_msg.get("role") == "tool":
@@ -152,11 +153,13 @@ class RepairLedger:
                 for missing_id in missing_ids:
                     # Synthesize an error response to heal API contract
                     turn_ordinal = msg.get("turn_ordinal", 1)
-                    synthetic_content = json.dumps({
-                        "error": "Execution interrupted or aborted prior to tool completion.",
-                        "status": "interrupted",
-                        "tool_call_id": missing_id,
-                    })
+                    synthetic_content = json.dumps(
+                        {
+                            "error": "Execution interrupted or aborted prior to tool completion.",
+                            "status": "interrupted",
+                            "tool_call_id": missing_id,
+                        }
+                    )
                     self.db.append_message(
                         session_id=s_id,
                         role="tool",
@@ -242,20 +245,25 @@ class RepairLedger:
     def get_repair_history(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Returns recent repair ledger entries."""
         conn = self.db.get_connection()
-        cursor = conn.execute("""
+        cursor = conn.execute(
+            """
             SELECT repair_id, session_id, issue_type, action_taken, status, details_json, created_at
             FROM repair_ledger
             ORDER BY repair_id DESC LIMIT ?;
-        """, (limit,))
+        """,
+            (limit,),
+        )
         results = []
         for r in cursor.fetchall():
-            results.append({
-                "repair_id": r[0],
-                "session_id": r[1],
-                "issue_type": r[2],
-                "action_taken": r[3],
-                "status": r[4],
-                "details": json.loads(r[5] or "{}"),
-                "created_at": r[6],
-            })
+            results.append(
+                {
+                    "repair_id": r[0],
+                    "session_id": r[1],
+                    "issue_type": r[2],
+                    "action_taken": r[3],
+                    "status": r[4],
+                    "details": json.loads(r[5] or "{}"),
+                    "created_at": r[6],
+                }
+            )
         return results

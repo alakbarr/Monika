@@ -35,12 +35,14 @@ class SimulationSubcommand(Subcommand):
 
         if action == "backtest":
             from monika.interfaces.cli.main import _cmd_backtest
+
             await _cmd_backtest(args)
         elif action == "scenario":
             from monika.application.backtest.batch_scenario_runner import BatchScenarioRunner, MarketScenario
+
             console.print(f"{stamp_info('SIMULATION')} Initializing Batch Scenario Runner...")
             runner = BatchScenarioRunner(max_workers=getattr(args, "workers", 4))
-            
+
             # Default institutional scenario test matrix
             scenarios = [
                 MarketScenario(
@@ -65,5 +67,7 @@ class SimulationSubcommand(Subcommand):
                 ),
             ]
             results = runner.run_scenarios(scenarios, output_file_name=getattr(args, "output", "batch_results.jsonl"))
-            console.print(f"{stamp_ok('COMPLETE')} Processed {len(results)} scenarios in parallel without lock contention.")
+            console.print(
+                f"{stamp_ok('COMPLETE')} Processed {len(results)} scenarios in parallel without lock contention."
+            )
         return 0

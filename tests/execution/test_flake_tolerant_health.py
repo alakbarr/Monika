@@ -10,6 +10,7 @@ async def test_cached_positive():
     mock_client.is_connected = AsyncMock(return_value=True)
 
     current_time = 100.0
+
     def time_provider():
         return current_time
 
@@ -50,6 +51,7 @@ async def test_grace_period_suppresses_transient_failure():
     mock_client.is_connected = AsyncMock(side_effect=[True, RuntimeError("Socket blip")])
 
     current_time = 100.0
+
     def time_provider():
         return current_time
 
@@ -69,6 +71,7 @@ async def test_grace_period_expiration_triggers_failure():
     mock_client.is_connected = AsyncMock(side_effect=[True, False])
 
     current_time = 100.0
+
     def time_provider():
         return current_time
 

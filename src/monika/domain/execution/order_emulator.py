@@ -30,9 +30,10 @@ logger = logging.getLogger("TradingAgent.Execution.OrderEmulator")
 @dataclass
 class TrackedPosition:
     """Representasi in-memory posisi aktif yang diawasi oleh emulator."""
+
     ticket: int
     symbol: str
-    direction: str                     # 'buy' or 'sell'
+    direction: str  # 'buy' or 'sell'
     entry_price: float
     current_sl: float
     current_tp: Optional[float] = None
@@ -51,6 +52,7 @@ class TrackedPosition:
 @dataclass
 class PendingOrder:
     """Representasi pending order untuk evaluasi emulator."""
+
     ticket: int
     symbol: str
     type: str  # 'buy_stop', 'sell_stop', 'buy_limit', 'sell_limit'
@@ -72,22 +74,22 @@ def evaluate_pending_order(order: Any, bar: Any) -> Optional[Dict[str, Any]]:
     bar_low = getattr(bar, "low", bar_open)
 
     triggered = False
-    if order_type == 'buy_stop':
+    if order_type == "buy_stop":
         triggered = bar_high >= order_price
-    elif order_type == 'sell_stop':
+    elif order_type == "sell_stop":
         triggered = bar_low <= order_price
-    elif order_type == 'buy_limit':
+    elif order_type == "buy_limit":
         triggered = bar_low <= order_price
-    elif order_type == 'sell_limit':
+    elif order_type == "sell_limit":
         triggered = bar_high >= order_price
 
     if not triggered:
         return None
 
     # If price gaps past the trigger level, use the gap-adjusted price
-    if order.type == 'buy_stop' and bar.open > order.price:
+    if order.type == "buy_stop" and bar.open > order.price:
         fill_price = bar.open  # slippage due to gap
-    elif order.type == 'sell_stop' and bar.open < order.price:
+    elif order.type == "sell_stop" and bar.open < order.price:
         fill_price = bar.open
     else:
         fill_price = order.price
@@ -338,7 +340,9 @@ class ClientOrderEmulator:
                 be_sl = entry + (self.spread_buffer_atr * atr)
                 if be_sl > current_sl:
                     new_sl = be_sl
-                    reason = f"be_triggered (profit={profit_distance:.5f} >= {self.breakeven_atr_multiple}x ATR {atr:.5f})"
+                    reason = (
+                        f"be_triggered (profit={profit_distance:.5f} >= {self.breakeven_atr_multiple}x ATR {atr:.5f})"
+                    )
 
             # 2. Trailing stop condition
             if profit_distance >= (2.0 * self.breakeven_atr_multiple * atr):
@@ -355,7 +359,9 @@ class ClientOrderEmulator:
                 be_sl = entry - (self.spread_buffer_atr * atr)
                 if be_sl < current_sl:
                     new_sl = be_sl
-                    reason = f"be_triggered (profit={profit_distance:.5f} >= {self.breakeven_atr_multiple}x ATR {atr:.5f})"
+                    reason = (
+                        f"be_triggered (profit={profit_distance:.5f} >= {self.breakeven_atr_multiple}x ATR {atr:.5f})"
+                    )
 
             # 2. Trailing stop condition
             if profit_distance >= (2.0 * self.breakeven_atr_multiple * atr):

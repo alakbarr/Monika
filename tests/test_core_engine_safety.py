@@ -19,6 +19,7 @@ from analysis.stages.per_asset_stage import PerAssetStage
 # 1. TimesFM Async Forward Pass Non-blocking Tests
 # ==============================================================================
 
+
 class TestTimesFMAsyncForwardPass:
     @pytest.mark.asyncio
     async def test_timesfm_predict_async_to_thread(self):
@@ -36,6 +37,7 @@ class TestTimesFMAsyncForwardPass:
 
         mock_model = MagicMock()
         import numpy as np
+
         mock_output = MagicMock()
         mock_output.quantiles = np.zeros((24, 9))
         for i in range(9):
@@ -73,6 +75,7 @@ class TestTimesFMAsyncForwardPass:
 
         mock_model = MagicMock(spec=["forecast"])
         import numpy as np
+
         raw_q = np.zeros((1, 24, 9))
         for i in range(9):
             raw_q[0, :, i] = 2000.0 + (i - 4) * 5.0
@@ -98,6 +101,7 @@ class TestTimesFMAsyncForwardPass:
 # ==============================================================================
 # 2. Closed-Loop Learning & Prompt Assembler Tests
 # ==============================================================================
+
 
 class TestDynamicMicroSkills:
     def test_get_dynamic_micro_skills_basic_and_crystallized(self):
@@ -192,6 +196,7 @@ class TestDynamicMicroSkills:
 # 3. Sub-Second Deterministic Conditional Trigger Execution Tests
 # ==============================================================================
 
+
 class TestDeterministicTriggerEngine:
     @pytest.mark.asyncio
     @patch("scheduler.trigger_checker.get_session")
@@ -199,12 +204,22 @@ class TestDeterministicTriggerEngine:
         """When preplanned_order is present, execute_preplanned_order is called directly without waiting for LLM."""
         mock_exec_service = AsyncMock()
         mock_exec_service.execute_preplanned_order.return_value = ExecutionResult(
-            symbol="XAUUSD", analysis_id=42, decision="buy",
-            sizing=MagicMock(recommended_lots=0.2), risk_approved=True,
-            risk_checks_passed=["drawdown_ok", "exposure_ok"], risk_checks_failed=[],
-            risk_rejection_reasons=[], executed=True, mt5_ticket=88888,
-            executed_price=2015.5, executed_lots=0.2, mt5_error=None, position_id=10,
-            timestamp=datetime.now(timezone.utc), elapsed_ms=15.0
+            symbol="XAUUSD",
+            analysis_id=42,
+            decision="buy",
+            sizing=MagicMock(recommended_lots=0.2),
+            risk_approved=True,
+            risk_checks_passed=["drawdown_ok", "exposure_ok"],
+            risk_checks_failed=[],
+            risk_rejection_reasons=[],
+            executed=True,
+            mt5_ticket=88888,
+            executed_price=2015.5,
+            executed_lots=0.2,
+            mt5_error=None,
+            position_id=10,
+            timestamp=datetime.now(timezone.utc),
+            elapsed_ms=15.0,
         )
         mock_per_asset = MagicMock()
         mock_per_asset.run_one = AsyncMock()
@@ -218,7 +233,7 @@ class TestDeterministicTriggerEngine:
             "take_profit": 2035.0,
             "lot_size": 0.2,
             "confidence": 0.85,
-            "confluence_score": 9
+            "confluence_score": 9,
         }
         trigger = MagicMock(spec=TradeTrigger)
         trigger.id = 7
@@ -260,18 +275,21 @@ class TestDeterministicTriggerEngine:
         mock_mt5.get_account_info.return_value = {"equity": 10000}
         mock_mt5.get_current_price.return_value = {"ask": 2015.2, "bid": 2014.8}
         mock_mt5.get_symbol_info.return_value = {
-            "digits": 2, "point": 0.01, "stops_level": 0, "tick_value": 1.0,
-            "tick_size": 0.01, "contract_size": 100, "volume_min": 0.01,
-            "volume_max": 100.0, "volume_step": 0.01
+            "digits": 2,
+            "point": 0.01,
+            "stops_level": 0,
+            "tick_value": 1.0,
+            "tick_size": 0.01,
+            "contract_size": 100,
+            "volume_min": 0.01,
+            "volume_max": 100.0,
+            "volume_step": 0.01,
         }
         mock_mt5.place_order.return_value = {"success": True, "ticket": 77777, "price": 2015.2, "error": None}
 
         settings = {
-            "trading": {
-                "auto_execute": True,
-                "risk": {"max_concurrent_positions": 5, "news_window_minutes": 0}
-            },
-            "execution": {"max_price_staleness_seconds": 120, "max_trigger_slippage_pct": 0.5}
+            "trading": {"auto_execute": True, "risk": {"max_concurrent_positions": 5, "news_window_minutes": 0}},
+            "execution": {"max_price_staleness_seconds": 120, "max_trigger_slippage_pct": 0.5},
         }
         svc = ExecutionService(settings, mt5_client=mock_mt5, dry_run=True)
 
@@ -293,7 +311,9 @@ class TestDeterministicTriggerEngine:
         }
 
         mock_gate = AsyncMock()
-        mock_gate.check.return_value = MagicMock(approved=True, checks_passed=["equity_ok"], checks_failed=[], rejection_reasons=[])
+        mock_gate.check.return_value = MagicMock(
+            approved=True, checks_passed=["equity_ok"], checks_failed=[], rejection_reasons=[]
+        )
         svc.gate = mock_gate
 
         res = await svc.execute_preplanned_order(session, "XAUUSD", order_plan, trigger_id=12, analysis_id=99)
@@ -310,9 +330,7 @@ class TestDeterministicTriggerEngine:
         mock_mt5 = AsyncMock()
         mock_mt5.get_current_price.return_value = {"ask": 2055.0, "bid": 2054.0}
 
-        settings = {
-            "execution": {"max_price_staleness_seconds": 120, "max_trigger_slippage_pct": 0.5}
-        }
+        settings = {"execution": {"max_price_staleness_seconds": 120, "max_trigger_slippage_pct": 0.5}}
         svc = ExecutionService(settings, mt5_client=mock_mt5, dry_run=True)
         session = create_mock_async_session()
 
@@ -321,7 +339,7 @@ class TestDeterministicTriggerEngine:
             "entry_price": 2015.0,
             "stop_loss": 2000.0,
             "take_profit": 2045.0,
-            "lot_size": 0.1
+            "lot_size": 0.1,
         }
 
         res = await svc.execute_preplanned_order(session, "XAUUSD", order_plan, trigger_id=15)
@@ -339,7 +357,11 @@ class TestDeterministicTriggerEngine:
         mock_mt5.get_current_price.return_value = {"ask": 2015.10, "bid": 2015.09}
 
         settings = {
-            "execution": {"max_price_staleness_seconds": 120, "max_trigger_slippage_pct": 0.5, "max_trigger_slippage_pips": 5.0}
+            "execution": {
+                "max_price_staleness_seconds": 120,
+                "max_trigger_slippage_pct": 0.5,
+                "max_trigger_slippage_pips": 5.0,
+            }
         }
         svc = ExecutionService(settings, mt5_client=mock_mt5, dry_run=True)
         session = create_mock_async_session()
@@ -447,9 +469,15 @@ class TestDeterministicTriggerEngine:
         mock_mt5.get_account_info.return_value = {"equity": 10000}
         mock_mt5.get_current_price.return_value = {"ask": 2015.0, "bid": 2014.0}
         mock_mt5.get_symbol_info.return_value = {
-            "digits": 2, "point": 0.01, "stops_level": 0, "tick_value": 1.0,
-            "tick_size": 0.01, "contract_size": 100, "volume_min": 0.01,
-            "volume_max": 100.0, "volume_step": 0.01
+            "digits": 2,
+            "point": 0.01,
+            "stops_level": 0,
+            "tick_value": 1.0,
+            "tick_size": 0.01,
+            "contract_size": 100,
+            "volume_min": 0.01,
+            "volume_max": 100.0,
+            "volume_step": 0.01,
         }
         mock_mt5.place_order.return_value = {"success": True, "ticket": 55555, "price": 2015.0}
 
@@ -466,7 +494,9 @@ class TestDeterministicTriggerEngine:
         session.execute = AsyncMock(return_value=mock_result)
 
         mock_gate = AsyncMock()
-        mock_gate.check.return_value = MagicMock(approved=True, checks_passed=["ok"], checks_failed=[], rejection_reasons=[])
+        mock_gate.check.return_value = MagicMock(
+            approved=True, checks_passed=["ok"], checks_failed=[], rejection_reasons=[]
+        )
         svc.gate = mock_gate
 
         plan = {
@@ -506,6 +536,7 @@ class TestDeterministicTriggerEngine:
 # ==============================================================================
 # 4. Hybrid ReAct User Message Directive Tests
 # ==============================================================================
+
 
 class TestHybridReActDirectives:
     def test_trimmed_user_message_contains_hypothesis_reasoning_and_falsification_tools(self):

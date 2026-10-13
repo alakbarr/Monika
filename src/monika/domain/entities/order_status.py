@@ -17,11 +17,13 @@ from typing import Dict, Set, Union
 
 class InvalidOrderStateTransitionError(ValueError):
     """Raised when an illegal order lifecycle state transition is attempted."""
+
     pass
 
 
 class OrderStatus(str, Enum):
     """Order lifecycle status domain enum."""
+
     PENDING_SUBMIT = "pending_submit"
     INTENT_COMMITTED = "intent_committed"
     SUBMITTED = "submitted"

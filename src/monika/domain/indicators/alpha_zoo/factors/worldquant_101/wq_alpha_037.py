@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #37.
 
 Formula (paper appendix): rank(correlation(delay(open-close,1),close,200)) + rank(open-close)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_037"
 
 __alpha_meta__ = {
-    'id': 'alpha101_037',
-    'nickname': 'Kakushadze Alpha #37',
-    'theme': ['momentum'],
-    'formula_latex': 'rank(correlation(delay(open-close,1),close,200)) + rank(open-close)',
-    'columns_required': ['open', 'close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 201,
-    'notes': 'Very long lookback (>= ~100 bars); produces NaN warmup on short panels which may trigger the >95% NaN registry guard.',
+    "id": "alpha101_037",
+    "nickname": "Kakushadze Alpha #37",
+    "theme": ["momentum"],
+    "formula_latex": "rank(correlation(delay(open-close,1),close,200)) + rank(open-close)",
+    "columns_required": ["open", "close"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 201,
+    "notes": "Very long lookback (>= ~100 bars); produces NaN warmup on short panels which may trigger the >95% NaN registry guard.",
 }
 
 
@@ -58,7 +57,6 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
     close = panel["close"]
     open_ = panel["open"]
-
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
     delay = _delay

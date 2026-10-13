@@ -35,12 +35,7 @@ async def test_self_healing_stops_invalid_10016():
         initial_res = {"success": False, "retcode": 10016, "error": "ERR_TRADE_STOPS_INVALID"}
         # SL is at 1.08480, which is only 5 points below bid (violates 45 points buffer)
         final_res = await healer.heal_and_reexecute(
-            order=mock_order,
-            mt5_result=initial_res,
-            sl=1.08480,
-            tp=1.08600,
-            comment="test_order",
-            decision="buy"
+            order=mock_order, mt5_result=initial_res, sl=1.08480, tp=1.08600, comment="test_order", decision="buy"
         )
 
         assert final_res.get("success") is True
@@ -74,12 +69,7 @@ async def test_self_healing_volume_invalid_10014():
     with patch.dict(sys.modules, {"MetaTrader5": mock_mt5}):
         initial_res = {"success": False, "retcode": 10014, "error": "ERR_TRADE_VOLUME_INVALID"}
         final_res = await healer.heal_and_reexecute(
-            order=mock_order,
-            mt5_result=initial_res,
-            sl=60000.0,
-            tp=65000.0,
-            comment="test_vol",
-            decision="buy"
+            order=mock_order, mt5_result=initial_res, sl=60000.0, tp=65000.0, comment="test_vol", decision="buy"
         )
 
         assert final_res.get("success") is True

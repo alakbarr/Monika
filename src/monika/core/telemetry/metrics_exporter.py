@@ -11,8 +11,10 @@ import time
 import threading
 from typing import Dict, List, Any, Optional
 
+
 class MetricsCollector:
     """Singleton thread-safe in-memory metric collector yang menghasilkan format Prometheus."""
+
     _instance: Optional["MetricsCollector"] = None
     _lock = threading.RLock()
 
@@ -29,7 +31,7 @@ class MetricsCollector:
         self._labeled_counters: Dict[str, Dict[str, float]] = {}
         self._labeled_gauges: Dict[str, Dict[str, float]] = {}
         self._histograms: Dict[str, List[float]] = {}
-        
+
         # Inisialisasi default baseline
         self.set_gauge("agent_uptime_seconds", 0.0)
         self.set_gauge("open_positions_count", 0.0)
@@ -116,6 +118,7 @@ class MetricsCollector:
                 lines.append(f"{metric_name}_sum {val_sum:.4f}")
 
         return "\n".join(lines) + "\n"
+
 
 # Global helper instance
 metrics = MetricsCollector()

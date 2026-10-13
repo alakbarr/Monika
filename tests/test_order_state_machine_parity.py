@@ -22,12 +22,23 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from database.models import (
-    Base, OrderStatus, Order, OrderEvent, Position, MT5Signal,
-    AssetAnalysis, FundamentalBrief, BacktestTrade, InvalidOrderStateTransitionError
+    Base,
+    OrderStatus,
+    Order,
+    OrderEvent,
+    Position,
+    MT5Signal,
+    AssetAnalysis,
+    FundamentalBrief,
+    BacktestTrade,
+    InvalidOrderStateTransitionError,
 )
 from execution.broker_adapter import (
-    BrokerAdapter, MT5LiveAdapter, SimulatedBrokerAdapter,
-    _get_pip_size, _get_contract_size
+    BrokerAdapter,
+    MT5LiveAdapter,
+    SimulatedBrokerAdapter,
+    _get_pip_size,
+    _get_contract_size,
 )
 from execution.execution_service import ExecutionService, ExecutionResult
 from utils.protocol.event_bus import get_event_bus, reset_event_bus, OrderStateChangedEvent
@@ -37,6 +48,7 @@ import utils.clock as clock
 # ==============================================================================
 # Fixtures
 # ==============================================================================
+
 
 @pytest.fixture
 def clean_event_bus():
@@ -63,8 +75,8 @@ async def async_sqlite_session():
 # 1. Order Model & Typed OrderStatus Enum Tests
 # ==============================================================================
 
-class TestOrderStateModel:
 
+class TestOrderStateModel:
     def test_order_status_enum_values_and_types(self):
         """Verify all 8 Nautilus-compliant OrderStatus enum values."""
         assert OrderStatus.PENDING_SUBMIT == "pending_submit"
@@ -209,8 +221,8 @@ class TestOrderStateModel:
 # 2. BrokerAdapter Interface & MT5LiveAdapter Tests
 # ==============================================================================
 
-class TestBrokerAdapters:
 
+class TestBrokerAdapters:
     def test_broker_adapter_abstract_interface(self):
         """Verify BrokerAdapter cannot be instantiated directly."""
         with pytest.raises(TypeError):
@@ -318,8 +330,8 @@ class TestBrokerAdapters:
 # 3. SimulatedBrokerAdapter Tests (Parity Engine)
 # ==============================================================================
 
-class TestSimulatedBrokerAdapter:
 
+class TestSimulatedBrokerAdapter:
     @pytest.mark.asyncio
     async def test_simulated_adapter_spread_and_slippage(self):
         """Verify SimulatedBrokerAdapter applies spread and ATR slippage to fill prices."""
@@ -461,8 +473,8 @@ class TestSimulatedBrokerAdapter:
 # 4. ExecutionService Order Lifecycle & EventBus Tests
 # ==============================================================================
 
-class TestExecutionServiceOrderLifecycle:
 
+class TestExecutionServiceOrderLifecycle:
     @pytest.mark.asyncio
     async def test_execution_service_order_lifecycle_full_flow(self, clean_event_bus, async_sqlite_session):
         """
@@ -488,7 +500,7 @@ class TestExecutionServiceOrderLifecycle:
         settings = {
             "trading": {
                 "min_paper_trades_before_live": 0,
-                "risk": {"confluence_verifier_enabled": False, "min_verifiable_confluence": 0}
+                "risk": {"confluence_verifier_enabled": False, "min_verifiable_confluence": 0},
             }
         }
         svc = ExecutionService(
@@ -505,7 +517,9 @@ class TestExecutionServiceOrderLifecycle:
         svc.sizer = mock_sizer
 
         mock_gate = AsyncMock()
-        mock_gate.check.return_value = MagicMock(approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[])
+        mock_gate.check.return_value = MagicMock(
+            approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[]
+        )
         svc.gate = mock_gate
 
         # Create AssetAnalysis in DB
@@ -525,8 +539,8 @@ class TestExecutionServiceOrderLifecycle:
         await session.commit()
 
         # Execute
-        with patch('analysis.validators.adversarial_check.run_adversarial_check', new_callable=AsyncMock) as mock_adv:
-            mock_adv.return_value = {'approve': True, 'hard_block': False}
+        with patch("analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock) as mock_adv:
+            mock_adv.return_value = {"approve": True, "hard_block": False}
             res = await svc.execute_analysis(session, analysis)
 
         assert res.risk_approved is True
@@ -583,7 +597,9 @@ class TestExecutionServiceOrderLifecycle:
         svc.sizer = mock_sizer
 
         mock_gate = AsyncMock()
-        mock_gate.check.return_value = MagicMock(approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[])
+        mock_gate.check.return_value = MagicMock(
+            approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[]
+        )
         svc.gate = mock_gate
 
         order_plan = {
@@ -618,8 +634,8 @@ class TestExecutionServiceOrderLifecycle:
 # 5. PointInTimeBacktestEngine Parity Execution Tests
 # ==============================================================================
 
-class TestPointInTimeBacktestParity:
 
+class TestPointInTimeBacktestParity:
     @pytest.mark.asyncio
     async def test_point_in_time_engine_parity_execution(self, clean_event_bus, async_sqlite_session):
         """
@@ -636,7 +652,7 @@ class TestPointInTimeBacktestParity:
             "trading": {
                 "asset_universe": ["EURUSD", "GBPUSD"],
                 "min_paper_trades_before_live": 0,
-                "risk": {"confluence_verifier_enabled": False, "min_verifiable_confluence": 0}
+                "risk": {"confluence_verifier_enabled": False, "min_verifiable_confluence": 0},
             },
             "backtest": {
                 "use_execution_service": True,
@@ -644,7 +660,7 @@ class TestPointInTimeBacktestParity:
             },
             "adversarial_check": {
                 "enabled": False,
-            }
+            },
         }
 
         engine = PointInTimeBacktestEngine(
@@ -667,7 +683,9 @@ class TestPointInTimeBacktestParity:
         engine.execution_service.sizer = mock_sizer
 
         mock_gate = AsyncMock()
-        mock_gate.check.return_value = MagicMock(approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[])
+        mock_gate.check.return_value = MagicMock(
+            approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[]
+        )
         engine.execution_service.gate = mock_gate
 
         # Create 2 recorded AssetAnalysis in DB
@@ -723,8 +741,8 @@ class TestPointInTimeBacktestParity:
 # 6. Deep Verification: Edge Cases, Robustness & State Machine Guards
 # ==============================================================================
 
-class TestOrderStateMachineEdgeCasesAndRobustness:
 
+class TestOrderStateMachineEdgeCasesAndRobustness:
     def test_invalid_state_transitions_raise_error(self):
         """Verify illegal order state transitions are rejected by the state machine."""
         order = Order(
@@ -1051,10 +1069,10 @@ class TestOrderStateMachineEdgeCasesAndRobustness:
             "trading": {
                 "asset_universe": ["BTCUSD"],
                 "min_paper_trades_before_live": 0,
-                "risk": {"confluence_verifier_enabled": False, "min_verifiable_confluence": 0}
+                "risk": {"confluence_verifier_enabled": False, "min_verifiable_confluence": 0},
             },
             "backtest": {"use_execution_service": True},
-            "adversarial_check": {"enabled": False}
+            "adversarial_check": {"enabled": False},
         }
 
         engine = PointInTimeBacktestEngine(
@@ -1072,7 +1090,9 @@ class TestOrderStateMachineEdgeCasesAndRobustness:
         engine.execution_service.sizer = mock_sizer
 
         mock_gate = AsyncMock()
-        mock_gate.check.return_value = MagicMock(approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[])
+        mock_gate.check.return_value = MagicMock(
+            approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[]
+        )
         engine.execution_service.gate = mock_gate
 
         btc_analysis = AssetAnalysis(

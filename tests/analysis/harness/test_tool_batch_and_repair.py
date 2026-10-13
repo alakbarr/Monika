@@ -125,7 +125,9 @@ def test_coerce_string_to_array():
     args = {"key_news_events_considered": "No major news in last 6 hours. Economic calendar clear for AUD/USD."}
     coerced = coerce_tool_arguments(args, schema)
     assert isinstance(coerced["key_news_events_considered"], list)
-    assert coerced["key_news_events_considered"] == ["No major news in last 6 hours. Economic calendar clear for AUD/USD."]
+    assert coerced["key_news_events_considered"] == [
+        "No major news in last 6 hours. Economic calendar clear for AUD/USD."
+    ]
 
 
 def test_coerce_missing_timeframe_default():
@@ -161,10 +163,10 @@ def test_coerce_timeframe_m15_to_h1():
 def test_xml_parameter_repair_mimo_format():
     """Verify repair of MiMo v2.6 Pro <parameter=key>value</parameter> format."""
     xml_str = (
-        '<parameter=macro_narrative>US inflation cooling steadily.</parameter>\n'
+        "<parameter=macro_narrative>US inflation cooling steadily.</parameter>\n"
         '<parameter=checklist>{"bias_vs_narrative_match": true, "contradiction_existed": false}</parameter>\n'
-        '<parameter=confidence>0.85</parameter>\n'
-        '<parameter=risk_sentiment>risk-on</parameter>'
+        "<parameter=confidence>0.85</parameter>\n"
+        "<parameter=risk_sentiment>risk-on</parameter>"
     )
     repaired = repair_tool_arguments(xml_str)
     assert repaired["macro_narrative"] == "US inflation cooling steadily."
@@ -180,5 +182,3 @@ def test_xml_arg_tag_repair():
     repaired = repair_tool_arguments(xml_str)
     assert repaired["symbol"] == "EURUSD"
     assert repaired["timeframe"] == "H4"
-
-

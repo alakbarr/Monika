@@ -34,12 +34,12 @@ load_dotenv()
 logger = logging.getLogger("TradingAgent.MT5")
 
 # Priority constants for asyncio PriorityQueue worker pattern
-PRIORITY_CRITICAL = 0    # Emergency, kill-switch, order execution (place, modify, close)
-PRIORITY_STANDARD = 5    # Ticks, account info, open positions, spread
-PRIORITY_NORMAL = PRIORITY_STANDARD # Alias for standard priority tasks
+PRIORITY_CRITICAL = 0  # Emergency, kill-switch, order execution (place, modify, close)
+PRIORITY_STANDARD = 5  # Ticks, account info, open positions, spread
+PRIORITY_NORMAL = PRIORITY_STANDARD  # Alias for standard priority tasks
 from monika.core.exceptions import BrokerConnectionError
 
-PRIORITY_BACKGROUND = 10 # Bulk historical rates (get_rates, copy_rates_range)
+PRIORITY_BACKGROUND = 10  # Bulk historical rates (get_rates, copy_rates_range)
 
 # MT5 timeframe string → MT5 constant mapping
 # Will be populated lazily on first connect to avoid import-time mt5 init
@@ -48,6 +48,7 @@ TIMEFRAME_MAP: dict[str, int] = {}
 
 class MT5ProfileMismatchError(BrokerConnectionError):
     """Raised when the connected MT5 terminal login or trade mode does not match configured expectations."""
+
     pass
 
 
@@ -66,10 +67,12 @@ def _resolve_broker_symbol(symbol: str) -> str:
 
     try:
         from monika.infrastructure.brokers.mt5_compat import ensure_mt5_module
+
         ensure_mt5_module()
         import MetaTrader5 as _mt5
+
         mt5: Any = _mt5
-        
+
         # 1. Direct match check
         info = mt5.symbol_info(clean_sym)
         if info is not None:
@@ -106,31 +109,33 @@ def _build_timeframe_map():
     """Membuat pemetaan timeframe string ke konstanta MT5. Dipanggil secara lazy (saat dibutuhkan)."""
     try:
         from monika.infrastructure.brokers.mt5_compat import ensure_mt5_module
+
         ensure_mt5_module()
         import MetaTrader5 as _mt5
+
         mt5: Any = _mt5
         return {
-            "M1":  mt5.TIMEFRAME_M1,
-            "M5":  mt5.TIMEFRAME_M5,
+            "M1": mt5.TIMEFRAME_M1,
+            "M5": mt5.TIMEFRAME_M5,
             "M15": mt5.TIMEFRAME_M15,
             "M30": mt5.TIMEFRAME_M30,
-            "H1":  mt5.TIMEFRAME_H1,
-            "H4":  mt5.TIMEFRAME_H4,
-            "D1":  mt5.TIMEFRAME_D1,
-            "W1":  mt5.TIMEFRAME_W1,
+            "H1": mt5.TIMEFRAME_H1,
+            "H4": mt5.TIMEFRAME_H4,
+            "D1": mt5.TIMEFRAME_D1,
+            "W1": mt5.TIMEFRAME_W1,
             "MN1": mt5.TIMEFRAME_MN1,
         }
-    except (ImportError, Exception):
+    except ImportError, Exception:
         # Standard MT5 timeframe ENUM constants fallback for mock / Linux CI environments
         return {
-            "M1":  1,
-            "M5":  5,
+            "M1": 1,
+            "M5": 5,
             "M15": 15,
             "M30": 30,
-            "H1":  16385,
-            "H4":  16388,
-            "D1":  16408,
-            "W1":  32769,
+            "H1": 16385,
+            "H4": 16388,
+            "D1": 16408,
+            "W1": 32769,
             "MN1": 49153,
         }
 
@@ -165,7 +170,7 @@ class MT5Client:
         raw_acc = _resolve_cred(["execution", "mt5_account"], "MT5_ACCOUNT", 0)
         try:
             self.account = int(raw_acc)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             self.account = 0
 
         self.password = str(_resolve_cred(["execution", "mt5_password"], "MT5_PASSWORD", ""))
@@ -182,18 +187,14 @@ class MT5Client:
         raw_sec_acc = _resolve_cred(["execution", "mt5_secondary_account"], "MT5_SECONDARY_ACCOUNT", 0)
         try:
             self.secondary_account = int(raw_sec_acc)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             self.secondary_account = 0
 
         self.secondary_password = str(
             _resolve_cred(["execution", "mt5_secondary_password"], "MT5_SECONDARY_PASSWORD", "")
         )
-        self.secondary_server = str(
-            _resolve_cred(["execution", "mt5_secondary_server"], "MT5_SECONDARY_SERVER", "")
-        )
-        self.secondary_path = str(
-            _resolve_cred(["execution", "mt5_secondary_path"], "MT5_SECONDARY_PATH", "")
-        )
+        self.secondary_server = str(_resolve_cred(["execution", "mt5_secondary_server"], "MT5_SECONDARY_SERVER", ""))
+        self.secondary_path = str(_resolve_cred(["execution", "mt5_secondary_path"], "MT5_SECONDARY_PATH", ""))
         self.active_gateway: str = "primary"  # "primary" or "secondary"
         self.notifier: Optional[Any] = None
 
@@ -215,12 +216,18 @@ class MT5Client:
         self._broker_utc_offset_seconds: Optional[int] = None
         # 2-Phase Order Commit Protocol Manager
         from monika.domain.risk.pending_action import PendingActionManager
+
         self.pending_action_manager = PendingActionManager()
 
     def get_current_gateway_params(self) -> tuple[str, int, str, str]:
         """Mengembalikan parameter koneksi untuk gateway yang sedang aktif."""
         if self.active_gateway == "secondary" and self.secondary_account > 0:
-            return self.secondary_path or self.path, self.secondary_account, self.secondary_password, self.secondary_server
+            return (
+                self.secondary_path or self.path,
+                self.secondary_account,
+                self.secondary_password,
+                self.secondary_server,
+            )
         return self.path, self.account, self.password, self.server
 
     # ------------------------------------------------------------------
@@ -229,17 +236,23 @@ class MT5Client:
 
     async def connect(self, timeout: float = 15.0) -> bool:
         """Inisialisasi dan login ke MT5 (menggunakan gateway aktif). Mengembalikan True jika berhasil."""
-        if not hasattr(self, '_executor') or self._executor is None or getattr(self._executor, '_shutdown', False):
+        if not hasattr(self, "_executor") or self._executor is None or getattr(self._executor, "_shutdown", False):
             from concurrent.futures import ThreadPoolExecutor
+
             self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="MT5Worker")
         curr_path, curr_acc, curr_pass, curr_serv = self.get_current_gateway_params()
-        expected_trade_mode = self.settings.get("execution", {}).get("expected_trade_mode") or os.getenv("MT5_EXPECTED_TRADE_MODE")
+        expected_trade_mode = self.settings.get("execution", {}).get("expected_trade_mode") or os.getenv(
+            "MT5_EXPECTED_TRADE_MODE"
+        )
         try:
-            success = await self._run(_connect, curr_path, curr_acc, curr_pass, curr_serv, expected_trade_mode, timeout=timeout)
+            success = await self._run(
+                _connect, curr_path, curr_acc, curr_pass, curr_serv, expected_trade_mode, timeout=timeout
+            )
             self._connected = success
             if success:
                 try:
                     from monika.core.telemetry.metrics_exporter import metrics
+
                     metrics.set_gauge("active_gateway_is_primary", 1.0 if self.active_gateway == "primary" else 0.0)
                     metrics.set_gauge("mt5_primary_connected", 1.0 if self.active_gateway == "primary" else 0.0)
                     metrics.set_gauge("mt5_secondary_connected", 1.0 if self.active_gateway == "secondary" else 0.0)
@@ -272,7 +285,11 @@ class MT5Client:
             logger.warning("MT5 Failover SUCCESSFUL: Operating on secondary terminal gateway.")
             if self.notifier is not None:
                 try:
-                    asyncio.create_task(self.notifier.send_warning("[DARURAT] <b>MT5 FAILOVER</b>: System switched to secondary MT5 gateway."))
+                    asyncio.create_task(
+                        self.notifier.send_warning(
+                            "[DARURAT] <b>MT5 FAILOVER</b>: System switched to secondary MT5 gateway."
+                        )
+                    )
                 except Exception:
                     pass
         else:
@@ -289,7 +306,9 @@ class MT5Client:
             logger.info("MT5 Fallback SUCCESSFUL: Restored primary gateway connection.")
             if self.notifier is not None:
                 try:
-                    asyncio.create_task(self.notifier.send_info("[INFO] <b>MT5 RESTORED</b>: System returned to primary MT5 gateway."))
+                    asyncio.create_task(
+                        self.notifier.send_info("[INFO] <b>MT5 RESTORED</b>: System returned to primary MT5 gateway.")
+                    )
                 except Exception:
                     pass
         else:
@@ -314,7 +333,7 @@ class MT5Client:
                 self._worker_task.cancel()
                 try:
                     await self._worker_task
-                except (asyncio.CancelledError, Exception):
+                except asyncio.CancelledError, Exception:
                     pass
             if queue is not None:
                 while not queue.empty():
@@ -326,7 +345,7 @@ class MT5Client:
                     except Exception:
                         break
             try:
-                if hasattr(self, '_executor') and self._executor:
+                if hasattr(self, "_executor") and self._executor:
                     self._executor.shutdown(wait=False, cancel_futures=True)
             except Exception:
                 pass
@@ -334,7 +353,7 @@ class MT5Client:
 
     async def is_connected(self) -> bool:
         """Periksa apakah terminal MT5 masih hidup."""
-        if not getattr(self, '_connected', False):
+        if not getattr(self, "_connected", False):
             return False
         connected = await self._run(_is_connected)
         if not connected:
@@ -344,20 +363,21 @@ class MT5Client:
     async def ensure_connected(self) -> bool:
         """Cek koneksi dan lakukan reconnect dengan auto-failover ke gateway sekunder jika perlu."""
         if await self.is_connected():
-            if getattr(self, 'mt5_fail_count', 0) > 0:
+            if getattr(self, "mt5_fail_count", 0) > 0:
                 self.mt5_fail_count = 0
                 try:
                     from monika.infrastructure.infra.notifier import AgentNotifier
+
                     await AgentNotifier().send_info("[OK] <b>MT5 Reconnected</b>")
                 except Exception:
                     pass
             return True
-            
+
         logger.warning(f"MT5 ({self.active_gateway}) connection lost, attempting to reconnect...")
-        
+
         max_attempts = 2 if self.paper_trading else 4
         delay = 2.0
-        
+
         for attempt in range(1, max_attempts + 1):
             if await self.connect():
                 logger.info(f"MT5 ({self.active_gateway}) reconnected successfully on attempt {attempt}")
@@ -373,15 +393,18 @@ class MT5Client:
             return await self.failover_to_secondary()
 
         if self.paper_trading:
-            logger.warning("MT5 auto-reconnect failed. Operating in offline mode because paper_trading=True. Continuing without MT5.")
+            logger.warning(
+                "MT5 auto-reconnect failed. Operating in offline mode because paper_trading=True. Continuing without MT5."
+            )
             return False
-            
+
         logger.error("MT5 auto-reconnect failed after maximum attempts.")
-        self.mt5_fail_count = getattr(self, 'mt5_fail_count', 0) + 1
-        
+        self.mt5_fail_count = getattr(self, "mt5_fail_count", 0) + 1
+
         if self.mt5_fail_count % 6 == 1:
             try:
                 from monika.infrastructure.infra.notifier import AgentNotifier
+
                 notifier = AgentNotifier()
                 await notifier.send_critical(
                     f"[DARURAT] <b>MT5 CONNECTION FAILED</b>\n"
@@ -477,7 +500,8 @@ class MT5Client:
     async def get_latest_tick(self, symbol: str) -> Any:
         """Ambil tick terbaru (bid, ask, last, spread, time) untuk simbol tertentu."""
         from unittest.mock import AsyncMock
-        if hasattr(self, '_run') and not isinstance(self._run, AsyncMock):
+
+        if hasattr(self, "_run") and not isinstance(self._run, AsyncMock):
             return await self._run(_get_last_tick, symbol, priority=PRIORITY_STANDARD)
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _get_last_tick, symbol)
@@ -487,7 +511,8 @@ class MT5Client:
         if not await self.ensure_connected():
             return []
         from unittest.mock import AsyncMock
-        if hasattr(self, '_run') and not isinstance(self._run, AsyncMock):
+
+        if hasattr(self, "_run") and not isinstance(self._run, AsyncMock):
             return await self._run(_copy_ticks_range, symbol, date_from, date_to, flags, priority=PRIORITY_STANDARD)
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _copy_ticks_range, symbol, date_from, date_to, flags)
@@ -506,7 +531,9 @@ class MT5Client:
         if cfg_offset is not None:
             try:
                 self._broker_utc_offset_seconds = int(float(cfg_offset) * 3600)
-                logger.info(f"[MT5Client] Broker UTC offset configured: {float(cfg_offset):+.1f}h ({self._broker_utc_offset_seconds}s)")
+                logger.info(
+                    f"[MT5Client] Broker UTC offset configured: {float(cfg_offset):+.1f}h ({self._broker_utc_offset_seconds}s)"
+                )
                 return self._broker_utc_offset_seconds
             except Exception as e:
                 logger.warning(f"[MT5Client] Invalid broker_utc_offset_hours in settings: {e}")
@@ -514,6 +541,7 @@ class MT5Client:
         def _calc_offset():
             try:
                 import MetaTrader5 as mt5_mod
+
                 now_utc = datetime.now(timezone.utc).timestamp()
                 # Prioritaskan simbol yang aktif berdetak (24/7 crypto), lalu forex mayor
                 symbols_to_check = ["BTCUSD", "ETHUSD", "EURUSD", "GBPUSD", "USDJPY", "XAUUSD"]
@@ -536,7 +564,9 @@ class MT5Client:
         else:
             self._broker_utc_offset_seconds = 0
         if self._broker_utc_offset_seconds != 0:
-            logger.info(f"[MT5Client] Broker UTC offset auto-detected: {self._broker_utc_offset_seconds / 3600:+.1f}h ({self._broker_utc_offset_seconds}s)")
+            logger.info(
+                f"[MT5Client] Broker UTC offset auto-detected: {self._broker_utc_offset_seconds / 3600:+.1f}h ({self._broker_utc_offset_seconds}s)"
+            )
         return self._broker_utc_offset_seconds
 
     # ------------------------------------------------------------------
@@ -552,14 +582,14 @@ class MT5Client:
     ) -> Optional[pd.DataFrame]:
         """
         Ambil bar OHLCV dari terminal MT5 dengan micro-chunking kooperatif (C-3).
-        
+
         Untuk count > chunk_size, query dipecah menjadi batch-batch kecil dengan
         yielding (asyncio.sleep(0)) antar batch agar order PRIORITY_CRITICAL (0)
         di PriorityQueue dapat dieksekusi tanpa tertahan head-of-line blocking.
         """
         if not await self.ensure_connected():
             return None
-            
+
         tf_const = self._resolve_timeframe(timeframe)
         if tf_const is None:
             logger.error(f"Unknown timeframe: {timeframe}")
@@ -577,8 +607,7 @@ class MT5Client:
             while fetched < count:
                 current_batch = min(chunk_size, count - fetched)
                 rates = await self._run(
-                    _copy_rates_from_pos, symbol, tf_const, fetched, current_batch,
-                    priority=PRIORITY_BACKGROUND
+                    _copy_rates_from_pos, symbol, tf_const, fetched, current_batch, priority=PRIORITY_BACKGROUND
                 )
                 if rates is None or len(rates) == 0:
                     break
@@ -637,8 +666,7 @@ class MT5Client:
             while curr_start < dt_to_broker:
                 curr_end = min(curr_start + timedelta(days=chunk_days), dt_to_broker)
                 rates = await self._run(
-                    _copy_rates_range, symbol, tf_const, curr_start, curr_end,
-                    priority=PRIORITY_BACKGROUND
+                    _copy_rates_range, symbol, tf_const, curr_start, curr_end, priority=PRIORITY_BACKGROUND
                 )
                 if rates is not None and len(rates) > 0:
                     collected_dfs.append(pd.DataFrame(rates))
@@ -650,7 +678,9 @@ class MT5Client:
                 return None
             df = pd.concat(collected_dfs, ignore_index=True).drop_duplicates(subset=["time"]).sort_values("time")
         else:
-            rates = await self._run(_copy_rates_range, symbol, tf_const, dt_from_broker, dt_to_broker, priority=PRIORITY_BACKGROUND)
+            rates = await self._run(
+                _copy_rates_range, symbol, tf_const, dt_from_broker, dt_to_broker, priority=PRIORITY_BACKGROUND
+            )
             if rates is None or len(rates) == 0:
                 logger.warning(f"No OHLCV range data returned for {symbol}/{timeframe}")
                 return None
@@ -702,6 +732,7 @@ class MT5Client:
             if existing_record is None and timeframe == "D1":
                 # Fallback: cek apakah bar D1 pada jendela hari yang sama (+-6 jam) sudah ada
                 from datetime import timedelta
+
                 near_exists = await session.execute(
                     select(PriceOHLCV)
                     .where(PriceOHLCV.symbol == symbol)
@@ -720,11 +751,13 @@ class MT5Client:
                 r_low = float(row_data["low"])
                 r_close = float(row_data["close"])
                 r_vol = float(row_data["volume"])
-                if (existing_record.close != r_close or
-                    existing_record.high != r_high or
-                    existing_record.low != r_low or
-                    existing_record.open != r_open or
-                    existing_record.volume != r_vol):
+                if (
+                    existing_record.close != r_close
+                    or existing_record.high != r_high
+                    or existing_record.low != r_low
+                    or existing_record.open != r_open
+                    or existing_record.volume != r_vol
+                ):
                     existing_record.open = r_open
                     existing_record.high = r_high
                     existing_record.low = r_low
@@ -748,6 +781,7 @@ class MT5Client:
 
         if saved:
             from monika.infrastructure.database.safe_ops import safe_commit
+
             ok = await safe_commit(session, label=f"ohlcv_{symbol}_{timeframe}")
             if ok:
                 logger.debug(f"Saved/Updated {saved} bars: {symbol}/{timeframe}")
@@ -780,6 +814,7 @@ class MT5Client:
                     try:
                         await session.rollback()
                         from monika.infrastructure.database.safe_ops import _safe_expunge_all
+
                         await _safe_expunge_all(session)
                     except Exception:
                         pass
@@ -810,25 +845,29 @@ class MT5Client:
 
     async def calc_margin(self, symbol: str, lot: float, action: str = "buy", price: Optional[float] = None) -> dict:
         """Calculates margin requirement using MT5 order_calc_margin with fallback."""
-        clean_sym = symbol.strip().upper().replace('/', '')
+        clean_sym = symbol.strip().upper().replace("/", "")
         margin = None
         if await self.ensure_connected():
             try:
                 import MetaTrader5 as mt5
+
                 action_type = mt5.ORDER_TYPE_BUY if action.lower() == "buy" else mt5.ORDER_TYPE_SELL
                 if price is None:
                     tick = await self.get_current_price(clean_sym)
                     if tick:
                         price = tick["ask"] if action.lower() == "buy" else tick["bid"]
                 if price:
+
                     def _do_calc():
                         return mt5.order_calc_margin(action_type, clean_sym, float(lot), float(price))
+
                     margin = await self._run(_do_calc)
             except Exception as e:
                 logger.debug(f"[{clean_sym}] MT5 order_calc_margin failed: {e}")
 
         if margin is None:
             from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS
+
             spec = DEFAULT_INSTRUMENTS.get(clean_sym)
             contract = spec.contract_size if spec else (100 if "XAU" in clean_sym else 100_000)
             cur_price = price or (2650.0 if "XAU" in clean_sym else 1.1000)
@@ -862,6 +901,7 @@ class MT5Client:
         Publishes TickPriceEvent to EventBus only on Bid/Ask change (deduplication).
         """
         import threading
+
         if self._tick_poller_thread and self._tick_poller_thread.is_alive():
             logger.debug("[MT5Client] Tick poller thread is already running.")
             return
@@ -877,6 +917,7 @@ class MT5Client:
         if event_bus is None:
             try:
                 from monika.application.protocol.event_bus import get_event_bus
+
                 event_bus = get_event_bus()
             except Exception:
                 event_bus = None
@@ -919,6 +960,7 @@ class MT5Client:
     ) -> None:
         """Worker loop executing on a dedicated thread for sub-second tick polling."""
         from monika.application.protocol.event_bus import TickPriceEvent
+
         stop_event = self._tick_poller_stop_event
 
         while stop_event and not stop_event.is_set():
@@ -953,6 +995,7 @@ class MT5Client:
                                                 subs = event_bus.get_subscribers(type(evt))
                                                 for s in subs:
                                                     import inspect
+
                                                     if not inspect.iscoroutinefunction(s.handler):
                                                         s.handler(evt)
                                             except Exception:
@@ -983,13 +1026,13 @@ class MT5Client:
     ) -> dict:
         """Ajukan order baru (market, limit, atau stop) ke MT5."""
         if not await self.ensure_connected():
-            return {'success': False, 'error': 'MT5 disconnected', 'retcode': -1}
-            
+            return {"success": False, "error": "MT5 disconnected", "retcode": -1}
+
         direction = (direction or "").lower().strip()
         if max_spread_multiplier is None:
             exec_cfg = self.settings.get("execution", {})
             mult_map = exec_cfg.get("max_spread_multiplier", {})
-            max_spread_multiplier = mult_map.get(symbol, 10.0) # Default 10x if not found
+            max_spread_multiplier = mult_map.get(symbol, 10.0)  # Default 10x if not found
 
         # Phase 1: Persistent pre-dispatch marker
         pending_act = None
@@ -1010,76 +1053,116 @@ class MT5Client:
 
         try:
             result = await self._run(
-                _place_order, symbol, direction, volume, price, sl, tp, comment, order_type, max_spread_multiplier,
+                _place_order,
+                symbol,
+                direction,
+                volume,
+                price,
+                sl,
+                tp,
+                comment,
+                order_type,
+                max_spread_multiplier,
                 priority=PRIORITY_CRITICAL,
-                timeout=3.0
+                timeout=3.0,
             )
         except (TimeoutError, asyncio.TimeoutError) as te:
             if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
                 self.pending_action_manager.mark_unconfirmed(pending_act.client_order_id, f"Timeout 3.0s: {te}")
-            logger.warning(f"MT5 place_order timed out after 3.0s for {symbol}. Performing in-flight order reconciliation...")
+            logger.warning(
+                f"MT5 place_order timed out after 3.0s for {symbol}. Performing in-flight order reconciliation..."
+            )
             # Reconcile: Periksa apakah posisi sebenarnya sudah terbentuk di MT5 dalam beberapa detik terakhir
             try:
                 await asyncio.sleep(0.5)
                 open_positions = await self.get_open_positions(symbol)
                 now_ts = time.time()
-                expected_type = 'buy' if direction == 'buy' else 'sell'
+                expected_type = "buy" if direction == "buy" else "sell"
                 for op in open_positions:
-                    pos_type = str(op.get('direction') or ('buy' if op.get('type') == 0 else 'sell' if op.get('type') == 1 else op.get('type', ''))).lower()
-                    raw_time = op.get('time', 0)
+                    pos_type = str(
+                        op.get("direction")
+                        or ("buy" if op.get("type") == 0 else "sell" if op.get("type") == 1 else op.get("type", ""))
+                    ).lower()
+                    raw_time = op.get("time", 0)
                     pos_ts = raw_time.timestamp() if isinstance(raw_time, datetime) else float(raw_time or 0.0)
                     # Cek kesesuaian tipe, volume mendekati, dan timestamp dalam 15 detik terakhir
-                    if pos_type == expected_type and abs(float(op.get('volume', 0.0)) - float(volume)) < 0.001 and (now_ts - pos_ts) < 15.0:
-                        logger.critical(f"MT5 in-flight reconciliation SUCCESS: Found open position ticket={op.get('ticket')} for {symbol}")
+                    if (
+                        pos_type == expected_type
+                        and abs(float(op.get("volume", 0.0)) - float(volume)) < 0.001
+                        and (now_ts - pos_ts) < 15.0
+                    ):
+                        logger.critical(
+                            f"MT5 in-flight reconciliation SUCCESS: Found open position ticket={op.get('ticket')} for {symbol}"
+                        )
                         if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
-                            self.pending_action_manager.commit_action(pending_act.client_order_id, broker_ticket=op.get('ticket'))
+                            self.pending_action_manager.commit_action(
+                                pending_act.client_order_id, broker_ticket=op.get("ticket")
+                            )
                         return {
-                            'success': True,
-                            'ticket': op.get('ticket'),
-                            'price': op.get('price_open') or op.get('open_price'),
-                            'sl': op.get('sl'),
-                            'tp': op.get('tp'),
-                            'retcode': 10009,
-                            'recovered_from_timeout': True
+                            "success": True,
+                            "ticket": op.get("ticket"),
+                            "price": op.get("price_open") or op.get("open_price"),
+                            "sl": op.get("sl"),
+                            "tp": op.get("tp"),
+                            "retcode": 10009,
+                            "recovered_from_timeout": True,
                         }
 
                 # Also inspect active pending orders (limit/stop) if position was not directly filled
                 active_orders = await self.get_orders(symbol)
                 for ord_item in active_orders:
-                    ord_type = str(ord_item.get('direction', '')).lower()
-                    raw_time = ord_item.get('time', 0)
+                    ord_type = str(ord_item.get("direction", "")).lower()
+                    raw_time = ord_item.get("time", 0)
                     ord_ts = raw_time.timestamp() if isinstance(raw_time, datetime) else float(raw_time or 0.0)
-                    if ord_type == expected_type and abs(float(ord_item.get('volume', 0.0)) - float(volume)) < 0.001 and (now_ts - ord_ts) < 15.0:
-                        logger.critical(f"MT5 in-flight reconciliation SUCCESS: Found active pending order ticket={ord_item.get('ticket')} for {symbol}")
+                    if (
+                        ord_type == expected_type
+                        and abs(float(ord_item.get("volume", 0.0)) - float(volume)) < 0.001
+                        and (now_ts - ord_ts) < 15.0
+                    ):
+                        logger.critical(
+                            f"MT5 in-flight reconciliation SUCCESS: Found active pending order ticket={ord_item.get('ticket')} for {symbol}"
+                        )
                         if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
-                            self.pending_action_manager.commit_action(pending_act.client_order_id, broker_ticket=ord_item.get('ticket'))
+                            self.pending_action_manager.commit_action(
+                                pending_act.client_order_id, broker_ticket=ord_item.get("ticket")
+                            )
                         return {
-                            'success': True,
-                            'ticket': ord_item.get('ticket'),
-                            'price': ord_item.get('price_open'),
-                            'sl': ord_item.get('sl'),
-                            'tp': ord_item.get('tp'),
-                            'retcode': 10009,
-                            'recovered_from_timeout': True
+                            "success": True,
+                            "ticket": ord_item.get("ticket"),
+                            "price": ord_item.get("price_open"),
+                            "sl": ord_item.get("sl"),
+                            "tp": ord_item.get("tp"),
+                            "retcode": 10009,
+                            "recovered_from_timeout": True,
                         }
             except Exception as rec_err:
                 logger.error(f"In-flight reconciliation error for {symbol}: {rec_err}")
-            return {'success': False, 'error': f'MT5 order placement timed out for {symbol} (in-flight not detected)', 'retcode': -999}
+            return {
+                "success": False,
+                "error": f"MT5 order placement timed out for {symbol} (in-flight not detected)",
+                "retcode": -999,
+            }
         except Exception as general_err:
             if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
-                self.pending_action_manager.mark_unconfirmed(pending_act.client_order_id, f"Execution exception: {general_err}")
+                self.pending_action_manager.mark_unconfirmed(
+                    pending_act.client_order_id, f"Execution exception: {general_err}"
+                )
             raise
 
-        if result.get('success'):
+        if result.get("success"):
             if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
-                self.pending_action_manager.commit_action(pending_act.client_order_id, broker_ticket=result.get('ticket'))
+                self.pending_action_manager.commit_action(
+                    pending_act.client_order_id, broker_ticket=result.get("ticket")
+                )
             logger.info(
                 f"Order placed: {direction.upper()} {volume} {symbol} "
                 f"@ {result.get('price')} | ticket={result.get('ticket')}"
             )
         else:
             if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
-                self.pending_action_manager.fail_action(pending_act.client_order_id, error_message=str(result.get('error')))
+                self.pending_action_manager.fail_action(
+                    pending_act.client_order_id, error_message=str(result.get("error"))
+                )
             logger.error(
                 f"Order failed: {direction.upper()} {volume} {symbol} | "
                 f"error={result.get('error')} retcode={result.get('retcode')}"
@@ -1100,19 +1183,19 @@ class MT5Client:
     ) -> dict:
         """Ubah SL/TP dari posisi terbuka yang ada."""
         if not await self.ensure_connected():
-            return {'success': False, 'error': 'MT5 disconnected', 'retcode': -1}
+            return {"success": False, "error": "MT5 disconnected", "retcode": -1}
         try:
             ticket_id = int(str(ticket).strip())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Failed to parse ticket: {ticket!r}")
-            return {'success': False, 'error': f'Invalid ticket: {ticket}', 'retcode': -1}
+            return {"success": False, "error": f"Invalid ticket: {ticket}", "retcode": -1}
         try:
             result = await self._run(_modify_position, ticket_id, sl, tp, priority=PRIORITY_CRITICAL, timeout=3.0)
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError, asyncio.TimeoutError:
             logger.error(f"Modify position {ticket_id} timed out")
-            return {'success': False, 'error': f'Modify position {ticket_id} timed out', 'retcode': -999}
+            return {"success": False, "error": f"Modify position {ticket_id} timed out", "retcode": -999}
 
-        if result.get('success'):
+        if result.get("success"):
             logger.info(f"Position {ticket_id} modified: SL={sl}, TP={tp}")
         else:
             logger.error(f"Modify {ticket_id} failed: {result.get('error')}")
@@ -1127,24 +1210,23 @@ class MT5Client:
     ) -> dict:
         """Tutup posisi terbuka (sepenuhnya atau sebagian)."""
         if not await self.ensure_connected():
-            return {'success': False, 'error': 'MT5 disconnected', 'retcode': -1}
+            return {"success": False, "error": "MT5 disconnected", "retcode": -1}
         try:
             ticket_id = int(str(ticket).strip())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Failed to parse ticket: {ticket!r}")
-            return {'success': False, 'error': f'Invalid ticket: {ticket}', 'retcode': -1}
+            return {"success": False, "error": f"Invalid ticket: {ticket}", "retcode": -1}
         eff_volume = lots if volume is None and lots is not None else volume
         try:
-            result = await self._run(_close_position, ticket_id, eff_volume, comment, lots=lots, priority=PRIORITY_CRITICAL, timeout=3.0)
-        except (TimeoutError, asyncio.TimeoutError):
-            logger.error(f"Close position {ticket_id} timed out")
-            return {'success': False, 'error': f'Close position {ticket_id} timed out', 'retcode': -999}
-
-        if result.get('success'):
-            logger.info(
-                f"Position {ticket_id} closed @ {result.get('price')} | "
-                f"profit={result.get('profit')}"
+            result = await self._run(
+                _close_position, ticket_id, eff_volume, comment, lots=lots, priority=PRIORITY_CRITICAL, timeout=3.0
             )
+        except TimeoutError, asyncio.TimeoutError:
+            logger.error(f"Close position {ticket_id} timed out")
+            return {"success": False, "error": f"Close position {ticket_id} timed out", "retcode": -999}
+
+        if result.get("success"):
+            logger.info(f"Position {ticket_id} closed @ {result.get('price')} | profit={result.get('profit')}")
         else:
             logger.error(f"Close {ticket_id} failed: {result.get('error')}")
         return result
@@ -1166,12 +1248,12 @@ class MT5Client:
     async def cancel_order(self, ticket_or_id: Any) -> dict:
         """Batalkan pending order di MT5 berdasarkan ticket."""
         if not await self.ensure_connected():
-            return {'success': False, 'error': 'MT5 disconnected', 'retcode': -1}
+            return {"success": False, "error": "MT5 disconnected", "retcode": -1}
         try:
             ticket = int(str(ticket_or_id).strip())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Failed to parse ticket: {ticket_or_id!r}")
-            return {'success': False, 'error': f'Invalid ticket: {ticket_or_id}', 'retcode': -1}
+            return {"success": False, "error": f"Invalid ticket: {ticket_or_id}", "retcode": -1}
         return await self._run(_cancel_order, ticket, priority=PRIORITY_CRITICAL, timeout=3.0)
 
     async def cancel_all_pending_orders(self) -> dict:
@@ -1198,7 +1280,7 @@ class MT5Client:
             return []
         try:
             ticket_id = int(str(ticket).strip())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Failed to parse ticket: {ticket!r}")
             ticket_id = 0
         if ticket_id == 0:
@@ -1211,7 +1293,7 @@ class MT5Client:
             return []
         try:
             ticket_id = int(str(ticket).strip())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Failed to parse ticket: {ticket!r}")
             ticket_id = 0
         if ticket_id == 0:
@@ -1221,18 +1303,18 @@ class MT5Client:
     async def close_all_positions(self, comment: str = "AIAgent-CloseAll") -> dict:
         """Tutup SEMUA posisi terbuka (dipakai oleh kill-switch) - Priority 0."""
         if not await self.ensure_connected():
-            return {'closed': 0, 'failed': 0, 'total': 0, 'error': 'MT5 disconnected'}
+            return {"closed": 0, "failed": 0, "total": 0, "error": "MT5 disconnected"}
         positions = await self._run(_get_open_positions, None, priority=PRIORITY_CRITICAL)
         closed = failed = 0
-        for pos in (positions or []):
-            result = await self.close_position(pos['ticket'], comment=comment)
-            if result.get('success'):
+        for pos in positions or []:
+            result = await self.close_position(pos["ticket"], comment=comment)
+            if result.get("success"):
                 closed += 1
             else:
                 failed += 1
                 logger.error(f"Failed to close position {pos['ticket']}: {result.get('error')}")
         logger.warning(f"close_all_positions: closed={closed}, failed={failed}, total={len(positions or [])}")
-        return {'closed': closed, 'failed': failed, 'total': len(positions or [])}
+        return {"closed": closed, "failed": failed, "total": len(positions or [])}
 
     async def emergency_close_all(self, comment: str = "AIAgent-EmergencyCloseAll") -> dict:
         """Emergency liquidate all positions (Priority 0)."""
@@ -1271,6 +1353,7 @@ class MT5Client:
             return {"success": False, "error": "MT5 disconnected"}
 
         from pathlib import Path
+
         if not filepath:
             out_dir = Path("results/charts/mt5_screenshots")
             out_dir.mkdir(parents=True, exist_ok=True)
@@ -1289,11 +1372,21 @@ class MT5Client:
 
         common_path = HeartbeatManager().get_common_path()
         if not common_path:
-            return {"symbol": symbol, "objects": [], "status": "unavailable", "message": "MT5 common directory not found"}
+            return {
+                "symbol": symbol,
+                "objects": [],
+                "status": "unavailable",
+                "message": "MT5 common directory not found",
+            }
 
         obj_file = Path(common_path) / f"chart_objects_{symbol}.json"
         if not obj_file.exists():
-            return {"symbol": symbol, "objects": [], "status": "not_found", "message": f"No chart_objects_{symbol}.json found in MT5 common folder. Ensure AIAgent_EA is attached to the chart."}
+            return {
+                "symbol": symbol,
+                "objects": [],
+                "status": "not_found",
+                "message": f"No chart_objects_{symbol}.json found in MT5 common folder. Ensure AIAgent_EA is attached to the chart.",
+            }
 
         try:
             with open(obj_file, "r", encoding="utf-8") as f:
@@ -1312,8 +1405,8 @@ class MT5Client:
 
         mt5_positions = await self.get_open_positions()
         mt5_orders = await self.get_orders()
-        mt5_tickets = {p['ticket'] for p in mt5_positions}
-        pending_tickets = {o['ticket'] for o in mt5_orders}
+        mt5_tickets = {p["ticket"] for p in mt5_positions}
+        pending_tickets = {o["ticket"] for o in mt5_orders}
         active_tickets = mt5_tickets.union(pending_tickets)
 
         synced = closed_in_db = 0
@@ -1321,61 +1414,62 @@ class MT5Client:
 
         # Insert any new MT5 positions not yet in DB
         for pos in mt5_positions:
-            existing = (await session.execute(
-                select(Position).where(Position.mt5_ticket == pos['ticket'])
-            )).scalar_one_or_none()
+            existing = (
+                await session.execute(select(Position).where(Position.mt5_ticket == pos["ticket"]))
+            ).scalar_one_or_none()
             if existing is None:
-                direction = 'buy' if pos['type'] == 0 else 'sell'
-                session.add(Position(
-                    mt5_ticket=pos['ticket'],
-                    symbol=pos['symbol'],
-                    direction=direction,
-                    volume=pos['volume'],
-                    entry_price=pos['price_open'],
-                    sl=pos.get('sl'),
-                    tp=pos.get('tp'),
-                    opened_at=pos['time'],
-                    status='open',
-                ))
+                direction = "buy" if pos["type"] == 0 else "sell"
+                session.add(
+                    Position(
+                        mt5_ticket=pos["ticket"],
+                        symbol=pos["symbol"],
+                        direction=direction,
+                        volume=pos["volume"],
+                        entry_price=pos["price_open"],
+                        sl=pos.get("sl"),
+                        tp=pos.get("tp"),
+                        opened_at=pos["time"],
+                        status="open",
+                    )
+                )
                 synced += 1
             else:
                 # Update volume/lots and status upon partial close
-                mt5_vol = float(pos.get('volume', 0.0))
+                mt5_vol = float(pos.get("volume", 0.0))
                 if mt5_vol != existing.lots:
                     logger.info(f"Position {existing.mt5_ticket} volume changed: {existing.lots} -> {mt5_vol}")
                     existing.lots = mt5_vol
                     if mt5_vol == 0:
-                        existing.status = 'closed'
+                        existing.status = "closed"
                         existing.closed_at = datetime.now(timezone.utc)
 
         # Mark DB-open positions that are no longer on MT5 as closed
-        db_open = (await session.execute(
-            select(Position).where(Position.status == 'open')
-        )).scalars().all()
+        db_open = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
         for db_pos in db_open:
             # Skip paper/dry-run positions — they don't exist in MT5
-            if getattr(db_pos, 'is_paper', False):
+            if getattr(db_pos, "is_paper", False):
                 continue
             if db_pos.mt5_ticket and db_pos.mt5_ticket not in active_tickets:
-                db_pos.status = 'closed'
+                db_pos.status = "closed"
                 db_pos.closed_at = datetime.now(timezone.utc)
-                
+
                 # Fetch deal history to get PnL and close reason
                 deals = await self._run(_get_deal_history, db_pos.mt5_ticket)
                 if deals:
                     import MetaTrader5 as _mt5
+
                     mt5: Any = _mt5
                     close_deal = deals[-1]
-                    db_pos.pnl = sum(getattr(d, 'profit', 0.0) for d in deals)
-                    setattr(db_pos, '_mt5_close_reason', getattr(close_deal, 'reason', None))
-                    setattr(db_pos, '_mt5_exit_price', getattr(close_deal, 'price', None))
-                
+                    db_pos.pnl = sum(getattr(d, "profit", 0.0) for d in deals)
+                    setattr(db_pos, "_mt5_close_reason", getattr(close_deal, "reason", None))
+                    setattr(db_pos, "_mt5_exit_price", getattr(close_deal, "price", None))
+
                 closed_positions.append(db_pos)
                 closed_in_db += 1
 
         await session.commit()
         logger.info(f"Position sync: {synced} new, {closed_in_db} closed")
-        return {'synced': synced, 'closed_in_db': closed_in_db, 'closed_positions': closed_positions}
+        return {"synced": synced, "closed_in_db": closed_in_db, "closed_positions": closed_positions}
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -1394,8 +1488,9 @@ class MT5Client:
     def _ensure_worker(self) -> asyncio.PriorityQueue:
         """Menginisialisasi asyncio PriorityQueue dan worker task secara lazy."""
         loop = asyncio.get_running_loop()
-        if not hasattr(self, '_executor') or self._executor is None or getattr(self._executor, '_shutdown', False):
+        if not hasattr(self, "_executor") or self._executor is None or getattr(self._executor, "_shutdown", False):
             from concurrent.futures import ThreadPoolExecutor
+
             self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="MT5Worker")
         if self._priority_queue is None or self._worker_task is None or self._worker_task.done():
             self._priority_queue = asyncio.PriorityQueue()
@@ -1410,7 +1505,7 @@ class MT5Client:
                 break
             try:
                 priority, counter, fn, args, kwargs, future = await queue.get()
-            except (asyncio.CancelledError, GeneratorExit):
+            except asyncio.CancelledError, GeneratorExit:
                 break
             except Exception as ex:
                 logger.error(f"[MT5PriorityWorker] Queue retrieval error: {ex}")
@@ -1425,10 +1520,7 @@ class MT5Client:
 
             try:
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(
-                    self._executor,
-                    functools.partial(fn, *args, **kwargs)
-                )
+                result = await loop.run_in_executor(self._executor, functools.partial(fn, *args, **kwargs))
                 if not future.cancelled() and not future.done():
                     future.set_result(result)
             except asyncio.CancelledError:
@@ -1454,13 +1546,20 @@ class MT5Client:
             return explicit_priority
         fn_name = getattr(fn, "__name__", "")
         if fn_name in (
-            "_place_order", "place_order",
-            "_modify_position", "modify_position",
-            "_modify_order", "modify_order",
-            "_close_position", "close_position",
-            "_close_all_positions", "close_all_positions",
-            "emergency_close_all", "kill_switch",
-            "_disconnect", "disconnect",
+            "_place_order",
+            "place_order",
+            "_modify_position",
+            "modify_position",
+            "_modify_order",
+            "modify_order",
+            "_close_position",
+            "close_position",
+            "_close_all_positions",
+            "close_all_positions",
+            "emergency_close_all",
+            "kill_switch",
+            "_disconnect",
+            "disconnect",
         ):
             return PRIORITY_CRITICAL
         if fn_name in ("_copy_rates_from_pos", "_copy_rates_range", "copy_rates_range", "fetch_and_save_all"):
@@ -1511,27 +1610,33 @@ class MT5Client:
 # All must be module-level (picklable) functions.
 # =============================================================================
 
+
 def _market_book_add(symbol: str) -> bool:
     try:
         import MetaTrader5 as _mt5
+
         mt5: Any = _mt5
         return bool(mt5.market_book_add(symbol))
     except Exception as e:
         logger.debug(f"market_book_add error for {symbol}: {e}")
         return False
 
+
 def _market_book_get(symbol: str) -> Any:
     try:
         import MetaTrader5 as _mt5
+
         mt5: Any = _mt5
         return mt5.market_book_get(symbol)
     except Exception as e:
         logger.debug(f"market_book_get error for {symbol}: {e}")
         return None
 
+
 def _market_book_release(symbol: str) -> bool:
     try:
         import MetaTrader5 as _mt5
+
         mt5: Any = _mt5
         return bool(mt5.market_book_release(symbol))
     except Exception as e:
@@ -1542,6 +1647,7 @@ def _market_book_release(symbol: str) -> bool:
 def _connect(path: str, account: int, password: str, server: str, expected_trade_mode: Optional[str] = None) -> bool:
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     logger.info(f"Initializing MT5: {path}")
     init_kwargs: dict[str, Any] = {}
@@ -1589,8 +1695,8 @@ def _connect(path: str, account: int, password: str, server: str, expected_trade
             mt5.shutdown()
             raise MT5ProfileMismatchError(err_msg)
 
-    bal = getattr(info, 'balance', 0.0) if info else 0.0
-    curr = getattr(info, 'currency', 'USD') if info else 'USD'
+    bal = getattr(info, "balance", 0.0) if info else 0.0
+    curr = getattr(info, "currency", "USD") if info else "USD"
     logger.info(
         f"MT5 connected: {server} | Account {account} | "
         f"Balance={bal:.2f} {curr} | TradeMode={getattr(info, 'trade_mode', 'N/A')}"
@@ -1601,6 +1707,7 @@ def _connect(path: str, account: int, password: str, server: str, expected_trade
 def _disconnect():
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     mt5.shutdown()
 
@@ -1608,6 +1715,7 @@ def _disconnect():
 def _is_connected() -> bool:
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     info = mt5.account_info()
     return info is not None
@@ -1616,6 +1724,7 @@ def _is_connected() -> bool:
 def _get_account_info():
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     return mt5.account_info()
 
@@ -1623,6 +1732,7 @@ def _get_account_info():
 def _get_symbol_info(symbol: str):
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     return mt5.symbol_info(symbol)
 
@@ -1630,6 +1740,7 @@ def _get_symbol_info(symbol: str):
 def _copy_rates_from_pos(symbol: str, tf: int, start: int, count: int):
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     return mt5.copy_rates_from_pos(symbol, tf, start, count)
 
@@ -1637,6 +1748,7 @@ def _copy_rates_from_pos(symbol: str, tf: int, start: int, count: int):
 def _copy_rates_range(symbol: str, tf: int, date_from: Any, date_to: Any):
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     return mt5.copy_rates_range(symbol, tf, date_from, date_to)
 
@@ -1644,16 +1756,19 @@ def _copy_rates_range(symbol: str, tf: int, date_from: Any, date_to: Any):
 def _get_last_tick(symbol: str):
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     return mt5.symbol_info_tick(symbol)
 
 
 def _copy_ticks_range(symbol: str, date_from: datetime, date_to: datetime, flags: int = 1):
     import MetaTrader5 as _mt5
+
     ticks = _mt5.copy_ticks_range(symbol, date_from, date_to, flags)
     if ticks is None or len(ticks) == 0:
         return []
     import pandas as pd
+
     df = pd.DataFrame(ticks)
     if "time" in df.columns:
         df["time"] = pd.to_datetime(df["time"], unit="s", utc=True).dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -1668,13 +1783,14 @@ def _calculate_dom_vwap(symbol: str, direction: str, volume: float) -> dict:
     """
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
 
     book = mt5.market_book_get(symbol)
     if not book or len(book) == 0:
         return {"has_dom": False, "vwap": None, "slippage_pts": 0.0, "filled_pct": 1.0}
 
-    is_buy = (str(direction).lower().strip() == "buy")
+    is_buy = str(direction).lower().strip() == "buy"
     ladder = []
     for item in book:
         item_type = getattr(item, "type", None)
@@ -1785,39 +1901,56 @@ def _place_order(
     """
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
 
     resolved_symbol = _resolve_broker_symbol(symbol)
     info = mt5.symbol_info(resolved_symbol)
     if info is None:
-        return {'success': False, 'ticket': None, 'price': None,
-                'error': f'Symbol {resolved_symbol} (original: {symbol}) not found on broker terminal', 'retcode': -1}
+        return {
+            "success": False,
+            "ticket": None,
+            "price": None,
+            "error": f"Symbol {resolved_symbol} (original: {symbol}) not found on broker terminal",
+            "retcode": -1,
+        }
 
     # Strict volume floor quantization to prevent broker volume rejection
-    raw_step = getattr(info, 'volume_step', 0.01)
+    raw_step = getattr(info, "volume_step", 0.01)
     step = float(raw_step) if isinstance(raw_step, (int, float)) and raw_step > 0 else 0.01
-    raw_min = getattr(info, 'volume_min', 0.01)
+    raw_min = getattr(info, "volume_min", 0.01)
     min_vol = float(raw_min) if isinstance(raw_min, (int, float)) and raw_min > 0 else 0.01
-    raw_max = getattr(info, 'volume_max', 100.0)
+    raw_max = getattr(info, "volume_max", 100.0)
     max_vol = float(raw_max) if isinstance(raw_max, (int, float)) and raw_max > 0 else 100.0
     steps = math.floor((float(volume) / step) + 1e-9)
     if steps <= 0:
-        return {'success': False, 'ticket': None, 'price': None,
-                'error': f'Volume {volume} below minimum step {step} for {resolved_symbol}', 'retcode': -1}
+        return {
+            "success": False,
+            "ticket": None,
+            "price": None,
+            "error": f"Volume {volume} below minimum step {step} for {resolved_symbol}",
+            "retcode": -1,
+        }
     quantized_vol = max(min_vol, min(max_vol, steps * step))
     vol_decimals = 2 if step >= 0.01 else (3 if step >= 0.001 else 0)
     final_volume = round(quantized_vol, vol_decimals)
 
     # Normalize SL/TP to tick size to prevent 'Invalid Stops' rejection
     def _normalize(val: float) -> float:
-        if not info.trade_tick_size: return round(val, info.digits)
+        if not info.trade_tick_size:
+            return round(val, info.digits)
         return round(round(val / info.trade_tick_size) * info.trade_tick_size, info.digits)
 
     # 1. Market Spread Safety Check
     tick = mt5.symbol_info_tick(resolved_symbol)
     if tick is None:
-        return {'success': False, 'ticket': None, 'price': None,
-                'error': f'Cannot get tick for spread check on {resolved_symbol}', 'retcode': -1}
+        return {
+            "success": False,
+            "ticket": None,
+            "price": None,
+            "error": f"Cannot get tick for spread check on {resolved_symbol}",
+            "retcode": -1,
+        }
 
     spread_pts = (tick.ask - tick.bid) / info.point if info.point else 0
     mult = max_spread_multiplier if max_spread_multiplier is not None else 3.0
@@ -1838,8 +1971,13 @@ def _place_order(
     # 2. Normalize Direction & Map Action/Order Type
     direction = (direction or "").lower().strip()
     if direction not in ("buy", "sell"):
-        return {'success': False, 'ticket': None, 'price': None,
-                'error': f'Invalid direction {direction} for {symbol}', 'retcode': -1}
+        return {
+            "success": False,
+            "ticket": None,
+            "price": None,
+            "error": f"Invalid direction {direction} for {symbol}",
+            "retcode": -1,
+        }
 
     order_type_upper = (order_type or "market").upper()
     if order_type_upper in ("BUY_LIMIT", "LIMIT") and direction == "buy":
@@ -1858,21 +1996,31 @@ def _place_order(
         action = mt5.TRADE_ACTION_PENDING
         mt5_order_type = mt5.ORDER_TYPE_SELL_STOP
         order_price = price
-    elif direction == 'buy':
+    elif direction == "buy":
         action = mt5.TRADE_ACTION_DEAL
         mt5_order_type = mt5.ORDER_TYPE_BUY
         order_price = tick.ask
-    elif direction == 'sell':
+    elif direction == "sell":
         action = mt5.TRADE_ACTION_DEAL
         mt5_order_type = mt5.ORDER_TYPE_SELL
         order_price = tick.bid
     else:
-        return {'success': False, 'ticket': None, 'price': None,
-                'error': f'Unsupported order direction {direction}', 'retcode': -1}
+        return {
+            "success": False,
+            "ticket": None,
+            "price": None,
+            "error": f"Unsupported order direction {direction}",
+            "retcode": -1,
+        }
 
     if not order_price or order_price <= 0:
-        return {'success': False, 'ticket': None, 'price': None,
-                'error': f'Invalid calculated price {order_price} for {symbol}', 'retcode': -1}
+        return {
+            "success": False,
+            "ticket": None,
+            "price": None,
+            "error": f"Invalid calculated price {order_price} for {symbol}",
+            "retcode": -1,
+        }
 
     # Query supported fill mode from symbol info
     filling_mode = info.filling_mode
@@ -1884,18 +2032,18 @@ def _place_order(
         fill_type = mt5.ORDER_FILLING_RETURN
 
     request = {
-        'action': action,
-        'symbol': resolved_symbol,
-        'volume': float(final_volume),
-        'type': mt5_order_type,
-        'price': float(order_price),
-        'sl': _normalize(sl) if sl else 0.0,
-        'tp': _normalize(tp) if tp else 0.0,
-        'comment': comment[:31],
-        'type_time': mt5.ORDER_TIME_GTC,
-        'type_filling': fill_type,
-        'magic': 20250101,  # EA magic number to identify AI-placed orders
-        'deviation': 20,    # Max price deviation in points for market orders
+        "action": action,
+        "symbol": resolved_symbol,
+        "volume": float(final_volume),
+        "type": mt5_order_type,
+        "price": float(order_price),
+        "sl": _normalize(sl) if sl else 0.0,
+        "tp": _normalize(tp) if tp else 0.0,
+        "comment": comment[:31],
+        "type_time": mt5.ORDER_TIME_GTC,
+        "type_filling": fill_type,
+        "magic": 20250101,  # EA magic number to identify AI-placed orders
+        "deviation": 20,  # Max price deviation in points for market orders
     }
 
     # Pre-flight order_check validation
@@ -1907,9 +2055,11 @@ def _place_order(
                 err_msg = f"Pre-flight order_check rejected: {format_mt5_error(check_retcode, getattr(check_result, 'comment', ''))}"
                 logger.warning(f"[{resolved_symbol}] {err_msg}")
                 return {
-                    'success': False, 'ticket': None, 'price': None,
-                    'error': err_msg,
-                    'retcode': check_retcode,
+                    "success": False,
+                    "ticket": None,
+                    "price": None,
+                    "error": err_msg,
+                    "retcode": check_retcode,
                 }
     except Exception as chk_ex:
         logger.debug(f"[{resolved_symbol}] order_check non-fatal: {chk_ex}")
@@ -1920,9 +2070,11 @@ def _place_order(
         result = mt5.order_send(request)
         if result is None:
             return {
-                'success': False, 'ticket': None, 'price': None,
-                'error': f'order_send returned None: {mt5.last_error()}',
-                'retcode': -1,
+                "success": False,
+                "ticket": None,
+                "price": None,
+                "error": f"order_send returned None: {mt5.last_error()}",
+                "retcode": -1,
             }
 
         done_code = getattr(mt5, "TRADE_RETCODE_DONE", 10009)
@@ -1939,20 +2091,24 @@ def _place_order(
         if getattr(result, "retcode", None) in transient_codes and attempt < max_retries:
             time.sleep(0.1)  # 100ms rapid pause
             deal_action = getattr(mt5, "TRADE_ACTION_DEAL", 1)
-            if request.get('action') == deal_action or request.get('action') == 1:
+            if request.get("action") == deal_action or request.get("action") == 1:
                 latest_tick = mt5.symbol_info_tick(resolved_symbol)
                 if latest_tick:
-                    new_price = getattr(latest_tick, 'ask', None) if direction == 'buy' else getattr(latest_tick, 'bid', None)
+                    new_price = (
+                        getattr(latest_tick, "ask", None) if direction == "buy" else getattr(latest_tick, "bid", None)
+                    )
                     if new_price and new_price > 0:
-                        request['price'] = float(new_price)
+                        request["price"] = float(new_price)
             continue
         break
 
     if result is None:
         return {
-            'success': False, 'ticket': None, 'price': None,
-            'error': 'order_send returned None',
-            'retcode': -1,
+            "success": False,
+            "ticket": None,
+            "price": None,
+            "error": "order_send returned None",
+            "retcode": -1,
         }
 
     done_code = getattr(mt5, "TRADE_RETCODE_DONE", 10009)
@@ -1963,12 +2119,12 @@ def _place_order(
     if success and not ticket_id:
         ticket_id = getattr(result, "deal", None)
     return {
-        'success': success,
-        'ticket': ticket_id if success else None,
-        'price': getattr(result, "price", None) if success else None,
-        'error': None if success else format_mt5_error(res_retcode, getattr(result, "comment", "")),
-        'retcode': res_retcode,
-        'volume': getattr(result, "volume", None) if success else None,
+        "success": success,
+        "ticket": ticket_id if success else None,
+        "price": getattr(result, "price", None) if success else None,
+        "error": None if success else format_mt5_error(res_retcode, getattr(result, "comment", "")),
+        "retcode": res_retcode,
+        "volume": getattr(result, "volume", None) if success else None,
     }
 
 
@@ -1976,18 +2132,19 @@ def _modify_position(ticket: Any, sl: Optional[float], tp: Optional[float]) -> d
     """Modify SL/TP on an existing open position."""
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
 
     try:
         ticket_id = int(str(ticket).strip())
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         logger.warning(f"Failed to parse ticket: {ticket!r}")
-        return {'success': False, 'error': f'Invalid ticket: {ticket}', 'retcode': -1}
+        return {"success": False, "error": f"Invalid ticket: {ticket}", "retcode": -1}
 
     # Get current position to preserve existing SL/TP if not being changed
     pos = mt5.positions_get(ticket=ticket_id)
     if not pos:
-        return {'success': False, 'error': f'Position {ticket_id} not found', 'retcode': -1}
+        return {"success": False, "error": f"Position {ticket_id} not found", "retcode": -1}
 
     current = pos[0]
     info = mt5.symbol_info(current.symbol)
@@ -1995,8 +2152,8 @@ def _modify_position(ticket: Any, sl: Optional[float], tp: Optional[float]) -> d
     def _normalize(val: Optional[float]) -> Optional[float]:
         if val is None:
             return None
-        if info is None or not getattr(info, 'trade_tick_size', None):
-            digits = getattr(info, 'digits', 5) if info else 5
+        if info is None or not getattr(info, "trade_tick_size", None):
+            digits = getattr(info, "digits", 5) if info else 5
             return round(float(val), digits)
         return round(round(float(val) / info.trade_tick_size) * info.trade_tick_size, info.digits)
 
@@ -2004,24 +2161,24 @@ def _modify_position(ticket: Any, sl: Optional[float], tp: Optional[float]) -> d
     normalized_tp = _normalize(tp) if tp is not None else current.tp
 
     request = {
-        'action': mt5.TRADE_ACTION_SLTP,
-        'symbol': current.symbol,
-        'position': ticket_id,
-        'sl': float(normalized_sl) if normalized_sl is not None else 0.0,
-        'tp': float(normalized_tp) if normalized_tp is not None else 0.0,
-        'magic': 20250101,
+        "action": mt5.TRADE_ACTION_SLTP,
+        "symbol": current.symbol,
+        "position": ticket_id,
+        "sl": float(normalized_sl) if normalized_sl is not None else 0.0,
+        "tp": float(normalized_tp) if normalized_tp is not None else 0.0,
+        "magic": 20250101,
     }
 
     result = mt5.order_send(request)
     if result is None:
-        return {'success': False, 'error': str(mt5.last_error()), 'retcode': -1}
+        return {"success": False, "error": str(mt5.last_error()), "retcode": -1}
 
     success = getattr(result, "retcode", -1) == getattr(mt5, "TRADE_RETCODE_DONE", 10009)
     res_retcode = getattr(result, "retcode", -1)
     return {
-        'success': success,
-        'error': None if success else format_mt5_error(res_retcode, getattr(result, "comment", "")),
-        'retcode': res_retcode,
+        "success": success,
+        "error": None if success else format_mt5_error(res_retcode, getattr(result, "comment", "")),
+        "retcode": res_retcode,
     }
 
 
@@ -2029,6 +2186,7 @@ def _close_position(ticket: Any, volume: Optional[float], comment: str, lots: Op
     """Close an open position (fully or partially)."""
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
 
     if volume is None and lots is not None:
@@ -2036,16 +2194,20 @@ def _close_position(ticket: Any, volume: Optional[float], comment: str, lots: Op
 
     try:
         ticket_id = int(str(ticket).strip())
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         logger.warning(f"Failed to parse ticket: {ticket!r}")
-        return {'success': False, 'price': None, 'profit': None,
-                'error': f'Invalid ticket: {ticket}', 'retcode': -1}
+        return {"success": False, "price": None, "profit": None, "error": f"Invalid ticket: {ticket}", "retcode": -1}
 
     # Fetch current position details
     pos = mt5.positions_get(ticket=ticket_id)
     if not pos:
-        return {'success': False, 'price': None, 'profit': None,
-                'error': f'Position {ticket_id} not found', 'retcode': -1}
+        return {
+            "success": False,
+            "price": None,
+            "profit": None,
+            "error": f"Position {ticket_id} not found",
+            "retcode": -1,
+        }
 
     current = pos[0]
     close_volume = volume if volume is not None else current.volume
@@ -2056,14 +2218,19 @@ def _close_position(ticket: Any, volume: Optional[float], comment: str, lots: Op
         # Fallback to symbol_info if tick fails
         info = mt5.symbol_info(current.symbol)
         if info is None:
-            return {'success': False, 'price': None, 'profit': None,
-                    'error': f'Failed to get current price for {current.symbol}. Market closed?', 'retcode': -1}
+            return {
+                "success": False,
+                "price": None,
+                "profit": None,
+                "error": f"Failed to get current price for {current.symbol}. Market closed?",
+                "retcode": -1,
+            }
         bid_price = info.bid
         ask_price = info.ask
     else:
         bid_price = tick.bid
         ask_price = tick.ask
-        
+
     if current.type == getattr(mt5, "POSITION_TYPE_BUY", 0):
         close_type = getattr(mt5, "ORDER_TYPE_SELL", 1)
         close_price = bid_price
@@ -2082,23 +2249,22 @@ def _close_position(ticket: Any, volume: Optional[float], comment: str, lots: Op
         fill_type = getattr(mt5, "ORDER_FILLING_RETURN", 2)
 
     request = {
-        'action': getattr(mt5, "TRADE_ACTION_DEAL", 1),
-        'symbol': current.symbol,
-        'volume': float(close_volume),
-        'type': close_type,
-        'position': ticket_id,
-        'price': float(close_price),
-        'comment': comment[:31],
-        'type_time': getattr(mt5, "ORDER_TIME_GTC", 0),
-        'type_filling': fill_type,
-        'deviation': 20,
-        'magic': 20250101,
+        "action": getattr(mt5, "TRADE_ACTION_DEAL", 1),
+        "symbol": current.symbol,
+        "volume": float(close_volume),
+        "type": close_type,
+        "position": ticket_id,
+        "price": float(close_price),
+        "comment": comment[:31],
+        "type_time": getattr(mt5, "ORDER_TIME_GTC", 0),
+        "type_filling": fill_type,
+        "deviation": 20,
+        "magic": 20250101,
     }
 
     result = mt5.order_send(request)
     if result is None:
-        return {'success': False, 'price': None, 'profit': None,
-                'error': str(mt5.last_error()), 'retcode': -1}
+        return {"success": False, "price": None, "profit": None, "error": str(mt5.last_error()), "retcode": -1}
 
     res_retcode = getattr(result, "retcode", -1)
     max_retries = 2
@@ -2112,7 +2278,7 @@ def _close_position(ticket: Any, volume: Optional[float], comment: str, lots: Op
             t_retry = mt5.symbol_info_tick(current.symbol)
             if t_retry:
                 new_price = t_retry.bid if close_type == getattr(mt5, "ORDER_TYPE_SELL", 1) else t_retry.ask
-                request['price'] = float(new_price)
+                request["price"] = float(new_price)
             result = mt5.order_send(request)
             if result is None:
                 break
@@ -2122,11 +2288,13 @@ def _close_position(ticket: Any, volume: Optional[float], comment: str, lots: Op
 
     success = res_retcode == getattr(mt5, "TRADE_RETCODE_DONE", 10009)
     return {
-        'success': success,
-        'price': getattr(result, "price", None) if (result and success) else None,
-        'profit': getattr(current, "profit", None) if success else None,
-        'error': None if success else format_mt5_error(res_retcode, getattr(result, "comment", "") if result else "order_send failed"),
-        'retcode': res_retcode,
+        "success": success,
+        "price": getattr(result, "price", None) if (result and success) else None,
+        "profit": getattr(current, "profit", None) if success else None,
+        "error": None
+        if success
+        else format_mt5_error(res_retcode, getattr(result, "comment", "") if result else "order_send failed"),
+        "retcode": res_retcode,
     }
 
 
@@ -2134,6 +2302,7 @@ def _get_open_positions(symbol: Optional[str]) -> list[dict]:
     """Fetch all open positions from MT5."""
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     from datetime import datetime, timezone
 
@@ -2147,29 +2316,33 @@ def _get_open_positions(symbol: Optional[str]) -> list[dict]:
 
     result = []
     for p in positions:
-        result.append({
-            'ticket':     p.ticket,
-            'identifier': getattr(p, 'identifier', p.ticket),
-            'symbol':     p.symbol,
-            'type':       p.type,  # 0=BUY, 1=SELL
-            'direction':  'buy' if p.type == 0 else 'sell',
-            'volume':     p.volume,
-            'price_open': p.price_open,
-            'price_current': p.price_current,
-            'sl':         p.sl,
-            'tp':         p.tp,
-            'profit':     p.profit,
-            'swap':       p.swap,
-            'comment':    p.comment,
-            'magic':      p.magic,
-            'time':       datetime.fromtimestamp(p.time, tz=timezone.utc),
-        })
+        result.append(
+            {
+                "ticket": p.ticket,
+                "identifier": getattr(p, "identifier", p.ticket),
+                "symbol": p.symbol,
+                "type": p.type,  # 0=BUY, 1=SELL
+                "direction": "buy" if p.type == 0 else "sell",
+                "volume": p.volume,
+                "price_open": p.price_open,
+                "price_current": p.price_current,
+                "sl": p.sl,
+                "tp": p.tp,
+                "profit": p.profit,
+                "swap": p.swap,
+                "comment": p.comment,
+                "magic": p.magic,
+                "time": datetime.fromtimestamp(p.time, tz=timezone.utc),
+            }
+        )
     return result
+
 
 def _get_orders(symbol: Optional[str] = None) -> list[dict]:
     """Fetch all active pending orders from MT5."""
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     from datetime import datetime, timezone
 
@@ -2186,23 +2359,27 @@ def _get_orders(symbol: Optional[str] = None) -> list[dict]:
         order_type_val = getattr(o, "type", 0)
         # MT5 pending types: 2=BUY_LIMIT, 3=SELL_LIMIT, 4=BUY_STOP, 5=SELL_STOP, 6=BUY_STOP_LIMIT, 7=SELL_STOP_LIMIT
         direction = "buy" if order_type_val in (2, 4, 6) else "sell"
-        result.append({
-            "ticket": getattr(o, "ticket", None),
-            "symbol": getattr(o, "symbol", ""),
-            "type": order_type_val,
-            "direction": direction,
-            "volume": getattr(o, "volume_current", getattr(o, "volume_initial", 0.0)),
-            "volume_initial": getattr(o, "volume_initial", 0.0),
-            "volume_current": getattr(o, "volume_current", 0.0),
-            "price_open": getattr(o, "price_open", 0.0),
-            "price_current": getattr(o, "price_current", 0.0),
-            "sl": getattr(o, "sl", None),
-            "tp": getattr(o, "tp", None),
-            "comment": getattr(o, "comment", ""),
-            "magic": getattr(o, "magic", 0),
-            "time": datetime.fromtimestamp(getattr(o, "time_setup", 0), tz=timezone.utc) if getattr(o, "time_setup", 0) else None,
-            "state": getattr(o, "state", None),
-        })
+        result.append(
+            {
+                "ticket": getattr(o, "ticket", None),
+                "symbol": getattr(o, "symbol", ""),
+                "type": order_type_val,
+                "direction": direction,
+                "volume": getattr(o, "volume_current", getattr(o, "volume_initial", 0.0)),
+                "volume_initial": getattr(o, "volume_initial", 0.0),
+                "volume_current": getattr(o, "volume_current", 0.0),
+                "price_open": getattr(o, "price_open", 0.0),
+                "price_current": getattr(o, "price_current", 0.0),
+                "sl": getattr(o, "sl", None),
+                "tp": getattr(o, "tp", None),
+                "comment": getattr(o, "comment", ""),
+                "magic": getattr(o, "magic", 0),
+                "time": datetime.fromtimestamp(getattr(o, "time_setup", 0), tz=timezone.utc)
+                if getattr(o, "time_setup", 0)
+                else None,
+                "state": getattr(o, "state", None),
+            }
+        )
     return result
 
 
@@ -2210,11 +2387,12 @@ def _cancel_order(ticket: Any) -> dict:
     """Cancel pending order by ticket in MT5."""
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
 
     try:
         ticket_id = int(str(ticket).strip())
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         logger.warning(f"Failed to parse ticket: {ticket!r}")
         ticket_id = 0
 
@@ -2231,22 +2409,23 @@ def _cancel_order(ticket: Any) -> dict:
         }
     done_code = getattr(mt5, "TRADE_RETCODE_DONE", 10009)
     res_retcode = getattr(result, "retcode", -1)
-    success = (res_retcode == done_code or res_retcode == 10009)
+    success = res_retcode == done_code or res_retcode == 10009
     return {
         "success": success,
         "ticket": ticket_id,
         "retcode": res_retcode,
-        "error": None if success else format_mt5_error(res_retcode, getattr(result, 'comment', '')),
+        "error": None if success else format_mt5_error(res_retcode, getattr(result, "comment", "")),
     }
 
 
 def _get_deal_history(ticket: Any):
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     try:
         ticket_id = int(str(ticket).strip())
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         logger.warning(f"Failed to parse ticket: {ticket!r}")
         ticket_id = 0
     deals = mt5.history_deals_get(position=ticket_id)
@@ -2256,10 +2435,11 @@ def _get_deal_history(ticket: Any):
 def _get_order_history(ticket: Any):
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
     try:
         ticket_id = int(str(ticket).strip())
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         logger.warning(f"Failed to parse ticket: {ticket!r}")
         ticket_id = 0
     orders = mt5.history_orders_get(ticket=ticket_id)
@@ -2269,6 +2449,7 @@ def _get_order_history(ticket: Any):
 def _capture_chart_screenshot(symbol: str, tf: int, width: int, height: int, filepath: str) -> dict:
     from typing import Any
     import MetaTrader5 as _mt5
+
     mt5: Any = _mt5
 
     charts = mt5.charts_get() or []
@@ -2299,4 +2480,3 @@ def get_mt5_client(settings: Optional[dict] = None) -> MT5Client:
     if _default_mt5_client is None:
         _default_mt5_client = MT5Client(settings=settings or {})
     return _default_mt5_client
-

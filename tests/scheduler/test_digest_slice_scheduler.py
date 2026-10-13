@@ -7,7 +7,6 @@ from database.models import NewsDigestSlice
 
 
 class TestDigestSliceScheduler:
-
     @pytest.mark.asyncio
     async def test_run_once_trigger_scheduled(self):
         scheduler = DigestSliceScheduler({"news_classification": {"slice_schedule": {"interval_minutes": 120}}})

@@ -19,6 +19,7 @@ from graph.nodes.state_pruner import prune_after_fundamental, prune_after_debate
 # 1. Mechanical Anchor Index Tests
 # ==============================================================================
 
+
 def test_mechanical_anchor_extraction_and_rendering():
     index = MechanicalAnchorIndex()
 
@@ -49,6 +50,7 @@ def test_mechanical_anchor_extraction_and_rendering():
 # 2. Adaptive Context Engine Tests
 # ==============================================================================
 
+
 def test_context_engine_assembly():
     engine = ContextEngine(max_context_tokens=1000)
 
@@ -78,6 +80,7 @@ def test_context_engine_assembly():
 # ==============================================================================
 # 3. Lossless State Archiving Pruner Tests
 # ==============================================================================
+
 
 def test_prune_after_fundamental_lossless():
     raw_conversation = "Huge verbose fundamental discussion text " * 50

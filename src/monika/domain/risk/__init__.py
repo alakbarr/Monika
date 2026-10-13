@@ -1,4 +1,5 @@
 """Monika Risk Domain Core."""
+
 from monika.domain.risk.trade_proposal import TradeProposal, FortressAdmissionValidator
 from monika.domain.risk.risk_gate import RiskGate
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult

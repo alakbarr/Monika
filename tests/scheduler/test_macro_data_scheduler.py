@@ -6,7 +6,6 @@ from scheduler.macro_data_scheduler import MacroDataScheduler
 
 
 class TestMacroDataScheduler:
-
     @pytest.fixture
     def settings(self):
         return {
@@ -16,7 +15,7 @@ class TestMacroDataScheduler:
             "data_sources": {
                 "fred": {"api_key": "dummy"},
                 "cftc_cot": {"market": "all"},
-            }
+            },
         }
 
     def test_macro_data_scheduler_init(self, settings):
@@ -29,104 +28,105 @@ class TestMacroDataScheduler:
         scheduler = MacroDataScheduler(settings)
 
         mock_session = create_mock_async_session()
-        with patch("scheduler.macro_data_scheduler.get_session") as mock_get_session, \
-                 patch("data_sources.coinglass_funding.CoinglasFundingFetcher") as mock_coinglass_cls, \
-                 patch("scrapers.sentiment.binance_sentiment.BinanceSentimentFetcher") as mock_binance_cls, \
-                 patch("scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher") as mock_myfx_cls, \
-                 patch("scrapers.sentiment.fxssi_sentiment.FXSSISentimentFetcher") as mock_fxssi_cls, \
-                 patch("data_sources.vix_yfinance.VIXFetcher") as mock_vix_cls, \
-                 patch("data_sources.fred_treasury_yield.FREDDataFetcher") as mock_fred_cls, \
-                 patch("data_sources.cftc_cot.CFTCCOTFetcher") as mock_cftc_cls, \
-                 patch("data_sources.dxy_yfinance.DXYFetcher") as mock_dxy_cls, \
-                 patch("data_sources.bond_yields_fetcher.BondYieldFetcher") as mock_bond_cls, \
-                 patch("data_sources.fear_greed.FearGreedFetcher") as mock_fg_cls, \
-                 patch("data_sources.eia_oil_inventory.EIAInventoryFetcher") as mock_eia_cls, \
-                 patch("data_sources.central_bank_watch.CentralBankWatchFetcher") as mock_cbw_cls, \
-                 patch("data_sources.fed_liquidity_h41_fetcher.FedLiquidityH41Fetcher") as mock_fed_liq_cls, \
-                 patch("data_sources.market_stress_auction_fetcher.MarketStressAuctionFetcher") as mock_stress_cls, \
-                 patch("scrapers.macro.macro_trigger_router.MacroTriggerRouter") as mock_router_cls:
+        with (
+            patch("scheduler.macro_data_scheduler.get_session") as mock_get_session,
+            patch("data_sources.coinglass_funding.CoinglasFundingFetcher") as mock_coinglass_cls,
+            patch("scrapers.sentiment.binance_sentiment.BinanceSentimentFetcher") as mock_binance_cls,
+            patch("scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher") as mock_myfx_cls,
+            patch("scrapers.sentiment.fxssi_sentiment.FXSSISentimentFetcher") as mock_fxssi_cls,
+            patch("data_sources.vix_yfinance.VIXFetcher") as mock_vix_cls,
+            patch("data_sources.fred_treasury_yield.FREDDataFetcher") as mock_fred_cls,
+            patch("data_sources.cftc_cot.CFTCCOTFetcher") as mock_cftc_cls,
+            patch("data_sources.dxy_yfinance.DXYFetcher") as mock_dxy_cls,
+            patch("data_sources.bond_yields_fetcher.BondYieldFetcher") as mock_bond_cls,
+            patch("data_sources.fear_greed.FearGreedFetcher") as mock_fg_cls,
+            patch("data_sources.eia_oil_inventory.EIAInventoryFetcher") as mock_eia_cls,
+            patch("data_sources.central_bank_watch.CentralBankWatchFetcher") as mock_cbw_cls,
+            patch("data_sources.fed_liquidity_h41_fetcher.FedLiquidityH41Fetcher") as mock_fed_liq_cls,
+            patch("data_sources.market_stress_auction_fetcher.MarketStressAuctionFetcher") as mock_stress_cls,
+            patch("scrapers.macro.macro_trigger_router.MacroTriggerRouter") as mock_router_cls,
+        ):
+            mock_get_session.return_value.__aenter__.return_value = mock_session
 
-                mock_get_session.return_value.__aenter__.return_value = mock_session
+            mock_cg = AsyncMock()
+            mock_cg.fetch.return_value = {"funding_rate": 0.0001}
+            mock_coinglass_cls.return_value = mock_cg
 
-                mock_cg = AsyncMock()
-                mock_cg.fetch.return_value = {"funding_rate": 0.0001}
-                mock_coinglass_cls.return_value = mock_cg
+            mock_bn = AsyncMock()
+            mock_bn.fetch.return_value = {"long_ratio": 0.65}
+            mock_binance_cls.return_value = mock_bn
 
-                mock_bn = AsyncMock()
-                mock_bn.fetch.return_value = {"long_ratio": 0.65}
-                mock_binance_cls.return_value = mock_bn
+            mock_mf = AsyncMock()
+            mock_mf.fetch.return_value = {"long_pct": 48}
+            mock_myfx_cls.return_value = mock_mf
 
-                mock_mf = AsyncMock()
-                mock_mf.fetch.return_value = {"long_pct": 48}
-                mock_myfx_cls.return_value = mock_mf
+            mock_fx = AsyncMock()
+            mock_fx.fetch.return_value = {"ratio": 52}
+            mock_fxssi_cls.return_value = mock_fx
 
-                mock_fx = AsyncMock()
-                mock_fx.fetch.return_value = {"ratio": 52}
-                mock_fxssi_cls.return_value = mock_fx
+            mock_vix = AsyncMock()
+            mock_vix.fetch.return_value = 5
+            mock_vix_cls.return_value = mock_vix
 
-                mock_vix = AsyncMock()
-                mock_vix.fetch.return_value = 5
-                mock_vix_cls.return_value = mock_vix
+            mock_fred = AsyncMock()
+            mock_fred.fetch_all.return_value = {"saved": 3}
+            mock_fred_cls.return_value = mock_fred
 
-                mock_fred = AsyncMock()
-                mock_fred.fetch_all.return_value = {"saved": 3}
-                mock_fred_cls.return_value = mock_fred
+            mock_cftc = AsyncMock()
+            mock_cftc.fetch_all.return_value = 8
+            mock_cftc_cls.return_value = mock_cftc
 
-                mock_cftc = AsyncMock()
-                mock_cftc.fetch_all.return_value = 8
-                mock_cftc_cls.return_value = mock_cftc
+            mock_dxy = AsyncMock()
+            mock_dxy.fetch.return_value = 10
+            mock_dxy_cls.return_value = mock_dxy
 
-                mock_dxy = AsyncMock()
-                mock_dxy.fetch.return_value = 10
-                mock_dxy_cls.return_value = mock_dxy
+            mock_bond = AsyncMock()
+            mock_bond.fetch.return_value = {"10y": 4.2}
+            mock_bond_cls.return_value = mock_bond
 
-                mock_bond = AsyncMock()
-                mock_bond.fetch.return_value = {"10y": 4.2}
-                mock_bond_cls.return_value = mock_bond
+            mock_fg = AsyncMock()
+            mock_fg.fetch.return_value = {"current_value": 55, "classification": "Neutral"}
+            mock_fg_cls.return_value = mock_fg
 
-                mock_fg = AsyncMock()
-                mock_fg.fetch.return_value = {"current_value": 55, "classification": "Neutral"}
-                mock_fg_cls.return_value = mock_fg
+            mock_eia = AsyncMock()
+            mock_eia.fetch.return_value = {"crude": -1.2}
+            mock_eia_cls.return_value = mock_eia
 
-                mock_eia = AsyncMock()
-                mock_eia.fetch.return_value = {"crude": -1.2}
-                mock_eia_cls.return_value = mock_eia
+            mock_cbw = AsyncMock()
+            mock_cbw.fetch_all.return_value = {"expectations": {"FED": {}}, "yields": {"US": {}}}
+            mock_cbw_cls.return_value = mock_cbw
 
-                mock_cbw = AsyncMock()
-                mock_cbw.fetch_all.return_value = {"expectations": {"FED": {}}, "yields": {"US": {}}}
-                mock_cbw_cls.return_value = mock_cbw
+            mock_fed_liq = AsyncMock()
+            mock_fed_liq.fetch_and_store_liquidity.return_value = {"net_liquidity_billions": 6000.0}
+            mock_fed_liq_cls.return_value = mock_fed_liq
 
-                mock_fed_liq = AsyncMock()
-                mock_fed_liq.fetch_and_store_liquidity.return_value = {"net_liquidity_billions": 6000.0}
-                mock_fed_liq_cls.return_value = mock_fed_liq
+            mock_stress = AsyncMock()
+            mock_stress.fetch_and_store_treasury_auction.return_value = {"value": 4.5}
+            mock_stress.fetch_and_store_credit_and_money_market.return_value = {"oas": 1.2}
+            mock_stress_cls.return_value = mock_stress
 
-                mock_stress = AsyncMock()
-                mock_stress.fetch_and_store_treasury_auction.return_value = {"value": 4.5}
-                mock_stress.fetch_and_store_credit_and_money_market.return_value = {"oas": 1.2}
-                mock_stress_cls.return_value = mock_stress
+            mock_router = AsyncMock()
+            mock_router.ensure_cb_document_available.return_value = True
+            mock_router.ensure_report_available.return_value = True
+            mock_router_cls.return_value = mock_router
 
-                mock_router = AsyncMock()
-                mock_router.ensure_cb_document_available.return_value = True
-                mock_router.ensure_report_available.return_value = True
-                mock_router_cls.return_value = mock_router
+            res = await scheduler.refresh_macro_data()
 
-                res = await scheduler.refresh_macro_data()
-
-                assert "btc_funding" in res
-                assert "binance_sentiment" in res
-                assert "myfxbook_sentiment" in res
-                assert "fxssi_sentiment" in res
-                assert "vix" in res
-                assert "fred" in res
-                assert "cftc" in res
-                assert "dxy" in res
-                assert "bond_yields" in res
-                assert "fear_greed" in res
-                assert "eia_oil" in res
-                assert res["vix"].get("saved") == 5
-                assert res["dxy"].get("saved") == 10
-                assert res["fear_greed"].get("value") == 55
-                assert res["btc_funding"] == {"funding_rate": 0.0001}
+            assert "btc_funding" in res
+            assert "binance_sentiment" in res
+            assert "myfxbook_sentiment" in res
+            assert "fxssi_sentiment" in res
+            assert "vix" in res
+            assert "fred" in res
+            assert "cftc" in res
+            assert "dxy" in res
+            assert "bond_yields" in res
+            assert "fear_greed" in res
+            assert "eia_oil" in res
+            assert res["vix"].get("saved") == 5
+            assert res["dxy"].get("saved") == 10
+            assert res["fear_greed"].get("value") == 55
+            assert res["btc_funding"] == {"funding_rate": 0.0001}
 
     @pytest.mark.asyncio
     async def test_macro_data_scheduler_start_and_stop(self, settings):
@@ -143,4 +143,3 @@ class TestMacroDataScheduler:
         except asyncio.CancelledError:
             pass
         assert scheduler._running is False
-

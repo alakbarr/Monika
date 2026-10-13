@@ -45,11 +45,11 @@ from monika.domain.indicators.factor_primitives import safe_div, ts_mean, ts_std
 )
 def academic_betting_against_beta(df: pd.DataFrame) -> pd.Series:
     ret = pd.Series(df["close"]).pct_change()
-    market_ret = pd.Series(ret.rolling(20).mean()) # Baseline rolling benchmark
+    market_ret = pd.Series(ret.rolling(20).mean())  # Baseline rolling benchmark
     cov = pd.Series(ret.rolling(60).cov(market_ret))
     var = pd.Series(market_ret.rolling(60).var())
     beta = safe_div(cov, var)
-    return - (beta - 1.0)
+    return -(beta - 1.0)
 
 
 # ==============================================================================

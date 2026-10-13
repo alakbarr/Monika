@@ -42,7 +42,7 @@ def compute_trade_invariants(
 ) -> Dict[str, Any]:
     """
     Computes strict deterministic invariants for BUY and SELL scenarios.
-    
+
     Args:
         symbol: Trading instrument (e.g. 'EURUSD', 'XAUUSD')
         current_price: Latest market / candle close price
@@ -55,7 +55,7 @@ def compute_trade_invariants(
         max_adr_sl_pct: Maximum SL distance as fraction of ADR
         tp_adr_min_pct: Minimum TP distance as fraction of ADR
         tp_adr_max_pct: Maximum TP distance as fraction of ADR
-        
+
     Returns:
         Structured dictionary containing exact bounding boxes, candidate anchors, and guidance.
     """
@@ -86,7 +86,7 @@ def compute_trade_invariants(
                 q90_val = float(q90)
                 if q90_val > curr_px:
                     buy_tp_max = max(buy_tp_min, round(min(buy_tp_max, q90_val), prec))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
 
     # --- SELL BOUNDS ---
@@ -108,7 +108,7 @@ def compute_trade_invariants(
                 q10_val = float(q10)
                 if q10_val < curr_px:
                     sell_tp_min = min(sell_tp_max, round(max(sell_tp_min, q10_val), prec))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
 
     # --- EXTRACT DISCRETE STRUCTURAL ANCHORS ---
@@ -126,13 +126,15 @@ def compute_trade_invariants(
                     px_f = float(z_px)
                     dist = abs(px_f - curr_px)
                     if dist <= max_search_dist:
-                        anchors.append({
-                            "type": z.get("type", "SMC_ZONE"),
-                            "price": round(px_f, prec),
-                            "distance_atr": round(dist / atr_val, 2),
-                            "basis": f"SMC {z.get('type', 'Zone')} @ {px_f:.{prec}f}"
-                        })
-                except (ValueError, TypeError):
+                        anchors.append(
+                            {
+                                "type": z.get("type", "SMC_ZONE"),
+                                "price": round(px_f, prec),
+                                "distance_atr": round(dist / atr_val, 2),
+                                "basis": f"SMC {z.get('type', 'Zone')} @ {px_f:.{prec}f}",
+                            }
+                        )
+                except ValueError, TypeError:
                     continue
 
     # Parse S/R zones
@@ -148,13 +150,15 @@ def compute_trade_invariants(
                     px_f = float(px_f)
                     dist = abs(px_f - curr_px)
                     if dist <= max_search_dist:
-                        anchors.append({
-                            "type": "SR_LEVEL",
-                            "price": round(px_f, prec),
-                            "distance_atr": round(dist / atr_val, 2),
-                            "basis": f"S/R Level @ {px_f:.{prec}f}"
-                        })
-                except (ValueError, TypeError):
+                        anchors.append(
+                            {
+                                "type": "SR_LEVEL",
+                                "price": round(px_f, prec),
+                                "distance_atr": round(dist / atr_val, 2),
+                                "basis": f"S/R Level @ {px_f:.{prec}f}",
+                            }
+                        )
+                except ValueError, TypeError:
                     continue
 
     # Sort anchors by distance to current price
@@ -175,15 +179,15 @@ def compute_trade_invariants(
         "buy_bounds": {
             "sl_range": [buy_sl_min, buy_sl_max],
             "tp_range": [buy_tp_min, buy_tp_max],
-            "guidance": f"SL: [{buy_sl_min}..{buy_sl_max}], TP: [{buy_tp_min}..{buy_tp_max}] (>= {min_rr} R:R)"
+            "guidance": f"SL: [{buy_sl_min}..{buy_sl_max}], TP: [{buy_tp_min}..{buy_tp_max}] (>= {min_rr} R:R)",
         },
         "sell_bounds": {
             "sl_range": [sell_sl_min, sell_sl_max],
             "tp_range": [sell_tp_min, sell_tp_max],
-            "guidance": f"SL: [{sell_sl_min}..{sell_sl_max}], TP: [{sell_tp_min}..{sell_tp_max}] (>= {min_rr} R:R)"
+            "guidance": f"SL: [{sell_sl_min}..{sell_sl_max}], TP: [{sell_tp_min}..{sell_tp_max}] (>= {min_rr} R:R)",
         },
         "structural_anchors": unique_anchors[:8],
-        "precision": prec
+        "precision": prec,
     }
 
 
@@ -216,6 +220,8 @@ def format_invariants_for_prompt(invariants: Dict[str, Any]) -> str:
     else:
         lines.append("VALID STRUCTURAL ANCHORS: No immediate zone within 2x ATR. Require extra confirmation.")
 
-    lines.append("MANDATE: Select SL and TP that conform strictly to these pre-computed bounds. Zero manual floating-point math.")
+    lines.append(
+        "MANDATE: Select SL and TP that conform strictly to these pre-computed bounds. Zero manual floating-point math."
+    )
     lines.append("=== END INVARIANTS ===")
     return "\n".join(lines)

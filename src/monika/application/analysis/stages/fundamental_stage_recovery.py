@@ -55,7 +55,9 @@ def recover_fundamental_brief_from_text(
                 validated = SubmitFundamentalBriefSchema.model_validate(parsed).model_dump(
                     exclude_unset=True, mode="json"
                 )
-                logger.info("[FundamentalStageRecovery] Successfully recovered brief directly from embedded JSON block.")
+                logger.info(
+                    "[FundamentalStageRecovery] Successfully recovered brief directly from embedded JSON block."
+                )
                 return validated
         except Exception as e:
             logger.debug("[FundamentalStageRecovery] Embedded JSON parsing failed: %s", e)
@@ -179,9 +181,7 @@ def recover_fundamental_brief_from_text(
     }
 
     try:
-        validated = SubmitFundamentalBriefSchema.model_validate(raw_payload).model_dump(
-            exclude_unset=True, mode="json"
-        )
+        validated = SubmitFundamentalBriefSchema.model_validate(raw_payload).model_dump(exclude_unset=True, mode="json")
         logger.info("[FundamentalStageRecovery] Successfully synthesized validated brief via heuristic extraction.")
         return validated
     except Exception as e:

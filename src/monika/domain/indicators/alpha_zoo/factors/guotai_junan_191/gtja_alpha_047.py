@@ -1,4 +1,3 @@
-
 """GTJA Alpha #47.
 
 Formula: SMA((TSMAX(HIGH,6)-CLOSE)/(TSMAX(HIGH,6)-TSMIN(LOW,6))*100,9,1)
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_047",
-    "theme": ['reversal'],
-    "formula_latex": 'SMA((TSMAX(HIGH,6)-CLOSE)/(TSMAX(HIGH,6)-TSMIN(LOW,6))*100,9,1)',
-    "columns_required": ['close', 'high', 'low'],
+    "theme": ["reversal"],
+    "formula_latex": "SMA((TSMAX(HIGH,6)-CLOSE)/(TSMAX(HIGH,6)-TSMIN(LOW,6))*100,9,1)",
+    "columns_required": ["close", "high", "low"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 9,
     "min_warmup_bars": 10,
-    "notes": 'Williams %R style indicator smoothed with SMA(9,1).',
+    "notes": "Williams %R style indicator smoothed with SMA(9,1).",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]

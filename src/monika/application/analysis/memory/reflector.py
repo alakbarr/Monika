@@ -10,135 +10,163 @@ import monika.core.primitives.clock as clock
 logger = logging.getLogger("TradingAgent.TradeReflector")
 
 LESSON_TAG_TAXONOMY = [
-    'sl_too_tight', 'sl_too_wide', 'premature_entry', 'late_entry',
-    'news_spike_sl_hit', 'spread_widening_sl_hit', 'tp_too_greedy', 'tp_too_conservative',
-    'counter_trend_entry', 'chased_price', 'ignored_priced_in_risk',
-    'correct_macro_wrong_timing', 'correct_timing_wrong_macro', 'regime_misread',
-    'well_executed_setup', 'correlation_overexposure',
+    "sl_too_tight",
+    "sl_too_wide",
+    "premature_entry",
+    "late_entry",
+    "news_spike_sl_hit",
+    "spread_widening_sl_hit",
+    "tp_too_greedy",
+    "tp_too_conservative",
+    "counter_trend_entry",
+    "chased_price",
+    "ignored_priced_in_risk",
+    "correct_macro_wrong_timing",
+    "correct_timing_wrong_macro",
+    "regime_misread",
+    "well_executed_setup",
+    "correlation_overexposure",
 ]
 
 REFLECTION_SCHEMA = {
-    'type': 'object',
-    'properties': {
-        'reflection_text': {'type': 'string'},
-        'lesson_tags': {'type': 'array', 'items': {'type': 'string', 'enum': LESSON_TAG_TAXONOMY}},
-        'specific_lesson': {'type': 'string'},
-        'next_trade_adjustment': {'type': 'string'},
-        'alpha_lesson': {'type': 'string'},
-        'process_was_sound': {
-            'type': 'boolean',
-            'description': (
-                'TRUE if the original decision was logical based on information available AT THAT TIME, '
-                'REGARDLESS of the final outcome. FALSE if the decision was process-flawed (e.g. '
-                'confluence was actually weak, ignored evident red flags).'
+    "type": "object",
+    "properties": {
+        "reflection_text": {"type": "string"},
+        "lesson_tags": {"type": "array", "items": {"type": "string", "enum": LESSON_TAG_TAXONOMY}},
+        "specific_lesson": {"type": "string"},
+        "next_trade_adjustment": {"type": "string"},
+        "alpha_lesson": {"type": "string"},
+        "process_was_sound": {
+            "type": "boolean",
+            "description": (
+                "TRUE if the original decision was logical based on information available AT THAT TIME, "
+                "REGARDLESS of the final outcome. FALSE if the decision was process-flawed (e.g. "
+                "confluence was actually weak, ignored evident red flags)."
             ),
         },
-        'outcome_process_classification': {
-            'type': 'string',
-            'enum': ['good_process_good_outcome', 'good_process_bad_outcome',
-                     'bad_process_good_outcome_lucky', 'bad_process_bad_outcome'],
+        "outcome_process_classification": {
+            "type": "string",
+            "enum": [
+                "good_process_good_outcome",
+                "good_process_bad_outcome",
+                "bad_process_good_outcome_lucky",
+                "bad_process_bad_outcome",
+            ],
         },
-        'macro_thesis_correct': {
-            'type': 'boolean',
-            'description': 'True if core macro thesis proved correct, regardless of trade result'
+        "macro_thesis_correct": {
+            "type": "boolean",
+            "description": "True if core macro thesis proved correct, regardless of trade result",
         },
-        'synthesis_adjudication_sound': {
-            'type': 'boolean',
-            'description': (
-                'TRUE if final synthesis (specialist conflict adjudication, trust_weight assignment, '
-                'debate judge decision) was logical based on specialist reports available AT THAT TIME — '
-                'separate from whether the raw underlying data was accurate.'
-            )
+        "synthesis_adjudication_sound": {
+            "type": "boolean",
+            "description": (
+                "TRUE if final synthesis (specialist conflict adjudication, trust_weight assignment, "
+                "debate judge decision) was logical based on specialist reports available AT THAT TIME — "
+                "separate from whether the raw underlying data was accurate."
+            ),
         },
     },
-    'required': ['reflection_text', 'lesson_tags', 'specific_lesson', 'next_trade_adjustment',
-                 'process_was_sound', 'outcome_process_classification', 'macro_thesis_correct',
-                 'synthesis_adjudication_sound'],
+    "required": [
+        "reflection_text",
+        "lesson_tags",
+        "specific_lesson",
+        "next_trade_adjustment",
+        "process_was_sound",
+        "outcome_process_classification",
+        "macro_thesis_correct",
+        "synthesis_adjudication_sound",
+    ],
 }
+
 
 class TradeReflector:
     def __init__(self, settings: Optional[dict] = None, llm_client: Optional[Any] = None):
         if settings is None:
             import yaml
+
             try:
-                cfg_path = resolve_config_path('settings.yaml')
-                with open(cfg_path, 'r', encoding='utf-8') as f:
+                cfg_path = resolve_config_path("settings.yaml")
+                with open(cfg_path, "r", encoding="utf-8") as f:
                     settings = yaml.safe_load(f)
             except Exception:
                 settings = {}
         self.settings: dict = settings or {}
         self.llm_client = llm_client
-        
+
     async def _fetch_enrichment_context(self, session, reflection) -> dict:
         """Kumpulkan konteks kaya: AssetAnalysis asli + temuan trade_autopsy."""
         enrichment = {}
         try:
             from monika.infrastructure.database.models import AssetAnalysis
+
             ana = await session.get(AssetAnalysis, reflection.analysis_id)
             if ana:
-                enrichment['confluence_score'] = ana.confluence_score
-                enrichment['confluence_factors'] = (
+                enrichment["confluence_score"] = ana.confluence_score
+                enrichment["confluence_factors"] = (
                     json.loads(ana.confluence_factors_json) if ana.confluence_factors_json else []
                 )
                 try:
-                    if hasattr(ana, 'specialist_biases_json') and ana.specialist_biases_json:
-                        enrichment['specialist_biases'] = json.loads(ana.specialist_biases_json)
+                    if hasattr(ana, "specialist_biases_json") and ana.specialist_biases_json:
+                        enrichment["specialist_biases"] = json.loads(ana.specialist_biases_json)
                 except Exception:
                     pass
-                enrichment['priced_in_score'] = ana.priced_in_score
-                enrichment['entry_zone'] = ana.entry_zone
-                enrichment['stop_loss'] = ana.stop_loss
-                enrichment['take_profit'] = ana.take_profit
-                enrichment['invalidation'] = ana.invalidation
-                enrichment['debate_verdict'] = ana.debate_verdict
-                if hasattr(ana, 'debate_bull_thesis') and ana.debate_bull_thesis:
-                    enrichment['debate_bull_thesis'] = ana.debate_bull_thesis[:500]
-                if hasattr(ana, 'debate_bear_dissent') and ana.debate_bear_dissent:
-                    enrichment['debate_bear_dissent'] = ana.debate_bear_dissent[:500]
-                if hasattr(ana, 'risk_multiplier') and ana.risk_multiplier is not None:
-                    enrichment['risk_multiplier_applied'] = ana.risk_multiplier
+                enrichment["priced_in_score"] = ana.priced_in_score
+                enrichment["entry_zone"] = ana.entry_zone
+                enrichment["stop_loss"] = ana.stop_loss
+                enrichment["take_profit"] = ana.take_profit
+                enrichment["invalidation"] = ana.invalidation
+                enrichment["debate_verdict"] = ana.debate_verdict
+                if hasattr(ana, "debate_bull_thesis") and ana.debate_bull_thesis:
+                    enrichment["debate_bull_thesis"] = ana.debate_bull_thesis[:500]
+                if hasattr(ana, "debate_bear_dissent") and ana.debate_bear_dissent:
+                    enrichment["debate_bear_dissent"] = ana.debate_bear_dissent[:500]
+                if hasattr(ana, "risk_multiplier") and ana.risk_multiplier is not None:
+                    enrichment["risk_multiplier_applied"] = ana.risk_multiplier
         except Exception as e:
-            logger.debug(f'AssetAnalysis enrichment fetch failed: {e}')
+            logger.debug(f"AssetAnalysis enrichment fetch failed: {e}")
 
         try:
             from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
-            position_id = getattr(reflection, 'position_id', None)
+
+            position_id = getattr(reflection, "position_id", None)
             if position_id:
-                key = f'autopsy_{reflection.symbol}_{position_id}'
+                key = f"autopsy_{reflection.symbol}_{position_id}"
                 cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
                 if cfg and cfg.value:
                     autopsy_data = json.loads(cfg.value)
-                    enrichment['autopsy_patterns'] = autopsy_data.get('patterns', [])
+                    enrichment["autopsy_patterns"] = autopsy_data.get("patterns", [])
         except Exception as e:
-            logger.debug(f'Autopsy fetch failed: {e}')
+            logger.debug(f"Autopsy fetch failed: {e}")
 
         try:
             from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
-            adv_key = f'adversarial_outcome_{reflection.analysis_id}'
-            adv_cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == adv_key))).scalar_one_or_none()
+
+            adv_key = f"adversarial_outcome_{reflection.analysis_id}"
+            adv_cfg = (
+                await session.execute(select(SystemConfig).where(SystemConfig.key == adv_key))
+            ).scalar_one_or_none()
             if adv_cfg and adv_cfg.value:
                 adv_data = json.loads(adv_cfg.value)
-                enrichment['adversarial_check_verdict'] = {
-                    'hard_block': adv_data.get('hard_block'),
-                    'recommend_block': adv_data.get('recommend_block'),
-                    'quality': adv_data.get('quality'),
+                enrichment["adversarial_check_verdict"] = {
+                    "hard_block": adv_data.get("hard_block"),
+                    "recommend_block": adv_data.get("recommend_block"),
+                    "quality": adv_data.get("quality"),
                 }
         except Exception as e:
-            logger.debug(f'Adversarial verdict fetch for reflection failed (non-fatal): {e}')
+            logger.debug(f"Adversarial verdict fetch for reflection failed (non-fatal): {e}")
 
         try:
             from monika.infrastructure.database.models import VIXData
             from sqlalchemy import select
-            vix_res = await session.execute(
-                select(VIXData).order_by(VIXData.date.desc()).limit(1)
-            )
-            vix_row = vix_res.scalar_one_or_none() if hasattr(vix_res, 'scalar_one_or_none') else None
-            if vix_row and isinstance(getattr(vix_row, 'close', None), (int, float)):
-                enrichment['vix_close'] = float(vix_row.close)
+
+            vix_res = await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))
+            vix_row = vix_res.scalar_one_or_none() if hasattr(vix_res, "scalar_one_or_none") else None
+            if vix_row and isinstance(getattr(vix_row, "close", None), (int, float)):
+                enrichment["vix_close"] = float(vix_row.close)
         except Exception as e:
-            logger.debug(f'VIX context fetch for reflection failed: {e}')
+            logger.debug(f"VIX context fetch for reflection failed: {e}")
 
         return enrichment
 
@@ -150,20 +178,26 @@ class TradeReflector:
         if not isinstance(data, dict):
             return False, "Response was not a valid dictionary structure."
 
-        specific = str(data.get('specific_lesson', '')).strip().lower()
+        specific = str(data.get("specific_lesson", "")).strip().lower()
         if len(specific) < 20:
             return False, "specific_lesson is too terse (<20 characters); provide concrete technical context."
 
         PLATITUDES = [
-            "be more careful", "follow the plan", "bad luck", "market was volatile",
-            "do better next time", "stick to rules", "risk management is important",
-            "sometimes market wins", "just noise"
+            "be more careful",
+            "follow the plan",
+            "bad luck",
+            "market was volatile",
+            "do better next time",
+            "stick to rules",
+            "risk management is important",
+            "sometimes market wins",
+            "just noise",
         ]
         for plat in PLATITUDES:
             if plat in specific:
                 return False, f"specific_lesson contains generic platitude '{plat}'. Must state exact technical rule."
 
-        tags = data.get('lesson_tags', [])
+        tags = data.get("lesson_tags", [])
         if not tags or not isinstance(tags, list):
             return False, "lesson_tags cannot be empty."
 
@@ -171,10 +205,10 @@ class TradeReflector:
         if invalid_tags:
             return False, f"lesson_tags contains invalid tags: {invalid_tags}. Use only LESSON_TAG_TAXONOMY."
 
-        outcome_cls = data.get('outcome_process_classification')
-        if was_profitable is True and outcome_cls in ('good_process_bad_outcome', 'bad_process_bad_outcome'):
+        outcome_cls = data.get("outcome_process_classification")
+        if was_profitable is True and outcome_cls in ("good_process_bad_outcome", "bad_process_bad_outcome"):
             return False, f"Outcome conflict: trade was profitable but classified as '{outcome_cls}'."
-        if was_profitable is False and outcome_cls == 'good_process_good_outcome':
+        if was_profitable is False and outcome_cls == "good_process_good_outcome":
             return False, "Outcome conflict: trade was a loss but classified as 'good_process_good_outcome'."
 
         return True, ""
@@ -197,6 +231,7 @@ class TradeReflector:
         """
         from monika.infrastructure.database.models import DecisionReflection
         from monika.infrastructure.database.safe_ops import safe_commit
+
         try:
             entry = DecisionReflection(
                 analysis_id=analysis_id,
@@ -232,6 +267,7 @@ class TradeReflector:
         """
         from monika.infrastructure.database.models import DecisionReflection
         from monika.infrastructure.database.safe_ops import safe_commit
+
         reflection = await session.get(DecisionReflection, reflection_id)
         if not reflection:
             logger.warning(f"Deferred reflection evaluation: reflection #{reflection_id} not found.")
@@ -248,25 +284,32 @@ class TradeReflector:
 
     async def reflect_on_trade(self, session, reflection_id: int):
         from monika.infrastructure.database.models import DecisionReflection
+
         reflection = await session.get(DecisionReflection, reflection_id)
         if not reflection:
             return
-            
+
         enrichment = await self._fetch_enrichment_context(session, reflection)
         client = self.llm_client or get_client_for_task("trade_reflection", self.settings or {})
-        
-        alpha_text = f"Alpha vs {reflection.benchmark_name}: {reflection.alpha_return:.2f}%" if reflection.benchmark_name and reflection.alpha_return is not None else "No Alpha data."
-        
-        is_whatif = getattr(reflection, 'is_paper_whatif', False)
+
+        alpha_text = (
+            f"Alpha vs {reflection.benchmark_name}: {reflection.alpha_return:.2f}%"
+            if reflection.benchmark_name and reflection.alpha_return is not None
+            else "No Alpha data."
+        )
+
+        is_whatif = getattr(reflection, "is_paper_whatif", False)
         if is_whatif:
             outcome_str = f"Hypothetical Outcome: {'Profitable' if reflection.whatif_direction_correct else 'Loss'} ({reflection.whatif_hypothetical_pnl_pips} pips)"
             exit_str = "Exit Reason: 24h Time Limit (Paper What-If)"
             holding_str = "Holding: 24h"
         else:
-            outcome_str = f"Outcome: {'Profitable' if reflection.was_profitable else 'Loss'} (${reflection.outcome_pnl_usd})"
+            outcome_str = (
+                f"Outcome: {'Profitable' if reflection.was_profitable else 'Loss'} (${reflection.outcome_pnl_usd})"
+            )
             exit_str = f"Exit Reason: {reflection.exit_reason}"
             holding_str = f"Holding: {reflection.holding_hours}h"
-            
+
         user_msg = (
             f"Trade Rationale: {reflection.rationale_summary}\n"
             f"Decision: {reflection.decision} (Confidence: {reflection.confidence})\n"
@@ -274,7 +317,7 @@ class TradeReflector:
             f"{exit_str}\n{holding_str}\n{alpha_text}\n"
             f"Enrichment Data: {json.dumps(enrichment)}"
         )
-        
+
         sys_prompt = (
             "You are an institutional trading post-mortem forensic analyst. Your mission is objective root-cause identification.\n"
             "MANDATORY INSTRUCTIONS:\n"
@@ -283,53 +326,62 @@ class TradeReflector:
             "3. FORENSIC ADJUDICATION: If `adversarial_check_verdict` is present in enrichment data, evaluate whether its adversarial warning was accurate or false alarm, and document this inside `alpha_lesson`.\n"
             "4. SEPARATION OF PROCESS VS OUTCOME: A losing trade can have a sound process, and a winning trade can be bad process (lucky). Classify `outcome_process_classification` honestly."
         )
-        resp = await client.generate_content(system_prompt=sys_prompt, user_message=user_msg,
-                                              response_schema=REFLECTION_SCHEMA)
-        
+        resp = await client.generate_content(
+            system_prompt=sys_prompt, user_message=user_msg, response_schema=REFLECTION_SCHEMA
+        )
+
         try:
             data = json.loads(resp) if isinstance(resp, str) else resp
 
             # Self-Correcting Reflection Critique Loop
             is_valid, critique = self._verify_reflection_quality(data, reflection.was_profitable)
             if not is_valid:
-                logger.warning(f"Reflection critique triggered for #{reflection_id}: {critique}. Requesting self-correction.")
+                logger.warning(
+                    f"Reflection critique triggered for #{reflection_id}: {critique}. Requesting self-correction."
+                )
                 refine_msg = (
                     f"{user_msg}\n\n"
                     f"CRITIQUE ON PREVIOUS DRAFT:\n"
                     f"Your previous reflection was rejected by the audit gate: {critique}\n"
                     f"Provide an improved, strictly concrete reflection with non-generic lessons matching actual outcome."
                 )
-                resp = await client.generate_content(system_prompt=sys_prompt, user_message=refine_msg,
-                                                      response_schema=REFLECTION_SCHEMA)
+                resp = await client.generate_content(
+                    system_prompt=sys_prompt, user_message=refine_msg, response_schema=REFLECTION_SCHEMA
+                )
                 data = json.loads(resp) if isinstance(resp, str) else resp
 
             if isinstance(data, dict):
-                reflection.reflection_text = data.get('reflection_text', '')
-                reflection.lesson_tags = json.dumps(data.get('lesson_tags', []))
-                reflection.specific_lesson = data.get('specific_lesson', '')
-                reflection.next_trade_adjustment = data.get('next_trade_adjustment', '')
-                reflection.alpha_lesson = data.get('alpha_lesson', '')
-                reflection.process_was_sound = data.get('process_was_sound')
-                reflection.outcome_process_classification = data.get('outcome_process_classification')
+                reflection.reflection_text = data.get("reflection_text", "")
+                reflection.lesson_tags = json.dumps(data.get("lesson_tags", []))
+                reflection.specific_lesson = data.get("specific_lesson", "")
+                reflection.next_trade_adjustment = data.get("next_trade_adjustment", "")
+                reflection.alpha_lesson = data.get("alpha_lesson", "")
+                reflection.process_was_sound = data.get("process_was_sound")
+                reflection.outcome_process_classification = data.get("outcome_process_classification")
                 reflection.status = "resolved"
                 reflection.resolved_at = clock.now()
 
                 # Generate and store embedding for semantic precedent search
                 try:
                     from monika.infrastructure.llm.embedding import generate_gemini_embedding
+
                     embed_text = f"Symbol: {reflection.symbol} | Decision: {reflection.decision} | Rationale: {reflection.rationale_summary or ''} | Lesson: {reflection.specific_lesson} | Outcome: {reflection.exit_reason or ''}"
                     vec = await generate_gemini_embedding(embed_text, settings=self.settings)
                     if vec:
                         reflection.embedding = vec
-                        logger.info(f"[TradeReflector] Generated vector embedding ({len(vec)} dim) for reflection #{reflection_id}")
+                        logger.info(
+                            f"[TradeReflector] Generated vector embedding ({len(vec)} dim) for reflection #{reflection_id}"
+                        )
                 except Exception as emb_err:
                     logger.debug(f"[TradeReflector] Embedding generation non-fatal error: {emb_err}")
         except Exception as e:
             logger.error(f"Reflector JSON Parse Error: {e}")
         from monika.infrastructure.database.safe_ops import safe_commit
+
         await safe_commit(session, label="trade_reflector")
         try:
             from monika.infrastructure.database.event_store import TradingEventStore
+
             await TradingEventStore.emit(
                 session=session,
                 event_type="learning.reflection",
@@ -346,10 +398,11 @@ class TradeReflector:
             pass
 
         # Subsystem 6: Dual-Branch Closed-Loop Memory (Win -> Playbook Promotion, Loss -> Negative Constraint)
-        if getattr(reflection, 'was_profitable', False):
+        if getattr(reflection, "was_profitable", False):
             # Branch A: Win -> Skill Crystallization & Playbook Promotion
             try:
                 from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
+
                 crystallizer = SkillCrystallizer(self.settings)
                 await crystallizer.evaluate_and_crystallize(session, symbol=reflection.symbol)
             except Exception as cry_err:
@@ -383,10 +436,12 @@ class TradeReflector:
 
                 session.add(SystemConfig(key=constraint_key, value=json.dumps(constraint_payload)))
                 from monika.infrastructure.database.safe_ops import safe_commit
+
                 await safe_commit(session, label="negative_constraint_save")
 
                 try:
                     from monika.infrastructure.database.event_store import TradingEventStore
+
                     await TradingEventStore.emit(
                         session=session,
                         event_type="learning.negative_constraint",
@@ -397,6 +452,8 @@ class TradeReflector:
                 except Exception:
                     pass
 
-                logger.info(f"[TradeReflector] Generated and stored Negative Constraint for {reflection.symbol}: {constraint_text}")
+                logger.info(
+                    f"[TradeReflector] Generated and stored Negative Constraint for {reflection.symbol}: {constraint_text}"
+                )
             except Exception as neg_err:
                 logger.debug(f"Negative constraint generation error (non-fatal): {neg_err}")

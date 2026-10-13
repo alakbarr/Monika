@@ -1,4 +1,3 @@
-
 """GTJA Alpha #13.
 
 Formula: (((HIGH*LOW)^0.5) - VWAP)
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_013",
-    "theme": ['microstructure'],
-    "formula_latex": '(((HIGH*LOW)^0.5) - VWAP)',
-    "columns_required": ['high', 'low', 'volume', 'amount'],
+    "theme": ["microstructure"],
+    "formula_latex": "(((HIGH*LOW)^0.5) - VWAP)",
+    "columns_required": ["high", "low", "volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 1,
     "min_warmup_bars": 1,
-    "notes": 'Geometric mean of high/low minus vwap.',
+    "notes": "Geometric mean of high/low minus vwap.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     h = panel["high"]

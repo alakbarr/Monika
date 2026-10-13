@@ -1,6 +1,7 @@
 """
 Unit tests for indicators/regime_detector.py (SchmittRegimeDetector hysteresis transitions).
 """
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -21,9 +22,7 @@ def test_schmitt_regime_detector_transitions():
 
     # 2. Highly correlated crisis regime -> density = 1.0 -> transitions to FUSED
     base_shock = np.random.normal(0, 1, 30)
-    df_fused = pd.DataFrame({
-        f"asset_{i}": base_shock + np.random.normal(0, 0.05, 30) for i in range(4)
-    }, index=dates)
+    df_fused = pd.DataFrame({f"asset_{i}": base_shock + np.random.normal(0, 0.05, 30) for i in range(4)}, index=dates)
     state = detector.update(df_fused)
     assert state == RegimeState.FUSED
 

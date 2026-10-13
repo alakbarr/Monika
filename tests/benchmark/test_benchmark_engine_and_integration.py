@@ -43,6 +43,7 @@ from logging_observability.dashboard.routes.benchmark import benchmark_router
 # 1. Fixture Loader Tests
 # ==========================================
 
+
 def test_fixture_loader_market_snapshot():
     # Load market snapshot
     snapshot = get_synthetic_market_snapshot()
@@ -86,6 +87,7 @@ def test_fixture_loader_fallback_on_unknown():
 # 2. System One Deterministic Scorer Tests
 # ==========================================
 
+
 def test_system_one_calibration_calculation():
     # Perfect high confidence matches True
     output_good = {"should_run": True, "confidence": 0.95}
@@ -120,7 +122,7 @@ def test_system_one_full_scoring_perfect():
         "bias": "BULLISH",
         "should_run_confidence_min": 0.80,
     }
-    
+
     score_result = score_system_one(
         output=output,
         expected=expected,
@@ -128,7 +130,7 @@ def test_system_one_full_scoring_perfect():
         questions=[{"name": "should_run"}, {"name": "bias"}],
         target_latency_ms=100.0,
     )
-    
+
     assert score_result["overall_score"] >= 9.0
     assert score_result["accuracy_score"] == 10.0
     assert score_result["latency_score"] == 10.0
@@ -142,14 +144,14 @@ def test_system_one_full_scoring_mismatch():
         "should_run": True,
         "bias": "BULLISH",
     }
-    
+
     score_result = score_system_one(
         output=output,
         expected=expected,
         latency_s=0.800,
         questions=[{"name": "should_run"}, {"name": "bias"}],
     )
-    
+
     assert score_result["accuracy_score"] == 0.0
     assert score_result["latency_score"] < 3.0
     assert score_result["overall_score"] < 4.0
@@ -197,6 +199,7 @@ def test_system_one_ordinal_proximity_scoring():
 # 3. Model Registry & Tiers Tests
 # ==========================================
 
+
 def test_model_registry_candidates_and_tiers():
     all_models = get_candidate_models()
     assert len(all_models) >= 10
@@ -210,7 +213,7 @@ def test_model_registry_candidates_and_tiers():
             "tiers": {
                 "system_one": {"models": ["jev-latest", "jev-1.13"]},
                 "cheap_efficient": {"models": ["gemini-3.5-flash-lite", "groq-compound-mini"]},
-                "high_intelligence": {"models": ["claude-opus-5", "gemini-3.1-pro-preview"]}
+                "high_intelligence": {"models": ["claude-opus-5", "gemini-3.1-pro-preview"]},
             }
         }
     }
@@ -242,6 +245,7 @@ def test_make_role_config():
 # ==========================================
 # 4. Task Specs: Full 45 Tasks Coverage Test
 # ==========================================
+
 
 @pytest.mark.asyncio
 async def test_all_task_specs_and_fixture_cases():
@@ -287,6 +291,7 @@ async def test_all_task_specs_and_fixture_cases():
 # 5. Dashboard Routes REST API Tests
 # ==========================================
 
+
 @pytest.fixture
 def test_client():
     app = FastAPI()
@@ -325,11 +330,14 @@ def test_api_get_runs_and_leaderboard_empty_or_mocked(test_client):
     class MockAsyncSessionCM:
         async def __aenter__(self):
             m = MagicMock()
-            m.execute = AsyncMock(return_value=MagicMock(
-                scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
-                scalar_one_or_none=MagicMock(return_value=None),
-            ))
+            m.execute = AsyncMock(
+                return_value=MagicMock(
+                    scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
+                    scalar_one_or_none=MagicMock(return_value=None),
+                )
+            )
             return m
+
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return None
 
@@ -374,10 +382,13 @@ def test_api_get_compare_task_benchmarks(test_client):
     class MockAsyncSessionCM:
         async def __aenter__(self):
             m = MagicMock()
-            m.execute = AsyncMock(return_value=MagicMock(
-                scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[MockResult()]))),
-            ))
+            m.execute = AsyncMock(
+                return_value=MagicMock(
+                    scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[MockResult()]))),
+                )
+            )
             return m
+
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return None
 
@@ -397,6 +408,7 @@ def test_api_get_compare_task_benchmarks(test_client):
 
 def test_benchmark_result_columns():
     from benchmark.db_models import BenchmarkResult
+
     cols = [c.name for c in BenchmarkResult.__table__.columns]
     assert "cached_tokens" in cols
     assert "cost_usd_no_cache" in cols
@@ -412,6 +424,7 @@ async def test_all_53_roles_case_builder_with_fixtures():
     from benchmark.task_specs import TASKS
 
     from pathlib import Path
+
     cfg_path = Path("trading-agent/config/settings.yaml")
     if not cfg_path.exists():
         cfg_path = Path("config/settings.yaml")
@@ -445,6 +458,7 @@ def test_rich_payload_generators():
         get_synthetic_macro_anomaly_payload,
         get_synthetic_sentiment_feed_payload,
     )
+
     comp = get_synthetic_compaction_payload()
     assert len(comp) > 5000
     assert "SOVEREIGN BOND YIELD CURVE" in comp
@@ -465,5 +479,3 @@ def test_rich_payload_generators():
     sentiment = get_synthetic_sentiment_feed_payload()
     assert len(sentiment) > 2000
     assert "GOLDMAN SACHS" in sentiment
-
-

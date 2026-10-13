@@ -5,21 +5,25 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
 from analysis.tools.tool_executor import ToolExecutor
 from database.models import (
-    EconomicCalendar, TechnicalIndicator, PriceOHLCV, 
-    FundamentalBrief, SystemConfig, AssetAnalysis
+    EconomicCalendar,
+    TechnicalIndicator,
+    PriceOHLCV,
+    FundamentalBrief,
+    SystemConfig,
+    AssetAnalysis,
 )
 
-class TestToolExecutor:
 
+class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_execute_success(self):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         executor = ToolExecutor(mock_session)
-        
+
         executor._tool_test_tool = AsyncMock(return_value={"status": "ok"})
         result = await executor.execute("test_tool", {"a": 1})
-        
+
         assert result == {"status": "ok"}
         executor._tool_test_tool.assert_awaited_once_with({"a": 1})
 
@@ -28,7 +32,7 @@ class TestToolExecutor:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         executor = ToolExecutor(mock_session)
-        
+
         result = await executor.execute("non_existent", {})
         assert "error" in result
         assert result["error_type"] == "UnknownToolError"
@@ -69,10 +73,10 @@ class TestToolExecutor:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         executor = ToolExecutor(mock_session)
-        
+
         executor._tool_test_tool = AsyncMock(side_effect=Exception("Test error"))
         result = await executor.execute("test_tool", {})
-        
+
         assert "error" in result
         assert "Test error" in result["error"]
         assert result["tool"] == "test_tool"
@@ -91,14 +95,22 @@ class TestToolExecutor:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         executor = ToolExecutor(mock_session)
-        
+
         mock_result = MagicMock()
-        ev1 = EconomicCalendar(event_name="NFP", currency="USD", impact="high", actual=None, forecast=None, previous=None, event_time=datetime.now(timezone.utc))
+        ev1 = EconomicCalendar(
+            event_name="NFP",
+            currency="USD",
+            impact="high",
+            actual=None,
+            forecast=None,
+            previous=None,
+            event_time=datetime.now(timezone.utc),
+        )
         mock_result.scalars().all.return_value = [ev1]
         mock_session.execute = AsyncMock(return_value=mock_result)
-        
+
         res = await executor._tool_get_economic_calendar({"impact_filter": "high", "currency_filter": "USD,EUR"})
-        
+
         assert res["count"] == 1
         assert "NFP" in res["events"][0]["event_name"]
         assert res["events"][0]["currency"] == "USD"
@@ -110,54 +122,65 @@ class TestToolExecutor:
         mock_session.commit = AsyncMock()
         mock_session.refresh = AsyncMock()
         executor = ToolExecutor(mock_session)
-        
+
         executor.called_tools.add("get_dxy")
         executor.called_tools.add("get_vix")
-        
+
         def assign_id(brief):
             brief.id = 55
-            
+
         mock_session.refresh.side_effect = assign_id
-        
+
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_result.scalar.return_value = 0
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
-        
-        res = await executor._tool_submit_fundamental_brief({
-            "macro_narrative": "test DXY is up, VIX is down",
-            "currency_bias": {"USD": "bullish", "EUR": "bearish", "GBP": "neutral", "JPY": "neutral", "AUD": "neutral", "XAU": "bearish", "OIL": "bearish", "BTC": "bullish"},
-            "key_upcoming_risks": [],
-            "risk_sentiment": "risk-on",
-            "macro_regime": "mixed",
-            "confidence": 0.8,
-            "invalidation_conditions": {
-                "USD": "dxy drops below 103 level and stays there for more than 2 days",
-                "EUR": "ecb cuts rates by 50bps and indicates more cuts are coming",
-                "XAU": "yields surge above 4.5% and stay elevated through the week",
-                "OIL": "demand drops by 100k bpd according to the next eia report",
-                "BTC": "etf outflows > 1B and regulatory scrutiny increases significantly"
-            },
-            "currency_confidence": {"USD": 0.8, "EUR": 0.7, "XAU": 0.9, "OIL": 0.6, "BTC": 0.75},
-            "strongest_counter_thesis": "This is a sufficiently long counter thesis string that will pass the length validation check required by the system.",
-            "checklist": {"bias_vs_narrative_match": True, "contradiction_existed": False},
-            "key_data_points_used": {
-                "dxy_trend_5d": "strengthening +0.8%",
-                "vix_close": 15.5,
-                "fedwatch_dominant_pct": 85.0
-            },
-            "priced_in_assessment": {
-                "dominant_driver": "Fed rate cut expectations",
-                "priced_in_score": 8,
-                "sell_the_news_risk": "high",
-                "key_unpriced_drivers": ["ECB surprise"],
-                "upcoming_event_context": "FOMC in 12h, 87% cut probability.",
-                "cot_positioning_percentile": 80,
-                "retail_sentiment_percentile": 20
+
+        res = await executor._tool_submit_fundamental_brief(
+            {
+                "macro_narrative": "test DXY is up, VIX is down",
+                "currency_bias": {
+                    "USD": "bullish",
+                    "EUR": "bearish",
+                    "GBP": "neutral",
+                    "JPY": "neutral",
+                    "AUD": "neutral",
+                    "XAU": "bearish",
+                    "OIL": "bearish",
+                    "BTC": "bullish",
+                },
+                "key_upcoming_risks": [],
+                "risk_sentiment": "risk-on",
+                "macro_regime": "mixed",
+                "confidence": 0.8,
+                "invalidation_conditions": {
+                    "USD": "dxy drops below 103 level and stays there for more than 2 days",
+                    "EUR": "ecb cuts rates by 50bps and indicates more cuts are coming",
+                    "XAU": "yields surge above 4.5% and stay elevated through the week",
+                    "OIL": "demand drops by 100k bpd according to the next eia report",
+                    "BTC": "etf outflows > 1B and regulatory scrutiny increases significantly",
+                },
+                "currency_confidence": {"USD": 0.8, "EUR": 0.7, "XAU": 0.9, "OIL": 0.6, "BTC": 0.75},
+                "strongest_counter_thesis": "This is a sufficiently long counter thesis string that will pass the length validation check required by the system.",
+                "checklist": {"bias_vs_narrative_match": True, "contradiction_existed": False},
+                "key_data_points_used": {
+                    "dxy_trend_5d": "strengthening +0.8%",
+                    "vix_close": 15.5,
+                    "fedwatch_dominant_pct": 85.0,
+                },
+                "priced_in_assessment": {
+                    "dominant_driver": "Fed rate cut expectations",
+                    "priced_in_score": 8,
+                    "sell_the_news_risk": "high",
+                    "key_unpriced_drivers": ["ECB surprise"],
+                    "upcoming_event_context": "FOMC in 12h, 87% cut probability.",
+                    "cot_positioning_percentile": 80,
+                    "retail_sentiment_percentile": 20,
+                },
             }
-        })
-        
+        )
+
         assert res["status"] == "saved"
         assert "valid_until" in res
         mock_session.add.assert_called_once()
@@ -170,48 +193,52 @@ class TestToolExecutor:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         executor = ToolExecutor(mock_session)
-        
+
         now = datetime.now(timezone.utc)
         mock_ts_result = MagicMock()
         mock_ts_result.scalars().all.return_value = [now]
-        
+
         mock_rows_result = MagicMock()
         ind1 = TechnicalIndicator(indicator_name="RSI", timestamp=now, value_json=json.dumps(60.5))
         mock_rows_result.scalars().all.return_value = [ind1]
-        
+
         mock_session.execute = AsyncMock(side_effect=[mock_ts_result, mock_rows_result])
-        
+
         res = await executor._tool_get_technical_indicators({"symbol": "XAUUSD", "timeframe": "H4"})
-        
+
         assert res["symbol"] == "XAUUSD"
         assert res["indicators"]["RSI"]["value"] == 60.5
 
     @pytest.mark.asyncio
-    @patch('analysis.calculators.confluence_calculator.calculate_confluence', new_callable=AsyncMock)
+    @patch("analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
     async def test_submit_asset_analysis_validation_failure(self, mock_calc_conf):
         mock_calc_conf.return_value = {"computed_score": 0}
-        
+
         mock_session = create_mock_async_session()
         mock_ts = MagicMock()
         mock_ts.scalar_one_or_none.return_value = datetime.now(timezone.utc)
+
         def execute_side_effect(*args, **kwargs):
             query = str(args[0]).lower()
-            if 'price_ohlcv' in query and 'timestamp' in query:
+            if "price_ohlcv" in query and "timestamp" in query:
                 return mock_ts
-            elif 'technical_indicators' in query and 'timestamp' in query:
+            elif "technical_indicators" in query and "timestamp" in query:
                 return mock_ts
             empty = MagicMock()
             empty.scalar_one_or_none.return_value = None
             return empty
+
         mock_session.execute = AsyncMock(side_effect=execute_side_effect)
-        
+
         executor = ToolExecutor(mock_session)
-        res = await executor._tool_submit_asset_analysis({
-            "symbol": "XAUUSD",
-            "decision": "buy",
-            # missing required fields
-        })
-        
+        res = await executor._tool_submit_asset_analysis(
+            {
+                "symbol": "XAUUSD",
+                "decision": "buy",
+                # missing required fields
+            }
+        )
+
         assert res["status"] == "validation_failed"
         assert len(res["errors"]) > 0
 
@@ -224,45 +251,101 @@ class TestToolExecutor:
 
         # 2. Other structural and parameter errors
         assert ToolExecutor._classify_validation_errors(["stop_loss MUST be greater than 0."]) == "STRUCTURAL"
-        assert ToolExecutor._classify_validation_errors(["TP too close for intraday-range strategy: distance=0.00100 < minimum band 0.00200"]) == "STRUCTURAL"
-        assert ToolExecutor._classify_validation_errors(["SL too wide for intraday-range strategy: distance=0.00500 > maximum allowed 0.00350"]) == "STRUCTURAL"
-        assert ToolExecutor._classify_validation_errors(["R:R ratio 0.95 is below minimum 1.3 required for positive expected value."]) == "STRUCTURAL"
-        assert ToolExecutor._classify_validation_errors(["Risk-to-Reward ratio 1.10 is below minimum required 1.30"]) == "STRUCTURAL"
-        assert ToolExecutor._classify_validation_errors(["SSVP ADJUDICATION REQUIRED: CDS is 0.35. You must explicitly acknowledge and adjudicate..."]) == "STRUCTURAL"
-        assert ToolExecutor._classify_validation_errors(["SPECIALIST DISAGREEMENT UNRESOLVED: You MUST explicitly fill the 'specialist_adjudication' field"]) == "STRUCTURAL"
+        assert (
+            ToolExecutor._classify_validation_errors(
+                ["TP too close for intraday-range strategy: distance=0.00100 < minimum band 0.00200"]
+            )
+            == "STRUCTURAL"
+        )
+        assert (
+            ToolExecutor._classify_validation_errors(
+                ["SL too wide for intraday-range strategy: distance=0.00500 > maximum allowed 0.00350"]
+            )
+            == "STRUCTURAL"
+        )
+        assert (
+            ToolExecutor._classify_validation_errors(
+                ["R:R ratio 0.95 is below minimum 1.3 required for positive expected value."]
+            )
+            == "STRUCTURAL"
+        )
+        assert (
+            ToolExecutor._classify_validation_errors(["Risk-to-Reward ratio 1.10 is below minimum required 1.30"])
+            == "STRUCTURAL"
+        )
+        assert (
+            ToolExecutor._classify_validation_errors(
+                ["SSVP ADJUDICATION REQUIRED: CDS is 0.35. You must explicitly acknowledge and adjudicate..."]
+            )
+            == "STRUCTURAL"
+        )
+        assert (
+            ToolExecutor._classify_validation_errors(
+                ["SPECIALIST DISAGREEMENT UNRESOLVED: You MUST explicitly fill the 'specialist_adjudication' field"]
+            )
+            == "STRUCTURAL"
+        )
 
         # 3. Gate errors
-        assert ToolExecutor._classify_validation_errors(["VOLATILITY REGIME GATE: Bollinger chop detected — no confirmed breakout. Submit WAIT."]) == "GATE"
-        assert ToolExecutor._classify_validation_errors(["ENTRY BLOCKED: only 15% of today's typical ADR range remains"]) == "GATE"
-        assert ToolExecutor._classify_validation_errors(["SSVP BLOCKED: Context Discrepancy Score (0.70) >= 0.65. You MUST submit a 'wait' decision"]) == "GATE"
+        assert (
+            ToolExecutor._classify_validation_errors(
+                ["VOLATILITY REGIME GATE: Bollinger chop detected — no confirmed breakout. Submit WAIT."]
+            )
+            == "GATE"
+        )
+        assert (
+            ToolExecutor._classify_validation_errors(["ENTRY BLOCKED: only 15% of today's typical ADR range remains"])
+            == "GATE"
+        )
+        assert (
+            ToolExecutor._classify_validation_errors(
+                ["SSVP BLOCKED: Context Discrepancy Score (0.70) >= 0.65. You MUST submit a 'wait' decision"]
+            )
+            == "GATE"
+        )
 
         # 4. Fatal errors (market data missing / disconnected)
-        assert ToolExecutor._classify_validation_errors(["No H4 technical indicators found for EURUSD. Submit WAIT instead."]) == "FATAL"
-        assert ToolExecutor._classify_validation_errors(["H4 technical indicators for EURUSD are 6.0h old (limit: 5.0h). RSI/MACD/ATR values are stale — MT5 may be disconnected."]) == "FATAL"
-        assert ToolExecutor._classify_validation_errors(["ATR_14 data unavailable for EURUSD/H4 and 30-day average fallback also failed."]) == "FATAL"
+        assert (
+            ToolExecutor._classify_validation_errors(
+                ["No H4 technical indicators found for EURUSD. Submit WAIT instead."]
+            )
+            == "FATAL"
+        )
+        assert (
+            ToolExecutor._classify_validation_errors(
+                [
+                    "H4 technical indicators for EURUSD are 6.0h old (limit: 5.0h). RSI/MACD/ATR values are stale — MT5 may be disconnected."
+                ]
+            )
+            == "FATAL"
+        )
+        assert (
+            ToolExecutor._classify_validation_errors(
+                ["ATR_14 data unavailable for EURUSD/H4 and 30-day average fallback also failed."]
+            )
+            == "FATAL"
+        )
 
         # 5. Threshold errors
-        assert ToolExecutor._classify_validation_errors(["confluence_score 5 is below the required threshold 7"]) == "THRESHOLD"
+        assert (
+            ToolExecutor._classify_validation_errors(["confluence_score 5 is below the required threshold 7"])
+            == "THRESHOLD"
+        )
 
     @pytest.mark.asyncio
-    @patch('analysis.calculators.confluence_calculator.calculate_confluence', new_callable=AsyncMock)
+    @patch("analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
     async def test_submit_asset_analysis_success(self, mock_calc_conf):
-        mock_calc_conf.return_value = {
-            "computed_score": 8,
-            "max_score": 14,
-            "components": [],
-            "issues": []
-        }
-        
+        mock_calc_conf.return_value = {"computed_score": 8, "max_score": 14, "components": [], "issues": []}
+
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
         executor = ToolExecutor(mock_session)
-        
+
         mock_brief_result = MagicMock()
         mock_brief_result.scalar_one_or_none.return_value = 11
-        
+
         mock_price = MagicMock()
         mock_price.scalar_one_or_none.return_value.close = 2025.0
 
@@ -271,13 +354,13 @@ class TestToolExecutor:
 
         mock_ts = MagicMock()
         mock_ts.scalar_one_or_none.return_value = datetime.now(timezone.utc)
-        
+
         mock_cfg = MagicMock()
         mock_cfg.scalar_one_or_none.return_value = None
 
         mock_brief = MagicMock()
         mock_brief.scalar_one_or_none.return_value = 11
-        
+
         mock_fvg = MagicMock()
         mock_fvg.scalars.return_value.all.return_value = []
         mock_ob = MagicMock()
@@ -287,30 +370,30 @@ class TestToolExecutor:
 
         def execute_side_effect(*args, **kwargs):
             query = str(args[0]).lower()
-            if 'max(' in query or 'min(' in query:
+            if "max(" in query or "min(" in query:
                 return mock_ts
-            elif 'price_ohlcv' in query:
+            elif "price_ohlcv" in query:
                 return mock_price
-            elif 'technical_indicators' in query and 'timestamp' in query and 'indicator_name' not in query:
+            elif "technical_indicators" in query and "timestamp" in query and "indicator_name" not in query:
                 return mock_ts
-            elif 'technical_indicators' in query:
+            elif "technical_indicators" in query:
                 return mock_atr
-            elif 'system_config' in query:
+            elif "system_config" in query:
                 return mock_cfg
-            elif 'fundamental_briefs' in query:
+            elif "fundamental_briefs" in query:
                 return mock_brief
-            elif 'fvg_zones' in query:
+            elif "fvg_zones" in query:
                 return mock_fvg
-            elif 'order_blocks' in query:
+            elif "order_blocks" in query:
                 return mock_ob
-            elif 'swing_points' in query:
+            elif "swing_points" in query:
                 return mock_swings
-            elif 'sr_zones' in query:
+            elif "sr_zones" in query:
                 return mock_swings
             return mock_brief
 
         mock_session.execute = AsyncMock(side_effect=execute_side_effect)
-        
+
         def assign_id():
             for obj in mock_session.add.call_args_list:
                 if isinstance(obj[0][0], AssetAnalysis):
@@ -318,45 +401,49 @@ class TestToolExecutor:
 
         mock_session.flush.side_effect = assign_id
 
-        res = await executor._tool_submit_asset_analysis({
-            "symbol": "XAUUSD",
-            "decision": "buy",
-            "confidence": 0.9,
-            "confluence_score": 8,
-            "priced_in_score": 5,
-            "confluence_factors": ["fundamental_bias", "d1_trend", "near_fvg", "near_order_block"],
-            "entry_condition": {
-                "type": "market",
-                "detail": "Enter market price now"
-            },
-            "stop_loss": 1950.0,
-            "take_profit": 2200.0,
-            "rationale": "Looks good",
-            "invalidation": "Price drops below 1950",
-            "invalidation_price": 1950.0,
-            "invalidation_direction": "below",
-            "reevaluation_trigger": {"type": "price_level", "detail": "Price stalls at 2100", "price": 2100.0, "direction": "below"}
-        })
-        
+        res = await executor._tool_submit_asset_analysis(
+            {
+                "symbol": "XAUUSD",
+                "decision": "buy",
+                "confidence": 0.9,
+                "confluence_score": 8,
+                "priced_in_score": 5,
+                "confluence_factors": ["fundamental_bias", "d1_trend", "near_fvg", "near_order_block"],
+                "entry_condition": {"type": "market", "detail": "Enter market price now"},
+                "stop_loss": 1950.0,
+                "take_profit": 2200.0,
+                "rationale": "Looks good",
+                "invalidation": "Price drops below 1950",
+                "invalidation_price": 1950.0,
+                "invalidation_direction": "below",
+                "reevaluation_trigger": {
+                    "type": "price_level",
+                    "detail": "Price stalls at 2100",
+                    "price": 2100.0,
+                    "direction": "below",
+                },
+            }
+        )
+
         assert res["status"] == "saved"
         assert res["analysis_id"] == 101
         assert res["symbol"] == "XAUUSD"
         assert res["decision"] == "buy"
-        
+
         # Called at least once for analysis
         assert mock_session.add.call_count >= 1
 
     @pytest.mark.asyncio
-    @patch('analysis.calculators.confluence_calculator.calculate_confluence', new_callable=AsyncMock)
+    @patch("analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
     async def test_submit_asset_analysis_session_idempotent_update(self, mock_calc_conf):
         """Test that retrying within the same ToolExecutor instance updates existing analysis."""
         mock_calc_conf.return_value = {"computed_score": 8, "max_score": 14, "components": [], "issues": []}
-        
+
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
-        
+
         mock_ts = MagicMock()
         mock_ts.scalar_one_or_none.return_value = datetime.now(timezone.utc)
         mock_price = MagicMock()
@@ -368,15 +455,15 @@ class TestToolExecutor:
 
         def execute_side_effect(*args, **kwargs):
             query = str(args[0]).lower()
-            if 'max(' in query or 'min(' in query:
+            if "max(" in query or "min(" in query:
                 return mock_ts
-            elif 'price_ohlcv' in query:
+            elif "price_ohlcv" in query:
                 return mock_price
-            elif 'technical_indicators' in query and 'timestamp' in query and 'indicator_name' not in query:
+            elif "technical_indicators" in query and "timestamp" in query and "indicator_name" not in query:
                 return mock_ts
-            elif 'technical_indicators' in query:
+            elif "technical_indicators" in query:
                 return mock_atr
-            elif 'fundamental_briefs' in query:
+            elif "fundamental_briefs" in query:
                 return mock_brief
             empty = MagicMock()
             empty.scalars.return_value.all.return_value = []
@@ -384,8 +471,9 @@ class TestToolExecutor:
             return empty
 
         mock_session.execute = AsyncMock(side_effect=execute_side_effect)
-        
+
         saved_obj = None
+
         def assign_id():
             nonlocal saved_obj
             for obj in mock_session.add.call_args_list:
@@ -397,7 +485,7 @@ class TestToolExecutor:
         mock_session.get.side_effect = lambda model, pk: saved_obj if pk == 101 else None
 
         executor = ToolExecutor(mock_session)
-        
+
         payload = {
             "symbol": "XAUUSD",
             "decision": "buy",
@@ -412,12 +500,17 @@ class TestToolExecutor:
             "invalidation": "Price drops below 1950",
             "invalidation_price": 1950.0,
             "invalidation_direction": "below",
-            "reevaluation_trigger": {"type": "price_level", "detail": "Price stalls", "price": 2100.0, "direction": "below"}
+            "reevaluation_trigger": {
+                "type": "price_level",
+                "detail": "Price stalls",
+                "price": 2100.0,
+                "direction": "below",
+            },
         }
         res1 = await executor._tool_submit_asset_analysis(payload)
         assert res1["status"] == "saved"
         assert res1["analysis_id"] == 101
-        assert mock_session.add.call_count == 2 # 1 AssetAnalysis + 1 TradeTrigger
+        assert mock_session.add.call_count == 2  # 1 AssetAnalysis + 1 TradeTrigger
 
         # Second call in SAME session (e.g. retry / fallback model)
         payload["rationale"] = "Updated rationale after tool retry"
@@ -430,32 +523,32 @@ class TestToolExecutor:
         assert mock_session.add.call_count == 2
 
     @pytest.mark.asyncio
-    @patch('analysis.calculators.confluence_calculator.calculate_confluence', new_callable=AsyncMock)
+    @patch("analysis.calculators.confluence_calculator.calculate_confluence", new_callable=AsyncMock)
     async def test_submit_asset_analysis_cancels_superseded_triggers(self, mock_calc_conf):
         """Test that submitting a new analysis cancels older pending triggers for the same symbol."""
         mock_calc_conf.return_value = {"computed_score": 8, "max_score": 14, "components": [], "issues": []}
-        
+
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
-        
+
         # Mock execution for queries:
         # prev_pending_stmt query returns [10, 11] (two old pending triggers)
         mock_prev_triggers = MagicMock()
         mock_prev_triggers.scalars.return_value.all.return_value = [10, 11]
-        
+
         def execute_side_effect(*args, **kwargs):
             query = str(args[0]).lower()
-            if 'trade_triggers' in query and 'select' in query:
+            if "trade_triggers" in query and "select" in query:
                 return mock_prev_triggers
             empty = MagicMock()
             empty.scalars.return_value.all.return_value = []
             empty.scalar_one_or_none.return_value = None
             return empty
-            
+
         mock_session.execute = AsyncMock(side_effect=execute_side_effect)
-        
+
         executor = ToolExecutor(mock_session)
         payload = {
             "symbol": "EURUSD",
@@ -465,7 +558,13 @@ class TestToolExecutor:
             "priced_in_score": 3,
             "rationale": "Waiting for pullback",
             "invalidation": "Price breaks above 1.0950",
-            "reevaluation_trigger": {"type": "price_level", "detail": "Pullback to 1.0850", "price": 1.0850, "direction": "below", "symbol": "EURUSD"}
+            "reevaluation_trigger": {
+                "type": "price_level",
+                "detail": "Pullback to 1.0850",
+                "price": 1.0850,
+                "direction": "below",
+                "symbol": "EURUSD",
+            },
         }
         res = await executor._tool_submit_asset_analysis(payload)
         assert res["status"] == "saved"
@@ -569,10 +668,10 @@ class TestToolExecutor:
         mock_session.commit = AsyncMock()
         mock_session.refresh = AsyncMock()
         executor = ToolExecutor(mock_session)
-        
+
         executor.called_tools.add("get_dxy")
         executor.called_tools.add("get_vix")
-    
+
         def assign_id(brief):
             brief.id = 77
 
@@ -590,33 +689,44 @@ class TestToolExecutor:
             "key_unpriced_drivers": ["ECB surprise"],
             "upcoming_event_context": "FOMC in 12h, 87% cut probability.",
             "cot_positioning_percentile": 80,
-            "retail_sentiment_percentile": 20
+            "retail_sentiment_percentile": 20,
         }
 
-        res = await executor._tool_submit_fundamental_brief({
-            "macro_narrative": "test narrative with DXY and VIX mentioned",
-            "currency_bias": {"USD": "bearish", "EUR": "bullish", "GBP": "neutral", "JPY": "neutral", "AUD": "neutral", "XAU": "bullish", "OIL": "bearish", "BTC": "bullish"},
-            "key_upcoming_risks": [],
-            "risk_sentiment": "risk-on",
-            "macro_regime": "mixed",
-            "confidence": 0.75,
-            "invalidation_conditions": {
-                "USD": "dxy drops below 103 level and stays there for more than 2 days",
-                "EUR": "ecb cuts rates by 50bps and indicates more cuts are coming",
-                "XAU": "yields surge above 4.5% and stay elevated through the week",
-                "OIL": "demand drops by 100k bpd according to the next eia report",
-                "BTC": "etf outflows > 1B and regulatory scrutiny increases significantly"
-            },
-            "currency_confidence": {"USD": 0.8, "EUR": 0.7, "XAU": 0.9, "OIL": 0.6, "BTC": 0.75},
-            "strongest_counter_thesis": "This is a sufficiently long counter thesis string that will pass the length validation check required by the system.",
-            "priced_in_assessment": priced_in,
-            "checklist": {"bias_vs_narrative_match": True, "contradiction_existed": False},
-            "key_data_points_used": {
-                "dxy_trend_5d": "strengthening +0.8%",
-                "vix_close": 15.5,
-                "fedwatch_dominant_pct": 85.0
+        res = await executor._tool_submit_fundamental_brief(
+            {
+                "macro_narrative": "test narrative with DXY and VIX mentioned",
+                "currency_bias": {
+                    "USD": "bearish",
+                    "EUR": "bullish",
+                    "GBP": "neutral",
+                    "JPY": "neutral",
+                    "AUD": "neutral",
+                    "XAU": "bullish",
+                    "OIL": "bearish",
+                    "BTC": "bullish",
+                },
+                "key_upcoming_risks": [],
+                "risk_sentiment": "risk-on",
+                "macro_regime": "mixed",
+                "confidence": 0.75,
+                "invalidation_conditions": {
+                    "USD": "dxy drops below 103 level and stays there for more than 2 days",
+                    "EUR": "ecb cuts rates by 50bps and indicates more cuts are coming",
+                    "XAU": "yields surge above 4.5% and stay elevated through the week",
+                    "OIL": "demand drops by 100k bpd according to the next eia report",
+                    "BTC": "etf outflows > 1B and regulatory scrutiny increases significantly",
+                },
+                "currency_confidence": {"USD": 0.8, "EUR": 0.7, "XAU": 0.9, "OIL": 0.6, "BTC": 0.75},
+                "strongest_counter_thesis": "This is a sufficiently long counter thesis string that will pass the length validation check required by the system.",
+                "priced_in_assessment": priced_in,
+                "checklist": {"bias_vs_narrative_match": True, "contradiction_existed": False},
+                "key_data_points_used": {
+                    "dxy_trend_5d": "strengthening +0.8%",
+                    "vix_close": 15.5,
+                    "fedwatch_dominant_pct": 85.0,
+                },
             }
-        })
+        )
 
         assert res["status"] == "saved"
         assert res["brief_id"] == 77
@@ -645,7 +755,16 @@ class TestToolExecutor:
         # OIL non-neutral with generic/short invalidation condition without digits
         payload = {
             "macro_narrative": "test narrative with DXY and VIX mentioned",
-            "currency_bias": {"USD": "bullish", "EUR": "bearish", "GBP": "neutral", "JPY": "neutral", "AUD": "neutral", "XAU": "bearish", "OIL": "bearish", "BTC": "bullish"},
+            "currency_bias": {
+                "USD": "bullish",
+                "EUR": "bearish",
+                "GBP": "neutral",
+                "JPY": "neutral",
+                "AUD": "neutral",
+                "XAU": "bearish",
+                "OIL": "bearish",
+                "BTC": "bullish",
+            },
             "key_upcoming_risks": [],
             "risk_sentiment": "risk-on",
             "macro_regime": "mixed",
@@ -655,7 +774,7 @@ class TestToolExecutor:
                 "EUR": "ecb cuts rates by 50bps and indicates more cuts are coming",
                 "XAU": "yields surge above 4.5% and stay elevated through the week",
                 "OIL": "geopolitical risks ease",  # Too short (<40 chars) and no digits
-                "BTC": "etf outflows > 1B and regulatory scrutiny increases significantly"
+                "BTC": "etf outflows > 1B and regulatory scrutiny increases significantly",
             },
             "currency_confidence": {"USD": 0.8, "EUR": 0.7, "XAU": 0.9, "OIL": 0.6, "BTC": 0.75},
             "strongest_counter_thesis": "This is a sufficiently long counter thesis string that will pass the length validation check required by the system.",
@@ -663,15 +782,15 @@ class TestToolExecutor:
             "key_data_points_used": {
                 "dxy_trend_5d": "strengthening +0.8%",
                 "vix_close": 15.5,
-                "fedwatch_dominant_pct": 85.0
+                "fedwatch_dominant_pct": 85.0,
             },
             "priced_in_assessment": {
                 "dominant_driver": "Fed rate cut expectations",
                 "priced_in_score": 5,
                 "sell_the_news_risk": "low",
                 "cot_positioning_percentile": 50,
-                "retail_sentiment_percentile": 50
-            }
+                "retail_sentiment_percentile": 50,
+            },
         }
 
         res = await executor._tool_submit_fundamental_brief(payload)
@@ -682,6 +801,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_check_anchoring_and_require_justification(self):
         from datetime import datetime, timedelta
+
         mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
@@ -702,7 +822,7 @@ class TestToolExecutor:
         # 1. Test rejected when justification is missing or short or no digits
         errors = await executor._check_anchoring_and_require_justification(
             current_bias={"BTC": "bullish", "USD": "bearish"},
-            justification_map={"BTC": "bullish continuation", "USD": ""}  # Short, no digits
+            justification_map={"BTC": "bullish continuation", "USD": ""},  # Short, no digits
         )
         assert len(errors) == 2
         assert any("BTC" in e and "ANCHORING_RISK" in e for e in errors)
@@ -714,8 +834,8 @@ class TestToolExecutor:
             current_bias={"BTC": "bullish", "USD": "bearish"},
             justification_map={
                 "BTC": "BTC bullish dipertahankan karena ETF inflows +240M USD pada 2026-08-22 dan funding rate stabil di 0.01%",
-                "USD": "USD bearish dipertahankan karena DXY melemah 0.4% ke 102.30 dan US10Y turun 5 bps ke 4.10%"
-            }
+                "USD": "USD bearish dipertahankan karena DXY melemah 0.4% ke 102.30 dan US10Y turun 5 bps ke 4.10%",
+            },
         )
         assert len(errors_valid) == 0
 
@@ -723,6 +843,7 @@ class TestToolExecutor:
     async def test_check_anchoring_distinct_cycle_deduplication(self):
         """Test that multiple briefs generated in the same 30m window are deduplicated and do not falsely trigger anchoring."""
         from datetime import datetime, timedelta
+
         mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
@@ -739,11 +860,9 @@ class TestToolExecutor:
 
         # Because there are only 2 distinct cycles (< 4), anchoring check should NOT trigger
         errors = await executor._check_anchoring_and_require_justification(
-            current_bias={"BTC": "bullish"},
-            justification_map={}
+            current_bias={"BTC": "bullish"}, justification_map={}
         )
         assert len(errors) == 0
-
 
     @pytest.mark.asyncio
     async def test_submit_fundamental_brief_weekend_mode(self):
@@ -759,6 +878,7 @@ class TestToolExecutor:
 
         def assign_id(brief):
             brief.id = 88
+
         mock_session.refresh.side_effect = assign_id
 
         mock_result = MagicMock()
@@ -769,33 +889,41 @@ class TestToolExecutor:
         # Payload during weekend mode (only crypto active, no FX COT)
         with patch("analysis.tools.tool_executor.clock.now") as mock_now:
             from datetime import datetime, timezone
+
             # Sunday 2026-08-23
             mock_now.return_value = datetime(2026, 8, 23, 12, 0, 0, tzinfo=timezone.utc)
 
             payload = {
                 "macro_narrative": "test narrative weekend DXY and VIX mentioned",
-                "currency_bias": {"USD": "neutral", "EUR": "neutral", "GBP": "neutral", "JPY": "neutral", "AUD": "neutral", "XAU": "neutral", "OIL": "neutral", "BTC": "bullish"},
+                "currency_bias": {
+                    "USD": "neutral",
+                    "EUR": "neutral",
+                    "GBP": "neutral",
+                    "JPY": "neutral",
+                    "AUD": "neutral",
+                    "XAU": "neutral",
+                    "OIL": "neutral",
+                    "BTC": "bullish",
+                },
                 "key_upcoming_risks": [],
                 "risk_sentiment": "risk-on",
                 "macro_regime": "mixed",
                 "confidence": 0.8,
-                "invalidation_conditions": {
-                    "BTC": "etf outflows > 1B and regulatory scrutiny increases significantly"
-                },
+                "invalidation_conditions": {"BTC": "etf outflows > 1B and regulatory scrutiny increases significantly"},
                 "currency_confidence": {"BTC": 0.75},
                 "strongest_counter_thesis": "This is a sufficiently long counter thesis string that will pass the length validation check required by the system.",
                 "checklist": {"bias_vs_narrative_match": True, "contradiction_existed": False},
                 "key_data_points_used": {
                     "dxy_trend_5d": "strengthening +0.8%",
                     "vix_close": 15.5,
-                    "fedwatch_dominant_pct": 85.0
+                    "fedwatch_dominant_pct": 85.0,
                 },
                 "priced_in_assessment": {
                     "dominant_driver": "BTC weekend risk sentiment & Fed policy",
                     "priced_in_score": 5,
                     "sell_the_news_risk": "low",
-                    "funding_rate": 0.01
-                }
+                    "funding_rate": 0.01,
+                },
             }
 
             res = await executor._tool_submit_fundamental_brief(payload)
@@ -809,38 +937,38 @@ class TestToolExecutor:
         mock_session.add = MagicMock()
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
-        
+
         def assign_id():
             for obj in mock_session.add.call_args_list:
                 if isinstance(obj[0][0], AssetAnalysis):
                     obj[0][0].id = 202
 
         mock_session.flush.side_effect = assign_id
-        
+
         # 1. ToolExecutor bound with symbol="EURUSD"
         executor = ToolExecutor(mock_session, symbol="EURUSD")
         assert executor.symbol == "EURUSD"
-        
+
         # 2. Call submit_asset_analysis WITHOUT symbol key in payload
         payload_no_symbol = {
             "decision": "wait",
             "confidence": 0.5,
             "rationale": "Waiting for pullback to support level",
             "invalidation": "Thesis invalid if price breaks 1.0750",
-            "reevaluation_trigger": {"type": "time", "detail": "Wait 4h"}
+            "reevaluation_trigger": {"type": "time", "detail": "Wait 4h"},
         }
         res = await executor._tool_submit_asset_analysis(payload_no_symbol)
         assert res["status"] == "saved"
         assert res["symbol"] == "EURUSD"
         assert res["decision"] == "wait"
-        
+
         # 3. Call submit_asset_analysis with alias key 'asset'
         payload_with_alias = {
             "asset": "GBPUSD",
             "decision": "avoid",
             "confidence": 0.5,
             "rationale": "Avoid trading today due to major news event",
-            "invalidation": "N/A"
+            "invalidation": "N/A",
         }
         res_alias = await executor._tool_submit_asset_analysis(payload_with_alias)
         assert res_alias["status"] == "saved"
@@ -855,36 +983,42 @@ class TestToolExecutor:
         executor.called_tools.add("get_vix")
 
         # Mock weekday Tuesday
-        with patch("analysis.tools.tool_executor.clock.now") as mock_now, \
-             patch("analysis.calculators.macro_priced_in_calculator.calculate_macro_priced_in_baseline", new_callable=AsyncMock) as mock_baseline:
-            
+        with (
+            patch("analysis.tools.tool_executor.clock.now") as mock_now,
+            patch(
+                "analysis.calculators.macro_priced_in_calculator.calculate_macro_priced_in_baseline",
+                new_callable=AsyncMock,
+            ) as mock_baseline,
+        ):
             from datetime import datetime, timezone
+
             mock_now.return_value = datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc)
-            mock_baseline.return_value = {
-                "cot_positioning_percentile": 62.5,
-                "total_auto": 4
-            }
+            mock_baseline.return_value = {"cot_positioning_percentile": 62.5, "total_auto": 4}
 
             # Brief where priced_in_assessment has no cot_positioning_percentile
             inp = {
                 "macro_narrative": "DXY is weakening and VIX is low, indicating risk-on sentiment.",
                 "currency_bias": {
-                    "USD": "bearish", "EUR": "bullish", "GBP": "neutral",
-                    "JPY": "neutral", "AUD": "neutral", "XAU": "bullish"
+                    "USD": "bearish",
+                    "EUR": "bullish",
+                    "GBP": "neutral",
+                    "JPY": "neutral",
+                    "AUD": "neutral",
+                    "XAU": "bullish",
                 },
                 "invalidation_conditions": {
                     "USD": "Bias USD bearish batal jika DXY D1 close di atas 104.50",
                     "EUR": "Bias EUR bullish batal jika EURUSD D1 close di bawah 1.0750",
-                    "XAU": "Bias XAU bullish batal jika XAUUSD D1 close di bawah 2350.00"
+                    "XAU": "Bias XAU bullish batal jika XAUUSD D1 close di bawah 2350.00",
                 },
                 "currency_confidence": {"USD": 0.7, "EUR": 0.65, "XAU": 0.6},
                 "strongest_counter_thesis": "Jika NFP melampaui ekspektasi >250k pada rilis Jumat, USD akan rebound tajam.",
                 "priced_in_assessment": {
                     "dominant_driver": "Fed 25bps cut expectations",
                     "priced_in_score": 5,
-                    "sell_the_news_risk": "medium"
+                    "sell_the_news_risk": "medium",
                     # cot_positioning_percentile intentionally omitted
-                }
+                },
             }
 
             errors = await executor._validate_fundamental_brief_completeness(inp)
@@ -895,6 +1029,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_tool_get_fundamental_brief_staleness_thresholds(self):
         from datetime import timedelta
+
         mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session, settings={})
 
@@ -904,7 +1039,7 @@ class TestToolExecutor:
             id=101,
             generated_at=now - timedelta(hours=6),
             valid_until=now + timedelta(hours=6),
-            structured_json=json.dumps({"currency_bias": {"USD": "bullish"}})
+            structured_json=json.dumps({"currency_bias": {"USD": "bullish"}}),
         )
 
         mock_res = MagicMock()
@@ -922,7 +1057,7 @@ class TestToolExecutor:
             id=102,
             generated_at=now - timedelta(hours=13),
             valid_until=now - timedelta(hours=1),
-            structured_json=json.dumps({"currency_bias": {"USD": "bullish"}})
+            structured_json=json.dumps({"currency_bias": {"USD": "bullish"}}),
         )
         mock_res.scalar_one_or_none.return_value = brief_13h
 
@@ -932,17 +1067,20 @@ class TestToolExecutor:
         assert res_13h["is_stale"] is True
 
         # 3. 10.5 hours old brief under production settings (both execution & analysis = 12.0)
-        executor_prod = ToolExecutor(mock_session, settings={
-            "data_quality": {
-                "max_brief_age_execution_hours": 12.0,
-                "max_brief_age_analysis_hours": 12.0,
-            }
-        })
+        executor_prod = ToolExecutor(
+            mock_session,
+            settings={
+                "data_quality": {
+                    "max_brief_age_execution_hours": 12.0,
+                    "max_brief_age_analysis_hours": 12.0,
+                }
+            },
+        )
         brief_10_5h = FundamentalBrief(
             id=103,
             generated_at=now - timedelta(hours=10, minutes=30),
             valid_until=now + timedelta(hours=1, minutes=30),
-            structured_json=json.dumps({"currency_bias": {"USD": "bullish"}})
+            structured_json=json.dumps({"currency_bias": {"USD": "bullish"}}),
         )
         mock_res.scalar_one_or_none.return_value = brief_10_5h
         res_10_5h = await executor_prod._tool_get_fundamental_brief({})
@@ -954,6 +1092,7 @@ class TestToolExecutor:
     async def test_submit_fundamental_brief_schema_required_counter_thesis(self):
         """Verify that SUBMIT_FUNDAMENTAL_BRIEF tool schema strictly requires strongest_counter_thesis with minLength 50."""
         from analysis.tools.tools_definitions import SUBMIT_FUNDAMENTAL_BRIEF
+
         schema = SUBMIT_FUNDAMENTAL_BRIEF["input_schema"]
         required_fields = schema.get("required", [])
         assert "strongest_counter_thesis" in required_fields
@@ -973,12 +1112,16 @@ class TestToolExecutor:
             "key_data_points_used": {"dxy_trend_5d": "strengthening +0.8%", "vix_close": 15.5},
             "macro_narrative": "USD bullish due to resilient labor market while European data continues to soften. VIX remains subdued around 15.5 with risk sentiment balanced.",
             "currency_bias": {
-                "USD": "bullish", "EUR": "bearish", "GBP": "neutral",
-                "JPY": "neutral", "AUD": "neutral", "XAU": "neutral"
+                "USD": "bullish",
+                "EUR": "bearish",
+                "GBP": "neutral",
+                "JPY": "neutral",
+                "AUD": "neutral",
+                "XAU": "neutral",
             },
             "invalidation_conditions": {
                 "USD": "Bias USD bullish batal jika DXY D1 close di bawah level 103.50 ATAU NFP miss > 50k",
-                "EUR": "Bias EUR bearish batal jika break di atas 1.0950 ATAU ECB rate hike signal"
+                "EUR": "Bias EUR bearish batal jika break di atas 1.0950 ATAU ECB rate hike signal",
             },
             "currency_confidence": {"USD": 0.75, "EUR": 0.65},
             "risk_sentiment": "mixed",
@@ -989,8 +1132,8 @@ class TestToolExecutor:
                 "priced_in_score": 5,
                 "sell_the_news_risk": "medium",
                 "cot_positioning_percentile": 55.0,
-                "retail_sentiment_percentile": 50.0
-            }
+                "retail_sentiment_percentile": 50.0,
+            },
         }
 
         # Mock DB queries inside _tool_submit_fundamental_brief
@@ -1010,6 +1153,3 @@ class TestToolExecutor:
         assert saved_data.get("strongest_counter_thesis") is not None
         assert len(saved_data["strongest_counter_thesis"]) >= 50
         assert "invalidasi" in saved_data["strongest_counter_thesis"].lower()
-
-
-

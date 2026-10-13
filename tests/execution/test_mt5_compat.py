@@ -49,12 +49,12 @@ def test_mt5_constants_integrity():
 def test_fallback_module_attributes_and_methods():
     """Verify that MT5FallbackModule returns correct constants and safe fallbacks."""
     fallback = MT5FallbackModule()
-    
+
     # Constants access
     assert fallback.TIMEFRAME_H4 == 16388
     assert fallback.TRADE_RETCODE_DONE == 10009
     assert fallback.ORDER_TYPE_BUY == 0
-    
+
     # Invalid attribute raises AttributeError
     with pytest.raises(AttributeError):
         _ = fallback.NON_EXISTENT_CONSTANT_XYZ
@@ -165,6 +165,7 @@ def test_ensure_mt5_module_registration():
 
         # Test standard import syntax
         import MetaTrader5 as test_mt5
+
         assert test_mt5.TIMEFRAME_H4 == 16388
         assert test_mt5.TRADE_ACTION_DEAL == 1
     finally:
@@ -183,13 +184,14 @@ def test_platform_check_helpers():
 def test_ensure_mt5_module_on_linux_simulation(monkeypatch):
     """Simulate non-Windows platform without native MT5, verifying proxy/fallback behavior."""
     import execution.mt5_compat as compat
+
     monkeypatch.setattr(compat, "is_native_mt5_available", lambda: False)
     monkeypatch.setattr(compat, "_active_mt5_module", None)
-    
+
     orig = sys.modules.get("MetaTrader5")
     if "MetaTrader5" in sys.modules:
         del sys.modules["MetaTrader5"]
-        
+
     try:
         mod = compat.ensure_mt5_module()
         assert "MetaTrader5" in sys.modules
@@ -207,14 +209,15 @@ def test_ensure_mt5_module_on_linux_simulation(monkeypatch):
 def test_ensure_mt5_fallback_when_no_bridge(monkeypatch):
     """Simulate non-Windows platform with neither native nor bridge package available."""
     import execution.mt5_compat as compat
+
     monkeypatch.setattr(compat, "is_native_mt5_available", lambda: False)
     monkeypatch.setattr(compat, "is_mt5linux_available", lambda: False)
     monkeypatch.setattr(compat, "_active_mt5_module", None)
-    
+
     orig = sys.modules.get("MetaTrader5")
     if "MetaTrader5" in sys.modules:
         del sys.modules["MetaTrader5"]
-        
+
     try:
         mod = compat.ensure_mt5_module()
         assert "MetaTrader5" in sys.modules
@@ -227,4 +230,3 @@ def test_ensure_mt5_fallback_when_no_bridge(monkeypatch):
             sys.modules["MetaTrader5"] = orig
         elif "MetaTrader5" in sys.modules:
             del sys.modules["MetaTrader5"]
-

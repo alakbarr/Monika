@@ -22,7 +22,7 @@ def test_compute_trade_invariants_buy():
         adr_5d=0.0080,
         smc_zones=[{"price": 1.0975, "type": "FVG"}],
         sr_zones=[1.1060],
-        min_rr=1.5
+        min_rr=1.5,
     )
 
     buy_sl = res["buy_bounds"]["sl_range"]
@@ -46,11 +46,7 @@ def test_compute_trade_invariants_buy():
 def test_compute_trade_invariants_timesfm_capping():
     # Gold: current 2900, ATR=10, ADR=40, TimesFM Q90=2925
     res = compute_trade_invariants(
-        symbol="XAUUSD",
-        current_price=2900.0,
-        atr=10.0,
-        adr_5d=40.0,
-        timesfm_envelope={"q10": 2870.0, "q90": 2925.0}
+        symbol="XAUUSD", current_price=2900.0, atr=10.0, adr_5d=40.0, timesfm_envelope={"q10": 2870.0, "q90": 2925.0}
     )
 
     # Standard TP max would be 2900 + 0.8*40 = 2932. But TimesFM Q90 is 2925.
@@ -68,7 +64,7 @@ def test_format_invariants_for_prompt():
         current_price=90000.0,
         atr=1000.0,
         adr_5d=3000.0,
-        smc_zones=[{"price": 89200.0, "type": "ORDER_BLOCK"}]
+        smc_zones=[{"price": 89200.0, "type": "ORDER_BLOCK"}],
     )
     formatted = format_invariants_for_prompt(res)
     assert "=== PRE-COMPUTED TRADE INVARIANTS (BTCUSD @ 90000.0) ===" in formatted

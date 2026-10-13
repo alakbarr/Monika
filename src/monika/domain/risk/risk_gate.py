@@ -38,18 +38,33 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from monika.infrastructure.database.models import (
-        Position, RiskState, EconomicCalendar, OrderLog, TradeOutcome, PaperTradeRecord, AssetAnalysis, SystemConfig,
-        Order, PriceOHLCV, VIXData, UserPreference, TechnicalIndicator, TimesFMForecast
+        Position,
+        RiskState,
+        EconomicCalendar,
+        OrderLog,
+        TradeOutcome,
+        PaperTradeRecord,
+        AssetAnalysis,
+        SystemConfig,
+        Order,
+        PriceOHLCV,
+        VIXData,
+        UserPreference,
+        TechnicalIndicator,
+        TimesFMForecast,
     )
 else:
+
     def _resolve_model(name: str) -> Any:
         """Dynamic resolver for database models to decouple domain from static infrastructure imports."""
         import sys
+
         mod = sys.modules.get("monika.infrastructure.database.models")
         if mod and hasattr(mod, name):
             return getattr(mod, name)
         try:
             import importlib
+
             mod = importlib.import_module("monika.infrastructure.database.models")
             return getattr(mod, name)
         except Exception:
@@ -58,10 +73,20 @@ else:
     # Decoupled dynamic registration: populate module globals at runtime
     # to eliminate static compile-time import coupling to infrastructure models.
     for _model_name in (
-        "Position", "RiskState", "EconomicCalendar", "OrderLog",
-        "TradeOutcome", "PaperTradeRecord", "AssetAnalysis",
-        "SystemConfig", "Order", "PriceOHLCV", "VIXData",
-        "UserPreference", "TechnicalIndicator", "TimesFMForecast"
+        "Position",
+        "RiskState",
+        "EconomicCalendar",
+        "OrderLog",
+        "TradeOutcome",
+        "PaperTradeRecord",
+        "AssetAnalysis",
+        "SystemConfig",
+        "Order",
+        "PriceOHLCV",
+        "VIXData",
+        "UserPreference",
+        "TechnicalIndicator",
+        "TimesFMForecast",
     ):
         globals()[_model_name] = _resolve_model(_model_name)
 
@@ -69,7 +94,6 @@ else:
 from monika.domain.risk.position_sizing import SizingResult
 
 logger = logging.getLogger("TradingAgent.RiskGate")
-
 
 
 # Simpler: track per base-currency exposure
@@ -80,9 +104,11 @@ from monika.domain.market.currency_utils import SYMBOL_CURRENCIES, get_symbol_cu
 # Verdict dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RiskVerdict:
     """Hasil pengecekan dari Risk Gate."""
+
     approved: bool
     symbol: str
     proposed_lots: float
@@ -104,30 +130,35 @@ def get_trading_day_start(settings: dict, now: Optional[datetime] = None) -> dat
     """
     if now is None:
         from monika.core.primitives.clock import now as get_clock_now
+
         now = get_clock_now()
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
-        
+
     risk_cfg = (settings or {}).get("trading", {}).get("risk", {})
     rollover_hour_cfg = risk_cfg.get("daily_rollover_utc_hour")
-    
+
     # 1. Jika konfigurasi eksplisit jam 0 (midnight UTC)
     if rollover_hour_cfg is not None and int(rollover_hour_cfg) == 0:
         return now.replace(hour=0, minute=0, second=0, microsecond=0)
-    
+
     # 2. Broker Timezone Dynamic Calculation (Default: America/New_York at 17:00 Close)
     broker_tz_name = risk_cfg.get("broker_timezone", "America/New_York")
     broker_rollover_hour = int(risk_cfg.get("broker_rollover_hour", 17))
-    
+
     try:
         import zoneinfo
+
         tz = zoneinfo.ZoneInfo(broker_tz_name)
         now_tz = now.astimezone(tz)
         if now_tz.hour >= broker_rollover_hour:
             tz_start = now_tz.replace(hour=broker_rollover_hour, minute=0, second=0, microsecond=0)
         else:
             from datetime import timedelta
-            tz_start = (now_tz - timedelta(days=1)).replace(hour=broker_rollover_hour, minute=0, second=0, microsecond=0)
+
+            tz_start = (now_tz - timedelta(days=1)).replace(
+                hour=broker_rollover_hour, minute=0, second=0, microsecond=0
+            )
         return tz_start.astimezone(timezone.utc)
     except Exception:
         rollover_hour = int(rollover_hour_cfg if rollover_hour_cfg is not None else 21)
@@ -135,6 +166,7 @@ def get_trading_day_start(settings: dict, now: Optional[datetime] = None) -> dat
             return now.replace(hour=rollover_hour, minute=0, second=0, microsecond=0)
         else:
             from datetime import timedelta
+
             yesterday = now - timedelta(days=1)
             return yesterday.replace(hour=rollover_hour, minute=0, second=0, microsecond=0)
 
@@ -147,6 +179,7 @@ def get_daily_risk_cutoff(now: datetime, risk_cfg: dict) -> datetime:
 # ---------------------------------------------------------------------------
 # Risk Gate
 # ---------------------------------------------------------------------------
+
 
 class RiskGate:
     """Memvalidasi order terhadap semua aturan risiko yang ada."""
@@ -168,20 +201,24 @@ class RiskGate:
         risk_cfg = settings.get("trading", {}).get("risk", {})
         self.settings = settings
         self.max_daily_drawdown_pct: float = risk_cfg.get("max_daily_drawdown_percent", 3.0)
-        self.max_concurrent:          int   = risk_cfg.get("max_concurrent_positions", 5)
-        self.correlation_limit:       int   = risk_cfg.get("correlation_limit", 3)
-        self.news_window_minutes:     int   = risk_cfg.get("news_window_minutes", 15)
-        self.max_risk_pct:            float = float(risk_cfg.get("max_risk_per_trade_percent") or risk_cfg.get("risk_per_trade_pct") or 1.0)
+        self.max_concurrent: int = risk_cfg.get("max_concurrent_positions", 5)
+        self.correlation_limit: int = risk_cfg.get("correlation_limit", 3)
+        self.news_window_minutes: int = risk_cfg.get("news_window_minutes", 15)
+        self.max_risk_pct: float = float(
+            risk_cfg.get("max_risk_per_trade_percent") or risk_cfg.get("risk_per_trade_pct") or 1.0
+        )
         self._mt5 = mt5_client
         self.flash_crash_detector = flash_crash_detector
         self._data_provider = data_provider
         from monika.domain.risk.correlation_matrix import DynamicCorrelationMatrix
+
         self.dynamic_correlation_matrix = DynamicCorrelationMatrix(
             rolling_days=int(risk_cfg.get("correlation_rolling_days", 30)),
             correlation_threshold=float(risk_cfg.get("correlation_threshold", 0.65)),
         )
         self.correlation_matrix = self.dynamic_correlation_matrix
         from monika.domain.risk.risk_rule_plugin import ModularRiskRegistry
+
         self.modular_risk_registry = ModularRiskRegistry()
 
     @property
@@ -189,6 +226,7 @@ class RiskGate:
         """Lazy-load default RiskDataProvider via domain port when not explicitly injected."""
         if self._data_provider is None:
             from monika.domain.risk.ports import get_default_risk_data_provider
+
             self._data_provider = get_default_risk_data_provider(settings=self.settings)
         return self._data_provider
 
@@ -232,7 +270,7 @@ class RiskGate:
         direction: str,
         sizing: SizingResult,
         account_equity: Optional[float] = None,
-        analysis: Optional['AssetAnalysis'] = None,
+        analysis: Optional["AssetAnalysis"] = None,
         as_of: Optional[datetime] = None,
         simulated_positions: Optional[list] = None,
         simulated_equity: Optional[float] = None,
@@ -258,16 +296,18 @@ class RiskGate:
             is_backtest: Flag apakah dieksekusi di bawah lingkungan backtest.
             pair_group_id: ID group multi-leg atau tranche jika order bagian dari sepasang leg.
             is_paper: Explicitly specify if trade is paper vs live (defaults to config check).
-            
+
         Returns:
         RiskVerdict (diizinkan atau ditolak beserta alasannya).
         """
         checks_passed: list[str] = []
         checks_failed: list[str] = []
-        rejections:    list[str] = []
+        rejections: list[str] = []
 
-        effective_pair_group = pair_group_id or getattr(analysis, 'pair_group_id', None)
-        effective_is_paper = is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
+        effective_pair_group = pair_group_id or getattr(analysis, "pair_group_id", None)
+        effective_is_paper = (
+            is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
+        )
         if not effective_is_paper and not is_backtest:
             if account_equity is None or account_equity <= 0:
                 return RiskVerdict(
@@ -276,15 +316,22 @@ class RiskGate:
                     proposed_lots=sizing.recommended_lots if sizing else 0.0,
                     checks_passed=[],
                     checks_failed=["live_equity_unavailable"],
-                    rejection_reasons=["Live account equity is unavailable or zero; order rejected for capital preservation"],
+                    rejection_reasons=[
+                        "Live account equity is unavailable or zero; order rejected for capital preservation"
+                    ],
                 )
             equity = account_equity
         else:
             fallback_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
-            equity = simulated_equity if (is_backtest and simulated_equity is not None) else (account_equity or fallback_equity)
+            equity = (
+                simulated_equity
+                if (is_backtest and simulated_equity is not None)
+                else (account_equity or fallback_equity)
+            )
 
         try:
             from monika.application.plugins.manager.manager import get_plugin_manager, PluginHook
+
             await get_plugin_manager().emit(
                 PluginHook.PRE_RISK_GATE,
                 symbol=symbol,
@@ -311,40 +358,114 @@ class RiskGate:
                 logger.error(f"RiskGate check '{name}' raised exception: {e}")
 
         checks = [
-            ("daily_trade_count", self._check_daily_trade_count(session, is_backtest=is_backtest, is_paper=effective_is_paper)),
+            (
+                "daily_trade_count",
+                self._check_daily_trade_count(session, is_backtest=is_backtest, is_paper=effective_is_paper),
+            ),
             ("trading_not_paused", self._check_not_paused(session, is_backtest=is_backtest)),
             ("edge_status_not_paused", self._check_edge_status_not_paused(session, is_backtest=is_backtest)),
             ("vix_threshold", self._check_vix_threshold(session, as_of=as_of, is_backtest=is_backtest)),
             ("flash_crash_cooldown", self._check_flash_crash_cooldown(symbol)),
             ("sizing_valid", self._check_sizing_valid(sizing)),
             ("lot_size", self._check_lot_size(sizing)),
-            ("daily_drawdown", self._check_daily_drawdown(session, equity, simulated_daily_pnl=simulated_daily_pnl, is_backtest=is_backtest)),
-            ("weekly_drawdown", self._check_weekly_drawdown(session, equity, is_backtest=is_backtest, is_paper=effective_is_paper)),
-            ("max_concurrent_positions", self._check_max_positions(session, simulated_positions=simulated_positions, is_paper=effective_is_paper)),
-            ("no_duplicate_symbol", self._check_no_duplicate(session, symbol, simulated_positions=simulated_positions, pair_group_id=effective_pair_group, is_paper=effective_is_paper)),
-            ("portfolio_heat", self._check_total_portfolio_heat(session, sizing, equity, simulated_positions=simulated_positions)),
+            (
+                "daily_drawdown",
+                self._check_daily_drawdown(
+                    session, equity, simulated_daily_pnl=simulated_daily_pnl, is_backtest=is_backtest
+                ),
+            ),
+            (
+                "weekly_drawdown",
+                self._check_weekly_drawdown(session, equity, is_backtest=is_backtest, is_paper=effective_is_paper),
+            ),
+            (
+                "max_concurrent_positions",
+                self._check_max_positions(
+                    session, simulated_positions=simulated_positions, is_paper=effective_is_paper
+                ),
+            ),
+            (
+                "no_duplicate_symbol",
+                self._check_no_duplicate(
+                    session,
+                    symbol,
+                    simulated_positions=simulated_positions,
+                    pair_group_id=effective_pair_group,
+                    is_paper=effective_is_paper,
+                ),
+            ),
+            (
+                "portfolio_heat",
+                self._check_total_portfolio_heat(session, sizing, equity, simulated_positions=simulated_positions),
+            ),
             ("weekend_proximity", self.assess_weekend_gap_risk(session, symbol, as_of=as_of)),
             ("rollover_window", self._check_rollover_window(symbol, as_of=as_of)),
             ("post_sl_cooldown", self._check_post_loss_cooldown(session, symbol, as_of=as_of, is_backtest=is_backtest)),
-            ("news_window", self._check_news_window(session, symbol, as_of=as_of, is_backtest=is_backtest, is_paper=effective_is_paper)),
-            ("correlation_exposure", self._check_correlation(session, symbol, direction, simulated_positions=simulated_positions, as_of=as_of, volume=getattr(sizing, 'recommended_lots', getattr(sizing, 'lot_size', None)) if sizing else None)),
+            (
+                "news_window",
+                self._check_news_window(
+                    session, symbol, as_of=as_of, is_backtest=is_backtest, is_paper=effective_is_paper
+                ),
+            ),
+            (
+                "correlation_exposure",
+                self._check_correlation(
+                    session,
+                    symbol,
+                    direction,
+                    simulated_positions=simulated_positions,
+                    as_of=as_of,
+                    volume=getattr(sizing, "recommended_lots", getattr(sizing, "lot_size", None)) if sizing else None,
+                ),
+            ),
             ("consecutive_losses", self._check_consecutive_losses(session, symbol, is_backtest=is_backtest)),
             ("data_freshness", self._check_data_freshness(session, symbol, as_of=as_of, is_backtest=is_backtest)),
-            ("timesfm_expectancy", self._check_timesfm_expectancy(session, symbol, direction, sizing, is_backtest=is_backtest, proposal=analysis)),
-            ("schmitt_regime", self._check_schmitt_regime(session, symbol, simulated_positions=simulated_positions, is_backtest=is_backtest)),
+            (
+                "timesfm_expectancy",
+                self._check_timesfm_expectancy(
+                    session, symbol, direction, sizing, is_backtest=is_backtest, proposal=analysis
+                ),
+            ),
+            (
+                "schmitt_regime",
+                self._check_schmitt_regime(
+                    session, symbol, simulated_positions=simulated_positions, is_backtest=is_backtest
+                ),
+            ),
             ("vpin_toxicity", self._check_vpin_toxicity(session, symbol, as_of=as_of, is_backtest=is_backtest)),
-            ("adv_liquidity_floor", self._check_adv_liquidity(session, symbol, sizing, as_of=as_of, is_backtest=is_backtest)),
-            ("copula_tail_risk", self._check_copula_tail_risk(session, symbol, simulated_positions=simulated_positions, as_of=as_of, is_backtest=is_backtest)),
+            (
+                "adv_liquidity_floor",
+                self._check_adv_liquidity(session, symbol, sizing, as_of=as_of, is_backtest=is_backtest),
+            ),
+            (
+                "copula_tail_risk",
+                self._check_copula_tail_risk(
+                    session, symbol, simulated_positions=simulated_positions, as_of=as_of, is_backtest=is_backtest
+                ),
+            ),
             ("evidence_gate", self._check_evidence_gate(session, symbol, analysis=analysis, is_backtest=is_backtest)),
-            ("bounded_mandate", self._check_bounded_mandate(session, symbol, sizing, as_of=as_of, simulated_positions=simulated_positions)),
+            (
+                "bounded_mandate",
+                self._check_bounded_mandate(
+                    session, symbol, sizing, as_of=as_of, simulated_positions=simulated_positions
+                ),
+            ),
             ("min_rr_ratio", self._check_min_rr_ratio(sizing)),
-            ("max_spread", self._check_max_spread(session, symbol, is_backtest=is_backtest, is_paper=effective_is_paper)),
+            (
+                "max_spread",
+                self._check_max_spread(session, symbol, is_backtest=is_backtest, is_paper=effective_is_paper),
+            ),
         ]
-        
+
         if analysis is not None:
             checks.append(("analysis_quality_scores", self._check_analysis_quality_scores(analysis, session=session)))
-            checks.append(("strategy_factor_exposure", self._check_strategy_factor_exposure(session, analysis, simulated_positions=simulated_positions)))
-            
+            checks.append(
+                (
+                    "strategy_factor_exposure",
+                    self._check_strategy_factor_exposure(session, analysis, simulated_positions=simulated_positions),
+                )
+            )
+
         for name, coro in checks:
             await run_check(name, coro)
 
@@ -381,29 +502,31 @@ class RiskGate:
             await self._log_verdict(session, symbol, direction, sizing, verdict)
             try:
                 import importlib
+
                 store_mod = importlib.import_module("monika.infrastructure.database.event_store")
                 event_store_cls = getattr(store_mod, "TradingEventStore", None)
                 if event_store_cls and hasattr(event_store_cls, "emit"):
                     await event_store_cls.emit(
-                    session=session,
-                    event_type="risk.verdict",
-                    payload={
-                        "symbol": symbol,
-                        "direction": direction,
-                        "approved": approved,
-                        "proposed_lots": sizing.recommended_lots,
-                        "checks_passed": checks_passed,
-                        "checks_failed": checks_failed,
-                        "rejection_reasons": rejections,
-                    },
-                    correlation_id=f"risk_{symbol}_{clock.now().strftime('%Y%m%d%H%M%S')}",
-                    actor="risk_gate",
-                )
+                        session=session,
+                        event_type="risk.verdict",
+                        payload={
+                            "symbol": symbol,
+                            "direction": direction,
+                            "approved": approved,
+                            "proposed_lots": sizing.recommended_lots,
+                            "checks_passed": checks_passed,
+                            "checks_failed": checks_failed,
+                            "rejection_reasons": rejections,
+                        },
+                        correlation_id=f"risk_{symbol}_{clock.now().strftime('%Y%m%d%H%M%S')}",
+                        actor="risk_gate",
+                    )
             except Exception as e:
                 logger.debug(f"Event store emit risk.verdict failed: {e}")
 
             try:
                 from monika.core.telemetry.metrics_exporter import metrics
+
                 if approved:
                     metrics.inc_counter("risk_checks_approved_total", 1.0, labels={"symbol": symbol})
                 else:
@@ -437,9 +560,12 @@ class RiskGate:
         If admitted, transforms proposal parameters into SizingResult and delegates to evaluate().
         """
         from monika.domain.risk.trade_proposal import FortressAdmissionValidator
+
         admitted, rejections = FortressAdmissionValidator.validate_proposal(proposal)
         if not admitted:
-            logger.warning(f"[{proposal.symbol}] Fortress admission rejected proposal {proposal.proposal_id}: {rejections}")
+            logger.warning(
+                f"[{proposal.symbol}] Fortress admission rejected proposal {proposal.proposal_id}: {rejections}"
+            )
             return RiskVerdict(
                 approved=False,
                 symbol=proposal.symbol,
@@ -452,6 +578,7 @@ class RiskGate:
         # PR-3: Validate against registered runtime invariants
         try:
             from monika.domain.risk.invariants import get_global_invariant_registry
+
             current_dd_pct = 0.0
             try:
                 state = await self._get_risk_state(session)
@@ -470,7 +597,9 @@ class RiskGate:
             if inv_failures:
                 failure_names = [f.name for f in inv_failures]
                 failure_msgs = [f"[{f.name}] {f.message}" for f in inv_failures]
-                logger.warning(f"[{proposal.symbol}] Runtime invariant failures for proposal {proposal.proposal_id}: {failure_msgs}")
+                logger.warning(
+                    f"[{proposal.symbol}] Runtime invariant failures for proposal {proposal.proposal_id}: {failure_msgs}"
+                )
                 return RiskVerdict(
                     approved=False,
                     symbol=proposal.symbol,
@@ -500,7 +629,11 @@ class RiskGate:
                 rejection_reasons=[],
             )
 
-        eq = account_equity or proposal.account_equity or float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+        eq = (
+            account_equity
+            or proposal.account_equity
+            or float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+        )
         sl_dist = abs(proposal.entry_price - proposal.stop_loss)
         tp_dist = abs(proposal.take_profit - proposal.entry_price) if proposal.take_profit else 0.0
         rr = (tp_dist / sl_dist) if sl_dist > 1e-7 else 1.0
@@ -508,8 +641,13 @@ class RiskGate:
         risk_amount = eq * (risk_pct / 100.0)
         try:
             from monika.domain.risk.position_sizing import get_instrument_spec
+
             spec = get_instrument_spec(proposal.symbol)
-            pips = sl_dist / spec.pip_size if spec and spec.pip_size > 0 else (sl_dist * 100.0 if "JPY" in proposal.symbol else sl_dist * 10000.0)
+            pips = (
+                sl_dist / spec.pip_size
+                if spec and spec.pip_size > 0
+                else (sl_dist * 100.0 if "JPY" in proposal.symbol else sl_dist * 10000.0)
+            )
         except Exception:
             pips = sl_dist * 100.0 if "JPY" in proposal.symbol else sl_dist * 10000.0
 
@@ -549,6 +687,7 @@ class RiskGate:
             return None
         try:
             from sqlalchemy import select, desc
+
             stmt = select(RiskState).order_by(desc(RiskState.date)).limit(1)
             return (await session.execute(stmt)).scalar_one_or_none()
         except Exception:
@@ -560,16 +699,23 @@ class RiskGate:
     # Individual checks
     # ------------------------------------------------------------------
 
-    async def _check_data_freshness(self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False) -> tuple[bool, str]:
+    async def _check_data_freshness(
+        self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False
+    ) -> tuple[bool, str]:
         """Tolak order jika data pasar (OHLCV/Indikator) basi atau tidak segar (hard gate)."""
         if is_backtest:
             return True, "backtest_freshness_ok"
         try:
             from monika.core.validation.data_validator import validate_data_freshness
-            tfs = self.settings.get("trading", {}).get("timeframes", ["M15", "H1", "H4", "D1"]) if isinstance(self.settings, dict) else ["M15", "H1", "H4", "D1"]
+
+            tfs = (
+                self.settings.get("trading", {}).get("timeframes", ["M15", "H1", "H4", "D1"])
+                if isinstance(self.settings, dict)
+                else ["M15", "H1", "H4", "D1"]
+            )
             freshness = await validate_data_freshness(session, [symbol], tfs)
-            if not freshness.get('ready', True):
-                errors = "; ".join(freshness.get('errors', []))
+            if not freshness.get("ready", True):
+                errors = "; ".join(freshness.get("errors", []))
                 return False, f"Stale market data: {errors}"
             return True, "data_freshness_ok"
         except Exception as e:
@@ -593,7 +739,9 @@ class RiskGate:
         try:
             q: Optional[Dict[str, Any]] = None
             if proposal and hasattr(proposal, "metadata") and isinstance(proposal.metadata, dict):
-                q = proposal.metadata.get("timesfm_quantiles") or proposal.metadata.get("timesfm_forecast", {}).get("quantiles")
+                q = proposal.metadata.get("timesfm_quantiles") or proposal.metadata.get("timesfm_forecast", {}).get(
+                    "quantiles"
+                )
 
             if not q:
                 # Lightweight database query without loading TimesFMEngine or PyTorch
@@ -629,7 +777,10 @@ class RiskGate:
                 if "q90" in q and q["q90"]:
                     q90 = float(q["q90"][-1])
                     if tp > (q90 * 1.02):
-                        return False, f"Proposed TP ({tp}) exceeds TimesFM Q90 ceiling ({q90:.2f}) by >2%. Mathematical expectancy negative."
+                        return (
+                            False,
+                            f"Proposed TP ({tp}) exceeds TimesFM Q90 ceiling ({q90:.2f}) by >2%. Mathematical expectancy negative.",
+                        )
                 if "q30" in q and q["q30"] and "q10" in q and q["q10"]:
                     q30 = float(q["q30"][-1])
                     q10 = float(q["q10"][-1])
@@ -639,7 +790,10 @@ class RiskGate:
                 if "q10" in q and q["q10"]:
                     q10 = float(q["q10"][-1])
                     if tp < (q10 * 0.98):
-                        return False, f"Proposed TP ({tp}) falls below TimesFM Q10 floor ({q10:.2f}) by >2%. Mathematical expectancy negative."
+                        return (
+                            False,
+                            f"Proposed TP ({tp}) falls below TimesFM Q10 floor ({q10:.2f}) by >2%. Mathematical expectancy negative.",
+                        )
                 if "q70" in q and q["q70"] and "q90" in q and q["q90"]:
                     q70 = float(q["q70"][-1])
                     q90 = float(q["q90"][-1])
@@ -657,35 +811,44 @@ class RiskGate:
             return False, f"Symbol {symbol} is in cooldown after Flash Crash circuit breaker trigger."
         return True, "flash_crash_not_active"
 
-    async def _check_analysis_quality_scores(self, analysis: 'AssetAnalysis', session: Optional[AsyncSession] = None) -> tuple[bool, str]:
+    async def _check_analysis_quality_scores(
+        self, analysis: "AssetAnalysis", session: Optional[AsyncSession] = None
+    ) -> tuple[bool, str]:
         """Validate that analysis has required quality scores before execution."""
         if analysis is None:
-            return (False, 'No analysis object provided')
-        
-        if getattr(analysis, 'decision_source', None) == 'edge_registry':
+            return (False, "No analysis object provided")
+
+        if getattr(analysis, "decision_source", None) == "edge_registry":
             if analysis.confidence is None or analysis.confidence < 0.3:
                 return False, f"edge_registry signal confidence too low ({analysis.confidence})"
             return True, "edge_registry_quantitative_signal_passed"
 
         if analysis.confluence_score is None:
-            return (False, 
-                f'confluence_score is None for {analysis.symbol}. '
-                f'Model did not fill required scorecard. Blocking execution.')
-        
+            return (
+                False,
+                f"confluence_score is None for {analysis.symbol}. "
+                f"Model did not fill required scorecard. Blocking execution.",
+            )
+
         if analysis.priced_in_score is None:
-            return (False,
-                f'priced_in_score is None for {analysis.symbol}. '
-                f'Priced-in assessment not completed. Blocking execution.')
-        
+            return (
+                False,
+                f"priced_in_score is None for {analysis.symbol}. "
+                f"Priced-in assessment not completed. Blocking execution.",
+            )
+
         if analysis.priced_in_score >= 8:
-            return (False, 
-                f'priced_in_score={analysis.priced_in_score} >= 8 for {analysis.symbol}. '
-                f'Event fully priced in (score >= 8) — high sell-the-news reversal risk.')
-        
-        min_confluence = self.settings.get('trading', {}).get('auto_execute_min_confluence', 7)
-        if session and getattr(analysis, 'symbol', None):
+            return (
+                False,
+                f"priced_in_score={analysis.priced_in_score} >= 8 for {analysis.symbol}. "
+                f"Event fully priced in (score >= 8) — high sell-the-news reversal risk.",
+            )
+
+        min_confluence = self.settings.get("trading", {}).get("auto_execute_min_confluence", 7)
+        if session and getattr(analysis, "symbol", None):
             try:
                 from monika.application.analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
+
                 policy = AdaptiveRiskPolicy(self.settings)
                 eff_thresh, reason = await policy.get_effective_threshold(session, analysis.symbol)
                 min_confluence = eff_thresh
@@ -694,16 +857,20 @@ class RiskGate:
                 logger.debug(f"AdaptiveRiskPolicy lookup in RiskGate non-fatal: {e}")
 
         if analysis.confluence_score < min_confluence:
-            return (False,
-                f'confluence_score={analysis.confluence_score} < {min_confluence} '
-                f'(adaptive policy threshold).')
-        
-        return (True, f'quality_scores_ok(confluence={analysis.confluence_score}, priced_in={analysis.priced_in_score}, threshold={min_confluence})')
+            return (
+                False,
+                f"confluence_score={analysis.confluence_score} < {min_confluence} (adaptive policy threshold).",
+            )
+
+        return (
+            True,
+            f"quality_scores_ok(confluence={analysis.confluence_score}, priced_in={analysis.priced_in_score}, threshold={min_confluence})",
+        )
 
     async def _check_strategy_factor_exposure(
         self,
         session: AsyncSession,
-        analysis: 'AssetAnalysis',
+        analysis: "AssetAnalysis",
         simulated_positions: Optional[list] = None,
     ) -> tuple[bool, str]:
         """Limits portfolio concentration across strategy factor families (trend, mean_reversion, stat_arb, breakout)."""
@@ -717,6 +884,7 @@ class RiskGate:
             return True, "factor_exposure_na"
 
         from monika.application.analysis.strategies.registry import StrategyRegistry
+
         if not factor_family:
             strat_cls = StrategyRegistry.get_strategy(strat_id) if strat_id else None
             factor_family = getattr(strat_cls, "factor_family", "trend") if strat_cls else "trend"
@@ -745,9 +913,7 @@ class RiskGate:
                 if p_fam == factor_family:
                     current_count += 1
         else:
-            open_positions = (await session.execute(
-                select(Position).where(Position.status == "open")
-            )).scalars().all()
+            open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
             for pos in open_positions:
                 pos_fam = None
                 pos_strat = getattr(pos, "source_strategy_id", None)
@@ -764,93 +930,118 @@ class RiskGate:
                     current_count += 1
 
         if current_count >= max_family_limit:
-            return False, f"strategy_factor_exposure_limit: {factor_family} capacity reached ({current_count}/{max_family_limit})"
+            return (
+                False,
+                f"strategy_factor_exposure_limit: {factor_family} capacity reached ({current_count}/{max_family_limit})",
+            )
 
         return True, f"factor_exposure_ok ({factor_family}: {current_count}/{max_family_limit})"
 
-    async def _check_consecutive_losses(self, session: AsyncSession, symbol: str, is_backtest: bool = False) -> tuple[bool, str]:
+    async def _check_consecutive_losses(
+        self, session: AsyncSession, symbol: str, is_backtest: bool = False
+    ) -> tuple[bool, str]:
         """Check apakah symbol ini sedang dalam losing streak yang berbahaya."""
         if is_backtest:
             return (True, "consecutive_losses_backtest_ok")
-            
-        auto_execute = self.settings.get('trading', {}).get('auto_execute', False)
-        paper_cfg = self.settings.get('trading', {}).get('paper_trading', {})
-        streak_policy = paper_cfg.get('streak_loss_policy', 'warn_and_scale')
-        risk_cfg = self.settings.get('trading', {}).get('risk', {})
-        max_consecutive = risk_cfg.get('max_consecutive_losses_per_symbol', 3)
-        
+
+        auto_execute = self.settings.get("trading", {}).get("auto_execute", False)
+        paper_cfg = self.settings.get("trading", {}).get("paper_trading", {})
+        streak_policy = paper_cfg.get("streak_loss_policy", "warn_and_scale")
+        risk_cfg = self.settings.get("trading", {}).get("risk", {})
+        max_consecutive = risk_cfg.get("max_consecutive_losses_per_symbol", 3)
+
         # Check recent losses (limited to past 7 days lookback)
         cutoff = clock.now() - timedelta(days=7)
-        recent = (await session.execute(
-            select(PaperTradeRecord)
-            .where(PaperTradeRecord.symbol == symbol)
-            .where(PaperTradeRecord.status == 'closed')
-            .where(PaperTradeRecord.closed_at >= cutoff)
-            .order_by(PaperTradeRecord.closed_at.desc())
-            .limit(max_consecutive + 1)
-        )).scalars().all()
-        
+        recent = (
+            (
+                await session.execute(
+                    select(PaperTradeRecord)
+                    .where(PaperTradeRecord.symbol == symbol)
+                    .where(PaperTradeRecord.status == "closed")
+                    .where(PaperTradeRecord.closed_at >= cutoff)
+                    .order_by(PaperTradeRecord.closed_at.desc())
+                    .limit(max_consecutive + 1)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
         consecutive_losses = 0
         for trade in recent:
-            if (trade.pnl_pct is not None and trade.pnl_pct < 0) or trade.exit_reason == 'sl_hit':
+            if (trade.pnl_pct is not None and trade.pnl_pct < 0) or trade.exit_reason == "sl_hit":
                 consecutive_losses += 1
             else:
                 break
 
         # Jika mode paper trading (auto_execute=False atau dry-run)
         if not auto_execute:
-            if streak_policy == 'disabled':
+            if streak_policy == "disabled":
                 return (True, f"consecutive_losses_paper_disabled(streak={consecutive_losses})")
-            elif streak_policy == 'warn_and_scale':
-                scale_factor = paper_cfg.get('streak_risk_scale_factor', 0.5)
+            elif streak_policy == "warn_and_scale":
+                scale_factor = paper_cfg.get("streak_risk_scale_factor", 0.5)
                 if consecutive_losses >= max_consecutive:
-                    return (True, f"consecutive_losses_paper_warn_and_scale(streak={consecutive_losses}, scale={scale_factor})")
+                    return (
+                        True,
+                        f"consecutive_losses_paper_warn_and_scale(streak={consecutive_losses}, scale={scale_factor})",
+                    )
                 return (True, f"consecutive_losses_paper_ok({consecutive_losses}/{max_consecutive})")
 
         # Mode strict / Live Trading:
         from monika.core.analytics.paper_tracker import PaperTracker
+
         suspended = await PaperTracker(self.settings).get_suspended_symbols(session)
         if symbol in suspended:
-            return (False, f'{symbol} is suspended due to consecutive losses')
-        
+            return (False, f"{symbol} is suspended due to consecutive losses")
+
         if consecutive_losses >= max_consecutive:
-            return (False, 
-                f'{symbol}: {consecutive_losses} consecutive SL hits detected. '
-                f'Auto-suspend should have triggered. Blocking as safety measure.'
+            return (
+                False,
+                f"{symbol}: {consecutive_losses} consecutive SL hits detected. "
+                f"Auto-suspend should have triggered. Blocking as safety measure.",
             )
-        
-        return (True, f'consecutive_losses={consecutive_losses}/{max_consecutive}')
+
+        return (True, f"consecutive_losses={consecutive_losses}/{max_consecutive}")
 
     async def _check_not_paused(self, session: AsyncSession, is_backtest: bool = False) -> tuple[bool, str]:
         """Periksa bahwa trading belum di-pause manual."""
         if is_backtest:
             return (True, "ok")
         # Check persistent SystemConfig manual pause & emergency kill switch (persists across midnight rollover)
-        pause_configs = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key.in_(['manual_trading_paused', 'system_paused', 'kill_switch', 'system_kill_switch']))
-        )).scalars().all()
+        pause_configs = (
+            (
+                await session.execute(
+                    select(SystemConfig).where(
+                        SystemConfig.key.in_(
+                            ["manual_trading_paused", "system_paused", "kill_switch", "system_kill_switch"]
+                        )
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
         for cfg in pause_configs:
-            if cfg and cfg.value and cfg.value.split(':', 1)[0].strip().lower() == 'true':
-                val_parts = cfg.value.split('|unpause_at:', 1)
-                if len(val_parts) > 1 and cfg.key == 'manual_trading_paused':
+            if cfg and cfg.value and cfg.value.split(":", 1)[0].strip().lower() == "true":
+                val_parts = cfg.value.split("|unpause_at:", 1)
+                if len(val_parts) > 1 and cfg.key == "manual_trading_paused":
                     try:
                         exp_dt = datetime.fromisoformat(val_parts[1].strip())
                         if clock.now() >= exp_dt:
-                            cfg.value = 'false'
+                            cfg.value = "false"
                             await session.commit()
                             continue
                     except Exception:
                         pass
-                reason = cfg.value.split(':', 1)[1] if ':' in cfg.value else f'kill switch active ({cfg.key})'
+                reason = cfg.value.split(":", 1)[1] if ":" in cfg.value else f"kill switch active ({cfg.key})"
                 return False, f"Trading is blocked by {cfg.key}: {reason}"
 
         today_start = get_trading_day_start(self.settings)
-        state = (await session.execute(
-            select(RiskState)
-            .where(RiskState.date >= today_start)
-            .order_by(RiskState.date.desc())
-            .limit(1)
-        )).scalar_one_or_none()
+        state = (
+            await session.execute(
+                select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
+            )
+        ).scalar_one_or_none()
 
         if state and state.trading_paused:
             unpause_time = getattr(state, "unpause_at", None)
@@ -858,11 +1049,11 @@ class RiskGate:
                 state.trading_paused = False
                 state.unpause_at = None
                 state.reason = None
-                cfg = (await session.execute(
-                    select(SystemConfig).where(SystemConfig.key == 'manual_trading_paused')
-                )).scalar_one_or_none()
+                cfg = (
+                    await session.execute(select(SystemConfig).where(SystemConfig.key == "manual_trading_paused"))
+                ).scalar_one_or_none()
                 if cfg:
-                    cfg.value = 'false'
+                    cfg.value = "false"
                 await session.commit()
                 logger.info("Timed trading pause expired, automatically resumed.")
                 return True, "ok"
@@ -880,48 +1071,60 @@ class RiskGate:
             return (True, "daily_trades_backtest_ok")
         today_start = get_trading_day_start(self.settings)
         from datetime import timedelta
+
         today_end = today_start + timedelta(days=1)
         # Count from positions opened today (separating live vs paper positions)
         # to ensure paper simulation trades do not exhaust live quota limits.
-        
+
         # Hitung posisi live yang dibuka hari ini
-        live_today = (await session.execute(
-            select(func.count(Position.id))
-            .where(Position.opened_at >= today_start)
-            .where(Position.opened_at < today_end)
-            .where(Position.is_paper == False)  # noqa: E712
-        )).scalar_one_or_none() or 0
-        
+        live_today = (
+            await session.execute(
+                select(func.count(Position.id))
+                .where(Position.opened_at >= today_start)
+                .where(Position.opened_at < today_end)
+                .where(Position.is_paper == False)  # noqa: E712
+            )
+        ).scalar_one_or_none() or 0
+
         # Hitung paper trades yang dibuka hari ini (sebagai proxy jika belum ada live trades)
-        paper_today = (await session.execute(
-            select(func.count(PaperTradeRecord.id))
-            .where(PaperTradeRecord.opened_at >= today_start)
-            .where(PaperTradeRecord.opened_at < today_end)
-            .where(PaperTradeRecord.is_pending_fill == False)  # noqa: E712
-        )).scalar_one_or_none() or 0
-        
+        paper_today = (
+            await session.execute(
+                select(func.count(PaperTradeRecord.id))
+                .where(PaperTradeRecord.opened_at >= today_start)
+                .where(PaperTradeRecord.opened_at < today_end)
+                .where(PaperTradeRecord.is_pending_fill == False)  # noqa: E712
+            )
+        ).scalar_one_or_none() or 0
+
         # Pisahkan live vs paper (DB-14)
         if is_paper is None:
             is_paper = bool(self.settings.get("paper_trading", {}).get("enabled", False))
-            
+
         today_trades = paper_today if is_paper else live_today
         trade_label = "paper" if is_paper else "live"
-        
-        max_daily_trades = self.settings.get('trading', {}).get('risk', {}).get('max_daily_trades', 3)
+
+        max_daily_trades = self.settings.get("trading", {}).get("risk", {}).get("max_daily_trades", 3)
         logger.debug(
-            f'Daily trade count ({trade_label}): live_positions_today={live_today}, '
-            f'paper_trades_today={paper_today}, effective_count={today_trades}/{max_daily_trades}'
+            f"Daily trade count ({trade_label}): live_positions_today={live_today}, "
+            f"paper_trades_today={paper_today}, effective_count={today_trades}/{max_daily_trades}"
         )
-        
+
         if today_trades >= max_daily_trades:
-            return (False, f'Daily {trade_label} trade limit reached: {today_trades}/{max_daily_trades} trades opened today.')
-        return (True, f'daily_{trade_label}_trades={today_trades}/{max_daily_trades}')
+            return (
+                False,
+                f"Daily {trade_label} trade limit reached: {today_trades}/{max_daily_trades} trades opened today.",
+            )
+        return (True, f"daily_{trade_label}_trades={today_trades}/{max_daily_trades}")
 
     async def _check_sizing_valid(self, sizing: SizingResult) -> tuple[bool, str]:
         """Validasi bahwa position sizing sebelumnya (engine) telah sukses."""
         if not sizing.is_valid:
             return False, f"Invalid sizing: {'; '.join(sizing.rejection_reasons)}"
-        if sizing.recommended_lots is None or not math.isfinite(sizing.recommended_lots) or sizing.recommended_lots <= 0:
+        if (
+            sizing.recommended_lots is None
+            or not math.isfinite(sizing.recommended_lots)
+            or sizing.recommended_lots <= 0
+        ):
             return False, "Recommended lots is zero, negative, or non-finite"
         if not math.isfinite(sizing.entry_price) or not math.isfinite(sizing.stop_loss):
             return False, "Entry price or stop loss is non-finite"
@@ -929,43 +1132,55 @@ class RiskGate:
 
     async def _check_lot_size(self, sizing: SizingResult) -> tuple[bool, str]:
         """Validasi bahwa ukuran lot berada dalam batas aman."""
-        if sizing.recommended_lots is None or not math.isfinite(sizing.recommended_lots) or sizing.recommended_lots <= 0:
+        if (
+            sizing.recommended_lots is None
+            or not math.isfinite(sizing.recommended_lots)
+            or sizing.recommended_lots <= 0
+        ):
             return False, "Lot size is non-finite, zero, or negative"
-        
+
         # Check against max_lot from instrument spec
         # (Position sizing already handles this, but double-check here)
         # We use a hard limit of 100 lots as absolute maximum for any instrument
         ABSOLUTE_MAX_LOTS = 100.0
         if sizing.recommended_lots > ABSOLUTE_MAX_LOTS:
             return False, f"Lot size {sizing.recommended_lots} exceeds absolute maximum {ABSOLUTE_MAX_LOTS}"
-        
+
         # Check minimum lot
         ABSOLUTE_MIN_LOTS = 0.001
         if sizing.recommended_lots < ABSOLUTE_MIN_LOTS:
             return False, f"Lot size {sizing.recommended_lots} is below minimum tradeable {ABSOLUTE_MIN_LOTS}"
-        
+
         return True, f"lot_size={sizing.recommended_lots} (valid)"
 
     async def _check_min_rr_ratio(self, sizing: SizingResult) -> tuple[bool, str]:
         """Validasi bahwa Risk-to-Reward ratio proposal memenuhi batas minimum (FR-4.1)."""
         rr = getattr(sizing, "rr_ratio", None)
         if rr is None or not math.isfinite(rr) or rr <= 0:
-            return False, "Risk-to-reward ratio missing, non-finite, or non-positive; rejected by FR-4.1 fail-closed protection"
+            return (
+                False,
+                "Risk-to-reward ratio missing, non-finite, or non-positive; rejected by FR-4.1 fail-closed protection",
+            )
         min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3))
         if rr < min_rr:
             return False, f"Risk-to-reward ratio {rr:.2f} is below minimum requirement {min_rr:.2f}"
         return True, f"rr_ratio={rr:.2f} >= {min_rr:.2f} (valid)"
 
-    async def _check_max_spread(self, session: AsyncSession, symbol: str, is_backtest: bool = False, is_paper: Optional[bool] = None) -> tuple[bool, str]:
+    async def _check_max_spread(
+        self, session: AsyncSession, symbol: str, is_backtest: bool = False, is_paper: Optional[bool] = None
+    ) -> tuple[bool, str]:
         """Validasi batas spread pasar tidak sedang melebar (FR-4.1)."""
         if is_backtest:
             return True, "backtest_spread_ok"
-        effective_paper = is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
+        effective_paper = (
+            is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
+        )
         try:
             client: Any = getattr(self, "_mt5", None)
             if client is None:
                 try:
                     import importlib
+
                     broker_mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
                     get_client_fn = getattr(broker_mod, "get_mt5_client", None)
                     if callable(get_client_fn):
@@ -976,7 +1191,11 @@ class RiskGate:
                 if effective_paper:
                     return True, "no_client_spread_skipped"
                 return False, "mt5_client_unavailable_spread_blocked"
-            is_conn = await client.is_connected() if callable(getattr(client, "is_connected", None)) else getattr(client, "is_connected", False)
+            is_conn = (
+                await client.is_connected()
+                if callable(getattr(client, "is_connected", None))
+                else getattr(client, "is_connected", False)
+            )
             if asyncio.iscoroutine(is_conn):
                 is_conn = await is_conn
             if not is_conn:
@@ -987,7 +1206,9 @@ class RiskGate:
             if asyncio.iscoroutine(spread_info):
                 spread_info = await spread_info
             spread_pts = spread_info.get("spread_points", 0) if isinstance(spread_info, dict) else 0
-            max_spread = float(self.settings.get("trading", {}).get("risk", {}).get("max_spread_points", {}).get(symbol, 100.0))
+            max_spread = float(
+                self.settings.get("trading", {}).get("risk", {}).get("max_spread_points", {}).get(symbol, 100.0)
+            )
             if spread_pts > max_spread:
                 return False, f"Current spread {spread_pts} pts exceeds maximum allowed {max_spread} pts"
             return True, "ok"
@@ -996,65 +1217,95 @@ class RiskGate:
             return False, f"spread_check_error: {e}"
 
     async def _check_weekly_drawdown(
-        self, session: AsyncSession, equity: Optional[float] = None, is_backtest: bool = False, is_paper: Optional[bool] = None
+        self,
+        session: AsyncSession,
+        equity: Optional[float] = None,
+        is_backtest: bool = False,
+        is_paper: Optional[bool] = None,
     ) -> tuple[bool, str]:
         if is_backtest:
             return True, "weekly_drawdown_backtest_ok"
         from datetime import timedelta
+
         now = clock.now()
         week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-        
+
         # Paper trades closed this week
-        paper_trades = (await session.execute(select(PaperTradeRecord).where(
-            PaperTradeRecord.closed_at >= week_start,
-            PaperTradeRecord.closed_at <= now,
-            PaperTradeRecord.status == 'closed'
-        ))).scalars().all()
+        paper_trades = (
+            (
+                await session.execute(
+                    select(PaperTradeRecord).where(
+                        PaperTradeRecord.closed_at >= week_start,
+                        PaperTradeRecord.closed_at <= now,
+                        PaperTradeRecord.status == "closed",
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
         paper_weekly_pnl = sum(t.pnl_pct or 0 for t in paper_trades)
-        
+
         # Live trades closed this week
-        live_outcomes = (await session.execute(select(TradeOutcome).where(
-            TradeOutcome.closed_at >= week_start,
-            TradeOutcome.closed_at <= now
-        ))).scalars().all()
+        live_outcomes = (
+            (
+                await session.execute(
+                    select(TradeOutcome).where(TradeOutcome.closed_at >= week_start, TradeOutcome.closed_at <= now)
+                )
+            )
+            .scalars()
+            .all()
+        )
         live_weekly_pnl = 0.0
-        eff_equity = equity if (equity is not None and equity > 0) else float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+        eff_equity = (
+            equity
+            if (equity is not None and equity > 0)
+            else float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+        )
         if live_outcomes and eff_equity > 0:
             total_live_profit = sum(o.pnl_usd or 0.0 for o in live_outcomes)
             live_weekly_pnl = (total_live_profit / eff_equity) * 100.0
 
         # Decouple: Live trading is governed by live PnL; paper trading by paper PnL.
-        is_paper_mode = is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
+        is_paper_mode = (
+            is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
+        )
         if not is_paper_mode and live_outcomes:
             weekly_pnl = live_weekly_pnl
         elif live_outcomes and not is_paper_mode:
             weekly_pnl = live_weekly_pnl
         else:
             weekly_pnl = paper_weekly_pnl
-        max_weekly = self.settings.get('trading', {}).get('risk', {}).get('max_weekly_drawdown_percent', 6.0)
+        max_weekly = self.settings.get("trading", {}).get("risk", {}).get("max_weekly_drawdown_percent", 6.0)
         if weekly_pnl <= -max_weekly:
             return False, f"Weekly loss {weekly_pnl:.2f}% >= limit {max_weekly}%"
         return True, f"weekly_pnl={weekly_pnl:.2f}%/{-max_weekly}%"
 
     async def _check_daily_drawdown(
-        self, session: AsyncSession, equity: Optional[float] = None, simulated_daily_pnl: Optional[float] = None, is_backtest: bool = False
+        self,
+        session: AsyncSession,
+        equity: Optional[float] = None,
+        simulated_daily_pnl: Optional[float] = None,
+        is_backtest: bool = False,
     ) -> tuple[bool, str]:
         """Periksa apakah drawdown hari ini (realized + unrealized loss) belum melampaui batas."""
         if is_backtest:
             if simulated_daily_pnl is not None and equity and equity > 0:
                 drawdown_pct = (abs(simulated_daily_pnl) / equity * 100) if simulated_daily_pnl < 0 else 0.0
                 if simulated_daily_pnl < 0 and drawdown_pct >= self.max_daily_drawdown_pct:
-                    return False, f"Simulated daily drawdown {drawdown_pct:.2f}% >= limit {self.max_daily_drawdown_pct}%"
+                    return (
+                        False,
+                        f"Simulated daily drawdown {drawdown_pct:.2f}% >= limit {self.max_daily_drawdown_pct}%",
+                    )
                 return True, f"simulated_drawdown={drawdown_pct:.2f}%"
             return True, "backtest_mode_dd_ok"
 
         today_start = get_trading_day_start(self.settings)
-        state = (await session.execute(
-            select(RiskState)
-            .where(RiskState.date >= today_start)
-            .order_by(RiskState.date.desc())
-            .limit(1)
-        )).scalar_one_or_none()
+        state = (
+            await session.execute(
+                select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
+            )
+        ).scalar_one_or_none()
 
         realized_pnl = 0.0
         if state is None:
@@ -1075,31 +1326,38 @@ class RiskGate:
 
         # Calculate unrealized PnL from MT5
         unrealized_pnl = 0.0
-        is_dry = getattr(self, 'dry_run', getattr(self, '_dry_run', False))
+        is_dry = getattr(self, "dry_run", getattr(self, "_dry_run", False))
         if self._mt5 and not is_dry:
             try:
                 positions = await self._mt5.get_open_positions()
-                unrealized_pnl = sum(p.get('profit', 0.0) for p in positions)
+                unrealized_pnl = sum(p.get("profit", 0.0) for p in positions)
             except Exception as e:
                 logger.debug(f"Failed to fetch MT5 positions for unrealized PnL: {e}")
         elif is_dry:
             try:
-                open_papers = (await session.execute(
-                    select(PaperTradeRecord)
-                    .where(PaperTradeRecord.status == 'open')
-                )).scalars().all()
+                open_papers = (
+                    (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open")))
+                    .scalars()
+                    .all()
+                )
                 unrealized_pnl = 0.0
                 for paper in open_papers:
-                    last_bar = (await session.execute(
-                        select(PriceOHLCV.close)
-                        .where(PriceOHLCV.symbol == paper.symbol)
-                        .order_by(PriceOHLCV.timestamp.desc())
-                        .limit(1)
-                    )).scalar_one_or_none()
+                    last_bar = (
+                        await session.execute(
+                            select(PriceOHLCV.close)
+                            .where(PriceOHLCV.symbol == paper.symbol)
+                            .order_by(PriceOHLCV.timestamp.desc())
+                            .limit(1)
+                        )
+                    ).scalar_one_or_none()
                     if last_bar and paper.entry_price and paper.stop_loss:
                         sl_dist = abs(paper.entry_price - paper.stop_loss)
                         if sl_dist > 0:
-                            diff = (last_bar - paper.entry_price) if paper.direction == 'buy' else (paper.entry_price - last_bar)
+                            diff = (
+                                (last_bar - paper.entry_price)
+                                if paper.direction == "buy"
+                                else (paper.entry_price - last_bar)
+                            )
                             risk_pct = paper.risk_pct or 0.75
                             trade_pnl_pct = risk_pct * (diff / sl_dist)
                             unrealized_pnl += (equity or 10000.0) * (trade_pnl_pct / 100.0)
@@ -1108,10 +1366,14 @@ class RiskGate:
 
         # We track Daily Drawdown as the net daily PnL (realized + unrealized).
         # A true daily loss limit is based on the starting equity of the day.
-        eff_equity = equity if (equity is not None and equity > 0) else float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+        eff_equity = (
+            equity
+            if (equity is not None and equity > 0)
+            else float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+        )
         total_daily_pnl = (state.daily_pnl if state else realized_pnl) + unrealized_pnl
         drawdown_pct = (abs(total_daily_pnl) / eff_equity * 100) if (eff_equity > 0 and total_daily_pnl < 0) else 0.0
-        
+
         # We also enforce that unrealized loss on its own cannot exceed the limit.
         if unrealized_pnl < 0:
             unrealized_dd_pct = (abs(unrealized_pnl) / eff_equity * 100) if eff_equity > 0 else 0.0
@@ -1151,12 +1413,14 @@ class RiskGate:
 
         # Also account for pending/in-flight orders to prevent concurrent over-allocation
         order_stmt = select(func.count(Order.id)).where(
-            Order.status.in_([
-                OrderStatus.ACCEPTED,
-                OrderStatus.SUBMITTED,
-                OrderStatus.INTENT_COMMITTED,
-                OrderStatus.PARTIALLY_FILLED,
-            ])
+            Order.status.in_(
+                [
+                    OrderStatus.ACCEPTED,
+                    OrderStatus.SUBMITTED,
+                    OrderStatus.INTENT_COMMITTED,
+                    OrderStatus.PARTIALLY_FILLED,
+                ]
+            )
         )
         pending_count = (await session.execute(order_stmt)).scalar_one_or_none() or 0
         total_exposure = count + pending_count
@@ -1179,8 +1443,10 @@ class RiskGate:
         """Pastikan hanya ada SATU posisi terbuka untuk simbol ini (kecuali multi-leg/tranche dengan pair_group_id)."""
         if simulated_positions is not None:
             for pos in simulated_positions:
-                pos_sym = getattr(pos, 'symbol', None) or (pos.get('symbol') if isinstance(pos, dict) else None)
-                pos_group = getattr(pos, 'pair_group_id', None) or (pos.get('pair_group_id') if isinstance(pos, dict) else None)
+                pos_sym = getattr(pos, "symbol", None) or (pos.get("symbol") if isinstance(pos, dict) else None)
+                pos_group = getattr(pos, "pair_group_id", None) or (
+                    pos.get("pair_group_id") if isinstance(pos, dict) else None
+                )
                 if pos_sym == symbol:
                     if pair_group_id and pos_group == pair_group_id:
                         continue
@@ -1190,12 +1456,14 @@ class RiskGate:
         # Check pending/in-flight orders for this symbol first
         pending_stmt = select(Order.id).where(
             Order.symbol == symbol,
-            Order.status.in_([
-                OrderStatus.ACCEPTED,
-                OrderStatus.SUBMITTED,
-                OrderStatus.INTENT_COMMITTED,
-                OrderStatus.PARTIALLY_FILLED,
-            ])
+            Order.status.in_(
+                [
+                    OrderStatus.ACCEPTED,
+                    OrderStatus.SUBMITTED,
+                    OrderStatus.INTENT_COMMITTED,
+                    OrderStatus.PARTIALLY_FILLED,
+                ]
+            ),
         )
         pending_order = (await session.execute(pending_stmt.limit(1))).scalar_one_or_none()
         if pending_order is not None and not pair_group_id:
@@ -1213,7 +1481,10 @@ class RiskGate:
                 conflict_stmt = conflict_stmt.where(Position.is_paper == is_paper)
             conflict = (await session.execute(conflict_stmt.limit(1))).scalar_one_or_none()
             if conflict is not None:
-                return False, f"Already have an open position for {symbol} outside pair group {pair_group_id} (id={conflict})"
+                return (
+                    False,
+                    f"Already have an open position for {symbol} outside pair group {pair_group_id} (id={conflict})",
+                )
 
             group_stmt = (
                 select(func.count(Position.id))
@@ -1228,11 +1499,7 @@ class RiskGate:
                 return False, f"Pair group {pair_group_id} already has max legs ({group_count}) for {symbol}"
             return True, "no duplicate (pair group leg allowed)"
 
-        existing_stmt = (
-            select(Position.id)
-            .where(Position.symbol == symbol)
-            .where(Position.status == "open")
-        )
+        existing_stmt = select(Position.id).where(Position.symbol == symbol).where(Position.status == "open")
         if is_paper is not None:
             existing_stmt = existing_stmt.where(Position.is_paper == is_paper)
         existing = (await session.execute(existing_stmt.limit(1))).scalar_one_or_none()
@@ -1241,36 +1508,39 @@ class RiskGate:
             return False, f"Already have an open position for {symbol} (id={existing})"
         return True, "no duplicate"
 
-    async def _check_vix_threshold(self, session: AsyncSession, as_of: Optional[datetime] = None, is_backtest: bool = False) -> tuple[bool, str]:
+    async def _check_vix_threshold(
+        self, session: AsyncSession, as_of: Optional[datetime] = None, is_backtest: bool = False
+    ) -> tuple[bool, str]:
         """Block new positions when VIX exceeds the configured pause threshold."""
         if is_backtest:
             return True, "vix_threshold_backtest_ok"
         from sqlalchemy import select
-        
+
         risk_cfg = self.settings.get("trading", {}).get("risk", {})
         vix_thresholds = risk_cfg.get("vix_thresholds", {})
         pause_threshold = float(vix_thresholds.get("pause", 30))
         defensive_threshold = float(vix_thresholds.get("defensive", 25.0))
-        
+
         now = as_of or clock.now()
-        vix_row = (await session.execute(
-            select(VIXData)
-            .where(VIXData.date <= now)
-            .order_by(VIXData.date.desc())
-            .limit(1)
-        )).scalar_one_or_none()
-        
+        vix_row = (
+            await session.execute(select(VIXData).where(VIXData.date <= now).order_by(VIXData.date.desc()).limit(1))
+        ).scalar_one_or_none()
+
         vix_close = defensive_threshold  # Fail-safe default (defensive volatility)
         if vix_row is None:
             vix_age_days = 0
             vix_str_info = f"defaulting to {defensive_threshold} (Defensive Fail-Safe)"
         else:
             vix_close = vix_row.close
-            now_dt = now if (hasattr(now, 'tzinfo') and now.tzinfo) else now.replace(tzinfo=timezone.utc)
-            row_dt = vix_row.date if (hasattr(vix_row.date, 'tzinfo') and vix_row.date.tzinfo) else vix_row.date.replace(tzinfo=timezone.utc)
+            now_dt = now if (hasattr(now, "tzinfo") and now.tzinfo) else now.replace(tzinfo=timezone.utc)
+            row_dt = (
+                vix_row.date
+                if (hasattr(vix_row.date, "tzinfo") and vix_row.date.tzinfo)
+                else vix_row.date.replace(tzinfo=timezone.utc)
+            )
             vix_age_days = (now_dt - row_dt).total_seconds() / 86400
             vix_str_info = f"{vix_age_days:.1f} days old"
-        
+
         if vix_row is not None and vix_age_days > 3.0:
             # Check if it's weekend or Monday before US close (vix_age_days up to 4.5 is normal for Friday close)
             is_weekend_or_monday = now.weekday() in (5, 6, 0)
@@ -1280,14 +1550,14 @@ class RiskGate:
                 # Fail-safe: if VIX is too stale, assume defensive risk
                 vix_close = defensive_threshold
                 vix_str_info += f" (stale -> defaulting to {defensive_threshold})"
-        
+
         if vix_close >= pause_threshold:
             return False, (
                 f"VIX={vix_close:.1f} >= pause threshold {pause_threshold}. "
                 f"Extreme market fear detected. All new positions blocked. "
                 f"Trading resumes automatically when VIX drops below {pause_threshold}."
             )
-        
+
         return True, f"VIX={vix_close:.1f} ({vix_str_info} - below threshold {pause_threshold})"
 
     async def assess_weekend_gap_risk(
@@ -1301,17 +1571,17 @@ class RiskGate:
         sym_clean = symbol.upper().split(".")[0].rstrip("m").rstrip("+")
         if sym_clean in exempted or symbol in exempted or any(ex in symbol.upper() for ex in ("BTC", "ETH")):
             return True, f"{symbol} is exempted (24/7)"
-        
+
         now = as_of or clock.now()
         weekday = now.weekday()  # 0=Monday, 4=Friday, 5=Saturday, 6=Sunday
         hour = now.hour
-        
+
         # Block during actual weekend (market closed)
         if weekday == 5:
             return False, f"Forex/commodity markets closed all day Saturday. No new positions until Sunday 21:00 UTC."
         if weekday == 6 and hour < 21:
             return False, f"Forex/commodity markets closed (Sunday before 21:00 UTC). Sydney opens at ~21:00 UTC."
-        
+
         # Block Friday within gap_protection_hours of close (21:00 UTC = high weekend gap risk)
         threshold_hour = 21 - gap_hours
         if weekday == 4 and hour >= threshold_hour:
@@ -1319,7 +1589,7 @@ class RiskGate:
                 f"Blocked: {hour}:00 UTC Friday is within {gap_hours}h of weekend close (21:00 UTC). "
                 f"High weekend gap risk. Wait until Sunday 21:00 UTC for new positions."
             )
-        
+
         return True, "ok - not near weekend"
 
     # Alias for naming consistency with internal _check_* validators
@@ -1328,28 +1598,33 @@ class RiskGate:
     async def _check_rollover_window(self, symbol: str, as_of: Optional[datetime] = None) -> tuple[bool, str]:
         """Blokir entri saat jeda rollover harian (spread membesar). BTCUSD & ETHUSD kebal."""
         sym_clean = symbol.upper().split(".")[0].rstrip("m").rstrip("+")
-        if sym_clean in ("BTCUSD", "ETHUSD") or symbol in ("BTCUSD", "ETHUSD") or any(ex in symbol.upper() for ex in ("BTC", "ETH")):
+        if (
+            sym_clean in ("BTCUSD", "ETHUSD")
+            or symbol in ("BTCUSD", "ETHUSD")
+            or any(ex in symbol.upper() for ex in ("BTC", "ETH"))
+        ):
             return True, f"{symbol} exempt from rollover check"
-        
+
         now = as_of or clock.now()
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
 
         try:
             import zoneinfo
+
             ny_tz = zoneinfo.ZoneInfo("America/New_York")
             now_ny = now.astimezone(ny_tz)
             today_close = now_ny.replace(hour=17, minute=0, second=0, microsecond=0)
             diff_seconds = (now_ny - today_close).total_seconds()
-            
+
             # Daily rollover window: 5 menit sebelum (-300s) hingga 30 menit sesudah (+1800s) 17:00 NY Close
             is_rollover = -300 <= diff_seconds <= 1800
-            
+
             if is_rollover:
                 window_start = today_close - timedelta(minutes=5)
                 window_end = today_close + timedelta(minutes=30)
-                start_utc = window_start.astimezone(timezone.utc).strftime('%H:%M')
-                end_utc = window_end.astimezone(timezone.utc).strftime('%H:%M UTC')
+                start_utc = window_start.astimezone(timezone.utc).strftime("%H:%M")
+                end_utc = window_end.astimezone(timezone.utc).strftime("%H:%M UTC")
                 return False, (
                     f"Daily rollover window ({start_utc}-{end_utc}). Spreads are currently elevated. "
                     f"Current time: {now.strftime('%H:%M UTC')}. "
@@ -1365,10 +1640,17 @@ class RiskGate:
                     f"Current time: {now.strftime('%H:%M UTC')}. "
                     f"Retry after 21:30 UTC."
                 )
-        
+
         return True, "Outside rollover window"
 
-    async def _check_news_window(self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False, is_paper: bool = True) -> tuple[bool, str]:
+    async def _check_news_window(
+        self,
+        session: AsyncSession,
+        symbol: str,
+        as_of: Optional[datetime] = None,
+        is_backtest: bool = False,
+        is_paper: bool = True,
+    ) -> tuple[bool, str]:
         if is_backtest:
             return True, "news_window_backtest_ok"
         currencies = get_symbol_currencies(symbol)
@@ -1378,9 +1660,9 @@ class RiskGate:
         # 1. Check calendar data freshness via SystemConfig metadata first
         latest_calendar_fetch: Optional[datetime] = None
         try:
-            latest_fetch_cfg = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key == "last_calendar_fetch_at")
-            )).scalar_one_or_none()
+            latest_fetch_cfg = (
+                await session.execute(select(SystemConfig).where(SystemConfig.key == "last_calendar_fetch_at"))
+            ).scalar_one_or_none()
             if latest_fetch_cfg and latest_fetch_cfg.value:
                 dt = datetime.fromisoformat(latest_fetch_cfg.value)
                 if dt.tzinfo is None:
@@ -1391,18 +1673,14 @@ class RiskGate:
 
         # Fallback to MAX(EconomicCalendar.fetched_at)
         if latest_calendar_fetch is None:
-            max_fetched = (await session.execute(
-                select(func.max(EconomicCalendar.fetched_at))
-            )).scalar_one_or_none()
+            max_fetched = (await session.execute(select(func.max(EconomicCalendar.fetched_at)))).scalar_one_or_none()
             if max_fetched is not None:
                 if max_fetched.tzinfo is None:
                     max_fetched = max_fetched.replace(tzinfo=timezone.utc)
                 latest_calendar_fetch = max_fetched
 
         # Check if any calendar rows exist in DB at all
-        total_events = (await session.execute(
-            select(func.count(EconomicCalendar.id))
-        )).scalar_one_or_none() or 0
+        total_events = (await session.execute(select(func.count(EconomicCalendar.id)))).scalar_one_or_none() or 0
 
         if total_events == 0 and latest_calendar_fetch is None:
             if is_paper:
@@ -1417,30 +1695,37 @@ class RiskGate:
         calendar_age_hours = (now - latest_calendar_fetch).total_seconds() / 3600 if latest_calendar_fetch else 999.0
 
         # Check future coverage in DB (events within [-1h, +12h])
-        future_coverage = (await session.execute(
-            select(EconomicCalendar.id)
-            .where(EconomicCalendar.event_time >= now - timedelta(hours=1))
-            .where(EconomicCalendar.event_time <= now + timedelta(hours=12))
-            .limit(1)
-        )).scalar_one_or_none()
+        future_coverage = (
+            await session.execute(
+                select(EconomicCalendar.id)
+                .where(EconomicCalendar.event_time >= now - timedelta(hours=1))
+                .where(EconomicCalendar.event_time <= now + timedelta(hours=12))
+                .limit(1)
+            )
+        ).scalar_one_or_none()
 
         stale_warning = ""
         if calendar_age_hours > 8.0:
             if not is_paper:
-                return False, f"Economic calendar data is {calendar_age_hours:.1f}h stale (>8.0h limit). Live trade blocked."
+                return (
+                    False,
+                    f"Economic calendar data is {calendar_age_hours:.1f}h stale (>8.0h limit). Live trade blocked.",
+                )
             logger.warning(
                 f"Economic calendar data is {calendar_age_hours:.1f}h old (threshold=8.0h). "
                 f"Degraded mode: proceeding with warning instead of hard-block."
             )
             stale_warning = f" [WARNING: Calendar data is {calendar_age_hours:.1f}h old — degraded mode]"
         elif calendar_age_hours > 4.0:
-            stale_warning = f" [WARNING: Calendar data is {calendar_age_hours:.1f}h old — check upcoming events manually]"
+            stale_warning = (
+                f" [WARNING: Calendar data is {calendar_age_hours:.1f}h old — check upcoming events manually]"
+            )
 
         # Check user-defined blacklisted events from UserPreference
         try:
             pref_stmt = select(UserPreference).where(
                 UserPreference.is_active == True,
-                (UserPreference.category == "event_blacklist") | (UserPreference.key == "event_blacklist")
+                (UserPreference.category == "event_blacklist") | (UserPreference.key == "event_blacklist"),
             )
             blacklists = (await session.execute(pref_stmt)).scalars().all()
             user_blacklisted_terms = []
@@ -1456,12 +1741,18 @@ class RiskGate:
                         user_blacklisted_terms.append(str(pref.value_json).upper())
 
             if user_blacklisted_terms:
-                user_blocked = (await session.execute(
-                    select(EconomicCalendar)
-                    .where(EconomicCalendar.currency.in_(list(currencies)))
-                    .where(EconomicCalendar.event_time >= now - window)
-                    .where(EconomicCalendar.event_time <= now + window)
-                )).scalars().all()
+                user_blocked = (
+                    (
+                        await session.execute(
+                            select(EconomicCalendar)
+                            .where(EconomicCalendar.currency.in_(list(currencies)))
+                            .where(EconomicCalendar.event_time >= now - window)
+                            .where(EconomicCalendar.event_time <= now + window)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
                 for ev in user_blocked:
                     if not ev.event_time:
                         continue
@@ -1478,14 +1769,16 @@ class RiskGate:
             logger.debug(f"[RiskGate] UserPreference blacklist check error: {e}")
 
         # Check for actual upcoming high-impact events
-        upcoming = (await session.execute(
-            select(EconomicCalendar)
-            .where(EconomicCalendar.impact.in_(["high", "High", "HIGH"]))
-            .where(EconomicCalendar.currency.in_(list(currencies)))
-            .where(EconomicCalendar.event_time >= now - window)
-            .where(EconomicCalendar.event_time <= now + window)
-            .limit(1)
-        )).scalar_one_or_none()
+        upcoming = (
+            await session.execute(
+                select(EconomicCalendar)
+                .where(EconomicCalendar.impact.in_(["high", "High", "HIGH"]))
+                .where(EconomicCalendar.currency.in_(list(currencies)))
+                .where(EconomicCalendar.event_time >= now - window)
+                .where(EconomicCalendar.event_time <= now + window)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
 
         if upcoming is not None and upcoming.event_time is not None:
             delta = abs((upcoming.event_time - now).total_seconds() / 60)
@@ -1513,9 +1806,9 @@ class RiskGate:
             if simulated_positions is not None:
                 open_positions = simulated_positions
             else:
-                open_positions = list((await session.execute(
-                    select(Position).where(Position.status == "open")
-                )).scalars().all())
+                open_positions = list(
+                    (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+                )
 
         if not open_positions:
             return True, "no existing positions"
@@ -1523,9 +1816,14 @@ class RiskGate:
         # Evaluate portfolio heat using DynamicCorrelationMatrix if open positions present
         pos_list = []
         for pos in open_positions:
-            p_sym = getattr(pos, 'symbol', None) or (pos.get('symbol') if isinstance(pos, dict) else None)
-            p_vol = getattr(pos, 'volume', None) or getattr(pos, 'executed_lots', None) or (pos.get('volume', 0.1) if isinstance(pos, dict) else 0.1) or 0.1
-            p_dir = getattr(pos, 'direction', None) or (pos.get('direction') if isinstance(pos, dict) else 'buy')
+            p_sym = getattr(pos, "symbol", None) or (pos.get("symbol") if isinstance(pos, dict) else None)
+            p_vol = (
+                getattr(pos, "volume", None)
+                or getattr(pos, "executed_lots", None)
+                or (pos.get("volume", 0.1) if isinstance(pos, dict) else 0.1)
+                or 0.1
+            )
+            p_dir = getattr(pos, "direction", None) or (pos.get("direction") if isinstance(pos, dict) else "buy")
             if p_sym:
                 pos_list.append({"symbol": str(p_sym), "volume": float(p_vol), "direction": str(p_dir)})
 
@@ -1546,26 +1844,31 @@ class RiskGate:
             except Exception as exc:
                 logger.debug(f"DynamicCorrelationMatrix evaluation fallback: {exc}")
 
-        max_lot = self.settings.get('trading', {}).get('risk', {}).get('max_lot_per_symbol', 1.0)
+        max_lot = self.settings.get("trading", {}).get("risk", {}).get("max_lot_per_symbol", 1.0)
         correlated_exposure = max(cand_vol / max(max_lot, 0.01), 0.1)  # Normalized base exposure for the new trade
-        
+
         for pos in open_positions:
-            pos_sym = getattr(pos, 'symbol', None) or (pos.get('symbol') if isinstance(pos, dict) else None)
-            pos_vol = getattr(pos, 'volume', None) or getattr(pos, 'executed_lots', None) or (pos.get('volume', 0.1) if isinstance(pos, dict) else 0.1) or 0.1
-            pos_dir = getattr(pos, 'direction', None) or (pos.get('direction') if isinstance(pos, dict) else 'buy')
+            pos_sym = getattr(pos, "symbol", None) or (pos.get("symbol") if isinstance(pos, dict) else None)
+            pos_vol = (
+                getattr(pos, "volume", None)
+                or getattr(pos, "executed_lots", None)
+                or (pos.get("volume", 0.1) if isinstance(pos, dict) else 0.1)
+                or 0.1
+            )
+            pos_dir = getattr(pos, "direction", None) or (pos.get("direction") if isinstance(pos, dict) else "buy")
 
             if not pos_sym:
                 continue
 
             # Dynamic correlation calculation and std_dev
             corr, std_dev = await self._get_dynamic_correlation(session, symbol, pos_sym, as_of=as_of)
-            
+
             if corr != 0.0 and abs(corr) > 0.7:
                 # Volatility-adjusted exposure: Aset dengan volatilitas rendah memiliki penalty lebih kecil
-                volatility_multiplier = max(std_dev * 100, 0.1) 
-                
+                volatility_multiplier = max(std_dev * 100, 0.1)
+
                 normalized_exposure = (pos_vol / max(max_lot, 0.01)) * volatility_multiplier
-                
+
                 same_dir = direction == pos_dir
                 actual_direction_factor = 1 if (corr > 0 and same_dir) or (corr < 0 and not same_dir) else -0.5
                 correlated_exposure += abs(corr) * normalized_exposure * max(0, actual_direction_factor)
@@ -1604,89 +1907,101 @@ class RiskGate:
         from monika.domain.market.dynamic_correlation import get_rolling_correlation
         import pandas as pd
         from sqlalchemy import select
-        
+
         sim_time = as_of or clock.now()
         corr, source = await get_rolling_correlation(session, symbol1, symbol2, as_of=sim_time)
         fallback_std = 0.01
-        
+
         try:
-            s2_stmt = (
-                select(PriceOHLCV.timestamp, PriceOHLCV.close)
-                .where(PriceOHLCV.symbol == symbol2, PriceOHLCV.timeframe == "D1")
+            s2_stmt = select(PriceOHLCV.timestamp, PriceOHLCV.close).where(
+                PriceOHLCV.symbol == symbol2, PriceOHLCV.timeframe == "D1"
             )
             if sim_time is not None:
                 s2_stmt = s2_stmt.where(PriceOHLCV.timestamp <= sim_time)
-                
-            s2_rows = (await session.execute(
-                s2_stmt.order_by(PriceOHLCV.timestamp.desc()).limit(60)
-            )).all()
-            
+
+            s2_rows = (await session.execute(s2_stmt.order_by(PriceOHLCV.timestamp.desc()).limit(60))).all()
+
             if len(s2_rows) >= 30:
                 df2 = pd.DataFrame(s2_rows, columns=["timestamp", "close2"]).set_index("timestamp").sort_index()
                 try:
                     raw_val: Any = df2["close2"].pct_change().std()
                     std2_raw = float(raw_val)
                     std2 = fallback_std if math.isnan(std2_raw) else std2_raw
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     std2 = fallback_std
             else:
                 std2 = fallback_std
         except Exception:
             std2 = fallback_std
-            
+
         return float(corr), float(std2)
 
     async def _check_total_portfolio_heat(
-        self, session: AsyncSession, proposed_sizing: SizingResult, equity: Optional[float] = None, simulated_positions: Optional[list] = None
+        self,
+        session: AsyncSession,
+        proposed_sizing: SizingResult,
+        equity: Optional[float] = None,
+        simulated_positions: Optional[list] = None,
     ) -> tuple[bool, str]:
         heat_cfg = self.settings.get("trading", {}).get("risk", {})
         max_heat_pct = float(heat_cfg.get("max_portfolio_heat_pct", 4.0))
-        eff_equity = equity if (equity is not None and equity > 0) else float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+        eff_equity = (
+            equity
+            if (equity is not None and equity > 0)
+            else float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+        )
 
         if simulated_positions is not None:
             open_positions = simulated_positions
         else:
-            open_positions = (await session.execute(
-                select(Position).where(Position.status == "open")
-            )).scalars().all()
+            open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
 
         current_heat_usd = 0.0
         position_details = []
 
         for pos in open_positions:
-            pos_sym = getattr(pos, 'symbol', None) or (pos.get('symbol') if isinstance(pos, dict) else None)
-            pos_entry = getattr(pos, 'entry_price', None) or (pos.get('entry_price') if isinstance(pos, dict) else None)
-            pos_sl = getattr(pos, 'sl', None) or getattr(pos, 'stop_loss', None) or (pos.get('sl') or pos.get('stop_loss') if isinstance(pos, dict) else None)
-            pos_vol = getattr(pos, 'volume', None) or getattr(pos, 'executed_lots', None) or (pos.get('volume') or pos.get('executed_lots') if isinstance(pos, dict) else None)
-            pos_dir = getattr(pos, 'direction', None) or (pos.get('direction') if isinstance(pos, dict) else 'buy')
+            pos_sym = getattr(pos, "symbol", None) or (pos.get("symbol") if isinstance(pos, dict) else None)
+            pos_entry = getattr(pos, "entry_price", None) or (pos.get("entry_price") if isinstance(pos, dict) else None)
+            pos_sl = (
+                getattr(pos, "sl", None)
+                or getattr(pos, "stop_loss", None)
+                or (pos.get("sl") or pos.get("stop_loss") if isinstance(pos, dict) else None)
+            )
+            pos_vol = (
+                getattr(pos, "volume", None)
+                or getattr(pos, "executed_lots", None)
+                or (pos.get("volume") or pos.get("executed_lots") if isinstance(pos, dict) else None)
+            )
+            pos_dir = getattr(pos, "direction", None) or (pos.get("direction") if isinstance(pos, dict) else "buy")
 
             if not pos_entry or not pos_vol or not pos_sym:
                 continue
-            
+
             pos_sym_str = str(pos_sym)
-            
+
             # Hitung risiko aktual posisi terbuka
             if pos_sl and pos_sl > 0:
                 d_entry = Decimal(str(pos_entry))
                 d_sl = Decimal(str(pos_sl))
                 d_sl_distance = abs(d_entry - d_sl)
                 sl_distance = float(d_sl_distance)
-                
+
                 # Check breakeven (SL past/at entry)
-                if pos_dir == 'buy' and pos_sl >= pos_entry:
+                if pos_dir == "buy" and pos_sl >= pos_entry:
                     heat_this_position = 0.0
                     position_details.append(f"{pos_sym_str}: $0 (breakeven)")
-                elif pos_dir == 'sell' and pos_sl <= pos_entry:
+                elif pos_dir == "sell" and pos_sl <= pos_entry:
                     heat_this_position = 0.0
                     position_details.append(f"{pos_sym_str}: $0 (breakeven)")
                 else:
                     from monika.domain.risk.position_sizing import PositionSizer
+
                     sizer = PositionSizer(self.settings, mt5_client=self._mt5)
                     try:
                         spec = await sizer._get_instrument_spec_dynamic(session, pos_sym_str)
                     except Exception:
                         spec = sizer._get_instrument_spec(pos_sym_str)
-                    
+
                     if spec and spec.pip_size > 0 and spec.pip_value_per_lot > 0:
                         d_pip_size = Decimal(str(spec.pip_size))
                         d_pip_val = Decimal(str(spec.pip_value_per_lot))
@@ -1707,11 +2022,15 @@ class RiskGate:
                 if simulated_positions is None:
                     fallback_pct = float(heat_cfg.get("risk_percent_per_trade", 2.0))
                     heat_this_position = eff_equity * (fallback_pct / 100.0)
-                    position_details.append(f"{pos_sym}: ~${heat_this_position:.2f} (WARN: no SL, estimated at {fallback_pct}%)")
-                    logger.warning(f"Position {pos_sym} has no explicit SL; heat estimated at {fallback_pct}% of equity.")
+                    position_details.append(
+                        f"{pos_sym}: ~${heat_this_position:.2f} (WARN: no SL, estimated at {fallback_pct}%)"
+                    )
+                    logger.warning(
+                        f"Position {pos_sym} has no explicit SL; heat estimated at {fallback_pct}% of equity."
+                    )
                 else:
                     heat_this_position = eff_equity * (float(heat_cfg.get("risk_percent_per_trade", 1.5)) / 100.0)
-            
+
             current_heat_usd += heat_this_position
 
         proposed_heat_usd = proposed_sizing.risk_amount_usd
@@ -1728,14 +2047,12 @@ class RiskGate:
 
         return True, f"portfolio_heat={total_heat_pct:.1f}%/{max_heat_pct}%"
 
-
     # ------------------------------------------------------------------
     # Audit logging
     # ------------------------------------------------------------------
 
     async def _log_verdict(
-        self, session: AsyncSession, symbol: str, direction: str,
-        sizing: SizingResult, verdict: RiskVerdict
+        self, session: AsyncSession, symbol: str, direction: str, sizing: SizingResult, verdict: RiskVerdict
     ) -> None:
         """Catat keputusan risk gate ke tabel orders_log."""
         import json
@@ -1743,22 +2060,26 @@ class RiskGate:
         record = OrderLog(
             action="risk_check",
             symbol=symbol,
-            params_json=json.dumps({
-                "direction":      direction,
-                "proposed_lots":  sizing.recommended_lots,
-                "risk_amount_usd": sizing.risk_amount_usd,
-                "risk_percent":   sizing.risk_percent,
-                "sl_pips":        getattr(sizing, 'sl_distance_pips', getattr(sizing, 'sl_pips', 0.0)),
-                "rr_ratio":       sizing.rr_ratio,
-            }),
+            params_json=json.dumps(
+                {
+                    "direction": direction,
+                    "proposed_lots": sizing.recommended_lots,
+                    "risk_amount_usd": sizing.risk_amount_usd,
+                    "risk_percent": sizing.risk_percent,
+                    "sl_pips": getattr(sizing, "sl_distance_pips", getattr(sizing, "sl_pips", 0.0)),
+                    "rr_ratio": sizing.rr_ratio,
+                }
+            ),
             requested_by="strategy_pipeline",
             approved_by="risk_gate" if verdict.approved else None,
-            result=json.dumps({
-                "approved":          verdict.approved,
-                "checks_passed":     verdict.checks_passed,
-                "checks_failed":     verdict.checks_failed,
-                "rejection_reasons": verdict.rejection_reasons,
-            }),
+            result=json.dumps(
+                {
+                    "approved": verdict.approved,
+                    "checks_passed": verdict.checks_passed,
+                    "checks_failed": verdict.checks_failed,
+                    "rejection_reasons": verdict.rejection_reasons,
+                }
+            ),
         )
         session.add(record)
         await session.flush()
@@ -1775,12 +2096,11 @@ class RiskGate:
     ) -> None:
         """Update RiskState harian setelah posisi tertutup. Trigger auto-pause jika lewat batas."""
         today_start = get_trading_day_start(self.settings)
-        state = (await session.execute(
-            select(RiskState)
-            .where(RiskState.date >= today_start)
-            .order_by(RiskState.date.desc())
-            .limit(1)
-        )).scalar_one_or_none()
+        state = (
+            await session.execute(
+                select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
+            )
+        ).scalar_one_or_none()
 
         if state is None:
             state = RiskState(
@@ -1799,17 +2119,19 @@ class RiskGate:
 
         # Auto-pause if drawdown breached
         # current_drawdown tracks the lowest point of daily_pnl
-        drawdown_pct = (abs(state.current_drawdown) / equity * 100) if (equity is not None and equity > 0 and state.current_drawdown < 0) else 0.0
+        drawdown_pct = (
+            (abs(state.current_drawdown) / equity * 100)
+            if (equity is not None and equity > 0 and state.current_drawdown < 0)
+            else 0.0
+        )
         if drawdown_pct >= self.max_daily_drawdown_pct and not state.trading_paused:
             state.trading_paused = True
-            state.reason = (
-                f"Auto-paused: daily drawdown {drawdown_pct:.2f}% "
-                f">= limit {self.max_daily_drawdown_pct}%"
-            )
+            state.reason = f"Auto-paused: daily drawdown {drawdown_pct:.2f}% >= limit {self.max_daily_drawdown_pct}%"
             logger.warning(f"TRADING AUTO-PAUSED: {state.reason}")
-            
+
             try:
                 import importlib
+
                 notifier_mod = importlib.import_module("monika.infrastructure.infra.notifier")
                 notifier_cls = getattr(notifier_mod, "AgentNotifier", None)
                 if notifier_cls:
@@ -1825,15 +2147,14 @@ class RiskGate:
             f"paused={state.trading_paused}"
         )
 
-    async def pause_trading(
-        self, session: AsyncSession, reason: str, duration_hours: Optional[float] = None
-    ) -> None:
+    async def pause_trading(self, session: AsyncSession, reason: str, duration_hours: Optional[float] = None) -> None:
         """Pause sistem trading secara manual dengan opsi durasi auto-unpause."""
         from datetime import timedelta
+
         today_start = get_trading_day_start(self.settings)
-        state = (await session.execute(
-            select(RiskState).where(RiskState.date >= today_start).limit(1)
-        )).scalar_one_or_none()
+        state = (
+            await session.execute(select(RiskState).where(RiskState.date >= today_start).limit(1))
+        ).scalar_one_or_none()
 
         now = clock.now()
         unpause_at = (now + timedelta(hours=duration_hours)) if duration_hours and duration_hours > 0 else None
@@ -1851,13 +2172,13 @@ class RiskGate:
         if unpause_at:
             cfg_val += f"|unpause_at:{unpause_at.isoformat()}"
 
-        cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == 'manual_trading_paused')
-        )).scalar_one_or_none()
+        cfg = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "manual_trading_paused"))
+        ).scalar_one_or_none()
         if cfg:
             cfg.value = cfg_val
         else:
-            session.add(SystemConfig(key='manual_trading_paused', value=cfg_val))
+            session.add(SystemConfig(key="manual_trading_paused", value=cfg_val))
 
         await session.commit()
         unpause_info = f" (auto-unpause at {unpause_at.strftime('%Y-%m-%d %H:%M UTC')})" if unpause_at else ""
@@ -1865,53 +2186,58 @@ class RiskGate:
 
     async def _check_edge_status_not_paused(self, session: AsyncSession, is_backtest: bool = False) -> tuple[bool, str]:
         if is_backtest:
-            return (True, 'ok')
-        cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == 'trading_paused')
-        )).scalar_one_or_none()
-        if cfg and cfg.value and cfg.value.split(':', 1)[0].strip().lower() == 'true':
-            reason = cfg.value.split(':', 1)[1] if ':' in cfg.value else 'No statistical edge detected (EdgeTracker auto-pause)'
-            return (False, f'EdgeTracker auto-pause active: {reason}')
-        return (True, 'ok')
+            return (True, "ok")
+        cfg = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "trading_paused"))
+        ).scalar_one_or_none()
+        if cfg and cfg.value and cfg.value.split(":", 1)[0].strip().lower() == "true":
+            reason = (
+                cfg.value.split(":", 1)[1]
+                if ":" in cfg.value
+                else "No statistical edge detected (EdgeTracker auto-pause)"
+            )
+            return (False, f"EdgeTracker auto-pause active: {reason}")
+        return (True, "ok")
 
     async def clear_edge_status_pause(self, session: AsyncSession) -> None:
-        cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == 'trading_paused')
-        )).scalar_one_or_none()
+        cfg = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "trading_paused"))
+        ).scalar_one_or_none()
         if cfg and cfg.value:
-            cfg.value = 'false'
-            logger.info('Edge-status auto-pause cleared.')
+            cfg.value = "false"
+            logger.info("Edge-status auto-pause cleared.")
 
     async def resume_trading(self, session: AsyncSession) -> None:
         """Lanjutkan (resume) trading secara manual."""
         today_start = get_trading_day_start(self.settings)
-        state = (await session.execute(
-            select(RiskState).where(RiskState.date >= today_start).limit(1)
-        )).scalar_one_or_none()
+        state = (
+            await session.execute(select(RiskState).where(RiskState.date >= today_start).limit(1))
+        ).scalar_one_or_none()
 
         if state:
             state.trading_paused = False
             state.reason = None
             state.unpause_at = None
 
-        for key in ('manual_trading_paused', 'kill_switch', 'trading_paused', 'system_paused'):
-            cfg = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key == key)
-            )).scalar_one_or_none()
+        for key in ("manual_trading_paused", "kill_switch", "trading_paused", "system_paused"):
+            cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
             if cfg:
-                cfg.value = 'false'
+                cfg.value = "false"
 
         await self.clear_edge_status_pause(session)
-        
+
         # Bersihkan juga suspended symbols saat resume trading dipanggil
         try:
             from monika.core.analytics.paper_tracker import PaperTracker
+
             await PaperTracker(self.settings).unsuspend_all(session)
         except Exception as e:
             logger.debug(f"Failed to clear suspended symbols on resume: {e}")
 
         await session.commit()
-        logger.info('Trading manually RESUMED (RiskState + Manual + KillSwitch + EdgeTracker + SuspendedSymbols flags cleared)')
+        logger.info(
+            "Trading manually RESUMED (RiskState + Manual + KillSwitch + EdgeTracker + SuspendedSymbols flags cleared)"
+        )
 
     async def _check_post_loss_cooldown(
         self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False
@@ -1919,33 +2245,35 @@ class RiskGate:
         """Blokir re-entry pada simbol yang sama selama N jam jika baru saja terkena Stop Loss."""
         if is_backtest:
             return True, "cooldown_backtest_ok"
-        cooldown_hours = self.settings.get("trading", {}).get("risk", {}).get(
-            "post_sl_cooldown_hours", 6
-        )
+        cooldown_hours = self.settings.get("trading", {}).get("risk", {}).get("post_sl_cooldown_hours", 6)
         if cooldown_hours <= 0:
             return True, "cooldown disabled"
-        
+
         now = as_of or clock.now()
         since = now - timedelta(hours=cooldown_hours)
-        
+
         # Check for recent SL hits on this symbol
-        recent_sl = (await session.execute(
-            select(TradeOutcome)
-            .where(TradeOutcome.symbol == symbol)
-            .where(TradeOutcome.exit_reason == "sl_hit")
-            .where(TradeOutcome.closed_at >= since)
-            .limit(1)
-        )).scalar_one_or_none()
-        
+        recent_sl = (
+            await session.execute(
+                select(TradeOutcome)
+                .where(TradeOutcome.symbol == symbol)
+                .where(TradeOutcome.exit_reason == "sl_hit")
+                .where(TradeOutcome.closed_at >= since)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
         # Also check PaperTradeRecord for sl_hit
         if recent_sl is None:
-            recent_sl_paper = (await session.execute(
-                select(PaperTradeRecord)
-                .where(PaperTradeRecord.symbol == symbol)
-                .where(PaperTradeRecord.exit_reason == "sl_hit")
-                .where(PaperTradeRecord.closed_at >= since)
-                .limit(1)
-            )).scalar_one_or_none()
+            recent_sl_paper = (
+                await session.execute(
+                    select(PaperTradeRecord)
+                    .where(PaperTradeRecord.symbol == symbol)
+                    .where(PaperTradeRecord.exit_reason == "sl_hit")
+                    .where(PaperTradeRecord.closed_at >= since)
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
             if recent_sl_paper and recent_sl_paper.closed_at is not None:
                 hours_ago = (now - recent_sl_paper.closed_at).total_seconds() / 3600
                 return False, (
@@ -1956,10 +2284,9 @@ class RiskGate:
         elif recent_sl is not None and recent_sl.closed_at is not None:
             hours_ago = (now - recent_sl.closed_at).total_seconds() / 3600
             return False, (
-                f"Post-SL cooldown active for {symbol}: "
-                f"SL was hit {hours_ago:.1f}h ago. Cooldown: {cooldown_hours}h."
+                f"Post-SL cooldown active for {symbol}: SL was hit {hours_ago:.1f}h ago. Cooldown: {cooldown_hours}h."
             )
-        
+
         return True, "no recent SL hits"
 
     async def _check_schmitt_regime(
@@ -1973,15 +2300,19 @@ class RiskGate:
             return True, "schmitt_regime_backtest_exempt"
         try:
             from monika.domain.indicators.regime_detector import get_schmitt_regime_detector, RegimeState
+
             detector = get_schmitt_regime_detector()
             if detector.state == RegimeState.FUSED:
-                open_count = (await session.execute(
-                    select(func.count(Position.id)).where(Position.status == "open")
-                )).scalar_one_or_none() or 0
+                open_count = (
+                    await session.execute(select(func.count(Position.id)).where(Position.status == "open"))
+                ).scalar_one_or_none() or 0
                 if simulated_positions:
                     open_count += len(simulated_positions)
                 if open_count >= 2:
-                    return False, f"Schmitt regime is FUSED (contagion density={detector.last_density:.2f}). Max 2 positions allowed (current={open_count})"
+                    return (
+                        False,
+                        f"Schmitt regime is FUSED (contagion density={detector.last_density:.2f}). Max 2 positions allowed (current={open_count})",
+                    )
             return True, f"regime={detector.state.value} (density={detector.last_density:.2f})"
         except Exception as e:
             logger.warning(f"Schmitt regime check error: {e}")
@@ -1998,6 +2329,7 @@ class RiskGate:
             return True, "vpin_check_backtest_exempt"
         try:
             from monika.domain.indicators.microstructure import VPIN_SYMBOLS
+
             if symbol.upper() not in VPIN_SYMBOLS:
                 return True, f"{symbol} exempt from VPIN check"
 
@@ -2008,9 +2340,9 @@ class RiskGate:
             )
             if as_of is not None:
                 stmt = stmt.where(TechnicalIndicator.timestamp <= as_of)
-            row = (await session.execute(
-                stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1)
-            )).scalar_one_or_none()
+            row = (
+                await session.execute(stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1))
+            ).scalar_one_or_none()
 
             if row and row.value_json:
                 data = json.loads(row.value_json)
@@ -2041,7 +2373,10 @@ class RiskGate:
         # Illiquid daily rollover gap (21:55 - 22:15 UTC): wide spreads and empty books
         if (hour == 21 and now.minute >= 55) or (hour == 22 and now.minute <= 15):
             if sizing.recommended_lots > 0.5:
-                return False, f"Illiquid rollover window (21:55-22:15 UTC): lots={sizing.recommended_lots} exceeds 0.5 lot ceiling"
+                return (
+                    False,
+                    f"Illiquid rollover window (21:55-22:15 UTC): lots={sizing.recommended_lots} exceeds 0.5 lot ceiling",
+                )
 
         try:
             cutoff = now - timedelta(days=30)
@@ -2059,7 +2394,10 @@ class RiskGate:
                 if not math.isfinite(adv) or adv <= 0:
                     return False, f"Non-finite or invalid ADV volume calculated for {symbol}: {adv}"
                 if sizing.recommended_lots > (adv * 0.01):
-                    return False, f"Proposed volume {sizing.recommended_lots} lots exceeds 1.0% of 20-day ADV ({adv:.0f} units)"
+                    return (
+                        False,
+                        f"Proposed volume {sizing.recommended_lots} lots exceeds 1.0% of 20-day ADV ({adv:.0f} units)",
+                    )
         except Exception as e:
             logger.error(f"[{symbol}] ADV calculation failed: {e}")
             if not is_backtest:
@@ -2082,12 +2420,13 @@ class RiskGate:
         """
         try:
             if simulated_positions is not None:
-                active_symbols = list({
-                    p.get("symbol") for p in simulated_positions
-                    if isinstance(p, dict) and p.get("symbol") != symbol
-                })
+                active_symbols = list(
+                    {p.get("symbol") for p in simulated_positions if isinstance(p, dict) and p.get("symbol") != symbol}
+                )
             else:
-                stmt = select(Position.symbol).where(Position.symbol != symbol).where(Position.status == "open").distinct()
+                stmt = (
+                    select(Position.symbol).where(Position.symbol != symbol).where(Position.status == "open").distinct()
+                )
                 active_symbols = (await session.execute(stmt)).scalars().all()
 
             if not active_symbols:
@@ -2130,7 +2469,10 @@ class RiskGate:
                 lower_tail = fit_res.get("lower_tail_dependence", 0.0)
 
                 if lower_tail > 0.40:
-                    return False, f"Extreme crash contagion tail risk: Clayton lambda={lower_tail:.2f} > 0.40 with active position in {other_sym}"
+                    return (
+                        False,
+                        f"Extreme crash contagion tail risk: Clayton lambda={lower_tail:.2f} > 0.40 with active position in {other_sym}",
+                    )
 
         except Exception as e:
             logger.warning(f"[{symbol}] Copula tail risk check failed: {e}")
@@ -2142,7 +2484,7 @@ class RiskGate:
         self,
         session: AsyncSession,
         symbol: str,
-        analysis: Optional['AssetAnalysis'] = None,
+        analysis: Optional["AssetAnalysis"] = None,
         is_backtest: bool = False,
     ) -> tuple[bool, str]:
         """
@@ -2155,6 +2497,7 @@ class RiskGate:
 
         try:
             from monika.application.analysis.strategies.evidence_store import EvidenceStore
+
             strat_id = getattr(analysis, "strategy_id", None) or "general"
             regime = getattr(analysis, "market_regime", "UNKNOWN") or "UNKNOWN"
 
@@ -2182,6 +2525,7 @@ class RiskGate:
         and maximum risk / position boundaries.
         """
         from monika.domain.risk.approval_hub import get_approval_hub
+
         hub = get_approval_hub()
 
         if not hub._mandates and hub._active_mandate_id is None:
@@ -2191,6 +2535,7 @@ class RiskGate:
         if simulated_positions is None and session:
             try:
                 from sqlalchemy import select, func
+
                 stmt = select(func.count(Position.id)).where(Position.status == "open")
                 res = await session.execute(stmt)
                 scalar_val = res.scalar() if hasattr(res, "scalar") else 0
@@ -2200,10 +2545,10 @@ class RiskGate:
             except Exception:
                 open_count = 0
 
-        risk_pct = getattr(sizing, 'risk_percent', 1.0)
+        risk_pct = getattr(sizing, "risk_percent", 1.0)
         check_ts = None
         if as_of is not None:
-            check_ts = as_of.timestamp() if hasattr(as_of, 'timestamp') else float(as_of)
+            check_ts = as_of.timestamp() if hasattr(as_of, "timestamp") else float(as_of)
 
         return hub.validate_mandate(
             symbol=symbol,
@@ -2303,6 +2648,7 @@ async def get_current_risk_state(session: Optional[AsyncSession] = None, setting
     if not session:
         try:
             import importlib
+
             db_mod = importlib.import_module("monika.infrastructure.database.db")
             get_session_fn = getattr(db_mod, "get_session")
             async with get_session_fn() as sess:
@@ -2318,16 +2664,12 @@ async def get_current_risk_state(session: Optional[AsyncSession] = None, setting
         risk_row = await risk_row
 
     if not risk_row:
-        exec_res2 = await session.execute(
-            select(RiskState).order_by(RiskState.date.desc()).limit(1)
-        )
+        exec_res2 = await session.execute(select(RiskState).order_by(RiskState.date.desc()).limit(1))
         risk_row = exec_res2.scalar_one_or_none()
         if asyncio.iscoroutine(risk_row):
             risk_row = await risk_row
 
-    pos_exec = await session.execute(
-        select(func.count(Position.id)).where(Position.status == "open")
-    )
+    pos_exec = await session.execute(select(func.count(Position.id)).where(Position.status == "open"))
     pos_count = pos_exec.scalar()
     if asyncio.iscoroutine(pos_count):
         pos_count = await pos_count
@@ -2338,6 +2680,7 @@ async def get_current_risk_state(session: Optional[AsyncSession] = None, setting
     live_equity = 0.0
     try:
         import importlib
+
         broker_mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
         get_client_fn = getattr(broker_mod, "get_mt5_client", None)
         if callable(get_client_fn):
@@ -2361,7 +2704,7 @@ async def get_current_risk_state(session: Optional[AsyncSession] = None, setting
             "is_trading_paused": risk_row.trading_paused,
             "pause_reason": risk_row.reason,
             "open_positions_count": pos_count,
-            "status": "paused" if risk_row.trading_paused else "normal"
+            "status": "paused" if risk_row.trading_paused else "normal",
         }
     return {
         "status": "normal",
@@ -2372,4 +2715,3 @@ async def get_current_risk_state(session: Optional[AsyncSession] = None, setting
         "is_trading_paused": False,
         "open_positions_count": pos_count,
     }
-

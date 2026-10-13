@@ -34,7 +34,6 @@ _FLOOD_REGEX = re.compile(
 )
 
 
-
 class DeliveryStatus(str, Enum):
     PENDING = "PENDING"
     DELIVERED = "DELIVERED"
@@ -108,12 +107,8 @@ class DeliveryLedger:
             except sqlite3.OperationalError:
                 pass
 
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_delivery_status ON delivery_records(status)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_delivery_flood ON delivery_records(flood_not_before)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_delivery_status ON delivery_records(status)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_delivery_flood ON delivery_records(flood_not_before)")
 
     @staticmethod
     def extract_flood_wait(error_str: str, default: float = 30.0) -> Optional[float]:
@@ -380,4 +375,3 @@ class DeliveryLedger:
                     )
                 )
             return records
-

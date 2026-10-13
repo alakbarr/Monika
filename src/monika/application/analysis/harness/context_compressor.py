@@ -164,10 +164,12 @@ def offload_historical_charts(messages: List[dict], retain_recent_turns: int = 2
             for b in content:
                 if isinstance(b, dict) and (b.get("type") in ("image", "image_url") or "inline_data" in b):
                     has_image = True
-                    new_blocks.append({
-                        "type": "text",
-                        "text": "[CHART/IMAGE OFFLOADED: Historical technical chart visual offloaded to conserve token budget]"
-                    })
+                    new_blocks.append(
+                        {
+                            "type": "text",
+                            "text": "[CHART/IMAGE OFFLOADED: Historical technical chart visual offloaded to conserve token budget]",
+                        }
+                    )
                 else:
                     new_blocks.append(b)
             if has_image:
@@ -296,7 +298,23 @@ class ContextCompressor:
         retained_lines = []
         for line in lines:
             l_lower = line.lower()
-            if any(k in l_lower for k in ("regime", "vix", "dxy", "bias", "fundamental", "atr", "confluence", "economic calendar", "order block", "fvg", "support", "resistance")):
+            if any(
+                k in l_lower
+                for k in (
+                    "regime",
+                    "vix",
+                    "dxy",
+                    "bias",
+                    "fundamental",
+                    "atr",
+                    "confluence",
+                    "economic calendar",
+                    "order block",
+                    "fvg",
+                    "support",
+                    "resistance",
+                )
+            ):
                 retained_lines.append(line)
             if len(retained_lines) >= 30:
                 break
@@ -329,9 +347,7 @@ class ContextCompressor:
         if role == "tool":
             has_tool_result = True
         elif isinstance(content, list):
-            has_tool_result = any(
-                isinstance(b, dict) and b.get("type") == "tool_result" for b in content
-            )
+            has_tool_result = any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content)
         elif isinstance(content, str) and role in ("tool", "user") and "tool_result" in content:
             has_tool_result = True
 
@@ -355,9 +371,7 @@ class ContextCompressor:
         if "tool_calls" in prev_msg and prev_msg["tool_calls"]:
             has_tool_use = True
         elif isinstance(prev_content, list):
-            has_tool_use = any(
-                isinstance(b, dict) and b.get("type") in ("tool_use", "tool_call") for b in prev_content
-            )
+            has_tool_use = any(isinstance(b, dict) and b.get("type") in ("tool_use", "tool_call") for b in prev_content)
         if has_tool_use and split_idx > 1:
             return split_idx - 1
 
@@ -390,9 +404,7 @@ class ContextCompressor:
                 filtered.append(m)
         return existing_summary, filtered
 
-    def split_boundaries(
-        self, messages: List[dict], tail_turns: int = 3
-    ) -> Tuple[List[dict], List[dict], List[dict]]:
+    def split_boundaries(self, messages: List[dict], tail_turns: int = 3) -> Tuple[List[dict], List[dict], List[dict]]:
         """Phase 2: Protected Boundary Split with Warm-Prefix Preservation and Tool-Pair Snap.
 
         Preserves:
@@ -414,12 +426,10 @@ class ContextCompressor:
             head = messages[:1]
 
         if len(messages) <= (tail_turns * 2) + len(head):
-            return head, [], messages[len(head):]
+            return head, [], messages[len(head) :]
 
         # Find starting index for Tail (last tail_turns assistant messages)
-        assistant_indices = [
-            i for i, m in enumerate(messages) if m.get("role") == "assistant"
-        ]
+        assistant_indices = [i for i, m in enumerate(messages) if m.get("role") == "assistant"]
 
         if len(assistant_indices) >= tail_turns:
             tail_start = assistant_indices[-tail_turns]
@@ -430,7 +440,7 @@ class ContextCompressor:
         # Snap boundary to guarantee tool-use / tool-result pair integrity
         tail_start = self._snap_boundary(messages, tail_start)
 
-        middle = messages[len(head):tail_start]
+        middle = messages[len(head) : tail_start]
         tail = messages[tail_start:]
 
         return head, middle, tail
@@ -446,9 +456,7 @@ class ContextCompressor:
             if isinstance(content, str):
                 text = content
             elif isinstance(content, list):
-                text = " ".join(
-                    str(b.get("content", "")) for b in content if isinstance(b, dict)
-                )
+                text = " ".join(str(b.get("content", "")) for b in content if isinstance(b, dict))
 
             # Rule patterns mapped to sections
             section_patterns = [
@@ -510,9 +518,7 @@ class ContextCompressor:
             if isinstance(content, str):
                 text = content
             elif isinstance(content, list):
-                text = " ".join(
-                    str(b.get("content", "")) for b in content if isinstance(b, dict)
-                )
+                text = " ".join(str(b.get("content", "")) for b in content if isinstance(b, dict))
 
             # Extract key numbers, levels, indicators
             patterns = [
@@ -557,10 +563,12 @@ class ContextCompressor:
         if client is None and should_call_llm:
             try:
                 from monika.infrastructure.providers.llm_factory import get_client_for_task
+
                 client = get_client_for_task("summarizer", self.settings or {})
             except Exception:
                 try:
                     from monika.infrastructure.providers.llm_factory import get_client_for_task
+
                     client = get_client_for_task("context_compaction", self.settings or {})
                 except Exception:
                     client = None

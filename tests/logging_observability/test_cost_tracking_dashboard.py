@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Tests for PR-21: Per-Turn Cost Tracking Dashboard.
 Verifies cycle-level cost accumulation, by_model, by_role breakdowns, and REST API endpoints.
@@ -21,33 +22,39 @@ async def test_token_auditor_get_cycle_cost_breakdown():
             self._mapping = d
 
     sample_rows = [
-        DummyRow({
-            "cycle_id": "cycle-001",
-            "model_name": "claude-3-5-sonnet",
-            "role": "stage2_specialist",
-            "turns": 3,
-            "tokens": 4500,
-            "cost_usd": 0.045,
-            "avg_latency_ms": 1200.0,
-        }),
-        DummyRow({
-            "cycle_id": "cycle-001",
-            "model_name": "gemini-2.5-flash",
-            "role": "fundamental_analyst",
-            "turns": 2,
-            "tokens": 2000,
-            "cost_usd": 0.002,
-            "avg_latency_ms": 400.0,
-        }),
-        DummyRow({
-            "cycle_id": "cycle-002",
-            "model_name": "gpt-4o-mini",
-            "role": "signal_arbitrator",
-            "turns": 1,
-            "tokens": 800,
-            "cost_usd": 0.0008,
-            "avg_latency_ms": 300.0,
-        }),
+        DummyRow(
+            {
+                "cycle_id": "cycle-001",
+                "model_name": "claude-3-5-sonnet",
+                "role": "stage2_specialist",
+                "turns": 3,
+                "tokens": 4500,
+                "cost_usd": 0.045,
+                "avg_latency_ms": 1200.0,
+            }
+        ),
+        DummyRow(
+            {
+                "cycle_id": "cycle-001",
+                "model_name": "gemini-2.5-flash",
+                "role": "fundamental_analyst",
+                "turns": 2,
+                "tokens": 2000,
+                "cost_usd": 0.002,
+                "avg_latency_ms": 400.0,
+            }
+        ),
+        DummyRow(
+            {
+                "cycle_id": "cycle-002",
+                "model_name": "gpt-4o-mini",
+                "role": "signal_arbitrator",
+                "turns": 1,
+                "tokens": 800,
+                "cost_usd": 0.0008,
+                "avg_latency_ms": 300.0,
+            }
+        ),
     ]
 
     mock_result = MagicMock()

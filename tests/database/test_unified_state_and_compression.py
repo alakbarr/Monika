@@ -88,9 +88,7 @@ def test_session_db_wal_basic_and_checkpoint(tmp_path: Path):
 
 def test_prompt_cache_boundary_planner():
     """Verify prompt cache boundary planning and breakpoint tagging."""
-    planner = PromptCacheBoundaryPlanner(
-        profile=PromptCacheProfile(min_cacheable_tokens=50, max_breakpoints=3)
-    )
+    planner = PromptCacheBoundaryPlanner(profile=PromptCacheProfile(min_cacheable_tokens=50, max_breakpoints=3))
 
     # Register stable prefix
     planner.register_stable_prefix("prefix_core", "System prompt: Trading agent core instructions and risk rules." * 5)
@@ -138,7 +136,7 @@ def test_three_part_compressor_micro_compaction():
     assert len(compacted) < len(history)
     # Ensure role alternation is preserved
     for i in range(1, len(compacted)):
-        assert compacted[i]["role"] != compacted[i-1]["role"]
+        assert compacted[i]["role"] != compacted[i - 1]["role"]
 
 
 def test_state_rewind_concurrency_and_carrier_splitting(tmp_path: Path):
@@ -166,9 +164,7 @@ def test_state_rewind_concurrency_and_carrier_splitting(tmp_path: Path):
         rewind_mgr.rewind_session("sess_rewind", user_ordinal=-1, expected_active_ids=stale_ids)
 
     # 2. Test successful rewind to last user turn (turn 3)
-    outcome: RewindOutcome = rewind_mgr.rewind_session(
-        "sess_rewind", user_ordinal=-1, expected_active_ids=active_ids
-    )
+    outcome: RewindOutcome = rewind_mgr.rewind_session("sess_rewind", user_ordinal=-1, expected_active_ids=active_ids)
     assert outcome.undone_count == 2
     assert not outcome.carrier_side_effect_persisted
 
@@ -188,16 +184,15 @@ def test_state_rewind_concurrency_and_carrier_splitting(tmp_path: Path):
         output="Ticket 12345",
         has_side_effects=True,
     )
-    
+
     msgs_with_trade = wal_mgr.get_messages("sess_rewind")
     active_ids2 = [m["row_id"] for m in msgs_with_trade]
-    
+
     outcome_trade = rewind_mgr.rewind_session("sess_rewind", user_ordinal=-1, expected_active_ids=active_ids2)
     assert outcome_trade.carrier_side_effect_persisted
-    
+
     # Verify carrier marker updated in DB
     updated_msgs = wal_mgr.get_messages("sess_rewind")
     assert any(m.get("carrier_marker") == CARRIER_SIDE_EFFECT_PERSISTED for m in updated_msgs)
 
     wal_mgr.close()
-

@@ -4,7 +4,10 @@ from monika.infrastructure.providers.base_provider import BaseLLMClient, extract
 
 logger = logging.getLogger("TradingAgent.PortfolioManager")
 
-async def make_portfolio_decision(client: BaseLLMClient, symbol: str, risk_debate_states: dict, actual_risk_state: dict | None) -> dict:
+
+async def make_portfolio_decision(
+    client: BaseLLMClient, symbol: str, risk_debate_states: dict, actual_risk_state: dict | None
+) -> dict:
     sys_prompt = (
         "You are a balanced Portfolio Manager focused on capturing opportunities while managing risk.\n\n"
         "MANDATORY REJECTION CRITERIA (override ALL other reasoning):\n"
@@ -20,20 +23,20 @@ async def make_portfolio_decision(client: BaseLLMClient, symbol: str, risk_debat
         "- If 2+ risk debate personas voted veto_trade=true: max 0.5\n\n"
         "IMPORTANT: Apply these rules STRICTLY using the numerical data in Portfolio State. "
         "Do NOT override rejection criteria based on subjective reasoning.\n\n"
-        "Return JSON: {\"approval\": boolean, \"recommended_risk_multiplier\": float, \"reason\": string}"
+        'Return JSON: {"approval": boolean, "recommended_risk_multiplier": float, "reason": string}'
     )
     user_msg = f"Symbol: {symbol}\nRisk Debates: {json.dumps(risk_debate_states)}\nPortfolio State: {json.dumps(actual_risk_state)}"
-    
+
     schema = {
         "type": "object",
         "properties": {
             "approval": {"type": "boolean"},
             "recommended_risk_multiplier": {"type": "number"},
-            "reason": {"type": "string"}
+            "reason": {"type": "string"},
         },
-        "required": ["approval", "recommended_risk_multiplier", "reason"]
+        "required": ["approval", "recommended_risk_multiplier", "reason"],
     }
-    
+
     try:
         resp = await client.generate_content(system_prompt=sys_prompt, user_message=user_msg, response_schema=schema)
         if not resp:
@@ -50,7 +53,12 @@ async def make_portfolio_decision(client: BaseLLMClient, symbol: str, risk_debat
         return data
     except Exception as e:
         logger.error(f"Failed to parse Portfolio Manager JSON: {e}")
-        return {"approval": False, "recommended_risk_multiplier": 0.0, "reason": f"Fallback - Parse Error: {e}", "parse_error": True}
+        return {
+            "approval": False,
+            "recommended_risk_multiplier": 0.0,
+            "reason": f"Fallback - Parse Error: {e}",
+            "parse_error": True,
+        }
 
 
 async def evaluate_portfolio_impact(
@@ -78,5 +86,3 @@ async def evaluate_portfolio_impact(
             "parse_error": True,
         }
     return res
-
-

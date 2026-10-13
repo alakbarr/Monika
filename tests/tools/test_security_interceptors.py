@@ -45,7 +45,7 @@ def test_assert_safe_read_path_blocks_secrets(tmp_path):
             break
     if not repo_root:
         repo_root = p.parents[3]
-    
+
     # Attempting to read .env must raise SecurityViolationError
     with pytest.raises(SecurityViolationError, match="Access denied: Reading protected secret credential file"):
         assert_safe_read_path(str(repo_root / ".env"))
@@ -88,12 +88,8 @@ def test_unified_registry_security_interceptor_pipeline():
 
     # 2. Terminal prohibited command test
     with pytest.raises(CommandSecurityViolationError):
-        unified_tool_registry._run_security_interceptors(
-            "run_command", {"command": "rm -rf / --no-preserve-root"}
-        )
+        unified_tool_registry._run_security_interceptors("run_command", {"command": "rm -rf / --no-preserve-root"})
 
     # 3. Path read guard test for .env
     with pytest.raises(SecurityViolationError):
-        unified_tool_registry._run_security_interceptors(
-            "read_file", {"path": ".env"}
-        )
+        unified_tool_registry._run_security_interceptors("read_file", {"path": ".env"})

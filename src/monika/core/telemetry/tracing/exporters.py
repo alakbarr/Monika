@@ -51,9 +51,10 @@ class InMemoryTraceStore:
         """Schedule asynchronous flush to database if event loop is running."""
         try:
             import asyncio
+
             loop = asyncio.get_running_loop()
             loop.create_task(self.flush_evicted_to_db())
-        except (RuntimeError, AttributeError):
+        except RuntimeError, AttributeError:
             pass
 
     async def flush_evicted_to_db(self) -> int:
@@ -64,6 +65,7 @@ class InMemoryTraceStore:
         self._evicted_buffer.clear()
         try:
             from ..sinks import get_telemetry_sink
+
             sink = get_telemetry_sink()
             if sink is not None:
                 await sink.persist_spans(to_flush)
@@ -79,6 +81,7 @@ class InMemoryTraceStore:
                 from monika.infrastructure.database.db import get_session
                 from monika.infrastructure.database.models import TradingEvent
             import uuid
+
             count = 0
             async with get_session() as session:
                 for span in to_flush:
@@ -102,7 +105,6 @@ class InMemoryTraceStore:
             if len(self._evicted_buffer) < 500:
                 self._evicted_buffer.extend(to_flush)
             return 0
-
 
     def search_spans(
         self,

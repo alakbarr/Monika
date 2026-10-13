@@ -35,12 +35,12 @@ def _install_key_sequence_patches():
         # Kitty CSI-u / xterm extended escape sequences for Shift+Enter & Alt+Enter
         alt_enter = (Keys.Escape, Keys.ControlM)
         extended_keys = {
-            "\x1b[13;2u": alt_enter,       # Shift+Enter (Kitty)
-            "\x1b[13;3u": alt_enter,       # Alt+Enter (Kitty)
-            "\x1b[13;5u": alt_enter,       # Ctrl+Enter (Kitty)
-            "\x1b[27;2;13~": alt_enter,    # Shift+Enter (xterm)
-            "\x1b[27;3;13~": alt_enter,    # Alt+Enter (xterm)
-            "\x1b[27;5;13~": alt_enter,    # Ctrl+Enter (xterm)
+            "\x1b[13;2u": alt_enter,  # Shift+Enter (Kitty)
+            "\x1b[13;3u": alt_enter,  # Alt+Enter (Kitty)
+            "\x1b[13;5u": alt_enter,  # Ctrl+Enter (Kitty)
+            "\x1b[27;2;13~": alt_enter,  # Shift+Enter (xterm)
+            "\x1b[27;3;13~": alt_enter,  # Alt+Enter (xterm)
+            "\x1b[27;5;13~": alt_enter,  # Ctrl+Enter (xterm)
         }
         for seq, mapped in extended_keys.items():
             ANSI_SEQUENCES[seq] = mapped
@@ -97,6 +97,7 @@ class ChatPromptManager:
         except Exception:
             try:
                 from prompt_toolkit.history import InMemoryHistory
+
                 self.session = PromptSession(
                     history=InMemoryHistory(),
                     completer=self.completer,
@@ -136,19 +137,21 @@ class ChatPromptManager:
 
     def _create_style(self) -> Style:
         p = self.palette
-        return Style.from_dict({
-            "prompt": f"{p.user} bold",
-            "prompt-glyph": f"{p.accent} bold",
-            "bottom-toolbar": f"bg:{p.surface} {p.muted}",
-            "bottom-toolbar.text": f"{p.text}",
-            "bottom-toolbar.accent": f"{p.accent} bold",
-            "bottom-toolbar.danger": f"{p.danger} bold",
-            "bottom-toolbar.success": f"{p.success} bold",
-            "completion-menu": f"bg:{p.surface} {p.text}",
-            "completion-menu.completion": f"{p.text}",
-            "completion-menu.completion.current": f"bg:{p.border} {p.accent} bold",
-            "completion-menu.meta": f"dim {p.muted}",
-        })
+        return Style.from_dict(
+            {
+                "prompt": f"{p.user} bold",
+                "prompt-glyph": f"{p.accent} bold",
+                "bottom-toolbar": f"bg:{p.surface} {p.muted}",
+                "bottom-toolbar.text": f"{p.text}",
+                "bottom-toolbar.accent": f"{p.accent} bold",
+                "bottom-toolbar.danger": f"{p.danger} bold",
+                "bottom-toolbar.success": f"{p.success} bold",
+                "completion-menu": f"bg:{p.surface} {p.text}",
+                "completion-menu.completion": f"{p.text}",
+                "completion-menu.completion.current": f"bg:{p.border} {p.accent} bold",
+                "completion-menu.meta": f"dim {p.muted}",
+            }
+        )
 
     def _create_key_bindings(self) -> KeyBindings:
         kb = KeyBindings()
@@ -210,9 +213,7 @@ class ChatPromptManager:
 
         hint_str = " │ <b>[?]</b> Help  <b>[Shift+Enter]</b> Multi-line  <b>[/]</b> Commands"
 
-        return HTML(
-            f" <b>MONIKA</b> │ Model: {model_str} │ {mode_str} │ {status_str}{perf_str}{hint_str} "
-        )
+        return HTML(f" <b>MONIKA</b> │ Model: {model_str} │ {mode_str} │ {status_str}{perf_str}{hint_str} ")
 
     async def prompt_async(self) -> Optional[str]:
         """Prompt user asynchronously for next turn input."""
@@ -225,14 +226,14 @@ class ChatPromptManager:
         if self.session is not None:
             try:
                 return await self.session.prompt_async(FormattedText(prompt_message))
-            except (EOFError, KeyboardInterrupt):
-
+            except EOFError, KeyboardInterrupt:
                 return None
             except Exception:
                 pass
 
         try:
             import asyncio
+
             return await asyncio.to_thread(input, "MONIKA > ")
-        except (EOFError, KeyboardInterrupt):
+        except EOFError, KeyboardInterrupt:
             return None

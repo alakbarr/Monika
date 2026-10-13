@@ -24,7 +24,7 @@ async def test_session_search_postgresql_engine():
             rationale_summary="Bullish BOS at H4 1.0850 with unmitigated FVG",
             outcome_pnl_usd=1.45,
             exit_reason="tp_hit",
-            created_at=datetime(2026, 8, 1, 10, 0, tzinfo=timezone.utc)
+            created_at=datetime(2026, 8, 1, 10, 0, tzinfo=timezone.utc),
         )
         ref2 = DecisionReflection(
             analysis_id=102,
@@ -36,7 +36,7 @@ async def test_session_search_postgresql_engine():
             is_paper_whatif=True,
             whatif_reason="risk_gate",
             whatif_hypothetical_pnl_pips=25.0,
-            created_at=datetime(2026, 9, 2, 10, 0, tzinfo=timezone.utc)
+            created_at=datetime(2026, 9, 2, 10, 0, tzinfo=timezone.utc),
         )
         ref3 = DecisionReflection(
             analysis_id=103,
@@ -47,7 +47,7 @@ async def test_session_search_postgresql_engine():
             rationale_summary="Liquidity sweep at 2650 resistance",
             outcome_pnl_usd=-0.50,
             exit_reason="sl_hit",
-            created_at=datetime(2026, 9, 1, 12, 0, tzinfo=timezone.utc)
+            created_at=datetime(2026, 9, 1, 12, 0, tzinfo=timezone.utc),
         )
         session.add_all([ref1, ref2, ref3])
         await session.commit()
@@ -95,7 +95,7 @@ async def test_session_search_dense_simd_and_rrf():
             confluence_score=9,
             rationale_summary="Breakout above resistance with bullish liquidity pool",
             embedding=[0.9, 0.1, 0.0],
-            created_at=datetime(2026, 9, 1, 10, 0, tzinfo=timezone.utc)
+            created_at=datetime(2026, 9, 1, 10, 0, tzinfo=timezone.utc),
         )
         ref_b = DecisionReflection(
             analysis_id=202,
@@ -105,7 +105,7 @@ async def test_session_search_dense_simd_and_rrf():
             confluence_score=6,
             rationale_summary="Choppy consolidation inside range",
             embedding=[0.0, 0.1, 0.9],
-            created_at=datetime(2026, 9, 2, 10, 0, tzinfo=timezone.utc)
+            created_at=datetime(2026, 9, 2, 10, 0, tzinfo=timezone.utc),
         )
         session.add_all([ref_a, ref_b])
         await session.commit()
@@ -129,7 +129,7 @@ async def test_session_search_dense_simd_and_rrf():
             setup_text="breakout resistance liquidity",
             limit=2,
             session=session,
-            query_vector=query_vec
+            query_vector=query_vec,
         )
         assert len(results) == 2
         # ref_a matches query_vec strongly [0.9, 0.1, 0.0] vs [1.0, 0.0, 0.0]
@@ -156,7 +156,7 @@ async def test_session_search_point_in_time_safety():
             confidence=0.80,
             confluence_score=8,
             rationale_summary="Past breakout on EURUSD",
-            created_at=datetime(2026, 8, 15, 12, 0, tzinfo=timezone.utc)
+            created_at=datetime(2026, 8, 15, 12, 0, tzinfo=timezone.utc),
         )
         # Future record (Sep 5)
         ref_future = DecisionReflection(
@@ -166,7 +166,7 @@ async def test_session_search_point_in_time_safety():
             confidence=0.95,
             confluence_score=10,
             rationale_summary="Future breakout on EURUSD",
-            created_at=datetime(2026, 9, 5, 12, 0, tzinfo=timezone.utc)
+            created_at=datetime(2026, 9, 5, 12, 0, tzinfo=timezone.utc),
         )
         session.add_all([ref_past, ref_future])
         await session.commit()
@@ -176,16 +176,12 @@ async def test_session_search_point_in_time_safety():
         # Query as of Aug 20 -> should ONLY see ref_past, not ref_future
         as_of_cutoff = datetime(2026, 8, 20, 0, 0, tzinfo=timezone.utc)
 
-        precedents = await search_engine.get_symbol_precedents(
-            "EURUSD", limit=5, session=session, as_of=as_of_cutoff
-        )
+        precedents = await search_engine.get_symbol_precedents("EURUSD", limit=5, session=session, as_of=as_of_cutoff)
         assert len(precedents) == 1
         assert precedents[0]["session_id"] == str(ref_past.id)
 
         # Keyword search as of Aug 20
-        search_res = await search_engine.search(
-            "breakout", limit=5, session=session, as_of=as_of_cutoff
-        )
+        search_res = await search_engine.search("breakout", limit=5, session=session, as_of=as_of_cutoff)
         assert len(search_res) == 1
         assert search_res[0]["session_id"] == str(ref_past.id)
 

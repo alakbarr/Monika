@@ -68,14 +68,12 @@ class SkillCrystallizer:
         self.read_guard = ReadBeforeWriteGuard()
 
     async def evaluate_and_crystallize(
-        self,
-        session: AsyncSession,
-        symbol: Optional[str] = None
+        self, session: AsyncSession, symbol: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Scans resolved trades and reflections for recurring high-win-rate setups.
         Compiles qualifying setups into crystallized skills.
-        
+
         Returns:
             List of newly crystallized or updated skill descriptors.
         """
@@ -99,7 +97,11 @@ class SkillCrystallizer:
             if hasattr(raw_res, "scalars"):
                 try:
                     all_items = raw_res.all()
-                    if hasattr(all_items, "_mock_return_value") or str(type(all_items)).find("Mock") != -1 or not all_items:
+                    if (
+                        hasattr(all_items, "_mock_return_value")
+                        or str(type(all_items)).find("Mock") != -1
+                        or not all_items
+                    ):
                         results = raw_res.scalars().all()
                     else:
                         results = all_items
@@ -129,7 +131,9 @@ class SkillCrystallizer:
                     r = row
                     regime_raw = getattr(r, "market_regime_at_analysis", None)
 
-                if regime_raw is not None and (hasattr(regime_raw, "_mock_return_value") or str(type(regime_raw)).find("Mock") != -1):
+                if regime_raw is not None and (
+                    hasattr(regime_raw, "_mock_return_value") or str(type(regime_raw)).find("Mock") != -1
+                ):
                     regime_raw = None
 
                 ref_text = getattr(r, "reflection_text", None)
@@ -158,10 +162,7 @@ class SkillCrystallizer:
         return crystallized
 
     async def _crystallize_cluster(
-        self,
-        session: AsyncSession,
-        cluster_key: str,
-        reflections: List[Any]
+        self, session: AsyncSession, cluster_key: str, reflections: List[Any]
     ) -> Optional[Dict[str, Any]]:
         """Compiles a cluster of winning reflections into a skill markdown file and registers in DB."""
         first = reflections[0]
@@ -169,7 +170,9 @@ class SkillCrystallizer:
         avg_conf = sum(float(r.confidence or 0.0) for r in reflections) / len(reflections)
         total_pnl = sum(float(r.outcome_pnl_usd or 0.0) for r in reflections)
         sample_size = len(reflections)
-        reliability_status = "High-Conviction Institutional Setup" if sample_size >= 10 else "Early-Stage Pattern (Low Sample Size)"
+        reliability_status = (
+            "High-Conviction Institutional Setup" if sample_size >= 10 else "Early-Stage Pattern (Low Sample Size)"
+        )
 
         # Synthesize tactical rules via LLM reasoning synthesis or clean semantic extraction
         rules_body = await self._synthesize_tactical_rules(reflections, symbol or "ASSET", cluster_key)
@@ -251,7 +254,7 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
             "name": f"crystallized_{cluster_key.lower()}",
             "symbol": symbol,
             "instances": len(reflections),
-            "file": skill_filename
+            "file": skill_filename,
         }
 
     async def _synthesize_tactical_rules(
@@ -279,6 +282,7 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
         llm_rules = []
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
+
             client = get_client_for_task("trade_reflection", self.settings)
             lessons_joined = "\n".join(f"- {l}" for l in raw_lessons)
             prompt = (
@@ -292,7 +296,7 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
             if hasattr(client, "generate"):
                 response = await client.generate(
                     prompt,
-                    system="You are an expert trading strategy engineer. Synthesize winning reflections into concise tactical rules."
+                    system="You are an expert trading strategy engineer. Synthesize winning reflections into concise tactical rules.",
                 )
             elif hasattr(client, "generate_content"):
                 response = await client.generate_content(
@@ -431,7 +435,9 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
                     logger.info(f"[SkillCrystallizer] Deprecated skill: {target_path.name} (reason: {reason})")
                     return True
 
-            new_content = f"---\nstatus: deprecated\nis_deprecated: true\ndeprecation_reason: {reason}\n---\n\n" + content
+            new_content = (
+                f"---\nstatus: deprecated\nis_deprecated: true\ndeprecation_reason: {reason}\n---\n\n" + content
+            )
             target_path.write_text(new_content, encoding="utf-8")
             invalidate_cache()
             return True
@@ -461,7 +467,11 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
             session = session_or_skill
             actual_skill = skill_name or kwargs.get("skill_name", "")
 
-        eff_profitable = was_profitable if was_profitable is not None else (won if won is not None else kwargs.get("was_profitable", kwargs.get("won", True)))
+        eff_profitable = (
+            was_profitable
+            if was_profitable is not None
+            else (won if won is not None else kwargs.get("was_profitable", kwargs.get("won", True)))
+        )
         eff_pnl = pnl if pnl != 0.0 else float(kwargs.get("pnl", 0.0))
 
         if not actual_skill:
@@ -469,7 +479,9 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 
         clean_name = actual_skill.lower().replace(".md", "")
         if session is None:
-            logger.info(f"[SkillCrystallizer] Skill attribution recorded: {clean_name} (won={eff_profitable}, pnl={eff_pnl:.2f})")
+            logger.info(
+                f"[SkillCrystallizer] Skill attribution recorded: {clean_name} (won={eff_profitable}, pnl={eff_pnl:.2f})"
+            )
             return {"skill_name": clean_name, "status": "active"}
 
         was_profitable = bool(eff_profitable)
@@ -583,15 +595,16 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
                     if win_rate < 0.50:
                         reason = f"recent_reflection_win_rate_{win_rate:.1%}_below_50pct"
                         if self.deprecate_skill(skill_stem, reason=reason):
-                            deprecated_skills.append({
-                                "skill": skill_stem,
-                                "symbol": sym,
-                                "win_rate": win_rate,
-                                "recent_trades": len(reflections),
-                                "reason": reason,
-                            })
+                            deprecated_skills.append(
+                                {
+                                    "skill": skill_stem,
+                                    "symbol": sym,
+                                    "win_rate": win_rate,
+                                    "recent_trades": len(reflections),
+                                    "reason": reason,
+                                }
+                            )
             except Exception as e:
                 logger.debug(f"[SkillCrystallizer] Curate check failed for {f.name}: {e}")
 
         return deprecated_skills
-

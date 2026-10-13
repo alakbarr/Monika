@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #11.
 
 Formula (paper appendix): (rank(ts_max(vwap-close,3))+rank(ts_min(vwap-close,3)))*rank(delta(volume,3))
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_011"
 
 __alpha_meta__ = {
-    'id': 'alpha101_011',
-    'nickname': 'Kakushadze Alpha #11',
-    'theme': ['volume', 'reversal'],
-    'formula_latex': '(rank(ts_max(vwap-close,3))+rank(ts_min(vwap-close,3)))*rank(delta(volume,3))',
-    'columns_required': ['close', 'volume', 'vwap'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 5,
-    'notes': '',
+    "id": "alpha101_011",
+    "nickname": "Kakushadze Alpha #11",
+    "theme": ["volume", "reversal"],
+    "formula_latex": "(rank(ts_max(vwap-close,3))+rank(ts_min(vwap-close,3)))*rank(delta(volume,3))",
+    "columns_required": ["close", "volume", "vwap"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 5,
+    "notes": "",
 }
 
 
@@ -52,7 +51,6 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     close = panel["close"]
     volume = panel["volume"]
     vwap = panel["vwap"]
-
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
     diff = vwap - close

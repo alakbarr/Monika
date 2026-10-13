@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #42.
 
 Formula (paper appendix): rank(vwap-close) / rank(vwap+close)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_042"
 
 __alpha_meta__ = {
-    'id': 'alpha101_042',
-    'nickname': 'Kakushadze Alpha #42',
-    'theme': ['reversal'],
-    'formula_latex': 'rank(vwap-close) / rank(vwap+close)',
-    'columns_required': ['close', 'vwap'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 1,
-    'notes': '',
+    "id": "alpha101_042",
+    "nickname": "Kakushadze Alpha #42",
+    "theme": ["reversal"],
+    "formula_latex": "rank(vwap-close) / rank(vwap+close)",
+    "columns_required": ["close", "vwap"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 1,
+    "notes": "",
 }
 
 
@@ -51,7 +50,6 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
     close = panel["close"]
     vwap = panel["vwap"]
-
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
     out = safe_div(rank(vwap - close), rank(vwap + close))

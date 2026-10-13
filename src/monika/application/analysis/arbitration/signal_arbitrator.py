@@ -1,6 +1,7 @@
 """
 SignalArbitrator: Arbitrase Sinyal Terpusat antara Quant Strategies dan LLM Debate.
 """
+
 import logging
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
@@ -13,10 +14,10 @@ logger = logging.getLogger("TradingAgent.SignalArbitrator")
 @dataclass
 class ArbitrationResult:
     symbol: str
-    decision: str                     # buy | sell | avoid | wait
+    decision: str  # buy | sell | avoid | wait
     confidence: float
     risk_multiplier: float
-    selected_source: str              # quant | llm | concordant | defensive_override | conflict_suppression
+    selected_source: str  # quant | llm | concordant | defensive_override | conflict_suppression
     arbitration_reason: str
     entry_price: Optional[float] = None
     stop_loss: Optional[float] = None
@@ -74,7 +75,7 @@ class SignalArbitrator:
                     if 0.55 <= wfe_val <= 0.65:
                         is_borderline = True
                         borderline_reasons.append(f"WFE {wfe_val:.2f} in borderline band [0.55, 0.65]")
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
             if sharpe is not None:
                 try:
@@ -82,7 +83,7 @@ class SignalArbitrator:
                     if 1.40 <= sharpe_val <= 1.60:
                         is_borderline = True
                         borderline_reasons.append(f"Sharpe {sharpe_val:.2f} in borderline band [1.40, 1.60]")
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
 
             if is_borderline:
@@ -122,14 +123,17 @@ class SignalArbitrator:
                     old_rm = res.risk_multiplier
                     new_rm = round(old_rm * 0.85, 2)
                     res.risk_multiplier = new_rm
-                    res.arbitration_reason += f" [Alpha Factor Divergence: {a_score:+.2f} -> risk damped 0.85x to {new_rm:.2f}]"
+                    res.arbitration_reason += (
+                        f" [Alpha Factor Divergence: {a_score:+.2f} -> risk damped 0.85x to {new_rm:.2f}]"
+                    )
                     res.meta["alpha_factor_concordance"] = False
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
 
         if session is not None:
             try:
                 from monika.infrastructure.database.event_store import TradingEventStore
+
                 await TradingEventStore.emit(
                     session=session,
                     event_type="analysis.arbitration.result",
@@ -179,21 +183,19 @@ class SignalArbitrator:
 
         quant_dir = str(_get_q("direction", "") or "").lower()
         quant_strat_id = str(_get_q("strategy_id", "unknown") or "unknown")
-        quant_is_valid = bool(
-            quant_signal is not None
-            and _get_q("valid", True)
-            and quant_dir in ("buy", "sell")
-        )
+        quant_is_valid = bool(quant_signal is not None and _get_q("valid", True) and quant_dir in ("buy", "sell"))
 
         # 1. Hanya sinyal Quant yang valid tersedia
         if quant_is_valid and llm_decision is None:
             direction = quant_dir
-            
+
             # High VIX defense
             risk_mult = float((_get_q("meta", {}) or {}).get("size_multiplier", 1.0) or 1.0)
             if vix_level > 25.0:
                 risk_mult *= 0.5
-                reason = f"Quant {quant_strat_id} single signal approved (high VIX {vix_level:.1f} penalty applied: 0.5x)"
+                reason = (
+                    f"Quant {quant_strat_id} single signal approved (high VIX {vix_level:.1f} penalty applied: 0.5x)"
+                )
             else:
                 reason = f"Quant {quant_strat_id} single signal approved"
 
@@ -207,7 +209,7 @@ class SignalArbitrator:
                 entry_price=_get_q("entry_price"),
                 stop_loss=_get_q("stop_loss"),
                 take_profit=_get_q("take_profit"),
-                meta={"strategy_id": quant_strat_id}
+                meta={"strategy_id": quant_strat_id},
             )
 
         # 1b. Sinyal Quant non-direksional/invalid tanpa keputusan LLM
@@ -218,7 +220,7 @@ class SignalArbitrator:
                 confidence=0.0,
                 risk_multiplier=0.0,
                 selected_source="quant",
-                arbitration_reason="Quant signal non-directional or invalid"
+                arbitration_reason="Quant signal non-directional or invalid",
             )
 
         # 2. Hanya keputusan LLM yang tersedia (atau sinyal Quant tidak valid)
@@ -226,7 +228,7 @@ class SignalArbitrator:
             direction = str(llm_decision.get("decision", "avoid")).lower()
             conf = float(llm_decision.get("confidence", 0.7) or 0.7)
             risk_mult = float(llm_decision.get("risk_multiplier", 1.0) or 1.0)
-            
+
             return ArbitrationResult(
                 symbol=symbol,
                 decision=direction,
@@ -237,7 +239,7 @@ class SignalArbitrator:
                 entry_price=llm_decision.get("entry_price"),
                 stop_loss=llm_decision.get("stop_loss"),
                 take_profit=llm_decision.get("take_profit"),
-                meta={"llm_source": llm_decision.get("decision_source", "llm_debate")}
+                meta={"llm_source": llm_decision.get("decision_source", "llm_debate")},
             )
 
         # 3. Keduanya tersedia: Periksa keselarasan (Concordance vs Conflict)
@@ -248,7 +250,11 @@ class SignalArbitrator:
             q_conf = float(_get_q("confidence", 0.7) or 0.7)
             l_conf = float(llm_decision.get("confidence", 0.7) or 0.7)
 
-            boost_conf = float(self.arbitration_cfg.get("concordant_boost_conf", self.arbitration_cfg.get("concordant_boost_confidence", 0.05)))
+            boost_conf = float(
+                self.arbitration_cfg.get(
+                    "concordant_boost_conf", self.arbitration_cfg.get("concordant_boost_confidence", 0.05)
+                )
+            )
             concordant_risk_mult = float(self.arbitration_cfg.get("concordant_risk_multiplier", 1.15))
             max_risk_mult = float(self.arbitration_cfg.get("max_risk_multiplier", 1.25))
             quant_priority_risk_mult = float(self.arbitration_cfg.get("quant_priority_risk_multiplier", 0.70))
@@ -259,7 +265,7 @@ class SignalArbitrator:
             # Skenario A: Sinyal Searah (Concordant Agreement)
             if q_dir in ("buy", "sell") and q_dir == l_dir:
                 from monika.core.calibration.confidence_calibrator import get_calibrated_confidence
-                
+
                 # Kalibrasi kepercayaan LLM sebelum pooling dengan probabilitas quant
                 l_calibrated = await get_calibrated_confidence(session, l_conf) if session else l_conf
 
@@ -281,12 +287,12 @@ class SignalArbitrator:
                     def_wq = float(self.arbitration_cfg.get("quant_weight", 0.45))
                     def_wl = float(self.arbitration_cfg.get("llm_weight", 0.55))
                     use_dynamic = bool(self.arbitration_cfg.get("dynamic_brier_weighting", True))
-                    
+
                     if use_dynamic and session:
                         w_q, w_l = await compute_empirical_arbitrator_weights(session, def_wq, def_wl, symbol=symbol)
                     else:
                         w_q, w_l = def_wq, def_wl
-                        
+
                     w_sum = w_q + w_l
                     combined_p = ((w_q * q_conf) + (w_l * l_calibrated)) / max(1e-4, w_sum)
                     combined_conf = min(0.90, round(combined_p + boost_conf, 2))
@@ -297,7 +303,9 @@ class SignalArbitrator:
                 # Turnover / Reversal Friction Penalty (Enhancement 11)
                 turnover_penalty = 0.0
                 ctx = kwargs.get("context")
-                open_positions = kwargs.get("open_positions") or (ctx.get("open_positions", []) if isinstance(ctx, dict) else [])
+                open_positions = kwargs.get("open_positions") or (
+                    ctx.get("open_positions", []) if isinstance(ctx, dict) else []
+                )
                 if isinstance(open_positions, list):
                     for p in open_positions:
                         if isinstance(p, dict) and p.get("symbol") == symbol:
@@ -306,15 +314,17 @@ class SignalArbitrator:
                                 turnover_penalty = max(turnover_penalty, 0.04)
                 if turnover_penalty > 0:
                     combined_conf = max(0.40, round(combined_conf - turnover_penalty, 2))
-                
+
                 use_dynamic_mult = bool(self.arbitration_cfg.get("dynamic_concordant_multiplier", True))
                 if use_dynamic_mult and session:
                     concordant_risk_mult = await self._get_empirical_concordant_multiplier(
                         session, default_mult=concordant_risk_mult, max_mult=max_risk_mult
                     )
 
-                boosted_risk = min(max_risk_mult, round(float(llm_decision.get("risk_multiplier") or 1.0) * concordant_risk_mult, 2))
-                
+                boosted_risk = min(
+                    max_risk_mult, round(float(llm_decision.get("risk_multiplier") or 1.0) * concordant_risk_mult, 2)
+                )
+
                 # ATR Gap Guard & Optimal Risk:Reward Level Selection (AX1-08)
                 llm_entry = float(llm_decision.get("entry_price") or 0.0)
                 llm_sl = float(llm_decision.get("adjusted_sl") or llm_decision.get("stop_loss") or 0.0)
@@ -371,12 +381,14 @@ class SignalArbitrator:
                         "llm_concordance": True,
                         "calibrated_conf": l_calibrated,
                         "level_source": level_source,
-                        "dynamic_boost": boost_conf
-                    }
+                        "dynamic_boost": boost_conf,
+                    },
                 )
 
             # Skenario B: Konflik Arah (Misal: Quant BUY vs LLM SELL / AVOID)
-            logger.warning(f"[{symbol}] Signal conflict detected: Quant={q_dir.upper()} ({quant_strat_id}) vs LLM={l_dir.upper()}")
+            logger.warning(
+                f"[{symbol}] Signal conflict detected: Quant={q_dir.upper()} ({quant_strat_id}) vs LLM={l_dir.upper()}"
+            )
 
             # 1. High VIX / Defensive Override (only on extreme VIX or explicit avoid)
             if vix_level >= 35.0 or (vix_level > vix_defensive_thresh and l_dir == "avoid"):
@@ -387,14 +399,20 @@ class SignalArbitrator:
                     risk_multiplier=0.0,
                     selected_source="defensive_override",
                     arbitration_reason=f"Arbitrator suppressed signal: Defensive stance during elevated uncertainty (VIX={vix_level:.1f}, LLM={l_dir}).",
-                    meta={"quant_signal": q_dir, "llm_signal": l_dir}
+                    meta={"quant_signal": q_dir, "llm_signal": l_dir},
                 )
 
             # 2. Multi-Regime Strategy Precedence
-            is_trending_regime = market_regime in ("strong_trend", "trend", "trending_bullish", "trending_bearish", "breakout_expansion")
+            is_trending_regime = market_regime in (
+                "strong_trend",
+                "trend",
+                "trending_bullish",
+                "trending_bearish",
+                "breakout_expansion",
+            )
             is_ranging_regime = market_regime in ("ranging", "mean_reverting", "choppy")
             strat_id = quant_strat_id.lower()
-            
+
             is_trend_strat = any(k in strat_id for k in ["donchian", "trend", "breakout", "momentum", "expansion"])
             is_mean_rev_strat = any(k in strat_id for k in ["reversion", "bollinger", "range", "oscillator", "rsi"])
 
@@ -410,7 +428,7 @@ class SignalArbitrator:
                     entry_price=_get_q("entry_price"),
                     stop_loss=_get_q("stop_loss"),
                     take_profit=_get_q("take_profit"),
-                    meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "market_regime": market_regime}
+                    meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "market_regime": market_regime},
                 )
 
             # B. Ranging / Mean-Reverting Regime -> Mean Reversion Quant strategy precedence
@@ -425,11 +443,15 @@ class SignalArbitrator:
                     entry_price=_get_q("entry_price"),
                     stop_loss=_get_q("stop_loss"),
                     take_profit=_get_q("take_profit"),
-                    meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "market_regime": market_regime}
+                    meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "market_regime": market_regime},
                 )
 
             # 3. Volatile Chop Protection: If market is in volatile chop, block quant signal when LLM is waiting/avoiding
-            chop_block = bool(regime_info.get("volatility_chop", {}).get("chop_block", False)) if isinstance(regime_info, dict) else False
+            chop_block = (
+                bool(regime_info.get("volatility_chop", {}).get("chop_block", False))
+                if isinstance(regime_info, dict)
+                else False
+            )
             is_volatile_chop = market_regime in ("volatile_chop", "chop", "turbulent_chop") or chop_block
             if is_volatile_chop:
                 return ArbitrationResult(
@@ -439,7 +461,7 @@ class SignalArbitrator:
                     risk_multiplier=0.0,
                     selected_source="chop_block_suppression",
                     arbitration_reason=f"Arbitrator suppressed signal: Volatile chop regime detected ({market_regime}). Quant execution blocked while LLM is in {l_dir} stance.",
-                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "market_regime": market_regime}
+                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "market_regime": market_regime},
                 )
 
             # TimesFM 3.0 Statistical Arbiter Check
@@ -447,14 +469,17 @@ class SignalArbitrator:
             if session:
                 try:
                     from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
+
                     tfm_engine = TimesFMEngine(self.settings)
-                    tfm_fc = await tfm_engine.get_latest_forecast(session, symbol, timeframe='H1', max_age_hours=8.0)
+                    tfm_fc = await tfm_engine.get_latest_forecast(session, symbol, timeframe="H1", max_age_hours=8.0)
                     if tfm_fc:
-                        tfm_skew = float(tfm_fc.get('quantile_skew', 0.0))
+                        tfm_skew = float(tfm_fc.get("quantile_skew", 0.0))
                 except Exception as tfm_err:
                     logger.debug(f"[{symbol}] TimesFM lookup in arbitrator failed (non-fatal): {tfm_err}")
 
-            q_meta = quant_signal.get("meta", {}) if isinstance(quant_signal, dict) else getattr(quant_signal, "meta", {})
+            q_meta = (
+                quant_signal.get("meta", {}) if isinstance(quant_signal, dict) else getattr(quant_signal, "meta", {})
+            )
             is_incubating = bool(q_meta.get("is_incubating", False)) if isinstance(q_meta, dict) else False
             if is_incubating and l_dir in ("avoid", "wait"):
                 return ArbitrationResult(
@@ -464,7 +489,7 @@ class SignalArbitrator:
                     risk_multiplier=0.0,
                     selected_source="llm",
                     arbitration_reason=f"Quant strategy {quant_strat_id} is incubating (not live-ready) — cannot override LLM {l_dir}.",
-                    meta={"is_incubating": True}
+                    meta={"is_incubating": True},
                 )
 
             # 4a. If LLM actively rejected ("avoid"), protect active rejection from quant override
@@ -476,7 +501,7 @@ class SignalArbitrator:
                     risk_multiplier=0.0,
                     selected_source="llm",
                     arbitration_reason="LLM actively rejected asset (avoid) — quant override blocked for safety.",
-                    meta={"llm_signal": "avoid", "blocked_quant_signal": q_dir}
+                    meta={"llm_signal": "avoid", "blocked_quant_signal": q_dir},
                 )
 
             # 4b. If LLM is waiting ("wait") and Quant has active valid signal:
@@ -490,7 +515,7 @@ class SignalArbitrator:
                         risk_multiplier=0.0,
                         selected_source="statistical_suppression",
                         arbitration_reason=f"Arbitrator suppressed signal: Quant {q_dir.upper()} contradicted by TimesFM statistical skew ({tfm_skew:.2f}) and LLM {l_dir}.",
-                        meta={"quant_signal": q_dir, "llm_signal": l_dir, "timesfm_skew": tfm_skew}
+                        meta={"quant_signal": q_dir, "llm_signal": l_dir, "timesfm_skew": tfm_skew},
                     )
 
                 # If TimesFM confirms Quant, boost caution multiplier
@@ -508,7 +533,7 @@ class SignalArbitrator:
                     entry_price=_get_q("entry_price"),
                     stop_loss=_get_q("stop_loss"),
                     take_profit=_get_q("take_profit"),
-                    meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "timesfm_skew": tfm_skew}
+                    meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "timesfm_skew": tfm_skew},
                 )
 
             # 5. Direct conflict in ranging / mixed market -> Resolve via Conviction Delta or TimesFM
@@ -529,7 +554,7 @@ class SignalArbitrator:
                         entry_price=fav_entry,
                         stop_loss=fav_sl,
                         take_profit=fav_tp,
-                        meta={"conflict_resolved": True, "timesfm_skew": tfm_skew}
+                        meta={"conflict_resolved": True, "timesfm_skew": tfm_skew},
                     )
 
             # Conviction delta resolution: higher conviction source takes precedence with damped risk
@@ -544,7 +569,7 @@ class SignalArbitrator:
                     entry_price=llm_decision.get("entry_price"),
                     stop_loss=llm_decision.get("stop_loss"),
                     take_profit=llm_decision.get("take_profit"),
-                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "conviction_resolved": True}
+                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "conviction_resolved": True},
                 )
             elif q_conf >= (l_conf + 0.10) and q_dir in ("buy", "sell"):
                 return ArbitrationResult(
@@ -557,7 +582,7 @@ class SignalArbitrator:
                     entry_price=_get_q("entry_price"),
                     stop_loss=_get_q("stop_loss"),
                     take_profit=_get_q("take_profit"),
-                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "conviction_resolved": True}
+                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "conviction_resolved": True},
                 )
 
             return ArbitrationResult(
@@ -567,7 +592,12 @@ class SignalArbitrator:
                 risk_multiplier=0.0,
                 selected_source="conflict_suppression",
                 arbitration_reason=f"Direct direction conflict ({q_dir.upper()} vs {l_dir.upper()}) with identical conviction in {market_regime} market. Trade avoided to preserve capital.",
-                meta={"quant_signal": q_dir, "llm_signal": l_dir, "market_regime": market_regime, "timesfm_skew": tfm_skew}
+                meta={
+                    "quant_signal": q_dir,
+                    "llm_signal": l_dir,
+                    "market_regime": market_regime,
+                    "timesfm_skew": tfm_skew,
+                },
             )
 
         # 4. Tidak ada sinyal
@@ -577,14 +607,11 @@ class SignalArbitrator:
             confidence=0.0,
             risk_multiplier=0.0,
             selected_source="none",
-            arbitration_reason="No signals provided for arbitration."
+            arbitration_reason="No signals provided for arbitration.",
         )
 
     async def _get_empirical_concordant_multiplier(
-        self,
-        session,
-        default_mult: float = 1.15,
-        max_mult: float = 1.25
+        self, session, default_mult: float = 1.15, max_mult: float = 1.25
     ) -> float:
         """
         Dynamically scale concordant risk multiplier based on rolling win rate of past concordant trades.
@@ -601,8 +628,8 @@ class SignalArbitrator:
             # Query up to 30 recent concordant closed trades
             stmt = (
                 select(PaperTradeRecord)
-                .where(PaperTradeRecord.status == 'closed')
-                .where(PaperTradeRecord.decision_source == 'concordant')
+                .where(PaperTradeRecord.status == "closed")
+                .where(PaperTradeRecord.decision_source == "concordant")
                 .order_by(PaperTradeRecord.closed_at.desc())
                 .limit(30)
             )
@@ -610,7 +637,7 @@ class SignalArbitrator:
             if len(records) < 15:
                 stmt_live = (
                     select(TradeOutcome)
-                    .where(TradeOutcome.decision_source == 'concordant')
+                    .where(TradeOutcome.decision_source == "concordant")
                     .order_by(TradeOutcome.closed_at.desc())
                     .limit(30)
                 )
@@ -623,7 +650,8 @@ class SignalArbitrator:
                 return default_mult
 
             wins = sum(
-                1 for r in all_records
+                1
+                for r in all_records
                 if getattr(r, "exit_reason", "") == "tp_hit"
                 or (getattr(r, "pnl_pct", None) is not None and r.pnl_pct > 0)
                 or getattr(r, "was_profitable", False)
@@ -665,13 +693,13 @@ async def compute_empirical_arbitrator_weights(
         stmt = (
             select(PaperTradeRecord, AssetAnalysis)
             .outerjoin(AssetAnalysis, PaperTradeRecord.analysis_id == AssetAnalysis.id)
-            .where(PaperTradeRecord.status == 'closed')
-            .where(PaperTradeRecord.exit_reason.in_(['sl_hit', 'tp_hit']))
+            .where(PaperTradeRecord.status == "closed")
+            .where(PaperTradeRecord.exit_reason.in_(["sl_hit", "tp_hit"]))
             .order_by(PaperTradeRecord.closed_at.desc())
             .limit(lookback_limit)
         )
         exec_res = await session.execute(stmt)
-        records = exec_res.all() if hasattr(exec_res, 'all') else []
+        records = exec_res.all() if hasattr(exec_res, "all") else []
         if len(records) < 10:
             return default_quant, default_llm
 
@@ -686,39 +714,50 @@ async def compute_empirical_arbitrator_weights(
             rec = item[0] if isinstance(item, (tuple, list)) else item
             ana = item[1] if isinstance(item, (tuple, list)) and len(item) > 1 else None
 
-            is_win = 1.0 if (getattr(rec, 'exit_reason', None) == 'tp_hit' or (getattr(rec, 'pnl_pct', None) and rec.pnl_pct > 0)) else 0.0
+            is_win = (
+                1.0
+                if (
+                    getattr(rec, "exit_reason", None) == "tp_hit" or (getattr(rec, "pnl_pct", None) and rec.pnl_pct > 0)
+                )
+                else 0.0
+            )
 
             # Exponential recency decay (idx 0 is most recent)
-            rec_w = float(decay_factor ** idx)
+            rec_w = float(decay_factor**idx)
             # Extra weight if symbol matches
-            rec_sym = (getattr(rec, 'symbol', '') or '').strip().upper()
+            rec_sym = (getattr(rec, "symbol", "") or "").strip().upper()
             if clean_sym and rec_sym == clean_sym:
                 rec_w *= 1.4
 
             # LLM Brier extraction
-            if ana and getattr(ana, 'confidence', None) is not None:
+            if ana and getattr(ana, "confidence", None) is not None:
                 try:
                     conf_l = float(ana.confidence)
                     err_sq = (conf_l - is_win) ** 2
                     brier_llm_list.append((err_sq, rec_w))
                     if len(recent_llm_outcomes) < 5:
                         recent_llm_outcomes.append(is_win)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
 
             # Quant Brier extraction
-            rec_src = getattr(rec, 'decision_source', '') or ''
-            has_quant_src = rec_src in ("quant", "strategy_runner", "concordant") or (ana and getattr(ana, "source_strategy_id", None) is not None)
+            rec_src = getattr(rec, "decision_source", "") or ""
+            has_quant_src = rec_src in ("quant", "strategy_runner", "concordant") or (
+                ana and getattr(ana, "source_strategy_id", None) is not None
+            )
             if has_quant_src:
                 q_conf = 0.60
-                if ana and (getattr(ana, "strategy_confidence", None) is not None or getattr(ana, "confidence", None) is not None):
+                if ana and (
+                    getattr(ana, "strategy_confidence", None) is not None
+                    or getattr(ana, "confidence", None) is not None
+                ):
                     try:
                         c_val = getattr(ana, "strategy_confidence", None)
                         if c_val is None:
                             c_val = getattr(ana, "confidence", None)
                         if c_val is not None:
                             q_conf = float(c_val)
-                    except (ValueError, TypeError):
+                    except ValueError, TypeError:
                         q_conf = 0.60
                 err_sq = (q_conf - is_win) ** 2
                 brier_quant_list.append((err_sq, rec_w))
@@ -765,4 +804,3 @@ async def compute_empirical_arbitrator_weights(
     except Exception as e:
         logger.debug(f"Dynamic arbitrator weight computation fallback: {e}")
         return default_quant, default_llm
-

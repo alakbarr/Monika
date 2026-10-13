@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #24.
 
 Formula (paper appendix): complex piecewise; see paper
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_024"
 
 __alpha_meta__ = {
-    'id': 'alpha101_024',
-    'nickname': 'Kakushadze Alpha #24',
-    'theme': ['momentum'],
-    'formula_latex': 'complex piecewise; see paper',
-    'columns_required': ['close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 200,
-    'notes': 'Very long lookback (>= ~100 bars); produces NaN warmup on short panels which may trigger the >95% NaN registry guard.',
+    "id": "alpha101_024",
+    "nickname": "Kakushadze Alpha #24",
+    "theme": ["momentum"],
+    "formula_latex": "complex piecewise; see paper",
+    "columns_required": ["close"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 200,
+    "notes": "Very long lookback (>= ~100 bars); produces NaN warmup on short panels which may trigger the >95% NaN registry guard.",
 }
 
 
@@ -91,7 +90,6 @@ def _where_ternary(cond: Any, a: Any, b: Any) -> Any:
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
     close = panel["close"]
-
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
     rolling_sum = _rolling_sum

@@ -24,7 +24,7 @@ from analysis.tools.tools_definitions import (
 def test_telegram_tools_registration():
     """Verify all missing tools are registered in TELEGRAM_TOOLS."""
     tool_names = [t.get("name") or t.get("function", {}).get("name") for t in TELEGRAM_TOOLS]
-    
+
     assert "calculate_position_size" in tool_names, "CALCULATE_POSITION_SIZE must be in TELEGRAM_TOOLS"
     assert "get_liquidity_sweep_context" in tool_names, "GET_LIQUIDITY_SWEEP_CONTEXT must be in TELEGRAM_TOOLS"
     assert "scan_pattern_similarity" in tool_names, "SCAN_PATTERN_SIMILARITY must be in TELEGRAM_TOOLS"
@@ -70,8 +70,8 @@ def test_chat_tool_router_regex_patterns():
 def test_is_action_query_safety_regex():
     """Verify pause, jeda, emergency, and stop are intercepted from streaming in ChatAgent."""
     action_regex = re.compile(
-        r'\b(close|tutup|modify|ubah|override|batalkan|cancel|adjust|geser|buy|beli|sell|jual|trade|eksekusi|pause|jeda|hentikan|stop|resume|lanjutkan|emergency|panic)\b',
-        re.IGNORECASE
+        r"\b(close|tutup|modify|ubah|override|batalkan|cancel|adjust|geser|buy|beli|sell|jual|trade|eksekusi|pause|jeda|hentikan|stop|resume|lanjutkan|emergency|panic)\b",
+        re.IGNORECASE,
     )
 
     assert action_regex.search("Tolong pause trading dulu") is not None
@@ -133,12 +133,9 @@ async def test_tool_executor_dispatches_remediated_tools():
         assert margin_res.get("required_margin") == 250.0
 
     # 2. calculate_position_size
-    pos_res = await executor.execute("calculate_position_size", {
-        "symbol": "EURUSD",
-        "entry_price": 1.0850,
-        "stop_loss": 1.0820,
-        "risk_pct": 1.0
-    })
+    pos_res = await executor.execute(
+        "calculate_position_size", {"symbol": "EURUSD", "entry_price": 1.0850, "stop_loss": 1.0820, "risk_pct": 1.0}
+    )
     assert pos_res.get("symbol") == "EURUSD"
     assert "recommended_lots" in pos_res or "lot_size" in pos_res or "suggested_lot" in pos_res
 
@@ -157,15 +154,9 @@ async def test_chat_agent_pause_fast_path_interceptor():
     """Verify ChatAgent immediately returns confirmation card for conversational pause."""
     from telegram_bot.chat_agent import ChatAgent
 
-    agent = ChatAgent(
-        settings={"trading": {"symbols": ["EURUSD"]}},
-        user_id="12345",
-        is_admin=True
-    )
+    agent = ChatAgent(settings={"trading": {"symbols": ["EURUSD"]}}, user_id="12345", is_admin=True)
 
-    reply_text, pending = await agent._handle_internal(
-        user_message="Tolong pause trading dulu"
-    )
+    reply_text, pending = await agent._handle_internal(user_message="Tolong pause trading dulu")
 
     assert "Konfirmasi Jeda Trading" in reply_text
     assert pending is not None
@@ -179,10 +170,12 @@ async def test_plugin_catalog_index_callback():
 
     bot = TelegramBot(settings={})
     mock_plugin_service = MagicMock()
-    mock_plugin_service.discover_plugins = AsyncMock(return_value=[
-        {"package": "monika-plugin-sentiment-analysis-deepseek-long-name", "installed": False},
-        {"package": "monika-plugin-timesfm-quant-advanced-long-name", "installed": True}
-    ])
+    mock_plugin_service.discover_plugins = AsyncMock(
+        return_value=[
+            {"package": "monika-plugin-sentiment-analysis-deepseek-long-name", "installed": False},
+            {"package": "monika-plugin-timesfm-quant-advanced-long-name", "installed": True},
+        ]
+    )
     bot.plugin_service = mock_plugin_service
 
     # Build catalog buttons
@@ -215,7 +208,7 @@ async def test_create_and_query_price_alerts_db():
             # Create price alert
             create_res = await handle_create_price_alert(
                 args={"symbol": "EURUSD", "price_level": 1.1200, "condition": "above", "note": "Breakout test"},
-                session=session
+                session=session,
             )
             assert create_res.get("status") == "created"
             assert create_res.get("price_level") == 1.1200
@@ -228,5 +221,3 @@ async def test_create_and_query_price_alerts_db():
             assert any(t["symbol"] == "EURUSD" and float(t["trigger_price"]) == 1.1200 for t in active)
     finally:
         await engine.dispose()
-
-

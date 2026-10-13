@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #73.
 
 Formula (paper appendix): max(rank(decay_linear(delta(vwap,5), 3)), Ts_Rank(decay_linear(-1*(delta(0.147*open+0.853*low,2)/(0.147*open+0.853*low)), 3), 17)) * -1
@@ -33,18 +32,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_073"
 
 __alpha_meta__ = {
-    'id': 'alpha101_073',
-    'nickname': 'Kakushadze Alpha #73',
-    'theme': ['volume'],
-    'formula_latex': 'max(rank(decay_linear(delta(vwap,5), 3)), Ts_Rank(decay_linear(-1*(delta(0.147*open+0.853*low,2)/(0.147*open+0.853*low)), 3), 17)) * -1',
-    'columns_required': ['open', 'low', 'vwap', 'close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 21,
-    'notes': '',
+    "id": "alpha101_073",
+    "nickname": "Kakushadze Alpha #73",
+    "theme": ["volume"],
+    "formula_latex": "max(rank(decay_linear(delta(vwap,5), 3)), Ts_Rank(decay_linear(-1*(delta(0.147*open+0.853*low,2)/(0.147*open+0.853*low)), 3), 17)) * -1",
+    "columns_required": ["open", "low", "vwap", "close"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 21,
+    "notes": "",
 }
 
 
@@ -54,7 +53,6 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     open_ = panel["open"]
     low = panel["low"]
     vwap = panel["vwap"]
-
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
     a = rank(decay_linear(delta(vwap, 5), 3))

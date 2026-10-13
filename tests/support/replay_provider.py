@@ -35,11 +35,13 @@ class ReplayLLMProvider(BaseLLMClient):
 
     def add_recording(self, content: str, tool_calls: Optional[List[Dict[str, Any]]] = None, **kwargs) -> None:
         """Programmatically append a recorded step."""
-        self.recordings.append({
-            "content": content,
-            "tool_calls": tool_calls or [],
-            **kwargs,
-        })
+        self.recordings.append(
+            {
+                "content": content,
+                "tool_calls": tool_calls or [],
+                **kwargs,
+            }
+        )
 
     async def generate(self, prompt: str, system: str = "", **kwargs: Any) -> Optional[str]:
         """Return next recorded text content."""
@@ -62,12 +64,14 @@ class ReplayLLMProvider(BaseLLMClient):
             content_blocks.append(MockBlock("text", text=rec["content"]))
 
         for tc in rec.get("tool_calls", []):
-            content_blocks.append(MockBlock(
-                "tool_use",
-                id=tc.get("id", f"call_{self.current_step}"),
-                name=tc.get("name", "unknown_tool"),
-                input=tc.get("arguments", {}),
-            ))
+            content_blocks.append(
+                MockBlock(
+                    "tool_use",
+                    id=tc.get("id", f"call_{self.current_step}"),
+                    name=tc.get("name", "unknown_tool"),
+                    input=tc.get("arguments", {}),
+                )
+            )
 
         stop_reason = "tool_use" if rec.get("tool_calls") else "end_turn"
         return MockResponse(
@@ -82,9 +86,9 @@ class ReplayLLMProvider(BaseLLMClient):
         """Low-level tool-agent replay step (required by BaseLLMClient)."""
         return self._get_next_mock_response()
 
-    async def run_chat_loop(self, system_prompt: str, conversation_history: list,
-                            new_user_message: str, tools: list,
-                            tool_executor=None) -> dict:
+    async def run_chat_loop(
+        self, system_prompt: str, conversation_history: list, new_user_message: str, tools: list, tool_executor=None
+    ) -> dict:
         """Deterministic chat loop replay (required by BaseLLMClient)."""
         resp = self._get_next_mock_response()
         reply_text = ""
@@ -111,7 +115,9 @@ class ReplayLLMProvider(BaseLLMClient):
             return self._get_next_mock_response()
         return await super().run_agent(*args, **kwargs)
 
-    async def classify_json(self, prompt: str, system_prompt: Optional[str] = None, schema: Optional[dict] = None, **kwargs: Any) -> Optional[dict]:
+    async def classify_json(
+        self, prompt: str, system_prompt: Optional[str] = None, schema: Optional[dict] = None, **kwargs: Any
+    ) -> Optional[dict]:
         """Return recorded JSON dict or parsed content."""
         if self.current_step < len(self.recordings):
             rec = self.recordings[self.current_step]

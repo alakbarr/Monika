@@ -1,5 +1,6 @@
 """Check objektif & reproducible -- independen dari LLM judge -- dihitung
 terhadap snapshot pasar REAL yang sama yang dilihat setiap model kandidat."""
+
 from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
 
@@ -16,23 +17,52 @@ async def score_trade_payload(session, settings, symbol: str, payload: dict) -> 
         checks["cites_specific_reason"] = bool(risk_factors) or any(
             kw in rationale.lower()
             for kw in [
-                "vix", "spread", "drawdown", "correlation", "session",
-                "volatility", "liquidity", "news", "range", "consolidat",
-                "inside bar", "no displacement", "choppy", "low adr",
-                "uncertainty", "fvg", "ob", "order block", "resistance",
-                "support", "trend", "risk", "hazard", "event",
+                "vix",
+                "spread",
+                "drawdown",
+                "correlation",
+                "session",
+                "volatility",
+                "liquidity",
+                "news",
+                "range",
+                "consolidat",
+                "inside bar",
+                "no displacement",
+                "choppy",
+                "low adr",
+                "uncertainty",
+                "fvg",
+                "ob",
+                "order block",
+                "resistance",
+                "support",
+                "trend",
+                "risk",
+                "hazard",
+                "event",
             ]
         )
         checks["not_lazy_generic"] = not any(
             lazy in rationale.lower()
             for lazy in [
-                "no opportunity", "nothing to do", "market closed", "n/a",
-                "not sure", "skip", "pass", "idk",
+                "no opportunity",
+                "nothing to do",
+                "market closed",
+                "n/a",
+                "not sure",
+                "skip",
+                "pass",
+                "idk",
             ]
         )
     elif decision in ("buy", "sell"):
         entry_cond = payload.get("entry_condition")
-        entry = (entry_cond.get("price") if isinstance(entry_cond, dict) else None) or payload.get("entry_price") or payload.get("entry")
+        entry = (
+            (entry_cond.get("price") if isinstance(entry_cond, dict) else None)
+            or payload.get("entry_price")
+            or payload.get("entry")
+        )
         sl = payload.get("stop_loss")
         tp = payload.get("take_profit")
         checks["has_sl_tp"] = sl is not None and tp is not None
@@ -49,7 +79,9 @@ async def score_trade_payload(session, settings, symbol: str, payload: dict) -> 
 
             adr = await compute_daily_range_context(session, symbol, settings)
             if "error" not in adr and "target_tp_min_distance" in adr and "target_sl_max_distance" in adr:
-                checks["tp_within_adr_band"] = adr["target_tp_min_distance"] * 0.85 <= tp_d <= adr["target_tp_max_distance"] * 1.15
+                checks["tp_within_adr_band"] = (
+                    adr["target_tp_min_distance"] * 0.85 <= tp_d <= adr["target_tp_max_distance"] * 1.15
+                )
                 checks["sl_within_adr_ceiling"] = sl_d <= adr["target_sl_max_distance"] * 1.15
 
         checks["has_invalidation"] = bool(payload.get("invalidation"))

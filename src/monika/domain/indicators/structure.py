@@ -26,8 +26,13 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import (
-    PriceOHLCV, SwingPoint, SRZone, LiquidityZone, FVGZone,
-    OrderBlock, StructureBreak
+    PriceOHLCV,
+    SwingPoint,
+    SRZone,
+    LiquidityZone,
+    FVGZone,
+    OrderBlock,
+    StructureBreak,
 )
 
 logger = logging.getLogger("TradingAgent.Structure")
@@ -76,12 +81,13 @@ class StructureBreakData:
     price: float
     formed_at: datetime
 
+
 # Batasan jarak maksimal FVG berdasarkan aset
 FVG_MAX_DISTANCE = {
-    "XAUUSD": 0.07,   # 7% — Emas bisa memiliki FVG lebar
-    "XTIUSD": 0.10,   # 10% — Minyak lebih volatil
-    "XBRUSD": 0.10,   # 10% — Minyak Brent
-    "BTCUSD": 0.18,   # 18% — Kripto berfluktuasi tinggi
+    "XAUUSD": 0.07,  # 7% — Emas bisa memiliki FVG lebar
+    "XTIUSD": 0.10,  # 10% — Minyak lebih volatil
+    "XBRUSD": 0.10,  # 10% — Minyak Brent
+    "BTCUSD": 0.18,  # 18% — Kripto berfluktuasi tinggi
     "EURUSD": 0.035,  # 3.5% — Forex cenderung ketat
     "GBPUSD": 0.035,
     "USDJPY": 0.035,
@@ -125,16 +131,31 @@ class MarketStructureAnalyzer:
         """
         try:
             await self._prune_old_data(symbol, timeframe)
-            
+
             df = await self._load_ohlcv(symbol, timeframe)
             if df is None or len(df) < (self.swing_window * 2 + 3):
                 logger.warning(f"Insufficient data for structure analysis: {symbol}/{timeframe}")
-                return {"swing_points": 0, "sr_zones": 0, "liquidity_zones": 0, "fvg_zones": 0, "order_blocks": 0, "struct_breaks": 0}
+                return {
+                    "swing_points": 0,
+                    "sr_zones": 0,
+                    "liquidity_zones": 0,
+                    "fvg_zones": 0,
+                    "order_blocks": 0,
+                    "struct_breaks": 0,
+                }
 
             # Fetch existing unfilled FVGs as DTOs (decoupled from session/thread)
-            raw_fvgs = (await self.session.execute(
-                select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe == timeframe, FVGZone.filled_at.is_(None))
-            )).scalars().all()
+            raw_fvgs = (
+                (
+                    await self.session.execute(
+                        select(FVGZone).where(
+                            FVGZone.symbol == symbol, FVGZone.timeframe == timeframe, FVGZone.filled_at.is_(None)
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
             existing_fvgs = [
                 FVGData(
                     symbol=f.symbol,
@@ -147,11 +168,21 @@ class MarketStructureAnalyzer:
                 )
                 for f in raw_fvgs
             ]
-            
+
             # Fetch existing unmitigated OBs as DTOs (decoupled from session/thread)
-            raw_obs = (await self.session.execute(
-                select(OrderBlock).where(OrderBlock.symbol == symbol, OrderBlock.timeframe == timeframe, OrderBlock.mitigated_at.is_(None))
-            )).scalars().all()
+            raw_obs = (
+                (
+                    await self.session.execute(
+                        select(OrderBlock).where(
+                            OrderBlock.symbol == symbol,
+                            OrderBlock.timeframe == timeframe,
+                            OrderBlock.mitigated_at.is_(None),
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
             existing_obs = [
                 OrderBlockData(
                     symbol=o.symbol,
@@ -166,6 +197,7 @@ class MarketStructureAnalyzer:
             ]
 
             import asyncio
+
             def _cpu_compute():
                 sh, sl = self._find_swings(df)
                 sr = self._find_sr_zones(sh, sl, df)
@@ -175,13 +207,21 @@ class MarketStructureAnalyzer:
                 sb = self._detect_structure_breaks(df, sh, sl, symbol, timeframe)
                 return sh, sl, sr, lq, fv, ob, sb
 
-            swing_highs, swing_lows, sr_zones, liq_zones, fvg_zones, order_blocks, struct_breaks = await asyncio.to_thread(_cpu_compute)
+            (
+                swing_highs,
+                swing_lows,
+                sr_zones,
+                liq_zones,
+                fvg_zones,
+                order_blocks,
+                struct_breaks,
+            ) = await asyncio.to_thread(_cpu_compute)
 
             counts = {
                 "swing_points": await self._save_swings(symbol, timeframe, swing_highs, swing_lows),
-                "sr_zones":     await self._save_sr_zones(symbol, timeframe, sr_zones),
+                "sr_zones": await self._save_sr_zones(symbol, timeframe, sr_zones),
                 "liquidity_zones": await self._save_liquidity(symbol, timeframe, liq_zones),
-                "fvg_zones":    await self._save_fvg(symbol, timeframe, fvg_zones),
+                "fvg_zones": await self._save_fvg(symbol, timeframe, fvg_zones),
                 "order_blocks": await self._save_order_blocks(symbol, timeframe, order_blocks),
                 "struct_breaks": await self._save_structure_breaks(symbol, timeframe, struct_breaks),
             }
@@ -197,9 +237,7 @@ class MarketStructureAnalyzer:
             await self.session.rollback()
             raise
 
-    async def analyze_all(
-        self, symbols: list[str], timeframes: list[str]
-    ) -> dict[str, dict[str, int]]:
+    async def analyze_all(self, symbols: list[str], timeframes: list[str]) -> dict[str, dict[str, int]]:
         """Menjalankan analisis untuk kumpulan symbol dan timeframe."""
         results = {}
         for symbol in symbols:
@@ -213,9 +251,14 @@ class MarketStructureAnalyzer:
                         await self.session.rollback()
                     except Exception:
                         pass
-                    results[key] = {"swing_points": 0, "sr_zones": 0,
-                                    "liquidity_zones": 0, "fvg_zones": 0,
-                                    "order_blocks": 0, "struct_breaks": 0}
+                    results[key] = {
+                        "swing_points": 0,
+                        "sr_zones": 0,
+                        "liquidity_zones": 0,
+                        "fvg_zones": 0,
+                        "order_blocks": 0,
+                        "struct_breaks": 0,
+                    }
         total_swings = sum(r.get("swing_points", 0) for r in results.values())
         total_sr = sum(r.get("sr_zones", 0) for r in results.values())
         total_liq = sum(r.get("liquidity_zones", 0) for r in results.values())
@@ -232,6 +275,7 @@ class MarketStructureAnalyzer:
     async def _prune_old_data(self, symbol: str, timeframe: str) -> None:
         """Menghapus data lama (retensi FVG ditangani spesifik di _save_fvg)."""
         from datetime import datetime, timezone, timedelta
+
         cutoff = datetime.now(timezone.utc) - timedelta(days=90)
         try:
             await self.session.execute(
@@ -269,24 +313,23 @@ class MarketStructureAnalyzer:
         # Balik urutan agar kembali kronologis (ascending) untuk kalkulasi
         rows = list(reversed(rows))
 
-        df = pd.DataFrame({
-            "timestamp": [r.timestamp for r in rows],
-            "open":  [r.open  for r in rows],
-            "high":  [r.high  for r in rows],
-            "low":   [r.low   for r in rows],
-            "close": [r.close for r in rows],
-        })
+        df = pd.DataFrame(
+            {
+                "timestamp": [r.timestamp for r in rows],
+                "open": [r.open for r in rows],
+                "high": [r.high for r in rows],
+                "low": [r.low for r in rows],
+                "close": [r.close for r in rows],
+            }
+        )
         df.set_index("timestamp", inplace=True)
         return df
-
 
     # ------------------------------------------------------------------
     # 1. Swing Points (Fractal Method)
     # ------------------------------------------------------------------
 
-    def _find_swings(
-        self, df: pd.DataFrame
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def _find_swings(self, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Detect swing high/low points using a symmetric fractal window (n-candle comparison).
 
@@ -295,23 +338,23 @@ class MarketStructureAnalyzer:
         """
         n = self.swing_window
         highs_idx = []
-        lows_idx  = []
+        lows_idx = []
 
         prices_high = np.asarray(df["high"], dtype=float)
-        prices_low  = np.asarray(df["low"], dtype=float)
-        timestamps  = df.index.tolist()
+        prices_low = np.asarray(df["low"], dtype=float)
+        timestamps = df.index.tolist()
 
         for i in range(n, len(df) - n):
             # Task 5.1: Skip inside bars
             prev_high = prices_high[i - 1]
             prev_low = prices_low[i - 1]
             is_inside = bool(prices_high[i] <= prev_high and prices_low[i] >= prev_low)
-            
+
             if is_inside:
                 continue
 
-            window_h = list(prices_high[i-n:i]) + list(prices_high[i+1:i+n+1])
-            window_l = list(prices_low[i-n:i])  + list(prices_low[i+1:i+n+1])
+            window_h = list(prices_high[i - n : i]) + list(prices_high[i + 1 : i + n + 1])
+            window_l = list(prices_low[i - n : i]) + list(prices_low[i + 1 : i + n + 1])
 
             if prices_high[i] > max(window_h):
                 highs_idx.append({"timestamp": timestamps[i], "price": float(prices_high[i])})
@@ -319,7 +362,7 @@ class MarketStructureAnalyzer:
                 lows_idx.append({"timestamp": timestamps[i], "price": float(prices_low[i])})
 
         swing_highs = pd.DataFrame(highs_idx) if highs_idx else pd.DataFrame(columns=["timestamp", "price"])
-        swing_lows  = pd.DataFrame(lows_idx)  if lows_idx  else pd.DataFrame(columns=["timestamp", "price"])
+        swing_lows = pd.DataFrame(lows_idx) if lows_idx else pd.DataFrame(columns=["timestamp", "price"])
 
         logger.debug(f"Found {len(swing_highs)} swing highs, {len(swing_lows)} swing lows")
         return swing_highs, swing_lows
@@ -377,20 +420,24 @@ class MarketStructureAnalyzer:
 
             if len(cluster) >= self.sr_min_touches:
                 cluster_prices = [p for p, _ in cluster]
-                cluster_times  = [t for _, t in cluster]
+                cluster_times = [t for _, t in cluster]
                 last_touch_ts = max(cluster_times)
-                last_touch_aware = last_touch_ts.replace(tzinfo=timezone.utc) if last_touch_ts.tzinfo is None else last_touch_ts
+                last_touch_aware = (
+                    last_touch_ts.replace(tzinfo=timezone.utc) if last_touch_ts.tzinfo is None else last_touch_ts
+                )
                 recency_hours = (now_utc - last_touch_aware).total_seconds() / 3600
                 recency_factor = max(0.3, min(1.0, 1.0 - (recency_hours / (30 * 24))))
                 weighted_strength = round(len(cluster) * recency_factor, 2)
 
-                zones.append({
-                    "price_high": max(cluster_prices),
-                    "price_low":  min(cluster_prices),
-                    "strength":   weighted_strength,
-                    "touches":    len(cluster),
-                    "last_touched": last_touch_ts,
-                })
+                zones.append(
+                    {
+                        "price_high": max(cluster_prices),
+                        "price_low": min(cluster_prices),
+                        "strength": weighted_strength,
+                        "touches": len(cluster),
+                        "last_touched": last_touch_ts,
+                    }
+                )
 
         logger.debug(f"Found {len(zones)} S/R zones")
         return zones
@@ -418,10 +465,7 @@ class MarketStructureAnalyzer:
         if len(df) >= 14:
             tr_series = np.maximum(
                 df["high"] - df["low"],
-                np.maximum(
-                    (df["high"] - df["close"].shift(1)).abs(),
-                    (df["low"] - df["close"].shift(1)).abs()
-                )
+                np.maximum((df["high"] - df["close"].shift(1)).abs(), (df["low"] - df["close"].shift(1)).abs()),
             )
             atr_val = float(np.mean(tr_series[-14:]))
 
@@ -432,15 +476,17 @@ class MarketStructureAnalyzer:
                 price = float(np.asarray(row["price"]).item())
                 buffer = (atr_val * 0.15) if atr_val > 0 else (price * 0.001)
                 subsequent_df = df[df.index > ts]
-                if subsequent_df.empty or subsequent_df['high'].max() <= price:
-                    zones.append(LiquidityZoneData(
-                        symbol=symbol,
-                        timeframe=timeframe,
-                        zone_high=round(price + buffer, 5),
-                        zone_low=price,
-                        type="above_swing_high",
-                        identified_at=now,
-                    ))
+                if subsequent_df.empty or subsequent_df["high"].max() <= price:
+                    zones.append(
+                        LiquidityZoneData(
+                            symbol=symbol,
+                            timeframe=timeframe,
+                            zone_high=round(price + buffer, 5),
+                            zone_low=price,
+                            type="above_swing_high",
+                            identified_at=now,
+                        )
+                    )
 
         # Unswept lows
         if not swing_lows.empty:
@@ -449,15 +495,17 @@ class MarketStructureAnalyzer:
                 price = float(np.asarray(row["price"]).item())
                 buffer = (atr_val * 0.15) if atr_val > 0 else (price * 0.001)
                 subsequent_df = df[df.index > ts]
-                if subsequent_df.empty or subsequent_df['low'].min() >= price:
-                    zones.append(LiquidityZoneData(
-                        symbol=symbol,
-                        timeframe=timeframe,
-                        zone_high=price,
-                        zone_low=round(price - buffer, 5),
-                        type="below_swing_low",
-                        identified_at=now,
-                    ))
+                if subsequent_df.empty or subsequent_df["low"].min() >= price:
+                    zones.append(
+                        LiquidityZoneData(
+                            symbol=symbol,
+                            timeframe=timeframe,
+                            zone_high=price,
+                            zone_low=round(price - buffer, 5),
+                            type="below_swing_low",
+                            identified_at=now,
+                        )
+                    )
 
         logger.debug(f"Found {len(zones)} liquidity zones")
         return zones[-10:]  # Return up to 10 most recent unswept zones
@@ -481,7 +529,7 @@ class MarketStructureAnalyzer:
             return zones
 
         # Compute ATR (14-period rolling mean of true range)
-        high_low = df['high'] - df['low']
+        high_low = df["high"] - df["low"]
         atr = high_low.rolling(window=14, min_periods=1).mean().bfill().reset_index(drop=True)
 
         # Check if existing old FVGs are filled by current dataframe
@@ -497,15 +545,17 @@ class MarketStructureAnalyzer:
                     check_filled = self._check_fvg_filled(ohlcv, 0, g_high, g_low, direction)
                     if check_filled:
                         filled_at = check_filled
-                zones.append(FVGData(
-                    symbol=symbol,
-                    timeframe=timeframe,
-                    gap_high=g_high,
-                    gap_low=g_low,
-                    direction=direction,
-                    formed_at=formed_at,
-                    filled_at=filled_at,
-                ))
+                zones.append(
+                    FVGData(
+                        symbol=symbol,
+                        timeframe=timeframe,
+                        gap_high=g_high,
+                        gap_low=g_low,
+                        direction=direction,
+                        formed_at=formed_at,
+                        filled_at=filled_at,
+                    )
+                )
 
         for i in range(n - 2):
             candle_1 = ohlcv.iloc[i]
@@ -517,7 +567,7 @@ class MarketStructureAnalyzer:
 
             # Bullish FVG
             if candle_3["low"] > candle_1["high"]:
-                gap_low  = float(candle_1["high"])
+                gap_low = float(candle_1["high"])
                 gap_high = float(candle_3["low"])
                 gap_size = gap_high - gap_low
 
@@ -525,35 +575,39 @@ class MarketStructureAnalyzer:
                 if gap_size >= current_atr * 0.3:
                     # Check if gap was already filled by subsequent candles
                     filled_at = self._check_fvg_filled(ohlcv, i + 3, gap_high, gap_low, "bullish")
-    
-                    zones.append(FVGData(
-                        symbol=symbol,
-                        timeframe=timeframe,
-                        gap_high=gap_high,
-                        gap_low=gap_low,
-                        direction="bullish",
-                        formed_at=ts_formed,
-                        filled_at=filled_at,
-                    ))
+
+                    zones.append(
+                        FVGData(
+                            symbol=symbol,
+                            timeframe=timeframe,
+                            gap_high=gap_high,
+                            gap_low=gap_low,
+                            direction="bullish",
+                            formed_at=ts_formed,
+                            filled_at=filled_at,
+                        )
+                    )
 
             # Bearish FVG
             elif candle_3["high"] < candle_1["low"]:
                 gap_high = float(candle_1["low"])
-                gap_low  = float(candle_3["high"])
+                gap_low = float(candle_3["high"])
                 gap_size = gap_high - gap_low
 
                 if gap_size >= current_atr * 0.3:
                     filled_at = self._check_fvg_filled(ohlcv, i + 3, gap_high, gap_low, "bearish")
-    
-                    zones.append(FVGData(
-                        symbol=symbol,
-                        timeframe=timeframe,
-                        gap_high=gap_high,
-                        gap_low=gap_low,
-                        direction="bearish",
-                        formed_at=ts_formed,
-                        filled_at=filled_at,
-                    ))
+
+                    zones.append(
+                        FVGData(
+                            symbol=symbol,
+                            timeframe=timeframe,
+                            gap_high=gap_high,
+                            gap_low=gap_low,
+                            direction="bearish",
+                            formed_at=ts_formed,
+                            filled_at=filled_at,
+                        )
+                    )
 
         logger.debug(f"Found {len(zones)} FVG zones")
         return zones
@@ -589,7 +643,7 @@ class MarketStructureAnalyzer:
     ) -> list[OrderBlockData]:
         bullish_obs: list[OrderBlockData] = []
         bearish_obs: list[OrderBlockData] = []
-        
+
         if existing_obs:
             for item in existing_obs:
                 ob_data = OrderBlockData(
@@ -610,70 +664,80 @@ class MarketStructureAnalyzer:
         n = len(ohlcv)
         if n < 10:
             return bullish_obs + bearish_obs
-        
+
         # Calculate ATR for threshold (better than avg_body)
-        highs = np.asarray(ohlcv['high'], dtype=float)
-        lows = np.asarray(ohlcv['low'], dtype=float)
-        closes = np.asarray(ohlcv['close'], dtype=float)
-        
+        highs = np.asarray(ohlcv["high"], dtype=float)
+        lows = np.asarray(ohlcv["low"], dtype=float)
+        closes = np.asarray(ohlcv["close"], dtype=float)
+
         # Simple ATR calculation
         trs = []
         for i in range(1, len(closes)):
-            tr = max(float(highs[i] - lows[i]), 
-                     abs(float(highs[i] - closes[i-1])),
-                     abs(float(lows[i] - closes[i-1])))
+            tr = max(
+                float(highs[i] - lows[i]), abs(float(highs[i] - closes[i - 1])), abs(float(lows[i] - closes[i - 1]))
+            )
             trs.append(tr)
         atr = sum(trs[-14:]) / min(14, len(trs)) if trs else 0.0
-        
+
         if atr == 0:
             return bullish_obs + bearish_obs
-            
+
         MAX_OB_PER_SIDE = 3  # Limit to top 3 most recent OBs per direction
         new_bullish: list[OrderBlockData] = []
         new_bearish: list[OrderBlockData] = []
-        
+
         for i in range(2, n - 5):
             candle = ohlcv.iloc[i]
-            
+
             # Look for impulse move in the 5 candles after
             impulse_end = min(i + 5, n - 1)
-            
+
             # Bullish OB: bearish candle followed by impulse bullish move
-            if candle['close'] < candle['open']:  # Bearish candle
-                body_size = candle['open'] - candle['close']
-                impulse_high = ohlcv.iloc[i+1:impulse_end+1]['high'].max()
-                impulse_move = impulse_high - candle['high']
-                
+            if candle["close"] < candle["open"]:  # Bearish candle
+                body_size = candle["open"] - candle["close"]
+                impulse_high = ohlcv.iloc[i + 1 : impulse_end + 1]["high"].max()
+                impulse_move = impulse_high - candle["high"]
+
                 # RELAXED threshold per IMP-2
                 if impulse_move > max(body_size * 2, atr * 1.5):
                     confirm_idx = min(i + 10, n - 1)
-                    post_impulse_low = ohlcv.iloc[i+1:confirm_idx+1]['low'].min()
-                    if post_impulse_low > candle['low']:  # Price stayed above OB
-                        new_bullish.append(OrderBlockData(
-                            symbol=symbol, timeframe=timeframe, direction="bullish",
-                            price_high=float(candle['high']), price_low=float(candle['low']),
-                            formed_at=candle['timestamp'],
-                            confirmed_at=ohlcv.iloc[confirm_idx]['timestamp'],
-                        ))
-            
+                    post_impulse_low = ohlcv.iloc[i + 1 : confirm_idx + 1]["low"].min()
+                    if post_impulse_low > candle["low"]:  # Price stayed above OB
+                        new_bullish.append(
+                            OrderBlockData(
+                                symbol=symbol,
+                                timeframe=timeframe,
+                                direction="bullish",
+                                price_high=float(candle["high"]),
+                                price_low=float(candle["low"]),
+                                formed_at=candle["timestamp"],
+                                confirmed_at=ohlcv.iloc[confirm_idx]["timestamp"],
+                            )
+                        )
+
             # Bearish OB: bullish candle followed by impulse bearish move
-            if candle['close'] > candle['open']:  # Bullish candle
-                body_size = candle['close'] - candle['open']
-                impulse_low = ohlcv.iloc[i+1:impulse_end+1]['low'].min()
-                impulse_move = candle['low'] - impulse_low
-                
+            if candle["close"] > candle["open"]:  # Bullish candle
+                body_size = candle["close"] - candle["open"]
+                impulse_low = ohlcv.iloc[i + 1 : impulse_end + 1]["low"].min()
+                impulse_move = candle["low"] - impulse_low
+
                 # RELAXED threshold per IMP-2
                 if impulse_move > max(body_size * 2, atr * 1.5):
                     confirm_idx = min(i + 10, n - 1)
-                    post_impulse_high = ohlcv.iloc[i+1:confirm_idx+1]['high'].max()
-                    if post_impulse_high < candle['high']:  # Price stayed below OB
-                        new_bearish.append(OrderBlockData(
-                            symbol=symbol, timeframe=timeframe, direction="bearish",
-                            price_high=float(candle['high']), price_low=float(candle['low']),
-                            formed_at=candle['timestamp'],
-                            confirmed_at=ohlcv.iloc[confirm_idx]['timestamp'],
-                        ))
-        
+                    post_impulse_high = ohlcv.iloc[i + 1 : confirm_idx + 1]["high"].max()
+                    if post_impulse_high < candle["high"]:  # Price stayed below OB
+                        new_bearish.append(
+                            OrderBlockData(
+                                symbol=symbol,
+                                timeframe=timeframe,
+                                direction="bearish",
+                                price_high=float(candle["high"]),
+                                price_low=float(candle["low"]),
+                                formed_at=candle["timestamp"],
+                                confirmed_at=ohlcv.iloc[confirm_idx]["timestamp"],
+                            )
+                        )
+
         # Mitigation check (penetration into 50% of the OB zone)
         bullish_obs += new_bullish
         bearish_obs += new_bearish
@@ -681,63 +745,72 @@ class MarketStructureAnalyzer:
         for ob in all_obs:
             ob_ts = pd.Timestamp(ob.formed_at)
             if ob_ts.tzinfo is None:
-                ob_ts = ob_ts.tz_localize('UTC')
-            
-            ts_series = pd.to_datetime(ohlcv['timestamp'], utc=True)
+                ob_ts = ob_ts.tz_localize("UTC")
+
+            ts_series = pd.to_datetime(ohlcv["timestamp"], utc=True)
             future_bars = ohlcv[ts_series > ob_ts]
             ob_mid = (ob.price_high + ob.price_low) / 2.0
-            
+
             for _, bar in future_bars.iterrows():
-                bar_ts = pd.Timestamp(str(bar['timestamp'])).to_pydatetime()
+                bar_ts = pd.Timestamp(str(bar["timestamp"])).to_pydatetime()
                 if isinstance(bar_ts, datetime):
-                    if ob.direction == "bullish" and bar['low'] <= ob_mid:
+                    if ob.direction == "bullish" and bar["low"] <= ob_mid:
                         ob.mitigated_at = bar_ts
                         break
-                    elif ob.direction == "bearish" and bar['high'] >= ob_mid:
+                    elif ob.direction == "bearish" and bar["high"] >= ob_mid:
                         ob.mitigated_at = bar_ts
                         break
-                    
+
         # Keep only most recent unmitigated OBs, limit count
-        unmitigated_bullish = [ob for ob in sorted(bullish_obs, key=lambda x: x.formed_at, reverse=True) 
-                               if ob.mitigated_at is None][:MAX_OB_PER_SIDE]
-        unmitigated_bearish = [ob for ob in sorted(bearish_obs, key=lambda x: x.formed_at, reverse=True)
-                               if ob.mitigated_at is None][:MAX_OB_PER_SIDE]
-        
+        unmitigated_bullish = [
+            ob for ob in sorted(bullish_obs, key=lambda x: x.formed_at, reverse=True) if ob.mitigated_at is None
+        ][:MAX_OB_PER_SIDE]
+        unmitigated_bearish = [
+            ob for ob in sorted(bearish_obs, key=lambda x: x.formed_at, reverse=True) if ob.mitigated_at is None
+        ][:MAX_OB_PER_SIDE]
+
         # Return all (mitigated for reference + limited unmitigated)
         mitigated = [ob for ob in all_obs if ob.mitigated_at is not None]
         blocks = unmitigated_bullish + unmitigated_bearish + mitigated[-4:]  # Keep some mitigated for context
-        
-        logger.debug(f'OB detection {symbol}/{timeframe}: {len(unmitigated_bullish)} bull, {len(unmitigated_bearish)} bear unmitigated')
+
+        logger.debug(
+            f"OB detection {symbol}/{timeframe}: {len(unmitigated_bullish)} bull, {len(unmitigated_bearish)} bear unmitigated"
+        )
         return blocks
 
     def _detect_structure_breaks(
-        self, df: pd.DataFrame, swing_highs: pd.DataFrame, swing_lows: pd.DataFrame, 
-        symbol: str, timeframe: str
+        self, df: pd.DataFrame, swing_highs: pd.DataFrame, swing_lows: pd.DataFrame, symbol: str, timeframe: str
     ) -> list[StructureBreakData]:
         breaks: list[StructureBreakData] = []
         swings = []
         for _, row in swing_highs.iterrows():
-            swings.append((row['timestamp'], float(np.asarray(row['price']).item()), 'high'))
+            swings.append((row["timestamp"], float(np.asarray(row["price"]).item()), "high"))
         for _, row in swing_lows.iterrows():
-            swings.append((row['timestamp'], float(np.asarray(row['price']).item()), 'low'))
-            
+            swings.append((row["timestamp"], float(np.asarray(row["price"]).item()), "low"))
+
         swings.sort(key=lambda x: x[0])
         current_trend = "ranging"
         last_high = None
         last_low = None
-        
+
         for ts, price, typ in swings:
-            if typ == 'high':
+            if typ == "high":
                 if last_high and price > last_high:
                     subsequent = df.loc[df.index >= ts]
-                    breaking_candles = subsequent.loc[subsequent['close'] > last_high]
+                    breaking_candles = subsequent.loc[subsequent["close"] > last_high]
                     if not breaking_candles.empty:
                         break_ts = pd.to_datetime(breaking_candles.index[0]).to_pydatetime()
                         break_type = "ChoCH" if current_trend == "bearish" else "BOS"
-                        breaks.append(StructureBreakData(
-                            symbol=symbol, timeframe=timeframe, type=break_type, 
-                            direction="bullish", price=last_high, formed_at=break_ts
-                        ))
+                        breaks.append(
+                            StructureBreakData(
+                                symbol=symbol,
+                                timeframe=timeframe,
+                                type=break_type,
+                                direction="bullish",
+                                price=last_high,
+                                formed_at=break_ts,
+                            )
+                        )
                         current_trend = "bullish"
                 elif last_high and price < last_high:
                     current_trend = "bearish"
@@ -745,19 +818,25 @@ class MarketStructureAnalyzer:
             else:
                 if last_low and price < last_low:
                     subsequent = df.loc[df.index >= ts]
-                    breaking_candles = subsequent.loc[subsequent['close'] < last_low]
+                    breaking_candles = subsequent.loc[subsequent["close"] < last_low]
                     if not breaking_candles.empty:
                         break_ts = pd.to_datetime(breaking_candles.index[0]).to_pydatetime()
                         break_type = "ChoCH" if current_trend == "bullish" else "BOS"
-                        breaks.append(StructureBreakData(
-                            symbol=symbol, timeframe=timeframe, type=break_type, 
-                            direction="bearish", price=last_low, formed_at=break_ts
-                        ))
+                        breaks.append(
+                            StructureBreakData(
+                                symbol=symbol,
+                                timeframe=timeframe,
+                                type=break_type,
+                                direction="bearish",
+                                price=last_low,
+                                formed_at=break_ts,
+                            )
+                        )
                         current_trend = "bearish"
                 elif last_low and price > last_low:
                     current_trend = "bullish"
                 last_low = price
-                
+
         return breaks[-10:]  # Batasi 10 terakhir agar konteks prompt efisien
 
     # ------------------------------------------------------------------
@@ -773,46 +852,51 @@ class MarketStructureAnalyzer:
     ) -> int:
         """Mengganti data swing points lama dengan yang baru."""
         await self.session.execute(
-            delete(SwingPoint)
-            .where(SwingPoint.symbol == symbol)
-            .where(SwingPoint.timeframe == timeframe)
+            delete(SwingPoint).where(SwingPoint.symbol == symbol).where(SwingPoint.timeframe == timeframe)
         )
 
         saved = 0
         for _, row in highs.iterrows():
-            self.session.add(SwingPoint(
-                symbol=symbol, timeframe=timeframe,
-                timestamp=pd.Timestamp(str(row["timestamp"])).to_pydatetime(), type="high", price=float(np.asarray(row["price"]).item())
-            ))
+            self.session.add(
+                SwingPoint(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    timestamp=pd.Timestamp(str(row["timestamp"])).to_pydatetime(),
+                    type="high",
+                    price=float(np.asarray(row["price"]).item()),
+                )
+            )
             saved += 1
         for _, row in lows.iterrows():
-            self.session.add(SwingPoint(
-                symbol=symbol, timeframe=timeframe,
-                timestamp=pd.Timestamp(str(row["timestamp"])).to_pydatetime(), type="low", price=float(np.asarray(row["price"]).item())
-            ))
+            self.session.add(
+                SwingPoint(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    timestamp=pd.Timestamp(str(row["timestamp"])).to_pydatetime(),
+                    type="low",
+                    price=float(np.asarray(row["price"]).item()),
+                )
+            )
             saved += 1
 
         await self.session.commit()
         return saved
 
-    async def _save_sr_zones(
-        self, symbol: str, timeframe: str, zones: list[dict]
-    ) -> int:
+    async def _save_sr_zones(self, symbol: str, timeframe: str, zones: list[dict]) -> int:
         """Mengganti S/R zones lama dengan yang baru."""
-        await self.session.execute(
-            delete(SRZone)
-            .where(SRZone.symbol == symbol)
-            .where(SRZone.timeframe == timeframe)
-        )
+        await self.session.execute(delete(SRZone).where(SRZone.symbol == symbol).where(SRZone.timeframe == timeframe))
 
         for zone in zones:
-            self.session.add(SRZone(
-                symbol=symbol, timeframe=timeframe,
-                price_high=float(zone["price_high"]),
-                price_low=float(zone["price_low"]),
-                strength=float(zone["strength"]),
-                last_touched=zone["last_touched"],
-            ))
+            self.session.add(
+                SRZone(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    price_high=float(zone["price_high"]),
+                    price_low=float(zone["price_low"]),
+                    strength=float(zone["strength"]),
+                    last_touched=zone["last_touched"],
+                )
+            )
 
         await self.session.commit()
         return len(zones)
@@ -822,24 +906,24 @@ class MarketStructureAnalyzer:
         Persist newly identified liquidity zones (replaces existing zones per cycle).
         """
         await self.session.execute(
-            delete(LiquidityZone)
-            .where(LiquidityZone.symbol == symbol)
-            .where(LiquidityZone.timeframe == timeframe)
+            delete(LiquidityZone).where(LiquidityZone.symbol == symbol).where(LiquidityZone.timeframe == timeframe)
         )
-        
+
         for zone in zones:
-            self.session.add(LiquidityZone(
-                symbol=symbol,
-                timeframe=timeframe,
-                zone_high=float(zone.zone_high),
-                zone_low=float(zone.zone_low),
-                type=str(zone.type),
-                identified_at=zone.identified_at,
-            ))
-        
+            self.session.add(
+                LiquidityZone(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    zone_high=float(zone.zone_high),
+                    zone_low=float(zone.zone_low),
+                    type=str(zone.type),
+                    identified_at=zone.identified_at,
+                )
+            )
+
         if zones:
             await self.session.commit()
-        
+
         return len(zones)
 
     async def _save_fvg(
@@ -868,21 +952,23 @@ class MarketStructureAnalyzer:
 
         if not sym or not tf:
             return 0
-            
+
         MAX_FVG_PER_DIRECTION = 4  # Maximum 4 bullish + 4 bearish = 8 total
-        
+
         bullish_zones = sorted(
-            [z for z in zones if z.direction == 'bullish' and z.filled_at is None],
-            key=lambda x: x.formed_at, reverse=True
+            [z for z in zones if z.direction == "bullish" and z.filled_at is None],
+            key=lambda x: x.formed_at,
+            reverse=True,
         )[:MAX_FVG_PER_DIRECTION]
-        
+
         bearish_zones = sorted(
-            [z for z in zones if z.direction == 'bearish' and z.filled_at is None],
-            key=lambda x: x.formed_at, reverse=True
+            [z for z in zones if z.direction == "bearish" and z.filled_at is None],
+            key=lambda x: x.formed_at,
+            reverse=True,
         )[:MAX_FVG_PER_DIRECTION]
-        
+
         filled_zones = [z for z in zones if z.filled_at is not None][-4:]  # Keep last 4 filled for context
-        
+
         target_zones = bullish_zones + bearish_zones + filled_zones
 
         cutoff_fvg = datetime.now(timezone.utc) - timedelta(days=30)
@@ -894,39 +980,46 @@ class MarketStructureAnalyzer:
             .where(FVGZone.filled_at < cutoff_fvg)
         )
 
-        last_bar = (await self.session.execute(
-            select(PriceOHLCV)
-            .where(PriceOHLCV.symbol == sym)
-            .where(PriceOHLCV.timeframe == tf)
-            .order_by(PriceOHLCV.timestamp.desc())
-            .limit(1)
-        )).scalar_one_or_none()
+        last_bar = (
+            await self.session.execute(
+                select(PriceOHLCV)
+                .where(PriceOHLCV.symbol == sym)
+                .where(PriceOHLCV.timeframe == tf)
+                .order_by(PriceOHLCV.timestamp.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
         current_price = float(last_bar.close) if last_bar else None
 
         DEFAULT_FVG_DISTANCE = 0.04
         max_dist = FVG_MAX_DISTANCE.get(sym, DEFAULT_FVG_DISTANCE)
 
         MAX_FVG_AGE_BARS = {
-            "H4": 100,   # ~16 hari
-            "D1": 60,    # ~3 bulan
-            "H1": 200,   # ~8 hari
+            "H4": 100,  # ~16 hari
+            "D1": 60,  # ~3 bulan
+            "H1": 200,  # ~8 hari
         }
-        
+
         now_utc = datetime.now(timezone.utc)
         tf_hours = {"H1": 1, "H4": 4, "D1": 24}.get(tf, 4)
         max_age_hours = MAX_FVG_AGE_BARS.get(tf, 100) * tf_hours
 
         # Load existing unfilled FVGs directly from DB
-        existing_records = (await self.session.execute(
-            select(FVGZone)
-            .where(FVGZone.symbol == sym)
-            .where(FVGZone.timeframe == tf)
-            .where(FVGZone.filled_at.is_(None))
-        )).scalars().all()
+        existing_records = (
+            (
+                await self.session.execute(
+                    select(FVGZone)
+                    .where(FVGZone.symbol == sym)
+                    .where(FVGZone.timeframe == tf)
+                    .where(FVGZone.filled_at.is_(None))
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         existing_map = {
-            (round(float(f.gap_high), 5), round(float(f.gap_low), 5), str(f.direction)): f
-            for f in existing_records
+            (round(float(f.gap_high), 5), round(float(f.gap_low), 5), str(f.direction)): f for f in existing_records
         }
 
         # Process zones
@@ -937,7 +1030,7 @@ class MarketStructureAnalyzer:
             if key in seen_keys:
                 continue
             seen_keys.add(key)
-            
+
             if key in existing_map:
                 # Update fill status if now filled
                 db_fvg = existing_map[key]
@@ -947,25 +1040,29 @@ class MarketStructureAnalyzer:
             else:
                 # New FVG — check if it's relevant before inserting
                 if zone.filled_at is None:
-                    formed_ts = zone.formed_at.replace(tzinfo=timezone.utc) if zone.formed_at.tzinfo is None else zone.formed_at
+                    formed_ts = (
+                        zone.formed_at.replace(tzinfo=timezone.utc) if zone.formed_at.tzinfo is None else zone.formed_at
+                    )
                     if (now_utc - formed_ts).total_seconds() / 3600 > max_age_hours:
                         continue  # Skip old unfilled FVGs
-                        
+
                     if current_price:
                         midpoint = (float(zone.gap_high) + float(zone.gap_low)) / 2.0
                         distance_pct = abs(midpoint - current_price) / max(1e-8, current_price)
                         if distance_pct > max_dist:
                             continue  # Too far, skip
-                
-                self.session.add(FVGZone(
-                    symbol=sym,
-                    timeframe=tf,
-                    gap_high=float(zone.gap_high),
-                    gap_low=float(zone.gap_low),
-                    direction=str(zone.direction),
-                    formed_at=zone.formed_at,
-                    filled_at=zone.filled_at,
-                ))
+
+                self.session.add(
+                    FVGZone(
+                        symbol=sym,
+                        timeframe=tf,
+                        gap_high=float(zone.gap_high),
+                        gap_low=float(zone.gap_low),
+                        direction=str(zone.direction),
+                        formed_at=zone.formed_at,
+                        filled_at=zone.filled_at,
+                    )
+                )
                 new_count += 1
 
         # Prune older unfilled FVGs if price has diverged excessively
@@ -1014,16 +1111,22 @@ class MarketStructureAnalyzer:
             .where(OrderBlock.mitigated_at.is_not(None))
             .where(OrderBlock.mitigated_at < cutoff)
         )
-        
-        existing_obs = (await self.session.execute(
-            select(OrderBlock).where(OrderBlock.symbol == symbol, OrderBlock.timeframe == timeframe)
-        )).scalars().all()
-        
+
+        existing_obs = (
+            (
+                await self.session.execute(
+                    select(OrderBlock).where(OrderBlock.symbol == symbol, OrderBlock.timeframe == timeframe)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
         existing_map = {
-            (round(float(ob.price_high), 5), round(float(ob.price_low), 5), str(ob.direction)): ob 
+            (round(float(ob.price_high), 5), round(float(ob.price_low), 5), str(ob.direction)): ob
             for ob in existing_obs
         }
-        
+
         saved = 0
         seen_keys = set()
         for block in blocks:
@@ -1031,23 +1134,25 @@ class MarketStructureAnalyzer:
             if key in seen_keys:
                 continue
             seen_keys.add(key)
-            
+
             if key in existing_map:
                 existing_ob = existing_map[key]
                 if block.mitigated_at and not existing_ob.mitigated_at:
                     existing_ob.mitigated_at = block.mitigated_at
             else:
-                self.session.add(OrderBlock(
-                    symbol=symbol,
-                    timeframe=timeframe,
-                    direction=str(block.direction),
-                    price_high=float(block.price_high),
-                    price_low=float(block.price_low),
-                    formed_at=block.formed_at,
-                    mitigated_at=block.mitigated_at,
-                ))
+                self.session.add(
+                    OrderBlock(
+                        symbol=symbol,
+                        timeframe=timeframe,
+                        direction=str(block.direction),
+                        price_high=float(block.price_high),
+                        price_low=float(block.price_low),
+                        formed_at=block.formed_at,
+                        mitigated_at=block.mitigated_at,
+                    )
+                )
                 saved += 1
-        
+
         await self.session.commit()
         return saved
 
@@ -1056,14 +1161,16 @@ class MarketStructureAnalyzer:
             delete(StructureBreak).where(StructureBreak.symbol == symbol).where(StructureBreak.timeframe == timeframe)
         )
         for brk in breaks:
-            self.session.add(StructureBreak(
-                symbol=symbol,
-                timeframe=timeframe,
-                type=str(brk.type),
-                direction=str(brk.direction),
-                price=float(brk.price),
-                formed_at=brk.formed_at,
-            ))
+            self.session.add(
+                StructureBreak(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    type=str(brk.type),
+                    direction=str(brk.direction),
+                    price=float(brk.price),
+                    formed_at=brk.formed_at,
+                )
+            )
         if breaks:
             await self.session.commit()
         return len(breaks)
@@ -1083,62 +1190,77 @@ class MarketStructureAnalyzer:
             .where(SwingPoint.symbol == symbol)
             .where(SwingPoint.timeframe == timeframe)
             .where(SwingPoint.type == "high")
-            .order_by(SwingPoint.timestamp.desc()).limit(10)
+            .order_by(SwingPoint.timestamp.desc())
+            .limit(10)
         )
         lows_q = await self.session.execute(
             select(SwingPoint)
             .where(SwingPoint.symbol == symbol)
             .where(SwingPoint.timeframe == timeframe)
             .where(SwingPoint.type == "low")
-            .order_by(SwingPoint.timestamp.desc()).limit(10)
+            .order_by(SwingPoint.timestamp.desc())
+            .limit(10)
         )
         sr_q = await self.session.execute(
             select(SRZone)
             .where(SRZone.symbol == symbol)
             .where(SRZone.timeframe == timeframe)
-            .order_by(SRZone.strength.desc()).limit(5)
+            .order_by(SRZone.strength.desc())
+            .limit(5)
         )
         liq_q = await self.session.execute(
             select(LiquidityZone)
             .where(LiquidityZone.symbol == symbol)
             .where(LiquidityZone.timeframe == timeframe)
-            .order_by(LiquidityZone.identified_at.desc()).limit(10)
+            .order_by(LiquidityZone.identified_at.desc())
+            .limit(10)
         )
         fvg_q = await self.session.execute(
             select(FVGZone)
             .where(FVGZone.symbol == symbol)
             .where(FVGZone.timeframe == timeframe)
             .where(FVGZone.filled_at == None)  # noqa: E711 — unfilled FVGs only
-            .order_by(FVGZone.formed_at.desc()).limit(10)
+            .order_by(FVGZone.formed_at.desc())
+            .limit(10)
         )
         ob_q = await self.session.execute(
             select(OrderBlock)
             .where(OrderBlock.symbol == symbol)
             .where(OrderBlock.timeframe == timeframe)
             .where(OrderBlock.mitigated_at == None)  # noqa: E711
-            .order_by(OrderBlock.formed_at.desc()).limit(5)
+            .order_by(OrderBlock.formed_at.desc())
+            .limit(5)
         )
         sb_q = await self.session.execute(
             select(StructureBreak)
             .where(StructureBreak.symbol == symbol)
             .where(StructureBreak.timeframe == timeframe)
-            .order_by(StructureBreak.formed_at.desc()).limit(5)
+            .order_by(StructureBreak.formed_at.desc())
+            .limit(5)
         )
 
         highs = highs_q.scalars().all()
-        lows  = lows_q.scalars().all()
-        sr    = sr_q.scalars().all()
-        liq   = liq_q.scalars().all()
-        fvg   = fvg_q.scalars().all()
-        ob    = ob_q.scalars().all()
-        sb    = sb_q.scalars().all()
+        lows = lows_q.scalars().all()
+        sr = sr_q.scalars().all()
+        liq = liq_q.scalars().all()
+        fvg = fvg_q.scalars().all()
+        ob = ob_q.scalars().all()
+        sb = sb_q.scalars().all()
 
         return {
             "swing_highs": [{"price": r.price, "ts": r.timestamp.isoformat()} for r in highs],
-            "swing_lows":  [{"price": r.price, "ts": r.timestamp.isoformat()} for r in lows],
-            "sr_zones":    [{"high": r.price_high, "low": r.price_low, "strength": r.strength} for r in sr],
+            "swing_lows": [{"price": r.price, "ts": r.timestamp.isoformat()} for r in lows],
+            "sr_zones": [{"high": r.price_high, "low": r.price_low, "strength": r.strength} for r in sr],
             "liquidity_zones": [{"high": r.zone_high, "low": r.zone_low, "type": r.type} for r in liq],
-            "fvg_zones":   [{"high": r.gap_high, "low": r.gap_low, "dir": r.direction, "formed": r.formed_at.isoformat()} for r in fvg],
-            "order_blocks": [{"high": r.price_high, "low": r.price_low, "dir": r.direction, "formed": r.formed_at.isoformat()} for r in ob],
-            "structure_breaks": [{"price": r.price, "type": r.type, "dir": r.direction, "formed": r.formed_at.isoformat()} for r in sb],
+            "fvg_zones": [
+                {"high": r.gap_high, "low": r.gap_low, "dir": r.direction, "formed": r.formed_at.isoformat()}
+                for r in fvg
+            ],
+            "order_blocks": [
+                {"high": r.price_high, "low": r.price_low, "dir": r.direction, "formed": r.formed_at.isoformat()}
+                for r in ob
+            ],
+            "structure_breaks": [
+                {"price": r.price, "type": r.type, "dir": r.direction, "formed": r.formed_at.isoformat()} for r in sb
+            ],
         }

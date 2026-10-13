@@ -3,6 +3,7 @@ Benchmark comparison tracker for backtesting.
 Calculates institutional benchmark-relative metrics:
 Alpha, Beta, Information Ratio, Tracking Error, Up/Down Capture Ratio.
 """
+
 from dataclasses import dataclass, asdict
 from typing import Sequence, Dict, Any
 import numpy as np

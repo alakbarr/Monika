@@ -11,10 +11,7 @@ def mock_openai_client(monkeypatch):
     """Ensure OpenRouterProvider never instantiates real AsyncOpenAI network transport during unit tests."""
     mock_instance = MagicMock()
     mock_instance.base_url = "https://openrouter.ai/api/v1"
-    mock_instance.default_headers = {
-        "HTTP-Referer": "https://monika.local",
-        "X-Title": "Monika MT5 Trading Agent"
-    }
+    mock_instance.default_headers = {"HTTP-Referer": "https://monika.local", "X-Title": "Monika MT5 Trading Agent"}
     mock_instance.chat.completions.create = AsyncMock()
     monkeypatch.setattr("openai.AsyncOpenAI", MagicMock(return_value=mock_instance))
     OpenRouterProvider._client_pool.clear()
@@ -24,7 +21,7 @@ def mock_openai_client(monkeypatch):
 
 def test_openrouter_provider_init():
     """Provider harus membaca OPENROUTER_API_KEY dan mengatur base_url serta headers OpenRouter."""
-    with patch.dict('os.environ', {'OPENROUTER_API_KEY': 'sk-or-test-key-123'}, clear=True):
+    with patch.dict("os.environ", {"OPENROUTER_API_KEY": "sk-or-test-key-123"}, clear=True):
         provider = OpenRouterProvider(model="claude-sonnet-5")
         assert provider.api_key == "sk-or-test-key-123"
         assert provider.client is not None
@@ -36,20 +33,8 @@ def test_openrouter_provider_init():
 def test_openrouter_reasoning_params():
     """Format reasoning effort OpenRouter harus masuk ke extra_body['reasoning']['effort'] secara aman beserta token floor."""
     provider = OpenRouterProvider(model="claude-sonnet-5", api_key="test-key")
-    expected_efforts = {
-        "low": "low",
-        "medium": "medium",
-        "high": "high",
-        "xhigh": "high",
-        "max": "high"
-    }
-    expected_floors = {
-        "low": 2048,
-        "medium": 4096,
-        "high": 8192,
-        "xhigh": 16384,
-        "max": 32768
-    }
+    expected_efforts = {"low": "low", "medium": "medium", "high": "high", "xhigh": "high", "max": "high"}
+    expected_floors = {"low": 2048, "medium": 4096, "high": 8192, "xhigh": 16384, "max": 32768}
     for level, exp_effort in expected_efforts.items():
         provider.thinking_level = level
         kwargs = {"model": provider.model, "messages": []}
@@ -81,7 +66,7 @@ async def test_openrouter_generate():
     mock_resp.choices = [mock_choice]
     mock_resp.usage = None
 
-    with patch.object(provider.client.chat.completions, 'create', new_callable=AsyncMock) as mock_create:
+    with patch.object(provider.client.chat.completions, "create", new_callable=AsyncMock) as mock_create:
         mock_create.return_value = mock_resp
         res = await provider.generate("Test prompt", system="System prompt", temperature=0.2)
 
@@ -109,7 +94,7 @@ async def test_openrouter_classify_json():
     mock_resp.choices = [mock_choice]
     mock_resp.usage = None
 
-    with patch.object(provider.client.chat.completions, 'create', new_callable=AsyncMock) as mock_create:
+    with patch.object(provider.client.chat.completions, "create", new_callable=AsyncMock) as mock_create:
         mock_create.return_value = mock_resp
         schema = {"type": "object", "properties": {"status": {"type": "string"}}}
         res = await provider.classify_json("Analyze this", schema=schema)
@@ -124,7 +109,7 @@ async def test_openrouter_run_agent_402_billing_error():
     """Error 402 / Insufficient credits harus menandai is_billing_error=True."""
     provider = OpenRouterProvider(model="claude-sonnet-5", api_key="test-key")
 
-    with patch.object(provider, 'run_tool_agent', side_effect=Exception("402 Payment Required: Insufficient credits")):
+    with patch.object(provider, "run_tool_agent", side_effect=Exception("402 Payment Required: Insufficient credits")):
         session = create_mock_async_session()
         res = await provider.run_agent(session, "sys", "user", tools=[], stage_name="stage1_test")
 
@@ -138,13 +123,13 @@ async def test_openrouter_token_logging():
     provider = OpenRouterProvider(model="claude-sonnet-5", api_key="test-key")
 
     mock_session = create_mock_async_session()
-    with patch('database.models.TokenUsageLog') as mock_log_cls:
+    with patch("database.models.TokenUsageLog") as mock_log_cls:
         await provider._save_token_usage(
             model_name="claude-sonnet-5",
             task_name="test_task",
             input_tokens=100,
             output_tokens=50,
-            session=mock_session
+            session=mock_session,
         )
         mock_log_cls.assert_called_once()
         kw = mock_log_cls.call_args.kwargs
@@ -161,23 +146,19 @@ def test_factory_creates_openrouter_client():
     """LLMFactory harus mendeteksi dan membuat OpenRouterProvider untuk model OpenRouter."""
     settings = {
         "llm": {
-            "providers": {
-                "openrouter": {"enabled": True}
-            },
-            "model_catalog": {
-                "claude-sonnet-5": {"provider": "openrouter"}
-            },
+            "providers": {"openrouter": {"enabled": True}},
+            "model_catalog": {"claude-sonnet-5": {"provider": "openrouter"}},
             "task_roles": {
                 "paid_task": {
                     "primary": "claude-sonnet-5",
                     "max_tokens": 4096,
                     "temperature": 0.1,
-                    "thinking": {"openrouter": "high"}
+                    "thinking": {"openrouter": "high"},
                 }
-            }
+            },
         }
     }
-    with patch.dict('os.environ', {'OPENROUTER_API_KEY': 'test-key'}):
+    with patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-key"}):
         factory = LLMFactory(settings)
         assert factory._resolve_provider("claude-sonnet-5") == "openrouter"
 
@@ -192,7 +173,7 @@ def test_factory_creates_openrouter_client():
 
 def test_openrouter_ox_alpha_resolution_and_init():
     """Test spesifik inisialisasi model ox-alpha ke stealth/ox-alpha."""
-    with patch.dict('os.environ', {'OPENROUTER_API_KEY': 'test-key'}):
+    with patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-key"}):
         provider = OpenRouterProvider(model="ox-alpha", max_tokens=16384)
         assert provider.model == "stealth/ox-alpha"
         assert provider.raw_model_name == "ox-alpha"
@@ -239,7 +220,7 @@ def test_openrouter_model_aliases_1to1_accuracy():
         "openrouter/free": "openrouter/free",
         "openrouter-free": "openrouter/free",
     }
-    with patch.dict('os.environ', {'OPENROUTER_API_KEY': 'test-key'}):
+    with patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-key"}):
         for alias, target in expected_mappings.items():
             p = OpenRouterProvider(model=alias)
             assert p.model == target, f"Alias '{alias}' expected to resolve to '{target}', got '{p.model}'"
@@ -247,7 +228,7 @@ def test_openrouter_model_aliases_1to1_accuracy():
 
 def test_openrouter_glm_5_2_free_resolution_and_init():
     """Test spesifik inisialisasi model glm-5.2:free ke z-ai/glm-5.2:free."""
-    with patch.dict('os.environ', {'OPENROUTER_API_KEY': 'test-key'}):
+    with patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-key"}):
         provider = OpenRouterProvider(model="glm-5.2:free", max_tokens=16384)
         assert provider.model == "z-ai/glm-5.2:free"
         assert provider.raw_model_name == "glm-5.2:free"
@@ -297,20 +278,22 @@ def test_openrouter_all_free_tier_models_resolution():
         ("openrouter/free", "openrouter/free"),
         ("openrouter-free", "openrouter/free"),
     ]
-    with patch.dict('os.environ', {'OPENROUTER_API_KEY': 'test-key'}):
+    with patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-key"}):
         for raw_name, target in free_tier_models:
             provider = OpenRouterProvider(model=raw_name)
-            assert provider.model == target, f"Model '{raw_name}' expected to resolve to '{target}', got '{provider.model}'"
+            assert provider.model == target, (
+                f"Model '{raw_name}' expected to resolve to '{target}', got '{provider.model}'"
+            )
             assert provider.raw_model_name == raw_name
 
 
 def test_openrouter_free_model_rotates_across_all_keys():
     """Model gratis (misal ox-alpha atau :free) harus memutar seluruh kunci (paid + free keys)."""
     env = {
-        'OPENROUTER_PAID_API_KEY': 'sk-or-paid-1',
-        'OPENROUTER_API_KEYS': 'sk-or-free-1, sk-or-free-2',
+        "OPENROUTER_PAID_API_KEY": "sk-or-paid-1",
+        "OPENROUTER_API_KEYS": "sk-or-free-1, sk-or-free-2",
     }
-    with patch.dict('os.environ', env, clear=True):
+    with patch.dict("os.environ", env, clear=True):
         provider = OpenRouterProvider(model="ox-alpha")
         assert provider.is_free is True
         assert len(provider._all_keys) == 3
@@ -330,10 +313,10 @@ def test_openrouter_free_model_rotates_across_all_keys():
 def test_openrouter_paid_model_uses_paid_key_only():
     """Model berbayar (misal claude-sonnet-5) HANYA boleh menggunakan paid key."""
     env = {
-        'OPENROUTER_PAID_API_KEY': 'sk-or-paid-1',
-        'OPENROUTER_API_KEYS': 'sk-or-free-1, sk-or-free-2',
+        "OPENROUTER_PAID_API_KEY": "sk-or-paid-1",
+        "OPENROUTER_API_KEYS": "sk-or-free-1, sk-or-free-2",
     }
-    with patch.dict('os.environ', env, clear=True):
+    with patch.dict("os.environ", env, clear=True):
         provider = OpenRouterProvider(model="claude-sonnet-5")
         assert provider.is_free is False
         assert provider._paid_key == "sk-or-paid-1"
@@ -347,21 +330,22 @@ def test_openrouter_paid_model_uses_paid_key_only():
 def test_openrouter_key_cooldown_on_429():
     """Saat key terkena 429 pada model tertentu, cooldown aktif untuk model tersebut."""
     import time
+
     env = {
-        'OPENROUTER_PAID_API_KEY': 'sk-or-paid-1',
-        'OPENROUTER_API_KEYS': 'sk-or-free-1, sk-or-free-2',
+        "OPENROUTER_PAID_API_KEY": "sk-or-paid-1",
+        "OPENROUTER_API_KEYS": "sk-or-free-1, sk-or-free-2",
     }
-    with patch.dict('os.environ', env, clear=True):
+    with patch.dict("os.environ", env, clear=True):
         # Reset cooldowns
         OpenRouterProvider.reset_cooldowns()
         provider = OpenRouterProvider(model="ox-alpha")
 
         # Pasang cooldown pada sk-or-paid-1 dan sk-or-free-1 khusus ox-alpha / stealth/ox-alpha
-        OpenRouterProvider._model_key_cooldowns[('sk-or-paid-1', 'stealth/ox-alpha')] = time.time() + 60
-        OpenRouterProvider._model_key_cooldowns[('sk-or-free-1', 'stealth/ox-alpha')] = time.time() + 60
+        OpenRouterProvider._model_key_cooldowns[("sk-or-paid-1", "stealth/ox-alpha")] = time.time() + 60
+        OpenRouterProvider._model_key_cooldowns[("sk-or-free-1", "stealth/ox-alpha")] = time.time() + 60
 
         # Harus menghasilkan sk-or-free-2 untuk ox-alpha
-        assert provider._get_api_key() == 'sk-or-free-2'
+        assert provider._get_api_key() == "sk-or-free-2"
         OpenRouterProvider.reset_cooldowns()
 
 
@@ -372,11 +356,12 @@ def test_openrouter_per_model_cooldown_isolation():
     key tersebut HARUS TETAP DAPAT DIGUNAKAN untuk model lain (misal GLM 5.2 free).
     """
     import time
+
     env = {
-        'OPENROUTER_PAID_API_KEY': 'sk-or-paid-1',
-        'OPENROUTER_API_KEYS': 'sk-or-free-1, sk-or-free-2',
+        "OPENROUTER_PAID_API_KEY": "sk-or-paid-1",
+        "OPENROUTER_API_KEYS": "sk-or-free-1, sk-or-free-2",
     }
-    with patch.dict('os.environ', env, clear=True):
+    with patch.dict("os.environ", env, clear=True):
         OpenRouterProvider.reset_cooldowns()
 
         provider_ox = OpenRouterProvider(model="ox-alpha")
@@ -384,9 +369,15 @@ def test_openrouter_per_model_cooldown_isolation():
 
         # Simulasikan upstream congestion pada ox-alpha untuk sk-or-free-1 dan sk-or-free-2
         err_upstream = Exception("Error code: 429 - stealth/ox-alpha is temporarily rate-limited upstream.")
-        OpenRouterProvider._handle_rate_limit_error("sk-or-free-1", err_upstream, "generate_content", "stealth/ox-alpha")
-        OpenRouterProvider._handle_rate_limit_error("sk-or-free-2", err_upstream, "generate_content", "stealth/ox-alpha")
-        OpenRouterProvider._handle_rate_limit_error("sk-or-paid-1", err_upstream, "generate_content", "stealth/ox-alpha")
+        OpenRouterProvider._handle_rate_limit_error(
+            "sk-or-free-1", err_upstream, "generate_content", "stealth/ox-alpha"
+        )
+        OpenRouterProvider._handle_rate_limit_error(
+            "sk-or-free-2", err_upstream, "generate_content", "stealth/ox-alpha"
+        )
+        OpenRouterProvider._handle_rate_limit_error(
+            "sk-or-paid-1", err_upstream, "generate_content", "stealth/ox-alpha"
+        )
 
         # Semua key sekarang in cooldown untuk ox-alpha
         assert provider_ox._get_api_key() is None
@@ -407,6 +398,7 @@ def test_openrouter_per_model_cooldown_isolation():
 async def test_openrouter_rate_limiter_module():
     """Memverifikasi OpenRouterRateLimiter try_acquire dan get_usage."""
     from utils.api.openrouter_rate_limiter import OpenRouterRateLimiter, is_free_tier_model
+
     assert is_free_tier_model("ox-alpha") is True
     assert is_free_tier_model("google/gemma-4-31b-it:free") is True
     assert is_free_tier_model("claude-sonnet-5") is False
@@ -424,11 +416,14 @@ def test_openrouter_handle_rate_limit_classification():
     """Memverifikasi presisi klasifikasi rate limit OpenRouter (Generic 429 vs Retry hint vs Upstream vs RPD)."""
     import time
     from utils.api.openrouter_rate_limiter import OpenRouterRateLimiter
+
     OpenRouterProvider.reset_cooldowns()
 
     # 1. Generic 429 ('Rate limit exceeded') pada model tertentu -> harus cooldown 65s (bukan 24h)
     err_generic = Exception("Error code: 429 - {'error': {'message': 'Rate limit exceeded', 'code': 429}}")
-    rot1 = OpenRouterProvider._handle_rate_limit_error("test-key-1", err_generic, "generate_content", "stealth/ox-alpha")
+    rot1 = OpenRouterProvider._handle_rate_limit_error(
+        "test-key-1", err_generic, "generate_content", "stealth/ox-alpha"
+    )
     assert rot1 is True
     cd1 = OpenRouterProvider._model_key_cooldowns.get(("test-key-1", "stealth/ox-alpha"), 0) - time.time()
     assert 60.0 <= cd1 <= 66.0, f"Expected ~65s cooldown, got {cd1}"
@@ -441,14 +436,20 @@ def test_openrouter_handle_rate_limit_classification():
     assert 16.0 <= cd2 <= 19.0, f"Expected ~17.5s cooldown, got {cd2}"
 
     # 3. Upstream provider shared pool congestion -> cooldown 60s & fail-fast (should_rotate=False)
-    err_upstream = Exception("Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'stealth/ox-alpha is temporarily rate-limited upstream. Please retry shortly.', 'limit_source': 'upstream_provider_shared_pool'}}}")
-    rot_up = OpenRouterProvider._handle_rate_limit_error("test-key-upstream", err_upstream, "generate", "stealth/ox-alpha")
+    err_upstream = Exception(
+        "Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'stealth/ox-alpha is temporarily rate-limited upstream. Please retry shortly.', 'limit_source': 'upstream_provider_shared_pool'}}}"
+    )
+    rot_up = OpenRouterProvider._handle_rate_limit_error(
+        "test-key-upstream", err_upstream, "generate", "stealth/ox-alpha"
+    )
     assert rot_up is False
     cd_up = OpenRouterProvider._model_key_cooldowns.get(("test-key-upstream", "stealth/ox-alpha"), 0) - time.time()
     assert 55.0 <= cd_up <= 65.0, f"Expected ~60s cooldown, got {cd_up}"
 
     # 4. Explicit RPD ('Free tier daily limit reached') -> cooldown 24h (86400s)
-    err_rpd = Exception("Error code: 429 - {'error': {'message': 'Free tier daily limit reached for model', 'code': 429}}")
+    err_rpd = Exception(
+        "Error code: 429 - {'error': {'message': 'Free tier daily limit reached for model', 'code': 429}}"
+    )
     rot3 = OpenRouterProvider._handle_rate_limit_error("test-key-3", err_rpd, "generate_content", "stealth/ox-alpha")
     assert rot3 is True
     cd3 = OpenRouterProvider._model_key_cooldowns.get(("test-key-3", "stealth/ox-alpha"), 0) - time.time()
@@ -489,6 +490,7 @@ def test_openrouter_handle_rate_limit_classification():
 def test_openrouter_logger_name():
     """Memverifikasi namespace logger adalah TradingAgent.OpenRouterProvider."""
     from analysis.providers.openrouter_provider import logger
+
     assert logger.name == "TradingAgent.OpenRouterProvider"
 
 
@@ -499,18 +501,20 @@ async def test_openrouter_upstream_fail_fast_no_key_rotation():
     provider langsung Fail-Fast (hanya 1 API call, TIDAK merotasi ke sisa kunci lain).
     """
     env = {
-        'OPENROUTER_API_KEYS': 'sk-or-free-1, sk-or-free-2, sk-or-free-3, sk-or-free-4',
+        "OPENROUTER_API_KEYS": "sk-or-free-1, sk-or-free-2, sk-or-free-3, sk-or-free-4",
     }
-    with patch.dict('os.environ', env, clear=True):
+    with patch.dict("os.environ", env, clear=True):
         OpenRouterProvider.reset_cooldowns()
         provider = OpenRouterProvider(model="z-ai/glm-5.2:free")
 
         # Mock chat.completions.create untuk selalu melempar upstream 429
         mock_create = AsyncMock()
-        err_upstream = Exception("Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.2:free is temporarily rate-limited upstream.', 'limit_source': 'upstream_provider_shared_pool'}}}")
+        err_upstream = Exception(
+            "Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.2:free is temporarily rate-limited upstream.', 'limit_source': 'upstream_provider_shared_pool'}}}"
+        )
         mock_create.side_effect = err_upstream
 
-        with patch.object(provider, '_get_client_for_key') as mock_get_client:
+        with patch.object(provider, "_get_client_for_key") as mock_get_client:
             mock_client = MagicMock()
             mock_client.chat.completions.create = mock_create
             mock_get_client.return_value = mock_client
@@ -521,8 +525,8 @@ async def test_openrouter_upstream_fail_fast_no_key_rotation():
             assert mock_create.call_count == 1
 
             # Pastikan seluruh 4 key sekarang mendapatkan cooldown untuk model ini
-            for k in ['sk-or-free-1', 'sk-or-free-2', 'sk-or-free-3', 'sk-or-free-4']:
-                assert (k, 'z-ai/glm-5.2:free') in OpenRouterProvider._model_key_cooldowns
+            for k in ["sk-or-free-1", "sk-or-free-2", "sk-or-free-3", "sk-or-free-4"]:
+                assert (k, "z-ai/glm-5.2:free") in OpenRouterProvider._model_key_cooldowns
 
         OpenRouterProvider.reset_cooldowns()
 
@@ -533,17 +537,19 @@ async def test_openrouter_502_503_service_unavailable_fail_fast():
     Memverifikasi bahwa HTTP 502/503 Service Unavailable diperlakukan sebagai model unavailable dan langsung fail-fast.
     """
     env = {
-        'OPENROUTER_API_KEYS': 'sk-or-free-1, sk-or-free-2, sk-or-free-3',
+        "OPENROUTER_API_KEYS": "sk-or-free-1, sk-or-free-2, sk-or-free-3",
     }
-    with patch.dict('os.environ', env, clear=True):
+    with patch.dict("os.environ", env, clear=True):
         OpenRouterProvider.reset_cooldowns()
         provider = OpenRouterProvider(model="z-ai/glm-5.2:free")
 
         mock_create = AsyncMock()
-        err_503 = Exception("Error code: 503 - {'error': {'message': 'Service Unavailable: No available model provider meets your routing requirements', 'code': 503}}")
+        err_503 = Exception(
+            "Error code: 503 - {'error': {'message': 'Service Unavailable: No available model provider meets your routing requirements', 'code': 503}}"
+        )
         mock_create.side_effect = err_503
 
-        with patch.object(provider, '_get_client_for_key') as mock_get_client:
+        with patch.object(provider, "_get_client_for_key") as mock_get_client:
             mock_client = MagicMock()
             mock_client.chat.completions.create = mock_create
             mock_get_client.return_value = mock_client
@@ -561,11 +567,12 @@ def test_llm_factory_openrouter_paid_model_uses_paid_key_not_free_pool():
     Model seperti z-ai/glm-5.3 atau claude-sonnet-5 HARUS menggunakan OPENROUTER_PAID_API_KEY.
     """
     from analysis.providers.llm_factory import LLMFactory
+
     env = {
-        'OPENROUTER_PAID_API_KEY': 'sk-or-paid-secret',
-        'OPENROUTER_API_KEYS': 'sk-or-free-1, sk-or-free-2, sk-or-free-3',
+        "OPENROUTER_PAID_API_KEY": "sk-or-paid-secret",
+        "OPENROUTER_API_KEYS": "sk-or-free-1, sk-or-free-2, sk-or-free-3",
     }
-    with patch.dict('os.environ', env, clear=True):
+    with patch.dict("os.environ", env, clear=True):
         factory = LLMFactory({})
         client = factory._create_client_instance("z-ai/glm-5.3", role_config={"max_tokens": 512, "temperature": 0.0})
         assert isinstance(client, OpenRouterProvider)
@@ -581,10 +588,10 @@ def test_openrouter_provider_paid_model_rejects_free_key_override():
     dan tetap mengutamakan OPENROUTER_PAID_API_KEY.
     """
     env = {
-        'OPENROUTER_PAID_API_KEY': 'sk-or-paid-secret',
-        'OPENROUTER_API_KEYS': 'sk-or-free-1, sk-or-free-2',
+        "OPENROUTER_PAID_API_KEY": "sk-or-paid-secret",
+        "OPENROUTER_API_KEYS": "sk-or-free-1, sk-or-free-2",
     }
-    with patch.dict('os.environ', env, clear=True):
+    with patch.dict("os.environ", env, clear=True):
         # Caller secara keliru mem-pass sk-or-free-1 ke model berbayar
         provider = OpenRouterProvider(model="z-ai/glm-5.3", api_key="sk-or-free-1")
         assert provider.is_free is False

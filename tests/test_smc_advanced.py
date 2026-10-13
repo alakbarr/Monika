@@ -44,9 +44,12 @@ def test_detect_equal_highs_lows():
 
 def test_detect_inducement():
     dates = pd.date_range("2026-01-01", periods=10, freq="1h")
-    df = pd.DataFrame([{
-        "timestamp": d, "open": 100 + i, "high": 102 + i, "low": 99 + i, "close": 101 + i, "volume": 50
-    } for i, d in enumerate(dates)])
+    df = pd.DataFrame(
+        [
+            {"timestamp": d, "open": 100 + i, "high": 102 + i, "low": 99 + i, "close": 101 + i, "volume": 50}
+            for i, d in enumerate(dates)
+        ]
+    )
 
     swings = [
         {"type": "high", "price": 105.0, "timestamp": dates[3].isoformat()},

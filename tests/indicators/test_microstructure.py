@@ -1,6 +1,7 @@
 """
 Unit tests for indicators/microstructure.py (VPIN, Kyle's Lambda, Amihud, asset routing).
 """
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -46,18 +47,23 @@ def test_compute_kyle_lambda():
 
 def test_get_microstructure_metrics_asset_routing():
     dates = pd.date_range("2025-01-01", periods=25, freq="1h")
-    ohlcv = pd.DataFrame({
-        "open": np.linspace(100, 105, 25),
-        "high": np.linspace(101, 106, 25),
-        "low": np.linspace(99, 104, 25),
-        "close": np.linspace(100.5, 105.5, 25),
-        "volume": np.random.uniform(100, 500, 25),
-    }, index=dates)
+    ohlcv = pd.DataFrame(
+        {
+            "open": np.linspace(100, 105, 25),
+            "high": np.linspace(101, 106, 25),
+            "low": np.linspace(99, 104, 25),
+            "close": np.linspace(100.5, 105.5, 25),
+            "volume": np.random.uniform(100, 500, 25),
+        },
+        index=dates,
+    )
 
-    trades = pd.DataFrame({
-        "price": np.linspace(2600, 2610, 30),
-        "volume": np.random.uniform(1, 5, 30),
-    })
+    trades = pd.DataFrame(
+        {
+            "price": np.linspace(2600, 2610, 30),
+            "volume": np.random.uniform(1, 5, 30),
+        }
+    )
 
     # BTCUSD -> VPIN
     btc_metrics = get_microstructure_metrics("BTCUSD", trades_df=trades, ohlcv_df=ohlcv)

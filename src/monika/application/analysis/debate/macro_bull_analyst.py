@@ -9,27 +9,27 @@ MACRO_BULL_SCHEMA = {
     "properties": {
         "bull_thesis": {
             "type": "string",
-            "description": "Concise, evidence-based thesis (max 2 focused paragraphs) advocating Risk-On / Bearish USD macro conditions."
+            "description": "Concise, evidence-based thesis (max 2 focused paragraphs) advocating Risk-On / Bearish USD macro conditions.",
         },
         "strength_score": {
             "type": "integer",
             "minimum": 1,
             "maximum": 10,
-            "description": "Conviction score for Risk-On / Bearish USD thesis based strictly on empirical data."
+            "description": "Conviction score for Risk-On / Bearish USD thesis based strictly on empirical data.",
         },
         "evidence_cited": {
             "type": "array",
             "minItems": 2,
             "items": {"type": "string"},
-            "description": "MANDATORY: Minimum 2 exact numerical/macro data points from context (e.g. '10Y Yield=4.05%', 'FedWatch=78% cut', 'VIX=14.2', 'DXY=weakening')."
+            "description": "MANDATORY: Minimum 2 exact numerical/macro data points from context (e.g. '10Y Yield=4.05%', 'FedWatch=78% cut', 'VIX=14.2', 'DXY=weakening').",
         },
         "primary_catalysts": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "List of 2-3 key catalysts driving risk-on sentiment and USD softening."
-        }
+            "description": "List of 2-3 key catalysts driving risk-on sentiment and USD softening.",
+        },
     },
-    "required": ["bull_thesis", "strength_score", "evidence_cited", "primary_catalysts"]
+    "required": ["bull_thesis", "strength_score", "evidence_cited", "primary_catalysts"],
 }
 
 
@@ -43,6 +43,7 @@ async def run_bull_analyst(context: str, settings: dict) -> dict:
         client = get_client_for_task("stage1_fundamental", settings)
 
     from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
     anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
     system_prompt = (
         f"{anchor}\n\n---\n\n"
@@ -68,7 +69,9 @@ DATA CONTEXT:
 Provide your structured evaluation in JSON matching the schema."""
 
     try:
-        res = await client.classify_json(prompt=prompt, schema=MACRO_BULL_SCHEMA, system_prompt=system_prompt, max_tokens=4096)
+        res = await client.classify_json(
+            prompt=prompt, schema=MACRO_BULL_SCHEMA, system_prompt=system_prompt, max_tokens=4096
+        )
         if res and isinstance(res, dict) and "bull_thesis" in res:
             return res
     except Exception as e:
@@ -80,7 +83,7 @@ Provide your structured evaluation in JSON matching the schema."""
             "bull_thesis": raw or "No bullish thesis generated.",
             "strength_score": 5,
             "evidence_cited": ["Context data analyzed via fallback"],
-            "primary_catalysts": ["Fallback macro evaluation"]
+            "primary_catalysts": ["Fallback macro evaluation"],
         }
     except Exception as e:
         logger.error(f"Macro Bull analyst failed completely: {e}")
@@ -88,5 +91,5 @@ Provide your structured evaluation in JSON matching the schema."""
             "bull_thesis": f"Error generating bull thesis: {e}",
             "strength_score": 1,
             "evidence_cited": [],
-            "primary_catalysts": []
+            "primary_catalysts": [],
         }

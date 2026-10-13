@@ -14,6 +14,7 @@ from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
 
 logger = logging.getLogger("TradingAgent.InvestingScraper")
 
+
 class InvestingCalendarScraper(BaseScraper):
     def __init__(self, headless=True, profile_name="investing_calendar"):
         super().__init__(headless, profile_name, load_mode="eager", no_imgs=True)
@@ -79,7 +80,7 @@ class InvestingCalendarScraper(BaseScraper):
                 pass
 
         try:
-            custom_btn = page_obj.ele('tag:button@@text():Custom dates', timeout=1)
+            custom_btn = page_obj.ele("tag:button@@text():Custom dates", timeout=1)
             if not custom_btn or not custom_btn.states.is_displayed:
                 custom_btn = page_obj.ele("xpath://button[contains(normalize-space(), 'Custom')]", timeout=1)
 
@@ -90,15 +91,21 @@ class InvestingCalendarScraper(BaseScraper):
             custom_btn.scroll.to_center()
             page_obj.wait(0.5)
 
-            page_obj.listen.start('economic-calendar')
+            page_obj.listen.start("economic-calendar")
             custom_btn.click(by_js=True)
             page_obj.wait(0.5)
 
-            picker_container = page_obj.ele("xpath://div[contains(@class, 'DateRangePicker') or contains(@class, 'date-range-picker') or @data-test='date-range-picker']", timeout=4)
+            picker_container = page_obj.ele(
+                "xpath://div[contains(@class, 'DateRangePicker') or contains(@class, 'date-range-picker') or @data-test='date-range-picker']",
+                timeout=4,
+            )
             if not picker_container:
                 custom_btn.click(by_js=True)
                 page_obj.wait(1.0)
-                picker_container = page_obj.ele("xpath://div[contains(@class, 'DateRangePicker') or contains(@class, 'date-range-picker') or @data-test='date-range-picker']", timeout=3)
+                picker_container = page_obj.ele(
+                    "xpath://div[contains(@class, 'DateRangePicker') or contains(@class, 'date-range-picker') or @data-test='date-range-picker']",
+                    timeout=3,
+                )
 
             if not picker_container:
                 page_obj.listen.stop()
@@ -125,7 +132,9 @@ class InvestingCalendarScraper(BaseScraper):
                     end_cell.click(by_js=True)
                     page_obj.wait(0.3)
 
-            apply_btn = page_obj.ele('xpath://button[contains(normalize-space(), "Apply") or @data-test="date-picker-apply"]', timeout=3)
+            apply_btn = page_obj.ele(
+                'xpath://button[contains(normalize-space(), "Apply") or @data-test="date-picker-apply"]', timeout=3
+            )
             if apply_btn:
                 apply_btn.click(by_js=True)
             else:
@@ -183,7 +192,7 @@ class InvestingCalendarScraper(BaseScraper):
         MAX_SCROLL_ITERATIONS = 2
 
         for _ in range(MAX_SCROLL_ITERATIONS):
-            if getattr(self, 'is_closed', False):
+            if getattr(self, "is_closed", False):
                 break
             try:
                 table = self._find_calendar_table()
@@ -199,8 +208,7 @@ class InvestingCalendarScraper(BaseScraper):
 
             try:
                 load_more_button = page_obj.ele(
-                    'xpath://button[contains(., "Load more") or contains(., "Load More") '
-                    'or contains(., "Show more")]',
+                    'xpath://button[contains(., "Load more") or contains(., "Load More") or contains(., "Show more")]',
                     timeout=0.3,
                 )
                 if load_more_button and load_more_button.states.is_displayed:
@@ -212,9 +220,10 @@ class InvestingCalendarScraper(BaseScraper):
             try:
                 table = self._find_calendar_table()
                 if table:
-                    refreshed_count = page_obj.run_js(
-                        'return arguments[0] ? arguments[0].querySelectorAll("tr").length : 0', table
-                    ) or 0
+                    refreshed_count = (
+                        page_obj.run_js('return arguments[0] ? arguments[0].querySelectorAll("tr").length : 0', table)
+                        or 0
+                    )
                 else:
                     refreshed_count = 0
                 if abs(refreshed_count - previous_row_count) <= 2:
@@ -231,11 +240,15 @@ class InvestingCalendarScraper(BaseScraper):
     _last_cache_time: float = 0.0
     CACHE_TTL_SECONDS: float = 900.0  # 15 minutes TTL
 
-    def fetch_events(self, fast_mode: bool = False, time_filter: Optional[str] = None, force_refresh: bool = False) -> List[CalendarEvent]:
+    def fetch_events(
+        self, fast_mode: bool = False, time_filter: Optional[str] = None, force_refresh: bool = False
+    ) -> List[CalendarEvent]:
         # Check in-memory cache first to avoid launching browser unnecessarily
         now_ts = time.time()
         if not force_refresh and self._cached_events and (now_ts - self._last_cache_time < self.CACHE_TTL_SECONDS):
-            logger.info(f"Returning {len(self._cached_events)} Investing.com calendar events from in-memory cache (age: {(now_ts - self._last_cache_time)/60:.1f}m)")
+            logger.info(
+                f"Returning {len(self._cached_events)} Investing.com calendar events from in-memory cache (age: {(now_ts - self._last_cache_time) / 60:.1f}m)"
+            )
             return self._cached_events
 
         if not self.page:
@@ -243,16 +256,16 @@ class InvestingCalendarScraper(BaseScraper):
         page_obj: Any = self.page
         page_obj.set.window.size(1920, 1080)
         wait_selector = 'xpath://button[contains(., "This Week") or contains(., "Today") or contains(., "This week")] | //table | //div[@id="economicCalendarData"]'
-        
+
         all_events_dict = {}
-        
+
         logger.info(f"Navigating to {self.target_url}")
         success = self.navigate_with_fallback(self.target_url, wait_selector, timeout=25)
-        if not success or getattr(self, 'is_closed', False):
+        if not success or getattr(self, "is_closed", False):
             if not success:
                 logger.warning(f"Failed to load {self.target_url}, falling back to ForexFactory backup feed.")
             return self._fallback_forexfactory()
-            
+
         try:
             pop_up_close = page_obj.ele('css:[data-test="sign-up-dialog-close-button"]', timeout=1.5)
             if pop_up_close and pop_up_close.states.is_displayed:
@@ -267,7 +280,7 @@ class InvestingCalendarScraper(BaseScraper):
             if not table_ele:
                 logger.warning("Could not find table element in fast_mode, falling back to ForexFactory backup feed.")
                 return self._fallback_forexfactory()
-                
+
             table_html = table_ele.inner_html
             soup = BeautifulSoup(table_html, "html.parser")
             events = self._parse_table_html(soup, all_events_dict)
@@ -279,9 +292,9 @@ class InvestingCalendarScraper(BaseScraper):
 
         # Normal Mode: jika time_filter diberikan gunakan filter tersebut, jika tidak gunakan default This Week & Next Week
         time_filters = [time_filter] if time_filter else ["This Week", "Next Week"]
-        
+
         for filter_label in time_filters:
-            if getattr(self, 'is_closed', False):
+            if getattr(self, "is_closed", False):
                 break
             filter_success = self._apply_time_filter_human_like(filter_label)
             if not filter_success:
@@ -293,7 +306,7 @@ class InvestingCalendarScraper(BaseScraper):
             if not table_ele:
                 logger.warning(f"Could not find table element after applying filter {filter_label}")
                 continue
-                
+
             table_html = table_ele.inner_html
             soup = BeautifulSoup(table_html, "html.parser")
             self._parse_table_html(soup, all_events_dict)
@@ -304,9 +317,13 @@ class InvestingCalendarScraper(BaseScraper):
         """Secondary seamless failover if Investing.com is unreachable or throttled."""
         try:
             try:
-                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
+                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
+                    ForexFactoryCalendarScraper,
+                )
             except ImportError:
-                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
+                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
+                    ForexFactoryCalendarScraper,
+                )
             ff = ForexFactoryCalendarScraper(headless=True)
             events = ff.fetch_feed_events()
             if events:
@@ -319,16 +336,18 @@ class InvestingCalendarScraper(BaseScraper):
     def _parse_table_html(self, soup: BeautifulSoup, all_events_dict: dict) -> List[CalendarEvent]:
         _MONTH_RE = re.compile(r"\s*\((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Q\d|H\d)\)", re.IGNORECASE)
         from datetime import datetime, timezone
+
         current_date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        
+
         # Deteksi timezone browser atau system lokal
         src_tz = datetime.now().astimezone().tzinfo
-        if hasattr(self, 'page') and self.page:
+        if hasattr(self, "page") and self.page:
             try:
                 page_obj: Any = self.page
-                browser_tz_str = page_obj.run_js('return Intl.DateTimeFormat().resolvedOptions().timeZone')
+                browser_tz_str = page_obj.run_js("return Intl.DateTimeFormat().resolvedOptions().timeZone")
                 if browser_tz_str:
                     from zoneinfo import ZoneInfo
+
                     src_tz = ZoneInfo(browser_tz_str)
             except Exception:
                 pass
@@ -338,11 +357,12 @@ class InvestingCalendarScraper(BaseScraper):
             day_cell = row.find("td", class_="theDay") or row.find("th", class_="theDay")
             if not day_cell and len(row.find_all("td")) == 1 and row.find("td", colspan=True):
                 day_cell = row.find("td")
-                
+
             if day_cell:
                 raw_date_text = day_cell.get_text(strip=True)
                 try:
                     from dateutil import parser as dateutil_parser
+
                     now_utc = datetime.now(timezone.utc)
                     parsed_dt = dateutil_parser.parse(raw_date_text, fuzzy=True, default=datetime(now_utc.year, 1, 1))
                     # Year boundary check: if current month is Dec and parsed month is Jan -> next year
@@ -358,21 +378,36 @@ class InvestingCalendarScraper(BaseScraper):
             cells = row.find_all("td")
             if len(cells) < 8:
                 continue
-                
+
             time_str = cells[1].get_text(strip=True)
             country_code = cells[2].get_text(strip=True).upper()
-            
-            cc_map = {"US": "USD", "EU": "EUR", "EZ": "EUR", "DE": "EUR", "FR": "EUR", "IT": "EUR", "ES": "EUR", 
-                      "GB": "GBP", "UK": "GBP", "JP": "JPY", "AUD": "AUD", "CA": "CAD", "CH": "CHF", "NZ": "NZD", "CN": "CNY"}
+
+            cc_map = {
+                "US": "USD",
+                "EU": "EUR",
+                "EZ": "EUR",
+                "DE": "EUR",
+                "FR": "EUR",
+                "IT": "EUR",
+                "ES": "EUR",
+                "GB": "GBP",
+                "UK": "GBP",
+                "JP": "JPY",
+                "AUD": "AUD",
+                "CA": "CAD",
+                "CH": "CHF",
+                "NZ": "NZD",
+                "CN": "CNY",
+            }
             currency = cc_map.get(country_code, country_code)
-            
+
             # if currency not in ["USD", "EUR", "GBP", "JPY", "CHF", "AUD", "CAD", "NZD", "CNY"]:
             #     continue
-                
+
             raw_title = cells[3].get_text(separator=" ", strip=True)
             clean_title = re.split(r"Act:|Cons:|Prev\.:", raw_title)[0].strip()
             clean_title = _MONTH_RE.sub("", clean_title).strip()
-            
+
             impact_html = str(cells[4]).lower()
             if "holiday" in impact_html or "holiday" in clean_title.lower():
                 impact = "Low"
@@ -384,18 +419,18 @@ class InvestingCalendarScraper(BaseScraper):
                     impact = "Medium"
                 else:
                     impact = "Low"
-                    
+
             actual = cells[5].get_text(strip=True)
             forecast = cells[6].get_text(strip=True)
             previous = cells[7].get_text(strip=True)
-            
+
             if "Time" in time_str and "Cur" in currency:
                 continue
-                
+
             actual_val = actual if actual and actual not in ["", "-", "--"] else None
             forecast_val = forecast if forecast and forecast not in ["", "-", "--"] else None
             previous_val = previous if previous and previous not in ["", "-", "--"] else None
-            
+
             if time_str and len(time_str) <= 5 and ":" in time_str:
                 try:
                     naive_dt = datetime.strptime(f"{current_date_str} {time_str}", "%Y-%m-%d %H:%M")
@@ -420,13 +455,14 @@ class InvestingCalendarScraper(BaseScraper):
 
         return list(all_events_dict.values())
 
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     scraper = InvestingCalendarScraper(headless=True, profile_name="investing_calendar")
     events = scraper.fetch_events()
-    
+
     print(f"\n--- Extracted {len(events)} events ---")
     for e in events:
         print(e)
-        
+
     scraper.close()

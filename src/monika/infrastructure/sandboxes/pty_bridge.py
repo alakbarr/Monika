@@ -33,6 +33,7 @@ logger = logging.getLogger("Monika.Infrastructure.Sandboxes.PtyBridge")
 @dataclass
 class PtySession:
     """Represents an active interactive terminal session connected via WebSocket."""
+
     session_id: str
     created_at: float
     last_active: float
@@ -57,7 +58,7 @@ class PtySession:
         self.last_active = time.time()
         self._output_buffer.append(data)
         if len(self._output_buffer) > self._max_buffer_lines:
-            self._output_buffer = self._output_buffer[-self._max_buffer_lines:]
+            self._output_buffer = self._output_buffer[-self._max_buffer_lines :]
 
         # Process ANSI query sequences
         responses = self.query_responder.process_output(data)
@@ -84,8 +85,10 @@ class PtySession:
             try:
                 import ctypes
                 from ctypes import wintypes
+
                 class COORD(ctypes.Structure):
                     _fields_ = [("X", wintypes.SHORT), ("Y", wintypes.SHORT)]
+
                 coord = COORD(self.cols, self.rows)
                 ctypes.windll.kernel32.ResizePseudoConsole(self._h_pc, coord)
             except Exception as e:
@@ -96,6 +99,7 @@ class PtySession:
         try:
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.repositories.activity_log_repository import ActivityLogRepository
+
             async with get_session() as session:
                 repo = ActivityLogRepository(session)
                 await repo.log_activity(
@@ -119,6 +123,7 @@ class PtySession:
             self._input_line_buffer = ""
 
             from monika.core.security.terminal_guard import is_hardline_blocked_command
+
             is_blocked, reason = is_hardline_blocked_command(candidate_line)
             if is_blocked:
                 logger.warning(
@@ -157,6 +162,7 @@ class PtySession:
         if self._h_pc is not None and sys.platform == "win32":
             try:
                 import ctypes
+
                 ctypes.windll.kernel32.ClosePseudoConsole(self._h_pc)
             except Exception:
                 pass
@@ -197,9 +203,7 @@ class PtyBridgeManager:
                 return existing
         return await self.create_session(session_id=sid, cols=cols, rows=rows)
 
-    async def create_session(
-        self, session_id: Optional[str] = None, cols: int = 80, rows: int = 24
-    ) -> PtySession:
+    async def create_session(self, session_id: Optional[str] = None, cols: int = 80, rows: int = 24) -> PtySession:
         """Creates or registers a new PTY bridge session with an OS shell subprocess."""
         sid = session_id or str(uuid.uuid4())
         now = time.time()
@@ -209,9 +213,23 @@ class PtyBridgeManager:
         try:
             # Whitelist safe system environment variables to prevent secret leakage
             safe_vars = {
-                "PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "COMSPEC", "TEMP", "TMP",
-                "USERPROFILE", "HOMEPATH", "HOMEDRIVE", "PSMODULEPATH",
-                "LANG", "LC_ALL", "SHELL", "HOME", "USER", "LOGNAME",
+                "PATH",
+                "PATHEXT",
+                "SYSTEMROOT",
+                "WINDIR",
+                "COMSPEC",
+                "TEMP",
+                "TMP",
+                "USERPROFILE",
+                "HOMEPATH",
+                "HOMEDRIVE",
+                "PSMODULEPATH",
+                "LANG",
+                "LC_ALL",
+                "SHELL",
+                "HOME",
+                "USER",
+                "LOGNAME",
             }
             env = {k: v for k, v in os.environ.items() if k.upper() in safe_vars}
             env["TERM"] = "xterm-256color"

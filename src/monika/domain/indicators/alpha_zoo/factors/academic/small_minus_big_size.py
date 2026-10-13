@@ -1,4 +1,3 @@
-
 """academic SMB: size factor as inverse log of 60-day average dollar volume.
 
 Reference:
@@ -10,6 +9,7 @@ capitalization, which we do not carry in the OHLCV panel. We use average daily
 dollar volume (close * volume) as a liquidity-weighted size proxy — small caps
 typically have low dollar volume. Higher z-scores = smaller (illiquid) names.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -18,21 +18,21 @@ import pandas as pd
 from monika.domain.indicators.factor_primitives import ts_mean
 
 __alpha_meta__ = {
-    'id': 'academic_smb',
-    'nickname': '[PRICE PROXY] FF1993 SMB — small-minus-big via inverse dollar-volume',
-    'theme': ['quality'],
-    'formula_latex': r'\mathrm{zscore}_{x}\bigl(-\log(\mathrm{ts\_mean}(\mathrm{volume} \cdot \mathrm{close},\,60) + 1)\bigr)',
-    'columns_required': ['close', 'volume'],
-    'universe': ['equity_us', 'equity_cn', 'equity_hk'],
-    'frequency': ['1d'],
-    'decay_horizon': 60,
-    'min_warmup_bars': 60,
-    'notes': (
-        '[PRICE PROXY] for the Fama-French (1993) SMB (Small Minus Big) size factor. '
-        'The original definition uses market capitalization from book equity data; here '
-        'we use the negative log of 60-day average dollar volume (close * volume) as a '
-        'liquidity-weighted size proxy, then cross-sectional z-score per date for '
-        'long-short ranking. Top z-scores = smaller / less liquid names.'
+    "id": "academic_smb",
+    "nickname": "[PRICE PROXY] FF1993 SMB — small-minus-big via inverse dollar-volume",
+    "theme": ["quality"],
+    "formula_latex": r"\mathrm{zscore}_{x}\bigl(-\log(\mathrm{ts\_mean}(\mathrm{volume} \cdot \mathrm{close},\,60) + 1)\bigr)",
+    "columns_required": ["close", "volume"],
+    "universe": ["equity_us", "equity_cn", "equity_hk"],
+    "frequency": ["1d"],
+    "decay_horizon": 60,
+    "min_warmup_bars": 60,
+    "notes": (
+        "[PRICE PROXY] for the Fama-French (1993) SMB (Small Minus Big) size factor. "
+        "The original definition uses market capitalization from book equity data; here "
+        "we use the negative log of 60-day average dollar volume (close * volume) as a "
+        "liquidity-weighted size proxy, then cross-sectional z-score per date for "
+        "long-short ranking. Top z-scores = smaller / less liquid names."
     ),
 }
 
@@ -53,8 +53,8 @@ def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     """Return inverse log 60-day dollar-volume z-score per stock."""
-    close = panel['close']
-    volume = panel['volume']
+    close = panel["close"]
+    volume = panel["volume"]
     dollar_volume = volume * close
     avg = ts_mean(dollar_volume, 60)
     log_size = np.log(avg + 1.0)

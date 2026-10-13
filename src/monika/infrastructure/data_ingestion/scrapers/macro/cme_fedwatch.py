@@ -13,6 +13,7 @@ from monika.infrastructure.data_ingestion.scrapers.models import FedProbability,
 
 logger = logging.getLogger("TradingAgent.FedWatchScraper")
 
+
 class FedWatchScraper(BaseScraper):
     def __init__(self, headless=True):
         super().__init__(headless)
@@ -26,14 +27,16 @@ class FedWatchScraper(BaseScraper):
         page_obj: Any = self.page
         start_time = time.time()
         iframe = None
-        
+
         while time.time() - start_time < max_wait_seconds:
-            if getattr(self, 'is_closed', False):
+            if getattr(self, "is_closed", False):
                 return None
             try:
                 iframe = page_obj.get_frame('xpath://iframe[contains(@src, "quikstrike")]')
                 if iframe:
-                    tab_0 = iframe.ele('xpath://a[contains(@id, "ctrl0_lbMeeting")] | //a[contains(@id, "ctrl0")]', timeout=1.5)
+                    tab_0 = iframe.ele(
+                        'xpath://a[contains(@id, "ctrl0_lbMeeting")] | //a[contains(@id, "ctrl0")]', timeout=1.5
+                    )
                     if tab_0:
                         logger.info(f"QuikStrike iframe detected and ready ({round(time.time() - start_time, 1)}s)")
                         return iframe
@@ -43,8 +46,10 @@ class FedWatchScraper(BaseScraper):
 
         # Fallback ke headed HANYA jika eksplisit diizinkan via environment SCRAPER_ALLOW_GUI_FALLBACK
         allow_gui = os.getenv("SCRAPER_ALLOW_GUI_FALLBACK", "false").lower() == "true"
-        if self.headless and allow_gui and not getattr(self, 'is_closed', False):
-            logger.info("QuikStrike iframe not ready in headless mode. Attempting fallback to headed mode (SCRAPER_ALLOW_GUI_FALLBACK=true)...")
+        if self.headless and allow_gui and not getattr(self, "is_closed", False):
+            logger.info(
+                "QuikStrike iframe not ready in headless mode. Attempting fallback to headed mode (SCRAPER_ALLOW_GUI_FALLBACK=true)..."
+            )
             try:
                 self.close()
                 self.headless = False
@@ -53,17 +58,19 @@ class FedWatchScraper(BaseScraper):
                     return None
                 page_obj = self.page
                 page_obj.get(self.cme_url)
-                
+
                 fallback_start = time.time()
                 while time.time() - fallback_start < 25:
-                    if getattr(self, 'is_closed', False):
+                    if getattr(self, "is_closed", False):
                         return None
                     try:
                         iframe = page_obj.get_frame('xpath://iframe[contains(@src, "quikstrike")]')
                         if iframe:
                             tab_0 = iframe.ele('xpath://a[contains(@id, "lbMeeting")]', timeout=1.5)
                             if tab_0:
-                                logger.info(f"QuikStrike iframe ready in headed fallback mode ({round(time.time() - fallback_start, 1)}s)")
+                                logger.info(
+                                    f"QuikStrike iframe ready in headed fallback mode ({round(time.time() - fallback_start, 1)}s)"
+                                )
                                 return iframe
                     except Exception:
                         pass
@@ -118,31 +125,37 @@ class FedWatchScraper(BaseScraper):
     def _get_fallback_policy_rate(self) -> float:
         """Fetch dynamic policy rate from DB (InterestRate/SystemConfig), config, or env."""
         import asyncio
+
         # 1. Try DB
         try:
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.models import InterestRate, SystemConfig
             from sqlalchemy import select, desc
-            
+
             async def _query():
                 async with get_session() as session:
-                    stmt = select(InterestRate.rate_percent).where(
-                        InterestRate.bank.ilike("%FED%")
-                    ).order_by(desc(InterestRate.effective_date)).limit(1)
+                    stmt = (
+                        select(InterestRate.rate_percent)
+                        .where(InterestRate.bank.ilike("%FED%"))
+                        .order_by(desc(InterestRate.effective_date))
+                        .limit(1)
+                    )
                     res = await session.execute(stmt)
                     val = res.scalar_one_or_none()
                     if val is not None:
                         return float(val)
-                    
-                    stmt_cfg = select(SystemConfig.value).where(
-                        SystemConfig.key.in_(["fed_funds_rate", "fed_policy_rate", "policy_rate_fed"])
-                    ).limit(1)
+
+                    stmt_cfg = (
+                        select(SystemConfig.value)
+                        .where(SystemConfig.key.in_(["fed_funds_rate", "fed_policy_rate", "policy_rate_fed"]))
+                        .limit(1)
+                    )
                     res_cfg = await session.execute(stmt_cfg)
                     val_cfg = res_cfg.scalar_one_or_none()
                     if val_cfg is not None:
                         return float(val_cfg)
                     return None
-            
+
             try:
                 loop = asyncio.get_running_loop()
             except RuntimeError:
@@ -150,6 +163,7 @@ class FedWatchScraper(BaseScraper):
 
             if loop and loop.is_running():
                 import threading
+
                 if threading.current_thread() is threading.main_thread():
                     val = None
                 else:
@@ -167,10 +181,15 @@ class FedWatchScraper(BaseScraper):
         # 2. Try settings
         try:
             from monika.core.config.settings import get_settings
+
             settings = get_settings()
             macro_cfg = settings.get("macro") if isinstance(settings, dict) else getattr(settings, "macro", None)
             if macro_cfg:
-                cfg_rate = macro_cfg.get("fed_funds_rate") if isinstance(macro_cfg, dict) else getattr(macro_cfg, "fed_funds_rate", None)
+                cfg_rate = (
+                    macro_cfg.get("fed_funds_rate")
+                    if isinstance(macro_cfg, dict)
+                    else getattr(macro_cfg, "fed_funds_rate", None)
+                )
                 if isinstance(cfg_rate, (int, float)):
                     rate = float(cfg_rate)
                     return rate / 100.0 if rate > 1.0 else rate
@@ -191,50 +210,52 @@ class FedWatchScraper(BaseScraper):
 
     def fetch_probabilities(self) -> List[FedMeeting]:
         meetings = []
-        if getattr(self, 'is_closed', False) or not self.page:
+        if getattr(self, "is_closed", False) or not self.page:
             return meetings
         page_obj: Any = self.page
         try:
             logger.info("Navigating to CME FedWatch Tool...")
             page_obj.get(self.cme_url)
-            
+
             iframe = self._locate_quikstrike_iframe(max_wait_seconds=30)
-            if not iframe or getattr(self, 'is_closed', False):
+            if not iframe or getattr(self, "is_closed", False):
                 if not iframe:
-                    logger.warning("Could not find QuikStrike iframe after adaptive wait — skipping CME FedWatch scrape")
+                    logger.warning(
+                        "Could not find QuikStrike iframe after adaptive wait — skipping CME FedWatch scrape"
+                    )
                 return meetings
-                
+
             for i in range(self.max_meetings):
-                if getattr(self, 'is_closed', False):
+                if getattr(self, "is_closed", False):
                     break
                 tab_id = f"ctl00_MainContent_ucViewControl_IntegratedFedWatchTool_uccv_lvMeetings_ctrl{i}_lbMeeting"
                 tab_ele = iframe.ele(f'xpath://a[@id="{tab_id}"]', timeout=3)
-                
+
                 if not tab_ele:
                     logger.info(f"Meeting tab {i} not found, stopping pagination.")
                     break
-                    
+
                 meeting_date = tab_ele.text
                 logger.info(f"Scraping meeting: {meeting_date}")
-                
+
                 # Klik tab (meskipun itu tab pertama)
                 tab_ele.click()
-                time.sleep(1.5) # Tunggu postback QuikStrike
-                
+                time.sleep(1.5)  # Tunggu postback QuikStrike
+
                 html = iframe.html
                 try:
                     soup = BeautifulSoup(html, "lxml")
                 except Exception:
                     soup = BeautifulSoup(html, "html.parser")
-                
+
                 table = self._find_probability_table(soup)
-                
+
                 if table:
                     rows = table.find_all("tr")
-                    
+
                     probs_raw = []
                     current_rate = None
-                    
+
                     # Cari tingkat suku bunga saat ini
                     for row in rows:
                         cols = row.find_all(["th", "td"])
@@ -243,44 +264,48 @@ class FedWatchScraper(BaseScraper):
                             current_rate_str = texts[0].replace(" (Current)", "").split("-")[1]
                             current_rate = float(current_rate_str) / 100.0
                             break
-                            
+
                     if current_rate is None:
                         current_rate = self._get_fallback_policy_rate()
-                        logger.warning(f"[FedWatch] Target rate marker not found in table, using rate {current_rate * 100:.2f}%")
-                        
+                        logger.warning(
+                            f"[FedWatch] Target rate marker not found in table, using rate {current_rate * 100:.2f}%"
+                        )
+
                     for row in rows:
                         cols = row.find_all(["th", "td"])
                         texts = [c.get_text(strip=True) for c in cols]
-                        
+
                         if len(texts) >= 5 and "-" in texts[0]:
                             target_range = texts[0].replace(" (Current)", "")
                             prob_str = texts[1].replace(",", ".").replace("%", "")
-                            
+
                             def _parse_pct(val_str):
                                 try:
                                     return float(val_str.replace(",", ".").replace("%", "").strip())
-                                except (ValueError, TypeError, AttributeError):
+                                except ValueError, TypeError, AttributeError:
                                     return None
 
                             try:
                                 prob_val = float(prob_str)
                                 if prob_val > 0:
-                                    probs_raw.append({
-                                        "target": target_range,
-                                        "prob": prob_val,
-                                        "prior_1d": _parse_pct(texts[2]) if len(texts) > 2 else None,
-                                        "prior_1w": _parse_pct(texts[3]) if len(texts) > 3 else None,
-                                        "prior_1m": _parse_pct(texts[4]) if len(texts) > 4 else None,
-                                    })
+                                    probs_raw.append(
+                                        {
+                                            "target": target_range,
+                                            "prob": prob_val,
+                                            "prior_1d": _parse_pct(texts[2]) if len(texts) > 2 else None,
+                                            "prior_1w": _parse_pct(texts[3]) if len(texts) > 3 else None,
+                                            "prior_1m": _parse_pct(texts[4]) if len(texts) > 4 else None,
+                                        }
+                                    )
                             except ValueError:
                                 pass
-                                
+
                     # Hitung probabilitas tindakan Fed
                     final_probs = []
                     for p in probs_raw:
                         upper_bound = float(p["target"].split("-")[1]) / 100.0
                         diff = upper_bound - current_rate
-                        
+
                         action = "N/A"
                         if abs(diff) < 0.005:
                             action = "HOLD"
@@ -290,29 +315,33 @@ class FedWatchScraper(BaseScraper):
                         else:
                             bps = int(round(diff * 100 / 25) * 25)
                             action = f"HIKE {bps} bps"
-                            
-                        final_probs.append(FedProbability(
-                            target_range=p["target"],
-                            probability=p["prob"],
-                            action=action,
-                            prior_1d=p.get("prior_1d"),
-                            prior_1w=p.get("prior_1w"),
-                            prior_1m=p.get("prior_1m"),
-                        ))
-                        
+
+                        final_probs.append(
+                            FedProbability(
+                                target_range=p["target"],
+                                probability=p["prob"],
+                                action=action,
+                                prior_1d=p.get("prior_1d"),
+                                prior_1w=p.get("prior_1w"),
+                                prior_1m=p.get("prior_1m"),
+                            )
+                        )
+
                     if final_probs:
                         top = sorted(final_probs, key=lambda x: x.probability, reverse=True)[0]
                         most_likely = f"{top.action} ({top.probability}%)"
-                        meetings.append(FedMeeting(
-                            meeting_date=meeting_date,
-                            current_rate_ref=round(current_rate, 2),
-                            probabilities=final_probs,
-                            most_likely=most_likely
-                        ))
+                        meetings.append(
+                            FedMeeting(
+                                meeting_date=meeting_date,
+                                current_rate_ref=round(current_rate, 2),
+                                probabilities=final_probs,
+                                most_likely=most_likely,
+                            )
+                        )
                 else:
                     logger.warning(f"Could not find probability table for {meeting_date}")
-                    
+
         except Exception as e:
             logger.error(f"Error fetching CME FedWatch: {e}")
-            
+
         return meetings

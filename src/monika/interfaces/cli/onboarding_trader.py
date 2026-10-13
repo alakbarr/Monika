@@ -79,16 +79,10 @@ class TraderOnboarding:
             risk_pct = 1.0
             daily_dd = 3.0
 
-        syms_input = Prompt.ask(
-            "Primary Symbol Watchlist (comma-separated)",
-            default="XAUUSD, EURUSD, GBPUSD"
-        )
+        syms_input = Prompt.ask("Primary Symbol Watchlist (comma-separated)", default="XAUUSD, EURUSD, GBPUSD")
         primary_symbols = [s.strip().upper() for s in syms_input.split(",") if s.strip()]
 
-        sessions_input = Prompt.ask(
-            "Priority Trading Sessions (e.g., London, New York)",
-            default="London, New York"
-        )
+        sessions_input = Prompt.ask("Priority Trading Sessions (e.g., London, New York)", default="London, New York")
         session_focus = [s.strip() for s in sessions_input.split(",") if s.strip()]
 
         profile = TraderProfile(
@@ -98,13 +92,15 @@ class TraderOnboarding:
             risk_pct_per_trade=risk_pct,
             max_daily_loss_pct=daily_dd,
             primary_symbols=primary_symbols,
-            session_focus=session_focus
+            session_focus=session_focus,
         )
 
         self.save_profile(profile)
         self.sync_to_trading_soul(profile)
 
-        console.print(f"\n{stamp_ok('ONBOARDED')} Trader profile saved and synchronized to TRADING_SOUL.md successfully!")
+        console.print(
+            f"\n{stamp_ok('ONBOARDED')} Trader profile saved and synchronized to TRADING_SOUL.md successfully!"
+        )
         return profile
 
     def save_profile(self, profile: TraderProfile) -> None:

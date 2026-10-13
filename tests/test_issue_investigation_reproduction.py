@@ -80,7 +80,7 @@ def test_unified_cron_engine_migrates_legacy_schema_without_pending_slot(tmp_pat
 
     # Initializing UnifiedCronEngine must automatically detect and add missing columns
     engine = UnifiedCronEngine(db_path=str(db_file), tick_interval_seconds=1.0)
-    
+
     # Verify columns were migrated
     conn = sqlite3.connect(str(db_file))
     cols = [r[1] for r in conn.execute("PRAGMA table_info(cron_jobs)").fetchall()]

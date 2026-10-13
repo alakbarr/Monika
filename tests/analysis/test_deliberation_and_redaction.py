@@ -49,7 +49,9 @@ async def test_investment_judge_brier_calibration():
     del client.classify_json
     client.default_temperature = 0.2
     client.max_tokens = 4096
-    client.generate_content = AsyncMock(return_value='{"final_decision": "buy", "reason": "Solid setup", "risk_multiplier": 0.8}')
+    client.generate_content = AsyncMock(
+        return_value='{"final_decision": "buy", "reason": "Solid setup", "risk_multiplier": 0.8}'
+    )
 
     # Case 1: Bear analyst has much lower Brier error (0.12 vs Bull 0.35) -> Dissenter advantage
     context = {

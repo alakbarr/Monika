@@ -22,7 +22,9 @@ async def test_plugin_manager_lifecycle():
     assert events_received[0] == ("sync_pre", "get_price_data", {"symbol": "EURUSD"})
 
     # Emit post-tool
-    await pm.emit(PluginHook.POST_TOOL_CALL, tool_name="get_price_data", args={"symbol": "EURUSD"}, result={"price": 1.085})
+    await pm.emit(
+        PluginHook.POST_TOOL_CALL, tool_name="get_price_data", args={"symbol": "EURUSD"}, result={"price": 1.085}
+    )
     assert len(events_received) == 2
     assert events_received[1] == ("async_post", "get_price_data", {"price": 1.085})
 

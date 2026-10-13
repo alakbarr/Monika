@@ -7,6 +7,7 @@ Verifies:
 - Hedge leg failure with successful rollback of primary leg.
 - Effect gate blocking handling.
 """
+
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -78,15 +79,16 @@ def mock_session():
     return create_mock_async_session()
 
 
-
 @pytest.mark.asyncio
 async def test_paired_order_success(mock_session, base_analyses):
     primary, hedge = base_analyses
     adapter = AsyncMock()
-    adapter.submit_order = AsyncMock(side_effect=[
-        {"success": True, "ticket": 12345, "price": 1.0850, "executed_volume": 0.1, "error": None},
-        {"success": True, "ticket": 12346, "price": 1.2500, "executed_volume": 0.1, "error": None},
-    ])
+    adapter.submit_order = AsyncMock(
+        side_effect=[
+            {"success": True, "ticket": 12345, "price": 1.0850, "executed_volume": 0.1, "error": None},
+            {"success": True, "ticket": 12346, "price": 1.2500, "executed_volume": 0.1, "error": None},
+        ]
+    )
 
     effect_gate = EffectGate()
 
@@ -95,12 +97,14 @@ async def test_paired_order_success(mock_session, base_analyses):
         broker_adapter=adapter,
         effect_gate=effect_gate,
     )
-    executor.mt5.get_symbol_info = AsyncMock(return_value={
-        "contract_size": 100000,
-        "volume_step": 0.01,
-        "volume_min": 0.01,
-        "volume_max": 100.0,
-    })
+    executor.mt5.get_symbol_info = AsyncMock(
+        return_value={
+            "contract_size": 100000,
+            "volume_step": 0.01,
+            "volume_min": 0.01,
+            "volume_max": 100.0,
+        }
+    )
 
     executor.sizer.calculate_with_session = AsyncMock(return_value=make_mock_sizing(0.1))
     verdict_mock = MagicMock(approved=True, rejection_reasons=[], checks_passed=["pass"], checks_failed=[])
@@ -108,12 +112,16 @@ async def test_paired_order_success(mock_session, base_analyses):
     executor._count_open_positions = AsyncMock(return_value=0)
     executor._save_position = AsyncMock()
 
-    with patch("execution.service.order_executor.safe_commit", new_callable=AsyncMock), \
-         patch("execution.service.order_executor.transactional_advisory_lock") as mock_lock:
+    with (
+        patch("execution.service.order_executor.safe_commit", new_callable=AsyncMock),
+        patch("execution.service.order_executor.transactional_advisory_lock") as mock_lock,
+    ):
         from contextlib import asynccontextmanager
+
         @asynccontextmanager
         async def _lock_cm(*args, **kwargs):
             yield True
+
         mock_lock.side_effect = _lock_cm
 
         res = await executor.execute_paired_analyses(
@@ -133,10 +141,12 @@ async def test_paired_order_success(mock_session, base_analyses):
 async def test_paired_order_hedge_failure_rollback(mock_session, base_analyses):
     primary, hedge = base_analyses
     adapter = AsyncMock()
-    adapter.submit_order = AsyncMock(side_effect=[
-        {"success": True, "ticket": 12345, "price": 1.0850, "executed_volume": 0.1, "error": None},
-        {"success": False, "ticket": None, "price": None, "executed_volume": 0.0, "error": "Margin exceeded"},
-    ])
+    adapter.submit_order = AsyncMock(
+        side_effect=[
+            {"success": True, "ticket": 12345, "price": 1.0850, "executed_volume": 0.1, "error": None},
+            {"success": False, "ticket": None, "price": None, "executed_volume": 0.0, "error": "Margin exceeded"},
+        ]
+    )
     adapter.close_position = AsyncMock(return_value={"success": True, "error": None})
 
     effect_gate = EffectGate()
@@ -146,24 +156,30 @@ async def test_paired_order_hedge_failure_rollback(mock_session, base_analyses):
         broker_adapter=adapter,
         effect_gate=effect_gate,
     )
-    executor.mt5.get_symbol_info = AsyncMock(return_value={
-        "contract_size": 100000,
-        "volume_step": 0.01,
-        "volume_min": 0.01,
-        "volume_max": 100.0,
-    })
+    executor.mt5.get_symbol_info = AsyncMock(
+        return_value={
+            "contract_size": 100000,
+            "volume_step": 0.01,
+            "volume_min": 0.01,
+            "volume_max": 100.0,
+        }
+    )
 
     executor.sizer.calculate_with_session = AsyncMock(return_value=make_mock_sizing(0.1))
     verdict_mock = MagicMock(approved=True, rejection_reasons=[], checks_passed=["pass"], checks_failed=[])
     executor.gate.check = AsyncMock(return_value=verdict_mock)
     executor._count_open_positions = AsyncMock(return_value=0)
 
-    with patch("execution.service.order_executor.safe_commit", new_callable=AsyncMock), \
-         patch("execution.service.order_executor.transactional_advisory_lock") as mock_lock:
+    with (
+        patch("execution.service.order_executor.safe_commit", new_callable=AsyncMock),
+        patch("execution.service.order_executor.transactional_advisory_lock") as mock_lock,
+    ):
         from contextlib import asynccontextmanager
+
         @asynccontextmanager
         async def _lock_cm(*args, **kwargs):
             yield True
+
         mock_lock.side_effect = _lock_cm
 
         res = await executor.execute_paired_analyses(

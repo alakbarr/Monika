@@ -1,6 +1,7 @@
 """
 Unit tests for Unified Cross-Surface Approval Hub & Steering Bus.
 """
+
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
@@ -127,4 +128,7 @@ async def test_steer_synchronization():
     assert payload["operator"] == "telegram:admin"
 
     # Verify steer_injected broadcast
-    assert any(ev[0] == "steer_injected" and ev[1]["instruction"] == "Focus on lower timeframe liquidity sweeps" for ev in events)
+    assert any(
+        ev[0] == "steer_injected" and ev[1]["instruction"] == "Focus on lower timeframe liquidity sweeps"
+        for ev in events
+    )

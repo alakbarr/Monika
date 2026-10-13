@@ -10,13 +10,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from analysis.tools.tool_executor import ToolExecutor
 from analysis.tools.tools_definitions import TELEGRAM_TOOLS, ALL_TOOLS
 from database.models import (
-    PaperTradeRecord, Position, TradeTrigger, AssetAnalysis,
-    RiskState, FundamentalBrief, ActivityLog, TokenUsageLog,
-    PriceOHLCV, SystemConfig
+    PaperTradeRecord,
+    Position,
+    TradeTrigger,
+    AssetAnalysis,
+    RiskState,
+    FundamentalBrief,
+    ActivityLog,
+    TokenUsageLog,
+    PriceOHLCV,
+    SystemConfig,
 )
 
-class TestTelegramToolsIntegration:
 
+class TestTelegramToolsIntegration:
     @pytest.mark.asyncio
     async def test_telegram_tools_presence(self):
         """Pastikan semua tool baru terdaftar di TELEGRAM_TOOLS dan ALL_TOOLS."""
@@ -53,10 +60,15 @@ class TestTelegramToolsIntegration:
         mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session, settings={"paper_trading": {"enabled": True}})
 
-        with patch("utils.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock) as mock_stats, \
-             patch("utils.analytics.paper_tracker.PaperTracker.simulate_equity_curve", new_callable=AsyncMock) as mock_curve, \
-             patch("utils.analytics.paper_tracker.PaperTracker.get_suspended_symbols", new_callable=AsyncMock) as mock_susp:
-            
+        with (
+            patch("utils.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock) as mock_stats,
+            patch(
+                "utils.analytics.paper_tracker.PaperTracker.simulate_equity_curve", new_callable=AsyncMock
+            ) as mock_curve,
+            patch(
+                "utils.analytics.paper_tracker.PaperTracker.get_suspended_symbols", new_callable=AsyncMock
+            ) as mock_susp,
+        ):
             mock_stats.return_value = {
                 "total_trades": 25,
                 "wins": 15,
@@ -88,11 +100,19 @@ class TestTelegramToolsIntegration:
         executor = ToolExecutor(mock_session)
 
         trade1 = PaperTradeRecord(
-            id=1, symbol="EURUSD", direction="buy", entry_price=1.0850,
-            exit_price=1.0900, stop_loss=1.0800, take_profit=1.0900,
-            status="closed", exit_reason="tp_hit", pnl_pct=0.46,
-            holding_hours=4.5, opened_at=datetime.now(timezone.utc),
-            closed_at=datetime.now(timezone.utc)
+            id=1,
+            symbol="EURUSD",
+            direction="buy",
+            entry_price=1.0850,
+            exit_price=1.0900,
+            stop_loss=1.0800,
+            take_profit=1.0900,
+            status="closed",
+            exit_reason="tp_hit",
+            pnl_pct=0.46,
+            holding_hours=4.5,
+            opened_at=datetime.now(timezone.utc),
+            closed_at=datetime.now(timezone.utc),
         )
 
         mock_result = MagicMock()
@@ -110,18 +130,18 @@ class TestTelegramToolsIntegration:
         executor = ToolExecutor(mock_session)
 
         trigger = TradeTrigger(
-            id=10, asset_analysis_id=5, trigger_type="price_level",
-            status="pending", condition_json=json.dumps({"price": 2650.0}),
-            created_at=datetime.now(timezone.utc)
+            id=10,
+            asset_analysis_id=5,
+            trigger_type="price_level",
+            status="pending",
+            condition_json=json.dumps({"price": 2650.0}),
+            created_at=datetime.now(timezone.utc),
         )
-        analysis = AssetAnalysis(
-            id=5, symbol="XAUUSD", decision="wait", confidence=0.75,
-            invalidation_price=2630.0
-        )
+        analysis = AssetAnalysis(id=5, symbol="XAUUSD", decision="wait", confidence=0.75, invalidation_price=2630.0)
 
         mock_result = MagicMock()
         mock_result.all.return_value = [(trigger, analysis)]
-        
+
         mock_bar_res = MagicMock()
         mock_bar = PriceOHLCV(symbol="XAUUSD", close=2645.0, timestamp=datetime.now(timezone.utc))
         mock_bar_res.scalar_one_or_none.return_value = mock_bar
@@ -141,16 +161,16 @@ class TestTelegramToolsIntegration:
 
         risk = RiskState(date=datetime.now(timezone.utc), daily_pnl=1.2, current_drawdown=0.5, trading_paused=False)
         brief = FundamentalBrief(generated_at=datetime.now(timezone.utc))
-        
+
         m_risk = MagicMock()
         m_risk.scalar_one_or_none.return_value = risk
-        
+
         m_brief = MagicMock()
         m_brief.scalar_one_or_none.return_value = brief
-        
+
         m_err = MagicMock()
         m_err.scalars().all.return_value = []
-        
+
         m_cfg = MagicMock()
         m_cfg.scalar_one_or_none.return_value = None
 
@@ -167,14 +187,27 @@ class TestTelegramToolsIntegration:
         executor = ToolExecutor(mock_session)
 
         live_pos = Position(
-            id=1, symbol="EURUSD", direction="buy", volume=0.1,
-            entry_price=1.0800, sl=1.0750, tp=1.0900, status="open",
-            mt5_ticket=1001, opened_at=datetime.now(timezone.utc), pnl=50.0
+            id=1,
+            symbol="EURUSD",
+            direction="buy",
+            volume=0.1,
+            entry_price=1.0800,
+            sl=1.0750,
+            tp=1.0900,
+            status="open",
+            mt5_ticket=1001,
+            opened_at=datetime.now(timezone.utc),
+            pnl=50.0,
         )
         paper_pos = PaperTradeRecord(
-            id=2, symbol="XAUUSD", direction="sell", entry_price=2650.0,
-            stop_loss=2670.0, take_profit=2600.0, status="open",
-            opened_at=datetime.now(timezone.utc)
+            id=2,
+            symbol="XAUUSD",
+            direction="sell",
+            entry_price=2650.0,
+            stop_loss=2670.0,
+            take_profit=2600.0,
+            status="open",
+            opened_at=datetime.now(timezone.utc),
         )
         bar = PriceOHLCV(symbol="XAUUSD", close=2640.0, timestamp=datetime.now(timezone.utc))
 
@@ -204,11 +237,14 @@ class TestTelegramToolsIntegration:
         now = datetime.now(timezone.utc)
         candles = [
             PriceOHLCV(
-                symbol="EURUSD", timeframe="H4",
-                open=1.0800 + i * 0.0005, high=1.0850 + i * 0.0005,
-                low=1.0780 + i * 0.0005, close=1.0820 + i * 0.0005,
+                symbol="EURUSD",
+                timeframe="H4",
+                open=1.0800 + i * 0.0005,
+                high=1.0850 + i * 0.0005,
+                low=1.0780 + i * 0.0005,
+                close=1.0820 + i * 0.0005,
                 volume=1000.0 + i * 10,
-                timestamp=now - timedelta(hours=4 * (20 - i))
+                timestamp=now - timedelta(hours=4 * (20 - i)),
             )
             for i in range(20)
         ]
@@ -218,6 +254,7 @@ class TestTelegramToolsIntegration:
         mock_session.execute = AsyncMock(return_value=m_res)
 
         import sys, io
+
         mock_cg = MagicMock()
         mock_cg.generate_candlestick_chart.return_value = io.BytesIO(b"fake_png_bytes")
         with patch.dict(sys.modules, {"utils.chart_generator": mock_cg}):
@@ -233,7 +270,9 @@ class TestTelegramToolsIntegration:
         executor = ToolExecutor(mock_session, settings={"trading": {"asset_universe": ["EURUSD", "XAUUSD"]}})
 
         m_bar = MagicMock()
-        m_bar.scalar_one_or_none.return_value = PriceOHLCV(symbol="EURUSD", close=1.0850, timestamp=datetime.now(timezone.utc))
+        m_bar.scalar_one_or_none.return_value = PriceOHLCV(
+            symbol="EURUSD", close=1.0850, timestamp=datetime.now(timezone.utc)
+        )
         mock_session.execute = AsyncMock(return_value=m_bar)
 
         with patch("execution.mt5_client.get_mt5_client", return_value=None):

@@ -95,11 +95,25 @@ def test_prune_after_debate_cleans_transcripts_and_heavy_payloads():
     assert rds["approved_lot"] == 0.5
 
     # Dialogue turns pruned (tombstoned for merge_dicts reducer or popped)
-    for key in ["raw_bull_text", "raw_bear_text", "raw_judge_text", "intermediate_dialogue", "transcript", "dialogue_history"]:
+    for key in [
+        "raw_bull_text",
+        "raw_bear_text",
+        "raw_judge_text",
+        "intermediate_dialogue",
+        "transcript",
+        "dialogue_history",
+    ]:
         assert key not in ds or ds[key] == "_DELETED_"
 
     # Heavy asset analysis payloads pruned
-    for heavy in ["raw_candles", "raw_order_flow", "chart_svg", "raw_screener_output", "raw_tool_history", "intermediate_reasoning"]:
+    for heavy in [
+        "raw_candles",
+        "raw_order_flow",
+        "chart_svg",
+        "raw_screener_output",
+        "raw_tool_history",
+        "intermediate_reasoning",
+    ]:
         assert heavy not in aa or aa[heavy] == "_DELETED_"
 
     # Risk dialogue turns pruned
@@ -142,7 +156,14 @@ def test_prune_before_execution_strips_heavy_data_from_trades():
     t1 = clean_trades[0]
     assert t1["symbol"] == "EURUSD"
     assert t1["action"] == "BUY"
-    for heavy in ("full_history", "raw_chart_base64", "all_candles", "raw_indicators_df", "raw_mt5_ticks", "deep_analysis_dump"):
+    for heavy in (
+        "full_history",
+        "raw_chart_base64",
+        "all_candles",
+        "raw_indicators_df",
+        "raw_mt5_ticks",
+        "deep_analysis_dump",
+    ):
         assert heavy not in t1
 
     # Tuple trade

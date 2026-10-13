@@ -4,6 +4,7 @@ import shutil
 import tempfile
 from logging_observability.report_writer import ReportWriter
 
+
 @pytest.mark.asyncio
 async def test_report_writer_async():
     temp_dir = tempfile.mkdtemp()

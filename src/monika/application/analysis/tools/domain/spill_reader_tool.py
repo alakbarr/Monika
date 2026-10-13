@@ -63,6 +63,7 @@ async def handle_retrieve_spilled_context(
     # 2. If not found in DB, check disk cache
     if content is None:
         from monika.infrastructure.infra.paths import DATA_DIR
+
         possible_dirs = [
             DATA_DIR / "cache" / "spillover",
             DATA_DIR / "tool_spill",

@@ -69,7 +69,10 @@ class VerifiedMarketSnapshotHandler(ToolHandler):
                 "timeframe": "H1",
             }
             try:
-                from monika.infrastructure.data_ingestion.sources.validators import validate_ohlcv_freshness, StaleDataError
+                from monika.infrastructure.data_ingestion.sources.validators import (
+                    validate_ohlcv_freshness,
+                    StaleDataError,
+                )
 
                 validate_ohlcv_freshness(
                     [

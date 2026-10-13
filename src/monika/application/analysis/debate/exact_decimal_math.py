@@ -81,12 +81,12 @@ def _eval_ast_node(node: ast.AST) -> Decimal:
 def safe_evaluate_math_expression(expression: str) -> Decimal:
     """
     Evaluates an arithmetic expression string safely in the exact-Decimal domain.
-    
+
     Safe from arbitrary code execution:
     - Parses expression via ast.parse(mode='eval')
     - Only numeric constants and operators (+, -, *, /, **, %) are allowed.
     - Function calls, names, imports, attribute access, and loops are strictly forbidden.
-    
+
     Example:
         safe_evaluate_math_expression("0.1 + 0.2") == Decimal("0.3")
     """

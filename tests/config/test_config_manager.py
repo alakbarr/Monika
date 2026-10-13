@@ -47,7 +47,7 @@ def test_trader_onboarding_persistence(tmp_path):
         risk_pct_per_trade=1.0,
         max_daily_loss_pct=3.0,
         primary_symbols=["XAUUSD", "EURUSD"],
-        session_focus=["London", "New York"]
+        session_focus=["London", "New York"],
     )
 
     onboarding.save_profile(profile)
@@ -86,4 +86,3 @@ async def test_config_manager_watcher_lifecycle():
     assert not cm.is_running
     assert not cm._running
     await task
-

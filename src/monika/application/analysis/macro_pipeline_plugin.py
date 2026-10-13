@@ -27,6 +27,7 @@ class MacroToAssetPipeline(AnalysisPipelinePlugin):
     Orchestrates Stage 1 (global macro regime) -> Stage 2 (per-asset thesis & debate)
     producing structured TradeProposal objects.
     """
+
     metadata = PluginMetadata(
         id="macro_to_asset",
         name="Macro-to-Asset Pipeline",
@@ -44,11 +45,7 @@ class MacroToAssetPipeline(AnalysisPipelinePlugin):
         self._proposals_generated: int = 0
 
     async def execute_analysis_cycle(
-        self,
-        session: AsyncSession,
-        asset_universe: List[str],
-        forced: bool = False,
-        **kwargs
+        self, session: AsyncSession, asset_universe: List[str], forced: bool = False, **kwargs
     ) -> List[TradeProposal]:
         """
         Executes an end-to-end analysis cycle across the specified asset universe.

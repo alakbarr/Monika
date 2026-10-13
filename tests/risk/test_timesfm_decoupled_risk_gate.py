@@ -56,9 +56,7 @@ async def test_timesfm_expectancy_precomputed_quantiles_buy_valid():
         }
     }
 
-    passed, reason = await gate._check_timesfm_expectancy(
-        session, "EURUSD", "BUY", sizing, proposal=proposal
-    )
+    passed, reason = await gate._check_timesfm_expectancy(session, "EURUSD", "BUY", sizing, proposal=proposal)
     assert passed is True
     assert "TimesFM expectancy passed" in reason
 
@@ -84,9 +82,7 @@ async def test_timesfm_expectancy_precomputed_quantiles_tp_exceeds_ceiling():
         }
     }
 
-    passed, reason = await gate._check_timesfm_expectancy(
-        session, "EURUSD", "BUY", sizing, proposal=proposal
-    )
+    passed, reason = await gate._check_timesfm_expectancy(session, "EURUSD", "BUY", sizing, proposal=proposal)
     assert passed is False
     assert "exceeds TimesFM Q90 ceiling" in reason
 
@@ -102,8 +98,6 @@ async def test_timesfm_expectancy_disabled_gate():
     session = AsyncMock()
     sizing = _create_sizing(take_profit=1.2000)
 
-    passed, reason = await gate._check_timesfm_expectancy(
-        session, "EURUSD", "BUY", sizing
-    )
+    passed, reason = await gate._check_timesfm_expectancy(session, "EURUSD", "BUY", sizing)
     assert passed is True
     assert "TimesFM expectancy gate disabled" in reason

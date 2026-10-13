@@ -18,8 +18,16 @@ from typing import Optional, Dict, Any
 
 from monika.interfaces.cli.subcommands.base import Subcommand
 from monika.interfaces.cli.theme import (
-    get_console, stamp_ok, stamp_err, stamp_warn, stamp_info,
-    PHOSPHOR_AMBER, BRASS, MUTED, PAPER, LEDGER_BOX
+    get_console,
+    stamp_ok,
+    stamp_err,
+    stamp_warn,
+    stamp_info,
+    PHOSPHOR_AMBER,
+    BRASS,
+    MUTED,
+    PAPER,
+    LEDGER_BOX,
 )
 from rich.table import Table
 from rich.prompt import Confirm, Prompt
@@ -38,11 +46,20 @@ class UpgradeSubcommand(Subcommand):
         parser = subparsers.add_parser(
             self.name,
             help=self.description,
-            description="Upgrade from Trial to Full package with automated DB migration and dependency setup."
+            description="Upgrade from Trial to Full package with automated DB migration and dependency setup.",
         )
-        parser.add_argument("--yes", "-y", action="store_true", default=False, help="Automatic non-interactive confirmation")
-        parser.add_argument("--skip-npm", action="store_true", default=False, help="Skip dashboard npm dependencies installation")
-        parser.add_argument("--skip-weights", action="store_true", default=False, help="Skip TimesFM neural forecasting weights download")
+        parser.add_argument(
+            "--yes", "-y", action="store_true", default=False, help="Automatic non-interactive confirmation"
+        )
+        parser.add_argument(
+            "--skip-npm", action="store_true", default=False, help="Skip dashboard npm dependencies installation"
+        )
+        parser.add_argument(
+            "--skip-weights",
+            action="store_true",
+            default=False,
+            help="Skip TimesFM neural forecasting weights download",
+        )
         return parser
 
     async def execute(self, args: argparse.Namespace) -> int:
@@ -61,7 +78,11 @@ class UpgradeSubcommand(Subcommand):
                 return 0
 
         # Display upgrade summary table
-        tbl = Table(title=f"[{PHOSPHOR_AMBER}]Upgrade Components Overview[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
+        tbl = Table(
+            title=f"[{PHOSPHOR_AMBER}]Upgrade Components Overview[/]",
+            box=LEDGER_BOX,
+            header_style=f"bold {PHOSPHOR_AMBER}",
+        )
         tbl.add_column("Component", style=f"bold {BRASS}")
         tbl.add_column("Trial Mode", style=MUTED)
         tbl.add_column("Full Package Target", style=PAPER)
@@ -88,30 +109,46 @@ class UpgradeSubcommand(Subcommand):
         console.print(f"\n{stamp_info('DATABASE')} [bold {BRASS}]Phase 1: PostgreSQL Configuration[/]")
         curr_db = os.environ.get("DATABASE_URL", "")
         if "postgresql" not in curr_db.lower():
-            console.print(f"  [{MUTED}]Current DB is SQLite. Full Package requires PostgreSQL for concurrent processing.[/{MUTED}]")
+            console.print(
+                f"  [{MUTED}]Current DB is SQLite. Full Package requires PostgreSQL for concurrent processing.[/{MUTED}]"
+            )
             pg_url = Prompt.ask(
                 "PostgreSQL Connection URL (asyncpg format)",
-                default="postgresql+asyncpg://postgres:postgres@localhost:5432/trading_agent"
+                default="postgresql+asyncpg://postgres:postgres@localhost:5432/trading_agent",
             )
             env_updates["DATABASE_URL"] = pg_url
 
             # Test connection
             from monika.interfaces.cli.setup_wizard import SetupWizard
+
             wizard = SetupWizard()
             pg_ok = wizard._test_db_connection(pg_url)
 
             if not pg_ok:
-                if Confirm.ask("PostgreSQL connection failed. Spawn local Docker PostgreSQL container (monika-postgres)?", default=True):
+                if Confirm.ask(
+                    "PostgreSQL connection failed. Spawn local Docker PostgreSQL container (monika-postgres)?",
+                    default=True,
+                ):
                     try:
                         console.print(f"  {stamp_info('DOCKER')} Spawning container monika-postgres...")
-                        run_res = subprocess.run([
-                            "docker", "run", "-d",
-                            "--name", "monika-postgres",
-                            "-e", "POSTGRES_PASSWORD=postgres",
-                            "-e", "POSTGRES_DB=trading_agent",
-                            "-p", "5432:5432",
-                            "postgres:16-alpine"
-                        ], capture_output=True, text=True)
+                        run_res = subprocess.run(
+                            [
+                                "docker",
+                                "run",
+                                "-d",
+                                "--name",
+                                "monika-postgres",
+                                "-e",
+                                "POSTGRES_PASSWORD=postgres",
+                                "-e",
+                                "POSTGRES_DB=trading_agent",
+                                "-p",
+                                "5432:5432",
+                                "postgres:16-alpine",
+                            ],
+                            capture_output=True,
+                            text=True,
+                        )
                         if run_res.returncode == 0:
                             console.print(f"  {stamp_ok('DOCKER')} PostgreSQL container active! Waiting 3s...")
                             await asyncio.sleep(3)
@@ -145,15 +182,21 @@ class UpgradeSubcommand(Subcommand):
             console.print(f"  [{MUTED}]Skipping npm dependencies install per flag.[/{MUTED}]")
         elif not npm_bin:
             console.print(f"  {stamp_warn('NODE MISSING')} npm/Node.js is not found on PATH.")
-            console.print(f"  [{MUTED}]Please install Node.js (v18+) from https://nodejs.org to use the Web Dashboard.[/{MUTED}]")
+            console.print(
+                f"  [{MUTED}]Please install Node.js (v18+) from https://nodejs.org to use the Web Dashboard.[/{MUTED}]"
+            )
         else:
             node_modules = os.path.join(frontend_dir, "node_modules")
-            if not os.path.exists(node_modules) or Confirm.ask("Install/update Web Dashboard npm dependencies?", default=True):
+            if not os.path.exists(node_modules) or Confirm.ask(
+                "Install/update Web Dashboard npm dependencies?", default=True
+            ):
                 console.print(f"  {stamp_info('NPM')} Installing dashboard dependencies in {frontend_dir}...")
                 try:
                     # Windows shell handling
                     npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
-                    n_res = subprocess.run([npm_cmd, "install", "--silent"], cwd=frontend_dir, capture_output=True, text=True)
+                    n_res = subprocess.run(
+                        [npm_cmd, "install", "--silent"], cwd=frontend_dir, capture_output=True, text=True
+                    )
                     if n_res.returncode == 0:
                         console.print(f"  {stamp_ok('NPM')} Web Dashboard dependencies ready.")
                     else:
@@ -168,7 +211,9 @@ class UpgradeSubcommand(Subcommand):
         npx_bin = shutil.which("npx")
         router_bin = shutil.which("9router")
         if router_bin or npx_bin:
-            enable_9r = Confirm.ask("Enable 9Router AI Gateway (localhost:20128) for smart model load balancing?", default=True)
+            enable_9r = Confirm.ask(
+                "Enable 9Router AI Gateway (localhost:20128) for smart model load balancing?", default=True
+            )
             if enable_9r:
                 settings_updates.setdefault("llm", {}).setdefault("nine_router", {})["enabled"] = True
                 console.print(f"  {stamp_ok('9ROUTER')} 9Router enabled in configuration.")
@@ -188,11 +233,15 @@ class UpgradeSubcommand(Subcommand):
                         if w_res.returncode == 0:
                             console.print(f"  {stamp_ok('TIMESFM')} Weights successfully downloaded and verified.")
                         else:
-                            console.print(f"  {stamp_warn('TIMESFM')} TimesFM weights download completed with non-zero exit code.")
+                            console.print(
+                                f"  {stamp_warn('TIMESFM')} TimesFM weights download completed with non-zero exit code."
+                            )
                     except Exception as w_err:
                         console.print(f"  {stamp_warn('TIMESFM')} Could not execute weights script: {w_err}")
             else:
-                console.print(f"  [{MUTED}]TimesFM download script not found at scripts/download_timesfm_weights.py.[/{MUTED}]")
+                console.print(
+                    f"  [{MUTED}]TimesFM download script not found at scripts/download_timesfm_weights.py.[/{MUTED}]"
+                )
         else:
             console.print(f"  [{MUTED}]Skipped TimesFM weights download.[/{MUTED}]")
 
@@ -226,6 +275,7 @@ class UpgradeSubcommand(Subcommand):
         # ── 6. Run Doctor Check ──
         console.print(f"\n{stamp_info('DOCTOR')} Running system diagnostics verification...")
         from monika.interfaces.cli.doctor import SystemDoctor
+
         doc = SystemDoctor(fix=True, live_probes=True, verbose=False)
         await doc.run_diagnostics()
         doc.render_report()

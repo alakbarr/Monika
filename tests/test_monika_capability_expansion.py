@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Comprehensive Integration & Verification Test Suite for Monika Capability Expansion.
 Validates all 5 Phases across 100 Case Requirements.
@@ -36,11 +37,15 @@ from agent.task_registry import TaskRegistry, CORE_TRADING_TASKS
 # FASE 1: Strategy Registry, Calmar Ratio, & Isolated Backtest Harness
 # ==============================================================================
 
+
 def test_strategy_registry_alias():
     assert STRATEGY_REGISTRY is not None
     assert isinstance(STRATEGY_REGISTRY, dict)
     assert "smc_fvg" in StrategyRegistry._registry or "SMCFairValueGapStrategy" in StrategyRegistry._registry
-    assert "bb_volume_profile" in StrategyRegistry._registry or "BBVolumeProfileMeanReversion" in StrategyRegistry._registry
+    assert (
+        "bb_volume_profile" in StrategyRegistry._registry
+        or "BBVolumeProfileMeanReversion" in StrategyRegistry._registry
+    )
 
 
 def test_calmar_ratio_in_harness_metrics():
@@ -63,11 +68,16 @@ def test_calmar_ratio_in_harness_metrics():
 # Margin Monitor, Pending Orders, & PnL Summary
 # ==============================================================================
 
+
 def test_task_registry_margin_guardian():
     assert "MarginGuardian" in CORE_TRADING_TASKS or "MarginMonitor" in CORE_TRADING_TASKS
     import asyncio
+
     reg = TaskRegistry(asyncio.Event())
-    async def _dummy(): pass
+
+    async def _dummy():
+        pass
+
     reg.register("MarginGuardian", _dummy)
     table = reg.get_task_status_table()
     assert len(table) == 1
@@ -96,20 +106,23 @@ async def test_pnl_summary_handler():
 # Candlestick Patterns, SMC Visual Charting, ADR & Level Optimizer
 # ==============================================================================
 
+
 def test_candlestick_pattern_detection():
     # Build sample OHLCV DataFrame
-    df = pd.DataFrame([
-        # Regular candle
-        {"open": 100.0, "high": 102.0, "low": 99.0, "close": 101.0, "timestamp": datetime.now()},
-        # Pin bar / hammer (long lower wick)
-        {"open": 101.0, "high": 101.5, "low": 95.0, "close": 101.2, "timestamp": datetime.now()},
-        # Shooting star (long upper wick)
-        {"open": 101.2, "high": 108.0, "low": 101.0, "close": 101.3, "timestamp": datetime.now()},
-        # Bearish candle followed by Bullish Engulfing
-        {"open": 101.0, "high": 101.2, "low": 98.0, "close": 98.5, "timestamp": datetime.now()},
-        {"open": 98.0, "high": 103.0, "low": 97.5, "close": 102.5, "timestamp": datetime.now()},
-    ])
-    
+    df = pd.DataFrame(
+        [
+            # Regular candle
+            {"open": 100.0, "high": 102.0, "low": 99.0, "close": 101.0, "timestamp": datetime.now()},
+            # Pin bar / hammer (long lower wick)
+            {"open": 101.0, "high": 101.5, "low": 95.0, "close": 101.2, "timestamp": datetime.now()},
+            # Shooting star (long upper wick)
+            {"open": 101.2, "high": 108.0, "low": 101.0, "close": 101.3, "timestamp": datetime.now()},
+            # Bearish candle followed by Bullish Engulfing
+            {"open": 101.0, "high": 101.2, "low": 98.0, "close": 98.5, "timestamp": datetime.now()},
+            {"open": 98.0, "high": 103.0, "low": 97.5, "close": 102.5, "timestamp": datetime.now()},
+        ]
+    )
+
     result = detect_candlestick_patterns(df)
     assert isinstance(result, dict)
     patterns = result.get("detected_patterns", [])
@@ -135,9 +148,13 @@ async def test_anchored_vwap_modes():
 @pytest.mark.asyncio
 async def test_optimal_levels_trade_style():
     mock_session = create_mock_async_session()
-    with patch("analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock) as mock_adr, \
-         patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as mock_atr, \
-         patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as mock_zones:
+    with (
+        patch(
+            "analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock
+        ) as mock_adr,
+        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as mock_atr,
+        patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as mock_zones,
+    ):
         mock_adr.return_value = {"adr": 20.0, "current_range": 5.0, "status": "ok"}
         mock_atr.return_value = 2.0
         mock_zones.return_value = [
@@ -166,6 +183,7 @@ async def test_optimal_levels_trade_style():
 # ==============================================================================
 # Quant Strategies, Counterfactual Trailing Stop, Debate & Stress Test
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_smc_fvg_strategy_evaluation():
@@ -213,9 +231,16 @@ async def test_counterfactual_trailing_stop():
     mock_session = create_mock_async_session()
 
     mock_trade = MagicMock(
-        id=101, symbol="EURUSD", direction="BUY", entry_price=1.0800,
-        stop_loss=1.0750, take_profit=1.0900, exit_price=1.0780,
-        pnl_usd=-20.0, lot_size=0.1, exit_reason="sl",
+        id=101,
+        symbol="EURUSD",
+        direction="BUY",
+        entry_price=1.0800,
+        stop_loss=1.0750,
+        take_profit=1.0900,
+        exit_price=1.0780,
+        pnl_usd=-20.0,
+        lot_size=0.1,
+        exit_reason="sl",
         created_at=datetime(2026, 9, 1, tzinfo=timezone.utc),
         closed_at=datetime(2026, 9, 2, tzinfo=timezone.utc),
     )
@@ -230,9 +255,7 @@ async def test_counterfactual_trailing_stop():
     mock_result.scalars().all.return_value = mock_bars
     mock_session.execute.return_value = mock_result
 
-    res = await sim.simulate_single_trade_counterfactual(
-        session=mock_session, trade_id=101, trailing_stop_atr_mult=1.5
-    )
+    res = await sim.simulate_single_trade_counterfactual(session=mock_session, trade_id=101, trailing_stop_atr_mult=1.5)
     assert res["status"] == "success"
     assert "trailing_stop_atr_mult" in res["counterfactual"]
     assert res["counterfactual"]["trailing_stop_atr_mult"] == 1.5
@@ -249,6 +272,7 @@ async def test_hostile_stress_test():
 # ==============================================================================
 # Macro Correlation, Coinglass OI, Database Operators, & Socket Guard
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_cross_asset_macro_correlation():

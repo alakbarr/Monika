@@ -2,6 +2,7 @@
 Gemini Embedding Generation Service.
 Generates dense vector embeddings using Google Gemini Embedding API (Gemini Embedding 2: gemini-embedding-2).
 """
+
 import logging
 import os
 from typing import Any, Dict, List, Optional
@@ -15,6 +16,7 @@ LEGACY_MODEL_MIGRATIONS = {
     "text-embedding-004": "gemini-embedding-2",
     "gemini-embedding-2-preview": "gemini-embedding-2",
 }
+
 
 async def generate_gemini_embedding(
     text: str,
@@ -34,6 +36,7 @@ async def generate_gemini_embedding(
     if not resolved_key:
         try:
             from monika.infrastructure.api.credential_pool import get_credential_pool
+
             pool = get_credential_pool()
             resolved_key = pool.get_key("gemini")
         except Exception:
@@ -73,18 +76,14 @@ async def generate_gemini_embedding(
     url = f"{GEMINI_EMBEDDING_BASE_URL}/{clean_model}:embedContent?key={resolved_key}"
 
     # Truncate text to reasonable length (e.g. 8000 chars)
-    payload: dict[str, Any] = {
-        "content": {
-            "parts": [{"text": text[:8000].strip()}]
-        }
-    }
+    payload: dict[str, Any] = {"content": {"parts": [{"text": text[:8000].strip()}]}}
     effective_dim = output_dimensionality
     if effective_dim is None and settings:
         dim_val = settings.get("embedding_dimensions")
         if dim_val is not None:
             try:
                 effective_dim = int(dim_val)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
 
     if effective_dim is not None:

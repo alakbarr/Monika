@@ -105,7 +105,7 @@ class TestTerminalGuard:
     def test_assert_safe_write_path(self, tmp_path):
         safe_root = tmp_path / "workspace"
         safe_root.mkdir()
-        
+
         # Valid write
         valid_file = safe_root / "output.txt"
         assert assert_safe_write_path(str(valid_file), safe_root=str(safe_root)) == str(valid_file)
@@ -171,7 +171,7 @@ class TestEnhancedCredentialVault:
     def test_encrypted_file_vault(self, tmp_path):
         vault_file = tmp_path / "vault.enc"
         file_vault = _EncryptedFileVault(vault_path=vault_file)
-        
+
         data = {"MT5_PASS": "SuperSecurePass123!", "API_KEY": "sk-1234567890"}
         assert file_vault.save_store(data) is True
         assert vault_file.exists()

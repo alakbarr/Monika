@@ -33,7 +33,7 @@ async def test_streak_policy_disabled_does_not_suspend():
             },
             "risk": {
                 "max_consecutive_losses_per_symbol": 3,
-            }
+            },
         }
     }
     mock_session = create_mock_async_session()
@@ -56,7 +56,7 @@ async def test_streak_policy_warn_and_scale_does_not_suspend_and_risk_gate_passe
             },
             "risk": {
                 "max_consecutive_losses_per_symbol": 3,
-            }
+            },
         }
     }
     mock_session = create_mock_async_session()
@@ -68,9 +68,15 @@ async def test_streak_policy_warn_and_scale_does_not_suspend_and_risk_gate_passe
     # 2. Risk gate passes with warn_and_scale reason
     now = datetime.now(timezone.utc)
     mock_trades = [
-        PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.5, closed_at=now - timedelta(hours=1)),
-        PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.8, closed_at=now - timedelta(hours=2)),
-        PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.6, closed_at=now - timedelta(hours=3)),
+        PaperTradeRecord(
+            symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.5, closed_at=now - timedelta(hours=1)
+        ),
+        PaperTradeRecord(
+            symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.8, closed_at=now - timedelta(hours=2)
+        ),
+        PaperTradeRecord(
+            symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.6, closed_at=now - timedelta(hours=3)
+        ),
     ]
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = mock_trades
@@ -97,14 +103,20 @@ async def test_streak_policy_strict_suspends_and_blocks():
             },
             "risk": {
                 "max_consecutive_losses_per_symbol": 3,
-            }
+            },
         }
     }
     now = datetime.now(timezone.utc)
     mock_trades = [
-        PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.5, closed_at=now - timedelta(hours=1)),
-        PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.8, closed_at=now - timedelta(hours=2)),
-        PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.6, closed_at=now - timedelta(hours=3)),
+        PaperTradeRecord(
+            symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.5, closed_at=now - timedelta(hours=1)
+        ),
+        PaperTradeRecord(
+            symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.8, closed_at=now - timedelta(hours=2)
+        ),
+        PaperTradeRecord(
+            symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.6, closed_at=now - timedelta(hours=3)
+        ),
     ]
     mock_session = create_mock_async_session()
 
@@ -138,7 +150,7 @@ async def test_infinite_loop_bug_fix_expired_suspension_does_not_resuspend():
             },
             "risk": {
                 "max_consecutive_losses_per_symbol": 3,
-            }
+            },
         }
     }
     now = datetime.now(timezone.utc)
@@ -147,19 +159,29 @@ async def test_infinite_loop_bug_fix_expired_suspension_does_not_resuspend():
     # Existing SystemConfig showing expired suspension
     existing_cfg = SystemConfig(
         key="suspended_symbols",
-        value=json.dumps([{
-            "symbol": "EURUSD",
-            "suspended_at": (last_until - timedelta(hours=12)).isoformat(),
-            "until": last_until.isoformat(),
-            "reason": "3 consecutive losses"
-        }])
+        value=json.dumps(
+            [
+                {
+                    "symbol": "EURUSD",
+                    "suspended_at": (last_until - timedelta(hours=12)).isoformat(),
+                    "until": last_until.isoformat(),
+                    "reason": "3 consecutive losses",
+                }
+            ]
+        ),
     )
 
     # All 3 SL trades closed BEFORE last_until (old trades)
     mock_trades = [
-        PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", closed_at=last_until - timedelta(hours=3)),
-        PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", closed_at=last_until - timedelta(hours=4)),
-        PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", closed_at=last_until - timedelta(hours=5)),
+        PaperTradeRecord(
+            symbol="EURUSD", status="closed", exit_reason="sl_hit", closed_at=last_until - timedelta(hours=3)
+        ),
+        PaperTradeRecord(
+            symbol="EURUSD", status="closed", exit_reason="sl_hit", closed_at=last_until - timedelta(hours=4)
+        ),
+        PaperTradeRecord(
+            symbol="EURUSD", status="closed", exit_reason="sl_hit", closed_at=last_until - timedelta(hours=5)
+        ),
     ]
 
     mock_session = create_mock_async_session()
@@ -191,10 +213,12 @@ async def test_unsuspend_symbol_and_all():
     # Setup initial suspended list with EURUSD and GBPUSD
     cfg = SystemConfig(
         key="suspended_symbols",
-        value=json.dumps([
-            {"symbol": "EURUSD", "until": "2099-01-01T00:00:00"},
-            {"symbol": "GBPUSD", "until": "2099-01-01T00:00:00"},
-        ])
+        value=json.dumps(
+            [
+                {"symbol": "EURUSD", "until": "2099-01-01T00:00:00"},
+                {"symbol": "GBPUSD", "until": "2099-01-01T00:00:00"},
+            ]
+        ),
     )
     res_cfg = MagicMock()
     res_cfg.scalar_one_or_none.return_value = cfg
@@ -227,7 +251,7 @@ async def test_position_synchronizer_bypasses_daily_sl_pause_in_paper():
             "risk": {
                 "max_daily_sl_hits": 3,
                 "post_sl_cooldown_hours": 2,
-            }
+            },
         }
     }
     mock_mt5 = MagicMock()
@@ -283,8 +307,10 @@ async def test_telegram_unsuspend_command():
     mock_ctx = MagicMock()
     mock_ctx.args = ["EURUSD"]
 
-    with patch("utils.analytics.paper_tracker.PaperTracker.unsuspend_symbol", AsyncMock(return_value=True)), \
-         patch("database.db.get_session") as mock_get_sess:
+    with (
+        patch("utils.analytics.paper_tracker.PaperTracker.unsuspend_symbol", AsyncMock(return_value=True)),
+        patch("database.db.get_session") as mock_get_sess,
+    ):
         mock_sess = AsyncMock()
         mock_get_sess.return_value.__aenter__.return_value = mock_sess
 

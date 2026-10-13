@@ -22,6 +22,7 @@ class LLMProviderPlugin(TradingPlugin, ABC):
     Base contract for all LLM Provider Plugins in Monika.
     Allows external plugins to introduce custom LLM backends (e.g. Bedrock, Mistral, Vertex).
     """
+
     metadata: PluginMetadata
 
     def __init__(self, *args, **kwargs):
@@ -31,12 +32,7 @@ class LLMProviderPlugin(TradingPlugin, ABC):
 
     @abstractmethod
     def create_client(
-        self,
-        model_name: str,
-        settings: dict,
-        role_config: dict,
-        task_role: str = "default",
-        **kwargs
+        self, model_name: str, settings: dict, role_config: dict, task_role: str = "default", **kwargs
     ) -> Any:
         """Create and configure a provider client instance."""
         pass
@@ -47,6 +43,7 @@ class ProviderRegistry:
     Central registry for LLM providers and provider plugins.
     Replaces monolithic if/elif cascades in LLMFactory with dynamic resolution.
     """
+
     _providers: Dict[str, Any] = {}
 
     @classmethod
@@ -74,7 +71,7 @@ class ProviderRegistry:
         settings: dict,
         role_config: dict,
         task_role: str = "default",
-        **kwargs
+        **kwargs,
     ) -> Optional[Any]:
         """
         Dynamically instantiate an LLM client through the registered provider.
@@ -88,20 +85,12 @@ class ProviderRegistry:
         # If it's an LLMProviderPlugin instance
         if hasattr(provider, "create_client"):
             return provider.create_client(
-                model_name=model_name,
-                settings=settings,
-                role_config=role_config,
-                task_role=task_role,
-                **kwargs
+                model_name=model_name, settings=settings, role_config=role_config, task_role=task_role, **kwargs
             )
         # If it's a factory callable
         if callable(provider):
             return provider(
-                model_name=model_name,
-                settings=settings,
-                role_config=role_config,
-                task_role=task_role,
-                **kwargs
+                model_name=model_name, settings=settings, role_config=role_config, task_role=task_role, **kwargs
             )
 
         logger.error(f"[ProviderRegistry] Registered provider for '{key}' is neither a plugin nor callable.")
@@ -119,6 +108,7 @@ def _register_builtins():
 
     def _create_anthropic(model_name, settings, role_config, task_role="default", **kwargs):
         from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
+
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
@@ -130,6 +120,7 @@ def _register_builtins():
 
     def _create_gemini(model_name, settings, role_config, task_role="default", **kwargs):
         from monika.infrastructure.providers.gemini_provider import GeminiProvider
+
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
@@ -145,69 +136,98 @@ def _register_builtins():
 
     def _create_openai(model_name, settings, role_config, task_role="default", **kwargs):
         from monika.infrastructure.providers.openai_provider import OpenAIProvider
+
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
         thinking_level = kwargs.get("thinking_level", "none")
         key_kwargs = {"api_key": kwargs.get("api_key")} if kwargs.get("api_key") else {}
         return OpenAIProvider(
-            model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
-            thinking_level=thinking_level, settings=settings, temperature=temperature, role=task_role,
-            **key_kwargs
+            model_name,
+            max_tokens=max_tokens,
+            max_tool_turns=max_tool_turns,
+            thinking_level=thinking_level,
+            settings=settings,
+            temperature=temperature,
+            role=task_role,
+            **key_kwargs,
         )
 
     def _create_deepseek(model_name, settings, role_config, task_role="default", **kwargs):
         from monika.infrastructure.providers.deepseek_provider import DeepSeekProvider
+
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
         thinking_level = kwargs.get("thinking_level", "none")
         key_kwargs = {"api_key": kwargs.get("api_key")} if kwargs.get("api_key") else {}
         return DeepSeekProvider(
-            model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
-            thinking_level=thinking_level, settings=settings, temperature=temperature, role=task_role,
-            **key_kwargs
+            model_name,
+            max_tokens=max_tokens,
+            max_tool_turns=max_tool_turns,
+            thinking_level=thinking_level,
+            settings=settings,
+            temperature=temperature,
+            role=task_role,
+            **key_kwargs,
         )
 
     def _create_ollama(model_name, settings, role_config, task_role="default", **kwargs):
         from monika.infrastructure.providers.ollama_provider import OllamaProvider
+
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         thinking_level = kwargs.get("thinking_level", "none")
         return OllamaProvider(
-            model_name, settings, max_tokens=max_tokens,
-            max_tool_turns=max_tool_turns, thinking_level=thinking_level, role=task_role
+            model_name,
+            settings,
+            max_tokens=max_tokens,
+            max_tool_turns=max_tool_turns,
+            thinking_level=thinking_level,
+            role=task_role,
         )
 
     def _create_groq(model_name, settings, role_config, task_role="default", **kwargs):
         from monika.infrastructure.providers.groq_provider import GroqProvider
+
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
         thinking_level = kwargs.get("thinking_level", "none")
         key_kwargs = {"api_key": kwargs.get("api_key")} if kwargs.get("api_key") else {}
         return GroqProvider(
-            model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
-            thinking_level=thinking_level, settings=settings, temperature=temperature, role=task_role,
-            **key_kwargs
+            model_name,
+            max_tokens=max_tokens,
+            max_tool_turns=max_tool_turns,
+            thinking_level=thinking_level,
+            settings=settings,
+            temperature=temperature,
+            role=task_role,
+            **key_kwargs,
         )
 
     def _create_openrouter(model_name, settings, role_config, task_role="default", **kwargs):
         from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
+
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
         thinking_level = kwargs.get("thinking_level", "none")
         key_kwargs = {"api_key": kwargs.get("api_key")} if kwargs.get("api_key") else {}
         return OpenRouterProvider(
-            model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
-            thinking_level=thinking_level, settings=settings,
-            temperature=temperature, role=task_role,
-            **key_kwargs
+            model_name,
+            max_tokens=max_tokens,
+            max_tool_turns=max_tool_turns,
+            thinking_level=thinking_level,
+            settings=settings,
+            temperature=temperature,
+            role=task_role,
+            **key_kwargs,
         )
 
     def _create_typesafe(model_name, settings, role_config, task_role="default", **kwargs):
         from monika.infrastructure.providers.typesafe_provider import TypeSafeProvider
+
         provider_config = kwargs.get("provider_config", {})
         m_lower = model_name.lower()
         is_openrouter = (
@@ -250,11 +270,12 @@ def _register_builtins():
             base_url=base_url,
             confidence_threshold=confidence_thresh,
             role=task_role,
-            **key_kwargs
+            **key_kwargs,
         )
 
     def _create_openai_compatible(model_name, settings, role_config, task_role="default", **kwargs):
         from monika.infrastructure.providers.openai_provider import OpenAIProvider
+
         provider_config = kwargs.get("provider_config", {})
         base_url = provider_config.get("base_url", "http://localhost:8000/v1")
         max_tokens = role_config.get("max_tokens", 8192)
@@ -263,14 +284,20 @@ def _register_builtins():
         thinking_level = kwargs.get("thinking_level", "none")
         key_kwargs = {"api_key": kwargs.get("api_key")} if kwargs.get("api_key") else {}
         return OpenAIProvider(
-            model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
-            thinking_level=thinking_level, settings=settings,
-            temperature=temperature, base_url=base_url, role=task_role,
-            **key_kwargs
+            model_name,
+            max_tokens=max_tokens,
+            max_tool_turns=max_tool_turns,
+            thinking_level=thinking_level,
+            settings=settings,
+            temperature=temperature,
+            base_url=base_url,
+            role=task_role,
+            **key_kwargs,
         )
 
     def _create_9router(model_name, settings, role_config, task_role="default", **kwargs):
         from monika.infrastructure.providers.nine_router_provider import NineRouterProvider
+
         provider_config = kwargs.get("provider_config", {})
         base_url = provider_config.get("base_url") or kwargs.get("base_url")
         max_tokens = role_config.get("max_tokens", 8192)
@@ -279,10 +306,15 @@ def _register_builtins():
         thinking_level = kwargs.get("thinking_level", "none")
         key_kwargs = {"api_key": kwargs.get("api_key")} if kwargs.get("api_key") else {}
         return NineRouterProvider(
-            model=model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
-            thinking_level=thinking_level, settings=settings,
-            temperature=temperature, base_url=base_url, role=task_role,
-            **key_kwargs
+            model=model_name,
+            max_tokens=max_tokens,
+            max_tool_turns=max_tool_turns,
+            thinking_level=thinking_level,
+            settings=settings,
+            temperature=temperature,
+            base_url=base_url,
+            role=task_role,
+            **key_kwargs,
         )
 
     ProviderRegistry.register("anthropic", _create_anthropic)

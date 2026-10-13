@@ -1,4 +1,3 @@
-
 """GTJA Alpha 102 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
@@ -6,6 +5,7 @@ Formula (verbatim from the report):
 
 Notes: SMA(x,n,m) -> x.ewm(alpha=m/n, adjust=False).mean().
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_102"
 
 __alpha_meta__ = {
-    'id': 'gtja191_102',
-    'theme': ['volume'],
-    'formula_latex': 'sma(max(volume-delay(volume,1),0),6,1)/sma(abs(volume-delay(volume,1)),6,1)*100',
-    'columns_required': ['close', 'volume'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 6,
-    'min_warmup_bars': 7,
-    'notes': 'SMA(x,n,m) -> x.ewm(alpha=m/n, adjust=False).mean().',
+    "id": "gtja191_102",
+    "theme": ["volume"],
+    "formula_latex": "sma(max(volume-delay(volume,1),0),6,1)/sma(abs(volume-delay(volume,1)),6,1)*100",
+    "columns_required": ["close", "volume"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 6,
+    "min_warmup_bars": 7,
+    "notes": "SMA(x,n,m) -> x.ewm(alpha=m/n, adjust=False).mean().",
 }
 
 
@@ -54,9 +54,11 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     Returns:
         pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
     """
+
     def _sma(x, n, m):
         """SMA(x, n, m) per GTJA convention -> ewm with alpha = m/n."""
         return x.ewm(alpha=m / n, adjust=False).mean()
+
     v = panel["volume"]
     dv = v - v.shift(1)
     num = _sma(dv.clip(lower=0.0), 6, 1)

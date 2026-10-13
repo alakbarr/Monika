@@ -111,22 +111,30 @@ def format_status_slip(
         lines.append(f"Equity         : {equity}")
     if margin_level is not None:
         lines.append(f"Margin Level   : {margin_level}")
-    lines.extend([
-        f"Open Positions : {pos_count} LOT",
-        f"Daily P&L      : {daily_pnl}",
-        f"Drawdown       : {drawdown}",
-        "-" * width,
-        f"Last Analysis  : {last_analysis}",
-        make_footer(width),
-        "```",
-    ])
+    lines.extend(
+        [
+            f"Open Positions : {pos_count} LOT",
+            f"Daily P&L      : {daily_pnl}",
+            f"Drawdown       : {drawdown}",
+            "-" * width,
+            f"Last Analysis  : {last_analysis}",
+            make_footer(width),
+            "```",
+        ]
+    )
     return "\n".join(lines)
 
 
 def format_positions_slip(positions: Sequence[Any], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format open positions as fixed-width ledger."""
     if not positions:
-        return "```\n" + make_header("OPEN POSITIONS", width) + "\n[ NONE ] No open positions at this time.\n" + make_footer(width) + "\n```"
+        return (
+            "```\n"
+            + make_header("OPEN POSITIONS", width)
+            + "\n[ NONE ] No open positions at this time.\n"
+            + make_footer(width)
+            + "\n```"
+        )
 
     lines = [
         "```",
@@ -137,12 +145,14 @@ def format_positions_slip(positions: Sequence[Any], width: int = DEFAULT_SLIP_WI
         opened = p.opened_at.strftime("%d/%m %H:%M") if p.opened_at else "-"
         pnl = f"{p.pnl:+.2f}" if p.pnl is not None else "-"
         ticket = getattr(p, "mt5_ticket", getattr(p, "ticket", "N/A"))
-        lines.extend([
-            f"[{side}] #{ticket} {p.symbol} | {p.volume} LOT",
-            f"  Open : {p.entry_price} | SL: {p.sl or '-'}",
-            f"  Time : {opened} | PnL: {pnl}",
-            "-" * width,
-        ])
+        lines.extend(
+            [
+                f"[{side}] #{ticket} {p.symbol} | {p.volume} LOT",
+                f"  Open : {p.entry_price} | SL: {p.sl or '-'}",
+                f"  Time : {opened} | PnL: {pnl}",
+                "-" * width,
+            ]
+        )
     lines.append(make_footer(width))
     lines.append("```")
     return "\n".join(lines)
@@ -178,17 +188,27 @@ def format_risk_slip(
         lines.append(f"DAILY P&L    : {daily_pnl}")
     if drawdown is not None:
         lines.append(f"DRAWDOWN     : {drawdown}")
-    lines.extend([
-        make_footer(width),
-        "```",
-    ])
+    lines.extend(
+        [
+            make_footer(width),
+            "```",
+        ]
+    )
     return "\n".join(lines)
 
 
-def format_stats_slip(stats: Dict[str, Any], equity_curve: Optional[Dict[str, Any]] = None, width: int = DEFAULT_SLIP_WIDTH) -> str:
+def format_stats_slip(
+    stats: Dict[str, Any], equity_curve: Optional[Dict[str, Any]] = None, width: int = DEFAULT_SLIP_WIDTH
+) -> str:
     """Format paper trading performance as telegraph slip."""
     if not stats or stats.get("total_trades", 0) == 0:
-        return "```\n" + make_header("PERFORMANCE STATS", width) + "\n[ NONE ] No trading records found.\n" + make_footer(width) + "\n```"
+        return (
+            "```\n"
+            + make_header("PERFORMANCE STATS", width)
+            + "\n[ NONE ] No trading records found.\n"
+            + make_footer(width)
+            + "\n```"
+        )
 
     lines = [
         "```",
@@ -205,19 +225,23 @@ def format_stats_slip(stats: Dict[str, Any], equity_curve: Optional[Dict[str, An
         lines.append(f"EDGE EXPECT. : [{exp_badge}] {exp:+.2f}R")
 
     if equity_curve:
-        lines.extend([
-            "-" * width,
-            "SIMULATED EQUITY (RISK 1.5%):",
-            f"  Start  : ${equity_curve.get('starting_equity', 0):.2f}",
-            f"  Final  : ${equity_curve.get('final_equity', 0):.2f}",
-            f"  Return : {equity_curve.get('total_return_pct', 0):.2f}%",
-            f"  Max DD : {equity_curve.get('max_drawdown_pct', 0):.2f}%",
-        ])
+        lines.extend(
+            [
+                "-" * width,
+                "SIMULATED EQUITY (RISK 1.5%):",
+                f"  Start  : ${equity_curve.get('starting_equity', 0):.2f}",
+                f"  Final  : ${equity_curve.get('final_equity', 0):.2f}",
+                f"  Return : {equity_curve.get('total_return_pct', 0):.2f}%",
+                f"  Max DD : {equity_curve.get('max_drawdown_pct', 0):.2f}%",
+            ]
+        )
 
-    lines.extend([
-        make_footer(width),
-        "```",
-    ])
+    lines.extend(
+        [
+            make_footer(width),
+            "```",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -243,21 +267,86 @@ def format_help_slip(commands: Dict[str, str], width: int = DEFAULT_SLIP_WIDTH) 
     ]
 
     categories = [
-        ("TRADING & OPS", [
-            "status", "positions", "close", "closeall", "trailing", "reconcile", "approvals", "approve", "reject",
-        ]),
-        ("INTEL & MACRO", [
-            "pipeline", "brief", "analysis", "steer", "intel", "research", "archive_intel", "calendar", "fedwatch", "yields", "fear_greed", "cot",
-        ]),
-        ("RISK & SAFETY", [
-            "risk", "risk_deep", "override", "vix", "edge", "unsuspend", "emergency", "pause", "resume", "kill", "interrupt", "resume_proposals",
-        ]),
-        ("PLUGINS & HARNESS", [
-            "plugins", "plugin_catalog", "plugin_install", "plugin_uninstall", "plugin_toggle", "skills", "playbooks", "rollback", "crystallized", "strategies", "memory",
-        ]),
-        ("METRICS & REPORTS", [
-            "report", "tearsheet", "stats", "cost", "tokens", "credits", "calibration", "history", "audit", "run", "backtest",
-        ]),
+        (
+            "TRADING & OPS",
+            [
+                "status",
+                "positions",
+                "close",
+                "closeall",
+                "trailing",
+                "reconcile",
+                "approvals",
+                "approve",
+                "reject",
+            ],
+        ),
+        (
+            "INTEL & MACRO",
+            [
+                "pipeline",
+                "brief",
+                "analysis",
+                "steer",
+                "intel",
+                "research",
+                "archive_intel",
+                "calendar",
+                "fedwatch",
+                "yields",
+                "fear_greed",
+                "cot",
+            ],
+        ),
+        (
+            "RISK & SAFETY",
+            [
+                "risk",
+                "risk_deep",
+                "override",
+                "vix",
+                "edge",
+                "unsuspend",
+                "emergency",
+                "pause",
+                "resume",
+                "kill",
+                "interrupt",
+                "resume_proposals",
+            ],
+        ),
+        (
+            "PLUGINS & HARNESS",
+            [
+                "plugins",
+                "plugin_catalog",
+                "plugin_install",
+                "plugin_uninstall",
+                "plugin_toggle",
+                "skills",
+                "playbooks",
+                "rollback",
+                "crystallized",
+                "strategies",
+                "memory",
+            ],
+        ),
+        (
+            "METRICS & REPORTS",
+            [
+                "report",
+                "tearsheet",
+                "stats",
+                "cost",
+                "tokens",
+                "credits",
+                "calibration",
+                "history",
+                "audit",
+                "run",
+                "backtest",
+            ],
+        ),
     ]
 
     def _format_item(cmd: str, desc: str) -> str:
@@ -287,14 +376,15 @@ def format_help_slip(commands: Dict[str, str], width: int = DEFAULT_SLIP_WIDTH) 
         for cmd, desc in commands.items():
             lines.append(_format_item(cmd, desc))
 
-    lines.extend([
-        "-" * width,
-        "Monika AI Trading Agent // Terminal Dispatch",
-        make_footer(width),
-        "```",
-    ])
+    lines.extend(
+        [
+            "-" * width,
+            "Monika AI Trading Agent // Terminal Dispatch",
+            make_footer(width),
+            "```",
+        ]
+    )
     return "\n".join(lines)
-
 
 
 def format_risk_deep_slip(
@@ -309,25 +399,31 @@ def format_risk_deep_slip(
         raw_checks = scorecard.get("checks", {})
         for name, data in raw_checks.items():
             if isinstance(data, dict):
-                items.append({
-                    "name": name,
-                    "passed": data.get("passed", False),
-                    "current_value": data.get("current_value", "OK" if data.get("passed") else "BREACH"),
-                    "limit_value": data.get("limit_value", data.get("reason", "-")),
-                })
+                items.append(
+                    {
+                        "name": name,
+                        "passed": data.get("passed", False),
+                        "current_value": data.get("current_value", "OK" if data.get("passed") else "BREACH"),
+                        "limit_value": data.get("limit_value", data.get("reason", "-")),
+                    }
+                )
             else:
-                items.append({
-                    "name": name,
-                    "passed": bool(data),
-                    "current_value": "OK" if data else "FAIL",
-                    "limit_value": "-",
-                })
+                items.append(
+                    {
+                        "name": name,
+                        "passed": bool(data),
+                        "current_value": "OK" if data else "FAIL",
+                        "limit_value": "-",
+                    }
+                )
     elif isinstance(scorecard, (list, tuple)):
         items = list(scorecard)
 
     passed_count = sum(1 for c in items if c.get("passed", False))
     total_count = len(items)
-    status_label = "ALL PASSED" if passed_count == total_count and total_count > 0 else f"{total_count - passed_count} BREACHES"
+    status_label = (
+        "ALL PASSED" if passed_count == total_count and total_count > 0 else f"{total_count - passed_count} BREACHES"
+    )
 
     lines = [
         "```",
@@ -344,31 +440,43 @@ def format_risk_deep_slip(
         lines.append(f"{pass_tag} {name}: {curr} / {limit}")
 
     if edge_summary:
-        lines.extend([
-            "-" * width,
-            "STATISTICAL EDGE:",
-            f"  Exp: {edge_summary.get('expectancy', '-')} | WR: {edge_summary.get('win_rate', '-')}",
-        ])
+        lines.extend(
+            [
+                "-" * width,
+                "STATISTICAL EDGE:",
+                f"  Exp: {edge_summary.get('expectancy', '-')} | WR: {edge_summary.get('win_rate', '-')}",
+            ]
+        )
 
     if token_budget:
         tier = token_budget.get("tier", "TIER 1 (FULL)")
         capacity = token_budget.get("capacity_pct", 100)
-        lines.extend([
-            "-" * width,
-            f"TOKEN BUDGET : [{tier}] {capacity}% CAP",
-        ])
+        lines.extend(
+            [
+                "-" * width,
+                f"TOKEN BUDGET : [{tier}] {capacity}% CAP",
+            ]
+        )
 
-    lines.extend([
-        make_footer(width),
-        "```",
-    ])
+    lines.extend(
+        [
+            make_footer(width),
+            "```",
+        ]
+    )
     return "\n".join(lines)
 
 
 def format_approvals_slip(open_requests: Sequence[Any], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format open approval requests as teletype slip."""
     if not open_requests:
-        return "```\n" + make_header("APPROVAL QUEUE", width) + "\n[ NONE ] No proposals pending approval.\n" + make_footer(width) + "\n```"
+        return (
+            "```\n"
+            + make_header("APPROVAL QUEUE", width)
+            + "\n[ NONE ] No proposals pending approval.\n"
+            + make_footer(width)
+            + "\n```"
+        )
 
     lines = [
         "```",
@@ -389,23 +497,30 @@ def format_approvals_slip(open_requests: Sequence[Any], width: int = DEFAULT_SLI
             lots = getattr(req, "volume", getattr(req, "lots", getattr(req, "lot_size", "-")))
             conf = getattr(req, "confidence", "-")
             reason = str(getattr(req, "reason", getattr(req, "rationale", "-")))[:36]
-        lines.extend([
-            f"[{action}] #{action_id} {symbol} | {lots} LOT",
-            f"  Confidence : {conf}",
-            f"  Rationale  : {reason}",
-            f"  Command    : /approve {action_id} | /reject {action_id}",
-            "-" * width,
-        ])
+        lines.extend(
+            [
+                f"[{action}] #{action_id} {symbol} | {lots} LOT",
+                f"  Confidence : {conf}",
+                f"  Rationale  : {reason}",
+                f"  Command    : /approve {action_id} | /reject {action_id}",
+                "-" * width,
+            ]
+        )
     lines.append(make_footer(width))
     lines.append("```")
     return "\n".join(lines)
 
 
-
 def format_trailing_slip(positions: List[Dict[str, Any]], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format trailing stop positions as teletype slip."""
     if not positions:
-        return "```\n" + make_header("TRAILING STOP STATUS", width) + "\n[ NONE ] No positions with active trailing stop.\n" + make_footer(width) + "\n```"
+        return (
+            "```\n"
+            + make_header("TRAILING STOP STATUS", width)
+            + "\n[ NONE ] No positions with active trailing stop.\n"
+            + make_footer(width)
+            + "\n```"
+        )
 
     lines = [
         "```",
@@ -419,11 +534,13 @@ def format_trailing_slip(positions: List[Dict[str, Any]], width: int = DEFAULT_S
         entry = p.get("entry_price", "-")
         curr_sl = p.get("current_sl", "-")
         dist = p.get("atr_distance", "-")
-        lines.extend([
-            f"[{side}] #{ticket} {symbol} | {be_hit}",
-            f"  Entry: {entry} | Curr SL: {curr_sl} | ATR Dist: {dist}",
-            "-" * width,
-        ])
+        lines.extend(
+            [
+                f"[{side}] #{ticket} {symbol} | {be_hit}",
+                f"  Entry: {entry} | Curr SL: {curr_sl} | ATR Dist: {dist}",
+                "-" * width,
+            ]
+        )
     lines.append(make_footer(width))
     lines.append("```")
     return "\n".join(lines)
@@ -677,7 +794,3 @@ def format_pipeline_slip(data: Dict[str, Any], width: int = DEFAULT_SLIP_WIDTH) 
         "```",
     ]
     return "\n".join(lines)
-
-
-
-

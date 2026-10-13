@@ -15,7 +15,11 @@ from prompt_toolkit.document import Document
 # Slash command catalog: (command, description, [sub-options])
 SLASH_COMMANDS: List[Tuple[str, str, List[str]]] = [
     ("/help", "Show interactive command reference and keyboard shortcuts", []),
-    ("/model", "Switch routing model tier (fast, medium, analyze, research)", ["fast", "medium", "analyze", "research", "auto"]),
+    (
+        "/model",
+        "Switch routing model tier (fast, medium, analyze, research)",
+        ["fast", "medium", "analyze", "research", "auto"],
+    ),
     ("/fast", "Quickly ask with Tier 1 Low-Latency model (Gemini Flash)", []),
     ("/analyze", "Ask with Tier 3 Deep Synthesis model", []),
     ("/research", "Ask with Tier 4 Macro Research model", []),
@@ -81,7 +85,11 @@ class ChatCommandCompleter(Completer):
                 if cmd.lower() == cmd_name and sub_opts:
                     for opt in sub_opts:
                         if not arg_query or arg_query in opt.lower():
-                            start_pos = -len(words[-1]) if (len(words) > 1 and not document.text_before_cursor.endswith(" ")) else 0
+                            start_pos = (
+                                -len(words[-1])
+                                if (len(words) > 1 and not document.text_before_cursor.endswith(" "))
+                                else 0
+                            )
                             yield Completion(
                                 opt,
                                 start_position=start_pos,

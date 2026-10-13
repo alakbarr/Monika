@@ -2,6 +2,7 @@
 Bayesian Multi-Armed Bandit (Thompson Sampling) & A/B testing framework for prompt variations.
 Allows testing new prompts against baseline with dynamic traffic allocation based on live performance rewards.
 """
+
 import random
 import logging
 import json
@@ -11,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from monika.infrastructure.database.models import SystemConfig
 
-logger = logging.getLogger('TradingAgent.PromptABTest')
+logger = logging.getLogger("TradingAgent.PromptABTest")
 
 
 class PromptABTest:
@@ -31,7 +32,7 @@ class PromptABTest:
     ):
         self.test_name = test_name
         self.variant_a_pct = variant_a_pct
-        self.variants = variants or ['A', 'B']
+        self.variants = variants or ["A", "B"]
         self.decay_factor = max(0.80, min(1.0, decay_factor))
         self.min_warmup_samples = min_warmup_samples
 
@@ -40,7 +41,7 @@ class PromptABTest:
         Synchronous heuristic fallback: Return 'A' (control) or 'B' (treatment).
         """
         if len(self.variants) == 2:
-            return 'A' if random.random() < self.variant_a_pct else 'B'
+            return "A" if random.random() < self.variant_a_pct else "B"
         return random.choice(self.variants)
 
     async def get_variant_bandit(self, session: Optional[AsyncSession] = None) -> str:
@@ -76,7 +77,7 @@ class PromptABTest:
         session: AsyncSession,
         variant: str,
         outcome: str,  # 'win', 'loss', 'wait', 'skip', 'breakeven'
-        pnl_pct: float = 0.0
+        pnl_pct: float = 0.0,
     ):
         """
         Record the trade/cycle outcome of a variant.
@@ -87,26 +88,26 @@ class PromptABTest:
 
         # 1. Update daily aggregate log
         date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
-        daily_key = f'ab_test_{self.test_name}_{variant}_{date_str}'
-        existing_daily = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == daily_key)
-        )).scalar_one_or_none()
+        daily_key = f"ab_test_{self.test_name}_{variant}_{date_str}"
+        existing_daily = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == daily_key))
+        ).scalar_one_or_none()
 
         if existing_daily and existing_daily.value:
             daily_data = json.loads(existing_daily.value)
         else:
-            daily_data = {'wins': 0, 'losses': 0, 'waits': 0, 'skips': 0, 'total_pnl': 0.0, 'count': 0}
+            daily_data = {"wins": 0, "losses": 0, "waits": 0, "skips": 0, "total_pnl": 0.0, "count": 0}
 
-        daily_data['count'] += 1
-        daily_data['total_pnl'] += float(pnl_pct)
-        if outcome == 'win' or (outcome not in ('wait', 'skip') and pnl_pct > 0):
-            daily_data['wins'] += 1
-        elif outcome == 'loss' or (outcome not in ('wait', 'skip') and pnl_pct < 0):
-            daily_data['losses'] += 1
-        elif outcome == 'wait':
-            daily_data['waits'] += 1
-        elif outcome == 'skip':
-            daily_data['skips'] += 1
+        daily_data["count"] += 1
+        daily_data["total_pnl"] += float(pnl_pct)
+        if outcome == "win" or (outcome not in ("wait", "skip") and pnl_pct > 0):
+            daily_data["wins"] += 1
+        elif outcome == "loss" or (outcome not in ("wait", "skip") and pnl_pct < 0):
+            daily_data["losses"] += 1
+        elif outcome == "wait":
+            daily_data["waits"] += 1
+        elif outcome == "skip":
+            daily_data["skips"] += 1
 
         daily_json = json.dumps(daily_data)
         if existing_daily:
@@ -115,10 +116,10 @@ class PromptABTest:
             session.add(SystemConfig(key=daily_key, value=daily_json))
 
         # 2. Update Bayesian Thompson Sampling Posterior state with recency decay
-        mab_key = f'mab_bandit_{self.test_name}'
-        existing_mab = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == mab_key)
-        )).scalar_one_or_none()
+        mab_key = f"mab_bandit_{self.test_name}"
+        existing_mab = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == mab_key))
+        ).scalar_one_or_none()
 
         if existing_mab and existing_mab.value:
             mab_data = json.loads(existing_mab.value)
@@ -139,9 +140,9 @@ class PromptABTest:
         mab_data[variant]["count"] += 1
         mab_data[variant]["total_pnl"] += float(pnl_pct)
 
-        if outcome == 'win' or (outcome not in ('wait', 'skip') and pnl_pct > 0):
+        if outcome == "win" or (outcome not in ("wait", "skip") and pnl_pct > 0):
             mab_data[variant]["alpha"] += 1.0
-        elif outcome == 'loss' or (outcome not in ('wait', 'skip') and pnl_pct < 0):
+        elif outcome == "loss" or (outcome not in ("wait", "skip") and pnl_pct < 0):
             mab_data[variant]["beta"] += 1.0
 
         mab_json = json.dumps(mab_data)
@@ -156,10 +157,10 @@ class PromptABTest:
         """
         Get current Thompson Sampling bandit posterior parameters and expected win rates.
         """
-        mab_key = f'mab_bandit_{self.test_name}'
-        existing_mab = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == mab_key)
-        )).scalar_one_or_none()
+        mab_key = f"mab_bandit_{self.test_name}"
+        existing_mab = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == mab_key))
+        ).scalar_one_or_none()
 
         if existing_mab and existing_mab.value:
             state = json.loads(existing_mab.value)
@@ -177,15 +178,13 @@ class PromptABTest:
 
     async def get_results(self, session: AsyncSession, days_back: int = 7) -> dict:
         """Get A/B test results comparison over historical window."""
-        results = {v: {'wins': 0, 'losses': 0, 'count': 0, 'total_pnl': 0.0} for v in self.variants}
+        results = {v: {"wins": 0, "losses": 0, "count": 0, "total_pnl": 0.0} for v in self.variants}
 
         for days_ago in range(days_back):
-            date_str = (datetime.now(timezone.utc) - timedelta(days=days_ago)).strftime('%Y%m%d')
+            date_str = (datetime.now(timezone.utc) - timedelta(days=days_ago)).strftime("%Y%m%d")
             for variant in self.variants:
-                key = f'ab_test_{self.test_name}_{variant}_{date_str}'
-                cfg = (await session.execute(
-                    select(SystemConfig).where(SystemConfig.key == key)
-                )).scalar_one_or_none()
+                key = f"ab_test_{self.test_name}_{variant}_{date_str}"
+                cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
 
                 if cfg and cfg.value:
                     data = json.loads(cfg.value)
@@ -194,13 +193,10 @@ class PromptABTest:
 
         # Compute win rates
         for variant in self.variants:
-            total_market = results[variant]['wins'] + results[variant]['losses']
-            results[variant]['win_rate'] = (
-                results[variant]['wins'] / total_market * 100 if total_market > 0 else 0
-            )
-            results[variant]['avg_pnl'] = (
-                results[variant]['total_pnl'] / results[variant]['count']
-                if results[variant]['count'] > 0 else 0
+            total_market = results[variant]["wins"] + results[variant]["losses"]
+            results[variant]["win_rate"] = results[variant]["wins"] / total_market * 100 if total_market > 0 else 0
+            results[variant]["avg_pnl"] = (
+                results[variant]["total_pnl"] / results[variant]["count"] if results[variant]["count"] > 0 else 0
             )
 
         return results
@@ -216,22 +212,12 @@ class OfflinePromptOptimizer:
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
 
-    def score_variant_performance(
-        self,
-        variant_name: str,
-        results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    def score_variant_performance(self, variant_name: str, results: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Computes win rate, profit factor, and Sharpe-proxy score on replay evaluations.
         """
         if not results:
-            return {
-                "variant": variant_name,
-                "count": 0,
-                "win_rate": 0.0,
-                "profit_factor": 0.0,
-                "total_pnl": 0.0
-            }
+            return {"variant": variant_name, "count": 0, "win_rate": 0.0, "profit_factor": 0.0, "total_pnl": 0.0}
 
         wins = sum(1 for r in results if r.get("pnl", 0.0) > 0)
         losses = sum(1 for r in results if r.get("pnl", 0.0) < 0)
@@ -251,14 +237,10 @@ class OfflinePromptOptimizer:
             "losses": losses,
             "win_rate": round(win_rate, 2),
             "profit_factor": round(profit_factor, 2),
-            "total_pnl": round(total_pnl, 2)
+            "total_pnl": round(total_pnl, 2),
         }
 
-    def select_champion(
-        self,
-        scores: Dict[str, Dict[str, Any]],
-        min_win_rate_delta: float = 3.0
-    ) -> Tuple[str, bool]:
+    def select_champion(self, scores: Dict[str, Dict[str, Any]], min_win_rate_delta: float = 3.0) -> Tuple[str, bool]:
         """
         Selects the best performing prompt variant. Returns (champion_variant, is_promotable).
         Promotion requires beating baseline (Control 'A') by at least min_win_rate_delta.
@@ -280,26 +262,18 @@ class OfflinePromptOptimizer:
                 best_score = wr
                 best_variant = v
 
-        is_promotable = (best_score >= control_wr + min_win_rate_delta) and (scores.get(best_variant, {}).get("count", 0) >= 10)
+        is_promotable = (best_score >= control_wr + min_win_rate_delta) and (
+            scores.get(best_variant, {}).get("count", 0) >= 10
+        )
         return best_variant, is_promotable
 
-    async def record_champion(
-        self,
-        session: AsyncSession,
-        test_name: str,
-        champion_variant: str,
-        scores: dict
-    ) -> None:
+    async def record_champion(self, session: AsyncSession, test_name: str, champion_variant: str, scores: dict) -> None:
         """Persists the champion prompt configuration to PostgreSQL SystemConfig."""
         key = f"champion_prompt_{test_name}"
-        data_str = json.dumps({
-            "champion": champion_variant,
-            "promoted_at": datetime.now(timezone.utc).isoformat(),
-            "scores": scores
-        })
-        cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == key)
-        )).scalar_one_or_none()
+        data_str = json.dumps(
+            {"champion": champion_variant, "promoted_at": datetime.now(timezone.utc).isoformat(), "scores": scores}
+        )
+        cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
 
         if cfg:
             cfg.value = data_str

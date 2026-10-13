@@ -1,6 +1,7 @@
 """
 Unit Tests for Telegram Message Formatter (telegram_bot/message_formatter.py).
 """
+
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
@@ -162,4 +163,3 @@ def test_format_pipeline_slip():
     assert "Stage 3: Deterministic Risk Gate" in slip
     assert "Stage 4: Order Execution / Paper Trading" in slip
     assert "[ OPTIMAL ]" in slip
-

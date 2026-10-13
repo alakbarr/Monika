@@ -70,7 +70,9 @@ class UniversalLiquidityAnalyzer:
         if regime == "EXPANSIONARY":
             market_implication = "Bullish for equities and risk assets; downward pressure on US Dollar (DXY)."
         else:
-            market_implication = "Liquidity drainage creates headwinds for risk assets; supportive for US Dollar cash demand."
+            market_implication = (
+                "Liquidity drainage creates headwinds for risk assets; supportive for US Dollar cash demand."
+            )
 
         return {
             "current_net_liquidity_billions": net_b,
@@ -109,7 +111,9 @@ class UniversalLiquidityAnalyzer:
 
         if hy_oas > 450.0:
             stress_level = "CRITICAL_STRESS"
-            warning = "Corporate credit spreads blown out (>450 bps). High systemic liquidation risk across FX carry pairs."
+            warning = (
+                "Corporate credit spreads blown out (>450 bps). High systemic liquidation risk across FX carry pairs."
+            )
         elif hy_oas > 380.0:
             stress_level = "ELEVATED_VULNERABILITY"
             warning = "Credit spreads widening above baseline. Exercise tight stop losses on risk-sensitive currencies."
@@ -156,7 +160,9 @@ class UniversalLiquidityAnalyzer:
             summary = f"Strong auction with negative tail ({tail_bps:+.1f} bps) and {indirect_pct:.1f}% foreign participation."
         elif tail_bps > 1.2:
             verdict = "POOR_TAILING_AUCTION"
-            summary = f"Weak demand forcing dealer concession with a large {tail_bps:+.1f} bps tail. Bearish for Treasuries."
+            summary = (
+                f"Weak demand forcing dealer concession with a large {tail_bps:+.1f} bps tail. Bearish for Treasuries."
+            )
         else:
             verdict = "AVERAGE_AUCTION"
             summary = f"Routine debt placement meeting average dealer absorption ({btc:.2f}x bid-to-cover)."

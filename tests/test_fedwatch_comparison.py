@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit and Integration Tests for CME FedWatch Historical Comparison & Systematic Tool Enhancements.
 Tests:
@@ -75,6 +76,7 @@ class MockPriceRow:
 # ==============================================================================
 # 1. CME FedWatch Comparison Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_fedwatch_compare_hours_ago():
@@ -231,6 +233,7 @@ class MockCBRateExpectationRow:
 # 2. Central Bank Expectations Comparison Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_central_bank_expectations_comparison():
     """Verify handle_get_central_bank_expectations supports temporal comparison for FED."""
@@ -277,6 +280,7 @@ async def test_central_bank_expectations_comparison():
 # 3. Economic Calendar Search Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_economic_calendar_event_name_filter():
     """Verify event_name filter in economic calendar matches event name properly."""
@@ -307,6 +311,7 @@ async def test_economic_calendar_event_name_filter():
 # 4. News Items Search Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_news_items_query_filter():
     """Verify news items handler filters by query across title and summary."""
@@ -335,6 +340,7 @@ async def test_news_items_query_filter():
 # ==============================================================================
 # 5. Price History as_of Filter Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_price_history_as_of_filter():
@@ -366,10 +372,13 @@ async def test_price_history_as_of_filter():
 # 6. ChatToolRouter Macro Routing Tests
 # ==============================================================================
 
+
 def test_chat_tool_router_macro_tools():
     """Verify ChatToolRouter routes macro queries to include get_central_bank_expectations."""
     router = ChatToolRouter(TELEGRAM_TOOLS)
-    routed = router.route_tools_for_query("berapa probabilitas suku bunga the fed berikutnya? bandingkan dengan sebelumnya")
+    routed = router.route_tools_for_query(
+        "berapa probabilitas suku bunga the fed berikutnya? bandingkan dengan sebelumnya"
+    )
     tool_names = {t["name"] for t in routed}
 
     assert "get_fedwatch_probabilities" in tool_names
@@ -380,6 +389,7 @@ def test_chat_tool_router_macro_tools():
 # ==============================================================================
 # 7. ChatAgent Complexity Heuristic Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_classify_query_complexity_macro_heuristics():
@@ -409,6 +419,7 @@ async def test_classify_query_complexity_macro_heuristics():
 # ==============================================================================
 # 8. Stage 1 Prefetcher FedWatch Correlation Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_stage1_databundler_correlates_recent_usd_event():
@@ -459,11 +470,19 @@ async def test_stage1_databundler_correlates_recent_usd_event():
     bundler.executor.execute = AsyncMock(side_effect=mock_execute)
 
     # Patch secondary non-critical async routines
-    with patch("data_sources.crypto_orderbook_depth.CryptoOrderbookDepth.fetch_snapshot", AsyncMock(return_value=None)), \
-         patch("data_sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads", AsyncMock(return_value={})), \
-         patch("data_sources.gold_physical_radar.GoldPhysicalRadar.fetch_radar", AsyncMock(return_value=MagicMock(institutional_flow_bias="neutral", gld_1d_change_pct=0, xau_sentiment_conviction=0, summary=""))), \
-         patch("utils.validation.data_validator.validate_data_freshness", AsyncMock(return_value={"ready": True})):
-
+    with (
+        patch("data_sources.crypto_orderbook_depth.CryptoOrderbookDepth.fetch_snapshot", AsyncMock(return_value=None)),
+        patch("data_sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads", AsyncMock(return_value={})),
+        patch(
+            "data_sources.gold_physical_radar.GoldPhysicalRadar.fetch_radar",
+            AsyncMock(
+                return_value=MagicMock(
+                    institutional_flow_bias="neutral", gld_1d_change_pct=0, xau_sentiment_conviction=0, summary=""
+                )
+            ),
+        ),
+        patch("utils.validation.data_validator.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+    ):
         compressed_json, satisfied, bundled_data = await bundler.prefetch_all_data()
 
     assert "fedwatch" in bundled_data
@@ -490,10 +509,34 @@ async def test_stage1_databundler_multi_event_correlation():
     t4 = "2026-09-30T18:00:00+00:00"  # 01:00 WIB: FOMC Minutes
 
     mock_events = [
-        {"event_name": "<untrusted_external_content>Core PCE Price Index (YoY)</untrusted_external_content>", "currency": "USD", "impact": "high", "actual": "3.0%", "event_time": t1},
-        {"event_name": "<untrusted_external_content>S&P Global Manufacturing PMI</untrusted_external_content>", "currency": "USD", "impact": "medium", "actual": "49.5", "event_time": t2},
-        {"event_name": "<untrusted_external_content>ISM Manufacturing PMI</untrusted_external_content>", "currency": "USD", "impact": "high", "actual": "47.2", "event_time": t3},
-        {"event_name": "<untrusted_external_content>FOMC Meeting Minutes</untrusted_external_content>", "currency": "USD", "impact": "high", "actual": "neutral", "event_time": t4},
+        {
+            "event_name": "<untrusted_external_content>Core PCE Price Index (YoY)</untrusted_external_content>",
+            "currency": "USD",
+            "impact": "high",
+            "actual": "3.0%",
+            "event_time": t1,
+        },
+        {
+            "event_name": "<untrusted_external_content>S&P Global Manufacturing PMI</untrusted_external_content>",
+            "currency": "USD",
+            "impact": "medium",
+            "actual": "49.5",
+            "event_time": t2,
+        },
+        {
+            "event_name": "<untrusted_external_content>ISM Manufacturing PMI</untrusted_external_content>",
+            "currency": "USD",
+            "impact": "high",
+            "actual": "47.2",
+            "event_time": t3,
+        },
+        {
+            "event_name": "<untrusted_external_content>FOMC Meeting Minutes</untrusted_external_content>",
+            "currency": "USD",
+            "impact": "high",
+            "actual": "neutral",
+            "event_time": t4,
+        },
     ]
 
     async def mock_execute(tool_name, args):
@@ -527,11 +570,19 @@ async def test_stage1_databundler_multi_event_correlation():
 
     bundler.executor.execute = AsyncMock(side_effect=mock_execute)
 
-    with patch("data_sources.crypto_orderbook_depth.CryptoOrderbookDepth.fetch_snapshot", AsyncMock(return_value=None)), \
-         patch("data_sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads", AsyncMock(return_value={})), \
-         patch("data_sources.gold_physical_radar.GoldPhysicalRadar.fetch_radar", AsyncMock(return_value=MagicMock(institutional_flow_bias="neutral", gld_1d_change_pct=0, xau_sentiment_conviction=0, summary=""))), \
-         patch("utils.validation.data_validator.validate_data_freshness", AsyncMock(return_value={"ready": True})):
-
+    with (
+        patch("data_sources.crypto_orderbook_depth.CryptoOrderbookDepth.fetch_snapshot", AsyncMock(return_value=None)),
+        patch("data_sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads", AsyncMock(return_value={})),
+        patch(
+            "data_sources.gold_physical_radar.GoldPhysicalRadar.fetch_radar",
+            AsyncMock(
+                return_value=MagicMock(
+                    institutional_flow_bias="neutral", gld_1d_change_pct=0, xau_sentiment_conviction=0, summary=""
+                )
+            ),
+        ),
+        patch("utils.validation.data_validator.validate_data_freshness", AsyncMock(return_value={"ready": True})),
+    ):
         _, _, bundled_data = await bundler.prefetch_all_data()
 
     comp = bundled_data["fedwatch_comparison"]
@@ -547,10 +598,10 @@ async def test_stage1_databundler_multi_event_correlation():
     assert comp["all_event_shifts"][3]["deltas_pct"]["HIKE"] == 0.5
 
 
-
 # ==============================================================================
 # 9. Stage 1 Baseline Calculator Repricing Delta Tests
 # ==============================================================================
+
 
 def test_stage1_priced_in_baseline_repricing_delta():
     """Verify calculate_stage1_priced_in_baseline factors in fedwatch_repricing_delta >= 10.0%."""
@@ -580,6 +631,7 @@ def test_stage1_priced_in_baseline_repricing_delta():
 # ==============================================================================
 # 10. Pydantic Schema Validation with FedWatch Shift Tests
 # ==============================================================================
+
 
 def test_submit_fundamental_brief_schema_fedwatch_shift():
     """Verify SubmitFundamentalBriefSchema accepts fedwatch_shift_summary and fedwatch_repricing_delta_pct."""
@@ -640,6 +692,7 @@ def test_submit_fundamental_brief_schema_fedwatch_shift():
 # 11. Stage 1 to Stage 2 Repricing Inheritance Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_stage1_to_stage2_repricing_inheritance():
     """Verify Stage 2's get_fundamental_brief preserves and returns FedWatch repricing shift fields."""
@@ -654,24 +707,26 @@ async def test_stage1_to_stage2_repricing_inheritance():
         content_markdown="Macro analysis narrative with PCE Fed repricing.",
         confidence=0.75,
         risk_sentiment="risk-on",
-        structured_json=json.dumps({
-            "generated_at": now.isoformat(),
-            "macro_narrative": "Probabilitas Hike turun dari 47.1% ke 37.1% pasca Core PCE.",
-            "currency_bias": {"USD": "bearish", "EUR": "bullish", "XAU": "bullish"},
-            "currency_confidence": {"USD": 0.75, "EUR": 0.70, "XAU": 0.80},
-            "key_data_points_used": {
-                "dxy_trend_5d": "-0.4%",
-                "vix_close": 15.5,
-                "fedwatch_dominant_pct": 62.9,
-                "fedwatch_repricing_delta_pct": -10.0,
-            },
-            "priced_in_assessment": {
-                "dominant_driver": "Fed Rate Cut Expectations post PCE",
-                "priced_in_score": 6,
-                "sell_the_news_risk": "medium",
-                "fedwatch_shift_summary": "Hike odds 37.1% vs 47.1% pre-PCE (-10.0%)",
-            },
-        }),
+        structured_json=json.dumps(
+            {
+                "generated_at": now.isoformat(),
+                "macro_narrative": "Probabilitas Hike turun dari 47.1% ke 37.1% pasca Core PCE.",
+                "currency_bias": {"USD": "bearish", "EUR": "bullish", "XAU": "bullish"},
+                "currency_confidence": {"USD": 0.75, "EUR": 0.70, "XAU": 0.80},
+                "key_data_points_used": {
+                    "dxy_trend_5d": "-0.4%",
+                    "vix_close": 15.5,
+                    "fedwatch_dominant_pct": 62.9,
+                    "fedwatch_repricing_delta_pct": -10.0,
+                },
+                "priced_in_assessment": {
+                    "dominant_driver": "Fed Rate Cut Expectations post PCE",
+                    "priced_in_score": 6,
+                    "sell_the_news_risk": "medium",
+                    "fedwatch_shift_summary": "Hike odds 37.1% vs 47.1% pre-PCE (-10.0%)",
+                },
+            }
+        ),
     )
 
     mock_session = create_mock_async_session()
@@ -687,5 +742,3 @@ async def test_stage1_to_stage2_repricing_inheritance():
     assert brief_data["key_data_points_used"]["fedwatch_repricing_delta_pct"] == -10.0
     assert "priced_in_assessment" in brief_data
     assert brief_data["priced_in_assessment"]["fedwatch_shift_summary"] == "Hike odds 37.1% vs 47.1% pre-PCE (-10.0%)"
-
-

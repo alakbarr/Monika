@@ -13,6 +13,7 @@ logger = logging.getLogger("TradingAgent.InstrumentIdentity")
 @dataclass(frozen=True)
 class InstrumentIdentity:
     """Canonical, deterministic identity of a traded instrument (H-4)."""
+
     symbol: str
     canonical_symbol: str
     official_name: str

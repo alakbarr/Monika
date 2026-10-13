@@ -30,14 +30,11 @@ class TradePreCommitGate:
         self.settings = settings or {}
 
     async def verify_precommit(
-        self,
-        session: AsyncSession,
-        decision_data: Dict[str, Any],
-        symbol: str
+        self, session: AsyncSession, decision_data: Dict[str, Any], symbol: str
     ) -> Tuple[bool, List[str]]:
         """
         Runs all pre-commit gate assertions.
-        
+
         Returns:
             (passed, failure_reasons)
         """
@@ -109,9 +106,9 @@ class TradePreCommitGate:
         # 2. Price Staleness & Slippage Assertion (Fix 6.5: MARKET orders only)
         # -------------------------------------------------------------
         order_type = str(
-            decision_data.get("order_type") or
-            (entry_cond.get("type") if isinstance(entry_cond, dict) else "") or
-            "MARKET"
+            decision_data.get("order_type")
+            or (entry_cond.get("type") if isinstance(entry_cond, dict) else "")
+            or "MARKET"
         ).upper()
 
         if entry > 0.0 and order_type in ("MARKET", ""):
@@ -120,9 +117,9 @@ class TradePreCommitGate:
                 query = select(PriceOHLCV).where(PriceOHLCV.symbol == sym)
                 if eval_time:
                     query = query.where(PriceOHLCV.timestamp <= eval_time)
-                latest_bar = (await session.execute(
-                    query.order_by(desc(PriceOHLCV.timestamp)).limit(1)
-                )).scalar_one_or_none()
+                latest_bar = (
+                    await session.execute(query.order_by(desc(PriceOHLCV.timestamp)).limit(1))
+                ).scalar_one_or_none()
 
                 if latest_bar and latest_bar.close:
                     current_price = float(latest_bar.close)
@@ -145,6 +142,7 @@ class TradePreCommitGate:
         # -------------------------------------------------------------
         try:
             from monika.application.analysis.validators.market_snapshot import VerifiedMarketSnapshot
+
             snap_time = eval_time or clock.now()
             snap = await VerifiedMarketSnapshot().compute(sym, session, as_of=snap_time)
             if snap and snap.get("latest_close") is not None:
@@ -172,9 +170,7 @@ class TradePreCommitGate:
             if eval_time:
                 vix_date = eval_time.date() if hasattr(eval_time, "date") else eval_time
                 vix_stmt = vix_stmt.where(VIXData.date <= vix_date)
-            latest_vix = (await session.execute(
-                vix_stmt.order_by(desc(VIXData.date)).limit(1)
-            )).scalar_one_or_none()
+            latest_vix = (await session.execute(vix_stmt.order_by(desc(VIXData.date)).limit(1))).scalar_one_or_none()
 
             if latest_vix and latest_vix.close:
                 vix_val = float(latest_vix.close)
@@ -196,6 +192,7 @@ class TradePreCommitGate:
             window_end = now + timedelta(minutes=15)
 
             from monika.domain.market.currency_utils import get_symbol_currencies
+
             sym_currencies = get_symbol_currencies(sym)
 
             stmt = (

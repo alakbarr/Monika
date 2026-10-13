@@ -23,6 +23,7 @@ def test_platform_detection_and_event_loop_factory():
         assert IS_WINDOWS is True
         assert "loop_factory" in factory_dict
         import asyncio
+
         assert factory_dict["loop_factory"] == asyncio.SelectorEventLoop
     else:
         assert IS_WINDOWS is False
@@ -108,8 +109,7 @@ async def test_trading_agent_remote_gateway_wiring_and_shutdown():
     mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)
     mock_ctx.__aexit__ = AsyncMock(return_value=None)
 
-    with patch("database.db.get_session", return_value=mock_ctx), \
-         patch("main.close_db", new_callable=AsyncMock):
+    with patch("database.db.get_session", return_value=mock_ctx), patch("main.close_db", new_callable=AsyncMock):
         await agent._shutdown()
 
     mock_post_release.stop.assert_awaited_once()
@@ -168,7 +168,9 @@ async def test_mt5_remote_gateway_rpc_methods():
         assert await adapter.ensure_connected() is True
         assert adapter._connected is True
 
-    with patch("aiohttp.ClientSession", return_value=_MockClientSession(_MockResponse(503, text_data="Service Unavailable"))):
+    with patch(
+        "aiohttp.ClientSession", return_value=_MockClientSession(_MockResponse(503, text_data="Service Unavailable"))
+    ):
         assert await adapter.ensure_connected() is False
         assert adapter._connected is False
 
@@ -195,7 +197,9 @@ async def test_mt5_remote_gateway_rpc_methods():
         assert res["ticket"] == 999123
 
     # 4. submit_order (gateway error reject)
-    with patch("aiohttp.ClientSession", return_value=_MockClientSession(_MockResponse(400, text_data="Invalid volume"))):
+    with patch(
+        "aiohttp.ClientSession", return_value=_MockClientSession(_MockResponse(400, text_data="Invalid volume"))
+    ):
         res_err = await adapter.submit_order(order)
         assert res_err["success"] is False
         assert "Gateway error 400" in res_err["error"]
@@ -255,19 +259,19 @@ async def test_trading_agent_start_connects_remote_gateway():
     mock_ensure = AsyncMock(return_value=True)
     agent.execution_service.broker_adapter.ensure_connected = mock_ensure
 
-    with patch.object(agent, "_post_restart_recovery", new_callable=AsyncMock), \
-         patch.object(agent, "_activity_log") as mock_act, \
-         patch.object(agent, "_send_startup_notification", new_callable=AsyncMock):
+    with (
+        patch.object(agent, "_post_restart_recovery", new_callable=AsyncMock),
+        patch.object(agent, "_activity_log") as mock_act,
+        patch.object(agent, "_send_startup_notification", new_callable=AsyncMock),
+    ):
         mock_act.system = AsyncMock()
 
         # Call the connection block of start()
         from execution.broker_adapter import MT5LiveAdapter
+
         custom_adapter = getattr(agent.execution_service, "broker_adapter", None)
         assert custom_adapter is not None
         assert not isinstance(custom_adapter, MT5LiveAdapter)
         connected = await custom_adapter.ensure_connected()
         assert connected is True
         mock_ensure.assert_awaited_once()
-
-
-

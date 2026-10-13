@@ -1,26 +1,23 @@
 """
 Unit tests for Platt Scaling, Isotonic PAV, and Statistical Confidence Calibration.
 """
+
 import pytest
 import math
-from utils.calibration.confidence_calibrator import (
-    fit_platt_scaling,
-    fit_isotonic_pav,
-    calibrate_probability
-)
+from utils.calibration.confidence_calibrator import fit_platt_scaling, fit_isotonic_pav, calibrate_probability
 
 
 def test_fit_platt_scaling_monotone_positive():
     """Verify that Platt Scaling fits positive slope A > 0 when higher confidence predicts wins."""
     # Synthetic well-calibrated dataset: higher confidence = higher win probability
     confidences = [0.60, 0.62, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
-    outcomes =    [0,    0,    0,    1,    1,    1,    1,    1,    1]
+    outcomes = [0, 0, 0, 1, 1, 1, 1, 1, 1]
 
     a, b = fit_platt_scaling(confidences, outcomes)
-    
+
     # Sigmoid should have positive slope A > 0
     assert a > 0.0
-    
+
     # Check calibrated values are monotonically increasing
     p_low = calibrate_probability(0.60, platt_params=(a, b))
     p_high = calibrate_probability(0.90, platt_params=(a, b))
@@ -40,7 +37,7 @@ def test_fit_isotonic_pav_monotonicity():
 
     # Verify every subsequent bin has calibrated_prob >= previous bin
     for i in range(len(pav_bins) - 1):
-        assert pav_bins[i]['calibrated_prob'] <= pav_bins[i + 1]['calibrated_prob']
+        assert pav_bins[i]["calibrated_prob"] <= pav_bins[i + 1]["calibrated_prob"]
 
     # Verify evaluation
     p_cal = calibrate_probability(0.72, pav_bins=pav_bins)

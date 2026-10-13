@@ -89,30 +89,30 @@ async def test_mt5_emergency_methods_and_aliases():
     client.ensure_connected = AsyncMock(return_value=True)
 
     # Mock open positions
-    mock_pos = [{'ticket': 101, 'symbol': 'EURUSD', 'volume': 0.1}]
+    mock_pos = [{"ticket": 101, "symbol": "EURUSD", "volume": 0.1}]
     client._run = AsyncMock()
 
     # Test close_all_positions calls _run with PRIORITY_CRITICAL
     client._run.side_effect = [
         mock_pos,  # for _get_open_positions
-        {'success': True}  # for _close_position
+        {"success": True},  # for _close_position
     ]
     res = await client.emergency_close_all(comment="EMERGENCY")
-    assert res['closed'] == 1
+    assert res["closed"] == 1
     # Check that _get_open_positions was enqueued with PRIORITY_CRITICAL
-    assert client._run.call_args_list[0].kwargs.get('priority') == PRIORITY_CRITICAL
+    assert client._run.call_args_list[0].kwargs.get("priority") == PRIORITY_CRITICAL
 
     # Test modify_order alias
-    client.modify_position = AsyncMock(return_value={'success': True})
+    client.modify_position = AsyncMock(return_value={"success": True})
     mod_res = await client.modify_order(ticket=101, sl=1.0800, tp=1.0950)
-    assert mod_res['success'] is True
+    assert mod_res["success"] is True
     client.modify_position.assert_called_once_with(ticket=101, sl=1.0800, tp=1.0950)
 
     # Test kill_switch
-    client.close_all_positions = AsyncMock(return_value={'closed': 1, 'failed': 0})
+    client.close_all_positions = AsyncMock(return_value={"closed": 1, "failed": 0})
     client.disconnect = AsyncMock()
     ks_res = await client.kill_switch("EMERGENCY")
-    assert ks_res['closed'] == 1
+    assert ks_res["closed"] == 1
     client.close_all_positions.assert_called_once()
     client.disconnect.assert_called_once()
 
@@ -123,12 +123,12 @@ async def test_mt5_executor_self_healing_after_shutdown():
     client = MT5Client()
     # Simulate prior shutdown
     client._executor.shutdown(wait=False)
-    assert getattr(client._executor, '_shutdown', False) is True
+    assert getattr(client._executor, "_shutdown", False) is True
 
     # Calling _ensure_worker should create a new live executor
     queue = client._ensure_worker()
     assert queue is not None
-    assert getattr(client._executor, '_shutdown', False) is False
+    assert getattr(client._executor, "_shutdown", False) is False
 
     # Clean up
     await client.disconnect()

@@ -5,7 +5,13 @@ Asserts institutional safety invariants and mathematical consistency at runtime.
 
 from .risk_gate_invariant import InvariantViolationError, assert_risk_gate_invariants, check_risk_gate_invariant
 from .state_immutability_invariant import assert_state_immutability, StateFreezeGuard
-from .registry import InvariantRegistry, InvariantResult, InvariantStatus, get_global_invariant_registry, reset_global_invariant_registry
+from .registry import (
+    InvariantRegistry,
+    InvariantResult,
+    InvariantStatus,
+    get_global_invariant_registry,
+    reset_global_invariant_registry,
+)
 from .position_count_invariant import assert_position_count_invariant, check_position_count_invariant
 
 __all__ = [

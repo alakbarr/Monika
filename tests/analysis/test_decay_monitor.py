@@ -3,6 +3,7 @@ Unit tests for analysis/strategies/decay_monitor.py.
 Tests state machine transitions: ACTIVE -> MONITORING -> DECAYED -> DISABLED,
 recovery logic, and is_tradeable gating.
 """
+
 import pytest
 from tests.conftest import create_mock_async_session
 from analysis.strategies.decay_monitor import (
@@ -172,7 +173,7 @@ def test_decay_monitor_serialization():
     # Push to DECAYED
     for _ in range(8):
         mon.record_trade_outcome(strat, win=False)
-    
+
     assert mon.get_health(strat).state == DecayState.DECAYED
     data = mon.to_dict()
     assert strat in data
@@ -202,7 +203,7 @@ async def test_decay_monitor_db_persistence():
 
     mock_session = create_mock_async_session()
     mock_cfg = MagicMock()
-    
+
     # Mock upsert capture
     async def mock_upsert(session, key, value, description=None):
         nonlocal saved_payload
@@ -211,6 +212,7 @@ async def test_decay_monitor_db_persistence():
         return mock_cfg
 
     from unittest.mock import patch
+
     with patch("database.models.SystemConfig.upsert", side_effect=mock_upsert):
         await mon.save_to_db(mock_session)
 
@@ -228,4 +230,3 @@ async def test_decay_monitor_db_persistence():
     await mon_restored.load_from_db(mock_session)
     assert mon_restored.get_health(strat).state == DecayState.DECAYED
     assert mon_restored.is_tradeable(strat) is False
-

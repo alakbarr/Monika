@@ -28,6 +28,7 @@ class BPSStatsFetcher:
         """Fetch latest Indonesian Inflation rate (YoY, MoM)."""
         try:
             from monika.infrastructure.data_ingestion.sources.web_search import WebSearchService
+
             ws = WebSearchService()
             search_out = await ws.search("BPS inflasi indonesia tahunan yoy terkini persen", max_results=3)
             results = search_out.get("results", []) if isinstance(search_out, dict) else []
@@ -60,6 +61,7 @@ class BPSStatsFetcher:
         """Fetch latest Indonesian Trade Balance (surplus/deficit)."""
         try:
             from monika.infrastructure.data_ingestion.sources.web_search import WebSearchService
+
             ws = WebSearchService()
             search_out = await ws.search("BPS neraca perdagangan indonesia surplus miliar dolar terkini", max_results=3)
             results = search_out.get("results", []) if isinstance(search_out, dict) else []
@@ -92,6 +94,7 @@ class BPSStatsFetcher:
     async def fetch_all_idr_macro(self) -> Dict[str, Any]:
         """Consolidates BI Rate, JISDOR, Inflation, and Trade Balance."""
         from monika.infrastructure.data_ingestion.scrapers.macro.bank_indonesia import BankIndonesiaFetcher
+
         bi = BankIndonesiaFetcher()
         bi_rate_res, jisdor_res, cpi_res, trade_res = await asyncio.gather(
             bi.fetch_bi_rate(),

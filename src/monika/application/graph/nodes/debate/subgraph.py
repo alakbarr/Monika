@@ -78,7 +78,7 @@ def build_debate_subgraph(checkpointer: Optional[Any] = None, node_wrapper: Opti
             "rebuttal": "rebuttal",
             "debate_judge": "debate_judge",
             "END": END,
-        }
+        },
     )
 
     # Cyclic edge: Rebuttal loops back to Bear Dissent for counter-evaluation
@@ -97,7 +97,7 @@ def build_debate_subgraph(checkpointer: Optional[Any] = None, node_wrapper: Opti
         {
             "conservative_risk": "conservative_risk",
             "END": END,
-        }
+        },
     )
 
     # Round-Robin chain: Conservative -> Aggressive -> Neutral -> Portfolio Judge -> END

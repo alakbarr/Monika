@@ -16,7 +16,12 @@ from sqlalchemy import select, desc, func
 from monika.infrastructure.database.db import get_session
 from monika.application.benchmark.db_models import BenchmarkRun, BenchmarkResult
 from monika.application.benchmark.task_specs import TASKS
-from monika.application.benchmark.model_registry import CANDIDATE_MODELS, get_candidate_models, get_tier_models, get_router_matrix
+from monika.application.benchmark.model_registry import (
+    CANDIDATE_MODELS,
+    get_candidate_models,
+    get_tier_models,
+    get_router_matrix,
+)
 from monika.application.benchmark.runner import run_benchmark
 from monika.application.benchmark.report import build_report
 from monika.core.config.settings import load_all_config
@@ -32,15 +37,21 @@ class BenchmarkRunRequest(BaseModel):
     tasks: Optional[List[str]] = Field(default=None, description="Subset task IDs to evaluate")
     task_id: Optional[str] = Field(default=None, description="Single task role ID to evaluate")
     models: Optional[List[str]] = Field(default=None, description="Subset model names/IDs to evaluate")
-    provider_route: Optional[str] = Field(default=None, description="Provider router/prefix: direct, openrouter, 9router, groq, gemini, etc.")
-    tier: Optional[str] = Field(default=None, description="Tier filter: system_one, cheap_efficient, cheap_smart, high_intelligence")
+    provider_route: Optional[str] = Field(
+        default=None, description="Provider router/prefix: direct, openrouter, 9router, groq, gemini, etc."
+    )
+    tier: Optional[str] = Field(
+        default=None, description="Tier filter: system_one, cheap_efficient, cheap_smart, high_intelligence"
+    )
     symbols: Optional[List[str]] = Field(default=None, description="Asset symbols for per-asset analysis")
     judge_model: Optional[str] = Field(default=None, description="Judge model name")
     judge_models: Optional[List[str]] = Field(default=None, description="Judge ensemble model names")
     reference_model: Optional[str] = Field(default=None, description="Upstream reference model")
     concurrency: Optional[int] = Field(default=4, ge=1, le=16, description="Async job concurrency")
     use_fixtures: Optional[bool] = Field(default=False, description="Use synthetic September 2026 market fixtures")
-    compare_routers: Optional[bool] = Field(default=False, description="Test router matrix (direct vs OpenRouter vs 9router)")
+    compare_routers: Optional[bool] = Field(
+        default=False, description="Test router matrix (direct vs OpenRouter vs 9router)"
+    )
 
 
 @benchmark_router.get("/tasks")
@@ -82,7 +93,7 @@ async def list_benchmark_models(request: Request) -> Dict[str, Any]:
             "reference_model": bench_cfg.get("default_reference_model", "claude-sonnet-5"),
             "default_symbol": bench_cfg.get("default_symbol", "EURUSD"),
             "use_fixtures": bench_cfg.get("use_fixtures", False),
-        }
+        },
     }
 
 
@@ -103,28 +114,25 @@ async def list_benchmark_runs(
             eff_offset = 0
 
         async with get_session() as session:
-            stmt = (
-                select(BenchmarkRun)
-                .order_by(desc(BenchmarkRun.started_at))
-                .offset(eff_offset)
-                .limit(eff_limit)
-            )
+            stmt = select(BenchmarkRun).order_by(desc(BenchmarkRun.started_at)).offset(eff_offset).limit(eff_limit)
             runs = (await session.execute(stmt)).scalars().all()
 
             results = []
             for r in runs:
                 tasks = _safe_json(r.tasks_json, [])
                 models = _safe_json(r.models_json, [])
-                results.append({
-                    "id": r.id,
-                    "started_at": r.started_at.isoformat() if r.started_at else None,
-                    "finished_at": r.finished_at.isoformat() if r.finished_at else None,
-                    "judge_model": r.judge_model,
-                    "reference_model": r.reference_model,
-                    "tasks_count": len(tasks) if isinstance(tasks, list) else 0,
-                    "models_count": len(models) if isinstance(models, list) else 0,
-                    "is_running": r.finished_at is None,
-                })
+                results.append(
+                    {
+                        "id": r.id,
+                        "started_at": r.started_at.isoformat() if r.started_at else None,
+                        "finished_at": r.finished_at.isoformat() if r.finished_at else None,
+                        "judge_model": r.judge_model,
+                        "reference_model": r.reference_model,
+                        "tasks_count": len(tasks) if isinstance(tasks, list) else 0,
+                        "models_count": len(models) if isinstance(models, list) else 0,
+                        "is_running": r.finished_at is None,
+                    }
+                )
 
             return {
                 "total": len(results),
@@ -181,8 +189,12 @@ async def get_benchmark_run_detail(
                     "provider_route": getattr(item, "provider_route", "direct") or "direct",
                     "context_key": item.context_key,
                     "cost_usd": item.cost_usd,
-                    "cost_usd_no_cache": getattr(item, "cost_usd_no_cache", item.cost_usd) if getattr(item, "cost_usd_no_cache", None) is not None else item.cost_usd,
-                    "cost_usd_with_cache": getattr(item, "cost_usd_with_cache", item.cost_usd) if getattr(item, "cost_usd_with_cache", None) is not None else item.cost_usd,
+                    "cost_usd_no_cache": getattr(item, "cost_usd_no_cache", item.cost_usd)
+                    if getattr(item, "cost_usd_no_cache", None) is not None
+                    else item.cost_usd,
+                    "cost_usd_with_cache": getattr(item, "cost_usd_with_cache", item.cost_usd)
+                    if getattr(item, "cost_usd_with_cache", None) is not None
+                    else item.cost_usd,
                     "cached_tokens": getattr(item, "cached_tokens", 0) or 0,
                     "thinking_tokens": getattr(item, "thinking_tokens", 0) or 0,
                     "latency_s": item.latency_s,
@@ -196,7 +208,7 @@ async def get_benchmark_run_detail(
                     "error": item.error,
                 }
                 for item in items
-            ]
+            ],
         }
 
 
@@ -225,29 +237,35 @@ async def compare_task_benchmarks(
 
             comparisons = []
             for item in items:
-                comparisons.append({
-                    "id": item.id,
-                    "run_id": item.run_id,
-                    "task_id": item.task_id,
-                    "category": item.category,
-                    "model_name": item.model_name,
-                    "provider": item.provider,
-                    "provider_route": getattr(item, "provider_route", "direct") or "direct",
-                    "score": round(item.overall_score, 3) if item.overall_score is not None else None,
-                    "deterministic_score": item.deterministic_score,
-                    "judge_overall": item.judge_overall,
-                    "latency_s": item.latency_s or 0.0,
-                    "cost_usd": item.cost_usd or 0.0,
-                    "cost_usd_no_cache": getattr(item, "cost_usd_no_cache", item.cost_usd) if getattr(item, "cost_usd_no_cache", None) is not None else (item.cost_usd or 0.0),
-                    "cost_usd_with_cache": getattr(item, "cost_usd_with_cache", item.cost_usd) if getattr(item, "cost_usd_with_cache", None) is not None else (item.cost_usd or 0.0),
-                    "input_tokens": item.input_tokens or 0,
-                    "output_tokens": item.output_tokens or 0,
-                    "cached_tokens": getattr(item, "cached_tokens", 0) or 0,
-                    "thinking_tokens": getattr(item, "thinking_tokens", 0) or 0,
-                    "schema_valid": item.schema_valid,
-                    "error": item.error,
-                    "created_at": item.created_at.isoformat() if item.created_at else None,
-                })
+                comparisons.append(
+                    {
+                        "id": item.id,
+                        "run_id": item.run_id,
+                        "task_id": item.task_id,
+                        "category": item.category,
+                        "model_name": item.model_name,
+                        "provider": item.provider,
+                        "provider_route": getattr(item, "provider_route", "direct") or "direct",
+                        "score": round(item.overall_score, 3) if item.overall_score is not None else None,
+                        "deterministic_score": item.deterministic_score,
+                        "judge_overall": item.judge_overall,
+                        "latency_s": item.latency_s or 0.0,
+                        "cost_usd": item.cost_usd or 0.0,
+                        "cost_usd_no_cache": getattr(item, "cost_usd_no_cache", item.cost_usd)
+                        if getattr(item, "cost_usd_no_cache", None) is not None
+                        else (item.cost_usd or 0.0),
+                        "cost_usd_with_cache": getattr(item, "cost_usd_with_cache", item.cost_usd)
+                        if getattr(item, "cost_usd_with_cache", None) is not None
+                        else (item.cost_usd or 0.0),
+                        "input_tokens": item.input_tokens or 0,
+                        "output_tokens": item.output_tokens or 0,
+                        "cached_tokens": getattr(item, "cached_tokens", 0) or 0,
+                        "thinking_tokens": getattr(item, "thinking_tokens", 0) or 0,
+                        "schema_valid": item.schema_valid,
+                        "error": item.error,
+                        "created_at": item.created_at.isoformat() if item.created_at else None,
+                    }
+                )
 
             return {
                 "task_id": task_id,
@@ -279,16 +297,18 @@ async def get_benchmark_quadrant_chart_data(
         for item in items:
             if item.error and not item.overall_score:
                 continue
-            points.append({
-                "model_name": item.model_name,
-                "task_id": item.task_id,
-                "category": item.category,
-                "cost_usd": item.cost_usd or 0.0,
-                "latency_s": item.latency_s or 0.0,
-                "overall_score": item.overall_score or 0.0,
-                "total_tokens": (item.input_tokens or 0) + (item.output_tokens or 0),
-                "is_error": bool(item.error),
-            })
+            points.append(
+                {
+                    "model_name": item.model_name,
+                    "task_id": item.task_id,
+                    "category": item.category,
+                    "cost_usd": item.cost_usd or 0.0,
+                    "latency_s": item.latency_s or 0.0,
+                    "overall_score": item.overall_score or 0.0,
+                    "total_tokens": (item.input_tokens or 0) + (item.output_tokens or 0),
+                    "is_error": bool(item.error),
+                }
+            )
 
         return {
             "run_id": run_id,
@@ -309,9 +329,9 @@ async def get_benchmark_leaderboard(
                 stmt = select(BenchmarkResult).where(BenchmarkResult.run_id == run_id)
             else:
                 # Latest run
-                latest_run = (await session.execute(
-                    select(BenchmarkRun).order_by(desc(BenchmarkRun.started_at)).limit(1)
-                )).scalar_one_or_none()
+                latest_run = (
+                    await session.execute(select(BenchmarkRun).order_by(desc(BenchmarkRun.started_at)).limit(1))
+                ).scalar_one_or_none()
                 if not latest_run:
                     return {"leaderboard": [], "message": "No benchmark runs found."}
                 run_id = latest_run.id
@@ -335,8 +355,8 @@ async def get_benchmark_leaderboard(
                     }
                 st = model_stats[m]
                 st["total_tasks"] += 1
-                st["total_cost"] += (r.cost_usd or 0.0)
-                st["total_latency"] += (r.latency_s or 0.0)
+                st["total_cost"] += r.cost_usd or 0.0
+                st["total_latency"] += r.latency_s or 0.0
                 st["total_tokens"] += (r.input_tokens or 0) + (r.output_tokens or 0)
                 if r.error:
                     st["errors"] += 1
@@ -359,17 +379,19 @@ async def get_benchmark_leaderboard(
                 latency_penalty = min(avg_latency / 20.0, 0.5)
                 composite_rank = max(0.0, avg_score - cost_penalty - latency_penalty)
 
-                leaderboard.append({
-                    "model_name": m,
-                    "avg_score": round(avg_score, 3),
-                    "pass_rate_pct": round(pass_rate, 1),
-                    "avg_latency_s": round(avg_latency, 2),
-                    "avg_cost_usd": round(avg_cost, 5),
-                    "total_tokens": st["total_tokens"],
-                    "total_tasks": st["total_tasks"],
-                    "errors": st["errors"],
-                    "composite_rank": round(composite_rank, 3),
-                })
+                leaderboard.append(
+                    {
+                        "model_name": m,
+                        "avg_score": round(avg_score, 3),
+                        "pass_rate_pct": round(pass_rate, 1),
+                        "avg_latency_s": round(avg_latency, 2),
+                        "avg_cost_usd": round(avg_cost, 5),
+                        "total_tokens": st["total_tokens"],
+                        "total_tasks": st["total_tasks"],
+                        "errors": st["errors"],
+                        "composite_rank": round(composite_rank, 3),
+                    }
+                )
 
             leaderboard.sort(key=lambda x: x["composite_rank"], reverse=True)
             return {
@@ -396,11 +418,14 @@ async def _execute_background_benchmark(
 ):
     """Run benchmark asynchronously in background task and broadcast updates."""
     try:
-        await broadcast_live_event("benchmark_started", {
-            "tasks_count": len(task_ids),
-            "models_count": len(model_names),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        await broadcast_live_event(
+            "benchmark_started",
+            {
+                "tasks_count": len(task_ids),
+                "models_count": len(model_names),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
 
         run_id = await run_benchmark(
             task_ids=task_ids,
@@ -413,17 +438,23 @@ async def _execute_background_benchmark(
             use_fixtures=use_fixtures,
         )
 
-        await broadcast_live_event("benchmark_completed", {
-            "run_id": run_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        await broadcast_live_event(
+            "benchmark_completed",
+            {
+                "run_id": run_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
         logger.info(f"Dashboard-triggered benchmark completed successfully: run_id={run_id}")
     except Exception as e:
         logger.error(f"Background benchmark run failed: {e}", exc_info=True)
-        await broadcast_live_event("benchmark_failed", {
-            "error": str(e),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        await broadcast_live_event(
+            "benchmark_failed",
+            {
+                "error": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
 
 
 @benchmark_router.post("/run")

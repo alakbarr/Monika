@@ -1,4 +1,5 @@
 """Monika Execution Domain Core."""
+
 from monika.domain.execution.broker_plugin import (
     BrokerPlugin,
     TickData,

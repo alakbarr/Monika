@@ -14,18 +14,18 @@ from analysis.tools.tool_executor import ToolExecutor
 async def test_tool_get_bond_yield_spreads(db_session):
     """Test get_bond_yield_spreads handler in ToolExecutor."""
     now = datetime.now(timezone.utc)
-    
+
     # Insert US 10Y
     db_session.add(TreasuryYield(tenor="10Y", yield_percent=4.25, date=now))
     db_session.add(TreasuryYield(tenor="10Y", yield_percent=4.20, date=now - timedelta(days=4)))
-    
+
     # Insert German Bund
     db_session.add(BondYieldData(country_tenor="DE_10Y", yield_percent=2.25, date=now))
     db_session.add(BondYieldData(country_tenor="DE_10Y", yield_percent=2.22, date=now - timedelta(days=4)))
-    
+
     # Insert UK Gilt
     db_session.add(BondYieldData(country_tenor="UK_10Y", yield_percent=3.85, date=now))
-    
+
     await db_session.commit()
 
     executor = ToolExecutor(db_session, settings={})

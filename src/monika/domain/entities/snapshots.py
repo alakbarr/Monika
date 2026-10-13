@@ -20,6 +20,7 @@ import monika.core.primitives.clock as clock
 
 class AccountSnapshot(BaseModel):
     """Snapshot of account capital, balance, and risk metrics."""
+
     model_config = ConfigDict(from_attributes=True)
 
     equity: float
@@ -46,6 +47,7 @@ class AccountSnapshot(BaseModel):
 
 class ActivePositionSnapshot(BaseModel):
     """Standardized snapshot of an active open position."""
+
     model_config = ConfigDict(from_attributes=True)
 
     ticket: Optional[int] = None
@@ -68,6 +70,7 @@ class ActivePositionSnapshot(BaseModel):
 
 class CalendarRiskEvent(BaseModel):
     """High or medium impact macroeconomic event record."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: Optional[int] = None
@@ -81,6 +84,7 @@ class CalendarRiskEvent(BaseModel):
 
 class CalendarRiskEvents(BaseModel):
     """Collection of upcoming or active calendar risk events."""
+
     model_config = ConfigDict(from_attributes=True)
 
     events: List[CalendarRiskEvent] = Field(default_factory=list)
@@ -92,6 +96,7 @@ class CalendarRiskEvents(BaseModel):
         affecting base or quote currency of symbol.
         """
         from monika.domain.market.currency_utils import get_symbol_currencies
+
         now = current_time or clock.now()
         base_curr, quote_curr = get_symbol_currencies(symbol)
         currencies = {base_curr.upper(), quote_curr.upper()} if base_curr and quote_curr else set()
@@ -106,6 +111,7 @@ class CalendarRiskEvents(BaseModel):
 
 class SymbolExposure(BaseModel):
     """Aggregate exposure metrics across open positions for a symbol."""
+
     model_config = ConfigDict(from_attributes=True)
 
     symbol: str

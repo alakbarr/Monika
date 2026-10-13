@@ -23,12 +23,14 @@ def file_lock(f):
     try:
         if sys.platform == "win32":
             import msvcrt
+
             pos = f.tell()
             f.seek(0)
             msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
             f.seek(pos)
         else:
             import fcntl
+
             fcntl.flock(f.fileno(), fcntl.LOCK_EX)
     except Exception as e:
         logger.debug(f"File locking failed/ignored: {e}")
@@ -38,12 +40,14 @@ def file_lock(f):
         try:
             if sys.platform == "win32":
                 import msvcrt
+
                 pos = f.tell()
                 f.seek(0)
                 msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
                 f.seek(pos)
             else:
                 import fcntl
+
                 fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         except Exception:
             pass

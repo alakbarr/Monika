@@ -45,10 +45,11 @@ except ImportError:
 
 class ReactiveState(TradingState, total=False):
     """State khusus untuk eksekusi reaktif LangGraph."""
-    event_type: str                     # 'news_event', 'price_trigger', 'session_trigger', 'edge_signal'
-    event_data: Dict[str, Any]          # Raw event payload (trigger info, news items, signal metadata)
-    extra_context: Optional[str]        # Context prompt string
-    execution_results: Dict[str, Any]   # Results from ExecutionService per symbol
+
+    event_type: str  # 'news_event', 'price_trigger', 'session_trigger', 'edge_signal'
+    event_data: Dict[str, Any]  # Raw event payload (trigger info, news items, signal metadata)
+    extra_context: Optional[str]  # Context prompt string
+    execution_results: Dict[str, Any]  # Results from ExecutionService per symbol
     confluence_filtered_trades: List[Tuple[str, dict]]
     debate_approved_trades: List[Tuple[str, dict]]
 
@@ -56,6 +57,7 @@ class ReactiveState(TradingState, total=False):
 # -----------------------------------------------------------------------------
 # Reactive Nodes
 # -----------------------------------------------------------------------------
+
 
 async def event_ingestion_node(state: ReactiveState, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
     """Ingest reactive event, load market regime/VIX, and resolve actionable trades."""
@@ -65,7 +67,9 @@ async def event_ingestion_node(state: ReactiveState, config: Optional[RunnableCo
     actionable = list(state.get("actionable_trades") or [])
     summary = dict(state.get("summary") or {})
 
-    logger.info(f"[ReactiveGraph:Ingest] Ingesting event '{event_type}' with {len(actionable)} trade(s), {len(symbols)} symbol(s)")
+    logger.info(
+        f"[ReactiveGraph:Ingest] Ingesting event '{event_type}' with {len(actionable)} trade(s), {len(symbols)} symbol(s)"
+    )
 
     # 1. Ingest preplanned order or single trigger if actionable is empty
     if not actionable and event_type == "price_trigger":
@@ -75,16 +79,21 @@ async def event_ingestion_node(state: ReactiveState, config: Optional[RunnableCo
         symbol = event_data.get("symbol")
 
         if symbol and analysis_id:
-            actionable.append((symbol, {
-                "analysis_id": analysis_id,
-                "decision": (preplanned.get("type", "buy") if preplanned else "buy").lower(),
-                "confidence": preplanned.get("confidence", 0.70) if preplanned else 0.70,
-                "entry_price": event_data.get("current_price"),
-                "stop_loss": preplanned.get("sl") if preplanned else None,
-                "take_profit": preplanned.get("tp") if preplanned else None,
-                "trigger_id": trigger_id,
-                "is_preplanned": bool(preplanned),
-            }))
+            actionable.append(
+                (
+                    symbol,
+                    {
+                        "analysis_id": analysis_id,
+                        "decision": (preplanned.get("type", "buy") if preplanned else "buy").lower(),
+                        "confidence": preplanned.get("confidence", 0.70) if preplanned else 0.70,
+                        "entry_price": event_data.get("current_price"),
+                        "stop_loss": preplanned.get("sl") if preplanned else None,
+                        "take_profit": preplanned.get("tp") if preplanned else None,
+                        "trigger_id": trigger_id,
+                        "is_preplanned": bool(preplanned),
+                    },
+                )
+            )
             if symbol not in symbols:
                 symbols.append(symbol)
 
@@ -97,13 +106,18 @@ async def event_ingestion_node(state: ReactiveState, config: Optional[RunnableCo
             dec = getattr(ana, "decision", "buy")
             conf = getattr(ana, "confidence", 0.65)
             if sym and ana_id:
-                actionable.append((sym, {
-                    "analysis_id": ana_id,
-                    "decision": str(dec).lower(),
-                    "confidence": float(conf),
-                    "source_strategy_id": getattr(ana, "source_strategy_id", None),
-                    "pair_group_id": event_data.get("pair_group_id"),
-                }))
+                actionable.append(
+                    (
+                        sym,
+                        {
+                            "analysis_id": ana_id,
+                            "decision": str(dec).lower(),
+                            "confidence": float(conf),
+                            "source_strategy_id": getattr(ana, "source_strategy_id", None),
+                            "pair_group_id": event_data.get("pair_group_id"),
+                        },
+                    )
+                )
                 if sym not in symbols:
                     symbols.append(sym)
 
@@ -113,10 +127,21 @@ async def event_ingestion_node(state: ReactiveState, config: Optional[RunnableCo
         try:
             async with get_session() as session:
                 from monika.infrastructure.database.models import FundamentalBrief
-                row = (await session.execute(
-                    select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
-                )).scalar_one_or_none()
-                market_regime = (row.macro_regime if (row and row.macro_regime) else (row.risk_sentiment if row and row.risk_sentiment else "normal")) if row else "normal"
+
+                row = (
+                    await session.execute(
+                        select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                    )
+                ).scalar_one_or_none()
+                market_regime = (
+                    (
+                        row.macro_regime
+                        if (row and row.macro_regime)
+                        else (row.risk_sentiment if row and row.risk_sentiment else "normal")
+                    )
+                    if row
+                    else "normal"
+                )
         except Exception:
             market_regime = "normal"
 
@@ -124,15 +149,10 @@ async def event_ingestion_node(state: ReactiveState, config: Optional[RunnableCo
         "event_type": event_type,
         "symbols": symbols,
         "initial_actionable_count": len(actionable),
-        "timestamp": clock.now().isoformat()
+        "timestamp": clock.now().isoformat(),
     }
 
-    return {
-        "symbols": symbols,
-        "actionable_trades": actionable,
-        "market_regime": market_regime,
-        "summary": summary
-    }
+    return {"symbols": symbols, "actionable_trades": actionable, "market_regime": market_regime, "summary": summary}
 
 
 async def confluence_filter_node(state: ReactiveState, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
@@ -141,7 +161,9 @@ async def confluence_filter_node(state: ReactiveState, config: Optional[Runnable
     if not actionable:
         return {"actionable_trades": []}
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
     scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else None
     settings = scheduler.settings if scheduler and hasattr(scheduler, "settings") else {}
     trading_cfg = settings.get("trading", {})
@@ -152,9 +174,11 @@ async def confluence_filter_node(state: ReactiveState, config: Optional[Runnable
     # Check database dynamic override
     try:
         async with get_session() as session:
-            cfg = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key == "auto_execute_min_confidence_override")
-            )).scalar_one_or_none()
+            cfg = (
+                await session.execute(
+                    select(SystemConfig).where(SystemConfig.key == "auto_execute_min_confidence_override")
+                )
+            ).scalar_one_or_none()
             if cfg and cfg.value:
                 min_confidence = float(cfg.value)
     except Exception:
@@ -179,7 +203,9 @@ async def confluence_filter_node(state: ReactiveState, config: Optional[Runnable
             confluence = int(ana.confluence_score or 0)
 
             # Per-trade confidence threshold override (e.g. forced via operator or proposal)
-            conf_override = r.get("confidence_override") or (r.get("metadata", {}).get("confidence_override") if isinstance(r.get("metadata"), dict) else None)
+            conf_override = r.get("confidence_override") or (
+                r.get("metadata", {}).get("confidence_override") if isinstance(r.get("metadata"), dict) else None
+            )
             if conf_override is not None:
                 effective_min_conf = float(conf_override)
                 effective_min_confluence = min_confluence
@@ -205,14 +231,10 @@ async def confluence_filter_node(state: ReactiveState, config: Optional[Runnable
         "surviving_count": len(surviving),
         "filtered_count": len(filtered),
         "min_confluence": min_confluence,
-        "min_confidence": min_confidence
+        "min_confidence": min_confidence,
     }
 
-    return {
-        "actionable_trades": surviving,
-        "confluence_filtered_trades": filtered,
-        "summary": summary
-    }
+    return {"actionable_trades": surviving, "confluence_filtered_trades": filtered, "summary": summary}
 
 
 async def fast_debate_node(state: ReactiveState, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
@@ -221,7 +243,9 @@ async def fast_debate_node(state: ReactiveState, config: Optional[RunnableConfig
     if not actionable:
         return {"actionable_trades": []}
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
     scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else None
     settings = scheduler.settings if scheduler and hasattr(scheduler, "settings") else {}
     enable_debate = settings.get("agent_architecture", {}).get("enable_debate", True)
@@ -232,10 +256,13 @@ async def fast_debate_node(state: ReactiveState, config: Optional[RunnableConfig
 
     try:
         from monika.application.graph.nodes.debate.subgraph import build_debate_subgraph
+
         debate_sub = build_debate_subgraph()
         debate_res = await debate_sub.ainvoke(state, config=config)
         approved = debate_res.get("actionable_trades", [])
-        logger.info(f"[ReactiveGraph:Debate] Fast debate completed. {len(approved)}/{len(actionable)} trade(s) approved.")
+        logger.info(
+            f"[ReactiveGraph:Debate] Fast debate completed. {len(approved)}/{len(actionable)} trade(s) approved."
+        )
         return {
             "actionable_trades": approved,
             "debate_states": debate_res.get("debate_states", {}),
@@ -262,6 +289,7 @@ async def reactive_risk_gate_node(state: ReactiveState, config: Optional[Runnabl
         return {"actionable_trades": []}
 
     from monika.application.graph.nodes.risk_gate_node import risk_gate_node
+
     res = await risk_gate_node(state, config=config)
     return res
 
@@ -276,7 +304,9 @@ async def reactive_execution_node(state: ReactiveState, config: Optional[Runnabl
         summary["execution"] = {"status": "no_actionable_trades", "executed_count": 0}
         return {"summary": summary, "execution_results": {}}
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
     scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else None
     settings = scheduler.settings if scheduler and hasattr(scheduler, "settings") else {}
     trading_cfg = settings.get("trading", {})
@@ -314,7 +344,9 @@ async def reactive_execution_node(state: ReactiveState, config: Optional[Runnabl
                         p_res = await exec_svc.execute_paired_analyses(
                             session, analyses_to_execute[0], analyses_to_execute[1], pair_group_id
                         )
-                        execution_results["paired"] = p_res.get("summary", str(p_res)) if isinstance(p_res, dict) else str(p_res)
+                        execution_results["paired"] = (
+                            p_res.get("summary", str(p_res)) if isinstance(p_res, dict) else str(p_res)
+                        )
                     except Exception as e:
                         logger.error(f"[ReactiveGraph:Execution] Paired execution failed: {e}")
                         execution_results["paired"] = f"error: {e}"
@@ -401,13 +433,10 @@ async def reactive_execution_node(state: ReactiveState, config: Optional[Runnabl
     summary["execution"] = {
         "status": "completed",
         "results": execution_results,
-        "executed_count": sum(1 for v in execution_results.values() if "executed" in str(v).lower())
+        "executed_count": sum(1 for v in execution_results.values() if "executed" in str(v).lower()),
     }
 
-    return {
-        "execution_results": execution_results,
-        "summary": summary
-    }
+    return {"execution_results": execution_results, "summary": summary}
 
 
 async def reactive_checkpoint_node(state: ReactiveState, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
@@ -422,7 +451,7 @@ async def reactive_checkpoint_node(state: ReactiveState, config: Optional[Runnab
                 timestamp=clock.now(),
                 category="trading",
                 actor="reactive_graph",
-                description=f"Reactive execution completed for '{event_type}'. Results: {json.dumps(exec_res)}"
+                description=f"Reactive execution completed for '{event_type}'. Results: {json.dumps(exec_res)}",
             )
             session.add(act)
             await session.commit()
@@ -435,6 +464,7 @@ async def reactive_checkpoint_node(state: ReactiveState, config: Optional[Runnab
 # -----------------------------------------------------------------------------
 # Graph Builder & Routing Logic
 # -----------------------------------------------------------------------------
+
 
 def route_after_ingest(state: ReactiveState) -> str:
     """Route after event ingestion: edge signals and price triggers go to risk_gate; empty trades to checkpoint."""
@@ -488,25 +518,19 @@ def build_reactive_graph(checkpointer: Optional[Any] = None) -> Any:
     workflow.add_conditional_edges(
         "event_ingestion",
         route_after_ingest,
-        {"confluence_filter": "confluence_filter", "risk_gate": "risk_gate", "checkpoint": "checkpoint"}
+        {"confluence_filter": "confluence_filter", "risk_gate": "risk_gate", "checkpoint": "checkpoint"},
     )
 
     workflow.add_conditional_edges(
-        "confluence_filter",
-        route_after_confluence,
-        {"fast_debate": "fast_debate", "checkpoint": "checkpoint"}
+        "confluence_filter", route_after_confluence, {"fast_debate": "fast_debate", "checkpoint": "checkpoint"}
     )
 
     workflow.add_conditional_edges(
-        "fast_debate",
-        route_after_debate,
-        {"risk_gate": "risk_gate", "checkpoint": "checkpoint"}
+        "fast_debate", route_after_debate, {"risk_gate": "risk_gate", "checkpoint": "checkpoint"}
     )
 
     workflow.add_conditional_edges(
-        "risk_gate",
-        route_after_risk,
-        {"execution": "execution", "checkpoint": "checkpoint"}
+        "risk_gate", route_after_risk, {"execution": "execution", "checkpoint": "checkpoint"}
     )
 
     workflow.add_edge("execution", "checkpoint")
@@ -516,6 +540,7 @@ def build_reactive_graph(checkpointer: Optional[Any] = None) -> Any:
 
 
 _REACTIVE_GRAPH_INSTANCE = None
+
 
 def get_reactive_graph(checkpointer: Optional[Any] = None) -> Any:
     """Retrieve or build the global singleton reactive graph instance."""

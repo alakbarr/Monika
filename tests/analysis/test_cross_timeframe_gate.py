@@ -43,9 +43,7 @@ def test_buy_rejected_on_dual_bearish():
 def test_sell_rejected_on_dual_bullish():
     # H4 bullish (structure break bull), H1 bullish (trend uptrend)
     bundle = {
-        "get_structure_breaks_H4": {
-            "breaks": [{"type": "BOS", "direction": "bullish"}]
-        },
+        "get_structure_breaks_H4": {"breaks": [{"type": "BOS", "direction": "bullish"}]},
         "get_technical_indicators_H1": {
             "trend": "bullish strong",
         },

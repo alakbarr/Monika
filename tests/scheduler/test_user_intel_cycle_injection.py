@@ -8,7 +8,6 @@ import utils.clock as clock
 
 
 class TestUserIntelCycleInjection:
-
     @pytest.mark.asyncio
     async def test_data_node_populates_user_market_intel(self):
         from graph.nodes.data_node import fetch_data_node
@@ -46,12 +45,17 @@ class TestUserIntelCycleInjection:
 
         with patch("graph.nodes.data_node.get_session") as mock_gs:
             mock_gs.return_value.__aenter__.return_value = mock_session
-            with patch("analysis.calculators.economic_surprise.compute_surprise_scores", new=AsyncMock(return_value=0)), \
-                 patch("analysis.prefetch.news_digest.NewsDigestProcessor") as mock_nd, \
-                 patch("analysis.prefetch.macro_preprocessor.MacroPreprocessor") as mock_mp, \
-                 patch("indicators.technical.TechnicalIndicatorCalculator") as mock_calc, \
-                 patch("indicators.structure.MarketStructureAnalyzer") as mock_analyzer, \
-                 patch("utils.validation.data_validator.validate_data_freshness", new=AsyncMock(return_value={"errors": [], "warnings": []})):
+            with (
+                patch("analysis.calculators.economic_surprise.compute_surprise_scores", new=AsyncMock(return_value=0)),
+                patch("analysis.prefetch.news_digest.NewsDigestProcessor") as mock_nd,
+                patch("analysis.prefetch.macro_preprocessor.MacroPreprocessor") as mock_mp,
+                patch("indicators.technical.TechnicalIndicatorCalculator") as mock_calc,
+                patch("indicators.structure.MarketStructureAnalyzer") as mock_analyzer,
+                patch(
+                    "utils.validation.data_validator.validate_data_freshness",
+                    new=AsyncMock(return_value={"errors": [], "warnings": []}),
+                ),
+            ):
                 mock_nd.return_value.classify_unscored_news = AsyncMock(return_value=0)
                 mock_nd.return_value.create_news_digest = AsyncMock(return_value=None)
                 mock_mp.return_value.run_all_and_save = AsyncMock(return_value=None)
@@ -72,13 +76,20 @@ class TestUserIntelCycleInjection:
         mock_client = MagicMock()
         mock_client.run_agent = AsyncMock(return_value={"success": True, "brief_id": 1})
 
-        with patch("analysis.providers.llm_factory.get_client_for_task", return_value=mock_client), \
-             patch("analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_client):
+        with (
+            patch("analysis.providers.llm_factory.get_client_for_task", return_value=mock_client),
+            patch("analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_client),
+        ):
             stage = FundamentalStage(settings={"claude": {}, "trading": {}})
             stage.client = mock_client
 
         mock_session = create_mock_async_session()
-        mock_session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None), scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
+        mock_session.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=None),
+                scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
+            )
+        )
 
         user_intel = [
             {
@@ -99,12 +110,14 @@ class TestUserIntelCycleInjection:
             generated_at=clock.now(),
         )
 
-        with patch.object(stage, "_log", new=AsyncMock()), \
-             patch.object(stage, "_run_macro_debate", new=AsyncMock(return_value={"ran": False})), \
-             patch.object(stage, "_generate_deterministic_fallback_brief", new=AsyncMock(return_value=mock_brief)), \
-             patch("analysis.memory.chronicle_writer.get_client_for_task", return_value=mock_client), \
-             patch("analysis.memory.chronicle_writer.ChronicleWriter") as mock_cw, \
-             patch("analysis.stages.fundamental_stage.Stage1DataBundler") as mock_bundler_cls:
+        with (
+            patch.object(stage, "_log", new=AsyncMock()),
+            patch.object(stage, "_run_macro_debate", new=AsyncMock(return_value={"ran": False})),
+            patch.object(stage, "_generate_deterministic_fallback_brief", new=AsyncMock(return_value=mock_brief)),
+            patch("analysis.memory.chronicle_writer.get_client_for_task", return_value=mock_client),
+            patch("analysis.memory.chronicle_writer.ChronicleWriter") as mock_cw,
+            patch("analysis.stages.fundamental_stage.Stage1DataBundler") as mock_bundler_cls,
+        ):
             mock_cw.return_value.get_chronicle_context = AsyncMock(return_value="")
             mock_cw.return_value.get_condensed_chronicle_bullets = AsyncMock(return_value="")
             mock_bundler = MagicMock()
@@ -167,14 +180,14 @@ class TestUserIntelCycleInjection:
             if not items:
                 return ""
             relevant = []
-            sym_clean = sym.upper().replace('/', '')
+            sym_clean = sym.upper().replace("/", "")
             for item in items:
                 raw_aff = item.get("affected_symbols") or []
                 if isinstance(raw_aff, str):
                     aff_list = [s.strip() for s in raw_aff.split(",") if s.strip()]
                 else:
                     aff_list = list(raw_aff)
-                aff = [s.upper().replace('/', '') for s in aff_list]
+                aff = [s.upper().replace("/", "") for s in aff_list]
                 if not aff or "ALL" in aff or sym_clean in aff:
                     relevant.append(item)
             if not relevant:
@@ -300,26 +313,37 @@ class TestUserIntelCycleInjection:
 
         # Replicate lines 870-888 of per_asset_stage
         from sqlalchemy import select, or_
+
         now_intel = clock.now()
-        intel_rows = (await mock_session.execute(
-            select(UserMarketIntel).where(
-                UserMarketIntel.is_active == True,
-                or_(UserMarketIntel.expires_at.is_(None), UserMarketIntel.expires_at > now_intel)
-            ).order_by(UserMarketIntel.created_at.desc())
-        )).scalars().all()
+        intel_rows = (
+            (
+                await mock_session.execute(
+                    select(UserMarketIntel)
+                    .where(
+                        UserMarketIntel.is_active == True,
+                        or_(UserMarketIntel.expires_at.is_(None), UserMarketIntel.expires_at > now_intel),
+                    )
+                    .order_by(UserMarketIntel.created_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
         rel_bullets = []
         sym_clean = "EURUSD"
         for r in intel_rows:
-            aff_list = r.affected_symbols_list if hasattr(r, "affected_symbols_list") else (
-                [s.strip() for s in (r.affected_symbols or "").split(",") if s.strip()]
+            aff_list = (
+                r.affected_symbols_list
+                if hasattr(r, "affected_symbols_list")
+                else ([s.strip() for s in (r.affected_symbols or "").split(",") if s.strip()])
             )
-            aff = [s.upper().replace('/', '') for s in aff_list]
+            aff = [s.upper().replace("/", "") for s in aff_list]
             if not aff or "ALL" in aff or sym_clean in aff:
                 rel_bullets.append(f"[{r.intel_type.upper()} - {r.directive}]: {r.title} — {r.summary}")
         if rel_bullets:
-            raw_bundle['user_market_intel'] = rel_bullets
+            raw_bundle["user_market_intel"] = rel_bullets
 
-        assert 'user_market_intel' in raw_bundle
-        assert len(raw_bundle['user_market_intel']) == 1
-        assert "EUR Rate Cut Speculation" in raw_bundle['user_market_intel'][0]
-        assert "favor_sell" in raw_bundle['user_market_intel'][0]
+        assert "user_market_intel" in raw_bundle
+        assert len(raw_bundle["user_market_intel"]) == 1
+        assert "EUR Rate Cut Speculation" in raw_bundle["user_market_intel"][0]
+        assert "favor_sell" in raw_bundle["user_market_intel"][0]

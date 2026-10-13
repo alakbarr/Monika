@@ -76,6 +76,7 @@ class TelegramPlatformAdapter(BasePlatformAdapter):
     ) -> bool:
         try:
             from monika.interfaces.telegram.sanitizer import strip_emojis_and_emoticons
+
             content = strip_emojis_and_emoticons(content)
         except Exception:
             pass
@@ -91,9 +92,7 @@ class TelegramPlatformAdapter(BasePlatformAdapter):
             try:
                 chat_id_int = int(target_id) if target_id.lstrip("-").isdigit() else None
                 if chat_id_int:
-                    asyncio.create_task(
-                        self._bot_instance.send_notification(content)
-                    )
+                    asyncio.create_task(self._bot_instance.send_notification(content))
             except Exception as e:
                 logger.debug(f"[TelegramAdapter] Real bot dispatch deferred: {e}")
 

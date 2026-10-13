@@ -49,7 +49,7 @@ except Exception as e:
 
 try:
     from monika.application.analysis.strategies.registry import StrategyRegistry
+
     StrategyRegistry.log_summary()
 except Exception as e:
     logger.debug(f"StrategyRegistry summary not logged: {e}")
-

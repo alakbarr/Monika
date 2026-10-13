@@ -206,7 +206,12 @@ class ExcelMcpServer:
                 ws.append(headers)
                 ws.append([row_data.get(h) for h in headers])
                 wb.save(path)
-                return {"status": "created_and_appended", "file_path": str(path), "sheet": sheet_name, "appended": row_data}
+                return {
+                    "status": "created_and_appended",
+                    "file_path": str(path),
+                    "sheet": sheet_name,
+                    "appended": row_data,
+                }
 
             wb = openpyxl.load_workbook(path)
             if sheet_name not in wb.sheetnames:
@@ -249,7 +254,12 @@ class ExcelMcpServer:
 
             wb = openpyxl.load_workbook(path)
             if sheet_name in wb.sheetnames:
-                return {"status": "exists", "file_path": str(path), "sheet": sheet_name, "message": "Sheet already exists"}
+                return {
+                    "status": "exists",
+                    "file_path": str(path),
+                    "sheet": sheet_name,
+                    "message": "Sheet already exists",
+                }
             ws = wb.create_sheet(title=sheet_name)
             ws.append(headers)
             wb.save(path)

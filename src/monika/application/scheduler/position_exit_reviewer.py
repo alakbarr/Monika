@@ -4,21 +4,22 @@ from datetime import datetime, timezone, timedelta
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import Position, AssetAnalysis, SystemConfig
 from sqlalchemy import select
-logger = logging.getLogger('TradingAgent.PositionExitReviewer')
+
+logger = logging.getLogger("TradingAgent.PositionExitReviewer")
+
 
 class PositionExitReviewer:
-
     def __init__(self, settings: dict, per_asset_stage=None, execution_service=None, recovery_event=None):
         self.settings = settings
         self._per_asset = per_asset_stage
         self._execution_service = execution_service
         self._recovery_event = recovery_event
-        self._review_interval_hours = settings.get('trading', {}).get('position_review_interval_hours', 4.0)
+        self._review_interval_hours = settings.get("trading", {}).get("position_review_interval_hours", 4.0)
         self._running = False
         self._stop_event = asyncio.Event()
 
     async def _get_last_review_time(self, session, position_id: int):
-        key = f'position_exit_review_last_{position_id}'
+        key = f"position_exit_review_last_{position_id}"
         cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
         if not cfg or not cfg.value:
             return None
@@ -31,7 +32,7 @@ class PositionExitReviewer:
             return None
 
     async def _set_last_review_time(self, session, position_id: int, when: datetime) -> None:
-        key = f'position_exit_review_last_{position_id}'
+        key = f"position_exit_review_last_{position_id}"
         cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
         val = when.isoformat()
         if cfg:
@@ -41,11 +42,15 @@ class PositionExitReviewer:
         await session.commit()
 
     async def _cleanup_stale_review_markers(self, session, open_position_ids: set) -> None:
-        rows = (await session.execute(select(SystemConfig).where(SystemConfig.key.like('position_exit_review_last_%')))).scalars().all()
+        rows = (
+            (await session.execute(select(SystemConfig).where(SystemConfig.key.like("position_exit_review_last_%"))))
+            .scalars()
+            .all()
+        )
         deleted = 0
         for row in rows:
             try:
-                pid = int(row.key.rsplit('_', 1)[-1])
+                pid = int(row.key.rsplit("_", 1)[-1])
             except ValueError:
                 continue
             if pid not in open_position_ids:
@@ -53,12 +58,12 @@ class PositionExitReviewer:
                 deleted += 1
         if deleted:
             await session.commit()
-            logger.debug(f'PositionExitReviewer: cleaned up {deleted} stale review markers')
+            logger.debug(f"PositionExitReviewer: cleaned up {deleted} stale review markers")
 
     async def review_open_positions(self) -> list[dict]:
         results = []
         async with get_session() as session:
-            open_positions = (await session.execute(select(Position).where(Position.status == 'open'))).scalars().all()
+            open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
         if not open_positions:
             return results
 
@@ -78,19 +83,25 @@ class PositionExitReviewer:
                 async with get_session() as session:
                     await self._set_last_review_time(session, position.id, now)
             except Exception as e:
-                logger.error(f'Position exit review failed for {position.symbol}: {e}')
+                logger.error(f"Position exit review failed for {position.symbol}: {e}")
         return results
 
     async def _review_single_position(self, position: Position) -> dict:
         if not self._per_asset:
-            return {'position_id': position.id, 'action': 'no_reviewer'}
+            return {"position_id": position.id, "action": "no_reviewer"}
 
         holding_hours_so_far = 0.0
         if position.opened_at:
-            opened = position.opened_at.replace(tzinfo=timezone.utc) if position.opened_at.tzinfo is None else position.opened_at
+            opened = (
+                position.opened_at.replace(tzinfo=timezone.utc)
+                if position.opened_at.tzinfo is None
+                else position.opened_at
+            )
             holding_hours_so_far = (datetime.now(timezone.utc) - opened).total_seconds() / 3600
-        max_intraday_hours = self.settings.get('trading', {}).get('risk', {}).get('max_position_holding_hours_intraday', 30)
-        intraday_overdue_note = ''
+        max_intraday_hours = (
+            self.settings.get("trading", {}).get("risk", {}).get("max_position_holding_hours_intraday", 30)
+        )
+        intraday_overdue_note = ""
         if holding_hours_so_far > max_intraday_hours:
             intraday_overdue_note = (
                 f"\n[WAKTU] INTRADAY TIMEOUT NOTICE: This position was opened as an INTRADAY RANGE-EDGE trade "
@@ -107,6 +118,7 @@ class PositionExitReviewer:
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
             from monika.core.primitives.jev_primitives import build_exit_review_prescreen
+
             jev_exit_client = get_client_for_task("jev_exit_prescreen", self.settings)
             if hasattr(jev_exit_client, "classify_json"):
                 exit_q = build_exit_review_prescreen(position.symbol, position.direction)
@@ -116,7 +128,7 @@ class PositionExitReviewer:
                     "entry_price": position.entry_price,
                     "sl": position.sl,
                     "tp": position.tp,
-                    "holding_hours": round(holding_hours_so_far, 1)
+                    "holding_hours": round(holding_hours_so_far, 1),
                 }
                 prescreen_res = await jev_exit_client.classify_json(prompt="", state=state, jev_questions=exit_q)
                 if (
@@ -134,59 +146,99 @@ class PositionExitReviewer:
 
         async with get_session() as session:
             try:
-                result = await self._per_asset.run_one(session=session, symbol=position.symbol, extra_context=exit_context, skip_cooldown=True, bypass_prescreen=True)
+                result = await self._per_asset.run_one(
+                    session=session,
+                    symbol=position.symbol,
+                    extra_context=exit_context,
+                    skip_cooldown=True,
+                    bypass_prescreen=True,
+                )
             except Exception as e:
-                logger.warning(f'Primary model failed for exit review ({e}), falling back to secondary...')
-                result = await self._per_asset.run_one(session=session, symbol=position.symbol, extra_context=exit_context, skip_cooldown=True, is_secondary=True, bypass_prescreen=True)
-                
-        ai_decision = result.get('decision', 'wait')
+                logger.warning(f"Primary model failed for exit review ({e}), falling back to secondary...")
+                result = await self._per_asset.run_one(
+                    session=session,
+                    symbol=position.symbol,
+                    extra_context=exit_context,
+                    skip_cooldown=True,
+                    is_secondary=True,
+                    bypass_prescreen=True,
+                )
+
+        ai_decision = result.get("decision", "wait")
         should_exit = False
-        if position.direction == 'buy' and ai_decision in ('sell', 'avoid'):
+        if position.direction == "buy" and ai_decision in ("sell", "avoid"):
             should_exit = True
-        elif position.direction == 'sell' and ai_decision in ('buy', 'avoid'):
+        elif position.direction == "sell" and ai_decision in ("buy", "avoid"):
             should_exit = True
         if should_exit and self._execution_service and position.mt5_ticket:
-            review_cfg = self.settings.get('trading', {}).get('position_review', {})
-            auto_close_enabled = review_cfg.get('auto_close_on_invalidation', False)
-            min_holding_hours = review_cfg.get('auto_close_min_holding_hours', 4.0)
-            max_loss_pct = review_cfg.get('auto_close_max_loss_pct', 0.5)
+            review_cfg = self.settings.get("trading", {}).get("position_review", {})
+            auto_close_enabled = review_cfg.get("auto_close_on_invalidation", False)
+            min_holding_hours = review_cfg.get("auto_close_min_holding_hours", 4.0)
+            max_loss_pct = review_cfg.get("auto_close_max_loss_pct", 0.5)
             holding_hours = 0
             if position.opened_at:
-                opened = position.opened_at.replace(tzinfo=timezone.utc) if position.opened_at.tzinfo is None else position.opened_at
+                opened = (
+                    position.opened_at.replace(tzinfo=timezone.utc)
+                    if position.opened_at.tzinfo is None
+                    else position.opened_at
+                )
                 holding_hours = (datetime.now(timezone.utc) - opened).total_seconds() / 3600
             current_pnl_pct = 0
             try:
                 if self._execution_service and self._execution_service.mt5:
                     mt5_positions = await self._execution_service.mt5.get_open_positions()
                     for mp in mt5_positions:
-                        if mp['ticket'] == position.mt5_ticket:
+                        if mp["ticket"] == position.mt5_ticket:
                             entry = position.entry_price or 1
-                            current = mp.get('price_current', entry)
+                            current = mp.get("price_current", entry)
                             move = (current - entry) / entry * 100
-                            current_pnl_pct = move if position.direction == 'buy' else -move
+                            current_pnl_pct = move if position.direction == "buy" else -move
                             break
             except Exception as e:
-                logger.debug(f'PnL check failed: {e}')
-            should_auto_close = auto_close_enabled and holding_hours >= min_holding_hours and (current_pnl_pct < 0) and (abs(current_pnl_pct) < max_loss_pct)
+                logger.debug(f"PnL check failed: {e}")
+            should_auto_close = (
+                auto_close_enabled
+                and holding_hours >= min_holding_hours
+                and (current_pnl_pct < 0)
+                and (abs(current_pnl_pct) < max_loss_pct)
+            )
             if should_auto_close:
-                logger.warning(f'AUTO-CLOSE: {position.symbol} ticket={position.mt5_ticket} held {holding_hours:.1f}h, PnL={current_pnl_pct:.2f}%, AI recommends exit.')
+                logger.warning(
+                    f"AUTO-CLOSE: {position.symbol} ticket={position.mt5_ticket} held {holding_hours:.1f}h, PnL={current_pnl_pct:.2f}%, AI recommends exit."
+                )
                 try:
-                    close_result = await self._execution_service.close_position_by_ticket(position.mt5_ticket, requested_by='position_exit_reviewer', reason=f'AI review: thesis invalidated after {holding_hours:.1f}h')
+                    close_result = await self._execution_service.close_position_by_ticket(
+                        position.mt5_ticket,
+                        requested_by="position_exit_reviewer",
+                        reason=f"AI review: thesis invalidated after {holding_hours:.1f}h",
+                    )
                     from monika.infrastructure.infra.notifier import AgentNotifier
-                    await AgentNotifier().send_info(f"[AI] <b>Auto-Close: {position.symbol}</b>\nThesis invalidated after {holding_hours:.1f}h\nPnL: {current_pnl_pct:.2f}%\nResult: {('[OK] Closed' if close_result.get('success') else '[GAGAL] Failed: ' + str(close_result.get('error')))}")
+
+                    await AgentNotifier().send_info(
+                        f"[AI] <b>Auto-Close: {position.symbol}</b>\nThesis invalidated after {holding_hours:.1f}h\nPnL: {current_pnl_pct:.2f}%\nResult: {('[OK] Closed' if close_result.get('success') else '[GAGAL] Failed: ' + str(close_result.get('error')))}"
+                    )
                 except Exception as e:
-                    logger.error(f'Auto-close failed for {position.mt5_ticket}: {e}')
+                    logger.error(f"Auto-close failed for {position.mt5_ticket}: {e}")
             else:
                 from monika.infrastructure.infra.notifier import AgentNotifier
-                rationale = result.get('rationale', 'No rationale provided')[:300]
-                await AgentNotifier().send_warning(f'[SYNC] <b>Position Exit Signal — {position.symbol}</b>\nAI Recommends: EXIT\nHolding: {holding_hours:.1f}h, PnL: {current_pnl_pct:.2f}%\nReason: {rationale}\n\nUse /close {position.mt5_ticket} to confirm.')
-        return {'position_id': position.id, 'symbol': position.symbol, 'ai_decision': ai_decision, 'claude_decision': ai_decision, 'should_exit': should_exit}
+
+                rationale = result.get("rationale", "No rationale provided")[:300]
+                await AgentNotifier().send_warning(
+                    f"[SYNC] <b>Position Exit Signal — {position.symbol}</b>\nAI Recommends: EXIT\nHolding: {holding_hours:.1f}h, PnL: {current_pnl_pct:.2f}%\nReason: {rationale}\n\nUse /close {position.mt5_ticket} to confirm."
+                )
+        return {
+            "position_id": position.id,
+            "symbol": position.symbol,
+            "ai_decision": ai_decision,
+            "claude_decision": ai_decision,
+            "should_exit": should_exit,
+        }
 
     async def start(self):
         self._running = True
         logger.info(
-            f'PositionExitReviewer started (interval per posisi: {self._review_interval_hours}h, '
-            f'state review dipersist ke DB — restart TIDAK memicu review ulang jika belum due)'
+            f"PositionExitReviewer started (interval per posisi: {self._review_interval_hours}h, "
+            f"state review dipersist ke DB — restart TIDAK memicu review ulang jika belum due)"
         )
         if self._recovery_event:
             logger.info("[PositionExitReviewer] Waiting for recovery event before first review pass...")
@@ -200,11 +252,11 @@ class PositionExitReviewer:
             try:
                 results = await self.review_open_positions()
                 if results:
-                    logger.info(f'Position exit review completed: {len(results)} positions reviewed')
+                    logger.info(f"Position exit review completed: {len(results)} positions reviewed")
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f'PositionExitReviewer error: {e}')
+                logger.error(f"PositionExitReviewer error: {e}")
             # Poll cukup sering (maks tiap 15 menit) supaya posisi yang dibuka
             # pada jam berbeda-beda tetap direview mendekati waktu due
             # masing-masing, tanpa memicu Claude untuk posisi yang belum due

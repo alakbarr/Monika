@@ -24,6 +24,7 @@ logger = logging.getLogger("TradingAgent.HMMRegimeClassifier")
 
 try:
     from hmmlearn.hmm import GaussianHMM
+
     HAS_HMMLEARN = True
 except ImportError:
     GaussianHMM = None
@@ -133,7 +134,7 @@ class HMMRegimeClassifier:
 
         return {
             "current_regime": regime,
-            "confidence": round(probs[regime.split('_')[0]], 3),
+            "confidence": round(probs[regime.split("_")[0]], 3),
             "regime_probabilities": probs,
             "transition_matrix": [[0.75, 0.10, 0.15], [0.10, 0.75, 0.15], [0.20, 0.20, 0.60]],
             "expected_duration_bars": 4.0,

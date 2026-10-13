@@ -110,17 +110,20 @@ class SessionLifecycleManager:
 
             # Copy messages
             for m in forked_messages:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO session_messages (session_id, role, content, carrier_marker, created_at, turn_ordinal)
                     VALUES (?, ?, ?, ?, ?, ?);
-                """, (
-                    target_id,
-                    m["role"],
-                    m["content"],
-                    m.get("carrier_marker"),
-                    m.get("created_at", time.time()),
-                    m.get("turn_ordinal", 1),
-                ))
+                """,
+                    (
+                        target_id,
+                        m["role"],
+                        m["content"],
+                        m.get("carrier_marker"),
+                        m.get("created_at", time.time()),
+                        m.get("turn_ordinal", 1),
+                    ),
+                )
 
             # Copy tool records
             tools = self.db.get_tool_records(source_session_id)
@@ -128,21 +131,26 @@ class SessionLifecycleManager:
                 tools = [t for t in tools if t.get("turn_ordinal", 0) <= up_to_turn]
 
             for t in tools:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO tool_records (session_id, turn_ordinal, tool_name, arguments_json, output_text, is_error, has_side_effects, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-                """, (
-                    target_id,
-                    t["turn_ordinal"],
-                    t["tool_name"],
-                    t.get("arguments_json"),
-                    t.get("output_text"),
-                    t.get("is_error", 0),
-                    t.get("has_side_effects", 0),
-                    t.get("created_at", time.time()),
-                ))
+                """,
+                    (
+                        target_id,
+                        t["turn_ordinal"],
+                        t["tool_name"],
+                        t.get("arguments_json"),
+                        t.get("output_text"),
+                        t.get("is_error", 0),
+                        t.get("has_side_effects", 0),
+                        t.get("created_at", time.time()),
+                    ),
+                )
 
-        logger.info(f"[SessionLifecycle] Forked session '{source_session_id}' -> '{target_id}' ({len(forked_messages)} msgs)")
+        logger.info(
+            f"[SessionLifecycle] Forked session '{source_session_id}' -> '{target_id}' ({len(forked_messages)} msgs)"
+        )
         return target_id
 
     def get_session_lineage(self, session_id: str) -> List[Dict[str, Any]]:
@@ -158,14 +166,16 @@ class SessionLifecycleManager:
             sess = self.db.get_session(curr_id)
             if not sess:
                 break
-            lineage.append({
-                "session_id": sess["session_id"],
-                "title": sess.get("title"),
-                "parent_session_id": sess.get("parent_session_id"),
-                "root_session_id": sess.get("root_session_id"),
-                "created_at": sess.get("created_at"),
-                "end_reason": sess.get("end_reason"),
-            })
+            lineage.append(
+                {
+                    "session_id": sess["session_id"],
+                    "title": sess.get("title"),
+                    "parent_session_id": sess.get("parent_session_id"),
+                    "root_session_id": sess.get("root_session_id"),
+                    "created_at": sess.get("created_at"),
+                    "end_reason": sess.get("end_reason"),
+                }
+            )
             curr_id = sess.get("parent_session_id")
 
         return lineage
@@ -174,11 +184,14 @@ class SessionLifecycleManager:
         """Mark a session as completed or compressed."""
         conn = self.db.get_connection()
         with conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE sessions 
                 SET end_reason = ?, updated_at = ?
                 WHERE session_id = ?;
-            """, (reason, time.time(), session_id))
+            """,
+                (reason, time.time(), session_id),
+            )
 
     def rewind_session(
         self,
@@ -212,12 +225,14 @@ class SessionLifecycleManager:
         with conn:
             meta = json.loads(sess.get("metadata_json") or "{}")
             rewind_history = meta.get("rewind_history", [])
-            rewind_history.append({
-                "target_turn": target_turn,
-                "deactivated_count": deactivated_count,
-                "rewound_carrier": rewound_carrier,
-                "timestamp": time.time(),
-            })
+            rewind_history.append(
+                {
+                    "target_turn": target_turn,
+                    "deactivated_count": deactivated_count,
+                    "rewound_carrier": rewound_carrier,
+                    "timestamp": time.time(),
+                }
+            )
             meta["rewind_history"] = rewind_history
             meta["last_active_turn"] = target_turn
             conn.execute(
@@ -230,7 +245,6 @@ class SessionLifecycleManager:
             f"({deactivated_count} messages deactivated)."
         )
         return deactivated_count
-
 
     def export_session_json(self, session_id: str) -> Dict[str, Any]:
         """
@@ -296,17 +310,20 @@ class SessionLifecycleManager:
 
             # Insert messages
             for m in raw_messages:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO session_messages (session_id, role, content, carrier_marker, created_at, turn_ordinal)
                     VALUES (?, ?, ?, ?, ?, ?);
-                """, (
-                    imported_id,
-                    m.get("role", "user"),
-                    m.get("content", ""),
-                    m.get("carrier_marker"),
-                    m.get("created_at", time.time()),
-                    m.get("turn_ordinal", 1),
-                ))
+                """,
+                    (
+                        imported_id,
+                        m.get("role", "user"),
+                        m.get("content", ""),
+                        m.get("carrier_marker"),
+                        m.get("created_at", time.time()),
+                        m.get("turn_ordinal", 1),
+                    ),
+                )
 
             # Insert tool records
             for t in raw_tools:
@@ -316,19 +333,22 @@ class SessionLifecycleManager:
                 else:
                     args_json = str(args) if args is not None else "{}"
 
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO tool_records (session_id, turn_ordinal, tool_name, arguments_json, output_text, is_error, has_side_effects, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-                """, (
-                    imported_id,
-                    t.get("turn_ordinal", 1),
-                    t.get("tool_name", "unknown_tool"),
-                    args_json,
-                    t.get("output_text", ""),
-                    t.get("is_error", 0),
-                    t.get("has_side_effects", 0),
-                    t.get("created_at", time.time()),
-                ))
+                """,
+                    (
+                        imported_id,
+                        t.get("turn_ordinal", 1),
+                        t.get("tool_name", "unknown_tool"),
+                        args_json,
+                        t.get("output_text", ""),
+                        t.get("is_error", 0),
+                        t.get("has_side_effects", 0),
+                        t.get("created_at", time.time()),
+                    ),
+                )
 
         logger.info(f"[SessionLifecycle] Successfully imported session '{imported_id}' ({len(raw_messages)} msgs)")
         return imported_id

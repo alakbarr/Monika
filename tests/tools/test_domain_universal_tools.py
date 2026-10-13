@@ -102,9 +102,7 @@ async def test_file_tools_lifecycle():
 async def test_terminal_and_process_manage():
     """Verify terminal command execution and process supervision."""
     # 1. Foreground command
-    res = await handle_terminal(
-        TerminalInput(command="python -c \"print('Hello Monika')\"")
-    )
+    res = await handle_terminal(TerminalInput(command="python -c \"print('Hello Monika')\""))
     assert "[EXIT CODE 0]" in res
     assert "Hello Monika" in res
 
@@ -126,9 +124,7 @@ async def test_skill_tools():
     assert "software-development" in skill_names or "systematic-debugging" in skill_names
 
     # 2. View specific skill
-    view_res = await handle_skill_view(
-        SkillViewInput(skill_name="software-development")
-    )
+    view_res = await handle_skill_view(SkillViewInput(skill_name="software-development"))
     assert "Software Development Skill" in view_res
     assert "Stale Overwrite Protection" in view_res
 
@@ -150,8 +146,6 @@ async def test_tool_search_and_progressive_mounting():
     assert "parameters" in desc
 
     # 3. Load category
-    cat_res = await handle_load_tool_category(
-        LoadToolCategoryInput(category="FILESYSTEM")
-    )
+    cat_res = await handle_load_tool_category(LoadToolCategoryInput(category="FILESYSTEM"))
     assert "Successfully loaded" in cat_res
     assert "read_file" in cat_res or "patch" in cat_res

@@ -30,6 +30,7 @@ from utils.analytics.pricing import (
 # 1. Backend Identity & Candidate Skipper Tests
 # ==============================================================================
 
+
 def test_backend_identity_and_candidate_skipping():
     skipper = FailoverCandidateSkipper(ttl_seconds=60.0)
 
@@ -63,6 +64,7 @@ def test_backend_identity_and_candidate_skipping():
 # 2. Streaming Think Scrubber Tests
 # ==============================================================================
 
+
 def test_streaming_think_scrubber_complete_flow():
     scrubber = StreamingThinkScrubber()
 
@@ -88,6 +90,7 @@ def test_streaming_think_scrubber_complete_flow():
 # ==============================================================================
 # 3. CanonicalUsage & Decimal Token Accounting Tests
 # ==============================================================================
+
 
 def test_canonical_usage_anthropic_no_double_cache_deduction():
     # Anthropic mock usage: input_tokens is uncached, cache_read_input_tokens is cached
@@ -125,20 +128,21 @@ def test_canonical_usage_openai_separation():
 # 4. Trajectory Compressor & Boundary Snapping Tests
 # ==============================================================================
 
+
 def test_trajectory_compressor_boundary_snapping():
     compressor = TrajectoryCompressor(max_tool_output_chars=50, preserve_recent_turns=2)
 
     messages = [
         {"role": "system", "content": "You are Monika institutional agent."},  # Head anchor 1
-        {"role": "user", "content": "Initial trade goal: backtest strategy A."}, # Head anchor 2
-        {"role": "assistant", "content": "<think>Planning analysis</think>Here is the plan."}, # Intermediate
-        {"role": "tool", "content": "A" * 200},                                # Intermediate tool
-        {"role": "user", "content": "Intermediate query"},                     # Intermediate
-        {"role": "assistant", "content": "Intermediate answer"},               # Intermediate
-        {"role": "user", "content": "Recent question 1"},                      # Tail anchor
-        {"role": "assistant", "content": "Recent answer 1"},                   # Tail anchor
-        {"role": "user", "content": "Recent question 2"},                      # Tail anchor
-        {"role": "assistant", "content": "Recent answer 2"},                   # Tail anchor
+        {"role": "user", "content": "Initial trade goal: backtest strategy A."},  # Head anchor 2
+        {"role": "assistant", "content": "<think>Planning analysis</think>Here is the plan."},  # Intermediate
+        {"role": "tool", "content": "A" * 200},  # Intermediate tool
+        {"role": "user", "content": "Intermediate query"},  # Intermediate
+        {"role": "assistant", "content": "Intermediate answer"},  # Intermediate
+        {"role": "user", "content": "Recent question 1"},  # Tail anchor
+        {"role": "assistant", "content": "Recent answer 1"},  # Tail anchor
+        {"role": "user", "content": "Recent question 2"},  # Tail anchor
+        {"role": "assistant", "content": "Recent answer 2"},  # Tail anchor
     ]
 
     compressed = compressor.compress_trajectory(messages)

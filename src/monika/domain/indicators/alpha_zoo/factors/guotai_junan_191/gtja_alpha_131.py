@@ -1,4 +1,3 @@
-
 """GTJA Alpha 131 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
@@ -6,6 +5,7 @@ Formula (verbatim from the report):
 
 Notes: DELAT in report typo = DELTA.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -33,16 +33,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_131"
 
 __alpha_meta__ = {
-    'id': 'gtja191_131',
-    'theme': ['volume'],
-    'formula_latex': 'rank(delta(vwap,1))^tsrank(corr(close,mean(v,50),18),18)',
-    'columns_required': ['open', 'high', 'low', 'close', 'volume', 'amount'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 50,
-    'min_warmup_bars': 84,
-    'notes': 'DELAT in report typo = DELTA.',
+    "id": "gtja191_131",
+    "theme": ["volume"],
+    "formula_latex": "rank(delta(vwap,1))^tsrank(corr(close,mean(v,50),18),18)",
+    "columns_required": ["open", "high", "low", "close", "volume", "amount"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 50,
+    "min_warmup_bars": 84,
+    "notes": "DELAT in report typo = DELTA.",
 }
 
 
@@ -61,7 +61,6 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
 
     left = rank(delta(vw, 1))
     right = ts_rank(ts_corr(c, ts_mean(v, 50), 18), 18)
-    arr = np.power(left.to_numpy(dtype=np.float64, na_value=np.nan),
-                   right.to_numpy(dtype=np.float64, na_value=np.nan))
+    arr = np.power(left.to_numpy(dtype=np.float64, na_value=np.nan), right.to_numpy(dtype=np.float64, na_value=np.nan))
     out = pd.DataFrame(arr, index=left.index, columns=left.columns)
     return out

@@ -44,14 +44,14 @@ class MessageType(str, enum.Enum):
 
 @dataclass
 class SessionSource:
-    platform: str                    # 'telegram', 'discord', 'slack', 'whatsapp', 'signal', 'cli'
-    chat_id: str                     # Channel, room, or DM identifier
-    chat_type: str = "dm"            # 'dm', 'group', 'channel', 'thread'
-    user_id: Optional[str] = None    # Originating user ID
+    platform: str  # 'telegram', 'discord', 'slack', 'whatsapp', 'signal', 'cli'
+    chat_id: str  # Channel, room, or DM identifier
+    chat_type: str = "dm"  # 'dm', 'group', 'channel', 'thread'
+    user_id: Optional[str] = None  # Originating user ID
     user_name: Optional[str] = None  # Human display name
     thread_id: Optional[str] = None  # Thread or topic ID
-    scope_id: Optional[str] = None   # Guild, team, or workspace ID
-    namespace: str = "agent:main"    # Multi-tenant profile partition
+    scope_id: Optional[str] = None  # Guild, team, or workspace ID
+    namespace: str = "agent:main"  # Multi-tenant profile partition
 
 
 @dataclass

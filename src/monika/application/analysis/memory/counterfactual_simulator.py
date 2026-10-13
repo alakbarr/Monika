@@ -45,7 +45,7 @@ class CounterfactualSimulator:
     ) -> Dict[str, Any]:
         """
         Replays candidate playbook assumptions across historical setups.
-        
+
         Args:
             session: Database session.
             playbook_name: Name of the playbook file or identifier.
@@ -84,18 +84,22 @@ class CounterfactualSimulator:
                 pnl_usd = float(r.outcome_pnl_usd or 0.0)
                 # Normalize USD to percentage points on a $10,000 baseline account
                 pnl_pct = (pnl_usd / 10000.0) * 100.0
-                simulated_trades.append({
-                    "won": pnl_usd > 0.0,
-                    "pnl": pnl_pct,
-                })
+                simulated_trades.append(
+                    {
+                        "won": pnl_usd > 0.0,
+                        "pnl": pnl_pct,
+                    }
+                )
         else:
             simulated_trades = []
             for t in trades:
                 pnl = float(t.pnl_pct or 0.0)
-                simulated_trades.append({
-                    "won": pnl > 0.0,
-                    "pnl": pnl,
-                })
+                simulated_trades.append(
+                    {
+                        "won": pnl > 0.0,
+                        "pnl": pnl,
+                    }
+                )
 
         sample_size = len(simulated_trades)
         if sample_size == 0:
@@ -132,12 +136,12 @@ class CounterfactualSimulator:
 
             logger.info(
                 f"[CounterfactualSimulator] Promoted '{playbook_name}' to ACTIVE "
-                f"(Sample: {sample_size}, WR: {win_rate*100:.1f}%, PnL: {total_pnl:.2f}, CF Delay PnL: {cf_delayed_pnl:.2f})."
+                f"(Sample: {sample_size}, WR: {win_rate * 100:.1f}%, PnL: {total_pnl:.2f}, CF Delay PnL: {cf_delayed_pnl:.2f})."
             )
         else:
             logger.info(
                 f"[CounterfactualSimulator] Candidate '{playbook_name}' kept as CANDIDATE "
-                f"(Sample: {sample_size}, WR: {win_rate*100:.1f}%, CF Delay PnL: {cf_delayed_pnl:.2f})."
+                f"(Sample: {sample_size}, WR: {win_rate * 100:.1f}%, CF Delay PnL: {cf_delayed_pnl:.2f})."
             )
 
         return {
@@ -182,18 +186,42 @@ class CounterfactualSimulator:
         entry_price = float(trade.entry_price if trade is not None else (pos.entry_price if pos is not None else 0.0))
         original_sl = float(trade.stop_loss if trade is not None else ((pos.sl if pos is not None else 0.0) or 0.0))
         original_tp = float(trade.take_profit if trade is not None else ((pos.tp if pos is not None else 0.0) or 0.0))
-        exit_price = float(trade.exit_price if trade is not None and trade.exit_price is not None else (getattr(pos, "exit_price", None) or entry_price))
-        actual_pnl = float(trade.pnl_pct if trade is not None and trade.pnl_pct is not None else (pos.pnl if pos is not None and pos.pnl is not None else 0.0))
+        exit_price = float(
+            trade.exit_price
+            if trade is not None and trade.exit_price is not None
+            else (getattr(pos, "exit_price", None) or entry_price)
+        )
+        actual_pnl = float(
+            trade.pnl_pct
+            if trade is not None and trade.pnl_pct is not None
+            else (pos.pnl if pos is not None and pos.pnl is not None else 0.0)
+        )
         exit_reason = str(trade.exit_reason if trade is not None else (getattr(pos, "exit_reason", None) or "unknown"))
 
         pip_size = 0.01 if ("JPY" in symbol or "XAU" in symbol or "BTC" in symbol) else 0.0001
 
         if direction in ("BUY", "LONG"):
-            cf_sl = original_sl - (sl_pips_delta * pip_size) if original_sl > 0 else (entry_price - (sl_pips_delta * pip_size))
-            cf_tp = original_tp + (tp_pips_delta * pip_size) if original_tp > 0 else (entry_price + (tp_pips_delta * pip_size))
+            cf_sl = (
+                original_sl - (sl_pips_delta * pip_size)
+                if original_sl > 0
+                else (entry_price - (sl_pips_delta * pip_size))
+            )
+            cf_tp = (
+                original_tp + (tp_pips_delta * pip_size)
+                if original_tp > 0
+                else (entry_price + (tp_pips_delta * pip_size))
+            )
         else:
-            cf_sl = original_sl + (sl_pips_delta * pip_size) if original_sl > 0 else (entry_price + (sl_pips_delta * pip_size))
-            cf_tp = original_tp - (tp_pips_delta * pip_size) if original_tp > 0 else (entry_price - (tp_pips_delta * pip_size))
+            cf_sl = (
+                original_sl + (sl_pips_delta * pip_size)
+                if original_sl > 0
+                else (entry_price + (sl_pips_delta * pip_size))
+            )
+            cf_tp = (
+                original_tp - (tp_pips_delta * pip_size)
+                if original_tp > 0
+                else (entry_price - (tp_pips_delta * pip_size))
+            )
 
         start_time = trade.opened_at if trade is not None else getattr(pos, "opened_at", None)
         end_time = trade.closed_at if trade is not None else getattr(pos, "closed_at", None)
@@ -218,11 +246,16 @@ class CounterfactualSimulator:
 
                 if trailing_stop_atr_mult is not None and trailing_stop_atr_mult > 0:
                     # Compute approximate ATR
-                    tr_list = [max(float(b.high - b.low), abs(float(b.high - b.close)), abs(float(b.low - b.close))) for b in bars]
+                    tr_list = [
+                        max(float(b.high - b.low), abs(float(b.high - b.close)), abs(float(b.low - b.close)))
+                        for b in bars
+                    ]
                     atr_est = (sum(tr_list) / len(tr_list)) if tr_list else (pip_size * 20.0)
                     trail_dist = trailing_stop_atr_mult * atr_est
-                    
-                    current_trail_sl = (entry_price - trail_dist) if direction in ("BUY", "LONG") else (entry_price + trail_dist)
+
+                    current_trail_sl = (
+                        (entry_price - trail_dist) if direction in ("BUY", "LONG") else (entry_price + trail_dist)
+                    )
                     trail_hit = False
                     trail_exit_price = exit_price
 
@@ -244,10 +277,16 @@ class CounterfactualSimulator:
                                 trail_exit_price = current_trail_sl
                                 break
 
-                    pnl_diff_price = (trail_exit_price - entry_price) if direction in ("BUY", "LONG") else (entry_price - trail_exit_price)
+                    pnl_diff_price = (
+                        (trail_exit_price - entry_price)
+                        if direction in ("BUY", "LONG")
+                        else (entry_price - trail_exit_price)
+                    )
                     cf_pnl = (pnl_diff_price / pip_size) * lot * 10.0
                     cf_outcome = "TRAILING_STOP_TRIGGERED" if trail_hit else "TRAILING_STOP_HELD"
-                    notes.append(f"Simulated ATR trailing stop ({trailing_stop_atr_mult}x ATR = {trail_dist:.5f}). Exit price: {trail_exit_price:.5f}.")
+                    notes.append(
+                        f"Simulated ATR trailing stop ({trailing_stop_atr_mult}x ATR = {trail_dist:.5f}). Exit price: {trail_exit_price:.5f}."
+                    )
                 else:
                     lowest_price = min(float(b.low) for b in bars)
                     highest_price = max(float(b.high) for b in bars)
@@ -381,4 +420,3 @@ class CounterfactualSimulator:
                 f"dengan max drawdown terproyeksi {cf_dd}% (dibandingkan {actual_dd}% baseline)."
             ),
         }
-

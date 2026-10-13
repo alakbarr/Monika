@@ -14,7 +14,9 @@ def test_verification_evidence_ledger():
     assert not ledger.has_passed_evidence("EURUSD")
 
     # Verification tool failed
-    ledger.record_tool_execution("calculate_position_size", {"symbol": "EURUSD"}, {"status": "failed", "error": "Invalid SL"})
+    ledger.record_tool_execution(
+        "calculate_position_size", {"symbol": "EURUSD"}, {"status": "failed", "error": "Invalid SL"}
+    )
     assert not ledger.has_passed_evidence("EURUSD")
 
     # Verification tool passed
@@ -28,7 +30,7 @@ def test_verification_evidence_ledger():
 
 def test_trade_stop_gate_blocks_unverified_trade():
     ledger = VerificationEvidenceLedger()
-    
+
     # Model recommends BUY EURUSD without verification evidence
     text = '{"action": "BUY", "symbol": "EURUSD", "entry": 1.0850, "sl": 1.0820, "tp": 1.0910}'
     verdict = TradeStopGate.evaluate(text, ledger, stage_name="per_asset_EURUSD", stage_symbol="EURUSD")
@@ -43,7 +45,7 @@ def test_trade_stop_gate_allows_verified_trade():
     ledger = VerificationEvidenceLedger()
     ledger.record_tool_execution("calculate_position_size", {"symbol": "EURUSD"}, {"status": "success", "lot": 0.2})
 
-    text = 'DECISION: BUY EURUSD at 1.0850, SL: 1.0820, TP: 1.0910'
+    text = "DECISION: BUY EURUSD at 1.0850, SL: 1.0820, TP: 1.0910"
     verdict = TradeStopGate.evaluate(text, ledger, stage_name="per_asset_EURUSD", stage_symbol="EURUSD")
 
     assert verdict.should_stop
@@ -54,7 +56,7 @@ def test_trade_stop_gate_allows_verified_trade():
 def test_trade_stop_gate_allows_wait_without_evidence():
     ledger = VerificationEvidenceLedger()
     # No trade proposed
-    text = 'DECISION: WAIT. Market structure is choppy and no A+ setup is present.'
+    text = "DECISION: WAIT. Market structure is choppy and no A+ setup is present."
     verdict = TradeStopGate.evaluate(text, ledger, stage_name="per_asset_EURUSD", stage_symbol="EURUSD")
 
     assert verdict.should_stop

@@ -1,6 +1,7 @@
 """
 Unit tests for indicators/technical.py (Yang-Zhang volatility, AC1 autocorrelation, is_final bar handling).
 """
+
 import numpy as np
 import pandas as pd
 import pytest

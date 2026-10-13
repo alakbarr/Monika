@@ -10,6 +10,7 @@ from monika.application.analysis.strategies.base_strategy import EdgeStrategy, E
 
 logger = logging.getLogger("TradingAgent.StrategyRegistry")
 
+
 class StrategyRegistry:
     _registry: dict[str, Type[EdgeStrategy]] = {}
     _dynamic_params: dict[str, dict] = {}
@@ -89,6 +90,7 @@ class StrategyRegistry:
         Also loads and compiles synthesized strategies if not yet registered.
         """
         try:
+
             async def _safe_scalars(stmt):
                 res = await session.execute(stmt)
                 if hasattr(res, "scalars"):
@@ -146,6 +148,7 @@ class StrategyRegistry:
             decay_mon = None
             try:
                 from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
                 decay_mon = get_strategy_decay_monitor()
                 await decay_mon.load_from_db(session)
             except Exception as decay_err:
@@ -199,19 +202,25 @@ class StrategyRegistry:
                         continue
 
                     if sym and symbol_active_synths.get(sym, 0) >= cls.MAX_SYNTHESIZED_PER_SYMBOL:
-                        logger.debug(f"[StrategyRegistry] Quota reached for {sym} ({cls.MAX_SYNTHESIZED_PER_SYMBOL}), skipping {s_id}")
+                        logger.debug(
+                            f"[StrategyRegistry] Quota reached for {sym} ({cls.MAX_SYNTHESIZED_PER_SYMBOL}), skipping {s_id}"
+                        )
                         continue
 
                     py_code = s_data.get("python_code")
                     cls_name = s_data.get("class_name")
                     if s_id and py_code and cls_name:
                         # Reject stub templates with hardcoded static signals
-                        if 'direction="buy"' in py_code and 'confidence=0.82' in py_code:
+                        if 'direction="buy"' in py_code and "confidence=0.82" in py_code:
                             cls._blacklisted_ids.add(s_id)
-                            logger.info(f"[StrategyRegistry] Skipping and purging blacklisted stub synthesized strategy: {s_id}")
+                            logger.info(
+                                f"[StrategyRegistry] Skipping and purging blacklisted stub synthesized strategy: {s_id}"
+                            )
                             if hasattr(session, "execute"):
                                 try:
-                                    del_stmt = delete(SystemConfig).where(SystemConfig.key == f"synthesized_strategy_{s_id}")
+                                    del_stmt = delete(SystemConfig).where(
+                                        SystemConfig.key == f"synthesized_strategy_{s_id}"
+                                    )
                                     res_del = session.execute(del_stmt)
                                     if inspect.isawaitable(res_del):
                                         res_del = await res_del
@@ -223,6 +232,7 @@ class StrategyRegistry:
                                     logger.debug(f"[StrategyRegistry] Failed purging stub {s_id} from DB: {purge_err}")
                             continue
                         from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
+
                         synth_sched = StrategySynthesisScheduler({})
                         loaded_cls = synth_sched.compile_strategy_class(py_code, cls_name)
                         if loaded_cls:
@@ -244,7 +254,9 @@ class StrategyRegistry:
                                         if sym:
                                             symbol_active_synths[sym] = symbol_active_synths.get(sym, 0) + 1
                                         healed = True
-                                        logger.info(f"[StrategyRegistry] Self-healed strategy '{s_id}' from disk version.")
+                                        logger.info(
+                                            f"[StrategyRegistry] Self-healed strategy '{s_id}' from disk version."
+                                        )
                                         if hasattr(session, "execute"):
                                             s_data["python_code"] = disk_code
                                             upd_stmt = (
@@ -260,16 +272,21 @@ class StrategyRegistry:
                                                 if inspect.isawaitable(res_c):
                                                     await res_c
                                 except Exception as heal_err:
-                                    logger.debug(f"[StrategyRegistry] Disk self-healing attempt failed for {s_id}: {heal_err}")
+                                    logger.debug(
+                                        f"[StrategyRegistry] Disk self-healing attempt failed for {s_id}: {heal_err}"
+                                    )
                             if not healed:
                                 cls._blacklisted_ids.add(s_id)
-                                logger.warning(f"[StrategyRegistry] Quarantined corrupted synthesized strategy '{s_id}': compilation failed.")
+                                logger.warning(
+                                    f"[StrategyRegistry] Quarantined corrupted synthesized strategy '{s_id}': compilation failed."
+                                )
                 except Exception as synth_err:
                     logger.debug(f"[StrategyRegistry] Failed restoring synthesized strategy: {synth_err}")
 
             # 4. Load persisted strategy decay monitor state
             try:
                 from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
                 await get_strategy_decay_monitor().load_from_db(session)
             except Exception as decay_err:
                 logger.debug(f"[StrategyRegistry] Failed loading decay state: {decay_err}")
@@ -341,12 +358,11 @@ class StrategyRegistry:
                 # Regime compatibility check
                 if current_regime and hasattr(strat, "is_regime_compatible"):
                     if not strat.is_regime_compatible(current_regime):
-                        logger.debug(
-                            f"[{strat_name}] Suppressed: incompatible with current regime '{current_regime}'"
-                        )
+                        logger.debug(f"[{strat_name}] Suppressed: incompatible with current regime '{current_regime}'")
                         continue
 
                 from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
                 if not get_strategy_decay_monitor().is_tradeable(strat_id):
                     logger.debug(
                         f"[{strat_name}] Suppressed by StrategyDecayMonitor "
@@ -356,7 +372,9 @@ class StrategyRegistry:
 
                 sig = await strat.evaluate(session, symbol, settings)
                 if sig is not None and not isinstance(sig, EdgeSignal):
-                    logger.warning(f"[{strat_name}] evaluate returned non-EdgeSignal ({type(sig)}) for {symbol}, discarding")
+                    logger.warning(
+                        f"[{strat_name}] evaluate returned non-EdgeSignal ({type(sig)}) for {symbol}, discarding"
+                    )
                     continue
                 if sig and sig.valid:
                     # Guard against static uncalculated synthesized stub signals
@@ -417,7 +435,9 @@ class StrategyRegistry:
         if strat is None:
             return None
 
-        dyn_params = cls._dynamic_symbol_params.get((strategy_id, symbol.upper())) or cls._dynamic_params.get(strategy_id)
+        dyn_params = cls._dynamic_symbol_params.get((strategy_id, symbol.upper())) or cls._dynamic_params.get(
+            strategy_id
+        )
         if dyn_params and hasattr(strat, "set_parameters"):
             getattr(strat, "set_parameters")(dyn_params)
 
@@ -431,7 +451,7 @@ class StrategyRegistry:
                 res = getattr(strat, "evaluate")(session, symbol, settings, current_regime=current_regime)
             else:
                 res = strat.evaluate(session, symbol, settings)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             res = strat.evaluate(session, symbol, settings)
         if inspect.isawaitable(res):
             res = await res
@@ -439,4 +459,3 @@ class StrategyRegistry:
 
 
 STRATEGY_REGISTRY = StrategyRegistry._registry
-

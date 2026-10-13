@@ -1,4 +1,3 @@
-
 """GTJA Alpha #95.
 
 Formula: STD(AMOUNT,20)
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_095",
-    "theme": ['volatility', 'volume'],
-    "formula_latex": 'STD(AMOUNT,20)',
-    "columns_required": ['amount'],
+    "theme": ["volatility", "volume"],
+    "formula_latex": "STD(AMOUNT,20)",
+    "columns_required": ["amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 20,
     "min_warmup_bars": 21,
-    "notes": '20d std of amount.',
+    "notes": "20d std of amount.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     return ts_std(panel["amount"], 20)

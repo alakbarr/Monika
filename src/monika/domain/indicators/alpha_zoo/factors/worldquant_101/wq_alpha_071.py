@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #71.
 
 Formula (paper appendix): max(Ts_Rank(decay_linear(correlation(Ts_Rank(close,3), Ts_Rank(adv180,12), 18), 4), 16), Ts_Rank(decay_linear((rank((low+open)-(2*vwap))^2, 16), 4))
@@ -33,18 +32,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_071"
 
 __alpha_meta__ = {
-    'id': 'alpha101_071',
-    'nickname': 'Kakushadze Alpha #71',
-    'theme': ['volume', 'reversal'],
-    'formula_latex': 'max(Ts_Rank(decay_linear(correlation(Ts_Rank(close,3), Ts_Rank(adv180,12), 18), 4), 16), Ts_Rank(decay_linear((rank((low+open)-(2*vwap))^2, 16), 4))',
-    'columns_required': ['open', 'low', 'close', 'volume', 'vwap'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 226,
-    'notes': '',
+    "id": "alpha101_071",
+    "nickname": "Kakushadze Alpha #71",
+    "theme": ["volume", "reversal"],
+    "formula_latex": "max(Ts_Rank(decay_linear(correlation(Ts_Rank(close,3), Ts_Rank(adv180,12), 18), 4), 16), Ts_Rank(decay_linear((rank((low+open)-(2*vwap))^2, 16), 4))",
+    "columns_required": ["open", "low", "close", "volume", "vwap"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 226,
+    "notes": "",
 }
 
 

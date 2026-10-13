@@ -233,8 +233,7 @@ class StrategyEvidenceStore:
         self._store[strategy_id] = ev
         self._save()
         logger.info(
-            f"Recorded evidence for [{strategy_id}] {symbol}: "
-            f"Breakeven={be_bps}bps, Age={age_days}d ({status.value})"
+            f"Recorded evidence for [{strategy_id}] {symbol}: Breakeven={be_bps}bps, Age={age_days}d ({status.value})"
         )
         return ev
 
@@ -284,7 +283,10 @@ class StrategyEvidenceStore:
             return False, f"No verified backtest evidence on file for {strategy_id}"
 
         if ev.status == EvidenceStatus.STALE:
-            return False, f"Strategy evidence is STALE ({ev.evidence_age_days} days old >= 180d). Re-validation required."
+            return (
+                False,
+                f"Strategy evidence is STALE ({ev.evidence_age_days} days old >= 180d). Re-validation required.",
+            )
 
         if ev.breakeven_bps < min_breakeven_bps:
             return False, (

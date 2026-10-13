@@ -115,9 +115,7 @@ class ReadOnlyReplayCache:
                 self._cache.clear()
             else:
                 prefix = f"{tool_name.lower().strip()}:"
-                keys_to_delete = [
-                    k for k in self._cache.keys() if k.startswith(prefix)
-                ]
+                keys_to_delete = [k for k in self._cache.keys() if k.startswith(prefix)]
                 for k in keys_to_delete:
                     del self._cache[k]
                     count += 1

@@ -93,6 +93,7 @@ class OrderRequest:
     Decoupled Domain Data Transfer Object for order placement.
     Eliminates tight coupling to SQLAlchemy ORM models in broker layer.
     """
+
     symbol: str
     direction: str  # 'buy' or 'sell'
     volume: float
@@ -178,6 +179,7 @@ class BrokerPlugin(TradingPlugin, ABC):
     """
     Standard interface for all Broker & Execution plugins in Monika.
     """
+
     metadata: PluginMetadata
 
     def __init__(self, *args, **kwargs):

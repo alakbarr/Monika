@@ -42,7 +42,9 @@ def evaluate_trade_discipline(fixture: Dict[str, Any], decision_data: Dict[str, 
     if "WAIT" not in valid_decisions and decision == "WAIT":
         # Check if rationale provided valid veto or was just lazy
         if not any(k in rationale for k in ("risk", "spread", "drawdown", "news", "fvg", "structure")):
-            violations.append("Lazy Unjustified WAIT: Agent avoided trade without concrete structural or risk rationale")
+            violations.append(
+                "Lazy Unjustified WAIT: Agent avoided trade without concrete structural or risk rationale"
+            )
         else:
             checks_passed.append("Defensive WAIT supported by risk context")
 

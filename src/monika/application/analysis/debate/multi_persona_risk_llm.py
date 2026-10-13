@@ -13,30 +13,30 @@ MULTI_PERSONA_RISK_SCHEMA = {
             "properties": {
                 "risk_profile_assessment": {"type": "string"},
                 "recommended_multiplier": {"type": "number"},
-                "veto_trade": {"type": "boolean"}
+                "veto_trade": {"type": "boolean"},
             },
-            "required": ["risk_profile_assessment", "recommended_multiplier", "veto_trade"]
+            "required": ["risk_profile_assessment", "recommended_multiplier", "veto_trade"],
         },
         "aggressive": {
             "type": "object",
             "properties": {
                 "risk_profile_assessment": {"type": "string"},
                 "recommended_multiplier": {"type": "number"},
-                "veto_trade": {"type": "boolean"}
+                "veto_trade": {"type": "boolean"},
             },
-            "required": ["risk_profile_assessment", "recommended_multiplier", "veto_trade"]
+            "required": ["risk_profile_assessment", "recommended_multiplier", "veto_trade"],
         },
         "neutral": {
             "type": "object",
             "properties": {
                 "risk_profile_assessment": {"type": "string"},
                 "recommended_multiplier": {"type": "number"},
-                "veto_trade": {"type": "boolean"}
+                "veto_trade": {"type": "boolean"},
             },
-            "required": ["risk_profile_assessment", "recommended_multiplier", "veto_trade"]
-        }
+            "required": ["risk_profile_assessment", "recommended_multiplier", "veto_trade"],
+        },
     },
-    "required": ["conservative", "aggressive", "neutral"]
+    "required": ["conservative", "aggressive", "neutral"],
 }
 
 MULTI_PERSONA_SYS_PROMPT = """You are a collegiate Risk Evaluation Board analyzing a proposed trade setup from 3 distinct risk perspectives simultaneously.
@@ -70,9 +70,7 @@ async def analyze_risk_multi_persona_llm(
     user_msg = f"Symbol: {symbol}\nContext: {json.dumps(strict_context)}"
     try:
         resp = await client.generate_content(
-            system_prompt=MULTI_PERSONA_SYS_PROMPT,
-            user_message=user_msg,
-            response_schema=MULTI_PERSONA_RISK_SCHEMA
+            system_prompt=MULTI_PERSONA_SYS_PROMPT, user_message=user_msg, response_schema=MULTI_PERSONA_RISK_SCHEMA
         )
         if not resp:
             raise ValueError("Empty response from LLM")
@@ -97,7 +95,19 @@ async def analyze_risk_multi_persona_llm(
     except Exception as e:
         logger.error(f"Multi-persona risk batch evaluation failed ({symbol}): {e}")
         return {
-            "conservative": {"risk_profile_assessment": f"Fallback error (fail-closed): {e}", "recommended_multiplier": 0.0, "veto_trade": True},
-            "aggressive": {"risk_profile_assessment": f"Fallback error (fail-closed): {e}", "recommended_multiplier": 0.0, "veto_trade": True},
-            "neutral": {"risk_profile_assessment": f"Fallback error (fail-closed): {e}", "recommended_multiplier": 0.0, "veto_trade": True},
+            "conservative": {
+                "risk_profile_assessment": f"Fallback error (fail-closed): {e}",
+                "recommended_multiplier": 0.0,
+                "veto_trade": True,
+            },
+            "aggressive": {
+                "risk_profile_assessment": f"Fallback error (fail-closed): {e}",
+                "recommended_multiplier": 0.0,
+                "veto_trade": True,
+            },
+            "neutral": {
+                "risk_profile_assessment": f"Fallback error (fail-closed): {e}",
+                "recommended_multiplier": 0.0,
+                "veto_trade": True,
+            },
         }

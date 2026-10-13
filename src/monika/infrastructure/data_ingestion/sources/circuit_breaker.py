@@ -44,12 +44,12 @@ class DataFeedCircuitBreaker:
     """
 
     DEFAULT_TTLS: Dict[str, float] = {
-        "mt5_ticks": 120.0,          # 2 minutes: tick feed frozen
-        "fred": 345600.0,            # 96 hours: daily series / weekends / holiday buffers
-        "finnhub": 3600.0,           # 1 hour: news feed
-        "economic_calendar": 21600.0,# 6 hours: calendar releases
-        "sentiment": 7200.0,         # 2 hours: crowd sentiment
-        "market_quotes": 300.0,      # 5 minutes: price quotes
+        "mt5_ticks": 120.0,  # 2 minutes: tick feed frozen
+        "fred": 345600.0,  # 96 hours: daily series / weekends / holiday buffers
+        "finnhub": 3600.0,  # 1 hour: news feed
+        "economic_calendar": 21600.0,  # 6 hours: calendar releases
+        "sentiment": 7200.0,  # 2 hours: crowd sentiment
+        "market_quotes": 300.0,  # 5 minutes: price quotes
     }
 
     def __init__(self, custom_ttls: Optional[Dict[str, float]] = None):
@@ -112,7 +112,9 @@ class DataFeedCircuitBreaker:
             "trip_reason": feed.trip_reason,
         }
 
-    def is_feed_stale(self, feed_name: str, max_age_seconds: Optional[float] = None, now: Optional[float] = None) -> bool:
+    def is_feed_stale(
+        self, feed_name: str, max_age_seconds: Optional[float] = None, now: Optional[float] = None
+    ) -> bool:
         """Check if feed_name is older than its TTL or max_age_seconds."""
         key = feed_name.strip().lower()
         feed = self._feeds.get(key)
@@ -232,6 +234,7 @@ class DataFeedCircuitBreaker:
         """Best-effort async event emission to EventBus."""
         try:
             from monika.application.protocol.event_bus import get_event_bus, CircuitBreakerEvent
+
             bus = get_event_bus()
             event = CircuitBreakerEvent(
                 component=component,
@@ -256,6 +259,8 @@ def get_data_feed_circuit_breaker() -> DataFeedCircuitBreaker:
     return _GLOBAL_FEED_BREAKER
 
 
-def record_feed_heartbeat(feed_name: str, timestamp: Optional[float] = None, metadata: Optional[Dict[str, Any]] = None) -> None:
+def record_feed_heartbeat(
+    feed_name: str, timestamp: Optional[float] = None, metadata: Optional[Dict[str, Any]] = None
+) -> None:
     """Convenience helper to record feed arrival."""
     get_data_feed_circuit_breaker().record_feed_heartbeat(feed_name, timestamp, metadata)

@@ -1,4 +1,3 @@
-
 """GTJA Alpha 157 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
@@ -6,6 +5,7 @@ Formula (verbatim from the report):
 
 Notes: PROD(.,1) is identity; we use it directly.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_157"
 
 __alpha_meta__ = {
-    'id': 'gtja191_157',
-    'theme': ['volume'],
-    'formula_latex': 'see body',
-    'columns_required': ['close'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 12,
-    'notes': 'PROD(.,1) is identity; we use it directly.',
+    "id": "gtja191_157",
+    "theme": ["volume"],
+    "formula_latex": "see body",
+    "columns_required": ["close"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 12,
+    "notes": "PROD(.,1) is identity; we use it directly.",
 }
 
 

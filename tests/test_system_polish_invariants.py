@@ -24,9 +24,7 @@ def test_l1_drawdown_monitor_safe_fallback():
     # Verify logic directly: check agent with missing balance
     mock_agent = MagicMock()
     mock_agent.settings = {"paper_trading": {"initial_balance": 15000.0}}
-    mock_agent.execution_service.broker_adapter.get_account_info = AsyncMock(
-        return_value={"balance": 0, "equity": 0}
-    )
+    mock_agent.execution_service.broker_adapter.get_account_info = AsyncMock(return_value={"balance": 0, "equity": 0})
     # The monitor code parses fallback_bal = float(agent.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
     # It must NOT divide by 1.0 or treat 0 as 1.
     account_info = {"balance": 0, "equity": 0}
@@ -84,6 +82,7 @@ def test_l3_default_api_url_env_parameterized(monkeypatch):
 def test_l4_trading_agent_explicit_attributes():
     """L-4: TradingAgent has explicit dynamic attribute annotations and initializations."""
     from main import TradingAgent
+
     agent = TradingAgent(settings={}, dry_run=True)
     assert hasattr(agent, "mt5_health_checker")
     assert hasattr(agent, "risk_parameter_reloader")

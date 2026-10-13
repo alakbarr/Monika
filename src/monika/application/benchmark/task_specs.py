@@ -10,7 +10,12 @@ from monika.application.skills.loader import compose_system_prompt
 from monika.application.analysis.prefetch.stage1_prefetcher import Stage1DataBundler
 from monika.application.analysis.prefetch.stage2_prefetcher import Stage2DataBundler
 from monika.application.analysis.stages.fundamental_stage import USER_MESSAGE as STAGE1_USER_MESSAGE_TEXT
-from monika.application.analysis.stages.per_asset_stage import SPECIALIST_PROMPTS, SYMBOL_TO_COT, _render_specialist_prompt, PerAssetStage
+from monika.application.analysis.stages.per_asset_stage import (
+    SPECIALIST_PROMPTS,
+    SYMBOL_TO_COT,
+    _render_specialist_prompt,
+    PerAssetStage,
+)
 from monika.application.analysis.schemas.schemas import get_tool_schema, SubmitFundamentalBriefSchema
 from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE2_TOOLS, TELEGRAM_TOOLS
 from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
@@ -22,14 +27,34 @@ from monika.application.analysis.debate.conservative_risk_llm import analyze_ris
 from monika.application.analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
 from monika.application.analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
 from monika.application.analysis.debate.portfolio_manager import make_portfolio_decision
-from monika.application.analysis.debate.deterministic_risk import analyze_risk_conservative, analyze_risk_aggressive, analyze_risk_neutral
-from monika.application.analysis.validators.fundamental_verifier import VERIFIER_SCHEMA, FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT
+from monika.application.analysis.debate.deterministic_risk import (
+    analyze_risk_conservative,
+    analyze_risk_aggressive,
+    analyze_risk_neutral,
+)
+from monika.application.analysis.validators.fundamental_verifier import (
+    VERIFIER_SCHEMA,
+    FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT,
+)
 from monika.application.analysis.memory.reflector import REFLECTION_SCHEMA, TradeReflector
-from monika.application.analysis.prefetch.news_digest import NEWS_CLASSIFICATION_SCHEMA, DIGEST_CONSISTENCY_SCHEMA, NewsDigestProcessor
+from monika.application.analysis.prefetch.news_digest import (
+    NEWS_CLASSIFICATION_SCHEMA,
+    DIGEST_CONSISTENCY_SCHEMA,
+    NewsDigestProcessor,
+)
 from monika.application.analysis.prefetch.macro_preprocessor import MacroPreprocessor
 from monika.application.protocol.context_coherence import get_base_quote_tags
 
-from .db_access import pick_asset_analysis, latest_brief, latest_digest, recent_news, resolved_reflection, latest_user_message, entry_context, BenchmarkToolExecutor
+from .db_access import (
+    pick_asset_analysis,
+    latest_brief,
+    latest_digest,
+    recent_news,
+    resolved_reflection,
+    latest_user_message,
+    entry_context,
+    BenchmarkToolExecutor,
+)
 from .invoker import make_client
 from .fixture_loader import (
     load_fixture_json,
@@ -150,7 +175,12 @@ def _sym(settings: dict) -> str:
 # STAGE 1 (macro) -- mode agent, pakai skill loader ASLI + bundle prefetch ASLI
 # =========================================================================
 def _stage1_system_prompt(settings: dict) -> str:
-    skills = ["macro_analysis_framework", "market_dynamics_framework", "performance_notes", "fundamental_performance_notes"]
+    skills = [
+        "macro_analysis_framework",
+        "market_dynamics_framework",
+        "performance_notes",
+        "fundamental_performance_notes",
+    ]
     if settings.get("trading", {}).get("caveman_mode", False):
         skills.append("caveman_mode")
     return compose_system_prompt(*skills)
@@ -167,10 +197,16 @@ async def _case_stage1_fundamental(session, settings, ex) -> BenchmarkCase:
     if not bundle:
         bundle = get_synthetic_stage1_bundle()
     user_msg = STAGE1_USER_MESSAGE_TEXT + f"\n\n[PRE-FETCHED DATA]\n{bundle}"
-    return BenchmarkCase("stage1", "macro", _stage1_system_prompt(settings), user_msg,
-                          tools=STAGE1_TOOLS, stage_name="benchmark_stage1_fundamental",
-                          role_kwargs=dict(max_tokens=12000, max_tool_turns=8, thinking="high"),
-                          context_summary=bundle)
+    return BenchmarkCase(
+        "stage1",
+        "macro",
+        _stage1_system_prompt(settings),
+        user_msg,
+        tools=STAGE1_TOOLS,
+        stage_name="benchmark_stage1_fundamental",
+        role_kwargs=dict(max_tokens=12000, max_tool_turns=8, thinking="high"),
+        context_summary=bundle,
+    )
 
 
 async def _case_stage1_escalation(session, settings, ex) -> BenchmarkCase:
@@ -199,18 +235,30 @@ async def _case_stage1_escalation(session, settings, ex) -> BenchmarkCase:
         prior_json = json.dumps(get_synthetic_fundamental_brief())
         escalation_note = "\n\n--- ESCALATION REQUIRED ---\nPrior brief had low confidence."
 
-    user_msg = (STAGE1_USER_MESSAGE_TEXT + f"\n\n[PRE-FETCHED DATA]\n{bundle}"
-                f"{escalation_note}\nPRIOR BRIEF:\n{prior_json}")
-    return BenchmarkCase("stage1_escalation", "macro", _stage1_system_prompt(settings), user_msg,
-                          tools=STAGE1_TOOLS, stage_name="benchmark_stage1_escalation",
-                          role_kwargs=dict(max_tokens=16000, max_tool_turns=8, thinking="high"),
-                          context_summary=bundle[:6000])
+    user_msg = (
+        STAGE1_USER_MESSAGE_TEXT + f"\n\n[PRE-FETCHED DATA]\n{bundle}{escalation_note}\nPRIOR BRIEF:\n{prior_json}"
+    )
+    return BenchmarkCase(
+        "stage1_escalation",
+        "macro",
+        _stage1_system_prompt(settings),
+        user_msg,
+        tools=STAGE1_TOOLS,
+        stage_name="benchmark_stage1_escalation",
+        role_kwargs=dict(max_tokens=16000, max_tool_turns=8, thinking="high"),
+        context_summary=bundle[:6000],
+    )
 
 
-_SHADOW_SCHEMA = {"type": "object", "properties": {
-    "currency_bias": {"type": "object"}, "agreement_pct": {"type": "number"},
-    "flagged_currencies": {"type": "array", "items": {"type": "string"}}},
-    "required": ["currency_bias", "agreement_pct", "flagged_currencies"]}
+_SHADOW_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "currency_bias": {"type": "object"},
+        "agreement_pct": {"type": "number"},
+        "flagged_currencies": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["currency_bias", "agreement_pct", "flagged_currencies"],
+}
 
 
 async def _case_stage1_shadow_check(session, settings, ex) -> BenchmarkCase:
@@ -235,12 +283,22 @@ async def _case_stage1_shadow_check(session, settings, ex) -> BenchmarkCase:
             pass
     if not declared_bias:
         declared_bias = get_synthetic_fundamental_brief().get("currency_bias", {})
-    prompt = ("Independently determine USD/EUR/GBP/JPY/AUD/XAU bias "
-              "(bullish/bearish/neutral) based SOLELY on the following raw data:\n" + bundle +
-              f"\n\nThe brief being verified concluded: {json.dumps(declared_bias)}\n"
-              "Calculate agreement_pct and list any diverging flagged_currencies.")
-    return BenchmarkCase("stage1_shadow_check", "macro", "", prompt, schema=_SHADOW_SCHEMA,
-                          role_kwargs=dict(max_tokens=1200, thinking="low"), context_summary=bundle[:8000])
+    prompt = (
+        "Independently determine USD/EUR/GBP/JPY/AUD/XAU bias "
+        "(bullish/bearish/neutral) based SOLELY on the following raw data:\n"
+        + bundle
+        + f"\n\nThe brief being verified concluded: {json.dumps(declared_bias)}\n"
+        "Calculate agreement_pct and list any diverging flagged_currencies."
+    )
+    return BenchmarkCase(
+        "stage1_shadow_check",
+        "macro",
+        "",
+        prompt,
+        schema=_SHADOW_SCHEMA,
+        role_kwargs=dict(max_tokens=1200, thinking="low"),
+        context_summary=bundle[:8000],
+    )
 
 
 async def _case_fundamental_verifier(session, settings, ex) -> BenchmarkCase:
@@ -255,31 +313,36 @@ async def _case_fundamental_verifier(session, settings, ex) -> BenchmarkCase:
     if not st:
         st = get_synthetic_fundamental_brief()
     prompt = f"""Narrative:
-{st.get('macro_narrative', '')}
+{st.get("macro_narrative", "")}
 
-Currency Bias: {json.dumps(st.get('currency_bias', {}))}
-Currency Confidence: {json.dumps(st.get('currency_confidence', {}))}
-Risk Sentiment: {st.get('risk_sentiment')}
-Overall Confidence: {st.get('confidence')}
-Invalidation Conditions: {json.dumps(st.get('invalidation_conditions', {}))}
-Strongest Counter Thesis: {st.get('strongest_counter_thesis')}"""
+Currency Bias: {json.dumps(st.get("currency_bias", {}))}
+Currency Confidence: {json.dumps(st.get("currency_confidence", {}))}
+Risk Sentiment: {st.get("risk_sentiment")}
+Overall Confidence: {st.get("confidence")}
+Invalidation Conditions: {json.dumps(st.get("invalidation_conditions", {}))}
+Strongest Counter Thesis: {st.get("strongest_counter_thesis")}"""
     return BenchmarkCase(
-        "fundamental_verifier", "macro",
+        "fundamental_verifier",
+        "macro",
         system_prompt=FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT,
         user_prompt=prompt,
         schema=VERIFIER_SCHEMA,
         role_kwargs=dict(max_tokens=1024, thinking="low"),
-        context_summary=prompt[:4000]
+        context_summary=prompt[:4000],
     )
-
 
 
 # =========================================================================
 # STAGE 2 (per-asset) -- mode agent, pakai bundle + skill loader ASLI
 # =========================================================================
 def _stage2_system_prompt(settings, symbol, cot_code, threshold) -> str:
-    skills = ["smc_ict_playbook", "market_dynamics_framework", "liquidity_and_macro_edge",
-              "risk_management_principles", "session_timing_rules"]
+    skills = [
+        "smc_ict_playbook",
+        "market_dynamics_framework",
+        "liquidity_and_macro_edge",
+        "risk_management_principles",
+        "session_timing_rules",
+    ]
     if symbol == "XTIUSD":
         skills.insert(1, "commodity_analysis")
     elif symbol in settings.get("trading", {}).get("24_7_assets", ["BTCUSD"]):
@@ -287,13 +350,15 @@ def _stage2_system_prompt(settings, symbol, cot_code, threshold) -> str:
     if settings.get("trading", {}).get("caveman_mode", False):
         skills.append("caveman_mode")
     body = compose_system_prompt(*skills).replace(
-        "{tool_order_guidance}",
-        "Standard data is pre-fetched below; only invoke tools for genuinely missing data.")
-    static = ("You are a professional FX/Gold/commodity/crypto technical analyst using SMC/ICT.\n\n" + body)
-    dyn = (f"\n\n=== CURRENT ANALYSIS TARGET ===\nSymbol: {symbol}\nCOT Code: {cot_code or 'N/A'}\n"
-           f"Effective Confluence Threshold: {threshold}/14\n"
-           f"Minimum R:R Ratio: {settings.get('trading',{}).get('risk',{}).get('min_rr_ratio', 1.3)}\n"
-           "=== END TARGET ===\n")
+        "{tool_order_guidance}", "Standard data is pre-fetched below; only invoke tools for genuinely missing data."
+    )
+    static = "You are a professional FX/Gold/commodity/crypto technical analyst using SMC/ICT.\n\n" + body
+    dyn = (
+        f"\n\n=== CURRENT ANALYSIS TARGET ===\nSymbol: {symbol}\nCOT Code: {cot_code or 'N/A'}\n"
+        f"Effective Confluence Threshold: {threshold}/14\n"
+        f"Minimum R:R Ratio: {settings.get('trading', {}).get('risk', {}).get('min_rr_ratio', 1.3)}\n"
+        "=== END TARGET ===\n"
+    )
     return static + dyn
 
 
@@ -312,18 +377,24 @@ async def _build_stage2_case(session, settings, symbol: str, stage_tag: str) -> 
         try:
             from monika.infrastructure.database.models import FundamentalBrief
             from sqlalchemy import select
-            b_row = (await session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))).scalar_one_or_none()
+
+            b_row = (
+                await session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))
+            ).scalar_one_or_none()
             if not b_row:
                 import monika.core.primitives.clock as clock
+
                 syn = get_synthetic_fundamental_brief()
-                session.add(FundamentalBrief(
-                    generated_at=clock.now(),
-                    valid_until=clock.now(),
-                    content_markdown=syn.get("macro_narrative", ""),
-                    structured_json=json.dumps(syn),
-                    confidence=0.82,
-                    risk_sentiment="selective_risk_off",
-                ))
+                session.add(
+                    FundamentalBrief(
+                        generated_at=clock.now(),
+                        valid_until=clock.now(),
+                        content_markdown=syn.get("macro_narrative", ""),
+                        structured_json=json.dumps(syn),
+                        confidence=0.82,
+                        risk_sentiment="selective_risk_off",
+                    )
+                )
                 await session.flush()
 
             bundled = await Stage2DataBundler(session, settings).fetch_bundle(symbol, cot_code=cot_code or None)
@@ -334,17 +405,31 @@ async def _build_stage2_case(session, settings, symbol: str, stage_tag: str) -> 
             bundle_text = None
     if not bundle_text:
         bundle_text, _ = get_synthetic_stage2_bundle(symbol)
-    user_msg = bundle_text + (f"\n\nAnalyze {symbol} using pre-fetched data above, then call "
-                               "submit_asset_analysis with your final decision.")
-    return BenchmarkCase(symbol, "trade_decision", sysp, user_msg, tools=STAGE2_TOOLS,
-                          stage_name=f"benchmark_{stage_tag}_{symbol}",
-                          role_kwargs=dict(max_tokens=12000, max_tool_turns=10, thinking="high"),
-                          context_summary=bundle_text[:6000])
+    user_msg = bundle_text + (
+        f"\n\nAnalyze {symbol} using pre-fetched data above, then call submit_asset_analysis with your final decision."
+    )
+    return BenchmarkCase(
+        symbol,
+        "trade_decision",
+        sysp,
+        user_msg,
+        tools=STAGE2_TOOLS,
+        stage_name=f"benchmark_{stage_tag}_{symbol}",
+        role_kwargs=dict(max_tokens=12000, max_tool_turns=10, thinking="high"),
+        context_summary=bundle_text[:6000],
+    )
 
 
-async def _case_stage2_primary(session, settings, ex): return await _build_stage2_case(session, settings, _sym(settings), "stage2_primary")
-async def _case_stage2_secondary(session, settings, ex): return await _build_stage2_case(session, settings, _sym(settings), "stage2_secondary")
-async def _case_stage2_session_trigger(session, settings, ex): return await _build_stage2_case(session, settings, _sym(settings), "stage2_session_trigger")
+async def _case_stage2_primary(session, settings, ex):
+    return await _build_stage2_case(session, settings, _sym(settings), "stage2_primary")
+
+
+async def _case_stage2_secondary(session, settings, ex):
+    return await _build_stage2_case(session, settings, _sym(settings), "stage2_secondary")
+
+
+async def _case_stage2_session_trigger(session, settings, ex):
+    return await _build_stage2_case(session, settings, _sym(settings), "stage2_session_trigger")
 
 
 async def _case_stage2_prescreen(session, settings, ex) -> BenchmarkCase:
@@ -370,10 +455,20 @@ async def _case_stage2_prescreen(session, settings, ex) -> BenchmarkCase:
                 "Evaluate if liquidity, volatility, and market conditions meet requirements for full specialist analysis. "
                 "Output YES if viable, NO if risk paused, VIX extreme (>28), or market is dead/illiquid."
             )
-            schema = {"type": "object", "properties": {"decision": {"type": "string", "enum": ["YES", "NO"]},
-                      "reason": {"type": "string"}}, "required": ["decision", "reason"]}
-            return BenchmarkCase(symbol, "trade_decision", "", prompt, schema=schema,
-                                  role_kwargs=dict(max_tokens=256, thinking="none"), context_summary=prompt)
+            schema = {
+                "type": "object",
+                "properties": {"decision": {"type": "string", "enum": ["YES", "NO"]}, "reason": {"type": "string"}},
+                "required": ["decision", "reason"],
+            }
+            return BenchmarkCase(
+                symbol,
+                "trade_decision",
+                "",
+                prompt,
+                schema=schema,
+                role_kwargs=dict(max_tokens=256, thinking="none"),
+                context_summary=prompt,
+            )
     if not use_fixtures and ex:
         try:
             vix = await ex.execute("get_vix", {})
@@ -382,24 +477,41 @@ async def _case_stage2_prescreen(session, settings, ex) -> BenchmarkCase:
             trading_paused = risk_state.get("trading_paused", False)
         except Exception:
             pass
-    prompt = (f"Quick trading opportunity check for {symbol}.\n"
-              f"VIX: {vix_val}\nRisk paused: {trading_paused}\n"
-              "YES if viable for full analysis, NO if risk is paused / VIX is extreme (>28) / dead market.")
-    schema = {"type": "object", "properties": {"decision": {"type": "string", "enum": ["YES", "NO"]},
-              "reason": {"type": "string"}}, "required": ["decision", "reason"]}
-    return BenchmarkCase(symbol, "trade_decision", "", prompt, schema=schema,
-                          role_kwargs=dict(max_tokens=256, thinking="none"), context_summary=prompt)
+    prompt = (
+        f"Quick trading opportunity check for {symbol}.\n"
+        f"VIX: {vix_val}\nRisk paused: {trading_paused}\n"
+        "YES if viable for full analysis, NO if risk is paused / VIX is extreme (>28) / dead market."
+    )
+    schema = {
+        "type": "object",
+        "properties": {"decision": {"type": "string", "enum": ["YES", "NO"]}, "reason": {"type": "string"}},
+        "required": ["decision", "reason"],
+    }
+    return BenchmarkCase(
+        symbol,
+        "trade_decision",
+        "",
+        prompt,
+        schema=schema,
+        role_kwargs=dict(max_tokens=256, thinking="none"),
+        context_summary=prompt,
+    )
 
 
 # =========================================================================
 # SPECIALIST (technical / sentiment / macro) -- mode json, pakai prompt & key-map ASLI
 # =========================================================================
-_SPEC_SCHEMA = {"type": "object", "properties": {
-    "directional_bias": {"type": "string", "enum": ["BULLISH", "BEARISH", "NEUTRAL"]},
-    "confidence": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW"]},
-    "key_evidence": {"type": "array", "items": {"type": "string"}},
-    "invalidation": {"type": "string"}, "analysis": {"type": "string"}},
-    "required": ["directional_bias", "confidence", "key_evidence", "invalidation", "analysis"]}
+_SPEC_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "directional_bias": {"type": "string", "enum": ["BULLISH", "BEARISH", "NEUTRAL"]},
+        "confidence": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW"]},
+        "key_evidence": {"type": "array", "items": {"type": "string"}},
+        "invalidation": {"type": "string"},
+        "analysis": {"type": "string"},
+    },
+    "required": ["directional_bias", "confidence", "key_evidence", "invalidation", "analysis"],
+}
 
 
 async def _build_specialist_case(session, settings, symbol, role: str) -> BenchmarkCase:
@@ -423,13 +535,27 @@ async def _build_specialist_case(session, settings, symbol, role: str) -> Benchm
     base_c = currencies[0].strip() if currencies else "USD"
     quote_c = currencies[1].strip() if len(currencies) > 1 else "USD"
     sysp = _render_specialist_prompt(SPECIALIST_PROMPTS[role], symbol, base_c, quote_c)
-    return BenchmarkCase(symbol, "specialist", sysp, data_view, schema=_SPEC_SCHEMA,
-                          role_kwargs=dict(max_tokens=1400, thinking="low"), context_summary=data_view[:6000])
+    return BenchmarkCase(
+        symbol,
+        "specialist",
+        sysp,
+        data_view,
+        schema=_SPEC_SCHEMA,
+        role_kwargs=dict(max_tokens=1400, thinking="low"),
+        context_summary=data_view[:6000],
+    )
 
 
-async def _case_specialist_technical(session, settings, ex): return await _build_specialist_case(session, settings, _sym(settings), "technical")
-async def _case_specialist_sentiment(session, settings, ex): return await _build_specialist_case(session, settings, _sym(settings), "sentiment")
-async def _case_specialist_macro(session, settings, ex): return await _build_specialist_case(session, settings, _sym(settings), "macro")
+async def _case_specialist_technical(session, settings, ex):
+    return await _build_specialist_case(session, settings, _sym(settings), "technical")
+
+
+async def _case_specialist_sentiment(session, settings, ex):
+    return await _build_specialist_case(session, settings, _sym(settings), "sentiment")
+
+
+async def _case_specialist_macro(session, settings, ex):
+    return await _build_specialist_case(session, settings, _sym(settings), "macro")
 
 
 # =========================================================================
@@ -448,7 +574,10 @@ async def _get_debate_context(session, settings, symbol: str) -> tuple[dict, dic
 
     sym = (symbol or "EURUSD").upper()
     prod_fix = load_fixture_json(f"production_smc_snapshot_{sym.lower()}.json")
-    price = prod_fix.get("price", 1.1377 if sym == "EURUSD" else (4260.50 if sym == "XAUUSD" else (158.80 if sym == "USDJPY" else 1.3217)))
+    price = prod_fix.get(
+        "price",
+        1.1377 if sym == "EURUSD" else (4260.50 if sym == "XAUUSD" else (158.80 if sym == "USDJPY" else 1.3217)),
+    )
     tech = prod_fix.get("analysis", {})
 
     if sym == "EURUSD":
@@ -528,7 +657,9 @@ async def _get_debate_context(session, settings, symbol: str) -> tuple[dict, dic
     }
     fs = {
         "symbol": sym,
-        "h1_structure": tech.get("structure", "BULLISH" if decision == "BUY" else ("BEARISH" if decision == "SELL" else "CONSOLIDATION")),
+        "h1_structure": tech.get(
+            "structure", "BULLISH" if decision == "BUY" else ("BEARISH" if decision == "SELL" else "CONSOLIDATION")
+        ),
         "m15_structure": "BULLISH" if decision == "BUY" else ("BEARISH" if decision == "SELL" else "CHOP"),
         "key_support": stop_loss,
         "key_resistance": take_profit,
@@ -540,9 +671,14 @@ async def _get_debate_context(session, settings, symbol: str) -> tuple[dict, dic
 async def _case_debate_bull(session, settings, ex) -> BenchmarkCase:
     symbol = _sym(settings)
     ctx, fs = await _get_debate_context(session, settings, symbol)
-    return BenchmarkCase(symbol, "debate", custom_fn=generate_bull_advocacy, custom_args=(symbol, ctx, fs),
-                          role_kwargs=dict(max_tokens=1500, thinking="medium"),
-                          context_summary=json.dumps({"context": ctx, "fact_sheet": fs}, default=str)[:5000])
+    return BenchmarkCase(
+        symbol,
+        "debate",
+        custom_fn=generate_bull_advocacy,
+        custom_args=(symbol, ctx, fs),
+        role_kwargs=dict(max_tokens=1500, thinking="medium"),
+        context_summary=json.dumps({"context": ctx, "fact_sheet": fs}, default=str)[:5000],
+    )
 
 
 async def _case_debate_bear(session, settings, ex) -> BenchmarkCase:
@@ -560,9 +696,14 @@ async def _case_debate_bear(session, settings, ex) -> BenchmarkCase:
     if not bull_claim:
         bull_claim, _ = get_synthetic_debate_claims(symbol)
 
-    return BenchmarkCase(symbol, "debate", custom_fn=generate_bear_dissent, custom_args=(symbol, ctx, bull_claim, fs),
-                          role_kwargs=dict(max_tokens=1500, thinking="medium"),
-                          context_summary=json.dumps({"context": ctx, "bull_claim": bull_claim, "fact_sheet": fs}, default=str)[:5000])
+    return BenchmarkCase(
+        symbol,
+        "debate",
+        custom_fn=generate_bear_dissent,
+        custom_args=(symbol, ctx, bull_claim, fs),
+        role_kwargs=dict(max_tokens=1500, thinking="medium"),
+        context_summary=json.dumps({"context": ctx, "bull_claim": bull_claim, "fact_sheet": fs}, default=str)[:5000],
+    )
 
 
 async def _case_debate_judge(session, settings, ex) -> BenchmarkCase:
@@ -583,18 +724,26 @@ async def _case_debate_judge(session, settings, ex) -> BenchmarkCase:
         bull_claim = bull_claim or syn_bull
         bear_dissent = bear_dissent or syn_bear
 
-    return BenchmarkCase(symbol, "debate", custom_fn=evaluate_debate, custom_args=(symbol, ctx, bull_claim, bear_dissent),
-                          role_kwargs=dict(max_tokens=800, thinking="high"),
-                          context_summary=json.dumps({"context": ctx, "bull": bull_claim, "bear": bear_dissent}, default=str)[:5000])
+    return BenchmarkCase(
+        symbol,
+        "debate",
+        custom_fn=evaluate_debate,
+        custom_args=(symbol, ctx, bull_claim, bear_dissent),
+        role_kwargs=dict(max_tokens=800, thinking="high"),
+        context_summary=json.dumps({"context": ctx, "bull": bull_claim, "bear": bear_dissent}, default=str)[:5000],
+    )
 
 
-
-_ADJUDICATION_SCHEMA = {"type": "object", "properties": {
-    "adjudication_rule_correctly_applied": {"type": "boolean"},
-    "expected_outcome_per_rules": {"type": "string", "enum": ["buy", "sell", "wait", "avoid", "ambiguous"]},
-    "mismatch_explanation": {"type": "string"},
-    "verdict": {"type": "string", "enum": ["CONFIRM", "FLAG_FOR_REVIEW", "CONTRADICTS_OWN_FRAMEWORK"]}},
-    "required": ["adjudication_rule_correctly_applied", "expected_outcome_per_rules", "verdict"]}
+_ADJUDICATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "adjudication_rule_correctly_applied": {"type": "boolean"},
+        "expected_outcome_per_rules": {"type": "string", "enum": ["buy", "sell", "wait", "avoid", "ambiguous"]},
+        "mismatch_explanation": {"type": "string"},
+        "verdict": {"type": "string", "enum": ["CONFIRM", "FLAG_FOR_REVIEW", "CONTRADICTS_OWN_FRAMEWORK"]},
+    },
+    "required": ["adjudication_rule_correctly_applied", "expected_outcome_per_rules", "verdict"],
+}
 
 
 async def _case_stage2_adjudicator(session, settings, ex) -> BenchmarkCase:
@@ -623,15 +772,24 @@ async def _case_stage2_adjudicator(session, settings, ex) -> BenchmarkCase:
                 rationale = analysis.rationale or rationale
             except Exception:
                 pass
-    prompt = ("Rules: IF Technical=BULLISH AND Macro=BULLISH -> HIGH conf BUY. IF Technical=BEARISH AND "
-              "Macro=BEARISH -> HIGH conf SELL. IF Technical vs Macro conflict -> WAIT unless technical "
-              "trust_weight>0.8. IF all NEUTRAL/MIXED -> WAIT.\n\n"
-              f"Specialist biases {symbol}: {json.dumps(biases)}\n"
-              f"Specialist confidence: {json.dumps(confidences)}\n"
-              f"Final decision: {decision}\nRationale: {rationale[:1500]}\n\n"
-              "Did the final decision correctly follow the adjudication rules based on these specialist biases?")
-    return BenchmarkCase(symbol, "debate", "", prompt, schema=_ADJUDICATION_SCHEMA,
-                          role_kwargs=dict(max_tokens=800, thinking="medium"), context_summary=prompt)
+    prompt = (
+        "Rules: IF Technical=BULLISH AND Macro=BULLISH -> HIGH conf BUY. IF Technical=BEARISH AND "
+        "Macro=BEARISH -> HIGH conf SELL. IF Technical vs Macro conflict -> WAIT unless technical "
+        "trust_weight>0.8. IF all NEUTRAL/MIXED -> WAIT.\n\n"
+        f"Specialist biases {symbol}: {json.dumps(biases)}\n"
+        f"Specialist confidence: {json.dumps(confidences)}\n"
+        f"Final decision: {decision}\nRationale: {rationale[:1500]}\n\n"
+        "Did the final decision correctly follow the adjudication rules based on these specialist biases?"
+    )
+    return BenchmarkCase(
+        symbol,
+        "debate",
+        "",
+        prompt,
+        schema=_ADJUDICATION_SCHEMA,
+        role_kwargs=dict(max_tokens=800, thinking="medium"),
+        context_summary=prompt,
+    )
 
 
 # =========================================================================
@@ -651,13 +809,17 @@ async def _build_strict_risk_context(session, settings, ex, symbol) -> tuple[dic
                 sl_d, tp_d = abs(entry_price - analysis.stop_loss), abs(entry_price - analysis.take_profit)
                 rr = (tp_d / sl_d) if sl_d else None
             strict_context = {
-                "symbol": symbol, "decision": ctx["decision"], "confluence_score": analysis.confluence_score,
-                "priced_in_score": analysis.priced_in_score, "rr_ratio": rr, "sl_beyond_structure": True,
+                "symbol": symbol,
+                "decision": ctx["decision"],
+                "confluence_score": analysis.confluence_score,
+                "priced_in_score": analysis.priced_in_score,
+                "rr_ratio": rr,
+                "sl_beyond_structure": True,
                 "actual_risk_state": {
                     "daily_pnl_pct": risk_state.get("daily_pnl_pct", 0.0),
                     "open_positions": open_pos.get("count", 0),
-                    "portfolio_heat_pct": 0.0
-                }
+                    "portfolio_heat_pct": 0.0,
+                },
             }
             return strict_context, analysis
         except Exception:
@@ -669,13 +831,26 @@ async def _build_strict_risk_context(session, settings, ex, symbol) -> tuple[dic
 async def _case_risk_gate(session, settings, ex, fn) -> BenchmarkCase:
     symbol = _sym(settings)
     strict_context, _ = await _build_strict_risk_context(session, settings, ex, symbol)
-    return BenchmarkCase(symbol, "risk", custom_fn=fn, custom_args=(symbol, strict_context),
-                          role_kwargs=dict(max_tokens=500, thinking="low"), context_summary=json.dumps(strict_context, default=str))
+    return BenchmarkCase(
+        symbol,
+        "risk",
+        custom_fn=fn,
+        custom_args=(symbol, strict_context),
+        role_kwargs=dict(max_tokens=500, thinking="low"),
+        context_summary=json.dumps(strict_context, default=str),
+    )
 
 
-async def _case_risk_gate_conservative(session, settings, ex): return await _case_risk_gate(session, settings, ex, analyze_risk_conservative_llm)
-async def _case_risk_gate_aggressive(session, settings, ex): return await _case_risk_gate(session, settings, ex, analyze_risk_aggressive_llm)
-async def _case_risk_gate_neutral(session, settings, ex): return await _case_risk_gate(session, settings, ex, analyze_risk_neutral_llm)
+async def _case_risk_gate_conservative(session, settings, ex):
+    return await _case_risk_gate(session, settings, ex, analyze_risk_conservative_llm)
+
+
+async def _case_risk_gate_aggressive(session, settings, ex):
+    return await _case_risk_gate(session, settings, ex, analyze_risk_aggressive_llm)
+
+
+async def _case_risk_gate_neutral(session, settings, ex):
+    return await _case_risk_gate(session, settings, ex, analyze_risk_neutral_llm)
 
 
 async def _case_portfolio_manager_per_trade(session, settings, ex) -> BenchmarkCase:
@@ -685,20 +860,31 @@ async def _case_portfolio_manager_per_trade(session, settings, ex) -> BenchmarkC
     risk_debate_states = {
         "conservative": analyze_risk_conservative(strict_context),
         "aggressive": analyze_risk_aggressive(strict_context, min_rr_ratio=min_rr),
-        "neutral": analyze_risk_neutral(strict_context, min_rr_ratio=min_rr)
+        "neutral": analyze_risk_neutral(strict_context, min_rr_ratio=min_rr),
     }
-    return BenchmarkCase(symbol, "risk", custom_fn=make_portfolio_decision,
-                          custom_args=(symbol, risk_debate_states, strict_context["actual_risk_state"]),
-                          role_kwargs=dict(max_tokens=400, thinking="low"),
-                          context_summary=json.dumps({"risk_debate_states": risk_debate_states,
-                                                       "actual_risk_state": strict_context["actual_risk_state"]}, default=str))
+    return BenchmarkCase(
+        symbol,
+        "risk",
+        custom_fn=make_portfolio_decision,
+        custom_args=(symbol, risk_debate_states, strict_context["actual_risk_state"]),
+        role_kwargs=dict(max_tokens=400, thinking="low"),
+        context_summary=json.dumps(
+            {"risk_debate_states": risk_debate_states, "actual_risk_state": strict_context["actual_risk_state"]},
+            default=str,
+        ),
+    )
 
 
-_PORTFOLIO_SYNTHESIS_SCHEMA = {"type": "object", "properties": {
-    "recommendation": {"type": "string", "enum": ["execute_all", "reduce"]},
-    "keep": {"type": "array", "items": {"type": "string"}},
-    "size_adjustments": {"type": "object"}, "reasoning": {"type": "string"}},
-    "required": ["recommendation", "keep", "reasoning"]}
+_PORTFOLIO_SYNTHESIS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "recommendation": {"type": "string", "enum": ["execute_all", "reduce"]},
+        "keep": {"type": "array", "items": {"type": "string"}},
+        "size_adjustments": {"type": "object"},
+        "reasoning": {"type": "string"},
+    },
+    "required": ["recommendation", "keep", "reasoning"],
+}
 
 
 async def _case_portfolio_synthesis(session, settings, ex) -> BenchmarkCase:
@@ -708,8 +894,16 @@ async def _case_portfolio_synthesis(session, settings, ex) -> BenchmarkCase:
         try:
             from sqlalchemy import select as _sel
             from monika.infrastructure.database.models import AssetAnalysis as _AA
-            rows = (await session.execute(_sel(_AA).where(_AA.decision.in_(["buy", "sell"]))
-                    .order_by(_AA.generated_at.desc()).limit(3))).scalars().all()
+
+            rows = (
+                (
+                    await session.execute(
+                        _sel(_AA).where(_AA.decision.in_(["buy", "sell"])).order_by(_AA.generated_at.desc()).limit(3)
+                    )
+                )
+                .scalars()
+                .all()
+            )
         except Exception:
             rows = []
     use_fixtures = settings.get("_use_fixtures", False)
@@ -718,7 +912,7 @@ async def _case_portfolio_synthesis(session, settings, ex) -> BenchmarkCase:
         proposals = concurrent.get("simultaneous_order_proposals", [])
         if proposals:
             summaries = [
-                f"- {p['symbol']} {p['decision']}: confidence={int(p.get('confidence', 0.8)*100)}% "
+                f"- {p['symbol']} {p['decision']}: confidence={int(p.get('confidence', 0.8) * 100)}% "
                 f"(Entry {p.get('entry_price')}, SL {p.get('stop_loss')}, TP {p.get('take_profit')}, "
                 f"Risk ${p.get('risk_amount_usd', 400)} / {p.get('risk_pct', 0.5)}%, Confluence {p.get('confluence_score', 10)}/14)"
                 for p in proposals
@@ -729,7 +923,7 @@ async def _case_portfolio_synthesis(session, settings, ex) -> BenchmarkCase:
                 "- GBPUSD WAIT: confidence=60% (Entry 1.3020, range bound chop)",
                 "- USDJPY SELL: confidence=78% (Entry 143.80, SL 144.60, TP 142.20, R:R 2.10)",
                 "- XAUUSD BUY: confidence=85% (Entry 2658.50, SL 2642.00, TP 2695.00, R:R 2.45)",
-                "- XTIUSD BUY: confidence=80% (Entry 71.85, SL 70.40, TP 74.50, R:R 2.00)"
+                "- XTIUSD BUY: confidence=80% (Entry 71.85, SL 70.40, TP 74.50, R:R 2.00)",
             ]
         brief_sentiment = concurrent.get("market_regime", "selective_risk_off")
         brief_confidence = 0.82
@@ -748,20 +942,38 @@ async def _case_portfolio_synthesis(session, settings, ex) -> BenchmarkCase:
             vix_val = (vix.get("latest") or {}).get("close", 16.70)
         except Exception:
             vix_val = 16.70
-    prompt = (f"Portfolio Review: Multiple proposed trades across asset universe.\n\nProposed Trades:\n" + "\n".join(summaries) +
-              f"\n\nRisk sentiment: {brief_sentiment}\nBrief confidence: {brief_confidence}\n"
-              f"VIX: {vix_val}\n\n"
-              "Execute ALL of these trades, or REDUCE portfolio exposure due to correlation/risk clustering? Respond with "
-              "recommendation, keep[], optional size_adjustments{symbol:multiplier}, and reasoning.")
-    return BenchmarkCase("portfolio", "risk", "", prompt, schema=_PORTFOLIO_SYNTHESIS_SCHEMA,
-                          role_kwargs=dict(max_tokens=800, thinking="high"), context_summary=prompt)
+    prompt = (
+        f"Portfolio Review: Multiple proposed trades across asset universe.\n\nProposed Trades:\n"
+        + "\n".join(summaries)
+        + f"\n\nRisk sentiment: {brief_sentiment}\nBrief confidence: {brief_confidence}\n"
+        f"VIX: {vix_val}\n\n"
+        "Execute ALL of these trades, or REDUCE portfolio exposure due to correlation/risk clustering? Respond with "
+        "recommendation, keep[], optional size_adjustments{symbol:multiplier}, and reasoning."
+    )
+    return BenchmarkCase(
+        "portfolio",
+        "risk",
+        "",
+        prompt,
+        schema=_PORTFOLIO_SYNTHESIS_SCHEMA,
+        role_kwargs=dict(max_tokens=800, thinking="high"),
+        context_summary=prompt,
+    )
 
 
-_ADVERSARIAL_SCHEMA = {"type": "object", "properties": {
-    "approve": {"type": "boolean"}, "overall_quality": {"type": "string", "enum": ["high", "medium", "low"]},
-    "strongest_counter_argument": {"type": "string"}, "hard_block": {"type": "boolean"},
-    "hard_block_reason": {"type": "string"}, "recommend_block": {"type": "boolean"}, "block_reason": {"type": "string"}},
-    "required": ["approve", "overall_quality", "strongest_counter_argument", "hard_block", "recommend_block"]}
+_ADVERSARIAL_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "approve": {"type": "boolean"},
+        "overall_quality": {"type": "string", "enum": ["high", "medium", "low"]},
+        "strongest_counter_argument": {"type": "string"},
+        "hard_block": {"type": "boolean"},
+        "hard_block_reason": {"type": "string"},
+        "recommend_block": {"type": "boolean"},
+        "block_reason": {"type": "string"},
+    },
+    "required": ["approve", "overall_quality", "strongest_counter_argument", "hard_block", "recommend_block"],
+}
 
 
 async def _case_adversarial_check(session, settings, ex) -> BenchmarkCase:
@@ -799,17 +1011,25 @@ async def _case_adversarial_check(session, settings, ex) -> BenchmarkCase:
                 rationale = analysis.rationale or rationale
             except Exception:
                 pass
-    prompt = (f"Symbol: {symbol}\nDirection: {decision}\n"
-              f"Confluence Score: {confluence}/14\nPriced-In Score: {priced_in}/10\n"
-              f"Invalidation: {invalidation}\nEntry context: {entry_zone}\n"
-              f"SL: {sl}  TP: {tp}\n\n"
-              f"Full Rationale:\n{rationale[:3500]}\n\n"
-              "Find the STRONGEST argument against this specific trade. hard_block=true only for objective "
-              "defects (mathematical error, self-contradiction, missing invalidation). recommend_block=true "
-              "for significant non-fatal risk.")
-    return BenchmarkCase(symbol, "risk", "You are a skeptical risk-desk reviewer conducting a final "
-                          "pre-trade challenge.", prompt, schema=_ADVERSARIAL_SCHEMA,
-                          role_kwargs=dict(max_tokens=1200, thinking="medium"), context_summary=prompt)
+    prompt = (
+        f"Symbol: {symbol}\nDirection: {decision}\n"
+        f"Confluence Score: {confluence}/14\nPriced-In Score: {priced_in}/10\n"
+        f"Invalidation: {invalidation}\nEntry context: {entry_zone}\n"
+        f"SL: {sl}  TP: {tp}\n\n"
+        f"Full Rationale:\n{rationale[:3500]}\n\n"
+        "Find the STRONGEST argument against this specific trade. hard_block=true only for objective "
+        "defects (mathematical error, self-contradiction, missing invalidation). recommend_block=true "
+        "for significant non-fatal risk."
+    )
+    return BenchmarkCase(
+        symbol,
+        "risk",
+        "You are a skeptical risk-desk reviewer conducting a final pre-trade challenge.",
+        prompt,
+        schema=_ADVERSARIAL_SCHEMA,
+        role_kwargs=dict(max_tokens=1200, thinking="medium"),
+        context_summary=prompt,
+    )
 
 
 # =========================================================================
@@ -827,58 +1047,114 @@ async def _get_news_items_list(session, settings, limit: int = 25):
             pass
     raw_fixtures = get_synthetic_news_items()
     from collections import namedtuple
+
     NewsMock = namedtuple("NewsMock", ["title", "summary", "fetched_at", "impact"])
     items = []
     for item in raw_fixtures[:bench_limit]:
-        items.append(NewsMock(
-            title=item.get("title", ""),
-            summary=item.get("summary", ""),
-            fetched_at=item.get("fetched_at", "2026-10-02T08:00:00Z"),
-            impact=item.get("expected_impact", "HIGH")
-        ))
+        items.append(
+            NewsMock(
+                title=item.get("title", ""),
+                summary=item.get("summary", ""),
+                fetched_at=item.get("fetched_at", "2026-10-02T08:00:00Z"),
+                impact=item.get("expected_impact", "HIGH"),
+            )
+        )
     return items
 
 
 async def _case_news_classification(session, settings, ex) -> BenchmarkCase:
     items = await _get_news_items_list(session, settings, limit=20)
-    lines = [f"{i+1}. TITLE: {n.title[:150]}\n   SUMMARY: {(n.summary or '')[:200]}\n   FETCHED: {n.fetched_at}"
-             for i, n in enumerate(items)]
-    prompt = ("Classify market impact of each news item for FX, Commodities (Gold/Oil), and Crypto (Bitcoin) trading "
-              "(BREAKING/HIGH/MEDIUM/LOW/NONE), surprise_magnitude, currencies, sentiments.\n\n" +
-              NewsDigestProcessor.CLASSIFICATION_FEW_SHOT_EXAMPLES + "\n\nITEMS:\n" + "\n".join(lines))
-    return BenchmarkCase("news_batch", "news", "", prompt, schema=NEWS_CLASSIFICATION_SCHEMA,
-                          role_kwargs=dict(max_tokens=2000, thinking="medium"), context_summary=prompt[:5000])
+    lines = [
+        f"{i + 1}. TITLE: {n.title[:150]}\n   SUMMARY: {(n.summary or '')[:200]}\n   FETCHED: {n.fetched_at}"
+        for i, n in enumerate(items)
+    ]
+    prompt = (
+        "Classify market impact of each news item for FX, Commodities (Gold/Oil), and Crypto (Bitcoin) trading "
+        "(BREAKING/HIGH/MEDIUM/LOW/NONE), surprise_magnitude, currencies, sentiments.\n\n"
+        + NewsDigestProcessor.CLASSIFICATION_FEW_SHOT_EXAMPLES
+        + "\n\nITEMS:\n"
+        + "\n".join(lines)
+    )
+    return BenchmarkCase(
+        "news_batch",
+        "news",
+        "",
+        prompt,
+        schema=NEWS_CLASSIFICATION_SCHEMA,
+        role_kwargs=dict(max_tokens=2000, thinking="medium"),
+        context_summary=prompt[:5000],
+    )
 
 
 async def _case_news_classification_escalation(session, settings, ex) -> BenchmarkCase:
     items = await _get_news_items_list(session, settings, limit=10)
-    lines = [f"{i+1}. ORIGINAL_VERDICT=HIGH\n   TITLE: {n.title[:200]}\n   FULL SUMMARY: {(n.summary or '')[:600]}"
-             for i, n in enumerate(items)]
+    lines = [
+        f"{i + 1}. ORIGINAL_VERDICT=HIGH\n   TITLE: {n.title[:200]}\n   FULL SUMMARY: {(n.summary or '')[:600]}"
+        for i, n in enumerate(items)
+    ]
     prompt = "Re-evaluate each item from SCRATCH, without bias toward original verdict.\n\nITEMS:\n" + "\n".join(lines)
-    return BenchmarkCase("news_escalation", "news", "", prompt, schema=NEWS_CLASSIFICATION_SCHEMA,
-                          role_kwargs=dict(max_tokens=2000, thinking="low"), context_summary=prompt[:5000])
+    return BenchmarkCase(
+        "news_escalation",
+        "news",
+        "",
+        prompt,
+        schema=NEWS_CLASSIFICATION_SCHEMA,
+        role_kwargs=dict(max_tokens=2000, thinking="low"),
+        context_summary=prompt[:5000],
+    )
 
 
 async def _case_news_classification_verifier(session, settings, ex) -> BenchmarkCase:
     items = await _get_news_items_list(session, settings, limit=15)
-    text = "\n\n".join([f"{i+1}. [current=HIGH] {n.title[:150]}\n   {(n.summary or '')[:200]}" for i, n in enumerate(items)])
-    schema = {"type": "array", "items": {"type": "object", "properties": {
-        "index": {"type": "integer"}, "verdict": {"type": "string", "enum": ["CONFIRM", "PROMOTE_TO_HIGH", "DEMOTE_TO_MEDIUM", "DEMOTE_TO_LOW"]},
-        "reason": {"type": "string"}}, "required": ["index", "verdict", "reason"]}}
-    prompt = f"HIGH-vs-MEDIUM calibration editor. For each item decide if current tier is appropriate.\n\nITEMS:\n{text}"
-    return BenchmarkCase("news_verifier", "news", "", prompt, schema=schema,
-                          role_kwargs=dict(max_tokens=600, thinking="low"), context_summary=prompt[:4000])
+    text = "\n\n".join(
+        [f"{i + 1}. [current=HIGH] {n.title[:150]}\n   {(n.summary or '')[:200]}" for i, n in enumerate(items)]
+    )
+    schema = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "index": {"type": "integer"},
+                "verdict": {
+                    "type": "string",
+                    "enum": ["CONFIRM", "PROMOTE_TO_HIGH", "DEMOTE_TO_MEDIUM", "DEMOTE_TO_LOW"],
+                },
+                "reason": {"type": "string"},
+            },
+            "required": ["index", "verdict", "reason"],
+        },
+    }
+    prompt = (
+        f"HIGH-vs-MEDIUM calibration editor. For each item decide if current tier is appropriate.\n\nITEMS:\n{text}"
+    )
+    return BenchmarkCase(
+        "news_verifier",
+        "news",
+        "",
+        prompt,
+        schema=schema,
+        role_kwargs=dict(max_tokens=600, thinking="low"),
+        context_summary=prompt[:4000],
+    )
 
 
 async def _case_news_digest(session, settings, ex) -> BenchmarkCase:
     items = await _get_news_items_list(session, settings, limit=60)
     text = "\n\n".join([f"[{getattr(n, 'impact', 'HIGH')}] {n.title}\n{(n.summary or '')[:300]}" for n in items])
-    prompt = (f"Synthesize the following news into a MACRO OVERVIEW for FX, Commodities (Gold/Oil), and Crypto (Bitcoin) traders.\n\nNEWS:\n{text}\n\n"
-              "Cover: [MACRO REGIME], [KEY DRIVERS], [WHAT MARKET IS WAITING FOR], "
-              "[WHAT IS PRICED IN vs NOT], [CROSS-CURRENCY IMPLICATIONS]. Each claim MUST cite "
-              "concrete numbers/levels/dates from the NEWS above.")
-    return BenchmarkCase("news_digest", "news", "", prompt, role_kwargs=dict(max_tokens=3000, thinking="medium"),
-                          context_summary=text[:5000])
+    prompt = (
+        f"Synthesize the following news into a MACRO OVERVIEW for FX, Commodities (Gold/Oil), and Crypto (Bitcoin) traders.\n\nNEWS:\n{text}\n\n"
+        "Cover: [MACRO REGIME], [KEY DRIVERS], [WHAT MARKET IS WAITING FOR], "
+        "[WHAT IS PRICED IN vs NOT], [CROSS-CURRENCY IMPLICATIONS]. Each claim MUST cite "
+        "concrete numbers/levels/dates from the NEWS above."
+    )
+    return BenchmarkCase(
+        "news_digest",
+        "news",
+        "",
+        prompt,
+        role_kwargs=dict(max_tokens=3000, thinking="medium"),
+        context_summary=text[:5000],
+    )
 
 
 MACRO_OVERVIEW_STATIC_SYSTEM = """You are a senior macro trading analyst. Synthesize the following market news into a cohesive MACRO OVERVIEW for FX, Commodities (Gold/Oil), and Crypto (Bitcoin) traders.
@@ -941,13 +1217,13 @@ NEWS (sorted by recency and impact):
 
 Guidance: Synthesize all dominant drivers into a professional trading desk macro overview."""
     return BenchmarkCase(
-        "news_digest_macro_overview", "news",
+        "news_digest_macro_overview",
+        "news",
         system_prompt=MACRO_OVERVIEW_STATIC_SYSTEM,
         user_prompt=user_prompt,
         role_kwargs=dict(max_tokens=4000, thinking="high"),
-        context_summary=user_prompt[:5000]
+        context_summary=user_prompt[:5000],
     )
-
 
 
 async def _case_news_digest_verifier(session, settings, ex) -> BenchmarkCase:
@@ -968,11 +1244,19 @@ async def _case_news_digest_verifier(session, settings, ex) -> BenchmarkCase:
             "[KEY DRIVERS] Hormuz naval escalation pushing crude oil to $106/bbl.\n"
             "[CROSS-CURRENCY IMPLICATIONS] Strong USD tailwinds; EUR under pressure due to energy import drag."
         )
-    prompt = ("Read this trading news digest and look for glaring contradictions between sections (quote "
-              "verbatim both conflicting claims, rate severity material/minor).\n\nDIGEST:\n" +
-              digest_text)
-    return BenchmarkCase("digest_verifier", "news", "", prompt, schema=DIGEST_CONSISTENCY_SCHEMA,
-                          role_kwargs=dict(max_tokens=800, thinking="low"), context_summary=digest_text[:6000])
+    prompt = (
+        "Read this trading news digest and look for glaring contradictions between sections (quote "
+        "verbatim both conflicting claims, rate severity material/minor).\n\nDIGEST:\n" + digest_text
+    )
+    return BenchmarkCase(
+        "digest_verifier",
+        "news",
+        "",
+        prompt,
+        schema=DIGEST_CONSISTENCY_SCHEMA,
+        role_kwargs=dict(max_tokens=800, thinking="low"),
+        context_summary=digest_text[:6000],
+    )
 
 
 async def _case_cot_precompute(session, settings, ex) -> BenchmarkCase:
@@ -992,21 +1276,44 @@ async def _case_cot_precompute(session, settings, ex) -> BenchmarkCase:
                     "non_commercial_bias": d.get("cot_institutional", {}).get("non_commercial_bias", "NEUTRAL"),
                     "net_position": d.get("cot_institutional", {}).get("net_position", 0),
                     "retail_contrarian": d.get("retail_fxssi", {}).get("contrarian_signal", "HOLD"),
-                    "retail_long_pct": d.get("retail_myfxbook", {}).get("long_pct", 50.0)
+                    "retail_long_pct": d.get("retail_myfxbook", {}).get("long_pct", 50.0),
                 }
                 for sym, d in assets.items()
             }
         else:
             cot_signals = {
-                "EUR": {"commercial_net": -45000, "non_commercial_net": 38000, "z_score": 1.45, "bias": "BEARISH_EXTREME"},
-                "USD": {"commercial_net": 62000, "non_commercial_net": -51000, "z_score": -1.82, "bias": "BULLISH_EXTREME"},
-                "XAU": {"commercial_net": -120000, "non_commercial_net": 115000, "z_score": 2.10, "bias": "OVERBOUGHT_REVERSAL_RISK"}
+                "EUR": {
+                    "commercial_net": -45000,
+                    "non_commercial_net": 38000,
+                    "z_score": 1.45,
+                    "bias": "BEARISH_EXTREME",
+                },
+                "USD": {
+                    "commercial_net": 62000,
+                    "non_commercial_net": -51000,
+                    "z_score": -1.82,
+                    "bias": "BULLISH_EXTREME",
+                },
+                "XAU": {
+                    "commercial_net": -120000,
+                    "non_commercial_net": 115000,
+                    "z_score": 2.10,
+                    "bias": "OVERBOUGHT_REVERSAL_RISK",
+                },
             }
-    prompt = (f"Computed COT and Institutional Positioning data:\n{json.dumps(cot_signals, indent=2)}\n\n"
-              "Produce a 2-3 sentence summary of institutional positioning, highlighting extreme/"
-              "overcrowded positions and reversal risk implications. Do not invent new figures.")
-    return BenchmarkCase("cot", "news", "You are a concise institutional positioning analyst.",
-                          prompt, role_kwargs=dict(max_tokens=1024, thinking="low"), context_summary=prompt)
+    prompt = (
+        f"Computed COT and Institutional Positioning data:\n{json.dumps(cot_signals, indent=2)}\n\n"
+        "Produce a 2-3 sentence summary of institutional positioning, highlighting extreme/"
+        "overcrowded positions and reversal risk implications. Do not invent new figures."
+    )
+    return BenchmarkCase(
+        "cot",
+        "news",
+        "You are a concise institutional positioning analyst.",
+        prompt,
+        role_kwargs=dict(max_tokens=1024, thinking="low"),
+        context_summary=prompt,
+    )
 
 
 # =========================================================================
@@ -1029,15 +1336,32 @@ async def _build_chat_case(session, settings, ex, idx: int) -> BenchmarkCase:
             msg = None
     if not msg:
         msg = _FALLBACK_CHAT_QUESTIONS[idx % len(_FALLBACK_CHAT_QUESTIONS)]
-    sysp = ("You are an AI Trading Assistant. Use tools for real-time data. "
-            "Answer grounded in data, do not fabricate numbers. Markdown format, concise.")
-    return BenchmarkCase(f"chat_{idx}", "chat", sysp, msg, tools=TELEGRAM_TOOLS, history=[],
-                          role_kwargs=dict(max_tokens=3000, max_tool_turns=8, thinking="medium"), context_summary=msg)
+    sysp = (
+        "You are an AI Trading Assistant. Use tools for real-time data. "
+        "Answer grounded in data, do not fabricate numbers. Markdown format, concise."
+    )
+    return BenchmarkCase(
+        f"chat_{idx}",
+        "chat",
+        sysp,
+        msg,
+        tools=TELEGRAM_TOOLS,
+        history=[],
+        role_kwargs=dict(max_tokens=3000, max_tool_turns=8, thinking="medium"),
+        context_summary=msg,
+    )
 
 
-async def _case_chat_telegram(session, settings, ex): return await _build_chat_case(session, settings, ex, 0)
-async def _case_chat_telegram_medium(session, settings, ex): return await _build_chat_case(session, settings, ex, 1)
-async def _case_chat_telegram_complex(session, settings, ex): return await _build_chat_case(session, settings, ex, 2)
+async def _case_chat_telegram(session, settings, ex):
+    return await _build_chat_case(session, settings, ex, 0)
+
+
+async def _case_chat_telegram_medium(session, settings, ex):
+    return await _build_chat_case(session, settings, ex, 1)
+
+
+async def _case_chat_telegram_complex(session, settings, ex):
+    return await _build_chat_case(session, settings, ex, 2)
 
 
 # =========================================================================
@@ -1063,14 +1387,19 @@ async def _case_trade_reflection(session, settings, ex) -> BenchmarkCase:
         holding = golden_ref.get("holding_hours") or 3.5
         dec = (golden_ref.get("decision") or "BUY").upper()
         sym = golden_ref.get("symbol") or "EURUSD"
-        ref_text = golden_ref.get("reflection_text") or "Stop loss placed too tight inside M15 liquidity pool rather than behind H4 structural swing low."
-        lesson = golden_ref.get("lesson_crystallized") or "Always buffer Stop Loss beyond higher timeframe liquidity sweeps."
+        ref_text = (
+            golden_ref.get("reflection_text")
+            or "Stop loss placed too tight inside M15 liquidity pool rather than behind H4 structural swing low."
+        )
+        lesson = (
+            golden_ref.get("lesson_crystallized") or "Always buffer Stop Loss beyond higher timeframe liquidity sweeps."
+        )
         enrichment_data = {
             "symbol": sym,
             "vix_at_entry": 15.68,
             "vix_at_exit": 24.10,
             "historical_lesson": lesson,
-            "post_mortem_notes": ref_text
+            "post_mortem_notes": ref_text,
         }
         prompt = (
             f"Trade Rationale: {sym} {dec} at 1.1377 targeting 1.1460 based on H1 bullish displacement\n"
@@ -1080,18 +1409,30 @@ async def _case_trade_reflection(session, settings, ex) -> BenchmarkCase:
             f"Holding: {holding}h\n"
             f"Enrichment Data: {json.dumps(enrichment_data)}"
         )
-        return BenchmarkCase("golden_reflection_01", "reflection",
-                              "You are a trading post-mortem analyst. Use ONLY tags from enum. Concrete, not generic.",
-                              prompt, schema=REFLECTION_SCHEMA, role_kwargs=dict(max_tokens=1500, thinking="medium"),
-                              context_summary=prompt[:5000])
+        return BenchmarkCase(
+            "golden_reflection_01",
+            "reflection",
+            "You are a trading post-mortem analyst. Use ONLY tags from enum. Concrete, not generic.",
+            prompt,
+            schema=REFLECTION_SCHEMA,
+            role_kwargs=dict(max_tokens=1500, thinking="medium"),
+            context_summary=prompt[:5000],
+        )
     outcome_str = f"Outcome: {'Profitable' if reflection.was_profitable else 'Loss'} (${reflection.outcome_pnl_usd})"
-    prompt = (f"Trade Rationale: {reflection.rationale_summary}\nDecision: {reflection.decision} "
-              f"(Confidence: {reflection.confidence})\n{outcome_str}\nExit Reason: {reflection.exit_reason}\n"
-              f"Holding: {reflection.holding_hours}h\nEnrichment Data: {json.dumps(enrichment, default=str)}")
-    return BenchmarkCase(str(reflection.id), "reflection",
-                          "You are a trading post-mortem analyst. Use ONLY tags from enum. Concrete, not generic.",
-                          prompt, schema=REFLECTION_SCHEMA, role_kwargs=dict(max_tokens=1500, thinking="medium"),
-                          context_summary=prompt[:5000])
+    prompt = (
+        f"Trade Rationale: {reflection.rationale_summary}\nDecision: {reflection.decision} "
+        f"(Confidence: {reflection.confidence})\n{outcome_str}\nExit Reason: {reflection.exit_reason}\n"
+        f"Holding: {reflection.holding_hours}h\nEnrichment Data: {json.dumps(enrichment, default=str)}"
+    )
+    return BenchmarkCase(
+        str(reflection.id),
+        "reflection",
+        "You are a trading post-mortem analyst. Use ONLY tags from enum. Concrete, not generic.",
+        prompt,
+        schema=REFLECTION_SCHEMA,
+        role_kwargs=dict(max_tokens=1500, thinking="medium"),
+        context_summary=prompt[:5000],
+    )
 
 
 _HARNESS_HALLUCINATION_SCHEMA = {
@@ -1100,10 +1441,11 @@ _HARNESS_HALLUCINATION_SCHEMA = {
         "contradictions_detected": {"type": "array", "items": {"type": "string"}},
         "is_consistent": {"type": "boolean"},
         "severity": {"type": "string", "enum": ["none", "low", "medium", "high"]},
-        "reasoning": {"type": "string"}
+        "reasoning": {"type": "string"},
     },
-    "required": ["contradictions_detected", "is_consistent", "severity", "reasoning"]
+    "required": ["contradictions_detected", "is_consistent", "severity", "reasoning"],
 }
+
 
 async def _case_harness_hallucination_detect(session, settings, ex) -> BenchmarkCase:
     contradictory_brief = {
@@ -1112,7 +1454,7 @@ async def _case_harness_hallucination_detect(session, settings, ex) -> Benchmark
         "vix": 34.5,
         "risk_sentiment": "risk-on",
         "treasury_10y_yield": "4.65% (rising)",
-        "fedwatch_cut_prob": "92%"
+        "fedwatch_cut_prob": "92%",
     }
     prompt = (
         "Audit this macro brief data for internal contradictions and hallucination risks:\n\n"
@@ -1121,16 +1463,19 @@ async def _case_harness_hallucination_detect(session, settings, ex) -> Benchmark
         "yields rising vs 92% rate cut expectation). Output JSON matching schema."
     )
     return BenchmarkCase(
-        "stage1_shadow_check", "macro",
+        "stage1_shadow_check",
+        "macro",
         "You are an adversarial quantitative auditor detecting internal contradictions and hallucination risks.",
         prompt,
         schema=_HARNESS_HALLUCINATION_SCHEMA,
         role_kwargs=dict(max_tokens=600, thinking="medium"),
-        context_summary=prompt
+        context_summary=prompt,
     )
+
 
 async def _case_harness_context_efficiency(session, settings, ex) -> BenchmarkCase:
     from monika.infrastructure.llm.prompt_compressor import PromptBundleCompressor as ContextCompressor
+
     compressor = ContextCompressor(settings)
     raw_data = "Sample market structure text with extensive descriptions.\n" * 50
     compressed = compressor.compress_stage1_bundle(raw_data, max_tokens=200)
@@ -1139,12 +1484,14 @@ async def _case_harness_context_efficiency(session, settings, ex) -> BenchmarkCa
         "Provide a concise 1-paragraph summary with directional bias."
     )
     return BenchmarkCase(
-        "news_digest", "macro",
+        "news_digest",
+        "macro",
         "You are a concise trading analyst.",
         prompt,
         role_kwargs=dict(max_tokens=400, thinking="low"),
-        context_summary=prompt
+        context_summary=prompt,
     )
+
 
 async def _case_harness_self_correction(session, settings, ex) -> BenchmarkCase:
     prompt = (
@@ -1156,12 +1503,23 @@ async def _case_harness_self_correction(session, settings, ex) -> BenchmarkCase:
         "Correct this decision so that SL is strictly BELOW entry (e.g. 1.0950) and R:R >= 1.3."
     )
     return BenchmarkCase(
-        "stage2_prescreen", "trade_decision",
+        "stage2_prescreen",
+        "trade_decision",
         "You are a disciplined trade execution validator.",
         prompt,
-        schema={"type": "object", "properties": {"decision": {"type": "string"}, "entry": {"type": "number"}, "stop_loss": {"type": "number"}, "take_profit": {"type": "number"}, "reasoning": {"type": "string"}}, "required": ["decision", "entry", "stop_loss", "take_profit"]},
+        schema={
+            "type": "object",
+            "properties": {
+                "decision": {"type": "string"},
+                "entry": {"type": "number"},
+                "stop_loss": {"type": "number"},
+                "take_profit": {"type": "number"},
+                "reasoning": {"type": "string"},
+            },
+            "required": ["decision", "entry", "stop_loss", "take_profit"],
+        },
         role_kwargs=dict(max_tokens=400, thinking="low"),
-        context_summary=prompt
+        context_summary=prompt,
     )
 
 
@@ -1169,135 +1527,206 @@ async def _case_harness_self_correction(session, settings, ex) -> BenchmarkCase:
 # SYSTEM ONE & EXPANDED TASK IMPLEMENTATIONS
 # =========================================================================
 
+
 async def _case_jev_news_realtime(session, settings, ex) -> BenchmarkCase:
     fix = load_fixture_json("s1_news_breaking_iran.json")
-    state = fix.get("state", {
-        "title": "BREAKING: Iran IRGC launches cruise missile strike on oil tankers in Strait of Hormuz",
-        "summary": "Three commercial crude oil tankers struck in the Strait of Hormuz. Brent crude surges +7.5% to $114/bbl.",
-        "open_positions": ["XAUUSD", "EURUSD", "USDJPY"]
-    })
-    questions = fix.get("questions", [
-        {"name": "market_sentiment", "type": "Score", "range": [1, 5], "description": "1: Risk-off panic, 5: Risk-on euphoria"},
-        {"name": "threatens_positions", "type": "Noul", "description": "Does headline introduce immediate sharp adverse volatility threat to open positions?"},
-        {"name": "requires_circuit_breaker", "type": "Noul", "description": "Is this an extreme systemic shock requiring emergency circuit breaker or stop tightening?"}
-    ])
-    expected = fix.get("expected_answers", {
-        "market_sentiment": 1,
-        "threatens_positions": True,
-        "threatens_positions_confidence_min": 0.85,
-        "requires_circuit_breaker": True,
-        "requires_circuit_breaker_confidence_min": 0.90
-    })
+    state = fix.get(
+        "state",
+        {
+            "title": "BREAKING: Iran IRGC launches cruise missile strike on oil tankers in Strait of Hormuz",
+            "summary": "Three commercial crude oil tankers struck in the Strait of Hormuz. Brent crude surges +7.5% to $114/bbl.",
+            "open_positions": ["XAUUSD", "EURUSD", "USDJPY"],
+        },
+    )
+    questions = fix.get(
+        "questions",
+        [
+            {
+                "name": "market_sentiment",
+                "type": "Score",
+                "range": [1, 5],
+                "description": "1: Risk-off panic, 5: Risk-on euphoria",
+            },
+            {
+                "name": "threatens_positions",
+                "type": "Noul",
+                "description": "Does headline introduce immediate sharp adverse volatility threat to open positions?",
+            },
+            {
+                "name": "requires_circuit_breaker",
+                "type": "Noul",
+                "description": "Is this an extreme systemic shock requiring emergency circuit breaker or stop tightening?",
+            },
+        ],
+    )
+    expected = fix.get(
+        "expected_answers",
+        {
+            "market_sentiment": 1,
+            "threatens_positions": True,
+            "threatens_positions_confidence_min": 0.85,
+            "requires_circuit_breaker": True,
+            "requires_circuit_breaker_confidence_min": 0.90,
+        },
+    )
     return BenchmarkCase(
-        "jev_news_realtime", "news",
+        "jev_news_realtime",
+        "news",
         user_prompt="Evaluate breaking news shock in real time against open positions.",
         state=state,
         questions=questions,
         expected_answers=expected,
         latency_target_ms=100.0,
         fixture_data=fix,
-        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0)
+        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0),
     )
 
 
 async def _case_jev_trigger_validator(session, settings, ex) -> BenchmarkCase:
     fix = load_fixture_json("s1_trigger_stale_eurusd.json")
-    state = fix.get("state", {
-        "symbol": "EURUSD",
-        "trigger_type": "breakout_buy",
-        "trigger_condition": {"level": 1.1460, "timeframe": "M15"},
-        "current_price": 1.1377,
-        "age_hours": 18.5,
-        "macro_context": "Hawkish Fed hike + DXY break above 101.20 has shifted market structure to bearish H1."
-    })
-    questions = fix.get("questions", [
-        {"name": "is_still_valid", "type": "Noul", "description": "Is this trade trigger still structurally valid and actionable given price action and elapsed time?"},
-        {"name": "invalidation_risk", "type": "Score", "range": [1, 4], "description": "Rate risk that trigger is invalidated: 1: None, 2: Low, 3: Moderate, 4: High"}
-    ])
-    expected = fix.get("expected_answers", {
-        "is_still_valid": False,
-        "is_still_valid_confidence_min": 0.85,
-        "invalidation_risk": 4
-    })
+    state = fix.get(
+        "state",
+        {
+            "symbol": "EURUSD",
+            "trigger_type": "breakout_buy",
+            "trigger_condition": {"level": 1.1460, "timeframe": "M15"},
+            "current_price": 1.1377,
+            "age_hours": 18.5,
+            "macro_context": "Hawkish Fed hike + DXY break above 101.20 has shifted market structure to bearish H1.",
+        },
+    )
+    questions = fix.get(
+        "questions",
+        [
+            {
+                "name": "is_still_valid",
+                "type": "Noul",
+                "description": "Is this trade trigger still structurally valid and actionable given price action and elapsed time?",
+            },
+            {
+                "name": "invalidation_risk",
+                "type": "Score",
+                "range": [1, 4],
+                "description": "Rate risk that trigger is invalidated: 1: None, 2: Low, 3: Moderate, 4: High",
+            },
+        ],
+    )
+    expected = fix.get(
+        "expected_answers", {"is_still_valid": False, "is_still_valid_confidence_min": 0.85, "invalidation_risk": 4}
+    )
     return BenchmarkCase(
-        "jev_trigger_validator", "trade_decision",
+        "jev_trigger_validator",
+        "trade_decision",
         user_prompt="Validate trade trigger validity against current price action.",
         state=state,
         questions=questions,
         expected_answers=expected,
         latency_target_ms=100.0,
         fixture_data=fix,
-        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0)
+        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0),
     )
 
 
 async def _case_jev_position_guard(session, settings, ex) -> BenchmarkCase:
     fix = load_fixture_json("s1_position_guard_xauusd.json")
-    state = fix.get("state", {
-        "symbol": "XAUUSD",
-        "direction": "BUY",
-        "entry_price": 4275.00,
-        "current_price": 4260.00,
-        "sl": 4252.00,
-        "tp": 4320.00,
-        "volume": 0.5,
-        "adverse_move_pips": 1500,
-        "current_momentum": "sharp_bearish_impulse"
-    })
-    questions = fix.get("questions", [
-        {"name": "adverse_momentum", "type": "Noul", "description": "Is there strong adverse momentum against our BUY position in XAUUSD?"},
-        {"name": "sl_threat_level", "type": "Score", "range": [1, 4], "description": "1: Safe, 2: Normal, 3: Elevated, 4: Critical"},
-        {"name": "should_tighten_stop", "type": "Noul", "description": "Should trailing stop be tightened?"}
-    ])
-    expected = fix.get("expected_answers", {
-        "adverse_momentum": True,
-        "adverse_momentum_confidence_min": 0.85,
-        "sl_threat_level": 4,
-        "should_tighten_stop": True
-    })
+    state = fix.get(
+        "state",
+        {
+            "symbol": "XAUUSD",
+            "direction": "BUY",
+            "entry_price": 4275.00,
+            "current_price": 4260.00,
+            "sl": 4252.00,
+            "tp": 4320.00,
+            "volume": 0.5,
+            "adverse_move_pips": 1500,
+            "current_momentum": "sharp_bearish_impulse",
+        },
+    )
+    questions = fix.get(
+        "questions",
+        [
+            {
+                "name": "adverse_momentum",
+                "type": "Noul",
+                "description": "Is there strong adverse momentum against our BUY position in XAUUSD?",
+            },
+            {
+                "name": "sl_threat_level",
+                "type": "Score",
+                "range": [1, 4],
+                "description": "1: Safe, 2: Normal, 3: Elevated, 4: Critical",
+            },
+            {"name": "should_tighten_stop", "type": "Noul", "description": "Should trailing stop be tightened?"},
+        ],
+    )
+    expected = fix.get(
+        "expected_answers",
+        {
+            "adverse_momentum": True,
+            "adverse_momentum_confidence_min": 0.85,
+            "sl_threat_level": 4,
+            "should_tighten_stop": True,
+        },
+    )
     return BenchmarkCase(
-        "jev_position_guard", "risk",
+        "jev_position_guard",
+        "risk",
         user_prompt="Evaluate position risk and adverse momentum in real time.",
         state=state,
         questions=questions,
         expected_answers=expected,
         latency_target_ms=100.0,
         fixture_data=fix,
-        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0)
+        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0),
     )
 
 
 async def _case_jev_exit_prescreen(session, settings, ex) -> BenchmarkCase:
     fix = load_fixture_json("s1_exit_prescreen_gbpusd.json")
-    state = fix.get("state", {
-        "symbol": "GBPUSD",
-        "direction": "BUY",
-        "entry_price": 1.3320,
-        "sl": 1.3250,
-        "tp": 1.3450,
-        "current_price": 1.3217,
-        "holding_hours": 14.2,
-        "structural_breakdown": True,
-        "adverse_move_pips": 103
-    })
-    questions = fix.get("questions", [
-        {"name": "thesis_still_valid", "type": "Noul", "description": "Is original trading thesis still structurally valid?"},
-        {"name": "exit_urgency", "type": "Score", "range": [1, 5], "description": "1: No urgency, 3: Moderate, 5: Critical"}
-    ])
-    expected = fix.get("expected_answers", {
-        "thesis_still_valid": False,
-        "thesis_still_valid_confidence_min": 0.90,
-        "exit_urgency": 4
-    })
+    state = fix.get(
+        "state",
+        {
+            "symbol": "GBPUSD",
+            "direction": "BUY",
+            "entry_price": 1.3320,
+            "sl": 1.3250,
+            "tp": 1.3450,
+            "current_price": 1.3217,
+            "holding_hours": 14.2,
+            "structural_breakdown": True,
+            "adverse_move_pips": 103,
+        },
+    )
+    questions = fix.get(
+        "questions",
+        [
+            {
+                "name": "thesis_still_valid",
+                "type": "Noul",
+                "description": "Is original trading thesis still structurally valid?",
+            },
+            {
+                "name": "exit_urgency",
+                "type": "Score",
+                "range": [1, 5],
+                "description": "1: No urgency, 3: Moderate, 5: Critical",
+            },
+        ],
+    )
+    expected = fix.get(
+        "expected_answers", {"thesis_still_valid": False, "thesis_still_valid_confidence_min": 0.90, "exit_urgency": 4}
+    )
     return BenchmarkCase(
-        "jev_exit_prescreen", "risk",
+        "jev_exit_prescreen",
+        "risk",
         user_prompt="Prescreen open position for early thesis invalidation exit.",
         state=state,
         questions=questions,
         expected_answers=expected,
         latency_target_ms=100.0,
         fixture_data=fix,
-        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0)
+        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0),
     )
 
 
@@ -1308,11 +1737,12 @@ async def _case_deep_research(session, settings, ex) -> BenchmarkCase:
         "Evaluate the net impact on EUR/USD cross-asset liquidity and institutional positioning."
     )
     return BenchmarkCase(
-        "deep_research", "macro",
+        "deep_research",
+        "macro",
         system_prompt="You are a Senior Quantitative Macro Researcher. Provide in-depth analysis citing specific yields, spreads, and liquidity dynamics.",
         user_prompt=prompt,
         role_kwargs=dict(max_tokens=8192, thinking="high"),
-        context_summary=prompt
+        context_summary=prompt,
     )
 
 
@@ -1325,11 +1755,12 @@ async def _case_report_synthesizer(session, settings, ex) -> BenchmarkCase:
         "and formulate clear capital allocation recommendations for the upcoming Asian/London rollover."
     )
     return BenchmarkCase(
-        "report_synthesizer", "macro",
+        "report_synthesizer",
+        "macro",
         system_prompt="You are an Executive Trading Desk Synthesizer. Synthesize multi-asset reports into risk allocations, currency exposures, and trade prioritization.",
         user_prompt=prompt,
         role_kwargs=dict(max_tokens=4096, thinking="medium"),
-        context_summary=reports[:6000]
+        context_summary=reports[:6000],
     )
 
 
@@ -1341,11 +1772,12 @@ async def _case_context_compaction(session, settings, ex) -> BenchmarkCase:
         "Requirements: Retain all exact numerical prints, surprises, bond yields, spreads, and high-impact policy statements without hallucination."
     )
     return BenchmarkCase(
-        "context_compaction", "macro",
+        "context_compaction",
+        "macro",
         system_prompt="You are a lossless context compression engine. Retain all exact numbers, rates, and quotes.",
         user_prompt=prompt,
         role_kwargs=dict(max_tokens=1024, thinking="low"),
-        context_summary=raw_payload[:6000]
+        context_summary=raw_payload[:6000],
     )
 
 
@@ -1360,11 +1792,12 @@ async def _case_summarizer(session, settings, ex) -> BenchmarkCase:
         "- Bullet 3: Actionable takeaway for FX and rate traders."
     )
     return BenchmarkCase(
-        "summarizer", "macro",
+        "summarizer",
+        "macro",
         system_prompt="You are an ultra-concise financial summarizer. Extract monetary policy posture, data dependencies, and risk shifts.",
         user_prompt=prompt,
         role_kwargs=dict(max_tokens=512, thinking="low"),
-        context_summary=transcript[:4000]
+        context_summary=transcript[:4000],
     )
 
 
@@ -1376,11 +1809,12 @@ async def _case_macro_analyst(session, settings, ex) -> BenchmarkCase:
         "Provide in-depth quantitative analysis explaining causal mechanisms, transmission channels to EUR/USD, terms-of-trade degradation, and central bank reaction functions."
     )
     return BenchmarkCase(
-        "macro_analyst", "macro",
+        "macro_analyst",
+        "macro",
         system_prompt="You are a Macro Anomaly Specialist. Analyze real yield divergence, terms-of-trade degradation, and central bank reaction functions.",
         user_prompt=prompt,
         role_kwargs=dict(max_tokens=4096, thinking="high"),
-        context_summary=anomaly_data[:4000]
+        context_summary=anomaly_data[:4000],
     )
 
 
@@ -1392,12 +1826,22 @@ async def _case_sentiment_analyst(session, settings, ex) -> BenchmarkCase:
         "Output structured JSON matching schema."
     )
     return BenchmarkCase(
-        "sentiment_analyst", "specialist",
+        "sentiment_analyst",
+        "specialist",
         system_prompt="You are a Sentiment and Positioning Specialist analyzing institutional flows, COT positioning, and retail sentiment extremes.",
         user_prompt=prompt,
-        schema={"type": "object", "properties": {"sentiment_score": {"type": "number"}, "bias": {"type": "string"}, "institutional_positioning": {"type": "string"}, "retail_crowd_risk": {"type": "string"}}, "required": ["sentiment_score", "bias", "institutional_positioning"]},
+        schema={
+            "type": "object",
+            "properties": {
+                "sentiment_score": {"type": "number"},
+                "bias": {"type": "string"},
+                "institutional_positioning": {"type": "string"},
+                "retail_crowd_risk": {"type": "string"},
+            },
+            "required": ["sentiment_score", "bias", "institutional_positioning"],
+        },
         role_kwargs=dict(max_tokens=1024, thinking="low"),
-        context_summary=feed[:4000]
+        context_summary=feed[:4000],
     )
 
 
@@ -1417,12 +1861,21 @@ async def _case_risk_gate_task(session, settings, ex) -> BenchmarkCase:
         "Evaluate compliance with portfolio risk gates, capital preservation rules, and maximum loss limits."
     )
     return BenchmarkCase(
-        "risk_gate", "risk",
+        "risk_gate",
+        "risk",
         system_prompt="You are a Subagent Risk Gate Auditor.",
         user_prompt=prompt,
-        schema={"type": "object", "properties": {"approved": {"type": "boolean"}, "veto_reason": {"type": "string"}, "multiplier": {"type": "number"}}, "required": ["approved", "multiplier"]},
+        schema={
+            "type": "object",
+            "properties": {
+                "approved": {"type": "boolean"},
+                "veto_reason": {"type": "string"},
+                "multiplier": {"type": "number"},
+            },
+            "required": ["approved", "multiplier"],
+        },
         role_kwargs=dict(max_tokens=1024, thinking="medium"),
-        context_summary=prompt
+        context_summary=prompt,
     )
 
 
@@ -1430,49 +1883,56 @@ async def _case_risk_gate_task(session, settings, ex) -> BenchmarkCase:
 # ADDITIONAL 8+ TASK ROLES MAPPED DIRECTLY FROM settings.yaml
 # =========================================================================
 
+
 async def _case_jev_telegram_intent(session, settings, ex) -> BenchmarkCase:
     prompt = "Tolong analisis apakah posisi EURUSD kita masih aman setelah lonjakan inflasi flash CPI Jerman tadi?"
     schema = {
         "type": "object",
         "properties": {
-            "intent": {"type": "string", "enum": ["risk_inquiry", "market_question", "command", "chat", "panic_intervention"]},
+            "intent": {
+                "type": "string",
+                "enum": ["risk_inquiry", "market_question", "command", "chat", "panic_intervention"],
+            },
             "requires_agent_loop": {"type": "boolean"},
             "target_symbol": {"type": "string"},
-            "urgency": {"type": "string", "enum": ["low", "medium", "high"]}
+            "urgency": {"type": "string", "enum": ["low", "medium", "high"]},
         },
-        "required": ["intent", "requires_agent_loop", "urgency"]
+        "required": ["intent", "requires_agent_loop", "urgency"],
     }
     return BenchmarkCase(
-        "jev_telegram_intent", "chat",
+        "jev_telegram_intent",
+        "chat",
         system_prompt="You are a high-speed Telegram intent classifier for trading assistant.",
         user_prompt=prompt,
         schema=schema,
         role_kwargs=dict(max_tokens=256, thinking="none", temperature=0.0),
-        context_summary=prompt
+        context_summary=prompt,
     )
 
 
 async def _case_chat_interactive_fast(session, settings, ex) -> BenchmarkCase:
     prompt = "Berapa status spread dan floating drawdown akun saat ini?"
     return BenchmarkCase(
-        "chat_interactive_fast", "chat",
+        "chat_interactive_fast",
+        "chat",
         system_prompt="You are Monika's ultra-responsive terminal co-pilot. Keep replies concise and data-grounded.",
         user_prompt=prompt,
         history=[],
         role_kwargs=dict(max_tokens=512, thinking="none"),
-        context_summary=prompt
+        context_summary=prompt,
     )
 
 
 async def _case_chat_interactive_balanced(session, settings, ex) -> BenchmarkCase:
     prompt = "Jelaskan mengapa sinyal BUY pada pair XAUUSD ditolak oleh RiskGate pada sesi Asia tadi malam."
     return BenchmarkCase(
-        "chat_interactive_balanced", "chat",
+        "chat_interactive_balanced",
+        "chat",
         system_prompt="You are Monika's analytical trading assistant. Provide clear, balanced explanations citing specific rules and market data.",
         user_prompt=prompt,
         history=[],
         role_kwargs=dict(max_tokens=1500, thinking="low"),
-        context_summary=prompt
+        context_summary=prompt,
     )
 
 
@@ -1482,12 +1942,13 @@ async def _case_chat_interactive_reasoning(session, settings, ex) -> BenchmarkCa
         "dan ekspektasi pemotongan suku bunga The Fed pada kuartal 4 2026. Bagaimana dampaknya terhadap EURUSD dan XAUUSD?"
     )
     return BenchmarkCase(
-        "chat_interactive_reasoning", "chat",
+        "chat_interactive_reasoning",
+        "chat",
         system_prompt="You are Monika's deep macro reasoning engine. Provide multi-step causal reasoning with yield differentials and cross-asset spillover.",
         user_prompt=prompt,
         history=[],
         role_kwargs=dict(max_tokens=4096, thinking="high"),
-        context_summary=prompt
+        context_summary=prompt,
     )
 
 
@@ -1497,12 +1958,13 @@ async def _case_chat_interactive_pro(session, settings, ex) -> BenchmarkCase:
         "Berapa ekspektansi matematis dan maximum drawdown reduction yang didapat?"
     )
     return BenchmarkCase(
-        "chat_interactive_pro", "chat",
+        "chat_interactive_pro",
+        "chat",
         system_prompt="You are Monika's Senior Quantitative Strategist and Portfolio Architect.",
         user_prompt=prompt,
         history=[],
         role_kwargs=dict(max_tokens=4096, thinking="high"),
-        context_summary=prompt
+        context_summary=prompt,
     )
 
 
@@ -1511,15 +1973,15 @@ async def _case_pattern_context_verifier(session, settings, ex) -> BenchmarkCase
     sym = pattern_data.get("symbol", "EURUSD")
     cur = pattern_data.get("current_conditions", {})
     hist = pattern_data.get("historical_match", {})
-    prompt = f"""CURRENT CONDITIONS ({cur.get('date', '2026-10-01')}):
-{cur.get('summary', 'Fed hawkish at 3.75-4.00%, Middle East crude supply risk, DXY at 101.48, VIX at 16.7.')}
+    prompt = f"""CURRENT CONDITIONS ({cur.get("date", "2026-10-01")}):
+{cur.get("summary", "Fed hawkish at 3.75-4.00%, Middle East crude supply risk, DXY at 101.48, VIX at 16.7.")}
 
-HISTORICAL MATCH ({hist.get('match_date', '2024-04-12')}, Symbol: {sym}):
-- Pattern Shape Similarity: {hist.get('shape_similarity_pct', 84.5)}%
-- Historical Volatility Level: {hist.get('hist_vix', 14.8)} ({hist.get('hist_vix_cat', 'NORMAL')})
-- Historical USD Trend: {hist.get('hist_dxy_trend', 'BULLISH_REBOUND')}
-- Historical Asset Position: {hist.get('hist_asset_trend', 'BEARISH_CONTINUATION_BREAKDOWN')}
-- Recorded Chronicle Context: {hist.get('recorded_chronicle', '')}
+HISTORICAL MATCH ({hist.get("match_date", "2024-04-12")}, Symbol: {sym}):
+- Pattern Shape Similarity: {hist.get("shape_similarity_pct", 84.5)}%
+- Historical Volatility Level: {hist.get("hist_vix", 14.8)} ({hist.get("hist_vix_cat", "NORMAL")})
+- Historical USD Trend: {hist.get("hist_dxy_trend", "BULLISH_REBOUND")}
+- Historical Asset Position: {hist.get("hist_asset_trend", "BEARISH_CONTINUATION_BREAKDOWN")}
+- Recorded Chronicle Context: {hist.get("recorded_chronicle", "")}
 
 INSTRUCTIONS:
 Evaluate whether macro drivers are comparable and output structured ContextVerdict JSON."""
@@ -1530,17 +1992,18 @@ Evaluate whether macro drivers are comparable and output structured ContextVerdi
             "historical_context_summary": {"type": "string"},
             "is_macro_driver_similar": {"type": "boolean"},
             "adjustment_factor": {"type": "number"},
-            "verdict_reason": {"type": "string"}
+            "verdict_reason": {"type": "string"},
         },
-        "required": ["relevance", "is_macro_driver_similar", "adjustment_factor", "verdict_reason"]
+        "required": ["relevance", "is_macro_driver_similar", "adjustment_factor", "verdict_reason"],
     }
     return BenchmarkCase(
-        "pattern_context_verifier", "specialist",
+        "pattern_context_verifier",
+        "specialist",
         system_prompt="You are Monika's Principal Macroeconomic Historian.",
         user_prompt=prompt,
         schema=schema,
         role_kwargs=dict(max_tokens=1024, thinking="low"),
-        context_summary=prompt
+        context_summary=prompt,
     )
 
 
@@ -1553,25 +2016,31 @@ async def _case_jev_confluence_gate(session, settings, ex) -> BenchmarkCase:
         "confluence_score": confl.get("calculated_score", 8.4),
         "confluence_threshold": confl.get("threshold", 7.0),
         "factors": ["BOS_BULLISH", "FVG_DEMAND_BOUNCE", "H4_TREND_ALIGNED", "YIELD_SPREAD_SUPPORT"],
-        "discrepancies": 0
+        "discrepancies": 0,
     }
     questions = [
-        {"name": "pass_confluence", "type": "Noul", "description": "Does the trade proposal satisfy the required confluence threshold?"},
-        {"name": "confluence_quality", "type": "Score", "range": [1, 5], "description": "1: Marginal, 3: Robust, 5: Pristine High-Conviction"}
+        {
+            "name": "pass_confluence",
+            "type": "Noul",
+            "description": "Does the trade proposal satisfy the required confluence threshold?",
+        },
+        {
+            "name": "confluence_quality",
+            "type": "Score",
+            "range": [1, 5],
+            "description": "1: Marginal, 3: Robust, 5: Pristine High-Conviction",
+        },
     ]
-    expected = {
-        "pass_confluence": True,
-        "pass_confluence_confidence_min": 0.90,
-        "confluence_quality": 4
-    }
+    expected = {"pass_confluence": True, "pass_confluence_confidence_min": 0.90, "confluence_quality": 4}
     return BenchmarkCase(
-        "jev_confluence_gate", "trade_decision",
+        "jev_confluence_gate",
+        "trade_decision",
         user_prompt="Evaluate trade confluence factors against structural gating threshold.",
         state=state,
         questions=questions,
         expected_answers=expected,
         latency_target_ms=100.0,
-        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0)
+        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0),
     )
 
 
@@ -1584,25 +2053,31 @@ async def _case_jev_session_timing_gate(session, settings, ex) -> BenchmarkCase:
         "is_overlap": t_state.get("is_overlap", True),
         "symbol": t_state.get("symbol", "EURUSD"),
         "near_tier1_event": t_state.get("near_tier1_event", False),
-        "minutes_to_next_tier1": t_state.get("minutes_to_next_tier1", 180)
+        "minutes_to_next_tier1": t_state.get("minutes_to_next_tier1", 180),
     }
     questions = [
-        {"name": "timing_allowed", "type": "Noul", "description": "Is current session timing permissible for fresh order execution?"},
-        {"name": "liquidity_tier", "type": "Score", "range": [1, 4], "description": "1: Illiquid off-peak, 2: Moderate Asian, 3: High single-session, 4: Peak London-NY overlap"}
+        {
+            "name": "timing_allowed",
+            "type": "Noul",
+            "description": "Is current session timing permissible for fresh order execution?",
+        },
+        {
+            "name": "liquidity_tier",
+            "type": "Score",
+            "range": [1, 4],
+            "description": "1: Illiquid off-peak, 2: Moderate Asian, 3: High single-session, 4: Peak London-NY overlap",
+        },
     ]
-    expected = {
-        "timing_allowed": True,
-        "timing_allowed_confidence_min": 0.95,
-        "liquidity_tier": 4
-    }
+    expected = {"timing_allowed": True, "timing_allowed_confidence_min": 0.95, "liquidity_tier": 4}
     return BenchmarkCase(
-        "jev_session_timing_gate", "risk",
+        "jev_session_timing_gate",
+        "risk",
         user_prompt="Verify session timing and liquidity constraints before execution.",
         state=state,
         questions=questions,
         expected_answers=expected,
         latency_target_ms=100.0,
-        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0)
+        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0),
     )
 
 
@@ -1615,31 +2090,46 @@ async def _case_jev_debate_evaluator(session, settings, ex) -> BenchmarkCase:
         "bear_score": clash.get("bear_score", 5),
         "bull_unmitigated_invalidation": clash.get("bull_unmitigated_invalidation", False),
         "bear_unmitigated_invalidation": clash.get("bear_unmitigated_invalidation", True),
-        "bear_invalidation_detail": clash.get("bear_invalidation_detail", "D1 close broke above 1.1050 invalidating bearish order block.")
+        "bear_invalidation_detail": clash.get(
+            "bear_invalidation_detail", "D1 close broke above 1.1050 invalidating bearish order block."
+        ),
     }
     questions = [
-        {"name": "winner", "type": "Choice", "options": ["bull", "bear", "deadlock"], "description": "Which debate persona holds the structurally superior thesis?"},
-        {"name": "consensus_conviction", "type": "Score", "range": [1, 5], "description": "1: Ambiguous deadlock, 3: Clear edge, 5: Decisive refutation"}
+        {
+            "name": "winner",
+            "type": "Choice",
+            "options": ["bull", "bear", "deadlock"],
+            "description": "Which debate persona holds the structurally superior thesis?",
+        },
+        {
+            "name": "consensus_conviction",
+            "type": "Score",
+            "range": [1, 5],
+            "description": "1: Ambiguous deadlock, 3: Clear edge, 5: Decisive refutation",
+        },
     ]
     expected = {
         "winner": clash.get("expected_winner", "bull"),
-        "consensus_conviction": clash.get("consensus_conviction", 4)
+        "consensus_conviction": clash.get("consensus_conviction", 4),
     }
     return BenchmarkCase(
-        "jev_debate_evaluator", "debate",
+        "jev_debate_evaluator",
+        "debate",
         user_prompt="Arbitrate debate clash and determine winner based on structural refutations.",
         state=state,
         questions=questions,
         expected_answers=expected,
         latency_target_ms=100.0,
-        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0)
+        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0),
     )
 
 
 async def _case_voice_transcription(session, settings, ex) -> BenchmarkCase:
     transcripts = get_golden_voice_transcripts()
     case = transcripts[0] if transcripts else {}
-    audio_text = case.get("raw_transcript", "Monika tolong amankan profit buy gold sekarang ya geser stop loss ke break even")
+    audio_text = case.get(
+        "raw_transcript", "Monika tolong amankan profit buy gold sekarang ya geser stop loss ke break even"
+    )
     prompt = (
         f"Audio Transcript: '{audio_text}'.\n\n"
         "Extract structured order intent: symbol, action, entry_type, price, stop_loss, take_profit."
@@ -1648,21 +2138,25 @@ async def _case_voice_transcription(session, settings, ex) -> BenchmarkCase:
         "type": "object",
         "properties": {
             "symbol": {"type": "string"},
-            "action": {"type": "string", "enum": ["BUY", "SELL", "UPDATE_STOP_LOSS", "CLOSE_SYMBOL_POSITIONS", "PENDING_BUY_LIMIT"]},
+            "action": {
+                "type": "string",
+                "enum": ["BUY", "SELL", "UPDATE_STOP_LOSS", "CLOSE_SYMBOL_POSITIONS", "PENDING_BUY_LIMIT"],
+            },
             "order_type": {"type": "string", "enum": ["LIMIT", "STOP", "MARKET", "BREAK_EVEN"]},
             "price": {"type": ["number", "null"]},
             "stop_loss": {"type": ["number", "string", "null"]},
-            "take_profit": {"type": ["number", "null"]}
+            "take_profit": {"type": ["number", "null"]},
         },
-        "required": ["symbol", "action"]
+        "required": ["symbol", "action"],
     }
     return BenchmarkCase(
-        "voice_transcription", "chat",
+        "voice_transcription",
+        "chat",
         system_prompt="You are a voice trading command parser converting spoken transcriptions into structured orders.",
         user_prompt=prompt,
         schema=schema,
         role_kwargs=dict(max_tokens=512, thinking="none"),
-        context_summary=prompt
+        context_summary=prompt,
     )
 
 
@@ -1680,67 +2174,83 @@ TASKS: dict[str, TaskSpec] = {
     "report_synthesizer": TaskSpec("report_synthesizer", "macro", "text", _case_report_synthesizer),
     "context_compaction": TaskSpec("context_compaction", "macro", "text", _case_context_compaction),
     "summarizer": TaskSpec("summarizer", "macro", "text", _case_summarizer),
-
     # 2. Stage 2 Per-Asset Decisions
     "stage2_per_asset_primary": TaskSpec("stage2_per_asset_primary", "trade_decision", "agent", _case_stage2_primary),
-    "stage2_per_asset_secondary": TaskSpec("stage2_per_asset_secondary", "trade_decision", "agent", _case_stage2_secondary),
-    "stage2_session_trigger": TaskSpec("stage2_session_trigger", "trade_decision", "agent", _case_stage2_session_trigger),
+    "stage2_per_asset_secondary": TaskSpec(
+        "stage2_per_asset_secondary", "trade_decision", "agent", _case_stage2_secondary
+    ),
+    "stage2_session_trigger": TaskSpec(
+        "stage2_session_trigger", "trade_decision", "agent", _case_stage2_session_trigger
+    ),
     "stage2_prescreen": TaskSpec("stage2_prescreen", "trade_decision", "json", _case_stage2_prescreen),
-
     # 3. Domain Specialists
     "specialist_technical": TaskSpec("specialist_technical", "specialist", "json", _case_specialist_technical),
     "specialist_sentiment": TaskSpec("specialist_sentiment", "specialist", "json", _case_specialist_sentiment),
     "specialist_macro": TaskSpec("specialist_macro", "specialist", "json", _case_specialist_macro),
     "sentiment_analyst": TaskSpec("sentiment_analyst", "specialist", "json", _case_sentiment_analyst),
-    "pattern_context_verifier": TaskSpec("pattern_context_verifier", "specialist", "json", _case_pattern_context_verifier),
-
+    "pattern_context_verifier": TaskSpec(
+        "pattern_context_verifier", "specialist", "json", _case_pattern_context_verifier
+    ),
     # 4. Dialectical Debate & Arbitration
     "debate_bull": TaskSpec("debate_bull", "debate", "custom", _case_debate_bull),
     "debate_bear": TaskSpec("debate_bear", "debate", "custom", _case_debate_bear),
     "debate_judge": TaskSpec("debate_judge", "debate", "custom", _case_debate_judge),
     "stage2_adjudicator": TaskSpec("stage2_adjudicator", "debate", "json", _case_stage2_adjudicator),
     "jev_debate_evaluator": TaskSpec("jev_debate_evaluator", "debate", "system_one", _case_jev_debate_evaluator),
-
     # 5. Risk Fortress & Portfolio Management
     "risk_gate": TaskSpec("risk_gate", "risk", "json", _case_risk_gate_task),
     "risk_gate_conservative": TaskSpec("risk_gate_conservative", "risk", "custom", _case_risk_gate_conservative),
     "risk_gate_aggressive": TaskSpec("risk_gate_aggressive", "risk", "custom", _case_risk_gate_aggressive),
     "risk_gate_neutral": TaskSpec("risk_gate_neutral", "risk", "custom", _case_risk_gate_neutral),
-    "portfolio_manager_per_trade": TaskSpec("portfolio_manager_per_trade", "risk", "custom", _case_portfolio_manager_per_trade),
+    "portfolio_manager_per_trade": TaskSpec(
+        "portfolio_manager_per_trade", "risk", "custom", _case_portfolio_manager_per_trade
+    ),
     "portfolio_synthesis": TaskSpec("portfolio_synthesis", "risk", "json", _case_portfolio_synthesis),
     "adversarial_check": TaskSpec("adversarial_check", "risk", "json", _case_adversarial_check),
     "trade_reflection": TaskSpec("trade_reflection", "reflection", "json", _case_trade_reflection),
-
     # 6. News Ingestion & Processing
     "news_classification": TaskSpec("news_classification", "news", "json", _case_news_classification),
-    "news_classification_escalation": TaskSpec("news_classification_escalation", "news", "json", _case_news_classification_escalation),
-    "news_classification_verifier": TaskSpec("news_classification_verifier", "news", "json", _case_news_classification_verifier),
+    "news_classification_escalation": TaskSpec(
+        "news_classification_escalation", "news", "json", _case_news_classification_escalation
+    ),
+    "news_classification_verifier": TaskSpec(
+        "news_classification_verifier", "news", "json", _case_news_classification_verifier
+    ),
     "news_digest": TaskSpec("news_digest", "news", "text", _case_news_digest),
-    "news_digest_macro_overview": TaskSpec("news_digest_macro_overview", "news", "text", _case_news_digest_macro_overview),
+    "news_digest_macro_overview": TaskSpec(
+        "news_digest_macro_overview", "news", "text", _case_news_digest_macro_overview
+    ),
     "news_digest_verifier": TaskSpec("news_digest_verifier", "news", "json", _case_news_digest_verifier),
     "cot_precompute": TaskSpec("cot_precompute", "news", "text", _case_cot_precompute),
-
     # 7. System One High-Speed Reflexes
     "jev_news_realtime": TaskSpec("jev_news_realtime", "news", "system_one", _case_jev_news_realtime),
-    "jev_trigger_validator": TaskSpec("jev_trigger_validator", "trade_decision", "system_one", _case_jev_trigger_validator),
+    "jev_trigger_validator": TaskSpec(
+        "jev_trigger_validator", "trade_decision", "system_one", _case_jev_trigger_validator
+    ),
     "jev_position_guard": TaskSpec("jev_position_guard", "risk", "system_one", _case_jev_position_guard),
     "jev_exit_prescreen": TaskSpec("jev_exit_prescreen", "risk", "system_one", _case_jev_exit_prescreen),
     "jev_confluence_gate": TaskSpec("jev_confluence_gate", "trade_decision", "system_one", _case_jev_confluence_gate),
     "jev_session_timing_gate": TaskSpec("jev_session_timing_gate", "risk", "system_one", _case_jev_session_timing_gate),
     "jev_telegram_intent": TaskSpec("jev_telegram_intent", "chat", "json", _case_jev_telegram_intent),
-
     # 8. Interactive Assistants & Omnichannel
     "chat_telegram": TaskSpec("chat_telegram", "chat", "chat", _case_chat_telegram),
     "chat_telegram_medium": TaskSpec("chat_telegram_medium", "chat", "chat", _case_chat_telegram_medium),
     "chat_telegram_complex": TaskSpec("chat_telegram_complex", "chat", "chat", _case_chat_telegram_complex),
     "chat_interactive_fast": TaskSpec("chat_interactive_fast", "chat", "chat", _case_chat_interactive_fast),
     "chat_interactive_balanced": TaskSpec("chat_interactive_balanced", "chat", "chat", _case_chat_interactive_balanced),
-    "chat_interactive_reasoning": TaskSpec("chat_interactive_reasoning", "chat", "chat", _case_chat_interactive_reasoning),
+    "chat_interactive_reasoning": TaskSpec(
+        "chat_interactive_reasoning", "chat", "chat", _case_chat_interactive_reasoning
+    ),
     "chat_interactive_pro": TaskSpec("chat_interactive_pro", "chat", "chat", _case_chat_interactive_pro),
     "voice_transcription": TaskSpec("voice_transcription", "chat", "json", _case_voice_transcription),
-
     # 9. Harness Auditing Probes
-    "harness_hallucination_detect": TaskSpec("harness_hallucination_detect", "macro", "json", _case_harness_hallucination_detect),
-    "harness_context_efficiency": TaskSpec("harness_context_efficiency", "macro", "text", _case_harness_context_efficiency),
-    "harness_self_correction": TaskSpec("harness_self_correction", "trade_decision", "json", _case_harness_self_correction),
+    "harness_hallucination_detect": TaskSpec(
+        "harness_hallucination_detect", "macro", "json", _case_harness_hallucination_detect
+    ),
+    "harness_context_efficiency": TaskSpec(
+        "harness_context_efficiency", "macro", "text", _case_harness_context_efficiency
+    ),
+    "harness_self_correction": TaskSpec(
+        "harness_self_correction", "trade_decision", "json", _case_harness_self_correction
+    ),
 }

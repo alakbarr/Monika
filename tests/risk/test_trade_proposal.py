@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Tests for PR-14: TradeProposal Schema and Financial Fortress Boundary.
 Verifies strictly-typed schema validation, geometric invariants, reasoning hashing,
@@ -124,7 +125,7 @@ def test_fortress_admission_accepts_valid():
         direction="BUY",
         entry_price=1.0850,
         stop_loss=1.0800,  # 50 pips risk
-        take_profit=1.0950, # 100 pips reward (R:R = 2.0 >= 0.8)
+        take_profit=1.0950,  # 100 pips reward (R:R = 2.0 >= 0.8)
         lot_size=0.1,
     )
     admitted, reasons = FortressAdmissionValidator.validate_proposal(prop)
@@ -167,7 +168,7 @@ def test_fortress_admission_rejects_terrible_rr():
         direction="BUY",
         entry_price=1.0850,
         stop_loss=1.0800,  # 50 pips risk
-        take_profit=1.0870, # 20 pips reward (R:R = 0.4 < 0.8)
+        take_profit=1.0870,  # 20 pips reward (R:R = 0.4 < 0.8)
         lot_size=0.1,
     )
     admitted, reasons = FortressAdmissionValidator.validate_proposal(prop)
@@ -272,4 +273,3 @@ async def test_risk_gate_evaluate_proposal_forwards_analysis():
     await gate.evaluate_proposal(mock_session, prop)
     gate.evaluate.assert_awaited_once()
     assert gate.evaluate.call_args.kwargs["analysis"] is ana
-

@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #50.
 
 Formula (paper appendix): -1 * ts_max(rank(correlation(rank(volume), rank(vwap), 5)), 5)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_050"
 
 __alpha_meta__ = {
-    'id': 'alpha101_050',
-    'nickname': 'Kakushadze Alpha #50',
-    'theme': ['volume'],
-    'formula_latex': '-1 * ts_max(rank(correlation(rank(volume), rank(vwap), 5)), 5)',
-    'columns_required': ['volume', 'vwap', 'close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 10,
-    'notes': '',
+    "id": "alpha101_050",
+    "nickname": "Kakushadze Alpha #50",
+    "theme": ["volume"],
+    "formula_latex": "-1 * ts_max(rank(correlation(rank(volume), rank(vwap), 5)), 5)",
+    "columns_required": ["volume", "vwap", "close"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 10,
+    "notes": "",
 }
 
 
@@ -51,7 +50,6 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
     volume = panel["volume"]
     vwap = panel["vwap"]
-
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
     out = -1.0 * ts_max(rank(ts_corr(rank(volume), rank(vwap), 5)), 5)

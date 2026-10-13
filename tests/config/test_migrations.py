@@ -36,6 +36,7 @@ def test_migrate_config_ladder():
 
     # Temporarily adjust CURRENT_CONFIG_VERSION for test
     import config.migrations as m
+
     old_cur = m.CURRENT_CONFIG_VERSION
     try:
         m.CURRENT_CONFIG_VERSION = 2

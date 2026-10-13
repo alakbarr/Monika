@@ -29,6 +29,7 @@ class SessionSearchEngine:
     def _is_postgres_session(self, session: AsyncSession) -> bool:
         """Check if active session connects to a PostgreSQL backend."""
         from unittest.mock import Mock
+
         if isinstance(session, Mock):
             return False
         try:
@@ -43,6 +44,7 @@ class SessionSearchEngine:
         if self._has_pgvector is not None:
             return self._has_pgvector
         from unittest.mock import Mock
+
         if isinstance(session, Mock):
             self._has_pgvector = False
             return False
@@ -53,8 +55,9 @@ class SessionSearchEngine:
                 self._has_pgvector = False
                 return False
             from sqlalchemy import text
+
             res = await session.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'vector'"))
-            self._has_pgvector = (res.scalar() is not None)
+            self._has_pgvector = res.scalar() is not None
         except Exception:
             self._has_pgvector = False
         return self._has_pgvector
@@ -65,6 +68,7 @@ class SessionSearchEngine:
         if not vec_a or not vec_b or len(vec_a) != len(vec_b):
             return 0.0
         import numpy as np
+
         a = np.array(vec_a, dtype=np.float32)
         b = np.array(vec_b, dtype=np.float32)
         denom = (np.linalg.norm(a) * np.linalg.norm(b)) + 1e-9
@@ -76,7 +80,7 @@ class SessionSearchEngine:
         limit: int = 3,
         session: Optional[AsyncSession] = None,
         regime: Optional[str] = None,
-        as_of: Optional[datetime] = None
+        as_of: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
         """
         Retrieves most recent decisive analysis sessions (real executions and what-ifs)
@@ -93,6 +97,7 @@ class SessionSearchEngine:
 
         try:
             from monika.infrastructure.database.db import get_session
+
             async with get_session() as s:
                 return await self._execute_symbol_precedents(s, clean_sym, limit, regime=regime, as_of=as_of)
         except Exception as e:
@@ -105,7 +110,7 @@ class SessionSearchEngine:
         clean_sym: str,
         limit: int,
         regime: Optional[str] = None,
-        as_of: Optional[datetime] = None
+        as_of: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
         try:
             base_stmt = (
@@ -120,34 +125,45 @@ class SessionSearchEngine:
                 raw_reg = str(regime).strip()
                 if self._is_postgres_session(session):
                     from sqlalchemy import func
-                    clean_terms = " & ".join(re.findall(r'\w+', raw_reg))
+
+                    clean_terms = " & ".join(re.findall(r"\w+", raw_reg))
                     ts_filter = (
-                        func.to_tsquery('english', clean_terms)
+                        func.to_tsquery("english", clean_terms)
                         if clean_terms
-                        else func.plainto_tsquery('english', raw_reg)
+                        else func.plainto_tsquery("english", raw_reg)
                     )
-                    reg_stmt = base_stmt.where(
-                        or_(
-                            DecisionReflection.search_vector.op("@@")(ts_filter),
-                            DecisionReflection.reflection_text.ilike(f"%{raw_reg.lower()}%"),
+                    reg_stmt = (
+                        base_stmt.where(
+                            or_(
+                                DecisionReflection.search_vector.op("@@")(ts_filter),
+                                DecisionReflection.reflection_text.ilike(f"%{raw_reg.lower()}%"),
+                            )
                         )
-                    ).order_by(desc(DecisionReflection.created_at)).limit(limit)
+                        .order_by(desc(DecisionReflection.created_at))
+                        .limit(limit)
+                    )
                     try:
                         reg_rows = (await session.execute(reg_stmt)).scalars().all()
                         rows.extend(reg_rows)
                     except Exception as pg_fts_err:
                         logger.debug(f"[SessionSearch] FTS regime search fallback to ILIKE: {pg_fts_err}")
                 if not rows:
-                    tokens = [t.strip().lower() for t in raw_reg.replace("|", ",").replace(";", ",").split(",") if len(t.strip()) >= 3]
+                    tokens = [
+                        t.strip().lower()
+                        for t in raw_reg.replace("|", ",").replace(";", ",").split(",")
+                        if len(t.strip()) >= 3
+                    ]
                     conditions = [
                         DecisionReflection.reflection_text.ilike(f"%{raw_reg.lower()}%"),
-                        DecisionReflection.rationale_summary.ilike(f"%{raw_reg.lower()}%")
+                        DecisionReflection.rationale_summary.ilike(f"%{raw_reg.lower()}%"),
                     ]
                     for tok in tokens:
                         conditions.append(DecisionReflection.reflection_text.ilike(f"%{tok}%"))
                         conditions.append(DecisionReflection.rationale_summary.ilike(f"%{tok}%"))
 
-                    reg_stmt = base_stmt.where(or_(*conditions)).order_by(desc(DecisionReflection.created_at)).limit(limit)
+                    reg_stmt = (
+                        base_stmt.where(or_(*conditions)).order_by(desc(DecisionReflection.created_at)).limit(limit)
+                    )
                     reg_rows = (await session.execute(reg_stmt)).scalars().all()
                     rows.extend(reg_rows)
 
@@ -178,17 +194,19 @@ class SessionSearchEngine:
                     content_text += f" | Reflection: {ref_text[:100]}"
 
                 ts_str = r.created_at.isoformat() if r.created_at else datetime.now(timezone.utc).isoformat()
-                results.append({
-                    "session_id": str(r.id),
-                    "symbol": r.symbol.upper(),
-                    "timestamp": ts_str,
-                    "stage": stage_val,
-                    "decision": r.decision.upper(),
-                    "confidence": float(r.confidence or 0.0),
-                    "confluence_score": int(r.confluence_score or 0),
-                    "content": content_text,
-                    "pnl": pnl_val,
-                })
+                results.append(
+                    {
+                        "session_id": str(r.id),
+                        "symbol": r.symbol.upper(),
+                        "timestamp": ts_str,
+                        "stage": stage_val,
+                        "decision": r.decision.upper(),
+                        "confidence": float(r.confidence or 0.0),
+                        "confluence_score": int(r.confluence_score or 0),
+                        "content": content_text,
+                        "pnl": pnl_val,
+                    }
+                )
             return results
         except Exception as e:
             logger.warning(f"[PostgreSQL] _execute_symbol_precedents query error: {e}")
@@ -200,7 +218,7 @@ class SessionSearchEngine:
         limit: int = 5,
         session: Optional[AsyncSession] = None,
         query_vector: Optional[List[float]] = None,
-        as_of: Optional[datetime] = None
+        as_of: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
         """Searches past sessions matching query string directly in PostgreSQL with optional point-in-time safety."""
         if not query or not query.strip():
@@ -213,6 +231,7 @@ class SessionSearchEngine:
 
         try:
             from monika.infrastructure.database.db import get_session
+
             async with get_session() as s:
                 return await self._execute_search(s, clean_query, limit, query_vector=query_vector, as_of=as_of)
         except Exception as e:
@@ -225,37 +244,30 @@ class SessionSearchEngine:
         query: str,
         limit: int,
         query_vector: Optional[List[float]] = None,
-        as_of: Optional[datetime] = None
+        as_of: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
         try:
             if self._is_postgres_session(session):
                 from sqlalchemy import func
-                clean_terms = " & ".join(re.findall(r'\w+', query))
+
+                clean_terms = " & ".join(re.findall(r"\w+", query))
                 ts_filter = (
-                    func.to_tsquery('english', clean_terms)
-                    if clean_terms
-                    else func.plainto_tsquery('english', query)
+                    func.to_tsquery("english", clean_terms) if clean_terms else func.plainto_tsquery("english", query)
                 )
-                stmt = (
-                    select(DecisionReflection)
-                    .where(
-                        or_(
-                            DecisionReflection.search_vector.op("@@")(ts_filter),
-                            DecisionReflection.symbol == query.strip().upper(),
-                        )
+                stmt = select(DecisionReflection).where(
+                    or_(
+                        DecisionReflection.search_vector.op("@@")(ts_filter),
+                        DecisionReflection.symbol == query.strip().upper(),
                     )
                 )
             else:
                 search_pattern = f"%{query}%"
-                stmt = (
-                    select(DecisionReflection)
-                    .where(
-                        or_(
-                            DecisionReflection.symbol.ilike(search_pattern),
-                            DecisionReflection.rationale_summary.ilike(search_pattern),
-                            DecisionReflection.reflection_text.ilike(search_pattern),
-                            DecisionReflection.alpha_lesson.ilike(search_pattern),
-                        )
+                stmt = select(DecisionReflection).where(
+                    or_(
+                        DecisionReflection.symbol.ilike(search_pattern),
+                        DecisionReflection.rationale_summary.ilike(search_pattern),
+                        DecisionReflection.reflection_text.ilike(search_pattern),
+                        DecisionReflection.alpha_lesson.ilike(search_pattern),
                     )
                 )
             if as_of is not None:
@@ -267,6 +279,7 @@ class SessionSearchEngine:
             if not query_vector:
                 try:
                     from monika.infrastructure.llm.embedding import generate_gemini_embedding
+
                     query_vector = await generate_gemini_embedding(query)
                 except Exception:
                     query_vector = None
@@ -281,28 +294,19 @@ class SessionSearchEngine:
             if has_pgv:
                 try:
                     from sqlalchemy import text
+
                     vec_literal = "[" + ",".join(str(float(x)) for x in query_vector) + "]"
-                    pgv_stmt = (
-                        select(DecisionReflection)
-                        .where(DecisionReflection.embedding.isnot(None))
-                    )
+                    pgv_stmt = select(DecisionReflection).where(DecisionReflection.embedding.isnot(None))
                     if as_of is not None:
                         pgv_stmt = pgv_stmt.where(DecisionReflection.created_at <= as_of)
-                    pgv_stmt = (
-                        pgv_stmt
-                        .order_by(text(f"embedding <=> '{vec_literal}'"))
-                        .limit(limit * 2)
-                    )
+                    pgv_stmt = pgv_stmt.order_by(text(f"embedding <=> '{vec_literal}'")).limit(limit * 2)
                     dense_rows = list((await session.execute(pgv_stmt)).scalars().all())
                 except Exception as pgv_err:
                     logger.debug(f"[pgvector] <=> operator query error, falling back to NumPy SIMD: {pgv_err}")
                     dense_rows = []
 
             if not dense_rows:
-                dense_stmt = (
-                    select(DecisionReflection)
-                    .where(DecisionReflection.embedding.isnot(None))
-                )
+                dense_stmt = select(DecisionReflection).where(DecisionReflection.embedding.isnot(None))
                 if as_of is not None:
                     dense_stmt = dense_stmt.where(DecisionReflection.created_at <= as_of)
                 dense_stmt = dense_stmt.order_by(DecisionReflection.created_at.desc()).limit(1000)
@@ -310,6 +314,7 @@ class SessionSearchEngine:
 
                 if all_embedded:
                     import numpy as np
+
                     q_vec = np.array(query_vector, dtype=np.float32)
                     q_norm = np.linalg.norm(q_vec) + 1e-9
 
@@ -324,7 +329,7 @@ class SessionSearchEngine:
                         d_mat = np.array(doc_vecs, dtype=np.float32)
                         d_norms = np.linalg.norm(d_mat, axis=1) + 1e-9
                         sims = np.dot(d_mat, q_vec) / (d_norms * q_norm)
-                        top_idx = np.argsort(-sims)[:limit * 2]
+                        top_idx = np.argsort(-sims)[: limit * 2]
                         dense_rows = [valid_docs[i] for i in top_idx]
 
             # Reciprocal Rank Fusion (RRF, k=60)
@@ -388,7 +393,7 @@ class SessionSearchEngine:
         query_vector: Optional[List[float]] = None,
         limit: int = 5,
         session: Optional[AsyncSession] = None,
-        as_of: Optional[datetime] = None
+        as_of: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
         """
         Executes hybrid semantic search combining BM25 keyword matching and
@@ -417,7 +422,7 @@ class SessionSearchEngine:
         reflection: DecisionReflection,
         current_regime: Optional[str] = None,
         setup_tokens: Optional[set[str]] = None,
-        now: Optional[datetime] = None
+        now: Optional[datetime] = None,
     ) -> Dict[str, float]:
         """
         SOTA Phase 4: Hybrid Multi-Factor Precedent Scoring.
@@ -434,7 +439,7 @@ class SessionSearchEngine:
             if c_reg in text_corpus:
                 regime_score = 1.0
             else:
-                toks = [t.strip() for t in c_reg.replace('|', ',').split(',') if len(t.strip()) >= 3]
+                toks = [t.strip() for t in c_reg.replace("|", ",").split(",") if len(t.strip()) >= 3]
                 if toks and any(t in text_corpus for t in toks):
                     regime_score = 0.50
 
@@ -442,16 +447,20 @@ class SessionSearchEngine:
         keyword_score = 0.10
         if setup_tokens:
             doc_text = f"{reflection.symbol} {reflection.decision} {reflection.rationale_summary or ''} {reflection.alpha_lesson or ''}".lower()
-            doc_tokens = set(re.findall(r'\b[a-zA-Z0-9_-]{3,}\b', doc_text))
+            doc_tokens = set(re.findall(r"\b[a-zA-Z0-9_-]{3,}\b", doc_text))
             if doc_tokens and setup_tokens:
                 overlap = len(setup_tokens & doc_tokens)
                 keyword_score = min(1.0, float(overlap) / max(1.0, len(setup_tokens)))
 
         # 3. Outcome Quality Score (0.20 weight)
         outcome_score = 0.30
-        if reflection.was_profitable is True or (reflection.outcome_pnl_usd is not None and reflection.outcome_pnl_usd > 0):
+        if reflection.was_profitable is True or (
+            reflection.outcome_pnl_usd is not None and reflection.outcome_pnl_usd > 0
+        ):
             outcome_score = 1.0
-        elif reflection.was_profitable is False or (reflection.outcome_pnl_usd is not None and reflection.outcome_pnl_usd < 0):
+        elif reflection.was_profitable is False or (
+            reflection.outcome_pnl_usd is not None and reflection.outcome_pnl_usd < 0
+        ):
             outcome_score = 0.10
         elif reflection.process_was_sound:
             outcome_score = 0.70
@@ -465,19 +474,14 @@ class SessionSearchEngine:
             days_ago = max(0.0, (now - ref_dt).total_seconds() / 86400.0)
             recency_score = math.exp(-days_ago / 30.0)  # Halves every ~21 days
 
-        composite = (
-            0.40 * regime_score +
-            0.30 * keyword_score +
-            0.20 * outcome_score +
-            0.10 * recency_score
-        )
+        composite = 0.40 * regime_score + 0.30 * keyword_score + 0.20 * outcome_score + 0.10 * recency_score
 
         return {
             "composite": round(composite, 4),
             "regime_score": round(regime_score, 4),
             "keyword_score": round(keyword_score, 4),
             "outcome_score": round(outcome_score, 4),
-            "recency_score": round(recency_score, 4)
+            "recency_score": round(recency_score, 4),
         }
 
     async def get_symbol_precedents_hybrid(
@@ -488,7 +492,7 @@ class SessionSearchEngine:
         limit: int = 3,
         session: Optional[AsyncSession] = None,
         query_vector: Optional[List[float]] = None,
-        as_of: Optional[datetime] = None
+        as_of: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
         """
         SOTA Phase 4 & Phase 2: Retrieves and re-ranks symbol precedents using multi-factor
@@ -503,14 +507,27 @@ class SessionSearchEngine:
 
         if session is not None:
             return await self._execute_symbol_precedents_hybrid(
-                session, clean_sym, current_regime=current_regime, setup_text=setup_text, limit=limit, query_vector=query_vector, as_of=as_of
+                session,
+                clean_sym,
+                current_regime=current_regime,
+                setup_text=setup_text,
+                limit=limit,
+                query_vector=query_vector,
+                as_of=as_of,
             )
 
         try:
             from monika.infrastructure.database.db import get_session
+
             async with get_session() as s:
                 return await self._execute_symbol_precedents_hybrid(
-                    s, clean_sym, current_regime=current_regime, setup_text=setup_text, limit=limit, query_vector=query_vector, as_of=as_of
+                    s,
+                    clean_sym,
+                    current_regime=current_regime,
+                    setup_text=setup_text,
+                    limit=limit,
+                    query_vector=query_vector,
+                    as_of=as_of,
                 )
         except Exception as e:
             logger.warning(f"[PostgreSQL] get_symbol_precedents_hybrid error for {clean_sym}: {e}")
@@ -524,7 +541,7 @@ class SessionSearchEngine:
         setup_text: Optional[str] = None,
         limit: int = 3,
         query_vector: Optional[List[float]] = None,
-        as_of: Optional[datetime] = None
+        as_of: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
         try:
             stmt = (
@@ -541,22 +558,19 @@ class SessionSearchEngine:
 
             setup_tokens = None
             if setup_text and setup_text.strip():
-                raw_words = re.findall(r'\b[a-zA-Z0-9_-]{3,}\b', setup_text.lower())
+                raw_words = re.findall(r"\b[a-zA-Z0-9_-]{3,}\b", setup_text.lower())
                 stopwords = {"the", "and", "for", "with", "this", "that", "trade", "price", "entry"}
                 setup_tokens = {w for w in raw_words if w not in stopwords}
 
             now = as_of if as_of is not None else datetime.now(timezone.utc)
             if now.tzinfo is None:
                 now = now.replace(tzinfo=timezone.utc)
-            
+
             # 1. Multi-factor heuristic scoring
             heuristic_ranks = []
             for r in candidates:
                 scores = self.compute_precedent_hybrid_score(
-                    reflection=r,
-                    current_regime=current_regime,
-                    setup_tokens=setup_tokens,
-                    now=now
+                    reflection=r, current_regime=current_regime, setup_tokens=setup_tokens, now=now
                 )
                 heuristic_ranks.append((r, scores))
             heuristic_ranks.sort(key=lambda item: item[1]["composite"], reverse=True)
@@ -568,6 +582,7 @@ class SessionSearchEngine:
                 if has_pgv:
                     try:
                         from sqlalchemy import text
+
                         vec_str = "[" + ",".join(str(float(x)) for x in query_vector) + "]"
                         pgv_cand_stmt = (
                             select(DecisionReflection)
@@ -609,7 +624,9 @@ class SessionSearchEngine:
                     r = row_map[rid]
                     h_score = next((sc for cand, sc in heuristic_ranks if cand.id == rid), None)
                     if not h_score:
-                        h_score = self.compute_precedent_hybrid_score(r, current_regime=current_regime, setup_tokens=setup_tokens, now=now)
+                        h_score = self.compute_precedent_hybrid_score(
+                            r, current_regime=current_regime, setup_tokens=setup_tokens, now=now
+                        )
                     formatted = self._format_reflection(r)
                     formatted["hybrid_scores"] = h_score
                     formatted["composite_score"] = h_score["composite"]
@@ -631,10 +648,7 @@ class SessionSearchEngine:
             return []
 
     async def index_reflection(
-        self,
-        session: AsyncSession,
-        reflection_id: int,
-        custom_text: Optional[str] = None
+        self, session: AsyncSession, reflection_id: int, custom_text: Optional[str] = None
     ) -> bool:
         """
         Indexes or re-indexes a DecisionReflection record for PostgreSQL Full-Text Search.
@@ -653,13 +667,14 @@ class SessionSearchEngine:
                 r.reflection_text or "",
                 r.alpha_lesson or "",
                 r.specific_lesson or "",
-                custom_text or ""
+                custom_text or "",
             ]
             combined_text = " ".join(filter(None, parts)).strip()
 
             if self._is_postgres_session(session):
                 from sqlalchemy import func
-                r.search_vector = func.to_tsvector('english', combined_text)
+
+                r.search_vector = func.to_tsvector("english", combined_text)
             else:
                 r.search_vector = combined_text
 
@@ -671,10 +686,7 @@ class SessionSearchEngine:
             return False
 
     async def update_reflection_outcome(
-        self,
-        session: AsyncSession,
-        reflection_id: int,
-        outcome_data: Dict[str, Any]
+        self, session: AsyncSession, reflection_id: int, outcome_data: Dict[str, Any]
     ) -> bool:
         """
         Updates trade reflection outcome and re-indexes the search vector.
@@ -707,5 +719,3 @@ class SessionSearchEngine:
             logger.warning(f"[SessionSearch] update_reflection_outcome error for reflection {reflection_id}: {e}")
             await session.rollback()
             return False
-
-

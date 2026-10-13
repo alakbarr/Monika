@@ -7,7 +7,14 @@ from pydantic import ValidationError
 
 from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.application.analysis.schemas.schemas import SubmitAssetAnalysisSchema, SubmitFundamentalBriefSchema
-from monika.infrastructure.database.models import AssetAnalysis, FundamentalBrief, NewsItem, NewsDigest, DecisionReflection, TelegramConversation
+from monika.infrastructure.database.models import (
+    AssetAnalysis,
+    FundamentalBrief,
+    NewsItem,
+    NewsDigest,
+    DecisionReflection,
+    TelegramConversation,
+)
 
 
 class BenchmarkToolExecutor(ToolExecutor):
@@ -37,25 +44,38 @@ class BenchmarkToolExecutor(ToolExecutor):
         try:
             payload = SubmitAssetAnalysisSchema.model_validate(inp).model_dump(exclude_unset=True, mode="json")
         except ValidationError as e:
-            return {"status": "validation_failed",
-                    "errors": [f"{'.'.join(str(x) for x in er['loc'])}: {er['msg']}" for er in e.errors()]}
+            return {
+                "status": "validation_failed",
+                "errors": [f"{'.'.join(str(x) for x in er['loc'])}: {er['msg']}" for er in e.errors()],
+            }
         self.captured = {"tool": "submit_asset_analysis", "payload": payload}
-        return {"status": "saved", "analysis_id": -1, "symbol": payload.get("symbol"),
-                "decision": payload.get("decision"), "message": "benchmark: tidak dipersist"}
+        return {
+            "status": "saved",
+            "analysis_id": -1,
+            "symbol": payload.get("symbol"),
+            "decision": payload.get("decision"),
+            "message": "benchmark: tidak dipersist",
+        }
 
     async def _tool_submit_fundamental_brief(self, inp: dict) -> dict:
         try:
             payload = SubmitFundamentalBriefSchema.model_validate(inp).model_dump(exclude_unset=True, mode="json")
         except ValidationError as e:
-            return {"status": "validation_failed",
-                    "errors": [f"{'.'.join(str(x) for x in er['loc'])}: {er['msg']}" for er in e.errors()]}
+            return {
+                "status": "validation_failed",
+                "errors": [f"{'.'.join(str(x) for x in er['loc'])}: {er['msg']}" for er in e.errors()],
+            }
         self.captured = {"tool": "submit_fundamental_brief", "payload": payload}
         return {"status": "saved", "brief_id": -1, "valid_until": None}
 
     async def _tool_propose_action(self, inp: dict) -> dict:
         self.captured = {"tool": "propose_action", "payload": inp}
-        return {"status": "proposed", "message": "benchmark: tidak dipersist",
-                "action_type": inp.get("action_type"), "params": inp.get("params")}
+        return {
+            "status": "proposed",
+            "message": "benchmark: tidak dipersist",
+            "action_type": inp.get("action_type"),
+            "params": inp.get("params"),
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -73,27 +93,40 @@ async def _capturing_submit_asset_analysis(self, inp: dict) -> dict:
     try:
         payload = SubmitAssetAnalysisSchema.model_validate(inp).model_dump(exclude_unset=True, mode="json")
     except ValidationError as e:
-        return {"status": "validation_failed",
-                "errors": [f"{'.'.join(str(x) for x in er['loc'])}: {er['msg']}" for er in e.errors()]}
+        return {
+            "status": "validation_failed",
+            "errors": [f"{'.'.join(str(x) for x in er['loc'])}: {er['msg']}" for er in e.errors()],
+        }
     _capture_box["result"] = {"tool": "submit_asset_analysis", "payload": payload}
-    return {"status": "saved", "analysis_id": -1, "symbol": payload.get("symbol"),
-            "decision": payload.get("decision"), "message": "benchmark: tidak dipersist"}
+    return {
+        "status": "saved",
+        "analysis_id": -1,
+        "symbol": payload.get("symbol"),
+        "decision": payload.get("decision"),
+        "message": "benchmark: tidak dipersist",
+    }
 
 
 async def _capturing_submit_fundamental_brief(self, inp: dict) -> dict:
     try:
         payload = SubmitFundamentalBriefSchema.model_validate(inp).model_dump(exclude_unset=True, mode="json")
     except ValidationError as e:
-        return {"status": "validation_failed",
-                "errors": [f"{'.'.join(str(x) for x in er['loc'])}: {er['msg']}" for er in e.errors()]}
+        return {
+            "status": "validation_failed",
+            "errors": [f"{'.'.join(str(x) for x in er['loc'])}: {er['msg']}" for er in e.errors()],
+        }
     _capture_box["result"] = {"tool": "submit_fundamental_brief", "payload": payload}
     return {"status": "saved", "brief_id": -1, "valid_until": None}
 
 
 async def _capturing_propose_action(self, inp: dict) -> dict:
     _capture_box["result"] = {"tool": "propose_action", "payload": inp}
-    return {"status": "proposed", "message": "benchmark: tidak dipersist",
-            "action_type": inp.get("action_type"), "params": inp.get("params")}
+    return {
+        "status": "proposed",
+        "message": "benchmark: tidak dipersist",
+        "action_type": inp.get("action_type"),
+        "params": inp.get("params"),
+    }
 
 
 def _handle_economic_calendar(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
@@ -146,17 +179,20 @@ def _handle_news_digest(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str
 
 def _handle_news_items(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
     from monika.application.benchmark.fixture_loader import get_golden_macro_stage1
+
     golden = get_golden_macro_stage1()
     items = []
     for it in golden.get("high_impact_news", []):
-        items.append({
-            "title": it.get("title"),
-            "summary": it.get("summary"),
-            "impact": it.get("impact", "HIGH"),
-            "source": it.get("source", "news"),
-            "published_at": it.get("published_at", "2026-10-04T12:00:00Z"),
-            "currencies": it.get("currencies", ["USD"]),
-        })
+        items.append(
+            {
+                "title": it.get("title"),
+                "summary": it.get("summary"),
+                "impact": it.get("impact", "HIGH"),
+                "source": it.get("source", "news"),
+                "published_at": it.get("published_at", "2026-10-04T12:00:00Z"),
+                "currencies": it.get("currencies", ["USD"]),
+            }
+        )
     limit = int(inp.get("limit", 10)) if inp.get("limit") else 10
     return {"status": "success", "count": len(items[:limit]), "news_items": items[:limit]}
 
@@ -210,8 +246,22 @@ def _handle_economic_surprise(bundle: dict[str, Any], inp: dict[str, Any]) -> di
     return {
         "status": "success",
         "key_surprises": [
-            {"indicator": "Non-Farm Payrolls", "country": "US", "actual": 29000, "forecast": 90000, "deviation": -61000, "impact": "LARGE_NEGATIVE"},
-            {"indicator": "Unemployment Rate", "country": "US", "actual": 4.2, "forecast": 4.1, "deviation": 0.1, "impact": "NEGATIVE"},
+            {
+                "indicator": "Non-Farm Payrolls",
+                "country": "US",
+                "actual": 29000,
+                "forecast": 90000,
+                "deviation": -61000,
+                "impact": "LARGE_NEGATIVE",
+            },
+            {
+                "indicator": "Unemployment Rate",
+                "country": "US",
+                "actual": 4.2,
+                "forecast": 4.1,
+                "deviation": 0.1,
+                "impact": "NEGATIVE",
+            },
         ],
     }
 
@@ -233,19 +283,19 @@ def _handle_web_search(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str,
             {
                 "title": "US Nonfarm Payrolls Miss Sharply in September 2026",
                 "snippet": "The US economy added just 29,000 jobs in September 2026 against consensus of 90,000, pushing the unemployment rate up to 4.2%. Dollar Index softened below 102.",
-                "url": "https://reuters.com/markets/us-nfp-sep-2026"
+                "url": "https://reuters.com/markets/us-nfp-sep-2026",
             },
             {
                 "title": "Middle East Tensions Sustain Oil and Gold Safe-Haven Bids",
                 "snippet": "WTI crude trades near $71.85 and Spot Gold holds near $2,658.50/oz as geopolitical friction in the Middle East sustains a persistent risk premium.",
-                "url": "https://bloomberg.com/markets/commodities-geopolitics-2026"
+                "url": "https://bloomberg.com/markets/commodities-geopolitics-2026",
             },
             {
                 "title": "Federal Reserve Rate Decision Outlook",
                 "snippet": "CME FedWatch shows an 82% probability of the Fed holding rates at 3.75-4.00% at the November meeting following mixed labor and inflation data.",
-                "url": "https://cmegroup.com/fedwatch-2026"
-            }
-        ]
+                "url": "https://cmegroup.com/fedwatch-2026",
+            },
+        ],
     }
 
 
@@ -433,8 +483,18 @@ def _handle_scan_pattern_similarity(bundle: dict[str, Any], inp: dict[str, Any])
         "status": "success",
         "symbol": str(inp.get("symbol", "EURUSD")).upper(),
         "top_matches": [
-            {"date": "2026-06-12", "similarity": 0.88, "pattern": "H4 Asian Liquidity Sweep & Retest", "subsequent_outcome": "BEARISH_EXPANSION +85 pips"},
-            {"date": "2026-08-04", "similarity": 0.81, "pattern": "H1 Bearish FVG Rejection", "subsequent_outcome": "BEARISH_CONTINUATION +60 pips"},
+            {
+                "date": "2026-06-12",
+                "similarity": 0.88,
+                "pattern": "H4 Asian Liquidity Sweep & Retest",
+                "subsequent_outcome": "BEARISH_EXPANSION +85 pips",
+            },
+            {
+                "date": "2026-08-04",
+                "similarity": 0.81,
+                "pattern": "H1 Bearish FVG Rejection",
+                "subsequent_outcome": "BEARISH_CONTINUATION +60 pips",
+            },
         ],
     }
 
@@ -525,6 +585,7 @@ class BenchmarkFixtureDispatcher:
     def get_bundle(cls) -> dict[str, Any]:
         if cls._bundle is None:
             from monika.application.benchmark.fixture_loader import get_stage1_fixture_bundle_dict
+
             cls._bundle = get_stage1_fixture_bundle_dict()
         return cls._bundle
 
@@ -550,9 +611,11 @@ def guarded_tool_executor():
     Selalu dipulihkan (finally), termasuk saat exception. Kembalikan dict box --
     box['result'] berisi payload yang ditangkap (kalau model memanggil tool tsb)."""
     _capture_box.clear()
-    orig = (ToolExecutor._tool_submit_asset_analysis,
-            ToolExecutor._tool_submit_fundamental_brief,
-            ToolExecutor._tool_propose_action)
+    orig = (
+        ToolExecutor._tool_submit_asset_analysis,
+        ToolExecutor._tool_submit_fundamental_brief,
+        ToolExecutor._tool_propose_action,
+    )
     orig_execute = ToolExecutor.execute
 
     ToolExecutor._tool_submit_asset_analysis = _capturing_submit_asset_analysis
@@ -577,9 +640,11 @@ def guarded_tool_executor():
     try:
         yield _capture_box
     finally:
-        (ToolExecutor._tool_submit_asset_analysis,
-         ToolExecutor._tool_submit_fundamental_brief,
-         ToolExecutor._tool_propose_action) = orig
+        (
+            ToolExecutor._tool_submit_asset_analysis,
+            ToolExecutor._tool_submit_fundamental_brief,
+            ToolExecutor._tool_propose_action,
+        ) = orig
         setattr(ToolExecutor, "execute", orig_execute)
 
 
@@ -589,8 +654,10 @@ def guarded_tool_executor():
 # akan raise RuntimeError yang jelas dan task tsb otomatis di-skip oleh runner.
 # ---------------------------------------------------------------------------
 
-async def pick_asset_analysis(session: AsyncSession, symbol: str | None = None,
-                               need_tradeable: bool = True) -> AssetAnalysis:
+
+async def pick_asset_analysis(
+    session: AsyncSession, symbol: str | None = None, need_tradeable: bool = True
+) -> AssetAnalysis:
     q = select(AssetAnalysis)
     if symbol:
         q = q.where(AssetAnalysis.symbol == symbol)
@@ -608,14 +675,18 @@ async def pick_asset_analysis(session: AsyncSession, symbol: str | None = None,
 
 
 async def latest_brief(session: AsyncSession) -> FundamentalBrief:
-    row = (await session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))).scalar_one_or_none()
+    row = (
+        await session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))
+    ).scalar_one_or_none()
     if row is None:
         raise RuntimeError("Tidak ada FundamentalBrief di DB -- jalankan Stage 1 dulu.")
     return row
 
 
 async def latest_digest(session: AsyncSession) -> NewsDigest | None:
-    return (await session.execute(select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1))).scalar_one_or_none()
+    return (
+        await session.execute(select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1))
+    ).scalar_one_or_none()
 
 
 async def recent_news(session: AsyncSession, limit: int = 8) -> list[NewsItem]:
@@ -626,17 +697,25 @@ async def recent_news(session: AsyncSession, limit: int = 8) -> list[NewsItem]:
 
 
 async def resolved_reflection(session: AsyncSession) -> DecisionReflection | None:
-    return (await session.execute(
-        select(DecisionReflection).where(DecisionReflection.status == "resolved")
-        .order_by(DecisionReflection.resolved_at.desc()).limit(1)
-    )).scalar_one_or_none()
+    return (
+        await session.execute(
+            select(DecisionReflection)
+            .where(DecisionReflection.status == "resolved")
+            .order_by(DecisionReflection.resolved_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
 
 
 async def latest_user_message(session: AsyncSession) -> str | None:
-    row = (await session.execute(
-        select(TelegramConversation).where(TelegramConversation.role == "user")
-        .order_by(TelegramConversation.timestamp.desc()).limit(1)
-    )).scalar_one_or_none()
+    row = (
+        await session.execute(
+            select(TelegramConversation)
+            .where(TelegramConversation.role == "user")
+            .order_by(TelegramConversation.timestamp.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
     return row.message if row else None
 
 

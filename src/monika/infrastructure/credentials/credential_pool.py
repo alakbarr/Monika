@@ -20,6 +20,7 @@ logger = logging.getLogger("TradingAgent.Provider.CredentialPool")
 
 class CredentialStatus(str, Enum):
     """Monika 3-tier credential operational status."""
+
     STATUS_OK = "ok"
     STATUS_EXHAUSTED = "exhausted"
     STATUS_DEAD = "dead"
@@ -28,6 +29,7 @@ class CredentialStatus(str, Enum):
 @dataclass
 class KeyHealth:
     """Tracks health, usage, rate limits, and financial metrics of an individual API key."""
+
     key: str
     provider: str
     is_active: bool = True
@@ -196,18 +198,31 @@ class KeyHealth:
         # Permanent failure conditions
         if (
             is_permanent
-            or reason in (FailoverReason.AUTH_PERMANENT, FailoverReason.AUTH_ERROR, FailoverReason.BILLING_EXHAUSTED, FailoverReason.HARD_QUOTA_EXHAUSTED)
-            or any(m in reason_str for m in ("invalid_api_key", "unauthorized", "quota exceeded", "billing", "insufficient_quota"))
+            or reason
+            in (
+                FailoverReason.AUTH_PERMANENT,
+                FailoverReason.AUTH_ERROR,
+                FailoverReason.BILLING_EXHAUSTED,
+                FailoverReason.HARD_QUOTA_EXHAUSTED,
+            )
+            or any(
+                m in reason_str
+                for m in ("invalid_api_key", "unauthorized", "quota exceeded", "billing", "insufficient_quota")
+            )
         ):
             self.is_active = False
             self.disabled_reason = reason_str or "Permanent credential rejection"
-            logger.error(f"[CredentialPool] Permanently disabled key {masked} ({self.provider}): {self.disabled_reason}")
+            logger.error(
+                f"[CredentialPool] Permanently disabled key {masked} ({self.provider}): {self.disabled_reason}"
+            )
             return
 
         # 5 consecutive transient errors trigger a safety cooldown
         if self.consecutive_errors >= 5:
             self.cooldown_until = time.time() + 120.0
-            logger.warning(f"[CredentialPool] Key {masked} ({self.provider}) hit 5 consecutive errors. 120s safety cooldown.")
+            logger.warning(
+                f"[CredentialPool] Key {masked} ({self.provider}) hit 5 consecutive errors. 120s safety cooldown."
+            )
 
 
 # Backward-compatible alias for per-key dataclass
@@ -276,6 +291,7 @@ class CredentialPool:
         # Register secret in CredentialVault for dynamic exact-byte log redaction
         try:
             from monika.core.security.credential_vault import vault
+
             vault.register_secret(key)
         except Exception:
             pass
@@ -347,6 +363,7 @@ class CredentialPool:
             self._round_robin_idx[prov] = (idx + 1) % len(eligible)
         elif self.rotation_strategy == "random":
             import random
+
             selected = random.choice(eligible)
         else:  # "least_used"
             selected = min(eligible, key=lambda x: x.last_used)
@@ -522,19 +539,21 @@ class CredentialPool:
         for p in provs:
             entries = []
             for kh in self._pools.get(p, []):
-                entries.append({
-                    "masked_key": kh.key[:6] + "..." + kh.key[-4:] if len(kh.key) > 12 else "***",
-                    "is_active": kh.is_active,
-                    "is_available": kh.is_available,
-                    "cooldown_remaining_sec": max(0.0, kh.cooldown_until - now),
-                    "consecutive_rate_limits": kh.consecutive_rate_limits,
-                    "consecutive_errors": kh.consecutive_errors,
-                    "total_requests": kh.total_requests,
-                    "total_errors": kh.total_errors,
-                    "total_tokens": kh.total_tokens,
-                    "total_cost_usd": kh.total_cost_usd,
-                    "disabled_reason": kh.disabled_reason,
-                })
+                entries.append(
+                    {
+                        "masked_key": kh.key[:6] + "..." + kh.key[-4:] if len(kh.key) > 12 else "***",
+                        "is_active": kh.is_active,
+                        "is_available": kh.is_available,
+                        "cooldown_remaining_sec": max(0.0, kh.cooldown_until - now),
+                        "consecutive_rate_limits": kh.consecutive_rate_limits,
+                        "consecutive_errors": kh.consecutive_errors,
+                        "total_requests": kh.total_requests,
+                        "total_errors": kh.total_errors,
+                        "total_tokens": kh.total_tokens,
+                        "total_cost_usd": kh.total_cost_usd,
+                        "disabled_reason": kh.disabled_reason,
+                    }
+                )
             result[p] = entries
         return result
 
@@ -548,8 +567,7 @@ class LLMCredentialPool:
     def __init__(self, provider: str, keys: Optional[List[str]] = None):
         self.provider = provider.lower()
         self._states: List[CredentialState] = [
-            CredentialState(key=k.strip(), provider=self.provider)
-            for k in (keys or []) if k and k.strip()
+            CredentialState(key=k.strip(), provider=self.provider) for k in (keys or []) if k and k.strip()
         ]
         self._current_index: int = 0
         self._lock = asyncio.Lock()

@@ -14,31 +14,33 @@ from typing import Dict, List, Optional, Any
 @dataclass
 class PatternMatch:
     """Represents a matched historical pattern segment."""
+
     start_index: int
     end_index: int
-    similarity: float           # 0.0 - 1.0 (shape similarity)
-    start_time: float           # Unix epoch timestamp
-    end_time: float             # Unix epoch timestamp
+    similarity: float  # 0.0 - 1.0 (shape similarity)
+    start_time: float  # Unix epoch timestamp
+    end_time: float  # Unix epoch timestamp
     method: str = "euclidean"
     # Context metrics
     context_score: float = 0.5  # 0.0 - 1.0 (macro context match)
     context_coverage: float = 1.0  # Proportion of context dimensions available (0.0-1.0)
-    context_label: str = "UNKNOWN" # HIGH, MEDIUM, LOW, UNVERIFIED
+    context_label: str = "UNKNOWN"  # HIGH, MEDIUM, LOW, UNVERIFIED
     # Cross-symbol metrics
     is_cross_symbol: bool = False
     source_symbol: str = ""
-    weight: float = 1.0         # 1.0 for same-symbol, 0.5 for cross-symbol
+    weight: float = 1.0  # 1.0 for same-symbol, 0.5 for cross-symbol
 
 
 @dataclass
 class MarketContext:
     """Snapshot of macroeconomic and market environment at a specific point in time."""
+
     vix_level: float
-    vix_category: str           # low, normal, elevated, crisis
-    dxy_trend: str              # bullish, bearish, flat, unknown
-    market_regime: str          # trend, range, volatile_chop, squeeze
-    rate_cycle: str             # hiking, cutting, pause, neutral, unknown
-    asset_trend: str            # above_ema200, below_ema200, neutral
+    vix_category: str  # low, normal, elevated, crisis
+    dxy_trend: str  # bullish, bearish, flat, unknown
+    market_regime: str  # trend, range, volatile_chop, squeeze
+    rate_cycle: str  # hiking, cutting, pause, neutral, unknown
+    asset_trend: str  # above_ema200, below_ema200, neutral
     data_sources: Dict[str, str] = field(default_factory=dict)
 
     def to_summary(self) -> str:
@@ -54,6 +56,7 @@ class MarketContext:
 @dataclass
 class ContextAnnotation:
     """Historical narrative annotation for a match date."""
+
     match: PatternMatch
     chronicle_events: List[str] = field(default_factory=list)
     calendar_events: List[str] = field(default_factory=list)
@@ -64,20 +67,22 @@ class ContextAnnotation:
 @dataclass
 class ContextVerdict:
     """Verdict from LLM deep verification of pattern context."""
+
     match: PatternMatch
-    relevance: str              # high, medium, low
+    relevance: str  # high, medium, low
     reason: str
-    adjustment_factor: float    # 0.0 - 1.0
+    adjustment_factor: float  # 0.0 - 1.0
 
 
 @dataclass
 class PatternOutcome:
     """Forward price trajectory after a matched historical pattern."""
+
     match: PatternMatch
     forward_returns: Dict[str, float]  # horizon -> return in ATR units
-    mfe_atr: float                     # Max Favorable Excursion (in ATR units)
-    mae_atr: float                     # Max Adverse Excursion (in ATR units)
-    direction: str                     # bullish, bearish, neutral
+    mfe_atr: float  # Max Favorable Excursion (in ATR units)
+    mae_atr: float  # Max Adverse Excursion (in ATR units)
+    direction: str  # bullish, bearish, neutral
     entry_price: float
     atr_at_entry: float
 
@@ -85,6 +90,7 @@ class PatternOutcome:
 @dataclass
 class OutcomeStatistics:
     """Aggregated statistical outcome across multiple historical matches."""
+
     is_significant: bool = False
     match_count: int = 0
     bullish_pct: float = 0.5
@@ -107,6 +113,7 @@ class OutcomeStatistics:
 @dataclass
 class SingleTimeframeResult:
     """Screening outcome for one specific timeframe."""
+
     timeframe: str
     statistics: OutcomeStatistics
     top_matches: List[PatternMatch] = field(default_factory=list)
@@ -135,9 +142,10 @@ class SingleTimeframeResult:
 @dataclass
 class MultiTimeframeScreeningResult:
     """Comprehensive multi-timeframe pattern similarity screening consensus."""
+
     symbol: str
-    overall_bias: str                  # bullish, bearish, neutral
-    confidence: str                    # high, medium, low, none
+    overall_bias: str  # bullish, bearish, neutral
+    confidence: str  # high, medium, low, none
     consensus_bullish_pct: float
     consensus_bearish_pct: float
     has_timeframe_conflict: bool
@@ -183,10 +191,7 @@ class MultiTimeframeScreeningResult:
             if stats.match_count == 0:
                 continue
 
-            lines.append(
-                f"**{tf} ({stats.match_count} matches, "
-                f"avg sim: {res.avg_similarity:.1%})**"
-            )
+            lines.append(f"**{tf} ({stats.match_count} matches, avg sim: {res.avg_similarity:.1%})**")
 
             if stats.is_significant:
                 lines.append(
@@ -213,7 +218,9 @@ class MultiTimeframeScreeningResult:
                     dt_str = datetime.fromtimestamp(m.end_time, tz=timezone.utc).strftime("%Y-%m-%d")
                     src = f"{m.source_symbol} (0.5x)" if m.is_cross_symbol else "Same-Asset"
                     fwd_ret = o.forward_returns.get("1d", o.forward_returns.get("4h", o.forward_returns.get("1h", 0.0)))
-                    lines.append(f"| {dt_str} | {m.similarity:.1%} | {m.context_label} | {src} | {o.direction.upper()} | {fwd_ret:+.2f} ATR | +{o.mfe_atr:.1f} / -{abs(o.mae_atr):.1f} |")
+                    lines.append(
+                        f"| {dt_str} | {m.similarity:.1%} | {m.context_label} | {src} | {o.direction.upper()} | {fwd_ret:+.2f} ATR | +{o.mfe_atr:.1f} / -{abs(o.mae_atr):.1f} |"
+                    )
             elif res.top_matches:
                 lines.append("| Date | Sim | Context | Source |")
                 lines.append("|---|---|---|---|")

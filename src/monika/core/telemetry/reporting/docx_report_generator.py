@@ -46,7 +46,9 @@ class DocxReportGenerator:
             from docx.oxml.ns import nsdecls, qn
         except ImportError as e:
             logger.error(f"python-docx is not installed: {e}")
-            raise ImportError("python-docx is required for Word document generation. Install via pip install python-docx") from e
+            raise ImportError(
+                "python-docx is required for Word document generation. Install via pip install python-docx"
+            ) from e
 
         doc = Document()
 
@@ -62,17 +64,17 @@ class DocxReportGenerator:
         title_p.paragraph_format.space_before = Pt(0)
         title_p.paragraph_format.space_after = Pt(4)
         run_title = title_p.add_run(title)
-        run_title.font.name = 'Calibri'
+        run_title.font.name = "Calibri"
         run_title.font.size = Pt(22)
         run_title.font.bold = True
-        run_title.font.color.rgb = RGBColor(16, 44, 87) # Deep Institutional Blue
+        run_title.font.color.rgb = RGBColor(16, 44, 87)  # Deep Institutional Blue
 
         # Subtitle / Metadata
         sub_p = doc.add_paragraph()
         sub_p.paragraph_format.space_after = Pt(18)
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         run_sub = sub_p.add_run(f"System: Monika MT5 Autonomous Agent Harness | Generated: {now_str}")
-        run_sub.font.name = 'Calibri'
+        run_sub.font.name = "Calibri"
         run_sub.font.size = Pt(10)
         run_sub.font.italic = True
         run_sub.font.color.rgb = RGBColor(100, 110, 125)
@@ -83,11 +85,36 @@ class DocxReportGenerator:
         h1.paragraph_format.space_after = Pt(6)
 
         kpis = [
-            ("Initial Equity", f"${metrics.get('initial_equity', 10000.0):,.2f}", "Total Net PnL", f"${metrics.get('total_net_pnl', 0.0):+,.2f}"),
-            ("Final Equity", f"${metrics.get('final_equity', 10000.0):,.2f}", "Total Return", f"{metrics.get('total_return_pct', 0.0):+.2f}%"),
-            ("Annualized Sharpe", f"{metrics.get('annualized_sharpe', 0.0):.2f}", "Win Rate", f"{metrics.get('win_rate_pct', 0.0):.1f}%"),
-            ("Profit Factor", f"{metrics.get('profit_factor', 0.0):.2f}", "Max Drawdown", f"{metrics.get('max_drawdown_pct', 0.0):.2f}%"),
-            ("Total Trades", str(metrics.get('total_trades', 0)), "Trade Expectancy", f"{metrics.get('expectancy_r', 0.0):+.2f} R"),
+            (
+                "Initial Equity",
+                f"${metrics.get('initial_equity', 10000.0):,.2f}",
+                "Total Net PnL",
+                f"${metrics.get('total_net_pnl', 0.0):+,.2f}",
+            ),
+            (
+                "Final Equity",
+                f"${metrics.get('final_equity', 10000.0):,.2f}",
+                "Total Return",
+                f"{metrics.get('total_return_pct', 0.0):+.2f}%",
+            ),
+            (
+                "Annualized Sharpe",
+                f"{metrics.get('annualized_sharpe', 0.0):.2f}",
+                "Win Rate",
+                f"{metrics.get('win_rate_pct', 0.0):.1f}%",
+            ),
+            (
+                "Profit Factor",
+                f"{metrics.get('profit_factor', 0.0):.2f}",
+                "Max Drawdown",
+                f"{metrics.get('max_drawdown_pct', 0.0):.2f}%",
+            ),
+            (
+                "Total Trades",
+                str(metrics.get("total_trades", 0)),
+                "Trade Expectancy",
+                f"{metrics.get('expectancy_r', 0.0):+.2f} R",
+            ),
         ]
 
         table = doc.add_table(rows=1, cols=4)
@@ -127,7 +154,7 @@ class DocxReportGenerator:
             h3.paragraph_format.space_before = Pt(14)
             h3.paragraph_format.space_after = Pt(6)
             for rec in recommendations:
-                bp = doc.add_paragraph(rec, style='List Bullet')
+                bp = doc.add_paragraph(rec, style="List Bullet")
                 bp.paragraph_format.space_after = Pt(3)
 
         # Section 4: Compliance & Disclaimer

@@ -54,7 +54,7 @@ class TestScraperLanguageIsolation:
         scraper._pick_session = MagicMock(return_value="fake_session.json")
         scraper._load_cookies = MagicMock(return_value={"auth_token": "token123", "lang": "en"})
         mock_page.url = "https://x.com/i/lists/12345?lang=en"
-        mock_page.wait.ele_displayed.return_value = False # break immediately
+        mock_page.wait.ele_displayed.return_value = False  # break immediately
 
         scraper.fetch_latest_tweets(max_age_minutes=60)
 
@@ -67,12 +67,12 @@ class TestScraperLanguageIsolation:
         mock_init.return_value = mock_page
 
         scraper = TradingViewNewsScraper(headless=True)
-        
+
         # Test session prep
         with patch("os.path.exists", return_value=True):
             with patch("builtins.open", MagicMock()):
                 with patch("json.load", return_value=[{"name": "test", "value": "val"}]):
                     scraper._prepare_session()
-                    
+
                     # Verifikasi set cookies menyertakan locale en
                     assert mock_page.set.cookies.called

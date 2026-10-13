@@ -55,8 +55,7 @@ async def test_analytical_query_builder_overview():
     mock_session.execute.side_effect = [mock_exec_res_outcomes, mock_exec_res_pos]
 
     res = await handle_run_analytical_query(
-        {"metric": "overview", "group_by": "session", "days_back": 30},
-        session=mock_session
+        {"metric": "overview", "group_by": "session", "days_back": 30}, session=mock_session
     )
 
     assert res["metric"] == "overview"

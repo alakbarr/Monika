@@ -91,13 +91,15 @@ class OrderLifecycleService:
                 bus_details["price"] = executed_price
             if reason:
                 bus_details["reason"] = reason
-            await bus.publish(OrderStateChangedEvent(
-                order_id=order.id,
-                symbol=order.symbol,
-                old_state=old_status_val,
-                new_state=new_status_val,
-                details=bus_details,
-            ))
+            await bus.publish(
+                OrderStateChangedEvent(
+                    order_id=order.id,
+                    symbol=order.symbol,
+                    old_state=old_status_val,
+                    new_state=new_status_val,
+                    details=bus_details,
+                )
+            )
         except Exception as eb_err:
             logger.debug(f"[OrderLifecycle] EventBus publish error: {eb_err}")
 

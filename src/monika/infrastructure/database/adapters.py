@@ -28,29 +28,70 @@ logger = logging.getLogger("TradingAgent.Adapters")
 # =============================================================================
 
 CURRENCY_KEYWORDS = {
-    'USD': ['us dollar', 'usd', 'fed', 'the fed', 'fed rate', 'fed chair', 'fomc', 'treasury', 'us economy', 'us gdp',
-            'nonfarm', 'nfp', 'federal reserve', 'powell', 'warsh', 'us cpi', 'us ppi', 'dxy', 'greenback'],
-    'EUR': ['euro', 'eur', 'ecb', 'eurozone', 'lagarde', 'european central bank'],
-    'GBP': ['pound', 'gbp', 'boe', 'bank of england', 'sterling', 'bailey'],
-    'JPY': ['yen', 'jpy', 'boj', 'bank of japan', 'ueda', 'kuroda'],
-    'AUD': ['aussie', 'aud', 'rba', 'australia', 'reserve bank of australia'],
-    'XAU': ['gold', 'xau', 'precious metal', 'bullion', 'xauusd'],
-    'XTI': ['crude oil', 'oil price', 'oil inventories', 'wti', 'brent', 'opec', 'xtiusd', 'xbrusd', 'petroleum', 'energy reserves'],
-    'BTC': ['bitcoin', 'btc', 'crypto market', 'cryptocurrency', 'btcusd', 'halving', 'etf btc', 'satoshi', 'digital asset'],
+    "USD": [
+        "us dollar",
+        "usd",
+        "fed",
+        "the fed",
+        "fed rate",
+        "fed chair",
+        "fomc",
+        "treasury",
+        "us economy",
+        "us gdp",
+        "nonfarm",
+        "nfp",
+        "federal reserve",
+        "powell",
+        "warsh",
+        "us cpi",
+        "us ppi",
+        "dxy",
+        "greenback",
+    ],
+    "EUR": ["euro", "eur", "ecb", "eurozone", "lagarde", "european central bank"],
+    "GBP": ["pound", "gbp", "boe", "bank of england", "sterling", "bailey"],
+    "JPY": ["yen", "jpy", "boj", "bank of japan", "ueda", "kuroda"],
+    "AUD": ["aussie", "aud", "rba", "australia", "reserve bank of australia"],
+    "XAU": ["gold", "xau", "precious metal", "bullion", "xauusd"],
+    "XTI": [
+        "crude oil",
+        "oil price",
+        "oil inventories",
+        "wti",
+        "brent",
+        "opec",
+        "xtiusd",
+        "xbrusd",
+        "petroleum",
+        "energy reserves",
+    ],
+    "BTC": [
+        "bitcoin",
+        "btc",
+        "crypto market",
+        "cryptocurrency",
+        "btcusd",
+        "halving",
+        "etf btc",
+        "satoshi",
+        "digital asset",
+    ],
 }
 
 
 import re
 
 CURRENCY_PATTERNS = {
-    cur: [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE) for kw in kws]
+    cur: [re.compile(r"\b" + re.escape(kw) + r"\b", re.IGNORECASE) for kw in kws]
     for cur, kws in CURRENCY_KEYWORDS.items()
 }
+
 
 def extract_currency_tags(text: str) -> Optional[str]:
     """
     Ekstrak tag mata uang dari teks dengan mencocokkan keyword (word boundary regex).
-    
+
     Mengembalikan string kode mata uang yang dipisahkan koma, misal 'USD,EUR,XAU'.
     """
     if not text:
@@ -59,17 +100,18 @@ def extract_currency_tags(text: str) -> Optional[str]:
     for currency, patterns in CURRENCY_PATTERNS.items():
         if any(p.search(text) for p in patterns):
             tags.append(currency)
-    return ','.join(tags) if tags else None
+    return ",".join(tags) if tags else None
 
 
 # =============================================================================
 # Parsing timestamp
 # =============================================================================
 
+
 def parse_timestamp(ts) -> Optional[datetime.datetime]:
     """
     Parsing berbagai format timestamp menjadi UTC datetime (timezone-aware).
-    
+
     Mendukung string ISO, offset timezone (+07:00, Z), dan objek datetime. Mengembalikan None jika gagal.
     """
     if ts is None:
@@ -90,8 +132,8 @@ def parse_timestamp(ts) -> Optional[datetime.datetime]:
             return datetime.datetime.fromtimestamp(epoch_val, tz=datetime.timezone.utc)
 
         # Tangani akhiran 'Z'
-        if clean.endswith('Z'):
-            clean = clean[:-1] + '+00:00'
+        if clean.endswith("Z"):
+            clean = clean[:-1] + "+00:00"
         dt = dateutil_parser.parse(clean)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=datetime.timezone.utc)
@@ -111,6 +153,7 @@ def _now_utc() -> datetime.datetime:
 # Fungsi adapter individual
 # =============================================================================
 
+
 def scraped_news_to_model(news: ScrapedNews) -> NewsItem:
     """Konversi dataclass ScrapedNews menjadi model ORM NewsItem."""
     text_for_tags = f"{news.title} {news.summary or ''}"
@@ -122,9 +165,9 @@ def scraped_news_to_model(news: ScrapedNews) -> NewsItem:
         published_at=parse_timestamp(news.timestamp),
         currency_tags=extract_currency_tags(text_for_tags),
         fetched_at=_now_utc(),
-        impact=getattr(news, 'impact', None),
-        sentiment=getattr(news, 'sentiment', None),
-        key_data_point=getattr(news, 'key_data_point', None),
+        impact=getattr(news, "impact", None),
+        sentiment=getattr(news, "sentiment", None),
+        key_data_point=getattr(news, "key_data_point", None),
     )
 
 
@@ -132,7 +175,7 @@ def calendar_event_to_model(event: CalendarEvent) -> EconomicCalendar:
     """Konversi dataclass CalendarEvent menjadi model ORM EconomicCalendar."""
     return EconomicCalendar(
         event_name=event.event_name[:200] if event.event_name else "Unknown Event",
-        country=getattr(event, 'country', None) or "",
+        country=getattr(event, "country", None) or "",
         currency=event.currency[:10] if event.currency else "",
         impact=event.impact.lower() if event.impact else "low",
         actual=event.actual[:50] if event.actual else None,
@@ -140,7 +183,7 @@ def calendar_event_to_model(event: CalendarEvent) -> EconomicCalendar:
         previous=event.previous[:50] if event.previous else None,
         event_time=parse_timestamp(event.time),
         fetched_at=_now_utc(),
-        surprise_score=getattr(event, 'surprise_score', None),
+        surprise_score=getattr(event, "surprise_score", None),
     )
 
 
@@ -162,30 +205,32 @@ def scraped_tweet_to_model(tweet: ScrapedTweet) -> NewsItem:
 def fed_meeting_to_models(meeting: FedMeeting) -> List[FedWatchProbability]:
     """
     Konversi dataclass FedMeeting menjadi model ORM FedWatchProbability.
-    
+
     Menyimpan semua probabilitas untuk 1 meeting ke dalam satu baris (format JSON).
     """
     probs_dict = {}
     for prob in meeting.probabilities:
         item = {
-            'probability': prob.probability,
-            'action': prob.action,
+            "probability": prob.probability,
+            "action": prob.action,
         }
-        if getattr(prob, 'prior_1d', None) is not None:
-            item['prior_1d'] = prob.prior_1d
-        if getattr(prob, 'prior_1w', None) is not None:
-            item['prior_1w'] = prob.prior_1w
-        if getattr(prob, 'prior_1m', None) is not None:
-            item['prior_1m'] = prob.prior_1m
+        if getattr(prob, "prior_1d", None) is not None:
+            item["prior_1d"] = prob.prior_1d
+        if getattr(prob, "prior_1w", None) is not None:
+            item["prior_1w"] = prob.prior_1w
+        if getattr(prob, "prior_1m", None) is not None:
+            item["prior_1m"] = prob.prior_1m
         probs_dict[prob.target_range] = item
-    
+
     model = FedWatchProbability(
         meeting_date=meeting.meeting_date,
-        probabilities_json=json.dumps({
-            'current_rate_ref': meeting.current_rate_ref,
-            'most_likely': meeting.most_likely,
-            'probabilities': probs_dict,
-        }),
+        probabilities_json=json.dumps(
+            {
+                "current_rate_ref": meeting.current_rate_ref,
+                "most_likely": meeting.most_likely,
+                "probabilities": probs_dict,
+            }
+        ),
         fetched_at=_now_utc(),
     )
     return [model]
@@ -195,16 +240,15 @@ def fed_meeting_to_models(meeting: FedMeeting) -> List[FedWatchProbability]:
 # Utilitas penyimpanan batch asinkron
 # =============================================================================
 
+
 async def batch_save_news(session, news_list: List[ScrapedNews]) -> int:
     """Konversi dan simpan berita secara batch, lewati duplikat berdasarkan URL."""
     from sqlalchemy import select
     from monika.infrastructure.database.models import VIXData
 
     # Ambil VIX terbaru
-    vix_row = (await session.execute(
-        select(VIXData).order_by(VIXData.date.desc()).limit(1)
-    )).scalar_one_or_none()
-    
+    vix_row = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
+
     is_high_vix = False
     if vix_row and vix_row.close > 30.0:
         is_high_vix = True
@@ -213,9 +257,9 @@ async def batch_save_news(session, news_list: List[ScrapedNews]) -> int:
     candidate_urls = [n.url[:1000] for n in news_list if getattr(n, "url", None)]
     existing_urls = set()
     if candidate_urls:
-        existing_rows = (await session.execute(
-            select(NewsItem.url).where(NewsItem.url.in_(candidate_urls))
-        )).scalars().all()
+        existing_rows = (
+            (await session.execute(select(NewsItem.url).where(NewsItem.url.in_(candidate_urls)))).scalars().all()
+        )
         existing_urls = set(existing_rows)
 
     saved = 0
@@ -248,12 +292,12 @@ async def batch_save_calendar(session, events: List[CalendarEvent]) -> int:
     """Konversi dan simpan event kalender secara batch dengan deduplikasi (mata uang, event, waktu)."""
     from sqlalchemy import select
     from datetime import timedelta
-    
+
     saved = 0
     updated = 0
     now_utc = _now_utc()
     seen_batch_keys: set[tuple] = set()
-    
+
     for event in events:
         model = calendar_event_to_model(event)
         if not model.event_time or not model.currency or not model.event_name:
@@ -263,36 +307,42 @@ async def batch_save_calendar(session, events: List[CalendarEvent]) -> int:
         if event_key in seen_batch_keys:
             continue
         seen_batch_keys.add(event_key)
-        
+
         # Cek event serupa di rentang 30 menit (mengatasi selisih waktu antar scraper)
         time_min = model.event_time - timedelta(minutes=30)
         time_max = model.event_time + timedelta(minutes=30)
-        
-        existing = (await session.execute(
-            select(EconomicCalendar)
-            .where(EconomicCalendar.currency == model.currency)
-            .where(EconomicCalendar.event_name == model.event_name)
-            .where(EconomicCalendar.event_time >= time_min)
-            .where(EconomicCalendar.event_time <= time_max)
-            .limit(1)
-        )).scalar_one_or_none()
-        
+
+        existing = (
+            await session.execute(
+                select(EconomicCalendar)
+                .where(EconomicCalendar.currency == model.currency)
+                .where(EconomicCalendar.event_name == model.event_name)
+                .where(EconomicCalendar.event_time >= time_min)
+                .where(EconomicCalendar.event_time <= time_max)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
         # Self-healing: jika tidak ditemukan dalam rentang 30m, cari apakah ada event sama
         # pada hari kalender yang sama (misal tergeser beberapa jam akibat bug timezone lama)
         if existing is None and model.event_time is not None:
             day_min = model.event_time.replace(hour=0, minute=0, second=0, microsecond=0)
             day_max = day_min + timedelta(days=1)
-            same_day_corrupt = (await session.execute(
-                select(EconomicCalendar)
-                .where(EconomicCalendar.currency == model.currency)
-                .where(EconomicCalendar.event_name == model.event_name)
-                .where(EconomicCalendar.event_time >= day_min)
-                .where(EconomicCalendar.event_time < day_max)
-                .limit(1)
-            )).scalar_one_or_none()
+            same_day_corrupt = (
+                await session.execute(
+                    select(EconomicCalendar)
+                    .where(EconomicCalendar.currency == model.currency)
+                    .where(EconomicCalendar.event_name == model.event_name)
+                    .where(EconomicCalendar.event_time >= day_min)
+                    .where(EconomicCalendar.event_time < day_max)
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
             if same_day_corrupt is not None:
                 # Preserve existing valid event_time unless it was None or incoming has actual release data (self-healing)
-                if same_day_corrupt.event_time is None or (same_day_corrupt.actual is None and model.actual is not None):
+                if same_day_corrupt.event_time is None or (
+                    same_day_corrupt.actual is None and model.actual is not None
+                ):
                     same_day_corrupt.event_time = model.event_time
                 existing = same_day_corrupt
 
@@ -302,7 +352,7 @@ async def batch_save_calendar(session, events: List[CalendarEvent]) -> int:
         else:
             # Perbarui fetched_at agar mencerminkan data terverifikasi baru
             existing.fetched_at = now_utc
-            
+
             # Update actual/forecast/previous jika data sudah rilis
             changed = False
             if model.actual and model.actual != existing.actual:
@@ -316,12 +366,12 @@ async def batch_save_calendar(session, events: List[CalendarEvent]) -> int:
                 changed = True
             if changed:
                 updated += 1
-    
+
     # Catat metadata timestamp scraping kalender terakhir ke SystemConfig
     if len(events) > 0:
-        cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == "last_calendar_fetch_at")
-        )).scalar_one_or_none()
+        cfg = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "last_calendar_fetch_at"))
+        ).scalar_one_or_none()
         if cfg:
             cfg.value = now_utc.isoformat()
         else:
@@ -330,8 +380,10 @@ async def batch_save_calendar(session, events: List[CalendarEvent]) -> int:
     if saved > 0 or updated > 0 or len(events) > 0:
         await safe_commit(session, label="batch_save_calendar")
         if saved > 0 or updated > 0:
-            logger.info(f"Saved {saved} new calendar events (skipped/refreshed {len(events) - saved - updated} duplicates, updated {updated})")
-    
+            logger.info(
+                f"Saved {saved} new calendar events (skipped/refreshed {len(events) - saved - updated} duplicates, updated {updated})"
+            )
+
     return saved
 
 

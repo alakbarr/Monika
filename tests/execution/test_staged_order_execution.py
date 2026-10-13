@@ -77,6 +77,7 @@ def test_order_transition_to_interrupted_is_terminal():
 async def test_execution_service_blocks_when_effect_gate_aborted():
     from unittest.mock import patch
     from execution.execution_service import _EXECUTED_ANALYSIS_IDS
+
     _EXECUTED_ANALYSIS_IDS.clear()
 
     mock_mt5 = AsyncMock()
@@ -89,24 +90,29 @@ async def test_execution_service_blocks_when_effect_gate_aborted():
             "risk": {
                 "max_concurrent_positions": 5,
                 "confluence_verifier_enabled": False,
-                "min_verifiable_confluence": 0
-            }
+                "min_verifiable_confluence": 0,
+            },
         },
-        "execution": {"max_spread_multiplier": {"XAUUSD": 5.0}}
+        "execution": {"max_spread_multiplier": {"XAUUSD": 5.0}},
     }
     svc = ExecutionService(settings=settings, mt5_client=mock_mt5, dry_run=True)
     # Trip the effect gate before execution
     svc.effect_gate.request_abort("Emergency operator halt")
 
     mock_sizer = MagicMock()
-    mock_sizer.calculate_with_session = AsyncMock(return_value=MagicMock(recommended_lots=0.1, entry_price=2000.0, is_valid=True))
+    mock_sizer.calculate_with_session = AsyncMock(
+        return_value=MagicMock(recommended_lots=0.1, entry_price=2000.0, is_valid=True)
+    )
     svc.sizer = mock_sizer
 
     mock_gate = AsyncMock()
-    mock_gate.check.return_value = MagicMock(approved=True, checks_passed=['all'], checks_failed=[], rejection_reasons=[])
+    mock_gate.check.return_value = MagicMock(
+        approved=True, checks_passed=["all"], checks_failed=[], rejection_reasons=[]
+    )
     svc.gate = mock_gate
 
     from tests.conftest import create_mock_async_session
+
     session = create_mock_async_session()
     mock_bind = MagicMock()
     mock_bind.dialect.name = "sqlite"
@@ -121,13 +127,13 @@ async def test_execution_service_blocks_when_effect_gate_aborted():
         take_profit=2020,
         invalidation_price=1980,
         invalidation_direction="below",
-        rationale="Test rationale"
+        rationale="Test rationale",
     )
 
     svc.broker_adapter.submit_order = AsyncMock()
 
-    with patch('analysis.validators.adversarial_check.run_adversarial_check', new_callable=AsyncMock) as mock_adv:
-        mock_adv.return_value = {'approve': True, 'hard_block': False}
+    with patch("analysis.validators.adversarial_check.run_adversarial_check", new_callable=AsyncMock) as mock_adv:
+        mock_adv.return_value = {"approve": True, "hard_block": False}
         res = await svc.execute_analysis(session, analysis)
 
     assert res.executed is False

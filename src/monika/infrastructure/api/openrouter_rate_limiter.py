@@ -2,6 +2,7 @@
 OpenRouterRateLimiter — In-memory rate limiter dan key manager untuk OpenRouter API.
 Mendukung pemisahan Paid Key vs Free Keys dan tracking sliding window RPM/RPD.
 """
+
 import asyncio
 import time
 import logging
@@ -11,14 +12,17 @@ from typing import ClassVar, Optional, Any
 
 logger = logging.getLogger("TradingAgent.OpenRouterRateLimiter")
 
+
 def get_paid_key() -> Optional[str]:
     """Mengambil API key khusus tier berbayar (fallback: OPENROUTER_API_KEY)."""
     return os.getenv("OPENROUTER_PAID_API_KEY") or os.getenv("OPENROUTER_API_KEY") or None
+
 
 def get_free_keys() -> list[str]:
     """Mengambil daftar API key khusus tier gratis dari OPENROUTER_API_KEYS."""
     raw = os.getenv("OPENROUTER_API_KEYS", "")
     return [k.strip() for k in raw.split(",") if k.strip()]
+
 
 def get_all_keys() -> list[str]:
     """Menggabungkan seluruh kunci (paid + free) tanpa duplikasi."""
@@ -30,6 +34,7 @@ def get_all_keys() -> list[str]:
         if k not in all_keys:
             all_keys.append(k)
     return all_keys
+
 
 def is_free_tier_model(model: str) -> bool:
     """Mendeteksi apakah model merupakan varian free-tier OpenRouter."""
@@ -43,6 +48,7 @@ def is_free_tier_model(model: str) -> bool:
     if "ox-alpha" in m or ":free" in m:
         return True
     return False
+
 
 # Default limits per key on OpenRouter (RPM 20, RPD 200 for free; RPM 100, RPD 10000 for paid)
 _num_keys = max(1, len(get_all_keys()))
@@ -60,8 +66,10 @@ from monika.infrastructure.infra.paths import DATA_DIR
 
 _STATE_FILE = DATA_DIR / "openrouter_rate_limit_state.json"
 
+
 class OpenRouterRateLimiter:
     """Sliding window rate limiter untuk OpenRouter API — keyed per (model, key_id)."""
+
     _rpm_windows: ClassVar[dict] = defaultdict(deque)
     _daily_counts: ClassVar[dict] = {}
     _cooldowns: ClassVar[dict] = {}
@@ -107,18 +115,10 @@ class OpenRouterRateLimiter:
     def _save_state(cls):
         try:
             _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-            daily_payload = {
-                f"{k[0]}||{k[1]}": v for k, v in cls._daily_counts.items()
-            }
-            cooldown_payload = {
-                f"{k[0]}||{k[1]}": v for k, v in cls._cooldowns.items() if v > time.time()
-            }
+            daily_payload = {f"{k[0]}||{k[1]}": v for k, v in cls._daily_counts.items()}
+            cooldown_payload = {f"{k[0]}||{k[1]}": v for k, v in cls._cooldowns.items() if v > time.time()}
             data = {
-                "openrouter": {
-                    "daily_counts": daily_payload,
-                    "cooldowns": cooldown_payload,
-                    "updated_at": time.time()
-                }
+                "openrouter": {"daily_counts": daily_payload, "cooldowns": cooldown_payload, "updated_at": time.time()}
             }
             tmp_file = _STATE_FILE.with_suffix(".tmp")
             tmp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -140,7 +140,9 @@ class OpenRouterRateLimiter:
         until = time.time() + cooldown_seconds
         cls._cooldowns[key_tuple] = until
         cls._save_state()
-        logger.warning(f"OpenRouter [{key_id}] cooldown marked for {model} until {time.ctime(until)} ({cooldown_seconds}s)")
+        logger.warning(
+            f"OpenRouter [{key_id}] cooldown marked for {model} until {time.ctime(until)} ({cooldown_seconds}s)"
+        )
 
     async def try_acquire(self, model: str, api_key: Optional[str] = None) -> bool:
         self._ensure_loaded()
@@ -157,7 +159,9 @@ class OpenRouterRateLimiter:
             if key_tuple in self._cooldowns:
                 cooldown_until = self._cooldowns[key_tuple]
                 if now < cooldown_until:
-                    logger.warning(f"OpenRouter {model} [{key_tuple[1]}] is in cooldown for {int(cooldown_until - now)}s")
+                    logger.warning(
+                        f"OpenRouter {model} [{key_tuple[1]}] is in cooldown for {int(cooldown_until - now)}s"
+                    )
                     return False
                 else:
                     self._cooldowns.pop(key_tuple, None)

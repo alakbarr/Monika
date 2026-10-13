@@ -18,11 +18,8 @@ from importlib.machinery import ModuleSpec
 # Pre-compiled mapping from legacy module paths to canonical monika paths
 MODULE_MAPPING: dict[str, str] = {
     "utils.security.supply_chain_quarantine": "monika.core.security.supply_chain_quarantine",
-
     "utils.security.nt_guard": "monika.core.security.nt_guard",
-
     "utils.security": "monika.core.security",
-
     "bootstrap": "monika.application.bootstrap",
     "main": "monika.application.main",
     "run_benchmark": "monika.application.benchmark.run_benchmark",
@@ -1518,8 +1515,9 @@ MODULE_MAPPING: dict[str, str] = {
     "indicators": "monika.domain.indicators",
     "profiles": "monika.core.profiles",
     "services": "monika.application.services",
-    "utils": "monika.application.utils"
+    "utils": "monika.application.utils",
 }
+
 
 class LegacyShimFinder(MetaPathFinder):
     """Intercepts legacy imports and maps them to canonical monika modules."""
@@ -1592,6 +1590,7 @@ class LegacyLoader(Loader):
 
 _installed = False
 
+
 def install_legacy_compat() -> None:
     """Install the LegacyShimFinder into sys.meta_path if not already present."""
     global _installed
@@ -1603,6 +1602,7 @@ def install_legacy_compat() -> None:
             return
     sys.meta_path.insert(0, LegacyShimFinder(MODULE_MAPPING))
     _installed = True
+
 
 # Install automatically on import
 install_legacy_compat()

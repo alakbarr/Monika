@@ -62,4 +62,6 @@ def test_env_example_documents_codebase_env_vars():
                         found_vars.add(match)
 
     undocumented = found_vars - documented_vars
-    assert not undocumented, f"The following environment variables are read in code but missing from .env.example: {sorted(undocumented)}"
+    assert not undocumented, (
+        f"The following environment variables are read in code but missing from .env.example: {sorted(undocumented)}"
+    )

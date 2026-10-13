@@ -1,6 +1,7 @@
 """
 Unit tests for FinnhubCalendarScraper asynchronous scraping (H-19).
 """
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
@@ -9,6 +10,7 @@ from scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
 @pytest.fixture(autouse=True)
 def reset_endpoint_flag():
     from utils.api.http_retry import _CIRCUIT_BREAKER
+
     FinnhubCalendarScraper._endpoint_403_detected = False
     FinnhubCalendarScraper._endpoint_403_until = 0.0
     _CIRCUIT_BREAKER.pop("finnhub.io", None)
@@ -25,19 +27,21 @@ async def test_finnhub_afetch_today_events_success():
     mock_resp = MagicMock()
     mock_resp.status = 200
     mock_resp.raise_for_status = MagicMock()
-    mock_resp.json = AsyncMock(return_value={
-        "economicCalendar": [
-            {
-                "event": "US Non-Farm Payrolls",
-                "time": "2026-09-15 12:30:00",
-                "country": "US",
-                "impact": "high",
-                "actual": "220k",
-                "estimate": "200k",
-                "prev": "180k",
-            }
-        ]
-    })
+    mock_resp.json = AsyncMock(
+        return_value={
+            "economicCalendar": [
+                {
+                    "event": "US Non-Farm Payrolls",
+                    "time": "2026-09-15 12:30:00",
+                    "country": "US",
+                    "impact": "high",
+                    "actual": "220k",
+                    "estimate": "200k",
+                    "prev": "180k",
+                }
+            ]
+        }
+    )
 
     with patch("aiohttp.ClientSession.get") as mock_get:
         mock_ctx = AsyncMock()

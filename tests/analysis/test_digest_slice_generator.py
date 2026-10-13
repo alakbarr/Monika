@@ -7,7 +7,6 @@ from database.models import NewsItem, NewsDigestSlice
 
 
 class TestDigestSliceGenerator:
-
     @pytest.mark.asyncio
     async def test_generate_slice_with_items(self):
         generator = DigestSliceGenerator({})
@@ -22,7 +21,7 @@ class TestDigestSliceGenerator:
             currency_tags="USD,XAU",
             impact="BREAKING",
             sentiment="BEARISH_USD,BULLISH_XAU,SURPRISE_LARGE",
-            fetched_at=datetime.now(timezone.utc)
+            fetched_at=datetime.now(timezone.utc),
         )
         item2 = NewsItem(
             id=2,
@@ -31,7 +30,7 @@ class TestDigestSliceGenerator:
             currency_tags="EUR",
             impact="HIGH",
             sentiment="NEUTRAL",
-            fetched_at=datetime.now(timezone.utc)
+            fetched_at=datetime.now(timezone.utc),
         )
 
         mock_result = MagicMock()
@@ -43,10 +42,7 @@ class TestDigestSliceGenerator:
 
         now_utc = datetime.now(timezone.utc)
         slice_res = await generator.generate_slice(
-            mock_session,
-            period_start=now_utc - timedelta(hours=2),
-            period_end=now_utc,
-            trigger="scheduled"
+            mock_session, period_start=now_utc - timedelta(hours=2), period_end=now_utc, trigger="scheduled"
         )
 
         assert slice_res is not None
@@ -73,7 +69,7 @@ class TestDigestSliceGenerator:
             high_count=3,
             currency_sections='{"USD": "USD is bearish", "XAU": "Gold surges"}',
             metadata_json='{"weighted_scores": {"USD": -4, "XAU": 6}, "theme_counts": {"RISK_OFF": 3}}',
-            trigger="scheduled"
+            trigger="scheduled",
         )
 
         def mock_exec_side_effect(*args, **kwargs):
@@ -89,7 +85,9 @@ class TestDigestSliceGenerator:
             return m_res
 
         mock_session.execute = AsyncMock(side_effect=mock_exec_side_effect)
-        generator._macro_synth.generate = AsyncMock(return_value="Overall Macro Regime: RISK_OFF following rate cut and geopolitical escalation.")
+        generator._macro_synth.generate = AsyncMock(
+            return_value="Overall Macro Regime: RISK_OFF following rate cut and geopolitical escalation."
+        )
 
         assembled = await generator.assemble_12h_digest(mock_session, hours_back=12)
 

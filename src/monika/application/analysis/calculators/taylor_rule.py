@@ -105,10 +105,14 @@ class TaylorRuleCalculator:
             )
 
         market_impl = {
-            "USD (DXY)": "DOWNSIDE PRESSURE" if rate_gap > 0.75 else ("UPSIDE SUPPORT" if rate_gap < -0.75 else "BALANCED"),
+            "USD (DXY)": "DOWNSIDE PRESSURE"
+            if rate_gap > 0.75
+            else ("UPSIDE SUPPORT" if rate_gap < -0.75 else "BALANCED"),
             "US 10Y Yields": "LOWER BOUND REPRICING" if rate_gap > 0.75 else "BEARISH STEEPENER RISK",
             "XAUUSD (Gold)": "BULLISH LONG-TERM" if rate_gap > 0.75 else "HEADWIND FROM HIGHER RATES",
-            "Rate Cut Outlook": f"Taylor Rule projects neutral target of {taylor_rate:.2f}%, suggesting ~{max(0, int(round(rate_gap / 0.25)))} cuts of 25bps." if rate_gap > 0 else "No cuts implied."
+            "Rate Cut Outlook": f"Taylor Rule projects neutral target of {taylor_rate:.2f}%, suggesting ~{max(0, int(round(rate_gap / 0.25)))} cuts of 25bps."
+            if rate_gap > 0
+            else "No cuts implied.",
         }
 
         breakdown = {
@@ -122,7 +126,7 @@ class TaylorRuleCalculator:
             "classical_taylor_rate": taylor_rate,
             "inertial_smoothed_rate": inertial_rate,
             "actual_effr": actual_effr,
-            "rate_gap": rate_gap
+            "rate_gap": rate_gap,
         }
 
         return TaylorRuleResult(
@@ -139,5 +143,5 @@ class TaylorRuleCalculator:
             unemployment_gap=u_gap,
             formula_breakdown=breakdown,
             market_implications=market_impl,
-            interpretation=interp
+            interpretation=interp,
         )

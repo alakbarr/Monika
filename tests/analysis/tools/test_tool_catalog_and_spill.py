@@ -17,7 +17,7 @@ def test_hybrid_tool_catalog():
         category="core",
         description="Submit final trading decision for asset",
         parameters_schema={"type": "object", "properties": {"symbol": {"type": "string"}}},
-        is_pinned=True
+        is_pinned=True,
     )
     # Register deferred specialized tool
     catalog.register_tool(
@@ -25,14 +25,14 @@ def test_hybrid_tool_catalog():
         category="sentiment",
         description="Fetch CFTC Commitments of Traders institutional positioning",
         parameters_schema={"type": "object", "properties": {"symbol": {"type": "string"}}},
-        is_pinned=False
+        is_pinned=False,
     )
     catalog.register_tool(
         name="get_funding_rate",
         category="sentiment",
         description="Fetch crypto perpetual futures funding rates and open interest",
         parameters_schema={"type": "object", "properties": {"symbol": {"type": "string"}}},
-        is_pinned=False
+        is_pinned=False,
     )
 
     # 1. Check pinned tools

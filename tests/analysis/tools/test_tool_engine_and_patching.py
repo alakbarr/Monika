@@ -103,7 +103,7 @@ print("new")
 
     assert ops[1].action == "ADD"
     assert ops[1].path == "src/new_module.py"
-    assert "print(\"new\")" in ops[1].new_file_content
+    assert 'print("new")' in ops[1].new_file_content
 
     assert ops[2].action == "DELETE"
     assert ops[2].path == "src/obsolete.py"
@@ -205,11 +205,14 @@ def test_tool_search_engine_progressive_materialization():
 
     # Test progressive execution
     executed_record = []
+
     def dummy_executor(tname, args):
         executed_record.append((tname, args))
         return {"status": "ok"}
 
-    res = engine.execute_progressive_tool("web_search_duckduckgo", {"query": "fed interest rate"}, executor=dummy_executor)
+    res = engine.execute_progressive_tool(
+        "web_search_duckduckgo", {"query": "fed interest rate"}, executor=dummy_executor
+    )
     assert res == {"status": "ok"}
     assert "web_search_duckduckgo" in engine._active_tools
     assert len(executed_record) == 1

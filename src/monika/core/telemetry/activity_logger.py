@@ -27,9 +27,9 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 
 CATEGORIES = frozenset({"trading", "analysis", "risk", "system", "scraping", "telegram"})
-LOG_FORMAT_FILE    = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+LOG_FORMAT_FILE = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 LOG_FORMAT_CONSOLE = "%(asctime)s | %(levelname)-8s | %(message)s"
-DATE_FORMAT        = "%Y-%m-%d %H:%M:%S"
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 # ---------------------------------------------------------------------------
@@ -66,10 +66,11 @@ def shutdown_logging() -> None:
 
 class _SafeRotatingFileHandler(logging.handlers.RotatingFileHandler):
     """Windows-safe rotating file handler that gracefully handles WinError 32 PermissionError during rotation."""
+
     def doRollover(self):
         try:
             super().doRollover()
-        except (PermissionError, OSError):
+        except PermissionError, OSError:
             # Another process holds an open file handle on Windows.
             # Continue writing to active file stream without crashing until handle is freed.
             pass
@@ -87,6 +88,7 @@ def setup_logging(
     """
     global _queue_listener
     import sys
+
     is_pytest = "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ
     if is_pytest and log_dir == "logs":
         log_dir = os.path.join("logs", "test_runs")
@@ -171,10 +173,10 @@ def setup_logging(
     return root
 
 
-
 # ---------------------------------------------------------------------------
 # 2. DB ActivityLog writer
 # ---------------------------------------------------------------------------
+
 
 class ActivityLogger:
     """
@@ -191,7 +193,7 @@ class ActivityLogger:
         description: str,
         related_id: Optional[int] = None,
         actor: str = "system",
-        session = None,
+        session=None,
     ) -> Optional[int]:
         """Catat satu entri aktivitas ke DB."""
         if category not in CATEGORIES:
@@ -200,6 +202,7 @@ class ActivityLogger:
 
         try:
             from monika.core.telemetry.sinks import get_telemetry_sink
+
             sink = get_telemetry_sink()
             if sink is not None:
                 return await sink.persist_activity(
@@ -247,7 +250,7 @@ class ActivityLogger:
                             return entry.id
                     except Exception as err:
                         if attempt < 2 and ("locked" in str(err).lower() or "busy" in str(err).lower()):
-                            await asyncio.sleep(0.05 * (2 ** attempt))
+                            await asyncio.sleep(0.05 * (2**attempt))
                             continue
                         raise
         except Exception as e:
@@ -255,27 +258,39 @@ class ActivityLogger:
             return None
 
     # Category shortcuts
-    async def trading(self, description: str, related_id: Optional[int] = None, actor: str = "system", session = None) -> Optional[int]:
+    async def trading(
+        self, description: str, related_id: Optional[int] = None, actor: str = "system", session=None
+    ) -> Optional[int]:
         self._logger.info(f"[TRADING] {description}")
         return await self.log("trading", description, related_id, actor, session=session)
 
-    async def analysis(self, description: str, related_id: Optional[int] = None, actor: str = "ai_agent", session = None) -> Optional[int]:
+    async def analysis(
+        self, description: str, related_id: Optional[int] = None, actor: str = "ai_agent", session=None
+    ) -> Optional[int]:
         self._logger.info(f"[ANALYSIS] {description}")
         return await self.log("analysis", description, related_id, actor, session=session)
 
-    async def risk(self, description: str, related_id: Optional[int] = None, actor: str = "risk_gate", session = None) -> Optional[int]:
+    async def risk(
+        self, description: str, related_id: Optional[int] = None, actor: str = "risk_gate", session=None
+    ) -> Optional[int]:
         self._logger.warning(f"[RISK] {description}")
         return await self.log("risk", description, related_id, actor, session=session)
 
-    async def system(self, description: str, related_id: Optional[int] = None, actor: str = "system", session = None) -> Optional[int]:
+    async def system(
+        self, description: str, related_id: Optional[int] = None, actor: str = "system", session=None
+    ) -> Optional[int]:
         self._logger.info(f"[SYSTEM] {description}")
         return await self.log("system", description, related_id, actor, session=session)
 
-    async def scraping(self, description: str, related_id: Optional[int] = None, actor: str = "scraper", session = None) -> Optional[int]:
+    async def scraping(
+        self, description: str, related_id: Optional[int] = None, actor: str = "scraper", session=None
+    ) -> Optional[int]:
         self._logger.debug(f"[SCRAPING] {description}")
         return await self.log("scraping", description, related_id, actor, session=session)
 
-    async def telegram(self, description: str, related_id: Optional[int] = None, actor: str = "telegram", session = None) -> Optional[int]:
+    async def telegram(
+        self, description: str, related_id: Optional[int] = None, actor: str = "telegram", session=None
+    ) -> Optional[int]:
         self._logger.info(f"[TELEGRAM] {description}")
         return await self.log("telegram", description, related_id, actor, session=session)
 
@@ -288,7 +303,7 @@ class ActivityLogger:
         to_model: str,
         reason: str,
         cycle_id: Optional[str] = None,
-        session = None,
+        session=None,
     ) -> Optional[int]:
         """
         Catat peristiwa failover/fallback LLM ke ActivityLog DB dan file logger.
@@ -309,7 +324,7 @@ class ActivityLogger:
         )
 
     # Bulk write (for batch inserts)
-    async def bulk(self, entries: list[dict], session = None) -> int:
+    async def bulk(self, entries: list[dict], session=None) -> int:
         """Catat banyak entri sekaligus dalam 1 transaksi (batch)."""
         if not entries:
             return 0
@@ -327,16 +342,18 @@ class ActivityLogger:
                     cat = e.get("category", "system")
                     if cat not in CATEGORIES:
                         cat = "system"
-                    sess.add(ActivityLog(
-                        timestamp=datetime.now(timezone.utc),
-                        category=cat,
-                        description=e.get("description", "")[:2000],
-                        related_id=e.get("related_id"),
-                        actor=e.get("actor", "system"),
-                    ))
+                    sess.add(
+                        ActivityLog(
+                            timestamp=datetime.now(timezone.utc),
+                            category=cat,
+                            description=e.get("description", "")[:2000],
+                            related_id=e.get("related_id"),
+                            actor=e.get("actor", "system"),
+                        )
+                    )
                     count += 1
                 return count
-                
+
             if session:
                 return await _do_bulk(session)
             else:
@@ -347,7 +364,7 @@ class ActivityLogger:
                             return res
                     except Exception as err:
                         if attempt < 2 and ("locked" in str(err).lower() or "busy" in str(err).lower()):
-                            await asyncio.sleep(0.05 * (2 ** attempt))
+                            await asyncio.sleep(0.05 * (2**attempt))
                             continue
                         raise
                 return 0

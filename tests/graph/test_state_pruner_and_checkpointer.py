@@ -134,4 +134,3 @@ async def test_sqlite_checkpointer_async_and_writes():
         # Verify restored channel
         task_id, channel, val_tuple, _ = saver2.writes[outer_key][inner_keys[0]]
         assert channel in ("output_channel", "log_channel")
-

@@ -49,16 +49,14 @@ class MacroToAssetPipeline(AnalysisPipelinePlugin):
         return True, warnings
 
     async def execute_analysis_cycle(
-        self,
-        session: AsyncSession,
-        asset_universe: List[str],
-        forced: bool = False,
-        **kwargs
+        self, session: AsyncSession, asset_universe: List[str], forced: bool = False, **kwargs
     ) -> List[TradeProposal]:
         """
         Executes the LangGraph macro-to-asset workflow and yields TradeProposal instances.
         """
-        logger.info(f"[MacroToAssetPipeline] Executing 2-stage macro-to-asset cycle for {asset_universe} (forced={forced})")
+        logger.info(
+            f"[MacroToAssetPipeline] Executing 2-stage macro-to-asset cycle for {asset_universe} (forced={forced})"
+        )
         proposals: List[TradeProposal] = []
         # Telemetry update
         self._last_cycle_telemetry = {

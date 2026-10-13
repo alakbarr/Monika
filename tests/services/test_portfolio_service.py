@@ -14,7 +14,7 @@ async def test_portfolio_service_get_open_positions():
     mock_session = create_mock_async_session()
     mock_pos1 = MagicMock(spec=Position, id=1, symbol="EURUSD", status="open", is_paper=True)
     mock_pos2 = MagicMock(spec=Position, id=2, symbol="GBPUSD", status="open", is_paper=False)
-    
+
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [mock_pos1, mock_pos2]
     mock_session.execute.return_value = mock_result
@@ -74,6 +74,6 @@ async def test_portfolio_service_get_closed_and_orders():
 def test_domain_facades_importable():
     from execution.paper_tracker import PaperTracker
     from agent.chat_agent import ChatAgent
+
     assert PaperTracker is not None
     assert ChatAgent is not None
-

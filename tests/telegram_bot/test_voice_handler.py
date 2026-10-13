@@ -1,6 +1,7 @@
 """
 Unit test for VoiceHandler header authentication (H-18).
 """
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from telegram_bot.voice_handler import VoiceHandler
@@ -8,21 +9,23 @@ from telegram_bot.voice_handler import VoiceHandler
 
 @pytest.mark.asyncio
 async def test_voice_handler_passes_x_goog_api_key_header():
-    handler = VoiceHandler(settings={
-        "api_keys": {"gemini": "test_gemini_key_123"},
-        "llm": {"task_roles": {"chat_telegram": {"model": "gemini-3.5-flash"}}}
-    })
+    handler = VoiceHandler(
+        settings={
+            "api_keys": {"gemini": "test_gemini_key_123"},
+            "llm": {"task_roles": {"chat_telegram": {"model": "gemini-3.5-flash"}}},
+        }
+    )
 
     mock_resp = MagicMock()
     mock_resp.status = 200
-    mock_resp.json = AsyncMock(return_value={
-        "candidates": [{
-            "content": {"parts": [{"text": "Hello world from voice"}]}
-        }]
-    })
+    mock_resp.json = AsyncMock(
+        return_value={"candidates": [{"content": {"parts": [{"text": "Hello world from voice"}]}}]}
+    )
 
-    with patch("aiohttp.ClientSession.post") as mock_post, \
-         patch("analysis.providers.llm_factory.get_client_for_task", side_effect=Exception("No LLM client")):
+    with (
+        patch("aiohttp.ClientSession.post") as mock_post,
+        patch("analysis.providers.llm_factory.get_client_for_task", side_effect=Exception("No LLM client")),
+    ):
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_resp
         mock_post.return_value = mock_ctx
@@ -45,30 +48,32 @@ async def test_voice_handler_passes_x_goog_api_key_header():
 
 @pytest.mark.asyncio
 async def test_voice_handler_uses_task_role_and_live_models():
-    handler = VoiceHandler(settings={
-        "api_keys": {"gemini": "test_gemini_key_live"},
-        "llm": {
-            "task_roles": {
-                "voice_transcription": {
-                    "primary": "gemini-3.8-live",
-                    "fallback_1": "gemini-3.8-live-extended-thinking",
-                    "fallback_2": "gemini-3.5-transcribe-live",
-                    "fallback_3": "gemini-3-flash-live",
+    handler = VoiceHandler(
+        settings={
+            "api_keys": {"gemini": "test_gemini_key_live"},
+            "llm": {
+                "task_roles": {
+                    "voice_transcription": {
+                        "primary": "gemini-3.8-live",
+                        "fallback_1": "gemini-3.8-live-extended-thinking",
+                        "fallback_2": "gemini-3.5-transcribe-live",
+                        "fallback_3": "gemini-3-flash-live",
+                    }
                 }
-            }
+            },
         }
-    })
+    )
 
     mock_resp = MagicMock()
     mock_resp.status = 200
-    mock_resp.json = AsyncMock(return_value={
-        "candidates": [{
-            "content": {"parts": [{"text": "Transcribed with Gemini 3.8 Live"}]}
-        }]
-    })
+    mock_resp.json = AsyncMock(
+        return_value={"candidates": [{"content": {"parts": [{"text": "Transcribed with Gemini 3.8 Live"}]}}]}
+    )
 
-    with patch("aiohttp.ClientSession.post") as mock_post, \
-         patch("analysis.providers.llm_factory.get_client_for_task", side_effect=Exception("No LLM client")):
+    with (
+        patch("aiohttp.ClientSession.post") as mock_post,
+        patch("analysis.providers.llm_factory.get_client_for_task", side_effect=Exception("No LLM client")),
+    ):
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_resp
         mock_post.return_value = mock_ctx

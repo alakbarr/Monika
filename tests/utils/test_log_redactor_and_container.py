@@ -1,6 +1,7 @@
 """
 Unit tests for Log Redactor (H7), Container (I1), Spillover (I6), Plugin Hooks (M1), and Credential Pool (M2).
 """
+
 import pytest
 import asyncio
 import tempfile
@@ -55,10 +56,7 @@ def test_i6_tool_spillover():
     with tempfile.TemporaryDirectory() as tmpdir:
         huge_output = "Line of price history: open=1.08 close=1.09\n" * 200  # > 5000 chars
         spilled_text = spill_tool_output(
-            huge_output,
-            tool_name="get_price_history",
-            threshold_chars=500,
-            spill_dir=tmpdir
+            huge_output, tool_name="get_price_history", threshold_chars=500, spill_dir=tmpdir
         )
 
         assert len(spilled_text) < len(huge_output)

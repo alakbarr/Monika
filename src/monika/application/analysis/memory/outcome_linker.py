@@ -9,15 +9,17 @@ from monika.application.analysis.memory.alpha_calculator import AlphaCalculator
 
 logger = logging.getLogger(__name__)
 
+
 class OutcomeLinker:
     """Menghubungkan outcome (real/hypothetical) dengan keputusan awal, lalu memicu refleksi."""
-    
+
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
         self.reflector = TradeReflector(settings)
         try:
             from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
             from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
+
             self.lifecycle_manager = PlaybookLifecycleManager()
             self.crystallizer = SkillCrystallizer(self.settings)
         except Exception as init_err:
@@ -25,7 +27,17 @@ class OutcomeLinker:
             self.lifecycle_manager = None
             self.crystallizer = None
 
-    async def process_closed_position(self, session: AsyncSession, analysis_id: int, pnl: float, holding_hours: float, exit_reason: str, entry_time: Optional[datetime] = None, exit_time: Optional[datetime] = None, asset_return_pct: Optional[float] = None):
+    async def process_closed_position(
+        self,
+        session: AsyncSession,
+        analysis_id: int,
+        pnl: float,
+        holding_hours: float,
+        exit_reason: str,
+        entry_time: Optional[datetime] = None,
+        exit_time: Optional[datetime] = None,
+        asset_return_pct: Optional[float] = None,
+    ):
         """Dipanggil saat trade benar-benar ditutup (Real/Paper Trade yang dieksekusi)."""
         try:
             # Cari log pending berdasarkan analysis_id
@@ -34,8 +46,8 @@ class OutcomeLinker:
 
             stmt = select(DecisionReflection).where(
                 DecisionReflection.analysis_id == analysis_id,
-                DecisionReflection.status == 'pending',
-                DecisionReflection.is_paper_whatif == False
+                DecisionReflection.status == "pending",
+                DecisionReflection.is_paper_whatif == False,
             )
             reflection = (await session.execute(stmt)).scalar_one_or_none()
 
@@ -51,13 +63,13 @@ class OutcomeLinker:
                 analysis = await session.get(AssetAnalysis, analysis_id)
                 if analysis and analysis.debate_verdict:
                     # Bila verdict disagree dengan exit_reason (e.g. avoid tapi tp_hit, buy tapi sl_hit)
-                    if analysis.debate_verdict == 'avoid' and reflection.was_profitable:
-                        reflection.debate_verdict = 'rejected_but_won'
-                    elif analysis.debate_verdict in ('buy', 'sell') and not reflection.was_profitable:
-                        reflection.debate_verdict = 'approved_but_lost'
+                    if analysis.debate_verdict == "avoid" and reflection.was_profitable:
+                        reflection.debate_verdict = "rejected_but_won"
+                    elif analysis.debate_verdict in ("buy", "sell") and not reflection.was_profitable:
+                        reflection.debate_verdict = "approved_but_lost"
                     else:
                         reflection.debate_verdict = analysis.debate_verdict
-                    
+
                     reflection.debate_summary = analysis.debate_reason
 
                 if entry_time and exit_time and asset_return_pct is not None:
@@ -67,17 +79,18 @@ class OutcomeLinker:
                         direction=reflection.decision,
                         entry_time=entry_time,
                         exit_time=exit_time,
-                        asset_return_pct=asset_return_pct
+                        asset_return_pct=asset_return_pct,
                     )
-                    reflection.benchmark_name = alpha_data['benchmark_name']
-                    reflection.benchmark_return = alpha_data['benchmark_return']
-                    reflection.alpha_return = alpha_data['alpha_return']
+                    reflection.benchmark_name = alpha_data["benchmark_name"]
+                    reflection.benchmark_return = alpha_data["benchmark_return"]
+                    reflection.alpha_return = alpha_data["alpha_return"]
 
                 from monika.infrastructure.database.safe_ops import safe_commit
+
                 if exit_reason != "partial_tp":
                     reflection.status = "pending_reflection"
                     await safe_commit(session, label="outcome_linker_closed")
-                    
+
                     # Update PlaybookLifecycleManager and SkillCrystallizer attribution
                     try:
                         won = bool(reflection.was_profitable)
@@ -86,8 +99,12 @@ class OutcomeLinker:
                         if analysis and getattr(analysis, "market_regime_at_analysis", None):
                             regime = str(analysis.market_regime_at_analysis).lower()
                         playbook_name = f"{sym_clean.lower()}_{regime}_playbook"
-                        
-                        entry = getattr(analysis, "entry_price", None) or getattr(analysis, "price_at_analysis", None) if analysis else None
+
+                        entry = (
+                            getattr(analysis, "entry_price", None) or getattr(analysis, "price_at_analysis", None)
+                            if analysis
+                            else None
+                        )
                         sl = getattr(analysis, "stop_loss", None) if analysis else None
                         tp = getattr(analysis, "take_profit", None) if analysis else None
                         if won:
@@ -115,7 +132,10 @@ class OutcomeLinker:
                         source_strat_id = getattr(analysis, "source_strategy_id", None) if analysis else None
                         if source_strat_id:
                             try:
-                                from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                                from monika.application.analysis.strategies.decay_monitor import (
+                                    get_strategy_decay_monitor,
+                                )
+
                                 decay_mon = get_strategy_decay_monitor()
                                 decay_mon.record_trade_outcome(
                                     strategy_id=str(source_strat_id),
@@ -144,63 +164,75 @@ class OutcomeLinker:
         try:
             now = datetime.now(timezone.utc)
             # Cari pending_whatif yang analysis-nya sudah > 24h
-            stmt = select(DecisionReflection, AssetAnalysis).join(
-                AssetAnalysis, DecisionReflection.analysis_id == AssetAnalysis.id
-            ).where(
-                DecisionReflection.status == 'pending_whatif',
-                AssetAnalysis.generated_at <= now - timedelta(hours=24)
+            stmt = (
+                select(DecisionReflection, AssetAnalysis)
+                .join(AssetAnalysis, DecisionReflection.analysis_id == AssetAnalysis.id)
+                .where(
+                    DecisionReflection.status == "pending_whatif",
+                    AssetAnalysis.generated_at <= now - timedelta(hours=24),
+                )
             )
-            
+
             results = (await session.execute(stmt)).all()
-            
+
             for reflection, analysis in results:
                 try:
-                    price_now = analysis.price_24h_after if hasattr(analysis, 'price_24h_after') and analysis.price_24h_after else None
+                    price_now = (
+                        analysis.price_24h_after
+                        if hasattr(analysis, "price_24h_after") and analysis.price_24h_after
+                        else None
+                    )
                     if price_now is None:
                         from monika.infrastructure.database.models import PriceOHLCV
+
                         target_time = analysis.generated_at + timedelta(hours=24)
-                        bar = (await session.execute(
-                            select(PriceOHLCV)
-                            .where(PriceOHLCV.symbol == reflection.symbol)
-                            .where(PriceOHLCV.timeframe == 'H1')
-                            .where(PriceOHLCV.timestamp >= target_time - timedelta(hours=2))
-                            .where(PriceOHLCV.timestamp <= target_time + timedelta(hours=4))
-                            .order_by(PriceOHLCV.timestamp.asc())
-                            .limit(1)
-                        )).scalar_one_or_none()
-                        if not bar:
-                            bar = (await session.execute(
+                        bar = (
+                            await session.execute(
                                 select(PriceOHLCV)
                                 .where(PriceOHLCV.symbol == reflection.symbol)
-                                .where(PriceOHLCV.timeframe == 'H1')
-                                .order_by(PriceOHLCV.timestamp.desc())
+                                .where(PriceOHLCV.timeframe == "H1")
+                                .where(PriceOHLCV.timestamp >= target_time - timedelta(hours=2))
+                                .where(PriceOHLCV.timestamp <= target_time + timedelta(hours=4))
+                                .order_by(PriceOHLCV.timestamp.asc())
                                 .limit(1)
-                            )).scalar_one_or_none()
+                            )
+                        ).scalar_one_or_none()
+                        if not bar:
+                            bar = (
+                                await session.execute(
+                                    select(PriceOHLCV)
+                                    .where(PriceOHLCV.symbol == reflection.symbol)
+                                    .where(PriceOHLCV.timeframe == "H1")
+                                    .order_by(PriceOHLCV.timestamp.desc())
+                                    .limit(1)
+                                )
+                            ).scalar_one_or_none()
                         if bar:
                             price_now = bar.close
-                            if hasattr(analysis, 'price_24h_after'):
+                            if hasattr(analysis, "price_24h_after"):
                                 analysis.price_24h_after = price_now
 
                     entry_price = reflection.whatif_entry_price
-                    
+
                     if entry_price and price_now:
                         from monika.domain.risk.position_sizing import get_instrument_spec
+
                         spec = get_instrument_spec(reflection.symbol)
                         pip_size = spec.pip_size if spec and spec.pip_size > 0 else 0.0001
 
                         diff = price_now - entry_price
-                        direction = 1 if reflection.decision.lower() == 'buy' else -1
-                        
+                        direction = 1 if reflection.decision.lower() == "buy" else -1
+
                         reflection.whatif_price_24h = price_now
                         diff_pips = (diff / pip_size) * direction
                         reflection.whatif_hypothetical_pnl_pips = round(diff_pips, 2)
-                        
-                        reflection.whatif_direction_correct = (diff_pips > 0)
-                        
+
+                        reflection.whatif_direction_correct = diff_pips > 0
+
                         # Evaluate path-dependent price action using proposed SL/TP from AssetAnalysis
                         proposed_sl = analysis.stop_loss
                         proposed_tp = analysis.take_profit
-                        
+
                         sl_hit, tp_hit = await self._check_path_dependent_outcome(
                             session=session,
                             symbol=reflection.symbol,
@@ -210,13 +242,14 @@ class OutcomeLinker:
                             proposed_sl=proposed_sl,
                             proposed_tp=proposed_tp,
                             direction=direction,
-                            pip_size=pip_size
+                            pip_size=pip_size,
                         )
                         reflection.whatif_sl_would_hit = sl_hit
                         reflection.whatif_tp_would_hit = tp_hit
 
-
-                        asset_return_pct = ((price_now - entry_price) / entry_price) * 100.0 * direction if entry_price > 0 else 0.0
+                        asset_return_pct = (
+                            ((price_now - entry_price) / entry_price) * 100.0 * direction if entry_price > 0 else 0.0
+                        )
 
                         calculator = AlphaCalculator(session)
                         alpha_data = await calculator.calculate_alpha(
@@ -224,16 +257,16 @@ class OutcomeLinker:
                             direction=reflection.decision,
                             entry_time=analysis.generated_at,
                             exit_time=now,
-                            asset_return_pct=asset_return_pct
+                            asset_return_pct=asset_return_pct,
                         )
-                        reflection.benchmark_name = alpha_data['benchmark_name']
-                        reflection.benchmark_return = alpha_data['benchmark_return']
-                        reflection.alpha_return = alpha_data['alpha_return']
-                        
+                        reflection.benchmark_name = alpha_data["benchmark_name"]
+                        reflection.benchmark_return = alpha_data["benchmark_return"]
+                        reflection.alpha_return = alpha_data["alpha_return"]
+
                         reflection.status = "resolved"
                         reflection.resolved_at = now
                         await session.commit()
-                        
+
                         # Picu refleksi
                         await self.reflector.reflect_on_trade(session, reflection.id)
                 except Exception as inner_e:
@@ -242,13 +275,13 @@ class OutcomeLinker:
                     try:
                         # Cegah item ini memblokir batch run selamanya jika error terus berulang sebelum reflector dipanggil
                         ref_obj = await session.get(DecisionReflection, reflection.id)
-                        if ref_obj and ref_obj.status == 'pending_whatif':
-                            ref_obj.status = 'error'
+                        if ref_obj and ref_obj.status == "pending_whatif":
+                            ref_obj.status = "error"
                             await session.commit()
                     except Exception as rb_err:
                         logger.error(f"Failed to record error status for reflection {reflection.id}: {rb_err}")
                         await session.rollback()
-                    
+
         except Exception as e:
             logger.error(f"Error di process_paper_whatifs: {e}")
             await session.rollback()
@@ -263,7 +296,7 @@ class OutcomeLinker:
         proposed_sl: Optional[float],
         proposed_tp: Optional[float],
         direction: int,
-        pip_size: float = 0.0001
+        pip_size: float = 0.0001,
     ) -> tuple[bool, bool]:
         """
         Evaluasi apakah bar harga historis antara start_time dan end_time
@@ -295,7 +328,7 @@ class OutcomeLinker:
             stmt = (
                 select(PriceOHLCV)
                 .where(PriceOHLCV.symbol == symbol)
-                .where(PriceOHLCV.timeframe == 'H1')
+                .where(PriceOHLCV.timeframe == "H1")
                 .where(PriceOHLCV.timestamp >= start_time)
                 .where(PriceOHLCV.timestamp <= end_time)
                 .order_by(PriceOHLCV.timestamp.asc())
@@ -328,4 +361,3 @@ class OutcomeLinker:
         except Exception as e:
             logger.debug(f"Path dependent check error for {symbol}: {e}")
             return False, False
-

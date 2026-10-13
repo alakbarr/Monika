@@ -47,4 +47,3 @@ class SizingCalculator:
             sz = 0.0001
         diff = abs(executed_price - expected_price)
         return round(diff / sz, 2)
-

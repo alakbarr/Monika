@@ -141,6 +141,7 @@ INSTRUCTIONS:
 
         try:
             from monika.core.primitives.jev_primitives import build_pattern_context_questions
+
             jev_q = build_pattern_context_questions(symbol=symbol, match_date_str=match_date_str)
 
             resp = await asyncio.wait_for(
@@ -160,15 +161,12 @@ INSTRUCTIONS:
             # Handle Jev System One response mappings
             if "adjustment_level" in resp or "_jev_model" in resp:
                 lvl = str(resp.get("adjustment_level", "standard_weight")).lower()
-                weight_map = {
-                    "full_weight": 1.0,
-                    "standard_weight": 0.8,
-                    "reduced_weight": 0.5,
-                    "minimal_weight": 0.2
-                }
+                weight_map = {"full_weight": 1.0, "standard_weight": 0.8, "reduced_weight": 0.5, "minimal_weight": 0.2}
                 adj = weight_map.get(lvl, 0.8)
                 is_sim = resp.get("is_macro_driver_similar", True)
-                reason = f"Jev System One macro comparability: relevance={relevance}, macro_similar={is_sim}, weight={adj}"
+                reason = (
+                    f"Jev System One macro comparability: relevance={relevance}, macro_similar={is_sim}, weight={adj}"
+                )
             else:
                 adj = float(resp.get("adjustment_factor", 0.8))
                 reason = resp.get("verdict_reason", "Verified against historical macro memory.")
@@ -198,9 +196,12 @@ INSTRUCTIONS:
             window_start = match_dt - timedelta(days=10)
             window_end = match_dt + timedelta(days=10)
 
-            stmt = select(MarketChronicle).where(
-                MarketChronicle.event_date.between(window_start, window_end)
-            ).order_by(desc(MarketChronicle.severity)).limit(2)
+            stmt = (
+                select(MarketChronicle)
+                .where(MarketChronicle.event_date.between(window_start, window_end))
+                .order_by(desc(MarketChronicle.severity))
+                .limit(2)
+            )
 
             res = await session.execute(stmt)
             rows = res.scalars().all()
@@ -210,9 +211,7 @@ INSTRUCTIONS:
             pass
         return ""
 
-    async def _search_and_cache_chronicle(
-        self, session: AsyncSession, symbol: str, match_dt: datetime
-    ) -> str:
+    async def _search_and_cache_chronicle(self, session: AsyncSession, symbol: str, match_dt: datetime) -> str:
         """On-demand web search fallback with self-caching to MarketChronicle."""
         try:
             from monika.infrastructure.data_ingestion.sources.web_search import get_web_search_service
@@ -228,7 +227,11 @@ INSTRUCTIONS:
             if not search_res:
                 return ""
 
-            items = search_res.get("results", []) if isinstance(search_res, dict) else (search_res if isinstance(search_res, list) else [])
+            items = (
+                search_res.get("results", [])
+                if isinstance(search_res, dict)
+                else (search_res if isinstance(search_res, list) else [])
+            )
             titles = [str(r.get("title", "")) for r in items if isinstance(r, dict) and r.get("title")]
             joined = " | ".join(titles)
 

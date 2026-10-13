@@ -18,7 +18,7 @@ class TestRiskGate:
                     "max_lot_size": 1.0,
                     "correlation_limit": 3,
                     "news_window_minutes": 15,
-                    "max_portfolio_heat_pct": 4.0
+                    "max_portfolio_heat_pct": 4.0,
                 }
             }
         }
@@ -26,23 +26,33 @@ class TestRiskGate:
     @pytest.fixture
     def sizing(self):
         return SizingResult(
-            symbol="XAUUSD", direction="buy", entry_price=2000.0, stop_loss=1990.0,
-            take_profit=2020.0, account_equity=10000.0, risk_percent=1.0,
-            risk_amount_usd=100.0, sl_distance_price=10.0, sl_distance_pips=1000.0,
-            pip_value_per_lot=1.0, raw_lots=0.1, recommended_lots=0.1, rr_ratio=2.0,
-            is_valid=True
+            symbol="XAUUSD",
+            direction="buy",
+            entry_price=2000.0,
+            stop_loss=1990.0,
+            take_profit=2020.0,
+            account_equity=10000.0,
+            risk_percent=1.0,
+            risk_amount_usd=100.0,
+            sl_distance_price=10.0,
+            sl_distance_pips=1000.0,
+            pip_value_per_lot=1.0,
+            raw_lots=0.1,
+            recommended_lots=0.1,
+            rr_ratio=2.0,
+            is_valid=True,
         )
 
     def _setup_mock_session(self, return_value_scalar=None, return_value_scalars=None):
         mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = return_value_scalar
-        
+
         if return_value_scalars is not None:
             mock_scalars = MagicMock()
             mock_scalars.all.return_value = return_value_scalars
             mock_result.scalars.return_value = mock_scalars
-            
+
         mock_session.execute.return_value = mock_result
         return mock_session
 
@@ -53,11 +63,11 @@ class TestRiskGate:
         mock_state.trading_paused = True
         mock_state.reason = "test reason"
         mock_session = self._setup_mock_session(mock_state)
-        
+
         ok, reason = await gate._check_not_paused(mock_session)
         assert not ok
         assert "test reason" in reason
-        
+
         mock_state.trading_paused = False
         ok, reason = await gate._check_not_paused(mock_session)
         assert ok
@@ -65,14 +75,14 @@ class TestRiskGate:
     @pytest.mark.asyncio
     async def test_check_sizing_valid(self, settings, sizing):
         gate = RiskGate(settings)
-        
+
         ok, reason = await gate._check_sizing_valid(sizing)
         assert ok
-        
+
         sizing.is_valid = False
         ok, reason = await gate._check_sizing_valid(sizing)
         assert not ok
-        
+
         sizing.is_valid = True
         sizing.recommended_lots = 0
         ok, reason = await gate._check_sizing_valid(sizing)
@@ -82,15 +92,15 @@ class TestRiskGate:
     async def test_check_daily_drawdown(self, settings):
         gate = RiskGate(settings)
         mock_state = MagicMock()
-        mock_state.current_drawdown = -400.0 # -4% of 10000
+        mock_state.current_drawdown = -400.0  # -4% of 10000
         mock_state.daily_pnl = -400.0
         mock_session = self._setup_mock_session(mock_state)
-        
+
         ok, reason = await gate._check_daily_drawdown(mock_session, 10000.0)
         assert not ok
         assert ">= limit 3.0" in reason
-        
-        mock_state.current_drawdown = -100.0 # -1%
+
+        mock_state.current_drawdown = -100.0  # -1%
         mock_state.daily_pnl = -100.0
         ok, reason = await gate._check_daily_drawdown(mock_session, 10000.0)
         assert ok
@@ -99,10 +109,10 @@ class TestRiskGate:
     async def test_check_max_positions(self, settings):
         gate = RiskGate(settings)
         mock_session = self._setup_mock_session(5)
-        
+
         ok, reason = await gate._check_max_positions(mock_session)
         assert not ok
-        
+
         mock_session.execute.return_value.scalar_one_or_none.side_effect = [3, 0]
         ok, reason = await gate._check_max_positions(mock_session)
         assert ok
@@ -111,10 +121,10 @@ class TestRiskGate:
     async def test_check_no_duplicate(self, settings):
         gate = RiskGate(settings)
         mock_session = self._setup_mock_session(1)
-        
+
         ok, reason = await gate._check_no_duplicate(mock_session, "XAUUSD")
         assert not ok
-        
+
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
         ok, reason = await gate._check_no_duplicate(mock_session, "XAUUSD")
         assert ok
@@ -122,43 +132,49 @@ class TestRiskGate:
     @pytest.mark.asyncio
     async def test_check_news_window(self, settings):
         gate = RiskGate(settings)
-        
+
         mock_event = MagicMock()
         mock_event.event_time = datetime.now(timezone.utc)
         mock_event.event_name = "NFP"
         mock_event.currency = "USD"
-        
+
         mock_session = create_mock_async_session()
-        
+
         # Scenario 1: SystemConfig has fresh timestamp, but high-impact event is active
         mock_cfg = MagicMock()
         mock_cfg.value = datetime.now(timezone.utc).isoformat()
-        
+
         mock_res_cfg = MagicMock()
         mock_res_cfg.scalar_one_or_none.return_value = mock_cfg
-        
+
         mock_res_count = MagicMock()
         mock_res_count.scalar_one_or_none.return_value = 50
-        
+
         mock_res_future = MagicMock()
         mock_res_future.scalar_one_or_none.return_value = 1
-        
+
         mock_res_pref = MagicMock()
         mock_res_pref.scalars.return_value.all.return_value = []
 
         mock_res_event = MagicMock()
         mock_res_event.scalar_one_or_none.return_value = mock_event
-        
-        mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_pref, mock_res_event]
-        
+
+        mock_session.execute.side_effect = [
+            mock_res_cfg,
+            mock_res_count,
+            mock_res_future,
+            mock_res_pref,
+            mock_res_event,
+        ]
+
         ok, reason = await gate._check_news_window(mock_session, "XAUUSD")
         assert not ok
         assert "NFP" in reason
-        
+
         # Scenario 2: SystemConfig fresh, no high-impact events
         mock_res_none = MagicMock()
         mock_res_none.scalar_one_or_none.return_value = None
-        
+
         mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_pref, mock_res_none]
         ok, reason = await gate._check_news_window(mock_session, "XAUUSD")
         assert ok
@@ -166,26 +182,24 @@ class TestRiskGate:
     @pytest.mark.asyncio
     async def test_check_correlation(self, settings):
         gate = RiskGate(settings)
-    
+
         pos1 = MagicMock()
         pos1.symbol = "EURUSD"
         pos1.direction = "buy"
         pos1.volume = 1.0
-    
+
         pos2 = MagicMock()
-        pos2.symbol = "GBPUSD" # Highly correlated to EURUSD (0.85)
+        pos2.symbol = "GBPUSD"  # Highly correlated to EURUSD (0.85)
         pos2.direction = "buy"
         pos2.volume = 1.0
-        
+
         # Test adding EURUSD buy when GBPUSD buy is open
         mock_session = self._setup_mock_session(return_value_scalars=[pos2, pos2, pos2, pos2])
-        
+
         # exposure will be 1.0 (base) + 4 * 0.85 = 4.4 > 3
         ok, reason = await gate._check_correlation(mock_session, "EURUSD", "buy")
         assert not ok
         assert "Correlated exposure limit exceeded" in reason
-
-
 
     @pytest.mark.asyncio
     async def test_main_check(self, settings, sizing):
@@ -201,11 +215,11 @@ class TestRiskGate:
         gate.assess_weekend_gap_risk = AsyncMock(return_value=(True, ""))
         gate._check_rollover_window = AsyncMock(return_value=(True, ""))
         gate._log_verdict = AsyncMock()
-    
+
         mock_session = self._setup_mock_session(return_value_scalars=[])
         mock_session.add = MagicMock()
         verdict = await gate.check(mock_session, "XAUUSD", "buy", sizing, 10000.0)
-        
+
         assert verdict.approved
         assert len(verdict.checks_failed) == 0
         gate._log_verdict.assert_awaited_once()
@@ -213,30 +227,30 @@ class TestRiskGate:
     @pytest.mark.asyncio
     async def test_update_risk_state(self, settings):
         gate = RiskGate(settings)
-        
+
         # Scenario 1: New risk state
         mock_session = self._setup_mock_session(None)
         mock_session.add = MagicMock()
-        
+
         await gate.update_risk_state(mock_session, -100.0, 10000.0)
-        
+
         added_state = mock_session.add.call_args[0][0]
         assert added_state.daily_pnl == -100.0
         assert added_state.current_drawdown == -100.0
         assert not added_state.trading_paused
-        
+
         # Scenario 2: Existing risk state exceeding max limit
         existing_state = MagicMock()
         existing_state.daily_pnl = -250.0
         existing_state.current_drawdown = -250.0
         existing_state.trading_paused = False
         mock_session.execute.return_value.scalar_one_or_none.return_value = existing_state
-        
+
         with patch("utils.infra.notifier.AgentNotifier") as mock_notifier:
             mock_notifier.return_value.send_critical = AsyncMock()
             # -100 pnl -> total drawdown = -350 -> 3.5% >= 3.0%
             await gate.update_risk_state(mock_session, -100.0, 10000.0)
-            
+
             assert existing_state.daily_pnl == -350.0
             assert existing_state.current_drawdown == -350.0
             assert existing_state.trading_paused
@@ -246,16 +260,16 @@ class TestRiskGate:
     @pytest.mark.asyncio
     async def test_pause_resume(self, settings):
         gate = RiskGate(settings)
-        
+
         mock_state = MagicMock()
         mock_state.trading_paused = False
         mock_session = self._setup_mock_session(mock_state)
-        
+
         await gate.pause_trading(mock_session, "manual test")
         assert mock_state.trading_paused
         assert mock_state.reason == "manual test"
         mock_session.commit.assert_awaited()
-        
+
         await gate.resume_trading(mock_session)
         assert not mock_state.trading_paused
         assert mock_state.reason is None
@@ -264,7 +278,7 @@ class TestRiskGate:
     async def test_assess_weekend_gap_risk_saturday_blocked(self, settings):
         gate = RiskGate(settings)
         mock_session = create_mock_async_session()
-        
+
         # Saturday at 10:00 UTC (weekday == 5, hour == 10)
         saturday_dt = datetime(2026, 8, 22, 10, 0, 0, tzinfo=timezone.utc)
         with patch("utils.clock.now", return_value=saturday_dt):
@@ -272,7 +286,7 @@ class TestRiskGate:
             ok, reason = await gate.assess_weekend_gap_risk(mock_session, "EURUSD")
             assert not ok
             assert "Saturday" in reason
-            
+
             # Exempt symbol (BTCUSD) must pass
             ok, reason = await gate.assess_weekend_gap_risk(mock_session, "BTCUSD")
             assert ok
@@ -285,10 +299,10 @@ class TestRiskGate:
         mock_vix = MagicMock()
         mock_vix.close = 14.5
         mock_vix.date = datetime(2026, 8, 28, 0, 0, 0, tzinfo=timezone.utc)
-        
+
         mock_session = self._setup_mock_session(mock_vix)
-        monday_dt = datetime(2026, 8, 31, 7, 3, 52, tzinfo=timezone.utc) # 3.29 days old
-        
+        monday_dt = datetime(2026, 8, 31, 7, 3, 52, tzinfo=timezone.utc)  # 3.29 days old
+
         with patch("utils.clock.now", return_value=monday_dt):
             ok, reason = await gate._check_vix_threshold(mock_session, as_of=monday_dt)
             assert ok is True
@@ -303,10 +317,10 @@ class TestRiskGate:
         mock_vix = MagicMock()
         mock_vix.close = 14.5
         mock_vix.date = datetime(2026, 8, 28, 0, 0, 0, tzinfo=timezone.utc)
-        
+
         mock_session = self._setup_mock_session(mock_vix)
-        wednesday_dt = datetime(2026, 9, 2, 12, 0, 0, tzinfo=timezone.utc) # 5.5 days old
-        
+        wednesday_dt = datetime(2026, 9, 2, 12, 0, 0, tzinfo=timezone.utc)  # 5.5 days old
+
         with patch("utils.clock.now", return_value=wednesday_dt):
             ok, reason = await gate._check_vix_threshold(mock_session, as_of=wednesday_dt)
             assert ok is True
@@ -316,6 +330,7 @@ class TestRiskGate:
     async def test_get_daily_risk_cutoff_and_state(self, settings):
         """Verify get_daily_risk_cutoff and get_current_risk_state work seamlessly."""
         from risk.risk_gate import get_daily_risk_cutoff, get_current_risk_state
+
         now_dt = datetime(2026, 9, 3, 14, 0, 0, tzinfo=timezone.utc)
         cutoff = get_daily_risk_cutoff(now_dt, {"daily_rollover_utc_hour": 21})
         assert cutoff.hour == 21
@@ -350,7 +365,7 @@ class TestRiskGate:
         gate = RiskGate(settings)
         # state is None (no trades yet today)
         mock_session = self._setup_mock_session(None)
-        
+
         # Mock MT5 open positions with a big floating loss of -$500 (-5% on $10,000 equity)
         mock_mt5 = AsyncMock()
         mock_mt5.get_open_positions.return_value = [{"ticket": 123, "profit": -500.0}]
@@ -376,7 +391,7 @@ class TestRiskGate:
         mock_paper.risk_pct = 5.0
 
         mock_session = create_mock_async_session()
-        
+
         # 1st execute: select(RiskState) -> None
         exec_state = MagicMock()
         exec_state.scalar_one_or_none.return_value = None
@@ -394,8 +409,3 @@ class TestRiskGate:
         ok, reason = await gate._check_daily_drawdown(mock_session, 10000.0)
         assert not ok
         assert "Unrealized drawdown" in reason or "Daily PnL loss" in reason
-
-
-
-
-

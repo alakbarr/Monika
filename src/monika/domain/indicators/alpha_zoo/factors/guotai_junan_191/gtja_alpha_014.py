@@ -1,4 +1,3 @@
-
 """GTJA Alpha #14.
 
 Formula: CLOSE - DELAY(CLOSE,5)
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_014",
-    "theme": ['momentum'],
-    "formula_latex": 'CLOSE - DELAY(CLOSE,5)',
-    "columns_required": ['close'],
+    "theme": ["momentum"],
+    "formula_latex": "CLOSE - DELAY(CLOSE,5)",
+    "columns_required": ["close"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 5,
     "min_warmup_bars": 6,
-    "notes": 'Simple 5d momentum = delta(close, 5).',
+    "notes": "Simple 5d momentum = delta(close, 5).",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     return delta(panel["close"], 5)

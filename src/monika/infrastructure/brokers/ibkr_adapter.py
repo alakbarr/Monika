@@ -21,6 +21,7 @@ logger = logging.getLogger("TradingAgent.IBKRAdapter")
 
 try:
     import ib_insync
+
     HAS_IB_INSYNC = True
 except ImportError:
     ib_insync = None
@@ -53,9 +54,7 @@ class IBKRBrokerAdapter(BrokerAdapter):
 
     def _ensure_ib(self) -> Any:
         if not HAS_IB_INSYNC or ib_insync is None:
-            raise RuntimeError(
-                "ib_insync package is not installed. Please install it with 'pip install ib_insync'."
-            )
+            raise RuntimeError("ib_insync package is not installed. Please install it with 'pip install ib_insync'.")
         if self.ib is None:
             self.ib = ib_insync.IB()
         return self.ib
@@ -250,14 +249,16 @@ class IBKRBrokerAdapter(BrokerAdapter):
                 sec = t.contract.symbol
                 if symbol and sec.upper() != symbol.upper():
                     continue
-                orders.append({
-                    "ticket": t.order.orderId,
-                    "symbol": sec,
-                    "type": t.order.action,
-                    "volume": t.order.totalQuantity,
-                    "price": getattr(t.order, "lmtPrice", 0.0),
-                    "status": t.orderStatus.status,
-                })
+                orders.append(
+                    {
+                        "ticket": t.order.orderId,
+                        "symbol": sec,
+                        "type": t.order.action,
+                        "volume": t.order.totalQuantity,
+                        "price": getattr(t.order, "lmtPrice", 0.0),
+                        "status": t.orderStatus.status,
+                    }
+                )
             return orders
         except Exception as e:
             logger.error(f"[IBKR] Error fetching orders: {e}")
@@ -271,14 +272,16 @@ class IBKRBrokerAdapter(BrokerAdapter):
             pos_list = self.ib.positions()
             positions = []
             for p in pos_list:
-                positions.append({
-                    "ticket": hash(f"{p.account}_{p.contract.conId}"),
-                    "symbol": p.contract.symbol,
-                    "type": "BUY" if p.position > 0 else "SELL",
-                    "volume": abs(p.position),
-                    "price_open": p.avgCost,
-                    "account": p.account,
-                })
+                positions.append(
+                    {
+                        "ticket": hash(f"{p.account}_{p.contract.conId}"),
+                        "symbol": p.contract.symbol,
+                        "type": "BUY" if p.position > 0 else "SELL",
+                        "volume": abs(p.position),
+                        "price_open": p.avgCost,
+                        "account": p.account,
+                    }
+                )
             return positions
         except Exception as e:
             logger.error(f"[IBKR] Error fetching positions: {e}")
@@ -298,7 +301,7 @@ class IBKRBrokerAdapter(BrokerAdapter):
             }
         try:
             summary = self.ib.accountSummary()
-            acc_dict = {item.tag: float(item.value) for item in summary if item.value.replace('.', '', 1).isdigit()}
+            acc_dict = {item.tag: float(item.value) for item in summary if item.value.replace(".", "", 1).isdigit()}
             equity = acc_dict.get("NetLiquidation", 0.0)
             balance = acc_dict.get("TotalCashValue", equity)
             margin = acc_dict.get("InitMarginReq", 0.0)

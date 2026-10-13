@@ -51,6 +51,7 @@ def load_fixture_json(filename: str, default: Any = None) -> Any:
 # Layer 1: Macro & Fundamental Golden Loaders
 # ==============================================================================
 
+
 def get_golden_macro_stage1() -> dict:
     """Returns the full Golden Macro Snapshot from 2026-10-01."""
     return load_fixture_json("macro/golden_macro_stage1_20261001.json")
@@ -167,7 +168,7 @@ def get_synthetic_stage1_bundle() -> str:
         "",
         f"--- [AGGREGATED FINANCIAL & GEOPOLITICAL NEWS BRIEFING ({len(golden.get('high_impact_news', []))} REAL ARTICLES)] ---",
         news_block,
-        "================================================================================="
+        "=================================================================================",
     ]
     return "\n".join(lines)
 
@@ -190,29 +191,36 @@ def get_synthetic_fundamental_brief() -> dict:
             "AUD": "bearish",
             "OIL": "bullish",
             "BTC": "bullish",
-            "XAU": "bullish"
+            "XAU": "bullish",
         },
         "currency_confidence": {
-            "USD": 0.85, "EUR": 0.80, "GBP": 0.70, "JPY": 0.75,
-            "AUD": 0.70, "OIL": 0.80, "BTC": 0.65, "XAU": 0.85
+            "USD": 0.85,
+            "EUR": 0.80,
+            "GBP": 0.70,
+            "JPY": 0.75,
+            "AUD": 0.70,
+            "OIL": 0.80,
+            "BTC": 0.65,
+            "XAU": 0.85,
         },
         "invalidation_conditions": {
             "EUR": "EURUSD D1 close above 1.1150 with ECB emergency rate hike",
-            "USD": "US Core PCE dropping below 2.5% YoY with 50bps rate cut"
+            "USD": "US Core PCE dropping below 2.5% YoY with 50bps rate cut",
         },
         "risk_sentiment": "selective_risk_off",
         "confidence": 0.82,
         "priced_in_assessment": {
             "dominant_driver": "Fed higher-for-longer policy combined with energy volatility",
             "priced_in_score": 7,
-            "sell_the_news_risk": "medium"
-        }
+            "sell_the_news_risk": "medium",
+        },
     }
 
 
 # ==============================================================================
 # Layer 2: Per-Asset Pipeline Golden Loaders
 # ==============================================================================
+
 
 def get_golden_asset_bundle(symbol: str = "EURUSD") -> dict:
     """Returns the per-asset golden bundle JSON."""
@@ -249,17 +257,33 @@ def get_synthetic_stage2_bundle(symbol: str = "EURUSD") -> Tuple[str, dict]:
     m15 = ind.get("M15", {})
     smc = bundle.get("smc_zones", {})
 
-    prec = 5 if "JPY" not in sym and sym not in ("XAUUSD", "BTCUSD", "XTIUSD") else (2 if sym in ("XAUUSD", "USDJPY") else (1 if sym == "BTCUSD" else 3))
+    prec = (
+        5
+        if "JPY" not in sym and sym not in ("XAUUSD", "BTCUSD", "XTIUSD")
+        else (2 if sym in ("XAUUSD", "USDJPY") else (1 if sym == "BTCUSD" else 3))
+    )
 
     fvg_lines = []
     for f in smc.get("unmitigated_fvg", []):
-        fvg_lines.append(f"- [{f.get('tf', 'H4')}] {f.get('direction', 'BULLISH')} FVG: Top={f.get('gap_high', 0):.{prec}f}, Bottom={f.get('gap_low', 0):.{prec}f}")
-    fvg_text = "\n".join(fvg_lines) if fvg_lines else f"- [{sym}] Unmitigated H4 FVG: {price*0.998:.{prec}f} to {price*0.996:.{prec}f}"
+        fvg_lines.append(
+            f"- [{f.get('tf', 'H4')}] {f.get('direction', 'BULLISH')} FVG: Top={f.get('gap_high', 0):.{prec}f}, Bottom={f.get('gap_low', 0):.{prec}f}"
+        )
+    fvg_text = (
+        "\n".join(fvg_lines)
+        if fvg_lines
+        else f"- [{sym}] Unmitigated H4 FVG: {price * 0.998:.{prec}f} to {price * 0.996:.{prec}f}"
+    )
 
     ob_lines = []
     for ob in smc.get("order_blocks", []):
-        ob_lines.append(f"- [{ob.get('tf', 'H4')}] {ob.get('direction', 'DEMAND')} Order Block: High={ob.get('price_high', 0):.{prec}f}, Low={ob.get('price_low', 0):.{prec}f}")
-    ob_text = "\n".join(ob_lines) if ob_lines else f"- [{sym}] Demand Order Block: {price*0.995:.{prec}f} to {price*0.992:.{prec}f}"
+        ob_lines.append(
+            f"- [{ob.get('tf', 'H4')}] {ob.get('direction', 'DEMAND')} Order Block: High={ob.get('price_high', 0):.{prec}f}, Low={ob.get('price_low', 0):.{prec}f}"
+        )
+    ob_text = (
+        "\n".join(ob_lines)
+        if ob_lines
+        else f"- [{sym}] Demand Order Block: {price * 0.995:.{prec}f} to {price * 0.992:.{prec}f}"
+    )
 
     text_bundle = f"""=== ASSET ANALYSIS BUNDLE: {sym} ===
 ### PRE-FETCHED DATA BUNDLE: {sym} (GOLDEN PRODUCTION SNAPSHOT 2026-10-01)
@@ -268,10 +292,10 @@ TEMPORAL CONSISTENCY LOCK: All data below fetched in consistent cycle window.
 --- MULTI-TIMEFRAME OHLCV PRICE METRICS ---
 Symbol: {sym}
 Current Market Price: {price:.{prec}f}
-H4 Trend: {h4.get('trend_ema', 'BULLISH')} (EMA20={h4.get('ema_20', 0):.{prec}f}, EMA50={h4.get('ema_50', 0):.{prec}f}, EMA200={h4.get('ema_200', 0):.{prec}f})
-H4 RSI: {h4.get('rsi', 54.2)} | ADX: {h4.get('adx_14', 31.4)} | ATR 14 (H4): {h4.get('atr_14', 0.0055)}
-H1 Intraday Structure: {h1.get('trend_ema', 'PULLBACK')} | RSI: {h1.get('rsi', 48.6)}
-M15 Execution Structure: {m15.get('structure', 'CHoCH_BULLISH_RETEST')} | ATR: {m15.get('atr_14', 0.0012)}
+H4 Trend: {h4.get("trend_ema", "BULLISH")} (EMA20={h4.get("ema_20", 0):.{prec}f}, EMA50={h4.get("ema_50", 0):.{prec}f}, EMA200={h4.get("ema_200", 0):.{prec}f})
+H4 RSI: {h4.get("rsi", 54.2)} | ADX: {h4.get("adx_14", 31.4)} | ATR 14 (H4): {h4.get("atr_14", 0.0055)}
+H1 Intraday Structure: {h1.get("trend_ema", "PULLBACK")} | RSI: {h1.get("rsi", 48.6)}
+M15 Execution Structure: {m15.get("structure", "CHoCH_BULLISH_RETEST")} | ATR: {m15.get("atr_14", 0.0012)}
 
 --- SMART MONEY CONCEPTS (SMC / ICT) STRUCTURE ---
 Fair Value Gaps (FVG unmitigated):
@@ -308,7 +332,7 @@ Open Trades: 2 | Maximum Risk Per Trade: 1.0% ($750.00)
         "get_dxy": {"latest": 101.48, "trend_5d": "pullback_retest"},
         "get_vix": {"latest": 16.70, "regime": "normal"},
         "account": {"balance": 76849.91, "equity": 76849.91, "free_margin": 75200.0},
-        "fixture_id": f"golden_production_{sym.lower()}"
+        "fixture_id": f"golden_production_{sym.lower()}",
     }
     return text_bundle, raw_dict
 
@@ -316,6 +340,7 @@ Open Trades: 2 | Maximum Risk Per Trade: 1.0% ($750.00)
 # ==============================================================================
 # Layer 3: Specialists & Pattern Similarity Loaders
 # ==============================================================================
+
 
 def get_golden_technical_indicators() -> dict:
     """Returns technical multi-timeframe indicator summary."""
@@ -335,6 +360,7 @@ def get_golden_pattern_case() -> dict:
 # ==============================================================================
 # Layer 4: Dialectical Debate & Adjudication Loaders
 # ==============================================================================
+
 
 def get_golden_debate_case(symbol: str = "EURUSD") -> dict:
     """Returns real Bull vs Bear dialectical clash."""
@@ -359,14 +385,14 @@ def get_synthetic_debate_claims(symbol: str = "EURUSD") -> Tuple[dict, dict]:
         "strength_score": 8,
         "evidence_cited": ["H4_FVG_demand=1.1050", "RSI_bullish_divergence"],
         "key_levels": [1.1050, 1.1070, 1.1120],
-        "falsification_triggers": ["D1 close below 1.1030"]
+        "falsification_triggers": ["D1 close below 1.1030"],
     }
     bear_dissent = {
         "bear_thesis": deb.get("bear_case", "Bear Thesis: DXY strength and resistance at 1.1100 limits upside."),
         "strength_score": 7,
         "evidence_cited": ["DXY_resistance=101.80", "Retail_long=74%"],
         "key_levels": [1.1100, 1.1020],
-        "falsification_triggers": ["H4 close above 1.1120"]
+        "falsification_triggers": ["H4 close above 1.1120"],
     }
     return bull_claim, bear_dissent
 
@@ -374,6 +400,7 @@ def get_synthetic_debate_claims(symbol: str = "EURUSD") -> Tuple[dict, dict]:
 # ==============================================================================
 # Layer 5: Risk Fortress, Portfolio & Self-Reflection Loaders
 # ==============================================================================
+
 
 def get_golden_risk_state(scenario: str = "baseline") -> dict:
     """Returns risk state: 'baseline' or 'defensive'."""
@@ -432,14 +459,15 @@ def get_synthetic_risk_context(symbol: str = "EURUSD") -> dict:
             "daily_pnl_usd": acct.get("daily_realized_pnl", -350.0),
             "open_positions": acct.get("open_positions_count", 2),
             "portfolio_heat_pct": acct.get("daily_drawdown_pct", 1.2),
-            "equity": acct.get("equity", 76849.91)
-        }
+            "equity": acct.get("equity", 76849.91),
+        },
     }
 
 
 # ==============================================================================
 # Layer 6: News Engine Loaders
 # ==============================================================================
+
 
 def get_golden_news_batch(limit: int = 25) -> List[dict]:
     """Returns 25 real news items from 2026-10-01."""
@@ -490,6 +518,7 @@ def get_synthetic_news_items() -> List[dict]:
 # Layer 7: System 1 Fast-Path Reflexes (JEV) Loaders
 # ==============================================================================
 
+
 def get_golden_jev_reflexes() -> dict:
     """Returns the JEV reflex suite (news, trigger, position guard)."""
     return load_fixture_json("system1_jev/jev_reflex_suite.json")
@@ -508,6 +537,7 @@ def get_golden_jev_timing() -> dict:
 # ==============================================================================
 # Layer 8: Omnichannel Chat & Voice Loaders
 # ==============================================================================
+
 
 def get_golden_telegram_dialogues() -> dict:
     """Returns telegram dialogues (fast, medium, complex)."""
@@ -528,6 +558,7 @@ def get_golden_reasoning_prompts() -> List[dict]:
 # Long Context & Transcript Fixtures (Harness Verification)
 # ==============================================================================
 
+
 def get_synthetic_compaction_payload() -> str:
     """Rich multi-source raw context for context_compaction testing (~20,000 characters)."""
     transcript_file = FIXTURES_DIR / "macro" / "raw_unfiltered_transcript_12p.txt"
@@ -545,7 +576,7 @@ def get_synthetic_compaction_payload() -> str:
         "=== COMPREHENSIVE ECONOMIC CALENDAR & REUTER/BLOOMBERG NEWSFEED (GOLDEN PRODUCTION SNAPSHOT) ===",
         "Cycle Reference: 2026-10-01T14:00:00Z | Source: Tier-1 Feeds",
         "",
-        "--- SECTION 1: GLOBAL ECONOMIC CALENDAR RELEASES (FULL DETAILS) ---"
+        "--- SECTION 1: GLOBAL ECONOMIC CALENDAR RELEASES (FULL DETAILS) ---",
     ]
     for ev in golden.get("upcoming_calendar", [])[:25]:
         lines.append(
@@ -553,15 +584,17 @@ def get_synthetic_compaction_payload() -> str:
             f"Event: {ev.get('event', '')} | Actual: {ev.get('actual')} | Forecast: {ev.get('forecast')} | "
             f"Previous: {ev.get('previous')} | Impact: {ev.get('impact')}"
         )
-    lines.extend([
-        "",
-        "--- SECTION 2: SOVEREIGN BOND YIELD CURVE & INTERBANK DATA ---",
-        "US 10-Year: 3.820% | US 2-Year: 3.650% | Spread US 10Y-2Y: +17.0 bps",
-        "DE 10-Year: 2.385% | DE 2-Year: 2.150% | Spread US-DE 10Y: +143.5 bps",
-        "UK 10-Year: 4.180% | JP 10-Year: 1.150%",
-        "",
-        "--- SECTION 3: RAW UNEDITED NEWSWIRE DISPATCHES (20 ARTICLES) ---"
-    ])
+    lines.extend(
+        [
+            "",
+            "--- SECTION 2: SOVEREIGN BOND YIELD CURVE & INTERBANK DATA ---",
+            "US 10-Year: 3.820% | US 2-Year: 3.650% | Spread US 10Y-2Y: +17.0 bps",
+            "DE 10-Year: 2.385% | DE 2-Year: 2.150% | Spread US-DE 10Y: +143.5 bps",
+            "UK 10-Year: 4.180% | JP 10-Year: 1.150%",
+            "",
+            "--- SECTION 3: RAW UNEDITED NEWSWIRE DISPATCHES (20 ARTICLES) ---",
+        ]
+    )
     for i, it in enumerate(news_items, 1):
         lines.append(
             f"[{i}] SOURCE: {it.get('source', 'Newswire')} | TIMESTAMP: {it.get('published_at', '2026-10-01')}\n"
@@ -588,12 +621,14 @@ def get_synthetic_session_reports_payload() -> str:
             f"Macro Narrative: {brief.get('macro_narrative')}",
             f"Currency Biases: {json.dumps(brief.get('currency_bias'))}",
             f"Confidence: {brief.get('confidence')} | Risk Sentiment: {brief.get('risk_sentiment')}",
-            ""
+            "",
         ]
         for sym, rep in reports_file.get("reports", {}).items():
             lines.append(f"--- PAIR: {sym} ---\n{rep}")
         pnl = reports_file.get("portfolio_pnl_summary", {})
-        lines.append(f"--- PORTFOLIO SUMMARY ---\nRealized PnL: ${pnl.get('realized_usd')} | Unrealized: ${pnl.get('unrealized_usd')} | Win Rate: {pnl.get('win_rate_session')}")
+        lines.append(
+            f"--- PORTFOLIO SUMMARY ---\nRealized PnL: ${pnl.get('realized_usd')} | Unrealized: ${pnl.get('unrealized_usd')} | Win Rate: {pnl.get('win_rate_session')}"
+        )
         return "\n\n".join(lines)
 
     brief = get_synthetic_fundamental_brief()
@@ -602,10 +637,10 @@ Timestamp: 2026-10-01T21:00:00Z | Session: End-of-Day NY Rollover
 Account: Balance $76,849.91 | Free Margin: $75,200.00 | Daily PnL: -$350.00
 
 --- MACRO REGIME & STAGE 1 BRIEF OVERVIEW ---
-Dominant Driver: {brief.get('priced_in_assessment', {}).get('dominant_driver', 'Fed higher-for-longer')}
-Macro Narrative: {brief.get('macro_narrative')}
-Currency Biases: {json.dumps(brief.get('currency_bias'))}
-Confidence: {brief.get('confidence')} | Risk Sentiment: {brief.get('risk_sentiment')}
+Dominant Driver: {brief.get("priced_in_assessment", {}).get("dominant_driver", "Fed higher-for-longer")}
+Macro Narrative: {brief.get("macro_narrative")}
+Currency Biases: {json.dumps(brief.get("currency_bias"))}
+Confidence: {brief.get("confidence")} | Risk Sentiment: {brief.get("risk_sentiment")}
 
 --- PAIR 1: EURUSD SESSION ANALYSIS & PROPOSAL ---
 Decision: BUY (Confluence Score: 11/14, R:R: 2.33)

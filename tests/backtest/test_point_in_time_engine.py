@@ -6,14 +6,15 @@ from tests.conftest import create_mock_async_session
 from backtest.point_in_time_engine import PointInTimeBacktestEngine
 from database.models import AssetAnalysis
 
+
 @pytest.mark.asyncio
 async def test_replay_mode():
     start = datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc)
     end = datetime(2023, 1, 2, 0, 0, tzinfo=timezone.utc)
-    
+
     settings = {}
     engine = PointInTimeBacktestEngine(start, end, settings, mode="replay")
-    
+
     # Mock AssetAnalysis
     mock_analysis = AssetAnalysis(
         symbol="XAUUSD",
@@ -24,17 +25,17 @@ async def test_replay_mode():
         take_profit=120.0,
         confidence=0.8,
         confluence_score=3,
-        rationale="Looks good"
+        rationale="Looks good",
     )
-    
+
     mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [mock_analysis]
     mock_session.execute.return_value = mock_result
-    
+
     mock_run_record = MagicMock()
     mock_run_record.id = 1
-    
+
     # Mock OutcomeEvaluator
     mock_evaluator = AsyncMock()
     mock_evaluator.evaluate_trade.return_value = {
@@ -42,16 +43,17 @@ async def test_replay_mode():
         "exit_price": 110.0,
         "exit_reason": "tp_hit",
         "pnl_pips": 1000.0,
-        "pnl_pct": 10.0
+        "pnl_pct": 10.0,
     }
-    
-    with patch("backtest.point_in_time_engine.get_session") as mock_get_session, \
-         patch("backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator):
-        
+
+    with (
+        patch("backtest.point_in_time_engine.get_session") as mock_get_session,
+        patch("backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator),
+    ):
         mock_get_session.return_value.__aenter__.return_value = mock_session
-        
+
         result = await engine.run()
-        
+
         assert len(engine.trades) == 1
         assert engine.trades[0].pnl_pct == 10.0
         assert engine.equity > 10000.0
@@ -62,12 +64,13 @@ async def test_replay_mode():
 async def test_replay_mode_with_entry_zone_fallback():
     """Verify replay mode extracts entry price from entry_zone when price_at_analysis is None."""
     import json
+
     start = datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc)
     end = datetime(2023, 1, 2, 0, 0, tzinfo=timezone.utc)
-    
+
     settings = {}
     engine = PointInTimeBacktestEngine(start, end, settings, mode="replay")
-    
+
     # Mock AssetAnalysis with price_at_analysis=None but valid entry_zone
     mock_analysis = AssetAnalysis(
         symbol="EURUSD",
@@ -79,30 +82,31 @@ async def test_replay_mode_with_entry_zone_fallback():
         take_profit=1.0950,
         confidence=0.8,
         confluence_score=5,
-        rationale="Edge registry entry"
+        rationale="Edge registry entry",
     )
-    
+
     mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [mock_analysis]
     mock_session.execute.return_value = mock_result
-    
+
     mock_evaluator = AsyncMock()
     mock_evaluator.evaluate_trade.return_value = {
         "exit_time": start,
         "exit_price": 1.0950,
         "exit_reason": "tp_hit",
         "pnl_pips": 100.0,
-        "pnl_pct": 5.0
+        "pnl_pct": 5.0,
     }
-    
-    with patch("backtest.point_in_time_engine.get_session") as mock_get_session, \
-         patch("backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator):
-        
+
+    with (
+        patch("backtest.point_in_time_engine.get_session") as mock_get_session,
+        patch("backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator),
+    ):
         mock_get_session.return_value.__aenter__.return_value = mock_session
-        
+
         result = await engine.run()
-        
+
         assert len(engine.trades) == 1
         assert engine.trades[0].entry_price == 1.0850
         assert engine.trades[0].symbol == "EURUSD"
@@ -113,6 +117,7 @@ async def test_replay_mode_with_entry_zone_fallback():
 async def test_point_in_time_dynamic_equity_feedback():
     """Verify that resolving Trade 1 updates self.equity dynamically before sizing Trade 2."""
     from datetime import timedelta
+
     start = datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc)
     t2_time = start + timedelta(hours=6)
     end = start + timedelta(days=2)
@@ -180,10 +185,11 @@ async def test_point_in_time_dynamic_equity_feedback():
         res.recommended_lots = 0.5
         return res
 
-    with patch("backtest.point_in_time_engine.get_session") as mock_get_session, \
-         patch("backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator), \
-         patch.object(engine.sizer, "calculate_with_session", side_effect=mock_calc):
-
+    with (
+        patch("backtest.point_in_time_engine.get_session") as mock_get_session,
+        patch("backtest.point_in_time_engine.OutcomeEvaluator", return_value=mock_evaluator),
+        patch.object(engine.sizer, "calculate_with_session", side_effect=mock_calc),
+    ):
         mock_get_session.return_value.__aenter__.return_value = mock_session
         await engine.run()
 
@@ -193,4 +199,3 @@ async def test_point_in_time_dynamic_equity_feedback():
     assert recorded_sizing_equities[1] == 11000.0
     # Verify final equity incorporates both
     assert engine.equity == 11550.0
-

@@ -23,6 +23,7 @@ logger = logging.getLogger("TradingAgent.QuantTearsheetGenerator")
 @dataclass
 class TearsheetResult:
     """Dataclass encapsulating comprehensive quant tearsheet analytics."""
+
     initial_equity: float
     final_equity: float
     total_net_pnl: float
@@ -97,11 +98,13 @@ class TearsheetResult:
         ]
 
         if self.by_symbol:
-            md.extend([
-                "## 4. Asset Performance Breakdown",
-                "| Asset | Trades | Win Rate | Net PnL ($) | Avg Trade ($) |",
-                "| :--- | :--- | :--- | :--- | :--- |",
-            ])
+            md.extend(
+                [
+                    "## 4. Asset Performance Breakdown",
+                    "| Asset | Trades | Win Rate | Net PnL ($) | Avg Trade ($) |",
+                    "| :--- | :--- | :--- | :--- | :--- |",
+                ]
+            )
             for sym, data in sorted(self.by_symbol.items(), key=lambda x: x[1].get("net_pnl", 0), reverse=True):
                 t_count = data.get("trades", 0)
                 wr = data.get("win_rate_pct", 0.0)
@@ -127,8 +130,12 @@ class TearsheetResult:
         ]
         if self.by_symbol:
             lines.append("\n<b>Asset Summary:</b>")
-            for sym, data in list(sorted(self.by_symbol.items(), key=lambda x: x[1].get("net_pnl", 0), reverse=True))[:4]:
-                lines.append(f"• <b>{sym}</b>: {data.get('trades')} trades, WR: {data.get('win_rate_pct', 0):.0f}%, PnL: <code>${data.get('net_pnl', 0):+,.2f}</code>")
+            for sym, data in list(sorted(self.by_symbol.items(), key=lambda x: x[1].get("net_pnl", 0), reverse=True))[
+                :4
+            ]:
+                lines.append(
+                    f"• <b>{sym}</b>: {data.get('trades')} trades, WR: {data.get('win_rate_pct', 0):.0f}%, PnL: <code>${data.get('net_pnl', 0):+,.2f}</code>"
+                )
         return "\n".join(lines)
 
     def to_standalone_html(self, title: str = "Monika Institutional Quant Tearsheet") -> str:
@@ -168,7 +175,8 @@ class TearsheetResult:
                 p_col = "#10b981" if pnl >= 0 else "#ef4444"
                 rows_asset += f"<tr><td><b>{sym}</b></td><td>{cnt}</td><td>{wr:.1f}%</td><td style='color:{p_col}; font-weight:600;'>${pnl:+,.2f}</td></tr>"
 
-        asset_table = f"""
+        asset_table = (
+            f"""
         <div class="card">
           <h2>Asset Performance Breakdown</h2>
           <table>
@@ -176,7 +184,10 @@ class TearsheetResult:
             <tbody>{rows_asset}</tbody>
           </table>
         </div>
-        """ if rows_asset else ""
+        """
+            if rows_asset
+            else ""
+        )
 
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -272,6 +283,7 @@ class TearsheetResult:
     def export_report(self, filepath: Optional[str] = None) -> str:
         """Saves standalone HTML report to disk for viewing or browser print-to-PDF."""
         import os
+
         if not filepath:
             os.makedirs("reports", exist_ok=True)
             ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -349,7 +361,9 @@ class QuantTearsheetGenerator:
                 pnl = float(pnl_val or 0.0)
                 pnl_pct = float(getattr(t, "pnl_pct", 0.0) or 0.0)
                 sym = str(getattr(t, "symbol", "UNKNOWN")).upper()
-                closed_at = getattr(t, "closed_at", None) or getattr(t, "exit_time", None) or getattr(t, "created_at", None)
+                closed_at = (
+                    getattr(t, "closed_at", None) or getattr(t, "exit_time", None) or getattr(t, "created_at", None)
+                )
 
             # Parse datetime if string
             dt_closed = None
@@ -361,20 +375,30 @@ class QuantTearsheetGenerator:
                 except Exception:
                     pass
 
-            pct = pnl_pct if pnl_pct != 0.0 else (round((pnl / initial_equity) * 100.0, 4) if initial_equity > 0 else 0.0)
-            parsed_trades.append({
-                "pnl": pnl,
-                "pnl_pct": pct,
-                "symbol": sym,
-                "closed_at": dt_closed,
-            })
+            pct = (
+                pnl_pct if pnl_pct != 0.0 else (round((pnl / initial_equity) * 100.0, 4) if initial_equity > 0 else 0.0)
+            )
+            parsed_trades.append(
+                {
+                    "pnl": pnl,
+                    "pnl_pct": pct,
+                    "symbol": sym,
+                    "closed_at": dt_closed,
+                }
+            )
 
         # Sort chronologically
         parsed_trades.sort(key=lambda x: x["closed_at"] or datetime.min.replace(tzinfo=timezone.utc))
 
         # 1. Equity Curve & Compounding
         running_equity = initial_equity
-        equity_curve = [{"timestamp": (parsed_trades[0]["closed_at"] or datetime.now(timezone.utc)).isoformat(), "equity": initial_equity, "drawdown_pct": 0.0}]
+        equity_curve = [
+            {
+                "timestamp": (parsed_trades[0]["closed_at"] or datetime.now(timezone.utc)).isoformat(),
+                "equity": initial_equity,
+                "drawdown_pct": 0.0,
+            }
+        ]
         peak = initial_equity
         peak_time = parsed_trades[0]["closed_at"]
         max_dd_pct = 0.0
@@ -387,7 +411,7 @@ class QuantTearsheetGenerator:
             if pnl != 0.0:
                 running_equity += pnl
             elif pnl_pct != 0.0:
-                running_equity *= (1.0 + pnl_pct / 100.0)
+                running_equity *= 1.0 + pnl_pct / 100.0
 
             t_date = trade["closed_at"]
             if running_equity >= peak:
@@ -408,11 +432,13 @@ class QuantTearsheetGenerator:
                         max_dd_duration_days = dur_days
 
             t_iso = trade["closed_at"].isoformat() if trade["closed_at"] else ""
-            equity_curve.append({
-                "timestamp": t_iso,
-                "equity": round(running_equity, 2),
-                "drawdown_pct": round(((peak - running_equity) / peak) * 100.0, 2) if peak > 0 else 0.0,
-            })
+            equity_curve.append(
+                {
+                    "timestamp": t_iso,
+                    "equity": round(running_equity, 2),
+                    "drawdown_pct": round(((peak - running_equity) / peak) * 100.0, 2) if peak > 0 else 0.0,
+                }
+            )
 
         final_equity = running_equity
         total_net_pnl = final_equity - initial_equity
@@ -446,7 +472,9 @@ class QuantTearsheetGenerator:
         expectancy_usd = round(total_net_pnl / total_trades, 2) if total_trades > 0 else 0.0
 
         # Best / worst trades
-        all_pcts = [t["pnl_pct"] for t in parsed_trades if t["pnl_pct"] != 0.0] or [t["pnl"] / initial_equity * 100.0 for t in parsed_trades]
+        all_pcts = [t["pnl_pct"] for t in parsed_trades if t["pnl_pct"] != 0.0] or [
+            t["pnl"] / initial_equity * 100.0 for t in parsed_trades
+        ]
         best_trade_pct = round(max(all_pcts), 2) if all_pcts else 0.0
         worst_trade_pct = round(min(all_pcts), 2) if all_pcts else 0.0
 
@@ -466,11 +494,11 @@ class QuantTearsheetGenerator:
 
             # Skewness & Kurtosis
             diffs = np.array(d_returns) - daily_mean
-            m3 = float(np.mean(diffs ** 3))
-            m4 = float(np.mean(diffs ** 4))
+            m3 = float(np.mean(diffs**3))
+            m4 = float(np.mean(diffs**4))
             s_val = daily_std if daily_std > 1e-8 else 1e-8
-            skewness = round(float(m3 / (s_val ** 3)), 2)
-            kurtosis = round(float(m4 / (s_val ** 4)) - 3.0, 2)  # excess kurtosis
+            skewness = round(float(m3 / (s_val**3)), 2)
+            kurtosis = round(float(m4 / (s_val**4)) - 3.0, 2)  # excess kurtosis
         else:
             daily_mean = d_returns[0] if d_returns else 0.0
             daily_std = 0.0
@@ -488,7 +516,7 @@ class QuantTearsheetGenerator:
 
         # Sortino (downside semi-deviation across full return series)
         downside_diff = np.minimum(0.0, np.array(d_returns))
-        downside_std = float(np.sqrt(np.mean(downside_diff ** 2)))
+        downside_std = float(np.sqrt(np.mean(downside_diff**2)))
         if downside_std > 1e-8:
             annualized_sortino = round(float((daily_mean / downside_std) * ann_factor), 2)
         else:

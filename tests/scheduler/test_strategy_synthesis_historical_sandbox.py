@@ -25,7 +25,13 @@ async def test_historical_slice_session_zero_lookahead():
     """Verifies that HistoricalSliceSession never leaks future bars beyond current slice."""
     base_time = datetime(2026, 9, 1, 0, 0, tzinfo=timezone.utc)
     all_candles = [
-        MockCandle(base_time + timedelta(hours=i), 1.1000 + i * 0.0005, 1.1010 + i * 0.0005, 1.0990 + i * 0.0005, 1.1005 + i * 0.0005)
+        MockCandle(
+            base_time + timedelta(hours=i),
+            1.1000 + i * 0.0005,
+            1.1010 + i * 0.0005,
+            1.0990 + i * 0.0005,
+            1.1005 + i * 0.0005,
+        )
         for i in range(100)
     ]
 
@@ -51,6 +57,7 @@ async def test_run_historical_simulation_insufficient_candles():
 
     class DummyStrategy(EdgeStrategy):
         strategy_id = "test_strat_few_candles"
+
         async def evaluate(self, session, symbol, settings):
             return None
 
@@ -80,7 +87,9 @@ async def test_run_historical_simulation_detects_trades_with_friction():
         async def evaluate(self, session, symbol, settings):
             candles = await self.get_historical_candles(session, symbol, "H1", 20)
             if len(candles) < 15:
-                return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction=None, valid=False, confidence=0.0)
+                return EdgeSignal(
+                    strategy_id=self.strategy_id, symbol=symbol, direction=None, valid=False, confidence=0.0
+                )
 
             # Signal buy when latest close > open of previous candle
             latest = candles[-1]
@@ -92,7 +101,7 @@ async def test_run_historical_simulation_detects_trades_with_friction():
                     direction="buy",
                     valid=True,
                     confidence=0.85,
-                    stop_loss=latest.close * 0.995,   # 0.5% SL
+                    stop_loss=latest.close * 0.995,  # 0.5% SL
                     take_profit=latest.close * 1.010,  # 1.0% TP
                 )
             return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction=None, valid=False, confidence=0.0)
@@ -102,6 +111,7 @@ async def test_run_historical_simulation_detects_trades_with_friction():
     mock_candles = []
     price = 1.1000
     import math
+
     for i in range(150):
         delta = math.sin(i / 5.0) * 0.0030
         p = price + delta

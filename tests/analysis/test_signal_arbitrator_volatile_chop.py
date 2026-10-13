@@ -4,6 +4,7 @@ from tests.conftest import create_mock_async_session
 from analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
 from analysis.strategies.base_strategy import EdgeSignal
 
+
 @pytest.mark.asyncio
 async def test_signal_arbitrator_volatile_chop_blocked():
     """Verify that when market is in VOLATILE_CHOP and LLM is in wait/avoid stance, quant execution is blocked."""
@@ -29,21 +30,21 @@ async def test_signal_arbitrator_volatile_chop_blocked():
         exit_style="intraday_adr",
         entry_price=1.0850,
         stop_loss=1.0830,
-        take_profit=1.0890
+        take_profit=1.0890,
     )
 
     llm_decision = {
         "decision": "wait",
         "confidence": 0.50,
         "risk_multiplier": 1.0,
-        "rationale": "High volatility chop observed"
+        "rationale": "High volatility chop observed",
     }
 
     regime_info = {
         "regime": "volatile_chop",
         "market_regime": "volatile_chop",
         "composite_quality": 0.35,
-        "volatility_chop": {"chop_block": True}
+        "volatility_chop": {"chop_block": True},
     }
 
     result = await arbitrator.arbitrate(
@@ -52,7 +53,7 @@ async def test_signal_arbitrator_volatile_chop_blocked():
         quant_signal=quant_sig,
         llm_decision=llm_decision,
         vix_level=26.5,
-        regime_info=regime_info
+        regime_info=regime_info,
     )
 
     assert isinstance(result, ArbitrationResult)
@@ -91,7 +92,7 @@ async def test_signal_arbitrator_linear_opinion_pool_concordant():
         exit_style="trend_trailing",
         entry_price=2650.0,
         stop_loss=2635.0,
-        take_profit=2685.0
+        take_profit=2685.0,
     )
 
     llm_decision = {
@@ -101,7 +102,7 @@ async def test_signal_arbitrator_linear_opinion_pool_concordant():
         "entry_price": 2650.0,
         "stop_loss": 2635.0,
         "take_profit": 2685.0,
-        "rationale": "Bullish momentum aligned"
+        "rationale": "Bullish momentum aligned",
     }
 
     with patch("utils.calibration.confidence_calibrator.get_calibrated_confidence", AsyncMock(return_value=0.70)):
@@ -111,7 +112,7 @@ async def test_signal_arbitrator_linear_opinion_pool_concordant():
             quant_signal=quant_sig,
             llm_decision=llm_decision,
             vix_level=17.0,
-            regime_info={"regime": "trending_bull", "composite_quality": 0.85}
+            regime_info={"regime": "trending_bull", "composite_quality": 0.85},
         )
 
         # Linear pool: (0.40 * 0.80 + 0.60 * 0.70) = 0.32 + 0.42 = 0.74

@@ -133,7 +133,6 @@ class AcpServer:
         else:
             self.send_response(req_id, error={"code": -32601, "message": f"Method '{method}' not found"})
 
-
     def _handle_initialize(self, req_id: Any, params: Dict[str, Any]) -> None:
         """Handles ACP handshake and capability negotiation."""
         result = {
@@ -313,7 +312,6 @@ class AcpServer:
             decision = res.get("decision")
             return decision in ("allow_once", "allow_session", True)
         return bool(res)
-
 
     def run_stdio_loop(self) -> None:
         """Main blocking stdio event loop reading from stdin."""

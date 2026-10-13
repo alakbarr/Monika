@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 # ==============================================================================
 # File: tests/test_gap_analysis_remediation.py
 # ==============================================================================
@@ -104,7 +105,7 @@ async def test_paper_tracker_suspension():
 
     mock_session = create_mock_async_session()
     mock_execute_result = MagicMock()
-    mock_cfg = SystemConfig(key='suspended_symbols', value="[]")
+    mock_cfg = SystemConfig(key="suspended_symbols", value="[]")
     mock_execute_result.scalar_one_or_none.return_value = mock_cfg
     mock_session.execute.return_value = mock_execute_result
 
@@ -155,8 +156,17 @@ def test_command_router_includes_all_remediation_commands():
     from telegram_bot.command_router import CommandRouter, DIRECT_COMMANDS, COMMAND_HELP
 
     required_commands = [
-        "suspend", "unsuspend", "macro_weekly", "counterfactual", "chronicle",
-        "monte_carlo", "stress_test", "export_chat", "undo", "backup", "cron"
+        "suspend",
+        "unsuspend",
+        "macro_weekly",
+        "counterfactual",
+        "chronicle",
+        "monte_carlo",
+        "stress_test",
+        "export_chat",
+        "undo",
+        "backup",
+        "cron",
     ]
     for cmd in required_commands:
         assert cmd in DIRECT_COMMANDS, f"Command '{cmd}' missing from DIRECT_COMMANDS"
@@ -195,4 +205,3 @@ def test_backtest_engines_accept_symbol_and_strategy_filters():
     )
     assert wf.symbols == ["BTCUSD"]
     assert wf.strategies == ["momentum_breakout"]
-

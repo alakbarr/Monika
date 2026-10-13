@@ -1,4 +1,3 @@
-
 """GTJA Alpha #5.
 
 Formula: (-1 * TSMAX(CORR(TSRANK(VOLUME,5), TSRANK(HIGH,5), 5), 3))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_005",
-    "theme": ['volume'],
-    "formula_latex": '(-1 * TSMAX(CORR(TSRANK(VOLUME,5), TSRANK(HIGH,5), 5), 3))',
-    "columns_required": ['volume', 'high'],
+    "theme": ["volume"],
+    "formula_latex": "(-1 * TSMAX(CORR(TSRANK(VOLUME,5), TSRANK(HIGH,5), 5), 3))",
+    "columns_required": ["volume", "high"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 5,
     "min_warmup_bars": 13,
-    "notes": 'Max over 3 days of 5d corr of TSRANK(volume,5) and TSRANK(high,5).',
+    "notes": "Max over 3 days of 5d corr of TSRANK(volume,5) and TSRANK(high,5).",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     v = panel["volume"]

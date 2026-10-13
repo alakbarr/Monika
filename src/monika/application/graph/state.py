@@ -1,6 +1,7 @@
 from typing import TypedDict, Annotated, List, Dict, Any, Optional, Union
 import operator
 
+
 def merge_dicts(a: Optional[Dict], b: Optional[Dict]) -> Dict:
     """
     Deep merge two dicts. Top-level keys from b override a,
@@ -17,6 +18,8 @@ def merge_dicts(a: Optional[Dict], b: Optional[Dict]) -> Dict:
         else:
             merged[k] = v
     return merged
+
+
 def _item_key(item: Any) -> Any:
     try:
         hash(item)
@@ -34,16 +37,17 @@ def _item_key(item: Any) -> Any:
                 return (2, repr(item))
         return (2, repr(item))
 
+
 def merge_lists(a: List, b: List) -> List:
     """Concatenate two lists with order-preserving O(N) deduplication."""
     res: List[Any] = []
     seen = set()
-    for item in (a or []):
+    for item in a or []:
         k = _item_key(item)
         if k not in seen:
             seen.add(k)
             res.append(item)
-    for item in (b or []):
+    for item in b or []:
         k = _item_key(item)
         if k not in seen:
             seen.add(k)
@@ -110,6 +114,7 @@ class TradingSummary(TypedDict, total=False):
     reactive_event: Optional[Any]
     adhoc_verdicts: Optional[Dict[str, Any]]
 
+
 class AssetDecisionSummary(TypedDict, total=False):
     decision: str
     confidence: float
@@ -118,44 +123,46 @@ class AssetDecisionSummary(TypedDict, total=False):
     priced_in_score: Optional[int]
     elapsed_s: Optional[float]
 
+
 class TradingState(TypedDict):
     """
     State utama yang mengalir di seluruh node LangGraph.
     Semua komponen akan membaca dan memodifikasi state ini.
     """
+
     # Context & Data
-    symbols: List[str]                  # Daftar simbol yang akan dianalisis
-    market_regime: str                  # Hasil identifikasi rezim pasar
-    vix_level: Optional[float]          # Current VIX for routing
-    brief_confidence: Optional[float]   # Stage 1 confidence for threshold adjustment
-    
+    symbols: List[str]  # Daftar simbol yang akan dianalisis
+    market_regime: str  # Hasil identifikasi rezim pasar
+    vix_level: Optional[float]  # Current VIX for routing
+    brief_confidence: Optional[float]  # Stage 1 confidence for threshold adjustment
+
     # Per-Asset Analysis Results
     asset_analyses: Annotated[Dict[str, Dict[str, Any]], merge_dicts]
     debate_states: Annotated[Dict[str, Dict[str, Any]], merge_dicts]
     risk_debate_states: Annotated[Dict[str, Dict[str, Any]], merge_dicts]
     investment_verdicts: Annotated[Dict[str, Dict[str, Any]], merge_dicts]
     portfolio_decisions: Annotated[Dict[str, Dict[str, Any]], merge_dicts]
-    
+
     # Decisions & Execution
     # PENTING: Bidang narrowing pipeline ini TIDAK memakai reducer agar node hilir dapat memfilter trade
     approved_trades: List[tuple]
-    
+
     # Control flags
     errors: Annotated[List[str], merge_lists]
     should_pause: bool
-    
+
     # --- Orkestrasi Khusus AI Trading Agent ---
     weekend_symbols_override: Optional[List[str]]
     stale_assets: Annotated[List[str], merge_lists]
     summary: Annotated[TradingSummary, merge_dicts]
     actionable_trades: List[tuple]
     reflection_applied: Optional[bool]
-    
+
     node_errors: Annotated[Dict[str, str], merge_dicts]
     data_quality_scores: Annotated[Dict[str, float], merge_dicts]
     cycle_id: str
     fundamental_retry_count: int
-    
+
     # Cross-cycle persistent insights
     prior_cycle_insights: Dict[str, Any]  # Patterns from previous cycle
     consecutive_wait_count: int  # How many cycles produced only WAIT decisions

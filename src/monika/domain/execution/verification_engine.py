@@ -50,9 +50,7 @@ class EvidenceFirstVerifier:
         return evidence_record
 
     async def pre_trade_assertions(
-        self,
-        signal: Dict[str, Any],
-        session: Optional[AsyncSession] = None
+        self, signal: Dict[str, Any], session: Optional[AsyncSession] = None
     ) -> Tuple[bool, List[str]]:
         """
         Phase 1: 10-point deterministic assertions BEFORE sending to MT5 / RiskGate.
@@ -120,7 +118,9 @@ class EvidenceFirstVerifier:
 
         # 8. Priced-in Score Overheat Guard
         if priced_in_score >= 8:
-            violations.append(f"ASSERT_8: Priced-in score ({priced_in_score}/10) indicates market exhaustion / crowded trade.")
+            violations.append(
+                f"ASSERT_8: Priced-in score ({priced_in_score}/10) indicates market exhaustion / crowded trade."
+            )
 
         # 9. Key Evidence Citation
         evidence = signal.get("key_evidence") or signal.get("confluence_factors_json") or []
@@ -144,15 +144,14 @@ class EvidenceFirstVerifier:
 
         all_passed = len(violations) == 0
         if not all_passed:
-            logger.warning(f"EvidenceVerifier [{symbol}] Pre-trade assertions failed with {len(violations)} violations: {violations}")
+            logger.warning(
+                f"EvidenceVerifier [{symbol}] Pre-trade assertions failed with {len(violations)} violations: {violations}"
+            )
 
         return all_passed, violations
 
     async def post_execution_reconciliation(
-        self,
-        order_result: Dict[str, Any],
-        mt5_client: Optional[Any] = None,
-        session: Optional[AsyncSession] = None
+        self, order_result: Dict[str, Any], mt5_client: Optional[Any] = None, session: Optional[AsyncSession] = None
     ) -> Dict[str, Any]:
         """
         Phase 2: Zero-trust post-execution reconciliation.
@@ -162,7 +161,7 @@ class EvidenceFirstVerifier:
             "verified": False,
             "ticket": order_result.get("ticket"),
             "slippage_points": 0.0,
-            "issues": []
+            "issues": [],
         }
 
         ticket = order_result.get("ticket")
@@ -180,6 +179,7 @@ class EvidenceFirstVerifier:
                     positions = await mt5_client.get_open_positions()
 
                 import inspect
+
                 if inspect.iscoroutine(positions):
                     positions = await positions
 

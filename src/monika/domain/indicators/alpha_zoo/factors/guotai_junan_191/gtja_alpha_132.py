@@ -1,11 +1,11 @@
-
 """GTJA Alpha 132 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     MEAN(AMOUNT,20)
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_132"
 
 __alpha_meta__ = {
-    'id': 'gtja191_132',
-    'theme': ['liquidity'],
-    'formula_latex': 'mean(amount,20)',
-    'columns_required': ['close', 'amount'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 20,
-    'min_warmup_bars': 20,
-    'notes': '',
+    "id": "gtja191_132",
+    "theme": ["liquidity"],
+    "formula_latex": "mean(amount,20)",
+    "columns_required": ["close", "amount"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 20,
+    "min_warmup_bars": 20,
+    "notes": "",
 }
 
 

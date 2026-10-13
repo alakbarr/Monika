@@ -1,6 +1,7 @@
 """
 Unit tests for Chat Compaction (H1), Denial Circuit Breaker (M3), and Turn Interruption (M6).
 """
+
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
@@ -79,11 +80,9 @@ async def test_m6_turn_interruption():
     agent._active_task = task
     assert agent.is_busy() is True
 
-
     interrupted = agent.interrupt()
     assert interrupted is True
     assert agent.is_busy() is False
 
     # Calling interrupt again when not busy returns False
     assert agent.interrupt() is False
-

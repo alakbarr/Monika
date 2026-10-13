@@ -67,7 +67,7 @@ def _t_distribution_p_value(t: float, df: int) -> float:
 
     try:
         bt = math.exp(math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b) + a * math.log(x) + b * math.log(1.0 - x))
-    except (ValueError, OverflowError):
+    except ValueError, OverflowError:
         bt = 0.0
 
     if x < (a + 1.0) / (a + b + 2.0):
@@ -115,7 +115,9 @@ class PairedStrategyEvaluator:
     """Runs statistical pairwise evaluation between baseline and candidate strategies."""
 
     @staticmethod
-    def _compute_metrics(name: str, trades: List[Dict[str, Any]], token_usage: Optional[Dict[str, Any]] = None) -> StrategyMetrics:
+    def _compute_metrics(
+        name: str, trades: List[Dict[str, Any]], token_usage: Optional[Dict[str, Any]] = None
+    ) -> StrategyMetrics:
         """Calculate quantitative performance metrics for a trade set."""
         m = StrategyMetrics(strategy_name=name)
         m.total_trades = len(trades)
@@ -136,7 +138,9 @@ class PairedStrategyEvaluator:
         m.win_rate = round((m.winning_trades / m.total_trades) * 100.0, 2)
         m.gross_profit = sum(profits)
         m.gross_loss = sum(losses)
-        m.profit_factor = round(m.gross_profit / m.gross_loss, 3) if m.gross_loss > 0 else (99.0 if m.gross_profit > 0 else 0.0)
+        m.profit_factor = (
+            round(m.gross_profit / m.gross_loss, 3) if m.gross_loss > 0 else (99.0 if m.gross_profit > 0 else 0.0)
+        )
 
         avg_win = (m.gross_profit / m.winning_trades) if m.winning_trades > 0 else 0.0
         avg_loss = (m.gross_loss / m.losing_trades) if m.losing_trades > 0 else 0.0
@@ -210,9 +214,9 @@ class PairedStrategyEvaluator:
             n = len(diffs)
             mean_diff = sum(diffs) / n
             var_diff = sum((d - mean_diff) ** 2 for d in diffs) / (n - 1) if n > 1 else 0.0
-            std_diff = var_diff ** 0.5
+            std_diff = var_diff**0.5
             if std_diff > 1e-8:
-                t_stat = mean_diff / (std_diff / (n ** 0.5))
+                t_stat = mean_diff / (std_diff / (n**0.5))
                 p_val = round(_t_distribution_p_value(abs(t_stat), df=n - 1), 4)
                 is_sig = bool(p_val < 0.05 and mean_diff > 0)
 
@@ -289,9 +293,9 @@ class PairedStrategyEvaluator:
             n = len(diffs)
             mean_diff = sum(diffs) / n
             var_diff = sum((d - mean_diff) ** 2 for d in diffs) / (n - 1) if n > 1 else 0.0
-            std_diff = var_diff ** 0.5
+            std_diff = var_diff**0.5
             if std_diff > 1e-8:
-                t_stat = mean_diff / (std_diff / (n ** 0.5))
+                t_stat = mean_diff / (std_diff / (n**0.5))
                 p_val = round(_t_distribution_p_value(abs(t_stat), df=n - 1), 4)
                 is_sig = bool(p_val < 0.05 and mean_diff > 0)
 

@@ -86,11 +86,14 @@ async def toggle_plugin(request: Request, body: PluginToggleRequest) -> Dict[str
 
     # Broadcast event to WebSocket subscribers
     try:
-        await broadcast_live_event("plugin_state_changed", {
-            "plugin_id": body.plugin_id,
-            "category": body.category,
-            "enabled": body.enabled,
-        })
+        await broadcast_live_event(
+            "plugin_state_changed",
+            {
+                "plugin_id": body.plugin_id,
+                "category": body.category,
+                "enabled": body.enabled,
+            },
+        )
     except Exception as e:
         logger.debug(f"Broadcast error on plugin toggle: {e}")
 
@@ -116,10 +119,13 @@ async def install_plugin(request: Request, body: PluginInstallRequest) -> Dict[s
 
     # Broadcast install completion event
     try:
-        await broadcast_live_event("plugin_installed", {
-            "package_name": body.package_name,
-            "success": success,
-        })
+        await broadcast_live_event(
+            "plugin_installed",
+            {
+                "package_name": body.package_name,
+                "success": success,
+            },
+        )
     except Exception as e:
         logger.debug(f"Broadcast error on plugin install: {e}")
 
@@ -138,10 +144,13 @@ async def uninstall_plugin(request: Request, body: PluginUninstallRequest) -> Di
     success, output = await asyncio.to_thread(run_pip_uninstall, body.package_name)
 
     try:
-        await broadcast_live_event("plugin_uninstalled", {
-            "package_name": body.package_name,
-            "success": success,
-        })
+        await broadcast_live_event(
+            "plugin_uninstalled",
+            {
+                "package_name": body.package_name,
+                "success": success,
+            },
+        )
     except Exception as e:
         logger.debug(f"Broadcast error on plugin uninstall: {e}")
 

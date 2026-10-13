@@ -28,6 +28,7 @@ from unittest.mock import MagicMock, AsyncMock, patch
 # 1. Omnichannel Gateway & ChannelRouter Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_channel_router_multi_platform_routing():
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -88,6 +89,7 @@ async def test_channel_router_multi_platform_routing():
 # ==============================================================================
 # 2. OpenAI-Compatible API Server Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_api_server_health_and_models():
@@ -222,13 +224,15 @@ async def test_discord_platform_adapter_webhook_and_interactions(monkeypatch):
         return f"Echo {text} from {user_id}"
 
     adapter.register_handler(mock_handler)
-    cmd_res = await adapter.handle_inbound_interaction({
-        "type": 2,
-        "id": "int_123",
-        "channel_id": "ch_general",
-        "member": {"user": {"id": "usr_99"}},
-        "data": {"name": "status", "options": [{"value": "market_summary"}]},
-    })
+    cmd_res = await adapter.handle_inbound_interaction(
+        {
+            "type": 2,
+            "id": "int_123",
+            "channel_id": "ch_general",
+            "member": {"user": {"id": "usr_99"}},
+            "data": {"name": "status", "options": [{"value": "market_summary"}]},
+        }
+    )
     assert cmd_res["type"] == 4
     assert "market_summary" in cmd_res["data"]["content"]
 
@@ -266,10 +270,12 @@ async def test_slack_platform_adapter_webhook_and_events(monkeypatch):
     assert "RiskGate Passed" in adapter.sent_messages[0]["content"]
 
     # 2. Inbound event: url_verification challenge
-    challenge_res = await adapter.handle_inbound_event({
-        "type": "url_verification",
-        "challenge": "challenge_token_abc_123",
-    })
+    challenge_res = await adapter.handle_inbound_event(
+        {
+            "type": "url_verification",
+            "challenge": "challenge_token_abc_123",
+        }
+    )
     assert challenge_res == {"challenge": "challenge_token_abc_123"}
 
     # 3. Inbound event: message callback
@@ -277,16 +283,18 @@ async def test_slack_platform_adapter_webhook_and_events(monkeypatch):
         return f"Processed slack message '{text}'"
 
     adapter.register_handler(mock_handler)
-    event_res = await adapter.handle_inbound_event({
-        "type": "event_callback",
-        "event_id": "ev_456",
-        "event": {
-            "type": "message",
-            "user": "U12345",
-            "channel": "C98765",
-            "text": "What is the daily drawdown?",
-        },
-    })
+    event_res = await adapter.handle_inbound_event(
+        {
+            "type": "event_callback",
+            "event_id": "ev_456",
+            "event": {
+                "type": "message",
+                "user": "U12345",
+                "channel": "C98765",
+                "text": "What is the daily drawdown?",
+            },
+        }
+    )
     assert event_res["status"] == "ok"
     assert event_res["reply_length"] > 0
 
@@ -296,6 +304,7 @@ async def test_slack_platform_adapter_webhook_and_events(monkeypatch):
 # ==============================================================================
 # 3. Security Hardening Tests: API Key Auth & CSWSH Protection
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_api_server_chat_completions_api_key_auth(monkeypatch):
@@ -353,6 +362,3 @@ def test_api_server_ws_terminal_security():
         ws.send_text("exit")
         close_msg = ws.receive_text()
         assert "Closing terminal session" in close_msg
-
-
-

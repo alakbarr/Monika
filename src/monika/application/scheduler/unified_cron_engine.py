@@ -64,6 +64,7 @@ class DeliveryStatus:
     SENT = "SENT"
     FAILED = "FAILED"
 
+
 # Safety blocklist against destructive host commands in scheduled tasks
 _ANTI_SUICIDE_PATTERNS = [
     re.compile(r"\brm\s+-(?:r|f|rf|fr)\s+(?:/|~|\$HOME|trading-agent|\*)", re.IGNORECASE),
@@ -77,6 +78,7 @@ _ANTI_SUICIDE_PATTERNS = [
 @dataclass
 class UnifiedCronJob:
     """Unified schema for scheduled background recurring tasks and one-shots."""
+
     job_id: str
     schedule_expression: str
     prompt: str
@@ -230,7 +232,9 @@ class UnifiedCronEngine:
             }
             for col_name, col_def in expected_cols.items():
                 if col_name not in existing_cols:
-                    logger.info(f"[UnifiedCronEngine] Migrating schema: adding missing column '{col_name}' to cron_jobs")
+                    logger.info(
+                        f"[UnifiedCronEngine] Migrating schema: adding missing column '{col_name}' to cron_jobs"
+                    )
                     conn.execute(f"ALTER TABLE cron_jobs ADD COLUMN {col_name} {col_def};")
 
             conn.execute("""
@@ -248,7 +252,9 @@ class UnifiedCronEngine:
                     error_message TEXT
                 )
             """)
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_outbox_status_lease ON outbox_deliveries(status, lease_expires_at);")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_outbox_status_lease ON outbox_deliveries(status, lease_expires_at);"
+            )
             conn.commit()
         finally:
             conn.close()
@@ -271,10 +277,14 @@ class UnifiedCronEngine:
             val = int(rel_match.group(1))
             unit = rel_match.group(2).lower()
             multipliers = {
-                "s": 1, "sec": 1,
-                "m": 60, "min": 60,
-                "h": 3600, "hr": 3600,
-                "d": 86400, "day": 86400,
+                "s": 1,
+                "sec": 1,
+                "m": 60,
+                "min": 60,
+                "h": 3600,
+                "hr": 3600,
+                "d": 86400,
+                "day": 86400,
             }
             sec_delta = val * multipliers.get(unit, 60)
             return now + sec_delta, f"Interval: {val} {unit}"
@@ -316,7 +326,9 @@ class UnifiedCronEngine:
                 logger.error(f"[UnifiedCronEngine] Job '{job_id}' rejected: prompt matches destructive pattern.")
                 raise ValueError("Prohibited destructive pattern detected in prompt.")
             if monitor_script and pat.search(monitor_script):
-                logger.error(f"[UnifiedCronEngine] Job '{job_id}' rejected: monitor_script matches destructive pattern.")
+                logger.error(
+                    f"[UnifiedCronEngine] Job '{job_id}' rejected: monitor_script matches destructive pattern."
+                )
                 raise ValueError("Prohibited destructive pattern detected in monitor script.")
 
         next_run, desc = self.parse_schedule_expression(schedule_expression)
@@ -580,11 +592,14 @@ class UnifiedCronEngine:
                 try:
                     from monika.core.config.settings import load_settings
                     from monika.application.agent.chat_agent import ChatAgent
+
                     settings = load_settings()
                     agent = ChatAgent(settings, user_id=job.target_destination or "cron_scheduler", is_admin=True)
+
                     async def _run_agent():
                         r, _ = await agent.handle(job.prompt)
                         return r
+
                     try:
                         loop = asyncio.get_event_loop()
                         if loop.is_running():
@@ -626,6 +641,7 @@ class UnifiedCronEngine:
                         self._channel_dispatcher(job, execution_output)
                     elif job.target_delivery == "telegram":
                         from monika.infrastructure.infra.notifier import AgentNotifier
+
                         notifier = AgentNotifier()
                         header = f"<b>[JADWAL OTOMATIS: {job.name or job.job_id}]</b>\n\n"
                         msg = header + execution_output
@@ -728,15 +744,17 @@ class UnifiedCronEngine:
                         """,
                         (DeliveryStatus.SENDING, new_expiry, now, del_id),
                     )
-                    deliveries.append({
-                        "delivery_id": del_id,
-                        "job_id": row[1],
-                        "channel": row[2],
-                        "destination": row[3],
-                        "payload": row[4],
-                        "status": DeliveryStatus.SENDING,
-                        "retry_count": row[6],
-                    })
+                    deliveries.append(
+                        {
+                            "delivery_id": del_id,
+                            "job_id": row[1],
+                            "channel": row[2],
+                            "destination": row[3],
+                            "payload": row[4],
+                            "status": DeliveryStatus.SENDING,
+                            "retry_count": row[6],
+                        }
+                    )
                 conn.commit()
             finally:
                 conn.close()
@@ -854,7 +872,9 @@ class UnifiedCronEngine:
                 no_agent=bool(d.get("no_agent", 0)),
                 pending_slot=bool(d.get("pending_slot", 0)),
                 timeout_seconds=float(d.get("timeout_seconds", 300.0)) if d.get("timeout_seconds") else 300.0,
-                metadata=json.loads(d.get("metadata_json") or "{}") if isinstance(d.get("metadata_json"), str) else (d.get("metadata") or {}),
+                metadata=json.loads(d.get("metadata_json") or "{}")
+                if isinstance(d.get("metadata_json"), str)
+                else (d.get("metadata") or {}),
             )
         return UnifiedCronJob(
             job_id=row[0],

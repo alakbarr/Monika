@@ -1,4 +1,3 @@
-
 """GTJA Alpha #80.
 
 Formula: (VOLUME-DELAY(VOLUME,5))/DELAY(VOLUME,5)*100
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_080",
-    "theme": ['volume'],
-    "formula_latex": '(VOLUME-DELAY(VOLUME,5))/DELAY(VOLUME,5)*100',
-    "columns_required": ['volume'],
+    "theme": ["volume"],
+    "formula_latex": "(VOLUME-DELAY(VOLUME,5))/DELAY(VOLUME,5)*100",
+    "columns_required": ["volume"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 5,
     "min_warmup_bars": 6,
-    "notes": '5d volume change pct.',
+    "notes": "5d volume change pct.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     v = panel["volume"]

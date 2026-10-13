@@ -39,6 +39,7 @@ from tests.conftest import create_mock_async_session
 # 1. Direction Normalization (EX-1)
 # ------------------------------------------------------------------------------
 
+
 def test_direction_normalization():
     assert normalize_direction("BUY") == "buy"
     assert normalize_direction("Buy") == "buy"
@@ -61,6 +62,7 @@ def test_direction_normalization():
 # ------------------------------------------------------------------------------
 # 2. MT5Client Direction Mapping & Close Keyword Parity (EX-1, EX-3)
 # ------------------------------------------------------------------------------
+
 
 def test_mt5_place_order_direction_case_insensitive():
     mock_mt5 = MagicMock()
@@ -92,7 +94,7 @@ def test_mt5_place_order_direction_case_insensitive():
             sl=1.0950,
             tp=1.1100,
             comment="test",
-            order_type="market"
+            order_type="market",
         )
         assert res_buy["success"] is True
         call_args = mock_mt5.order_send.call_args[0][0]
@@ -108,7 +110,7 @@ def test_mt5_place_order_direction_case_insensitive():
             sl=1.1050,
             tp=1.0900,
             comment="test",
-            order_type="market"
+            order_type="market",
         )
         assert res_sell["success"] is True
         call_args_sell = mock_mt5.order_send.call_args[0][0]
@@ -133,6 +135,7 @@ async def test_mt5_close_position_lots_keyword_compatibility():
 # ------------------------------------------------------------------------------
 # 3. TradePreCommitGate Trade Levels & DB Fallback (AN-1, AN-4)
 # ------------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_precommit_gate_with_populated_trade_levels():
@@ -191,6 +194,7 @@ async def test_precommit_gate_db_fallback_when_sl_tp_missing():
 # 4. Position Sizing Blown Account Fail-Closed (DB-3)
 # ------------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_position_sizing_blown_account_protection():
     sizer = PositionSizer(settings={"paper_trading": {"initial_balance": 10000.0}})
@@ -198,12 +202,7 @@ async def test_position_sizing_blown_account_protection():
 
     # Zero equity
     res_zero = await sizer.calculate_with_session(
-        session=mock_session,
-        symbol="EURUSD",
-        direction="buy",
-        entry_price=1.1000,
-        stop_loss=1.0950,
-        account_equity=0.0
+        session=mock_session, symbol="EURUSD", direction="buy", entry_price=1.1000, stop_loss=1.0950, account_equity=0.0
     )
     assert res_zero.is_valid is False
     assert any("blown account" in r.lower() for r in res_zero.rejection_reasons)
@@ -215,7 +214,7 @@ async def test_position_sizing_blown_account_protection():
         direction="buy",
         entry_price=1.1000,
         stop_loss=1.0950,
-        account_equity=-500.0
+        account_equity=-500.0,
     )
     assert res_neg.is_valid is False
     assert any("blown account" in r.lower() for r in res_neg.rejection_reasons)
@@ -224,6 +223,7 @@ async def test_position_sizing_blown_account_protection():
 # ------------------------------------------------------------------------------
 # 5. ExecutionService MT5 Attribute Parity & Non-Live Adapter (EX-4, EX-6)
 # ------------------------------------------------------------------------------
+
 
 def test_execution_service_mt5_parity():
     svc = ExecutionService(settings={}, dry_run=True)
@@ -236,6 +236,7 @@ def test_execution_service_mt5_parity():
 # ------------------------------------------------------------------------------
 # 6. Pre-Trade Evidence-First Assertion ASSERT_9 (EX-5)
 # ------------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_evidence_verifier_assert_9_with_rationale_fallback():
@@ -264,6 +265,7 @@ async def test_evidence_verifier_assert_9_with_rationale_fallback():
 # 7. LLM Provider generate / classify_json Signature Compatibility (LU-1)
 # ------------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_provider_max_tokens_and_kwargs_signatures():
     from analysis.providers.anthropic_provider import AnthropicProvider
@@ -272,8 +274,7 @@ async def test_provider_max_tokens_and_kwargs_signatures():
     from analysis.providers.groq_provider import GroqProvider
     from analysis.providers.ollama_provider import OllamaProvider
 
-    with patch("anthropic.AsyncAnthropic"), \
-         patch("openai.AsyncOpenAI"):
+    with patch("anthropic.AsyncAnthropic"), patch("openai.AsyncOpenAI"):
         providers = [
             AnthropicProvider(model="claude-3-5-haiku-20241022", settings={}),
             OpenAIProvider(model="gpt-4o-mini", settings={}),
@@ -291,18 +292,21 @@ async def test_provider_max_tokens_and_kwargs_signatures():
             res_gen = await p.generate("Hello", system="test", temperature=0.5, max_tokens=1024, extra_arg=True)
             assert res_gen is None or isinstance(res_gen, str)
 
-            res_json = await p.classify_json("Hello", system_prompt="test", schema={}, temperature=0.5, max_tokens=1024, extra_arg=True)
+            res_json = await p.classify_json(
+                "Hello", system_prompt="test", schema={}, temperature=0.5, max_tokens=1024, extra_arg=True
+            )
             assert res_json is None or isinstance(res_json, dict)
-
 
 
 # ------------------------------------------------------------------------------
 # 8. Telegram Bot Synchronous _cmd_interrupt (LU-2)
 # ------------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_telegram_cmd_interrupt_synchronous():
     from telegram_bot.bot import TelegramBot
+
     bot = TelegramBot(settings={})
     bot._is_authorized = MagicMock(return_value=True)
 
@@ -327,15 +331,13 @@ async def test_telegram_cmd_interrupt_synchronous():
 # 9. TradingEventStore begin_nested Transaction Isolation (DB-2)
 # ------------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_trading_event_store_savepoint_isolation():
     mock_session = create_mock_async_session()
 
     event_id = await TradingEventStore.emit(
-        session=mock_session,
-        event_type="test.event",
-        payload={"key": "value"},
-        correlation_id="corr-123"
+        session=mock_session, event_type="test.event", payload={"key": "value"}, correlation_id="corr-123"
     )
     assert event_id is not None
     mock_session.begin_nested.assert_called_once()

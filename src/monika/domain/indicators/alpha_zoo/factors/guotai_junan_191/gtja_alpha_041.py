@@ -1,4 +1,3 @@
-
 """GTJA Alpha #41.
 
 Formula: (RANK(MAX(DELTA(VWAP,3),5))*-1)
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_041",
-    "theme": ['microstructure'],
-    "formula_latex": '(RANK(MAX(DELTA(VWAP,3),5))*-1)',
-    "columns_required": ['volume', 'amount'],
+    "theme": ["microstructure"],
+    "formula_latex": "(RANK(MAX(DELTA(VWAP,3),5))*-1)",
+    "columns_required": ["volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 5,
     "min_warmup_bars": 9,
-    "notes": '5d max of 3d delta(vwap), ranked, negated.',
+    "notes": "5d max of 3d delta(vwap), ranked, negated.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     v = panel["volume"]

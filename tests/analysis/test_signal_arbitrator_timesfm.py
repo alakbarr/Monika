@@ -83,7 +83,13 @@ async def test_signal_arbitrator_timesfm_conflict_resolution(db_session):
         take_profit=1.2750,
     )
     # LLM conflictingly says sell in mixed/ranging market
-    llm_dec = {"decision": "sell", "confidence": 0.70, "entry_price": 1.2600, "stop_loss": 1.2650, "take_profit": 1.2500}
+    llm_dec = {
+        "decision": "sell",
+        "confidence": 0.70,
+        "entry_price": 1.2600,
+        "stop_loss": 1.2650,
+        "take_profit": 1.2500,
+    }
 
     result = await arbitrator.arbitrate(
         db_session,

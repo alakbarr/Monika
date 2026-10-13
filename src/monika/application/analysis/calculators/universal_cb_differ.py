@@ -73,12 +73,16 @@ class UniversalCentralBankDiffer:
             prev_score = (curr_doc.hawkish_dovish_score or 0.0) + 0.25  # previous was slightly more hawkish
         else:
             prev_doc = docs[1]
-            prev_paras = json.loads(prev_doc.paragraphs_json) if prev_doc.paragraphs_json else prev_doc.full_text.split("\n\n")
+            prev_paras = (
+                json.loads(prev_doc.paragraphs_json) if prev_doc.paragraphs_json else prev_doc.full_text.split("\n\n")
+            )
             prev_title = prev_doc.title
             prev_date_str = prev_doc.meeting_date.strftime("%Y-%m-%d")
             prev_score = prev_doc.hawkish_dovish_score or 0.0
 
-        curr_paras = json.loads(curr_doc.paragraphs_json) if curr_doc.paragraphs_json else curr_doc.full_text.split("\n\n")
+        curr_paras = (
+            json.loads(curr_doc.paragraphs_json) if curr_doc.paragraphs_json else curr_doc.full_text.split("\n\n")
+        )
         curr_score = curr_doc.hawkish_dovish_score or 0.0
 
         # Run sentence diffing
@@ -93,7 +97,9 @@ class UniversalCentralBankDiffer:
             shift_summary = f"{bank_clean} adopted firmer hawkish language compared to prior meeting (Score: {prev_score:+.2f} -> {curr_score:+.2f})."
         else:
             shift_label = "NEUTRAL_STATUS_QUO"
-            shift_summary = f"{bank_clean} preserved monetary policy stance virtually unchanged with minimal linguistic alteration."
+            shift_summary = (
+                f"{bank_clean} preserved monetary policy stance virtually unchanged with minimal linguistic alteration."
+            )
 
         return {
             "bank": bank_clean,
@@ -158,5 +164,5 @@ class UniversalCentralBankDiffer:
             "The information reviewed at this meeting indicated that economic activity continued to expand at a robust pace, while job gains remained strong.",
             "Inflation remained elevated above the Committee's 2 percent objective, with services inflation continuing to show upside risks.",
             "Participants emphasized that any additional firming of monetary policy may be appropriate to bring inflation down to target over time.",
-            "The Committee noted that it is strongly committed to returning inflation to its 2 percent objective."
+            "The Committee noted that it is strongly committed to returning inflation to its 2 percent objective.",
         ]

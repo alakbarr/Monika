@@ -28,23 +28,25 @@ def parse_csv(filepath: str):
             score = clean_num(row.get("Weightened Average", "0"))
             eff = clean_num(row.get("Cost Efficient", "0"))
             tokens = clean_num(row.get("Estimate Token Output per Task", "0"))
-            models.append({
-                "id": idx + 1,
-                "provider": row.get("Provider", "").strip(),
-                "model": row.get("Model", "").strip(),
-                "thinking": row.get("Thinking Level", "").strip(),
-                "cost": cost,
-                "score": score,
-                "cost_efficient": eff,
-                "tokens": tokens,
-                "input_price": row.get("Input", "").strip(),
-                "cache_price": row.get("Cache Input", "").strip(),
-                "output_price": row.get("Output", "").strip(),
-                "aa_economics": clean_num(row.get("AA-Economics", "0")),
-                "aa_strategy": clean_num(row.get("AA-Strategy & Ops", "0")),
-                "aa_finance": clean_num(row.get("AA-Finance & Accounting", "0")),
-                "aa_agentic": clean_num(row.get("AA-Agentic", "0")),
-            })
+            models.append(
+                {
+                    "id": idx + 1,
+                    "provider": row.get("Provider", "").strip(),
+                    "model": row.get("Model", "").strip(),
+                    "thinking": row.get("Thinking Level", "").strip(),
+                    "cost": cost,
+                    "score": score,
+                    "cost_efficient": eff,
+                    "tokens": tokens,
+                    "input_price": row.get("Input", "").strip(),
+                    "cache_price": row.get("Cache Input", "").strip(),
+                    "output_price": row.get("Output", "").strip(),
+                    "aa_economics": clean_num(row.get("AA-Economics", "0")),
+                    "aa_strategy": clean_num(row.get("AA-Strategy & Ops", "0")),
+                    "aa_finance": clean_num(row.get("AA-Finance & Accounting", "0")),
+                    "aa_agentic": clean_num(row.get("AA-Agentic", "0")),
+                }
+            )
     return models
 
 

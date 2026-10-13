@@ -68,13 +68,17 @@ class OAuthCallbackServer:
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
                     self.end_headers()
-                    self.wfile.write(b"<html><body><h2>Authentication successful!</h2><p>You can return to Monika.</p></body></html>")
+                    self.wfile.write(
+                        b"<html><body><h2>Authentication successful!</h2><p>You can return to Monika.</p></body></html>"
+                    )
                 else:
                     parent.error = query.get("error", ["Unknown OAuth error"])[0]
                     self.send_response(400)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
                     self.end_headers()
-                    self.wfile.write(f"<html><body><h2>Authentication failed: {parent.error}</h2></body></html>".encode("utf-8"))
+                    self.wfile.write(
+                        f"<html><body><h2>Authentication failed: {parent.error}</h2></body></html>".encode("utf-8")
+                    )
 
                 parent.done_event.set()
 

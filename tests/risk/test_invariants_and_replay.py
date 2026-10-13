@@ -41,7 +41,12 @@ def test_risk_gate_invariant_order_geometry():
     assert "geometry breach for sell" in str(exc.value).lower()
 
     # Sub-par Risk:Reward ratio
-    low_rr = {"action": "buy", "entry_price": 2000.0, "stop_loss": 1980.0, "take_profit": 2010.0}  # risk=20, reward=10 -> RR=0.5
+    low_rr = {
+        "action": "buy",
+        "entry_price": 2000.0,
+        "stop_loss": 1980.0,
+        "take_profit": 2010.0,
+    }  # risk=20, reward=10 -> RR=0.5
     with pytest.raises(InvariantViolationError) as exc:
         assert_risk_gate_invariants(low_rr, current_drawdown_pct=1.0, min_rr_ratio=1.0)
     assert "r:r invariant breach" in str(exc.value).lower()
@@ -74,7 +79,7 @@ async def test_keyless_replay_llm_provider():
     provider.add_recording(content="Market structure indicates bullish expansion.")
     provider.add_recording(
         content="Submitting order...",
-        tool_calls=[{"name": "submit_order", "arguments": {"symbol": "EURUSD", "action": "buy"}}]
+        tool_calls=[{"name": "submit_order", "arguments": {"symbol": "EURUSD", "action": "buy"}}],
     )
 
     # Step 1: Text generation

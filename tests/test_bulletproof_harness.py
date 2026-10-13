@@ -128,8 +128,14 @@ async def test_guarded_tool_executor_context():
             "macro_regime": "HAWKISH_PLATEAU_WITH_GEOPOLITICAL_FRICTION",
             "market_sentiment": "RISK_OFF",
             "currency_bias": {
-                "USD": "BULLISH", "EUR": "BEARISH", "GBP": "NEUTRAL", "JPY": "BULLISH",
-                "AUD": "BEARISH", "XAU": "BULLISH", "XTI": "BULLISH", "BTC": "NEUTRAL"
+                "USD": "BULLISH",
+                "EUR": "BEARISH",
+                "GBP": "NEUTRAL",
+                "JPY": "BULLISH",
+                "AUD": "BEARISH",
+                "XAU": "BULLISH",
+                "XTI": "BULLISH",
+                "BTC": "NEUTRAL",
             },
             "confidence": 0.85,
             "key_drivers": ["US labor resiliency", "Middle East tensions"],
@@ -183,4 +189,3 @@ def test_prune_stage1_tools_zero_prefetch_fallback():
     assert "submit_fundamental_brief" in names
     assert "get_treasury_yields" in names
     assert "get_vix" in names
-

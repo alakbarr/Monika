@@ -153,6 +153,7 @@ def record_trade_to_workspace(settings: Optional[Dict[str, Any]], trade_data: Di
             sheet_name = excel_config.get("sheet_name") or now.strftime("%Y-%m")
 
             import pandas as pd
+
             if excel_path.suffix.lower() == ".csv":
                 df = pd.DataFrame([row_data])
                 header = not excel_path.exists()
@@ -165,6 +166,7 @@ def record_trade_to_workspace(settings: Optional[Dict[str, Any]], trade_data: Di
                 else:
                     try:
                         import openpyxl
+
                         wb = openpyxl.load_workbook(excel_path)
                         if sheet_name in wb.sheetnames:
                             ws = wb[sheet_name]
@@ -174,7 +176,9 @@ def record_trade_to_workspace(settings: Optional[Dict[str, Any]], trade_data: Di
                         ws.append(list(row_data.values()))
                         wb.save(excel_path)
                     except Exception:
-                        with pd.ExcelWriter(excel_path, engine="openpyxl", mode="a", if_sheet_exists="overlay") as writer:
+                        with pd.ExcelWriter(
+                            excel_path, engine="openpyxl", mode="a", if_sheet_exists="overlay"
+                        ) as writer:
                             df = pd.DataFrame([row_data])
                             df.to_excel(writer, sheet_name=sheet_name, index=False)
             res["excel_saved"] = True

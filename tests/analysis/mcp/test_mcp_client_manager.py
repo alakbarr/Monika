@@ -36,19 +36,21 @@ async def test_mcp_client_manager_singleton_and_alias():
 
 @pytest.mark.asyncio
 async def test_mcp_client_manager_call_tool_mocked():
-    mgr = McpClientManager.get_instance({
-        "mcp": {
-            "client": {
-                "servers": {
-                    "test_server": {
-                        "transport": "stdio",
-                        "command": "python",
-                        "args": ["-m", "dummy"],
+    mgr = McpClientManager.get_instance(
+        {
+            "mcp": {
+                "client": {
+                    "servers": {
+                        "test_server": {
+                            "transport": "stdio",
+                            "command": "python",
+                            "args": ["-m", "dummy"],
+                        }
                     }
                 }
             }
         }
-    })
+    )
 
     mock_proc = MagicMock(spec=McpServerProcess)
     mock_proc.is_running = True
@@ -87,17 +89,19 @@ async def test_mcp_bridge_handler_on_demand_start():
 
 @pytest.mark.asyncio
 async def test_harness_context_call_mcp_integration():
-    mgr = McpClientManager.get_instance({
-        "mcp": {
-            "client": {
-                "servers": {
-                    "quant_calc": {
-                        "transport": "stdio",
+    mgr = McpClientManager.get_instance(
+        {
+            "mcp": {
+                "client": {
+                    "servers": {
+                        "quant_calc": {
+                            "transport": "stdio",
+                        }
                     }
                 }
             }
         }
-    })
+    )
 
     mock_proc = MagicMock(spec=McpServerProcess)
     mock_proc.is_running = True

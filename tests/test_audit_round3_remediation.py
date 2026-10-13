@@ -60,6 +60,7 @@ class TestIndicatorsRemediation:
     async def test_timesfm_engine_scalar_baseline_atr(self):
         """Verify _get_baseline_atr handles scalar floats without crashing."""
         from indicators.timesfm_engine import TimesFMEngine
+
         engine = TimesFMEngine.__new__(TimesFMEngine)
 
         # Test scalar float in value_json
@@ -84,6 +85,7 @@ class TestIndicatorsRemediation:
     def test_order_flow_snapshot_vpin_field(self):
         """Verify OrderFlowSnapshot dataclass includes optional vpin field."""
         from indicators.order_flow import OrderFlowSnapshot
+
         snap_default = OrderFlowSnapshot(
             symbol="BTCUSD",
             mode="SYNTHETIC_TICK_RULE",
@@ -117,13 +119,15 @@ class TestIndicatorsRemediation:
         assert compute_amihud_illiquidity(pd.Series(dtype=float), pd.Series(dtype=float)).empty
 
         # Microstructure metrics with sufficient data
-        df = pd.DataFrame({
-            "open": [1.10] * 25,
-            "high": [1.11] * 25,
-            "low": [1.09] * 25,
-            "close": [1.10] * 25,
-            "volume": [1000.0] * 25,
-        })
+        df = pd.DataFrame(
+            {
+                "open": [1.10] * 25,
+                "high": [1.11] * 25,
+                "low": [1.09] * 25,
+                "close": [1.10] * 25,
+                "volume": [1000.0] * 25,
+            }
+        )
         m_fx = get_microstructure_metrics("EURUSD", ohlcv_df=df)
         assert "kyle_lambda" in m_fx
         assert not np.isnan(m_fx["kyle_lambda"])
@@ -135,6 +139,7 @@ class TestIndicatorsRemediation:
     def test_structure_fvg_max_distance_and_div_zero_guard(self):
         """Verify FVG_MAX_DISTANCE includes XBRUSD and XTIUSD."""
         from indicators.structure import MarketStructureAnalyzer, FVG_MAX_DISTANCE
+
         assert "XBRUSD" in FVG_MAX_DISTANCE
         assert FVG_MAX_DISTANCE["XBRUSD"] == 0.10
         assert "XTIUSD" in FVG_MAX_DISTANCE
@@ -147,6 +152,7 @@ class TestBacktestRemediation:
     def test_outcome_evaluator_oil_contract_sizes(self):
         """Verify contract size for XTI (100) vs XBR (1000)."""
         from backtest.outcome_evaluator import OutcomeEvaluator
+
         evaluator = OutcomeEvaluator()
         assert evaluator.get_contract_size("XTIUSD") == 100.0
         assert evaluator.get_contract_size("WTI") == 100.0
@@ -173,7 +179,11 @@ class TestBacktestRemediation:
             symbol="EURUSD",
             timeframe="H1",
             timestamp=datetime(2026, 1, 9, 21, 0, tzinfo=timezone.utc),
-            open=1.1040, high=1.1060, low=1.1030, close=1.1050, volume=500.0
+            open=1.1040,
+            high=1.1060,
+            low=1.1030,
+            close=1.1050,
+            volume=500.0,
         )
         out_profit = evaluator._calculate_outcome(
             trade_buy, bar_profit.timestamp, bar_profit.close, "friday_close", bar=bar_profit
@@ -208,6 +218,7 @@ class TestBacktestRemediation:
     def test_monte_carlo_engine_final_equity_distribution_key(self):
         """Verify early return includes final_equity_distribution key in MonteCarloStressTester."""
         from backtest.monte_carlo_engine import MonteCarloStressTester
+
         tester = MonteCarloStressTester()
         res = tester.simulate_trade_sequence([], num_simulations=10)
         assert "final_equity_distribution" in res
@@ -230,13 +241,14 @@ class TestBacktestRemediation:
     def test_point_in_time_engine_canonical_universe(self):
         """Verify PointInTimeBacktestEngine uses 8 canonical symbols as fallback."""
         from backtest.point_in_time_engine import PointInTimeBacktestEngine
+
         engine = PointInTimeBacktestEngine(
             start_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
             end_date=datetime(2026, 1, 2, tzinfo=timezone.utc),
             settings={},
         )
-        canonical = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'XAUUSD', 'BTCUSD']
-        fallback = engine.settings.get('trading', {}).get('asset_universe', canonical)
+        canonical = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "XAUUSD", "BTCUSD"]
+        fallback = engine.settings.get("trading", {}).get("asset_universe", canonical)
         assert len(fallback) == 8
         assert "AUDUSD" in fallback
         assert "USDCAD" in fallback
@@ -249,6 +261,7 @@ class TestDataSourcesRemediation:
     def test_validators_intraday_cache_expired_string_parsing(self):
         """Verify is_intraday_cache_expired handles ISO string timestamps."""
         from data_sources.validators import is_intraday_cache_expired
+
         now = datetime.now(timezone.utc)
         iso_str = now.isoformat()
         # Fresh cache
@@ -259,6 +272,7 @@ class TestDataSourcesRemediation:
     def test_dxy_yfinance_get_latest(self):
         """Verify DXYFetcher exposes get_latest() method."""
         from data_sources.dxy_yfinance import DXYFetcher
+
         fetcher = DXYFetcher(session=create_mock_async_session())
         assert hasattr(fetcher, "get_latest")
         assert callable(fetcher.get_latest)
@@ -270,6 +284,7 @@ class TestCLIBenchmarkScrapersSkillsRemediation:
     def test_benchmark_judge_score_null_handling(self):
         """Verify judge _score handles None and invalid values gracefully."""
         from benchmark.judge import _score
+
         assert _score(None) == 0.0
         assert _score({}) == 0.0
         assert _score({"grounding_score": None, "accuracy_score": 8}) >= 0.0
@@ -278,6 +293,7 @@ class TestCLIBenchmarkScrapersSkillsRemediation:
     async def test_benchmark_deterministic_boolean_init(self):
         """Verify deterministic structural check initializes booleans correctly."""
         from benchmark.deterministic import score_trade_payload
+
         res = await score_trade_payload(None, {}, "EURUSD", {"decision": "buy"})
         assert "checks" in res
         assert "sl_tp_correct_side" in res["checks"]
@@ -286,12 +302,14 @@ class TestCLIBenchmarkScrapersSkillsRemediation:
     def test_skills_loader_prefix_and_deduplication(self):
         """Verify skills loader deduplicates skills."""
         from skills.loader import list_skills
+
         skills = list_skills()
         assert len(skills) == len(set(skills))
 
     def test_cli_theme_persist_preserves_comments(self):
         """Verify persist_theme_to_settings retains comments without erasing them."""
         from cli.theme import persist_theme_to_settings
+
         with tempfile.NamedTemporaryFile("w", delete=False, suffix=".yaml", encoding="utf-8") as tf:
             tf.write("""# Important System Configuration Comment
 # Line 2 Comment
@@ -321,6 +339,7 @@ ui:
     def test_rss_base_scraper_no_raise_and_ua(self):
         """Verify RssBaseScraper returns empty list on error and sets User-Agent."""
         from scrapers.news.rss_base import RssBaseScraper
+
         scraper = RssBaseScraper(source_name="NonExistentFeed", feed_url="http://invalid.127.0.0.1.nonexistent/rss")
         # Should not raise exception
         news = scraper.fetch_news(limit=5)
@@ -329,20 +348,23 @@ ui:
     def test_scrapers_calendar_country_and_aliases(self):
         """Verify FinnhubCalendarScraper country assignment and interface aliases."""
         from scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
+
         scraper = FinnhubCalendarScraper(api_key="mock_key")
         assert hasattr(scraper, "fetch_events")
         assert hasattr(scraper, "afetch_events")
 
         # Verify _parse_events assigns country
-        mock_raw = [{
-            "country": "US",
-            "event": "Non-Farm Payrolls",
-            "time": "2026-01-09 13:30:00",
-            "impact": "high",
-            "actual": "200k",
-            "estimate": "180k",
-            "prev": "190k"
-        }]
+        mock_raw = [
+            {
+                "country": "US",
+                "event": "Non-Farm Payrolls",
+                "time": "2026-01-09 13:30:00",
+                "impact": "high",
+                "actual": "200k",
+                "estimate": "180k",
+                "prev": "190k",
+            }
+        ]
         events = scraper._parse_events(mock_raw)
         assert len(events) == 1
         assert events[0].country == "US"

@@ -23,7 +23,7 @@ async def test_system_doctor_checks():
 def test_profile_manager_lifecycle():
     with tempfile.TemporaryDirectory() as tmpdir:
         pm = ProfileManager(root_dir=tmpdir)
-        
+
         # 1. Default profile
         assert pm.get_active_profile_name() == "default"
         profiles = pm.list_profiles()

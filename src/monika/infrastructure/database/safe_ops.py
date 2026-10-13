@@ -8,14 +8,15 @@ Subsequent queries fail with PendingRollbackError.
 This module provides `safe_db_op()` which wraps individual DB operations
 with proper rollback on failure.
 """
+
 import asyncio
 import inspect
 import logging
 from typing import TypeVar, Callable, Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger('TradingAgent.SafeOps')
-T = TypeVar('T')
+logger = logging.getLogger("TradingAgent.SafeOps")
+T = TypeVar("T")
 
 
 async def _safe_expunge_all(session: AsyncSession) -> None:
@@ -39,16 +40,16 @@ async def safe_db_op(
     **kwargs,
 ) -> Any:
     """Execute a DB operation with automatic rollback on failure.
-    
+
     Prevents PendingRollbackError cascade by rolling back failed
     transactions before returning control to caller's loop.
-    
+
     Args:
         session: Active async session
         operation: Async callable that performs DB work
         default: Value to return on failure
         label: Human-readable label for logging
-    
+
     Returns:
         Operation result on success, `default` on failure.
     """
@@ -73,10 +74,10 @@ async def safe_db_op(
 
 async def safe_commit(session: AsyncSession, label: str = "commit", max_retries: int = 3) -> bool:
     """Commit an active transaction with automatic rollback on failure.
-    
+
     Prevents PendingRollbackError cascades by retrying transient SQLite lock
     contention and guaranteeing clean rollback and expunge on failure.
-    
+
     Returns:
         True if commit succeeded, False if failed and rolled back.
     """
@@ -101,7 +102,7 @@ async def safe_commit(session: AsyncSession, label: str = "commit", max_retries:
                 logger.warning(
                     f"safe_commit [{label}] lock collision (attempt {attempt + 1}/{max_retries}): {e}. Retrying..."
                 )
-                await asyncio.sleep(0.05 * (2 ** attempt))
+                await asyncio.sleep(0.05 * (2**attempt))
                 continue
 
             logger.warning(f"safe_commit [{label}] failed: {e}. Rolling back transaction.")

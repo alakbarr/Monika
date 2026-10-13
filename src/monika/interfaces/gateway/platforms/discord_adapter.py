@@ -65,6 +65,7 @@ class DiscordPlatformAdapter(BasePlatformAdapter):
         """
         try:
             from monika.interfaces.telegram.sanitizer import strip_emojis_and_emoticons
+
             content = strip_emojis_and_emoticons(content)
         except Exception:
             pass
@@ -134,16 +135,11 @@ class DiscordPlatformAdapter(BasePlatformAdapter):
             return {"type": 1}
 
         user_id = str(
-            payload.get("member", {}).get("user", {}).get("id")
-            or payload.get("user", {}).get("id", "discord_user")
+            payload.get("member", {}).get("user", {}).get("id") or payload.get("user", {}).get("id", "discord_user")
         )
         channel_id = str(payload.get("channel_id", "default_channel"))
         data = payload.get("data", {})
-        message_text = (
-            data.get("options", [{}])[0].get("value", "")
-            if data.get("options")
-            else data.get("name", "")
-        )
+        message_text = data.get("options", [{}])[0].get("value", "") if data.get("options") else data.get("name", "")
 
         reply = ""
         if self.message_handler and message_text:

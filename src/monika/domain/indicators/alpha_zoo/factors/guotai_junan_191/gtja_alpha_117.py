@@ -1,4 +1,3 @@
-
 """GTJA Alpha 117 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
@@ -6,6 +5,7 @@ Formula (verbatim from the report):
 
 Notes: ret = close/delay(close,1) - 1.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_117"
 
 __alpha_meta__ = {
-    'id': 'gtja191_117',
-    'theme': ['volume', 'momentum'],
-    'formula_latex': 'tsrank(v,32)*(1-tsrank(c+h-l,16))*(1-tsrank(ret,32))',
-    'columns_required': ['close', 'high', 'low', 'volume'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 32,
-    'min_warmup_bars': 33,
-    'notes': 'ret = close/delay(close,1) - 1.',
+    "id": "gtja191_117",
+    "theme": ["volume", "momentum"],
+    "formula_latex": "tsrank(v,32)*(1-tsrank(c+h-l,16))*(1-tsrank(ret,32))",
+    "columns_required": ["close", "high", "low", "volume"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 32,
+    "min_warmup_bars": 33,
+    "notes": "ret = close/delay(close,1) - 1.",
 }
 
 

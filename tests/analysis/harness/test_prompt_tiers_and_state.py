@@ -60,11 +60,13 @@ def test_tiered_system_prompt_compile_tuple():
 
 def test_tiered_system_prompt_ephemeral_overlay():
     prompt = TieredSystemPrompt(tier1_stable="Identity")
-    overlay = prompt.get_ephemeral_overlay({
-        "budget_warning": "AI budget 85% consumed",
-        "context_pressure": 90,
-        "session_hint": "London open in 15m",
-    })
+    overlay = prompt.get_ephemeral_overlay(
+        {
+            "budget_warning": "AI budget 85% consumed",
+            "context_pressure": 90,
+            "session_hint": "London open in 15m",
+        }
+    )
     assert "[System: AI budget 85% consumed]" in overlay
     assert "[System: Context at 90% capacity]" in overlay
     assert "London open in 15m" in overlay
@@ -161,5 +163,3 @@ def test_prompt_assembler_tiered_integration():
     blocks = tiered_s1.assemble(provider="anthropic")
     assert isinstance(blocks, list)
     assert len(blocks) >= 2
-
-

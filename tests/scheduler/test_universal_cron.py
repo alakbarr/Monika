@@ -57,6 +57,7 @@ def test_universal_cron_schedule_and_at_most_once(tmp_path):
     )
     # Manually set next_run_at to past
     import sqlite3
+
     conn = sqlite3.connect(db_file)
     conn.execute("UPDATE cron_jobs SET next_run_at = ? WHERE job_id = 'due_job'", (time.time() - 10,))
     conn.commit()
@@ -141,4 +142,3 @@ async def test_cli_and_bot_cron_command_routing():
     # Test /cron remove handling
     res_rm = await router.handle("/cron remove test_auto_job")
     assert res_rm.handled is True
-

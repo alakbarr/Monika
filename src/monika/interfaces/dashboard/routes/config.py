@@ -33,6 +33,7 @@ def _resolve_settings_path() -> str:
     """Resolve settings path, preferring patched api._get_settings_path if available."""
     try:
         import monika.interfaces.dashboard.api as api
+
         if hasattr(api, "_get_settings_path"):
             return api._get_settings_path()
     except Exception:
@@ -55,9 +56,19 @@ SENSITIVE_KEY_PATTERN = re.compile(
 )
 
 NON_SENSITIVE_KEYS = {
-    "max_tokens", "token_limit", "max_output_tokens", "token_budget", "tokens",
-    "prompt_tokens", "completion_tokens", "reasoning_tokens", "total_tokens",
-    "tokens_per_second", "tps", "token_coalescing_ms", "max_token_budget",
+    "max_tokens",
+    "token_limit",
+    "max_output_tokens",
+    "token_budget",
+    "tokens",
+    "prompt_tokens",
+    "completion_tokens",
+    "reasoning_tokens",
+    "total_tokens",
+    "tokens_per_second",
+    "tps",
+    "token_coalescing_ms",
+    "max_token_budget",
 }
 
 
@@ -120,6 +131,7 @@ def _mask_yaml_text(text: str) -> str:
     masked_text = pattern.sub(_repl, text)
     try:
         from monika.core.security.credential_vault import vault
+
         masked_text = vault.redact(masked_text)
     except Exception:
         pass
@@ -159,6 +171,7 @@ async def get_config_schema(request: Request):
     """Return Pydantic TradingAgentConfig as JSON Schema for form rendering."""
     try:
         from monika.core.config.schemas import TradingAgentConfig
+
         return TradingAgentConfig.model_json_schema()
     except Exception as e:
         logger.error(f"Failed generating TradingAgentConfig JSON schema: {e}")
@@ -170,6 +183,7 @@ async def get_config_schema(request: Request):
 async def get_all_plugin_config_schemas(request: Request):
     """Return dictionary of plugin_id -> JSON Schema for registered plugins."""
     from monika.application.harness.engine import get_plugin_engine
+
     engine = get_plugin_engine()
     schemas = {}
     if engine:
@@ -198,6 +212,7 @@ async def get_all_plugin_config_schemas(request: Request):
 async def get_plugin_config_schema(plugin_id: str, request: Request):
     """Return JSON Schema for a specific plugin configuration if available."""
     from monika.application.harness.engine import get_plugin_engine
+
     engine = get_plugin_engine()
     if engine and plugin_id in engine.plugins:
         plugin = engine.plugins[plugin_id]
@@ -252,10 +267,14 @@ async def update_config_settings(payload: ConfigUpdateRequest, request: Request)
             return baseline
         return incoming
 
-    clean_payload_settings = _unmask_against_existing(payload.settings, existing_settings) if existing_settings else payload.settings
+    clean_payload_settings = (
+        _unmask_against_existing(payload.settings, existing_settings) if existing_settings else payload.settings
+    )
 
     # Merge payload settings into existing settings to avoid wiping unmanaged sections
-    merged_settings = _deep_merge(existing_settings, clean_payload_settings) if existing_settings else clean_payload_settings
+    merged_settings = (
+        _deep_merge(existing_settings, clean_payload_settings) if existing_settings else clean_payload_settings
+    )
 
     try:
         validate_config(merged_settings)
@@ -278,6 +297,7 @@ async def update_config_settings(payload: ConfigUpdateRequest, request: Request)
 
     try:
         from monika.core.config.atomic_writer import AtomicConfigWriter
+
         AtomicConfigWriter.write(settings_path, merged_settings, create_backup=False)
     except Exception as e:
         return JSONResponse(
@@ -308,6 +328,7 @@ async def update_config_settings(payload: ConfigUpdateRequest, request: Request)
 
     try:
         from monika.core.config.config_manager import ConfigManager
+
         ConfigManager.get_instance().check_for_updates()
         reloaded = True
     except Exception as e:
@@ -315,20 +336,25 @@ async def update_config_settings(payload: ConfigUpdateRequest, request: Request)
 
     try:
         async with AsyncSessionLocal() as session:
-            session.add(ActivityLog(
-                category="system",
-                description=f"Configuration updated via Dashboard ({payload.reason})",
-                actor="dashboard_admin",
-            ))
+            session.add(
+                ActivityLog(
+                    category="system",
+                    description=f"Configuration updated via Dashboard ({payload.reason})",
+                    actor="dashboard_admin",
+                )
+            )
             await session.commit()
     except Exception as e:
         logger.debug(f"Failed writing activity log: {e}")
 
-    await broadcast_live_event("config_updated", {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "reason": payload.reason,
-        "reloaded": reloaded,
-    })
+    await broadcast_live_event(
+        "config_updated",
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "reason": payload.reason,
+            "reloaded": reloaded,
+        },
+    )
 
     return {
         "status": "success",

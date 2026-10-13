@@ -24,25 +24,27 @@ class TradingSemanticCache:
     _instance: Optional["TradingSemanticCache"] = None
 
     # Tools and tasks that must NEVER be served from cache
-    STRICT_BLACKLIST = frozenset({
-        "execute_order_guard",
-        "modify_position",
-        "close_position",
-        "get_market_quote",
-        "get_spread_snapshot",
-        "get_account_info",
-        "get_open_positions",
-        "calculate_position_size",
-        "submit_asset_analysis",
-    })
+    STRICT_BLACKLIST = frozenset(
+        {
+            "execute_order_guard",
+            "modify_position",
+            "close_position",
+            "get_market_quote",
+            "get_spread_snapshot",
+            "get_account_info",
+            "get_open_positions",
+            "calculate_position_size",
+            "submit_asset_analysis",
+        }
+    )
 
     DEFAULT_TTLS: Dict[str, float] = {
-        "macro_explanation": 86400.0,       # 24 hours
-        "entity_definition": 86400.0,       # 24 hours
-        "central_bank_policy": 28800.0,     # 8 hours
-        "fundamental_brief": 14400.0,       # 4 hours
-        "regime_classification": 1800.0,    # 30 minutes
-        "sentiment_snapshot": 900.0,        # 15 minutes
+        "macro_explanation": 86400.0,  # 24 hours
+        "entity_definition": 86400.0,  # 24 hours
+        "central_bank_policy": 28800.0,  # 8 hours
+        "fundamental_brief": 14400.0,  # 4 hours
+        "regime_classification": 1800.0,  # 30 minutes
+        "sentiment_snapshot": 900.0,  # 15 minutes
     }
 
     def __init__(self):
@@ -84,7 +86,9 @@ class TradingSemanticCache:
         logger.debug(f"[SemanticCache] Hit! Category='{category}', Key={key}")
         return data
 
-    def set(self, category: str, query: str, data: Any, symbol: Optional[str] = None, ttl: Optional[float] = None) -> None:
+    def set(
+        self, category: str, query: str, data: Any, symbol: Optional[str] = None, ttl: Optional[float] = None
+    ) -> None:
         """
         Stores response in cache with appropriate TTL.
         """

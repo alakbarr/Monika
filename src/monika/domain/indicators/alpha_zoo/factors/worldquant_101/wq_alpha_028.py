@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #28.
 
 Formula (paper appendix): scale((correlation(adv20,low,5) + (high+low)/2) - close)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_028"
 
 __alpha_meta__ = {
-    'id': 'alpha101_028',
-    'nickname': 'Kakushadze Alpha #28',
-    'theme': ['volume'],
-    'formula_latex': 'scale((correlation(adv20,low,5) + (high+low)/2) - close)',
-    'columns_required': ['high', 'low', 'close', 'volume'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 25,
-    'notes': '',
+    "id": "alpha101_028",
+    "nickname": "Kakushadze Alpha #28",
+    "theme": ["volume"],
+    "formula_latex": "scale((correlation(adv20,low,5) + (high+low)/2) - close)",
+    "columns_required": ["high", "low", "close", "volume"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 25,
+    "notes": "",
 }
 
 

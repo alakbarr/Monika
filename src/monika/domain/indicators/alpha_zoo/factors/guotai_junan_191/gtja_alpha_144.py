@@ -1,4 +1,3 @@
-
 """GTJA Alpha 144 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
@@ -6,6 +5,7 @@ Formula (verbatim from the report):
 
 Notes: SUMIF -> (x*cond).rolling(n).sum(); COUNT -> cond.rolling(n).sum().
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_144"
 
 __alpha_meta__ = {
-    'id': 'gtja191_144',
-    'theme': ['liquidity'],
-    'formula_latex': 'see body',
-    'columns_required': ['close', 'amount'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 20,
-    'min_warmup_bars': 21,
-    'notes': 'SUMIF -> (x*cond).rolling(n).sum(); COUNT -> cond.rolling(n).sum().',
+    "id": "gtja191_144",
+    "theme": ["liquidity"],
+    "formula_latex": "see body",
+    "columns_required": ["close", "amount"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 20,
+    "min_warmup_bars": 21,
+    "notes": "SUMIF -> (x*cond).rolling(n).sum(); COUNT -> cond.rolling(n).sum().",
 }
 
 

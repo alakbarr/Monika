@@ -28,7 +28,9 @@ async def test_skill_crystallizer_llm_synthesis(tmp_path):
     mock_r2.confidence = 0.88
     mock_r2.outcome_pnl_usd = 310.0
     mock_r2.reflection_text = "TREND | Strong momentum breakout"
-    mock_r2.alpha_lesson = "Never chase liquidity without confirmed fair value gap retest. Stop loss must remain below swing low."
+    mock_r2.alpha_lesson = (
+        "Never chase liquidity without confirmed fair value gap retest. Stop loss must remain below swing low."
+    )
     mock_r2.specific_lesson = None
     mock_r2.rationale_summary = None
 
@@ -92,14 +94,7 @@ async def test_skill_attribution_and_auto_deprecation(tmp_path):
     skill_name = "crystallized_eurusd_trend"
     skill_file = tmp_path / f"{skill_name}.md"
     skill_file.write_text(
-        "---\n"
-        f"name: {skill_name}\n"
-        "symbol: EURUSD\n"
-        "status: active\n"
-        "win_count: 5\n"
-        "---\n\n"
-        "# Content\n",
-        encoding="utf-8"
+        f"---\nname: {skill_name}\nsymbol: EURUSD\nstatus: active\nwin_count: 5\n---\n\n# Content\n", encoding="utf-8"
     )
 
     # Initial check: skill should be returned for EURUSD
@@ -180,7 +175,7 @@ async def test_skill_crystallizer_configurable_threshold(tmp_path):
         r.confidence = 0.90
         r.outcome_pnl_usd = 200.0 + i * 10
         r.reflection_text = "TREND | Breakout"
-        r.alpha_lesson = f"Test rule {i+1}"
+        r.alpha_lesson = f"Test rule {i + 1}"
         r.specific_lesson = None
         r.rationale_summary = None
         reflections.append(r)
@@ -192,4 +187,3 @@ async def test_skill_crystallizer_configurable_threshold(tmp_path):
     # With min_crystallization_wins = 6, 5 reflections should not trigger crystallization
     res = await crystallizer.evaluate_and_crystallize(mock_session, symbol="ETHUSD")
     assert len(res) == 0
-

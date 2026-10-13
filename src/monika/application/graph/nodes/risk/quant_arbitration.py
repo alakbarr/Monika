@@ -52,7 +52,9 @@ async def run_quant_arbitration(
     async with get_session() as session:
         vix_val = 15.0
         try:
-            vix_row = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
+            vix_row = (
+                await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))
+            ).scalar_one_or_none()
             if vix_row and vix_row.close:
                 vix_val = float(vix_row.close)
         except Exception:
@@ -60,12 +62,16 @@ async def run_quant_arbitration(
 
         for sym, (r, is_actionable_originally) in candidate_map.items():
             if r.get("arbitrated_by"):
-                logger.info(f"[QuantArbitration] {sym} already arbitrated by {r.get('arbitrated_by')}, skipping duplicate arbitration.")
+                logger.info(
+                    f"[QuantArbitration] {sym} already arbitrated by {r.get('arbitrated_by')}, skipping duplicate arbitration."
+                )
                 if r.get("decision") in ("buy", "sell"):
                     filtered_actionable.append((sym, r))
                 else:
                     if is_actionable_originally:
-                        rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"previously_arbitrated: {r.get('decision')}"]})
+                        rejected_candidates.append(
+                            {"symbol": sym, "trade": r, "reasons": [f"previously_arbitrated: {r.get('decision')}"]}
+                        )
                 continue
 
             try:
@@ -85,10 +91,12 @@ async def run_quant_arbitration(
                 )
                 if quant_signals:
                     valid_sigs = [
-                        s for s in quant_signals
+                        s
+                        for s in quant_signals
                         if getattr(s, "valid", False) and getattr(s, "direction", None) in ("buy", "sell")
                     ]
                     if valid_sigs:
+
                         def _sig_prio(s):
                             strat_id = getattr(s, "strategy_id", "")
                             is_ready = decay_mon.is_live_ready(strat_id)
@@ -114,7 +122,9 @@ async def run_quant_arbitration(
                 "stop_loss": r.get("stop_loss"),
                 "take_profit": r.get("take_profit"),
                 "rationale": r.get("rationale", ""),
-                "decision_source": r.get("decision_source", "llm_debate" if is_actionable_originally else "stage2_per_asset"),
+                "decision_source": r.get(
+                    "decision_source", "llm_debate" if is_actionable_originally else "stage2_per_asset"
+                ),
             }
 
             arb_res = await arbitrator.arbitrate(
@@ -128,8 +138,12 @@ async def run_quant_arbitration(
 
             if arb_res.decision in ("avoid", "wait"):
                 if is_actionable_originally:
-                    logger.info(f"[QuantArbitration] {sym} suppressed by SignalArbitrator: {arb_res.arbitration_reason}")
-                    rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"signal_arbitrator: {arb_res.arbitration_reason}"]})
+                    logger.info(
+                        f"[QuantArbitration] {sym} suppressed by SignalArbitrator: {arb_res.arbitration_reason}"
+                    )
+                    rejected_candidates.append(
+                        {"symbol": sym, "trade": r, "reasons": [f"signal_arbitrator: {arb_res.arbitration_reason}"]}
+                    )
             else:
                 r["risk_multiplier"] = arb_res.risk_multiplier
                 if arb_res.selected_source == "concordant":
@@ -151,7 +165,9 @@ async def run_quant_arbitration(
                     if active_quant_signal and getattr(active_quant_signal, "strategy_id", None):
                         r["source_strategy_id"] = active_quant_signal.strategy_id
                     if not is_actionable_originally:
-                        logger.info(f"[QuantArbitration] Quant strategy {r.get('source_strategy_id')} promoted {sym} from WAIT to {arb_res.decision.upper()} via SignalArbitrator")
+                        logger.info(
+                            f"[QuantArbitration] Quant strategy {r.get('source_strategy_id')} promoted {sym} from WAIT to {arb_res.decision.upper()} via SignalArbitrator"
+                        )
 
                 analysis_id = r.get("analysis_id")
                 ana = await session.get(AssetAnalysis, analysis_id) if analysis_id else None
@@ -185,7 +201,9 @@ async def run_quant_arbitration(
                     if r.get("source_strategy_id"):
                         ana.source_strategy_id = r["source_strategy_id"]
                     await session.commit()
-                    logger.info(f"[QuantArbitration] Persisted arbitrated trade {sym} ({ana.decision.upper()}) to AssetAnalysis #{ana.id}")
+                    logger.info(
+                        f"[QuantArbitration] Persisted arbitrated trade {sym} ({ana.decision.upper()}) to AssetAnalysis #{ana.id}"
+                    )
 
                 filtered_actionable.append((sym, r))
                 if isinstance(state.get("asset_analyses"), dict) and sym in state["asset_analyses"]:

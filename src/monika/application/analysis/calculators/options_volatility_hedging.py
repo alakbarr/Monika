@@ -174,15 +174,17 @@ class OptionsVolatilityHedgingEngine:
             pos_delta_units = greeks["delta"] * contract_units
             total_delta_units += pos_delta_units
 
-            position_breakdown.append({
-                "strike": pos["strike"],
-                "type": pos.get("type", "CALL"),
-                "qty": qty,
-                "unit_delta": greeks["delta"],
-                "total_delta_units": round(pos_delta_units, 2),
-                "gamma": greeks["gamma"],
-                "vega_usd": round(greeks["vega_per_1pct"] * contract_units, 2),
-            })
+            position_breakdown.append(
+                {
+                    "strike": pos["strike"],
+                    "type": pos.get("type", "CALL"),
+                    "qty": qty,
+                    "unit_delta": greeks["delta"],
+                    "total_delta_units": round(pos_delta_units, 2),
+                    "gamma": greeks["gamma"],
+                    "vega_usd": round(greeks["vega_per_1pct"] * contract_units, 2),
+                }
+            )
 
         # Required hedge in spot units: -total_delta_units
         hedge_units = -total_delta_units

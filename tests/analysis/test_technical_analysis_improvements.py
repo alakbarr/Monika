@@ -26,7 +26,7 @@ class TestTechnicalAnalysisImprovements:
     async def test_indicator_snapshot_delta_and_direction(self):
         mock_session = create_mock_async_session()
         calc = TechnicalIndicatorCalculator(mock_session, {})
-        
+
         now = datetime.now(timezone.utc)
         prev = now - timedelta(hours=4)
 
@@ -75,7 +75,7 @@ class TestTechnicalAnalysisImprovements:
     async def test_priced_in_subscores_usdjpy_cot(self):
         mock_session = create_mock_async_session()
         from database.models import COTReport
-        
+
         cot_row = COTReport(
             market_code="097741",
             report_date=datetime.now(timezone.utc),
@@ -102,23 +102,30 @@ class TestTechnicalAnalysisImprovements:
     # ------------------------------------------------------------------
     def test_detect_structure_breaks_with_close_confirmation(self):
         analyzer = MarketStructureAnalyzer(AsyncMock(), {"indicators": {"swing_window": 2}})
-        
+
         # Candles where high spikes to 105 but close is 98 (wick-only break of 100)
         dates = pd.date_range("2024-01-01", periods=5)
-        df = pd.DataFrame({
-            "high": [100.0, 95.0, 105.0, 96.0, 97.0],
-            "low":  [90.0, 88.0, 90.0, 89.0, 90.0],
-            "close": [98.0, 92.0, 98.0, 93.0, 95.0],
-        }, index=dates)
-        
-        swings_high = pd.DataFrame([
-            {"timestamp": dates[0], "price": 100.0},
-            {"timestamp": dates[2], "price": 105.0},
-        ])
-        swings_low = pd.DataFrame([
-            {"timestamp": dates[1], "price": 88.0},
-        ])
-        
+        df = pd.DataFrame(
+            {
+                "high": [100.0, 95.0, 105.0, 96.0, 97.0],
+                "low": [90.0, 88.0, 90.0, 89.0, 90.0],
+                "close": [98.0, 92.0, 98.0, 93.0, 95.0],
+            },
+            index=dates,
+        )
+
+        swings_high = pd.DataFrame(
+            [
+                {"timestamp": dates[0], "price": 100.0},
+                {"timestamp": dates[2], "price": 105.0},
+            ]
+        )
+        swings_low = pd.DataFrame(
+            [
+                {"timestamp": dates[1], "price": 88.0},
+            ]
+        )
+
         breaks = analyzer._detect_structure_breaks(df, swings_high, swings_low, "EURUSD", "H4")
         assert len(breaks) == 0
 
@@ -136,7 +143,7 @@ class TestTechnicalAnalysisImprovements:
     # ------------------------------------------------------------------
     def test_order_block_50pct_penetration_mitigation(self):
         analyzer = MarketStructureAnalyzer(AsyncMock(), {"indicators": {"swing_window": 2}})
-        
+
         # Bullish OB: price_high=100, price_low=90, mid=95
         ob = OrderBlock(
             symbol="EURUSD",
@@ -146,17 +153,19 @@ class TestTechnicalAnalysisImprovements:
             price_low=90.0,
             formed_at=datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc),
         )
-        
+
         # Future candle low = 97 (touches zone high 100, but doesn't reach mid 95)
         dates = pd.date_range("2024-01-01 04:00", periods=2, freq="4h", tz="UTC")
-        df_touch_only = pd.DataFrame({
-            "timestamp": dates,
-            "open": [102.0, 101.0],
-            "high": [103.0, 102.0],
-            "low": [97.0, 98.0],
-            "close": [101.0, 100.0],
-        })
-        
+        df_touch_only = pd.DataFrame(
+            {
+                "timestamp": dates,
+                "open": [102.0, 101.0],
+                "high": [103.0, 102.0],
+                "low": [97.0, 98.0],
+                "close": [101.0, 100.0],
+            }
+        )
+
         blocks = analyzer._find_order_blocks(df_touch_only.set_index("timestamp"), "EURUSD", "H4", existing_obs=[ob])
         unmit = [b for b in blocks if b.mitigated_at is None and b.direction == "bullish"]
         assert len(unmit) >= 1
@@ -166,21 +175,25 @@ class TestTechnicalAnalysisImprovements:
     # ------------------------------------------------------------------
     def test_fvg_50pct_fill_mitigation(self):
         analyzer = MarketStructureAnalyzer(AsyncMock(), {})
-        
+
         dates = pd.date_range("2024-01-01", periods=2)
-        df_partial = pd.DataFrame({
-            "timestamp": dates,
-            "low": [17.0, 18.0],
-            "high": [22.0, 23.0],
-        })
+        df_partial = pd.DataFrame(
+            {
+                "timestamp": dates,
+                "low": [17.0, 18.0],
+                "high": [22.0, 23.0],
+            }
+        )
         filled_ts = analyzer._check_fvg_filled(df_partial, 0, 20.0, 10.0, "bullish")
         assert filled_ts is None
 
-        df_deep = pd.DataFrame({
-            "timestamp": dates,
-            "low": [14.0, 18.0],
-            "high": [22.0, 23.0],
-        })
+        df_deep = pd.DataFrame(
+            {
+                "timestamp": dates,
+                "low": [14.0, 18.0],
+                "high": [22.0, 23.0],
+            }
+        )
         filled_ts_deep = analyzer._check_fvg_filled(df_deep, 0, 20.0, 10.0, "bullish")
         assert filled_ts_deep is not None
 
@@ -191,7 +204,7 @@ class TestTechnicalAnalysisImprovements:
     async def test_fibonacci_selects_max_range_swing_pair(self):
         mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
-        
+
         now = datetime.now(timezone.utc)
         swings = [
             SwingPoint(symbol="EURUSD", timeframe="H4", type="high", price=100.0, timestamp=now - timedelta(hours=16)),
@@ -199,11 +212,11 @@ class TestTechnicalAnalysisImprovements:
             SwingPoint(symbol="EURUSD", timeframe="H4", type="high", price=55.0, timestamp=now - timedelta(hours=8)),
             SwingPoint(symbol="EURUSD", timeframe="H4", type="low", price=52.0, timestamp=now - timedelta(hours=4)),
         ]
-        
+
         mock_res = MagicMock()
         mock_res.scalars().all.return_value = swings
         mock_session.execute = AsyncMock(return_value=mock_res)
-        
+
         res = await executor._tool_get_fibonacci_levels({"symbol": "EURUSD", "timeframe": "H4"})
         assert res["move_size"] >= 45.0
 
@@ -212,23 +225,21 @@ class TestTechnicalAnalysisImprovements:
     # ------------------------------------------------------------------
     def test_compress_history_dynamic_precision(self):
         bundler = Stage2DataBundler(AsyncMock(), {})
-        
+
         history_eurusd = {
             "symbol": "EURUSD",
-            "bars": [{
-                "time": "2024-01-01T12:00:00Z",
-                "open": 1.08456, "high": 1.08789, "low": 1.08234, "close": 1.08654
-            }]
+            "bars": [
+                {"time": "2024-01-01T12:00:00Z", "open": 1.08456, "high": 1.08789, "low": 1.08234, "close": 1.08654}
+            ],
         }
         res_eur = bundler._compress_history(history_eurusd, "EURUSD")
         assert "1.08654" in res_eur
 
         history_xau = {
             "symbol": "XAUUSD",
-            "bars": [{
-                "time": "2024-01-01T12:00:00Z",
-                "open": 2650.123, "high": 2655.456, "low": 2648.789, "close": 2652.85
-            }]
+            "bars": [
+                {"time": "2024-01-01T12:00:00Z", "open": 2650.123, "high": 2655.456, "low": 2648.789, "close": 2652.85}
+            ],
         }
         res_xau = bundler._compress_history(history_xau, "XAUUSD")
         assert "2652.85" in res_xau
@@ -238,17 +249,17 @@ class TestTechnicalAnalysisImprovements:
     # ------------------------------------------------------------------
     def test_smc_data_proximity_sorting(self):
         bundler = Stage2DataBundler(AsyncMock(), {})
-        
+
         obs = [
             {"price_high": 1.0500, "price_low": 1.0450},
             {"price_high": 1.0810, "price_low": 1.0805},
             {"price_high": 1.0790, "price_low": 1.0785},
             {"price_high": 1.1100, "price_low": 1.1050},
         ]
-        
+
         raw_data = {"order_blocks": obs, "fvg_zones": [], "liquidity_zones": [], "sr_zones": []}
         formatted = bundler.executor._format_smc_data(raw_data, current_price=1.0800)
-        
+
         trimmed_obs = formatted["order_blocks"]
         assert len(trimmed_obs) == 3
         prices = [ob["price_high"] for ob in trimmed_obs]

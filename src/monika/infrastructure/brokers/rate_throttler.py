@@ -28,6 +28,7 @@ logger = logging.getLogger("TradingAgent.Execution.RateThrottler")
 @dataclass(frozen=True)
 class ThrottleVerdict:
     """Verdict hasil evaluasi rate limiter order."""
+
     allowed: bool
     retry_after: float
     reason: str
@@ -39,7 +40,7 @@ class ThrottleVerdict:
 class RateThrottler:
     """
     Sliding-window order rate limiter.
-    
+
     Menjaga frekuensi pengiriman order ke broker (MT5) agar tidak melampaui:
     - Per-second limit (default: 2 order / detik)
     - Per-minute limit (default: 15 order / menit)

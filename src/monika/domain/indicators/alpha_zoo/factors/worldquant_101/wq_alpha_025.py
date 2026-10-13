@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #25.
 
 Formula (paper appendix): rank((((-1*returns)*adv20)*vwap)*(high-close))
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_025"
 
 __alpha_meta__ = {
-    'id': 'alpha101_025',
-    'nickname': 'Kakushadze Alpha #25',
-    'theme': ['momentum', 'volume'],
-    'formula_latex': 'rank((((-1*returns)*adv20)*vwap)*(high-close))',
-    'columns_required': ['high', 'close', 'volume', 'vwap'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 21,
-    'notes': '',
+    "id": "alpha101_025",
+    "nickname": "Kakushadze Alpha #25",
+    "theme": ["momentum", "volume"],
+    "formula_latex": "rank((((-1*returns)*adv20)*vwap)*(high-close))",
+    "columns_required": ["high", "close", "volume", "vwap"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 21,
+    "notes": "",
 }
 
 

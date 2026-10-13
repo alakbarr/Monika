@@ -14,6 +14,7 @@ ponytail: Architecture scaffold. Tracks eligible deferred requests and computes
 estimated cost savings. Routes to real-time until batch API provider contracts
 are wired.
 """
+
 import logging
 import time
 import uuid
@@ -25,14 +26,15 @@ logger = logging.getLogger("TradingAgent.DeferredDispatcher")
 
 
 class DispatchMode(str, Enum):
-    REALTIME = "realtime"         # Standard streaming API call
-    DEFERRED = "deferred"         # Route to batch API (24h turnaround, 50% off)
-    BEST_EFFORT = "best_effort"   # Try deferred, fall back to realtime
+    REALTIME = "realtime"  # Standard streaming API call
+    DEFERRED = "deferred"  # Route to batch API (24h turnaround, 50% off)
+    BEST_EFFORT = "best_effort"  # Try deferred, fall back to realtime
 
 
 @dataclass
 class DeferredRequest:
     """A deferred LLM request queued for batch processing."""
+
     task_name: str
     model: str
     messages: List[Dict[str, Any]]
@@ -52,6 +54,7 @@ class DeferredRequest:
 @dataclass
 class DeferredResult:
     """Result from a completed deferred batch job."""
+
     request_id: str
     response_text: str
     usage: Dict[str, int] = field(default_factory=dict)
@@ -63,18 +66,20 @@ class DeferredLLMDispatcher:
     """Routes LLM calls based on time-sensitivity and batch discount eligibility."""
 
     # Tasks that are safe to defer (all 7 background tasks from user decision)
-    DEFERRABLE_TASKS = frozenset({
-        "alpha_discovery",
-        "strategy_synthesis",
-        "playbook_compile",
-        "tearsheet_generation",
-        "reflection_deep",
-        "historical_backtest",
-        "sentiment_aggregate",
-        "skill_curation",
-        "what_if_analysis",
-        "daily_report",
-    })
+    DEFERRABLE_TASKS = frozenset(
+        {
+            "alpha_discovery",
+            "strategy_synthesis",
+            "playbook_compile",
+            "tearsheet_generation",
+            "reflection_deep",
+            "historical_backtest",
+            "sentiment_aggregate",
+            "skill_curation",
+            "what_if_analysis",
+            "daily_report",
+        }
+    )
 
     def __init__(self):
         self._queue: List[DeferredRequest] = []
@@ -150,10 +155,13 @@ class DeferredLLMDispatcher:
     def estimate_batch_savings(self, input_tokens: int, output_tokens: int, model: str) -> float:
         """Estimate 50% cost savings for deferred batch processing vs. real-time."""
         from monika.core.analytics.pricing import cost_usd
+
         full_cost = cost_usd(model_name=model, input_tokens=input_tokens, output_tokens=output_tokens)
         return round(full_cost * 0.50, 6)
 
-    async def execute_or_defer(self, task_name: str, model: str, messages: List[Dict[str, Any]], execute_fn: Any) -> Any:
+    async def execute_or_defer(
+        self, task_name: str, model: str, messages: List[Dict[str, Any]], execute_fn: Any
+    ) -> Any:
         """
         If task is in DEFERRABLE_TASKS and batch mode is enabled, enqueues request.
         Otherwise executes execute_fn immediately.

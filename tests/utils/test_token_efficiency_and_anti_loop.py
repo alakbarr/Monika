@@ -10,17 +10,19 @@ def test_lossless_structural_pruning_ohlcv():
     # Create 40 synthetic bars with clear swing extremes
     for i in range(40):
         high = 1.1000 + (0.05 if i == 12 else 0.01)  # Peak at bar 12: 1.1500
-        low = 1.0500 - (0.05 if i == 25 else 0.01)   # Trough at bar 25: 1.0000
+        low = 1.0500 - (0.05 if i == 25 else 0.01)  # Trough at bar 25: 1.0000
         open_val = 1.0800 if i == 0 else 1.0700
         close_val = 1.0950 if i == 39 else 1.0750
-        bars.append({
-            "time": f"2026-09-01T{i:02d}:00:00Z",
-            "open": open_val,
-            "high": high,
-            "low": low,
-            "close": close_val,
-            "volume": 1000
-        })
+        bars.append(
+            {
+                "time": f"2026-09-01T{i:02d}:00:00Z",
+                "open": open_val,
+                "high": high,
+                "low": low,
+                "close": close_val,
+                "volume": 1000,
+            }
+        )
 
     raw_json = json.dumps(bars)
     pruned_json = engine.micro_prune(raw_json, tool_name="get_price_history")
@@ -43,16 +45,11 @@ def test_lossless_structural_pruning_ohlcv():
 
 def test_tool_family_quota_throttling():
     # Calling multiple different tools within the 'price_history' family
-    session_history = [
-        "get_price_history",
-        "get_technical_indicators"
-    ]
+    session_history = ["get_price_history", "get_technical_indicators"]
 
     # Third call in the same family should be blocked by default quota (max 2)
     allowed, warning = ContextCompactionEngine.check_tool_family_quota(
-        tool_name="get_atr",
-        session_calls=session_history,
-        max_quota=2
+        tool_name="get_atr", session_calls=session_history, max_quota=2
     )
     assert allowed is False
     assert "Tool family quota reached" in warning
@@ -60,9 +57,7 @@ def test_tool_family_quota_throttling():
 
     # Call to an unrelated family (e.g. sentiment) should be permitted
     allowed_news, _ = ContextCompactionEngine.check_tool_family_quota(
-        tool_name="get_news_items",
-        session_calls=session_history,
-        max_quota=2
+        tool_name="get_news_items", session_calls=session_history, max_quota=2
     )
     assert allowed_news is True
 
@@ -72,7 +67,7 @@ def test_cache_breakpoint_wrap_classify_json():
     sys_prompt = "You are an adjudication verifier."
     tool_schema = {
         "name": "emit_structured_response",
-        "input_schema": {"type": "object", "properties": {"decision": {"type": "string"}}}
+        "input_schema": {"type": "object", "properties": {"decision": {"type": "string"}}},
     }
 
     sys_blocks, cached_tools = cbm.wrap_classify_json(sys_prompt, tool_schema)
@@ -116,6 +111,7 @@ def test_cache_breakpoint_wrap_classify_json_padded_anchor():
 def test_truncate_to_budget_embedded_json_preservation():
     import json
     from utils.llm.prompt_compressor import truncate_to_budget
+
     raw_payload = {
         "symbol": "EURUSD",
         "current_price": 1.0855,
@@ -123,7 +119,7 @@ def test_truncate_to_budget_embedded_json_preservation():
         "stop_loss": 1.0810,
         "take_profit": 1.0950,
         "order_blocks": [{"price_high": 1.0890, "price_low": 1.0870}],
-        "unimportant_logs": ["log line " + str(i) for i in range(100)]
+        "unimportant_logs": ["log line " + str(i) for i in range(100)],
     }
     wrapped_text = f"Please perform per-asset analysis for EURUSD:\n[PRE-FETCHED DATA]\n{json.dumps(raw_payload)}"
     truncated = truncate_to_budget(wrapped_text, max_tokens=150)
@@ -137,6 +133,7 @@ def test_truncate_to_budget_embedded_json_preservation():
 def test_extract_decisive_state_extended_coverage():
     import json
     from utils.llm.context_compaction import ContextCompactionEngine
+
     engine = ContextCompactionEngine()
 
     # Optimal levels
@@ -155,4 +152,3 @@ def test_extract_decisive_state_extended_coverage():
     res_cot = engine._extract_decisive_state("get_cot_report", cot_data)
     assert "cot_net=45000" in res_cot
     assert "cot_bias=bullish" in res_cot
-

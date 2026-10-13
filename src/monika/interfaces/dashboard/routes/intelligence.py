@@ -132,7 +132,13 @@ async def get_cot_reports(
         return [
             {
                 "id": r.id,
-                "report_date": (r.report_date.date() if hasattr(r.report_date, "date") and callable(getattr(r.report_date, "date")) else r.report_date).isoformat() if r.report_date else None,
+                "report_date": (
+                    r.report_date.date()
+                    if hasattr(r.report_date, "date") and callable(getattr(r.report_date, "date"))
+                    else r.report_date
+                ).isoformat()
+                if r.report_date
+                else None,
                 "market_code": r.market_code,
                 "dealer_long": r.dealer_long,
                 "dealer_short": r.dealer_short,
@@ -193,13 +199,17 @@ async def get_aggregated_sentiment():
     async with AsyncSessionLocal() as session:
         since = datetime.now(timezone.utc) - timedelta(hours=24)
         items = (
-            await session.execute(
-                select(NewsItem).where(
-                    NewsItem.fetched_at >= since,
-                    NewsItem.sentiment.isnot(None),
+            (
+                await session.execute(
+                    select(NewsItem).where(
+                        NewsItem.fetched_at >= since,
+                        NewsItem.sentiment.isnot(None),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         summary: Dict[str, Dict[str, int]] = {}
         for item in items:
@@ -232,17 +242,17 @@ async def get_skills_catalog():
     skills_list = []
     for s in skills_names:
         meta = get_skill_metadata(s)
-        skills_list.append({
-            "name": s,
-            "description": meta.get("description", ""),
-            "markets": meta.get("markets", []),
-            "requires_tools": meta.get("requires_tools", []),
-            "fallback_for_tools": meta.get("fallback_for_tools", []),
-            "is_playbook": "playbook" in s.lower(),
-        })
+        skills_list.append(
+            {
+                "name": s,
+                "description": meta.get("description", ""),
+                "markets": meta.get("markets", []),
+                "requires_tools": meta.get("requires_tools", []),
+                "fallback_for_tools": meta.get("fallback_for_tools", []),
+                "is_playbook": "playbook" in s.lower(),
+            }
+        )
     return {"skills": skills_list, "total": len(skills_list)}
-
-
 
 
 @intelligence_router.get("/api/reports/tearsheet/latest", tags=["Observability"])
@@ -252,23 +262,25 @@ async def get_latest_tearsheet():
     async with AsyncSessionLocal() as session:
         # Prioritize closed PaperTradeRecords, fallback to TradeOutcome
         paper_trades = (
-            await session.execute(
-                select(PaperTradeRecord)
-                .where(PaperTradeRecord.status == "closed")
-                .order_by(PaperTradeRecord.closed_at.desc())
-                .limit(200)
+            (
+                await session.execute(
+                    select(PaperTradeRecord)
+                    .where(PaperTradeRecord.status == "closed")
+                    .order_by(PaperTradeRecord.closed_at.desc())
+                    .limit(200)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         if paper_trades:
             trade_objs: List[Any] = list(paper_trades)
         else:
             trade_objs = list(
-                (
-                    await session.execute(
-                        select(TradeOutcome).order_by(TradeOutcome.closed_at.desc()).limit(200)
-                    )
-                ).scalars().all()
+                (await session.execute(select(TradeOutcome).order_by(TradeOutcome.closed_at.desc()).limit(200)))
+                .scalars()
+                .all()
             )
 
         result = QuantTearsheetGenerator.generate_from_trades(trade_objs, initial_equity=10000.0)
@@ -303,16 +315,24 @@ async def get_market_fedwatch():
     """Retrieve CME FedWatch probabilities and central bank rate expectations."""
     async with AsyncSessionLocal() as session:
         fedwatch_rows = (
-            await session.execute(
-                select(FedWatchProbability).order_by(FedWatchProbability.fetched_at.desc()).limit(10)
+            (
+                await session.execute(
+                    select(FedWatchProbability).order_by(FedWatchProbability.fetched_at.desc()).limit(10)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         cb_rows = (
-            await session.execute(
-                select(CentralBankRateExpectation).order_by(CentralBankRateExpectation.fetched_at.desc()).limit(15)
+            (
+                await session.execute(
+                    select(CentralBankRateExpectation).order_by(CentralBankRateExpectation.fetched_at.desc()).limit(15)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         fedwatch_data = []
         for p in fedwatch_rows:
@@ -322,12 +342,14 @@ async def get_market_fedwatch():
                     probs = json.loads(probs)
                 except Exception:
                     probs = {}
-            fedwatch_data.append({
-                "id": p.id,
-                "meeting_date": p.meeting_date,
-                "probabilities": probs,
-                "fetched_at": p.fetched_at.isoformat() if p.fetched_at else None,
-            })
+            fedwatch_data.append(
+                {
+                    "id": p.id,
+                    "meeting_date": p.meeting_date,
+                    "probabilities": probs,
+                    "fetched_at": p.fetched_at.isoformat() if p.fetched_at else None,
+                }
+            )
 
         cb_data = [
             {
@@ -358,16 +380,12 @@ async def get_market_yields():
     """Retrieve US Treasury yields, 2s10s yield curve spread, and international sovereign bond yields."""
     async with AsyncSessionLocal() as session:
         yield_rows = (
-            await session.execute(
-                select(TreasuryYield).order_by(TreasuryYield.date.desc()).limit(50)
-            )
-        ).scalars().all()
+            (await session.execute(select(TreasuryYield).order_by(TreasuryYield.date.desc()).limit(50))).scalars().all()
+        )
 
         bond_rows = (
-            await session.execute(
-                select(BondYieldData).order_by(BondYieldData.date.desc()).limit(30)
-            )
-        ).scalars().all()
+            (await session.execute(select(BondYieldData).order_by(BondYieldData.date.desc()).limit(30))).scalars().all()
+        )
 
         # Group latest per tenor for US Treasury
         latest_tenors: Dict[str, TreasuryYield] = {}
@@ -416,9 +434,7 @@ async def get_market_fear_greed():
     """Retrieve market Fear & Greed index."""
     async with AsyncSessionLocal() as session:
         cfg = (
-            await session.execute(
-                select(SystemConfig).where(SystemConfig.key == "fear_greed_latest").limit(1)
-            )
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "fear_greed_latest").limit(1))
         ).scalar_one_or_none()
 
         if cfg and cfg.value:
@@ -444,16 +460,22 @@ async def get_market_sentiment_composite():
     """Retrieve multi-asset sentiment composite (Crypto, Forex, and Institutional COT)."""
     async with AsyncSessionLocal() as session:
         cfgs = (
-            await session.execute(
-                select(SystemConfig).where(
-                    SystemConfig.key.in_([
-                        "binance_sentiment_latest",
-                        "myfxbook_sentiment_latest",
-                        "fxssi_sentiment_latest",
-                    ])
+            (
+                await session.execute(
+                    select(SystemConfig).where(
+                        SystemConfig.key.in_(
+                            [
+                                "binance_sentiment_latest",
+                                "myfxbook_sentiment_latest",
+                                "fxssi_sentiment_latest",
+                            ]
+                        )
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         cfg_map = {c.key: c.value for c in cfgs if c.value}
 
@@ -470,15 +492,19 @@ async def get_market_sentiment_composite():
         fxssi_sentiment = _safe_json(cfg_map.get("fxssi_sentiment_latest"))
 
         cot_rows = (
-            await session.execute(
-                select(COTReport).order_by(COTReport.report_date.desc()).limit(15)
-            )
-        ).scalars().all()
+            (await session.execute(select(COTReport).order_by(COTReport.report_date.desc()).limit(15))).scalars().all()
+        )
 
         cot_summary = [
             {
                 "market_code": r.market_code,
-                "report_date": (r.report_date.date() if hasattr(r.report_date, "date") and callable(getattr(r.report_date, "date")) else r.report_date).isoformat() if r.report_date else None,
+                "report_date": (
+                    r.report_date.date()
+                    if hasattr(r.report_date, "date") and callable(getattr(r.report_date, "date"))
+                    else r.report_date
+                ).isoformat()
+                if r.report_date
+                else None,
                 "dealer_long": r.dealer_long,
                 "dealer_short": r.dealer_short,
                 "asset_mgr_long": r.asset_mgr_long,
@@ -503,6 +529,7 @@ async def get_market_sentiment_composite():
 # Skill Crystallizer & Lifecycle Endpoints
 # ---------------------------------------------------------------------------
 
+
 @intelligence_router.get("/api/skills/crystallized", tags=["Skills"])
 @require_role(Role.VIEWER)
 async def get_crystallized_skills():
@@ -517,10 +544,10 @@ async def get_crystallized_skills():
     async with AsyncSessionLocal() as session:
         # Load all DB attributions first
         cfgs = (
-            await session.execute(
-                select(SystemConfig).where(SystemConfig.key.like("skill_attribution_%"))
-            )
-        ).scalars().all()
+            (await session.execute(select(SystemConfig).where(SystemConfig.key.like("skill_attribution_%"))))
+            .scalars()
+            .all()
+        )
         attr_map = {}
         for c in cfgs:
             if c.value:
@@ -548,22 +575,25 @@ async def get_crystallized_skills():
                         or attr.get("status") == "deprecated"
                     )
 
-                    skills.append({
-                        "name": meta.get("name", clean_name),
-                        "file": f.name,
-                        "symbol": meta.get("symbol") or clean_name.replace("crystallized_", "").split("_")[0].upper(),
-                        "description": meta.get("description", ""),
-                        "status": "deprecated" if is_dep else "active",
-                        "is_deprecated": is_dep,
-                        "deprecation_reason": meta.get("deprecation_reason") or attr.get("deprecation_reason"),
-                        "win_count": meta.get("win_count", attr.get("wins_count", 0)),
-                        "total_trades": attr.get("times_triggered", meta.get("win_count", 0)),
-                        "win_rate": attr.get("win_rate", 1.0 if meta.get("win_count") else 0.0),
-                        "recent_win_rate": attr.get("recent_win_rate"),
-                        "total_pnl_usd": meta.get("total_pnl_usd", attr.get("total_pnl", 0.0)),
-                        "avg_confidence": meta.get("avg_confidence"),
-                        "last_crystallized_at": meta.get("last_crystallized_at"),
-                    })
+                    skills.append(
+                        {
+                            "name": meta.get("name", clean_name),
+                            "file": f.name,
+                            "symbol": meta.get("symbol")
+                            or clean_name.replace("crystallized_", "").split("_")[0].upper(),
+                            "description": meta.get("description", ""),
+                            "status": "deprecated" if is_dep else "active",
+                            "is_deprecated": is_dep,
+                            "deprecation_reason": meta.get("deprecation_reason") or attr.get("deprecation_reason"),
+                            "win_count": meta.get("win_count", attr.get("wins_count", 0)),
+                            "total_trades": attr.get("times_triggered", meta.get("win_count", 0)),
+                            "win_rate": attr.get("win_rate", 1.0 if meta.get("win_count") else 0.0),
+                            "recent_win_rate": attr.get("recent_win_rate"),
+                            "total_pnl_usd": meta.get("total_pnl_usd", attr.get("total_pnl", 0.0)),
+                            "avg_confidence": meta.get("avg_confidence"),
+                            "last_crystallized_at": meta.get("last_crystallized_at"),
+                        }
+                    )
                 except Exception as e:
                     logger.debug(f"Failed parsing skill file {f.name}: {e}")
 
@@ -578,11 +608,7 @@ async def get_skill_stats(name: str):
     reg_key = f"skill_attribution_{clean_name}"
 
     async with AsyncSessionLocal() as session:
-        cfg = (
-            await session.execute(
-                select(SystemConfig).where(SystemConfig.key == reg_key)
-            )
-        ).scalar_one_or_none()
+        cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == reg_key))).scalar_one_or_none()
 
         if cfg and cfg.value:
             try:
@@ -612,10 +638,13 @@ async def curate_crystallized_skills(request: Request):
     crystallizer = SkillCrystallizer()
     async with AsyncSessionLocal() as session:
         pruned = await crystallizer.curate_and_prune_skills(session)
-        await broadcast_live_event("skills_curated", {
-            "pruned_count": len(pruned),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        await broadcast_live_event(
+            "skills_curated",
+            {
+                "pruned_count": len(pruned),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
         return {"status": "curated", "pruned_skills": pruned, "pruned_count": len(pruned)}
 
 
@@ -631,11 +660,7 @@ async def deprecate_crystallized_skill(name: str, payload: DeprecateSkillRequest
 
     async with AsyncSessionLocal() as session:
         reg_key = f"skill_attribution_{clean_name}"
-        cfg = (
-            await session.execute(
-                select(SystemConfig).where(SystemConfig.key == reg_key)
-            )
-        ).scalar_one_or_none()
+        cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == reg_key))).scalar_one_or_none()
         if cfg and cfg.value:
             try:
                 data = json.loads(cfg.value)
@@ -646,11 +671,14 @@ async def deprecate_crystallized_skill(name: str, payload: DeprecateSkillRequest
             except Exception:
                 pass
 
-    await broadcast_live_event("skill_deprecated", {
-        "skill_name": clean_name,
-        "reason": payload.reason,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "skill_deprecated",
+        {
+            "skill_name": clean_name,
+            "reason": payload.reason,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     return {"status": "deprecated" if success else "failed", "skill_name": clean_name, "success": success}
 
@@ -665,10 +693,12 @@ async def crystallize_skills_now(request: Request, payload: Optional[Crystallize
     sym = payload.symbol if payload else None
     async with AsyncSessionLocal() as session:
         new_skills = await crystallizer.evaluate_and_crystallize(session, symbol=sym)
-        await broadcast_live_event("skills_crystallized", {
-            "symbol": sym,
-            "new_count": len(new_skills),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        await broadcast_live_event(
+            "skills_crystallized",
+            {
+                "symbol": sym,
+                "new_count": len(new_skills),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
         return {"status": "crystallized", "new_skills": new_skills, "count": len(new_skills)}
-

@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #18.
 
 Formula (paper appendix): -1 * rank(stddev(abs(close-open),5) + (close-open) + correlation(close,open,10))
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_018"
 
 __alpha_meta__ = {
-    'id': 'alpha101_018',
-    'nickname': 'Kakushadze Alpha #18',
-    'theme': ['volatility'],
-    'formula_latex': '-1 * rank(stddev(abs(close-open),5) + (close-open) + correlation(close,open,10))',
-    'columns_required': ['open', 'close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 10,
-    'notes': '',
+    "id": "alpha101_018",
+    "nickname": "Kakushadze Alpha #18",
+    "theme": ["volatility"],
+    "formula_latex": "-1 * rank(stddev(abs(close-open),5) + (close-open) + correlation(close,open,10))",
+    "columns_required": ["open", "close"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 10,
+    "notes": "",
 }
 
 
@@ -52,8 +51,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     close = panel["close"]
     open_ = panel["open"]
 
-
     # Helper aliases (local closures keep the file standalone & purity-safe).
-    diff = (close - open_)
+    diff = close - open_
     out = -1.0 * rank(ts_std(diff.abs(), 5) + diff + ts_corr(close, open_, 10))
     return out

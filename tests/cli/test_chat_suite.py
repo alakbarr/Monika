@@ -31,6 +31,7 @@ from prompt_toolkit.document import Document
 # 1. Theme and Palette Tests
 # ------------------------------------------------------------------------------
 
+
 def test_chat_palette_defaults():
     """Verify default palette values and theme derivation."""
     palette = get_chat_palette("retro_vintage")
@@ -55,6 +56,7 @@ def test_chat_palette_switching():
 # ------------------------------------------------------------------------------
 # 2. Thinking Scrubber Tests
 # ------------------------------------------------------------------------------
+
 
 def test_thinking_scrubber_single_chunk():
     """Verify complete thinking block within a single chunk."""
@@ -93,6 +95,7 @@ def test_thinking_scrubber_split_chunks():
 # ------------------------------------------------------------------------------
 # 3. Chat Renderer Tests
 # ------------------------------------------------------------------------------
+
 
 def test_chat_renderer_visual_elements(capsys):
     """Test renderer visual output blocks."""
@@ -151,6 +154,7 @@ def test_chat_renderer_visual_elements(capsys):
 # 4. Auto-Completer Tests
 # ------------------------------------------------------------------------------
 
+
 def test_chat_completer():
     """Verify ChatCommandCompleter completions."""
     completer = ChatCommandCompleter()
@@ -182,6 +186,7 @@ def test_chat_completer():
 # ------------------------------------------------------------------------------
 # 5. Slash Command Router Tests
 # ------------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_command_router_basic():
@@ -285,6 +290,7 @@ async def test_command_router_export():
 # 6. Prompt Manager & Bottom Toolbar Tests
 # ------------------------------------------------------------------------------
 
+
 def test_prompt_manager_toolbar():
     """Verify prompt manager dynamic bottom toolbar HTML generation."""
     pm = ChatPromptManager()
@@ -303,12 +309,13 @@ def test_prompt_manager_toolbar():
     assert "LIVE" in html_text
     assert "ONLINE" in html_text
     assert "350 tok" in html_text
-    assert ("1.4s" in html_text or "1.5s" in html_text)
+    assert "1.4s" in html_text or "1.5s" in html_text
 
 
 # ------------------------------------------------------------------------------
 # 7. Chat REPL Session Lifecycle Tests
 # ------------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_chat_repl_session_interrupt():

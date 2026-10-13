@@ -17,6 +17,7 @@ def test_get_loop_factory():
     else:
         try:
             import uvloop
+
             assert factory_kwargs == {"loop_factory": uvloop.new_event_loop}
         except ImportError:
             assert factory_kwargs == {}
@@ -24,6 +25,7 @@ def test_get_loop_factory():
 
 def test_run_async_executes_coroutine_with_correct_loop():
     """Verify run_async executes a coroutine and sets SelectorEventLoop on Windows."""
+
     async def sample_coro():
         current_loop = asyncio.get_running_loop()
         return type(current_loop).__name__

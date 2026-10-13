@@ -1,11 +1,11 @@
-
 """GTJA Alpha 125 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     (RANK(DECAYLINEAR(CORR(VWAP,MEAN(VOLUME,80),17),20))/RANK(DECAYLINEAR(DELTA(((CLOSE*0.5)+(VWAP*0.5)),3),16)))
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -33,16 +33,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_125"
 
 __alpha_meta__ = {
-    'id': 'gtja191_125',
-    'theme': ['volume'],
-    'formula_latex': 'see body',
-    'columns_required': ['open', 'high', 'low', 'close', 'volume', 'amount'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 60,
-    'min_warmup_bars': 120,
-    'notes': '',
+    "id": "gtja191_125",
+    "theme": ["volume"],
+    "formula_latex": "see body",
+    "columns_required": ["open", "high", "low", "close", "volume", "amount"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 60,
+    "min_warmup_bars": 120,
+    "notes": "",
 }
 
 

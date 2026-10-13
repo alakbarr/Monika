@@ -156,6 +156,7 @@ MOA_PRESETS: Dict[str, Dict[str, Any]] = {
 @dataclass
 class MoAResult:
     """Final outcome of an MoA deliberation cycle."""
+
     synthesis: str
     preset_name: str
     aggregator_label: str
@@ -193,7 +194,7 @@ def trim_head_tail_context(
 
     if len(pruned) > max_total_messages:
         head_zone = pruned[:2]
-        tail_zone = pruned[-(max_total_messages - 2):]
+        tail_zone = pruned[-(max_total_messages - 2) :]
         pruned = head_zone + tail_zone
 
     return pruned
@@ -263,7 +264,11 @@ class MoARuntime:
                 label=label,
                 output=output,
                 latency_ms=latency_ms,
-                usage={"input_tokens": len(user_prompt) // 4 + 100, "output_tokens": len(output) // 4, "total_tokens": (len(user_prompt) + len(output)) // 4 + 100},
+                usage={
+                    "input_tokens": len(user_prompt) // 4 + 100,
+                    "output_tokens": len(output) // 4,
+                    "total_tokens": (len(user_prompt) + len(output)) // 4 + 100,
+                },
                 is_failed=False,
             )
             return proposer, output, metrics
@@ -304,8 +309,7 @@ class MoARuntime:
         executor = ThreadPoolExecutor(max_workers=max(1, min(len(proposers), 8)))
         try:
             future_to_slot = {
-                executor.submit(self._execute_single_proposer, p, user_prompt, history_msgs): p
-                for p in proposers
+                executor.submit(self._execute_single_proposer, p, user_prompt, history_msgs): p for p in proposers
             }
             try:
                 for future in as_completed(future_to_slot, timeout=timeout_sec):
@@ -332,9 +336,7 @@ class MoARuntime:
             executor.shutdown(wait=False, cancel_futures=True)
 
         # Check success rate
-        successful_proposals = [
-            (lbl, out, m) for lbl, out, m in proposer_outputs if not m.get("is_failed")
-        ]
+        successful_proposals = [(lbl, out, m) for lbl, out, m in proposer_outputs if not m.get("is_failed")]
         is_all_failed = len(successful_proposals) == 0
 
         # 2. Aggregator Synthesis
@@ -377,7 +379,11 @@ class MoARuntime:
                 label=agg_label,
                 output=synthesis,
                 latency_ms=agg_latency,
-                usage={"input_tokens": len(synth_user_msg) // 4 + 150, "output_tokens": len(synthesis) // 4, "total_tokens": (len(synth_user_msg) + len(synthesis)) // 4 + 150},
+                usage={
+                    "input_tokens": len(synth_user_msg) // 4 + 150,
+                    "output_tokens": len(synthesis) // 4,
+                    "total_tokens": (len(synth_user_msg) + len(synthesis)) // 4 + 150,
+                },
                 is_failed=False,
             )
         except Exception as exc:
@@ -518,4 +524,3 @@ class MoAChatCompletions:
                 **kwargs,
             ),
         )
-

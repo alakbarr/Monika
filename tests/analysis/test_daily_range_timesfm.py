@@ -90,21 +90,32 @@ async def test_intraday_level_optimizer_with_timesfm_reachability(db_session):
     await engine.save_forecast(db_session, tfm_fc)
 
     from database.models import OrderBlock
+
     # In-reach order block (2635.0 <= Q90 of 2640.0)
     ob1 = OrderBlock(
-        symbol="XAUUSD", timeframe="H4", direction="bullish",
-        price_low=2632.0, price_high=2635.0, formed_at=now,
+        symbol="XAUUSD",
+        timeframe="H4",
+        direction="bullish",
+        price_low=2632.0,
+        price_high=2635.0,
+        formed_at=now,
     )
     # Overextended order block (2655.0 > Q90 of 2640.0)
     ob2 = OrderBlock(
-        symbol="XAUUSD", timeframe="H4", direction="bullish",
-        price_low=2650.0, price_high=2655.0, formed_at=now,
+        symbol="XAUUSD",
+        timeframe="H4",
+        direction="bullish",
+        price_low=2650.0,
+        price_high=2655.0,
+        formed_at=now,
     )
     db_session.add(ob1)
     db_session.add(ob2)
     await db_session.commit()
 
-    res = await compute_optimal_levels(db_session, "XAUUSD", "buy", entry_price=2610.0, settings={"trading": {"risk": {}}})
+    res = await compute_optimal_levels(
+        db_session, "XAUUSD", "buy", entry_price=2610.0, settings={"trading": {"risk": {}}}
+    )
     assert "error" not in res
     assert len(res["top_tp_candidates"]) > 0
     # Highest scoring candidate should be the in-reach level (<= Q90)

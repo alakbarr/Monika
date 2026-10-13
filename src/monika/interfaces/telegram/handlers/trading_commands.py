@@ -2,6 +2,7 @@
 Trading Operations Command Group for Telegram Bot.
 Defines descriptors, permissions, and handler dispatch mapping for execution and risk controls.
 """
+
 from dataclasses import dataclass
 from typing import Dict, Any
 
@@ -17,7 +18,9 @@ class CommandDescriptor:
 TRADING_COMMAND_DESCRIPTORS: Dict[str, CommandDescriptor] = {
     "pause": CommandDescriptor("pause", True, "Jeda seluruh eksekusi trading otomatis", "/pause [durasi] [alasan]"),
     "resume": CommandDescriptor("resume", True, "Lanjutkan eksekusi trading setelah dijeda", "/resume"),
-    "suspend": CommandDescriptor("suspend", True, "Tangguhkan trading pada simbol tertentu", "/suspend <simbol> [alasan]"),
+    "suspend": CommandDescriptor(
+        "suspend", True, "Tangguhkan trading pada simbol tertentu", "/suspend <simbol> [alasan]"
+    ),
     "unsuspend": CommandDescriptor("unsuspend", True, "Cabut penangguhan trading pada simbol", "/unsuspend <simbol>"),
     "kill": CommandDescriptor("kill", True, "Emergency liquidation: tutup semua posisi dan jeda sistem", "/kill"),
     "emergency": CommandDescriptor("emergency", True, "Alias untuk kill switch darurat", "/emergency"),
@@ -68,4 +71,3 @@ async def execute_trading_command(
         return {"success": True, "count": len(positions), "positions": positions}
 
     return {"success": False, "message": f"Unknown trading command: {command}"}
-

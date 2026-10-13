@@ -23,24 +23,43 @@ _UNSUPPORTED_SCHEMA_ROUTES: set[tuple[str, str]] = set()
 
 # Trading hot-path roles requiring zero-downtime eager failover
 HOT_PATH_ROLES: set[str] = {
-    "stage1_fundamental", "stage2_per_asset_primary", "stage2_per_asset_secondary",
-    "stage2", "stage2_essential", "debate", "debate_judge", "bull_debater", "bear_debater",
-    "bull_analyst", "bear_analyst", "judge", "investment_judge", "risk_gate",
-    "pre_commit_gate", "execution_verifier", "position_guardian", "trailing_stop",
-    "trigger_evaluator", "reactive_graph", "alpha_synthesis", "signal_arbitrator"
+    "stage1_fundamental",
+    "stage2_per_asset_primary",
+    "stage2_per_asset_secondary",
+    "stage2",
+    "stage2_essential",
+    "debate",
+    "debate_judge",
+    "bull_debater",
+    "bear_debater",
+    "bull_analyst",
+    "bear_analyst",
+    "judge",
+    "investment_judge",
+    "risk_gate",
+    "pre_commit_gate",
+    "execution_verifier",
+    "position_guardian",
+    "trailing_stop",
+    "trigger_evaluator",
+    "reactive_graph",
+    "alpha_synthesis",
+    "signal_arbitrator",
 }
+
 
 class ProviderCircuitBreaker:
     """
     Tracks consecutive 5xx/timeouts and permanent entitlement errors across providers.
     States: CLOSED (normal), OPEN (cooldown after 3 failures), HALF_OPEN (1 canary probe).
     """
+
     _states: dict[str, str] = {}
     _consecutive_failures: dict[str, int] = {}
     _open_until: dict[str, float] = {}
     _blacklisted_models: dict[tuple[str, str], float] = {}
     _blacklist_reasons: dict[tuple[str, str], str] = {}
-    
+
     FAILURE_THRESHOLD: int = 3
     COOLDOWN_SECONDS: float = 60.0
 
@@ -51,7 +70,9 @@ class ProviderCircuitBreaker:
             now = time.time()
             if now >= cls._open_until.get(provider, 0.0):
                 cls._states[provider] = "HALF_OPEN"
-                logger.info(f"[CircuitBreaker] Provider '{provider}' transitioning OPEN -> HALF_OPEN (canary probe allowed)")
+                logger.info(
+                    f"[CircuitBreaker] Provider '{provider}' transitioning OPEN -> HALF_OPEN (canary probe allowed)"
+                )
                 return True
             return False
         return True
@@ -82,7 +103,9 @@ class ProviderCircuitBreaker:
         key = (provider, model)
         cls._blacklisted_models[key] = time.time() + duration
         cls._blacklist_reasons[key] = reason
-        logger.warning(f"[CapabilityBlacklist] Blacklisting model '{model}' ({provider}) for {duration:.0f}s. Reason: {reason}")
+        logger.warning(
+            f"[CapabilityBlacklist] Blacklisting model '{model}' ({provider}) for {duration:.0f}s. Reason: {reason}"
+        )
 
     @classmethod
     def is_model_blacklisted(cls, provider: str, model: str) -> bool:
@@ -108,6 +131,7 @@ class EndpointBlackhole:
     30-second blackhole cache for unresponsive local models (Ollama/vLLM) or hanging endpoints.
     Enables sub-100ms instant failover on subsequent turns without waiting for full network timeouts.
     """
+
     _blackhole: Dict[str, float] = {}
 
     @classmethod
@@ -122,7 +146,9 @@ class EndpointBlackhole:
     @classmethod
     def blackhole_endpoint(cls, endpoint_or_model: str, ttl_seconds: float = 30.0) -> None:
         cls._blackhole[endpoint_or_model] = time.time() + ttl_seconds
-        logger.warning(f"[EndpointBlackhole] Blackholing '{endpoint_or_model}' for {ttl_seconds:.0f}s due to connection failure.")
+        logger.warning(
+            f"[EndpointBlackhole] Blackholing '{endpoint_or_model}' for {ttl_seconds:.0f}s due to connection failure."
+        )
 
     @classmethod
     def reset(cls) -> None:
@@ -161,7 +187,9 @@ class LLMFactory:
                 or self._task_roles.get("chat_telegram", {}).get("provider")
                 or "openrouter"
             )
-            logger.warning(f"Unknown task role: {task_role}, falling back to configured default '{default_mod}' ({default_prov})")
+            logger.warning(
+                f"Unknown task role: {task_role}, falling back to configured default '{default_mod}' ({default_prov})"
+            )
             role_config = {
                 "primary": default_mod,
                 "provider": default_prov,
@@ -175,10 +203,14 @@ class LLMFactory:
                     "openai": "max",
                     "deepseek": "max",
                     "groq": "max",
-                }
+                },
             }
 
-        primary_model = role_config.get("primary") or self._llm_config.get("default_model") or (next(iter(self._catalog.keys())) if self._catalog else "gpt-6.1-sol-medium")
+        primary_model = (
+            role_config.get("primary")
+            or self._llm_config.get("default_model")
+            or (next(iter(self._catalog.keys())) if self._catalog else "gpt-6.1-sol-medium")
+        )
         fallback_chain: list[str] = []
 
         # 1. Support list format: fallback: [...] or fallbacks: [...]
@@ -201,18 +233,31 @@ class LLMFactory:
 
         return self._create_client_with_fallback(primary_model, fallback_chain, role_config, task_role=task_role)
 
-
     def _resolve_provider(self, model_name: str) -> str:
         model_info = self._catalog.get(model_name, {})
         if "provider" in model_info:
             return model_info["provider"]
-            
+
         name = model_name.lower()
 
         # Explicit provider:model prefix
         if ":" in name:
             prefix = name.split(":", 1)[0]
-            if prefix in ("gemini", "anthropic", "openai", "openrouter", "deepseek", "groq", "typesafe", "9router", "ninerouter", "nine_router", "ollama", "openai_compatible", "vertex"):
+            if prefix in (
+                "gemini",
+                "anthropic",
+                "openai",
+                "openrouter",
+                "deepseek",
+                "groq",
+                "typesafe",
+                "9router",
+                "ninerouter",
+                "nine_router",
+                "ollama",
+                "openai_compatible",
+                "vertex",
+            ):
                 return prefix
 
         # 9Router prefix & provider resolution
@@ -255,11 +300,7 @@ class LLMFactory:
         return "openai_compatible"
 
     def _resolve_thinking_level(
-        self,
-        model_name: str,
-        role_config: dict,
-        provider_name: str,
-        slot_name: Optional[str] = None
+        self, model_name: str, role_config: dict, provider_name: str, slot_name: Optional[str] = None
     ) -> str:
         """
         Resolves thinking level with multi-tier granular priority:
@@ -273,17 +314,17 @@ class LLMFactory:
         8. 'none' (safe fallback)
         """
         thinking_cfg = role_config.get("thinking")
-        
+
         if isinstance(thinking_cfg, dict):
             # 1. Exact model name
             if model_name in thinking_cfg:
                 return str(thinking_cfg[model_name]).lower()
-                
+
             # 2. Short name / stripped prefix (e.g., 'glm-5.2:free' for 'z-ai/glm-5.2:free')
             short_name = model_name.split("/")[-1] if "/" in model_name else model_name
             if short_name in thinking_cfg:
                 return str(thinking_cfg[short_name]).lower()
-                
+
             # Also check if without :free suffix
             base_name = short_name.split(":")[0] if ":" in short_name else short_name
             if base_name in thinking_cfg:
@@ -292,7 +333,7 @@ class LLMFactory:
             # 3. Slot name (e.g. 'primary', 'fallback_1', ...)
             if slot_name and slot_name in thinking_cfg:
                 return str(thinking_cfg[slot_name]).lower()
-                
+
             # 4. Provider level
             if provider_name in thinking_cfg:
                 return str(thinking_cfg[provider_name]).lower()
@@ -316,7 +357,9 @@ class LLMFactory:
 
         return "none"
 
-    def _create_client_instance(self, model_name: str, role_config: dict, slot_name: Optional[str] = None, task_role: Optional[str] = None) -> Optional[BaseLLMClient]:
+    def _create_client_instance(
+        self, model_name: str, role_config: dict, slot_name: Optional[str] = None, task_role: Optional[str] = None
+    ) -> Optional[BaseLLMClient]:
         provider_name = self._resolve_provider(model_name)
         provider_config = self._providers.get(provider_name)
         if provider_config is None and provider_name in ("9router", "ninerouter", "nine_router"):
@@ -325,7 +368,7 @@ class LLMFactory:
                     provider_config = self._providers[alt]
                     break
         provider_config = provider_config or {}
-        
+
         # In a real scenario, we might want to fail gracefully, but for now we assume enabled
         if provider_config and not provider_config.get("enabled", True):
             if not role_config.get("_benchmark_mode") and not (":" in model_name):
@@ -335,13 +378,27 @@ class LLMFactory:
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
-        
+
         thinking_level = self._resolve_thinking_level(model_name, role_config, provider_name, slot_name=slot_name)
 
         clean_model_name = model_name
         if ":" in model_name:
             prefix, remainder = model_name.split(":", 1)
-            if prefix.lower() in ("gemini", "anthropic", "openai", "openrouter", "deepseek", "groq", "typesafe", "9router", "ninerouter", "nine_router", "ollama", "openai_compatible", "vertex"):
+            if prefix.lower() in (
+                "gemini",
+                "anthropic",
+                "openai",
+                "openrouter",
+                "deepseek",
+                "groq",
+                "typesafe",
+                "9router",
+                "ninerouter",
+                "nine_router",
+                "ollama",
+                "openai_compatible",
+                "vertex",
+            ):
                 clean_model_name = remainder
 
         # Retrieve healthy API key from CredentialPool (M2)
@@ -349,6 +406,7 @@ class LLMFactory:
         # with model-aware paid/free routing & per-model cooldowns. Do not override with a generic pooled key.
         try:
             from monika.infrastructure.api.credential_pool import get_credential_pool
+
             cred_pool = get_credential_pool()
             if provider_name == "openrouter":
                 pooled_key = None
@@ -376,7 +434,7 @@ class LLMFactory:
                 provider_config["base_url"] = provider_config.get("base_url") or "https://openrouter.ai/api"
                 provider_config["use_openrouter"] = True
                 if clean_model_name.startswith("openrouter/"):
-                    clean_model_name = clean_model_name[len("openrouter/"):]
+                    clean_model_name = clean_model_name[len("openrouter/") :]
                 if clean_model_name.lower() in ("kev", "kev-4b"):
                     clean_model_name = "jaredpalmer/kev-4b"
                 elif clean_model_name.lower() in ("liquid-d1", "lfm-7b-d1", "liquid/lfm-7b-d1"):
@@ -387,6 +445,7 @@ class LLMFactory:
                     clean_model_name = "mercury/decide"
 
         from monika.infrastructure.providers.provider_registry import ProviderRegistry
+
         client = ProviderRegistry.create_client(
             provider_name=provider_name,
             model_name=clean_model_name,
@@ -404,10 +463,13 @@ class LLMFactory:
         if client is not None:
             try:
                 from monika.infrastructure.llm.adaptive_thinking import PerSymbolAdaptiveThinkingAllocator
+
                 if thinking_level and thinking_level != "none":
                     level_to_budget = {"low": 1024, "medium": 4096, "high": 10000, "max": 16000, "xhigh": 16000}
                     base_b = level_to_budget.get(thinking_level.lower(), 4000)
-                    adaptive_budget = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(task_role or "", base_budget=base_b)
+                    adaptive_budget = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(
+                        task_role or "", base_budget=base_b
+                    )
                 else:
                     adaptive_budget = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(task_role or "")
 
@@ -420,7 +482,9 @@ class LLMFactory:
 
         return client
 
-    def _create_client_with_fallback(self, primary: str, fallbacks: list[str], role_config: dict, task_role: str = "default") -> "BaseLLMClient":
+    def _create_client_with_fallback(
+        self, primary: str, fallbacks: list[str], role_config: dict, task_role: str = "default"
+    ) -> "BaseLLMClient":
         """
         Creates a wrapper client that implements fallback logic across providers.
         """
@@ -432,7 +496,10 @@ def _safe_clone(val):
     if val is None or isinstance(val, (int, float, str, bool, bytes)):
         return val
     type_name = type(val).__name__
-    if any(unpicklable in type_name for unpicklable in ("Session", "Connection", "Engine", "Client", "Socket", "Loop", "Task")):
+    if any(
+        unpicklable in type_name
+        for unpicklable in ("Session", "Connection", "Engine", "Client", "Socket", "Loop", "Task")
+    ):
         return val
     if isinstance(val, list):
         return [_safe_clone(x) for x in val]
@@ -452,24 +519,25 @@ class FallbackClientWrapper(BaseLLMClient):
     """
     Wrapper that tries primary model, and if it fails, tries fallback models.
     """
-    def __init__(self, factory: LLMFactory, primary: str, fallbacks: list[str], role_config: dict, task_role: str = "default"):
+
+    def __init__(
+        self, factory: LLMFactory, primary: str, fallbacks: list[str], role_config: dict, task_role: str = "default"
+    ):
         self.factory = factory
         self.primary = primary
         self.fallbacks = fallbacks
         self.role_config = role_config
         self.task_role = task_role
         self.max_cost_per_call = (
-            float(role_config["max_cost_per_call"])
-            if role_config.get("max_cost_per_call") is not None
-            else None
+            float(role_config["max_cost_per_call"]) if role_config.get("max_cost_per_call") is not None else None
         )
         self._primary_cooldown_until = None
         self._slot_cooldowns: dict[str, float] = {}
         self._slot_backoff_count: dict[str, int] = {}
-        
+
         primary_provider = factory._resolve_provider(primary)
         primary_thinking = factory._resolve_thinking_level(primary, role_config, primary_provider, slot_name="primary")
-        
+
         # Set attributes required by BaseLLMClient
         super().__init__(
             model=primary,
@@ -478,12 +546,16 @@ class FallbackClientWrapper(BaseLLMClient):
             thinking_level=primary_thinking,
             settings=factory._settings,
             temperature=float(role_config.get("temperature", 0.0)),
-            role=task_role
+            role=task_role,
         )
 
         self._dynamic_thinking_budget = None
         try:
-            from monika.infrastructure.llm.adaptive_thinking import PerSymbolAdaptiveThinkingAllocator, QuantizedThinkingAllocator
+            from monika.infrastructure.llm.adaptive_thinking import (
+                PerSymbolAdaptiveThinkingAllocator,
+                QuantizedThinkingAllocator,
+            )
+
             raw_b = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(task_role)
             self._dynamic_thinking_budget = QuantizedThinkingAllocator.quantize(raw_b)
             self.thinking_budget = self._dynamic_thinking_budget
@@ -494,6 +566,7 @@ class FallbackClientWrapper(BaseLLMClient):
     def _maybe_restore_primary(self) -> bool:
         """Check if primary provider cooldown has expired and restore it."""
         import time
+
         now = time.time()
         expired = [s for s, t in self._slot_cooldowns.items() if now >= t]
         for s in expired:
@@ -514,6 +587,7 @@ class FallbackClientWrapper(BaseLLMClient):
     def set_thinking_budget(self, budget: int) -> None:
         """Sets thinking budget dynamically for wrapper and upcoming provider invocations."""
         from monika.infrastructure.llm.adaptive_thinking import QuantizedThinkingAllocator
+
         quantized = QuantizedThinkingAllocator.quantize(budget)
         self.thinking_budget = quantized
         self._dynamic_thinking_budget = quantized
@@ -522,26 +596,25 @@ class FallbackClientWrapper(BaseLLMClient):
         # Check dynamic runtime model hot-swap overrides
         try:
             from monika.infrastructure.providers.runtime_model_registry import RuntimeModelRegistry
+
             registry = RuntimeModelRegistry.get_instance()
             hot_primary = registry.get_role_model(self.task_role, "primary")
             if hot_primary:
                 self.primary = hot_primary
             for i in range(len(self.fallbacks)):
-                hot_fb = registry.get_role_model(self.task_role, f"fallback_{i+1}")
+                hot_fb = registry.get_role_model(self.task_role, f"fallback_{i + 1}")
                 if hot_fb:
                     self.fallbacks[i] = hot_fb
         except Exception:
             pass
 
         if self._primary_cooldown_until or "primary" in self._slot_cooldowns:
-            models_to_try = [
-                (f"fallback_{i+1}", model) for i, model in enumerate(self.fallbacks)
-            ]
+            models_to_try = [(f"fallback_{i + 1}", model) for i, model in enumerate(self.fallbacks)]
             if not models_to_try:
                 models_to_try = [("primary", self.primary)]
         else:
             models_to_try = [("primary", self.primary)] + [
-                (f"fallback_{i+1}", model) for i, model in enumerate(self.fallbacks)
+                (f"fallback_{i + 1}", model) for i, model in enumerate(self.fallbacks)
             ]
         last_error = None
         last_failed_dict = None
@@ -551,14 +624,17 @@ class FallbackClientWrapper(BaseLLMClient):
         if not bypass_budget:
             try:
                 from monika.core.analytics.cost_tracker import CostTracker
+
                 if CostTracker.is_budget_paused_cached():
-                    logger.critical(f"[CircuitBreaker] Global AI Budget is paused. Blocking LLM call for task_role='{self.task_role}'")
+                    logger.critical(
+                        f"[CircuitBreaker] Global AI Budget is paused. Blocking LLM call for task_role='{self.task_role}'"
+                    )
                     if method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages"]:
                         return {"success": False, "error": "AI Budget Paused", "status": "blocked"}
                     return None
             except Exception as e:
                 logger.debug(f"[CircuitBreaker] Cached budget check error: {e}")
-        
+
         # Stage-aware fast timeouts for hot-path trading
         explicit_timeout = kwargs.pop("_per_model_timeout", None)
         if explicit_timeout is not None:
@@ -594,7 +670,9 @@ class FallbackClientWrapper(BaseLLMClient):
                     continue
 
             if not ProviderCircuitBreaker.is_provider_available(provider):
-                logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' — provider '{provider}' circuit is OPEN")
+                logger.info(
+                    f"[{self.task_role}] Skipping {slot_name} '{model}' — provider '{provider}' circuit is OPEN"
+                )
                 continue
             if ProviderCircuitBreaker.is_model_blacklisted(provider, model):
                 logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' — model is blacklisted")
@@ -605,6 +683,7 @@ class FallbackClientWrapper(BaseLLMClient):
 
             try:
                 from monika.infrastructure.api.credential_pool import get_credential_pool
+
                 cred_pool = get_credential_pool()
                 if cred_pool and not cred_pool.is_model_available(model):
                     logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' — in CredentialPool model cooldown")
@@ -616,6 +695,7 @@ class FallbackClientWrapper(BaseLLMClient):
             if self.max_cost_per_call is not None:
                 try:
                     from monika.infrastructure.providers.pricing_catalog import get_model_pricing
+
                     p = get_model_pricing(model)
                     est_in = min(4096, self.max_tokens // 2)
                     est_out = min(2048, self.max_tokens // 4)
@@ -629,7 +709,9 @@ class FallbackClientWrapper(BaseLLMClient):
                     pass
 
             try:
-                client = self.factory._create_client_instance(model, self.role_config, slot_name=slot_name, task_role=self.task_role)
+                client = self.factory._create_client_instance(
+                    model, self.role_config, slot_name=slot_name, task_role=self.task_role
+                )
             except TypeError:
                 client = self.factory._create_client_instance(model, self.role_config, slot_name=slot_name)
             if not client:
@@ -644,7 +726,7 @@ class FallbackClientWrapper(BaseLLMClient):
                         await res_tb
                 elif hasattr(client, "thinking_budget"):
                     client.thinking_budget = self._dynamic_thinking_budget
-                
+
             slot_retries = 0
             method = getattr(client, method_name, None)
             while True:
@@ -659,6 +741,7 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     # Dynamic capability clamping (prevent context/output token limit errors)
                     from monika.infrastructure.providers.capabilities import get_model_capabilities
+
                     caps = get_model_capabilities(model)
                     if caps and caps.max_output_tokens:
                         if "max_tokens" in safe_kwargs and isinstance(safe_kwargs["max_tokens"], int):
@@ -683,6 +766,7 @@ class FallbackClientWrapper(BaseLLMClient):
                         jev_q = safe_kwargs.get("jev_questions")
                         if isinstance(jev_q, dict):
                             from monika.core.primitives.jev_primitives import jev_questions_to_schema
+
                             if method_name == "classify_json" and not safe_kwargs.get("schema"):
                                 safe_kwargs["schema"] = jev_questions_to_schema(jev_q)
                             elif method_name == "generate_content" and not safe_kwargs.get("response_schema"):
@@ -704,6 +788,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     # ── Hook Interception: pre_llm_call & prompt section injection ──
                     try:
                         import importlib
+
                         engine = importlib.import_module("monika.application.harness.engine").get_plugin_engine()
                         if engine:
                             await engine.emit_hook(
@@ -718,7 +803,10 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     try:
                         import importlib
-                        psr = importlib.import_module("monika.application.analysis.prompt_sections").get_prompt_section_registry()
+
+                        psr = importlib.import_module(
+                            "monika.application.analysis.prompt_sections"
+                        ).get_prompt_section_registry()
                         ctx_info = {"task_role": self.task_role, "model": model}
 
                         def _format_system_prompt(sys_val):
@@ -726,8 +814,7 @@ class FallbackClientWrapper(BaseLLMClient):
                                 return psr.format_full_prompt(sys_val, ctx_info)
                             elif isinstance(sys_val, (list, tuple)):
                                 return type(sys_val)(
-                                    psr.format_full_prompt(s, ctx_info) if isinstance(s, str) else s
-                                    for s in sys_val
+                                    psr.format_full_prompt(s, ctx_info) if isinstance(s, str) else s for s in sys_val
                                 )
                             return sys_val
 
@@ -739,11 +826,8 @@ class FallbackClientWrapper(BaseLLMClient):
                         logger.debug(f"[LLMDispatch] prompt sections notice: {ps_err}")
 
                     call_coro: Any = method(*safe_args, **safe_kwargs)
-                    result = await asyncio.wait_for(
-                        call_coro,
-                        timeout=per_model_timeout
-                    )
-                    
+                    result = await asyncio.wait_for(call_coro, timeout=per_model_timeout)
+
                     if method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages"]:
                         if isinstance(result, dict) and result.get("success") is False:
                             # Treat as failure if the agent loop failed completely
@@ -751,7 +835,7 @@ class FallbackClientWrapper(BaseLLMClient):
                             last_error = result.get("error", "Unknown error in agent loop")
                             logger.warning(f"Model {model} ({slot_name}) failed in {method_name}: {last_error}")
                             break
-                        
+
                     if result is None and method_name in ["generate", "classify_json", "generate_content"]:
                         logger.warning(f"Model {model} ({slot_name}) returned None in {method_name}")
                         break
@@ -762,7 +846,7 @@ class FallbackClientWrapper(BaseLLMClient):
                         result.setdefault("_is_fallback", True)
                         if "_is_high_confidence" not in result:
                             result["_is_high_confidence"] = True
-                        
+
                     self.model = model
                     self.thinking_level = getattr(client, "thinking_level", self.thinking_level)
                     ProviderCircuitBreaker.record_provider_success(provider)
@@ -779,19 +863,24 @@ class FallbackClientWrapper(BaseLLMClient):
                         )
                         logger.warning(msg)
                         try:
+
                             async def _record_fallback_log(text_msg: str):
                                 try:
                                     from monika.infrastructure.database.db import get_session
                                     from monika.infrastructure.database.models import ActivityLog
+
                                     async with get_session() as s:
-                                        s.add(ActivityLog(
-                                            category='system',
-                                            description=text_msg[:500],
-                                            actor='llm_factory',
-                                        ))
+                                        s.add(
+                                            ActivityLog(
+                                                category="system",
+                                                description=text_msg[:500],
+                                                actor="llm_factory",
+                                            )
+                                        )
                                         await s.commit()
                                 except Exception as db_err:
                                     logger.debug(f"Failed to record fallback log to DB: {db_err}")
+
                             asyncio.create_task(_record_fallback_log(msg))
                         except Exception:
                             pass
@@ -799,6 +888,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     # ── Hook Interception: post_llm_call ──
                     try:
                         import importlib
+
                         engine = importlib.import_module("monika.application.harness.engine").get_plugin_engine()
                         if engine:
                             await engine.emit_hook(
@@ -814,9 +904,15 @@ class FallbackClientWrapper(BaseLLMClient):
                     return result
                 except (asyncio.TimeoutError, StreamTimeoutError, StreamSafetyTimeoutError) as timeout_err:
                     # Attempt 1x dual-protocol non-streaming fallback if stream failed
-                    if kwargs.get("stream", True) and method_name in ["generate", "generate_content"] and callable(method):
+                    if (
+                        kwargs.get("stream", True)
+                        and method_name in ["generate", "generate_content"]
+                        and callable(method)
+                    ):
                         try:
-                            logger.info(f"[{self.task_role}] Stream timeout on {slot_name}/{model}, attempting 1x non-streaming fallback...")
+                            logger.info(
+                                f"[{self.task_role}] Stream timeout on {slot_name}/{model}, attempting 1x non-streaming fallback..."
+                            )
                             ns_kwargs = dict(kwargs)
                             ns_kwargs["stream"] = False
                             ns_coro: Any = method(*args, **ns_kwargs)
@@ -830,15 +926,22 @@ class FallbackClientWrapper(BaseLLMClient):
                             logger.debug(f"Non-streaming fallback failed: {ns_err}")
 
                     from monika.infrastructure.providers.provider_failover_classifier import FailoverReason
+
                     reason = FailoverReason.NETWORK_TIMEOUT
-                    detail = f" ({timeout_err})" if isinstance(timeout_err, (StreamTimeoutError, StreamSafetyTimeoutError)) else f" after {per_model_timeout:.0f}s"
+                    detail = (
+                        f" ({timeout_err})"
+                        if isinstance(timeout_err, (StreamTimeoutError, StreamSafetyTimeoutError))
+                        else f" after {per_model_timeout:.0f}s"
+                    )
                     last_error = f"Model {model} ({slot_name}) timed out in {method_name}{detail}"
                     logger.warning(f"{last_error}. Trying next fallback...")
 
-                    ProviderCircuitBreaker.record_provider_failure(provider, is_server_or_timeout=True, reason="timeout")
+                    ProviderCircuitBreaker.record_provider_failure(
+                        provider, is_server_or_timeout=True, reason="timeout"
+                    )
 
                     cnt = self._slot_backoff_count.get(slot_name, 0)
-                    cd_duration = min(60.0 * (2 ** cnt), 1800.0)
+                    cd_duration = min(60.0 * (2**cnt), 1800.0)
                     self._slot_cooldowns[slot_name] = time.time() + cd_duration
                     self._slot_backoff_count[slot_name] = cnt + 1
                     if slot_name == "primary":
@@ -856,10 +959,16 @@ class FallbackClientWrapper(BaseLLMClient):
                     err_msg = str(e).lower()
                     if "response_format" in err_msg or "schema validation" in err_msg or "json_schema" in err_msg:
                         _UNSUPPORTED_SCHEMA_ROUTES.add((provider, model))
-                        logger.warning(f"[{self.task_role}] Memoized unsupported response_format for {provider}/{model}")
+                        logger.warning(
+                            f"[{self.task_role}] Memoized unsupported response_format for {provider}/{model}"
+                        )
 
                     # ── C4: STRUCTURED ERROR CLASSIFICATION ──
-                    from monika.infrastructure.providers.provider_failover_classifier import classify_error, FailoverReason
+                    from monika.infrastructure.providers.provider_failover_classifier import (
+                        classify_error,
+                        FailoverReason,
+                    )
+
                     reason, detail = classify_error(e)
 
                     logger.warning(
@@ -877,7 +986,10 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     # Strategy 1b: Completion ceiling exceeded — clamp max_tokens and retry same slot in-place
                     if reason.is_completion_ceiling:
-                        from monika.infrastructure.providers.provider_failover_classifier import extract_completion_ceiling
+                        from monika.infrastructure.providers.provider_failover_classifier import (
+                            extract_completion_ceiling,
+                        )
+
                         ceiling = extract_completion_ceiling(e)
                         if ceiling and ceiling > 0 and slot_retries < 1:
                             slot_retries += 1
@@ -921,13 +1033,16 @@ class FallbackClientWrapper(BaseLLMClient):
                     if is_rate_or_auth:
                         try:
                             from monika.infrastructure.api.credential_pool import APICredentialPool
+
                             cred_pool = APICredentialPool()
                             curr_key = getattr(client, "api_key", None) or getattr(client, "_api_key", None)
                             if curr_key:
                                 cred_pool.report_rate_limit(provider, curr_key, model=model)
                             next_key = cred_pool.get_key(provider, model=model, is_hot_path=is_hot_path)
                             if next_key and next_key != curr_key:
-                                logger.info(f"[{self.task_role}] In-flight key rotation for {provider} on {slot_name}. Retrying immediately.")
+                                logger.info(
+                                    f"[{self.task_role}] In-flight key rotation for {provider} on {slot_name}. Retrying immediately."
+                                )
                                 if hasattr(client, "api_key"):
                                     setattr(client, "api_key", next_key)
                                 if hasattr(client, "_api_key"):
@@ -940,10 +1055,14 @@ class FallbackClientWrapper(BaseLLMClient):
                             logger.debug(f"Credential pool rotation pass-through: {pool_err}")
 
                     # Strategy 3: Retry same model with backoff OR Eager Failover for hot paths
-                    can_failover = reason.can_failover(is_hot_path=is_hot_path) if hasattr(reason, "can_failover") else reason.should_failover
+                    can_failover = (
+                        reason.can_failover(is_hot_path=is_hot_path)
+                        if hasattr(reason, "can_failover")
+                        else reason.should_failover
+                    )
                     if not can_failover and reason.max_retries > 0:
                         if slot_retries < reason.max_retries:
-                            backoff = reason.backoff_seconds * (1.5 ** slot_retries)
+                            backoff = reason.backoff_seconds * (1.5**slot_retries)
                             slot_retries += 1
                             logger.info(
                                 f"[{self.task_role}] {reason.value} — retrying {slot_name} "
@@ -954,9 +1073,20 @@ class FallbackClientWrapper(BaseLLMClient):
                             continue
 
                     # Strategy 4: Failover to next model with exponential cooldown
-                    is_server_or_timeout = (reason in (FailoverReason.SERVER_ERROR, FailoverReason.NETWORK_TIMEOUT, FailoverReason.NETWORK_CONNECTION))
-                    ProviderCircuitBreaker.record_provider_failure(provider, is_server_or_timeout=is_server_or_timeout, reason=reason.value)
-                    if reason in (FailoverReason.AUTH_PERMANENT, FailoverReason.BILLING_EXHAUSTED, FailoverReason.HARD_QUOTA_EXHAUSTED, FailoverReason.MODEL_NOT_FOUND):
+                    is_server_or_timeout = reason in (
+                        FailoverReason.SERVER_ERROR,
+                        FailoverReason.NETWORK_TIMEOUT,
+                        FailoverReason.NETWORK_CONNECTION,
+                    )
+                    ProviderCircuitBreaker.record_provider_failure(
+                        provider, is_server_or_timeout=is_server_or_timeout, reason=reason.value
+                    )
+                    if reason in (
+                        FailoverReason.AUTH_PERMANENT,
+                        FailoverReason.BILLING_EXHAUSTED,
+                        FailoverReason.HARD_QUOTA_EXHAUSTED,
+                        FailoverReason.MODEL_NOT_FOUND,
+                    ):
                         cd_time = 7200.0 if reason.is_hard_quota_exhausted else 1800.0
                         ProviderCircuitBreaker.blacklist_model(provider, model, reason=reason.value, duration=cd_time)
 
@@ -966,13 +1096,16 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     # Check for upstream Retry-After delay header (honoring provider guidance)
                     from monika.infrastructure.providers.base_provider import extract_retry_after
+
                     retry_delay = extract_retry_after(e)
                     if retry_delay and retry_delay > 0:
                         cd_duration = min(retry_delay, 1800.0)
-                        logger.info(f"[{self.task_role}] Honoring upstream Retry-After delay of {cd_duration:.1f}s for {slot_name}/{model}")
+                        logger.info(
+                            f"[{self.task_role}] Honoring upstream Retry-After delay of {cd_duration:.1f}s for {slot_name}/{model}"
+                        )
                     else:
                         cnt = self._slot_backoff_count.get(slot_name, 0)
-                        cd_duration = min(60.0 * (2 ** cnt), 1800.0)
+                        cd_duration = min(60.0 * (2**cnt), 1800.0)
                     self._slot_cooldowns[slot_name] = time.time() + cd_duration
                     self._slot_backoff_count[slot_name] = self._slot_backoff_count.get(slot_name, 0) + 1
                     if slot_name == "primary":
@@ -991,9 +1124,11 @@ class FallbackClientWrapper(BaseLLMClient):
                             f"[AutoFailover] HOT PATH role '{self.task_role}' automatically failing over "
                             f"from {slot_name}/{model} due to {reason.value}. Zero-consent failover engaged."
                         )
+
                         async def _notify_failover_post_facto(role: str, failed_model: str, err_reason: str):
                             try:
                                 from monika.infrastructure.infra.notifier import get_notifier
+
                                 await get_notifier().send_alert(
                                     f"[PERINGATAN] *HOT PATH Auto-Failover*\n"
                                     f"Role: `{role}`\n"
@@ -1003,15 +1138,16 @@ class FallbackClientWrapper(BaseLLMClient):
                                 )
                             except Exception:
                                 pass
+
                         try:
                             asyncio.create_task(_notify_failover_post_facto(self.task_role, model, reason.value))
                         except Exception:
                             pass
 
                     break
-                
+
         logger.error(f"All fallback models failed for {method_name}. Last error: {last_error}")
-        
+
         # Return sensible defaults on complete failure
         if method_name in ["generate", "generate_content", "classify_json", "system_one"]:
             return None
@@ -1036,50 +1172,138 @@ class FallbackClientWrapper(BaseLLMClient):
                 input_tokens=0,
                 output_tokens=0,
             )
-        
+
         raise Exception(f"All fallback models failed. Last error: {last_error}")
 
     def _get_client(self, slot_name: str = "primary") -> Optional[BaseLLMClient]:
         """Returns client instance for specified slot (defaults to active primary)."""
         model = self.primary if slot_name == "primary" else (self.fallbacks[0] if self.fallbacks else self.primary)
         try:
-            return self.factory._create_client_instance(model, self.role_config, slot_name=slot_name, task_role=self.task_role)
+            return self.factory._create_client_instance(
+                model, self.role_config, slot_name=slot_name, task_role=self.task_role
+            )
         except TypeError:
             return self.factory._create_client_instance(model, self.role_config, slot_name=slot_name)
 
-    async def generate(self, prompt: str, system: str = "", temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs) -> Optional[str]:
+    async def generate(
+        self,
+        prompt: str,
+        system: str = "",
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> Optional[str]:
         call_kwargs = dict(system=system, temperature=temperature, **kwargs)
         if max_tokens is not None:
             call_kwargs["max_tokens"] = max_tokens
         return await self._execute_with_fallback("generate", prompt, **call_kwargs)
 
-    async def generate_content(self, system_prompt: str = "", user_message: str = "",
-                                response_schema: Optional[dict] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs) -> Optional[str]:
-        call_kwargs = dict(system_prompt=system_prompt, user_message=user_message, response_schema=response_schema, temperature=temperature, **kwargs)
+    async def generate_content(
+        self,
+        system_prompt: str = "",
+        user_message: str = "",
+        response_schema: Optional[dict] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> Optional[str]:
+        call_kwargs = dict(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            response_schema=response_schema,
+            temperature=temperature,
+            **kwargs,
+        )
         if max_tokens is not None:
             call_kwargs["max_tokens"] = max_tokens
         return await self._execute_with_fallback("generate_content", **call_kwargs)
-        
-    async def classify_json(self, prompt: str, system_prompt: Optional[str] = None, schema: Optional[dict] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs) -> Optional[dict]:
+
+    async def classify_json(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        schema: Optional[dict] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> Optional[dict]:
         call_kwargs = dict(system_prompt=system_prompt, schema=schema, temperature=temperature, **kwargs)
         if max_tokens is not None:
             call_kwargs["max_tokens"] = max_tokens
         return await self._execute_with_fallback("classify_json", prompt, **call_kwargs)
 
     async def system_one(self, state: Any, questions: dict, timeout: float = 15.0, **kwargs: Any) -> Any:
-        return await self._execute_with_fallback("system_one", state=state, questions=questions, timeout=timeout, **kwargs)
-        
+        return await self._execute_with_fallback(
+            "system_one", state=state, questions=questions, timeout=timeout, **kwargs
+        )
+
     async def run_tool_agent(self, messages: list, tools: list, system_prompt: str, **kwargs) -> MockResponse:
         return await self._execute_with_fallback("run_tool_agent", messages, tools, system_prompt, **kwargs)
-        
-    async def run_agent(self, session, system_prompt: str | tuple[str, str] | Any, user_message: str, tools: list, stage_name: str = "unknown", extra_context: Optional[str] = None, prefetch_satisfied_tools: Optional[set] = None, **kwargs) -> dict:
-        return await self._execute_with_fallback("run_agent", session, system_prompt, user_message, tools, stage_name=stage_name, extra_context=extra_context, prefetch_satisfied_tools=prefetch_satisfied_tools, **kwargs)
-        
-    async def run_chat_loop(self, system_prompt: str, conversation_history: list, new_user_message: str, tools: list, tool_executor=None, **kwargs) -> dict:
-        return await self._execute_with_fallback("run_chat_loop", system_prompt, conversation_history, new_user_message, tools, tool_executor=tool_executor, **kwargs)
-        
-    async def run_agent_from_messages(self, session, system_prompt: str | tuple[str, str] | Any, messages: list, tools: list, max_tool_turns: int = 15, stage_name: str = "unknown", prefetch_satisfied_tools: Optional[set] = None, **kwargs) -> dict:
-        return await self._execute_with_fallback("run_agent_from_messages", session, system_prompt, messages, tools, max_tool_turns=max_tool_turns, stage_name=stage_name, prefetch_satisfied_tools=prefetch_satisfied_tools, **kwargs)
+
+    async def run_agent(
+        self,
+        session,
+        system_prompt: str | tuple[str, str] | Any,
+        user_message: str,
+        tools: list,
+        stage_name: str = "unknown",
+        extra_context: Optional[str] = None,
+        prefetch_satisfied_tools: Optional[set] = None,
+        **kwargs,
+    ) -> dict:
+        return await self._execute_with_fallback(
+            "run_agent",
+            session,
+            system_prompt,
+            user_message,
+            tools,
+            stage_name=stage_name,
+            extra_context=extra_context,
+            prefetch_satisfied_tools=prefetch_satisfied_tools,
+            **kwargs,
+        )
+
+    async def run_chat_loop(
+        self,
+        system_prompt: str,
+        conversation_history: list,
+        new_user_message: str,
+        tools: list,
+        tool_executor=None,
+        **kwargs,
+    ) -> dict:
+        return await self._execute_with_fallback(
+            "run_chat_loop",
+            system_prompt,
+            conversation_history,
+            new_user_message,
+            tools,
+            tool_executor=tool_executor,
+            **kwargs,
+        )
+
+    async def run_agent_from_messages(
+        self,
+        session,
+        system_prompt: str | tuple[str, str] | Any,
+        messages: list,
+        tools: list,
+        max_tool_turns: int = 15,
+        stage_name: str = "unknown",
+        prefetch_satisfied_tools: Optional[set] = None,
+        **kwargs,
+    ) -> dict:
+        return await self._execute_with_fallback(
+            "run_agent_from_messages",
+            session,
+            system_prompt,
+            messages,
+            tools,
+            max_tool_turns=max_tool_turns,
+            stage_name=stage_name,
+            prefetch_satisfied_tools=prefetch_satisfied_tools,
+            **kwargs,
+        )
 
 
 # Helper function for easy access
@@ -1088,6 +1312,7 @@ def get_client_for_task(task_role: str, settings: Optional[dict] = None) -> Base
     if settings is None:
         try:
             from monika.core.config.settings import load_settings
+
             loaded = load_settings()
             resolved_settings = dict(loaded) if isinstance(loaded, dict) else loaded.model_dump()
         except Exception:
@@ -1096,6 +1321,7 @@ def get_client_for_task(task_role: str, settings: Optional[dict] = None) -> Base
         resolved_settings = settings
     factory = LLMFactory(resolved_settings)
     return factory.get_client_for_task(task_role)
+
 
 def create_client(model_name: str, settings: dict, role_config: Optional[dict] = None) -> BaseLLMClient:
     factory = LLMFactory(settings)

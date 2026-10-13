@@ -7,6 +7,7 @@ Exports spans in OTLP/HTTP JSON format to any OTel-compatible backend
 
 ponytail: No-op when disabled. Single class, no heavy framework dependencies.
 """
+
 import logging
 import json
 import time
@@ -87,15 +88,18 @@ class OTLPSpanExporter:
         batch = [self._buffer.popleft() for _ in range(min(len(self._buffer), self._batch_size))]
         try:
             import urllib.request
+
             payload = {
-                "resourceSpans": [{
-                    "resource": {
-                        "attributes": [
-                            {"key": "service.name", "value": {"stringValue": "tradeagent"}},
-                        ]
-                    },
-                    "scopeSpans": [{"spans": batch}],
-                }]
+                "resourceSpans": [
+                    {
+                        "resource": {
+                            "attributes": [
+                                {"key": "service.name", "value": {"stringValue": "tradeagent"}},
+                            ]
+                        },
+                        "scopeSpans": [{"spans": batch}],
+                    }
+                ]
             }
             req = urllib.request.Request(
                 self._endpoint,
@@ -123,6 +127,7 @@ class OTLPSpanExporter:
         if not iso_str:
             return 0
         from datetime import datetime
+
         try:
             dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
             return int(dt.timestamp() * 1_000_000_000)

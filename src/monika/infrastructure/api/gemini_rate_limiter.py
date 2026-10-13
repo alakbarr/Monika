@@ -5,6 +5,7 @@
 """
 GeminiRateLimiter — Fast-path in-memory rate limiter dengan persistensi DB berkala.
 """
+
 import asyncio
 import json
 import logging
@@ -19,6 +20,7 @@ _QUOTA_LOCK = asyncio.Lock()
 
 import os
 
+
 def _get_num_keys() -> int:
     raw = os.getenv("GEMINI_API_KEYS", "")
     keys = [k for k in raw.split(",") if k.strip()]
@@ -26,7 +28,9 @@ def _get_num_keys() -> int:
         keys = [os.getenv("GEMINI_API_KEY")]
     return max(1, len(keys))
 
+
 _CUSTOM_QUOTAS = {}
+
 
 def get_quota_for_model(model_name: str) -> dict:
     num_keys = _get_num_keys()
@@ -39,6 +43,7 @@ def get_quota_for_model(model_name: str) -> dict:
     rpd = _CUSTOM_QUOTAS.get("flash_daily_quota", 500 * num_keys)
     return {"rpd": rpd, "rpm": 15 * num_keys}
 
+
 def configure_from_settings(settings: dict) -> None:
     num_keys = _get_num_keys()
     gemini_cfg = settings.get("gemini", {})
@@ -50,7 +55,7 @@ def configure_from_settings(settings: dict) -> None:
 
 class GeminiRateLimiter:
     # Class-level shared state — persists across instances within same process
-    _daily_counts: ClassVar[dict] = {}   # {"gemini-3.5-flash": {"date": "2026-08-08", "count": 5}}
+    _daily_counts: ClassVar[dict] = {}  # {"gemini-3.5-flash": {"date": "2026-08-08", "count": 5}}
     _rpm_windows: ClassVar[dict] = defaultdict(deque)
     _rpm_lock: ClassVar[asyncio.Lock] = asyncio.Lock()
     _initialized: ClassVar[bool] = False
@@ -66,19 +71,25 @@ class GeminiRateLimiter:
             return
         cls._initialized = True
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        
+
         try:
             from sqlalchemy import select
             from monika.infrastructure.database.models import SystemConfig
-            
+
             # We will lazy-load counts per model as they are encountered instead of pre-loading all possible models here.
             # But we can try to fetch all gemini_quota_%_today configs
             prefix = f"gemini_quota_%"
             suffix = f"%_{today}"
-            cfgs = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key.like(prefix)).where(SystemConfig.key.like(suffix))
-            )).scalars().all()
-            
+            cfgs = (
+                (
+                    await session.execute(
+                        select(SystemConfig).where(SystemConfig.key.like(prefix)).where(SystemConfig.key.like(suffix))
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
             for cfg in cfgs:
                 # Key format: gemini_quota_{model}_{date}
                 parts = cfg.key.split("_")
@@ -101,8 +112,9 @@ class GeminiRateLimiter:
             today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             key = f"gemini_quota_{model}_{today}"
             count = self._daily_counts[model]["count"]
-            
+
             from monika.infrastructure.database.models import SystemConfig
+
             await SystemConfig.upsert(self._session, key=key, value=str(count))
             await self._session.commit()
         except Exception as e:
@@ -112,7 +124,7 @@ class GeminiRateLimiter:
         """Ambil (acquire) satu slot kuota secara atomik. Return True jika sukses."""
         if self._session:
             await self._ensure_initialized(self._session)
-        
+
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         cfg = get_quota_for_model(model)
         max_rpd = cfg.get("rpd", 0)
@@ -125,11 +137,11 @@ class GeminiRateLimiter:
             # Remove entries older than 60 seconds
             while window and now - window[0] > 60.0:
                 window.popleft()
-            
+
             if len(window) >= max_rpm:
                 logger.warning(f"Gemini {model} RPM limit reached ({len(window)}/{max_rpm})")
                 return False
-            
+
             # Tentative: record BEFORE RPD check (will remove if RPD fails)
             window.append(now)
             rpm_recorded = True
@@ -139,7 +151,7 @@ class GeminiRateLimiter:
         async with _QUOTA_LOCK:
             if self._daily_counts.get(model, {}).get("date") != today:
                 self._daily_counts[model] = {"date": today, "count": 0}
-            
+
             current = self._daily_counts[model]["count"]
             if max_rpd > 0 and current >= max_rpd:
                 logger.warning(f"Gemini {model} daily quota exhausted ({current}/{max_rpd})")
@@ -150,24 +162,26 @@ class GeminiRateLimiter:
                     except ValueError:
                         pass
                 return False
-            
+
             self._daily_counts[model]["count"] = current + 1
             acquired = True
 
         # Persist periodically
         if acquired and self._daily_counts[model]["count"] % 5 == 0:
             asyncio.create_task(self._persist_async(model, today))
-        
+
         return acquired
 
     async def _persist_async(self, model: str, today: str) -> None:
         """Simpan data di background agar tidak memblokir main thread."""
         try:
             from monika.infrastructure.database.db import get_session as _gs
+
             async with _gs() as persist_session:
                 key = f"gemini_quota_{model}_{today}"
                 count = self._daily_counts.get(model, {}).get("count", 0)
                 from monika.infrastructure.database.models import SystemConfig as _SC
+
                 await _SC.upsert(persist_session, key=key, value=str(count))
                 await persist_session.commit()
         except Exception as e:

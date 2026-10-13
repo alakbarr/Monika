@@ -17,7 +17,7 @@ logger = logging.getLogger("TradingAgent.SqliteCheckpointer")
 
 class SqliteCheckpointSaver(InMemorySaver):
     """Local SQLite checkpointer providing crash-safe state persistence across restarts.
-    
+
     Serves as an autonomous tier between PostgreSQL and volatile MemorySaver (M-5).
     """
 
@@ -25,6 +25,7 @@ class SqliteCheckpointSaver(InMemorySaver):
         super().__init__()
         if db_path is None:
             from monika.infrastructure.infra.paths import BASE_DIR
+
             self.db_path = str(BASE_DIR / ".agent_state" / "checkpoints.sqlite")
         else:
             self.db_path = db_path
@@ -48,7 +49,9 @@ class SqliteCheckpointSaver(InMemorySaver):
             cursor.execute("PRAGMA integrity_check")
             integrity = cursor.fetchone()
             if integrity and integrity[0] != "ok":
-                logger.error(f"[SqliteCheckpointer] DB integrity failure: {integrity[0]}. Running self-healing REINDEX.")
+                logger.error(
+                    f"[SqliteCheckpointer] DB integrity failure: {integrity[0]}. Running self-healing REINDEX."
+                )
                 conn.execute("REINDEX")
 
             conn.execute("""
@@ -180,7 +183,16 @@ class SqliteCheckpointSaver(InMemorySaver):
                     (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, type_chk, c_blob, type_meta, m_blob),
+                    (
+                        thread_id,
+                        checkpoint_ns,
+                        checkpoint_id,
+                        parent_checkpoint_id,
+                        type_chk,
+                        c_blob,
+                        type_meta,
+                        m_blob,
+                    ),
                 )
                 conn.commit()
             finally:
@@ -226,19 +238,37 @@ class SqliteCheckpointSaver(InMemorySaver):
                         (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         """,
-                        (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, type_chk, c_blob, type_meta, m_blob),
+                        (
+                            thread_id,
+                            checkpoint_ns,
+                            checkpoint_id,
+                            parent_checkpoint_id,
+                            type_chk,
+                            c_blob,
+                            type_meta,
+                            m_blob,
+                        ),
                     )
                     await conn.commit()
             else:
                 await asyncio.to_thread(
                     self._persist_checkpoint_sync,
-                    thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, type_chk, c_blob, type_meta, m_blob
+                    thread_id,
+                    checkpoint_ns,
+                    checkpoint_id,
+                    parent_checkpoint_id,
+                    type_chk,
+                    c_blob,
+                    type_meta,
+                    m_blob,
                 )
         except Exception as e:
             logger.warning(f"[SqliteCheckpointer] Failed to persist checkpoint asynchronously: {e}")
         return res
 
-    def _persist_checkpoint_sync(self, thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, type_chk, c_blob, type_meta, m_blob):
+    def _persist_checkpoint_sync(
+        self, thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, type_chk, c_blob, type_meta, m_blob
+    ):
         conn = self._get_connection()
         try:
             conn.execute(
@@ -276,7 +306,9 @@ class SqliteCheckpointSaver(InMemorySaver):
                     v_type, v_blob = ("json", serde.dumps(value))
                 else:
                     v_type, v_blob = ("json", b"")
-                rows.append((thread_id, checkpoint_ns, checkpoint_id, task_id, idx, str(channel), str(v_type), bytes(v_blob)))
+                rows.append(
+                    (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, str(channel), str(v_type), bytes(v_blob))
+                )
 
             conn = self._get_connection()
             try:
@@ -317,7 +349,9 @@ class SqliteCheckpointSaver(InMemorySaver):
                     v_type, v_blob = ("json", serde.dumps(value))
                 else:
                     v_type, v_blob = ("json", b"")
-                rows.append((thread_id, checkpoint_ns, checkpoint_id, task_id, idx, str(channel), str(v_type), bytes(v_blob)))
+                rows.append(
+                    (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, str(channel), str(v_type), bytes(v_blob))
+                )
 
             if aiosqlite is not None:
                 async with aiosqlite.connect(self.db_path, timeout=30.0) as conn:
@@ -350,4 +384,3 @@ class SqliteCheckpointSaver(InMemorySaver):
             conn.commit()
         finally:
             conn.close()
-

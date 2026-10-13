@@ -26,7 +26,7 @@ def test_safe_div():
     # scalar
     assert np.isnan(safe_div(10.0, 0.0))
     assert safe_div(10.0, 2.0) == pytest.approx(5.0)
-    
+
     # dataframe
     df_a = pd.DataFrame({"x": [10.0, 20.0, 30.0], "y": [4.0, 5.0, 6.0]})
     df_b = pd.DataFrame({"x": [2.0, 0.0, 5.0], "y": [2.0, np.nan, 3.0]})
@@ -81,11 +81,13 @@ def test_ts_argmax_argmin():
 
 
 def test_zscore_and_scale():
-    df = pd.DataFrame({
-        "a": [1.0, 2.0, 10.0],
-        "b": [3.0, 2.0, 20.0],
-        "c": [5.0, 2.0, 30.0],
-    })
+    df = pd.DataFrame(
+        {
+            "a": [1.0, 2.0, 10.0],
+            "b": [3.0, 2.0, 20.0],
+            "c": [5.0, 2.0, 30.0],
+        }
+    )
     zs = zscore(df)
     # row 0: [1, 3, 5], mean=3, std=2 -> zscores: -1, 0, 1
     assert zs.iloc[0, 0] == pytest.approx(-1.0)

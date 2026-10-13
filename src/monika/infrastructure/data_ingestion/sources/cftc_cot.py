@@ -131,12 +131,14 @@ class CFTCCOTFetcher:
                 continue
 
             # Lewati jika tanggal ini sudah ada di DB
-            existing = (await self.session.execute(
-                select(COTReport.id)
-                .where(COTReport.market_code == market_code)
-                .where(COTReport.report_date == report_date)
-                .limit(1)
-            )).scalar_one_or_none()
+            existing = (
+                await self.session.execute(
+                    select(COTReport.id)
+                    .where(COTReport.market_code == market_code)
+                    .where(COTReport.report_date == report_date)
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
 
             if existing is not None:
                 continue
@@ -235,13 +237,14 @@ class CFTCCOTFetcher:
             if isinstance(value, str):
                 value = value.replace(",", "").strip()
             return int(float(value))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return 0
 
 
 # ---------------------------------------------------------------------------
 # Quick standalone test
 # ---------------------------------------------------------------------------
+
 
 async def _test():
     import os
@@ -276,6 +279,7 @@ async def _test():
 
 if __name__ == "__main__":
     import sys
+
     if sys.platform == "win32":
         asyncio.run(_test(), loop_factory=asyncio.SelectorEventLoop)
     else:

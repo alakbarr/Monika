@@ -73,7 +73,9 @@ class ConfigReloader:
                     self.risk_gate.update_parameters(new_config)
                     if hasattr(self.risk_gate, "settings") and isinstance(self.risk_gate.settings, dict):
                         if "agent_architecture" in new_config:
-                            self.risk_gate.settings.setdefault("agent_architecture", {}).update(new_config.get("agent_architecture", {}))
+                            self.risk_gate.settings.setdefault("agent_architecture", {}).update(
+                                new_config.get("agent_architecture", {})
+                            )
                         if "trading" in new_config:
                             self.risk_gate.settings.setdefault("trading", {}).update(new_config.get("trading", {}))
 
@@ -115,6 +117,7 @@ class ConfigReloader:
 
 class RiskParameterReloader(ConfigReloader):
     """Backward-compatible alias for ConfigReloader focusing on RiskGate."""
+
     pass
 
 
@@ -129,7 +132,9 @@ class AtomicConfigWriter:
         import shutil
 
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        target_path = os.path.join(base_dir, self.config_path) if not os.path.isabs(self.config_path) else self.config_path
+        target_path = (
+            os.path.join(base_dir, self.config_path) if not os.path.isabs(self.config_path) else self.config_path
+        )
 
         with open(target_path, "r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}

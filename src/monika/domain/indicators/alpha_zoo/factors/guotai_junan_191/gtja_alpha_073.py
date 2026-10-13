@@ -1,4 +1,3 @@
-
 """GTJA Alpha #73.
 
 Formula: ((TSRANK(DECAYLINEAR(DECAYLINEAR(CORR((CLOSE),VOLUME,10),16),4),5) - RANK(DECAYLINEAR(CORR(VWAP,MEAN(VOLUME,30),4),3))) * -1)
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_073",
-    "theme": ['volume'],
-    "formula_latex": '((TSRANK(DECAYLINEAR(DECAYLINEAR(CORR((CLOSE),VOLUME,10),16),4),5) - RANK(DECAYLINEAR(CORR(VWAP,MEAN(VOLUME,30),4),3))) * -1)',
-    "columns_required": ['close', 'volume', 'amount'],
+    "theme": ["volume"],
+    "formula_latex": "((TSRANK(DECAYLINEAR(DECAYLINEAR(CORR((CLOSE),VOLUME,10),16),4),5) - RANK(DECAYLINEAR(CORR(VWAP,MEAN(VOLUME,30),4),3))) * -1)",
+    "columns_required": ["close", "volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 16,
     "min_warmup_bars": 35,
-    "notes": 'Composite of decay-linear of close-volume corr minus another decay term.',
+    "notes": "Composite of decay-linear of close-volume corr minus another decay term.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]

@@ -6,32 +6,66 @@ from logging_observability.tracing.exporters import InMemoryTraceStore, TraceRec
 def store_with_spans():
     store = InMemoryTraceStore(capacity=100)
     # Span 1: Fast OK LLM
-    store.record_span(TraceRecord(
-        trace_id="t1", span_id="s1", parent_span_id=None,
-        name="llm_fast", kind="llm", start_time="2026-09-15T00:00:00Z",
-        duration_ms=500.0, status="OK",
-        attributes={"llm.provider": "groq", "llm.model": "qwen-2.5", "input_tokens": 100, "output_tokens": 50},
-    ))
+    store.record_span(
+        TraceRecord(
+            trace_id="t1",
+            span_id="s1",
+            parent_span_id=None,
+            name="llm_fast",
+            kind="llm",
+            start_time="2026-09-15T00:00:00Z",
+            duration_ms=500.0,
+            status="OK",
+            attributes={"llm.provider": "groq", "llm.model": "qwen-2.5", "input_tokens": 100, "output_tokens": 50},
+        )
+    )
     # Span 2: Slow OK LLM
-    store.record_span(TraceRecord(
-        trace_id="t2", span_id="s2", parent_span_id=None,
-        name="llm_slow", kind="llm", start_time="2026-09-15T00:01:00Z",
-        duration_ms=18000.0, status="OK",
-        attributes={"llm.provider": "openrouter", "llm.model": "claude-3-7-sonnet", "input_tokens": 5000, "output_tokens": 1200},
-    ))
+    store.record_span(
+        TraceRecord(
+            trace_id="t2",
+            span_id="s2",
+            parent_span_id=None,
+            name="llm_slow",
+            kind="llm",
+            start_time="2026-09-15T00:01:00Z",
+            duration_ms=18000.0,
+            status="OK",
+            attributes={
+                "llm.provider": "openrouter",
+                "llm.model": "claude-3-7-sonnet",
+                "input_tokens": 5000,
+                "output_tokens": 1200,
+            },
+        )
+    )
     # Span 3: Failed LLM
-    store.record_span(TraceRecord(
-        trace_id="t3", span_id="s3", parent_span_id=None,
-        name="llm_error", kind="llm", start_time="2026-09-15T00:02:00Z",
-        duration_ms=1200.0, status="ERROR", error="RateLimitError: 429",
-        attributes={"llm.provider": "gemini", "llm.model": "gemini-2.5-flash"},
-    ))
+    store.record_span(
+        TraceRecord(
+            trace_id="t3",
+            span_id="s3",
+            parent_span_id=None,
+            name="llm_error",
+            kind="llm",
+            start_time="2026-09-15T00:02:00Z",
+            duration_ms=1200.0,
+            status="ERROR",
+            error="RateLimitError: 429",
+            attributes={"llm.provider": "gemini", "llm.model": "gemini-2.5-flash"},
+        )
+    )
     # Span 4: Tool call
-    store.record_span(TraceRecord(
-        trace_id="t4", span_id="s4", parent_span_id=None,
-        name="tool_indicator", kind="tool", start_time="2026-09-15T00:03:00Z",
-        duration_ms=50.0, status="OK",
-    ))
+    store.record_span(
+        TraceRecord(
+            trace_id="t4",
+            span_id="s4",
+            parent_span_id=None,
+            name="tool_indicator",
+            kind="tool",
+            start_time="2026-09-15T00:03:00Z",
+            duration_ms=50.0,
+            status="OK",
+        )
+    )
     return store
 
 

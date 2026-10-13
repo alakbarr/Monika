@@ -2,6 +2,7 @@
 Decision Memory Log — untuk learning dari past decisions.
 Disimpan di tabel decision_memory_backtest.
 """
+
 import logging
 from datetime import datetime
 from typing import Optional
@@ -13,12 +14,21 @@ from monika.core.config.settings import load_all_config
 
 logger = logging.getLogger(__name__)
 
+
 class DecisionMemoryManager:
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or load_all_config()
         self.client = get_client_for_task("trade_reflection", self.settings)
 
-    async def log_decision(self, symbol: str, decision: str, confidence: float, rationale: str, date: datetime, run_id: Optional[int] = None):
+    async def log_decision(
+        self,
+        symbol: str,
+        decision: str,
+        confidence: float,
+        rationale: str,
+        date: datetime,
+        run_id: Optional[int] = None,
+    ):
         """Mencatat keputusan awal sebelum ada outcome."""
         async with get_session() as session:
             memory = DecisionMemory(
@@ -27,13 +37,15 @@ class DecisionMemoryManager:
                 decision_date=date,
                 decision=decision,
                 confidence=confidence,
-                rationale_summary=rationale[:1000] if rationale else None
+                rationale_summary=rationale[:1000] if rationale else None,
             )
             session.add(memory)
             await session.commit()
             return memory.id
 
-    async def update_outcome_and_reflect(self, memory_id: int, pnl_pct: float, holding_hours: float, reason: str, end_date: datetime):
+    async def update_outcome_and_reflect(
+        self, memory_id: int, pnl_pct: float, holding_hours: float, reason: str, end_date: datetime
+    ):
         """Update outcome dan generate refleksi AI."""
         async with get_session() as session:
             memory = await session.get(DecisionMemory, memory_id)
@@ -55,7 +67,7 @@ class DecisionMemoryManager:
                     "Write a 2-4 sentence reflection on what went right or wrong, and what to learn."
                 )
                 system = "You are a trading AI reviewing your past performance."
-                
+
                 reflection = await self.client.generate_content(system_prompt=system, user_message=prompt)
                 memory.reflection = reflection
 
@@ -64,6 +76,7 @@ class DecisionMemoryManager:
     async def get_past_decisions_context(self, symbol: str, limit: int = 5, run_id: Optional[int] = None) -> str:
         """Mengambil riwayat keputusan untuk konteks Stage 2."""
         import monika.core.primitives.clock as clock
+
         async with get_session() as session:
             stmt = (
                 select(DecisionMemory)

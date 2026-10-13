@@ -4,22 +4,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from monika.infrastructure.database.models import FundamentalBrief
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
-logger = logging.getLogger('TradingAgent.FundamentalVerifier')
+logger = logging.getLogger("TradingAgent.FundamentalVerifier")
 
 VERIFIER_SCHEMA = {
-    'type': 'object',
-    'properties': {
-        'internally_consistent': {'type': 'boolean'},
-        'contradictions_found': {'type': 'array', 'items': {'type': 'string'}},
-        'unjustified_confidence': {'type': 'boolean',
-            'description': 'True if confidence seems too high given data quality/contradictions in the narrative'},
-        'recommended_confidence_cap': {'type': 'number'},
-        'counter_thesis_is_substantive': {'type': 'boolean',
-            'description': 'True if the strongest_counter_thesis is substantive, specific, and falsifiable (not generic).'},
-        'verdict': {'type': 'string', 'enum': ['pass', 'flag_for_review', 'reject']}
+    "type": "object",
+    "properties": {
+        "internally_consistent": {"type": "boolean"},
+        "contradictions_found": {"type": "array", "items": {"type": "string"}},
+        "unjustified_confidence": {
+            "type": "boolean",
+            "description": "True if confidence seems too high given data quality/contradictions in the narrative",
+        },
+        "recommended_confidence_cap": {"type": "number"},
+        "counter_thesis_is_substantive": {
+            "type": "boolean",
+            "description": "True if the strongest_counter_thesis is substantive, specific, and falsifiable (not generic).",
+        },
+        "verdict": {"type": "string", "enum": ["pass", "flag_for_review", "reject"]},
     },
-    'required': ['internally_consistent', 'contradictions_found', 'unjustified_confidence',
-                 'recommended_confidence_cap', 'counter_thesis_is_substantive', 'verdict']
+    "required": [
+        "internally_consistent",
+        "contradictions_found",
+        "unjustified_confidence",
+        "recommended_confidence_cap",
+        "counter_thesis_is_substantive",
+        "verdict",
+    ],
 }
 
 FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT = """Review the provided macro trading brief for INTERNAL LOGICAL CONSISTENCY ONLY.
@@ -33,33 +43,35 @@ Evaluation Checkpoints:
 Do NOT judge whether the macro CALL is correct — check only internal logical consistency.
 Respond in strictly valid JSON conforming to the schema."""
 
+
 async def verify_fundamental_brief(session: AsyncSession, brief: FundamentalBrief, settings: dict) -> dict:
     """Independent, cheap re-read of a freshly submitted Stage 1 brief. Uses a DIFFERENT
     model family than the primary Stage 1 model to avoid self-consistency bias — checks
     ONLY internal logical consistency, never re-derives the macro call itself."""
     FAIL_CLOSED_CONFIDENCE_CAP = 0.6
     default = {
-        'internally_consistent': True,
-        'contradictions_found': [],
-        'unjustified_confidence': True,
-        'recommended_confidence_cap': min(brief.confidence or 0.7, FAIL_CLOSED_CONFIDENCE_CAP),
-        'counter_thesis_is_substantive': True,
-        'verdict': 'UNVERIFIED'
+        "internally_consistent": True,
+        "contradictions_found": [],
+        "unjustified_confidence": True,
+        "recommended_confidence_cap": min(brief.confidence or 0.7, FAIL_CLOSED_CONFIDENCE_CAP),
+        "counter_thesis_is_substantive": True,
+        "verdict": "UNVERIFIED",
     }
     try:
-        client = get_client_for_task('fundamental_verifier', settings)
+        client = get_client_for_task("fundamental_verifier", settings)
         structured = json.loads(brief.structured_json) if brief.structured_json else {}
         user_prompt = f"""Narrative:
-{structured.get('macro_narrative', '')[:2500]}
+{structured.get("macro_narrative", "")[:2500]}
 
-Currency Bias: {json.dumps(structured.get('currency_bias', {}))}
-Currency Confidence: {json.dumps(structured.get('currency_confidence', {}))}
-Risk Sentiment: {structured.get('risk_sentiment')}
-Overall Confidence: {structured.get('confidence')}
-Invalidation Conditions: {json.dumps(structured.get('invalidation_conditions', {}))}
-Strongest Counter Thesis: {structured.get('strongest_counter_thesis')}"""
+Currency Bias: {json.dumps(structured.get("currency_bias", {}))}
+Currency Confidence: {json.dumps(structured.get("currency_confidence", {}))}
+Risk Sentiment: {structured.get("risk_sentiment")}
+Overall Confidence: {structured.get("confidence")}
+Invalidation Conditions: {json.dumps(structured.get("invalidation_conditions", {}))}
+Strongest Counter Thesis: {structured.get("strongest_counter_thesis")}"""
 
         from monika.core.primitives.jev_primitives import build_fundamental_verifier_questions
+
         jev_q = build_fundamental_verifier_questions()
 
         result = await client.classify_json(
@@ -67,12 +79,12 @@ Strongest Counter Thesis: {structured.get('strongest_counter_thesis')}"""
             system_prompt=FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT,
             schema=VERIFIER_SCHEMA,
             jev_questions=jev_q,
-            temperature=0.0
+            temperature=0.0,
         )
         if not result or not isinstance(result, dict):
             return default
 
-        contradictions = list(result.get('contradictions_found', []))
+        contradictions = list(result.get("contradictions_found", []))
         # Map typed contradiction checks from Jev System One into contradictions_found list
         for ctype, cdesc in [
             ("contradiction_bias_vs_narrative", "Narrative tone contradicts currency bias"),
@@ -85,24 +97,26 @@ Strongest Counter Thesis: {structured.get('strongest_counter_thesis')}"""
                 if cdesc not in contradictions:
                     contradictions.append(cdesc)
 
-        rec_cap = result.get('recommended_confidence_cap')
+        rec_cap = result.get("recommended_confidence_cap")
         if rec_cap is None or not isinstance(rec_cap, (int, float)):
-            verdict_val = str(result.get('verdict', 'pass')).lower()
-            if verdict_val == 'reject':
+            verdict_val = str(result.get("verdict", "pass")).lower()
+            if verdict_val == "reject":
                 rec_cap = 0.50
-            elif verdict_val == 'flag_for_review':
+            elif verdict_val == "flag_for_review":
                 rec_cap = 0.65
             else:
                 rec_cap = float(brief.confidence or 0.70)
 
         return {
-            'internally_consistent': bool(result.get('internally_consistent', True)),
-            'contradictions_found': contradictions,
-            'unjustified_confidence': bool(result.get('unjustified_confidence', False)),
-            'recommended_confidence_cap': float(rec_cap),
-            'counter_thesis_is_substantive': bool(result.get('counter_thesis_is_substantive', True)),
-            'verdict': str(result.get('verdict', 'pass'))
+            "internally_consistent": bool(result.get("internally_consistent", True)),
+            "contradictions_found": contradictions,
+            "unjustified_confidence": bool(result.get("unjustified_confidence", False)),
+            "recommended_confidence_cap": float(rec_cap),
+            "counter_thesis_is_substantive": bool(result.get("counter_thesis_is_substantive", True)),
+            "verdict": str(result.get("verdict", "pass")),
         }
     except Exception as e:
-        logger.warning(f"Fundamental verifier error (fail-closed: confidence capped at {FAIL_CLOSED_CONFIDENCE_CAP}): {e}")
+        logger.warning(
+            f"Fundamental verifier error (fail-closed: confidence capped at {FAIL_CLOSED_CONFIDENCE_CAP}): {e}"
+        )
         return default

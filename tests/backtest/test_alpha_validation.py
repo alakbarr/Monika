@@ -1,6 +1,7 @@
 """
 Unit tests for backtest/alpha_validation.py (directional balance, half-consistency, cost stress).
 """
+
 import pytest
 from backtest.alpha_validation import validate_alpha, _calculate_sortino
 
@@ -104,4 +105,3 @@ def test_validate_alpha_backtest_trade_objects_dollar_consistency():
     res = validate_alpha([t1, t2], initial_equity=10000.0, cost_multiplier=2.0)
     assert res.cost_stress_ok is True
     assert res.stress_pnl == 240.0
-

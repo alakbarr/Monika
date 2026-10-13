@@ -15,17 +15,19 @@ from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
 
 logger = logging.getLogger("TradingAgent.ForexFactoryScraper")
 
+
 class ForexFactoryCalendarScraper(BaseScraper):
     def __init__(self, headless=True, profile_name="ff_calendar"):
         super().__init__(headless, profile_name, load_mode="eager", no_imgs=True)
         self.feed_url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
         self.urls = [
             "https://www.forexfactory.com/calendar?week=this",
-            "https://www.forexfactory.com/calendar?week=next"
+            "https://www.forexfactory.com/calendar?week=next",
         ]
 
     def _get_cache_path(self) -> Path:
         import os
+
         base_dir = Path(os.getcwd())
         cache_dir = base_dir / "data" / "cache"
         cache_dir.mkdir(parents=True, exist_ok=True)
@@ -44,7 +46,7 @@ class ForexFactoryCalendarScraper(BaseScraper):
             with open(cache_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list) and data:
-                    logger.info(f"Loaded {len(data)} events from ForexFactory local cache (age: {age/60:.1f}m)")
+                    logger.info(f"Loaded {len(data)} events from ForexFactory local cache (age: {age / 60:.1f}m)")
                     return data
         except Exception as e:
             logger.debug(f"Failed to read ForexFactory cache: {e}")
@@ -67,7 +69,7 @@ class ForexFactoryCalendarScraper(BaseScraper):
         Dilengkapi caching lokal (TTL default 1 jam, bypassable) untuk mencegah 429 Too Many Requests.
         """
         raw_items = None if ignore_cache else self._load_from_cache(max_age_seconds=max_cache_age)
-        
+
         # 1. Coba via direct HTTP request jika cache tidak ada / kedaluwarsa
         if not raw_items:
             try:
@@ -76,7 +78,7 @@ class ForexFactoryCalendarScraper(BaseScraper):
                     headers={
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                         "Accept": "application/json, text/plain, */*",
-                    }
+                    },
                 )
                 with urllib.request.urlopen(req, timeout=6) as resp:
                     if resp.status == 200:
@@ -101,7 +103,9 @@ class ForexFactoryCalendarScraper(BaseScraper):
         if not raw_items:
             raw_items = self._load_from_cache(max_age_seconds=86400)
             if raw_items:
-                logger.warning(f"ForexFactory feed unavailable — served {len(raw_items)} events from stale cache fallback.")
+                logger.warning(
+                    f"ForexFactory feed unavailable — served {len(raw_items)} events from stale cache fallback."
+                )
 
         if not raw_items:
             return []
@@ -111,7 +115,11 @@ class ForexFactoryCalendarScraper(BaseScraper):
         for item in raw_items:
             raw_date = item.get("date", "")
             try:
-                parsed_dt = dateutil_parser.isoparse(raw_date) if hasattr(dateutil_parser, "isoparse") else dateutil_parser.parse(raw_date)
+                parsed_dt = (
+                    dateutil_parser.isoparse(raw_date)
+                    if hasattr(dateutil_parser, "isoparse")
+                    else dateutil_parser.parse(raw_date)
+                )
                 if parsed_dt.tzinfo is None:
                     parsed_dt = parsed_dt.replace(tzinfo=eastern_tz)
                 iso_time = parsed_dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -128,23 +136,29 @@ class ForexFactoryCalendarScraper(BaseScraper):
             forecast = item.get("forecast") or None
             previous = item.get("previous") or None
 
-            events.append(CalendarEvent(
-                time=iso_time,
-                currency=currency,
-                impact=impact,
-                event_name=title,
-                actual=actual,
-                forecast=forecast if forecast else None,
-                previous=previous if previous else None,
-                country=currency[:2] if currency else None
-            ))
+            events.append(
+                CalendarEvent(
+                    time=iso_time,
+                    currency=currency,
+                    impact=impact,
+                    event_name=title,
+                    actual=actual,
+                    forecast=forecast if forecast else None,
+                    previous=previous if previous else None,
+                    country=currency[:2] if currency else None,
+                )
+            )
 
-        logger.info(f"ForexFactory (FairEconomy feed): Fetched {len(events)} events (events with actual: {sum(1 for e in events if e.actual)}).")
+        logger.info(
+            f"ForexFactory (FairEconomy feed): Fetched {len(events)} events (events with actual: {sum(1 for e in events if e.actual)})."
+        )
         return events
 
     fetch_events_from_feed = fetch_feed_events
 
-    def fetch_events(self, prefer_feed: bool = True, max_cache_age: int = 3600, ignore_cache: bool = False) -> List[CalendarEvent]:
+    def fetch_events(
+        self, prefer_feed: bool = True, max_cache_age: int = 3600, ignore_cache: bool = False
+    ) -> List[CalendarEvent]:
         # 1. Coba ambil dari feed resmi FairEconomy JSON jika diaktifkan (sangat cepat & anti-block)
         if prefer_feed:
             feed_events = self.fetch_feed_events(max_cache_age=max_cache_age, ignore_cache=ignore_cache)
@@ -153,22 +167,22 @@ class ForexFactoryCalendarScraper(BaseScraper):
 
         all_events = []
         for url in self.urls:
-            if getattr(self, 'is_closed', False):
+            if getattr(self, "is_closed", False):
                 break
             logger.info(f"Navigating to ForexFactory: {url}")
-            success = self.navigate_with_fallback(url, 'css:table.calendar__table', timeout=10)
-            if not success or getattr(self, 'is_closed', False):
+            success = self.navigate_with_fallback(url, "css:table.calendar__table", timeout=10)
+            if not success or getattr(self, "is_closed", False):
                 if not success:
                     logger.warning(f"Failed to load ForexFactory {url} (anti-bot challenge or slow CDN)")
                 continue
-                
+
             if not self.page:
                 continue
             page_obj: Any = self.page
             page_obj.wait(2)
             html = page_obj.html
             soup = BeautifulSoup(html, "html.parser")
-            
+
             table = soup.find("table", class_="calendar__table")
             if not table:
                 logger.warning(f"No calendar table found on {url}")
@@ -177,10 +191,16 @@ class ForexFactoryCalendarScraper(BaseScraper):
             current_time_str = "12:00am"
             current_date_str = datetime.now().strftime("%Y-%m-%d")
             for row in table.find_all("tr", class_="calendar__row"):
-                if getattr(self, 'is_closed', False):
+                if getattr(self, "is_closed", False):
                     break
                 row_classes = row.get("class")
-                row_class_list = row_classes if isinstance(row_classes, list) else [row_classes] if isinstance(row_classes, str) else []
+                row_class_list = (
+                    row_classes
+                    if isinstance(row_classes, list)
+                    else [row_classes]
+                    if isinstance(row_classes, str)
+                    else []
+                )
                 if "calendar__row--new-day" in row_class_list:
                     current_time_str = "12:00am"
                     # extract date
@@ -191,7 +211,7 @@ class ForexFactoryCalendarScraper(BaseScraper):
                             current_date_str = date_span.get_text(strip=True)
                         else:
                             current_date_str = td_date.get_text(strip=True)
-                
+
                 td_time = row.find("td", class_="calendar__time")
                 if td_time:
                     t_str = td_time.get_text(strip=True)
@@ -199,21 +219,23 @@ class ForexFactoryCalendarScraper(BaseScraper):
                         current_time_str = "12:00am"
                     elif t_str and ("am" in t_str.lower() or "pm" in t_str.lower()):
                         current_time_str = t_str
-                
+
                 full_time_str = f"{current_date_str} {current_time_str}".strip()
 
                 td_currency = row.find("td", class_="calendar__currency")
                 if not td_currency:
                     continue
                 currency = td_currency.get_text(strip=True)
-                
+
                 td_impact = row.find("td", class_="calendar__impact")
                 impact = "Low"
                 if td_impact:
                     span = td_impact.find("span")
                     if span:
                         cls_attr = span.get("class")
-                        cls = cls_attr if isinstance(cls_attr, list) else [cls_attr] if isinstance(cls_attr, str) else []
+                        cls = (
+                            cls_attr if isinstance(cls_attr, list) else [cls_attr] if isinstance(cls_attr, str) else []
+                        )
                         if "icon--ff-impact-red" in cls:
                             impact = "High"
                         elif "icon--ff-impact-ora" in cls:
@@ -239,6 +261,7 @@ class ForexFactoryCalendarScraper(BaseScraper):
                 from datetime import timezone
                 from zoneinfo import ZoneInfo
                 from dateutil import parser as dateutil_parser
+
                 eastern_tz = ZoneInfo("America/New_York")
                 try:
                     now_ny = datetime.now(eastern_tz)
@@ -254,29 +277,42 @@ class ForexFactoryCalendarScraper(BaseScraper):
                 except Exception:
                     if current_date_str:
                         import re
+
                         now_utc = datetime.now(timezone.utc)
                         try:
                             if re.match(r"^\d{4}-\d{2}-\d{2}", current_date_str):
                                 iso_utc_time = f"{current_date_str[:10]}T00:00:00Z"
                             else:
-                                date_with_year = current_date_str if str(now_utc.year) in current_date_str else f"{current_date_str} {now_utc.year}"
+                                date_with_year = (
+                                    current_date_str
+                                    if str(now_utc.year) in current_date_str
+                                    else f"{current_date_str} {now_utc.year}"
+                                )
                                 parsed_fallback = dateutil_parser.parse(date_with_year, default=now_utc)
-                                iso_utc_time = parsed_fallback.replace(hour=0, minute=0, second=0, microsecond=0).strftime("%Y-%m-%dT00:00:00Z")
+                                iso_utc_time = parsed_fallback.replace(
+                                    hour=0, minute=0, second=0, microsecond=0
+                                ).strftime("%Y-%m-%dT00:00:00Z")
                         except Exception:
-                            iso_utc_time = f"{current_date_str[:10]}T00:00:00Z" if re.match(r"^\d{4}-\d{2}-\d{2}", current_date_str) else now_utc.strftime("%Y-%m-%dT00:00:00Z")
+                            iso_utc_time = (
+                                f"{current_date_str[:10]}T00:00:00Z"
+                                if re.match(r"^\d{4}-\d{2}-\d{2}", current_date_str)
+                                else now_utc.strftime("%Y-%m-%dT00:00:00Z")
+                            )
                     else:
                         continue
 
-                all_events.append(CalendarEvent(
-                    time=iso_utc_time,
-                    currency=currency,
-                    impact=impact,
-                    event_name=event_name,
-                    actual=actual if actual else None,
-                    forecast=forecast if forecast else None,
-                    previous=previous if previous else None
-                ))
-        
+                all_events.append(
+                    CalendarEvent(
+                        time=iso_utc_time,
+                        currency=currency,
+                        impact=impact,
+                        event_name=event_name,
+                        actual=actual if actual else None,
+                        forecast=forecast if forecast else None,
+                        previous=previous if previous else None,
+                    )
+                )
+
         logger.info(f"ForexFactory: Fetched {len(all_events)} events total.")
         return all_events
 
@@ -307,7 +343,7 @@ def fetch_forexfactory_feed_direct(max_cache_age: int = 3600, ignore_cache: bool
                 headers={
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                     "Accept": "application/json, text/plain, */*",
-                }
+                },
             )
             with urllib.request.urlopen(req, timeout=5) as resp:
                 if resp.status == 200:
@@ -333,7 +369,11 @@ def fetch_forexfactory_feed_direct(max_cache_age: int = 3600, ignore_cache: bool
     for item in raw_items:
         raw_date = item.get("date", "")
         try:
-            parsed_dt = dateutil_parser.isoparse(raw_date) if hasattr(dateutil_parser, "isoparse") else dateutil_parser.parse(raw_date)
+            parsed_dt = (
+                dateutil_parser.isoparse(raw_date)
+                if hasattr(dateutil_parser, "isoparse")
+                else dateutil_parser.parse(raw_date)
+            )
             if parsed_dt.tzinfo is None:
                 parsed_dt = parsed_dt.replace(tzinfo=eastern_tz)
             iso_time = parsed_dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -350,15 +390,17 @@ def fetch_forexfactory_feed_direct(max_cache_age: int = 3600, ignore_cache: bool
         forecast = item.get("forecast") or None
         previous = item.get("previous") or None
 
-        events.append(CalendarEvent(
-            time=iso_time,
-            currency=currency,
-            impact=impact,
-            event_name=title,
-            actual=actual,
-            forecast=forecast if forecast else None,
-            previous=previous if previous else None,
-            country=currency[:2] if currency else None
-        ))
+        events.append(
+            CalendarEvent(
+                time=iso_time,
+                currency=currency,
+                impact=impact,
+                event_name=title,
+                actual=actual,
+                forecast=forecast if forecast else None,
+                previous=previous if previous else None,
+                country=currency[:2] if currency else None,
+            )
+        )
 
     return events

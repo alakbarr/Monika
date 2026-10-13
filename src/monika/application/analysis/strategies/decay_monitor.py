@@ -5,6 +5,7 @@ Prevents compounding drawdowns from decaying quantitative alphas.
 State transitions:
 ACTIVE -> (3 warnings) -> MONITORING -> (2 warnings) -> DECAYED -> (3 warnings) -> DISABLED
 """
+
 import inspect
 import json
 import logging
@@ -100,6 +101,7 @@ class StrategyDecayMonitor:
     Throttles or disables strategies showing statistical breakdown in live/paper trading.
     Enforces minimum 15 paper trades incubation gate with WR >= 55% and PF >= 1.30.
     """
+
     MIN_INCUBATION_TRADES: int = 15
     MIN_INCUBATION_WIN_RATE: float = 0.55
     MIN_INCUBATION_PROFIT_FACTOR: float = 1.30

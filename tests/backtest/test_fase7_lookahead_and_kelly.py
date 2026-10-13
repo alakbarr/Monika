@@ -72,7 +72,9 @@ async def test_risk_evaluator_uses_realized_payoff_ratio():
         }
     }
 
-    with patch("monika.core.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock) as mock_get_stats:
+    with patch(
+        "monika.core.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock
+    ) as mock_get_stats:
         mock_get_stats.return_value = mock_stats
         session = AsyncMock()
 
@@ -105,7 +107,9 @@ async def test_risk_evaluator_negative_expectancy_returns_zero():
         }
     }
 
-    with patch("monika.core.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock) as mock_get_stats:
+    with patch(
+        "monika.core.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock
+    ) as mock_get_stats:
         mock_get_stats.return_value = mock_stats
         session = AsyncMock()
 

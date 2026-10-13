@@ -35,15 +35,15 @@ class BehavioralDiagnosis:
     win_rate: float
     net_pnl: float
     profit_factor: float
-    disposition_ratio: float           # > 1.5 = high disposition bias
-    disposition_severity: str          # "LOW" | "MODERATE" | "SEVERE"
-    overtrading_drag_pnl: float        # Negative value = losses incurred from excessive volume
+    disposition_ratio: float  # > 1.5 = high disposition bias
+    disposition_severity: str  # "LOW" | "MODERATE" | "SEVERE"
+    overtrading_drag_pnl: float  # Negative value = losses incurred from excessive volume
     overtrading_severity: str
-    chasing_momentum_pct: float        # % of trades chasing extensions
+    chasing_momentum_pct: float  # % of trades chasing extensions
     chasing_severity: str
-    price_anchoring_score: float       # 0.0 to 1.0 (clustering near round digits)
+    price_anchoring_score: float  # 0.0 to 1.0 (clustering near round digits)
     price_anchoring_severity: str
-    overall_discipline_score: float    # 0 to 100
+    overall_discipline_score: float  # 0 to 100
     primary_vulnerability: str
     actionable_remedies: List[str] = field(default_factory=list)
 

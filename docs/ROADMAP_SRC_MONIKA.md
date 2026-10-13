@@ -583,6 +583,7 @@ ruff check src/monika
    ```python
    from typing import Protocol
 
+
    class CredentialResolver(Protocol):
        def get_api_key(self, provider_name: str) -> str: ...
    ```
@@ -596,6 +597,7 @@ ruff check src/monika
 1. Di `src/monika/core/telemetry/sinks.py`:
    ```python
    from typing import Protocol, Dict, Any
+
 
    class TelemetrySink(Protocol):
        async def persist_event(self, event_data: Dict[str, Any]) -> None: ...

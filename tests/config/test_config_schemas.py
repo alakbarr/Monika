@@ -1,6 +1,7 @@
 """
 Unit tests for Pydantic Configuration Schemas (H6) and Modular Split (I8).
 """
+
 import pytest
 import tempfile
 import os
@@ -48,7 +49,7 @@ def test_h6_trading_agent_config_nested_validation():
                 "max_daily_drawdown_percent": 4.0,
                 "min_rr_ratio": 2.0,
             }
-        }
+        },
     }
     validated = validate_config(valid_settings)
     assert validated.app_name == "AI Trading Agent"
@@ -70,15 +71,15 @@ def test_i8_deep_merge():
     base = {
         "trading": {
             "cost_mode": "standard",
-            "risk": {"max_daily_drawdown_percent": 3.0, "max_concurrent_positions": 5}
+            "risk": {"max_daily_drawdown_percent": 3.0, "max_concurrent_positions": 5},
         },
-        "llm": {"providers": {"openai": {"enabled": True}}}
+        "llm": {"providers": {"openai": {"enabled": True}}},
     }
     overlay = {
         "trading": {
             "risk": {"max_daily_drawdown_percent": 4.5}  # Override one field
         },
-        "scheduler": {"news_check_minutes": 10}
+        "scheduler": {"news_check_minutes": 10},
     }
     merged = _deep_merge(base, overlay)
     assert merged["trading"]["cost_mode"] == "standard"
@@ -124,8 +125,8 @@ def test_m3_m4_complete_schemas_and_return_model():
             "min_paper_win_rate_pct": 60.0,
             "risk": {
                 "max_daily_drawdown_percent": 3.5,
-            }
-        }
+            },
+        },
     }
     model = validate_config(raw_data)
     assert isinstance(model, TradingAgentConfig)
@@ -140,11 +141,7 @@ def test_m3_m4_complete_schemas_and_return_model():
 
 def test_subscriptable_config_dict_mapping_parity():
     """Verify SubscriptableConfig provides complete dict-like mapping access."""
-    data = {
-        "max_daily_drawdown_percent": 3.5,
-        "max_weekly_drawdown_percent": 7.0,
-        "custom_extra_key": "active_val"
-    }
+    data = {"max_daily_drawdown_percent": 3.5, "max_weekly_drawdown_percent": 7.0, "custom_extra_key": "active_val"}
     cfg = RiskConfig.model_validate(data)
     assert cfg["max_daily_drawdown_percent"] == 3.5
     assert cfg.get("max_weekly_drawdown_percent") == 7.0
@@ -166,11 +163,13 @@ def test_subscriptable_config_dict_mapping_parity():
 
 def test_harness_evals_benchmark_schemas():
     """Verify HarnessConfig, EvalsConfig, and BenchmarkConfig validation and integration."""
-    harness = HarnessConfig.model_validate({
-        "compaction_cooldown_seconds": 60.0,
-        "max_context_chars": 50000,
-        "retain_recent_turns": 3,
-    })
+    harness = HarnessConfig.model_validate(
+        {
+            "compaction_cooldown_seconds": 60.0,
+            "max_context_chars": 50000,
+            "retain_recent_turns": 3,
+        }
+    )
     assert harness.compaction_cooldown_seconds == 60.0
     assert harness.max_context_chars == 50000
     assert harness.retain_recent_turns == 3
@@ -199,6 +198,3 @@ def test_harness_evals_benchmark_schemas():
 
     with pytest.raises(ValidationError):
         BenchmarkConfig.model_validate({"max_drift_pct": -5.0})  # < 0.0
-
-
-

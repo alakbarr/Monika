@@ -72,13 +72,16 @@ class MarketStressAuctionFetcher:
             try:
                 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
                 async with aiohttp.ClientSession(headers=headers) as http_client:
-                    async with http_client.get(TREASURY_DIRECT_API, ssl=False, timeout=aiohttp.ClientTimeout(total=12)) as resp:
+                    async with http_client.get(
+                        TREASURY_DIRECT_API, ssl=False, timeout=aiohttp.ClientTimeout(total=12)
+                    ) as resp:
                         if resp.status == 200:
                             data = await resp.json(content_type=None)
                             if isinstance(data, list):
                                 # Filter notes/bonds matching tenor
                                 candidates = [
-                                    d for d in data
+                                    d
+                                    for d in data
                                     if d.get("securityType") in ("Note", "Bond", "TIPS")
                                     and d.get("securityTerm") == target_term
                                 ]
@@ -87,12 +90,12 @@ class MarketStressAuctionFetcher:
                                     if h_yield is None and top.get("highYield"):
                                         try:
                                             h_yield = float(top["highYield"])
-                                        except (ValueError, TypeError):
+                                        except ValueError, TypeError:
                                             pass
                                     if b_cover is None and top.get("bidToCoverRatio"):
                                         try:
                                             b_cover = float(top["bidToCoverRatio"])
-                                        except (ValueError, TypeError):
+                                        except ValueError, TypeError:
                                             pass
                                     if ind_pct is None:
                                         total_acc = float(top.get("totalAccepted") or 0)
@@ -101,12 +104,18 @@ class MarketStressAuctionFetcher:
                                             ind_pct = round((ind_acc / total_acc) * 100.0, 1)
                                     if dt_record is None and top.get("issueDate"):
                                         try:
-                                            dt_record = datetime.fromisoformat(top["issueDate"]).replace(tzinfo=timezone.utc)
+                                            dt_record = datetime.fromisoformat(top["issueDate"]).replace(
+                                                tzinfo=timezone.utc
+                                            )
                                         except Exception:
                                             pass
-                                    logger.info(f"Live TreasuryDirect fetched for {tenor_clean} ({target_term}): Yield={h_yield}%, BTC={b_cover}, Indirect={ind_pct}%")
+                                    logger.info(
+                                        f"Live TreasuryDirect fetched for {tenor_clean} ({target_term}): Yield={h_yield}%, BTC={b_cover}, Indirect={ind_pct}%"
+                                    )
             except Exception as e:
-                logger.warning(f"TreasuryDirect live fetch failed ({e}), falling back to calibrated institutional metrics")
+                logger.warning(
+                    f"TreasuryDirect live fetch failed ({e}), falling back to calibrated institutional metrics"
+                )
 
         # Calibrated fallbacks if live data unavailable
         h_yield = h_yield if h_yield is not None else (4.683 if tenor_clean == "10Y" else 4.285)
@@ -116,7 +125,9 @@ class MarketStressAuctionFetcher:
         ind_pct = ind_pct if ind_pct is not None else 68.2
         dt_record = dt_record or clock.now()
 
-        regime = "STRONG_DEMAND" if tail_bps <= 0.0 and ind_pct >= 65.0 else ("WEAK_TAIL" if tail_bps > 1.0 else "NORMAL")
+        regime = (
+            "STRONG_DEMAND" if tail_bps <= 0.0 and ind_pct >= 65.0 else ("WEAK_TAIL" if tail_bps > 1.0 else "NORMAL")
+        )
 
         meta = {
             "tenor": tenor_clean,
@@ -157,7 +168,9 @@ class MarketStressAuctionFetcher:
         await self.session.execute(stmt)
         await safe_commit(self.session)
 
-        logger.info(f"Ingested {metric_key} Auction: High Yield {h_yield:.3f}%, Tail {tail_bps:+.1f} bps, Indirects {ind_pct:.1f}%")
+        logger.info(
+            f"Ingested {metric_key} Auction: High Yield {h_yield:.3f}%, Tail {tail_bps:+.1f} bps, Indirects {ind_pct:.1f}%"
+        )
         return rec
 
     async def fetch_and_store_credit_and_money_market(
@@ -193,7 +206,9 @@ class MarketStressAuctionFetcher:
 
                     if sofr is None:
                         url_sofr = f"https://api.stlouisfed.org/fred/series/observations?series_id=SOFR&api_key={api_key}&file_type=json&sort_order=desc&limit=2"
-                        async with http_client.get(url_sofr, ssl=False, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                        async with http_client.get(
+                            url_sofr, ssl=False, timeout=aiohttp.ClientTimeout(total=10)
+                        ) as resp:
                             if resp.status == 200:
                                 data = await resp.json()
                                 obs = data.get("observations", [])
@@ -203,16 +218,40 @@ class MarketStressAuctionFetcher:
             except Exception as e:
                 logger.warning(f"FRED live credit fetch failed ({e}), using calibrated fallback")
 
-        hy_oas = hy_oas if hy_oas is not None else 324.0   # in bps
-        sofr = sofr if sofr is not None else 3.87           # in percent
+        hy_oas = hy_oas if hy_oas is not None else 324.0  # in bps
+        sofr = sofr if sofr is not None else 3.87  # in percent
 
         # Credit regime: > 450 bps indicates severe stress
         credit_regime = "STRESS" if hy_oas > 450.0 else ("ELEVATED" if hy_oas > 380.0 else "BENIGN")
 
         items = [
-            ("ICE_BOFA_HY_OAS", hy_oas, round(hy_oas - 5.0, 1), 5.0, "BPS", credit_regime, {"threshold_stress": 450.0, "source": "FRED_Live"}),
-            ("SOFR_RATE", sofr, sofr, 0.0, "PERCENT", "BENIGN", {"desc": "Secured Overnight Financing Rate", "source": "FRED_Live"}),
-            ("TIC_FOREIGN_TREASURY_NET", 42.5, 38.0, 4.5, "USD_BILLIONS", "INFLOW", {"desc": "Foreign net buying of US Treasuries", "source": "Treasury_TIC"}),
+            (
+                "ICE_BOFA_HY_OAS",
+                hy_oas,
+                round(hy_oas - 5.0, 1),
+                5.0,
+                "BPS",
+                credit_regime,
+                {"threshold_stress": 450.0, "source": "FRED_Live"},
+            ),
+            (
+                "SOFR_RATE",
+                sofr,
+                sofr,
+                0.0,
+                "PERCENT",
+                "BENIGN",
+                {"desc": "Secured Overnight Financing Rate", "source": "FRED_Live"},
+            ),
+            (
+                "TIC_FOREIGN_TREASURY_NET",
+                42.5,
+                38.0,
+                4.5,
+                "USD_BILLIONS",
+                "INFLOW",
+                {"desc": "Foreign net buying of US Treasuries", "source": "Treasury_TIC"},
+            ),
         ]
 
         inserted = []

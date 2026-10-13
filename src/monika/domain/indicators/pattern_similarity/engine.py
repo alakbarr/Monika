@@ -129,11 +129,7 @@ class PatternSimilarityEngine:
 
         stmt = (
             select(PriceOHLCV)
-            .where(
-                PriceOHLCV.symbol == symbol,
-                PriceOHLCV.timeframe == timeframe,
-                PriceOHLCV.timestamp <= target_dt
-            )
+            .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == timeframe, PriceOHLCV.timestamp <= target_dt)
             .order_by(PriceOHLCV.timestamp.desc())
             .limit(window_size)
         )
@@ -227,12 +223,10 @@ class PatternSimilarityEngine:
             avg_similarity=avg_sim,
         )
 
-    async def _add_cross_symbol_matches(
-        self, primary_symbol: str, per_tf: Dict[str, SingleTimeframeResult]
-    ) -> None:
+    async def _add_cross_symbol_matches(self, primary_symbol: str, per_tf: Dict[str, SingleTimeframeResult]) -> None:
         """Injects cross-symbol matches with 0.5x weight when same-symbol has few matches."""
         universe = self.settings.get("trading", {}).get("asset_universe", [])
-        other_symbols = [s for s in universe if s != primary_symbol][:self.cross_symbol_max_symbols]
+        other_symbols = [s for s in universe if s != primary_symbol][: self.cross_symbol_max_symbols]
 
         for tf, res in per_tf.items():
             if res.match_count >= self.top_k:
@@ -336,6 +330,7 @@ class PatternSimilarityEngine:
         if not llm_client:
             try:
                 from monika.infrastructure.providers.llm_factory import get_client_for_task
+
                 llm_client = get_client_for_task("pattern_context_verifier", self.settings)
             except Exception:
                 return
@@ -356,9 +351,7 @@ class PatternSimilarityEngine:
         )
         result.context_verdicts = verdicts
 
-    async def _fetch_recent_bars(
-        self, symbol: str, timeframe: str, count: int
-    ) -> Optional[np.ndarray]:
+    async def _fetch_recent_bars(self, symbol: str, timeframe: str, count: int) -> Optional[np.ndarray]:
         """Fetches recent closed bars from DB or MT5."""
         from monika.infrastructure.database.models import PriceOHLCV
 
@@ -382,9 +375,7 @@ class PatternSimilarityEngine:
 
         return np.array(data, dtype=float)
 
-    async def _fetch_historical_bars(
-        self, symbol: str, timeframe: str, lookback_years: float
-    ) -> Optional[np.ndarray]:
+    async def _fetch_historical_bars(self, symbol: str, timeframe: str, lookback_years: float) -> Optional[np.ndarray]:
         """Fetches historical price bars up to lookback_years."""
         from monika.infrastructure.database.models import PriceOHLCV
 

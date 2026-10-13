@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit tests for CreditBalanceTracker.
 Tests live credit fetching for OpenRouter & DeepSeek, daily quota calculation, and monthly expenses.
@@ -14,12 +15,7 @@ async def test_fetch_openrouter_credits_success():
     """Memverifikasi parsing response /api/v1/credits dan /api/v1/key OpenRouter."""
     mock_credits_resp = AsyncMock()
     mock_credits_resp.status = 200
-    mock_credits_resp.json.return_value = {
-        "data": {
-            "total_credits": 50.0,
-            "total_usage": 15.5
-        }
-    }
+    mock_credits_resp.json.return_value = {"data": {"total_credits": 50.0, "total_usage": 15.5}}
 
     mock_key_resp = AsyncMock()
     mock_key_resp.status = 200
@@ -28,18 +24,20 @@ async def test_fetch_openrouter_credits_success():
             "limit": 100.0,
             "usage": 15.5,
             "is_free_tier": False,
-            "rate_limit": {"requests": 50, "interval": "10s"}
+            "rate_limit": {"requests": 50, "interval": "10s"},
         }
     }
 
     class MockSessionContext:
         async def __aenter__(self):
             session = MagicMock()
-            session.get = MagicMock(side_effect=[
-                AsyncContextManager(mock_credits_resp),  # paid key /credits
-                AsyncContextManager(mock_key_resp),      # free key 1 /key
-                AsyncContextManager(mock_key_resp),      # free key 2 /key
-            ])
+            session.get = MagicMock(
+                side_effect=[
+                    AsyncContextManager(mock_credits_resp),  # paid key /credits
+                    AsyncContextManager(mock_key_resp),  # free key 1 /key
+                    AsyncContextManager(mock_key_resp),  # free key 2 /key
+                ]
+            )
             return session
 
         async def __aexit__(self, *args):
@@ -48,13 +46,19 @@ async def test_fetch_openrouter_credits_success():
     class AsyncContextManager:
         def __init__(self, response):
             self.response = response
+
         async def __aenter__(self):
             return self.response
+
         async def __aexit__(self, *args):
             pass
 
-    with patch('aiohttp.ClientSession', return_value=MockSessionContext()), \
-         patch.dict('os.environ', {'OPENROUTER_PAID_API_KEY': 'sk-or-paid', 'OPENROUTER_API_KEYS': 'sk-or-free-1,sk-or-free-2'}):
+    with (
+        patch("aiohttp.ClientSession", return_value=MockSessionContext()),
+        patch.dict(
+            "os.environ", {"OPENROUTER_PAID_API_KEY": "sk-or-paid", "OPENROUTER_API_KEYS": "sk-or-free-1,sk-or-free-2"}
+        ),
+    ):
         res = await CreditBalanceTracker.fetch_openrouter_credits()
         assert res["status"] == "ok"
         assert res["total_credits_usd"] == 50.0
@@ -74,13 +78,8 @@ async def test_fetch_deepseek_balance_success():
     mock_resp.json.return_value = {
         "is_available": True,
         "balance_infos": [
-            {
-                "currency": "USD",
-                "total_balance": "10.00",
-                "granted_balance": "2.00",
-                "topped_up_balance": "8.00"
-            }
-        ]
+            {"currency": "USD", "total_balance": "10.00", "granted_balance": "2.00", "topped_up_balance": "8.00"}
+        ],
     }
 
     class MockSessionContext:
@@ -88,18 +87,21 @@ async def test_fetch_deepseek_balance_success():
             session = MagicMock()
             session.get = MagicMock(return_value=AsyncContextManager(mock_resp))
             return session
+
         async def __aexit__(self, *args):
             pass
 
     class AsyncContextManager:
         def __init__(self, response):
             self.response = response
+
         async def __aenter__(self):
             return self.response
+
         async def __aexit__(self, *args):
             pass
 
-    with patch('aiohttp.ClientSession', return_value=MockSessionContext()):
+    with patch("aiohttp.ClientSession", return_value=MockSessionContext()):
         res = await CreditBalanceTracker.fetch_deepseek_balance(api_key="sk-ds-test-key")
         assert res["status"] == "ok"
         assert res["is_available"] is True
@@ -111,7 +113,11 @@ async def test_fetch_deepseek_balance_success():
 @pytest.mark.asyncio
 async def test_unconfigured_keys():
     """Memverifikasi penanganan API key yang kosong / unconfigured."""
-    with patch.dict('os.environ', {'OPENROUTER_PAID_API_KEY': '', 'OPENROUTER_API_KEY': '', 'OPENROUTER_API_KEYS': '', 'DEEPSEEK_API_KEY': ''}, clear=True):
+    with patch.dict(
+        "os.environ",
+        {"OPENROUTER_PAID_API_KEY": "", "OPENROUTER_API_KEY": "", "OPENROUTER_API_KEYS": "", "DEEPSEEK_API_KEY": ""},
+        clear=True,
+    ):
         or_res = await CreditBalanceTracker.fetch_openrouter_credits()
         assert or_res["status"] == "unconfigured"
 
@@ -123,7 +129,7 @@ async def test_unconfigured_keys():
 async def test_daily_quota_and_monthly_expense_summary():
     """Memverifikasi kalkulasi kuota harian dan pengeluaran bulan berjalan dari DB."""
     mock_session = create_mock_async_session()
-    
+
     # Mock daily quota query
     mock_quota_row1 = MagicMock(provider="gemini", model_name="gemini-3.7-flash", call_count=4, sum_tokens=25000)
     mock_quota_row2 = MagicMock(provider="gemini", model_name="gemini-3.5-flash-lite", call_count=80, sum_tokens=120000)
@@ -139,8 +145,12 @@ async def test_daily_quota_and_monthly_expense_summary():
     assert quotas["gemini-3.5-flash-lite"]["remaining_calls"] == 420  # 500 - 80
 
     # Mock monthly expense query
-    mock_exp_row1 = MagicMock(provider="anthropic", total_calls=150, total_tokens=500000, cached_tokens=50000, total_cost=3.25)
-    mock_exp_row2 = MagicMock(provider="openai", total_calls=40, total_tokens=100000, cached_tokens=10000, total_cost=0.50)
+    mock_exp_row1 = MagicMock(
+        provider="anthropic", total_calls=150, total_tokens=500000, cached_tokens=50000, total_cost=3.25
+    )
+    mock_exp_row2 = MagicMock(
+        provider="openai", total_calls=40, total_tokens=100000, cached_tokens=10000, total_cost=0.50
+    )
     mock_exec_result_exp = MagicMock()
     mock_exec_result_exp.all.return_value = [mock_exp_row1, mock_exp_row2]
     mock_session.execute = AsyncMock(return_value=mock_exec_result_exp)

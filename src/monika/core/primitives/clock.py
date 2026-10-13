@@ -1,12 +1,13 @@
 """
 Clock Abstraction Module for Deterministic Time and Point-in-Time Simulation.
 """
+
 from datetime import datetime, timezone
 from contextvars import ContextVar
 from contextlib import contextmanager, asynccontextmanager
 from typing import Optional
 
-_simulated_now: ContextVar[Optional[datetime]] = ContextVar('_simulated_now', default=None)
+_simulated_now: ContextVar[Optional[datetime]] = ContextVar("_simulated_now", default=None)
 
 
 def now() -> datetime:

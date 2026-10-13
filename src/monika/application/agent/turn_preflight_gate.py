@@ -142,7 +142,6 @@ class TurnPreflightGate:
             return False
 
         logger.info(
-            f"[TurnPreflightGate] Compression progress confirmed ({ratio:.1%} reduction, "
-            f"saved {reduction} tokens)."
+            f"[TurnPreflightGate] Compression progress confirmed ({ratio:.1%} reduction, saved {reduction} tokens)."
         )
         return True

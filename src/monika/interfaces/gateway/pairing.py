@@ -31,6 +31,7 @@ DEFAULT_PAIRED_USERS_STORE = "data/paired_users.json"
 @dataclass
 class PairedUserRecord:
     """Record of a verified and authorized user for a specific platform."""
+
     platform: str
     user_id: str
     username: Optional[str] = None
@@ -42,6 +43,7 @@ class PairedUserRecord:
 @dataclass
 class ActivePairingRequest:
     """In-memory active OTP challenge waiting for user input."""
+
     platform: str
     user_id: str
     username: Optional[str]
@@ -137,7 +139,7 @@ class PairingManager:
         """
         Creates an active OTP challenge for an unverified user.
         Prints the OTP to the operator's local terminal/log for security.
-        
+
         Returns:
             (instructions_for_user: str, raw_otp_for_operator: str)
         """
@@ -264,4 +266,3 @@ def reset_pairing_manager() -> None:
     """Resets global singleton for testing purposes."""
     global _GLOBAL_PAIRING_MANAGER
     _GLOBAL_PAIRING_MANAGER = None
-

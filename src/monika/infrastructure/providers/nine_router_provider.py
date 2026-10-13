@@ -36,13 +36,11 @@ NINEROUTER_MODEL_ALIASES: Dict[str, str] = {
     "kr/gpt-5.6-sol": "kr/gpt-5.6-sol",
     "kr/gpt-5.6-terra": "kr/gpt-5.6-terra",
     "kr/gpt-5.6-luna": "kr/gpt-5.6-luna",
-
     # --- OpenCode Free (oc/ - 100% Free Tier) ---
     "oc/muse-spark-1.2-contributor-free": "oc/muse-spark-1.2-contributor-free",
     "oc/muse-spark-1.3-contributor-free": "oc/muse-spark-1.3-contributor-free",
     "oc/union-alpha": "oc/union-alpha",
     "oc/jev-1.13-free": "oc/jev-1.13-free",
-
     # --- OpenCode Zen Free (ocz/ - Free Tier Models) ---
     "ocz/deepseek-v4-flash-free": "ocz/deepseek-v4-flash-free",
     "ocz/mimo-v2.6-flash-free": "ocz/mimo-v2.6-flash-free",
@@ -53,7 +51,6 @@ NINEROUTER_MODEL_ALIASES: Dict[str, str] = {
     "ocz/muse-spark-1.3-contributor-free": "ocz/muse-spark-1.3-contributor-free",
     "ocz/muse-spark-1.2-contributor-free": "ocz/muse-spark-1.2-contributor-free",
     "ocz/jev-1.13-free": "ocz/jev-1.13-free",
-
     # --- iFlow AI (if/ - Free / Unlimited Tier) ---
     "if/kimi-k2": "if/kimi-k2",
     "if/qwen3-coder-plus": "if/qwen3-coder-plus",
@@ -64,10 +61,8 @@ NINEROUTER_MODEL_ALIASES: Dict[str, str] = {
     "if/deepseek-r1": "if/deepseek-r1",
     "if/glm-4.7": "if/glm-4.7",
     "if/iflow-rome-30ba3b": "if/iflow-rome-30ba3b",
-
     # --- MiMo Free (mmf/) ---
     "mmf/mimo-auto": "mmf/mimo-auto",
-
     # --- Gemini CLI Free (gc/) ---
     "gc/gemini-3.5-flash": "gc/gemini-3.5-flash",
     "gc/gemini-3.6-flash": "gc/gemini-3.6-flash",
@@ -79,12 +74,10 @@ NINEROUTER_MODEL_ALIASES: Dict[str, str] = {
     "gc/gemini-2.5-pro": "gc/gemini-3.8-flash",
     "gc/gemini-3-flash-preview": "gc/gemini-3-flash-preview",
     "gc/gemini-3.1-pro-preview": "gc/gemini-3.1-pro-preview",
-
     # --- API Airforce Free (af/) ---
     "af/gpt-oss-120b": "af/gpt-oss-120b",
     "af/gpt-oss-20b": "af/gpt-oss-20b",
     "af/kimi-k2.7-code": "af/kimi-k2.7-code",
-
     # --- Antigravity OAuth (ag/) ---
     "ag/gemini-3.8-flash-high": "ag/gemini-3.8-flash-high",
     "ag/gemini-3.8-flash-medium": "ag/gemini-3.8-flash-medium",
@@ -95,7 +88,6 @@ NINEROUTER_MODEL_ALIASES: Dict[str, str] = {
     "ag/claude-sonnet-4-6": "ag/claude-sonnet-4-6",
     "ag/claude-opus-4-6-thinking": "ag/claude-opus-4-6-thinking",
     "ag/gpt-oss-120b-medium": "ag/gpt-oss-120b-medium",
-
     # --- Codex OAuth (cx/) ---
     "cx/gpt-6-astra": "cx/gpt-6-astra",
     "cx/gpt-5.6-sol": "cx/gpt-5.6-sol",
@@ -105,14 +97,12 @@ NINEROUTER_MODEL_ALIASES: Dict[str, str] = {
     "cx/gpt-5.4": "cx/gpt-5.4",
     "cx/gpt-5.4-mini": "cx/gpt-5.4-mini",
     "cx/gpt-5.3-codex-spark": "cx/gpt-5.3-codex-spark",
-
     # --- Claude Code OAuth (cc/) ---
     "cc/claude-opus-5": "cc/claude-opus-5",
     "cc/claude-opus-5-5": "cc/claude-opus-5-5",
     "cc/claude-fable-5": "cc/claude-fable-5",
     "cc/claude-sonnet-5": "cc/claude-sonnet-5",
     "cc/claude-haiku-4-5-20251001": "cc/claude-haiku-4-5-20251001",
-
     # --- GitHub Copilot (gh/) ---
     "gh/claude-sonnet-4.6": "gh/claude-sonnet-4.6",
     "gh/claude-opus-4.6": "gh/claude-opus-4.6",
@@ -121,7 +111,6 @@ NINEROUTER_MODEL_ALIASES: Dict[str, str] = {
     "gh/gpt-5.4-mini": "gh/gpt-5.4-mini",
     "gh/gpt-5.2": "gh/gpt-5.2",
     "gh/gemini-2.5-pro": "gh/gemini-2.5-pro",
-
     # --- Virtual Combos (combo/) ---
     "combo/free-fallback": "combo/free-fallback",
     "combo/smart-code": "combo/smart-code",
@@ -130,40 +119,68 @@ NINEROUTER_MODEL_ALIASES: Dict[str, str] = {
 # Daftar model Free Tier ($0 biaya API) di 9Router
 FREE_TIER_MODELS_9ROUTER: set[str] = {
     # Kiro AI Free Models
-    "kr/claude-sonnet-4.5", "kr/claude-sonnet-4.5-thinking", "kr/claude-sonnet-4.5-agentic",
-    "kr/claude-sonnet-5", "kr/claude-sonnet-5-thinking",
-    "kr/claude-opus-5", "kr/claude-opus-5-thinking", "kr/claude-opus-5-agentic",
-    "kr/claude-opus-4.8", "kr/claude-opus-4.7", "kr/claude-opus-4.5",
-    "kr/claude-haiku-4.5", "kr/claude-haiku-4.5-thinking",
-    "kr/glm-5", "kr/minimax-m2.5", "kr/deepseek-3.2", "kr/qwen3-coder-next",
-    "kr/gpt-5.6-sol", "kr/gpt-5.6-terra", "kr/gpt-5.6-luna",
-
+    "kr/claude-sonnet-4.5",
+    "kr/claude-sonnet-4.5-thinking",
+    "kr/claude-sonnet-4.5-agentic",
+    "kr/claude-sonnet-5",
+    "kr/claude-sonnet-5-thinking",
+    "kr/claude-opus-5",
+    "kr/claude-opus-5-thinking",
+    "kr/claude-opus-5-agentic",
+    "kr/claude-opus-4.8",
+    "kr/claude-opus-4.7",
+    "kr/claude-opus-4.5",
+    "kr/claude-haiku-4.5",
+    "kr/claude-haiku-4.5-thinking",
+    "kr/glm-5",
+    "kr/minimax-m2.5",
+    "kr/deepseek-3.2",
+    "kr/qwen3-coder-next",
+    "kr/gpt-5.6-sol",
+    "kr/gpt-5.6-terra",
+    "kr/gpt-5.6-luna",
     # OpenCode Free
-    "oc/muse-spark-1.2-contributor-free", "oc/muse-spark-1.3-contributor-free",
-    "oc/union-alpha", "oc/jev-1.13-free",
-
+    "oc/muse-spark-1.2-contributor-free",
+    "oc/muse-spark-1.3-contributor-free",
+    "oc/union-alpha",
+    "oc/jev-1.13-free",
     # OpenCode Zen Free
-    "ocz/deepseek-v4-flash-free", "ocz/mimo-v2.6-flash-free", "ocz/mimo-v2.5-free",
-    "ocz/ling-3.0-flash-fin-free", "ocz/nemotron-3-ultra-free", "ocz/nemotron-3.5-lightning-free",
-    "ocz/muse-spark-1.3-contributor-free", "ocz/muse-spark-1.2-contributor-free",
+    "ocz/deepseek-v4-flash-free",
+    "ocz/mimo-v2.6-flash-free",
+    "ocz/mimo-v2.5-free",
+    "ocz/ling-3.0-flash-fin-free",
+    "ocz/nemotron-3-ultra-free",
+    "ocz/nemotron-3.5-lightning-free",
+    "ocz/muse-spark-1.3-contributor-free",
+    "ocz/muse-spark-1.2-contributor-free",
     "ocz/jev-1.13-free",
-
     # iFlow AI Free Tier
-    "if/kimi-k2", "if/qwen3-coder-plus", "if/qwen3-max", "if/qwen3-235b",
-    "if/deepseek-v3.2", "if/deepseek-v3", "if/deepseek-r1", "if/glm-4.7",
+    "if/kimi-k2",
+    "if/qwen3-coder-plus",
+    "if/qwen3-max",
+    "if/qwen3-235b",
+    "if/deepseek-v3.2",
+    "if/deepseek-v3",
+    "if/deepseek-r1",
+    "if/glm-4.7",
     "if/iflow-rome-30ba3b",
-
     # MiMo Free
     "mmf/mimo-auto",
-
     # Gemini CLI Free
-    "gc/gemini-3.5-flash", "gc/gemini-3.6-flash", "gc/gemini-3.7-flash", "gc/gemini-3.8-flash",
-    "gc/gemini-3.1-flash-lite", "gc/gemini-3.5-flash-lite",
-    "gc/gemini-2.5-flash", "gc/gemini-2.5-pro", "gc/gemini-3-flash-preview", "gc/gemini-3.1-pro-preview",
-
+    "gc/gemini-3.5-flash",
+    "gc/gemini-3.6-flash",
+    "gc/gemini-3.7-flash",
+    "gc/gemini-3.8-flash",
+    "gc/gemini-3.1-flash-lite",
+    "gc/gemini-3.5-flash-lite",
+    "gc/gemini-2.5-flash",
+    "gc/gemini-2.5-pro",
+    "gc/gemini-3-flash-preview",
+    "gc/gemini-3.1-pro-preview",
     # API Airforce Free
-    "af/gpt-oss-120b", "af/gpt-oss-20b", "af/kimi-k2.7-code",
-
+    "af/gpt-oss-120b",
+    "af/gpt-oss-20b",
+    "af/kimi-k2.7-code",
     # Virtual Combos Free
     "combo/free-fallback",
 }
@@ -199,6 +216,7 @@ class NineRouterProvider(OpenAIProvider):
     Menggunakan OpenAI-compatible API endpoint (default: http://localhost:20128/v1).
     Mendukung dynamic model discovery, multi-vendor prefix routing, dan free-tier tracking.
     """
+
     _client_pool: ClassVar[Dict[str, Any]] = {}
 
     def __init__(
@@ -211,7 +229,7 @@ class NineRouterProvider(OpenAIProvider):
         base_url: Optional[str] = None,
         settings: Optional[dict] = None,
         temperature: float = 0.0,
-        **kwargs
+        **kwargs,
     ):
         resolved_model = normalize_9router_model_name(model)
         self.raw_model_name = model
@@ -219,10 +237,7 @@ class NineRouterProvider(OpenAIProvider):
         # Resolusi Base URL
         providers_all = (settings or {}).get("llm", {}).get("providers", {})
         provider_cfg = (
-            providers_all.get("ninerouter")
-            or providers_all.get("9router")
-            or providers_all.get("nine_router")
-            or {}
+            providers_all.get("ninerouter") or providers_all.get("9router") or providers_all.get("nine_router") or {}
         )
         resolved_base_url = (
             base_url
@@ -249,7 +264,7 @@ class NineRouterProvider(OpenAIProvider):
             temperature=temperature,
             max_tool_turns=max_tool_turns,
             thinking_level=thinking_level,
-            **kwargs
+            **kwargs,
         )
 
         self.provider_name = "9router"
@@ -280,6 +295,7 @@ class NineRouterProvider(OpenAIProvider):
         if cache_key not in self.__class__._client_pool:
             try:
                 from openai import AsyncOpenAI
+
                 providers_all = (self.settings or {}).get("llm", {}).get("providers", {})
                 provider_cfg = (
                     providers_all.get("ninerouter")
@@ -299,7 +315,7 @@ class NineRouterProvider(OpenAIProvider):
                         "HTTP-Referer": "https://monika.local",
                         "X-Title": "Monika MT5 Trading Agent (9Router Gateway)",
                         "X-Session-ID": "monika_9router_session",
-                    }
+                    },
                 )
             except ImportError:
                 logger.warning("OpenAI package not installed. Run `pip install openai`.")
@@ -315,17 +331,20 @@ class NineRouterProvider(OpenAIProvider):
             return []
         try:
             import asyncio
+
             coro = self.client.models.list()
             response = await asyncio.wait_for(coro, timeout=timeout)
             models = []
             for m in getattr(response, "data", []):
                 model_id = getattr(m, "id", None)
                 if model_id:
-                    models.append({
-                        "id": model_id,
-                        "owned_by": getattr(m, "owned_by", "9router"),
-                        "is_free": self.is_model_free(model_id),
-                    })
+                    models.append(
+                        {
+                            "id": model_id,
+                            "owned_by": getattr(m, "owned_by", "9router"),
+                            "is_free": self.is_model_free(model_id),
+                        }
+                    )
             logger.info(f"[9Router] Introspected {len(models)} active models from {self.base_url}")
             return models
         except Exception as e:
@@ -346,10 +365,11 @@ class NineRouterProvider(OpenAIProvider):
 def is_9router_alive(host: str = "127.0.0.1", port: int = 20128, timeout: float = 1.0) -> bool:
     """Cek apakah 9Router gateway aktif dan merespon port TCP."""
     import socket
+
     try:
         with socket.create_connection((host, port), timeout=timeout):
             return True
-    except (OSError, ConnectionRefusedError):
+    except OSError, ConnectionRefusedError:
         return False
 
 
@@ -387,7 +407,7 @@ def try_auto_spawn_9router(host: str = "127.0.0.1", port: int = 20128, wait_seco
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
-                shell=True
+                shell=True,
             )
         else:
             subprocess.Popen(
@@ -395,7 +415,7 @@ def try_auto_spawn_9router(host: str = "127.0.0.1", port: int = 20128, wait_seco
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
-                start_new_session=True
+                start_new_session=True,
             )
 
         start_time = time.time()
@@ -408,4 +428,3 @@ def try_auto_spawn_9router(host: str = "127.0.0.1", port: int = 20128, wait_seco
         logger.warning(f"[9Router] Gagal menyalakan 9Router otomatis: {e}")
 
     return is_9router_alive(host, port)
-

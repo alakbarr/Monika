@@ -62,4 +62,3 @@ class OllamaProvider(OpenAIProvider):
         if isinstance(extra, dict) and "keep_alive" not in extra:
             # Keep model & KV cache resident in memory to maximize prompt cache hits across cycles
             extra["keep_alive"] = "1h"
-

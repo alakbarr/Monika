@@ -20,12 +20,20 @@ def test_brier_score_calculation():
     # Perfectly calibrated decisions
     decisions = [
         DecisionEvaluation(
-            scenario_id="1", symbol="EURUSD", decision="BUY",
-            is_valid_direction=True, confluence_score=100.0, oracle_passed=True
+            scenario_id="1",
+            symbol="EURUSD",
+            decision="BUY",
+            is_valid_direction=True,
+            confluence_score=100.0,
+            oracle_passed=True,
         ),
         DecisionEvaluation(
-            scenario_id="2", symbol="USDJPY", decision="WAIT",
-            is_valid_direction=False, confluence_score=0.0, oracle_passed=True
+            scenario_id="2",
+            symbol="USDJPY",
+            decision="WAIT",
+            is_valid_direction=False,
+            confluence_score=0.0,
+            oracle_passed=True,
         ),
     ]
     score = compute_brier_score(decisions)
@@ -34,8 +42,12 @@ def test_brier_score_calculation():
     # Completely uncalibrated decisions
     uncalibrated = [
         DecisionEvaluation(
-            scenario_id="1", symbol="EURUSD", decision="BUY",
-            is_valid_direction=False, confluence_score=100.0, oracle_passed=False
+            scenario_id="1",
+            symbol="EURUSD",
+            decision="BUY",
+            is_valid_direction=False,
+            confluence_score=100.0,
+            oracle_passed=False,
         ),
     ]
     bad_score = compute_brier_score(uncalibrated)
@@ -45,16 +57,32 @@ def test_brier_score_calculation():
 def test_aggregate_eval_metrics():
     decisions = [
         DecisionEvaluation(
-            scenario_id="1", symbol="EURUSD", decision="BUY",
-            is_valid_direction=True, confluence_score=80.0,
-            grounding_passed=True, oracle_passed=True, planned_rr=1.5,
-            input_tokens=100, output_tokens=50, cost_usd=0.001, latency_ms=500.0
+            scenario_id="1",
+            symbol="EURUSD",
+            decision="BUY",
+            is_valid_direction=True,
+            confluence_score=80.0,
+            grounding_passed=True,
+            oracle_passed=True,
+            planned_rr=1.5,
+            input_tokens=100,
+            output_tokens=50,
+            cost_usd=0.001,
+            latency_ms=500.0,
         ),
         DecisionEvaluation(
-            scenario_id="2", symbol="USDJPY", decision="SELL",
-            is_valid_direction=False, confluence_score=60.0,
-            grounding_passed=False, oracle_passed=False, planned_rr=2.0,
-            input_tokens=120, output_tokens=60, cost_usd=0.0012, latency_ms=600.0
+            scenario_id="2",
+            symbol="USDJPY",
+            decision="SELL",
+            is_valid_direction=False,
+            confluence_score=60.0,
+            grounding_passed=False,
+            oracle_passed=False,
+            planned_rr=2.0,
+            input_tokens=120,
+            output_tokens=60,
+            cost_usd=0.0012,
+            latency_ms=600.0,
         ),
     ]
     agg = aggregate_eval_metrics(decisions)
@@ -71,19 +99,33 @@ def test_aggregate_eval_metrics():
 def test_compare_ab_evaluations_promotion():
     baseline = [
         DecisionEvaluation(
-            scenario_id="1", symbol="EURUSD", decision="BUY",
-            is_valid_direction=True, confluence_score=80.0,
-            grounding_passed=True, oracle_passed=True,
-            input_tokens=500, output_tokens=100, cost_usd=0.005, latency_ms=1000.0
+            scenario_id="1",
+            symbol="EURUSD",
+            decision="BUY",
+            is_valid_direction=True,
+            confluence_score=80.0,
+            grounding_passed=True,
+            oracle_passed=True,
+            input_tokens=500,
+            output_tokens=100,
+            cost_usd=0.005,
+            latency_ms=1000.0,
         ),
     ]
     # Candidate has same accuracy but 40% token savings
     candidate = [
         DecisionEvaluation(
-            scenario_id="1", symbol="EURUSD", decision="BUY",
-            is_valid_direction=True, confluence_score=85.0,
-            grounding_passed=True, oracle_passed=True,
-            input_tokens=300, output_tokens=60, cost_usd=0.003, latency_ms=700.0
+            scenario_id="1",
+            symbol="EURUSD",
+            decision="BUY",
+            is_valid_direction=True,
+            confluence_score=85.0,
+            grounding_passed=True,
+            oracle_passed=True,
+            input_tokens=300,
+            output_tokens=60,
+            cost_usd=0.003,
+            latency_ms=700.0,
         ),
     ]
     report = compare_ab_evaluations(baseline, candidate, name="Structured Context Optimization")
@@ -96,17 +138,25 @@ def test_compare_ab_evaluations_promotion():
 def test_compare_ab_evaluations_rejection():
     baseline = [
         DecisionEvaluation(
-            scenario_id="1", symbol="EURUSD", decision="BUY",
-            is_valid_direction=True, confluence_score=80.0,
-            grounding_passed=True, oracle_passed=True
+            scenario_id="1",
+            symbol="EURUSD",
+            decision="BUY",
+            is_valid_direction=True,
+            confluence_score=80.0,
+            grounding_passed=True,
+            oracle_passed=True,
         ),
     ]
     # Candidate fails directional accuracy
     candidate = [
         DecisionEvaluation(
-            scenario_id="1", symbol="EURUSD", decision="SELL",
-            is_valid_direction=False, confluence_score=80.0,
-            grounding_passed=True, oracle_passed=False
+            scenario_id="1",
+            symbol="EURUSD",
+            decision="SELL",
+            is_valid_direction=False,
+            confluence_score=80.0,
+            grounding_passed=True,
+            oracle_passed=False,
         ),
     ]
     report = compare_ab_evaluations(baseline, candidate, name="Defective Prompt")

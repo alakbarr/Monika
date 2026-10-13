@@ -10,36 +10,38 @@ from monika.infrastructure.llm.caveman_compressor import compress_tool_payload
 logger = logging.getLogger("TradingAgent.Stage1Prefetcher")
 
 PREFETCH_KEY_TO_TOOL: dict[str, str] = {
-    'economic_calendar': 'get_economic_calendar',
-    'news_digest': 'get_news_digest',
-    'dxy': 'get_dxy',
-    'treasury_yields': 'get_treasury_yields',
-    'interest_rates': 'get_interest_rates',
-    'fedwatch': 'get_fedwatch_probabilities',
-    'vix': 'get_vix',
-    'fear_greed': 'get_fear_greed_index',
-    'cot_signals': 'get_precomputed_cot_signals',
-    'surprise_summary': 'get_surprise_summary',
-    'eurusd_momentum': 'get_price_momentum',
-    'market_session': 'get_market_session',
-    'funding_rate': 'get_funding_rate',
-    'bond_yield_spreads': 'get_bond_yield_spreads',
-    'central_bank_expectations': 'get_central_bank_expectations',
-    'prediction_market': 'get_prediction_market_odds',
-    'fed_net_liquidity_and_stress': 'get_fed_net_liquidity_and_stress',
-    'treasury_auction_results': 'get_treasury_auction_results',
-    'macro_cross_report_synthesis': 'get_macro_cross_report_synthesis',
-    'g10_macro_divergence': 'get_g10_macro_divergence',
+    "economic_calendar": "get_economic_calendar",
+    "news_digest": "get_news_digest",
+    "dxy": "get_dxy",
+    "treasury_yields": "get_treasury_yields",
+    "interest_rates": "get_interest_rates",
+    "fedwatch": "get_fedwatch_probabilities",
+    "vix": "get_vix",
+    "fear_greed": "get_fear_greed_index",
+    "cot_signals": "get_precomputed_cot_signals",
+    "surprise_summary": "get_surprise_summary",
+    "eurusd_momentum": "get_price_momentum",
+    "market_session": "get_market_session",
+    "funding_rate": "get_funding_rate",
+    "bond_yield_spreads": "get_bond_yield_spreads",
+    "central_bank_expectations": "get_central_bank_expectations",
+    "prediction_market": "get_prediction_market_odds",
+    "fed_net_liquidity_and_stress": "get_fed_net_liquidity_and_stress",
+    "treasury_auction_results": "get_treasury_auction_results",
+    "macro_cross_report_synthesis": "get_macro_cross_report_synthesis",
+    "g10_macro_divergence": "get_g10_macro_divergence",
 }
 
-CORE_STAGE1_PREFETCH_TOOLS: frozenset[str] = frozenset({
-    'get_economic_calendar',
-    'get_treasury_yields',
-    'get_vix',
-    'get_dxy',
-    'get_fedwatch_probabilities',
-    'get_news_digest',
-})
+CORE_STAGE1_PREFETCH_TOOLS: frozenset[str] = frozenset(
+    {
+        "get_economic_calendar",
+        "get_treasury_yields",
+        "get_vix",
+        "get_dxy",
+        "get_fedwatch_probabilities",
+        "get_news_digest",
+    }
+)
 
 
 def prune_stage1_tools(
@@ -49,7 +51,7 @@ def prune_stage1_tools(
 ) -> list[dict[str, Any]]:
     """
     Health-Aware Conditional Tool Pruning for Stage 1 Fundamental Analysis.
-    
+
     When prefetch data has already been injected into prompt context:
     1. If prefetch is complete (all core indicators satisfied), prunes all read
        tools to force direct synthesis and eliminate turn exhaustion, leaving
@@ -65,7 +67,8 @@ def prune_stage1_tools(
     if CORE_STAGE1_PREFETCH_TOOLS.issubset(satisfied_tools):
         # 100% healthy prefetch: prune all read tools, leaving only mandatory conclusion tool
         return [
-            tool for tool in base_tools
+            tool
+            for tool in base_tools
             if (tool.get("name") if isinstance(tool, dict) else getattr(tool, "name", "")) == mandatory_conclusion_tool
         ]
 
@@ -93,9 +96,11 @@ class Stage1DataBundler:
         - bundled_data: raw dict of all executed tool responses
         """
         logger.info("Prefetching standard Stage 1 data in parallel...")
-        
+
         tasks = {
-            "economic_calendar": self.executor.execute("get_economic_calendar", {"hours_ahead": 48, "hours_behind": 24}),
+            "economic_calendar": self.executor.execute(
+                "get_economic_calendar", {"hours_ahead": 48, "hours_behind": 24}
+            ),
             "news_digest": self.executor.execute("get_news_digest", {"hours_back": 12}),
             "dxy": self.executor.execute("get_dxy", {}),
             "treasury_yields": self.executor.execute("get_treasury_yields", {"days_back": 5}),
@@ -105,7 +110,9 @@ class Stage1DataBundler:
             "fear_greed": self.executor.execute("get_fear_greed_index", {}),
             "cot_signals": self.executor.execute("get_precomputed_cot_signals", {}),
             "surprise_summary": self.executor.execute("get_surprise_summary", {}),
-            "eurusd_momentum": self.executor.execute("get_price_momentum", {"symbol": "EURUSD", "timeframe": "H4", "period": 20}),
+            "eurusd_momentum": self.executor.execute(
+                "get_price_momentum", {"symbol": "EURUSD", "timeframe": "H4", "period": 20}
+            ),
             "market_session": self.executor.execute("get_market_session", {}),
             "funding_rate": self.executor.execute("get_funding_rate", {}),
             "bond_yield_spreads": self.executor.execute("get_bond_yield_spreads", {}),
@@ -120,22 +127,29 @@ class Stage1DataBundler:
         # Extra parallel zero-browser real-time feeds
         async def _fetch_crypto_depth():
             from monika.infrastructure.data_ingestion.sources.crypto_orderbook_depth import CryptoOrderbookDepth
+
             snap = await CryptoOrderbookDepth.fetch_snapshot("BTCUSD")
-            return {
-                "exchange": snap.exchange,
-                "spread_bps": snap.spread_bps,
-                "imbalance_score": snap.imbalance_score,
-                "bid_liq_usd": snap.bid_liquidity_usd,
-                "ask_liq_usd": snap.ask_liquidity_usd,
-                "slippage": snap.slippage_estimates,
-            } if snap else {"error": "L2 depth unavailable"}
+            return (
+                {
+                    "exchange": snap.exchange,
+                    "spread_bps": snap.spread_bps,
+                    "imbalance_score": snap.imbalance_score,
+                    "bid_liq_usd": snap.bid_liquidity_usd,
+                    "ask_liq_usd": snap.ask_liquidity_usd,
+                    "slippage": snap.slippage_estimates,
+                }
+                if snap
+                else {"error": "L2 depth unavailable"}
+            )
 
         async def _fetch_sovereign_spreads():
             from monika.infrastructure.data_ingestion.sources.sovereign_yield_spreads import SovereignYieldSpreads
+
             return await SovereignYieldSpreads.get_spreads()
 
         async def _fetch_gold_radar():
             from monika.infrastructure.data_ingestion.sources.gold_physical_radar import GoldPhysicalRadar
+
             radar = await GoldPhysicalRadar.fetch_radar()
             return {
                 "flow_bias": radar.institutional_flow_bias,
@@ -164,6 +178,7 @@ class Stage1DataBundler:
             if isinstance(ec_data, dict) and isinstance(ec_data.get("events"), list):
                 from datetime import datetime, timezone
                 import monika.core.primitives.clock as clock
+
                 now_utc = clock.now()
                 usd_past_events = []
                 for ev in ec_data["events"]:
@@ -192,6 +207,7 @@ class Stage1DataBundler:
                         events_by_time[t_str].append(ev)
 
             import re
+
             def _clean(name):
                 return re.sub(r"<[^>]+>", "", name or "").strip()
 
@@ -206,9 +222,28 @@ class Stage1DataBundler:
                     fw_comp = await self.executor.execute("get_fedwatch_probabilities", {"event_time": t_str})
                     if isinstance(fw_comp, dict) and fw_comp.get("comparisons"):
                         c = fw_comp["comparisons"][0]
-                        all_event_shifts.append({
-                            "event_time": t_str,
-                            "events": names or "USD Release",
+                        all_event_shifts.append(
+                            {
+                                "event_time": t_str,
+                                "events": names or "USD Release",
+                                "meeting_date": c.get("meeting_date"),
+                                "shift_summary": c.get("shift_summary"),
+                                "deltas_pct": c.get("deltas_pct"),
+                                "prior_probabilities": c.get("prior_probabilities"),
+                                "current_probabilities": c.get("current_probabilities"),
+                                "pre_snapshot_time": c.get("pre_snapshot_time"),
+                                "post_snapshot_time": c.get("post_snapshot_time"),
+                            }
+                        )
+            else:
+                # Fallback: pergeseran temporal 24 jam jika tidak ada event kalender spesifik
+                fw_comp = await self.executor.execute("get_fedwatch_probabilities", {"compare_hours_ago": 24})
+                if isinstance(fw_comp, dict) and fw_comp.get("comparisons"):
+                    c = fw_comp["comparisons"][0]
+                    all_event_shifts.append(
+                        {
+                            "event_time": None,
+                            "events": "24h Temporal Shift",
                             "meeting_date": c.get("meeting_date"),
                             "shift_summary": c.get("shift_summary"),
                             "deltas_pct": c.get("deltas_pct"),
@@ -216,30 +251,12 @@ class Stage1DataBundler:
                             "current_probabilities": c.get("current_probabilities"),
                             "pre_snapshot_time": c.get("pre_snapshot_time"),
                             "post_snapshot_time": c.get("post_snapshot_time"),
-                        })
-            else:
-                # Fallback: pergeseran temporal 24 jam jika tidak ada event kalender spesifik
-                fw_comp = await self.executor.execute("get_fedwatch_probabilities", {"compare_hours_ago": 24})
-                if isinstance(fw_comp, dict) and fw_comp.get("comparisons"):
-                    c = fw_comp["comparisons"][0]
-                    all_event_shifts.append({
-                        "event_time": None,
-                        "events": "24h Temporal Shift",
-                        "meeting_date": c.get("meeting_date"),
-                        "shift_summary": c.get("shift_summary"),
-                        "deltas_pct": c.get("deltas_pct"),
-                        "prior_probabilities": c.get("prior_probabilities"),
-                        "current_probabilities": c.get("current_probabilities"),
-                        "pre_snapshot_time": c.get("pre_snapshot_time"),
-                        "post_snapshot_time": c.get("post_snapshot_time"),
-                    })
+                        }
+                    )
 
             if all_event_shifts:
                 latest_shift = all_event_shifts[-1]
-                multi_summary = " | ".join([
-                    f"[{s['events']}]: {s['shift_summary']}"
-                    for s in all_event_shifts
-                ])
+                multi_summary = " | ".join([f"[{s['events']}]: {s['shift_summary']}" for s in all_event_shifts])
 
                 mode_str = "24h_temporal_shift"
                 if events_by_time:
@@ -301,12 +318,17 @@ class Stage1DataBundler:
                     # Attempt dynamic median query from recent treasury yields if available
                     try:
                         from monika.infrastructure.database.models import TreasuryYield
-                        stmt = select(TreasuryYield.yield_percent).where(
-                            TreasuryYield.tenor.in_(["10Y_INFLATION", "T10YIE"])
-                        ).order_by(TreasuryYield.date.desc()).limit(30)
+
+                        stmt = (
+                            select(TreasuryYield.yield_percent)
+                            .where(TreasuryYield.tenor.in_(["10Y_INFLATION", "T10YIE"]))
+                            .order_by(TreasuryYield.date.desc())
+                            .limit(30)
+                        )
                         recent_vals = (await self.session.execute(stmt)).scalars().all()
                         if recent_vals and len(recent_vals) > 0:
                             import statistics
+
                             est_breakeven = round(float(statistics.median(recent_vals)), 2)
                         else:
                             est_breakeven = 2.35
@@ -320,21 +342,26 @@ class Stage1DataBundler:
                 else:
                     real_10y = round(nom_10y - est_breakeven, 2)
 
-                gold_bias = "BEARISH_HEADWIND" if real_10y > 2.0 else ("BULLISH_TAILWIND" if real_10y < 1.0 else "NEUTRAL_RANGE")
+                gold_bias = (
+                    "BEARISH_HEADWIND"
+                    if real_10y > 2.0
+                    else ("BULLISH_TAILWIND" if real_10y < 1.0 else "NEUTRAL_RANGE")
+                )
                 bundled_data["real_yield_context"] = {
                     "nominal_us10y_pct": nom_10y,
                     "estimated_breakeven_inflation_pct": est_breakeven,
                     "real_us10y_yield_pct": real_10y,
                     "is_breakeven_fallback": is_breakeven_fallback,
                     "gold_macro_bias": gold_bias,
-                    "interpretation": f"Real 10Y Yield at {real_10y}%. Real yields > 2.0% create strong headwind for Gold (XAUUSD); < 1.0% provides fuel for Gold breakout."
+                    "interpretation": f"Real 10Y Yield at {real_10y}%. Real yields > 2.0% create strong headwind for Gold (XAUUSD); < 1.0% provides fuel for Gold breakout.",
                 }
         except Exception as e:
             logger.debug(f"Real yield precomputation non-fatal error: {e}")
-                
+
         # Validate macro & market data freshness
         try:
             from monika.core.validation.data_validator import validate_data_freshness
+
             symbols = (
                 self.settings.get("trading", {}).get("asset_universe")
                 or self.settings.get("trading", {}).get("symbols")
@@ -343,7 +370,7 @@ class Stage1DataBundler:
             freshness = await validate_data_freshness(self.session, symbols, ["H1", "H4", "D1"])
             bundled_data["data_freshness_status"] = freshness
             if not freshness.get("ready"):
-                notices = (freshness.get('errors') or []) + (freshness.get('warnings') or [])
+                notices = (freshness.get("errors") or []) + (freshness.get("warnings") or [])
                 logger.warning(f"Stage 1 data freshness validation notices: {notices}")
         except Exception as e:
             logger.debug(f"Data freshness prefetch check non-fatal error: {e}")
@@ -351,6 +378,7 @@ class Stage1DataBundler:
         # Update DataFeedCircuitBreaker heartbeats and evaluate critical feeds
         try:
             from monika.infrastructure.data_ingestion.sources.circuit_breaker import get_data_feed_circuit_breaker
+
             breaker = get_data_feed_circuit_breaker()
             ec_data = bundled_data.get("economic_calendar")
             if ec_data and isinstance(ec_data, dict) and "error" not in ec_data and ec_data.get("events"):
@@ -359,13 +387,20 @@ class Stage1DataBundler:
             if ty_data and isinstance(ty_data, dict) and "error" not in ty_data:
                 breaker.record_feed_heartbeat("fred")
             nd_data = bundled_data.get("news_digest")
-            if nd_data and isinstance(nd_data, dict) and "error" not in nd_data and (nd_data.get("items") or nd_data.get("digest")):
+            if (
+                nd_data
+                and isinstance(nd_data, dict)
+                and "error" not in nd_data
+                and (nd_data.get("items") or nd_data.get("digest"))
+            ):
                 breaker.record_feed_heartbeat("finnhub")
 
             eval_res = breaker.evaluate_all_feeds(auto_trip=False)
             bundled_data["circuit_breaker_status"] = eval_res
             if breaker.is_tripped():
-                logger.warning(f"[Stage1DataBundler] Data feed circuit breaker is TRIPPED: {breaker.get_tripped_feeds()}")
+                logger.warning(
+                    f"[Stage1DataBundler] Data feed circuit breaker is TRIPPED: {breaker.get_tripped_feeds()}"
+                )
         except Exception as cb_err:
             logger.debug(f"Circuit breaker prefetch check non-fatal error: {cb_err}")
 
@@ -388,6 +423,7 @@ class Stage1DataBundler:
         if isinstance(compressed, (str, dict)):
             try:
                 from monika.infrastructure.llm.prompt_compressor import PromptBundleCompressor as ContextCompressor
+
                 compressor = ContextCompressor(self.settings)
                 return compressor.compress_stage1_bundle(compressed, max_tokens=6000)
             except Exception:

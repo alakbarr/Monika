@@ -1,6 +1,7 @@
 """
 Point-in-Time Backtest Engine with Real Pipeline Parity and Zero Lookahead Bias.
 """
+
 import logging
 import asyncio
 from datetime import datetime, timezone, timedelta
@@ -8,7 +9,13 @@ from typing import Literal, List, Dict, Any, Optional
 
 from sqlalchemy import select, func
 from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import BacktestRun, BacktestTrade, AssetAnalysis, PriceOHLCV, TechnicalIndicator
+from monika.infrastructure.database.models import (
+    BacktestRun,
+    BacktestTrade,
+    AssetAnalysis,
+    PriceOHLCV,
+    TechnicalIndicator,
+)
 
 import monika.core.primitives.clock as clock
 from monika.application.backtest.outcome_evaluator import OutcomeEvaluator
@@ -55,13 +62,12 @@ class PointInTimeBacktestEngine:
         self.trades: List[BacktestTrade] = []
         self._evaluator: Optional[OutcomeEvaluator] = None
         self._unsettled_trades: List[tuple[BacktestTrade, Dict[str, Any]]] = []
-        self.equity_curve: List[Dict[str, Any]] = [
-            {"timestamp": start_date, "equity": initial_equity}
-        ]
+        self.equity_curve: List[Dict[str, Any]] = [{"timestamp": start_date, "equity": initial_equity}]
         self.run_record = None
         self.sizer = PositionSizer(self.settings)
         try:
             from monika.domain.risk.risk_gate import RiskGate
+
             self.gate = RiskGate(settings=self.settings, mt5_client=None)
         except Exception:
             self.gate = None
@@ -72,6 +78,7 @@ class PointInTimeBacktestEngine:
         else:
             try:
                 from monika.infrastructure.brokers.broker_adapter import SimulatedBrokerAdapter
+
                 self.broker_adapter = SimulatedBrokerAdapter(
                     initial_balance=initial_equity,
                     settings=self.settings,
@@ -85,6 +92,7 @@ class PointInTimeBacktestEngine:
         else:
             try:
                 from monika.application.execution.execution_service import ExecutionService
+
                 self.execution_service = ExecutionService(
                     settings=self.settings,
                     dry_run=True,
@@ -114,11 +122,12 @@ class PointInTimeBacktestEngine:
         entry_price = analysis.price_at_analysis or analysis.entry_price
 
         # Synchronize broker tick
-        if entry_price and self.broker_adapter is not None and hasattr(self.broker_adapter, 'set_tick'):
+        if entry_price and self.broker_adapter is not None and hasattr(self.broker_adapter, "set_tick"):
             from monika.infrastructure.brokers.broker_adapter import _get_pip_size
+
             pip_size = _get_pip_size(analysis.symbol)
-            spread_pips = getattr(self.broker_adapter, 'symbol_spread_pips', {}).get(
-                analysis.symbol, getattr(self.broker_adapter, 'default_spread_pips', 1.5)
+            spread_pips = getattr(self.broker_adapter, "symbol_spread_pips", {}).get(
+                analysis.symbol, getattr(self.broker_adapter, "default_spread_pips", 1.5)
             )
             half_spread = (spread_pips * pip_size) / 2.0
             self.broker_adapter.set_tick(
@@ -129,6 +138,7 @@ class PointInTimeBacktestEngine:
             )
 
         from contextlib import nullcontext
+
         freeze_ctx = clock.frozen_time(analysis.generated_at) if analysis.generated_at else nullcontext()
 
         with freeze_ctx:
@@ -185,11 +195,13 @@ class PointInTimeBacktestEngine:
                     pnl_pct = trade.pnl_pct or 0.0
                     pnl_usd = (float(pnl_pct) / 100.0) * self.equity
                 self.equity = max(0.0, self.equity + pnl_usd)
-                self.equity_curve.append({
-                    "timestamp": exit_time,
-                    "equity": round(self.equity, 2),
-                    "trade_pnl_usd": pnl_usd,
-                })
+                self.equity_curve.append(
+                    {
+                        "timestamp": exit_time,
+                        "equity": round(self.equity, 2),
+                        "trade_pnl_usd": pnl_usd,
+                    }
+                )
             else:
                 still_unsettled.append((trade, outcome))
         self._unsettled_trades = still_unsettled
@@ -209,11 +221,13 @@ class PointInTimeBacktestEngine:
             pnl_usd = (float(pnl_pct) / 100.0) * self.equity if pnl_pct is not None else 0.0
         self.equity = max(0.0, self.equity + pnl_usd)
         exit_ts = trade.exit_time or self.end_date
-        self.equity_curve.append({
-            "timestamp": exit_ts,
-            "equity": round(self.equity, 2),
-            "trade_pnl_usd": pnl_usd,
-        })
+        self.equity_curve.append(
+            {
+                "timestamp": exit_ts,
+                "equity": round(self.equity, 2),
+                "trade_pnl_usd": pnl_usd,
+            }
+        )
         return pnl_usd
 
     async def run(self):
@@ -225,7 +239,7 @@ class PointInTimeBacktestEngine:
                 end_date=self.end_date,
                 step_hours=self.step_hours,
                 initial_equity=self.initial_equity,
-                settings_snapshot=self.settings
+                settings_snapshot=self.settings,
             )
             session.add(self.run_record)
             await session.commit()
@@ -262,7 +276,7 @@ class PointInTimeBacktestEngine:
             trades=self.trades,
             equity_curve=self.equity_curve,
             start_date=self.start_date,
-            end_date=self.end_date
+            end_date=self.end_date,
         )
         generator.calculate_metrics()
         self.run_record.final_equity = self.equity
@@ -283,12 +297,14 @@ class PointInTimeBacktestEngine:
         and database temporal limits (WHERE timestamp <= as_of_time).
         """
         logger.debug(f"Running Full Mode (Point-in-Time Pipeline) from {self.start_date} to {self.end_date}")
-        symbols = self.symbols or self.settings.get(
-            'trading', {}
-        ).get('asset_universe', ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'XAUUSD', 'BTCUSD'])
+        symbols = self.symbols or self.settings.get("trading", {}).get(
+            "asset_universe", ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "XAUUSD", "BTCUSD"]
+        )
 
         from monika.application.analysis.calculators.confluence_calculator import calculate_confluence
-        from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
+        from monika.application.analysis.calculators.unified_threshold_calculator import (
+            compute_unified_confluence_threshold,
+        )
         from monika.application.analysis.calculators.regime_classifier import classify_market_regime
         from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
@@ -305,20 +321,26 @@ class PointInTimeBacktestEngine:
                             continue
 
                         # Point-in-time price query (Zero Lookahead: completed bars before current_time)
-                        latest_bar = (await session.execute(
-                            select(PriceOHLCV)
-                            .where(PriceOHLCV.symbol == symbol)
-                            .where(PriceOHLCV.timeframe == 'H1')
-                            .where(PriceOHLCV.timestamp < current_time)
-                            .order_by(PriceOHLCV.timestamp.desc())
-                            .limit(1)
-                        )).scalar_one_or_none()
+                        latest_bar = (
+                            await session.execute(
+                                select(PriceOHLCV)
+                                .where(PriceOHLCV.symbol == symbol)
+                                .where(PriceOHLCV.timeframe == "H1")
+                                .where(PriceOHLCV.timestamp < current_time)
+                                .order_by(PriceOHLCV.timestamp.desc())
+                                .limit(1)
+                            )
+                        ).scalar_one_or_none()
 
                         if not latest_bar:
                             continue
 
                         # Check staleness: if latest bar is > 4 hours older than current_time, skip
-                        bar_ts = latest_bar.timestamp.replace(tzinfo=timezone.utc) if latest_bar.timestamp.tzinfo is None else latest_bar.timestamp
+                        bar_ts = (
+                            latest_bar.timestamp.replace(tzinfo=timezone.utc)
+                            if latest_bar.timestamp.tzinfo is None
+                            else latest_bar.timestamp
+                        )
                         if (current_time - bar_ts).total_seconds() > 14400:
                             continue
 
@@ -329,34 +351,40 @@ class PointInTimeBacktestEngine:
                                 symbol=symbol,
                                 entry_price=latest_bar.close,
                                 settings=self.settings,
-                                as_of=current_time
+                                as_of=current_time,
                             )
-                            buy_score = conf_res.get('buy_potential_score', 0)
-                            sell_score = conf_res.get('sell_potential_score', 0)
+                            buy_score = conf_res.get("buy_potential_score", 0)
+                            sell_score = conf_res.get("sell_potential_score", 0)
                             if buy_score >= sell_score:
-                                direction = 'buy'
+                                direction = "buy"
                                 confluence_score = buy_score
                             else:
-                                direction = 'sell'
+                                direction = "sell"
                                 confluence_score = sell_score
                         except Exception as e:
                             logger.debug(f"Point-in-time confluence calc failed for {symbol}: {e}")
                             confluence_score = 0
-                            direction = 'neutral'
+                            direction = "neutral"
 
-                        if direction not in ('buy', 'sell'):
+                        if direction not in ("buy", "sell"):
                             continue
 
                         # 2. Unified threshold requirement as of current_time
                         try:
-                            req_threshold, _ = await compute_unified_confluence_threshold(session, symbol, self.settings, as_of=current_time, is_backtest=True)
+                            req_threshold, _ = await compute_unified_confluence_threshold(
+                                session, symbol, self.settings, as_of=current_time, is_backtest=True
+                            )
                         except Exception:
                             req_threshold = 7
 
                         # 3. Market regime filter as of current_time
                         try:
-                            regime_data = await classify_market_regime(session, symbol, self.settings, as_of=current_time)
-                            if regime_data.get('regime') == 'VOLATILE_CHOP' or regime_data.get('volatility_chop', {}).get('chop_block'):
+                            regime_data = await classify_market_regime(
+                                session, symbol, self.settings, as_of=current_time
+                            )
+                            if regime_data.get("regime") == "VOLATILE_CHOP" or regime_data.get(
+                                "volatility_chop", {}
+                            ).get("chop_block"):
                                 continue
                         except Exception:
                             pass
@@ -364,6 +392,7 @@ class PointInTimeBacktestEngine:
                         if confluence_score >= req_threshold:
                             from monika.domain.risk.domain.instruments import DEFAULT_INSTRUMENTS
                             from monika.application.backtest.outcome_evaluator import DEFAULT_FRICTION_PROFILE
+
                             spec = DEFAULT_INSTRUMENTS.get(symbol)
                             if spec:
                                 pip_sz = getattr(spec, "pip_size", 0.0001)
@@ -379,32 +408,40 @@ class PointInTimeBacktestEngine:
                             slip_cost = sym_prof.get("slippage_pips", 0.5) * pip_sz
 
                             # Query execution bar (Zero-lookahead: next bar open beginning at or after current_time)
-                            next_bar = (await session.execute(
-                                select(PriceOHLCV)
-                                .where(PriceOHLCV.symbol == symbol)
-                                .where(PriceOHLCV.timeframe == 'H1')
-                                .where(PriceOHLCV.timestamp >= current_time)
-                                .order_by(PriceOHLCV.timestamp.asc())
-                                .limit(1)
-                            )).scalar_one_or_none()
+                            next_bar = (
+                                await session.execute(
+                                    select(PriceOHLCV)
+                                    .where(PriceOHLCV.symbol == symbol)
+                                    .where(PriceOHLCV.timeframe == "H1")
+                                    .where(PriceOHLCV.timestamp >= current_time)
+                                    .order_by(PriceOHLCV.timestamp.asc())
+                                    .limit(1)
+                                )
+                            ).scalar_one_or_none()
 
                             base_entry = next_bar.open if next_bar else latest_bar.close
 
-                            if direction == 'buy':
+                            if direction == "buy":
                                 entry_price = base_entry + (spread_cost / 2.0) + slip_cost
                             else:
                                 entry_price = base_entry - (spread_cost / 2.0) - slip_cost
 
                             # Calculate ATR-based dynamic stops & targets
-                            adr_ctx = await compute_daily_range_context(session, symbol, self.settings, as_of=current_time)
-                            atr_val = (adr_ctx.get('adr', 0.0) / 2.0) if adr_ctx and 'error' not in adr_ctx else (entry_price * 0.005)
+                            adr_ctx = await compute_daily_range_context(
+                                session, symbol, self.settings, as_of=current_time
+                            )
+                            atr_val = (
+                                (adr_ctx.get("adr", 0.0) / 2.0)
+                                if adr_ctx and "error" not in adr_ctx
+                                else (entry_price * 0.005)
+                            )
                             if atr_val <= 0:
                                 atr_val = entry_price * 0.005
 
                             sl_dist = atr_val * 1.5
                             tp_dist = atr_val * 3.0
 
-                            if direction == 'buy':
+                            if direction == "buy":
                                 stop_loss = entry_price - sl_dist
                                 take_profit = entry_price + tp_dist
                             else:
@@ -422,14 +459,16 @@ class PointInTimeBacktestEngine:
                                 account_equity=self.equity,
                                 is_paper=True,
                                 as_of=current_time,
-                                is_backtest=True
+                                is_backtest=True,
                             )
 
                             if not sizing.is_valid or sizing.recommended_lots <= 0:
                                 continue
 
                             # 4. RiskGate validation if configured (default True)
-                            if self.gate is not None and self.settings.get("backtest", {}).get("enforce_risk_gate", False):
+                            if self.gate is not None and self.settings.get("backtest", {}).get(
+                                "enforce_risk_gate", False
+                            ):
                                 try:
                                     verdict = await self.gate.check(
                                         session=session,
@@ -439,14 +478,24 @@ class PointInTimeBacktestEngine:
                                         account_equity=self.equity,
                                         as_of=current_time,
                                         simulated_positions=[
-                                            {"symbol": s, "expiry": exp, "direction": "buy", "volume": 0.1, "entry_price": 1.0, "sl": 0.99}
-                                            for s, exp in active_positions.items() if exp > current_time
+                                            {
+                                                "symbol": s,
+                                                "expiry": exp,
+                                                "direction": "buy",
+                                                "volume": 0.1,
+                                                "entry_price": 1.0,
+                                                "sl": 0.99,
+                                            }
+                                            for s, exp in active_positions.items()
+                                            if exp > current_time
                                         ],
                                         simulated_equity=self.equity,
-                                        is_backtest=True
+                                        is_backtest=True,
                                     )
                                     if not verdict.approved:
-                                        logger.debug(f"RiskGate rejected backtest trade {symbol}: {verdict.rejection_reasons}")
+                                        logger.debug(
+                                            f"RiskGate rejected backtest trade {symbol}: {verdict.rejection_reasons}"
+                                        )
                                         continue
                                 except Exception as gate_err:
                                     logger.debug(f"RiskGate check in backtest error (fallback): {gate_err}")
@@ -461,13 +510,15 @@ class PointInTimeBacktestEngine:
                                 confidence=80,
                                 confluence_score=confluence_score,
                                 rationale=f"Point-in-time confluence={confluence_score} (req={req_threshold})",
-                                model_used="point_in_time_pipeline"
+                                model_used="point_in_time_pipeline",
                             )
                             trade.executed_lots = sizing.recommended_lots
                             if self._evaluator is not None:
                                 try:
                                     outcome = await self._record_and_evaluate_trade(trade)
-                                    active_positions[symbol] = outcome["exit_time"] or (current_time + timedelta(hours=48))
+                                    active_positions[symbol] = outcome["exit_time"] or (
+                                        current_time + timedelta(hours=48)
+                                    )
                                 except Exception as eval_err:
                                     logger.debug(f"Inline trade evaluation error: {eval_err}")
                                     self.trades.append(trade)
@@ -497,7 +548,11 @@ class PointInTimeBacktestEngine:
         effective_cutoff = min(as_of, vintage_date) if vintage_date else as_of
 
         # Use hasattr to check for timestamp or generated_at or release_date
-        ts_col = getattr(model_cls, "timestamp", None) or getattr(model_cls, "generated_at", None) or getattr(model_cls, "release_date", None)
+        ts_col = (
+            getattr(model_cls, "timestamp", None)
+            or getattr(model_cls, "generated_at", None)
+            or getattr(model_cls, "release_date", None)
+        )
         if ts_col is None:
             return []
 
@@ -525,6 +580,7 @@ class PointInTimeBacktestEngine:
                 stmt = stmt.where(AssetAnalysis.symbol.in_(self.symbols))
             if self.strategies:
                 from sqlalchemy import or_
+
                 stmt = stmt.where(
                     or_(
                         AssetAnalysis.source_strategy_id.in_(self.strategies),
@@ -572,7 +628,7 @@ class PointInTimeBacktestEngine:
                         account_equity=self.equity,
                         is_paper=True,
                         as_of=analysis.generated_at,
-                        is_backtest=True
+                        is_backtest=True,
                     )
 
                     if not sizing.is_valid:
@@ -589,10 +645,12 @@ class PointInTimeBacktestEngine:
                                 analysis=analysis,
                                 as_of=analysis.generated_at,
                                 simulated_equity=self.equity,
-                                is_backtest=True
+                                is_backtest=True,
                             )
                             if not verdict.approved:
-                                logger.debug(f"RiskGate rejected replay trade {analysis.symbol}: {verdict.rejection_reasons}")
+                                logger.debug(
+                                    f"RiskGate rejected replay trade {analysis.symbol}: {verdict.rejection_reasons}"
+                                )
                                 continue
                         except Exception as gate_err:
                             logger.debug(f"RiskGate check in replay error: {gate_err}")
@@ -607,7 +665,7 @@ class PointInTimeBacktestEngine:
                     confidence=int((analysis.confidence or 0.7) * 100),
                     confluence_score=analysis.confluence_score or 7,
                     rationale=analysis.rationale or "Replay decision",
-                    model_used="replay"
+                    model_used="replay",
                 )
                 trade.executed_lots = sizing.recommended_lots
                 if self._evaluator is not None:
@@ -627,16 +685,17 @@ class PointInTimeBacktestEngine:
         """
         logger.debug(f"Running LangGraph Parity Mode from {self.start_date} to {self.end_date}")
         from monika.application.graph.workflow import build_trading_graph
+
         graph = build_trading_graph()
 
         class _MockScheduler:
             def __init__(self, settings):
                 self.settings = settings
                 self.dry_run = True
-                self.asset_universe = settings.get(
-                    'trading', {}
-                ).get('asset_universe', ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'XAUUSD', 'BTCUSD'])
-                self.mt5_timeframes = ['H1', 'H4', 'D1']
+                self.asset_universe = settings.get("trading", {}).get(
+                    "asset_universe", ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "XAUUSD", "BTCUSD"]
+                )
+                self.mt5_timeframes = ["H1", "H4", "D1"]
                 self._mt5 = None
                 self.market_data_scheduler = None
                 self._cycle_lock = asyncio.Lock()
@@ -647,15 +706,19 @@ class PointInTimeBacktestEngine:
                 class _MockPaperTracker:
                     async def check_and_suspend_poor_performers(self, *args, **kwargs):
                         pass
+
                     async def get_suspended_symbols(self, *args, **kwargs):
                         return []
+
                     async def open_paper_trade(self, *args, **kwargs):
                         pass
+
                 self._paper_tracker = _MockPaperTracker()
 
                 class _MockFundamental:
                     async def run(self, *args, **kwargs):
                         return {"market_regime": "NORMAL", "macro_outlook": "NEUTRAL", "bias": {}}
+
                 self._fundamental = _MockFundamental()
                 self._per_asset = None
 
@@ -690,12 +753,12 @@ class PointInTimeBacktestEngine:
                 pass
 
             async def _pre_cycle_setup(self, forced=True):
-                return {'effective_auto_execute': False}
+                return {"effective_auto_execute": False}
 
         current_time = self.start_date
-        symbols = self.symbols or self.settings.get(
-            'trading', {}
-        ).get('asset_universe', ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'XAUUSD', 'BTCUSD'])
+        symbols = self.symbols or self.settings.get("trading", {}).get(
+            "asset_universe", ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "XAUUSD", "BTCUSD"]
+        )
 
         async with get_session() as session:
             while current_time <= self.end_date:
@@ -714,8 +777,7 @@ class PointInTimeBacktestEngine:
                     }
                     try:
                         final_state = await graph.ainvoke(
-                            initial_state,
-                            config={"configurable": {"scheduler": _MockScheduler(self.settings)}}
+                            initial_state, config={"configurable": {"scheduler": _MockScheduler(self.settings)}}
                         )
                         actionable = final_state.get("actionable_trades", [])
                         for item in actionable:
@@ -738,11 +800,13 @@ class PointInTimeBacktestEngine:
                                         take_profit=tp_p,
                                         account_equity=self.equity,
                                         is_paper=True,
-                                        as_of=current_time
+                                        as_of=current_time,
                                     )
                                     if sizing.is_valid:
                                         # Enforce RiskGate point-in-time validation in simulation if configured
-                                        if self.gate is not None and self.settings.get("backtest", {}).get("enforce_risk_gate", False):
+                                        if self.gate is not None and self.settings.get("backtest", {}).get(
+                                            "enforce_risk_gate", False
+                                        ):
                                             gate_verdict = await self.gate.check(
                                                 session=session,
                                                 symbol=sym,
@@ -751,10 +815,12 @@ class PointInTimeBacktestEngine:
                                                 account_equity=self.equity,
                                                 as_of=current_time,
                                                 simulated_equity=self.equity,
-                                                is_backtest=True
+                                                is_backtest=True,
                                             )
                                             if not gate_verdict.approved:
-                                                logger.debug(f"RiskGate rejected LangGraph trade {sym} at {current_time}: {gate_verdict.rejection_reasons}")
+                                                logger.debug(
+                                                    f"RiskGate rejected LangGraph trade {sym} at {current_time}: {gate_verdict.rejection_reasons}"
+                                                )
                                                 continue
 
                                         trade = BacktestTrade(
@@ -767,7 +833,7 @@ class PointInTimeBacktestEngine:
                                             confidence=conf,
                                             confluence_score=res.get("confluence_score", 7),
                                             rationale=res.get("rationale", "LangGraph parity execution"),
-                                            model_used="langgraph_parity"
+                                            model_used="langgraph_parity",
                                         )
                                         trade.executed_lots = sizing.recommended_lots
                                         if self._evaluator is not None:

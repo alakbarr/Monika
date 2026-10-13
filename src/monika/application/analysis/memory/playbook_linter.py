@@ -27,9 +27,15 @@ class PlaybookLinter:
 
     REQUIRED_METADATA = ["symbol", "regime", "timeframe", "min_rr"]
     VALID_REGIMES = {
-        "TRENDING", "TRENDING_UP", "TRENDING_DOWN",
-        "RANGING", "BREAKOUT", "HIGH_VOLATILITY", "LOW_VOLATILITY",
-        "MEAN_REVERTING", "ANY"
+        "TRENDING",
+        "TRENDING_UP",
+        "TRENDING_DOWN",
+        "RANGING",
+        "BREAKOUT",
+        "HIGH_VOLATILITY",
+        "LOW_VOLATILITY",
+        "MEAN_REVERTING",
+        "ANY",
     }
 
     # Narrative post-mortem / diary phrases that indicate an incident log rather than a systematic playbook
@@ -45,7 +51,7 @@ class PlaybookLinter:
         r"\bincident\s+log\b",
         r"\bunfortunately\b",
         r"\bi\s+should\s+have\b",
-        r"\bwe\s+should\s+have\b"
+        r"\bwe\s+should\s+have\b",
     ]
 
     # Required structural sections in the markdown body
@@ -105,7 +111,7 @@ class PlaybookLinter:
                         errors.append(
                             f"Numeric invariant violation: min_rr ({min_rr}) is below threshold ({self.min_rr_threshold})."
                         )
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     errors.append(f"Invalid numeric value for min_rr: {metadata['min_rr']}")
 
             # Check win_rate if present
@@ -116,7 +122,7 @@ class PlaybookLinter:
                         wr = wr / 100.0  # normalize percentage
                     if not (0.0 <= wr <= 1.0):
                         errors.append(f"win_rate must be between 0.0 and 1.0, got: {metadata['win_rate']}")
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     errors.append(f"Invalid numeric value for win_rate: {metadata['win_rate']}")
 
         # 2. Check for narrative incident log patterns
@@ -140,9 +146,4 @@ class PlaybookLinter:
             errors.append("Playbook body lacks sufficient substance (fewer than 3 declarative content lines).")
 
         is_valid = len(errors) == 0
-        return PlaybookLintResult(
-            is_valid=is_valid,
-            errors=errors,
-            warnings=warnings,
-            metadata=metadata
-        )
+        return PlaybookLintResult(is_valid=is_valid, errors=errors, warnings=warnings, metadata=metadata)

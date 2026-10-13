@@ -249,6 +249,7 @@ class StatusBar(Static):
 
 class KillConfirmModalScreen(ModalScreen[bool]):
     """Modal screen prompting operator to confirm emergency kill switch."""
+
     DEFAULT_CSS = """
     KillConfirmModalScreen {
         align: center middle;
@@ -287,7 +288,10 @@ class KillConfirmModalScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
         with Container(id="kill_dialog"):
             yield Label("[EMERGENCY] EMERGENCY KILL SWITCH CONFIRMATION", id="kill_title")
-            yield Label("Are you sure you want to trigger the KILL SWITCH?\nThis will close all open positions and halt trading.", id="kill_msg")
+            yield Label(
+                "Are you sure you want to trigger the KILL SWITCH?\nThis will close all open positions and halt trading.",
+                id="kill_msg",
+            )
             with Horizontal(id="kill_buttons"):
                 yield Button("CONFIRM [Y]", variant="error", id="btn_confirm")
                 yield Button("CANCEL [Esc/N]", variant="default", id="btn_cancel")
@@ -415,9 +419,11 @@ class TradingDashboard(App):
         """Check if any input or textarea currently has keyboard focus."""
         try:
             from textual.widgets import Input, TextArea
+
             return isinstance(self.focused, (Input, TextArea))
         except ImportError:
             from textual.widgets import Input
+
             return isinstance(self.focused, Input)
 
     def compose(self) -> ComposeResult:
@@ -466,11 +472,17 @@ class TradingDashboard(App):
                         yield DataTable(id="market_rates_table", zebra_stripes=True)
             with TabPane("Plugins", id="tab_plugins"):
                 with Vertical(id="plugins_container"):
-                    yield Static("PLUG-IN HARNESS & MARKETPLACE LEDGER (Press [t] to toggle ON/OFF, [i] to install via pip)", classes="panel_title")
+                    yield Static(
+                        "PLUG-IN HARNESS & MARKETPLACE LEDGER (Press [t] to toggle ON/OFF, [i] to install via pip)",
+                        classes="panel_title",
+                    )
                     yield DataTable(id="plugins_table", zebra_stripes=True)
             with TabPane("Benchmark", id="tab_benchmark"):
                 with Vertical(id="benchmark_container"):
-                    yield Static("LLM MODEL LAB & BENCHMARK LEADERBOARD (Press [b] to switch, [r] to refresh)", classes="panel_title")
+                    yield Static(
+                        "LLM MODEL LAB & BENCHMARK LEADERBOARD (Press [b] to switch, [r] to refresh)",
+                        classes="panel_title",
+                    )
                     yield DataTable(id="benchmark_table", zebra_stripes=True)
             with TabPane("Chat", id="tab_chat"):
                 with Vertical(id="chat_tab_container"):
@@ -506,37 +518,45 @@ class TradingDashboard(App):
         # Setup Performance Table
         perf_table = self.query_one("#perf_table", DataTable)
         perf_table.add_columns("Metric", "Value", "Benchmark / Limit")
-        perf_table.add_rows([
-            ("Total Trades", "0", "≥ 50 (Protocol Minimum)"),
-            ("Win Rate", "0.0%", "≥ 55.0%"),
-            ("Profit Factor", "0.00", "≥ 1.50"),
-            ("Max Daily Drawdown", "0.0%", "≤ 3.0%"),
-            ("Max Consecutive Losses", "0", "≤ 3 (Circuit Breaker)"),
-        ])
+        perf_table.add_rows(
+            [
+                ("Total Trades", "0", "≥ 50 (Protocol Minimum)"),
+                ("Win Rate", "0.0%", "≥ 55.0%"),
+                ("Profit Factor", "0.00", "≥ 1.50"),
+                ("Max Daily Drawdown", "0.0%", "≤ 3.0%"),
+                ("Max Consecutive Losses", "0", "≤ 3 (Circuit Breaker)"),
+            ]
+        )
 
         # Setup Market Table
         market_table = self.query_one("#market_table", DataTable)
         market_table.add_columns("Time", "Currency", "Macro Event", "Impact", "Forecast", "Actual")
-        market_table.add_rows([
-            ("03:00 UTC", "JPY", "Bank of Japan (BoJ) Interest Rate Decision", "HIGH", "1.25%", "—"),
-            ("06:00 UTC", "GBP", "UK Core Retail Sales (MoM)", "MEDIUM", "-0.2%", "—"),
-            ("13:15 UTC", "USD", "US Industrial Production (MoM)", "MEDIUM", "0.3%", "—"),
-            ("14:00 UTC", "USD", "US Leading Economic Index (MoM)", "MEDIUM", "0.1%", "—"),
-        ])
+        market_table.add_rows(
+            [
+                ("03:00 UTC", "JPY", "Bank of Japan (BoJ) Interest Rate Decision", "HIGH", "1.25%", "—"),
+                ("06:00 UTC", "GBP", "UK Core Retail Sales (MoM)", "MEDIUM", "-0.2%", "—"),
+                ("13:15 UTC", "USD", "US Industrial Production (MoM)", "MEDIUM", "0.3%", "—"),
+                ("14:00 UTC", "USD", "US Leading Economic Index (MoM)", "MEDIUM", "0.1%", "—"),
+            ]
+        )
 
         # Setup Market Rates Table
         market_rates_table = self.query_one("#market_rates_table", DataTable)
         market_rates_table.add_columns("Benchmark", "Rate / Yield", "Spread / Bias", "Outlook")
-        market_rates_table.add_rows([
-            ("FOMC Fed Funds", "5.25% - 5.50%", "Hold: 85.2%", "Dovish Pause"),
-            ("US Treasury 2Y", "4.15%", "Tenor Benchmark", "Neutral"),
-            ("US Treasury 10Y", "4.38%", "2s10s: +0.23%", "Normal Curve"),
-            ("Fear & Greed Index", "50 / 100", "Neutral", "Balanced"),
-        ])
+        market_rates_table.add_rows(
+            [
+                ("FOMC Fed Funds", "5.25% - 5.50%", "Hold: 85.2%", "Dovish Pause"),
+                ("US Treasury 2Y", "4.15%", "Tenor Benchmark", "Neutral"),
+                ("US Treasury 10Y", "4.38%", "2s10s: +0.23%", "Normal Curve"),
+                ("Fear & Greed Index", "50 / 100", "Neutral", "Balanced"),
+            ]
+        )
 
         # Setup Activity Log
         log = self.query_one("#activity_log", RichLog)
-        log.write(f"[bold {PHOSPHOR_AMBER}][ INITIALIZATION ][/] Monika Terminal TUI Active (Theme: {self.theme_pack.name})")
+        log.write(
+            f"[bold {PHOSPHOR_AMBER}][ INITIALIZATION ][/] Monika Terminal TUI Active (Theme: {self.theme_pack.name})"
+        )
         log.write(f"[dim {MUTED}]Connecting to market data feed...[/]")
 
         # Setup Analysis Detail Log
@@ -546,7 +566,9 @@ class TradingDashboard(App):
         # Setup Inline Chat Log
         inline_chat = self.query_one("#inline_chat_log", RichLog)
         inline_chat.write(f"[bold {PHOSPHOR_AMBER}][ DESK CONSOLE ][/] Monika Autonomous AI Desk Console Ready.")
-        inline_chat.write(f"[dim {MUTED}]Type your query in the bottom input bar to chat inline, or press 'c' for full overlay.[/]\n")
+        inline_chat.write(
+            f"[dim {MUTED}]Type your query in the bottom input bar to chat inline, or press 'c' for full overlay.[/]\n"
+        )
 
         # Setup Plugins Table
         plugins_table = self.query_one("#plugins_table", DataTable)
@@ -621,7 +643,17 @@ class TradingDashboard(App):
         if self._is_input_focused():
             return
         tabs = self.query_one("#main_tabs", TabbedContent)
-        tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_market", "tab_plugins", "tab_benchmark", "tab_chat"]
+        tab_ids = [
+            "tab_overview",
+            "tab_analysis",
+            "tab_signals",
+            "tab_risk",
+            "tab_performance",
+            "tab_market",
+            "tab_plugins",
+            "tab_benchmark",
+            "tab_chat",
+        ]
         curr = tabs.active
         if curr in tab_ids:
             next_idx = (tab_ids.index(curr) + 1) % len(tab_ids)
@@ -632,7 +664,17 @@ class TradingDashboard(App):
         if self._is_input_focused():
             return
         tabs = self.query_one("#main_tabs", TabbedContent)
-        tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_market", "tab_plugins", "tab_benchmark", "tab_chat"]
+        tab_ids = [
+            "tab_overview",
+            "tab_analysis",
+            "tab_signals",
+            "tab_risk",
+            "tab_performance",
+            "tab_market",
+            "tab_plugins",
+            "tab_benchmark",
+            "tab_chat",
+        ]
         curr = tabs.active
         if curr in tab_ids:
             prev_idx = (tab_ids.index(curr) - 1) % len(tab_ids)
@@ -699,15 +741,18 @@ class TradingDashboard(App):
                 from monika.application.benchmark.db_models import BenchmarkRun, BenchmarkResult
                 from monika.infrastructure.database.db import get_session
                 from sqlalchemy import select, desc
+
                 async with get_session() as session:
-                    latest = (await session.execute(
-                        select(BenchmarkRun).order_by(desc(BenchmarkRun.started_at)).limit(1)
-                    )).scalar_one_or_none()
+                    latest = (
+                        await session.execute(select(BenchmarkRun).order_by(desc(BenchmarkRun.started_at)).limit(1))
+                    ).scalar_one_or_none()
                     if not latest:
                         return
-                    rows = (await session.execute(
-                        select(BenchmarkResult).where(BenchmarkResult.run_id == latest.id)
-                    )).scalars().all()
+                    rows = (
+                        (await session.execute(select(BenchmarkResult).where(BenchmarkResult.run_id == latest.id)))
+                        .scalars()
+                        .all()
+                    )
 
                     stats = {}
                     for r in rows:
@@ -716,15 +761,17 @@ class TradingDashboard(App):
                             stats[m] = {"tasks": 0, "passed": 0, "score": 0.0, "cost": 0.0, "lat": 0.0}
                         st = stats[m]
                         st["tasks"] += 1
-                        st["cost"] += (r.cost_usd or 0.0)
-                        st["lat"] += (r.latency_s or 0.0)
+                        st["cost"] += r.cost_usd or 0.0
+                        st["lat"] += r.latency_s or 0.0
                         if not r.error and r.overall_score:
                             st["score"] += r.overall_score
                             if r.overall_score >= 0.70:
                                 st["passed"] += 1
 
                     bench_table.clear()
-                    sorted_stats = sorted(stats.items(), key=lambda x: (x[1]["score"] / max(x[1]["tasks"], 1)), reverse=True)
+                    sorted_stats = sorted(
+                        stats.items(), key=lambda x: x[1]["score"] / max(x[1]["tasks"], 1), reverse=True
+                    )
                     for idx, (m, st) in enumerate(sorted_stats, 1):
                         cnt = max(st["tasks"], 1)
                         avg_sc = st["score"] / cnt
@@ -734,11 +781,11 @@ class TradingDashboard(App):
                         bench_table.add_row(
                             f"#{idx}",
                             m,
-                            f"{avg_sc*100:.1f}%",
+                            f"{avg_sc * 100:.1f}%",
                             f"{pass_rt:.1f}%",
                             f"{avg_lat:.2f}s",
                             f"${avg_cst:.4f}",
-                            str(st["tasks"])
+                            str(st["tasks"]),
                         )
             else:
                 async with aiohttp.ClientSession() as session:
@@ -755,7 +802,7 @@ class TradingDashboard(App):
                                     f"{l.get('pass_rate_pct', 0):.1f}%",
                                     f"{l.get('avg_latency_s', 0):.2f}s",
                                     f"${l.get('avg_cost_usd', 0):.4f}",
-                                    str(l.get("total_tasks", 0))
+                                    str(l.get("total_tasks", 0)),
                                 )
         except Exception as ex:
             logger.debug(f"Error refreshing benchmark table in TUI: {ex}")
@@ -764,6 +811,7 @@ class TradingDashboard(App):
         """Fetch unified plugin statuses and refresh DataTable."""
         try:
             from monika.application.harness.installer import list_all_plugins_status
+
             plugins = list_all_plugins_status()
             table = self.query_one("#plugins_table", DataTable)
             table.clear()
@@ -810,6 +858,7 @@ class TradingDashboard(App):
 
             plugin_id = str(row_key.value)
             from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
+
             plugins = {p["id"]: p for p in list_all_plugins_status()}
             if plugin_id in plugins:
                 p = plugins[plugin_id]
@@ -831,6 +880,7 @@ class TradingDashboard(App):
         if self._is_input_focused():
             return
         from monika.interfaces.cli.overlays.plugin_install_modal import PluginInstallModalScreen
+
         self.push_screen(PluginInstallModalScreen(), self._on_plugin_install_modal_closed)
 
     async def _on_plugin_install_modal_closed(self, result: Any) -> None:
@@ -870,6 +920,7 @@ class TradingDashboard(App):
         if persist:
             try:
                 from monika.interfaces.cli.theme import persist_theme_to_settings
+
                 persist_theme_to_settings(theme_name)
             except Exception as pe:
                 logger.debug(f"[TUI] Persist theme error: {pe}")
@@ -887,10 +938,7 @@ class TradingDashboard(App):
             try:
                 timeout = aiohttp.ClientTimeout(total=2.0)
                 async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
-                    res = await session.post(
-                        f"{self.api_url}/api/actions/steer",
-                        json={"message": msg, "mode": mode}
-                    )
+                    res = await session.post(f"{self.api_url}/api/actions/steer", json={"message": msg, "mode": mode})
                     if res.status == 200:
                         dispatched = True
             except Exception:
@@ -900,23 +948,28 @@ class TradingDashboard(App):
             try:
                 from monika.infrastructure.database.db import get_session
                 from monika.infrastructure.database.models import UserMarketIntel, ActivityLog as DBLog, _utcnow
+
                 async with get_session() as session:
-                    session.add(UserMarketIntel(
-                        telegram_user_id="tui_operator",
-                        intel_type="tactical_directive",
-                        title="TUI Operator Steer",
-                        summary=msg,
-                        directive="neutral",
-                        target_cycle="next_cycle_only" if mode == "follow_up" else "continuous",
-                        affected_symbols="ALL",
-                        is_active=True,
-                        created_at=_utcnow(),
-                    ))
-                    session.add(DBLog(
-                        category="analysis",
-                        description=f"TUI Steer injected ({mode}): {msg[:100]}",
-                        actor="operator_tui",
-                    ))
+                    session.add(
+                        UserMarketIntel(
+                            telegram_user_id="tui_operator",
+                            intel_type="tactical_directive",
+                            title="TUI Operator Steer",
+                            summary=msg,
+                            directive="neutral",
+                            target_cycle="next_cycle_only" if mode == "follow_up" else "continuous",
+                            affected_symbols="ALL",
+                            is_active=True,
+                            created_at=_utcnow(),
+                        )
+                    )
+                    session.add(
+                        DBLog(
+                            category="analysis",
+                            description=f"TUI Steer injected ({mode}): {msg[:100]}",
+                            actor="operator_tui",
+                        )
+                    )
                     await session.commit()
                 dispatched = True
             except Exception as dbe:
@@ -1028,48 +1081,64 @@ class TradingDashboard(App):
 
                 # 2. Positions
                 real_pos = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
-                paper_pos = (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open"))).scalars().all()
+                paper_pos = (
+                    (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open")))
+                    .scalars()
+                    .all()
+                )
 
                 all_positions = []
                 for p in real_pos:
-                    all_positions.append({
-                        "id": p.id,
-                        "type": "REAL",
-                        "symbol": p.symbol,
-                        "direction": p.direction,
-                        "volume": p.volume,
-                        "entry_price": p.entry_price,
-                        "sl": p.sl,
-                        "tp": p.tp,
-                        "pnl": round(p.pnl, 2) if p.pnl is not None else 0.0,
-                    })
+                    all_positions.append(
+                        {
+                            "id": p.id,
+                            "type": "REAL",
+                            "symbol": p.symbol,
+                            "direction": p.direction,
+                            "volume": p.volume,
+                            "entry_price": p.entry_price,
+                            "sl": p.sl,
+                            "tp": p.tp,
+                            "pnl": round(p.pnl, 2) if p.pnl is not None else 0.0,
+                        }
+                    )
                 for p in paper_pos:
-                    all_positions.append({
-                        "id": p.id,
-                        "type": "PAPER",
-                        "symbol": p.symbol,
-                        "direction": p.direction,
-                        "volume": getattr(p, "lots", 0.01),
-                        "entry_price": p.entry_price,
-                        "sl": p.stop_loss,
-                        "tp": p.take_profit,
-                        "pnl": round(getattr(p, "pnl", 0.0), 2),
-                    })
+                    all_positions.append(
+                        {
+                            "id": p.id,
+                            "type": "PAPER",
+                            "symbol": p.symbol,
+                            "direction": p.direction,
+                            "volume": getattr(p, "lots", 0.01),
+                            "entry_price": p.entry_price,
+                            "sl": p.stop_loss,
+                            "tp": p.take_profit,
+                            "pnl": round(getattr(p, "pnl", 0.0), 2),
+                        }
+                    )
                 res_data["positions"] = all_positions
 
                 # 3. Risk & PnL
                 today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-                risk = (await session.execute(
-                    select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
-                )).scalar_one_or_none()
+                risk = (
+                    await session.execute(
+                        select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
+                    )
+                ).scalar_one_or_none()
                 daily_pnl = round(risk.daily_pnl, 2) if risk else 0.0
 
                 # 4. VIX
-                vix_row = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
+                vix_row = (
+                    await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))
+                ).scalar_one_or_none()
                 vix_val = vix_row.close if vix_row else 14.5
 
                 # 5. Activity logs
-                logs = (await session.execute(select(ActivityLog).order_by(ActivityLog.timestamp.desc()).limit(30))).scalars().all()
+                logs = (
+                    (await session.execute(select(ActivityLog).order_by(ActivityLog.timestamp.desc()).limit(30)))
+                    .scalars()
+                    .all()
+                )
                 res_data["activity"] = [
                     {
                         "id": l.id,
@@ -1082,14 +1151,16 @@ class TradingDashboard(App):
                 ]
 
                 # 6. Tokens
-                tok_row = (await session.execute(
-                    select(
-                        func.sum(TokenUsageLog.cached_tokens).label("cached"),
-                        func.sum(TokenUsageLog.input_tokens).label("inp"),
-                        func.sum(TokenUsageLog.output_tokens).label("out"),
-                        func.sum(TokenUsageLog.cost_estimate).label("cost"),
+                tok_row = (
+                    await session.execute(
+                        select(
+                            func.sum(TokenUsageLog.cached_tokens).label("cached"),
+                            func.sum(TokenUsageLog.input_tokens).label("inp"),
+                            func.sum(TokenUsageLog.output_tokens).label("out"),
+                            func.sum(TokenUsageLog.cost_estimate).label("cost"),
+                        )
                     )
-                )).first()
+                ).first()
 
                 res_data["overview"] = {
                     "kill_switch": str(cfg_map.get("kill_switch", "false")).lower() == "true",
@@ -1109,15 +1180,19 @@ class TradingDashboard(App):
                 }
 
                 # 7. Performance metrics from closed trades
-                closed_trades = (await session.execute(
-                    select(PaperTradeRecord).where(PaperTradeRecord.status == "closed")
-                )).scalars().all()
+                closed_trades = (
+                    (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "closed")))
+                    .scalars()
+                    .all()
+                )
                 total_trades = len(closed_trades)
                 wins = sum(1 for t in closed_trades if (t.pnl_pct or 0.0) > 0 or t.exit_reason == "tp_hit")
                 win_rate = (wins / total_trades * 100.0) if total_trades > 0 else 0.0
                 gross_profit = sum((t.pnl_pct or 0.0) for t in closed_trades if (t.pnl_pct or 0.0) > 0)
                 gross_loss = abs(sum((t.pnl_pct or 0.0) for t in closed_trades if (t.pnl_pct or 0.0) < 0))
-                profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else (gross_profit if gross_profit > 0 else 0.0)
+                profit_factor = (
+                    (gross_profit / gross_loss) if gross_loss > 0 else (gross_profit if gross_profit > 0 else 0.0)
+                )
 
                 recent_closed_desc = sorted(
                     closed_trades,
@@ -1139,9 +1214,11 @@ class TradingDashboard(App):
                 }
 
                 # 8. Signals from recent analyses
-                analyses = (await session.execute(
-                    select(AssetAnalysis).order_by(AssetAnalysis.generated_at.desc()).limit(20)
-                )).scalars().all()
+                analyses = (
+                    (await session.execute(select(AssetAnalysis).order_by(AssetAnalysis.generated_at.desc()).limit(20)))
+                    .scalars()
+                    .all()
+                )
                 res_data["signals"] = [
                     {
                         "id": a.id,
@@ -1157,10 +1234,10 @@ class TradingDashboard(App):
                     for a in analyses
                 ]
 
-
                 # 9. Deterministic Risk Gate Scorecard
                 try:
                     from monika.domain.risk.risk_gate import RiskGate
+
                     cfg = load_settings()
                     gate = RiskGate(cfg)
                     res_data["scorecard"] = await gate.get_current_scorecard(session)
@@ -1172,11 +1249,17 @@ class TradingDashboard(App):
                 try:
                     from monika.infrastructure.database.models import EconomicCalendar
                     from datetime import timedelta
+
                     now_utc = datetime.now(timezone.utc)
-                    cal_q = select(EconomicCalendar).where(
-                        EconomicCalendar.event_time >= now_utc - timedelta(hours=6),
-                        EconomicCalendar.event_time <= now_utc + timedelta(days=3),
-                    ).order_by(EconomicCalendar.event_time.asc()).limit(25)
+                    cal_q = (
+                        select(EconomicCalendar)
+                        .where(
+                            EconomicCalendar.event_time >= now_utc - timedelta(hours=6),
+                            EconomicCalendar.event_time <= now_utc + timedelta(days=3),
+                        )
+                        .order_by(EconomicCalendar.event_time.asc())
+                        .limit(25)
+                    )
                     cal_rows = (await session.execute(cal_q)).scalars().all()
                     res_data["calendar"] = [
                         {
@@ -1245,10 +1328,7 @@ class TradingDashboard(App):
 
         # 3. Update Positions DataTable (differential to preserve scroll & cursor)
         table = self.query_one("#positions_table", DataTable)
-        current_row_map = {
-            (k.value if hasattr(k, "value") else str(k)): k
-            for k in table.rows.keys()
-        }
+        current_row_map = {(k.value if hasattr(k, "value") else str(k)): k for k in table.rows.keys()}
         new_keys = set(str(p.get("id", "N/A")) for p in positions)
 
         # Remove positions that have closed
@@ -1265,11 +1345,19 @@ class TradingDashboard(App):
             pos_type = p.get("type", "REAL" if "mt5_ticket" in p else "PAPER")
             sym = str(p.get("symbol", "N/A"))
             direction = str(p.get("direction", "BUY")).upper()
-            dir_styled = f"[bold {BULL_PROFIT}]{direction}[/]" if direction == "BUY" else f"[bold {BEAR_LOSS}]{direction}[/]"
+            dir_styled = (
+                f"[bold {BULL_PROFIT}]{direction}[/]" if direction == "BUY" else f"[bold {BEAR_LOSS}]{direction}[/]"
+            )
             vol = f"{float(p.get('volume') or p.get('lots') or 0.01):.2f}"
             entry = f"{float(p.get('entry_price') or 0.0):.4f}"
-            sl = f"{float(p.get('sl') or p.get('stop_loss') or 0.0):.4f}" if (p.get("sl") or p.get("stop_loss")) else "-"
-            tp = f"{float(p.get('tp') or p.get('take_profit') or 0.0):.4f}" if (p.get("tp") or p.get("take_profit")) else "-"
+            sl = (
+                f"{float(p.get('sl') or p.get('stop_loss') or 0.0):.4f}" if (p.get("sl") or p.get("stop_loss")) else "-"
+            )
+            tp = (
+                f"{float(p.get('tp') or p.get('take_profit') or 0.0):.4f}"
+                if (p.get("tp") or p.get("take_profit"))
+                else "-"
+            )
             pnl_val = float(p.get("pnl") or 0.0)
             pnl_color = BULL_PROFIT if pnl_val >= 0 else BEAR_LOSS
             pnl_sign = "+" if pnl_val >= 0 else ""
@@ -1333,6 +1421,7 @@ class TradingDashboard(App):
         # Dynamic context window gauge (from ContextTracker)
         try:
             from monika.infrastructure.llm.context_tracker import get_context_tracker
+
             ctx_summary = tokens.get("context_tracker") or get_context_tracker().get_summary()
             if ctx_summary and ctx_summary.get("used_tokens", 0) > 0:
                 self._context_used = int(ctx_summary["used_tokens"])
@@ -1351,16 +1440,21 @@ class TradingDashboard(App):
 
             perf_table = self.query_one("#perf_table", DataTable)
             perf_table.clear()
-            perf_table.add_rows([
-                ("Total Trades", str(total_trades), "≥ 50 (Protocol Minimum)"),
-                ("Win Rate", f"{win_rate:.1f}%", "≥ 55.0%"),
-                ("Profit Factor", f"{pf:.2f}", "≥ 1.50"),
-                ("Max Daily Drawdown", f"{abs(self.daily_pnl_pct or 0.0):.1f}%", "≤ 3.0%"),
-                ("Max Consecutive Losses", f"{consec_losses} / 3", "≤ 3 (Circuit Breaker)"),
-            ])
+            perf_table.add_rows(
+                [
+                    ("Total Trades", str(total_trades), "≥ 50 (Protocol Minimum)"),
+                    ("Win Rate", f"{win_rate:.1f}%", "≥ 55.0%"),
+                    ("Profit Factor", f"{pf:.2f}", "≥ 1.50"),
+                    ("Max Daily Drawdown", f"{abs(self.daily_pnl_pct or 0.0):.1f}%", "≤ 3.0%"),
+                    ("Max Consecutive Losses", f"{consec_losses} / 3", "≤ 3 (Circuit Breaker)"),
+                ]
+            )
 
             from monika.interfaces.cli.sparklines import braille_sparkline
-            pnl_chart = braille_sparkline(self._pnl_history, width=30) if self._pnl_history else "No PnL history recorded yet"
+
+            pnl_chart = (
+                braille_sparkline(self._pnl_history, width=30) if self._pnl_history else "No PnL history recorded yet"
+            )
             self.query_one("#perf_sparkline", Static).update(
                 f"[bold cyan]Intraday PnL Trajectory:[/]\n{pnl_chart}\n\n"
                 f"[bold white]Daily Realized PnL:[/] ${self.daily_pnl:,.2f}"
@@ -1374,7 +1468,13 @@ class TradingDashboard(App):
             sig_table.clear()
             for s in data.get("signals", []):
                 side = str(s.get("direction", "HOLD")).upper()
-                side_styled = f"[bold {BULL_PROFIT}]{side}[/]" if side == "BUY" else f"[bold {BEAR_LOSS}]{side}[/]" if side == "SELL" else f"[dim]{side}[/]"
+                side_styled = (
+                    f"[bold {BULL_PROFIT}]{side}[/]"
+                    if side == "BUY"
+                    else f"[bold {BEAR_LOSS}]{side}[/]"
+                    if side == "SELL"
+                    else f"[dim]{side}[/]"
+                )
                 conf_val = float(s.get("confidence") or 0.0)
                 conf = f"{(conf_val * 100):.0f}%" if conf_val <= 1.0 else f"{conf_val:.0f}%"
                 entry = f"{float(s.get('entry') or 0.0):.4f}" if s.get("entry") else "—"
@@ -1404,19 +1504,23 @@ class TradingDashboard(App):
                 checks_dict = scorecard_raw.get("checks", {})
                 for c_name, c_val in checks_dict.items():
                     if isinstance(c_val, dict):
-                        items.append({
-                            "name": c_name,
-                            "passed": c_val.get("passed", False),
-                            "current_value": c_val.get("current_value", "OK" if c_val.get("passed") else "BREACH"),
-                            "limit_value": c_val.get("limit_value", c_val.get("reason", "-")),
-                        })
+                        items.append(
+                            {
+                                "name": c_name,
+                                "passed": c_val.get("passed", False),
+                                "current_value": c_val.get("current_value", "OK" if c_val.get("passed") else "BREACH"),
+                                "limit_value": c_val.get("limit_value", c_val.get("reason", "-")),
+                            }
+                        )
                     else:
-                        items.append({
-                            "name": c_name,
-                            "passed": bool(c_val),
-                            "current_value": "OK" if c_val else "FAIL",
-                            "limit_value": "-",
-                        })
+                        items.append(
+                            {
+                                "name": c_name,
+                                "passed": bool(c_val),
+                                "current_value": "OK" if c_val else "FAIL",
+                                "limit_value": "-",
+                            }
+                        )
             elif isinstance(scorecard_raw, (list, tuple)):
                 items = list(scorecard_raw)
 
@@ -1459,19 +1563,34 @@ class TradingDashboard(App):
                 spread = yields_info.get("spread_2s10s")
                 is_inv = yields_info.get("is_inverted", False)
                 spread_txt = f"{spread:+.2f}%" if spread is not None else "+0.23%"
-                curve_bias = f"[bold {BEAR_LOSS}]INVERTED (RECESSION)[/]" if is_inv else f"[bold {BULL_PROFIT}]NORMAL CURVE[/]"
+                curve_bias = (
+                    f"[bold {BEAR_LOSS}]INVERTED (RECESSION)[/]" if is_inv else f"[bold {BULL_PROFIT}]NORMAL CURVE[/]"
+                )
 
                 fg_val = fg_info.get("current_value", 50)
                 fg_cls = fg_info.get("classification", "Neutral")
-                fg_style = f"[bold {BEAR_LOSS}]{fg_cls.upper()}[/]" if fg_val <= 30 else f"[bold {BULL_PROFIT}]{fg_cls.upper()}[/]" if fg_val >= 70 else f"[dim]{fg_cls.upper()}[/]"
+                fg_style = (
+                    f"[bold {BEAR_LOSS}]{fg_cls.upper()}[/]"
+                    if fg_val <= 30
+                    else f"[bold {BULL_PROFIT}]{fg_cls.upper()}[/]"
+                    if fg_val >= 70
+                    else f"[dim]{fg_cls.upper()}[/]"
+                )
 
-                m_rates.add_rows([
-                    ("FOMC Target Rate", "5.25% - 5.50%", "Policy Stance", "[dim]HOLD / NEUTRAL[/]"),
-                    ("US 2s10s Spread", spread_txt, "Recession Gauge", curve_bias),
-                    ("Fear & Greed Index", f"{fg_val} / 100", "Market Sentiment", fg_style),
-                ])
+                m_rates.add_rows(
+                    [
+                        ("FOMC Target Rate", "5.25% - 5.50%", "Policy Stance", "[dim]HOLD / NEUTRAL[/]"),
+                        ("US 2s10s Spread", spread_txt, "Recession Gauge", curve_bias),
+                        ("Fear & Greed Index", f"{fg_val} / 100", "Market Sentiment", fg_style),
+                    ]
+                )
                 for y in yields_info.get("treasury_yields", [])[:3]:
-                    m_rates.add_row(f"US Treasury {y.get('tenor')}", f"{float(y.get('yield_percent', 0.0)):.2f}%", "Yield Benchmark", "[dim]BENCHMARK[/]")
+                    m_rates.add_row(
+                        f"US Treasury {y.get('tenor')}",
+                        f"{float(y.get('yield_percent', 0.0)):.2f}%",
+                        "Yield Benchmark",
+                        "[dim]BENCHMARK[/]",
+                    )
         except Exception as m_err:
             logger.debug(f"[TUI] Market rates update error: {m_err}")
 
@@ -1658,7 +1777,14 @@ class TradingDashboard(App):
             tok_hist = payload.get("token_history")
             try:
                 tree = self.query_one("#cycle_tree", AnalysisCycleTree)
-                tree.update_step(step, status="completed", duration_s=dur_s, input_tokens=inp, output_tokens=out, token_history=tok_hist)
+                tree.update_step(
+                    step,
+                    status="completed",
+                    duration_s=dur_s,
+                    input_tokens=inp,
+                    output_tokens=out,
+                    token_history=tok_hist,
+                )
                 det_log = self.query_one("#analysis_detail_log", RichLog)
                 det_log.write(f"[green][OK] Stage Completed:[/] {step} ({dur_s:.1f}s, ↑{inp} ↓{out} tokens)")
             except Exception:
@@ -1718,6 +1844,7 @@ class TradingDashboard(App):
         """Trigger emergency kill switch with operator confirmation."""
         if self._is_input_focused():
             return
+
         def handle_decision(confirmed: Optional[bool]) -> None:
             if confirmed:
                 asyncio.create_task(self._execute_kill())
@@ -1745,6 +1872,7 @@ class TradingDashboard(App):
 
             if self._inline_chat_agent is None:
                 from monika.application.agent.chat_agent import ChatAgent
+
                 settings = getattr(self, "settings", None) or load_settings()
                 self._inline_chat_agent = ChatAgent(settings=settings, user_id="cli:tui_inline")
             reply_text, pending = await self._inline_chat_agent.handle(prompt)
@@ -1817,8 +1945,35 @@ class TradingDashboard(App):
         # Route chat messages to inline_chat_log if on tab_chat
         try:
             from textual.widgets import TabbedContent
+
             active_tab = self.query_one("#main_tabs", TabbedContent).active
-            if active_tab == "tab_chat" and cmd not in ("q", "quit", "exit", "p", "pause", "res", "resume", "k", "kill", "r", "refresh", "clear", "cls", "theme", "help", "h", "?", "status", "s", "steer", "queue", "dequeue", "config", "sessions", "logs"):
+            if active_tab == "tab_chat" and cmd not in (
+                "q",
+                "quit",
+                "exit",
+                "p",
+                "pause",
+                "res",
+                "resume",
+                "k",
+                "kill",
+                "r",
+                "refresh",
+                "clear",
+                "cls",
+                "theme",
+                "help",
+                "h",
+                "?",
+                "status",
+                "s",
+                "steer",
+                "queue",
+                "dequeue",
+                "config",
+                "sessions",
+                "logs",
+            ):
                 asyncio.create_task(self._send_inline_chat(cmd_text))
                 return
         except Exception:
@@ -1845,6 +2000,7 @@ class TradingDashboard(App):
                 chat_msg = " ".join(parts[1:])
                 try:
                     from textual.widgets import TabbedContent
+
                     self.query_one("#main_tabs", TabbedContent).active = "tab_chat"
                 except Exception:
                     pass
@@ -1933,6 +2089,7 @@ class TradingDashboard(App):
             if len(parts) > 1 and parts[1].lower() == "install":
                 if len(parts) > 2:
                     from monika.application.harness.installer import run_pip_install
+
                     pkg = parts[2]
                     activity_log.write(f"[bold cyan]Installing plugin via pip:[/] {pkg}...")
                     success, out = await asyncio.to_thread(run_pip_install, pkg)
@@ -1947,10 +2104,15 @@ class TradingDashboard(App):
                 if len(parts) > 2:
                     target_id = parts[2].lower()
                     from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
+
                     plugins = {p["id"]: p for p in list_all_plugins_status()}
                     if target_id in plugins:
                         p = plugins[target_id]
-                        new_state = True if parts[1].lower() == "on" else (False if parts[1].lower() == "off" else not p["enabled"])
+                        new_state = (
+                            True
+                            if parts[1].lower() == "on"
+                            else (False if parts[1].lower() == "off" else not p["enabled"])
+                        )
                         ok, msg = toggle_plugin_state(target_id, p["category"], new_state)
                         activity_log.write(f"[{'green' if ok else 'red'}]{msg}[/]")
                         await self.refresh_plugins_table()
@@ -1988,7 +2150,12 @@ class TradingDashboard(App):
             self._refresh_status_bar()
 
 
-def run_tui(api_url: str = DEFAULT_API_URL, api_key: Optional[str] = None, refresh_interval: int = 5, theme_name: Optional[str] = None):
+def run_tui(
+    api_url: str = DEFAULT_API_URL,
+    api_key: Optional[str] = None,
+    refresh_interval: int = 5,
+    theme_name: Optional[str] = None,
+):
     """Entrypoint function to run the Textual TUI dashboard."""
     app = TradingDashboard(api_url=api_url, api_key=api_key, refresh_interval=refresh_interval, theme_name=theme_name)
     app.run()
@@ -1999,4 +2166,3 @@ TradingAgentApp = TradingDashboard
 
 if __name__ == "__main__":
     run_tui()
-

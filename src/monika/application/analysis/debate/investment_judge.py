@@ -11,26 +11,26 @@ REGIME_WEIGHT_MATRIX = {
         "trend_thesis_weight": 0.65,
         "counter_thesis_weight": 0.35,
         "volatility_penalty": 0.0,
-        "description": "Trending market: higher weight on trend momentum, require verified structural failure to veto."
+        "description": "Trending market: higher weight on trend momentum, require verified structural failure to veto.",
     },
     "ranging": {
         "trend_thesis_weight": 0.50,
         "counter_thesis_weight": 0.50,
         "volatility_penalty": 0.10,
-        "description": "Ranging market: balanced weight, mean-reversion favored, tight SL required."
+        "description": "Ranging market: balanced weight, mean-reversion favored, tight SL required.",
     },
     "volatile": {
         "trend_thesis_weight": 0.30,
         "counter_thesis_weight": 0.70,
         "volatility_penalty": 0.20,
-        "description": "High volatility/shock: heavy weight to risk dissent, aggressive size reduction or veto."
+        "description": "High volatility/shock: heavy weight to risk dissent, aggressive size reduction or veto.",
     },
     "unknown": {
         "trend_thesis_weight": 0.50,
         "counter_thesis_weight": 0.50,
         "volatility_penalty": 0.0,
-        "description": "Neutral baseline regime."
-    }
+        "description": "Neutral baseline regime.",
+    },
 }
 
 
@@ -42,10 +42,10 @@ def resolve_regime_weights(original_context: dict) -> dict:
         or original_context.get("volatility_regime")
         or ""
     ).lower()
-    
+
     try:
         vix = float(original_context.get("vix") or 0.0)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         vix = 0.0
 
     if "volatil" in raw_regime or "shock" in raw_regime or vix >= 25.0:
@@ -70,7 +70,7 @@ def _snap_boundary(text: str, max_chars: int = 1000) -> str:
     for punct in ["\n\n", "\n", ". ", "; ", ", "]:
         last_idx = truncated.rfind(punct)
         if last_idx > max_chars // 2:
-            return truncated[:last_idx + len(punct)].strip() + " [compacted]"
+            return truncated[: last_idx + len(punct)].strip() + " [compacted]"
     return truncated.rstrip() + "... [compacted]"
 
 
@@ -97,9 +97,10 @@ async def evaluate_debate(
     original_context: dict,
     bull_claim: dict,
     bear_dissent: dict,
-    bull_rebuttal: Optional[dict] = None
+    bull_rebuttal: Optional[dict] = None,
 ) -> dict:
     from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
     anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
     decision = str(original_context.get("decision", "buy")).upper()
     regime_weights = resolve_regime_weights(original_context)
@@ -124,10 +125,10 @@ Your role is to critically evaluate trade viability and protect capital.
 
 MARKET REGIME CALIBRATION CONTEXT:
 - Detected Regime: {detected_regime.upper()}
-- Thesis Weight (Trend): {regime_weights['trend_thesis_weight']:.2f}
-- Counter Thesis Weight: {regime_weights['counter_thesis_weight']:.2f}
-- Volatility Penalty: {regime_weights['volatility_penalty']:.2f}
-- Guidance: {regime_weights['description']}
+- Thesis Weight (Trend): {regime_weights["trend_thesis_weight"]:.2f}
+- Counter Thesis Weight: {regime_weights["counter_thesis_weight"]:.2f}
+- Volatility Penalty: {regime_weights["volatility_penalty"]:.2f}
+- Guidance: {regime_weights["description"]}
 
 BRIER SCORE CALIBRATION WEIGHING (Subsystem 4):
 - Bull Analyst Historical Brier: {bull_brier:.3f} (Calibration weight: {norm_bull_bw:.0%})
@@ -179,7 +180,7 @@ MANDATORY ADJUSTMENT CONSTRAINT: If proposing adjusted_entry, adjusted_sl, or ad
 
 [TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Verify math against ATR and risk tables. reason must be at most 2 concise sentences based strictly on factual evidence. Zero fluff.
 Respond in valid JSON format conforming to the schema."""
-    
+
     schema = {
         "type": "object",
         "properties": {
@@ -189,9 +190,9 @@ Respond in valid JSON format conforming to the schema."""
             "adjusted_entry": {"type": ["number", "null"]},
             "adjusted_sl": {"type": ["number", "null"]},
             "adjusted_tp": {"type": ["number", "null"]},
-            "regime_weights_used": {"type": "object"}
+            "regime_weights_used": {"type": "object"},
         },
-        "required": ["final_decision", "reason", "risk_multiplier"]
+        "required": ["final_decision", "reason", "risk_multiplier"],
     }
 
     debate_payload = {
@@ -209,39 +210,49 @@ Respond in valid JSON format conforming to the schema."""
     # S²-MAD Sparse Debate: Inject structured blackboard state for dense, low-token evaluation
     try:
         from monika.application.analysis.debate.blackboard import DebateBlackboard
+
         bb = DebateBlackboard(symbol=symbol, fact_sheet=original_context)
-        b_thesis = bull_claim.get("thesis") or bull_claim.get("bull_thesis") or bull_claim.get("argument") or str(bull_claim)[:300]
+        b_thesis = (
+            bull_claim.get("thesis")
+            or bull_claim.get("bull_thesis")
+            or bull_claim.get("argument")
+            or str(bull_claim)[:300]
+        )
         bb.add_bull_thesis(b_thesis, confidence=float(bull_claim.get("strength_score", 5.0) or 5.0) / 10.0)
-        br_thesis = bear_dissent.get("counter_thesis") or bear_dissent.get("bear_dissent") or bear_dissent.get("bear_thesis") or bear_dissent.get("argument") or str(bear_dissent)[:300]
+        br_thesis = (
+            bear_dissent.get("counter_thesis")
+            or bear_dissent.get("bear_dissent")
+            or bear_dissent.get("bear_thesis")
+            or bear_dissent.get("argument")
+            or str(bear_dissent)[:300]
+        )
         bb.add_bear_thesis(br_thesis, confidence=float(bear_dissent.get("risk_severity", 5.0) or 5.0) / 10.0)
         debate_payload["sparse_blackboard"] = bb.render_sparse_summary()
     except Exception as bb_err:
         logger.debug(f"DebateBlackboard injection non-fatal: {bb_err}")
 
     user_prompt = f"Evaluate Debate for {symbol} ({decision}):\n{json.dumps(debate_payload, separators=(',', ':'), default=str)}\n\nProceed with evaluation based strictly on the data above."
-    
+
     try:
         parsed: Optional[Dict[str, Any]] = None
-        judge_max_tokens = getattr(client, 'max_tokens', 6144) or 6144
-        if hasattr(client, 'classify_json'):
+        judge_max_tokens = getattr(client, "max_tokens", 6144) or 6144
+        if hasattr(client, "classify_json"):
             parsed = await client.classify_json(
-                user_prompt,
-                system_prompt=system_prompt,
-                schema=schema,
-                max_tokens=judge_max_tokens
+                user_prompt, system_prompt=system_prompt, schema=schema, max_tokens=judge_max_tokens
             )
-        elif hasattr(client, 'generate_content'):
+        elif hasattr(client, "generate_content"):
             resp = await client.generate_content(
                 system_prompt=system_prompt,
                 user_message=user_prompt,
                 response_schema=schema,
-                max_tokens=judge_max_tokens
+                max_tokens=judge_max_tokens,
             )
             if resp:
                 import re
+
                 cleaned = resp.strip()
                 if "```" in cleaned:
-                    match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', cleaned)
+                    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
                     if match:
                         cleaned = match.group(1)
                 parsed = json.loads(cleaned)
@@ -251,7 +262,7 @@ Respond in valid JSON format conforming to the schema."""
 
         # Ensure risk multiplier is bounded with Bayesian rebuttal mitigation
         final_dec = str(parsed.get("final_decision", "")).lower()
-        is_sell = (decision == "SELL")
+        is_sell = decision == "SELL"
         if is_sell:
             # For SELL: Counter-threat is Bull's strength_score, Pro-strength is Bear's score
             counter_threat = int((bull_claim or {}).get("strength_score", 5) or 5)
@@ -321,5 +332,5 @@ Respond in valid JSON format conforming to the schema."""
             "risk_multiplier": 0.0,
             "regime_weights_used": regime_weights,
             "parse_error": True,
-            "fail_closed_triggered": True
+            "fail_closed_triggered": True,
         }

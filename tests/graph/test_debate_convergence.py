@@ -42,9 +42,7 @@ async def test_debate_convergence_conditions():
     # Case 1: High divergence, turn 1 -> needs rebuttal
     state_divergent = {
         "actionable_trades": [("EURUSD", {"analysis_id": 1})],
-        "debate_states": {
-            "EURUSD": {"turn": 1, "divergence": 0.55, "disagreement": 6, "needs_rebuttal": True}
-        }
+        "debate_states": {"EURUSD": {"turn": 1, "divergence": 0.55, "disagreement": 6, "needs_rebuttal": True}},
     }
     decision = should_continue_debate(state_divergent)
     assert decision == "rebuttal"
@@ -52,9 +50,7 @@ async def test_debate_convergence_conditions():
     # Case 2: Low divergence (converged <= 0.40) -> goes to judge
     state_converged = {
         "actionable_trades": [("EURUSD", {"analysis_id": 1})],
-        "debate_states": {
-            "EURUSD": {"turn": 2, "divergence": 0.20, "disagreement": 2, "needs_rebuttal": False}
-        }
+        "debate_states": {"EURUSD": {"turn": 2, "divergence": 0.20, "disagreement": 2, "needs_rebuttal": False}},
     }
     decision = should_continue_debate(state_converged)
     assert decision == "debate_judge"
@@ -62,9 +58,7 @@ async def test_debate_convergence_conditions():
     # Case 3: Turn >= 3 (max rounds reached) -> goes to judge even if divergence high
     state_max_turns = {
         "actionable_trades": [("EURUSD", {"analysis_id": 1})],
-        "debate_states": {
-            "EURUSD": {"turn": 3, "divergence": 0.60, "disagreement": 6, "needs_rebuttal": True}
-        }
+        "debate_states": {"EURUSD": {"turn": 3, "divergence": 0.60, "disagreement": 6, "needs_rebuttal": True}},
     }
     decision = should_continue_debate(state_max_turns)
     assert decision == "debate_judge"
@@ -88,15 +82,19 @@ async def test_round_robin_risk_consensus_chain():
     class MockSession:
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, *a):
             pass
+
         async def get(self, model, pk):
             return mock_ana
+
         async def execute(self, *a, **kw):
             m = MagicMock()
             m.scalars.return_value.all.return_value = []
             m.scalar_one_or_none.return_value = None
             return m
+
         async def commit(self):
             pass
 
@@ -115,9 +113,13 @@ async def test_round_robin_risk_consensus_chain():
         }
     }
 
-    with patch("graph.nodes.debate.round_robin_risk_nodes.get_session", side_effect=MockSession), \
-         patch("graph.nodes.debate.round_robin_risk_nodes.compute_actual_risk_state", AsyncMock(return_value={"current_drawdown_pct": 0.2})):
-
+    with (
+        patch("graph.nodes.debate.round_robin_risk_nodes.get_session", side_effect=MockSession),
+        patch(
+            "graph.nodes.debate.round_robin_risk_nodes.compute_actual_risk_state",
+            AsyncMock(return_value={"current_drawdown_pct": 0.2}),
+        ),
+    ):
         # Turn 1: Conservative
         res_cons = await conservative_risk_node(state, config=config)
         state["risk_debate_states"].update(res_cons["risk_debate_states"])

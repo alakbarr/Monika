@@ -1,4 +1,3 @@
-
 """GTJA Alpha #59.
 
 Formula: SUM((CLOSE=DELAY(CLOSE,1)?0:CLOSE-(CLOSE>DELAY(CLOSE,1)?MIN(LOW,DELAY(CLOSE,1)):MAX(HIGH,DELAY(CLOSE,1)))),20)
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_059",
-    "theme": ['momentum'],
-    "formula_latex": 'SUM((CLOSE=DELAY(CLOSE,1)?0:CLOSE-(CLOSE>DELAY(CLOSE,1)?MIN(LOW,DELAY(CLOSE,1)):MAX(HIGH,DELAY(CLOSE,1)))),20)',
-    "columns_required": ['close', 'high', 'low'],
+    "theme": ["momentum"],
+    "formula_latex": "SUM((CLOSE=DELAY(CLOSE,1)?0:CLOSE-(CLOSE>DELAY(CLOSE,1)?MIN(LOW,DELAY(CLOSE,1)):MAX(HIGH,DELAY(CLOSE,1)))),20)",
+    "columns_required": ["close", "high", "low"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 20,
     "min_warmup_bars": 22,
-    "notes": 'Like alpha #3 but with 20d window.',
+    "notes": "Like alpha #3 but with 20d window.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]
@@ -47,8 +47,9 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     pc = c.shift(1)
     up = c > pc
     dn = c < pc
-    ref = pd.DataFrame(np.where(up, np.minimum(l, pc), np.where(dn, np.maximum(h, pc), c)),
-                       index=c.index, columns=c.columns)
+    ref = pd.DataFrame(
+        np.where(up, np.minimum(l, pc), np.where(dn, np.maximum(h, pc), c)), index=c.index, columns=c.columns
+    )
     move = (c - ref).where(up | dn, 0.0)
     # A NaN comparison is False, not NaN, so a missing close/prior-close
     # (a halt, a gap) reads the same as a real "unchanged" tie and gets

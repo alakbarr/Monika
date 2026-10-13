@@ -112,7 +112,11 @@ async def test_risk_gate_paper_vs_live_isolation():
         # Check if query filters by is_paper
         if "is_paper" in query_str.lower():
             # If paper check
-            is_paper_true = "is_paper = true" in query_str.lower() or "is_paper = 1" in query_str.lower() or ":is_paper_1" in query_str.lower()
+            is_paper_true = (
+                "is_paper = true" in query_str.lower()
+                or "is_paper = 1" in query_str.lower()
+                or ":is_paper_1" in query_str.lower()
+            )
             # If params passed
             mock_result.scalar_one_or_none.return_value = 2 if is_paper_true else 0
         else:
@@ -164,13 +168,37 @@ def test_turn_tool_round_mutation_classification():
     for c in calls:
         lower = c.name.lower()
         mutation_verbs = (
-            "execute", "cancel", "modify", "close", "kill", "place", "create",
-            "delete", "remove", "update", "write", "set_", "submit", "trigger",
-            "post_", "proposal",
+            "execute",
+            "cancel",
+            "modify",
+            "close",
+            "kill",
+            "place",
+            "create",
+            "delete",
+            "remove",
+            "update",
+            "write",
+            "set_",
+            "submit",
+            "trigger",
+            "post_",
+            "proposal",
         )
         read_prefixes = (
-            "get_", "fetch_", "calc_", "calculate_", "read_", "inspect_",
-            "check_", "list_", "scan_", "search_", "query_", "load_", "find_",
+            "get_",
+            "fetch_",
+            "calc_",
+            "calculate_",
+            "read_",
+            "inspect_",
+            "check_",
+            "list_",
+            "scan_",
+            "search_",
+            "query_",
+            "load_",
+            "find_",
         )
         if any(k in lower for k in mutation_verbs):
             mutation_calls.append(c.name)

@@ -1,6 +1,7 @@
 """
 Unit Tests for OutcomeEvaluator Realistic Friction and Dollar PnL.
 """
+
 import pytest
 from datetime import datetime, timezone, timedelta
 from database.models import BacktestTrade
@@ -11,7 +12,7 @@ def test_outcome_evaluator_gold_friction_and_dollar_pnl():
     """Verify Gold (XAUUSD) applies realistic spread/slippage and calculates accurate dollar PnL."""
     evaluator = OutcomeEvaluator()
     start = datetime(2026, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
-    
+
     trade = BacktestTrade(
         symbol="XAUUSD",
         direction="buy",
@@ -40,7 +41,7 @@ def test_outcome_evaluator_btc_friction_and_dollar_pnl():
     """Verify Bitcoin (BTCUSD) applies realistic crypto spread/slippage."""
     evaluator = OutcomeEvaluator()
     start = datetime(2026, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
-    
+
     trade = BacktestTrade(
         symbol="BTCUSD",
         direction="buy",
@@ -86,4 +87,3 @@ def test_outcome_evaluator_latency_and_commission_fee_model():
     # Net USD should be less than $1000 due to spread, slippage, latency, and commission
     assert outcome["pnl_usd"] < 1000.0
     assert outcome["friction_usd"] > 7.0
-

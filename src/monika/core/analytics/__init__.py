@@ -9,7 +9,7 @@ from monika.core.analytics.edge_tracker import (
 )
 
 __all__ = [
-    'is_trade_win',
-    'compute_edge_status',
-    'binomial_confidence_interval',
+    "is_trade_win",
+    "compute_edge_status",
+    "binomial_confidence_interval",
 ]

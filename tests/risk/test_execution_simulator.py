@@ -70,9 +70,7 @@ async def test_simulator_disabled_by_config():
     """
     When disabled by config, simulator passes unconditionally.
     """
-    sim = ExecutionSimulator(
-        settings={"trading": {"risk": {"slippage_sandbox_enabled": False}}}
-    )
+    sim = ExecutionSimulator(settings={"trading": {"risk": {"slippage_sandbox_enabled": False}}})
 
     result = await sim.simulate_execution(
         symbol="EURUSD",
@@ -93,11 +91,7 @@ async def test_simulator_fetch_recent_ticks_mt5():
     Tests tick retrieval from MT5 client when available.
     """
     mock_mt5 = MagicMock()
-    mock_mt5.get_ticks = AsyncMock(
-        return_value=[
-            {"bid": 1.0850, "ask": 1.0852, "flags": 0} for _ in range(50)
-        ]
-    )
+    mock_mt5.get_ticks = AsyncMock(return_value=[{"bid": 1.0850, "ask": 1.0852, "flags": 0} for _ in range(50)])
 
     sim = ExecutionSimulator(mt5_client=mock_mt5)
     ticks = await sim.fetch_recent_ticks("EURUSD", count=50)

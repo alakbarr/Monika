@@ -69,6 +69,7 @@ class LayeredMemoryManager:
     async def get_frozen_snapshot(self, session: Optional[AsyncSession] = None):
         """Retrieve frozen memory snapshot for prompt cache preservation."""
         from monika.application.analysis.memory.frozen_snapshot import get_frozen_snapshot_manager
+
         return await get_frozen_snapshot_manager(self.settings).get_snapshot(session=session)
 
     def get_identity(self) -> str:
@@ -107,6 +108,7 @@ class LayeredMemoryManager:
         if session:
             try:
                 from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+
                 c_writer = ChronicleWriter(self.settings)
                 c_bullets = await c_writer.get_condensed_chronicle_bullets(session, limit=3)
                 if c_bullets:
@@ -129,7 +131,9 @@ class LayeredMemoryManager:
         composed = f"{stable}\n{volatile}".strip()
         return truncate_to_budget(composed, MAX_CORE_TOKENS)
 
-    async def get_symbol_memory(self, session: Optional[AsyncSession], symbol: str, regime: Optional[str] = None) -> str:
+    async def get_symbol_memory(
+        self, session: Optional[AsyncSession], symbol: str, regime: Optional[str] = None
+    ) -> str:
         """Per-symbol episodic recall for Stage 2 (Layer 2 DB + FTS5 precedents)."""
         parts = []
 
@@ -149,7 +153,10 @@ class LayeredMemoryManager:
                 )
             if not precedents and hasattr(self.session_search, "get_symbol_precedents"):
                 import inspect
-                fallback_res = self.session_search.get_symbol_precedents(symbol, limit=2, session=session, regime=regime)
+
+                fallback_res = self.session_search.get_symbol_precedents(
+                    symbol, limit=2, session=session, regime=regime
+                )
                 fallback_p = await fallback_res if inspect.isawaitable(fallback_res) else fallback_res
                 if isinstance(fallback_p, list):
                     precedents = fallback_p
@@ -157,9 +164,11 @@ class LayeredMemoryManager:
             if precedents:
                 parts.append("PRECEDENTS:")
                 for p in precedents:
-                    pnl_str = f" PnL:{p['pnl']:+.2f}%" if p.get('pnl') is not None else ""
-                    stage_prefix = "[WHATIF] " if p.get('stage') == 'whatif' else ""
-                    parts.append(f"- {p['timestamp'][:10]} {stage_prefix}{p['decision']} (conf={p['confidence']:.2f}{pnl_str}): {p['content'][:85]}")
+                    pnl_str = f" PnL:{p['pnl']:+.2f}%" if p.get("pnl") is not None else ""
+                    stage_prefix = "[WHATIF] " if p.get("stage") == "whatif" else ""
+                    parts.append(
+                        f"- {p['timestamp'][:10]} {stage_prefix}{p['decision']} (conf={p['confidence']:.2f}{pnl_str}): {p['content'][:85]}"
+                    )
         except Exception:
             pass
 
@@ -171,30 +180,47 @@ class LayeredMemoryManager:
             from monika.infrastructure.database.models import DecisionReflection, PaperTradeRecord
 
             # 2. Recent reflections for this symbol
-            reflections = (await session.execute(
-                select(DecisionReflection)
-                .where(DecisionReflection.symbol == symbol)
-                .where(DecisionReflection.status == 'resolved')
-                .order_by(desc(DecisionReflection.resolved_at))
-                .limit(3)
-            )).scalars().all()
+            reflections = (
+                (
+                    await session.execute(
+                        select(DecisionReflection)
+                        .where(DecisionReflection.symbol == symbol)
+                        .where(DecisionReflection.status == "resolved")
+                        .order_by(desc(DecisionReflection.resolved_at))
+                        .limit(3)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             if reflections:
                 for r in reflections:
-                    tag = getattr(r, 'lesson_tags', None) or getattr(r, 'lesson_tag', 'Alpha')
-                    text = getattr(r, 'specific_lesson', None) or getattr(r, 'alpha_lesson', None) or getattr(r, 'reflection_text', '') or ''
-                    adj = getattr(r, 'next_trade_adjustment', None)
+                    tag = getattr(r, "lesson_tags", None) or getattr(r, "lesson_tag", "Alpha")
+                    text = (
+                        getattr(r, "specific_lesson", None)
+                        or getattr(r, "alpha_lesson", None)
+                        or getattr(r, "reflection_text", "")
+                        or ""
+                    )
+                    adj = getattr(r, "next_trade_adjustment", None)
                     if adj and adj not in text:
                         text = f"{text} (Adj: {adj})" if text else f"Adj: {adj}"
                     if text:
                         parts.append(f"- {tag}: {text[:120]}")
 
             # 3. Win rate for this symbol
-            trades = (await session.execute(
-                select(PaperTradeRecord)
-                .where(PaperTradeRecord.symbol == symbol)
-                .where(PaperTradeRecord.status == 'closed')
-            )).scalars().all()
+            trades = (
+                (
+                    await session.execute(
+                        select(PaperTradeRecord)
+                        .where(PaperTradeRecord.symbol == symbol)
+                        .where(PaperTradeRecord.status == "closed")
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             if trades:
                 wins = sum(1 for t in trades if (t.pnl_pct or 0.0) > 0)
@@ -204,6 +230,7 @@ class LayeredMemoryManager:
             # 4. Systematic Negative Constraints based on past failure modes (PR-13)
             try:
                 from monika.application.analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
+
                 neg_constraints = await NegativeConstraintGenerator.generate_negative_constraints_from_losses(
                     session=session,
                     symbol=symbol,
@@ -219,14 +246,19 @@ class LayeredMemoryManager:
             # 5. Pattern similarity consensus (if available in cache)
             try:
                 from monika.infrastructure.database.models import PatternScreeningCache
-                p_entry = (await session.execute(
-                    select(PatternScreeningCache)
-                    .where(PatternScreeningCache.symbol == symbol)
-                    .order_by(desc(PatternScreeningCache.screened_at))
-                    .limit(1)
-                )).scalar_one_or_none()
-                if p_entry and p_entry.confidence in ('high', 'medium'):
-                    parts.append(f"- Pattern Consensus: {p_entry.overall_bias.upper()} ({p_entry.confidence.upper()} confidence)")
+
+                p_entry = (
+                    await session.execute(
+                        select(PatternScreeningCache)
+                        .where(PatternScreeningCache.symbol == symbol)
+                        .order_by(desc(PatternScreeningCache.screened_at))
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+                if p_entry and p_entry.confidence in ("high", "medium"):
+                    parts.append(
+                        f"- Pattern Consensus: {p_entry.overall_bias.upper()} ({p_entry.confidence.upper()} confidence)"
+                    )
             except Exception:
                 pass
 
@@ -294,29 +326,31 @@ class LayeredMemoryManager:
             from monika.infrastructure.database.models import DXYData, VIXData, FundamentalBrief
 
             # 1. DXY trend
-            dxy_rows = (await session.execute(
-                select(DXYData).order_by(desc(DXYData.date)).limit(5)
-            )).scalars().all()
+            dxy_rows = (await session.execute(select(DXYData).order_by(desc(DXYData.date)).limit(5))).scalars().all()
             if len(dxy_rows) >= 3:
                 dxy_trend = "USD_STRENGTHENING" if dxy_rows[0].close > dxy_rows[-1].close else "USD_WEAKENING"
             else:
                 dxy_trend = "USD_NEUTRAL"
 
             # 2. VIX Volatility Level
-            vix_row = (await session.execute(
-                select(VIXData).order_by(desc(VIXData.date)).limit(1)
-            )).scalar_one_or_none()
+            vix_row = (
+                await session.execute(select(VIXData).order_by(desc(VIXData.date)).limit(1))
+            ).scalar_one_or_none()
             if vix_row and vix_row.close is not None:
                 v_val = float(vix_row.close)
-                v_zone = "CRISIS" if v_val >= 30 else ("DEFENSIVE" if v_val >= 25 else ("CAUTION" if v_val >= 20 else "NORMAL"))
+                v_zone = (
+                    "CRISIS"
+                    if v_val >= 30
+                    else ("DEFENSIVE" if v_val >= 25 else ("CAUTION" if v_val >= 20 else "NORMAL"))
+                )
                 vix_str = f"VIX_{v_zone}({v_val:.1f})"
             else:
                 vix_str = "VIX_NORMAL"
 
             # 3. Macro Regime & Sentiment from latest FundamentalBrief
-            brief = (await session.execute(
-                select(FundamentalBrief).order_by(desc(FundamentalBrief.generated_at)).limit(1)
-            )).scalar_one_or_none()
+            brief = (
+                await session.execute(select(FundamentalBrief).order_by(desc(FundamentalBrief.generated_at)).limit(1))
+            ).scalar_one_or_none()
             macro_regime = (getattr(brief, "macro_regime", "") or "BALANCED").upper() if brief else "BALANCED"
             risk_sent = (getattr(brief, "risk_sentiment", "") or "MIXED").upper() if brief else "MIXED"
 
@@ -324,6 +358,7 @@ class LayeredMemoryManager:
             geo_tag = ""
             try:
                 from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+
                 geo_tag = await ChronicleWriter(self.settings).get_macro_state_summary(session)
             except Exception:
                 pass
@@ -343,18 +378,25 @@ class LayeredMemoryManager:
             return ["No revenge trade within 4h of SL", "Priced-in score >=8 requires WAIT"]
         try:
             from monika.infrastructure.database.models import DecisionReflection, CandidateLesson
+
             seen_texts = set()
             scored_lessons: List[tuple[float, str]] = []
 
             now_utc = datetime.now(timezone.utc)
 
             # 1. Promoted lessons (high stability S = 60 days)
-            promoted = (await session.execute(
-                select(CandidateLesson)
-                .where(CandidateLesson.status == 'promoted')
-                .order_by(desc(CandidateLesson.promoted_at))
-                .limit(n * 2)
-            )).scalars().all()
+            promoted = (
+                (
+                    await session.execute(
+                        select(CandidateLesson)
+                        .where(CandidateLesson.status == "promoted")
+                        .order_by(desc(CandidateLesson.promoted_at))
+                        .limit(n * 2)
+                    )
+                )
+                .scalars()
+                .all()
+            )
             for pl in promoted:
                 if pl.lesson_text and pl.lesson_text not in seen_texts:
                     ret = compute_ebbinghaus_retention(pl.promoted_at, stability_days=60.0, now_dt=now_utc)
@@ -364,20 +406,21 @@ class LayeredMemoryManager:
                         seen_texts.add(pl.lesson_text)
 
             # 2. Recent reflections (standard stability S = 14 days)
-            results = (await session.execute(
-                select(DecisionReflection)
-                .where(
-                    or_(
-                        DecisionReflection.alpha_lesson != None,
-                        DecisionReflection.specific_lesson != None
+            results = (
+                (
+                    await session.execute(
+                        select(DecisionReflection)
+                        .where(or_(DecisionReflection.alpha_lesson != None, DecisionReflection.specific_lesson != None))
+                        .order_by(desc(DecisionReflection.resolved_at))
+                        .limit(n * 3)
                     )
                 )
-                .order_by(desc(DecisionReflection.resolved_at))
-                .limit(n * 3)
-            )).scalars().all()
+                .scalars()
+                .all()
+            )
             for r in results:
-                txt = getattr(r, 'specific_lesson', None) or getattr(r, 'alpha_lesson', None)
-                adj = getattr(r, 'next_trade_adjustment', None)
+                txt = getattr(r, "specific_lesson", None) or getattr(r, "alpha_lesson", None)
+                adj = getattr(r, "next_trade_adjustment", None)
                 if txt and adj and adj not in txt:
                     txt = f"{txt} -> {adj}"
                 if txt and txt not in seen_texts:
@@ -398,14 +441,17 @@ class LayeredMemoryManager:
             return "0 open positions"
         try:
             from monika.infrastructure.database.models import PaperTradeRecord, Position
-            live_positions = (await session.execute(
-                select(Position).where(Position.status == 'open')
-            )).scalars().all()
-            paper_trades = (await session.execute(
-                select(PaperTradeRecord).where(PaperTradeRecord.status == 'open')
-            )).scalars().all()
 
-            all_symbols = [p.symbol for p in live_positions if getattr(p, 'symbol', None)] + [t.symbol for t in paper_trades if getattr(t, 'symbol', None)]
+            live_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+            paper_trades = (
+                (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open")))
+                .scalars()
+                .all()
+            )
+
+            all_symbols = [p.symbol for p in live_positions if getattr(p, "symbol", None)] + [
+                t.symbol for t in paper_trades if getattr(t, "symbol", None)
+            ]
             if not all_symbols:
                 return "0 open positions"
             return f"{len(all_symbols)} open: {', '.join(all_symbols)}"
@@ -416,9 +462,10 @@ class LayeredMemoryManager:
         """Performance notes from benchmark/skill files."""
         try:
             from monika.application.skills.loader import load_skill
+
             notes = load_skill("fundamental_performance_notes")
-            for line in notes.split('\n'):
-                if 'Accuracy' in line:
+            for line in notes.split("\n"):
+                if "Accuracy" in line:
                     return line.strip()
         except Exception:
             pass

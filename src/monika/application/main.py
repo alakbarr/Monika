@@ -65,6 +65,7 @@ from datetime import datetime, timezone, timedelta
 # Arm startup watchdog early before heavy application imports (skipped in test runner)
 if "pytest" not in sys.modules and "PYTEST_CURRENT_TEST" not in os.environ:
     from monika.application.agent.monitors.startup_watchdog import arm_startup_watchdog
+
     arm_startup_watchdog(timeout_s=180.0)
 from typing import Callable, Optional, Any, TYPE_CHECKING
 
@@ -108,8 +109,8 @@ _initial_host_env = {k: os.environ[k] for k in FORBIDDEN_ENV_OVERRIDES if k in o
 
 # Load .env safely without overriding existing host environment
 load_dotenv(override=False)
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=False)
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env'), override=False)
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"), override=False)
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=False)
 
 # Enforce security fence: restore host bootstrap values if overwritten
 for _fence_key, _fence_val in _initial_host_env.items():
@@ -120,12 +121,14 @@ for _fence_key, _fence_val in _initial_host_env.items():
 # Bootstrap runtime & network hardening (RFC 8305 Happy Eyeballs & Windows UTF-8)
 # ---------------------------------------------------------------------------
 from monika.application.bootstrap import install_bootstrap_hardening
+
 install_bootstrap_hardening()
 
 # ---------------------------------------------------------------------------
 # Bootstrap logging immediately (before any other import)
 # ---------------------------------------------------------------------------
 from monika.core.telemetry.activity_logger import setup_logging
+
 setup_logging(log_dir="logs", level=logging.INFO)
 logger = logging.getLogger("TradingAgent.Main")
 
@@ -151,6 +154,7 @@ BANNER = r"""
 # ---------------------------------------------------------------------------
 from monika.application.agent.startup_checks import StartupChecker, run_startup_checks as _delegate_startup_checks
 
+
 async def run_startup_checks(settings: dict) -> bool:
     """
     Run all startup health checks.
@@ -160,10 +164,12 @@ async def run_startup_checks(settings: dict) -> bool:
     Returns:
         True if all critical checks pass, False if agent should abort.
     """
-    db_url = os.getenv('DATABASE_URL', '')
-    is_paper = settings.get('paper_trading', {}).get('enabled', True)
-    if 'sqlite' in db_url.lower() and not is_paper:
-        logger.error('[FAIL] SQLite detected. PostgreSQL is REQUIRED for live trading — partial unique indexes behave incorrectly on SQLite.')
+    db_url = os.getenv("DATABASE_URL", "")
+    is_paper = settings.get("paper_trading", {}).get("enabled", True)
+    if "sqlite" in db_url.lower() and not is_paper:
+        logger.error(
+            "[FAIL] SQLite detected. PostgreSQL is REQUIRED for live trading — partial unique indexes behave incorrectly on SQLite."
+        )
         return False
     return await _delegate_startup_checks(settings)
 
@@ -196,44 +202,44 @@ from monika.application.agent.monitors import (
 _EMERGENCY_EXIT_CODE: Optional[int] = None
 
 
-
 # ---------------------------------------------------------------------------
 # Main orchestrator
 # ---------------------------------------------------------------------------
+
 
 class TradingAgent:
     """
     Top-level orchestrator that owns and coordinates all subsystems.
     """
 
-    execution_service: Optional['ExecutionService']
-    cycle_scheduler: Optional['GraphCycleScheduler']
-    news_watcher: Optional['NewsWatcher']
-    digest_slice_scheduler: Optional['DigestSliceScheduler']
-    trigger_checker: Optional['TriggerChecker']
-    telegram_bot: Optional['TelegramBot']
-    heartbeat_mgr: Optional['HeartbeatManager']
-    ea_watchdog: Optional['EAWatchdog']
-    market_data_scheduler: Optional['MarketDataScheduler']
-    macro_data_scheduler: Optional['MacroDataScheduler']
-    edge_strategy_runner: Optional['EdgeStrategyRunner']
-    position_exit_reviewer: Optional['PositionExitReviewer']
-    position_guardian: Optional['PositionGuardian']
-    order_reconciler: Optional['OrderReconciler']
-    trailing_stop_manager: Optional['TrailingStopManager']
-    active_calendar_poller: Optional['ActiveCalendarPoller']
-    post_release_analyzer: Optional['PostReleaseAnalyzer']
-    alpha_discovery_scheduler: Optional['AlphaDiscoveryScheduler']
-    strategy_synthesis_scheduler: Optional['StrategySynthesisScheduler']
+    execution_service: Optional["ExecutionService"]
+    cycle_scheduler: Optional["GraphCycleScheduler"]
+    news_watcher: Optional["NewsWatcher"]
+    digest_slice_scheduler: Optional["DigestSliceScheduler"]
+    trigger_checker: Optional["TriggerChecker"]
+    telegram_bot: Optional["TelegramBot"]
+    heartbeat_mgr: Optional["HeartbeatManager"]
+    ea_watchdog: Optional["EAWatchdog"]
+    market_data_scheduler: Optional["MarketDataScheduler"]
+    macro_data_scheduler: Optional["MacroDataScheduler"]
+    edge_strategy_runner: Optional["EdgeStrategyRunner"]
+    position_exit_reviewer: Optional["PositionExitReviewer"]
+    position_guardian: Optional["PositionGuardian"]
+    order_reconciler: Optional["OrderReconciler"]
+    trailing_stop_manager: Optional["TrailingStopManager"]
+    active_calendar_poller: Optional["ActiveCalendarPoller"]
+    post_release_analyzer: Optional["PostReleaseAnalyzer"]
+    alpha_discovery_scheduler: Optional["AlphaDiscoveryScheduler"]
+    strategy_synthesis_scheduler: Optional["StrategySynthesisScheduler"]
     background_review_engine: Optional[Any]
     playbook_curator: Optional[Any]
     _active_scraper_runner: Optional[Any]
-    fundamental_stage: Optional['FundamentalStage']
-    per_asset_stage: Optional['PerAssetStage']
-    flash_crash_detector: Optional['FlashCrashDetector']
-    notifier: Optional['AgentNotifier']
-    mt5_client: Optional['MT5Client']
-    position_supervisor: Optional['PositionSupervisor']
+    fundamental_stage: Optional["FundamentalStage"]
+    per_asset_stage: Optional["PerAssetStage"]
+    flash_crash_detector: Optional["FlashCrashDetector"]
+    notifier: Optional["AgentNotifier"]
+    mt5_client: Optional["MT5Client"]
+    position_supervisor: Optional["PositionSupervisor"]
     event_bus: Optional[Any]
     mt5_health_checker: Optional[Any]
     risk_parameter_reloader: Optional[Any]
@@ -271,13 +277,13 @@ class TradingAgent:
         self.event_bus = None
 
         self.execution_service = None
-        self.cycle_scheduler   = None
-        self.news_watcher      = None
+        self.cycle_scheduler = None
+        self.news_watcher = None
         self.digest_slice_scheduler = None
-        self.trigger_checker   = None
-        self.telegram_bot      = None
-        self.heartbeat_mgr     = None
-        self.ea_watchdog       = None
+        self.trigger_checker = None
+        self.telegram_bot = None
+        self.heartbeat_mgr = None
+        self.ea_watchdog = None
         self.market_data_scheduler = None
         self.macro_data_scheduler = None
         self.edge_strategy_runner = None
@@ -317,6 +323,7 @@ class TradingAgent:
     def _init_components(self):
         """Instantiate all components with their dependencies."""
         from monika.application.agent.task_registry import TaskRegistry
+
         self.task_registry = TaskRegistry(self.shutdown_event)
         from monika.infrastructure.brokers.mt5_client import MT5Client
         from monika.application.execution.execution_service import ExecutionService
@@ -337,8 +344,11 @@ class TradingAgent:
         self.event_bus = get_event_bus()
         self.mt5_client = MT5Client(settings=self.settings)
         from monika.application.execution.health_check import FlakeTolerantHealthChecker
+
         self.mt5_health_checker = FlakeTolerantHealthChecker(self.mt5_client, ttl_seconds=30.0, grace_seconds=60.0)
-        self.market_data_scheduler = MarketDataScheduler(self.settings, mt5_client=self.mt5_client, event_bus=self.event_bus)
+        self.market_data_scheduler = MarketDataScheduler(
+            self.settings, mt5_client=self.mt5_client, event_bus=self.event_bus
+        )
         self.macro_data_scheduler = MacroDataScheduler(self.settings, recovery_event=self._recovery_complete)
 
         exec_cfg = self.settings.get("execution", {})
@@ -346,6 +356,7 @@ class TradingAgent:
         broker_adapter = None
         if adapter_type == "remote_gateway":
             from monika.infrastructure.brokers.broker_adapter import MT5RemoteGatewayAdapter
+
             gateway_url = (
                 exec_cfg.get("remote_gateway_url")
                 or exec_cfg.get("gateway_url")
@@ -383,22 +394,21 @@ class TradingAgent:
         self.per_asset_stage = PerAssetStage(self.settings, mt5_client=self.mt5_client)
         self.fundamental_stage.consent_callback = self.request_fallback_consent
         self.per_asset_stage.consent_callback = self.request_fallback_consent
-        self.fundamental_stage.is_fallback_always_approved = lambda: getattr(self, '_fallback_always_approved', False)
-        self.per_asset_stage.is_fallback_always_approved = lambda: getattr(self, '_fallback_always_approved', False)
-        
+        self.fundamental_stage.is_fallback_always_approved = lambda: getattr(self, "_fallback_always_approved", False)
+        self.per_asset_stage.is_fallback_always_approved = lambda: getattr(self, "_fallback_always_approved", False)
+
         from monika.application.scheduler.position_exit_reviewer import PositionExitReviewer
+
         self.position_exit_reviewer = PositionExitReviewer(
             self.settings,
             per_asset_stage=self.per_asset_stage,
             execution_service=self.execution_service,
             recovery_event=self._recovery_complete,
         )
-        
-        self.position_guardian = PositionGuardian(
-            self.settings, 
-            execution_service=self.execution_service
-        )
+
+        self.position_guardian = PositionGuardian(self.settings, execution_service=self.execution_service)
         from monika.application.scheduler.order_reconciler import OrderReconciler
+
         self.order_reconciler = OrderReconciler(
             self.settings,
             mt5_client=self.mt5_client,
@@ -408,8 +418,9 @@ class TradingAgent:
             shutdown_event=self.shutdown_event,
         )
         from monika.application.scheduler.active_calendar_poller import ActiveCalendarPoller
+
         self.active_calendar_poller = ActiveCalendarPoller(self.settings)
-        
+
         self.trailing_stop_manager = TrailingStopManager(
             self.settings,
             execution_service=self.execution_service,
@@ -418,6 +429,7 @@ class TradingAgent:
 
         try:
             from monika.application.scheduler.position_supervisor import PositionSupervisor
+
             self.position_supervisor = PositionSupervisor(
                 mt5_client=self.mt5_client,
                 settings=self.settings,
@@ -427,10 +439,11 @@ class TradingAgent:
             self.position_supervisor = None
 
         from monika.application.scheduler.digest_slice_scheduler import DigestSliceScheduler
+
         self.digest_slice_scheduler = DigestSliceScheduler(self.settings)
 
         self.cycle_scheduler = GraphCycleScheduler(
-            self.settings, 
+            self.settings,
             mt5_client=self.mt5_client,
             fundamental_stage=self.fundamental_stage,
             per_asset_stage=self.per_asset_stage,
@@ -443,8 +456,9 @@ class TradingAgent:
         self.cycle_scheduler._activity_log = self._activity_log
 
         from monika.application.agent.turn_lease_manager import SymbolTurnLeaseManager
+
         self.turn_lease_manager = SymbolTurnLeaseManager.get_instance()
-        
+
         self.news_watcher = NewsWatcher(
             self.settings,
             cycle_scheduler=self.cycle_scheduler,
@@ -456,6 +470,7 @@ class TradingAgent:
         self.news_watcher._activity_log = self._activity_log
 
         from monika.application.scheduler.post_release_analyzer import PostReleaseAnalyzer
+
         self.post_release_analyzer = PostReleaseAnalyzer(
             self.settings,
             per_asset_stage=self.per_asset_stage,
@@ -467,9 +482,9 @@ class TradingAgent:
         )
         self.active_calendar_poller._news_watcher = self.news_watcher
         self.news_watcher._post_release_analyzer = self.post_release_analyzer
-        
+
         self.trigger_checker = TriggerChecker(
-            self.settings, 
+            self.settings,
             per_asset_stage=self.per_asset_stage,
             execution_service=self.execution_service,
             cycle_scheduler=self.cycle_scheduler,
@@ -485,21 +500,24 @@ class TradingAgent:
         self.telegram_bot.task_registry = self.task_registry
 
         from monika.infrastructure.infra.notifier import AgentNotifier
+
         self.notifier = AgentNotifier()
 
         from monika.application.scheduler.flash_crash_detector import FlashCrashDetector
+
         self.flash_crash_detector = FlashCrashDetector(
             self.settings,
             execution_service=self.execution_service,
             notifier=self.notifier,
         )
-        if hasattr(self.execution_service, 'gate') and self.execution_service.gate:
+        if hasattr(self.execution_service, "gate") and self.execution_service.gate:
             self.execution_service.gate.flash_crash_detector = self.flash_crash_detector
-        if hasattr(self.execution_service, 'risk_gate') and self.execution_service.risk_gate:
+        if hasattr(self.execution_service, "risk_gate") and self.execution_service.risk_gate:
             self.execution_service.risk_gate.flash_crash_detector = self.flash_crash_detector
 
         # Hot-Reload Risk Parameters (M-4)
         from monika.core.config.hot_reload import RiskParameterReloader
+
         settings_yaml_path = os.path.join(os.path.dirname(__file__), "config", "settings.yaml")
         rg = getattr(self.execution_service, "risk_gate", None)
         if rg:
@@ -514,6 +532,7 @@ class TradingAgent:
 
         # Universal ConfigManager Pub/Sub Subscriptions
         from monika.core.config.config_manager import ConfigManager
+
         self.config_manager = ConfigManager.get_instance()
 
         def _on_config_risk_update(payload: dict):
@@ -552,6 +571,7 @@ class TradingAgent:
         # Wire EventBus subscribers for sub-second reactive protection & live observability
         if self.event_bus:
             from monika.application.protocol.event_bus import TickPriceEvent, OrderStateChangedEvent
+
             if self.flash_crash_detector and hasattr(self.flash_crash_detector, "on_tick"):
                 self.event_bus.subscribe(TickPriceEvent, self.flash_crash_detector.on_tick, priority=10)
             if self.position_guardian and hasattr(self.position_guardian, "on_tick"):
@@ -564,23 +584,33 @@ class TradingAgent:
                 from monika.interfaces.dashboard.api import broadcast_live_event
 
                 async def _on_live_tick(evt: TickPriceEvent):
-                    await broadcast_live_event("tick", {
-                        "symbol": evt.symbol,
-                        "bid": evt.bid,
-                        "ask": evt.ask,
-                        "spread": evt.spread,
-                        "timestamp": evt.timestamp.isoformat() if hasattr(evt.timestamp, "isoformat") else str(evt.timestamp),
-                    })
+                    await broadcast_live_event(
+                        "tick",
+                        {
+                            "symbol": evt.symbol,
+                            "bid": evt.bid,
+                            "ask": evt.ask,
+                            "spread": evt.spread,
+                            "timestamp": evt.timestamp.isoformat()
+                            if hasattr(evt.timestamp, "isoformat")
+                            else str(evt.timestamp),
+                        },
+                    )
 
                 async def _on_live_order(evt: OrderStateChangedEvent):
-                    await broadcast_live_event("order_state_change", {
-                        "order_id": evt.order_id,
-                        "symbol": evt.symbol,
-                        "old_state": evt.old_state,
-                        "new_state": evt.new_state,
-                        "details": evt.details,
-                        "timestamp": evt.timestamp.isoformat() if hasattr(evt.timestamp, "isoformat") else str(evt.timestamp),
-                    })
+                    await broadcast_live_event(
+                        "order_state_change",
+                        {
+                            "order_id": evt.order_id,
+                            "symbol": evt.symbol,
+                            "old_state": evt.old_state,
+                            "new_state": evt.new_state,
+                            "details": evt.details,
+                            "timestamp": evt.timestamp.isoformat()
+                            if hasattr(evt.timestamp, "isoformat")
+                            else str(evt.timestamp),
+                        },
+                    )
 
                 self.event_bus.subscribe(TickPriceEvent, _on_live_tick, priority=1)
                 self.event_bus.subscribe(OrderStateChangedEvent, _on_live_order, priority=1)
@@ -589,22 +619,35 @@ class TradingAgent:
                 logger.debug(f"Dashboard WebSocket EventBus subscriber wiring note: {ws_err}")
 
             from monika.application.protocol.event_bus import CircuitBreakerEvent, RiskBreachEvent
+
             async def _on_circuit_breaker(evt: CircuitBreakerEvent):
-                logger.warning(f"[EventBus] Circuit breaker received from {evt.component}: {evt.reason} (active={evt.is_active})")
-                if evt.is_active and self.execution_service and hasattr(self.execution_service, "trigger_circuit_breaker"):
+                logger.warning(
+                    f"[EventBus] Circuit breaker received from {evt.component}: {evt.reason} (active={evt.is_active})"
+                )
+                if (
+                    evt.is_active
+                    and self.execution_service
+                    and hasattr(self.execution_service, "trigger_circuit_breaker")
+                ):
                     try:
                         await self.execution_service.trigger_circuit_breaker(f"{evt.component}: {evt.reason}")
                     except Exception as cb_err:
                         logger.error(f"[EventBus] Failed to dispatch circuit breaker to ExecutionService: {cb_err}")
                 try:
                     from monika.interfaces.dashboard.api import broadcast_live_event
-                    await broadcast_live_event("circuit_breaker", {
-                        "component": evt.component,
-                        "reason": evt.reason,
-                        "is_active": evt.is_active,
-                        "cooldown_seconds": evt.cooldown_seconds,
-                        "timestamp": evt.timestamp.isoformat() if hasattr(evt.timestamp, "isoformat") else str(evt.timestamp),
-                    })
+
+                    await broadcast_live_event(
+                        "circuit_breaker",
+                        {
+                            "component": evt.component,
+                            "reason": evt.reason,
+                            "is_active": evt.is_active,
+                            "cooldown_seconds": evt.cooldown_seconds,
+                            "timestamp": evt.timestamp.isoformat()
+                            if hasattr(evt.timestamp, "isoformat")
+                            else str(evt.timestamp),
+                        },
+                    )
                 except Exception as ws_err:
                     logger.debug(f"Circuit breaker websocket broadcast error: {ws_err}")
 
@@ -612,26 +655,34 @@ class TradingAgent:
                 logger.warning(f"[EventBus] Risk breach received: {evt.breach_type} (severity={evt.severity})")
                 try:
                     from monika.interfaces.dashboard.api import broadcast_live_event
-                    await broadcast_live_event("risk_breach", {
-                        "breach_type": evt.breach_type,
-                        "symbol": evt.symbol,
-                        "severity": evt.severity,
-                        "details": evt.details,
-                        "timestamp": evt.timestamp.isoformat() if hasattr(evt.timestamp, "isoformat") else str(evt.timestamp),
-                    })
+
+                    await broadcast_live_event(
+                        "risk_breach",
+                        {
+                            "breach_type": evt.breach_type,
+                            "symbol": evt.symbol,
+                            "severity": evt.severity,
+                            "details": evt.details,
+                            "timestamp": evt.timestamp.isoformat()
+                            if hasattr(evt.timestamp, "isoformat")
+                            else str(evt.timestamp),
+                        },
+                    )
                 except Exception as ws_err:
                     logger.debug(f"Risk breach websocket broadcast error: {ws_err}")
 
             self.event_bus.subscribe(CircuitBreakerEvent, _on_circuit_breaker, priority=10)
             self.event_bus.subscribe(RiskBreachEvent, _on_risk_breach, priority=10)
-            logger.info("  [OK] EventBus CircuitBreakerEvent and RiskBreachEvent subscribed for safety protection and WebSocket broadcast")
-
+            logger.info(
+                "  [OK] EventBus CircuitBreakerEvent and RiskBreachEvent subscribed for safety protection and WebSocket broadcast"
+            )
 
         # Berikan recovery_complete event ke cycle_scheduler agar bisa menunggu
-        if hasattr(self, 'cycle_scheduler') and self.cycle_scheduler is not None:
+        if hasattr(self, "cycle_scheduler") and self.cycle_scheduler is not None:
             self.cycle_scheduler._recovery_complete_event = self._recovery_complete
 
         from monika.application.scheduler.alpha_discovery_scheduler import AlphaDiscoveryScheduler
+
         self.alpha_discovery_scheduler = AlphaDiscoveryScheduler(
             self.settings,
             recovery_event=self._recovery_complete,
@@ -640,6 +691,7 @@ class TradingAgent:
         )
 
         from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
+
         self.strategy_synthesis_scheduler = StrategySynthesisScheduler(
             self.settings,
             recovery_event=self._recovery_complete,
@@ -648,15 +700,18 @@ class TradingAgent:
         )
 
         from monika.application.analysis.memory.background_review import BackgroundReviewEngine
+
         self.background_review_engine = BackgroundReviewEngine(self.settings)
 
         from monika.application.scheduler.playbook_curator import PlaybookCurator
+
         self.playbook_curator = PlaybookCurator(self.settings)
 
         # Initialize Universal PluginEngine Harness
         try:
             from monika.infrastructure.infra.container import get_container
             from monika.application.harness.engine import PluginEngine
+
             self.container = get_container()
             self.container.register_instance("settings", self.settings)
             if self.event_bus:
@@ -685,6 +740,7 @@ class TradingAgent:
         # Initialize Universal Cron Scheduler
         try:
             from monika.application.scheduler.unified_cron_engine import get_unified_cron_engine
+
             self.universal_cron = get_unified_cron_engine()
             logger.info("  [OK] UnifiedCronEngine initialized")
         except Exception as e:
@@ -699,6 +755,7 @@ class TradingAgent:
             return
         from monika.application.protocol.event_bus import TickPriceEvent
         from datetime import datetime, timezone
+
         event = TickPriceEvent(
             symbol=symbol.upper(),
             bid=bid,
@@ -715,14 +772,15 @@ class TradingAgent:
         Returns True if approved (single cycle or persistent), False if rejected.
         """
         logger.warning(f"Fallback consent requested: {prompt_text}")
-        
+
         # Event for CLI prompt synchronization
         cli_event = asyncio.Event()
         cli_result = {"approved": False, "always": False}
-        
+
         def cli_prompt():
             import sys
             import time
+
             if not sys.stdin.isatty():
                 # If non-interactive terminal, block thread to prevent premature completion
                 # from canceling concurrent Telegram prompt task
@@ -738,22 +796,23 @@ class TradingAgent:
             if sys.platform == "win32":
                 try:
                     import msvcrt
+
                     chars = []
                     while not cli_event.is_set():
                         if msvcrt.kbhit():
                             ch = msvcrt.getwche()
-                            if ch in ('\r', '\n'):
+                            if ch in ("\r", "\n"):
                                 ans = "".join(chars).strip()
                                 chars = []
-                                if ans == '1':
+                                if ans == "1":
                                     cli_result["approved"] = True
                                     cli_result["always"] = False
                                     return
-                                elif ans == '2':
+                                elif ans == "2":
                                     cli_result["approved"] = True
                                     cli_result["always"] = True
                                     return
-                                elif ans == '3':
+                                elif ans == "3":
                                     cli_result["approved"] = False
                                     return
                                 else:
@@ -775,15 +834,15 @@ class TradingAgent:
                             time.sleep(1)
                         return
                     ans = ans.strip()
-                    if ans == '1':
+                    if ans == "1":
                         cli_result["approved"] = True
                         cli_result["always"] = False
                         return
-                    elif ans == '2':
+                    elif ans == "2":
                         cli_result["approved"] = True
                         cli_result["always"] = True
                         return
-                    elif ans == '3':
+                    elif ans == "3":
                         cli_result["approved"] = False
                         return
                     else:
@@ -794,30 +853,33 @@ class TradingAgent:
                     while not cli_event.is_set():
                         time.sleep(1)
                     return
-        
+
         # Execute CLI prompt in separate thread to avoid blocking event loop
         cli_task = asyncio.create_task(asyncio.to_thread(cli_prompt))
-        
+
         # Execute Telegram prompt
         tg_event = asyncio.Event()
         tg_result = {"approved": False, "always": False}
         if self.telegram_bot:
             bot = self.telegram_bot
+
             async def wait_for_tg():
                 await bot.request_fallback_consent(prompt_text, tg_event, tg_result)
                 await tg_event.wait()
+
             tg_task = asyncio.create_task(wait_for_tg())
         else:
             # Dummy task when Telegram bot is unavailable
             async def dummy_tg():
                 await asyncio.sleep(86400)
+
             tg_task = asyncio.create_task(dummy_tg())
 
         # Wait for first respondent with 5 minute timeout (300s)
         done, pending = await asyncio.wait(
             [cli_task, tg_task, asyncio.create_task(self.shutdown_event.wait())],
             return_when=asyncio.FIRST_COMPLETED,
-            timeout=300.0
+            timeout=300.0,
         )
 
         # Cancel remaining pending tasks
@@ -829,7 +891,7 @@ class TradingAgent:
 
         # Set event to complete cli_prompt if still active
         cli_event.set()
-        
+
         if not done:
             # Timeout reached
             approved = False
@@ -837,9 +899,11 @@ class TradingAgent:
             source = "Timeout (5 minutes)"
             print(f"\n[FALLBACK] Approval timeout reached (5 minutes). Default: Rejected.")
             if self.telegram_bot:
-                asyncio.create_task(self.telegram_bot.send_notification(
-                    "[PROSES] Fallback approval timed out (5 minutes). Automated decision: *Rejected*."
-                ))
+                asyncio.create_task(
+                    self.telegram_bot.send_notification(
+                        "[PROSES] Fallback approval timed out (5 minutes). Automated decision: *Rejected*."
+                    )
+                )
         elif tg_event.is_set():
             approved = tg_result["approved"]
             always = tg_result["always"]
@@ -850,9 +914,11 @@ class TradingAgent:
             always = cli_result["always"]
             source = "CLI"
             if self.telegram_bot:
-                asyncio.create_task(self.telegram_bot.send_notification(
-                    f"[INFO] Fallback decision received from CLI: {'Approved' if approved else 'Rejected'}"
-                ))
+                asyncio.create_task(
+                    self.telegram_bot.send_notification(
+                        f"[INFO] Fallback decision received from CLI: {'Approved' if approved else 'Rejected'}"
+                    )
+                )
 
         if approved and always:
             self._fallback_always_approved = True
@@ -872,21 +938,26 @@ class TradingAgent:
         3. Reset Gemini rate limiter counters jika hari baru
         """
         from monika.infrastructure.database.db import get_session
+
         logger.info("[Recovery] Starting post-restart recovery tasks...")
-        
+
         try:
             if self.execution_service:
                 try:
                     await self.execution_service._restore_executed_ids_from_db()
                 except Exception as e:
                     logger.error(f"[Recovery] Failed to restore executed IDs: {e}")
-                
+
             max_wait = 120
             wait_interval = 10
             elapsed = 0
-            
+
             async def _check_broker_connected() -> bool:
-                if self.execution_service and hasattr(self.execution_service, "broker_adapter") and self.execution_service.broker_adapter:
+                if (
+                    self.execution_service
+                    and hasattr(self.execution_service, "broker_adapter")
+                    and self.execution_service.broker_adapter
+                ):
                     adapter = self.execution_service.broker_adapter
                     if hasattr(adapter, "ensure_connected"):
                         return await adapter.ensure_connected()
@@ -903,7 +974,7 @@ class TradingAgent:
                 logger.info(f"[Recovery] Waiting for Broker/MT5... ({elapsed}s/{max_wait}s)")
                 await asyncio.sleep(wait_interval)
                 elapsed += wait_interval
-                
+
             if not await _check_broker_connected():
                 logger.error("[Recovery] Broker/MT5 failed to connect within timeout — entering degraded mode")
                 self._mt5_degraded = True
@@ -929,7 +1000,7 @@ class TradingAgent:
                             logger.info(f"[Recovery] Position sync successful")
                             break
                         except Exception as e:
-                            logger.warning(f"[Recovery] Sync attempt {attempt+1} failed: {e}")
+                            logger.warning(f"[Recovery] Sync attempt {attempt + 1} failed: {e}")
                             await asyncio.sleep(15)
 
                     # 1a. Reconcile in-flight orders stuck during crash/restart (C-4)
@@ -943,17 +1014,17 @@ class TradingAgent:
                 # 1b. Check Friday close protection if it's Friday and past 20:00 UTC
                 now = datetime.now(timezone.utc)
                 if now.weekday() == 4 and now.hour >= 20:
-                    logger.info('[Recovery] Friday past 20:00 UTC detected. Running gap protection check...')
+                    logger.info("[Recovery] Friday past 20:00 UTC detected. Running gap protection check...")
                     try:
                         if self.position_guardian:
                             res = await self.position_guardian.check_friday_close_protection()
-                            alerted = res.get('positions_alerted', 0)
+                            alerted = res.get("positions_alerted", 0)
                             if alerted > 0:
-                                logger.info(f'[Recovery] Friday protection alerted on {alerted} positions.')
+                                logger.info(f"[Recovery] Friday protection alerted on {alerted} positions.")
                         else:
-                            logger.warning('[Recovery] position_guardian not initialized, skipping Friday check.')
+                            logger.warning("[Recovery] position_guardian not initialized, skipping Friday check.")
                     except Exception as e:
-                        logger.error(f'[Recovery] Friday protection check failed: {e}')
+                        logger.error(f"[Recovery] Friday protection check failed: {e}")
 
                 # Signal to position guards and schedulers (TriggerChecker, PositionExitReviewer,
                 # TrailingStopManager, OrderReconciler, PositionGuardian) that positions are reconciled.
@@ -982,12 +1053,13 @@ class TradingAgent:
                 # 1d. Restore Strategy Decay Monitor state from DB
                 try:
                     from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
                     async with get_session() as rec_session:
                         await get_strategy_decay_monitor().load_from_db(rec_session)
                     logger.info("[Recovery] StrategyDecayMonitor health state restored from DB")
                 except Exception as decay_err:
                     logger.debug(f"[Recovery] Failed to restore StrategyDecayMonitor state: {decay_err}")
-            
+
             # Ensure recovery complete flag is set (idempotent)
             self._recovery_complete.set()
             logger.info("[Recovery] Startup data warmup done: _recovery_complete event verified.")
@@ -1000,30 +1072,34 @@ class TradingAgent:
 
             # Harmonized Catch-up & Brief Expiry Check
             try:
-                sched_cfg = self.settings.get('trading', {}).get('schedule', {})
-                catch_up_enabled = sched_cfg.get('catch_up_missed_cycles', True)
-                overdue_multiplier = float(sched_cfg.get('catch_up_overdue_multiplier', 1.5))
-                cycle_hours = float(sched_cfg.get('analysis_cycle_hours', 8.0))
-                data_quality_cfg = self.settings.get('data_quality', {})
-                max_brief_age = float(data_quality_cfg.get('max_brief_age_analysis_hours', 12.0))
+                sched_cfg = self.settings.get("trading", {}).get("schedule", {})
+                catch_up_enabled = sched_cfg.get("catch_up_missed_cycles", True)
+                overdue_multiplier = float(sched_cfg.get("catch_up_overdue_multiplier", 1.5))
+                cycle_hours = float(sched_cfg.get("analysis_cycle_hours", 8.0))
+                data_quality_cfg = self.settings.get("data_quality", {})
+                max_brief_age = float(data_quality_cfg.get("max_brief_age_analysis_hours", 12.0))
                 effective_threshold = min(cycle_hours * overdue_multiplier, max_brief_age)
-                tz_name = sched_cfg.get('timezone', 'Asia/Jakarta')
-                cycle_times_raw = sched_cfg.get('cycle_times_local') or ["07:00", "15:00", "20:00"]
+                tz_name = sched_cfg.get("timezone", "Asia/Jakarta")
+                cycle_times_raw = sched_cfg.get("cycle_times_local") or ["07:00", "15:00", "20:00"]
 
                 if not catch_up_enabled:
                     logger.info(
-                        '[Recovery] catch_up_missed_cycles=false — melewati pengecekan catch-up. '
-                        'Siklus berikutnya akan jalan sesuai jadwal jam tetap (cycle_times_local).'
+                        "[Recovery] catch_up_missed_cycles=false — melewati pengecekan catch-up. "
+                        "Siklus berikutnya akan jalan sesuai jadwal jam tetap (cycle_times_local)."
                     )
                 else:
                     async with get_session() as session:
-                        last_cycle = (await session.execute(
-                            select(CyclePerformance).order_by(CyclePerformance.cycle_at.desc()).limit(1)
-                        )).scalar_one_or_none()
-                        
-                        brief = (await session.execute(
-                            select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
-                        )).scalar_one_or_none()
+                        last_cycle = (
+                            await session.execute(
+                                select(CyclePerformance).order_by(CyclePerformance.cycle_at.desc()).limit(1)
+                            )
+                        ).scalar_one_or_none()
+
+                        brief = (
+                            await session.execute(
+                                select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                            )
+                        ).scalar_one_or_none()
 
                         dt_now = datetime.now(timezone.utc)
                         hours_since_last = None
@@ -1045,7 +1121,12 @@ class TradingAgent:
                         else:
                             brief_expired = True
 
-                        from monika.application.scheduler.wall_clock import parse_time_list, previous_occurrence, get_tzinfo
+                        from monika.application.scheduler.wall_clock import (
+                            parse_time_list,
+                            previous_occurrence,
+                            get_tzinfo,
+                        )
+
                         most_recent_target_utc = None
                         try:
                             times = parse_time_list(cycle_times_raw)
@@ -1065,14 +1146,16 @@ class TradingAgent:
                             cycle_covered = cycle_at >= (most_recent_target_utc - tolerance)
                             if not cycle_covered:
                                 tz = get_tzinfo(tz_name)
-                                target_local_str = most_recent_target_utc.astimezone(tz).strftime('%Y-%m-%d %H:%M')
-                                last_local_str = cycle_at.astimezone(tz).strftime('%Y-%m-%d %H:%M')
+                                target_local_str = most_recent_target_utc.astimezone(tz).strftime("%Y-%m-%d %H:%M")
+                                last_local_str = cycle_at.astimezone(tz).strftime("%Y-%m-%d %H:%M")
                                 needs_recovery = True
                                 reason = f"Jadwal sesi {target_local_str} ({tz_name}) terlewat (siklus terakhir: {last_local_str})"
                             elif brief_expired:
                                 needs_recovery = True
                                 if brief_age is not None:
-                                    reason = f"Fundamental Brief sudah kedaluwarsa ({brief_age:.1f}h > {max_brief_age:.1f}h)"
+                                    reason = (
+                                        f"Fundamental Brief sudah kedaluwarsa ({brief_age:.1f}h > {max_brief_age:.1f}h)"
+                                    )
                                 else:
                                     reason = "Fundamental Brief belum tersedia / tidak valid"
                         else:
@@ -1084,11 +1167,11 @@ class TradingAgent:
                                 reason = "Fundamental Brief sudah kedaluwarsa / belum tersedia"
 
                         if needs_recovery:
-                            logger.warning(
-                                f"[Recovery] {reason}. Menjadwalkan SATU siklus pemulihan sekarang."
-                            )
+                            logger.warning(f"[Recovery] {reason}. Menjadwalkan SATU siklus pemulihan sekarang.")
                             if not _recovery_cycle_dispatched and self.cycle_scheduler:
-                                self._create_background_task(self.cycle_scheduler.run_once(forced=True), name="recovery_cycle")
+                                self._create_background_task(
+                                    self.cycle_scheduler.run_once(forced=True), name="recovery_cycle"
+                                )
                                 _recovery_cycle_dispatched = True
                         else:
                             if hours_since_last is not None:
@@ -1102,16 +1185,16 @@ class TradingAgent:
                                     "[Recovery] Belum ada siklus tercatat di DB (instalasi baru). Menunggu jadwal pertama."
                                 )
             except Exception as e:
-                logger.error(f'[Recovery] Cycle and brief catch-up check failed: {e}')
-            
+                logger.error(f"[Recovery] Cycle and brief catch-up check failed: {e}")
+
             # Check news digest freshness
             try:
                 is_stale = True
                 async with get_session() as session:
-                    last_digest = (await session.execute(
-                        select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1)
-                    )).scalar_one_or_none()
-                    
+                    last_digest = (
+                        await session.execute(select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1))
+                    ).scalar_one_or_none()
+
                     # Assume generated_at is utc naive or aware
                     dt_now = datetime.now(timezone.utc)
                     if last_digest and last_digest.generated_at:
@@ -1119,27 +1202,27 @@ class TradingAgent:
                         if l_gen.tzinfo is None:
                             l_gen = l_gen.replace(tzinfo=timezone.utc)
                         is_stale = (dt_now - l_gen).total_seconds() > 4 * 3600
-                
+
                 if is_stale:
-                    logger.info('[Recovery] News digest stale/missing, generating fresh digest...')
+                    logger.info("[Recovery] News digest stale/missing, generating fresh digest...")
                     processor = NewsDigestProcessor(self.settings)
                     async with get_session() as digest_session:
                         await processor.create_news_digest(digest_session, hours_back=12)
             except Exception as e:
-                logger.error(f'[Recovery] News digest recovery failed: {e}')
-            
+                logger.error(f"[Recovery] News digest recovery failed: {e}")
+
             # 3. Send recovery notification
             if self.telegram_bot:
                 try:
                     await asyncio.sleep(30)  # Wait for Telegram bot to be ready
                     open_pos_count = 0
                     try:
-                        if self.execution_service and getattr(self.execution_service, 'mt5', None):
+                        if self.execution_service and getattr(self.execution_service, "mt5", None):
                             positions = await self.execution_service.mt5.get_open_positions()
                             open_pos_count = len(positions) if positions else 0
                     except Exception:
                         pass
-                    
+
                     await self.telegram_bot.send_notification(
                         f"[SYNC] *Agent Restarted Successfully*\n\n"
                         f"All systems online.\n"
@@ -1178,7 +1261,7 @@ class TradingAgent:
             if loop is not None:
                 try:
                     loop.add_signal_handler(sig, lambda s=sig.name: _signal_handler(s))
-                except (NotImplementedError, RuntimeError):
+                except NotImplementedError, RuntimeError:
                     # Windows: add_signal_handler not supported for all signals
                     signal.signal(sig, lambda s, f, n=sig.name: _signal_handler(n))
             else:
@@ -1186,10 +1269,12 @@ class TradingAgent:
 
         # SIGHUP (systemd ExecReload / config reload, Unix only)
         if hasattr(signal, "SIGHUP"):
+
             def _sighup_handler():
                 logger.info("SIGHUP received — reloading configuration...")
                 try:
                     from monika.core.config.settings import load_all_config
+
                     new_settings = load_all_config()
                     self.settings.clear()
                     self.settings.update(new_settings)
@@ -1207,7 +1292,7 @@ class TradingAgent:
                 if loop is not None:
                     try:
                         loop.add_signal_handler(sighup, _sighup_handler)
-                    except (NotImplementedError, RuntimeError):
+                    except NotImplementedError, RuntimeError:
                         signal.signal(sighup, lambda s, f: _sighup_handler())
                 else:
                     signal.signal(sighup, lambda s, f: _sighup_handler())
@@ -1217,13 +1302,19 @@ class TradingAgent:
         Full startup sequence — blocks until shutdown.
         """
         import sys
-        reconfig = getattr(sys.stdout, 'reconfigure', None)
-        if callable(reconfig) and hasattr(sys.stdout, 'encoding') and sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+
+        reconfig = getattr(sys.stdout, "reconfigure", None)
+        if (
+            callable(reconfig)
+            and hasattr(sys.stdout, "encoding")
+            and sys.stdout.encoding
+            and sys.stdout.encoding.lower() != "utf-8"
+        ):
             try:
-                reconfig(encoding='utf-8')
+                reconfig(encoding="utf-8")
             except Exception:
                 pass
-            
+
         print(BANNER)
         logger.info("=" * 62)
         logger.info("Monika (MT5 Trading Agent) starting up...")
@@ -1235,6 +1326,7 @@ class TradingAgent:
 
         # Arm startup watchdog to detect deadlocks during component initialization
         from monika.application.agent.monitors.startup_watchdog import global_startup_watchdog
+
         global_startup_watchdog.start()
 
         # Register signal handlers
@@ -1247,13 +1339,16 @@ class TradingAgent:
         try:
             connected = False
             from monika.infrastructure.brokers.broker_adapter import MT5LiveAdapter
+
             custom_adapter = getattr(self.execution_service, "broker_adapter", None) if self.execution_service else None
             if custom_adapter and not isinstance(custom_adapter, MT5LiveAdapter):
                 connected = await custom_adapter.ensure_connected()
                 if connected:
                     logger.info(f"Broker Adapter ({type(custom_adapter).__name__}) connected successfully")
                 else:
-                    logger.warning(f"Broker Adapter ({type(custom_adapter).__name__}) connection failed — live execution disabled")
+                    logger.warning(
+                        f"Broker Adapter ({type(custom_adapter).__name__}) connection failed — live execution disabled"
+                    )
             elif self.mt5_client:
                 connected = await self.mt5_client.connect()
                 if connected:
@@ -1279,10 +1374,13 @@ class TradingAgent:
         # PR-22: Cold-Start Pre-Flight Verification before enabling schedulers
         try:
             from monika.application.agent.monitors.startup_watchdog import run_cold_start_preflight
+
             preflight = await run_cold_start_preflight(self)
-            logger.info(f"[Preflight] Cold-start verification: broker_ping={preflight.get('broker_ping')}, "
-                        f"positions_reconciled={preflight.get('positions_reconciled')}, "
-                        f"ready={preflight.get('ready')}")
+            logger.info(
+                f"[Preflight] Cold-start verification: broker_ping={preflight.get('broker_ping')}, "
+                f"positions_reconciled={preflight.get('positions_reconciled')}, "
+                f"ready={preflight.get('ready')}"
+            )
         except Exception as preflight_err:
             logger.warning(f"[Preflight] Cold-start pre-flight note (non-fatal): {preflight_err}")
 
@@ -1312,7 +1410,9 @@ class TradingAgent:
             _launch_task("EdgeStrategyRunner", self.edge_strategy_runner.start, "edge_strategy_runner")
         if self.cycle_scheduler:
             _launch_task("CycleScheduler", self.cycle_scheduler.start, "cycle_scheduler")
-            _launch_task("DailyReportScheduler", self.cycle_scheduler.run_scheduled_reports_loop, "daily_report_scheduler")
+            _launch_task(
+                "DailyReportScheduler", self.cycle_scheduler.run_scheduled_reports_loop, "daily_report_scheduler"
+            )
             _launch_task("SessionTrigger", self.cycle_scheduler.run_session_trigger_loop, "session_trigger")
         if self.news_watcher:
             _launch_task("NewsWatcher", self.news_watcher.start, "news_watcher")
@@ -1359,7 +1459,9 @@ class TradingAgent:
         if hasattr(self, "alpha_discovery_scheduler") and self.alpha_discovery_scheduler:
             _launch_task("AlphaDiscoveryScheduler", self.alpha_discovery_scheduler.start, "alpha_discovery_scheduler")
         if hasattr(self, "strategy_synthesis_scheduler") and self.strategy_synthesis_scheduler:
-            _launch_task("StrategySynthesisScheduler", self.strategy_synthesis_scheduler.start, "strategy_synthesis_scheduler")
+            _launch_task(
+                "StrategySynthesisScheduler", self.strategy_synthesis_scheduler.start, "strategy_synthesis_scheduler"
+            )
         if hasattr(self, "background_review_engine") and self.background_review_engine:
             _launch_task("BackgroundReviewEngine", self.background_review_engine.run, "background_review_engine")
         if hasattr(self, "playbook_curator") and self.playbook_curator:
@@ -1431,6 +1533,7 @@ class TradingAgent:
         while not self.shutdown_event.is_set():
             try:
                 if self.mt5_client and await self.mt5_client.is_connected():
+
                     async def _sample_and_publish(sym: str) -> None:
                         if not self.mt5_client:
                             return
@@ -1463,7 +1566,10 @@ class TradingAgent:
     async def _run_flash_crash_detector(self) -> None:
         """Dedicated loop to monitor flash crashes and extreme volatility spikes."""
         from monika.infrastructure.database.db import get_session
-        interval = int(self.settings.get("trading", {}).get("risk", {}).get("flash_crash", {}).get("check_interval_seconds", 30))
+
+        interval = int(
+            self.settings.get("trading", {}).get("risk", {}).get("flash_crash", {}).get("check_interval_seconds", 30)
+        )
         logger.info(f"Flash Crash detector loop started (interval: {interval}s)")
         if hasattr(self, "_recovery_complete") and self._recovery_complete:
             try:
@@ -1485,19 +1591,20 @@ class TradingAgent:
     async def _run_whatif_resolver(self) -> None:
         """Dedicated loop to resolve paper what-ifs."""
         check_interval_seconds = 3600  # Every 1 hour
-        logger.info('What-If resolver started (interval: 1h)')
-        
+        logger.info("What-If resolver started (interval: 1h)")
+
         from monika.application.analysis.memory.outcome_linker import OutcomeLinker
         from monika.infrastructure.database.db import get_session
+
         linker = OutcomeLinker()
-        
+
         while not self.shutdown_event.is_set():
             try:
                 async with get_session() as session:
                     await linker.process_paper_whatifs(session)
             except Exception as e:
                 logger.error(f"Error in What-If resolver loop: {e}")
-            
+
             try:
                 await asyncio.wait_for(self.shutdown_event.wait(), timeout=check_interval_seconds)
                 break
@@ -1508,7 +1615,6 @@ class TradingAgent:
         """Dedicated loop to monitor and close paper trades based on price action."""
         await run_paper_trade_monitor(self)
 
-
     async def _run_micro_playbook_compiler_loop(self) -> None:
         """
         Autonomous micro-playbook compilation loop.
@@ -1516,6 +1622,7 @@ class TradingAgent:
         """
         from monika.application.analysis.memory.skill_evolution import MicroPlaybookCompiler
         from monika.infrastructure.database.db import get_session
+
         compiler = MicroPlaybookCompiler(self.settings)
         check_interval_seconds = 21600  # Run every 6 hours
         logger.info("Micro-playbook compiler loop started (interval: 6h)")
@@ -1524,7 +1631,9 @@ class TradingAgent:
                 async with get_session() as session:
                     promoted = await compiler.evaluate_and_compile(session, settings=self.settings)
                     if promoted:
-                        logger.info(f"[MicroPlaybookCompiler] Promoted {len(promoted)} autonomous micro-playbooks: {promoted}")
+                        logger.info(
+                            f"[MicroPlaybookCompiler] Promoted {len(promoted)} autonomous micro-playbooks: {promoted}"
+                        )
             except Exception as e:
                 logger.warning(f"[MicroPlaybookCompiler] Loop iteration error (non-fatal): {e}")
             try:
@@ -1539,6 +1648,7 @@ class TradingAgent:
         """
         from monika.application.analysis.memory.skill_curator import SkillCurator
         from monika.infrastructure.database.db import get_session
+
         curator = SkillCurator(self.settings)
         check_interval_seconds = 86400  # Run every 24 hours
         logger.info("Skill curator loop started (interval: 24h)")
@@ -1557,6 +1667,7 @@ class TradingAgent:
     async def _run_dashboard(self):
         """Run the FastAPI dashboard server as an asyncio task with bind-retry resilience."""
         from monika.interfaces.dashboard.api import run_dashboard_async, set_dashboard_dependencies
+
         rg = getattr(self.execution_service, "risk_gate", None)
         reloader = getattr(self, "risk_parameter_reloader", None)
         set_dashboard_dependencies(
@@ -1600,9 +1711,7 @@ class TradingAgent:
             except Exception as e:
                 logger.debug(f"Position sync error (non-fatal): {e}")
             try:
-                await asyncio.wait_for(
-                    self.shutdown_event.wait(), timeout=sync_interval
-                )
+                await asyncio.wait_for(self.shutdown_event.wait(), timeout=sync_interval)
             except asyncio.TimeoutError:
                 pass
 
@@ -1613,19 +1722,22 @@ class TradingAgent:
         if hasattr(self, "risk_parameter_reloader") and self.risk_parameter_reloader:
             await self.risk_parameter_reloader.watch_and_reload(self.shutdown_event)
 
-
     async def _run_mt5_health_monitor(self):
         """Monitor MT5 connection health and auto-heal market data on reconnect."""
         consecutive_failures = 0
         max_failures_before_alert = 1
         was_disconnected = False
-        
+
         while not self.shutdown_event.is_set():
             await asyncio.sleep(60)  # Check every 60s for faster reconnection recovery
             try:
                 if self.mt5_health_checker is not None:
                     is_conn = await self.mt5_health_checker.is_healthy()
-                elif self.execution_service and hasattr(self.execution_service, "broker_adapter") and self.execution_service.broker_adapter:
+                elif (
+                    self.execution_service
+                    and hasattr(self.execution_service, "broker_adapter")
+                    and self.execution_service.broker_adapter
+                ):
                     adapter = self.execution_service.broker_adapter
                     if hasattr(adapter, "ensure_connected"):
                         is_conn = await adapter.ensure_connected()
@@ -1640,13 +1752,12 @@ class TradingAgent:
                 if not is_conn:
                     consecutive_failures += 1
                     was_disconnected = True
-                    logger.warning(
-                        f"MT5 health check failed ({consecutive_failures}/{max_failures_before_alert})"
-                    )
+                    logger.warning(f"MT5 health check failed ({consecutive_failures}/{max_failures_before_alert})")
                     if consecutive_failures == max_failures_before_alert:
                         if self.mt5_health_checker is not None:
                             self.mt5_health_checker.record_failure()
                         from monika.infrastructure.infra.notifier import AgentNotifier
+
                         await AgentNotifier().send_critical(
                             f"[PLUGIN] <b>MT5 Connection Lost</b>\n"
                             f"MT5 has been disconnected for ~{consecutive_failures} minutes.\n"
@@ -1657,7 +1768,9 @@ class TradingAgent:
                 else:
                     if was_disconnected:
                         # Auto-Healing: Reconnection detected!
-                        logger.info("[MT5HealthMonitor] MT5 reconnected! Triggering instant auto-healing market data sync...")
+                        logger.info(
+                            "[MT5HealthMonitor] MT5 reconnected! Triggering instant auto-healing market data sync..."
+                        )
                         was_disconnected = False
                         if self.mt5_health_checker is not None:
                             self.mt5_health_checker.record_success()
@@ -1665,7 +1778,10 @@ class TradingAgent:
                             asyncio.create_task(self.market_data_scheduler.sync_now())
                         try:
                             from monika.infrastructure.infra.notifier import AgentNotifier
-                            await AgentNotifier().send_info("[OK] <b>MT5 Reconnected</b> — Market data auto-healing sync dispatched.")
+
+                            await AgentNotifier().send_info(
+                                "[OK] <b>MT5 Reconnected</b> — Market data auto-healing sync dispatched."
+                            )
                         except Exception:
                             pass
                     consecutive_failures = 0  # Reset on successful connection
@@ -1692,19 +1808,23 @@ class TradingAgent:
     async def _run_position_guardian_loop(self) -> None:
         """Independent position guardian loop (default 60s, configurable via trading.position_guardian_interval_seconds)."""
         import asyncio
+
         if hasattr(self, "_recovery_complete") and self._recovery_complete:
             try:
                 await asyncio.wait_for(self._recovery_complete.wait(), timeout=180.0)
             except asyncio.TimeoutError:
                 pass
         guardian_cfg = self.settings.get("trading", {}).get("position_guardian", {})
-        interval = int(guardian_cfg.get("check_interval_seconds") or self.settings.get("trading", {}).get("position_guardian_interval_seconds", 60))
+        interval = int(
+            guardian_cfg.get("check_interval_seconds")
+            or self.settings.get("trading", {}).get("position_guardian_interval_seconds", 60)
+        )
         while not self.shutdown_event.is_set():
             try:
                 if self.position_guardian:
                     await self.position_guardian.check_and_protect()
             except Exception as e:
-                logger.debug(f'PositionGuardian check failed (non-fatal): {e}')
+                logger.debug(f"PositionGuardian check failed (non-fatal): {e}")
             try:
                 await asyncio.wait_for(self.shutdown_event.wait(), timeout=interval)
             except asyncio.TimeoutError:
@@ -1722,7 +1842,6 @@ class TradingAgent:
         """Monitor Database connection pool health."""
         await run_db_health_check(self)
 
-
     async def _shutdown(self):
         """Graceful shutdown sequence."""
         logger.info("=" * 62)
@@ -1733,14 +1852,15 @@ class TradingAgent:
             from monika.infrastructure.database.models import Position
             from sqlalchemy import select
             import json
-            
+
             async with get_session() as session:
-                open_positions = (await session.execute(
-                    select(Position).where(Position.status == "open")
-                )).scalars().all()
+                open_positions = (
+                    (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+                )
 
                 try:
                     from monika.infrastructure.database.event_store import TradingEventStore
+
                     await TradingEventStore.emit(
                         session=session,
                         event_type="system.shutdown",
@@ -1753,31 +1873,33 @@ class TradingAgent:
                     logger.debug(f"Event store emit system.shutdown error: {es_err}")
 
                 # Save snapshot to file
-                os.makedirs('data', exist_ok=True)
+                os.makedirs("data", exist_ok=True)
                 snapshot = {
-                    'shutdown_at': datetime.now(timezone.utc).isoformat(),
-                    'open_positions': [
+                    "shutdown_at": datetime.now(timezone.utc).isoformat(),
+                    "open_positions": [
                         {
-                            'ticket': p.mt5_ticket,
-                            'symbol': p.symbol,
-                            'direction': p.direction,
-                            'entry': p.entry_price,
-                            'sl': p.sl,
-                            'tp': p.tp
+                            "ticket": p.mt5_ticket,
+                            "symbol": p.symbol,
+                            "direction": p.direction,
+                            "entry": p.entry_price,
+                            "sl": p.sl,
+                            "tp": p.tp,
                         }
                         for p in open_positions
-                    ]
+                    ],
                 }
-                
-                with open('data/last_shutdown_snapshot.json', 'w') as f:
+
+                with open("data/last_shutdown_snapshot.json", "w") as f:
                     json.dump(snapshot, f, indent=2)
-                logger.info(f'Shutdown snapshot saved: {len(open_positions)} open positions')
-                
+                logger.info(f"Shutdown snapshot saved: {len(open_positions)} open positions")
+
                 if open_positions:
-                    pos_summary = "\n".join([
-                        f"• {p.symbol} {p.direction.upper()} {p.volume}L @ {p.entry_price} (SL:{p.sl})"
-                        for p in open_positions
-                    ])
+                    pos_summary = "\n".join(
+                        [
+                            f"• {p.symbol} {p.direction.upper()} {p.volume}L @ {p.entry_price} (SL:{p.sl})"
+                            for p in open_positions
+                        ]
+                    )
                     if self.telegram_bot:
                         await self.telegram_bot.send_notification(
                             f"[PERINGATAN] *Agent SHUTDOWN dengan posisi terbuka:*\n{pos_summary}\n\n"
@@ -1789,22 +1911,23 @@ class TradingAgent:
 
         # Stop schedulers
         import inspect
+
         for comp, name in [
-            (self.cycle_scheduler,  "CycleScheduler"),
-            (self.news_watcher,     "NewsWatcher"),
+            (self.cycle_scheduler, "CycleScheduler"),
+            (self.news_watcher, "NewsWatcher"),
             (self.digest_slice_scheduler, "DigestSliceScheduler"),
             (self.active_calendar_poller, "ActiveCalendarPoller"),
-            (self.trigger_checker,  "TriggerChecker"),
-            (self.heartbeat_mgr,    "HeartbeatManager"),
-            (self.ea_watchdog,      "EAWatchdog"),
+            (self.trigger_checker, "TriggerChecker"),
+            (self.heartbeat_mgr, "HeartbeatManager"),
+            (self.ea_watchdog, "EAWatchdog"),
             (self.position_supervisor, "PositionSupervisor"),
-            (self.position_exit_reviewer, 'PositionExitReviewer'),
+            (self.position_exit_reviewer, "PositionExitReviewer"),
             (self.position_guardian, "PositionGuardian"),
             (self.order_reconciler, "OrderReconciler"),
             (self.trailing_stop_manager, "TrailingStopManager"),
             (self.edge_strategy_runner, "EdgeStrategyRunner"),
             (self.market_data_scheduler, "MarketDataScheduler"),
-            (self.macro_data_scheduler,  "MacroDataScheduler"),
+            (self.macro_data_scheduler, "MacroDataScheduler"),
             (self.post_release_analyzer, "PostReleaseAnalyzer"),
             (self.alpha_discovery_scheduler, "AlphaDiscoveryScheduler"),
             (getattr(self, "strategy_synthesis_scheduler", None), "StrategySynthesisScheduler"),
@@ -1850,9 +1973,7 @@ class TradingAgent:
         # Notify Telegram admin
         try:
             if self.telegram_bot:
-                await self.telegram_bot.send_notification(
-                    "[KRITIS] *Agent stopped.* Graceful shutdown complete."
-                )
+                await self.telegram_bot.send_notification("[KRITIS] *Agent stopped.* Graceful shutdown complete.")
         except Exception:
             pass
 
@@ -1881,14 +2002,14 @@ class TradingAgent:
 
         # Disconnect MT5 with bounded timeout
         try:
-            if hasattr(self, 'mt5_client') and self.mt5_client:
+            if hasattr(self, "mt5_client") and self.mt5_client:
                 await asyncio.wait_for(self.mt5_client.disconnect(), timeout=5.0)
                 logger.info("  [OK] MT5 disconnected")
         except Exception as e:
             logger.warning(f"  [WARN] MT5 disconnect error or timeout: {e}")
 
         # Stop EventBus workers
-        if hasattr(self, 'event_bus') and self.event_bus and hasattr(self.event_bus, 'stop_workers'):
+        if hasattr(self, "event_bus") and self.event_bus and hasattr(self.event_bus, "stop_workers"):
             try:
                 self.event_bus.stop_workers()
                 logger.info("  [OK] EventBus workers stopped")
@@ -1897,9 +2018,9 @@ class TradingAgent:
 
         # Cancel and await all active agent tasks and background tasks BEFORE closing DB pool
         all_pending_tasks = []
-        if hasattr(self, '_tasks') and self._tasks:
+        if hasattr(self, "_tasks") and self._tasks:
             all_pending_tasks.extend([t for t in self._tasks if not t.done()])
-        if hasattr(self, '_background_tasks') and self._background_tasks:
+        if hasattr(self, "_background_tasks") and self._background_tasks:
             all_pending_tasks.extend([t for t in self._background_tasks if not t.done() and t not in all_pending_tasks])
 
         for t in all_pending_tasks:
@@ -1916,11 +2037,11 @@ class TradingAgent:
             logger.warning(f"  [WARN] DB close error: {e}")
 
         # Shutdown Telegram bot after all notifications are sent
-        if hasattr(self, '_tg_task') and self._tg_task and not self._tg_task.done():
+        if hasattr(self, "_tg_task") and self._tg_task and not self._tg_task.done():
             self._tg_task.cancel()
             try:
                 await asyncio.wait_for(self._tg_task, timeout=5.0)
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except asyncio.CancelledError, asyncio.TimeoutError:
                 pass
 
         logger.info("Shutdown complete. Goodbye.")
@@ -1931,11 +2052,9 @@ class TradingAgent:
         try:
             await asyncio.sleep(5)  # Wait for bot to be online
             if self.telegram_bot:
-                env  = self.settings.get("environment", "dev")
-                assets = ", ".join(
-                    self.settings.get("trading", {}).get("asset_universe", [])
-                )
-                now  = datetime.now(timezone.utc).strftime("%d %b %Y %H:%M UTC")
+                env = self.settings.get("environment", "dev")
+                assets = ", ".join(self.settings.get("trading", {}).get("asset_universe", []))
+                now = datetime.now(timezone.utc).strftime("%d %b %Y %H:%M UTC")
                 await self.telegram_bot.send_notification(
                     f"[AKTIF] *Agent Online*\n\n"
                     f"Environment: `{env}`\n"
@@ -1953,6 +2072,7 @@ class TradingAgent:
 
 PID_FILE = os.path.join(os.getenv("LOG_DIR", "logs"), "trading_agent.pid")
 
+
 def release_single_instance_lock():
     """Explicitly release single instance lock file."""
     try:
@@ -1967,6 +2087,7 @@ def release_single_instance_lock():
     except Exception:
         pass
 
+
 def acquire_single_instance_lock() -> bool:
     """
     Ensure only one instance of TradingAgent runs at a time.
@@ -1974,6 +2095,7 @@ def acquire_single_instance_lock() -> bool:
     """
     import psutil
     import atexit
+
     current_pid = os.getpid()
     if os.path.exists(PID_FILE):
         try:
@@ -1990,7 +2112,7 @@ def acquire_single_instance_lock() -> bool:
                                     f"Aborting startup of PID {current_pid} to prevent port/MT5/Telegram conflicts."
                                 )
                                 return False
-                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        except psutil.NoSuchProcess, psutil.AccessDenied:
                             pass
         except Exception as e:
             logger.debug(f"[LOCK] Error inspecting PID file: {e}")
@@ -1999,7 +2121,7 @@ def acquire_single_instance_lock() -> bool:
         os.makedirs(os.path.dirname(PID_FILE), exist_ok=True)
         with open(PID_FILE, "w", encoding="utf-8") as f:
             f.write(str(current_pid))
-        
+
         atexit.register(release_single_instance_lock)
         return True
     except Exception as e:
@@ -2014,9 +2136,10 @@ async def _amain():
 
     # Load settings (loads settings.yaml; scraping sources reside in settings.yaml:scraping.sources)
     settings = load_all_config()
-    
+
     # Configure Gemini Rate Limiter limits from settings
     from monika.infrastructure.api.gemini_rate_limiter import configure_from_settings
+
     configure_from_settings(settings)
 
     # Init DB (create tables)
@@ -2035,8 +2158,8 @@ async def _amain():
     parser = argparse.ArgumentParser(description="Monika: Autonomous MT5 Trading Agent")
     parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode (skip MT5 execution)")
     args = parser.parse_args()
-    if not getattr(args, 'action', None):
-        args.action = 'execute'
+    if not getattr(args, "action", None):
+        args.action = "execute"
 
     agent = TradingAgent(settings, dry_run=args.dry_run)
     try:

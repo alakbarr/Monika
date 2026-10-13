@@ -85,6 +85,7 @@ class ModelsDevSync:
 
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.get(API_URL, headers=headers)
                 if response.status_code == 304:

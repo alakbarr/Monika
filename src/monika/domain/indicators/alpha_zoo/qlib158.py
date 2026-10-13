@@ -28,6 +28,7 @@ from monika.domain.indicators.factor_primitives import safe_div, ts_mean, ts_std
 # CANDLESTICK STRUCTURE RATIOS
 # ==============================================================================
 
+
 @FactorRegistry.register(
     AlphaMeta(
         name="qlib_kmid",
@@ -136,6 +137,7 @@ def qlib_ksft(df: pd.DataFrame) -> pd.Series:
 # VOLUME-WEIGHTED MOVING VOLATILITY (WVMA)
 # ==============================================================================
 
+
 def _calc_wvma(df: pd.DataFrame, window: int) -> pd.Series:
     c = pd.Series(df["close"])
     v = pd.Series(df["volume"], dtype=float)
@@ -169,10 +171,13 @@ def _register_wvma(window: int) -> None:
         formula_latex=rf"\frac{{\text{{ts\_std}}(|\Delta C/C_{{-1}}| \cdot V, {window})}}{{\text{{ts\_mean}}(|\Delta C/C_{{-1}}| \cdot V, {window})}}",
         description=f"Volume-Weighted Moving Volatility over {window} bars.",
     )
+
     def _fn(df: pd.DataFrame) -> pd.Series:
         return _calc_wvma(df, window)
+
     FactorRegistry.register(meta_with_us)(_fn)
     FactorRegistry.register(meta_without_us)(_fn)
+
 
 for w in (5, 10, 20, 60):
     _register_wvma(w)
@@ -181,6 +186,7 @@ for w in (5, 10, 20, 60):
 # ==============================================================================
 # RAW STOCHASTIC VALUE (RSV)
 # ==============================================================================
+
 
 def _calc_rsv(df: pd.DataFrame, window: int) -> pd.Series:
     lowest = df["low"].rolling(window, min_periods=window).min()
@@ -213,10 +219,13 @@ def _register_rsv(window: int) -> None:
         formula_latex=rf"\frac{{C - \min_{{{window}}}(L)}}{{\max_{{{window}}}(H) - \min_{{{window}}}(L)}}",
         description=f"Raw Stochastic Oscillator position over {window} bars.",
     )
+
     def _fn(df: pd.DataFrame) -> pd.Series:
         return _calc_rsv(df, window)
+
     FactorRegistry.register(meta_with_us)(_fn)
     FactorRegistry.register(meta_without_us)(_fn)
+
 
 for w in (5, 10, 20, 60):
     _register_rsv(w)
@@ -225,6 +234,7 @@ for w in (5, 10, 20, 60):
 # ==============================================================================
 # RESIDUAL & R-SQUARED OF PRICE ON TIME (RESI & RSQR)
 # ==============================================================================
+
 
 def _calc_resi_rsqr(df: pd.DataFrame, window: int) -> tuple[pd.Series, pd.Series]:
     """Calculates linear regression of close on time t=0..window-1 using vectorized rolling windows."""
@@ -243,7 +253,7 @@ def _calc_resi_rsqr(df: pd.DataFrame, window: int) -> tuple[pd.Series, pd.Series
     x = np.arange(window, dtype=np.float64)
     x_mean = (window - 1.0) / 2.0
     x_dm = x - x_mean
-    sum_x_dm2 = float(np.sum(x_dm ** 2))
+    sum_x_dm2 = float(np.sum(x_dm**2))
 
     # Strided sliding window: shape (n - window + 1, window)
     windows = np.lib.stride_tricks.sliding_window_view(y, window_shape=window)
@@ -269,11 +279,11 @@ def _calc_resi_rsqr(df: pd.DataFrame, window: int) -> tuple[pd.Series, pd.Series
     y_pred = intercept + slope * (window - 1)
     residuals = valid_windows[:, -1] - y_pred
 
-    ss_tot = np.sum(y_dm ** 2, axis=1)
+    ss_tot = np.sum(y_dm**2, axis=1)
     # R^2 = (cov_xy^2) / (sum_x_dm2 * ss_tot)
     if sum_x_dm2 > 1e-12:
         denom = sum_x_dm2 * ss_tot
-        r2 = np.where(denom > 1e-12, (cov_xy ** 2) / denom, 0.0)
+        r2 = np.where(denom > 1e-12, (cov_xy**2) / denom, 0.0)
     else:
         r2 = np.zeros_like(ss_tot)
 
@@ -288,7 +298,6 @@ def _calc_resi_rsqr(df: pd.DataFrame, window: int) -> tuple[pd.Series, pd.Series
         pd.Series(resi, index=df.index),
         pd.Series(rsqr, index=df.index),
     )
-
 
 
 def _register_resi_rsqr(window: int) -> None:
@@ -314,9 +323,11 @@ def _register_resi_rsqr(window: int) -> None:
         formula_latex=rf"C - (\hat{{\alpha}} + \hat{{\beta}} \cdot {window})",
         description=f"Linear trend residual over {window} bars.",
     )
+
     def _fn_resi(df: pd.DataFrame) -> pd.Series:
         resi, _ = _calc_resi_rsqr(df, window)
         return resi
+
     FactorRegistry.register(meta_resi)(_fn_resi)
     FactorRegistry.register(meta_resi_no_us)(_fn_resi)
 
@@ -342,15 +353,17 @@ def _register_resi_rsqr(window: int) -> None:
         formula_latex=rf"R^2(C, t)_{{{window}}}",
         description=f"Goodness of fit (R-squared) to linear trend over {window} bars.",
     )
+
     def _fn_rsqr(df: pd.DataFrame) -> pd.Series:
         _, rsqr = _calc_resi_rsqr(df, window)
         return rsqr
+
     FactorRegistry.register(meta_rsqr)(_fn_rsqr)
     FactorRegistry.register(meta_rsqr_no_us)(_fn_rsqr)
 
+
 for w in (5, 10, 20):
     _register_resi_rsqr(w)
-
 
 
 # ==============================================================================
@@ -358,6 +371,7 @@ for w in (5, 10, 20):
 # ==============================================================================
 
 for w in (5, 10, 20):
+
     @FactorRegistry.register(
         AlphaMeta(
             name=f"qlib_vma{w}",

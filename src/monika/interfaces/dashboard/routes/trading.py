@@ -39,6 +39,7 @@ trading_router = APIRouter()
 # Overview (main dashboard stat cards)
 # ---------------------------------------------------------------------------
 
+
 @trading_router.get("/api/overview", tags=["Dashboard"])
 async def get_overview():
     """Data metrik ringkas untuk highlight kartu dashboard."""
@@ -56,12 +57,11 @@ async def get_overview():
 
         # Daily PnL + drawdown + paused
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        risk = (await session.execute(
-            select(RiskState)
-            .where(RiskState.date >= today_start)
-            .order_by(RiskState.date.desc())
-            .limit(1)
-        )).scalar_one_or_none()
+        risk = (
+            await session.execute(
+                select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
+            )
+        ).scalar_one_or_none()
 
         # Account balance for pct calculation
         balance_cfg = await cfg_repo.get("account_balance") or await cfg_repo.get("initial_balance")
@@ -70,7 +70,7 @@ async def get_overview():
         if balance_cfg:
             try:
                 balance = float(balance_cfg)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 balance = None
 
         daily_pnl = round(risk.daily_pnl, 2) if risk else 0.0
@@ -79,14 +79,12 @@ async def get_overview():
         drawdown_pct = round((current_drawdown / balance) * 100, 2) if (balance and balance > 0) else None
 
         # Latest VIX
-        vix = (await session.execute(
-            select(VIXData).order_by(VIXData.date.desc()).limit(1)
-        )).scalar_one_or_none()
+        vix = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
 
         # Last analysis timestamp
-        last_analysis = (await session.execute(
-            select(AssetAnalysis).order_by(AssetAnalysis.generated_at.desc()).limit(1)
-        )).scalar_one_or_none()
+        last_analysis = (
+            await session.execute(select(AssetAnalysis).order_by(AssetAnalysis.generated_at.desc()).limit(1))
+        ).scalar_one_or_none()
 
         return {
             "agent_status": "paused" if (risk and risk.trading_paused) else "active",
@@ -108,6 +106,7 @@ async def get_overview():
 # Paper trading stats
 # ---------------------------------------------------------------------------
 
+
 @trading_router.get("/api/paper-trading", tags=["Performance"])
 async def get_paper_trading_stats():
     """Rangkuman PnL paper trading, win rate & detail performa."""
@@ -123,6 +122,7 @@ async def get_paper_trading_stats():
 # ---------------------------------------------------------------------------
 # Positions
 # ---------------------------------------------------------------------------
+
 
 @trading_router.get("/api/positions", tags=["Positions"])
 async def get_positions(
@@ -165,28 +165,30 @@ async def get_positions(
                 except Exception:
                     trailing_data = p.trailing_override_json
 
-            results.append({
-                "id": p.id,
-                "mt5_ticket": p.mt5_ticket,
-                "symbol": p.symbol,
-                "direction": p.direction,
-                "volume": p.volume,
-                "initial_volume": p.initial_volume,
-                "entry_price": p.entry_price,
-                "price_current": curr_price,
-                "sl": p.sl,
-                "tp": p.tp,
-                "opened_at": p.opened_at.isoformat() if p.opened_at else None,
-                "closed_at": p.closed_at.isoformat() if p.closed_at else None,
-                "status": p.status,
-                "pnl": round(p.pnl, 2) if p.pnl is not None else None,
-                "is_paper": bool(getattr(p, "is_paper", False)),
-                "pair_group_id": p.pair_group_id,
-                "trailing_override": trailing_data,
-                "mae_pips": p.mae_pips,
-                "mfe_pips": p.mfe_pips,
-                "slippage_pips": p.slippage_pips,
-            })
+            results.append(
+                {
+                    "id": p.id,
+                    "mt5_ticket": p.mt5_ticket,
+                    "symbol": p.symbol,
+                    "direction": p.direction,
+                    "volume": p.volume,
+                    "initial_volume": p.initial_volume,
+                    "entry_price": p.entry_price,
+                    "price_current": curr_price,
+                    "sl": p.sl,
+                    "tp": p.tp,
+                    "opened_at": p.opened_at.isoformat() if p.opened_at else None,
+                    "closed_at": p.closed_at.isoformat() if p.closed_at else None,
+                    "status": p.status,
+                    "pnl": round(p.pnl, 2) if p.pnl is not None else None,
+                    "is_paper": bool(getattr(p, "is_paper", False)),
+                    "pair_group_id": p.pair_group_id,
+                    "trailing_override": trailing_data,
+                    "mae_pips": p.mae_pips,
+                    "mfe_pips": p.mfe_pips,
+                    "slippage_pips": p.slippage_pips,
+                }
+            )
 
         return results
 
@@ -194,6 +196,7 @@ async def get_positions(
 # ---------------------------------------------------------------------------
 # Activity log
 # ---------------------------------------------------------------------------
+
 
 @trading_router.get("/api/activity", tags=["Activity"])
 async def get_activity(
@@ -226,6 +229,7 @@ async def get_activity(
 # Asset analysis results
 # ---------------------------------------------------------------------------
 
+
 @trading_router.get("/api/analysis", tags=["Analysis"])
 async def get_analysis(
     limit: int = Query(default=20, ge=1, le=100),
@@ -237,11 +241,7 @@ async def get_analysis(
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
-        q = (
-            select(AssetAnalysis)
-            .order_by(AssetAnalysis.generated_at.desc())
-            .limit(limit)
-        )
+        q = select(AssetAnalysis).order_by(AssetAnalysis.generated_at.desc()).limit(limit)
         if symbol:
             q = q.where(AssetAnalysis.symbol == symbol.upper())
 
@@ -257,18 +257,20 @@ async def get_analysis(
                 except Exception:
                     reeval = str(a.reevaluation_trigger)[:100]
 
-            results.append({
-                "id": a.id,
-                "symbol": a.symbol,
-                "decision": a.decision,
-                "confidence": round(a.confidence * 100, 1) if a.confidence else None,
-                "generated_at": a.generated_at.isoformat() if a.generated_at else None,
-                "stop_loss": a.stop_loss,
-                "take_profit": a.take_profit,
-                "rationale": (a.rationale or "")[:300],
-                "reevaluation_trigger": reeval,
-                "invalidation": (a.invalidation or "")[:200],
-            })
+            results.append(
+                {
+                    "id": a.id,
+                    "symbol": a.symbol,
+                    "decision": a.decision,
+                    "confidence": round(a.confidence * 100, 1) if a.confidence else None,
+                    "generated_at": a.generated_at.isoformat() if a.generated_at else None,
+                    "stop_loss": a.stop_loss,
+                    "take_profit": a.take_profit,
+                    "rationale": (a.rationale or "")[:300],
+                    "reevaluation_trigger": reeval,
+                    "invalidation": (a.invalidation or "")[:200],
+                }
+            )
         return results
 
 
@@ -287,7 +289,14 @@ async def get_decision_dossier(
     - Stage 5: Execution Telemetry & Hash Lineage (Signals, Position, SHA-256 verification)
     """
     from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.models import AssetAnalysis, FundamentalBrief, TradeTrigger, MT5Signal, Position, PaperTradeRecord
+    from monika.infrastructure.database.models import (
+        AssetAnalysis,
+        FundamentalBrief,
+        TradeTrigger,
+        MT5Signal,
+        Position,
+        PaperTradeRecord,
+    )
     from monika.core.telemetry.trading_cycle_event_log import get_cycle_event_log
     from sqlalchemy import select, or_
 
@@ -295,91 +304,110 @@ async def get_decision_dossier(
         # 1. Resolve AssetAnalysis
         analysis = None
         if analysis_id.isdigit():
-            analysis = (await session.execute(
-                select(AssetAnalysis).where(AssetAnalysis.id == int(analysis_id))
-            )).scalar_one_or_none()
+            analysis = (
+                await session.execute(select(AssetAnalysis).where(AssetAnalysis.id == int(analysis_id)))
+            ).scalar_one_or_none()
 
         if not analysis:
             # Try symbol lookup
-            analysis = (await session.execute(
-                select(AssetAnalysis)
-                .where(AssetAnalysis.symbol == analysis_id.upper())
-                .order_by(AssetAnalysis.generated_at.desc())
-                .limit(1)
-            )).scalar_one_or_none()
+            analysis = (
+                await session.execute(
+                    select(AssetAnalysis)
+                    .where(AssetAnalysis.symbol == analysis_id.upper())
+                    .order_by(AssetAnalysis.generated_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
 
         if not analysis and ticket:
             # Try finding analysis via Position with ticket
-            pos = (await session.execute(
-                select(Position).where(Position.mt5_ticket == ticket)
-            )).scalar_one_or_none()
+            pos = (await session.execute(select(Position).where(Position.mt5_ticket == ticket))).scalar_one_or_none()
             if pos and pos.analysis_id:
-                analysis = (await session.execute(
-                    select(AssetAnalysis).where(AssetAnalysis.id == pos.analysis_id)
-                )).scalar_one_or_none()
+                analysis = (
+                    await session.execute(select(AssetAnalysis).where(AssetAnalysis.id == pos.analysis_id))
+                ).scalar_one_or_none()
             elif pos:
-                analysis = (await session.execute(
-                    select(AssetAnalysis)
-                    .where(AssetAnalysis.symbol == pos.symbol)
-                    .order_by(AssetAnalysis.generated_at.desc())
-                    .limit(1)
-                )).scalar_one_or_none()
+                analysis = (
+                    await session.execute(
+                        select(AssetAnalysis)
+                        .where(AssetAnalysis.symbol == pos.symbol)
+                        .order_by(AssetAnalysis.generated_at.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
 
         if not analysis:
             return JSONResponse(
-                status_code=404,
-                content={"detail": f"Decision Dossier not found for analysis/symbol '{analysis_id}'"}
+                status_code=404, content={"detail": f"Decision Dossier not found for analysis/symbol '{analysis_id}'"}
             )
 
         # 2. Resolve FundamentalBrief
         brief = None
         if analysis.brief_id:
-            brief = (await session.execute(
-                select(FundamentalBrief).where(FundamentalBrief.id == analysis.brief_id)
-            )).scalar_one_or_none()
+            brief = (
+                await session.execute(select(FundamentalBrief).where(FundamentalBrief.id == analysis.brief_id))
+            ).scalar_one_or_none()
         if not brief and analysis.generated_at:
-            brief = (await session.execute(
-                select(FundamentalBrief)
-                .where(FundamentalBrief.generated_at <= analysis.generated_at)
-                .order_by(FundamentalBrief.generated_at.desc())
-                .limit(1)
-            )).scalar_one_or_none()
+            brief = (
+                await session.execute(
+                    select(FundamentalBrief)
+                    .where(FundamentalBrief.generated_at <= analysis.generated_at)
+                    .order_by(FundamentalBrief.generated_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
 
         # 3. Resolve Triggers
-        triggers_res = (await session.execute(
-            select(TradeTrigger)
-            .where(TradeTrigger.asset_analysis_id == analysis.id)
-            .order_by(TradeTrigger.created_at.desc())
-        )).scalars().all()
+        triggers_res = (
+            (
+                await session.execute(
+                    select(TradeTrigger)
+                    .where(TradeTrigger.asset_analysis_id == analysis.id)
+                    .order_by(TradeTrigger.created_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         # 4. Resolve MT5Signals
-        signals_res = (await session.execute(
-            select(MT5Signal)
-            .where(or_(MT5Signal.asset_analysis_id == analysis.id, MT5Signal.symbol == analysis.symbol))
-            .order_by(MT5Signal.created_at.desc())
-            .limit(5)
-        )).scalars().all()
+        signals_res = (
+            (
+                await session.execute(
+                    select(MT5Signal)
+                    .where(or_(MT5Signal.asset_analysis_id == analysis.id, MT5Signal.symbol == analysis.symbol))
+                    .order_by(MT5Signal.created_at.desc())
+                    .limit(5)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         # 5. Resolve Position & PaperTradeRecord
         position_res = None
         if ticket:
-            position_res = (await session.execute(
-                select(Position).where(Position.mt5_ticket == ticket)
-            )).scalar_one_or_none()
+            position_res = (
+                await session.execute(select(Position).where(Position.mt5_ticket == ticket))
+            ).scalar_one_or_none()
         if not position_res:
-            position_res = (await session.execute(
-                select(Position)
-                .where(or_(Position.analysis_id == analysis.id, Position.symbol == analysis.symbol))
-                .order_by(Position.opened_at.desc())
-                .limit(1)
-            )).scalar_one_or_none()
+            position_res = (
+                await session.execute(
+                    select(Position)
+                    .where(or_(Position.analysis_id == analysis.id, Position.symbol == analysis.symbol))
+                    .order_by(Position.opened_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
 
-        paper_res = (await session.execute(
-            select(PaperTradeRecord)
-            .where(or_(PaperTradeRecord.analysis_id == analysis.id, PaperTradeRecord.symbol == analysis.symbol))
-            .order_by(PaperTradeRecord.opened_at.desc())
-            .limit(1)
-        )).scalar_one_or_none()
+        paper_res = (
+            await session.execute(
+                select(PaperTradeRecord)
+                .where(or_(PaperTradeRecord.analysis_id == analysis.id, PaperTradeRecord.symbol == analysis.symbol))
+                .order_by(PaperTradeRecord.opened_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
 
         entry_cond = _safe_json(analysis.entry_zone)
         reeval_trig = _safe_json(analysis.reevaluation_trigger)
@@ -388,7 +416,10 @@ async def get_decision_dossier(
         brief_data = _safe_json(brief.structured_json) if brief else {}
 
         # 6. Cycle Event Log & SHA-256 Chain Verification
-        cycle_id = analysis.context_snapshot_id or f"cycle-{analysis.generated_at.strftime('%Y%m%d-%H%M') if analysis.generated_at else 'default'}"
+        cycle_id = (
+            analysis.context_snapshot_id
+            or f"cycle-{analysis.generated_at.strftime('%Y%m%d-%H%M') if analysis.generated_at else 'default'}"
+        )
         event_log = get_cycle_event_log()
         cycle_events = event_log.get_events_for_cycle(cycle_id)
         is_valid_chain, chain_err = event_log.verify_cycle_integrity(cycle_id)
@@ -401,7 +432,11 @@ async def get_decision_dossier(
             except Exception:
                 pass
         deb_dict = deb_verdict_obj if isinstance(deb_verdict_obj, dict) else {}
-        judge_v_str = deb_dict.get("verdict") if deb_dict else (analysis.debate_verdict if isinstance(analysis.debate_verdict, str) else analysis.decision)
+        judge_v_str = (
+            deb_dict.get("verdict")
+            if deb_dict
+            else (analysis.debate_verdict if isinstance(analysis.debate_verdict, str) else analysis.decision)
+        )
 
         dossier = {
             "status": "success",
@@ -417,18 +452,22 @@ async def get_decision_dossier(
             "invalidation_price": analysis.invalidation_price,
             "invalidation": analysis.invalidation,
             "rationale": analysis.rationale,
-
             # Stage 1: Macro & Fundamental Context
             "stage1_macro": {
                 "brief_id": brief.id if brief else analysis.brief_id,
                 "risk_sentiment": (brief.risk_sentiment if brief else None) or "neutral",
-                "volatility_regime": getattr(brief, "volatility_regime", None) or analysis.market_regime_at_analysis or "normal",
-                "dxy_bias": (brief_data.get("dxy_bias") or brief_data.get("currency_bias", {}).get("USD") or "neutral") if isinstance(brief_data, dict) else "neutral",
-                "brief_age_hours": round(analysis.brief_age_at_analysis_hours, 1) if analysis.brief_age_at_analysis_hours is not None else None,
+                "volatility_regime": getattr(brief, "volatility_regime", None)
+                or analysis.market_regime_at_analysis
+                or "normal",
+                "dxy_bias": (brief_data.get("dxy_bias") or brief_data.get("currency_bias", {}).get("USD") or "neutral")
+                if isinstance(brief_data, dict)
+                else "neutral",
+                "brief_age_hours": round(analysis.brief_age_at_analysis_hours, 1)
+                if analysis.brief_age_at_analysis_hours is not None
+                else None,
                 "summary": (brief.content_markdown or "")[:400] if brief else None,
                 "generated_at": brief.generated_at.isoformat() if brief and brief.generated_at else None,
             },
-
             # Stage 2: Tactical Confluence & SMC Levels
             "stage2_tactical": {
                 "confluence_score": analysis.confluence_score,
@@ -439,28 +478,30 @@ async def get_decision_dossier(
                 "factors": factors if isinstance(factors, list) else [str(factors)],
                 "specialist_biases": specialist_biases if isinstance(specialist_biases, dict) else {},
                 "adr_at_analysis": analysis.adr_at_analysis,
-                "ssvp_cds_score": round(analysis.ssvp_cds_score_at_analysis, 3) if analysis.ssvp_cds_score_at_analysis is not None else None,
+                "ssvp_cds_score": round(analysis.ssvp_cds_score_at_analysis, 3)
+                if analysis.ssvp_cds_score_at_analysis is not None
+                else None,
             },
-
             # Stage 3: Adversarial Debate & Adjudication
             "stage3_debate": {
                 "bull_thesis": analysis.debate_bull_thesis or deb_dict.get("bull_thesis"),
-                "bear_dissent": analysis.debate_bear_dissent or deb_dict.get("bear_thesis") or deb_dict.get("bear_dissent"),
+                "bear_dissent": analysis.debate_bear_dissent
+                or deb_dict.get("bear_thesis")
+                or deb_dict.get("bear_dissent"),
                 "judge_verdict": judge_v_str or analysis.decision,
                 "judge_reason": analysis.debate_reason or deb_dict.get("judge_reason"),
                 "was_modified": bool(analysis.was_debate_modified or deb_dict.get("modified")),
                 "arbitration_reason": analysis.arbitration_reason,
             },
-
             # Stage 4: RiskGate Mechanical Fortress
             "stage4_riskgate": {
-                "execution_status": analysis.execution_status or ("approved" if analysis.decision in ("buy", "sell") else "skipped"),
+                "execution_status": analysis.execution_status
+                or ("approved" if analysis.decision in ("buy", "sell") else "skipped"),
                 "execution_notes": analysis.execution_notes,
                 "risk_multiplier": analysis.risk_multiplier or 1.0,
                 "was_ssvp_suppressed": bool(analysis.was_ssvp_suppressed),
                 "decision_source": analysis.decision_source or "langgraph_pipeline",
             },
-
             # Stage 5: Execution Telemetry & Cryptographic Lineage
             "stage5_execution": {
                 "position": {
@@ -475,7 +516,9 @@ async def get_decision_dossier(
                     "pnl": position_res.pnl,
                     "status": position_res.status,
                     "opened_at": position_res.opened_at.isoformat() if position_res.opened_at else None,
-                } if position_res else None,
+                }
+                if position_res
+                else None,
                 "paper_trade": {
                     "id": paper_res.id,
                     "direction": paper_res.direction,
@@ -483,7 +526,9 @@ async def get_decision_dossier(
                     "pnl_pct": paper_res.pnl_pct,
                     "exit_reason": paper_res.exit_reason,
                     "opened_at": paper_res.opened_at.isoformat() if paper_res.opened_at else None,
-                } if paper_res else None,
+                }
+                if paper_res
+                else None,
                 "triggers": [
                     {
                         "id": t.id,
@@ -520,7 +565,9 @@ async def get_decision_dossier(
                         "chain_hash": (ev.chain_hash or "")[:12] + "...",
                     }
                     for ev in cycle_events[-5:]
-                ] if cycle_events else [],
+                ]
+                if cycle_events
+                else [],
             },
         }
         return dossier
@@ -541,6 +588,7 @@ async def get_factor_analysis():
 # Order log (audit trail)
 # ---------------------------------------------------------------------------
 
+
 @trading_router.get("/api/orders", tags=["Orders"])
 async def get_orders(
     limit: int = Query(default=30, ge=1, le=100),
@@ -552,11 +600,7 @@ async def get_orders(
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
-        q = (
-            select(OrderLog)
-            .order_by(OrderLog.timestamp.desc())
-            .limit(limit)
-        )
+        q = select(OrderLog).order_by(OrderLog.timestamp.desc()).limit(limit)
         if action:
             q = q.where(OrderLog.action == action)
 
@@ -580,6 +624,7 @@ async def get_orders(
 # ---------------------------------------------------------------------------
 # Risk state
 # ---------------------------------------------------------------------------
+
 
 @trading_router.get("/api/risk", tags=["Risk"])
 async def get_risk():
@@ -607,21 +652,22 @@ async def get_risk():
 
     async with AsyncSessionLocal() as session:
         today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
-        risk = (await session.execute(
-            select(RiskState)
-            .where(RiskState.date >= today_start)
-            .order_by(RiskState.date.desc())
-            .limit(1)
-        )).scalar_one_or_none()
+        risk = (
+            await session.execute(
+                select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
+            )
+        ).scalar_one_or_none()
 
         # Count real consecutive losses from closed trades
         consecutive_losses = 0
-        recent_closed = (await session.execute(
-            select(PaperTradeRecord.exit_reason, PaperTradeRecord.pnl_pct)
-            .where(PaperTradeRecord.status == "closed")
-            .order_by(PaperTradeRecord.closed_at.desc())
-            .limit(10)
-        )).all()
+        recent_closed = (
+            await session.execute(
+                select(PaperTradeRecord.exit_reason, PaperTradeRecord.pnl_pct)
+                .where(PaperTradeRecord.status == "closed")
+                .order_by(PaperTradeRecord.closed_at.desc())
+                .limit(10)
+            )
+        ).all()
         for row in recent_closed:
             pnl = row.pnl_pct or 0.0
             if row.exit_reason == "sl_hit" or pnl < 0:
@@ -630,9 +676,7 @@ async def get_risk():
                 break
 
         # Open positions count for exposure estimation
-        open_pos_count = (await session.execute(
-            select(Position).where(Position.status == "open")
-        )).scalars().all()
+        open_pos_count = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
         active_pos_count = len(open_pos_count)
 
         # Margin and exposure calculations
@@ -684,7 +728,11 @@ async def get_risk():
             daily_pnl_pct = 0.0
 
         return {
-            "date": (risk.date.date() if hasattr(risk.date, "date") and callable(getattr(risk.date, "date")) else risk.date).isoformat() if risk.date else None,
+            "date": (
+                risk.date.date() if hasattr(risk.date, "date") and callable(getattr(risk.date, "date")) else risk.date
+            ).isoformat()
+            if risk.date
+            else None,
             "daily_pnl": round(risk.daily_pnl, 2),
             "daily_pnl_pct": round(daily_pnl_pct, 2),
             "current_drawdown": round(risk.current_drawdown, 2),
@@ -708,7 +756,9 @@ async def get_risk():
 
 @trading_router.get("/api/risk/scorecard", tags=["Risk"])
 @require_role(Role.VIEWER)
-async def get_risk_scorecard(symbol: str = Query(default="EURUSD", description="Asset symbol to evaluate against risk gate")):
+async def get_risk_scorecard(
+    symbol: str = Query(default="EURUSD", description="Asset symbol to evaluate against risk gate"),
+):
     """Evaluate 22-point deterministic Risk Gate rules scorecard for live telemetry."""
     from monika.infrastructure.database.db import AsyncSessionLocal
     from monika.domain.risk.risk_gate import RiskGate
@@ -730,13 +780,10 @@ async def get_risk_correlation_matrix():
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
-        open_positions = (await session.execute(
-            select(Position).where(Position.status == "open")
-        )).scalars().all()
+        open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
 
         pos_list = [
-            {"symbol": p.symbol, "direction": p.direction, "volume": float(p.volume or 0.01)}
-            for p in open_positions
+            {"symbol": p.symbol, "direction": p.direction, "volume": float(p.volume or 0.01)} for p in open_positions
         ]
 
         active_symbols = list({p.symbol.upper() for p in open_positions if p.symbol})
@@ -763,6 +810,7 @@ async def get_risk_correlation_matrix():
 # Edge metrics
 # ---------------------------------------------------------------------------
 
+
 @trading_router.get("/api/edge-metrics", tags=["Performance"])
 async def get_edge_metrics():
     """
@@ -779,13 +827,15 @@ async def get_edge_metrics():
         results = {}
         for days in [7, 14, 30]:
             since = now - timedelta(days=days)
-            records = (await session.execute(
-                select(PaperTradeRecord, AssetAnalysis)
-                .outerjoin(AssetAnalysis, PaperTradeRecord.analysis_id == AssetAnalysis.id)
-                .where(PaperTradeRecord.closed_at >= since)
-                .where(PaperTradeRecord.status == "closed")
-                .where(PaperTradeRecord.exit_reason.in_(["sl_hit", "tp_hit"]))
-            )).all()
+            records = (
+                await session.execute(
+                    select(PaperTradeRecord, AssetAnalysis)
+                    .outerjoin(AssetAnalysis, PaperTradeRecord.analysis_id == AssetAnalysis.id)
+                    .where(PaperTradeRecord.closed_at >= since)
+                    .where(PaperTradeRecord.status == "closed")
+                    .where(PaperTradeRecord.exit_reason.in_(["sl_hit", "tp_hit"]))
+                )
+            ).all()
 
             if not records:
                 results[f"{days}d"] = {"insufficient_data": True}
@@ -798,7 +848,9 @@ async def get_edge_metrics():
             for r, a in records:
                 if r.entry_price and r.stop_loss and r.exit_price and r.exit_reason == "tp_hit":
                     sl_dist = abs(r.entry_price - r.stop_loss)
-                    tp_dist = abs(r.exit_price - r.entry_price) if r.direction == "buy" else abs(r.entry_price - r.exit_price)
+                    tp_dist = (
+                        abs(r.exit_price - r.entry_price) if r.direction == "buy" else abs(r.entry_price - r.exit_price)
+                    )
                     if sl_dist > 0:
                         rr_values.append(tp_dist / sl_dist)
 
@@ -839,22 +891,18 @@ async def get_decision_distribution():
     async with AsyncSessionLocal() as session:
         since = datetime.now(timezone.utc) - timedelta(days=30)
 
-        result = (await session.execute(
-            select(
-                AssetAnalysis.symbol,
-                AssetAnalysis.decision,
-                func.count(AssetAnalysis.id).label("count")
+        result = (
+            await session.execute(
+                select(AssetAnalysis.symbol, AssetAnalysis.decision, func.count(AssetAnalysis.id).label("count"))
+                .where(AssetAnalysis.generated_at >= since)
+                .group_by(AssetAnalysis.symbol, AssetAnalysis.decision)
             )
-            .where(AssetAnalysis.generated_at >= since)
-            .group_by(AssetAnalysis.symbol, AssetAnalysis.decision)
-        )).all()
+        ).all()
 
         distribution = {}
         for row in result:
             if row.symbol not in distribution:
-                distribution[row.symbol] = {
-                    "buy": 0, "sell": 0, "wait": 0, "avoid": 0, "skip": 0
-                }
+                distribution[row.symbol] = {"buy": 0, "sell": 0, "wait": 0, "avoid": 0, "skip": 0}
             distribution[row.symbol][row.decision] = distribution[row.symbol].get(row.decision, 0) + row.count
 
         for sym, counts in distribution.items():
@@ -877,15 +925,20 @@ async def get_analysis_quality_realtime():
         now = datetime.now(timezone.utc)
         last_7d = now - timedelta(days=7)
 
-        recent_analyses = (await session.execute(
-            select(AssetAnalysis)
-            .where(AssetAnalysis.generated_at >= last_7d)
-            .where(AssetAnalysis.decision.in_(["buy", "sell"]))
-            .where(or_(
-                AssetAnalysis.decision_source.is_(None),
-                AssetAnalysis.decision_source != "edge_registry"
-            ))
-        )).scalars().all()
+        recent_analyses = (
+            (
+                await session.execute(
+                    select(AssetAnalysis)
+                    .where(AssetAnalysis.generated_at >= last_7d)
+                    .where(AssetAnalysis.decision.in_(["buy", "sell"]))
+                    .where(
+                        or_(AssetAnalysis.decision_source.is_(None), AssetAnalysis.decision_source != "edge_registry")
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         total = len(recent_analyses)
         missing_confluence = sum(1 for a in recent_analyses if a.confluence_score is None)
@@ -902,11 +955,17 @@ async def get_analysis_quality_realtime():
             else:
                 score_dist["low"] += 1
 
-        closed_trades = (await session.execute(
-            select(PaperTradeRecord)
-            .where(PaperTradeRecord.closed_at >= last_7d)
-            .where(PaperTradeRecord.status == "closed")
-        )).scalars().all()
+        closed_trades = (
+            (
+                await session.execute(
+                    select(PaperTradeRecord)
+                    .where(PaperTradeRecord.closed_at >= last_7d)
+                    .where(PaperTradeRecord.status == "closed")
+                )
+            )
+            .scalars()
+            .all()
+        )
         tp_hits = sum(1 for t in closed_trades if t.exit_reason == "tp_hit")
         sl_hits = sum(1 for t in closed_trades if t.exit_reason == "sl_hit")
         win_rate = round(tp_hits / (tp_hits + sl_hits) * 100, 1) if (tp_hits + sl_hits) > 0 else None
@@ -916,7 +975,9 @@ async def get_analysis_quality_realtime():
             "total_actionable_analyses": total,
             "missing_confluence_score_pct": round(missing_confluence / max(total, 1) * 100, 1),
             "missing_priced_in_score_pct": round(missing_priced_in / max(total, 1) * 100, 1),
-            "avg_confluence_score": round(sum(valid_confluence) / len(valid_confluence), 2) if valid_confluence else None,
+            "avg_confluence_score": round(sum(valid_confluence) / len(valid_confluence), 2)
+            if valid_confluence
+            else None,
             "avg_priced_in_score": round(sum(valid_priced_in) / len(valid_priced_in), 2) if valid_priced_in else None,
             "compliance_rate_pct": round((1 - missing_confluence / max(total, 1)) * 100, 1),
             "confluence_score_distribution": score_dist,
@@ -934,9 +995,9 @@ async def get_ssvp_health():
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
-        cfg_calib = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == "cds_threshold_calibration")
-        )).scalar_one_or_none()
+        cfg_calib = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "cds_threshold_calibration"))
+        ).scalar_one_or_none()
 
         calib_data = {}
         if cfg_calib and cfg_calib.value:
@@ -945,11 +1006,17 @@ async def get_ssvp_health():
             except Exception:
                 pass
 
-        cfg_infl = (await session.execute(
-            select(SystemConfig).where(
-                SystemConfig.key.in_(["score_inflation_correction_threshold", "score_inflation_report"])
+        cfg_infl = (
+            (
+                await session.execute(
+                    select(SystemConfig).where(
+                        SystemConfig.key.in_(["score_inflation_correction_threshold", "score_inflation_report"])
+                    )
+                )
             )
-        )).scalars().first()
+            .scalars()
+            .first()
+        )
 
         infl_data = {}
         if cfg_infl and cfg_infl.value:
@@ -974,12 +1041,18 @@ async def get_debate_outcomes(limit: int = Query(default=20, ge=1, le=100)):
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
-        rows = (await session.execute(
-            select(AssetAnalysis)
-            .where(AssetAnalysis.decision.in_(["buy", "sell"]))
-            .order_by(AssetAnalysis.generated_at.desc())
-            .limit(limit)
-        )).scalars().all()
+        rows = (
+            (
+                await session.execute(
+                    select(AssetAnalysis)
+                    .where(AssetAnalysis.decision.in_(["buy", "sell"]))
+                    .order_by(AssetAnalysis.generated_at.desc())
+                    .limit(limit)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         results = []
         for r in rows:
@@ -1011,22 +1084,24 @@ async def get_debate_outcomes(limit: int = Query(default=20, ge=1, le=100)):
             else:
                 norm_conf = None
 
-            results.append({
-                "id": r.id,
-                "symbol": r.symbol,
-                "decision": r.decision,
-                "confidence": norm_conf,
-                "confluence_score": r.confluence_score,
-                "risk_multiplier": r.risk_multiplier,
-                "rationale": r.rationale,
-                "specialist_adjudication": adj,
-                "debate_bull_thesis": bull_thesis,
-                "debate_bear_dissent": bear_dissent,
-                "debate_verdict": getattr(r, "debate_verdict", None),
-                "debate_reason": getattr(r, "debate_reason", None),
-                "generated_at": r.generated_at.isoformat() if r.generated_at else None,
-                "execution_status": r.execution_status,
-            })
+            results.append(
+                {
+                    "id": r.id,
+                    "symbol": r.symbol,
+                    "decision": r.decision,
+                    "confidence": norm_conf,
+                    "confluence_score": r.confluence_score,
+                    "risk_multiplier": r.risk_multiplier,
+                    "rationale": r.rationale,
+                    "specialist_adjudication": adj,
+                    "debate_bull_thesis": bull_thesis,
+                    "debate_bear_dissent": bear_dissent,
+                    "debate_verdict": getattr(r, "debate_verdict", None),
+                    "debate_reason": getattr(r, "debate_reason", None),
+                    "generated_at": r.generated_at.isoformat() if r.generated_at else None,
+                    "execution_status": r.execution_status,
+                }
+            )
         return {"total": len(results), "items": results}
 
 
@@ -1071,29 +1146,30 @@ async def get_mt5_signals(limit: int = Query(default=50, ge=1, le=200)):
             if not hasattr(s, "id"):
                 continue
 
-
             conf_val = a.confidence if a else None
             norm_conf = None
             if conf_val is not None:
                 norm_conf = round(conf_val * 100, 1) if conf_val <= 1.0 else round(conf_val, 1)
 
-            items.append({
-                "id": s.id,
-                "asset_analysis_id": s.asset_analysis_id,
-                "symbol": s.symbol,
-                "action": s.action,
-                "status": s.status,
-                "mt5_ticket": s.mt5_ticket,
-                "created_at": s.created_at.isoformat() if s.created_at else None,
-                "executed_at": s.executed_at.isoformat() if s.executed_at else None,
-                "error_message": s.error_message,
-                "decision": a.decision if a else s.action,
-                "confidence": norm_conf,
-                "confluence_score": a.confluence_score if a else None,
-                "sl": a.stop_loss if a else None,
-                "tp": a.take_profit if a else None,
-                "rationale": (a.rationale or "")[:200] if a else None,
-            })
+            items.append(
+                {
+                    "id": s.id,
+                    "asset_analysis_id": s.asset_analysis_id,
+                    "symbol": s.symbol,
+                    "action": s.action,
+                    "status": s.status,
+                    "mt5_ticket": s.mt5_ticket,
+                    "created_at": s.created_at.isoformat() if s.created_at else None,
+                    "executed_at": s.executed_at.isoformat() if s.executed_at else None,
+                    "error_message": s.error_message,
+                    "decision": a.decision if a else s.action,
+                    "confidence": norm_conf,
+                    "confluence_score": a.confluence_score if a else None,
+                    "sl": a.stop_loss if a else None,
+                    "tp": a.take_profit if a else None,
+                    "rationale": (a.rationale or "")[:200] if a else None,
+                }
+            )
 
         return {
             "total": len(items),
@@ -1119,21 +1195,24 @@ async def get_trade_triggers(status: Optional[str] = None, limit: int = Query(de
                     cond = json.loads(t.condition_json)
                 except Exception:
                     cond = t.condition_json
-            results.append({
-                "id": t.id,
-                "asset_analysis_id": t.asset_analysis_id,
-                "trigger_type": t.trigger_type,
-                "status": t.status,
-                "condition": cond,
-                "created_at": t.created_at.isoformat() if t.created_at else None,
-                "fired_at": t.fired_at.isoformat() if t.fired_at else None,
-            })
+            results.append(
+                {
+                    "id": t.id,
+                    "asset_analysis_id": t.asset_analysis_id,
+                    "trigger_type": t.trigger_type,
+                    "status": t.status,
+                    "condition": cond,
+                    "created_at": t.created_at.isoformat() if t.created_at else None,
+                    "fired_at": t.fired_at.isoformat() if t.fired_at else None,
+                }
+            )
         return {"total": len(results), "items": results}
 
 
 # ---------------------------------------------------------------------------
 # Interactive Action Endpoints (2-Way Dashboard Control [MED-02])
 # ---------------------------------------------------------------------------
+
 
 @trading_router.post("/api/actions/trigger-cycle", tags=["Actions"])
 @require_role(Role.OPERATOR)
@@ -1143,14 +1222,13 @@ async def action_trigger_cycle(request: Request, body: Optional[TriggerCycleRequ
     cycle_sched = get_dashboard_dependency("cycle_scheduler")
     if not cycle_sched:
         return JSONResponse(
-            status_code=503,
-            content={"status": "error", "message": "CycleScheduler is not initialized or registered."}
+            status_code=503, content={"status": "error", "message": "CycleScheduler is not initialized or registered."}
         )
 
     if hasattr(cycle_sched, "_cycle_lock") and cycle_sched._cycle_lock.locked():
         return JSONResponse(
             status_code=409,
-            content={"status": "skipped", "message": "An analysis cycle is already actively executing."}
+            content={"status": "skipped", "message": "An analysis cycle is already actively executing."},
         )
 
     from monika.infrastructure.database.db import AsyncSessionLocal
@@ -1179,21 +1257,26 @@ async def action_trigger_cycle(request: Request, body: Optional[TriggerCycleRequ
 
     try:
         async with AsyncSessionLocal() as session:
-            session.add(ActivityLog(
-                category="system",
-                description=f"Analysis cycle manually triggered via Dashboard ({body.reason}, symbol={body.symbol})",
-                actor="dashboard",
-            ))
+            session.add(
+                ActivityLog(
+                    category="system",
+                    description=f"Analysis cycle manually triggered via Dashboard ({body.reason}, symbol={body.symbol})",
+                    actor="dashboard",
+                )
+            )
             await session.commit()
     except Exception as e:
         logger.debug(f"Failed to log dashboard activity: {e}")
 
-    await broadcast_live_event("cycle_triggered", {
-        "triggered_at": datetime.now(timezone.utc).isoformat(),
-        "forced": body.forced,
-        "reason": body.reason,
-        "symbol": body.symbol,
-    })
+    await broadcast_live_event(
+        "cycle_triggered",
+        {
+            "triggered_at": datetime.now(timezone.utc).isoformat(),
+            "forced": body.forced,
+            "reason": body.reason,
+            "symbol": body.symbol,
+        },
+    )
 
     return {
         "status": "triggered",
@@ -1228,22 +1311,27 @@ async def action_steer(body: SteerRequest, request: Request):
                 created_at=now,
             )
             session.add(intel)
-            session.add(ActivityLog(
-                category="analysis",
-                description=f"Operator steer injected ({body.mode}): {body.message[:150]}",
-                actor="operator",
-            ))
+            session.add(
+                ActivityLog(
+                    category="analysis",
+                    description=f"Operator steer injected ({body.mode}): {body.message[:150]}",
+                    actor="operator",
+                )
+            )
             await session.commit()
     except Exception as e:
         logger.error(f"Failed to persist operator steer directive: {e}")
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
-    await broadcast_live_event("steer_injected", {
-        "message": body.message,
-        "mode": body.mode,
-        "symbols": body.symbols,
-        "injected_at": now.isoformat(),
-    })
+    await broadcast_live_event(
+        "steer_injected",
+        {
+            "message": body.message,
+            "mode": body.mode,
+            "symbols": body.symbols,
+            "injected_at": now.isoformat(),
+        },
+    )
 
     return {
         "status": "steered",
@@ -1285,9 +1373,10 @@ async def action_override_risk(payload: OverrideRiskRequest, request: Request):
     elif payload.expires_at is not None:
         updated_fields["expires_at"] = str(payload.expires_at)
 
-
     if not updated_fields:
-        return JSONResponse(status_code=400, content={"status": "error", "message": "No risk fields provided to override."})
+        return JSONResponse(
+            status_code=400, content={"status": "error", "message": "No risk fields provided to override."}
+        )
 
     async with AsyncSessionLocal() as session:
         cfg_repo = SystemConfigRepository(session)
@@ -1316,10 +1405,13 @@ async def action_override_risk(payload: OverrideRiskRequest, request: Request):
         )
         await session.commit()
 
-    await broadcast_live_event("risk_override_updated", {
-        "updated_fields": updated_fields,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "risk_override_updated",
+        {
+            "updated_fields": updated_fields,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     return {
         "status": "success",
@@ -1345,27 +1437,34 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
 
     async with AsyncSessionLocal() as session:
         if target_ticket is None and payload.position_id is not None:
-            pos = (await session.execute(
-                select(Position).where(Position.id == payload.position_id)
-            )).scalar_one_or_none()
+            pos = (
+                await session.execute(select(Position).where(Position.id == payload.position_id))
+            ).scalar_one_or_none()
             if not pos:
-                return JSONResponse(status_code=404, content={"status": "error", "message": f"Position {payload.position_id} not found."})
+                return JSONResponse(
+                    status_code=404,
+                    content={"status": "error", "message": f"Position {payload.position_id} not found."},
+                )
             target_ticket = pos.mt5_ticket
             if payload.percentage is not None and target_volume is None and pos.volume:
                 target_volume = round(float(pos.volume) * (float(payload.percentage) / 100.0), 2)
             if target_ticket is None and pos.is_paper:
                 if exec_svc and hasattr(exec_svc, "_close_paper_position"):
-                    res = await exec_svc._close_paper_position(session, pos, requested_by="dashboard", reason=payload.reason, volume=target_volume)
+                    res = await exec_svc._close_paper_position(
+                        session, pos, requested_by="dashboard", reason=payload.reason, volume=target_volume
+                    )
                     return {"status": "success", "result": res}
         elif target_ticket is not None and payload.percentage is not None and target_volume is None:
-            pos = (await session.execute(
-                select(Position).where(Position.mt5_ticket == target_ticket)
-            )).scalar_one_or_none()
+            pos = (
+                await session.execute(select(Position).where(Position.mt5_ticket == target_ticket))
+            ).scalar_one_or_none()
             if pos and pos.volume:
                 target_volume = round(float(pos.volume) * (float(payload.percentage) / 100.0), 2)
 
     if target_ticket is None:
-        return JSONResponse(status_code=400, content={"status": "error", "message": "Must provide ticket or position_id."})
+        return JSONResponse(
+            status_code=400, content={"status": "error", "message": "Must provide ticket or position_id."}
+        )
 
     if exec_svc and hasattr(exec_svc, "close_position_by_ticket"):
         close_kwargs: Dict[str, Any] = {
@@ -1386,28 +1485,38 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
         res = await mt5_client.close_position(**close_kwargs)
     else:
         async with AsyncSessionLocal() as session:
-            pos = (await session.execute(
-                select(Position).where(Position.mt5_ticket == target_ticket)
-            )).scalar_one_or_none()
+            pos = (
+                await session.execute(select(Position).where(Position.mt5_ticket == target_ticket))
+            ).scalar_one_or_none()
             if pos:
                 if target_volume and target_volume < float(pos.volume):
                     pos.volume = float(pos.volume) - target_volume
                     pos.partially_filled = True
-                    res = {"success": True, "ticket": target_ticket, "remaining_volume": pos.volume, "note": "Partially closed in DB"}
+                    res = {
+                        "success": True,
+                        "ticket": target_ticket,
+                        "remaining_volume": pos.volume,
+                        "note": "Partially closed in DB",
+                    }
                 else:
                     pos.status = "closed"
                     pos.closed_at = datetime.now(timezone.utc)
                     res = {"success": True, "ticket": target_ticket, "note": "Closed in DB (standalone mode)"}
                 await session.commit()
             else:
-                return JSONResponse(status_code=404, content={"status": "error", "message": f"Ticket {target_ticket} not found."})
+                return JSONResponse(
+                    status_code=404, content={"status": "error", "message": f"Ticket {target_ticket} not found."}
+                )
 
-    await broadcast_live_event("position_closed", {
-        "ticket": target_ticket,
-        "volume": target_volume,
-        "result": res,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "position_closed",
+        {
+            "ticket": target_ticket,
+            "volume": target_volume,
+            "result": res,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     return {
         "status": "success" if res.get("success") else "failed",
@@ -1429,12 +1538,14 @@ async def action_position_breakeven(ticket: int, request: Request):
     mt5_client = get_dashboard_dependency("mt5_client")
 
     async with AsyncSessionLocal() as session:
-        pos = (await session.execute(
-            select(Position).where(Position.mt5_ticket == ticket, Position.status == "open")
-        )).scalar_one_or_none()
+        pos = (
+            await session.execute(select(Position).where(Position.mt5_ticket == ticket, Position.status == "open"))
+        ).scalar_one_or_none()
 
         if not pos:
-            return JSONResponse(status_code=404, content={"status": "error", "message": f"Open position #{ticket} not found."})
+            return JSONResponse(
+                status_code=404, content={"status": "error", "message": f"Open position #{ticket} not found."}
+            )
 
         entry_price = float(pos.entry_price or 0.0)
         current_sl = float(pos.sl or 0.0) if pos.sl is not None else None
@@ -1449,7 +1560,9 @@ async def action_position_breakeven(ticket: int, request: Request):
         res = None
         if exec_svc and hasattr(exec_svc, "modify_position_sl_tp"):
             try:
-                res = await exec_svc.modify_position_sl_tp(ticket=ticket, new_sl=entry_price, new_tp=pos.tp, comment="BE:dashboard")
+                res = await exec_svc.modify_position_sl_tp(
+                    ticket=ticket, new_sl=entry_price, new_tp=pos.tp, comment="BE:dashboard"
+                )
             except Exception as e:
                 logger.warning(f"Execution service breakeven failed: {e}")
 
@@ -1460,19 +1573,24 @@ async def action_position_breakeven(ticket: int, request: Request):
                 logger.warning(f"MT5 client breakeven failed: {e}")
 
         pos.sl = entry_price
-        session.add(ActivityLog(
-            category="trading",
-            description=f"Breakeven applied to position #{ticket} at {entry_price}",
-            actor="dashboard",
-            related_id=ticket,
-        ))
+        session.add(
+            ActivityLog(
+                category="trading",
+                description=f"Breakeven applied to position #{ticket} at {entry_price}",
+                actor="dashboard",
+                related_id=ticket,
+            )
+        )
         await session.commit()
 
-    await broadcast_live_event("position_breakeven", {
-        "ticket": ticket,
-        "entry_price": entry_price,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "position_breakeven",
+        {
+            "ticket": ticket,
+            "entry_price": entry_price,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     return {
         "status": "success",
@@ -1511,18 +1629,23 @@ async def action_bulk_breakeven(payload: BulkBreakevenRequest, request: Request)
             for p in positions:
                 p.sl = p.entry_price
                 updated += 1
-            session.add(ActivityLog(
-                category="trading",
-                description=f"Bulk breakeven applied to {updated} positions (symbol={payload.symbol})",
-                actor="dashboard",
-            ))
+            session.add(
+                ActivityLog(
+                    category="trading",
+                    description=f"Bulk breakeven applied to {updated} positions (symbol={payload.symbol})",
+                    actor="dashboard",
+                )
+            )
             await session.commit()
             res = {"success": True, "updated_count": updated, "message": f"Updated {updated} positions to BE."}
 
-    await broadcast_live_event("bulk_breakeven_applied", {
-        "result": res,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "bulk_breakeven_applied",
+        {
+            "result": res,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     return {"status": "success", "result": res}
 
@@ -1536,12 +1659,12 @@ async def action_trailing_override(ticket: int, payload: TrailingOverrideRequest
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
-        pos = (await session.execute(
-            select(Position).where(Position.mt5_ticket == ticket)
-        )).scalar_one_or_none()
+        pos = (await session.execute(select(Position).where(Position.mt5_ticket == ticket))).scalar_one_or_none()
 
         if not pos:
-            return JSONResponse(status_code=404, content={"status": "error", "message": f"Position #{ticket} not found."})
+            return JSONResponse(
+                status_code=404, content={"status": "error", "message": f"Position #{ticket} not found."}
+            )
 
         if payload.reset_to_default:
             pos.trailing_override_json = None
@@ -1561,19 +1684,24 @@ async def action_trailing_override(ticket: int, payload: TrailingOverrideRequest
             pos.trailing_override_json = json.dumps(override_data)
             msg = f"Updated trailing override for ticket #{ticket}: {override_data}"
 
-        session.add(ActivityLog(
-            category="trading",
-            description=msg,
-            actor="dashboard",
-            related_id=ticket,
-        ))
+        session.add(
+            ActivityLog(
+                category="trading",
+                description=msg,
+                actor="dashboard",
+                related_id=ticket,
+            )
+        )
         await session.commit()
 
-    await broadcast_live_event("trailing_override_updated", {
-        "ticket": ticket,
-        "trailing_override": override_data,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "trailing_override_updated",
+        {
+            "ticket": ticket,
+            "trailing_override": override_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     return {"status": "success", "ticket": ticket, "message": msg}
 
@@ -1598,25 +1726,32 @@ async def action_kill_symbol(symbol: str, request: Request):
         from sqlalchemy import select
 
         async with AsyncSessionLocal() as session:
-            positions = (await session.execute(
-                select(Position).where(Position.symbol == sym, Position.status == "open")
-            )).scalars().all()
+            positions = (
+                (await session.execute(select(Position).where(Position.symbol == sym, Position.status == "open")))
+                .scalars()
+                .all()
+            )
             for p in positions:
                 p.status = "closed"
                 p.closed_at = datetime.now(timezone.utc)
-            session.add(ActivityLog(
-                category="risk",
-                description=f"Symbol {sym} liquidated ({len(positions)} positions closed)",
-                actor="admin",
-            ))
+            session.add(
+                ActivityLog(
+                    category="risk",
+                    description=f"Symbol {sym} liquidated ({len(positions)} positions closed)",
+                    actor="admin",
+                )
+            )
             await session.commit()
             res = {"success": True, "closed_count": len(positions), "symbol": sym}
 
-    await broadcast_live_event("symbol_liquidated", {
-        "symbol": sym,
-        "result": res,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "symbol_liquidated",
+        {
+            "symbol": sym,
+            "result": res,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     return {"status": "success", "symbol": sym, "result": res}
 
@@ -1630,6 +1765,7 @@ async def action_close_batch(payload: BatchCloseRequest, request: Request):
         from monika.infrastructure.database.db import AsyncSessionLocal
         from monika.infrastructure.database.models import Position
         from sqlalchemy import select
+
         async with AsyncSessionLocal() as session:
             q = select(Position).where(Position.status == "open")
             if payload.symbol:
@@ -1654,25 +1790,36 @@ async def action_close_batch(payload: BatchCloseRequest, request: Request):
         from sqlalchemy import select
 
         async with AsyncSessionLocal() as session:
-            positions = (await session.execute(
-                select(Position).where(Position.mt5_ticket.in_(tickets), Position.status == "open")
-            )).scalars().all()
+            positions = (
+                (
+                    await session.execute(
+                        select(Position).where(Position.mt5_ticket.in_(tickets), Position.status == "open")
+                    )
+                )
+                .scalars()
+                .all()
+            )
             for p in positions:
                 p.status = "closed"
                 p.closed_at = datetime.now(timezone.utc)
-            session.add(ActivityLog(
-                category="trading",
-                description=f"Batch closed {len(positions)} positions: {tickets}",
-                actor="dashboard",
-            ))
+            session.add(
+                ActivityLog(
+                    category="trading",
+                    description=f"Batch closed {len(positions)} positions: {tickets}",
+                    actor="dashboard",
+                )
+            )
             await session.commit()
             res = {"success": True, "closed_count": len(positions), "tickets": tickets}
 
-    await broadcast_live_event("batch_positions_closed", {
-        "tickets": tickets,
-        "result": res,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "batch_positions_closed",
+        {
+            "tickets": tickets,
+            "result": res,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     closed_c = res.get("closed_count", len(tickets)) if isinstance(res, dict) else len(tickets)
     failed_c = res.get("failed_count", 0) if isinstance(res, dict) else 0
@@ -1721,9 +1868,14 @@ async def preview_manual_order(payload: ManualOrderPreviewRequest, request: Requ
 
     estimated_risk_usd = round(sl_distance_pips * pip_value_approx, 2) if sl_distance_pips else None
     estimated_reward_usd = round(tp_distance_pips * pip_value_approx, 2) if tp_distance_pips else None
-    rr_ratio = round(tp_distance_pips / sl_distance_pips, 2) if (sl_distance_pips and tp_distance_pips and sl_distance_pips > 0) else None
+    rr_ratio = (
+        round(tp_distance_pips / sl_distance_pips, 2)
+        if (sl_distance_pips and tp_distance_pips and sl_distance_pips > 0)
+        else None
+    )
 
     from monika.infrastructure.database.db import AsyncSessionLocal
+
     is_allowed = True
     gate_reason = "Order within risk thresholds"
     if risk_gate:
@@ -1767,6 +1919,7 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
     if not settings:
         try:
             from monika.core.config.settings import load_settings
+
             settings = load_settings()
         except Exception:
             settings = {}
@@ -1789,12 +1942,13 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
     is_paper = payload.is_paper if payload.is_paper is not None else is_paper_setting
 
     dir_upper = direction.upper()
-    prop_dir: Literal["BUY", "SELL", "WAIT"] = "BUY" if dir_upper == "BUY" else ("SELL" if dir_upper == "SELL" else "WAIT")
+    prop_dir: Literal["BUY", "SELL", "WAIT"] = (
+        "BUY" if dir_upper == "BUY" else ("SELL" if dir_upper == "SELL" else "WAIT")
+    )
 
     proposal = TradeProposal(
         symbol=sym,
         direction=prop_dir,
-
         entry_price=payload.price or 0.0,
         stop_loss=payload.sl or 0.0,
         take_profit=payload.tp or 0.0,
@@ -1806,11 +1960,13 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
     async with AsyncSessionLocal() as session:
         verdict = await risk_gate.evaluate_proposal(session, proposal, is_paper=is_paper)
         if not verdict.approved:
-            session.add(ActivityLog(
-                category="risk",
-                description=f"Manual order rejected by RiskGate: {direction.upper()} {volume} {sym} - {', '.join(verdict.rejection_reasons)}",
-                actor="operator",
-            ))
+            session.add(
+                ActivityLog(
+                    category="risk",
+                    description=f"Manual order rejected by RiskGate: {direction.upper()} {volume} {sym} - {', '.join(verdict.rejection_reasons)}",
+                    actor="operator",
+                )
+            )
             await session.commit()
             return JSONResponse(
                 status_code=400,
@@ -1833,6 +1989,7 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
         entry_price = payload.price or 1.0
 
     from monika.application.services.trading_service import TradingService
+
     async with AsyncSessionLocal() as session:
         exec_res = await TradingService.submit_order(
             session=session,
@@ -1862,14 +2019,17 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
         "message": "Order executed successfully via TradingService",
     }
 
-    await broadcast_live_event("manual_order_submitted", {
-        "symbol": sym,
-        "direction": direction,
-        "volume": volume,
-        "is_paper": is_paper,
-        "result": res,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "manual_order_submitted",
+        {
+            "symbol": sym,
+            "direction": direction,
+            "volume": volume,
+            "is_paper": is_paper,
+            "result": res,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     return {
         "status": "success" if (res and res.get("success")) else "failed",
@@ -1904,10 +2064,13 @@ async def action_emergency_kill(request: Request):
     elif guardian and hasattr(guardian, "execution_service") and hasattr(guardian.execution_service, "kill_switch"):
         await guardian.execution_service.kill_switch("Dashboard emergency kill switch")
 
-    await broadcast_live_event("kill_switch_activated", {
-        "activated_at": datetime.now(timezone.utc).isoformat(),
-        "reason": "Emergency kill switch triggered",
-    })
+    await broadcast_live_event(
+        "kill_switch_activated",
+        {
+            "activated_at": datetime.now(timezone.utc).isoformat(),
+            "reason": "Emergency kill switch triggered",
+        },
+    )
     return {"status": "success", "message": "Emergency kill switch activated. Position closures completed."}
 
 
@@ -1918,6 +2081,7 @@ async def action_emergency_kill(request: Request):
 async def action_resume_trading(request: Request):
     """Resume system trading operations, clearing kill switch, pause flags, and resetting EffectGate."""
     from monika.infrastructure.database.db import AsyncSessionLocal
+
     exec_svc = get_dashboard_dependency("execution_service")
     risk_gate = get_dashboard_dependency("risk_gate")
 
@@ -1929,15 +2093,19 @@ async def action_resume_trading(request: Request):
             res = {"success": True, "message": "Trading resumed via RiskGate."}
         else:
             from monika.domain.risk.risk_gate import RiskGate
+
             settings = get_dashboard_dependency("settings") or {}
             gate = RiskGate(settings)
             await gate.resume_trading(session)
             res = {"success": True, "message": "Trading resumed."}
 
-    await broadcast_live_event("trading_resumed", {
-        "resumed_at": datetime.now(timezone.utc).isoformat(),
-        "actor": "admin",
-    })
+    await broadcast_live_event(
+        "trading_resumed",
+        {
+            "resumed_at": datetime.now(timezone.utc).isoformat(),
+            "actor": "admin",
+        },
+    )
     return {"status": "success", "message": "Trading resumed. All pause & kill flags cleared, EffectGate reset."}
 
 
@@ -1954,11 +2122,14 @@ async def action_pause_trading(request: Request):
         await cfg_repo.set_system_paused(True)
         await session.commit()
 
-    await broadcast_live_event("system_state_change", {
-        "state": "paused",
-        "reason": "Dashboard/CLI pause command",
-        "paused_at": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "system_state_change",
+        {
+            "state": "paused",
+            "reason": "Dashboard/CLI pause command",
+            "paused_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
     return {"status": "success", "message": "System trading paused."}
 
 
@@ -1985,10 +2156,13 @@ async def action_unsuspend_symbols(request: Request):
             ok = await tracker.unsuspend_symbol(session, sym_upper)
             sym_list = [sym_upper] if ok else []
 
-    await broadcast_live_event("symbols_unsuspended", {
-        "symbols": sym_list,
-        "cleared_at": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "symbols_unsuspended",
+        {
+            "symbols": sym_list,
+            "cleared_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
     return {"status": "success", "cleared": sym_list}
 
 
@@ -2003,27 +2177,30 @@ async def action_approve_trade(trade_id: int, request: Request):
     exec_svc = get_dashboard_dependency("execution_service")
 
     async with AsyncSessionLocal() as session:
-        trigger = (await session.execute(
-            select(TradeTrigger).where(TradeTrigger.id == trade_id)
-        )).scalar_one_or_none()
+        trigger = (await session.execute(select(TradeTrigger).where(TradeTrigger.id == trade_id))).scalar_one_or_none()
 
         if trigger:
             trigger.status = "approved"
             trigger.fired_at = datetime.now(timezone.utc)
-            session.add(ActivityLog(
-                category="trading",
-                description=f"TradeTrigger #{trade_id} approved via Dashboard",
-                actor="dashboard",
-                related_id=trade_id,
-            ))
+            session.add(
+                ActivityLog(
+                    category="trading",
+                    description=f"TradeTrigger #{trade_id} approved via Dashboard",
+                    actor="dashboard",
+                    related_id=trade_id,
+                )
+            )
             await session.commit()
 
-            await broadcast_live_event("trade_approved", {
-                "trade_id": trade_id,
-                "type": "TradeTrigger",
-                "status": "approved",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            })
+            await broadcast_live_event(
+                "trade_approved",
+                {
+                    "trade_id": trade_id,
+                    "type": "TradeTrigger",
+                    "status": "approved",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+            )
             return {
                 "status": "success",
                 "type": "TradeTrigger",
@@ -2031,26 +2208,29 @@ async def action_approve_trade(trade_id: int, request: Request):
                 "message": f"TradeTrigger #{trade_id} approved.",
             }
 
-        analysis = (await session.execute(
-            select(AssetAnalysis).where(AssetAnalysis.id == trade_id)
-        )).scalar_one_or_none()
+        analysis = (
+            await session.execute(select(AssetAnalysis).where(AssetAnalysis.id == trade_id))
+        ).scalar_one_or_none()
 
     if not analysis:
         return JSONResponse(
             status_code=404,
-            content={"status": "error", "message": f"No pending trade or trigger found with ID {trade_id}."}
+            content={"status": "error", "message": f"No pending trade or trigger found with ID {trade_id}."},
         )
 
     if analysis.decision not in ("buy", "sell"):
         return JSONResponse(
             status_code=400,
-            content={"status": "rejected", "message": f"AssetAnalysis #{trade_id} has non-tradeable decision '{analysis.decision}'."}
+            content={
+                "status": "rejected",
+                "message": f"AssetAnalysis #{trade_id} has non-tradeable decision '{analysis.decision}'.",
+            },
         )
 
     async with AsyncSessionLocal() as session:
-        analysis_db = (await session.execute(
-            select(AssetAnalysis).where(AssetAnalysis.id == trade_id)
-        )).scalar_one_or_none()
+        analysis_db = (
+            await session.execute(select(AssetAnalysis).where(AssetAnalysis.id == trade_id))
+        ).scalar_one_or_none()
 
         if exec_svc and analysis_db:
             exec_result = await exec_svc.execute_analysis(session, analysis_db)
@@ -2067,14 +2247,19 @@ async def action_approve_trade(trade_id: int, request: Request):
             await session.commit()
             res_dict = {"executed": False, "note": "Marked approved_manual (standalone mode)"}
         else:
-            return JSONResponse(status_code=404, content={"status": "error", "message": f"AssetAnalysis #{trade_id} missing."})
+            return JSONResponse(
+                status_code=404, content={"status": "error", "message": f"AssetAnalysis #{trade_id} missing."}
+            )
 
-    await broadcast_live_event("trade_approved", {
-        "trade_id": trade_id,
-        "type": "AssetAnalysis",
-        "result": res_dict,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "trade_approved",
+        {
+            "trade_id": trade_id,
+            "type": "AssetAnalysis",
+            "result": res_dict,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     return {
         "status": "success",
@@ -2118,9 +2303,7 @@ async def modify_position(ticket: int, payload: ModifyPositionRequest, request: 
             logger.warning(f"MT5 client modify failed: {e}")
 
     async with AsyncSessionLocal() as session:
-        pos = (await session.execute(
-            select(Position).where(Position.mt5_ticket == ticket)
-        )).scalar_one_or_none()
+        pos = (await session.execute(select(Position).where(Position.mt5_ticket == ticket))).scalar_one_or_none()
         if pos:
             if payload.sl is not None:
                 pos.sl = payload.sl
@@ -2132,16 +2315,18 @@ async def modify_position(ticket: int, payload: ModifyPositionRequest, request: 
 
     if not res:
         return JSONResponse(
-            status_code=404,
-            content={"status": "error", "message": f"Position with ticket {ticket} not found."}
+            status_code=404, content={"status": "error", "message": f"Position with ticket {ticket} not found."}
         )
 
-    await broadcast_live_event("position_modified", {
-        "ticket": ticket,
-        "sl": payload.sl,
-        "tp": payload.tp,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    await broadcast_live_event(
+        "position_modified",
+        {
+            "ticket": ticket,
+            "sl": payload.sl,
+            "tp": payload.tp,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     return {"status": "success", "result": res}
 
@@ -2160,13 +2345,19 @@ async def get_technical_indicators_snapshot(
     sym = symbol.strip().upper().replace("/", "")
 
     async with AsyncSessionLocal() as session:
-        rows = (await session.execute(
-            select(TechnicalIndicator)
-            .where(TechnicalIndicator.symbol == sym)
-            .where(TechnicalIndicator.timeframe == timeframe.upper())
-            .order_by(TechnicalIndicator.timestamp.desc())
-            .limit(20)
-        )).scalars().all()
+        rows = (
+            (
+                await session.execute(
+                    select(TechnicalIndicator)
+                    .where(TechnicalIndicator.symbol == sym)
+                    .where(TechnicalIndicator.timeframe == timeframe.upper())
+                    .order_by(TechnicalIndicator.timestamp.desc())
+                    .limit(20)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         indicators_map = {}
         for r in rows:
@@ -2184,6 +2375,7 @@ async def get_technical_indicators_snapshot(
             try:
                 from monika.domain.indicators.technical import TechnicalIndicatorCalculator
                 from monika.core.config.settings import load_settings
+
                 settings = load_settings() or {}
                 calc = TechnicalIndicatorCalculator(session, settings)
                 snapshot = await calc.get_snapshot(sym, timeframe.upper())
@@ -2215,35 +2407,54 @@ async def get_market_structure_levels(
     sym = symbol.strip().upper().replace("/", "")
 
     async with AsyncSessionLocal() as session:
-        ob_rows = (await session.execute(
-            select(OrderBlock)
-            .where(OrderBlock.symbol == sym)
-            .where(OrderBlock.timeframe == timeframe.upper())
-            .where(OrderBlock.mitigated_at.is_(None))
-            .order_by(OrderBlock.formed_at.desc())
-            .limit(10)
-        )).scalars().all()
+        ob_rows = (
+            (
+                await session.execute(
+                    select(OrderBlock)
+                    .where(OrderBlock.symbol == sym)
+                    .where(OrderBlock.timeframe == timeframe.upper())
+                    .where(OrderBlock.mitigated_at.is_(None))
+                    .order_by(OrderBlock.formed_at.desc())
+                    .limit(10)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
-        sb_rows = (await session.execute(
-            select(StructureBreak)
-            .where(StructureBreak.symbol == sym)
-            .where(StructureBreak.timeframe == timeframe.upper())
-            .order_by(StructureBreak.formed_at.desc())
-            .limit(10)
-        )).scalars().all()
+        sb_rows = (
+            (
+                await session.execute(
+                    select(StructureBreak)
+                    .where(StructureBreak.symbol == sym)
+                    .where(StructureBreak.timeframe == timeframe.upper())
+                    .order_by(StructureBreak.formed_at.desc())
+                    .limit(10)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
-        fvg_rows = (await session.execute(
-            select(FVGZone)
-            .where(FVGZone.symbol == sym)
-            .where(FVGZone.timeframe == timeframe.upper())
-            .where(FVGZone.filled_at.is_(None))
-            .order_by(FVGZone.formed_at.desc())
-            .limit(10)
-        )).scalars().all()
+        fvg_rows = (
+            (
+                await session.execute(
+                    select(FVGZone)
+                    .where(FVGZone.symbol == sym)
+                    .where(FVGZone.timeframe == timeframe.upper())
+                    .where(FVGZone.filled_at.is_(None))
+                    .order_by(FVGZone.formed_at.desc())
+                    .limit(10)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         timesfm_cone = None
         try:
             from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
+
             engine = TimesFMEngine()
             fc = await engine.get_latest_forecast(session, sym, timeframe=timeframe.upper())
             if fc and isinstance(fc, dict):
@@ -2314,24 +2525,39 @@ async def get_market_candles(
                 for _, row in df.iterrows():
                     raw_time = row.get("time")
                     t_val = int(raw_time.timestamp()) if hasattr(raw_time, "timestamp") else int(raw_time)
-                    candles.append({
-                        "time": t_val,
-                        "open": float(row.get("open", 0.0)),
-                        "high": float(row.get("high", 0.0)),
-                        "low": float(row.get("low", 0.0)),
-                        "close": float(row.get("close", 0.0)),
-                        "volume": float(row.get("tick_volume", row.get("volume", 0.0))),
-                    })
+                    candles.append(
+                        {
+                            "time": t_val,
+                            "open": float(row.get("open", 0.0)),
+                            "high": float(row.get("high", 0.0)),
+                            "low": float(row.get("low", 0.0)),
+                            "close": float(row.get("close", 0.0)),
+                            "volume": float(row.get("tick_volume", row.get("volume", 0.0))),
+                        }
+                    )
         except Exception as e:
             logger.debug(f"Live candle fetch for {sym} failed: {e}")
 
     if not candles:
         import math, time
+
         now_ts = int(time.time())
         step_map = {"M1": 60, "M5": 300, "M15": 900, "M30": 1800, "H1": 3600, "H4": 14400, "D1": 86400}
         step_sec = step_map.get(timeframe.upper(), 14400)
 
-        base_price = 1.0850 if "EUR" in sym else 1.2850 if "GBP" in sym else 2650.0 if "XAU" in sym else 67000.0 if "BTC" in sym else 152.0 if "JPY" in sym else 100.0
+        base_price = (
+            1.0850
+            if "EUR" in sym
+            else 1.2850
+            if "GBP" in sym
+            else 2650.0
+            if "XAU" in sym
+            else 67000.0
+            if "BTC" in sym
+            else 152.0
+            if "JPY" in sym
+            else 100.0
+        )
         if mt5_client and hasattr(mt5_client, "get_current_price"):
             try:
                 curr_quote = await mt5_client.get_current_price(sym)
@@ -2351,14 +2577,16 @@ async def get_market_candles(
             high_p = max(open_p, close_p) + abs(noise * 0.5)
             low_p = min(open_p, close_p) - abs(noise * 0.5)
             vol = abs(100.0 + math.sin(i * 0.5) * 50.0)
-            candles.append({
-                "time": t,
-                "open": round(open_p, 5),
-                "high": round(high_p, 5),
-                "low": round(low_p, 5),
-                "close": round(close_p, 5),
-                "volume": round(vol, 2),
-            })
+            candles.append(
+                {
+                    "time": t,
+                    "open": round(open_p, 5),
+                    "high": round(high_p, 5),
+                    "low": round(low_p, 5),
+                    "close": round(close_p, 5),
+                    "volume": round(vol, 2),
+                }
+            )
             p = close_p
 
     return {

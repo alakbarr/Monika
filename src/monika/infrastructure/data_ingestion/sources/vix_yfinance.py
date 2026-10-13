@@ -62,8 +62,10 @@ def _extract_float(val: object) -> Optional[float]:
     try:
         f = float(str(val))
         return None if math.isnan(f) else f
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
+
+
 YAHOO_VIX_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX"
 FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
@@ -175,10 +177,12 @@ class VIXFetcher:
             records = []
             for ts, close_val in zip(timestamps, closes):
                 if close_val is not None:
-                    records.append({
-                        "Date": pd.to_datetime(ts, unit="s", utc=True),
-                        "Close": float(close_val),
-                    })
+                    records.append(
+                        {
+                            "Date": pd.to_datetime(ts, unit="s", utc=True),
+                            "Close": float(close_val),
+                        }
+                    )
             if not records:
                 return None
             df = pd.DataFrame(records)
@@ -261,11 +265,13 @@ class VIXFetcher:
                 dt_str = obs.get("date")
                 if val and val != "." and dt_str:
                     try:
-                        records.append({
-                            "Date": pd.to_datetime(dt_str, utc=True),
-                            "Close": float(val),
-                        })
-                    except (ValueError, TypeError):
+                        records.append(
+                            {
+                                "Date": pd.to_datetime(dt_str, utc=True),
+                                "Close": float(val),
+                            }
+                        )
+                    except ValueError, TypeError:
                         continue
             if not records:
                 return None
@@ -336,9 +342,7 @@ class VIXFetcher:
 
         if candidates:
             all_dates = [c[0] for c in candidates]
-            existing_res = await self.session.execute(
-                select(VIXData.date).where(VIXData.date.in_(all_dates))
-            )
+            existing_res = await self.session.execute(select(VIXData.date).where(VIXData.date.in_(all_dates)))
             existing_dates = set()
             found_by_scalars = False
             try:
@@ -352,9 +356,13 @@ class VIXFetcher:
                             vals = await vals
                         if isinstance(vals, (list, tuple, set)):
                             existing_dates = {
-                                d.astimezone(timezone.utc) if getattr(d, "tzinfo", None) else d.replace(tzinfo=timezone.utc)
-                                if isinstance(d, datetime) else d
-                                for d in vals if d is not None
+                                d.astimezone(timezone.utc)
+                                if getattr(d, "tzinfo", None)
+                                else d.replace(tzinfo=timezone.utc)
+                                if isinstance(d, datetime)
+                                else d
+                                for d in vals
+                                if d is not None
                             }
                             found_by_scalars = True
                 if not found_by_scalars and hasattr(existing_res, "scalar_one_or_none"):
@@ -367,7 +375,9 @@ class VIXFetcher:
                 existing_dates = set()
 
             for record_dt, close_val in candidates:
-                norm_dt = record_dt.astimezone(timezone.utc) if record_dt.tzinfo else record_dt.replace(tzinfo=timezone.utc)
+                norm_dt = (
+                    record_dt.astimezone(timezone.utc) if record_dt.tzinfo else record_dt.replace(tzinfo=timezone.utc)
+                )
                 if norm_dt in existing_dates:
                     continue
                 record = VIXData(date=norm_dt, close=close_val)
@@ -377,6 +387,7 @@ class VIXFetcher:
 
         if saved:
             from monika.infrastructure.database.safe_ops import safe_commit
+
             ok = await safe_commit(self.session, label="VIXData")
             if not ok:
                 return 0
@@ -394,9 +405,7 @@ class VIXFetcher:
         Returns:
             Dict dengan kunci 'date' dan 'close', atau None jika data kosong.
         """
-        result = await self.session.execute(
-            select(VIXData).order_by(VIXData.date.desc()).limit(1)
-        )
+        result = await self.session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))
         row = result.scalar_one_or_none()
         if row is None:
             return None
@@ -407,6 +416,7 @@ class VIXFetcher:
         range_map = {"1d": "1d", "5d": "5d", "10d": "10d", "1mo": "1mo", "3mo": "3mo", "6mo": "6mo", "1y": "1y"}
         range_param = range_map.get(period, "1mo")
         import urllib.parse
+
         encoded_ticker = urllib.parse.quote(ticker)
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1d&range={range_param}"
         headers = {
@@ -414,7 +424,9 @@ class VIXFetcher:
             "Accept": "application/json",
         }
         try:
-            res = await fetch_with_retry(url, headers=headers, timeout=8, max_retries=2, base_delay=0.5, response_type="json")
+            res = await fetch_with_retry(
+                url, headers=headers, timeout=8, max_retries=2, base_delay=0.5, response_type="json"
+            )
             if res and isinstance(res, dict):
                 results = res.get("chart", {}).get("result")
                 if results and isinstance(results, list):
@@ -425,10 +437,12 @@ class VIXFetcher:
                     records = []
                     for ts, close_val in zip(timestamps, closes):
                         if close_val is not None:
-                            records.append({
-                                "Date": pd.to_datetime(ts, unit="s", utc=True),
-                                "Close": float(close_val),
-                            })
+                            records.append(
+                                {
+                                    "Date": pd.to_datetime(ts, unit="s", utc=True),
+                                    "Close": float(close_val),
+                                }
+                            )
                     if records:
                         df = pd.DataFrame(records)
                         df.set_index("Date", inplace=True)
@@ -437,8 +451,10 @@ class VIXFetcher:
             logger.debug(f"Direct fetch failed for {ticker}: {e}")
 
         try:
+
             def _dl():
                 return yf.download(ticker, period=period, progress=False, auto_adjust=True, timeout=8)
+
             return await asyncio.wait_for(asyncio.to_thread(_dl), timeout=10.0)
         except Exception as e:
             logger.warning(f"Fallback yfinance fetch failed for {ticker}: {e}")
@@ -448,6 +464,7 @@ class VIXFetcher:
 # ---------------------------------------------------------------------------
 # Quick standalone test
 # ---------------------------------------------------------------------------
+
 
 async def _test():
     from dotenv import load_dotenv
@@ -468,6 +485,7 @@ async def _test():
 
 if __name__ == "__main__":
     import sys
+
     if sys.platform == "win32":
         asyncio.run(_test(), loop_factory=asyncio.SelectorEventLoop)
     else:

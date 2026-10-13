@@ -24,6 +24,7 @@ from database.session_db_wal import SessionDbWal
 # 1. Code Fence Balancing Tests
 # ==============================================================================
 
+
 def test_ensure_closed_code_fences_clean():
     # Normal text without fences
     t1 = "EURUSD is breaking out above resistance."
@@ -46,6 +47,7 @@ def test_ensure_closed_code_fences_unclosed():
 # ==============================================================================
 # 2. LiveStreamConsumer Throttling Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_live_stream_consumer_accumulate_and_finish():
@@ -75,6 +77,7 @@ async def test_live_stream_consumer_accumulate_and_finish():
 # ==============================================================================
 # 3. ChannelRouter Integration Tests
 # ==============================================================================
+
 
 class MockPlatformAdapter(BasePlatformAdapter):
     def __init__(self, platform_name: str = "telegram"):

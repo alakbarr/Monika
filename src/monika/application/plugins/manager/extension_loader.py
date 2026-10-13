@@ -61,6 +61,7 @@ def load_single_plugin(plugin_dir: str, manager: Optional[PluginManager] = None)
                 module = importlib.import_module(mod_name)
             target = getattr(module, func_name)
             from monika.application.plugins.manager.manager import BasePlugin
+
             if isinstance(target, type) and issubclass(target, BasePlugin):
                 plugin_instance = target(config=manifest.get("config", {}))
                 plugin_instance.setup(mgr)
@@ -116,6 +117,7 @@ def load_single_plugin(plugin_dir: str, manager: Optional[PluginManager] = None)
                 model_cls = getattr(m_module, m_cls_name)
             else:
                 from pydantic import BaseModel
+
                 model_cls = BaseModel
 
             mgr.register_tool(

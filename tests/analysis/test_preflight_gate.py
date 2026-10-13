@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
 from analysis.stages.preflight_gate import PreFlightTurnGate, EMPIRICAL_ACTIVE_MEDIANS
 
+
 @pytest.mark.asyncio
 async def test_preflight_active_hours_normal_spread():
     # Active hour: 14:30 UTC
@@ -23,6 +24,7 @@ async def test_preflight_active_hours_normal_spread():
     )
     assert is_allowed is True
     assert reason is None
+
 
 @pytest.mark.asyncio
 async def test_preflight_active_hours_abnormal_spread():
@@ -44,6 +46,7 @@ async def test_preflight_active_hours_abnormal_spread():
     assert is_allowed is False
     assert "Abnormal active spread expansion" in reason
 
+
 @pytest.mark.asyncio
 async def test_preflight_rollover_window_blocks_fx():
     # Rollover window: 21:58 UTC
@@ -56,6 +59,7 @@ async def test_preflight_rollover_window_blocks_fx():
     )
     assert is_allowed is False
     assert "Rollover/Off-peak liquidity window" in reason
+
 
 @pytest.mark.asyncio
 async def test_preflight_rollover_window_allows_crypto():
@@ -77,6 +81,7 @@ async def test_preflight_rollover_window_allows_crypto():
     assert is_allowed is True
     assert reason is None
 
+
 @pytest.mark.asyncio
 async def test_preflight_stale_quote_blocks_turn():
     # Active hour, but tick is 240s old (exceeds 180s threshold)
@@ -97,6 +102,7 @@ async def test_preflight_stale_quote_blocks_turn():
     assert is_allowed is False
     assert "MT5 quote stale" in reason
 
+
 @pytest.mark.asyncio
 async def test_preflight_high_impact_news_freeze():
     # Active hour, spread normal, but near news
@@ -108,7 +114,9 @@ async def test_preflight_high_impact_news_freeze():
     mock_mt5.get_latest_tick = AsyncMock(return_value=mock_tick)
     mock_session = create_mock_async_session()
 
-    with patch.object(PreFlightTurnGate, "check_high_impact_news", AsyncMock(return_value=(True, "US Non-Farm Payrolls (USD)"))):
+    with patch.object(
+        PreFlightTurnGate, "check_high_impact_news", AsyncMock(return_value=(True, "US Non-Farm Payrolls (USD)"))
+    ):
         is_allowed, reason = await PreFlightTurnGate.evaluate_preconditions(
             session=mock_session,
             symbol="EURUSD",

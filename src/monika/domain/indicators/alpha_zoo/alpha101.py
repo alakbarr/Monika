@@ -44,7 +44,7 @@ from monika.domain.indicators.factor_primitives import (
 )
 def wq_alpha_001(df: pd.DataFrame) -> pd.Series:
     ret = delta(df["close"], 1) / df["close"].shift(1)
-    sq = np.sign(ret) * (ret ** 2)
+    sq = np.sign(ret) * (ret**2)
     am = sq.rolling(5, min_periods=5).apply(lambda x: np.argmax(x) if not np.isnan(x).any() else np.nan, raw=True)
     return am / 4.0 - 0.5
 

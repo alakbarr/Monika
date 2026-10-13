@@ -128,13 +128,18 @@ class RunCardGenerator:
         model_routing = {
             "primary_provider": llm_cfg.get("provider", def_prov),
             "fallback_provider": llm_cfg.get("fallback_provider", "openrouter"),
-            "fundamental": task_roles.get("stage1_fundamental", {}).get("primary") or models_cfg.get("fundamental", def_model),
+            "fundamental": task_roles.get("stage1_fundamental", {}).get("primary")
+            or models_cfg.get("fundamental", def_model),
             "debate_bull": task_roles.get("debate_bull", {}).get("primary") or models_cfg.get("debate_bull", def_model),
             "debate_bear": task_roles.get("debate_bear", {}).get("primary") or models_cfg.get("debate_bear", def_model),
-            "investment_judge": task_roles.get("debate_judge", {}).get("primary") or models_cfg.get("investment_judge", def_model),
-            "trade_reflection": task_roles.get("trade_reflection", {}).get("primary") or models_cfg.get("trade_reflection", def_model),
-            "risk_analysis": task_roles.get("risk_gate", {}).get("primary") or models_cfg.get("risk_analysis", def_model),
-            "macro_research": task_roles.get("macro_analyst", {}).get("primary") or models_cfg.get("macro_research", def_model),
+            "investment_judge": task_roles.get("debate_judge", {}).get("primary")
+            or models_cfg.get("investment_judge", def_model),
+            "trade_reflection": task_roles.get("trade_reflection", {}).get("primary")
+            or models_cfg.get("trade_reflection", def_model),
+            "risk_analysis": task_roles.get("risk_gate", {}).get("primary")
+            or models_cfg.get("risk_analysis", def_model),
+            "macro_research": task_roles.get("macro_analyst", {}).get("primary")
+            or models_cfg.get("macro_research", def_model),
         }
 
         # 4. Institutional Invariant Checklist
@@ -190,7 +195,14 @@ class RunCardGenerator:
         if not expected_sig:
             return False, "Run card is missing cryptographic signature."
 
-        required_keys = ["run_id", "timestamp", "git_info", "config_fingerprint", "model_routing", "invariant_checklist"]
+        required_keys = [
+            "run_id",
+            "timestamp",
+            "git_info",
+            "config_fingerprint",
+            "model_routing",
+            "invariant_checklist",
+        ]
         for k in required_keys:
             if k not in card_data:
                 return False, f"Run card is missing required field: '{k}'."

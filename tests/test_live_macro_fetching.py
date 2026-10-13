@@ -102,10 +102,12 @@ async def test_live_fed_net_liquidity(db_session_factory):
 
         assert res is not None
         assert res["net_liquidity_billions"] > 3000.0  # Fed Net Liquidity > $3 Trillion
-        assert res["walcl_billions"] > 5000.0          # Fed Assets > $5 Trillion
-        assert res["tga_billions"] > 100.0             # Treasury General Account > $100B
+        assert res["walcl_billions"] > 5000.0  # Fed Assets > $5 Trillion
+        assert res["tga_billions"] > 100.0  # Treasury General Account > $100B
         assert "regime" in res
-        print(f"\n[LIVE TEST] Fed Net Liquidity: ${res['net_liquidity_billions']:,.1f}B (WALCL=${res['walcl_billions']:,.1f}B, TGA=${res['tga_billions']:,.1f}B, RRP=${res['rrp_billions']:,.1f}B, Regime={res['regime']})")
+        print(
+            f"\n[LIVE TEST] Fed Net Liquidity: ${res['net_liquidity_billions']:,.1f}B (WALCL=${res['walcl_billions']:,.1f}B, TGA=${res['tga_billions']:,.1f}B, RRP=${res['rrp_billions']:,.1f}B, Regime={res['regime']})"
+        )
 
 
 @pytest.mark.asyncio
@@ -122,7 +124,9 @@ async def test_live_economic_report_decomposition(db_session_factory):
         core_cpi = next(c for c in cpi_components if "Core" in c["component_name"])
         assert headline_cpi["value_actual"] is not None
         assert core_cpi["value_actual"] is not None
-        print(f"\n[LIVE TEST] Ingested {len(cpi_components)} CPI components. Headline MoM={headline_cpi['value_actual']}%, Core MoM={core_cpi['value_actual']}%")
+        print(
+            f"\n[LIVE TEST] Ingested {len(cpi_components)} CPI components. Headline MoM={headline_cpi['value_actual']}%, Core MoM={core_cpi['value_actual']}%"
+        )
 
         # 2. NFP Breakdown
         nfp_components = await fetcher.fetch_and_store_report(report_type="NFP")
@@ -131,7 +135,9 @@ async def test_live_economic_report_decomposition(db_session_factory):
         unrate = next(c for c in nfp_components if "Unemployment" in c["component_name"])
         assert headline_nfp["value_actual"] is not None
         assert unrate["value_actual"] is not None
-        print(f"\n[LIVE TEST] Ingested {len(nfp_components)} NFP components. Payroll Change={headline_nfp['value_actual']}k, Unemployment Rate={unrate['value_actual']}%")
+        print(
+            f"\n[LIVE TEST] Ingested {len(nfp_components)} NFP components. Payroll Change={headline_nfp['value_actual']}k, Unemployment Rate={unrate['value_actual']}%"
+        )
 
 
 @pytest.mark.asyncio
@@ -148,7 +154,9 @@ async def test_live_central_bank_scraping(db_session_factory):
         assert fed_doc is not None
         assert len(fed_doc["full_text"]) > 100
         assert "hawkish_dovish_score" in fed_doc
-        print(f"\n[LIVE TEST] Federal Reserve Live Scrape: {fed_doc['title']}, Tone Score={fed_doc['hawkish_dovish_score']:+.2f}, URL={fed_doc['source_url']}")
+        print(
+            f"\n[LIVE TEST] Federal Reserve Live Scrape: {fed_doc['title']}, Tone Score={fed_doc['hawkish_dovish_score']:+.2f}, URL={fed_doc['source_url']}"
+        )
 
         # 2. ECB Live Scrape
         ecb_doc = await scraper.fetch_live_document(bank="ECB", doc_type="STATEMENT")
@@ -156,7 +164,9 @@ async def test_live_central_bank_scraping(db_session_factory):
             ecb_doc = await scraper.ingest_central_bank_document(bank="ECB", doc_type="STATEMENT")
         assert ecb_doc is not None
         assert len(ecb_doc["full_text"]) > 100
-        print(f"[LIVE TEST] ECB Live Scrape: {ecb_doc['title']}, Tone Score={ecb_doc['hawkish_dovish_score']:+.2f}, URL={ecb_doc['source_url']}")
+        print(
+            f"[LIVE TEST] ECB Live Scrape: {ecb_doc['title']}, Tone Score={ecb_doc['hawkish_dovish_score']:+.2f}, URL={ecb_doc['source_url']}"
+        )
 
         # 3. Bank of Japan Live Scrape
         boj_doc = await scraper.fetch_live_document(bank="BOJ", doc_type="STATEMENT")
@@ -164,7 +174,9 @@ async def test_live_central_bank_scraping(db_session_factory):
             boj_doc = await scraper.ingest_central_bank_document(bank="BOJ", doc_type="STATEMENT")
         assert boj_doc is not None
         assert len(boj_doc["full_text"]) > 100
-        print(f"[LIVE TEST] BoJ Live Scrape: {boj_doc['title']}, Tone Score={boj_doc['hawkish_dovish_score']:+.2f}, URL={boj_doc['source_url']}")
+        print(
+            f"[LIVE TEST] BoJ Live Scrape: {boj_doc['title']}, Tone Score={boj_doc['hawkish_dovish_score']:+.2f}, URL={boj_doc['source_url']}"
+        )
 
 
 @pytest.mark.asyncio
@@ -177,7 +189,9 @@ async def test_end_to_end_universal_macro_calculators(db_session_factory):
         decomp_analysis = await macro_analyzer.decompose_report(report_type="CPI")
         assert "headline" in decomp_analysis
         assert "institutional_verdict" in decomp_analysis
-        print(f"\n[LIVE TEST] Universal Macro Analyzer: Headline MoM={decomp_analysis['headline']['mom']}%, YoY={decomp_analysis['headline']['yoy']}%")
+        print(
+            f"\n[LIVE TEST] Universal Macro Analyzer: Headline MoM={decomp_analysis['headline']['mom']}%, YoY={decomp_analysis['headline']['yoy']}%"
+        )
         print(f"   Verdict: {decomp_analysis['institutional_verdict']['classification']}")
         print(f"   Rationale: {decomp_analysis['institutional_verdict']['rationale']}")
 
@@ -186,15 +200,20 @@ async def test_end_to_end_universal_macro_calculators(db_session_factory):
         net_liq_res = await liq_analyzer.analyze_fed_net_liquidity()
         assert "current_net_liquidity_billions" in net_liq_res
         assert "regime" in net_liq_res
-        print(f"[LIVE TEST] Universal Liquidity Analyzer: Net Liquidity=${net_liq_res['current_net_liquidity_billions']:,.1f}B ({net_liq_res['regime']})")
+        print(
+            f"[LIVE TEST] Universal Liquidity Analyzer: Net Liquidity=${net_liq_res['current_net_liquidity_billions']:,.1f}B ({net_liq_res['regime']})"
+        )
 
         stress_res = await liq_analyzer.analyze_credit_and_funding_stress()
         assert "hy_oas_bps" in stress_res
         assert "stress_regime" in stress_res
-        print(f"   Credit & Funding Stress: HY OAS={stress_res['hy_oas_bps']} bps, Status={stress_res['stress_regime']}")
+        print(
+            f"   Credit & Funding Stress: HY OAS={stress_res['hy_oas_bps']} bps, Status={stress_res['stress_regime']}"
+        )
 
         auction_res = await liq_analyzer.analyze_treasury_auction_demand(tenor="10Y")
         assert "high_stopping_yield" in auction_res
         assert "auction_health_verdict" in auction_res
-        print(f"   10Y Auction Analysis: Stopping Yield={auction_res['high_stopping_yield']}%, Verdict={auction_res['auction_health_verdict']['classification']}")
-
+        print(
+            f"   10Y Auction Analysis: Stopping Yield={auction_res['high_stopping_yield']}%, Verdict={auction_res['auction_health_verdict']['classification']}"
+        )

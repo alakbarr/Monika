@@ -124,7 +124,9 @@ class DiscordNotifier:
     async def _dispatch(self, payload: dict) -> bool:
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(self.webhook_url, json=payload, timeout=aiohttp.ClientTimeout(total=10.0)) as resp:
+                async with session.post(
+                    self.webhook_url, json=payload, timeout=aiohttp.ClientTimeout(total=10.0)
+                ) as resp:
                     if resp.status in (200, 204):
                         return True
                     else:

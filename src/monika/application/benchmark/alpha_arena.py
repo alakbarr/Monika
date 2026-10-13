@@ -3,6 +3,7 @@ Alpha Arena: Head-to-Head Tournament Engine for LLM Models & Strategies.
 Evaluates competitors on identical historical tick/candle windows using Elo ratings.
 Source: FinceptTerminal Alpha Arena
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import math
@@ -25,7 +26,7 @@ class ArenaMatchResult:
     competitor_a: str
     competitor_b: str
     winner: Optional[str]  # None for draw
-    score_a: float        # 1.0 = win, 0.5 = draw, 0.0 = loss
+    score_a: float  # 1.0 = win, 0.5 = draw, 0.0 = loss
     score_b: float
     elo_delta_a: float
     elo_delta_b: float
@@ -108,9 +109,7 @@ class AlphaArenaTournament:
         score_b = 1.0 - score_a
         winner = name_a if score_a == 1.0 else (name_b if score_b == 1.0 else None)
 
-        new_a, new_b, d_a, d_b = update_elo(
-            comp_a.elo, comp_b.elo, score_a=score_a, k=self.k_factor
-        )
+        new_a, new_b, d_a, d_b = update_elo(comp_a.elo, comp_b.elo, score_a=score_a, k=self.k_factor)
 
         # Update records
         comp_a.elo = new_a

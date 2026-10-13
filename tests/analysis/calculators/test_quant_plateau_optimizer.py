@@ -2,6 +2,7 @@
 Unit tests for QuantPlateauOptimizer.
 Verifies ParameterSpec sampling & perturbation, Plateau stability scoring, and DSR calculation.
 """
+
 import pytest
 import math
 from analysis.calculators.quant_plateau_optimizer import (

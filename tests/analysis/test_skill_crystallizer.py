@@ -7,7 +7,7 @@ from analysis.memory.skill_crystallizer import SkillCrystallizer
 @pytest.mark.asyncio
 async def test_skill_crystallizer_cluster():
     crystallizer = SkillCrystallizer(settings={"learning": {"min_crystallization_wins": 5}})
-    
+
     mock_session = create_mock_async_session()
     mock_r1 = MagicMock()
     mock_r1.symbol = "EURUSD"

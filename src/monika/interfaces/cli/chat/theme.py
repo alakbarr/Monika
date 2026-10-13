@@ -57,6 +57,7 @@ BOX_DOUBLE_BOTTOM_RIGHT = "╝"
 @dataclass
 class ChatPalette:
     """Color tokens tailored for interactive CLI chat."""
+
     primary: str = PHOSPHOR_AMBER
     accent: str = BRASS
     user: str = BRASS

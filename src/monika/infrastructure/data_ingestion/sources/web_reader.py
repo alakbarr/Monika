@@ -34,8 +34,19 @@ DEFAULT_HEADERS = {
 }
 
 DISALLOWED_TAGS = [
-    "script", "style", "nav", "header", "footer", "aside", "form",
-    "noscript", "svg", "button", "iframe", "menu", "template",
+    "script",
+    "style",
+    "nav",
+    "header",
+    "footer",
+    "aside",
+    "form",
+    "noscript",
+    "svg",
+    "button",
+    "iframe",
+    "menu",
+    "template",
 ]
 
 CHALLENGE_PHRASES = [
@@ -62,10 +73,7 @@ def is_challenge_or_empty(status: int, content: str = "", html: str = "") -> boo
         return True
     # Suspiciously empty text on rich JS/SPA document
     if len(content_lower.strip()) < 80 and (
-        "<script" in html_lower
-        or "id=\"root\"" in html_lower
-        or "id=\"app\"" in html_lower
-        or "cf-" in html_lower
+        "<script" in html_lower or 'id="root"' in html_lower or 'id="app"' in html_lower or "cf-" in html_lower
     ):
         return True
     return False
@@ -99,9 +107,7 @@ async def validate_url_ip(url: str) -> Optional[str]:
             return "Missing hostname in URL"
 
         loop = asyncio.get_running_loop()
-        addr_info = await loop.getaddrinfo(
-            hostname, None, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM
-        )
+        addr_info = await loop.getaddrinfo(hostname, None, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM)
         if not addr_info:
             return f"Could not resolve host '{hostname}'"
 
@@ -139,6 +145,7 @@ class WebReader:
         """Synchronously opens Chromium via BaseScraper, waits for load, and extracts HTML."""
         try:
             from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
+
             scraper = BaseScraper(headless=True, profile_name=None)
             self._active_scraper = scraper
             self._active_browser_pid = getattr(scraper, "browser_pid", None)
@@ -193,6 +200,7 @@ class WebReader:
             if active_pid is not None:
                 try:
                     from monika.infrastructure.data_ingestion.scrapers.base_scraper import kill_process_tree
+
                     kill_process_tree(active_pid)
                 except Exception as k_err:
                     logger.debug(f"Failed to kill timed out browser process: {k_err}")
@@ -203,23 +211,25 @@ class WebReader:
                 except Exception:
                     pass
             return None
+
     def _extract_pdf_content(self, url: str, raw_bytes: bytes) -> Optional[Dict[str, Any]]:
         """Extracts clean text from binary PDF payload using pypdf."""
         try:
             import io
             from pypdf import PdfReader
+
             reader = PdfReader(io.BytesIO(raw_bytes))
             pages_text = []
             for idx, page in enumerate(reader.pages[:30]):
                 text = page.extract_text() or ""
                 if text.strip():
-                    pages_text.append(f"--- Halaman {idx+1} ---\n{text.strip()}")
+                    pages_text.append(f"--- Halaman {idx + 1} ---\n{text.strip()}")
             full_text = "\n\n".join(pages_text)
             return {
                 "success": True,
                 "url": url,
                 "title": f"PDF Document ({len(reader.pages)} pages)",
-                "content": full_text[:self.max_chars],
+                "content": full_text[: self.max_chars],
                 "engine": "pypdf",
                 "pages_count": len(reader.pages),
             }
@@ -232,7 +242,9 @@ class WebReader:
         try:
             wayback_url = f"https://web.archive.org/web/2/{url}"
             logger.info(f"WebReader attempting archive fallback via Wayback Machine: {wayback_url}")
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10), headers=DEFAULT_HEADERS) as session:
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=10), headers=DEFAULT_HEADERS
+            ) as session:
                 async with session.get(wayback_url) as resp:
                     if resp.status == 200:
                         html = await resp.text(errors="replace")
@@ -308,7 +320,9 @@ class WebReader:
                         async for chunk in response.content.iter_chunked(64 * 1024):
                             total_bytes += len(chunk)
                             if total_bytes > self.max_body_bytes:
-                                logger.warning(f"WebReader response body exceeded {self.max_body_bytes} bytes limit for {current_url}")
+                                logger.warning(
+                                    f"WebReader response body exceeded {self.max_body_bytes} bytes limit for {current_url}"
+                                )
                                 return {
                                     "success": False,
                                     "url": clean_url,
@@ -323,7 +337,11 @@ class WebReader:
                         content_type = response.headers.get("Content-Type", "").lower()
 
                         # 1. PDF Document Extraction via pypdf
-                        if "application/pdf" in content_type or clean_url.lower().endswith(".pdf") or raw_bytes.startswith(b"%PDF"):
+                        if (
+                            "application/pdf" in content_type
+                            or clean_url.lower().endswith(".pdf")
+                            or raw_bytes.startswith(b"%PDF")
+                        ):
                             pdf_res = self._extract_pdf_content(clean_url, raw_bytes)
                             if pdf_res:
                                 return pdf_res
@@ -335,8 +353,12 @@ class WebReader:
                             html = raw_bytes.decode("utf-8", errors="replace")
 
                         content_res = self._extract_content(clean_url, html)
-                        if self.browser_fallback and is_challenge_or_empty(response.status, content_res.get("content", ""), html):
-                            logger.info(f"WebReader detected challenge or empty SPA in HTTP response for {clean_url}, trying browser fallback")
+                        if self.browser_fallback and is_challenge_or_empty(
+                            response.status, content_res.get("content", ""), html
+                        ):
+                            logger.info(
+                                f"WebReader detected challenge or empty SPA in HTTP response for {clean_url}, trying browser fallback"
+                            )
                             browser_res = await self._read_url_with_browser(current_url)
                             if browser_res and browser_res.get("success") and browser_res.get("content"):
                                 return browser_res
@@ -422,7 +444,7 @@ class WebReader:
         # Truncate to max_chars
         is_truncated = len(extracted_text) > self.max_chars
         if is_truncated:
-            extracted_text = extracted_text[:self.max_chars] + "\n\n... [Content Truncated]"
+            extracted_text = extracted_text[: self.max_chars] + "\n\n... [Content Truncated]"
 
         return {
             "success": True,

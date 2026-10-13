@@ -13,12 +13,12 @@ logger = logging.getLogger("TradingAgent.TimesFMAlpha")
 class TimesFMAlphaCalculator:
     """
     Kalkulator Alpha Mikrostruktur berbasis Quantile Asymmetry dari Google TimesFM 3.0.
-    
+
     Formula:
       Upper Expansion = Q90 - Q50
       Lower Expansion = Q50 - Q10
       Skew Ratio = Upper Expansion / Lower Expansion
-    
+
     Interpretasi:
       - Skew Ratio >= 1.35: Probabilitas ekspansi condong ke atas (BULLISH_EXPANSION)
       - Skew Ratio <= 0.75: Probabilitas ekspansi condong ke bawah (BEARISH_EXPANSION)
@@ -30,17 +30,15 @@ class TimesFMAlphaCalculator:
 
     @classmethod
     def calculate_skew_from_quantiles(
-        cls,
-        quantiles: Dict[str, Union[List[float], float]],
-        current_price: Optional[float] = None
+        cls, quantiles: Dict[str, Union[List[float], float]], current_price: Optional[float] = None
     ) -> Dict[str, Any]:
         """
         Hitung skew ratio dari kamus kuantil TimesFM.
-        
+
         Args:
             quantiles: Dict berisi key 'q10', 'q50', 'q90' (baik float tunggal atau list sepanjang horizon).
             current_price: Harga penutupan terkini (opsional) untuk validasi drift.
-            
+
         Returns:
             Dict hasil analisis skewness kuantil TimesFM.
         """

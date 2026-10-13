@@ -111,7 +111,7 @@ async def test_cmd_pair_lifecycle(temp_pairing_mgr):
     # We reconstruct the raw code or extract it from generate_otp_code mock if needed,
     # but we can test verify_pairing_code directly with a fresh code
     user_msg, raw_code = temp_pairing_mgr.create_pairing_request("telegram", str(stranger_id), username=username)
-    
+
     update3 = make_mock_update(stranger_id, f"/pair {raw_code}", username=username)
     ctx3 = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
     ctx3.args = [raw_code]

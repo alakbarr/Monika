@@ -28,5 +28,5 @@ def is_valid_direction(direction: Optional[str]) -> bool:
     try:
         normalize_direction(direction)
         return True
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return False

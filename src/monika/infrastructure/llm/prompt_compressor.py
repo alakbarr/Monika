@@ -4,6 +4,7 @@ tanpa kehilangan informasi kritis untuk keputusan trading.
 
 Token estimation: ~4 chars per token (industry standard).
 """
+
 import logging
 import json
 from typing import Any, List, Dict, Union, Optional
@@ -26,16 +27,66 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
         return text
 
     PROTECTED_KEYS = {
-        "symbol", "price", "current_price", "atr", "atr_14", "adr", "stop_loss", "sl",
-        "take_profit", "tp", "entry", "entry_price", "invalidation", "invalidation_price",
-        "confluence", "confluence_score", "status", "open_positions", "balance", "equity",
-        "margin", "high_impact_events", "ticket", "decision", "indicators", "smc_zones",
-        "order_blocks", "fvg_zones", "liquidity_zones", "swing_points", "structure_breaks",
-        "levels", "optimal_levels", "fibonacci", "rationale", "bias", "direction",
-        "currency_bias", "risk_sentiment", "confidence", "market_regime", "macro_regime",
-        "real_us10y_yield_pct", "gold_macro_bias", "risk_multiplier", "adjusted_entry",
-        "adjusted_sl", "adjusted_tp", "market_chronicle", "macro_reality", "fvg", "ob",
-        "bos", "choch", "liquidity_sweep", "candles", "ohlcv", "price_history", "history", "rates"
+        "symbol",
+        "price",
+        "current_price",
+        "atr",
+        "atr_14",
+        "adr",
+        "stop_loss",
+        "sl",
+        "take_profit",
+        "tp",
+        "entry",
+        "entry_price",
+        "invalidation",
+        "invalidation_price",
+        "confluence",
+        "confluence_score",
+        "status",
+        "open_positions",
+        "balance",
+        "equity",
+        "margin",
+        "high_impact_events",
+        "ticket",
+        "decision",
+        "indicators",
+        "smc_zones",
+        "order_blocks",
+        "fvg_zones",
+        "liquidity_zones",
+        "swing_points",
+        "structure_breaks",
+        "levels",
+        "optimal_levels",
+        "fibonacci",
+        "rationale",
+        "bias",
+        "direction",
+        "currency_bias",
+        "risk_sentiment",
+        "confidence",
+        "market_regime",
+        "macro_regime",
+        "real_us10y_yield_pct",
+        "gold_macro_bias",
+        "risk_multiplier",
+        "adjusted_entry",
+        "adjusted_sl",
+        "adjusted_tp",
+        "market_chronicle",
+        "macro_reality",
+        "fvg",
+        "ob",
+        "bos",
+        "choch",
+        "liquidity_sweep",
+        "candles",
+        "ohlcv",
+        "price_history",
+        "history",
+        "rates",
     }
 
     def _prune_data_structure(data: Any, target_char_budget: int) -> Any:
@@ -67,7 +118,8 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
                 is_zone_list = any(k in first for k in ("price_high", "price_low", "zone_type", "type"))
                 if is_zone_list:
                     unmitigated = [
-                        d for d in data
+                        d
+                        for d in data
                         if isinstance(d, dict) and not d.get("is_mitigated", False) and not d.get("mitigated", False)
                     ]
                     candidates = unmitigated if unmitigated else data
@@ -80,20 +132,20 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
                 if is_ohlcv:
                     if len(json.dumps(data, default=str)) <= target_char_budget:
                         return data
-                    
+
                     # Need compression to fit budget
                     highest_bar = max(data, key=lambda x: float(x.get("high", 0.0)))
                     lowest_bar = min(data, key=lambda x: float(x.get("low", float("inf"))))
                     first_bar = data[0]
                     recent = data[-4:] if len(data) >= 4 else data
-                    
+
                     # Core structural anchors that must never be dropped
                     anchors = {id(b): b for b in [first_bar, highest_bar, lowest_bar] + recent}
-                    
+
                     # Estimate how many total bars fit in target_char_budget
                     avg_bar_size = max(1, len(json.dumps(first, default=str)) + 2)
                     target_count = max(len(anchors), target_char_budget // avg_bar_size)
-                    
+
                     if len(data) > target_count:
                         # Stride subsampling across full dataset to preserve continuity
                         stride = max(1, len(data) // target_count)
@@ -105,21 +157,24 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
                         candidates = sorted(sampled, key=lambda x: str(x.get("time") or ""))
                     else:
                         candidates = list(data)
-                        
-                    while len(candidates) > len(anchors) and len(json.dumps(candidates, default=str)) > target_char_budget:
+
+                    while (
+                        len(candidates) > len(anchors) and len(json.dumps(candidates, default=str)) > target_char_budget
+                    ):
                         # Drop non-anchor older bars first
                         non_anchor_idx = [i for i, b in enumerate(candidates) if id(b) not in anchors]
                         if non_anchor_idx:
                             candidates.pop(non_anchor_idx[0])
                         else:
                             break
-                            
+
                     return sorted(candidates, key=lambda x: str(x.get("time") or ""))
 
                 # C. Economic calendar: strictly prioritize HIGH/MEDIUM impact
                 if any("impact" in d for d in data if isinstance(d, dict)):
                     high_med = [
-                        d for d in data
+                        d
+                        for d in data
                         if isinstance(d, dict) and str(d.get("impact", "")).upper() in ("HIGH", "MEDIUM", "CRITICAL")
                     ]
                     candidates = high_med if high_med else data
@@ -154,7 +209,8 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
 
     # 2. Embedded JSON inside text / prompt wrapper (e.g. "Prompt:\n{...}")
     import re
-    match = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])', text)
+
+    match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", text)
     if match:
         start_idx, end_idx = match.span()
         prefix = text[:start_idx]
@@ -173,21 +229,21 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
 
     # 3. Non-JSON text fallback: clean boundary cut at newline or sentence
     # SOTA Section Protection: Preserve critical tail blocks like [STRESS TEST], [INVALIDATION], and [ACTIVE MACRO CHRONICLE]
-    stress_match = re.search(r'\[STRESS TEST:[\s\S]*?\]', text)
+    stress_match = re.search(r"\[STRESS TEST:[\s\S]*?\]", text)
     stress_block = stress_match.group(0) if stress_match else ""
 
-    inval_match = re.search(r'\[INVALIDATION:[\s\S]*?\]', text)
+    inval_match = re.search(r"\[INVALIDATION:[\s\S]*?\]", text)
     inval_block = inval_match.group(0) if inval_match else ""
 
-    chronicle_match = re.search(r'\[ACTIVE MACRO (?:CHRONICLE|REALITY):[\s\S]*?\]', text)
+    chronicle_match = re.search(r"\[ACTIVE MACRO (?:CHRONICLE|REALITY):[\s\S]*?\]", text)
     chronicle_block = chronicle_match.group(0) if chronicle_match else ""
 
     protected_tail = ""
-    if stress_block and stress_block not in text[:max_chars // 2]:
+    if stress_block and stress_block not in text[: max_chars // 2]:
         protected_tail += "\n" + stress_block
-    if inval_block and inval_block not in text[:max_chars // 2]:
+    if inval_block and inval_block not in text[: max_chars // 2]:
         protected_tail += "\n" + inval_block
-    if chronicle_block and chronicle_block not in text[:max_chars // 2]:
+    if chronicle_block and chronicle_block not in text[: max_chars // 2]:
         protected_tail += "\n" + chronicle_block
 
     budget_for_body = max_chars - len(protected_tail) - 50
@@ -199,7 +255,7 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
         else:
             last_dot = safe_cut.rfind(".")
             if last_dot > budget_for_body // 2:
-                safe_cut = safe_cut[:last_dot + 1]
+                safe_cut = safe_cut[: last_dot + 1]
         return safe_cut + "\n[TRUNCATED — budget exceeded]" + protected_tail
 
     safe_cut = text[:max_chars]
@@ -209,9 +265,8 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
     else:
         last_dot = safe_cut.rfind(".")
         if last_dot > max_chars // 2:
-            safe_cut = safe_cut[:last_dot + 1]
+            safe_cut = safe_cut[: last_dot + 1]
     return safe_cut + "\n[TRUNCATED — budget exceeded]"
-
 
 
 class PromptBundleCompressor:
@@ -227,6 +282,7 @@ class PromptBundleCompressor:
         """
         try:
             from monika.infrastructure.llm.llmlingua_compressor import AdaptiveLLMLinguaCompressor
+
             return AdaptiveLLMLinguaCompressor.get_instance().compress_text(text, rate=rate)
         except Exception as e:
             logger.debug(f"Adaptive LLMLingua compression fallback: {e}")
@@ -240,7 +296,7 @@ class PromptBundleCompressor:
         recent_count = min(10, max_bars // 2)
         recent = bars[-recent_count:]
         older = bars[:-recent_count]
-        
+
         remaining_slots = max_bars - recent_count
         if older and remaining_slots > 0:
             stride = max(1, (len(older) + remaining_slots - 1) // remaining_slots)
@@ -248,8 +304,8 @@ class PromptBundleCompressor:
             combined = subsampled_older + recent
         else:
             combined = recent
-            
-        return sorted(combined, key=lambda b: str(b.get('time', '')))
+
+        return sorted(combined, key=lambda b: str(b.get("time", "")))
 
     def compress_indicators(self, indicators: Dict[str, Any]) -> Dict[str, Any]:
         """Drop neutral indicators. Keep extreme/decisive values only."""
@@ -262,29 +318,29 @@ class PromptBundleCompressor:
                 continue
             try:
                 val = float(value)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 compressed[key] = value
                 continue
 
             k_lower = key.lower()
             # Keep RSI if extreme
-            if 'rsi' in k_lower:
+            if "rsi" in k_lower:
                 if val < 35 or val > 65:
                     compressed[key] = value
             # Keep MACD
-            elif 'macd' in k_lower:
+            elif "macd" in k_lower:
                 compressed[key] = value
             # Keep BBands
-            elif 'bb' in k_lower or 'band' in k_lower:
+            elif "bb" in k_lower or "band" in k_lower:
                 compressed[key] = value
             # Keep SMAs/EMAs for trend
-            elif 'sma' in k_lower or 'ema' in k_lower:
+            elif "sma" in k_lower or "ema" in k_lower:
                 compressed[key] = value
             # Keep ADX / ATR
-            elif 'adx' in k_lower or 'atr' in k_lower:
+            elif "adx" in k_lower or "atr" in k_lower:
                 compressed[key] = value
             # Drop neutral stochastics
-            elif 'stoch' in k_lower:
+            elif "stoch" in k_lower:
                 if val <= 25 or val >= 75:
                     compressed[key] = value
             else:
@@ -308,13 +364,13 @@ class PromptBundleCompressor:
             high_critical = [e for e in events if impact_map.get(str(e.get("impact", "")).lower(), 0) >= 3]
             medium_impact = [e for e in events if impact_map.get(str(e.get("impact", "")).lower(), 0) == 2]
             low_impact = [e for e in events if impact_map.get(str(e.get("impact", "")).lower(), 0) <= 1]
-            
+
             selected_events = high_critical + medium_impact
             if len(selected_events) < 15:
-                selected_events += low_impact[:(15 - len(selected_events))]
+                selected_events += low_impact[: (15 - len(selected_events))]
             elif len(selected_events) > 20:
                 selected_events = selected_events[:20]
-                
+
             pruned["economic_calendar"] = dict(ec)
             pruned["economic_calendar"]["events"] = selected_events
 
@@ -323,8 +379,12 @@ class PromptBundleCompressor:
         if isinstance(news, dict) and isinstance(news.get("items"), list) and len(news["items"]) > 10:
             items = news["items"]
             breaking_high = [
-                i for i in items 
-                if (isinstance(i, dict) and (i.get("is_breaking") or str(i.get("impact", "")).lower() in ("high", "critical")))
+                i
+                for i in items
+                if (
+                    isinstance(i, dict)
+                    and (i.get("is_breaking") or str(i.get("impact", "")).lower() in ("high", "critical"))
+                )
             ]
             others = [i for i in items if i not in breaking_high]
             selected_items = breaking_high + others
@@ -406,7 +466,9 @@ class PromptBundleCompressor:
                     in_price = True
                     out_lines.append(line)
                     price_buf = []
-                elif in_price and (line.startswith("──") or line.startswith("###") or line.startswith("GET ") or not line.strip()):
+                elif in_price and (
+                    line.startswith("──") or line.startswith("###") or line.startswith("GET ") or not line.strip()
+                ):
                     if price_buf:
                         kept = price_buf[-12:] if len(price_buf) > 12 else price_buf
                         out_lines.extend(kept)
@@ -486,7 +548,9 @@ class PromptBundleCompressor:
 
         return json.dumps(pruned, default=str)
 
-    def compress_stage2_bundle(self, bundle: Union[str, Dict[str, Any]], symbol: str = "", max_tokens: int = 8000) -> str:
+    def compress_stage2_bundle(
+        self, bundle: Union[str, Dict[str, Any]], symbol: str = "", max_tokens: int = 8000
+    ) -> str:
         """Kompres Stage 2 per-asset data bundle tanpa pernah memotong data mandatory (ADR, PI, Alpha Lessons)."""
         if not bundle:
             return ""

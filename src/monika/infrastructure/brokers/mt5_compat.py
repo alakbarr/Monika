@@ -264,29 +264,33 @@ def is_native_mt5_available() -> bool:
         return False
     try:
         import MetaTrader5
+
         return True
-    except (ImportError, Exception):
+    except ImportError, Exception:
         return False
 
 
 def is_mt5linux_available() -> bool:
     """Mengecek apakah paket RPC bridge (rpyc, pymt5linux, atau mt5linux) tersedia."""
     try:
-        import rpyc 
+        import rpyc
+
         return True
-    except (ImportError, SyntaxError, Exception):
+    except ImportError, SyntaxError, Exception:
         pass
 
     try:
         import pymt5linux
+
         return True
-    except (ImportError, SyntaxError, Exception):
+    except ImportError, SyntaxError, Exception:
         pass
 
     try:
         import mt5linux
+
         return True
-    except (ImportError, SyntaxError, Exception):
+    except ImportError, SyntaxError, Exception:
         return False
 
 
@@ -314,6 +318,7 @@ class MT5BridgeProxy:
         # 1. Direct RPyC classic client (universal, zero external quirks)
         try:
             import rpyc
+
             conn = rpyc.classic.connect(self.host, self.port)
             self._bridge_client = conn.modules.MetaTrader5
             logger.info(f"[MT5Bridge] Connected via direct RPyC MetaTrader5 proxy -> {self.host}:{self.port}")
@@ -324,20 +329,22 @@ class MT5BridgeProxy:
         # 2. Try pymt5linux (modern, maintained)
         try:
             from pymt5linux import MetaTrader5 as PyMT5LinuxBridge
+
             self._bridge_client = PyMT5LinuxBridge(host=self.host, port=self.port)
             logger.info(f"[MT5Bridge] Initialized pymt5linux client -> {self.host}:{self.port}")
             return self._bridge_client
-        except (ImportError, SyntaxError, Exception):
+        except ImportError, SyntaxError, Exception:
             pass
 
         # 3. Try mt5linux (legacy)
         try:
             import importlib
+
             MT5LinuxBridge = importlib.import_module("mt5linux").MetaTrader5
             self._bridge_client = MT5LinuxBridge(host=self.host, port=self.port)
             logger.info(f"[MT5Bridge] Initialized mt5linux client -> {self.host}:{self.port}")
             return self._bridge_client
-        except (ImportError, SyntaxError, Exception):
+        except ImportError, SyntaxError, Exception:
             pass
 
         msg = (
@@ -517,6 +524,7 @@ def get_mt5_module(host: Optional[str] = None, port: Optional[int] = None) -> An
     if is_native_mt5_available():
         try:
             import MetaTrader5 as native_mt5
+
             _active_mt5_module = native_mt5
             logger.info("[MT5Compat] Using native MetaTrader5 C-extension on Windows.")
             return _active_mt5_module
@@ -526,7 +534,9 @@ def get_mt5_module(host: Optional[str] = None, port: Optional[int] = None) -> An
     # 2. Linux VPS Bridge (mt5linux)
     if is_mt5linux_available():
         _active_mt5_module = MT5BridgeProxy(host=host, port=port)
-        logger.info(f"[MT5Compat] Using mt5linux RPC bridge proxy ({_active_mt5_module.host}:{_active_mt5_module.port}).")
+        logger.info(
+            f"[MT5Compat] Using mt5linux RPC bridge proxy ({_active_mt5_module.host}:{_active_mt5_module.port})."
+        )
         return _active_mt5_module
 
     # 3. Fallback Module

@@ -13,7 +13,10 @@ Decomposed sub-modules of the RiskGate node architecture:
 """
 
 from monika.application.graph.nodes.risk.level_synthesizer import _safe_num, resolve_and_repair_levels
-from monika.application.graph.nodes.risk.portfolio_synthesis import ai_portfolio_synthesis, apply_portfolio_synthesis_reduction
+from monika.application.graph.nodes.risk.portfolio_synthesis import (
+    ai_portfolio_synthesis,
+    apply_portfolio_synthesis_reduction,
+)
 from monika.application.graph.nodes.risk.proposal_notifier import send_proposal_notifications
 from monika.application.graph.nodes.risk.quant_arbitration import run_quant_arbitration
 from monika.application.graph.nodes.risk.rejection_auditor import audit_trade_rejection

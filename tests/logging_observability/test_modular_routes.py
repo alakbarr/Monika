@@ -142,7 +142,10 @@ def test_skills_catalog_endpoint():
     """Verify /api/skills responds with skills list."""
     client = TestClient(app)
     with patch("logging_observability.dashboard.routes.intelligence.list_skills", return_value=["test_skill"]):
-        with patch("logging_observability.dashboard.routes.intelligence.get_skill_metadata", return_value={"description": "Test"}):
+        with patch(
+            "logging_observability.dashboard.routes.intelligence.get_skill_metadata",
+            return_value={"description": "Test"},
+        ):
             response = client.get("/api/skills")
             assert response.status_code == 200
             data = response.json()
@@ -232,9 +235,10 @@ def test_market_structure_endpoint():
 def test_trade_trajectories_endpoint():
     """Verify GET /api/observability/trajectories returns records from TradeTrajectoryLogger."""
     client = TestClient(app)
-    with patch("benchmark.trade_trajectory_logger.TradeTrajectoryLogger.load_recent_trajectories", return_value=[
-        {"symbol": "EURUSD", "decision": "BUY", "ticket": 12345, "timestamp": "2026-09-24T00:00:00Z"}
-    ]):
+    with patch(
+        "benchmark.trade_trajectory_logger.TradeTrajectoryLogger.load_recent_trajectories",
+        return_value=[{"symbol": "EURUSD", "decision": "BUY", "ticket": 12345, "timestamp": "2026-09-24T00:00:00Z"}],
+    ):
         response = client.get("/api/observability/trajectories?limit=10")
         assert response.status_code == 200
         data = response.json()
@@ -252,7 +256,7 @@ def test_cycle_decision_lineage_endpoint():
         "total_events": 2,
         "events": [
             {"seq": 1, "event_type": "cycle/start", "chain_hash": "hash1"},
-            {"seq": 2, "event_type": "order/fill", "chain_hash": "hash2", "source_event_seqs": [1]}
+            {"seq": 2, "event_type": "order/fill", "chain_hash": "hash2", "source_event_seqs": [1]},
         ],
         "start_time": "2026-09-24T00:00:00Z",
         "end_time": "2026-09-24T00:05:00Z",
@@ -312,6 +316,7 @@ async def test_health_diagnostics_with_raw_string_timestamps():
     class FakeScalarResult:
         def __init__(self, val):
             self._val = val
+
         def scalar_one_or_none(self):
             return self._val
 
@@ -351,7 +356,3 @@ async def test_health_diagnostics_with_raw_string_timestamps():
         assert diag["data_freshness"]["vix_days_old"] is not None
         assert diag["data_freshness"]["cot_days_old"] is not None
         assert diag["api_cost_ytd_usd"] == 12.34
-
-
-
-

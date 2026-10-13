@@ -31,7 +31,6 @@ logger = logging.getLogger("TradingAgent.Agent.SystemAgentLoop")
 from monika.application.scheduler.adhoc_proxy import AdHocSchedulerProxy  # noqa: F401 (re-exported)
 
 
-
 class SystemAgentLoop:
     """
     Central System Agent Loop for conversational autonomy and ad-hoc pipeline execution.
@@ -55,19 +54,20 @@ class SystemAgentLoop:
     ) -> Dict[str, Any]:
         """
         Mengeksekusi siklus analisis LangGraph ad-hoc terisolasi untuk satu atau beberapa simbol.
-        
+
         Args:
             symbol: Simbol instrumen (misal 'XAUUSD', 'EURUSD, GBPUSD', atau ['EURUSD', 'BTCUSD']).
             progress_callback: Callback asinkron opsional untuk update progres ke chat.
             custom_context: Konteks instruksi tambahan dari user.
-            
+
         Returns:
             Dict berisi detail keputusan, parameter trading, tesis debat, dan ringkasan teks.
         """
         import re
+
         raw_tokens: List[str] = []
         if isinstance(symbol, str):
-            raw_tokens = [s.strip() for s in re.split(r'[,;\s]+', symbol.strip()) if s.strip()]
+            raw_tokens = [s.strip() for s in re.split(r"[,;\s]+", symbol.strip()) if s.strip()]
         elif isinstance(symbol, (list, tuple, set)):
             raw_tokens = [str(s).strip() for s in symbol if str(s).strip()]
 
@@ -83,7 +83,9 @@ class SystemAgentLoop:
         if len(cleaned_symbols) > 1:
             if progress_callback:
                 try:
-                    await progress_callback(f" Memulai analisis ad-hoc paralel untuk {len(cleaned_symbols)} instrumen: *{', '.join(cleaned_symbols)}*...")
+                    await progress_callback(
+                        f" Memulai analisis ad-hoc paralel untuk {len(cleaned_symbols)} instrumen: *{', '.join(cleaned_symbols)}*..."
+                    )
                 except Exception:
                     pass
 
@@ -184,7 +186,9 @@ class SystemAgentLoop:
 
             if progress_callback:
                 try:
-                    await progress_callback(f"[LAPORAN] Menjalankan pipeline multi-agent (Teknikal, Makro, Sentimen & Debat) untuk *{sym_clean}*...")
+                    await progress_callback(
+                        f"[LAPORAN] Menjalankan pipeline multi-agent (Teknikal, Makro, Sentimen & Debat) untuk *{sym_clean}*..."
+                    )
                 except Exception:
                     pass
 
@@ -198,7 +202,9 @@ class SystemAgentLoop:
             investment_verdicts = final_state.get("investment_verdicts", {})
             verdict = investment_verdicts.get(sym_clean, {})
 
-            decision = str(analysis.get("decision") or verdict.get("final_decision") or verdict.get("action") or "WAIT").upper()
+            decision = str(
+                analysis.get("decision") or verdict.get("final_decision") or verdict.get("action") or "WAIT"
+            ).upper()
             confidence = float(analysis.get("confidence") or 0.0)
             entry_price = analysis.get("entry_price") or analysis.get("current_price")
             stop_loss = analysis.get("stop_loss")
@@ -207,15 +213,34 @@ class SystemAgentLoop:
             rationale = analysis.get("rationale") or analysis.get("notes") or "Analisis ad-hoc selesai."
 
             # Ekstraksi thesis debat dengan fallback multi-kunci (P5.4 & Q36)
-            bull_raw = debate.get("verified_bull_claim") or debate.get("bull_thesis") or debate.get("bull_case") or debate.get("bull_arguments") or ""
+            bull_raw = (
+                debate.get("verified_bull_claim")
+                or debate.get("bull_thesis")
+                or debate.get("bull_case")
+                or debate.get("bull_arguments")
+                or ""
+            )
             if isinstance(bull_raw, dict):
-                bull_thesis = bull_raw.get("thesis") or bull_raw.get("core_argument") or bull_raw.get("argument") or str(bull_raw)
+                bull_thesis = (
+                    bull_raw.get("thesis") or bull_raw.get("core_argument") or bull_raw.get("argument") or str(bull_raw)
+                )
             else:
                 bull_thesis = str(bull_raw) if bull_raw else ""
 
-            bear_raw = debate.get("bear_dissent") or debate.get("bear_thesis") or debate.get("bear_case") or debate.get("bear_arguments") or ""
+            bear_raw = (
+                debate.get("bear_dissent")
+                or debate.get("bear_thesis")
+                or debate.get("bear_case")
+                or debate.get("bear_arguments")
+                or ""
+            )
             if isinstance(bear_raw, dict):
-                bear_thesis = bear_raw.get("dissent") or bear_raw.get("core_argument") or bear_raw.get("argument") or str(bear_raw)
+                bear_thesis = (
+                    bear_raw.get("dissent")
+                    or bear_raw.get("core_argument")
+                    or bear_raw.get("argument")
+                    or str(bear_raw)
+                )
             else:
                 bear_thesis = str(bear_raw) if bear_raw else ""
 
@@ -314,17 +339,21 @@ class SystemAgentLoop:
         if rr_ratio is not None:
             lines.append(f"• *Risk : Reward*: `1 : {rr_ratio}`")
 
-        lines.extend([
-            f"",
-            f" *Tesis & Catatan Strategi*:",
-            f"{rationale.strip()}",
-        ])
+        lines.extend(
+            [
+                f"",
+                f" *Tesis & Catatan Strategi*:",
+                f"{rationale.strip()}",
+            ]
+        )
 
         if bull_thesis or bear_thesis:
-            lines.extend([
-                f"",
-                f" *Debat Bull vs Bear (Divergensi: {divergence:.2f})*:",
-            ])
+            lines.extend(
+                [
+                    f"",
+                    f" *Debat Bull vs Bear (Divergensi: {divergence:.2f})*:",
+                ]
+            )
             if bull_thesis:
                 lines.append(f"[AKTIF] *Bull*: {bull_thesis[:200].strip()}...")
             if bear_thesis:

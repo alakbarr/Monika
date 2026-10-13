@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from monika.infrastructure.infra.paths import get_repo_root
+
 root_dir = get_repo_root()
 html_path = root_dir / "src" / "monika" / "application" / "benchmark" / "results" / "model_quadrant_analysis.html"
 if not html_path.exists():
@@ -97,7 +98,7 @@ def test_kpi_filter_synchronization(html_content):
 
 def test_csv_export_uses_blob_and_utf8_bom(html_content):
     # Export must use Blob with UTF-8 BOM (\uFEFF)
-    assert r"\uFEFF" in html_content or "\uFEFF" in html_content
+    assert r"\uFEFF" in html_content or "\ufeff" in html_content
     assert "new Blob(" in html_content
     assert "URL.createObjectURL(" in html_content
 
@@ -190,5 +191,3 @@ def test_zero_cost_display_and_search_by_id(html_content):
     # Table search must support searching by model ID
     assert "String(m.id) === query" in html_content
     assert "String(m.id) === query.replace('#', '')" in html_content
-
-

@@ -45,7 +45,7 @@ def test_credential_pool_permanent_failure():
 
     # Reporting auth failure permanently disables key
     pool.report_failure("openai", "mock_key_bad_auth", reason=FailoverReason.AUTH_PERMANENT)
-    
+
     for kh in pool._pools["openai"]:
         if kh.key == "mock_key_bad_auth":
             assert kh.is_active is False

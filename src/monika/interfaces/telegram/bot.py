@@ -21,7 +21,7 @@ Arsitektur Handler:
   /close <ticket> → [Admin] Tutup posisi tertentu (butuh konfirmasi)
   /run            → [Admin] Paksa eksekusi siklus analisis
   <teks>          → Mode chat dengan asisten AI (ChatAgent)
-  
+
 Callback Queries:
   confirm:<id>   → Eksekusi aksi pending
   reject:<id>    → Tolak aksi pending
@@ -57,6 +57,7 @@ from telegram.ext import (
 load_dotenv()
 logger = logging.getLogger("TradingAgent.Telegram")
 
+
 class IgnoreNetworkErrorFilter(logging.Filter):
     def filter(self, record):
         if record.exc_info:
@@ -65,6 +66,7 @@ class IgnoreNetworkErrorFilter(logging.Filter):
             if "NetworkError" in err_type or "Bad Gateway" in err_msg:
                 return False
         return True
+
 
 logging.getLogger("telegram.ext.Updater").addFilter(IgnoreNetworkErrorFilter())
 
@@ -84,13 +86,13 @@ class TelegramBot:
         execution_service=None,
         cycle_scheduler=None,
     ):
-        self.settings            = settings
-        self.execution_service   = execution_service
-        self.cycle_scheduler     = cycle_scheduler
+        self.settings = settings
+        self.execution_service = execution_service
+        self.cycle_scheduler = cycle_scheduler
         self._activity_log: Optional[Any] = None
         self.task_registry: Optional[Any] = None
 
-        self.token         = os.getenv("TELEGRAM_BOT_TOKEN", "")
+        self.token = os.getenv("TELEGRAM_BOT_TOKEN", "")
         self.admin_chat_id = int(os.getenv("TELEGRAM_ADMIN_CHAT_ID", 0) or 0)
 
         # Parse allowed users whitelist
@@ -108,11 +110,13 @@ class TelegramBot:
         from monika.interfaces.telegram.chat_agent import ChatAgent
         from monika.interfaces.telegram.topic_manager import TopicManager
         from monika.interfaces.telegram.voice_handler import VoiceHandler
+
         self._chat_agents: dict[Any, ChatAgent] = {}
         self.topic_manager = TopicManager()
         self.voice_handler = VoiceHandler(bot=self, settings=self.settings)
 
         from monika.interfaces.telegram.command_router import CommandRouter
+
         self._router = CommandRouter(
             admin_chat_id=self.admin_chat_id,
             allowed_user_ids=self.allowed_user_ids,
@@ -129,11 +133,7 @@ class TelegramBot:
             logger.warning("TELEGRAM_BOT_TOKEN not set — bot will not connect")
             self._app = None
         else:
-            self._app = (
-                ApplicationBuilder()
-                .token(self.token)
-                .build()
-            )
+            self._app = ApplicationBuilder().token(self.token).build()
             self._register_handlers()
 
     @property
@@ -150,42 +150,42 @@ class TelegramBot:
         if not app:
             return
         # Direct commands
-        app.add_handler(CommandHandler("start",     self._cmd_start))
-        app.add_handler(CommandHandler("help",      self._cmd_help))
-        app.add_handler(CommandHandler("status",    self._cmd_status))
+        app.add_handler(CommandHandler("start", self._cmd_start))
+        app.add_handler(CommandHandler("help", self._cmd_help))
+        app.add_handler(CommandHandler("status", self._cmd_status))
         app.add_handler(CommandHandler("positions", self._cmd_positions))
-        app.add_handler(CommandHandler("brief",     self._cmd_brief))
-        app.add_handler(CommandHandler("analysis",  self._cmd_analysis))
-        app.add_handler(CommandHandler("pipeline",  self._cmd_pipeline))
-        app.add_handler(CommandHandler("history",   self._cmd_history))
-        app.add_handler(CommandHandler("risk",      self._cmd_risk))
-        app.add_handler(CommandHandler("vix",       self._cmd_vix))
-        app.add_handler(CommandHandler("tokens",    self._cmd_tokens))
-        app.add_handler(CommandHandler("report",    self._cmd_report))
+        app.add_handler(CommandHandler("brief", self._cmd_brief))
+        app.add_handler(CommandHandler("analysis", self._cmd_analysis))
+        app.add_handler(CommandHandler("pipeline", self._cmd_pipeline))
+        app.add_handler(CommandHandler("history", self._cmd_history))
+        app.add_handler(CommandHandler("risk", self._cmd_risk))
+        app.add_handler(CommandHandler("vix", self._cmd_vix))
+        app.add_handler(CommandHandler("tokens", self._cmd_tokens))
+        app.add_handler(CommandHandler("report", self._cmd_report))
         app.add_handler(CommandHandler("tearsheet", self._cmd_tearsheet))
-        app.add_handler(CommandHandler("stats",     self._cmd_stats))
-        app.add_handler(CommandHandler("cost",      self._cmd_cost))
-        app.add_handler(CommandHandler("credits",   self._cmd_credits))
-        app.add_handler(CommandHandler("edge",      self._cmd_edge))
+        app.add_handler(CommandHandler("stats", self._cmd_stats))
+        app.add_handler(CommandHandler("cost", self._cmd_cost))
+        app.add_handler(CommandHandler("credits", self._cmd_credits))
+        app.add_handler(CommandHandler("edge", self._cmd_edge))
         app.add_handler(CommandHandler("calibration", self._cmd_calibration))
-        app.add_handler(CommandHandler("intel",       self._cmd_intel))
+        app.add_handler(CommandHandler("intel", self._cmd_intel))
         app.add_handler(CommandHandler("archive_intel", self._cmd_archive_intel))
-        app.add_handler(CommandHandler("regime",      self._cmd_regime))
-        app.add_handler(CommandHandler("audit",       self._cmd_audit))
-        app.add_handler(CommandHandler("pause",  self._cmd_pause))
+        app.add_handler(CommandHandler("regime", self._cmd_regime))
+        app.add_handler(CommandHandler("audit", self._cmd_audit))
+        app.add_handler(CommandHandler("pause", self._cmd_pause))
         app.add_handler(CommandHandler("resume", self._cmd_resume))
         app.add_handler(CommandHandler("suspend", self._cmd_suspend))
         app.add_handler(CommandHandler("unsuspend", self._cmd_unsuspend))
-        app.add_handler(CommandHandler("kill",   self._cmd_kill))
+        app.add_handler(CommandHandler("kill", self._cmd_kill))
         app.add_handler(CommandHandler("emergency", self._cmd_emergency))
-        app.add_handler(CommandHandler("close",  self._cmd_close))
+        app.add_handler(CommandHandler("close", self._cmd_close))
         app.add_handler(CommandHandler("closeall", self._cmd_closeall))
         app.add_handler(CommandHandler("override", self._cmd_override))
-        app.add_handler(CommandHandler("run",    self._cmd_run))
+        app.add_handler(CommandHandler("run", self._cmd_run))
         app.add_handler(CommandHandler("backtest", self._cmd_backtest))
         app.add_handler(CommandHandler("approve", self._cmd_approve))
-        app.add_handler(CommandHandler("reject",  self._cmd_reject))
-        app.add_handler(CommandHandler("steer",   self._cmd_steer))
+        app.add_handler(CommandHandler("reject", self._cmd_reject))
+        app.add_handler(CommandHandler("steer", self._cmd_steer))
         app.add_handler(CommandHandler("interrupt", self._cmd_interrupt))
         app.add_handler(CommandHandler("resume_proposals", self._cmd_resume_proposals))
         app.add_handler(CommandHandler("calendar", self._cmd_calendar))
@@ -197,63 +197,55 @@ class TelegramBot:
         app.add_handler(CommandHandler("plugin_toggle", self._cmd_plugin_toggle))
         app.add_handler(CommandHandler("memory", self._cmd_memory))
         app.add_handler(CommandHandler("strategies", self._cmd_strategies))
-        app.add_handler(CommandHandler("risk_deep",  self._cmd_risk_deep))
-        app.add_handler(CommandHandler("approvals",  self._cmd_approvals))
-        app.add_handler(CommandHandler("trailing",   self._cmd_trailing))
-        app.add_handler(CommandHandler("reconcile",  self._cmd_reconcile))
-        app.add_handler(CommandHandler("fedwatch",   self._cmd_fedwatch))
-        app.add_handler(CommandHandler("yields",     self._cmd_yields))
+        app.add_handler(CommandHandler("risk_deep", self._cmd_risk_deep))
+        app.add_handler(CommandHandler("approvals", self._cmd_approvals))
+        app.add_handler(CommandHandler("trailing", self._cmd_trailing))
+        app.add_handler(CommandHandler("reconcile", self._cmd_reconcile))
+        app.add_handler(CommandHandler("fedwatch", self._cmd_fedwatch))
+        app.add_handler(CommandHandler("yields", self._cmd_yields))
         app.add_handler(CommandHandler("macro_weekly", self._cmd_macro_weekly))
         app.add_handler(CommandHandler("weekly_macro", self._cmd_macro_weekly))
         app.add_handler(CommandHandler("fear_greed", self._cmd_fear_greed))
-        app.add_handler(CommandHandler("cot",        self._cmd_cot))
-        app.add_handler(CommandHandler("playbooks",   self._cmd_playbooks))
-        app.add_handler(CommandHandler("rollback",    self._cmd_rollback))
+        app.add_handler(CommandHandler("cot", self._cmd_cot))
+        app.add_handler(CommandHandler("playbooks", self._cmd_playbooks))
+        app.add_handler(CommandHandler("rollback", self._cmd_rollback))
         app.add_handler(CommandHandler("crystallized", self._cmd_crystallized))
-        app.add_handler(CommandHandler("cron",        self._cmd_cron))
+        app.add_handler(CommandHandler("cron", self._cmd_cron))
         app.add_handler(CommandHandler("counterfactual", self._cmd_counterfactual))
-        app.add_handler(CommandHandler("chronicle",     self._cmd_chronicle))
-        app.add_handler(CommandHandler("monte_carlo",   self._cmd_monte_carlo))
-        app.add_handler(CommandHandler("montecarlo",    self._cmd_monte_carlo))
-        app.add_handler(CommandHandler("export_chat",   self._cmd_export_chat))
-        app.add_handler(CommandHandler("export",        self._cmd_export_chat))
-        app.add_handler(CommandHandler("undo",          self._cmd_undo))
-        app.add_handler(CommandHandler("backup",        self._cmd_backup))
-        app.add_handler(CommandHandler("stress_test",   self._cmd_stress_test))
-        app.add_handler(CommandHandler("stresstest",    self._cmd_stress_test))
-        app.add_handler(CommandHandler("model",       self._cmd_model))
-        app.add_handler(CommandHandler("pair",        self._cmd_pair))
-        app.add_handler(CommandHandler("cancel",      self._cmd_cancel))
-        app.add_handler(CommandHandler("account",     self._cmd_account))
-        app.add_handler(CommandHandler("tasks",       self._cmd_tasks))
-        app.add_handler(CommandHandler("debate",      self._cmd_debate))
-        app.add_handler(CommandHandler("chart",       self._cmd_chart))
-        app.add_handler(CommandHandler("smc",         self._cmd_smc))
-        app.add_handler(CommandHandler("orders",      self._cmd_orders))
-        app.add_handler(CommandHandler("factors",     self._cmd_factors))
-        app.add_handler(CommandHandler("alpha",       self._cmd_alpha))
+        app.add_handler(CommandHandler("chronicle", self._cmd_chronicle))
+        app.add_handler(CommandHandler("monte_carlo", self._cmd_monte_carlo))
+        app.add_handler(CommandHandler("montecarlo", self._cmd_monte_carlo))
+        app.add_handler(CommandHandler("export_chat", self._cmd_export_chat))
+        app.add_handler(CommandHandler("export", self._cmd_export_chat))
+        app.add_handler(CommandHandler("undo", self._cmd_undo))
+        app.add_handler(CommandHandler("backup", self._cmd_backup))
+        app.add_handler(CommandHandler("stress_test", self._cmd_stress_test))
+        app.add_handler(CommandHandler("stresstest", self._cmd_stress_test))
+        app.add_handler(CommandHandler("model", self._cmd_model))
+        app.add_handler(CommandHandler("pair", self._cmd_pair))
+        app.add_handler(CommandHandler("cancel", self._cmd_cancel))
+        app.add_handler(CommandHandler("account", self._cmd_account))
+        app.add_handler(CommandHandler("tasks", self._cmd_tasks))
+        app.add_handler(CommandHandler("debate", self._cmd_debate))
+        app.add_handler(CommandHandler("chart", self._cmd_chart))
+        app.add_handler(CommandHandler("smc", self._cmd_smc))
+        app.add_handler(CommandHandler("orders", self._cmd_orders))
+        app.add_handler(CommandHandler("factors", self._cmd_factors))
+        app.add_handler(CommandHandler("alpha", self._cmd_alpha))
         # Model override commands → routed to chat with prefix intact
         for cmd in ("fast", "quick", "medium", "mid", "analyze", "analisis", "research"):
             app.add_handler(CommandHandler(cmd, self._handle_chat))
         # Callback queries (inline keyboards)
         app.add_handler(CallbackQueryHandler(self._handle_callback))
         # Free-text → AI chat
-        app.add_handler(MessageHandler(
-            filters.TEXT & ~filters.COMMAND, self._handle_chat
-        ))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_chat))
         # Photo / Image Vision → AI chat
-        app.add_handler(MessageHandler(
-            filters.PHOTO, self._handle_photo
-        ))
+        app.add_handler(MessageHandler(filters.PHOTO, self._handle_photo))
         # Document (PDF) auto-extraction → AI chat
-        app.add_handler(MessageHandler(
-            filters.Document.ALL, self._handle_document
-        ))
+        app.add_handler(MessageHandler(filters.Document.ALL, self._handle_document))
         # Voice memo & audio transcription
         if hasattr(self, "voice_handler") and self.voice_handler:
-            app.add_handler(MessageHandler(
-                filters.VOICE | filters.AUDIO, self.voice_handler.handle_voice
-            ))
+            app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, self.voice_handler.handle_voice))
         # Unknown slash command fallback with fuzzy suggestion
         app.add_handler(MessageHandler(filters.COMMAND, self._handle_unknown_command))
         # Centralized error handler
@@ -266,6 +258,7 @@ class TelegramBot:
             return
         try:
             from telegram.error import Conflict, NetworkError, TimedOut
+
             if isinstance(error, Conflict):
                 logger.warning(
                     f"[TelegramBot] Conflict detected (another instance running with same token): {error}. "
@@ -298,6 +291,7 @@ class TelegramBot:
                 )
             try:
                 from telegram import BotCommand
+
                 commands = [
                     BotCommand("status", "Show agent and portfolio status"),
                     BotCommand("positions", "List open trading positions"),
@@ -316,7 +310,7 @@ class TelegramBot:
             self._outbound_worker_task = asyncio.create_task(self._process_outbound_queue())
             await self._flush_offline_queue()
             logger.info(f"Telegram Bot online. Admin: {self.admin_chat_id}")
-            
+
             # Block until cancelled
             await asyncio.get_running_loop().create_future()
         except asyncio.CancelledError:
@@ -327,7 +321,7 @@ class TelegramBot:
                 self._outbound_worker_task.cancel()
                 try:
                     await self._outbound_worker_task
-                except (asyncio.CancelledError, Exception):
+                except asyncio.CancelledError, Exception:
                     pass
             if self._app:
                 try:
@@ -347,7 +341,7 @@ class TelegramBot:
             self._outbound_worker_task.cancel()
             try:
                 await self._outbound_worker_task
-            except (asyncio.CancelledError, Exception):
+            except asyncio.CancelledError, Exception:
                 pass
         if self._app:
             try:
@@ -363,6 +357,7 @@ class TelegramBot:
     async def _process_outbound_queue(self) -> None:
         """Background worker consuming outbound queue with token-bucket rate limiter and RetryAfter backoff."""
         from telegram.error import RetryAfter
+
         while self._is_running:
             try:
                 item = await self._outbound_queue.get()
@@ -408,11 +403,9 @@ class TelegramBot:
                 else:
                     try:
                         retry_seconds = float(raw_retry)
-                    except (TypeError, ValueError):
+                    except TypeError, ValueError:
                         retry_seconds = 1.0
-                logger.warning(
-                    f"[TelegramOutbound] FloodControl RetryAfter({retry_seconds}s). Pausing queue..."
-                )
+                logger.warning(f"[TelegramOutbound] FloodControl RetryAfter({retry_seconds}s). Pausing queue...")
                 await asyncio.sleep(retry_seconds + 0.1)
                 await self._outbound_queue.put(item)
             except Exception as send_err:
@@ -443,12 +436,17 @@ class TelegramBot:
         try:
             os.makedirs(os.path.dirname(self._offline_queue_file), exist_ok=True)
             with open(self._offline_queue_file, "a", encoding="utf-8") as f:
-                f.write(json.dumps({
-                    "chat_id": item.get("chat_id"),
-                    "text": item.get("raw_text") or item.get("text"),
-                    "parse_mode": item.get("parse_mode"),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                }) + "\n")
+                f.write(
+                    json.dumps(
+                        {
+                            "chat_id": item.get("chat_id"),
+                            "text": item.get("raw_text") or item.get("text"),
+                            "parse_mode": item.get("parse_mode"),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                    )
+                    + "\n"
+                )
             logger.critical(f"[TelegramOutbound] Critical alert saved to offline buffer ({self._offline_queue_file})")
         except Exception as disk_err:
             logger.error(f"[TelegramOutbound] Failed to write offline buffer: {disk_err}")
@@ -466,13 +464,15 @@ class TelegramBot:
             for line in lines:
                 try:
                     entry = json.loads(line)
-                    await self._outbound_queue.put({
-                        "chat_id": entry.get("chat_id") or self.admin_chat_id,
-                        "text": f"⚠️ [RECOVERED OFFLINE ALERT - {entry.get('timestamp')}]\n\n{entry.get('text')}",
-                        "raw_text": entry.get("text"),
-                        "parse_mode": None,
-                        "is_critical": False,
-                    })
+                    await self._outbound_queue.put(
+                        {
+                            "chat_id": entry.get("chat_id") or self.admin_chat_id,
+                            "text": f"⚠️ [RECOVERED OFFLINE ALERT - {entry.get('timestamp')}]\n\n{entry.get('text')}",
+                            "raw_text": entry.get("text"),
+                            "parse_mode": None,
+                            "is_critical": False,
+                        }
+                    )
                 except Exception:
                     pass
             os.remove(self._offline_queue_file)
@@ -490,7 +490,7 @@ class TelegramBot:
         if not self._app or not self.admin_chat_id or not self._is_running:
             return
 
-        is_html = (parse_mode == ParseMode.HTML)
+        is_html = parse_mode == ParseMode.HTML
         chunks = self._chunk_text(text, max_len=4000, sanitize_format=False, is_html=is_html)
         critical_alert = is_critical or any(
             k in text for k in ("RiskGate", "KILL", "DARURAT", "EMERGENCY", "Breach", "Liquidation", "DRAWDOW")
@@ -510,14 +510,16 @@ class TelegramBot:
                 and self._outbound_worker_task is not None
                 and not self._outbound_worker_task.done()
             ):
-                await self._outbound_queue.put({
-                    "chat_id": self.admin_chat_id,
-                    "text": formatted_chunk,
-                    "raw_text": chunk,
-                    "parse_mode": parse_mode,
-                    "extra_kwargs": extra_kwargs,
-                    "is_critical": critical_alert,
-                })
+                await self._outbound_queue.put(
+                    {
+                        "chat_id": self.admin_chat_id,
+                        "text": formatted_chunk,
+                        "raw_text": chunk,
+                        "parse_mode": parse_mode,
+                        "extra_kwargs": extra_kwargs,
+                        "is_critical": critical_alert,
+                    }
+                )
             else:
                 try:
                     await self._app.bot.send_message(
@@ -529,43 +531,46 @@ class TelegramBot:
                 except Exception as e:
                     logger.warning(f"Direct send notification failed: {e}")
                     if critical_alert:
-                        self._save_to_offline_buffer({
-                            "chat_id": self.admin_chat_id,
-                            "text": formatted_chunk,
-                            "raw_text": chunk,
-                            "parse_mode": parse_mode,
-                        })
+                        self._save_to_offline_buffer(
+                            {
+                                "chat_id": self.admin_chat_id,
+                                "text": formatted_chunk,
+                                "raw_text": chunk,
+                                "parse_mode": parse_mode,
+                            }
+                        )
 
     async def request_fallback_consent(self, prompt_text: str, tg_event: asyncio.Event, tg_result: dict) -> None:
         """Mengirim notifikasi inline keyboard untuk fallback consent ke admin."""
         if not self._app or not self.admin_chat_id:
             return
-            
+
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-        
+
         import uuid
+
         fallback_id = str(uuid.uuid4())[:8]
-        
+
         # Simpan state untuk di-resolve oleh _handle_callback
-        if not hasattr(self, '_fallback_events'):
+        if not hasattr(self, "_fallback_events"):
             self._fallback_events = {}
             self._fallback_results = {}
-            
+
         self._fallback_events[fallback_id] = tg_event
         self._fallback_results[fallback_id] = tg_result
-        
+
         keyboard = [
             [InlineKeyboardButton("[ SATU SIKLUS ]", callback_data=f"fallback:once:{fallback_id}")],
             [InlineKeyboardButton("[ SETERUSNYA ]", callback_data=f"fallback:always:{fallback_id}")],
-            [InlineKeyboardButton("[ TOLAK ]", callback_data=f"fallback:reject:{fallback_id}")]
+            [InlineKeyboardButton("[ TOLAK ]", callback_data=f"fallback:reject:{fallback_id}")],
         ]
-        
+
         try:
             await self._app.bot.send_message(
                 chat_id=self.admin_chat_id,
                 text=f"[ PERINGATAN: FALLBACK DIPERLUKAN ]\n\n{prompt_text}",
                 reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
         except Exception as e:
             logger.error(f"Fallback consent prompt failed: {e}")
@@ -600,7 +605,8 @@ class TelegramBot:
     # ------------------------------------------------------------------
 
     async def _cmd_start(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
+        if not update.message:
+            return
         user = update.effective_user
         name = (user.first_name if user else None) or "Trader"
         if not self._is_authorized(update):
@@ -625,9 +631,12 @@ class TelegramBot:
         )
 
     async def _cmd_help(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         from monika.interfaces.telegram.command_router import CommandRouter
+
         await update.message.reply_text(
             CommandRouter.build_help_text(),
             parse_mode=ParseMode.MARKDOWN,
@@ -642,13 +651,14 @@ class TelegramBot:
 
         raw_cmd = update.message.text.split()[0].lstrip("/")
         from monika.interfaces.telegram.fuzzy_router import FuzzyCommandRouter
+
         router = FuzzyCommandRouter()
         matched_def, suggestions = router.resolve(raw_cmd)
 
         if matched_def:
-            keyboard = [[
-                InlineKeyboardButton(f"▶ Run /{matched_def.command}", callback_data=f"cmd:{matched_def.command}")
-            ]]
+            keyboard = [
+                [InlineKeyboardButton(f"▶ Run /{matched_def.command}", callback_data=f"cmd:{matched_def.command}")]
+            ]
             await update.message.reply_text(
                 f"[?] Unknown command `/{raw_cmd}`.\n\nDid you mean: *{matched_def.usage}*?\n_{matched_def.description}_",
                 parse_mode=ParseMode.MARKDOWN,
@@ -669,8 +679,10 @@ class TelegramBot:
             )
 
     async def _cmd_interrupt(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         user_id = update.effective_user.id if update.effective_user else 0
         chat_id = update.effective_chat.id if update.effective_chat else user_id
         thread_id = getattr(update.message, "message_thread_id", None)
@@ -693,8 +705,10 @@ class TelegramBot:
             await update.message.reply_text("[INFORMASI] No active chat session found.")
 
     async def _cmd_resume_proposals(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         user_id = update.effective_user.id if update.effective_user else 0
         chat_id = update.effective_chat.id if update.effective_chat else user_id
         thread_id = getattr(update.message, "message_thread_id", None)
@@ -713,8 +727,10 @@ class TelegramBot:
             await update.message.reply_text("[INFORMASI] No active chat session found.")
 
     async def _cmd_stats(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_stats_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
@@ -724,30 +740,33 @@ class TelegramBot:
             from monika.infrastructure.database.db import get_session
             from monika.core.analytics.paper_tracker import PaperTracker
             from monika.interfaces.telegram.message_formatter import format_stats_slip
-            
+
             async with get_session() as session:
                 tracker = PaperTracker()
                 stats = await tracker.get_statistics(session)
                 equity_curve = await tracker.simulate_equity_curve(session)
-            
+
             return format_stats_slip(stats, equity_curve=equity_curve)
         except Exception as e:
             return f"[ GAGAL ] Error: {e}"
 
     async def _cmd_cost(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
-        
+
         try:
             from monika.infrastructure.database.db import get_session
             from monika.core.analytics.cost_tracker import CostTracker
+
             async with get_session() as session:
                 b_stat = await CostTracker.check_and_update_budget_status(session, self.settings)
                 rolling = await CostTracker.get_rolling_7day_cost(session)
                 budget = b_stat["monthly_budget"]
                 daily_budget = b_stat["daily_budget"]
-            
+
             text = (
                 f"[SALDO] *API Cost Report*\n\n"
                 f"• *Today Spend:* `${b_stat['daily_cost']:.4f}` / `${daily_budget:.2f}`\n"
@@ -757,37 +776,43 @@ class TelegramBot:
                 f"• *Projected/month:* `${rolling['projected_monthly']:.2f}`\n"
                 f"• *Budget Status:* `{'[BERHENTI] PAUSED' if b_stat['is_paused'] else '[BERHASIL] ACTIVE'}`\n"
             )
-            if rolling['projected_monthly'] > budget:
+            if rolling["projected_monthly"] > budget:
                 text += f"\n[PERINGATAN] *OVER BUDGET projection!* Consider reducing cycles or disabling escalation."
             await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
             await update.message.reply_text(f"[GAGAL] Error: {e}")
 
     async def _cmd_credits(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_credits_text()
         for chunk in self._chunk_text(text):
             await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_calibration(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
-        
+
         try:
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
             import json as _json
             from monika.core.analytics.agent_performance_monitor import get_currency_confidence_ceiling
-            
+
             async with get_session() as session:
-                cal_cfg = (await session.execute(
-                    select(SystemConfig).where(SystemConfig.key == "news_tier_calibration_directives")
-                )).scalar_one_or_none()
-                
+                cal_cfg = (
+                    await session.execute(
+                        select(SystemConfig).where(SystemConfig.key == "news_tier_calibration_directives")
+                    )
+                ).scalar_one_or_none()
+
                 lines = [f"[KONFIGURASI] *System Calibration States*"]
                 if cal_cfg and cal_cfg.value:
                     cal_data = _json.loads(cal_cfg.value)
@@ -795,34 +820,45 @@ class TelegramBot:
                         lines.append("\n[BERITA] *News Directives:*")
                         for k, v in cal_data.items():
                             lines.append(f"• `{k}`: {v}")
-                        
+
                 ceilings = await get_currency_confidence_ceiling(session, days_back=30)
                 if ceilings:
                     lines.append("\n[TARGET] *Confidence Ceilings:*")
                     for cur, cap in ceilings.items():
                         lines.append(f"• `{cur}`: Max {cap}")
-                
+
                 from monika.application.protocol.enhanced_cds import get_cds_thresholds_async
+
                 cds_thr = await get_cds_thresholds_async(session, self.settings)
-                lines.append('\n[ANALISIS] *SSVP CDS Thresholds:*')
+                lines.append("\n[ANALISIS] *SSVP CDS Thresholds:*")
                 for k, v in cds_thr.items():
-                    lines.append(f'• `{k}`: {v}')
-                
+                    lines.append(f"• `{k}`: {v}")
+
                 from monika.core.analytics.specialist_tracker import compute_specialist_reliability
+
                 spec_rel = await compute_specialist_reliability(session)
-                if spec_rel.get('specialists'):
-                    lines.append('\n[OPERATOR]‍[PORTOFOLIO] *Specialist Trust Weights:*')
-                    for name, d in spec_rel['specialists'].items():
-                        flag = ' [PERINGATAN] CHRONIC' if d.get('chronically_unreliable') else ''
-                        lines.append(f"• `{name}`: {d['trust_weight']} (acc={d['accuracy_pct']}%, n={d['total']}){flag}")
-                
-                infl_cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == 'score_inflation_correction_threshold'))).scalar_one_or_none()
+                if spec_rel.get("specialists"):
+                    lines.append("\n[OPERATOR]‍[PORTOFOLIO] *Specialist Trust Weights:*")
+                    for name, d in spec_rel["specialists"].items():
+                        flag = " [PERINGATAN] CHRONIC" if d.get("chronically_unreliable") else ""
+                        lines.append(
+                            f"• `{name}`: {d['trust_weight']} (acc={d['accuracy_pct']}%, n={d['total']}){flag}"
+                        )
+
+                infl_cfg = (
+                    await session.execute(
+                        select(SystemConfig).where(SystemConfig.key == "score_inflation_correction_threshold")
+                    )
+                ).scalar_one_or_none()
                 if infl_cfg and infl_cfg.value:
                     infl_data = _json.loads(infl_cfg.value)
-                    lines.append(f"\n[LAPORAN] *Score Inflation Correction:* threshold={infl_data.get('threshold')} (set {infl_data.get('set_at','')[:10]})")
+                    lines.append(
+                        f"\n[LAPORAN] *Score Inflation Correction:* threshold={infl_data.get('threshold')} (set {infl_data.get('set_at', '')[:10]})"
+                    )
 
                 try:
                     from monika.core.calibration.confidence_calibrator import compute_confidence_calibration
+
                     cal_rep = await compute_confidence_calibration(session)
                     brier = cal_rep.get("brier_score")
                     ece = cal_rep.get("ece")
@@ -832,56 +868,63 @@ class TelegramBot:
                 except Exception:
                     pass
 
-            
             text = "\n".join(lines) if len(lines) > 1 else "No active calibration directives."
             await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
             await update.message.reply_text(f"[GAGAL] Error: {e}")
 
     async def _cmd_edge(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         from monika.core.analytics.analysis_tracker import get_direction_accuracy_report, compute_factor_effectiveness
         from monika.core.analytics.paper_tracker import PaperTracker
         from monika.infrastructure.database.db import get_session
-        
+
         await update.message.reply_text("[MEMPROSES] Menghitung edge assessment... (bisa memakan waktu beberapa detik)")
-        
+
         async with get_session() as session:
             dir_acc = await get_direction_accuracy_report(session, 14)
             factors = await compute_factor_effectiveness(session, 30)
             tracker = PaperTracker()
             stats = await tracker.get_statistics(session)
-            
+
         msg = "[LAPORAN] *EDGE ASSESSMENT*\n\n"
         msg += f"• *Win Rate (Paper):* {stats.get('win_rate_pct', 0)}% (Total: {stats.get('total_trades', 0)})\n"
-        if not dir_acc.get('insufficient_data') and 'overall_accuracy_4h_pct' in dir_acc:
+        if not dir_acc.get("insufficient_data") and "overall_accuracy_4h_pct" in dir_acc:
             msg += f"• *Direction Accuracy (4H):* {dir_acc['overall_accuracy_4h_pct']}%\n\n"
-        elif 'direction_accuracy_4h' in dir_acc and dir_acc['direction_accuracy_4h'] is not None:
+        elif "direction_accuracy_4h" in dir_acc and dir_acc["direction_accuracy_4h"] is not None:
             msg += f"• *Direction Accuracy (4H):* {dir_acc['direction_accuracy_4h']}%\n\n"
-            
+
         msg += "*Top Edge Factors:*\n"
         raw_factors = factors.get("factor_effectiveness", {}) if isinstance(factors, dict) else {}
-        top_factors = sorted(raw_factors.items(), key=lambda x: x[1].get('win_rate', 0) if isinstance(x[1], dict) else 0, reverse=True)[:5]
+        top_factors = sorted(
+            raw_factors.items(), key=lambda x: x[1].get("win_rate", 0) if isinstance(x[1], dict) else 0, reverse=True
+        )[:5]
         if top_factors:
             for factor, data in top_factors:
                 if isinstance(data, dict):
                     msg += f"- {factor.upper()}: {data.get('win_rate', 0)}% WR ({data.get('wins', 0)}/{data.get('total', 0)})\n"
         else:
             msg += "- _Insufficient data for factor edge calculation_\n"
-            
+
         await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_status(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_status_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_positions(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         from monika.infrastructure.database.db import get_session
@@ -892,6 +935,7 @@ class TelegramBot:
         positions = []
         try:
             from monika.application.services.portfolio_service import PortfolioService
+
             async with get_session() as session:
                 positions = await PortfolioService.get_open_positions(session)
         except Exception as e:
@@ -905,35 +949,43 @@ class TelegramBot:
             for p in positions[:8]:
                 ticket = getattr(p, "mt5_ticket", getattr(p, "ticket", None))
                 if ticket:
-                    keyboard.append([
-                        InlineKeyboardButton(f"❌ Tutup #{ticket}", callback_data=f"close:{ticket}"),
-                        InlineKeyboardButton(f"🛡️ Set BE #{ticket}", callback_data=f"be:{ticket}"),
-                    ])
+                    keyboard.append(
+                        [
+                            InlineKeyboardButton(f"❌ Tutup #{ticket}", callback_data=f"close:{ticket}"),
+                            InlineKeyboardButton(f"🛡️ Set BE #{ticket}", callback_data=f"be:{ticket}"),
+                        ]
+                    )
             if len(positions) > 1:
-                keyboard.append([
-                    InlineKeyboardButton("🛡️ Bulk BE (Semua Profit)", callback_data="bulk_be"),
-                    InlineKeyboardButton("🚨 Tutup Semua Posisi", callback_data="closeall"),
-                ])
+                keyboard.append(
+                    [
+                        InlineKeyboardButton("🛡️ Bulk BE (Semua Profit)", callback_data="bulk_be"),
+                        InlineKeyboardButton("🚨 Tutup Semua Posisi", callback_data="closeall"),
+                    ]
+                )
             reply_markup = InlineKeyboardMarkup(keyboard)
 
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
 
     async def _cmd_brief(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_brief_text()
         for chunk in self._chunk_text(text):
             await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_analysis(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+
         if not ctx.args:
             await update.message.reply_text("Usage: /analysis <symbol>")
             return
-            
+
         symbol = ctx.args[0].upper()
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_analysis_text(symbol)
@@ -941,40 +993,51 @@ class TelegramBot:
             await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_pipeline(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_pipeline_text()
         for chunk in self._chunk_text(text):
             await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_history(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_history_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_risk(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         text = await self._build_risk_text()
         await update.message.reply_text(sanitize_telegram_html(text), parse_mode=ParseMode.HTML)
 
     async def _cmd_risk_deep(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_risk_deep_text()
         await update.message.reply_text(sanitize_telegram_html(text), parse_mode=ParseMode.HTML)
 
     async def _cmd_approvals(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_admin(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_admin(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         from monika.domain.risk.approval_hub import ApprovalHub
         from monika.interfaces.telegram.message_formatter import format_approvals_slip
+
         try:
             hub = ApprovalHub.get_instance()
             open_reqs = hub.get_open_requests()
@@ -985,19 +1048,25 @@ class TelegramBot:
             for req in open_reqs:
                 token = getattr(req, "token", getattr(req, "request_id", ""))
                 short_id = token[:6]
-                kb.append([
-                    InlineKeyboardButton(f"✅ Setujui #{short_id}", callback_data=f"appr_yes:{token}"),
-                    InlineKeyboardButton(f"❌ Tolak #{short_id}", callback_data=f"appr_no:{token}"),
-                ])
+                kb.append(
+                    [
+                        InlineKeyboardButton(f"✅ Setujui #{short_id}", callback_data=f"appr_yes:{token}"),
+                        InlineKeyboardButton(f"❌ Tolak #{short_id}", callback_data=f"appr_no:{token}"),
+                    ]
+                )
 
             markup = InlineKeyboardMarkup(kb) if kb else None
             await update.message.reply_text(safe_text, parse_mode=ParseMode.HTML, reply_markup=markup)
         except Exception as e:
-            await update.message.reply_text(f"[GAGAL] Error memuat approvals: {html.escape(str(e))}", parse_mode=ParseMode.HTML)
+            await update.message.reply_text(
+                f"[GAGAL] Error memuat approvals: {html.escape(str(e))}", parse_mode=ParseMode.HTML
+            )
 
     async def _cmd_trailing(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         if not ctx.args:
@@ -1028,25 +1097,32 @@ class TelegramBot:
         arg_action = ctx.args[1].lower().strip() if len(ctx.args) > 1 else ""
 
         async with get_session() as session:
-            stmt = select(Position).where(
-                or_(Position.mt5_ticket == ticket_num, Position.id == ticket_num),
-                Position.closed_at.is_(None)
-            ).limit(1)
+            stmt = (
+                select(Position)
+                .where(or_(Position.mt5_ticket == ticket_num, Position.id == ticket_num), Position.closed_at.is_(None))
+                .limit(1)
+            )
             pos = (await session.execute(stmt)).scalar_one_or_none()
             if not pos:
-                await update.message.reply_text(f"[PERINGATAN] Posisi aktif dengan ticket #{ticket_num} tidak ditemukan.")
+                await update.message.reply_text(
+                    f"[PERINGATAN] Posisi aktif dengan ticket #{ticket_num} tidak ditemukan."
+                )
                 return
 
             if arg_action in ("reset", "default", "clear"):
                 pos.trailing_override_json = None
                 await session.commit()
-                await update.message.reply_text(f"[BERHASIL] Trailing override untuk tiket #{ticket_num} ({pos.symbol}) di-reset ke default global.")
+                await update.message.reply_text(
+                    f"[BERHASIL] Trailing override untuk tiket #{ticket_num} ({pos.symbol}) di-reset ke default global."
+                )
                 return
 
             if arg_action in ("off", "disable", "disabled", "stop"):
                 pos.trailing_override_json = json.dumps({"disabled": True})
                 await session.commit()
-                await update.message.reply_text(f"[BERHENTI] Trailing stop untuk tiket #{ticket_num} ({pos.symbol}) dinonaktifkan.")
+                await update.message.reply_text(
+                    f"[BERHENTI] Trailing stop untuk tiket #{ticket_num} ({pos.symbol}) dinonaktifkan."
+                )
                 return
 
             try:
@@ -1072,44 +1148,56 @@ class TelegramBot:
                 )
 
     async def _cmd_reconcile(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_admin(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_admin(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_reconcile_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_fedwatch(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_fedwatch_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_yields(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_yields_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_fear_greed(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_fear_greed_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_cot(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         market_code = ctx.args[0] if ctx.args else None
         text = await self._build_cot_text(market_code)
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_macro_weekly(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         days = 7
         curr = None
@@ -1125,6 +1213,7 @@ class TelegramBot:
 
         from monika.infrastructure.database.db import get_session
         from monika.application.analysis.tools.handlers.macro_tools import handle_get_weekly_macro_summary
+
         async with get_session() as session:
             res = await handle_get_weekly_macro_summary(
                 {"days_ahead": days, "currencies": curr},
@@ -1135,14 +1224,16 @@ class TelegramBot:
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_counterfactual(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         args = ctx.args or []
         if not args:
             await update.message.reply_text(
                 "Usage: `/counterfactual <trade_id> [sl_pips_delta] [tp_pips_delta]`\nContoh: `/counterfactual 123 10.0` (simulasi jika SL 10 pips lebih lebar)",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
         try:
@@ -1151,6 +1242,7 @@ class TelegramBot:
             tp_delta = float(args[2]) if len(args) > 2 else 0.0
             from monika.application.analysis.memory.counterfactual_simulator import CounterfactualSimulator
             from monika.infrastructure.database.db import get_session
+
             sim = CounterfactualSimulator()
             async with get_session() as sess:
                 res = await sim.simulate_single_trade_counterfactual(sess, trade_id, sl_delta, tp_delta)
@@ -1181,17 +1273,22 @@ class TelegramBot:
             await update.message.reply_text(f"[ERROR] Gagal menjalankan counterfactual: {e}")
 
     async def _cmd_chronicle(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         args = ctx.args or []
         month = args[0] if args else None
         year = int(args[1]) if len(args) > 1 else None
         from monika.application.analysis.tools.handlers.trade_intel import handle_get_market_chronicle
+
         res = await handle_get_market_chronicle({"month": month, "year": year or 2026, "limit": 10})
         chronicles = res.get("chronicles", [])
         if not chronicles:
-            await update.message.reply_text(f"[LOG] Tidak ada catatan chronicle untuk periode {month or 'terkini'} {year or ''}.")
+            await update.message.reply_text(
+                f"[LOG] Tidak ada catatan chronicle untuk periode {month or 'terkini'} {year or ''}."
+            )
             return
         lines = [f"[LOG] *Market Chronicle ({month or 'Terkini'} {year or res.get('year')}):*\n"]
         for c in chronicles[:8]:
@@ -1204,8 +1301,10 @@ class TelegramBot:
         await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_monte_carlo(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         args = ctx.args or []
@@ -1217,8 +1316,8 @@ class TelegramBot:
             except ValueError:
                 pass
 
-
         from monika.application.analysis.tools.handlers.trade_intel import handle_run_monte_carlo_simulation
+
         res = await handle_run_monte_carlo_simulation({"num_simulations": sims, "symbol": symbol})
         fe = res.get("final_equity_distribution", {})
         text = (
@@ -1237,8 +1336,10 @@ class TelegramBot:
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_export_chat(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message or not update.effective_user: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message or not update.effective_user:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         import io
@@ -1257,12 +1358,18 @@ class TelegramBot:
                 pass
 
         async with get_session() as session:
-            rows = (await session.execute(
-                select(TelegramConversation)
-                .where(TelegramConversation.telegram_user_id == user_id)
-                .order_by(TelegramConversation.timestamp.desc())
-                .limit(limit)
-            )).scalars().all()
+            rows = (
+                (
+                    await session.execute(
+                        select(TelegramConversation)
+                        .where(TelegramConversation.telegram_user_id == user_id)
+                        .order_by(TelegramConversation.timestamp.desc())
+                        .limit(limit)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
         if not rows:
             await update.message.reply_text("Tidak ada riwayat percakapan untuk diekspor.")
@@ -1270,15 +1377,21 @@ class TelegramBot:
 
         msgs = [{"role": r.role, "content": r.message} for r in reversed(rows)]
         sharegpt_data = ShareGptExporter.to_sharegpt_format(msgs)
-        
+
         json_bytes = json.dumps(sharegpt_data, indent=2, ensure_ascii=False).encode("utf-8")
         doc = io.BytesIO(json_bytes)
         doc.name = f"chat_export_{user_id}.json"
-        await update.message.reply_document(document=doc, caption=f"[KIRIM] *ShareGPT Trajectory Export* ({len(sharegpt_data)} turns)", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_document(
+            document=doc,
+            caption=f"[KIRIM] *ShareGPT Trajectory Export* ({len(sharegpt_data)} turns)",
+            parse_mode=ParseMode.MARKDOWN,
+        )
 
     async def _cmd_undo(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message or not update.effective_user: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message or not update.effective_user:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         from monika.infrastructure.database.db import get_session
@@ -1287,26 +1400,31 @@ class TelegramBot:
 
         user_id = str(update.effective_user.id)
         async with get_session() as session:
-            recent = (await session.execute(
-                select(TelegramConversation)
-                .where(TelegramConversation.telegram_user_id == user_id)
-                .order_by(TelegramConversation.timestamp.desc())
-                .limit(2)
-            )).scalars().all()
+            recent = (
+                (
+                    await session.execute(
+                        select(TelegramConversation)
+                        .where(TelegramConversation.telegram_user_id == user_id)
+                        .order_by(TelegramConversation.timestamp.desc())
+                        .limit(2)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             if not recent:
                 await update.message.reply_text("Tidak ada pesan sebelumnya yang dapat di-undo.")
                 return
 
             ids_to_del = [r.id for r in recent]
-            await session.execute(
-                delete(TelegramConversation).where(TelegramConversation.id.in_(ids_to_del))
-            )
+            await session.execute(delete(TelegramConversation).where(TelegramConversation.id.in_(ids_to_del)))
             await session.commit()
 
         try:
             from monika.infrastructure.database.session_db_wal import SessionDbWal, DEFAULT_SESSION_DB_PATH
             from monika.application.agent.state_rewind import StateRewindManager
+
             if DEFAULT_SESSION_DB_PATH.exists():
                 wal_db = SessionDbWal(DEFAULT_SESSION_DB_PATH)
                 rewinder = StateRewindManager(wal_db)
@@ -1318,15 +1436,18 @@ class TelegramBot:
             "↩ *Percakapan Berhasil Di-Undo*\n"
             f"• Pesan terakhir ({len(ids_to_del)} giliran) dihapus dari memori konteks.\n"
             "• _Catatan: Transaksi broker MT5 tetap permanen di ledger._",
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.MARKDOWN,
         )
 
     async def _cmd_backup(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_admin(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_admin(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         from monika.infrastructure.infra.db_backup import create_backup
+
         res = await create_backup(self.settings, force=True)
         if res.get("success"):
             text = (
@@ -1340,8 +1461,10 @@ class TelegramBot:
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_stress_test(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         import time
@@ -1381,37 +1504,52 @@ class TelegramBot:
         await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_playbooks(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_playbooks_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_rollback(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_admin(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_admin(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         if not ctx.args:
-            await update.message.reply_text("Format: `/rollback <playbook_name>`\nContoh: `/rollback eurusd_trend`", parse_mode=ParseMode.MARKDOWN)
+            await update.message.reply_text(
+                "Format: `/rollback <playbook_name>`\nContoh: `/rollback eurusd_trend`", parse_mode=ParseMode.MARKDOWN
+            )
             return
         name = ctx.args[0].strip()
         text = await self._build_rollback_text(name)
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_crystallized(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_crystallized_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_cron(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         try:
-            from monika.application.analysis.tools.domain.cron_tool import CronRegistry, DEFAULT_CRON_FILE, CronJobRecord
+            from monika.application.analysis.tools.domain.cron_tool import (
+                CronRegistry,
+                DEFAULT_CRON_FILE,
+                CronJobRecord,
+            )
+
             registry = CronRegistry(DEFAULT_CRON_FILE)
             args = ctx.args or []
             subcmd = args[0].lower() if args else "list"
@@ -1419,21 +1557,30 @@ class TelegramBot:
             if subcmd == "list":
                 jobs = registry.list_jobs()
                 if not jobs:
-                    await update.message.reply_text("[WAKTU] *Universal Cron Schedules*\n\nTidak ada jadwal cron aktif.", parse_mode=ParseMode.MARKDOWN)
+                    await update.message.reply_text(
+                        "[WAKTU] *Universal Cron Schedules*\n\nTidak ada jadwal cron aktif.",
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
                     return
                 lines = [f"[WAKTU] *Universal Cron Schedules ({len(jobs)} Active)*\n"]
                 for j in jobs:
                     status = "[BERHASIL]" if j.enabled else "[DIJEDA]"
-                    lines.append(f"{status} *{j.name}* (`{j.cron_expression}`)\n  _{j.description}_\n  Prompt: `{j.instruction[:60]}...`\n")
+                    lines.append(
+                        f"{status} *{j.name}* (`{j.cron_expression}`)\n  _{j.description}_\n  Prompt: `{j.instruction[:60]}...`\n"
+                    )
                 lines.append("Gunakan `/cron add <name> <expr> <prompt>` atau `/cron remove <name>`.")
                 await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
             elif subcmd == "remove" and len(args) > 1:
                 name = args[1].strip()
                 ok = registry.remove_job(name)
                 if ok:
-                    await update.message.reply_text(f"[BERHASIL] Jadwal cron `{name}` berhasil dihapus.", parse_mode=ParseMode.MARKDOWN)
+                    await update.message.reply_text(
+                        f"[BERHASIL] Jadwal cron `{name}` berhasil dihapus.", parse_mode=ParseMode.MARKDOWN
+                    )
                 else:
-                    await update.message.reply_text(f"[GAGAL] Jadwal cron `{name}` tidak ditemukan.", parse_mode=ParseMode.MARKDOWN)
+                    await update.message.reply_text(
+                        f"[GAGAL] Jadwal cron `{name}` tidak ditemukan.", parse_mode=ParseMode.MARKDOWN
+                    )
             elif subcmd == "add" and len(args) >= 4:
                 name = args[1].strip()
                 expr = args[2].strip()
@@ -1447,7 +1594,9 @@ class TelegramBot:
                     created_at=time.time(),
                 )
                 registry.add_job(job)
-                await update.message.reply_text(f"[BERHASIL] Jadwal cron `{name}` (`{expr}`) berhasil didaftarkan.", parse_mode=ParseMode.MARKDOWN)
+                await update.message.reply_text(
+                    f"[BERHASIL] Jadwal cron `{name}` (`{expr}`) berhasil didaftarkan.", parse_mode=ParseMode.MARKDOWN
+                )
             else:
                 help_text = (
                     "[WAKTU] *Penggunaan Perintah Cron*\n\n"
@@ -1462,8 +1611,10 @@ class TelegramBot:
 
     async def _cmd_model(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Interactive model routing inspection and hot-swapping (/model)."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         try:
@@ -1492,16 +1643,22 @@ class TelegramBot:
 
                     is_overridden = bool(ovr)
                     marker = "[KILAT]" if is_overridden else "•"
-                    lines.append(f"{marker} <b>{r}</b>:\n  Primary: <code>{cur_primary}</code>\n  Fallback: <code>{cur_fallback}</code>")
+                    lines.append(
+                        f"{marker} <b>{r}</b>:\n  Primary: <code>{cur_primary}</code>\n  Fallback: <code>{cur_fallback}</code>"
+                    )
 
-                lines.append("\n<b>Penggunaan:</b>\n• <code>/model set &lt;role&gt; &lt;model_name&gt; [primary|fallback_1]</code>\n• <code>/model reset [role]</code>")
+                lines.append(
+                    "\n<b>Penggunaan:</b>\n• <code>/model set &lt;role&gt; &lt;model_name&gt; [primary|fallback_1]</code>\n• <code>/model reset [role]</code>"
+                )
                 kb = [
                     [
                         InlineKeyboardButton("🔄 Ganti Role Model", callback_data="mdl:menu"),
                         InlineKeyboardButton("♻️ Reset Overrides", callback_data="mdl:reset_all"),
                     ]
                 ]
-                await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
+                await update.message.reply_text(
+                    "\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb)
+                )
                 return
 
             subcmd = args[0].lower()
@@ -1515,7 +1672,7 @@ class TelegramBot:
                 registry.set_role_model(role, model_name, slot=slot)
                 await update.message.reply_text(
                     f"[BERHASIL] <b>Model Hot-Swapped</b>\nRole: <code>{role}</code>\nSlot: <code>{slot}</code>\nModel: <code>{model_name}</code>",
-                    parse_mode=ParseMode.HTML
+                    parse_mode=ParseMode.HTML,
                 )
             elif subcmd == "reset":
                 role = args[1].strip() if len(args) > 1 else None
@@ -1523,12 +1680,12 @@ class TelegramBot:
                 target_desc = f"role '{role}'" if role else "seluruh role"
                 await update.message.reply_text(
                     f"[SINKRONISASI] <b>Model Overrides Direset</b>\nReset {target_desc} kembali ke konfigurasi default settings.yaml.",
-                    parse_mode=ParseMode.HTML
+                    parse_mode=ParseMode.HTML,
                 )
             else:
                 await update.message.reply_text(
                     "[GAGAL] Format salah. Gunakan:\n• <code>/model</code> (tampilkan semua role)\n• <code>/model set &lt;role&gt; &lt;model&gt; [slot]</code>\n• <code>/model reset [role]</code>",
-                    parse_mode=ParseMode.HTML
+                    parse_mode=ParseMode.HTML,
                 )
         except Exception as exc:
             logger.error(f"Error handling /model command: {exc}", exc_info=True)
@@ -1536,8 +1693,10 @@ class TelegramBot:
 
     async def _cmd_chart(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Render and send candlestick PNG chart (/chart <symbol> [timeframe])."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.UPLOAD_PHOTO)
 
         args = ctx.args or []
@@ -1553,10 +1712,7 @@ class TelegramBot:
             rows = []
             async with get_session() as session:
                 stmt = (
-                    select(PriceOHLCV)
-                    .where(PriceOHLCV.symbol == sym)
-                    .order_by(PriceOHLCV.timestamp.desc())
-                    .limit(80)
+                    select(PriceOHLCV).where(PriceOHLCV.symbol == sym).order_by(PriceOHLCV.timestamp.desc()).limit(80)
                 )
                 db_rows = (await session.execute(stmt)).scalars().all()
                 if db_rows:
@@ -1601,8 +1757,10 @@ class TelegramBot:
 
     async def _cmd_smc(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Render and send Smart Money Concepts (SMC) overlay PNG chart (/smc <symbol> [timeframe])."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.UPLOAD_PHOTO)
 
         args = ctx.args or []
@@ -1619,7 +1777,9 @@ class TelegramBot:
             fvg_list = []
             ob_list = []
             async with get_session() as session:
-                stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == sym).order_by(PriceOHLCV.timestamp.desc()).limit(80)
+                stmt = (
+                    select(PriceOHLCV).where(PriceOHLCV.symbol == sym).order_by(PriceOHLCV.timestamp.desc()).limit(80)
+                )
                 db_rows = (await session.execute(stmt)).scalars().all()
                 if db_rows:
                     rows = list(reversed(db_rows))
@@ -1631,7 +1791,9 @@ class TelegramBot:
                     fvg_list.append({"top": float(f.gap_high), "bottom": float(f.gap_low), "type": f.direction})
 
                 # Order Blocks
-                ob_stmt = select(OrderBlock).where(OrderBlock.symbol == sym).order_by(OrderBlock.formed_at.desc()).limit(10)
+                ob_stmt = (
+                    select(OrderBlock).where(OrderBlock.symbol == sym).order_by(OrderBlock.formed_at.desc()).limit(10)
+                )
                 ob_rows = (await session.execute(ob_stmt)).scalars().all()
                 for o in ob_rows:
                     ob_list.append({"high": float(o.price_high), "low": float(o.price_low), "type": o.direction})
@@ -1681,18 +1843,23 @@ class TelegramBot:
 
     async def _cmd_orders(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Display pending limit/stop orders in MT5 (/orders)."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         try:
             from monika.infrastructure.brokers.mt5_client import _get_orders
+
             orders = _get_orders()
         except Exception:
             orders = []
 
         if not orders:
-            await update.message.reply_text("[ INFO ] Tidak ada pending order yang aktif di broker MT5.", parse_mode=ParseMode.HTML)
+            await update.message.reply_text(
+                "[ INFO ] Tidak ada pending order yang aktif di broker MT5.", parse_mode=ParseMode.HTML
+            )
             return
 
         lines = ["📋 <b>DAFTAR PENDING ORDERS MT5</b>\n"]
@@ -1717,15 +1884,20 @@ class TelegramBot:
 
     async def _cmd_factors(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Inspect available Alpha Factor Zoo formulas (/factors)."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         try:
             from monika.domain.indicators.micro_alpha_zoo import MicroAlphaZoo
+
             factors = MicroAlphaZoo.list_factors()
             if not factors:
-                await update.message.reply_text("[ INFO ] Belum ada faktor terdaftar di MicroAlphaZoo.", parse_mode=ParseMode.HTML)
+                await update.message.reply_text(
+                    "[ INFO ] Belum ada faktor terdaftar di MicroAlphaZoo.", parse_mode=ParseMode.HTML
+                )
                 return
 
             by_cat: dict[str, list[Any]] = {}
@@ -1736,10 +1908,14 @@ class TelegramBot:
             for cat, flist in by_cat.items():
                 lines.append(f"<b>📂 {cat.upper()} ({len(flist)} Faktor):</b>")
                 for f in flist:
-                    lines.append(f"• <code>{f.name}</code> (Lookback: {f.lookback}b, {f.direction})\n  <i>{html.escape(f.description)}</i>")
+                    lines.append(
+                        f"• <code>{f.name}</code> (Lookback: {f.lookback}b, {f.direction})\n  <i>{html.escape(f.description)}</i>"
+                    )
                 lines.append("")
 
-            lines.append("<b>Inspeksi Real-Time:</b>\n• <code>/alpha &lt;symbol&gt; &lt;factor_name&gt;</code> (Contoh: <code>/alpha XAUUSD alpha_001</code>)")
+            lines.append(
+                "<b>Inspeksi Real-Time:</b>\n• <code>/alpha &lt;symbol&gt; &lt;factor_name&gt;</code> (Contoh: <code>/alpha XAUUSD alpha_001</code>)"
+            )
             full_text = "\n".join(lines)
             for chunk in self._chunk_text(full_text, max_len=4000, is_html=True):
                 await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
@@ -1749,8 +1925,10 @@ class TelegramBot:
 
     async def _cmd_alpha(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Calculate and inspect a quantitative alpha factor (/alpha <symbol> <factor>)."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         args = ctx.args or []
@@ -1772,22 +1950,39 @@ class TelegramBot:
             from sqlalchemy import select
 
             async with get_session() as session:
-                rows = (await session.execute(
-                    select(PriceOHLCV)
-                    .where(PriceOHLCV.symbol == sym)
-                    .order_by(PriceOHLCV.timestamp.desc())
-                    .limit(100)
-                )).scalars().all()
+                rows = (
+                    (
+                        await session.execute(
+                            select(PriceOHLCV)
+                            .where(PriceOHLCV.symbol == sym)
+                            .order_by(PriceOHLCV.timestamp.desc())
+                            .limit(100)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
 
             if not rows:
-                await update.message.reply_text(f"[GAGAL] Data OHLCV untuk <code>{sym}</code> tidak ditemukan di database.", parse_mode=ParseMode.HTML)
+                await update.message.reply_text(
+                    f"[GAGAL] Data OHLCV untuk <code>{sym}</code> tidak ditemukan di database.",
+                    parse_mode=ParseMode.HTML,
+                )
                 return
 
             rows = list(reversed(rows))
-            df = pd.DataFrame([{
-                "open": float(r.open), "high": float(r.high), "low": float(r.low),
-                "close": float(r.close), "volume": float(r.volume or 0)
-            } for r in rows])
+            df = pd.DataFrame(
+                [
+                    {
+                        "open": float(r.open),
+                        "high": float(r.high),
+                        "low": float(r.low),
+                        "close": float(r.close),
+                        "volume": float(r.volume or 0),
+                    }
+                    for r in rows
+                ]
+            )
 
             score_series = MicroAlphaZoo.compute_factor(factor_name, df)
             latest_val = float(score_series.iloc[-1]) if not score_series.empty else 0.0
@@ -1810,7 +2005,10 @@ class TelegramBot:
             await update.message.reply_text(resp, parse_mode=ParseMode.HTML)
         except Exception as exc:
             logger.error(f"Error computing /alpha {factor_name} on {sym}: {exc}", exc_info=True)
-            await update.message.reply_text(f"[ERROR] Gagal menghitung alpha <code>{factor_name}</code>: {html.escape(str(exc))}", parse_mode=ParseMode.HTML)
+            await update.message.reply_text(
+                f"[ERROR] Gagal menghitung alpha <code>{factor_name}</code>: {html.escape(str(exc))}",
+                parse_mode=ParseMode.HTML,
+            )
 
     async def _monitor_pending_expiry(self, msg: Any, action_id: str, agent: Any, timeout: float = 90.0) -> None:
         """Monitors pending action expiration and revokes inline keyboard after timeout."""
@@ -1845,6 +2043,7 @@ class TelegramBot:
         args = ctx.args or []
 
         from monika.interfaces.gateway.pairing import get_pairing_manager
+
         mgr = get_pairing_manager()
 
         if mgr.is_user_paired("telegram", user_id):
@@ -1865,29 +2064,35 @@ class TelegramBot:
                 self._router.allowed_user_ids.add(int(user_id))
             await update.message.reply_text(
                 f"[SELESAI] *Pairing Berhasil!*\n\n{reply_msg}\nAnda sekarang memiliki akses penuh ke Monika.",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
         else:
             await update.message.reply_text(reply_msg, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_vix(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         text = await self._build_vix_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_tokens(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_tokens_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_intel(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
-        
+
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import UserMarketIntel
         from sqlalchemy import select, or_
@@ -1908,17 +2113,21 @@ class TelegramBot:
         if not records:
             await update.message.reply_text(
                 "[INFORMASI] *Tidak ada Market Intelligence aktif.*\nGunakan /research atau chat untuk melakukan riset dan menyimpan intel baru.",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
 
         lines = [f"[KEYAKINAN] *MARKET INTELLIGENCE AKTIF ({len(records)})*\n"]
         for r in records:
-            symbols = ", ".join(r.affected_symbols_list) if hasattr(r, "affected_symbols_list") else (r.affected_symbols or "ALL")
+            symbols = (
+                ", ".join(r.affected_symbols_list)
+                if hasattr(r, "affected_symbols_list")
+                else (r.affected_symbols or "ALL")
+            )
             directive_str = f" | Directive: *{r.directive.upper()}*" if r.directive else ""
             target_cycle = f" | Target: {r.target_cycle}" if r.target_cycle else ""
             exp_str = r.expires_at.strftime("%Y-%m-%d %H:%M") if r.expires_at else "No expiry"
-            
+
             lines.append(
                 f"• *#{r.id}* [{r.intel_type.upper()}] *{r.title}*\n"
                 f"  Aset: `{symbols}`{directive_str}{target_cycle}\n"
@@ -1931,11 +2140,15 @@ class TelegramBot:
             await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_archive_intel(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_admin(update): return await self._reject_non_admin(update)
-        
+        if not update.message:
+            return
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
+
         if not ctx.args or not ctx.args[0].strip().isdigit():
-            await update.message.reply_text("Format: `/archive_intel <intel_id>`\nContoh: `/archive_intel 1`", parse_mode=ParseMode.MARKDOWN)
+            await update.message.reply_text(
+                "Format: `/archive_intel <intel_id>`\nContoh: `/archive_intel 1`", parse_mode=ParseMode.MARKDOWN
+            )
             return
 
         intel_id = int(ctx.args[0].strip())
@@ -1955,21 +2168,28 @@ class TelegramBot:
 
             intel.is_active = False
             user_id_str = str(update.effective_user.id) if update.effective_user else "unknown"
-            session.add(ActivityLog(
-                category="intel",
-                description=f"Market Intelligence #{intel_id} deactivated via /archive_intel by user {user_id_str}",
-                actor="telegram_bot",
-            ))
+            session.add(
+                ActivityLog(
+                    category="intel",
+                    description=f"Market Intelligence #{intel_id} deactivated via /archive_intel by user {user_id_str}",
+                    actor="telegram_bot",
+                )
+            )
             await session.commit()
 
-        await update.message.reply_text(f"[BERHASIL] Market Intelligence *#{intel_id}* berhasil dinonaktifkan.", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(
+            f"[BERHASIL] Market Intelligence *#{intel_id}* berhasil dinonaktifkan.", parse_mode=ParseMode.MARKDOWN
+        )
 
     # Admin commands
 
     async def _cmd_pause(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
         clean_args = [a for a in ctx.args if a not in ("-y", "--force")] if ctx.args else []
         duration_hours = None
         duration_desc = ""
@@ -1978,7 +2198,11 @@ class TelegramBot:
         if clean_args:
             full_str = " ".join(clean_args).lower().strip()
             import re
-            m = re.match(r"^(\d+(?:\.\d+)?)\s*(m|min|mins|menit|minutes?|h|hr|hrs|jam|hours?|d|hari|days?)(?:\s+(.*))?$", full_str)
+
+            m = re.match(
+                r"^(\d+(?:\.\d+)?)\s*(m|min|mins|menit|minutes?|h|hr|hrs|jam|hours?|d|hari|days?)(?:\s+(.*))?$",
+                full_str,
+            )
             if m:
                 val = float(m.group(1))
                 unit = m.group(2).lower()
@@ -1998,21 +2222,26 @@ class TelegramBot:
 
         if not ctx.args or ("-y" not in ctx.args and "--force" not in ctx.args):
             import secrets, time
+
             nonce = secrets.token_hex(4)
-            if not hasattr(self, '_active_nonces'):
+            if not hasattr(self, "_active_nonces"):
                 self._active_nonces = {}
             self._active_nonces[nonce] = {
                 "action": "pause",
                 "reason": reason,
                 "duration_hours": duration_hours,
                 "duration_desc": duration_desc,
-                "expires": time.time() + 120.0
+                "expires": time.time() + 120.0,
             }
 
-            keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("[ KONFIRMASI JEDA ]", callback_data=f"pause:confirm:{nonce}"),
-                InlineKeyboardButton("[ BATAL ]", callback_data="cancel"),
-            ]])
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton("[ KONFIRMASI JEDA ]", callback_data=f"pause:confirm:{nonce}"),
+                        InlineKeyboardButton("[ BATAL ]", callback_data="cancel"),
+                    ]
+                ]
+            )
             dur_line = f"Durasi: {duration_desc} (auto-unpause)\n" if duration_desc else ""
             await update.message.reply_text(
                 f"[ PERINGATAN: KONFIRMASI JEDA TRADING ]\n\n"
@@ -2026,32 +2255,49 @@ class TelegramBot:
 
         from monika.infrastructure.database.db import get_session
         from monika.domain.risk.risk_gate import RiskGate
+
         gate = RiskGate(self.settings)
         async with get_session() as session:
             await gate.pause_trading(session, reason, duration_hours=duration_hours)
         dur_msg = f"\nDurasi: {duration_desc} (auto-unpause aktif)" if duration_desc else ""
-        await update.message.reply_text(f"[ PAUSED ] Trading dijeda.\nAlasan: {reason}{dur_msg}", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(
+            f"[ PAUSED ] Trading dijeda.\nAlasan: {reason}{dur_msg}", parse_mode=ParseMode.MARKDOWN
+        )
 
     async def _cmd_resume(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
         from monika.infrastructure.database.db import get_session
         from monika.domain.risk.risk_gate import RiskGate
         from monika.core.analytics.cost_tracker import CostTracker
+
         async with get_session() as session:
-            if hasattr(self, "execution_service") and self.execution_service and hasattr(self.execution_service, "resume_trading"):
+            if (
+                hasattr(self, "execution_service")
+                and self.execution_service
+                and hasattr(self.execution_service, "resume_trading")
+            ):
                 await self.execution_service.resume_trading(session, requested_by="telegram_admin")
             else:
                 gate = RiskGate(self.settings)
                 await gate.resume_trading(session)
             await CostTracker.clear_budget_pause(session)
-        await update.message.reply_text("[ RESUMED ] Trading & AI Budget dilanjutkan (All pause & kill flags cleared).", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(
+            "[ RESUMED ] Trading & AI Budget dilanjutkan (All pause & kill flags cleared).",
+            parse_mode=ParseMode.MARKDOWN,
+        )
 
     async def _cmd_suspend(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         from monika.infrastructure.database.db import get_session
         from monika.core.analytics.paper_tracker import PaperTracker
@@ -2079,6 +2325,7 @@ class TelegramBot:
         target_sym = ctx.args[0].strip().upper().replace("/", "")
         dur_str = ctx.args[1].lower().strip() if len(ctx.args) > 1 else "24h"
         import re
+
         dur_hours = 24.0
         m = re.match(r"^(\d+(?:\.\d+)?)\s*(m|min|mins|minutes?|h|hr|hrs|hours?|d|days?)$", dur_str)
         if m:
@@ -2113,12 +2360,17 @@ class TelegramBot:
         )
 
     async def _cmd_unsuspend(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         if not ctx.args:
-            await update.message.reply_text("Penggunaan: `/unsuspend <symbol>` atau `/unsuspend all`", parse_mode=ParseMode.MARKDOWN)
+            await update.message.reply_text(
+                "Penggunaan: `/unsuspend <symbol>` atau `/unsuspend all`", parse_mode=ParseMode.MARKDOWN
+            )
             return
 
         target = ctx.args[0].strip().upper()
@@ -2130,15 +2382,22 @@ class TelegramBot:
             if target == "ALL":
                 if not ctx.args or ("-y" not in ctx.args and "--force" not in ctx.args):
                     import secrets, time
+
                     nonce = secrets.token_hex(4)
-                    if not hasattr(self, '_active_nonces'):
+                    if not hasattr(self, "_active_nonces"):
                         self._active_nonces = {}
                     self._active_nonces[nonce] = {"action": "unsuspend_all", "expires": time.time() + 120.0}
 
-                    keyboard = InlineKeyboardMarkup([[
-                        InlineKeyboardButton("[ CONFIRM UNSUSPEND ALL ]", callback_data=f"unsuspend_all:confirm:{nonce}"),
-                        InlineKeyboardButton("[ CANCEL ]", callback_data="cancel"),
-                    ]])
+                    keyboard = InlineKeyboardMarkup(
+                        [
+                            [
+                                InlineKeyboardButton(
+                                    "[ CONFIRM UNSUSPEND ALL ]", callback_data=f"unsuspend_all:confirm:{nonce}"
+                                ),
+                                InlineKeyboardButton("[ CANCEL ]", callback_data="cancel"),
+                            ]
+                        ]
+                    )
                     await update.message.reply_text(
                         "[PERINGATAN] *CONFIRMATION REQUIRED: UNSUSPEND ALL*\n\n"
                         "Are you sure you want to lift trading suspension on all instruments?",
@@ -2149,32 +2408,50 @@ class TelegramBot:
 
                 cleared = await tracker.unsuspend_all(session)
                 if cleared:
-                    await update.message.reply_text(f"[ OK ] Berhasil membuka blokir semua simbol: `{', '.join(cleared)}`", parse_mode=ParseMode.MARKDOWN)
+                    await update.message.reply_text(
+                        f"[ OK ] Berhasil membuka blokir semua simbol: `{', '.join(cleared)}`",
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
                 else:
-                    await update.message.reply_text("[ INFO ] Tidak ada simbol yang sedang tersuspensi.", parse_mode=ParseMode.MARKDOWN)
+                    await update.message.reply_text(
+                        "[ INFO ] Tidak ada simbol yang sedang tersuspensi.", parse_mode=ParseMode.MARKDOWN
+                    )
             else:
                 ok = await tracker.unsuspend_symbol(session, target)
                 if ok:
-                    await update.message.reply_text(f"[ OK ] Berhasil membuka blokir simbol *{target}*.", parse_mode=ParseMode.MARKDOWN)
+                    await update.message.reply_text(
+                        f"[ OK ] Berhasil membuka blokir simbol *{target}*.", parse_mode=ParseMode.MARKDOWN
+                    )
                 else:
-                    await update.message.reply_text(f"[ INFO ] Simbol *{target}* tidak ditemukan dalam daftar suspensi.", parse_mode=ParseMode.MARKDOWN)
+                    await update.message.reply_text(
+                        f"[ INFO ] Simbol *{target}* tidak ditemukan dalam daftar suspensi.",
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
 
     async def _cmd_kill(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         import secrets, time
+
         nonce = secrets.token_hex(4)
-        if not hasattr(self, '_active_nonces'):
+        if not hasattr(self, "_active_nonces"):
             self._active_nonces = {}
         self._active_nonces[nonce] = {"action": "killswitch", "expires": time.time() + 120.0}
 
         # Two-step confirm for kill switch with single-use nonce
-        keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton("[ KONFIRMASI TUTUP SEMUA ]", callback_data=f"killswitch:confirm:{nonce}"),
-            InlineKeyboardButton("[ BATAL ]",            callback_data="cancel"),
-        ]])
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("[ KONFIRMASI TUTUP SEMUA ]", callback_data=f"killswitch:confirm:{nonce}"),
+                    InlineKeyboardButton("[ BATAL ]", callback_data="cancel"),
+                ]
+            ]
+        )
         await update.message.reply_text(
             "[ PERINGATAN: EMERGENCY KILL SWITCH ]\n\n"
             "Tindakan ini akan menutup SEMUA posisi terbuka dan menghentikan trading baru.\n\n"
@@ -2189,9 +2466,9 @@ class TelegramBot:
         if not self._is_admin(update):
             return await self._reject_non_admin(update)
         # Langsung execute tanpa konfirmasi
-        await update.message.reply_text('[DARURAT] EMERGENCY CLOSE INITIATED - NO CONFIRMATION NEEDED')
+        await update.message.reply_text("[DARURAT] EMERGENCY CLOSE INITIATED - NO CONFIRMATION NEEDED")
         if self.execution_service:
-            result = await self.execution_service.kill_switch('EMERGENCY TELEGRAM COMMAND - INSTANT')
+            result = await self.execution_service.kill_switch("EMERGENCY TELEGRAM COMMAND - INSTANT")
             await update.message.reply_text(
                 f"[VOLATILITAS] Emergency close done: {result['closed']}/{result['total']} positions closed"
             )
@@ -2199,12 +2476,18 @@ class TelegramBot:
             await update.message.reply_text("[PERINGATAN] ExecutionService tidak terhubung.")
 
     async def _cmd_close(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         if not ctx.args:
-            await update.message.reply_text("Usage: /close <ticket> [volume|percentage%]\nContoh: `/close 12345` atau `/close 12345 50%` atau `/close 12345 0.05`", parse_mode=ParseMode.MARKDOWN)
+            await update.message.reply_text(
+                "Usage: /close <ticket> [volume|percentage%]\nContoh: `/close 12345` atau `/close 12345 50%` atau `/close 12345 0.05`",
+                parse_mode=ParseMode.MARKDOWN,
+            )
             return
 
         try:
@@ -2222,10 +2505,15 @@ class TelegramBot:
                     from monika.infrastructure.database.db import get_session
                     from monika.infrastructure.database.models import Position
                     from sqlalchemy import select, or_
+
                     async with get_session() as session:
-                        pos = (await session.execute(
-                            select(Position).where(or_(Position.mt5_ticket == ticket, Position.id == ticket)).limit(1)
-                        )).scalar_one_or_none()
+                        pos = (
+                            await session.execute(
+                                select(Position)
+                                .where(or_(Position.mt5_ticket == ticket, Position.id == ticket))
+                                .limit(1)
+                            )
+                        ).scalar_one_or_none()
                         if pos and pos.volume:
                             volume = round(float(pos.volume) * pct, 2)
                 except Exception:
@@ -2237,6 +2525,7 @@ class TelegramBot:
                     volume = None
 
         from monika.interfaces.telegram.command_router import CommandRouter
+
         keyboard = CommandRouter.build_close_keyboard(ticket, volume=volume)
         vol_desc = f" ({volume} lot)" if volume is not None else ""
         await update.message.reply_text(
@@ -2247,9 +2536,12 @@ class TelegramBot:
 
     async def _cmd_cancel(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Membatalkan pending order MT5 (/cancel <ticket>)."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         if not ctx.args:
             if self.execution_service and hasattr(self.execution_service, "mt5"):
@@ -2258,7 +2550,9 @@ class TelegramBot:
                     if orders:
                         lines = ["[DATA] *Daftar Pending Order:*"]
                         for o in orders:
-                            lines.append(f"• Ticket `#{o.get('ticket')}`: *{o.get('symbol')}* {o.get('type_str', '').upper()} {o.get('volume_initial', o.get('volume'))} lot @ `{o.get('price_open')}`")
+                            lines.append(
+                                f"• Ticket `#{o.get('ticket')}`: *{o.get('symbol')}* {o.get('type_str', '').upper()} {o.get('volume_initial', o.get('volume'))} lot @ `{o.get('price_open')}`"
+                            )
                         lines.append("\nKetik `/cancel <ticket>` untuk membatalkan.")
                         await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
                         return
@@ -2282,14 +2576,21 @@ class TelegramBot:
 
         res = await self.execution_service.mt5.cancel_order(ticket)
         if res.get("success"):
-            await update.message.reply_text(f"[BERHASIL] Pending order `#{ticket}` berhasil dibatalkan.", parse_mode=ParseMode.MARKDOWN)
+            await update.message.reply_text(
+                f"[BERHASIL] Pending order `#{ticket}` berhasil dibatalkan.", parse_mode=ParseMode.MARKDOWN
+            )
         else:
-            await update.message.reply_text(f"[GAGAL] Gagal membatalkan order `#{ticket}`: {res.get('error', 'Unknown error')}", parse_mode=ParseMode.MARKDOWN)
+            await update.message.reply_text(
+                f"[GAGAL] Gagal membatalkan order `#{ticket}`: {res.get('error', 'Unknown error')}",
+                parse_mode=ParseMode.MARKDOWN,
+            )
 
     async def _cmd_account(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Menampilkan detail balance, equity, margin, free margin, margin level (/account)."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         if not self.execution_service or not hasattr(self.execution_service, "mt5"):
@@ -2312,7 +2613,11 @@ class TelegramBot:
             margin_level = acc.get("margin_level", 0.0)
             leverage = acc.get("leverage", 1)
 
-            health = "[AKTIF] SEHAT" if margin_level == 0 or margin_level >= 300 else ("[WASPADA] PERHATIAN" if margin_level >= 200 else "[KRITIS] KRITIS")
+            health = (
+                "[AKTIF] SEHAT"
+                if margin_level == 0 or margin_level >= 300
+                else ("[WASPADA] PERHATIAN" if margin_level >= 200 else "[KRITIS] KRITIS")
+            )
 
             text = (
                 f"[BANK] *DETAIL AKUN MT5*\n"
@@ -2333,12 +2638,15 @@ class TelegramBot:
 
     async def _cmd_tasks(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Menampilkan tabel status background worker / monitors (/tasks)."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         try:
             from monika.application.agent.task_registry import TaskRegistry
+
             table_md = TaskRegistry.get_formatted_status_table(getattr(self, "task_registry", None))
             await update.message.reply_text(table_md, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
@@ -2347,12 +2655,18 @@ class TelegramBot:
 
     async def _cmd_debate(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Memicu sesi ad-hoc Multi-Agent Debate Bull vs Bear (/debate <symbol>)."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         symbol = ctx.args[0].upper().strip().replace("/", "") if ctx.args else "XAUUSD"
-        await update.message.reply_text(f"[DEBAT] Memulai Multi-Agent Debate untuk *{symbol}*...\n_Bull Specialist vs Bear Specialist vs Investment Judge_", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(
+            f"[DEBAT] Memulai Multi-Agent Debate untuk *{symbol}*...\n_Bull Specialist vs Bear Specialist vs Investment Judge_",
+            parse_mode=ParseMode.MARKDOWN,
+        )
 
         from monika.infrastructure.database.db import get_session
         from monika.application.analysis.debate.debate_orchestrator import DebateOrchestrator
@@ -2387,9 +2701,12 @@ class TelegramBot:
 
     async def _cmd_closeall(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Tutup semua posisi aktif (Admin only)."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         if not self.execution_service:
             await update.message.reply_text("[PERINGATAN] ExecutionService tidak terhubung.")
@@ -2397,15 +2714,22 @@ class TelegramBot:
 
         if not ctx.args or ("-y" not in ctx.args and "--force" not in ctx.args):
             import secrets, time
+
             nonce = secrets.token_hex(4)
-            if not hasattr(self, '_active_nonces'):
+            if not hasattr(self, "_active_nonces"):
                 self._active_nonces = {}
             self._active_nonces[nonce] = {"action": "closeall", "expires": time.time() + 120.0}
 
-            keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("[ [DARURAT] CONFIRM CLOSE ALL ]", callback_data=f"closeall:confirm:{nonce}"),
-                InlineKeyboardButton("[ CANCEL ]", callback_data="cancel"),
-            ]])
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "[ [DARURAT] CONFIRM CLOSE ALL ]", callback_data=f"closeall:confirm:{nonce}"
+                        ),
+                        InlineKeyboardButton("[ CANCEL ]", callback_data="cancel"),
+                    ]
+                ]
+            )
             await update.message.reply_text(
                 "[DARURAT] *CONFIRMATION REQUIRED: CLOSE ALL POSITIONS*\n\n"
                 "Are you sure you want to close ALL active open positions immediately?",
@@ -2434,9 +2758,12 @@ class TelegramBot:
 
     async def _cmd_override(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Ubah parameter risiko secara dinamis (Admin only)."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         if not ctx.args or len(ctx.args) < 2:
             help_text = (
@@ -2479,13 +2806,16 @@ class TelegramBot:
                 await update.message.reply_text(f"[GAGAL] Nilai tidak valid untuk `{param}`: {val_str}")
                 return
         else:
-            await update.message.reply_text(f"[GAGAL] Parameter `{param}` tidak dikenali. Ketik `/override` untuk opsi.")
+            await update.message.reply_text(
+                f"[GAGAL] Parameter `{param}` tidak dikenali. Ketik `/override` untuk opsi."
+            )
             return
 
         if "-y" not in ctx.args and "--force" not in ctx.args:
             import secrets, time
+
             nonce = secrets.token_hex(4)
-            if not hasattr(self, '_active_nonces'):
+            if not hasattr(self, "_active_nonces"):
                 self._active_nonces = {}
             self._active_nonces[nonce] = {
                 "action": "override",
@@ -2495,10 +2825,14 @@ class TelegramBot:
                 "expires": time.time() + 120.0,
             }
 
-            keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("[ CONFIRM OVERRIDE ]", callback_data=f"override:confirm:{nonce}"),
-                InlineKeyboardButton("[ CANCEL ]", callback_data="cancel"),
-            ]])
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton("[ CONFIRM OVERRIDE ]", callback_data=f"override:confirm:{nonce}"),
+                        InlineKeyboardButton("[ CANCEL ]", callback_data="cancel"),
+                    ]
+                ]
+            )
             await update.message.reply_text(
                 f"[KONFIGURASI] *CONFIRMATION REQUIRED: RISK OVERRIDE*\n\n"
                 f"Parameter: `{param}`\n"
@@ -2516,9 +2850,9 @@ class TelegramBot:
         import json
 
         async with get_session() as session:
-            cfg_row = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key == "risk_override")
-            )).scalar_one_or_none()
+            cfg_row = (
+                await session.execute(select(SystemConfig).where(SystemConfig.key == "risk_override"))
+            ).scalar_one_or_none()
 
             current_cfg = {}
             if cfg_row and cfg_row.value:
@@ -2537,11 +2871,13 @@ class TelegramBot:
             else:
                 session.add(SystemConfig(key="risk_override", value=json.dumps(current_cfg)))
 
-            session.add(ActivityLog(
-                category="risk",
-                description=f"Risk override via Telegram: {updated_fields if param != 'reset' else 'RESET'}",
-                actor="telegram_admin",
-            ))
+            session.add(
+                ActivityLog(
+                    category="risk",
+                    description=f"Risk override via Telegram: {updated_fields if param != 'reset' else 'RESET'}",
+                    actor="telegram_admin",
+                )
+            )
             await session.commit()
 
         if hasattr(self, "settings") and isinstance(self.settings, dict):
@@ -2550,10 +2886,14 @@ class TelegramBot:
 
         try:
             from monika.interfaces.dashboard.routes.common import broadcast_live_event
-            await broadcast_live_event("risk_override_updated", {
-                "updated_fields": current_cfg,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            })
+
+            await broadcast_live_event(
+                "risk_override_updated",
+                {
+                    "updated_fields": current_cfg,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+            )
         except Exception:
             pass
 
@@ -2564,11 +2904,15 @@ class TelegramBot:
 
     async def _cmd_regime(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Deteksi rezim makro dan volatilitas terkini."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
 
         symbol = ctx.args[0].upper().strip() if ctx.args else "XAUUSD"
-        await update.message.reply_text(f"[TELUSURI] Menganalisis rezim pasar untuk *{symbol}*...", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(
+            f"[TELUSURI] Menganalisis rezim pasar untuk *{symbol}*...", parse_mode=ParseMode.MARKDOWN
+        )
 
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import FundamentalBrief, VIXData
@@ -2588,14 +2932,14 @@ class TelegramBot:
                 adx = None
                 vol_ratio = None
 
-            vix_row = (await session.execute(
-                select(VIXData).order_by(desc(VIXData.date)).limit(1)
-            )).scalar_one_or_none()
+            vix_row = (
+                await session.execute(select(VIXData).order_by(desc(VIXData.date)).limit(1))
+            ).scalar_one_or_none()
             vix_val = vix_row.close if vix_row else 15.0
 
-            brief_row = (await session.execute(
-                select(FundamentalBrief).order_by(desc(FundamentalBrief.generated_at)).limit(1)
-            )).scalar_one_or_none()
+            brief_row = (
+                await session.execute(select(FundamentalBrief).order_by(desc(FundamentalBrief.generated_at)).limit(1))
+            ).scalar_one_or_none()
             macro_sentiment = (brief_row.risk_sentiment or "neutral") if brief_row else "neutral"
 
         lines = [
@@ -2611,8 +2955,10 @@ class TelegramBot:
 
     async def _cmd_audit(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Jejak audit penalaran trade dan event lifecycle."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
 
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import Position, AssetAnalysis
@@ -2621,6 +2967,7 @@ class TelegramBot:
         ticket_arg = int(ctx.args[0]) if ctx.args and ctx.args[0].isdigit() else None
 
         from monika.infrastructure.database.repositories import PositionRepository
+
         async with get_session() as session:
             pos_repo = PositionRepository(session)
             if ticket_arg:
@@ -2638,17 +2985,21 @@ class TelegramBot:
                     f"[LOG] *Audit Trail — Ticket #{ticket_arg}*",
                     f"• Simbol: `{pos.symbol}` | Side: `{pos.direction}` | Lot: `{pos.volume}`",
                     f"• Entry: `{pos.entry_price}` | SL: `{pos.sl}` | TP: `{pos.tp}`",
-                    f"• Status: `{pos.status}` | PnL: `${pos.pnl:,.2f}`" if pos.pnl is not None else f"• Status: `{pos.status}`",
+                    f"• Status: `{pos.status}` | PnL: `${pos.pnl:,.2f}`"
+                    if pos.pnl is not None
+                    else f"• Status: `{pos.status}`",
                     f"• Waktu Buka: `{pos.opened_at.strftime('%Y-%m-%d %H:%M:%S UTC')}`" if pos.opened_at else "",
                 ]
                 if analysis:
-                    lines.extend([
-                        f"\n[KEYAKINAN] *AI Reasoning:*",
-                        f"• Confluence Score: `{analysis.confluence_score}`",
-                        f"• Confidence: `{analysis.confidence:.0%}`",
-                        f"• Regime: `{analysis.market_regime_at_analysis or 'N/A'}`",
-                        f"• Rasional: _{analysis.rationale[:250]}..._" if analysis.rationale else "",
-                    ])
+                    lines.extend(
+                        [
+                            f"\n[KEYAKINAN] *AI Reasoning:*",
+                            f"• Confluence Score: `{analysis.confluence_score}`",
+                            f"• Confidence: `{analysis.confidence:.0%}`",
+                            f"• Regime: `{analysis.market_regime_at_analysis or 'N/A'}`",
+                            f"• Rasional: _{analysis.rationale[:250]}..._" if analysis.rationale else "",
+                        ]
+                    )
                 await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
             else:
                 positions = await pos_repo.get_recent_positions(limit=5)
@@ -2660,14 +3011,19 @@ class TelegramBot:
                 lines = ["[LOG] *Audit 5 Posisi Terakhir:*"]
                 for p in positions:
                     pnl_str = f"+${p.pnl:,.2f}" if p.pnl and p.pnl >= 0 else f"-${abs(p.pnl or 0):,.2f}"
-                    lines.append(f"• `#{p.mt5_ticket or p.id}` {p.symbol} {p.direction} {p.volume}L — {p.status} ({pnl_str})")
+                    lines.append(
+                        f"• `#{p.mt5_ticket or p.id}` {p.symbol} {p.direction} {p.volume}L — {p.status} ({pnl_str})"
+                    )
                 lines.append("\nKetik `/audit <ticket>` untuk detail lengkap satu posisi.")
                 await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_run(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         await update.message.reply_text("[SINKRONISASI] Menjalankan siklus analisis manual...")
         if self.cycle_scheduler:
@@ -2684,16 +3040,19 @@ class TelegramBot:
             lines = [f"[BERHASIL] *Siklus analisis selesai*"]
             for sym, r in pa.items():
                 decision = (r.get("decision") or "N/A").upper()
-                conf     = r.get("confidence") or 0
+                conf = r.get("confidence") or 0
                 lines.append(f"  {sym}: `{decision}` ({conf:.0%})")
             await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
             await update.message.reply_text(f"[GAGAL] Siklus gagal: {e}")
 
     async def _cmd_backtest(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         days = 30
         mode = "full"
@@ -2706,7 +3065,9 @@ class TelegramBot:
                     await update.message.reply_text("[GAGAL] Parameter hari harus antara 1 dan 365.")
                     return
             except ValueError:
-                await update.message.reply_text("[GAGAL] Format salah. Contoh: `/backtest 30 [mode] [equity]`", parse_mode=ParseMode.MARKDOWN)
+                await update.message.reply_text(
+                    "[GAGAL] Format salah. Contoh: `/backtest 30 [mode] [equity]`", parse_mode=ParseMode.MARKDOWN
+                )
                 return
 
             if len(ctx.args) > 1:
@@ -2739,6 +3100,7 @@ class TelegramBot:
             from typing import cast
             from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine, BacktestMode
             from monika.application.backtest.walk_forward_engine import WalkForwardEngine
+
             end_time = datetime.now(timezone.utc)
             start_time = end_time - timedelta(days=days)
 
@@ -2761,29 +3123,33 @@ class TelegramBot:
                 await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
                 return
 
-            bt_mode: BacktestMode = cast(BacktestMode, mode) if mode in ("full", "replay", "langgraph_parity", "graph") else "full"
+            bt_mode: BacktestMode = (
+                cast(BacktestMode, mode) if mode in ("full", "replay", "langgraph_parity", "graph") else "full"
+            )
             engine = PointInTimeBacktestEngine(
                 start_time, end_time, self.settings, mode=bt_mode, initial_equity=initial_equity
             )
             run_record = await engine.run()
-            
+
             # Calculate by_symbol aggregation manually
             by_symbol = {}
             for t in engine.trades:
                 sym = t.symbol
                 if sym not in by_symbol:
-                    by_symbol[sym] = {'trades': 0, 'wins': 0, 'total_pnl': 0.0}
-                by_symbol[sym]['trades'] += 1
+                    by_symbol[sym] = {"trades": 0, "wins": 0, "total_pnl": 0.0}
+                by_symbol[sym]["trades"] += 1
                 if (t.pnl_pct or 0) > 0:
-                    by_symbol[sym]['wins'] += 1
-                by_symbol[sym]['total_pnl'] += (t.pnl_pct or 0)
-                
+                    by_symbol[sym]["wins"] += 1
+                by_symbol[sym]["total_pnl"] += t.pnl_pct or 0
+
             for sym, data in by_symbol.items():
-                data['win_rate'] = round((data['wins'] / data['trades']) * 100, 2)
-                
+                data["win_rate"] = round((data["wins"] / data["trades"]) * 100, 2)
+
             total_pnl_pct = 0.0
             if run_record.initial_equity and run_record.final_equity is not None and run_record.initial_equity > 0:
-                total_pnl_pct = ((run_record.final_equity - run_record.initial_equity) / run_record.initial_equity) * 100
+                total_pnl_pct = (
+                    (run_record.final_equity - run_record.initial_equity) / run_record.initial_equity
+                ) * 100
 
             msg = (
                 f"[BERHASIL] <b>Backtest {days} hari Selesai!</b>\n\n"
@@ -2801,18 +3167,17 @@ class TelegramBot:
             msg += "<b>By Symbol:</b>\n"
             for sym, data in by_symbol.items():
                 msg += f"• {sym}: {data['trades']} trades, {data['win_rate']}% WR, {data['total_pnl']:+.2f}% PnL\n"
-                
-            await update.message.reply_text(
-                msg,
-                parse_mode=ParseMode.HTML
-            )
+
+            await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
         except Exception as e:
             logger.error(f"Backtest error: {e}", exc_info=True)
             await update.message.reply_text(f"[GAGAL] Backtest gagal: {e}")
 
     async def _cmd_calendar(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
 
         from monika.infrastructure.database.db import AsyncSessionLocal
         from monika.infrastructure.database.models import EconomicCalendar
@@ -2825,8 +3190,7 @@ class TelegramBot:
         try:
             async with AsyncSessionLocal() as session:
                 q = select(EconomicCalendar).where(
-                    EconomicCalendar.event_time >= now - timedelta(hours=2),
-                    EconomicCalendar.event_time <= until
+                    EconomicCalendar.event_time >= now - timedelta(hours=2), EconomicCalendar.event_time <= until
                 )
                 if currency:
                     q = q.where(EconomicCalendar.currency.contains(currency))
@@ -2835,16 +3199,26 @@ class TelegramBot:
 
                 if not events:
                     filter_txt = f" untuk {currency}" if currency else ""
-                    await update.message.reply_text(f"[INFORMASI] Tidak ada event kalender signifikan dalam 36 jam ke depan{filter_txt}.")
+                    await update.message.reply_text(
+                        f"[INFORMASI] Tidak ada event kalender signifikan dalam 36 jam ke depan{filter_txt}."
+                    )
                     return
 
                 lines = ["[KALENDER] <b>Jadwal Kalender Ekonomi Makro (Next 36h):</b>\n"]
                 for e in events:
-                    impact_emoji = "[KRITIS]" if (e.impact or "").lower() == "high" else "[WASPADA]" if (e.impact or "").lower() == "medium" else "[NONAKTIF]"
+                    impact_emoji = (
+                        "[KRITIS]"
+                        if (e.impact or "").lower() == "high"
+                        else "[WASPADA]"
+                        if (e.impact or "").lower() == "medium"
+                        else "[NONAKTIF]"
+                    )
                     t_str = e.event_time.strftime("%d %b %H:%M UTC") if e.event_time else "TBD"
                     act = f" | Act: {e.actual}" if e.actual else ""
                     fcst = f" | Fct: {e.forecast}" if e.forecast else ""
-                    lines.append(f"{impact_emoji} <b>[{e.currency}]</b> {e.event_name}\n   [WAKTU] <code>{t_str}</code>{fcst}{act}")
+                    lines.append(
+                        f"{impact_emoji} <b>[{e.currency}]</b> {e.event_name}\n   [WAKTU] <code>{t_str}</code>{fcst}{act}"
+                    )
 
                 await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
         except Exception as e:
@@ -2852,11 +3226,14 @@ class TelegramBot:
             await update.message.reply_text(f"[GAGAL] Gagal memuat kalender ekonomi: {e}")
 
     async def _cmd_skills(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
 
         try:
             from monika.application.skills.loader import list_skills
+
             all_s = list_skills()
             playbooks = [s for s in all_s if "playbook" in s.lower() or s.startswith("alpha_")]
             core = [s for s in all_s if s not in playbooks]
@@ -2868,13 +3245,13 @@ class TelegramBot:
             for s in core[:8]:
                 lines.append(f"• <code>{s}</code>")
             if len(core) > 8:
-                lines.append(f"<i>...dan {len(core)-8} lainnya</i>")
+                lines.append(f"<i>...dan {len(core) - 8} lainnya</i>")
 
             lines.append(f"\n<b>Playbook Strategies ({len(playbooks)}):</b>")
             for p in playbooks[:8]:
                 lines.append(f"• <code>{p}</code>")
             if len(playbooks) > 8:
-                lines.append(f"<i>...dan {len(playbooks)-8} lainnya</i>")
+                lines.append(f"<i>...dan {len(playbooks) - 8} lainnya</i>")
 
             await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
         except Exception as e:
@@ -2889,7 +3266,11 @@ class TelegramBot:
         ]
         for p in plugins:
             icon = "[AKTIF]" if p.get("enabled") else "[NONAKTIF]"
-            status = "ACTIVE" if p.get("enabled") else ("DEGRADED" if str(p.get("status", "")).startswith("DEGRADED") else "DISABLED")
+            status = (
+                "ACTIVE"
+                if p.get("enabled")
+                else ("DEGRADED" if str(p.get("status", "")).startswith("DEGRADED") else "DISABLED")
+            )
             cat = p.get("category", "custom")
             lines.append(f"{icon} <b>{p.get('name', p['id'])}</b> <code>v{p.get('version', '1.0')}</code> [{cat}]")
             lines.append(f"   <i>Status: {status}</i> • <code>{p['id']}</code>")
@@ -2909,18 +3290,23 @@ class TelegramBot:
         if row:
             keyboard.append(row)
 
-        keyboard.append([
-            InlineKeyboardButton("[MODUL] Marketplace Catalog", callback_data="plg:cat"),
-            InlineKeyboardButton("[SINKRONISASI] Refresh", callback_data="plg:ref"),
-        ])
+        keyboard.append(
+            [
+                InlineKeyboardButton("[MODUL] Marketplace Catalog", callback_data="plg:cat"),
+                InlineKeyboardButton("[SINKRONISASI] Refresh", callback_data="plg:ref"),
+            ]
+        )
         return InlineKeyboardMarkup(keyboard)
 
     async def _cmd_plugins(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
 
         try:
             from monika.application.harness.installer import list_all_plugins_status
+
             plugins = list_all_plugins_status()
             if not plugins:
                 await update.message.reply_text("[INFORMASI] Belum ada modul plugin yang terdaftar di sistem.")
@@ -2934,26 +3320,37 @@ class TelegramBot:
             await update.message.reply_text(f"[GAGAL] Gagal memuat status plugins: {e}")
 
     async def _cmd_plugin_catalog(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
 
         try:
             from monika.application.harness.installer import get_community_catalog
+
             catalog = get_community_catalog()
             lines = ["[MODUL] <b>KATALOG MARKETPLACE PLUG-IN MONIKA</b>\n"]
             kb = []
             for idx, item in enumerate(catalog):
-                lines.append(f"• <b>{item['name']}</b> (<code>{item['package']}</code>)\n  <i>{item['description']}</i>\n")
-                kb.append([InlineKeyboardButton(f"[TERIMA] Install {item['name'][:20]}", callback_data=f"plg:inst:{idx}")])
+                lines.append(
+                    f"• <b>{item['name']}</b> (<code>{item['package']}</code>)\n  <i>{item['description']}</i>\n"
+                )
+                kb.append(
+                    [InlineKeyboardButton(f"[TERIMA] Install {item['name'][:20]}", callback_data=f"plg:inst:{idx}")]
+                )
             kb.append([InlineKeyboardButton("[PLUGIN] Plugins Terpasang", callback_data="plg:ref")])
-            await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
+            await update.message.reply_text(
+                "\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb)
+            )
         except Exception as e:
             logger.error(f"Error viewing plugin catalog: {e}", exc_info=True)
             await update.message.reply_text(f"[GAGAL] Gagal memuat katalog plugin: {e}")
 
     async def _cmd_plugin_install(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         if not ctx.args:
             await update.message.reply_text(
@@ -2964,44 +3361,66 @@ class TelegramBot:
 
         pkg = ctx.args[0].strip()
         from monika.application.harness.installer import validate_package_spec, run_pip_install
+
         valid, err = validate_package_spec(pkg)
         if not valid:
             await update.message.reply_text(f"[GAGAL] <b>Validasi Paket Ditolak:</b>\n{err}", parse_mode=ParseMode.HTML)
             return
 
-        msg = await update.message.reply_text(f"[MEMPROSES] <b>Menginstall plugin via pip:</b> <code>{pkg}</code>...\n<i>Mohon tunggu sebentar...</i>", parse_mode=ParseMode.HTML)
+        msg = await update.message.reply_text(
+            f"[MEMPROSES] <b>Menginstall plugin via pip:</b> <code>{pkg}</code>...\n<i>Mohon tunggu sebentar...</i>",
+            parse_mode=ParseMode.HTML,
+        )
         success, out = await asyncio.to_thread(run_pip_install, pkg)
-        
+
         status_icon = "[BERHASIL]" if success else "[GAGAL]"
         status_word = "Berhasil" if success else "Gagal"
         tail_out = out[-400:] if len(out) > 400 else out
-        await msg.edit_text(f"{status_icon} <b>Instalasi {status_word}:</b> <code>{pkg}</code>\n\n<pre>{tail_out}</pre>", parse_mode=ParseMode.HTML)
+        await msg.edit_text(
+            f"{status_icon} <b>Instalasi {status_word}:</b> <code>{pkg}</code>\n\n<pre>{tail_out}</pre>",
+            parse_mode=ParseMode.HTML,
+        )
 
     async def _cmd_plugin_uninstall(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         if not ctx.args:
-            await update.message.reply_text("[INFORMASI] Format: <code>/plugin_uninstall &lt;package_name&gt;</code>", parse_mode=ParseMode.HTML)
+            await update.message.reply_text(
+                "[INFORMASI] Format: <code>/plugin_uninstall &lt;package_name&gt;</code>", parse_mode=ParseMode.HTML
+            )
             return
 
         pkg = ctx.args[0].strip()
         from monika.application.harness.installer import run_pip_uninstall
-        msg = await update.message.reply_text(f"[MEMPROSES] <b>Menghapus paket via pip:</b> <code>{pkg}</code>...", parse_mode=ParseMode.HTML)
+
+        msg = await update.message.reply_text(
+            f"[MEMPROSES] <b>Menghapus paket via pip:</b> <code>{pkg}</code>...", parse_mode=ParseMode.HTML
+        )
         success, out = await asyncio.to_thread(run_pip_uninstall, pkg)
         status_icon = "[BERHASIL]" if success else "[GAGAL]"
-        await msg.edit_text(f"{status_icon} <b>Uninstall {'Berhasil' if success else 'Gagal'}:</b> <code>{pkg}</code>", parse_mode=ParseMode.HTML)
+        await msg.edit_text(
+            f"{status_icon} <b>Uninstall {'Berhasil' if success else 'Gagal'}:</b> <code>{pkg}</code>",
+            parse_mode=ParseMode.HTML,
+        )
 
     async def _cmd_plugin_toggle(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         if not ctx.args:
-            await update.message.reply_text("[INFORMASI] Format: <code>/plugin_toggle &lt;plugin_id&gt;</code>", parse_mode=ParseMode.HTML)
+            await update.message.reply_text(
+                "[INFORMASI] Format: <code>/plugin_toggle &lt;plugin_id&gt;</code>", parse_mode=ParseMode.HTML
+            )
             return
 
         plugin_id = ctx.args[0].strip()
         from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
+
         plugins = {p["id"]: p for p in list_all_plugins_status()}
         if plugin_id in plugins:
             p = plugins[plugin_id]
@@ -3012,11 +3431,15 @@ class TelegramBot:
             ok, res_msg = toggle_plugin_state(plugin_id, p["category"], new_state)
             await update.message.reply_text(f"{'[AKTIF]' if new_state else '[NONAKTIF]'} {res_msg}")
         else:
-            await update.message.reply_text(f"[GAGAL] Plugin '<code>{plugin_id}</code>' tidak ditemukan.", parse_mode=ParseMode.HTML)
+            await update.message.reply_text(
+                f"[GAGAL] Plugin '<code>{plugin_id}</code>' tidak ditemukan.", parse_mode=ParseMode.HTML
+            )
 
     async def _cmd_memory(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
 
         query = " ".join(ctx.args).strip() if ctx.args else ""
         from monika.infrastructure.database.db import AsyncSessionLocal
@@ -3026,13 +3449,18 @@ class TelegramBot:
         try:
             async with AsyncSessionLocal() as session:
                 if query:
-                    q = select(DecisionReflection).where(
-                        or_(
-                            DecisionReflection.symbol.ilike(f"%{query}%"),
-                            DecisionReflection.reflection_text.ilike(f"%{query}%"),
-                            DecisionReflection.specific_lesson.ilike(f"%{query}%"),
+                    q = (
+                        select(DecisionReflection)
+                        .where(
+                            or_(
+                                DecisionReflection.symbol.ilike(f"%{query}%"),
+                                DecisionReflection.reflection_text.ilike(f"%{query}%"),
+                                DecisionReflection.specific_lesson.ilike(f"%{query}%"),
+                            )
                         )
-                    ).order_by(DecisionReflection.id.desc()).limit(5)
+                        .order_by(DecisionReflection.id.desc())
+                        .limit(5)
+                    )
                 else:
                     q = select(DecisionReflection).order_by(DecisionReflection.id.desc()).limit(5)
 
@@ -3046,7 +3474,9 @@ class TelegramBot:
                 for r in reflections:
                     res_emoji = "[AKTIF]" if (r.outcome_pnl_usd or 0) > 0 else "[KRITIS]"
                     pnl_str = f"${r.outcome_pnl_usd:+,.2f}" if r.outcome_pnl_usd is not None else "N/A"
-                    lesson_snippet = r.specific_lesson or (r.reflection_text[:120] if r.reflection_text else "No lesson recorded.")
+                    lesson_snippet = r.specific_lesson or (
+                        r.reflection_text[:120] if r.reflection_text else "No lesson recorded."
+                    )
                     safe_sym = html.escape(str(r.symbol or ""))
                     safe_dec = html.escape(str(r.decision or "").upper())
                     safe_lesson = html.escape(lesson_snippet or "")
@@ -3061,8 +3491,10 @@ class TelegramBot:
             await update.message.reply_text(f"[GAGAL] Gagal membaca memori: {e}")
 
     async def _cmd_strategies(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
 
         from monika.infrastructure.database.db import AsyncSessionLocal
         from monika.infrastructure.database.models import PlaybookRuleAttribution
@@ -3071,13 +3503,21 @@ class TelegramBot:
         try:
             async with AsyncSessionLocal() as session:
                 rules = (
-                    await session.execute(
-                        select(PlaybookRuleAttribution).order_by(PlaybookRuleAttribution.times_triggered.desc()).limit(10)
+                    (
+                        await session.execute(
+                            select(PlaybookRuleAttribution)
+                            .order_by(PlaybookRuleAttribution.times_triggered.desc())
+                            .limit(10)
+                        )
                     )
-                ).scalars().all()
+                    .scalars()
+                    .all()
+                )
 
                 if not rules:
-                    await update.message.reply_text("[INFORMASI] Belum ada aturan playbook / strategi empiris terdaftar di DB.")
+                    await update.message.reply_text(
+                        "[INFORMASI] Belum ada aturan playbook / strategi empiris terdaftar di DB."
+                    )
                     return
 
                 lines = ["[DEBAT] <b>Empirical Playbook Strategies & Rules:</b>\n"]
@@ -3109,12 +3549,12 @@ class TelegramBot:
         if not self._is_authorized(update) or not update.effective_user:
             return await self._reject_unauthorized(update)
 
-        user_id  = update.effective_user.id
-        chat_id  = update.effective_chat.id if update.effective_chat else user_id
+        user_id = update.effective_user.id
+        chat_id = update.effective_chat.id if update.effective_chat else user_id
         user_msg = str(update.message.text).strip() if update.message and update.message.text else ""
-        
+
         # Check emergency close all fast-path
-        if user_msg and re.search(r'(?i)\b(close\s*all|tutup\s*semua|emergency\s*close|likuidasi\s*semua)\b', user_msg):
+        if user_msg and re.search(r"(?i)\b(close\s*all|tutup\s*semua|emergency\s*close|likuidasi\s*semua)\b", user_msg):
             return await self._cmd_closeall(update, ctx)
 
         # Prune old chat agents
@@ -3154,6 +3594,7 @@ class TelegramBot:
         is_admin_user = self._is_admin(update)
         if agent_key not in self._chat_agents:
             from monika.interfaces.telegram.chat_agent import ChatAgent
+
             self._chat_agents[agent_key] = ChatAgent(self.settings, agent_key, is_admin=is_admin_user)
 
         agent = self._chat_agents[agent_key]
@@ -3161,11 +3602,13 @@ class TelegramBot:
         agent.last_active = now
 
         chat_obj = update.message.chat
+
         async def _typing_cb():
             if chat_obj:
                 await chat_obj.send_action(ChatAction.TYPING)
 
         status_msg: Optional[Message] = None
+
         async def _status_cb(msg_text: str):
             nonlocal status_msg
             if update.message:
@@ -3212,7 +3655,7 @@ class TelegramBot:
                     await update.message.reply_text(chunk)
 
         # Send any generated chart images
-        if hasattr(agent, 'pop_pending_charts'):
+        if hasattr(agent, "pop_pending_charts"):
             charts = agent.pop_pending_charts()
             for chart_buf in charts:
                 try:
@@ -3221,7 +3664,7 @@ class TelegramBot:
                     logger.warning(f"Failed sending chart photo to user {user_id}: {e}")
 
         # Send any generated files / documents
-        if hasattr(agent, 'pop_pending_files'):
+        if hasattr(agent, "pop_pending_files"):
             files = agent.pop_pending_files()
             for filename, file_buf in files:
                 try:
@@ -3233,6 +3676,7 @@ class TelegramBot:
         # If AI proposed an action, send confirm keyboard with live expiry monitor
         if pending:
             from monika.interfaces.telegram.command_router import CommandRouter
+
             keyboard = CommandRouter.build_confirm_keyboard(pending.action_id)
             prop_text = (
                 f"<b>AI Mengusulkan Tindakan:</b>\n\n"
@@ -3269,7 +3713,9 @@ class TelegramBot:
         if isinstance(thread_id, int) and hasattr(self, "topic_manager") and self.topic_manager:
             session_id = await self.topic_manager.get_session_for_topic(chat_id, thread_id)
             if not session_id:
-                session_id = await self.topic_manager.create_topic_session(chat_id, thread_id, topic_name=f"Topic-{thread_id}")
+                session_id = await self.topic_manager.create_topic_session(
+                    chat_id, thread_id, topic_name=f"Topic-{thread_id}"
+                )
             agent_key = session_id
         else:
             agent_key = user_id
@@ -3285,6 +3731,7 @@ class TelegramBot:
         is_admin_user = self._is_admin(update)
         if agent_key not in self._chat_agents:
             from monika.interfaces.telegram.chat_agent import ChatAgent
+
             self._chat_agents[agent_key] = ChatAgent(self.settings, agent_key, is_admin=is_admin_user)
 
         agent = self._chat_agents[agent_key]
@@ -3292,6 +3739,7 @@ class TelegramBot:
         agent.last_active = now
 
         chat_obj = update.message.chat
+
         async def _typing_cb():
             if chat_obj:
                 await chat_obj.send_action(ChatAction.TYPING)
@@ -3320,7 +3768,7 @@ class TelegramBot:
                     logger.warning(f"Failed to send HTML reply chunk: {e}")
                     await update.message.reply_text(chunk)
 
-        if hasattr(agent, 'pop_pending_charts'):
+        if hasattr(agent, "pop_pending_charts"):
             charts = agent.pop_pending_charts()
             for chart_buf in charts:
                 try:
@@ -3328,7 +3776,7 @@ class TelegramBot:
                 except Exception as e:
                     logger.warning(f"Failed sending chart photo to user {user_id}: {e}")
 
-        if hasattr(agent, 'pop_pending_files'):
+        if hasattr(agent, "pop_pending_files"):
             files = agent.pop_pending_files()
             for filename, file_buf in files:
                 try:
@@ -3339,6 +3787,7 @@ class TelegramBot:
 
         if pending:
             from monika.interfaces.telegram.command_router import CommandRouter
+
             keyboard = CommandRouter.build_confirm_keyboard(pending.action_id)
             await update.message.reply_text(
                 f"*AI Mengusulkan Tindakan:*\n\n{pending.description}\n\n_Berlaku selama 90 detik._",
@@ -3361,7 +3810,9 @@ class TelegramBot:
 
         is_pdf = file_name.lower().endswith(".pdf") or doc.mime_type == "application/pdf"
         if not is_pdf:
-            await update.message.reply_text(f"Format dokumen '{file_name}' belum didukung untuk auto-parsing (saat ini mendukung file .pdf).")
+            await update.message.reply_text(
+                f"Format dokumen '{file_name}' belum didukung untuk auto-parsing (saat ini mendukung file .pdf)."
+            )
             return
 
         try:
@@ -3375,21 +3826,25 @@ class TelegramBot:
 
             doc_file = await doc.get_file()
             import io
+
             buf = io.BytesIO()
             await doc_file.download_to_memory(buf)
             buf.seek(0)
 
             from pypdf import PdfReader
+
             reader = PdfReader(buf)
             pages_text = []
             for idx, page in enumerate(reader.pages[:25]):
                 txt = page.extract_text() or ""
                 if txt.strip():
-                    pages_text.append(f"[Halaman {idx+1}]\n{txt.strip()}")
+                    pages_text.append(f"[Halaman {idx + 1}]\n{txt.strip()}")
 
             extracted_content = "\n\n".join(pages_text)
             if not extracted_content.strip():
-                await update.message.reply_text("Dokumen PDF berhasil diterima tetapi teks tidak dapat diekstrak (kemungkinan scanned/image-only PDF).")
+                await update.message.reply_text(
+                    "Dokumen PDF berhasil diterima tetapi teks tidak dapat diekstrak (kemungkinan scanned/image-only PDF)."
+                )
                 return
 
             user_prompt = f"User mengunggah dokumen PDF: '{file_name}' ({len(reader.pages)} halaman).\n\n"
@@ -3407,6 +3862,7 @@ class TelegramBot:
             is_admin_user = self._is_admin(update)
             if agent_key not in self._chat_agents:
                 from monika.interfaces.telegram.chat_agent import ChatAgent
+
                 self._chat_agents[agent_key] = ChatAgent(self.settings, agent_key, is_admin=is_admin_user)
 
             agent = self._chat_agents[agent_key]
@@ -3414,6 +3870,7 @@ class TelegramBot:
             agent.last_active = now
 
             chat_obj = update.message.chat
+
             async def _typing_cb():
                 if chat_obj:
                     await chat_obj.send_action(ChatAction.TYPING)
@@ -3436,7 +3893,7 @@ class TelegramBot:
                         logger.warning(f"Failed to send HTML reply chunk: {e}")
                         await update.message.reply_text(chunk)
 
-            if hasattr(agent, 'pop_pending_charts'):
+            if hasattr(agent, "pop_pending_charts"):
                 charts = agent.pop_pending_charts()
                 for chart_buf in charts:
                     try:
@@ -3444,7 +3901,7 @@ class TelegramBot:
                     except Exception as e:
                         logger.warning(f"Failed sending chart photo to user {user_id}: {e}")
 
-            if hasattr(agent, 'pop_pending_files'):
+            if hasattr(agent, "pop_pending_files"):
                 files = agent.pop_pending_files()
                 for fn, file_buf in files:
                     try:
@@ -3455,6 +3912,7 @@ class TelegramBot:
 
             if pending:
                 from monika.interfaces.telegram.command_router import CommandRouter
+
                 keyboard = CommandRouter.build_confirm_keyboard(pending.action_id)
                 await update.message.reply_text(
                     f"*AI Mengusulkan Tindakan:*\n\n{pending.description}\n\n_Berlaku selama 90 detik._",
@@ -3487,6 +3945,7 @@ class TelegramBot:
                     break
         if not agent:
             from monika.interfaces.telegram.chat_agent import ChatAgent
+
             is_adm = self._router.is_admin(user_id) if hasattr(self._router, "is_admin") else False
             candidate = ChatAgent(self.settings, user_id, is_admin=is_adm)
             persisted = await candidate.get_pending_action(action_id)
@@ -3525,8 +3984,9 @@ class TelegramBot:
 
         if data.startswith("closeall:confirm:"):
             nonce = data.split(":", 2)[2]
-            stored = getattr(self, '_active_nonces', {}).pop(nonce, None)
+            stored = getattr(self, "_active_nonces", {}).pop(nonce, None)
             import time
+
             if not stored or time.time() > stored.get("expires", 0):
                 await query.edit_message_text("[PERINGATAN] Confirmation expired or invalid.")
                 return
@@ -3547,13 +4007,15 @@ class TelegramBot:
 
         if data.startswith("unsuspend_all:confirm:"):
             nonce = data.split(":", 2)[2]
-            stored = getattr(self, '_active_nonces', {}).pop(nonce, None)
+            stored = getattr(self, "_active_nonces", {}).pop(nonce, None)
             import time
+
             if not stored or time.time() > stored.get("expires", 0):
                 await query.edit_message_text("[PERINGATAN] Confirmation expired or invalid.")
                 return
             from monika.infrastructure.database.db import get_session
             from monika.core.analytics.paper_tracker import PaperTracker
+
             tracker = PaperTracker(self.settings)
             async with get_session() as session:
                 cleared = await tracker.unsuspend_all(session)
@@ -3565,8 +4027,9 @@ class TelegramBot:
 
         if data.startswith("override:confirm:"):
             nonce = data.split(":", 2)[2]
-            stored = getattr(self, '_active_nonces', {}).pop(nonce, None)
+            stored = getattr(self, "_active_nonces", {}).pop(nonce, None)
             import time
+
             if not stored or time.time() > stored.get("expires", 0):
                 await query.edit_message_text("[PERINGATAN] Confirmation expired or invalid.")
                 return
@@ -3578,9 +4041,9 @@ class TelegramBot:
             import json
 
             async with get_session() as session:
-                cfg_row = (await session.execute(
-                    select(SystemConfig).where(SystemConfig.key == "risk_override")
-                )).scalar_one_or_none()
+                cfg_row = (
+                    await session.execute(select(SystemConfig).where(SystemConfig.key == "risk_override"))
+                ).scalar_one_or_none()
                 current_cfg = {}
                 if cfg_row and cfg_row.value:
                     try:
@@ -3597,13 +4060,17 @@ class TelegramBot:
                 else:
                     session.add(SystemConfig(key="risk_override", value=json.dumps(current_cfg)))
 
-                session.add(ActivityLog(
-                    category="risk",
-                    description=f"Risk override confirmed via Telegram: {updated_fields if param != 'reset' else 'RESET'}",
-                    actor="telegram_admin",
-                ))
+                session.add(
+                    ActivityLog(
+                        category="risk",
+                        description=f"Risk override confirmed via Telegram: {updated_fields if param != 'reset' else 'RESET'}",
+                        actor="telegram_admin",
+                    )
+                )
                 await session.commit()
-            await query.edit_message_text(f"[BERHASIL] Risk parameter override applied: {updated_fields if param != 'reset' else 'RESET ALL'}")
+            await query.edit_message_text(
+                f"[BERHASIL] Risk parameter override applied: {updated_fields if param != 'reset' else 'RESET ALL'}"
+            )
             return
 
         if data.startswith("plg:"):
@@ -3629,29 +4096,41 @@ class TelegramBot:
                 lines = ["[MODUL] <b>KATALOG MARKETPLACE PLUG-IN MONIKA</b>\n"]
                 kb = []
                 for idx, item in enumerate(catalog):
-                    lines.append(f"• <b>{item['name']}</b> (<code>{item['package']}</code>)\n  <i>{item['description']}</i>\n")
-                    kb.append([InlineKeyboardButton(f"[TERIMA] Install {item['name'][:20]}", callback_data=f"plg:inst:{idx}")])
+                    lines.append(
+                        f"• <b>{item['name']}</b> (<code>{item['package']}</code>)\n  <i>{item['description']}</i>\n"
+                    )
+                    kb.append(
+                        [InlineKeyboardButton(f"[TERIMA] Install {item['name'][:20]}", callback_data=f"plg:inst:{idx}")]
+                    )
                 kb.append([InlineKeyboardButton("[PLUGIN] Plugins Terpasang", callback_data="plg:ref")])
                 try:
-                    await query.edit_message_text("\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
+                    await query.edit_message_text(
+                        "\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb)
+                    )
                 except Exception:
                     pass
                 return
 
             if data.startswith("plg:t:"):
                 if not self._is_admin(update):
-                    await query.answer("[AKSES DITOLAK] Hanya Admin yang berhak mengubah status plugin.", show_alert=True)
+                    await query.answer(
+                        "[AKSES DITOLAK] Hanya Admin yang berhak mengubah status plugin.", show_alert=True
+                    )
                     return
                 plugin_id = data.split(":", 2)[2]
                 plugins = {p["id"]: p for p in list_all_plugins_status()}
                 if plugin_id in plugins:
                     p = plugins[plugin_id]
                     if not p.get("can_toggle", True):
-                        await query.answer("[PERINGATAN] Komponen inti (core) tidak dapat dinonaktifkan.", show_alert=True)
+                        await query.answer(
+                            "[PERINGATAN] Komponen inti (core) tidak dapat dinonaktifkan.", show_alert=True
+                        )
                         return
                     new_state = not p["enabled"]
                     ok, msg = toggle_plugin_state(plugin_id, p["category"], new_state)
-                    await query.answer(f"{'[AKTIF] Diaktifkan' if new_state else '[NONAKTIF] Dinonaktifkan'}: {plugin_id}")
+                    await query.answer(
+                        f"{'[AKTIF] Diaktifkan' if new_state else '[NONAKTIF] Dinonaktifkan'}: {plugin_id}"
+                    )
                     new_plugins = list_all_plugins_status()
                     new_text = self._build_plugins_text(new_plugins)
                     new_markup = self._build_plugins_keyboard(new_plugins)
@@ -3674,16 +4153,21 @@ class TelegramBot:
                 else:
                     pkg = pkg_arg
                 await query.answer(f"Memulai instalasi {pkg}...", show_alert=False)
-                await query.edit_message_text(f"[MEMPROSES] <b>Sedang menginstall via pip:</b> <code>{pkg}</code>...\n<i>Mohon tunggu sebentar...</i>", parse_mode=ParseMode.HTML)
-                
+                await query.edit_message_text(
+                    f"[MEMPROSES] <b>Sedang menginstall via pip:</b> <code>{pkg}</code>...\n<i>Mohon tunggu sebentar...</i>",
+                    parse_mode=ParseMode.HTML,
+                )
+
                 success, out = await asyncio.to_thread(run_pip_install, pkg)
                 if success:
                     res_text = f"[BERHASIL] <b>Instalasi Berhasil:</b> <code>{pkg}</code>\n\n<pre>{out[-300:]}</pre>"
                 else:
                     res_text = f"[GAGAL] <b>Instalasi Gagal:</b> <code>{pkg}</code>\n\n<pre>{out[-300:]}</pre>"
-                
+
                 kb = [[InlineKeyboardButton("[PLUGIN] Kembali ke Plugins", callback_data="plg:ref")]]
-                await query.edit_message_text(res_text, parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
+                await query.edit_message_text(
+                    res_text, parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb)
+                )
                 return
 
         if data.startswith("fallback:"):
@@ -3697,18 +4181,20 @@ class TelegramBot:
             else:
                 action = parts[1]
                 fallback_id = None
-                
-            if not hasattr(self, '_fallback_events') or fallback_id not in self._fallback_events:
+
+            if not hasattr(self, "_fallback_events") or fallback_id not in self._fallback_events:
                 await query.edit_message_text("[PERINGATAN] Request fallback ini sudah kedaluwarsa atau dijawab.")
                 return
-                
+
             tg_event = self._fallback_events[fallback_id]
             tg_result = self._fallback_results[fallback_id]
-            
+
             if tg_event.is_set():
-                await query.edit_message_text("[PERINGATAN] Request fallback ini sudah kedaluwarsa atau dijawab dari terminal.")
+                await query.edit_message_text(
+                    "[PERINGATAN] Request fallback ini sudah kedaluwarsa atau dijawab dari terminal."
+                )
                 return
-            
+
             if action == "once":
                 tg_result["approved"] = True
                 tg_result["always"] = False
@@ -3721,9 +4207,9 @@ class TelegramBot:
                 tg_result["approved"] = False
                 tg_result["always"] = False
                 await query.edit_message_text("[GAGAL] Fallback ditolak.")
-            
+
             tg_event.set()
-            
+
             # Cleanup
             self._fallback_events.pop(fallback_id, None)
             self._fallback_results.pop(fallback_id, None)
@@ -3733,14 +4219,19 @@ class TelegramBot:
                 await query.answer("[AKSES DITOLAK] Pause command only permitted for Admin.", show_alert=True)
                 return
             import time
+
             parts = data.split(":")
             nonce = parts[2] if len(parts) >= 3 else ""
             reason = "Paused via Telegram"
             duration_hours = None
             duration_desc = ""
-            if nonce and hasattr(self, '_active_nonces'):
+            if nonce and hasattr(self, "_active_nonces"):
                 entry = self._active_nonces.get(nonce)
-                exp = entry if isinstance(entry, (int, float)) else (entry.get("expires", 0) if isinstance(entry, dict) else 0)
+                exp = (
+                    entry
+                    if isinstance(entry, (int, float))
+                    else (entry.get("expires", 0) if isinstance(entry, dict) else 0)
+                )
                 if exp < time.time():
                     await query.edit_message_text("[PERINGATAN] Konfirmasi jeda trading ini sudah kedaluwarsa.")
                     return
@@ -3752,11 +4243,14 @@ class TelegramBot:
 
             from monika.infrastructure.database.db import get_session
             from monika.domain.risk.risk_gate import RiskGate
+
             gate = RiskGate(self.settings)
             async with get_session() as session:
                 await gate.pause_trading(session, reason, duration_hours=duration_hours)
             dur_msg = f"\nDurasi: {duration_desc} (auto-unpause aktif)" if duration_desc else ""
-            await query.edit_message_text(f"[DIJEDA] *Trading berhasil dijeda.*\nAlasan: {reason}{dur_msg}", parse_mode=ParseMode.MARKDOWN)
+            await query.edit_message_text(
+                f"[DIJEDA] *Trading berhasil dijeda.*\nAlasan: {reason}{dur_msg}", parse_mode=ParseMode.MARKDOWN
+            )
             return
 
         if data.startswith("killswitch:confirm"):
@@ -3764,16 +4258,25 @@ class TelegramBot:
                 await query.answer("[AKSES DITOLAK] Kill Switch only permitted for Admin.", show_alert=True)
                 return
             import time
+
             parts = data.split(":")
             nonce = parts[2] if len(parts) >= 3 else ""
-            if nonce and hasattr(self, '_active_nonces'):
+            if nonce and hasattr(self, "_active_nonces"):
                 entry = self._active_nonces.get(nonce)
                 if not entry:
-                    await query.edit_message_text("[PERINGATAN] Konfirmasi kill switch ini sudah kedaluwarsa atau telah digunakan.")
+                    await query.edit_message_text(
+                        "[PERINGATAN] Konfirmasi kill switch ini sudah kedaluwarsa atau telah digunakan."
+                    )
                     return
-                exp = entry if isinstance(entry, (int, float)) else (entry.get("expires", 0.0) if isinstance(entry, dict) else 0.0)
+                exp = (
+                    entry
+                    if isinstance(entry, (int, float))
+                    else (entry.get("expires", 0.0) if isinstance(entry, dict) else 0.0)
+                )
                 if exp < time.time():
-                    await query.edit_message_text("[PERINGATAN] Konfirmasi kill switch ini sudah kedaluwarsa atau telah digunakan.")
+                    await query.edit_message_text(
+                        "[PERINGATAN] Konfirmasi kill switch ini sudah kedaluwarsa atau telah digunakan."
+                    )
                     self._active_nonces.pop(nonce, None)
                     return
                 # Single-use: hapus nonce segera setelah divalidasi
@@ -3782,6 +4285,7 @@ class TelegramBot:
             await query.edit_message_text("[MEMPROSES] Menjalankan kill switch...")
             from monika.infrastructure.database.db import get_session
             from monika.application.services.trading_service import TradingService
+
             try:
                 async with get_session() as session:
                     await TradingService.emergency_kill(session, reason="Telegram kill switch", actor="telegram_admin")
@@ -3791,12 +4295,13 @@ class TelegramBot:
             if self.execution_service:
                 result = await self.execution_service.kill_switch("Telegram kill switch")
                 await query.edit_message_text(
-                    f"[BERHENTI] *Kill switch selesai.*\n"
-                    f"Ditutup: {result['closed']}/{result['total']} posisi",
+                    f"[BERHENTI] *Kill switch selesai.*\nDitutup: {result['closed']}/{result['total']} posisi",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
-                await query.edit_message_text("[BERHENTI] Kill switch diaktifkan di database. ExecutionService tidak terhubung.")
+                await query.edit_message_text(
+                    "[BERHENTI] Kill switch diaktifkan di database. ExecutionService tidak terhubung."
+                )
             return
 
         if data.startswith("close:"):
@@ -3823,11 +4328,14 @@ class TelegramBot:
 
         if data.startswith("be:"):
             if not self._is_admin(update):
-                await query.answer("[AKSES DITOLAK] Hanya Admin yang dapat memindahkan SL ke breakeven.", show_alert=True)
+                await query.answer(
+                    "[AKSES DITOLAK] Hanya Admin yang dapat memindahkan SL ke breakeven.", show_alert=True
+                )
                 return
             ticket = int(data.split(":", 1)[1])
             await query.edit_message_text(f"[MEMPROSES] Menggeser Stop Loss #{ticket} ke breakeven...")
             from monika.application.execution.execution_service import ExecutionService
+
             sync = ExecutionService(self.settings)
             res = await sync.apply_immediate_breakeven(ticket=ticket)
             if res.get("status") == "success":
@@ -3838,10 +4346,13 @@ class TelegramBot:
 
         if data == "bulk_be":
             if not self._is_admin(update):
-                await query.answer("[AKSES DITOLAK] Hanya Admin yang dapat memindahkan SL ke breakeven.", show_alert=True)
+                await query.answer(
+                    "[AKSES DITOLAK] Hanya Admin yang dapat memindahkan SL ke breakeven.", show_alert=True
+                )
                 return
             await query.edit_message_text("[MEMPROSES] Menggeser seluruh posisi profit ke breakeven...")
             from monika.application.execution.execution_service import ExecutionService
+
             sync = ExecutionService(self.settings)
             res = await sync.apply_immediate_breakeven(only_profit=True)
             cnt = res.get("breakeven_count", 0)
@@ -3854,6 +4365,7 @@ class TelegramBot:
                 return
             token = data.split(":", 1)[1]
             from monika.domain.risk.approval_hub import ApprovalHub
+
             hub = ApprovalHub.get_instance()
             success, msg = await hub.approve(token, operator=f"tg_{user_id}")
             icon = "✅ [DISETUJUI]" if success else "⚠️ [GAGAL]"
@@ -3866,6 +4378,7 @@ class TelegramBot:
                 return
             token = data.split(":", 1)[1]
             from monika.domain.risk.approval_hub import ApprovalHub
+
             hub = ApprovalHub.get_instance()
             success, msg = await hub.reject(token, operator=f"tg_{user_id}", reason="Ditolak via tombol Telegram")
             await query.edit_message_text(f"❌ [DITOLAK] Permintaan approval #{token[:8]} dibatalkan.")
@@ -3881,7 +4394,11 @@ class TelegramBot:
             ]
             kb = [[InlineKeyboardButton(label, callback_data=f"mdl:r:{r}")] for r, label in roles]
             kb.append([InlineKeyboardButton("« Kembali", callback_data="cmd:model")])
-            await query.edit_message_text("Pilih <b>Role</b> yang ingin diubah modelnya:", parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
+            await query.edit_message_text(
+                "Pilih <b>Role</b> yang ingin diubah modelnya:",
+                parse_mode=ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup(kb),
+            )
             return
 
         if data.startswith("mdl:r:"):
@@ -3894,7 +4411,11 @@ class TelegramBot:
             ]
             kb = [[InlineKeyboardButton(m, callback_data=f"mdl:s:{role}:{m}")] for m in models]
             kb.append([InlineKeyboardButton("« Batal", callback_data="mdl:menu")])
-            await query.edit_message_text(f"Pilih <b>Model</b> untuk role <code>{role}</code>:", parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
+            await query.edit_message_text(
+                f"Pilih <b>Model</b> untuk role <code>{role}</code>:",
+                parse_mode=ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup(kb),
+            )
             return
 
         if data.startswith("mdl:s:"):
@@ -3902,6 +4423,7 @@ class TelegramBot:
             role = parts[2]
             model_name = parts[3]
             from monika.infrastructure.providers.runtime_model_registry import RuntimeModelRegistry
+
             RuntimeModelRegistry.get_instance().set_role_model(role, model_name, slot="primary")
             await query.edit_message_text(
                 f"✅ <b>Model Berhasil Diganti</b>\nRole: <code>{role}</code>\nPrimary Model: <code>{model_name}</code>",
@@ -3911,8 +4433,11 @@ class TelegramBot:
 
         if data == "mdl:reset_all":
             from monika.infrastructure.providers.runtime_model_registry import RuntimeModelRegistry
+
             RuntimeModelRegistry.get_instance().clear_overrides()
-            await query.edit_message_text("♻️ Seluruh model override telah direset ke default settings.yaml.", parse_mode=ParseMode.HTML)
+            await query.edit_message_text(
+                "♻️ Seluruh model override telah direset ke default settings.yaml.", parse_mode=ParseMode.HTML
+            )
             return
 
         if data.startswith("confirm:"):
@@ -3922,6 +4447,7 @@ class TelegramBot:
             action_id = data.split(":", 1)[1]
 
             from monika.domain.risk.approval_hub import ApprovalHub
+
             hub = ApprovalHub.get_instance()
             req = hub.get_request(action_id)
             if req:
@@ -3977,7 +4503,9 @@ class TelegramBot:
                     await query.edit_message_text(f"[MEMPROSES] Mengeksekusi analisis #{action_id}...")
                     try:
                         res = await self.execution_service.execute_by_analysis_id(int(action_id))
-                        await query.edit_message_text(f"[BERHASIL] {res.summary() if hasattr(res, 'summary') else str(res)}")
+                        await query.edit_message_text(
+                            f"[BERHASIL] {res.summary() if hasattr(res, 'summary') else str(res)}"
+                        )
                     except Exception as exec_err:
                         await query.edit_message_text(f"[GAGAL] Gagal eksekusi #{action_id}: {exec_err}")
                     return
@@ -3999,7 +4527,9 @@ class TelegramBot:
                     await query.edit_message_text(f"[MEMPROSES] Mengeksekusi analisis #{action_id}...")
                     try:
                         res = await self.execution_service.execute_by_analysis_id(int(action_id))
-                        await query.edit_message_text(f"[BERHASIL] {res.summary() if hasattr(res, 'summary') else str(res)}")
+                        await query.edit_message_text(
+                            f"[BERHASIL] {res.summary() if hasattr(res, 'summary') else str(res)}"
+                        )
                     except Exception as exec_err:
                         await query.edit_message_text(f"[GAGAL] Gagal eksekusi #{action_id}: {exec_err}")
                     return
@@ -4017,6 +4547,7 @@ class TelegramBot:
             action_id = data.split(":", 1)[1]
 
             from monika.domain.risk.approval_hub import ApprovalHub
+
             hub = ApprovalHub.get_instance()
             if hub.get_request(action_id):
                 success, msg = await hub.reject(action_id, operator=f"tg_{user_id}", reason="Dibatalkan via Telegram")
@@ -4029,26 +4560,31 @@ class TelegramBot:
                     from monika.infrastructure.database.db import get_session
                     from monika.infrastructure.database.models import ActivityLog, AssetAnalysis, PaperTradeRecord
                     from sqlalchemy import update as sql_update
+
                     async with get_session() as session:
-                        session.add(ActivityLog(
-                            category="trading",
-                            description=f"Trade proposal #{action_id} REJECTED by admin via Telegram inline button",
-                            actor="telegram_admin",
-                        ))
+                        session.add(
+                            ActivityLog(
+                                category="trading",
+                                description=f"Trade proposal #{action_id} REJECTED by admin via Telegram inline button",
+                                actor="telegram_admin",
+                            )
+                        )
                         try:
                             await session.execute(
                                 sql_update(AssetAnalysis)
                                 .where(AssetAnalysis.id == int(action_id))
-                                .values(execution_status='rejected', execution_notes='Rejected via Telegram inline button')
+                                .values(
+                                    execution_status="rejected", execution_notes="Rejected via Telegram inline button"
+                                )
                             )
                             await session.execute(
                                 sql_update(PaperTradeRecord)
                                 .where(PaperTradeRecord.analysis_id == int(action_id))
-                                .where(PaperTradeRecord.status == 'open')
+                                .where(PaperTradeRecord.status == "open")
                                 .values(
-                                    status='closed',
+                                    status="closed",
                                     closed_at=datetime.now(timezone.utc),
-                                    exit_reason='rejected_by_admin',
+                                    exit_reason="rejected_by_admin",
                                     pnl_pct=0.0,
                                 )
                             )
@@ -4080,27 +4616,28 @@ class TelegramBot:
                 now = datetime.now(timezone.utc)
 
                 from monika.infrastructure.database.repositories import PositionRepository
+
                 pos_repo = PositionRepository(session)
                 pos_count = await pos_repo.count_open_positions()
 
                 # Risk state
                 today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-                risk  = (await session.execute(
-                    select(RiskState).where(RiskState.date >= today)
-                    .order_by(RiskState.date.desc()).limit(1)
-                )).scalar_one_or_none()
+                risk = (
+                    await session.execute(
+                        select(RiskState).where(RiskState.date >= today).order_by(RiskState.date.desc()).limit(1)
+                    )
+                ).scalar_one_or_none()
 
                 # Last analysis
-                last_analysis = (await session.execute(
-                    select(AssetAnalysis).order_by(AssetAnalysis.generated_at.desc()).limit(1)
-                )).scalar_one_or_none()
+                last_analysis = (
+                    await session.execute(select(AssetAnalysis).order_by(AssetAnalysis.generated_at.desc()).limit(1))
+                ).scalar_one_or_none()
 
-                status_txt  = "DIJEDA" if (risk and risk.trading_paused) else "AKTIF"
-                daily_pnl  = f"${risk.daily_pnl:+.2f}" if risk else "$0.00"
-                drawdown   = f"${risk.current_drawdown:.2f}" if risk else "$0.00"
+                status_txt = "DIJEDA" if (risk and risk.trading_paused) else "AKTIF"
+                daily_pnl = f"${risk.daily_pnl:+.2f}" if risk else "$0.00"
+                drawdown = f"${risk.current_drawdown:.2f}" if risk else "$0.00"
 
-                last_ts = last_analysis.generated_at.strftime("%d %b %Y %H:%M UTC") \
-                          if last_analysis else "Belum ada"
+                last_ts = last_analysis.generated_at.strftime("%d %b %Y %H:%M UTC") if last_analysis else "Belum ada"
 
                 balance_str = None
                 equity_str = None
@@ -4111,7 +4648,7 @@ class TelegramBot:
                         if acc:
                             balance_str = f"${acc.get('balance', 0.0):,.2f}"
                             equity_str = f"${acc.get('equity', 0.0):,.2f}"
-                            ml = acc.get('margin_level', 0.0)
+                            ml = acc.get("margin_level", 0.0)
                             margin_level_str = f"{ml:.1f}%" if ml else "N/A"
                     except Exception:
                         pass
@@ -4138,6 +4675,7 @@ class TelegramBot:
 
         try:
             from monika.infrastructure.database.repositories import PositionRepository
+
             async with get_session() as session:
                 pos_repo = PositionRepository(session)
                 positions = list(await pos_repo.get_open_positions())
@@ -4152,11 +4690,11 @@ class TelegramBot:
 
         try:
             async with get_session() as session:
-                brief = (await session.execute(
-                    select(FundamentalBrief)
-                    .order_by(FundamentalBrief.generated_at.desc())
-                    .limit(1)
-                )).scalar_one_or_none()
+                brief = (
+                    await session.execute(
+                        select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                    )
+                ).scalar_one_or_none()
 
                 if not brief:
                     return "```\n[ NIHIL ] Belum ada fundamental brief yang dihasilkan.\n```"
@@ -4171,28 +4709,34 @@ class TelegramBot:
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import AssetAnalysis
         from sqlalchemy import select
-        
+
         try:
             async with get_session() as session:
-                analysis = (await session.execute(
-                    select(AssetAnalysis)
-                    .where(AssetAnalysis.symbol == symbol)
-                    .order_by(AssetAnalysis.generated_at.desc())
-                    .limit(1)
-                )).scalar_one_or_none()
-                
+                analysis = (
+                    await session.execute(
+                        select(AssetAnalysis)
+                        .where(AssetAnalysis.symbol == symbol)
+                        .order_by(AssetAnalysis.generated_at.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+
                 if not analysis:
                     return f"```\n[ NIHIL ] Belum ada analisis untuk {symbol}.\n```"
-                    
+
                 ts = analysis.generated_at.strftime("%d %b %Y %H:%M UTC") if analysis.generated_at else "?"
                 decision = analysis.decision.upper() if analysis.decision else "N/A"
                 confidence = f"{analysis.confidence:.0%}" if analysis.confidence is not None else "N/A"
-                
+
                 content = getattr(analysis, "content_markdown", None)
                 if not content:
                     content = getattr(analysis, "rationale", "(tidak ada detail)")
-                
-                return f"```\nMONIKA DISPATCH // ANALISIS: {symbol}\nWAKTU: {ts}\nKEPUTUSAN: [ {decision} ] (Conf: {confidence})\n" + "=" * 46 + f"\n{content}\n```"
+
+                return (
+                    f"```\nMONIKA DISPATCH // ANALISIS: {symbol}\nWAKTU: {ts}\nKEPUTUSAN: [ {decision} ] (Conf: {confidence})\n"
+                    + "=" * 46
+                    + f"\n{content}\n```"
+                )
         except Exception as e:
             return f"[ GAGAL ] Error: {e}"
 
@@ -4203,11 +4747,11 @@ class TelegramBot:
 
         try:
             async with get_session() as session:
-                logs = (await session.execute(
-                    select(ActivityLog)
-                    .order_by(ActivityLog.timestamp.desc())
-                    .limit(10)
-                )).scalars().all()
+                logs = (
+                    (await session.execute(select(ActivityLog).order_by(ActivityLog.timestamp.desc()).limit(10)))
+                    .scalars()
+                    .all()
+                )
 
                 if not logs:
                     return "```\n[ NIHIL ] Belum ada aktivitas yang tercatat.\n```"
@@ -4219,9 +4763,9 @@ class TelegramBot:
                     "=" * 46,
                 ]
                 for log in logs:
-                    ts   = log.timestamp.strftime("%d/%m %H:%M") if log.timestamp else "?"
+                    ts = log.timestamp.strftime("%d/%m %H:%M") if log.timestamp else "?"
                     desc = log.description[:60] if log.description else ""
-                    cat  = log.category or "system"
+                    cat = log.category or "system"
                     lines.append(f"[{cat.upper()[:6].ljust(6)}] {ts} : {desc}")
                 lines.append("=" * 46)
                 lines.append("```")
@@ -4239,17 +4783,18 @@ class TelegramBot:
         try:
             async with get_session() as session:
                 today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-                risk  = (await session.execute(
-                    select(RiskState).where(RiskState.date >= today)
-                    .order_by(RiskState.date.desc()).limit(1)
-                )).scalar_one_or_none()
+                risk = (
+                    await session.execute(
+                        select(RiskState).where(RiskState.date >= today).order_by(RiskState.date.desc()).limit(1)
+                    )
+                ).scalar_one_or_none()
 
                 tracker = PaperTracker(self.settings)
                 suspended = await tracker.get_suspended_symbols(session)
-                
-                paper_cfg = self.settings.get('trading', {}).get('paper_trading', {})
-                streak_policy = paper_cfg.get('streak_loss_policy', 'warn_and_scale')
-                auto_exec = self.settings.get('trading', {}).get('auto_execute', False)
+
+                paper_cfg = self.settings.get("trading", {}).get("paper_trading", {})
+                streak_policy = paper_cfg.get("streak_loss_policy", "warn_and_scale")
+                auto_exec = self.settings.get("trading", {}).get("auto_execute", False)
 
                 status_txt = "DIJEDA" if (risk and risk.trading_paused) else "AKTIF"
                 daily_pnl = f"${risk.daily_pnl:+.2f}" if risk else None
@@ -4259,7 +4804,12 @@ class TelegramBot:
                 cb_status = "NORMAL (OFF)"
                 if risk and risk.trading_paused:
                     cb_status = f"TRIGGERED ({reason or 'PAUSED'})"
-                elif risk and getattr(risk, "current_drawdown", 0) and risk.current_drawdown >= float(self.settings.get("trading", {}).get("risk", {}).get("max_daily_drawdown_percent", 3.0)):
+                elif (
+                    risk
+                    and getattr(risk, "current_drawdown", 0)
+                    and risk.current_drawdown
+                    >= float(self.settings.get("trading", {}).get("risk", {}).get("max_daily_drawdown_percent", 3.0))
+                ):
                     cb_status = "MAX DD TRIGGERED"
 
                 return format_risk_slip(
@@ -4284,11 +4834,12 @@ class TelegramBot:
             gate = RiskGate(self.settings)
             async with get_session() as session:
                 scorecard = await gate.get_current_scorecard(session)
-            
+
             # Statistical edge info
             edge_summary = None
             try:
                 from monika.core.analytics.paper_tracker import PaperTracker
+
                 tracker = PaperTracker(self.settings)
                 async with get_session() as session:
                     stats = await tracker.get_statistics(session)
@@ -4303,10 +4854,13 @@ class TelegramBot:
             token_budget = None
             try:
                 from monika.core.telemetry.token_budgeter import TokenBudgetManager
+
                 tbm = TokenBudgetManager.get_instance()
                 summary = tbm.get_budget_summary()
                 token_budget = {
-                    "tier": "NORMAL" if summary.get("total_pct_used", 0) < 70 else ("COMPRESSED" if summary.get("total_pct_used", 0) < 90 else "DEGRADED"),
+                    "tier": "NORMAL"
+                    if summary.get("total_pct_used", 0) < 70
+                    else ("COMPRESSED" if summary.get("total_pct_used", 0) < 90 else "DEGRADED"),
                     "capacity_pct": max(0, 100 - summary.get("total_pct_used", 0)),
                 }
             except Exception:
@@ -4318,6 +4872,7 @@ class TelegramBot:
 
     async def _build_pipeline_text(self) -> str:
         from monika.interfaces.telegram.message_formatter import format_pipeline_slip
+
         try:
             status = "IDLE"
             stage = "AWAITING TRIGGER"
@@ -4341,6 +4896,7 @@ class TelegramBot:
                 from monika.infrastructure.database.db import get_session
                 from monika.infrastructure.database.models import AssetAnalysis
                 from sqlalchemy import select
+
                 async with get_session() as session:
                     stmt = select(AssetAnalysis).order_by(AssetAnalysis.generated_at.desc()).limit(1)
                     res = (await session.execute(stmt)).scalar_one_or_none()
@@ -4384,15 +4940,21 @@ class TelegramBot:
                 positions = (await session.execute(stmt)).scalars().all()
                 pos_list = []
                 for p in positions:
-                    pos_list.append({
-                        "ticket": getattr(p, "mt5_ticket", getattr(p, "ticket", p.id)),
-                        "symbol": p.symbol,
-                        "direction": p.direction,
-                        "entry_price": p.entry_price,
-                        "current_sl": p.sl or "-",
-                        "be_triggered": p.sl is not None and ((p.direction == "buy" and p.sl >= p.entry_price) or (p.direction == "sell" and p.sl <= p.entry_price)),
-                        "atr_distance": getattr(p, "atr_trailing_distance", "-"),
-                    })
+                    pos_list.append(
+                        {
+                            "ticket": getattr(p, "mt5_ticket", getattr(p, "ticket", p.id)),
+                            "symbol": p.symbol,
+                            "direction": p.direction,
+                            "entry_price": p.entry_price,
+                            "current_sl": p.sl or "-",
+                            "be_triggered": p.sl is not None
+                            and (
+                                (p.direction == "buy" and p.sl >= p.entry_price)
+                                or (p.direction == "sell" and p.sl <= p.entry_price)
+                            ),
+                            "atr_distance": getattr(p, "atr_trailing_distance", "-"),
+                        }
+                    )
                 return format_trailing_slip(pos_list)
         except Exception as e:
             return f"[ FAILED ] Error: {e}"
@@ -4417,12 +4979,26 @@ class TelegramBot:
 
         try:
             async with get_session() as session:
-                fw_rows = (await session.execute(
-                    select(FedWatchProbability).order_by(FedWatchProbability.fetched_at.desc()).limit(5)
-                )).scalars().all()
-                cb_rows = (await session.execute(
-                    select(CentralBankRateExpectation).order_by(CentralBankRateExpectation.fetched_at.desc()).limit(5)
-                )).scalars().all()
+                fw_rows = (
+                    (
+                        await session.execute(
+                            select(FedWatchProbability).order_by(FedWatchProbability.fetched_at.desc()).limit(5)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                cb_rows = (
+                    (
+                        await session.execute(
+                            select(CentralBankRateExpectation)
+                            .order_by(CentralBankRateExpectation.fetched_at.desc())
+                            .limit(5)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
 
                 fw_data = []
                 for p in fw_rows:
@@ -4432,10 +5008,12 @@ class TelegramBot:
                             probs = json.loads(probs)
                         except Exception:
                             probs = {}
-                    fw_data.append({
-                        "meeting_date": p.meeting_date,
-                        "probabilities": probs,
-                    })
+                    fw_data.append(
+                        {
+                            "meeting_date": p.meeting_date,
+                            "probabilities": probs,
+                        }
+                    )
 
                 cb_data = [
                     {
@@ -4457,12 +5035,16 @@ class TelegramBot:
 
         try:
             async with get_session() as session:
-                y_rows = (await session.execute(
-                    select(TreasuryYield).order_by(TreasuryYield.date.desc()).limit(30)
-                )).scalars().all()
-                b_rows = (await session.execute(
-                    select(BondYieldData).order_by(BondYieldData.date.desc()).limit(10)
-                )).scalars().all()
+                y_rows = (
+                    (await session.execute(select(TreasuryYield).order_by(TreasuryYield.date.desc()).limit(30)))
+                    .scalars()
+                    .all()
+                )
+                b_rows = (
+                    (await session.execute(select(BondYieldData).order_by(BondYieldData.date.desc()).limit(10)))
+                    .scalars()
+                    .all()
+                )
 
                 latest: dict = {}
                 for y in y_rows:
@@ -4473,12 +5055,18 @@ class TelegramBot:
                 y10 = latest.get("10Y")
                 spread = round(y10.yield_percent - y2.yield_percent, 3) if (y2 and y10) else None
 
-                return format_yields_slip({
-                    "treasury_yields": [{"tenor": y.tenor, "yield_percent": y.yield_percent} for y in latest.values()],
-                    "spread_2s10s": spread,
-                    "is_inverted": (spread < 0.0) if spread is not None else False,
-                    "global_bonds": [{"country_tenor": b.country_tenor, "yield_percent": b.yield_percent} for b in b_rows],
-                })
+                return format_yields_slip(
+                    {
+                        "treasury_yields": [
+                            {"tenor": y.tenor, "yield_percent": y.yield_percent} for y in latest.values()
+                        ],
+                        "spread_2s10s": spread,
+                        "is_inverted": (spread < 0.0) if spread is not None else False,
+                        "global_bonds": [
+                            {"country_tenor": b.country_tenor, "yield_percent": b.yield_percent} for b in b_rows
+                        ],
+                    }
+                )
         except Exception as e:
             return f"[ GAGAL ] Error: {e}"
 
@@ -4491,9 +5079,9 @@ class TelegramBot:
 
         try:
             async with get_session() as session:
-                cfg = (await session.execute(
-                    select(SystemConfig).where(SystemConfig.key == "fear_greed_latest").limit(1)
-                )).scalar_one_or_none()
+                cfg = (
+                    await session.execute(select(SystemConfig).where(SystemConfig.key == "fear_greed_latest").limit(1))
+                ).scalar_one_or_none()
                 if cfg and cfg.value:
                     data = json.loads(cfg.value)
                     return format_fear_greed_slip(data)
@@ -4532,38 +5120,46 @@ class TelegramBot:
 
     async def _build_playbooks_text(self) -> str:
         from monika.interfaces.telegram.message_formatter import format_playbooks_slip
+
         try:
             from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
+
             mgr = PlaybookLifecycleManager()
             all_pb = mgr.list_all_playbooks()
             items = []
             for name, meta in all_pb.items():
                 stale_ts = getattr(meta, "stale_until_ts", None)
-                items.append({
-                    "name": name,
-                    "status": meta.status.value if hasattr(meta.status, "value") else str(meta.status),
-                    "win_rate": getattr(meta, "win_rate", 0.0),
-                    "total_trades": getattr(meta, "trades_count", getattr(meta, "total_trades", 0)),
-                    "cooldown_until": (
-                        datetime.fromtimestamp(stale_ts, tz=timezone.utc).isoformat()
-                        if stale_ts is not None
-                        else None
-                    ),
-                })
+                items.append(
+                    {
+                        "name": name,
+                        "status": meta.status.value if hasattr(meta.status, "value") else str(meta.status),
+                        "win_rate": getattr(meta, "win_rate", 0.0),
+                        "total_trades": getattr(meta, "trades_count", getattr(meta, "total_trades", 0)),
+                        "cooldown_until": (
+                            datetime.fromtimestamp(stale_ts, tz=timezone.utc).isoformat()
+                            if stale_ts is not None
+                            else None
+                        ),
+                    }
+                )
             return format_playbooks_slip(items)
         except Exception as e:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_rollback_text(self, name: str) -> str:
         from monika.interfaces.telegram.message_formatter import format_rollback_slip
+
         try:
             from monika.application.analysis.memory.playbook_ledger import PlaybookLedger
+
             ledger = PlaybookLedger()
             success = ledger.rollback(name)
             res = {
                 "name": name,
                 "status": "SUCCESS" if success else "FAILED",
-                "message": f"Rolled back playbook '{name}' to prior ledger checkpoint." if success else f"No previous history snapshot found for '{name}'."
+                "message": f"Rolled back playbook '{name}' to prior ledger checkpoint."
+                if success
+                else f"No previous history snapshot found for '{name}'.",
             }
             return format_rollback_slip(res)
         except Exception as e:
@@ -4571,9 +5167,11 @@ class TelegramBot:
 
     async def _build_crystallized_text(self) -> str:
         from monika.interfaces.telegram.message_formatter import format_crystallized_slip
+
         try:
             from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
             import yaml
+
             crystallizer = SkillCrystallizer()
             skills_dir = crystallizer.SKILLS_DIR
             items = []
@@ -4587,14 +5185,17 @@ class TelegramBot:
                             if len(parts) >= 3:
                                 meta = yaml.safe_load(parts[1]) or {}
                         clean_name = f.stem.lower()
-                        items.append({
-                            "name": meta.get("name", clean_name),
-                            "symbol": meta.get("symbol", "-"),
-                            "status": meta.get("status", "active"),
-                            "is_deprecated": meta.get("is_deprecated", False),
-                            "win_rate": float(meta.get("win_count", 1.0)) / max(1.0, float(meta.get("win_count", 1.0))),
-                            "total_pnl_usd": float(meta.get("total_pnl_usd", 0.0)),
-                        })
+                        items.append(
+                            {
+                                "name": meta.get("name", clean_name),
+                                "symbol": meta.get("symbol", "-"),
+                                "status": meta.get("status", "active"),
+                                "is_deprecated": meta.get("is_deprecated", False),
+                                "win_rate": float(meta.get("win_count", 1.0))
+                                / max(1.0, float(meta.get("win_count", 1.0))),
+                                "total_pnl_usd": float(meta.get("total_pnl_usd", 0.0)),
+                            }
+                        )
                     except Exception:
                         pass
             return format_crystallized_slip(items)
@@ -4608,9 +5209,9 @@ class TelegramBot:
 
         try:
             async with get_session() as session:
-                vix_rows = (await session.execute(
-                    select(VIXData).order_by(VIXData.date.desc()).limit(5)
-                )).scalars().all()
+                vix_rows = (
+                    (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(5))).scalars().all()
+                )
 
                 if not vix_rows:
                     return "[GRAFIK] *Data VIX belum tersedia.*"
@@ -4618,7 +5219,7 @@ class TelegramBot:
                 lines = ["*[GRAFIK] VIX (5 Data Terakhir)*\n"]
                 for v in vix_rows:
                     date_str = v.date.strftime("%d %b") if v.date else "?"
-                    close    = f"{v.close:.2f}" if v.close is not None else "?"
+                    close = f"{v.close:.2f}" if v.close is not None else "?"
                     # VIX interpretation
                     if v.close and v.close > 30:
                         icon = "[KRITIS]"
@@ -4634,6 +5235,7 @@ class TelegramBot:
     async def _build_tokens_text(self) -> str:
         try:
             from monika.core.analytics.token_auditor import TokenAuditor
+
             summary = await TokenAuditor.get_summary(hours=24)
             if not summary or summary["total_calls"] == 0:
                 return "[LAPORAN] *Belum ada konsumsi token tercatat hari ini (24 jam terakhir).*"
@@ -4643,8 +5245,10 @@ class TelegramBot:
             lines.append(f"• *Total Input*: {summary['input_tokens']:,} tokens")
             lines.append(f"• *Total Output*: {summary['output_tokens']:,} tokens")
             lines.append(f"• *Total Akumulasi*: {summary['total_tokens']:,} tokens")
-            if summary['cached_tokens'] > 0:
-                lines.append(f"• *Prompt Caching*: {summary['cached_tokens']:,} tokens ({summary['cache_hit_rate_pct']:.1f}% hemat)")
+            if summary["cached_tokens"] > 0:
+                lines.append(
+                    f"• *Prompt Caching*: {summary['cached_tokens']:,} tokens ({summary['cache_hit_rate_pct']:.1f}% hemat)"
+                )
             lines.append(f"• *Estimasi Biaya*: `${summary['total_cost_usd']:.4f} USD`\n")
 
             # Subsystem Breakdown
@@ -4652,7 +5256,9 @@ class TelegramBot:
             if subsystems:
                 lines.append("*• Berdasarkan Subsystem:*")
                 for s in subsystems[:6]:
-                    lines.append(f"  • *{s['subsystem']}*: {s['sum_total']:,} tokens (${s['sum_cost_usd']:.4f} | {s['pct_cost']:.1f}%)")
+                    lines.append(
+                        f"  • *{s['subsystem']}*: {s['sum_total']:,} tokens (${s['sum_cost_usd']:.4f} | {s['pct_cost']:.1f}%)"
+                    )
                 lines.append("")
 
             # Top Roles Breakdown
@@ -4660,7 +5266,9 @@ class TelegramBot:
             if roles:
                 lines.append("*[ASISTEN AI] Top Task Roles Terbesar:*")
                 for r in roles[:5]:
-                    lines.append(f"  • `{r['task_role']}`: {r['calls']} calls, avg {r['avg_total']:,.0f} tok (${r['sum_cost_usd']:.4f})")
+                    lines.append(
+                        f"  • `{r['task_role']}`: {r['calls']} calls, avg {r['avg_total']:,.0f} tok (${r['sum_cost_usd']:.4f})"
+                    )
 
             return "\n".join(lines)
         except Exception as e:
@@ -4669,13 +5277,14 @@ class TelegramBot:
     async def _build_credits_text(self) -> str:
         try:
             from monika.infrastructure.api.credit_balance_tracker import CreditBalanceTracker
+
             rep = await CreditBalanceTracker.get_full_credit_report()
 
             lines = ["*[KUOTA] LAPORAN SISA KREDIT & KUOTA API*\n"]
 
             # 1. Live Provider Balances (Tier Berbayar)
             lines.append("*• Saldo Live Provider (Tier Berbayar):*")
-            
+
             # OpenRouter Paid Key
             or_data = rep.get("openrouter", {})
             paid_status = or_data.get("paid_key", {})
@@ -4683,7 +5292,9 @@ class TelegramBot:
                 rem = paid_status.get("remaining_usd", 0.0)
                 tot = paid_status.get("total_credits_usd", 0.0)
                 usg = paid_status.get("total_usage_usd", 0.0)
-                lines.append(f"• *OpenRouter (Paid Key)*: `${rem:.2f} USD` tersisa (Total: `${tot:.2f}` | Terpakai: `${usg:.2f}`)")
+                lines.append(
+                    f"• *OpenRouter (Paid Key)*: `${rem:.2f} USD` tersisa (Total: `${tot:.2f}` | Terpakai: `${usg:.2f}`)"
+                )
             elif paid_status.get("status") == "insufficient_credits":
                 lines.append("• *OpenRouter (Paid Key)*: [PERINGATAN] `$0.00 USD` (Saldo top-up habis)")
             elif not paid_status.get("configured"):
@@ -4697,7 +5308,9 @@ class TelegramBot:
                 tot_bal = ds_data.get("total_balance_usd", 0.0)
                 top_bal = ds_data.get("topped_up_balance_usd", 0.0)
                 grant_bal = ds_data.get("granted_balance_usd", 0.0)
-                lines.append(f"• *DeepSeek*: `${tot_bal:.2f} USD` tersisa (Top-up: `${top_bal:.2f}` | Bonus: `${grant_bal:.2f}`)")
+                lines.append(
+                    f"• *DeepSeek*: `${tot_bal:.2f} USD` tersisa (Top-up: `${top_bal:.2f}` | Bonus: `${grant_bal:.2f}`)"
+                )
             elif ds_data.get("status") == "unconfigured":
                 lines.append("• *DeepSeek*: _API Key tidak aktif / opsional_")
             else:
@@ -4712,7 +5325,9 @@ class TelegramBot:
                 cfg = free_keys.get("configured_count", 0)
                 icon = "[AKTIF]" if act == cfg else ("[WASPADA]" if act > 0 else "[KRITIS]")
                 lines.append("*• Pool Kunci Gratisan OpenRouter (Free Tier Models):*")
-                lines.append(f"{icon} *OpenRouter Free Keys*: `{act} / {cfg}` Kunci Aktif & Siap (`is_free_tier: true`)")
+                lines.append(
+                    f"{icon} *OpenRouter Free Keys*: `{act} / {cfg}` Kunci Aktif & Siap (`is_free_tier: true`)"
+                )
                 lines.append("")
 
             # 3. Sisa Kuota Harian Free Tier (Hari ini)
@@ -4724,7 +5339,9 @@ class TelegramBot:
                     if km in quotas:
                         q = quotas[km]
                         icon = "[AKTIF]" if q["pct_used"] < 70 else ("[WASPADA]" if q["pct_used"] < 90 else "[KRITIS]")
-                        lines.append(f"{icon} `{km}`: *{q['remaining_calls']}* / {q['rpd_limit']} RPD tersisa ({q['used_calls']} calls)")
+                        lines.append(
+                            f"{icon} `{km}`: *{q['remaining_calls']}* / {q['rpd_limit']} RPD tersisa ({q['used_calls']} calls)"
+                        )
                 lines.append("")
 
             # 3. Akumulasi Pengeluaran Bulan Ini
@@ -4736,12 +5353,13 @@ class TelegramBot:
                 lines.append(f"*• Akumulasi Pengeluaran ({m_str}):* `${tot_cost:.4f} USD` ({tot_calls:,} calls)")
                 by_prov = expenses.get("by_provider", {})
                 for prov, pdata in sorted(by_prov.items(), key=lambda x: x[1].get("cost_usd", 0), reverse=True):
-                    lines.append(f"  • *{prov.title()}*: `${pdata['cost_usd']:.4f}` ({pdata['calls']} calls, {pdata['tokens']:,} tok)")
+                    lines.append(
+                        f"  • *{prov.title()}*: `${pdata['cost_usd']:.4f}` ({pdata['calls']} calls, {pdata['tokens']:,} tok)"
+                    )
 
             return "\n".join(lines)
         except Exception as e:
             return f"[GAGAL] Error Credit Balance Tracker: {e}"
-
 
     # ------------------------------------------------------------------
     # Utilities
@@ -4818,8 +5436,9 @@ class TelegramBot:
             return []
         if sanitize_format:
             from monika.interfaces.telegram.chat_agent import _sanitize_telegram_format
+
             text = _sanitize_telegram_format(text)
-        
+
         balance_fn = (lambda s: s) if is_html else TelegramBot._balance_markdown_chunk
         if len(text) <= max_len:
             return [balance_fn(text)]
@@ -4887,101 +5506,118 @@ class TelegramBot:
         return chunks
 
     async def _cmd_approve(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
-        
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
+
         if not ctx.args:
             await update.message.reply_text("Usage: /approve <analysis_id>")
             return
-        
+
         try:
             analysis_id = int(ctx.args[0])
         except ValueError:
             await update.message.reply_text("[GAGAL] analysis_id harus berupa angka.")
             return
-        
+
         if not self.execution_service:
             await update.message.reply_text("[PERINGATAN] ExecutionService tidak terhubung.")
             return
-        
+
         await update.message.reply_text(f"[MEMPROSES] Mengeksekusi analisis #{analysis_id}...")
         try:
             result = await self.execution_service.execute_by_analysis_id(analysis_id)
             try:
                 from monika.domain.risk.approval_hub import ApprovalHub
+
                 user_id = update.effective_user.id if update.effective_user else "unknown"
                 await ApprovalHub.get_instance().approve(str(analysis_id), operator=f"telegram:{user_id}")
             except Exception:
                 pass
             await update.message.reply_text(
-                f"[BERHASIL] {result.summary()}" if hasattr(result, 'summary') else str(result)
+                f"[BERHASIL] {result.summary()}" if hasattr(result, "summary") else str(result)
             )
         except Exception as e:
             await update.message.reply_text(f"[GAGAL] Gagal: {e}")
 
     async def _cmd_reject(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
-        
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
+
         if not ctx.args:
             await update.message.reply_text("Usage: /reject <analysis_id>")
             return
-        
+
         analysis_id_str = ctx.args[0]
-        
+
         try:
             from monika.domain.risk.approval_hub import ApprovalHub
+
             user_id = update.effective_user.id if update.effective_user else "unknown"
-            await ApprovalHub.get_instance().reject(str(analysis_id_str), operator=f"telegram:{user_id}", reason="Rejected via Telegram by admin")
+            await ApprovalHub.get_instance().reject(
+                str(analysis_id_str), operator=f"telegram:{user_id}", reason="Rejected via Telegram by admin"
+            )
         except Exception:
             pass
 
         from monika.infrastructure.database.db import get_session
+
         async with get_session() as session:
             from monika.infrastructure.database.models import ActivityLog, PaperTradeRecord
             from sqlalchemy import select, update as sql_update
-            
-            session.add(ActivityLog(
-                category="trading",
-                description=f"Trade proposal #{analysis_id_str} REJECTED by admin via Telegram",
-                actor="telegram_admin",
-            ))
-            
+
+            session.add(
+                ActivityLog(
+                    category="trading",
+                    description=f"Trade proposal #{analysis_id_str} REJECTED by admin via Telegram",
+                    actor="telegram_admin",
+                )
+            )
+
             try:
                 analysis_id = int(analysis_id_str)
-                
+
                 from monika.infrastructure.database.models import AssetAnalysis
+
                 await session.execute(
                     sql_update(AssetAnalysis)
                     .where(AssetAnalysis.id == analysis_id)
-                    .values(execution_status='rejected', execution_notes='Rejected via Telegram by admin')
+                    .values(execution_status="rejected", execution_notes="Rejected via Telegram by admin")
                 )
-                
+
                 await session.execute(
                     sql_update(PaperTradeRecord)
                     .where(PaperTradeRecord.analysis_id == analysis_id)
-                    .where(PaperTradeRecord.status == 'open')
+                    .where(PaperTradeRecord.status == "open")
                     .values(
-                        status='closed',
+                        status="closed",
                         closed_at=datetime.now(timezone.utc),
-                        exit_reason='rejected_by_admin',
+                        exit_reason="rejected_by_admin",
                         pnl_pct=0.0,
                     )
                 )
             except (ValueError, Exception) as e:
                 logger.debug(f"Paper trade cleanup on reject (non-fatal): {e}")
-            
+
             await session.commit()
-        
+
         await update.message.reply_text(f"[GAGAL] Analisis #{analysis_id_str} ditolak dan tidak akan dieksekusi.")
 
     async def _cmd_steer(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Mid-stream in-flight steer directive synchronized across Telegram, WS, and TUI."""
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        if not self._is_admin(update): return await self._reject_non_admin(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        if not self._is_admin(update):
+            return await self._reject_non_admin(update)
 
         if not ctx.args or len(ctx.args) < 2:
             await update.message.reply_text(
@@ -4994,6 +5630,7 @@ class TelegramBot:
         instruction = " ".join(ctx.args[1:]).strip()
 
         from monika.domain.risk.approval_hub import ApprovalHub
+
         user_id = update.effective_user.id if update.effective_user else "unknown"
         operator_tag = f"telegram:{user_id}"
         await ApprovalHub.get_instance().steer(symbol, instruction, operator=operator_tag)
@@ -5008,8 +5645,10 @@ class TelegramBot:
         )
 
     async def _cmd_tearsheet(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
         days = 30
@@ -5028,18 +5667,28 @@ class TelegramBot:
 
         try:
             async with get_session() as session:
-                trades = (await session.execute(
-                    select(PaperTradeRecord)
-                    .where(PaperTradeRecord.status == "closed")
-                    .where(PaperTradeRecord.closed_at >= since)
-                )).scalars().all()
+                trades = (
+                    (
+                        await session.execute(
+                            select(PaperTradeRecord)
+                            .where(PaperTradeRecord.status == "closed")
+                            .where(PaperTradeRecord.closed_at >= since)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
 
                 if not trades:
-                    trades = (await session.execute(
-                        select(Position)
-                        .where(Position.status == "closed")
-                        .where(Position.closed_at >= since)
-                    )).scalars().all()
+                    trades = (
+                        (
+                            await session.execute(
+                                select(Position).where(Position.status == "closed").where(Position.closed_at >= since)
+                            )
+                        )
+                        .scalars()
+                        .all()
+                    )
 
             if not trades:
                 await update.message.reply_text(f"[INFORMASI] Belum ada trade closed dalam {days} hari terakhir.")
@@ -5053,6 +5702,7 @@ class TelegramBot:
             # Generate and send graphical equity curve snapshot
             try:
                 from monika.core.analytics.chart_generator import generate_equity_curve_chart
+
                 trade_records = []
                 for t in trades:
                     t_time = getattr(t, "closed_at", getattr(t, "opened_at", None))
@@ -5065,7 +5715,9 @@ class TelegramBot:
                         save_to_disk=False,
                     )
                     chart_buf.seek(0)
-                    await update.message.reply_photo(photo=chart_buf, caption=f"📈 Equity Curve & Drawdown Profile ({days}D)")
+                    await update.message.reply_photo(
+                        photo=chart_buf, caption=f"📈 Equity Curve & Drawdown Profile ({days}D)"
+                    )
             except Exception as chart_err:
                 logger.debug(f"Equity chart generation omitted: {chart_err}")
         except Exception as e:
@@ -5073,8 +5725,10 @@ class TelegramBot:
             await update.message.reply_text(f"[GAGAL] Error generating tearsheet: {e}")
 
     async def _cmd_report(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not update.message:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_weekly_report()
         for chunk in self._chunk_text(text):
@@ -5085,52 +5739,67 @@ class TelegramBot:
         from monika.infrastructure.database.models import Position, PaperTradeRecord, TokenUsageLog, CyclePerformance
         from sqlalchemy import select, func
         from datetime import timedelta
-        
+
         try:
             now = datetime.now(timezone.utc)
             week_ago = now - timedelta(days=7)
-            
+
             async with get_session() as session:
                 # Closed positions this week
-                closed = (await session.execute(
-                    select(Position)
-                    .where(Position.status == "closed")
-                    .where(Position.closed_at >= week_ago)
-                )).scalars().all()
+                closed = (
+                    (
+                        await session.execute(
+                            select(Position).where(Position.status == "closed").where(Position.closed_at >= week_ago)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
 
-                paper_closed = (await session.execute(
-                    select(PaperTradeRecord)
-                    .where(PaperTradeRecord.status == "closed")
-                    .where(PaperTradeRecord.closed_at >= week_ago)
-                )).scalars().all()
-                
+                paper_closed = (
+                    (
+                        await session.execute(
+                            select(PaperTradeRecord)
+                            .where(PaperTradeRecord.status == "closed")
+                            .where(PaperTradeRecord.closed_at >= week_ago)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+
                 total_pnl = sum(p.pnl or 0 for p in closed)
                 wins = [p for p in closed if (p.pnl or 0) > 0]
                 losses = [p for p in closed if (p.pnl or 0) <= 0]
                 win_rate = len(wins) / len(closed) * 100 if closed else 0
-                
+
                 # Token usage this week
-                tok_result = (await session.execute(
-                    select(
-                        TokenUsageLog.provider,
-                        func.sum(TokenUsageLog.total_tokens).label("total"),
+                tok_result = (
+                    await session.execute(
+                        select(
+                            TokenUsageLog.provider,
+                            func.sum(TokenUsageLog.total_tokens).label("total"),
+                        )
+                        .where(TokenUsageLog.timestamp >= week_ago)
+                        .group_by(TokenUsageLog.provider)
                     )
-                    .where(TokenUsageLog.timestamp >= week_ago)
-                    .group_by(TokenUsageLog.provider)
-                )).all()
-                
+                ).all()
+
                 # Cycle stats this week
-                cycles = (await session.execute(
-                    select(func.count(CyclePerformance.id))
-                    .where(CyclePerformance.cycle_at >= week_ago)
-                )).scalar_one_or_none() or 0
-                
-                avg_cost_q = (await session.execute(
-                    select(func.avg(CyclePerformance.api_cost_usd))
-                    .where(CyclePerformance.cycle_at >= week_ago)
-                    .where(CyclePerformance.api_cost_usd != None)
-                )).scalar_one_or_none()
-                
+                cycles = (
+                    await session.execute(
+                        select(func.count(CyclePerformance.id)).where(CyclePerformance.cycle_at >= week_ago)
+                    )
+                ).scalar_one_or_none() or 0
+
+                avg_cost_q = (
+                    await session.execute(
+                        select(func.avg(CyclePerformance.api_cost_usd))
+                        .where(CyclePerformance.cycle_at >= week_ago)
+                        .where(CyclePerformance.api_cost_usd != None)
+                    )
+                ).scalar_one_or_none()
+
             lines = [
                 f"*[LAPORAN] Weekly Report — {week_ago.strftime('%d %b')} to {now.strftime('%d %b %Y')}*\n",
                 f"*Trading Performance:*",
@@ -5140,14 +5809,15 @@ class TelegramBot:
                 f"  Winners: {len(wins)} | Losers: {len(losses)}",
                 "",
             ]
-            
+
             # Fetch tracker stats for expectancy and suspended symbols
             try:
                 from monika.core.analytics.paper_tracker import PaperTracker
+
                 tracker = PaperTracker()
                 async with get_session() as tracker_session:
                     stats = await tracker.get_statistics(tracker_session)
-                    exp = stats.get('expectancy_per_trade_R')
+                    exp = stats.get("expectancy_per_trade_R")
                     if exp is not None:
                         lines.append("*Edge Status:*")
                         if exp > 0:
@@ -5155,19 +5825,24 @@ class TelegramBot:
                         elif exp > -0.1:
                             lines.append(f"  [WASPADA] EDGE UNCERTAIN: Expectancy = {exp:.2f}R per trade")
                         else:
-                            lines.append(f"  [KRITIS] EDGE NEGATIVE: Expectancy = {exp:.2f}R per trade — AUTO-SUSPEND RISK")
-                    
+                            lines.append(
+                                f"  [KRITIS] EDGE NEGATIVE: Expectancy = {exp:.2f}R per trade — AUTO-SUSPEND RISK"
+                            )
+
                     suspended = await tracker.get_suspended_symbols(tracker_session)
                     if suspended:
                         lines.append(f"  [DIJEDA] Suspended Symbols: {', '.join(suspended)}")
                     lines.append("")
-                    
+
                     from monika.core.analytics.analysis_tracker import get_direction_accuracy_report
+
                     dir_acc = await get_direction_accuracy_report(tracker_session, 7)
-                    if dir_acc and "error" not in dir_acc and not dir_acc.get('insufficient_data'):
+                    if dir_acc and "error" not in dir_acc and not dir_acc.get("insufficient_data"):
                         lines.append("*Analysis Quality:*")
-                        lines.append(f"  [TARGET] Direction Accuracy (4h): {dir_acc.get('direction_accuracy_4h', dir_acc.get('overall_accuracy_4h_pct'))}%")
-                        brier = dir_acc.get('brier_score', dir_acc.get('mean_brier_score'))
+                        lines.append(
+                            f"  [TARGET] Direction Accuracy (4h): {dir_acc.get('direction_accuracy_4h', dir_acc.get('overall_accuracy_4h_pct'))}%"
+                        )
+                        brier = dir_acc.get("brier_score", dir_acc.get("mean_brier_score"))
                         if brier is not None:
                             # Brier score: 0 is perfect, 1 is totally wrong, 0.25 is random guessing
                             lines.append(f"  [KEYAKINAN] Confidence Brier Score: {brier:.3f} (closer to 0 is better)")
@@ -5177,28 +5852,35 @@ class TelegramBot:
 
             try:
                 from monika.core.telemetry.reporting.tearsheet_generator import QuantTearsheetGenerator
+
                 report_trades = closed if closed else paper_closed
                 if report_trades:
                     ts = QuantTearsheetGenerator.generate_from_trades(report_trades)
                     lines.append("*Quant Tearsheet Highlights:*")
-                    lines.append(f"  Sharpe: `{ts.annualized_sharpe:.2f}` | Sortino: `{ts.annualized_sortino:.2f}` | Calmar: `{ts.calmar_ratio:.2f}`")
-                    lines.append(f"  Max DD: `{ts.max_drawdown_pct:.2f}%` | Profit Factor: `{ts.profit_factor:.2f}` | Payoff: `{ts.payoff_ratio:.2f}`")
+                    lines.append(
+                        f"  Sharpe: `{ts.annualized_sharpe:.2f}` | Sortino: `{ts.annualized_sortino:.2f}` | Calmar: `{ts.calmar_ratio:.2f}`"
+                    )
+                    lines.append(
+                        f"  Max DD: `{ts.max_drawdown_pct:.2f}%` | Profit Factor: `{ts.profit_factor:.2f}` | Payoff: `{ts.payoff_ratio:.2f}`"
+                    )
                     lines.append(f"  Expectancy: `{ts.expectancy_r:+.2f}R` (`${ts.expectancy_usd:+,.2f}`)")
                     lines.append("")
             except Exception as e:
                 logger.debug(f"Tearsheet in weekly report failed: {e}")
 
-            lines.extend([
-                f"*System Performance:*",
-                f"  Cycles completed: {cycles}",
-                f"  Avg cost per cycle: `${avg_cost_q:.4f}`" if avg_cost_q else "  Avg cost: N/A",
-            ])
-            
+            lines.extend(
+                [
+                    f"*System Performance:*",
+                    f"  Cycles completed: {cycles}",
+                    f"  Avg cost per cycle: `${avg_cost_q:.4f}`" if avg_cost_q else "  Avg cost: N/A",
+                ]
+            )
+
             if tok_result:
                 lines.append("\n*Token Usage:*")
                 for row in tok_result:
                     lines.append(f"  {row.provider.upper()}: {row.total:,} tokens")
-            
+
             if closed:
                 lines.append("\n*Trade Breakdown by Asset:*")
                 by_symbol = {}
@@ -5211,15 +5893,20 @@ class TelegramBot:
                     lines.append(f"  {sym}: {data['count']} trades, `{'${:+.2f}'.format(data['pnl'])}`")
             try:
                 from monika.core.analytics.analysis_tracker import compute_model_source_performance
+
                 async with get_session() as src_session:
                     source_perf = await compute_model_source_performance(src_session, days_back=7)
-                if source_perf.get('by_decision_source'):
-                    lines.append('\n*Performance by Decision Source (Model):*')
-                    for source, data in sorted(source_perf['by_decision_source'].items(), key=lambda x: x[1]['win_rate'], reverse=True):
-                        lines.append(f"  {source}: {data['win_rate']}% WR ({data['trades']} trades, avg {data['avg_pnl_pct']:+.3f}%)")
+                if source_perf.get("by_decision_source"):
+                    lines.append("\n*Performance by Decision Source (Model):*")
+                    for source, data in sorted(
+                        source_perf["by_decision_source"].items(), key=lambda x: x[1]["win_rate"], reverse=True
+                    ):
+                        lines.append(
+                            f"  {source}: {data['win_rate']}% WR ({data['trades']} trades, avg {data['avg_pnl_pct']:+.3f}%)"
+                        )
             except Exception as e:
-                logger.debug(f'Decision-source performance section failed: {e}')
-            
+                logger.debug(f"Decision-source performance section failed: {e}")
+
             return "\n".join(lines)
         except Exception as e:
             return f"[GAGAL] Error generating report: {e}"

@@ -26,13 +26,31 @@ from monika.core.primitives.event_bus import (
     reset_event_bus,
 )
 
-__all__ = ['AppEvent', 'BarClosedEvent', 'CircuitBreakerEvent', 'E', 'EventBus', 'OrderStateChangedEvent', 'PostFillEvent', 'PreOrderEvent', 'PreRiskGateEvent', 'RiskBreachEvent', 'ServicePredicate', 'Subscription', 'TickPriceEvent', 'get_event_bus', 'logger', 'reset_event_bus']
+__all__ = [
+    "AppEvent",
+    "BarClosedEvent",
+    "CircuitBreakerEvent",
+    "E",
+    "EventBus",
+    "OrderStateChangedEvent",
+    "PostFillEvent",
+    "PreOrderEvent",
+    "PreRiskGateEvent",
+    "RiskBreachEvent",
+    "ServicePredicate",
+    "Subscription",
+    "TickPriceEvent",
+    "get_event_bus",
+    "logger",
+    "reset_event_bus",
+]
 
 
 # Direct module reference forwarding
 for _attr in dir(_canonical):
-    if not _attr.startswith('__') and _attr not in globals():
+    if not _attr.startswith("__") and _attr not in globals():
         globals()[_attr] = getattr(_canonical, _attr)
 
 import sys as _sys
+
 _sys.modules[__name__] = _canonical

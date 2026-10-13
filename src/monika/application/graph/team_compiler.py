@@ -112,6 +112,7 @@ class TeamCompiler:
 
         if state_cls is None:
             from monika.application.graph.state import TradingState
+
             state_cls = TradingState
 
         builder = StateGraph(state_cls)

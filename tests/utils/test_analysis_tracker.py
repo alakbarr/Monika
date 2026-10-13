@@ -107,7 +107,7 @@ async def test_compute_analysis_quality_report_no_key_error():
         "by_symbol_direction": {
             "XAUUSD_buy": {"trades": 3, "total": 3, "wins": 3, "losses": 0, "win_rate": 100.0},
             "EURUSD_buy": {"trades": 5, "total": 5, "wins": 1, "losses": 4, "win_rate": 20.0},
-        }
+        },
     }
 
     with patch("utils.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock) as mock_get_stats:
@@ -156,7 +156,7 @@ async def test_adaptive_threshold_hints_and_directional_bias():
         "by_symbol_direction": {
             "EURUSD_buy": {"total": 10, "trades": 10, "win_rate": 10.0, "wins": 1, "losses": 9},
             "XAUUSD_buy": {"total": 12, "trades": 12, "win_rate": 75.0, "wins": 9, "losses": 3},
-        }
+        },
     }
 
     mock_cfg = MagicMock()
@@ -193,7 +193,7 @@ async def test_adaptive_threshold_hints_and_directional_bias():
 async def test_direction_accuracy_report_alias_keys():
     """Verify get_direction_accuracy_report returns compatibility alias keys."""
     mock_session = create_mock_async_session()
-    
+
     mock_analysis_1 = MagicMock()
     mock_analysis_1.symbol = "XAUUSD"
     mock_analysis_1.direction_correct_4h = True

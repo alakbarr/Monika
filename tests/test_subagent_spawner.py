@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit and regression tests for Dynamic Subagent Spawner Pool.
 Verifies SubagentWorker sandboxing, timeout enforcement, distillation token contracts,
@@ -31,12 +32,14 @@ async def test_subagent_worker_success():
     )
 
     mock_client = MagicMock()
-    mock_client.run_chat_loop = AsyncMock(return_value={
-        "reply": "US CPI is stabilizing at 2.4%.",
-        "input_tokens": 120,
-        "output_tokens": 45,
-        "tool_calls_made": 1,
-    })
+    mock_client.run_chat_loop = AsyncMock(
+        return_value={
+            "reply": "US CPI is stabilizing at 2.4%.",
+            "input_tokens": 120,
+            "output_tokens": 45,
+            "tool_calls_made": 1,
+        }
+    )
 
     worker = SubagentWorker(spec=spec, client=mock_client)
     result = await worker.run()
@@ -63,6 +66,7 @@ async def test_subagent_worker_timeout_enforcement():
     )
 
     mock_client = MagicMock()
+
     async def _hang(*args, **kwargs):
         await asyncio.sleep(1.0)
         return {"reply": "Done"}
@@ -91,12 +95,14 @@ async def test_subagent_worker_distillation_contract():
 
     long_reply = "Word " * 500  # 500 words is well over 50 tokens
     mock_client = MagicMock()
-    mock_client.run_chat_loop = AsyncMock(return_value={
-        "reply": long_reply,
-        "input_tokens": 100,
-        "output_tokens": 600,
-        "tool_calls_made": 0,
-    })
+    mock_client.run_chat_loop = AsyncMock(
+        return_value={
+            "reply": long_reply,
+            "input_tokens": 100,
+            "output_tokens": 600,
+            "tool_calls_made": 0,
+        }
+    )
 
     worker = SubagentWorker(spec=spec, client=mock_client)
     result = await worker.run()
@@ -168,14 +174,17 @@ async def test_dynamic_subagent_pool_run_parallel():
     ]
 
     mock_client = MagicMock()
-    mock_client.run_chat_loop = AsyncMock(side_effect=lambda **kw: {
-        "reply": f"Report for {kw.get('new_user_message')}",
-        "input_tokens": 50,
-        "output_tokens": 30,
-        "tool_calls_made": 1,
-    })
+    mock_client.run_chat_loop = AsyncMock(
+        side_effect=lambda **kw: {
+            "reply": f"Report for {kw.get('new_user_message')}",
+            "input_tokens": 50,
+            "output_tokens": 30,
+            "tool_calls_made": 1,
+        }
+    )
 
     progress_messages = []
+
     def _progress(msg):
         progress_messages.append(msg)
 
@@ -272,5 +281,3 @@ async def test_fedwatch_probabilities_web_search_fallback():
     assert res_empty.get("fallback_tool") == "web_search"
     assert "suggested_query" in res_empty
     assert "note" in res_empty
-
-

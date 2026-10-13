@@ -50,13 +50,13 @@ def repair_tool_name(raw_name: str) -> str:
     # Strip prefixes like tools. functions. tool. fn.
     for ns in ("tools.", "functions.", "tool.", "fn.", "default.", "modules."):
         if clean.startswith(ns):
-            clean = clean[len(ns):].strip()
+            clean = clean[len(ns) :].strip()
 
     # Handle doubled prefixes e.g. submit_submit_
     for pfx in ("submit_", "get_", "load_", "calculate_"):
         double_pfx = pfx + pfx
         while clean.startswith(double_pfx):
-            clean = clean[len(pfx):]
+            clean = clean[len(pfx) :]
 
     # Check alias map
     if clean in TOOL_NAME_ALIASES:
@@ -67,6 +67,7 @@ def repair_tool_name(raw_name: str) -> str:
     # Check registry aliases
     try:
         from monika.application.analysis.tools.registry import default_tool_registry
+
         canonical = default_tool_registry.resolve_name(clean)
         if canonical != clean:
             logger.info(f"Registry resolved tool alias: '{clean}' -> '{canonical}'")
@@ -89,7 +90,7 @@ def _parse_xml_parameters(text: str) -> Optional[Dict[str, Any]]:
     # <arg name="key">val</arg>, or <arg=key>val</arg>
     pattern = re.compile(
         r'<(?:parameter|arg)(?:\s+name=["\']?([^"\'\s>]+)["\']?|=\s*["\']?([^"\'\s>]+)["\']?)\s*>(.*?)(?:</(?:parameter|arg)>|(?=<(?:parameter|arg))|$)',
-        re.DOTALL | re.IGNORECASE
+        re.DOTALL | re.IGNORECASE,
     )
     matches = pattern.findall(text)
     if matches:
@@ -158,12 +159,12 @@ def repair_tool_arguments(args: Any) -> Dict[str, Any]:
 
     # Repair common LLM syntax defects:
     # 1. Trailing commas before closing braces/brackets
-    cleaned = re.sub(r',\s*([}\]])', r'\1', args_str)
+    cleaned = re.sub(r",\s*([}\]])", r"\1", args_str)
 
     # 2. Python booleans and None
-    cleaned = re.sub(r'\bNone\b', 'null', cleaned)
-    cleaned = re.sub(r'\bTrue\b', 'true', cleaned)
-    cleaned = re.sub(r'\bFalse\b', 'false', cleaned)
+    cleaned = re.sub(r"\bNone\b", "null", cleaned)
+    cleaned = re.sub(r"\bTrue\b", "true", cleaned)
+    cleaned = re.sub(r"\bFalse\b", "false", cleaned)
 
     # 3. Single quotes to double quotes
     if "'" in cleaned and '"' not in cleaned:
@@ -260,7 +261,7 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                     f = float(val)
                     if f.is_integer():
                         args[key] = int(f)
-                except (ValueError, TypeError, OverflowError):
+                except ValueError, TypeError, OverflowError:
                     pass
             elif isinstance(val, str):
                 s = val.strip()
@@ -268,7 +269,7 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                     f = float(s)
                     if f.is_integer():
                         args[key] = int(f)
-                except (ValueError, TypeError, OverflowError):
+                except ValueError, TypeError, OverflowError:
                     pass
         elif "number" in expected_types:
             if isinstance(val, bool):
@@ -277,7 +278,7 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                 s = val.strip().replace("$", "").replace(",", "")
                 try:
                     args[key] = float(s)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
         elif "boolean" in expected_types:
             if isinstance(val, str):
@@ -316,10 +317,7 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                     "pattern_similarity": "historical_pattern_consensus",
                     "chart_pattern": "historical_pattern_consensus",
                 }
-                args[key] = [
-                    FACTOR_ALIASES.get(str(item).strip().lower(), str(item))
-                    for item in args[key]
-                ]
+                args[key] = [FACTOR_ALIASES.get(str(item).strip().lower(), str(item)) for item in args[key]]
         elif "object" in expected_types:
             if isinstance(val, str):
                 s = val.strip()
@@ -361,4 +359,3 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                 coerce_tool_arguments(val, pdef)
 
     return args
-

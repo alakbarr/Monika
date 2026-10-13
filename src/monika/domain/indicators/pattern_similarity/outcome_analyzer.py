@@ -53,7 +53,7 @@ class OutcomeAnalyzer:
                 continue
 
             # Compute local ATR for normalization
-            atr_slice = historical_bars[max(0, end_idx - atr_period):end_idx]
+            atr_slice = historical_bars[max(0, end_idx - atr_period) : end_idx]
             atr = self._compute_atr(atr_slice)
             if atr <= 1e-8:
                 continue
@@ -68,7 +68,7 @@ class OutcomeAnalyzer:
                     forward_returns[h_label] = float(ret_atr)
 
             # Max Favorable Excursion (MFE) & Max Adverse Excursion (MAE)
-            forward_slice = historical_bars[end_idx:end_idx + max_horizon_bars]
+            forward_slice = historical_bars[end_idx : end_idx + max_horizon_bars]
             highs = forward_slice[:, 2].astype(float)
             lows = forward_slice[:, 3].astype(float)
 
@@ -84,15 +84,17 @@ class OutcomeAnalyzer:
             else:
                 direction = "neutral"
 
-            outcomes.append(PatternOutcome(
-                match=match,
-                forward_returns=forward_returns,
-                mfe_atr=mfe,
-                mae_atr=mae,
-                direction=direction,
-                entry_price=entry_price,
-                atr_at_entry=atr,
-            ))
+            outcomes.append(
+                PatternOutcome(
+                    match=match,
+                    forward_returns=forward_returns,
+                    mfe_atr=mfe,
+                    mae_atr=mae,
+                    direction=direction,
+                    entry_price=entry_price,
+                    atr_at_entry=atr,
+                )
+            )
 
         return outcomes
 
@@ -133,7 +135,7 @@ class OutcomeAnalyzer:
             maes.append(abs(o.mae_atr))
 
         weights = np.array(weights, dtype=float)
-        weights /= (np.sum(weights) + 1e-10)
+        weights /= np.sum(weights) + 1e-10
 
         directions_arr = np.array(directions_arr)
         returns_1d = np.array(returns_1d, dtype=float)
@@ -204,8 +206,7 @@ class OutcomeAnalyzer:
         closes = bars[:, 4].astype(float)
 
         tr = np.maximum(
-            highs[1:] - lows[1:],
-            np.maximum(np.abs(highs[1:] - closes[:-1]), np.abs(lows[1:] - closes[:-1]))
+            highs[1:] - lows[1:], np.maximum(np.abs(highs[1:] - closes[:-1]), np.abs(lows[1:] - closes[:-1]))
         )
         return float(np.mean(tr)) if len(tr) > 0 else 1.0
 
@@ -222,10 +223,7 @@ class OutcomeAnalyzer:
 
         if n <= 30:
             # Exact sum of binomial probabilities
-            p_val = sum(
-                math.comb(n, i) * (p ** i) * ((1.0 - p) ** (n - i))
-                for i in range(k, n + 1)
-            )
+            p_val = sum(math.comb(n, i) * (p**i) * ((1.0 - p) ** (n - i)) for i in range(k, n + 1))
             return float(min(1.0, max(0.0, p_val)))
         else:
             # Normal approximation with continuity correction

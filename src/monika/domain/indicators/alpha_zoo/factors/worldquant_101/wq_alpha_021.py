@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #21.
 
 Formula (paper appendix): complex piecewise; see paper
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_021"
 
 __alpha_meta__ = {
-    'id': 'alpha101_021',
-    'nickname': 'Kakushadze Alpha #21',
-    'theme': ['momentum', 'volatility'],
-    'formula_latex': 'complex piecewise; see paper',
-    'columns_required': ['close', 'volume'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 20,
-    'notes': '',
+    "id": "alpha101_021",
+    "nickname": "Kakushadze Alpha #21",
+    "theme": ["momentum", "volatility"],
+    "formula_latex": "complex piecewise; see paper",
+    "columns_required": ["close", "volume"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 20,
+    "notes": "",
 }
 
 
@@ -106,7 +105,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     v_adv = safe_div(volume, adv20)
     cond_a = (m8 + s8) < m2
     cond_b = m2 < (m8 - s8)
-    cond_c = (v_adv >= 1.0)
+    cond_c = v_adv >= 1.0
     one = make_one(close)
     out = where_ternary(cond_a, -1.0 * one, where_ternary(cond_b, one, where_ternary(cond_c, one, -1.0 * one)))
     # A NaN comparison is False, not NaN, so where_ternary's own

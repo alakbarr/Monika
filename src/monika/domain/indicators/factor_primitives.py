@@ -33,6 +33,7 @@ T = TypeVar("T", pd.DataFrame, pd.Series)
 HAS_BOTTLENECK: bool = False
 try:
     import bottleneck as bn
+
     HAS_BOTTLENECK = True
 except ImportError:
     bn = None
@@ -59,8 +60,10 @@ def _as_float(df: Any) -> Any:
 
 from enum import Enum
 
+
 class Market(str, Enum):
     """Market identifier used by vwap for market-specific conventions."""
+
     EQUITY_US = "equity_us"
     EQUITY_CN = "equity_cn"
     EQUITY_HK = "equity_hk"
@@ -122,8 +125,16 @@ def safe_div(
         df_target = None
 
     if df_target is not None:
-        a_arr = a.to_numpy(dtype=np.float64, na_value=np.nan) if isinstance(a, (pd.DataFrame, pd.Series)) else np.asarray(a, dtype=np.float64)
-        b_arr = b.to_numpy(dtype=np.float64, na_value=np.nan) if isinstance(b, (pd.DataFrame, pd.Series)) else np.asarray(b, dtype=np.float64)
+        a_arr = (
+            a.to_numpy(dtype=np.float64, na_value=np.nan)
+            if isinstance(a, (pd.DataFrame, pd.Series))
+            else np.asarray(a, dtype=np.float64)
+        )
+        b_arr = (
+            b.to_numpy(dtype=np.float64, na_value=np.nan)
+            if isinstance(b, (pd.DataFrame, pd.Series))
+            else np.asarray(b, dtype=np.float64)
+        )
         sign = np.where(b_arr == 0.0, 1.0, np.sign(b_arr))
         denom = b_arr + eps * sign
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -139,8 +150,16 @@ def safe_div(
         s_target = None
 
     if s_target is not None:
-        a_arr = a.to_numpy(dtype=np.float64, na_value=np.nan) if isinstance(a, pd.Series) else np.asarray(a, dtype=np.float64)
-        b_arr = b.to_numpy(dtype=np.float64, na_value=np.nan) if isinstance(b, pd.Series) else np.asarray(b, dtype=np.float64)
+        a_arr = (
+            a.to_numpy(dtype=np.float64, na_value=np.nan)
+            if isinstance(a, pd.Series)
+            else np.asarray(a, dtype=np.float64)
+        )
+        b_arr = (
+            b.to_numpy(dtype=np.float64, na_value=np.nan)
+            if isinstance(b, pd.Series)
+            else np.asarray(b, dtype=np.float64)
+        )
         sign = np.where(b_arr == 0.0, 1.0, np.sign(b_arr))
         denom = b_arr + eps * sign
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -305,6 +324,7 @@ def ts_rank(df: Any, n: int) -> Any:
     arr = input_df.to_numpy(dtype=np.float64)
     T, C = arr.shape
     if T < n:
+
         def _last_rank(sub: np.ndarray) -> float:
             if np.isnan(sub).all():
                 return np.nan
@@ -317,6 +337,7 @@ def ts_rank(df: Any, n: int) -> Any:
             less = (valid < last).sum()
             eq = (valid == last).sum()
             return float((less + 0.5 * (eq + 1)) / valid.size)
+
         res = input_df.rolling(window=n, min_periods=n).apply(_last_rank, raw=True)
         return res.iloc[:, 0].rename(s_name) if is_series else res
 
@@ -331,7 +352,7 @@ def ts_rank(df: Any, n: int) -> Any:
     less = np.sum(np.where(valid_mask, windows < last_expanded, 0), axis=2)
     eq = np.sum(np.where(valid_mask, windows == last_expanded, 0), axis=2)
     rank_avg = less + 0.5 * (eq + 1)
-    
+
     with np.errstate(divide="ignore", invalid="ignore"):
         pct = rank_avg / valid_count
     pct[nan_last | (nan_count > 0)] = np.nan
@@ -555,10 +576,12 @@ def decay_linear(df: Any, n: int) -> Any:
     arr = input_df.to_numpy(dtype=np.float64)
     T, C = arr.shape
     if T < n:
+
         def _apply(sub: np.ndarray) -> float:
             if np.isnan(sub).any():
                 return np.nan
             return float(np.dot(sub, weights))
+
         res_df = input_df.rolling(window=n, min_periods=n).apply(_apply, raw=True)
         return res_df.iloc[:, 0].rename(s_name) if is_series else res_df
 

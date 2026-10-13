@@ -2,30 +2,31 @@ import pytest
 from unittest.mock import MagicMock, patch
 from scrapers.macro.cme_fedwatch import FedWatchScraper
 
+
 class TestFedWatchScraper:
     @patch("scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
     @patch("time.sleep", return_value=None)
     def test_fetch_probabilities_success(self, mock_sleep, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
-        
+
         scraper = FedWatchScraper()
-        
+
         # Mock iframe
         mock_iframe = MagicMock()
         mock_page.get_frame.return_value = mock_iframe
-        
+
         # Mock tabs: only return 1 tab
         mock_tab = MagicMock()
         mock_tab.text = "Sep 16, 2026"
-        
+
         def mock_ele(selector, timeout=None):
             if "ctrl0" in selector:
                 return mock_tab
             return None
-            
+
         mock_iframe.ele.side_effect = mock_ele
-        
+
         # Mock HTML
         mock_iframe.html = """
         <html>
@@ -58,23 +59,23 @@ class TestFedWatchScraper:
             </table>
         </html>
         """
-        
+
         meetings = scraper.fetch_probabilities()
-        
+
         assert len(meetings) == 1
         meeting = meetings[0]
         assert meeting.meeting_date == "Sep 16, 2026"
         assert meeting.current_rate_ref == 0.06
         assert "HOLD (60.0%)" in meeting.most_likely
         assert len(meeting.probabilities) == 3
-        
+
     @patch("scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
     def test_fetch_probabilities_no_iframe(self, mock_init):
         mock_page = MagicMock()
         mock_init.return_value = mock_page
-        
+
         scraper = FedWatchScraper()
-        
+
         # Mock iframe locator to return None immediately
         with patch.object(scraper, "_locate_quikstrike_iframe", return_value=None):
             meetings = scraper.fetch_probabilities()
@@ -145,4 +146,3 @@ class TestFedWatchScraper:
             assert meetings[0].meeting_date == "Dec 16, 2026"
             assert meetings[0].current_rate_ref == 0.05
             assert len(meetings[0].probabilities) == 2
-

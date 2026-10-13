@@ -87,7 +87,7 @@ class TestBatchScenarioRunner:
 
         assert len(results) == 2
         assert all(isinstance(r, ScenarioResult) for r in results)
-        
+
         # Verify fsync written file
         written_file = tmp_path / out_file
         assert written_file.exists()

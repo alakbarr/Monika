@@ -4,9 +4,7 @@
 
 from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
+
 class DowJonesRssScraper(RssBaseScraper):
     def __init__(self):
-        super().__init__(
-            source_name="dow_jones_newswires", 
-            feed_url="https://feeds.a.dj.com/rss/RSSWorldNews.xml"
-        )
+        super().__init__(source_name="dow_jones_newswires", feed_url="https://feeds.a.dj.com/rss/RSSWorldNews.xml")

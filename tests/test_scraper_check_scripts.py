@@ -8,7 +8,13 @@ from scrapers.models import CalendarEvent, ScrapedNews, FedMeeting, FedProbabili
 
 # Import helper functions from check scripts
 from scripts.check_scrapers.check_calendar import check_forexfactory, check_investing, check_finnhub, print_events_table
-from scripts.check_scrapers.check_news import check_kitco, check_tradingview, check_single_rss, get_rss_map, print_news_table
+from scripts.check_scrapers.check_news import (
+    check_kitco,
+    check_tradingview,
+    check_single_rss,
+    get_rss_map,
+    print_news_table,
+)
 from scripts.check_scrapers.check_cme import check_cme_fedwatch, print_fed_meetings
 from scripts.check_scrapers.check_sentiment import check_fxssi, check_myfxbook, check_binance, print_ratios_table
 from scripts.check_scrapers.check_twitter import check_twitter, print_tweets_table, check_twitter_sessions
@@ -90,7 +96,9 @@ class TestCheckNews:
     def test_check_tradingview_success(self, mock_scraper_cls):
         mock_instance = MagicMock()
         mock_instance.fetch_news.return_value = [
-            ScrapedNews(title="Oil prices climb", url="https://tradingview.com/1", source="TradingView", timestamp="2026-08-23")
+            ScrapedNews(
+                title="Oil prices climb", url="https://tradingview.com/1", source="TradingView", timestamp="2026-08-23"
+            )
         ]
         mock_scraper_cls.return_value = mock_instance
 
@@ -134,7 +142,7 @@ class TestCheckCME:
                 meeting_date="2026-09-16",
                 current_rate_ref=5.25,
                 probabilities=[FedProbability(target_range="500-525", probability=85.0, action="HOLD")],
-                most_likely="HOLD"
+                most_likely="HOLD",
             )
         ]
         mock_scraper_cls.return_value = mock_instance
@@ -150,7 +158,7 @@ class TestCheckCME:
                 meeting_date="2026-09-16",
                 current_rate_ref=5.25,
                 probabilities=[FedProbability(target_range="500-525", probability=85.0, action="HOLD")],
-                most_likely="HOLD"
+                most_likely="HOLD",
             )
         ]
         print_fed_meetings(meetings)
@@ -165,7 +173,7 @@ class TestCheckSentiment:
         mock_instance = MagicMock()
         mock_instance.fetch_sync.return_value = {
             "source": "fxssi",
-            "ratios": {"EURUSD": {"long_percent": 45.0, "short_percent": 55.0, "long_short_ratio": 0.82}}
+            "ratios": {"EURUSD": {"long_percent": 45.0, "short_percent": 55.0, "long_short_ratio": 0.82}},
         }
         mock_fetcher_cls.return_value = mock_instance
 
@@ -178,7 +186,7 @@ class TestCheckSentiment:
         mock_instance = MagicMock()
         mock_instance.fetch_sync.return_value = {
             "source": "myfxbook",
-            "ratios": {"XAUUSD": {"long_percent": 60.0, "short_percent": 40.0, "long_short_ratio": 1.5}}
+            "ratios": {"XAUUSD": {"long_percent": 60.0, "short_percent": 40.0, "long_short_ratio": 1.5}},
         }
         mock_fetcher_cls.return_value = mock_instance
 
@@ -190,10 +198,12 @@ class TestCheckSentiment:
     @patch("scrapers.sentiment.binance_sentiment.BinanceSentimentFetcher")
     async def test_check_binance_success(self, mock_fetcher_cls):
         mock_instance = MagicMock()
-        mock_instance.fetch = AsyncMock(return_value={
-            "source": "binance_futures",
-            "ratios": {"BTCUSDT": {"long_percent": 52.0, "short_percent": 48.0, "long_short_ratio": 1.08}}
-        })
+        mock_instance.fetch = AsyncMock(
+            return_value={
+                "source": "binance_futures",
+                "ratios": {"BTCUSDT": {"long_percent": 52.0, "short_percent": 48.0, "long_short_ratio": 1.08}},
+            }
+        )
         mock_fetcher_cls.return_value = mock_instance
 
         res = await check_binance()
@@ -214,7 +224,13 @@ class TestCheckTwitter:
         mock_instance = MagicMock()
         mock_instance.session_dir = tmp_path
         mock_instance.fetch_latest_tweets.return_value = [
-            ScrapedTweet(id="123", username="federalreserve", content="FOMC Statement released", url="https://x.com/123", timestamp="2026-08-23T05:00:00Z")
+            ScrapedTweet(
+                id="123",
+                username="federalreserve",
+                content="FOMC Statement released",
+                url="https://x.com/123",
+                timestamp="2026-08-23T05:00:00Z",
+            )
         ]
         mock_scraper_cls.return_value = mock_instance
 
@@ -225,7 +241,13 @@ class TestCheckTwitter:
 
     def test_print_tweets_table(self, capsys):
         tweets = [
-            ScrapedTweet(id="123", username="testuser", content="Breaking economic news", url="https://x.com/123", timestamp="2026-08-23")
+            ScrapedTweet(
+                id="123",
+                username="testuser",
+                content="Breaking economic news",
+                url="https://x.com/123",
+                timestamp="2026-08-23",
+            )
         ]
         print_tweets_table(tweets)
         captured = capsys.readouterr()

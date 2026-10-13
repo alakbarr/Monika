@@ -27,7 +27,11 @@ from analysis.calculators.universal_cb_differ import UniversalCentralBankDiffer
 from analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
 from analysis.tools.handlers.behavioral_alert_tool import handle_create_behavioral_alert
 from analysis.tools.handlers.broker_profile_tool import handle_compare_broker_spread_profiles
-from analysis.tools.handlers.trade_intel import handle_export_trades_to_excel, handle_generate_docx_report, handle_generate_pptx_deck
+from analysis.tools.handlers.trade_intel import (
+    handle_export_trades_to_excel,
+    handle_generate_docx_report,
+    handle_generate_pptx_deck,
+)
 from utils.chart_generator import generate_smc_candlestick_chart
 import json
 from unittest.mock import MagicMock, AsyncMock
@@ -47,8 +51,8 @@ def test_cent_account_dual_protection():
     res = ps.calculate("EURUSD", "BUY", 1.1000, 1.0950, 1.1100, account_equity=10000.0)
     assert res.is_valid is True
     assert res.account_equity == 100.0  # normalized
-    assert res.risk_amount_usd == 1.0   # 1% of $100 = $1.00
-    assert res.recommended_lots == 0.01 # minimum safe lot, not blown up
+    assert res.risk_amount_usd == 1.0  # 1% of $100 = $1.00
+    assert res.recommended_lots == 0.01  # minimum safe lot, not blown up
 
 
 @pytest.mark.asyncio
@@ -57,10 +61,41 @@ async def test_universal_macro_analyzer():
     mock_session = AsyncMock()
     mock_res = MagicMock()
     cpi_records = [
-        EconomicReportDecomposition(report_type="CPI", component_name="Headline CPI", category="headline", value_actual=0.3, value_forecast=0.2, mom_change=0.3, yoy_change=2.9),
-        EconomicReportDecomposition(report_type="CPI", component_name="Core CPI", category="core", value_actual=0.2, value_forecast=0.2, mom_change=0.2, yoy_change=3.1),
-        EconomicReportDecomposition(report_type="CPI", component_name="Shelter", category="sticky", value_actual=0.35, mom_change=0.35, contribution_bps=12.5),
-        EconomicReportDecomposition(report_type="CPI", component_name="Energy", category="transitory", value_actual=1.4, mom_change=1.4, contribution_bps=10.0, is_noise=True),
+        EconomicReportDecomposition(
+            report_type="CPI",
+            component_name="Headline CPI",
+            category="headline",
+            value_actual=0.3,
+            value_forecast=0.2,
+            mom_change=0.3,
+            yoy_change=2.9,
+        ),
+        EconomicReportDecomposition(
+            report_type="CPI",
+            component_name="Core CPI",
+            category="core",
+            value_actual=0.2,
+            value_forecast=0.2,
+            mom_change=0.2,
+            yoy_change=3.1,
+        ),
+        EconomicReportDecomposition(
+            report_type="CPI",
+            component_name="Shelter",
+            category="sticky",
+            value_actual=0.35,
+            mom_change=0.35,
+            contribution_bps=12.5,
+        ),
+        EconomicReportDecomposition(
+            report_type="CPI",
+            component_name="Energy",
+            category="transitory",
+            value_actual=1.4,
+            mom_change=1.4,
+            contribution_bps=10.0,
+            is_noise=True,
+        ),
     ]
     mock_res.scalars.return_value.all.return_value = cpi_records
     mock_session.execute.return_value = mock_res
@@ -71,7 +106,9 @@ async def test_universal_macro_analyzer():
     cpi_res = await analyzer.decompose_report("CPI")
     assert "institutional_verdict" in cpi_res
     assert cpi_res["institutional_verdict"]["classification"] in [
-        "TRANSITORY_NOISE_ONLY", "STRUCTURAL_PERSISTENT_SHIFT", "MIXED_IMPACT"
+        "TRANSITORY_NOISE_ONLY",
+        "STRUCTURAL_PERSISTENT_SHIFT",
+        "MIXED_IMPACT",
     ]
 
     g10_res = await analyzer.analyze_g10_macro_divergence("EURUSD")
@@ -85,8 +122,24 @@ async def test_universal_central_bank_differ():
     mock_session = AsyncMock()
     mock_res = MagicMock()
     docs = [
-        CentralBankDocument(bank="FED", doc_type="MINUTES", meeting_date=datetime.now(), title="Current FOMC", full_text="Tightening stance. Persistent inflation.", paragraphs_json=json.dumps(["Tightening stance.", "Persistent inflation."]), hawkish_dovish_score=0.4),
-        CentralBankDocument(bank="FED", doc_type="MINUTES", meeting_date=datetime.now(), title="Prior FOMC", full_text="Restrictive stance. Disinflation evident.", paragraphs_json=json.dumps(["Restrictive stance.", "Disinflation evident."]), hawkish_dovish_score=0.1),
+        CentralBankDocument(
+            bank="FED",
+            doc_type="MINUTES",
+            meeting_date=datetime.now(),
+            title="Current FOMC",
+            full_text="Tightening stance. Persistent inflation.",
+            paragraphs_json=json.dumps(["Tightening stance.", "Persistent inflation."]),
+            hawkish_dovish_score=0.4,
+        ),
+        CentralBankDocument(
+            bank="FED",
+            doc_type="MINUTES",
+            meeting_date=datetime.now(),
+            title="Prior FOMC",
+            full_text="Restrictive stance. Disinflation evident.",
+            paragraphs_json=json.dumps(["Restrictive stance.", "Disinflation evident."]),
+            hawkish_dovish_score=0.1,
+        ),
     ]
     mock_res.scalars.return_value.all.return_value = docs
     mock_session.execute.return_value = mock_res
@@ -107,8 +160,20 @@ async def test_universal_liquidity_analyzer():
     mock_session = AsyncMock()
     mock_res = MagicMock()
     liq_records = [
-        MacroLiquidityCreditMetric(metric_type="FED_NET_LIQUIDITY", value=5960.0, previous_value=5920.0, change_value=40.0, regime="EXPANSIONARY", record_date=datetime.now()),
-        MacroLiquidityCreditMetric(metric_type="TREASURY_AUCTION_10Y", value=4.285, metadata_json=json.dumps({"tail_bps": 1.2, "bid_to_cover": 2.52, "indirect_bidder_pct": 68.0}), record_date=datetime.now()),
+        MacroLiquidityCreditMetric(
+            metric_type="FED_NET_LIQUIDITY",
+            value=5960.0,
+            previous_value=5920.0,
+            change_value=40.0,
+            regime="EXPANSIONARY",
+            record_date=datetime.now(),
+        ),
+        MacroLiquidityCreditMetric(
+            metric_type="TREASURY_AUCTION_10Y",
+            value=4.285,
+            metadata_json=json.dumps({"tail_bps": 1.2, "bid_to_cover": 2.52, "indirect_bidder_pct": 68.0}),
+            record_date=datetime.now(),
+        ),
         MacroLiquidityCreditMetric(metric_type="ICE_BOFA_HY_OAS", value=320.0, record_date=datetime.now()),
         MacroLiquidityCreditMetric(metric_type="SOFR_RATE", value=5.31, record_date=datetime.now()),
     ]
@@ -156,7 +221,14 @@ async def test_broker_spread_profile():
 def test_chart_generator_with_ob_and_volume_profile():
     """Verify candlestick generator renders with Order Blocks and Volume Profile."""
     sample_ohlcv = [
-        {"timestamp": f"2026-09-01T{h:02d}:00:00Z", "open": 1.1000 + h*0.0005, "high": 1.1010 + h*0.0005, "low": 1.0995 + h*0.0005, "close": 1.1008 + h*0.0005, "volume": 1000 + h*50}
+        {
+            "timestamp": f"2026-09-01T{h:02d}:00:00Z",
+            "open": 1.1000 + h * 0.0005,
+            "high": 1.1010 + h * 0.0005,
+            "low": 1.0995 + h * 0.0005,
+            "close": 1.1008 + h * 0.0005,
+            "volume": 1000 + h * 50,
+        }
         for h in range(20)
     ]
     obs = [{"high": 1.1080, "low": 1.1060, "direction": "bearish"}]
@@ -177,9 +249,11 @@ def test_chart_generator_with_ob_and_volume_profile():
 @pytest.mark.asyncio
 async def test_excel_export_executive_kpis():
     """Verify Excel export creates Executive_KPIs sheet."""
+
     class MockExecutor:
         def __init__(self):
             self.files = []
+
         def add_pending_file(self, file_path, filename, caption):
             self.files.append(file_path)
 

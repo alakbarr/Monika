@@ -65,7 +65,6 @@ class McpServerProcess:
             return True
         return await self.start()
 
-
     async def _read_sse_stream(self, resp: aiohttp.ClientResponse):
         """Read Server-Sent Events (SSE) stream from the server."""
         current_event = "message"
@@ -133,12 +132,14 @@ class McpServerProcess:
                 headers = {"Content-Type": "application/json"}
                 if self.auth_token:
                     headers["Authorization"] = f"Bearer {self.auth_token}"
-                self._http_session = aiohttp.ClientSession(
-                    headers=headers, timeout=timeout, trust_env=True
-                )
+                self._http_session = aiohttp.ClientSession(headers=headers, timeout=timeout, trust_env=True)
             else:
                 # Default stdio
-                resolved_cmd = sys.executable if self.command in ("python", "python3") else (shutil.which(self.command) or self.command)
+                resolved_cmd = (
+                    sys.executable
+                    if self.command in ("python", "python3")
+                    else (shutil.which(self.command) or self.command)
+                )
                 repo_root = get_repo_root()
                 base_dir = str(repo_root)
                 src_dir = str(repo_root / "src")
@@ -384,7 +385,7 @@ class McpBridgeHandler(ToolHandler):
         args: Dict[str, Any],
         session: Optional[AsyncSession] = None,
         executor: Optional[Any] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Any:
         if not self.server.is_running:
             started = await self.server.ensure_started()
@@ -448,7 +449,10 @@ class McpClientManager:
                 return {"ok": False, "error": res["error"], "result": res}
             return {"ok": True, "result": res}
         except asyncio.TimeoutError:
-            return {"ok": False, "error": f"MCP tool '{tool_name}' on '{server_name}' timed out after {effective_timeout}s"}
+            return {
+                "ok": False,
+                "error": f"MCP tool '{tool_name}' on '{server_name}' timed out after {effective_timeout}s",
+            }
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -551,4 +555,3 @@ class McpClientManager:
 
 # Cross-compatibility alias
 MCPClientManager = McpClientManager
-

@@ -24,7 +24,7 @@ SYMBOL_CURRENCIES: dict[str, Tuple[str, ...]] = {
 def get_symbol_currencies(symbol: str) -> Tuple[str, ...]:
     """
     Mengembalikan tuple kode mata uang atau komoditas terkait untuk simbol yang diberikan.
-    
+
     Contoh:
         get_symbol_currencies("GBPUSD") -> ("GBP", "USD")
         get_symbol_currencies("XTIUSD") -> ("OIL", "USD")

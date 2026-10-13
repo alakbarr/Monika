@@ -57,13 +57,13 @@ class McpDeathSupervisor:
         try:
             cls._previous_sigint = signal.getsignal(signal.SIGINT)
             signal.signal(signal.SIGINT, cls._signal_handler)
-        except (ValueError, AttributeError):
+        except ValueError, AttributeError:
             pass
 
         try:
             cls._previous_sigterm = signal.getsignal(signal.SIGTERM)
             signal.signal(signal.SIGTERM, cls._signal_handler)
-        except (ValueError, AttributeError):
+        except ValueError, AttributeError:
             pass
 
     @classmethod

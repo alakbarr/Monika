@@ -104,7 +104,8 @@ class CrossTimeframeConfirmationGate:
                     item = ind_dict.get(k)
                     if isinstance(item, dict):
                         v = item.get("value") or item.get("ema") or item.get("sma")
-                        if v is not None: return float(v)
+                        if v is not None:
+                            return float(v)
                     elif isinstance(item, (int, float)):
                         return float(item)
                 return None

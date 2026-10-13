@@ -1,4 +1,3 @@
-
 """academic 52-week-high momentum: closeness of price to its 252-day high.
 
 Reference:
@@ -11,6 +10,7 @@ better than past returns alone. Computed as close / ts_max(close, 252), then
 cross-sectional z-scored per date. Higher z-scores = closer to the 52-week
 high (the long leg).
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -19,21 +19,21 @@ import pandas as pd
 from monika.domain.indicators.factor_primitives import safe_div, ts_max
 
 __alpha_meta__ = {
-    'id': 'academic_high52w',
-    'nickname': 'George-Hwang 2004 52-week-high momentum',
-    'theme': ['momentum'],
-    'formula_latex': r'\mathrm{zscore}_{x}\bigl(\mathrm{close}_t / \mathrm{ts\_max}(\mathrm{close},\,252)\bigr)',
-    'columns_required': ['close'],
-    'universe': ['equity_us', 'equity_cn', 'equity_hk'],
-    'frequency': ['1d'],
-    'decay_horizon': 60,
-    'min_warmup_bars': 252,
-    'notes': (
-        'George & Hwang (2004) 52-week-high momentum. Ratio of current close to the '
-        'trailing 252-day maximum close, cross-sectional z-score per date for '
-        'long-short ranking. Top z-scores = names trading nearest their 52-week high. '
-        'Canonical 252d window; declared decay_horizon=60 due to registry schema cap '
-        '(le=60); real signal horizon spans months.'
+    "id": "academic_high52w",
+    "nickname": "George-Hwang 2004 52-week-high momentum",
+    "theme": ["momentum"],
+    "formula_latex": r"\mathrm{zscore}_{x}\bigl(\mathrm{close}_t / \mathrm{ts\_max}(\mathrm{close},\,252)\bigr)",
+    "columns_required": ["close"],
+    "universe": ["equity_us", "equity_cn", "equity_hk"],
+    "frequency": ["1d"],
+    "decay_horizon": 60,
+    "min_warmup_bars": 252,
+    "notes": (
+        "George & Hwang (2004) 52-week-high momentum. Ratio of current close to the "
+        "trailing 252-day maximum close, cross-sectional z-score per date for "
+        "long-short ranking. Top z-scores = names trading nearest their 52-week high. "
+        "Canonical 252d window; declared decay_horizon=60 due to registry schema cap "
+        "(le=60); real signal horizon spans months."
     ),
 }
 
@@ -54,6 +54,6 @@ def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     """Return close-to-252d-high ratio cross-sectional z-score per stock."""
-    close = panel['close']
+    close = panel["close"]
     ratio = safe_div(close, ts_max(close, 252))
     return _cross_sectional_zscore(ratio)

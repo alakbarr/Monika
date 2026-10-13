@@ -38,12 +38,7 @@ async def list_backtest_runs(
 ) -> Dict[str, Any]:
     """List historical backtest run records with summary metrics."""
     async with get_session() as session:
-        stmt = (
-            select(BacktestRun)
-            .order_by(desc(BacktestRun.created_at))
-            .offset(offset)
-            .limit(limit)
-        )
+        stmt = select(BacktestRun).order_by(desc(BacktestRun.created_at)).offset(offset).limit(limit)
         runs = (await session.execute(stmt)).scalars().all()
 
         return {
@@ -141,9 +136,12 @@ async def _execute_background_backtest(days: int, mode: str, initial_equity: flo
         start_date = end_date - timedelta(days=days)
 
         engine_mode: BacktestMode = (
-            "full" if mode == "full"
-            else "langgraph_parity" if mode == "langgraph_parity"
-            else "graph" if mode == "graph"
+            "full"
+            if mode == "full"
+            else "langgraph_parity"
+            if mode == "langgraph_parity"
+            else "graph"
+            if mode == "graph"
             else "replay"
         )
 

@@ -2,6 +2,7 @@
 Cache Miss Detector — identifies prompt cache misses and calculates financial waste.
 Adopted from Pi's cache-stats.ts pattern.
 """
+
 import logging
 import time
 from dataclasses import dataclass
@@ -85,6 +86,7 @@ class CacheMissDetector:
 
             # Estimate waste: cost of re-writing the cached tokens that were lost
             from monika.core.analytics.pricing import cost_usd
+
             missed_cost = cost_usd(
                 model_name=state.last_model or model,
                 input_tokens=state.last_cached_tokens,
@@ -106,13 +108,13 @@ class CacheMissDetector:
                 logger.warning(
                     f"[CacheMissDetector] Cache miss ({reason}): prev_cached={state.last_cached_tokens}, "
                     f"curr_cached={cached_tokens}, estimated_waste=${missed_cost:.4f}, "
-                    f"time_gap={time_gap/1000.0:.1f}s, model={model}"
+                    f"time_gap={time_gap / 1000.0:.1f}s, model={model}"
                 )
             else:
                 logger.info(
                     f"[CacheMissDetector] Cache miss ({reason}): prev_cached={state.last_cached_tokens}, "
                     f"curr_cached={cached_tokens}, estimated_waste=${missed_cost:.4f}, "
-                    f"time_gap={time_gap/1000.0:.1f}s, model={model}"
+                    f"time_gap={time_gap / 1000.0:.1f}s, model={model}"
                 )
         else:
             report = CacheMissReport(
@@ -147,4 +149,3 @@ class CacheMissDetector:
 
 # Global singleton
 global_cache_miss_detector = CacheMissDetector()
-

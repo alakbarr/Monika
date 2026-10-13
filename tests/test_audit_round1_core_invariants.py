@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Comprehensive Unit Test Suite for Remediation Round 1: Phase 0 & Phase 1.
 Validates all 14 remediation items:
@@ -25,8 +26,15 @@ import pytest
 
 from utils import clock
 from database.models import (
-    PriceOHLCV, TechnicalIndicator, VIXData, TradeOutcome, PaperTradeRecord,
-    FedWatchProbability, COTReport, NewsDigest, SystemConfig
+    PriceOHLCV,
+    TechnicalIndicator,
+    VIXData,
+    TradeOutcome,
+    PaperTradeRecord,
+    FedWatchProbability,
+    COTReport,
+    NewsDigest,
+    SystemConfig,
 )
 from risk.risk_gate import RiskGate
 from risk.position_sizing import PositionSizer
@@ -42,17 +50,15 @@ from utils.analytics.cost_tracker import CostTracker
 # P0-1 (BT-01, BT-02, BT-03): Temporal Gating in RiskGate
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_risk_gate_vix_lookahead_prevention():
     """Verify that VIX check ignores future VIX rows relative to clock.now()."""
     gate = RiskGate(settings={"trading": {"risk": {"vix_thresholds": {"pause": 30.0, "defensive": 25.0}}}})
-    
+
     mock_session = create_mock_async_session()
     mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = VIXData(
-        date=datetime(2026, 1, 15, tzinfo=timezone.utc),
-        close=18.5
-    )
+    mock_result.scalar_one_or_none.return_value = VIXData(date=datetime(2026, 1, 15, tzinfo=timezone.utc), close=18.5)
     mock_session.execute.return_value = mock_result
 
     with clock.frozen_time(datetime(2026, 1, 15, 12, 0, tzinfo=timezone.utc)):
@@ -66,7 +72,7 @@ async def test_risk_gate_weekly_drawdown_temporal_bound():
     """Verify weekly drawdown query bounds upper time to closed_at <= now."""
     gate = RiskGate(settings={"trading": {"risk": {"max_weekly_drawdown_percent": 6.0}}})
     mock_session = create_mock_async_session()
-    
+
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = []
     mock_res = MagicMock()
@@ -82,30 +88,41 @@ async def test_risk_gate_weekly_drawdown_temporal_bound():
 # P0-2 (AXIS4-01): Forex Weekend Resampling Exclusion
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_technical_resample_forex_weekend_filtered():
     """Verify that resampling Forex data filters out weekend market closure candles."""
     mock_session = create_mock_async_session()
-    
+
     # Friday 2026-01-09 21:00 UTC and Monday 2026-01-12 00:00 UTC
     friday_bar = PriceOHLCV(
-        symbol="EURUSD", timeframe="H1",
+        symbol="EURUSD",
+        timeframe="H1",
         timestamp=datetime(2026, 1, 9, 21, 0, tzinfo=timezone.utc),
-        open=1.0800, high=1.0810, low=1.0790, close=1.0805, volume=100.0
+        open=1.0800,
+        high=1.0810,
+        low=1.0790,
+        close=1.0805,
+        volume=100.0,
     )
     monday_bar = PriceOHLCV(
-        symbol="EURUSD", timeframe="H1",
+        symbol="EURUSD",
+        timeframe="H1",
         timestamp=datetime(2026, 1, 12, 0, 0, tzinfo=timezone.utc),
-        open=1.0805, high=1.0820, low=1.0800, close=1.0815, volume=150.0
+        open=1.0805,
+        high=1.0820,
+        low=1.0800,
+        close=1.0815,
+        volume=150.0,
     )
-    
+
     mock_res = MagicMock()
     mock_res.scalars.return_value.all.return_value = [monday_bar, friday_bar]
     mock_session.execute.return_value = mock_res
-    
+
     calc = TechnicalIndicatorCalculator(session=mock_session, settings={})
     df = await calc._load_ohlcv(symbol="EURUSD", timeframe="H1")
-    
+
     assert df is not None
     # Saturday (dayofweek 5) should NOT be present in resampled Forex dataframe
     saturday_bars = df[df.index.dayofweek == 5]
@@ -116,11 +133,12 @@ async def test_technical_resample_forex_weekend_filtered():
 # P0-3 (AXIS4-03): ActiveCalendarPoller Scraper Resource Cleanup
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_active_calendar_poller_scraper_close():
     """Verify InvestingCalendarScraper is closed in finally block when poller runs."""
     from scheduler.active_calendar_poller import ActiveCalendarPoller
-    
+
     poller = ActiveCalendarPoller(settings={})
     poller.running = True
     poller.poll_interval = 0.01
@@ -136,17 +154,18 @@ async def test_active_calendar_poller_scraper_close():
     mock_res.scalars.return_value.all.return_value = [mock_ev]
     mock_session.execute.return_value = mock_res
 
-    with patch("scheduler.active_calendar_poller.get_session") as mock_get_sess, \
-         patch("scheduler.active_calendar_poller.InvestingCalendarScraper", return_value=mock_investing):
-        
+    with (
+        patch("scheduler.active_calendar_poller.get_session") as mock_get_sess,
+        patch("scheduler.active_calendar_poller.InvestingCalendarScraper", return_value=mock_investing),
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
-        
+
         # Test poller loop termination without leaking browser
         task = asyncio.create_task(poller._poll_for_events(datetime.now(timezone.utc)))
         await asyncio.sleep(0.2)
         poller.running = False
         await task
-        
+
         # Verify close() was called on the scraper instance
         assert mock_investing.close.called
 
@@ -155,10 +174,12 @@ async def test_active_calendar_poller_scraper_close():
 # P0-4 (OBS-01): DB Health Check Telegram Alerting
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_main_db_health_check_sends_telegram_alert():
     """Verify that failure in DB health check triggers AgentNotifier.send_critical."""
     from main import TradingAgent
+
     agent = TradingAgent(settings={}, dry_run=True)
     agent.shutdown_event = asyncio.Event()
 
@@ -168,9 +189,10 @@ async def test_main_db_health_check_sends_telegram_alert():
     mock_notifier = MagicMock()
     mock_notifier.send_critical = AsyncMock()
 
-    with patch("database.db.engine", mock_engine), \
-         patch("utils.infra.notifier.AgentNotifier", return_value=mock_notifier):
-        
+    with (
+        patch("database.db.engine", mock_engine),
+        patch("utils.infra.notifier.AgentNotifier", return_value=mock_notifier),
+    ):
         # Run 1 iteration of health check
         task = asyncio.create_task(agent._run_db_health_check())
         await asyncio.sleep(0.05)
@@ -186,6 +208,7 @@ async def test_main_db_health_check_sends_telegram_alert():
 # P0-5 (FIN-01): Nested Config Reading in CostTracker
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_cost_tracker_nested_config_reading():
     """Verify check_monthly_budget reads cost_tracking.monthly_budget_usd."""
@@ -198,12 +221,7 @@ async def test_cost_tracker_nested_config_reading():
     mock_notifier.send_critical = AsyncMock()
 
     # Settings with root-level cost_tracking
-    settings = {
-        "cost_tracking": {
-            "monthly_budget_usd": 250.0,
-            "alert_threshold_pct": 80.0
-        }
-    }
+    settings = {"cost_tracking": {"monthly_budget_usd": 250.0, "alert_threshold_pct": 80.0}}
 
     with patch("utils.analytics.cost_tracker.AgentNotifier", return_value=mock_notifier):
         # 240 / 250 = 96% -> should trigger budget exceeded alert
@@ -215,15 +233,16 @@ async def test_cost_tracker_nested_config_reading():
 # P0-6 (AXIS4-02): ForexFactory Date Parse Fallback
 # ==============================================================================
 
+
 def test_forexfactory_date_parse_fallback():
     """Verify ForexFactory parser falls back to current_date_str at 00:00:00Z on time parse failure."""
     from scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
-    
+
     scraper = ForexFactoryCalendarScraper.__new__(ForexFactoryCalendarScraper)
     scraper.headless = True
     scraper.urls = ["https://www.forexfactory.com/calendar?week=this"]
     scraper.navigate_with_fallback = MagicMock(return_value=True)
-    
+
     mock_page = MagicMock()
     mock_page.wait = MagicMock()
     mock_page.html = """
@@ -241,7 +260,7 @@ def test_forexfactory_date_parse_fallback():
     </table>
     """
     scraper.page = mock_page
-    
+
     with patch("dateutil.parser.parse", side_effect=Exception("Unparseable")):
         events = scraper.fetch_events(prefer_feed=False)
         assert len(events) > 0
@@ -252,19 +271,20 @@ def test_forexfactory_date_parse_fallback():
 # P0-7 (F-01): Defensive Zero Lot on Sizing Rejection
 # ==============================================================================
 
+
 def test_position_sizing_invalid_returns_zero_lots():
     """Verify that when position sizing produces rejections, recommended_lots is 0.0."""
     sizer = PositionSizer(settings={"trading": {"risk": {"max_risk_amount_usd": 5.0}}})
-    
+
     # A lot size that violates minimum lot or exceeds risk
     result = sizer.calculate(
         symbol="EURUSD",
         direction="buy",
         entry_price=1.0800,
-        stop_loss=1.0700, # 100 pips SL
+        stop_loss=1.0700,  # 100 pips SL
         take_profit=1.1000,
-        account_equity=100.0, # Tiny equity
-        risk_percent_override=100.0
+        account_equity=100.0,  # Tiny equity
+        risk_percent_override=100.0,
     )
     if not result.is_valid:
         assert result.recommended_lots == 0.0
@@ -274,14 +294,16 @@ def test_position_sizing_invalid_returns_zero_lots():
 # P1-1 (BT-07): PointInTimeEngine Enforces RiskGate by Default
 # ==============================================================================
 
+
 def test_point_in_time_engine_enforces_risk_gate():
     """Verify PointInTimeBacktestEngine initializes RiskGate by default."""
     from backtest.point_in_time_engine import PointInTimeBacktestEngine
+
     engine = PointInTimeBacktestEngine(
         mode="replay",
         start_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
         end_date=datetime(2026, 1, 10, tzinfo=timezone.utc),
-        settings={"trading": {"risk": {}}}
+        settings={"trading": {"risk": {}}},
     )
     assert engine.gate is not None
 
@@ -289,6 +311,7 @@ def test_point_in_time_engine_enforces_risk_gate():
 # ==============================================================================
 # P1-2 (BT-04, BT-05): Point-in-Time Queries in Indicators & MacroPricedIn
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_macro_priced_in_calculator_temporal_gating():
@@ -306,6 +329,7 @@ async def test_macro_priced_in_calculator_temporal_gating():
 # ==============================================================================
 # P1-3 (AX1-01): Strict Float Coercion in Pydantic Schemas
 # ==============================================================================
+
 
 def test_pydantic_coerce_float_strict_non_numeric():
     """Verify coerce_float rejects ambiguous descriptive strings."""
@@ -326,6 +350,7 @@ def test_pydantic_coerce_float_strict_non_numeric():
 # P1-4 (AX1-02): Square Bracket Sanitization in External Prompts
 # ==============================================================================
 
+
 def test_news_digest_untrusted_brackets_sanitized():
     """Verify square brackets in news titles are sanitized to parentheses."""
     mock_item = MagicMock()
@@ -345,6 +370,7 @@ def test_news_digest_untrusted_brackets_sanitized():
 # P1-7 (AX1-04): Arbitrator Epsilon Division by Zero Protection
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_signal_arbitrator_total_acc_epsilon_safe():
     """Verify arbitrator weights calculation handles zero accuracy safely."""
@@ -353,10 +379,6 @@ async def test_signal_arbitrator_total_acc_epsilon_safe():
     mock_res.all.return_value = []
     mock_session.execute.return_value = mock_res
 
-    w_q, w_l = await compute_empirical_arbitrator_weights(
-        session=mock_session,
-        default_quant=0.40,
-        default_llm=0.60
-    )
+    w_q, w_l = await compute_empirical_arbitrator_weights(session=mock_session, default_quant=0.40, default_llm=0.60)
     assert 0.20 <= w_q <= 0.80
     assert round(w_q + w_l, 2) == 1.0

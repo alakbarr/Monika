@@ -1,11 +1,13 @@
 """
 Unit test for LangGraph Parity Mode in PointInTimeBacktestEngine.
 """
+
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
 from backtest.point_in_time_engine import PointInTimeBacktestEngine
+
 pytest.importorskip("langgraph")
 import graph.workflow
 
@@ -20,7 +22,7 @@ async def test_point_in_time_langgraph_parity_mode():
                 "account_equity": 10000.0,
                 "risk_per_trade_percent": 1.0,
                 "max_drawdown_percent": 5.0,
-            }
+            },
         }
     }
 
@@ -28,11 +30,7 @@ async def test_point_in_time_langgraph_parity_mode():
     end = datetime(2026, 8, 1, 6, 0, tzinfo=timezone.utc)
 
     engine = PointInTimeBacktestEngine(
-        start_date=start,
-        end_date=end,
-        mode="langgraph_parity",
-        step_hours=4,
-        settings=settings
+        start_date=start, end_date=end, mode="langgraph_parity", step_hours=4, settings=settings
     )
 
     mock_graph = AsyncMock()
@@ -47,16 +45,17 @@ async def test_point_in_time_langgraph_parity_mode():
                     "take_profit": 1.1100,
                     "confidence": 85.0,
                     "confluence_score": 8,
-                    "rationale": "Bullish order block test"
-                }
+                    "rationale": "Bullish order block test",
+                },
             )
         ]
     }
 
-    with patch("graph.workflow.build_trading_graph", return_value=mock_graph), \
-         patch("backtest.point_in_time_engine.get_session") as mock_get_session, \
-         patch("backtest.outcome_evaluator.OutcomeEvaluator.evaluate_trade", new_callable=AsyncMock) as mock_eval:
-
+    with (
+        patch("graph.workflow.build_trading_graph", return_value=mock_graph),
+        patch("backtest.point_in_time_engine.get_session") as mock_get_session,
+        patch("backtest.outcome_evaluator.OutcomeEvaluator.evaluate_trade", new_callable=AsyncMock) as mock_eval,
+    ):
         mock_session = create_mock_async_session()
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -66,7 +65,7 @@ async def test_point_in_time_langgraph_parity_mode():
             "exit_reason": "tp_hit",
             "pnl_pips": 100.0,
             "pnl_pct": 1.5,
-            "pnl_usd": 150.0
+            "pnl_usd": 150.0,
         }
 
         run_record = await engine.run()

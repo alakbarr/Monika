@@ -142,9 +142,7 @@ class FrozenSnapshotManager:
                 return self._current_snapshot
 
             self._current_snapshot = await self._build_snapshot(session)
-            logger.info(
-                f"[FrozenSnapshotManager] Hydrated new memory snapshot: {self._current_snapshot}"
-            )
+            logger.info(f"[FrozenSnapshotManager] Hydrated new memory snapshot: {self._current_snapshot}")
             return self._current_snapshot
 
     async def rehydrate(self, session: Optional[AsyncSession] = None) -> FrozenMemorySnapshot:
@@ -175,6 +173,7 @@ class FrozenSnapshotManager:
         stable_core = ""
         try:
             from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+
             mgr = LayeredMemoryManager(self.settings)
             stable_core = await mgr.get_stable_core_memory(session)
         except Exception as e:
@@ -184,6 +183,7 @@ class FrozenSnapshotManager:
         active_playbooks: Dict[str, Any] = {}
         try:
             from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
+
             lifecycle = PlaybookLifecycleManager()
             all_pbs = lifecycle.list_all_playbooks() if hasattr(lifecycle, "list_all_playbooks") else {}
             for sym, pb in (all_pbs or {}).items():

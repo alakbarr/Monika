@@ -1,4 +1,3 @@
-
 """GTJA Alpha #19.
 
 Formula: (CLOSE<DELAY(CLOSE,5)?(CLOSE-DELAY(CLOSE,5))/DELAY(CLOSE,5):(CLOSE=DELAY(CLOSE,5)?0:(CLOSE-DELAY(CLOSE,5))/CLOSE))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_019",
-    "theme": ['reversal'],
-    "formula_latex": '(CLOSE<DELAY(CLOSE,5)?(CLOSE-DELAY(CLOSE,5))/DELAY(CLOSE,5):(CLOSE=DELAY(CLOSE,5)?0:(CLOSE-DELAY(CLOSE,5))/CLOSE))',
-    "columns_required": ['close'],
+    "theme": ["reversal"],
+    "formula_latex": "(CLOSE<DELAY(CLOSE,5)?(CLOSE-DELAY(CLOSE,5))/DELAY(CLOSE,5):(CLOSE=DELAY(CLOSE,5)?0:(CLOSE-DELAY(CLOSE,5))/CLOSE))",
+    "columns_required": ["close"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 5,
     "min_warmup_bars": 6,
-    "notes": 'Piecewise 5d momentum normalized differently in up/down regimes.',
+    "notes": "Piecewise 5d momentum normalized differently in up/down regimes.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]
@@ -46,9 +46,11 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     diff = c - pc
     up = c > pc
     dn = c < pc
-    out = pd.DataFrame(np.where(dn, safe_div(diff, pc).to_numpy(),
-                                np.where(up, safe_div(diff, c).to_numpy(), 0.0)),
-                       index=c.index, columns=c.columns)
+    out = pd.DataFrame(
+        np.where(dn, safe_div(diff, pc).to_numpy(), np.where(up, safe_div(diff, c).to_numpy(), 0.0)),
+        index=c.index,
+        columns=c.columns,
+    )
     # NaN comparisons are False, not NaN, so a missing close or prior
     # close (warmup, or a halt) reads exactly like a real tie and gets
     # the fabricated 0.0 above instead of NaN.

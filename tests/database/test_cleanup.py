@@ -4,12 +4,13 @@ from tests.conftest import create_mock_async_session
 from database.cleanup import cleanup_old_data
 from sqlalchemy import delete
 
-class TestCleanup:
 
+class TestCleanup:
     @pytest.mark.asyncio
-    @patch('database.cleanup.datetime')
+    @patch("database.cleanup.datetime")
     async def test_cleanup_old_data_success(self, mock_datetime):
         from datetime import datetime, timezone, timedelta
+
         now = datetime(2024, 2, 1, tzinfo=timezone.utc)
         mock_datetime.now.return_value = now
         mock_datetime.timezone = timezone
@@ -26,9 +27,10 @@ class TestCleanup:
         assert mock_session.commit.call_count == 1
 
     @pytest.mark.asyncio
-    @patch('database.cleanup.datetime')
+    @patch("database.cleanup.datetime")
     async def test_cleanup_old_data_exception(self, mock_datetime):
         from datetime import datetime, timezone, timedelta
+
         now = datetime(2024, 2, 1, tzinfo=timezone.utc)
         mock_datetime.now.return_value = now
         mock_datetime.timezone = timezone
@@ -43,10 +45,11 @@ class TestCleanup:
         mock_session.rollback.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch('database.cleanup.datetime')
+    @patch("database.cleanup.datetime")
     async def test_cleanup_with_custom_settings(self, mock_datetime):
         """Test that per-timeframe retention settings are respected."""
         from datetime import datetime, timezone, timezone, timedelta
+
         now = datetime(2024, 2, 1, tzinfo=timezone.utc)
         mock_datetime.now.return_value = now
         mock_datetime.timezone = timezone
@@ -78,10 +81,11 @@ class TestCleanup:
         assert mock_session.commit.call_count == 1
 
     @pytest.mark.asyncio
-    @patch('database.cleanup.datetime')
+    @patch("database.cleanup.datetime")
     async def test_d1_retention_never_below_400(self, mock_datetime):
         """D1 retention must be at least 400 days regardless of config."""
         from datetime import datetime, timezone, timedelta
+
         now = datetime(2024, 2, 1, tzinfo=timezone.utc)
         mock_datetime.now.return_value = now
         mock_datetime.timezone = timezone
@@ -226,4 +230,3 @@ class TestCleanup:
         assert res["positions_deleted"] == 1
         assert res["paper_trades_deleted"] == 1
         assert mock_session.commit.call_count == 1
-

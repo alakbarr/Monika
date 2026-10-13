@@ -5,10 +5,11 @@ from analysis.prefetch.news_digest import NewsDigestProcessor
 from database.models import NewsItem, NewsDigest
 from datetime import datetime, timezone
 
-class TestNewsDigestProcessor:
 
+class TestNewsDigestProcessor:
     def test_init(self):
         from config.settings import load_all_config
+
         settings = load_all_config()
         processor = NewsDigestProcessor(settings)
         assert processor._flash_lite is not None
@@ -22,7 +23,7 @@ class TestNewsDigestProcessor:
         mock_result = MagicMock()
         mock_result.scalars().all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
-        
+
         count = await processor.classify_unscored_news(mock_session)
         assert count == 0
 
@@ -32,9 +33,10 @@ class TestNewsDigestProcessor:
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
-        
+
         item1 = NewsItem(id=1, title="USD Interest Rate Hike", summary="Fed raises rates", currency_tags="USD")
         item2 = NewsItem(id=2, title="EUR ECB Policy", summary="ECB keeps rates steady", currency_tags=None)
+
         def mock_execute_side_effect(*args, **kwargs):
             query_str = str(args[0])
             m_res = MagicMock()
@@ -43,25 +45,42 @@ class TestNewsDigestProcessor:
             else:
                 m_res.scalars().all.return_value = []
             return m_res
-            
+
         mock_session.execute = AsyncMock(side_effect=mock_execute_side_effect)
-        
-        processor._flash_lite.classify_json = AsyncMock(return_value=[
-            {"index": 1, "impact": "HIGH", "confidence": 0.9, "surprise_magnitude": "large", "key_data_point": "4.2%", "currencies": ["EUR", "USD"], "sentiments": ["BEARISH_USD"]},
-            {"index": 2, "impact": "LOW", "confidence": 0.8, "surprise_magnitude": "none", "key_data_point": "", "sentiments": ["NEUTRAL"]}
-        ])
-        
+
+        processor._flash_lite.classify_json = AsyncMock(
+            return_value=[
+                {
+                    "index": 1,
+                    "impact": "HIGH",
+                    "confidence": 0.9,
+                    "surprise_magnitude": "large",
+                    "key_data_point": "4.2%",
+                    "currencies": ["EUR", "USD"],
+                    "sentiments": ["BEARISH_USD"],
+                },
+                {
+                    "index": 2,
+                    "impact": "LOW",
+                    "confidence": 0.8,
+                    "surprise_magnitude": "none",
+                    "key_data_point": "",
+                    "sentiments": ["NEUTRAL"],
+                },
+            ]
+        )
+
         count = await processor.classify_unscored_news(mock_session)
-        
+
         assert count == 2
         assert item1.impact == "HIGH"
         assert "EUR" in item1.currency_tags
         assert "USD" in item1.currency_tags
         assert item1.sentiment == "BEARISH_USD,SURPRISE_LARGE"
-        
+
         assert item2.impact == "LOW"
         assert item2.sentiment == "NEUTRAL"
-        
+
         assert mock_session.commit.await_count >= 1
 
     @pytest.mark.asyncio
@@ -69,13 +88,13 @@ class TestNewsDigestProcessor:
         processor = NewsDigestProcessor({})
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
-        
+
         # mock_result_empty is for get_latest_digest, high, medium, and fallback
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
-        
+
         digest = await processor.create_news_digest(mock_session)
         assert digest is None
 
@@ -84,22 +103,28 @@ class TestNewsDigestProcessor:
         processor = NewsDigestProcessor({})
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
-        
+
         item1 = NewsItem(id=1, source="source1", title="title 1", summary="sum 1", currency_tags="USD")
-        
+
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_result.scalars().all.return_value = [item1]
-        
+
         mock_session.execute = AsyncMock(return_value=mock_result)
-        
-        processor._flash.generate = AsyncMock(return_value="Broad Market Sentiment & Macro Drivers: This is a summary digest")
-        processor._macro_synth.generate = AsyncMock(return_value="Broad Market Sentiment & Macro Drivers: This is a summary digest")
-        processor._digest_generator.generate = AsyncMock(return_value="Broad Market Sentiment & Macro Drivers: This is a summary digest")
+
+        processor._flash.generate = AsyncMock(
+            return_value="Broad Market Sentiment & Macro Drivers: This is a summary digest"
+        )
+        processor._macro_synth.generate = AsyncMock(
+            return_value="Broad Market Sentiment & Macro Drivers: This is a summary digest"
+        )
+        processor._digest_generator.generate = AsyncMock(
+            return_value="Broad Market Sentiment & Macro Drivers: This is a summary digest"
+        )
         processor._verifier.classify_json = AsyncMock(return_value={"has_contradictions": False, "contradictions": []})
-    
+
         digest = await processor.create_news_digest(mock_session)
-    
+
         assert digest is not None
         assert "Broad Market Sentiment & Macro Drivers" in digest
         assert "This is a summary digest" in digest
@@ -111,6 +136,7 @@ class TestNewsDigestProcessor:
 
     def test_resolve_item_index_variations(self):
         from analysis.prefetch.news_digest import _resolve_item_index
+
         item1 = NewsItem(id=101, title="Item 1")
         item2 = NewsItem(id=102, title="Item 2")
         item3 = NewsItem(id=103, title="Item 3")
@@ -144,7 +170,9 @@ class TestNewsDigestProcessor:
         mock_session.add = MagicMock()
 
         item1 = NewsItem(id=10, title="Federal Reserve Interest Rate Decision", summary="Fed policy update")
-        item2 = NewsItem(id=20, title="ECB President Lagarde Speech on Inflation", summary="European central bank updates")
+        item2 = NewsItem(
+            id=20, title="ECB President Lagarde Speech on Inflation", summary="European central bank updates"
+        )
 
         def mock_execute_side_effect(*args, **kwargs):
             query_str = str(args[0])
@@ -158,10 +186,28 @@ class TestNewsDigestProcessor:
         mock_session.execute = AsyncMock(side_effect=mock_execute_side_effect)
 
         # Model outputs 0-based indices [0, 1]
-        processor._flash_lite.classify_json = AsyncMock(return_value=[
-            {"index": 0, "impact": "HIGH", "confidence": 0.85, "surprise_magnitude": "none", "currencies": ["USD"], "sentiments": ["HAWKISH"], "key_data_point": ""},
-            {"index": 1, "impact": "LOW", "confidence": 0.9, "surprise_magnitude": "none", "currencies": ["EUR"], "sentiments": ["NEUTRAL"], "key_data_point": ""}
-        ])
+        processor._flash_lite.classify_json = AsyncMock(
+            return_value=[
+                {
+                    "index": 0,
+                    "impact": "HIGH",
+                    "confidence": 0.85,
+                    "surprise_magnitude": "none",
+                    "currencies": ["USD"],
+                    "sentiments": ["HAWKISH"],
+                    "key_data_point": "",
+                },
+                {
+                    "index": 1,
+                    "impact": "LOW",
+                    "confidence": 0.9,
+                    "surprise_magnitude": "none",
+                    "currencies": ["EUR"],
+                    "sentiments": ["NEUTRAL"],
+                    "key_data_point": "",
+                },
+            ]
+        )
 
         count = await processor.classify_unscored_news(mock_session)
         assert count == 2
@@ -175,9 +221,12 @@ class TestNewsDigestProcessor:
         mock_session.add = MagicMock()
 
         item1 = NewsItem(id=10, title="Federal Reserve Interest Rate Decision", summary="Fed policy update")
-        item2 = NewsItem(id=20, title="Israel military strikes oil refinery in major escalation", summary="Explosions reported")
+        item2 = NewsItem(
+            id=20, title="Israel military strikes oil refinery in major escalation", summary="Explosions reported"
+        )
 
         called = False
+
         def mock_execute_side_effect(*args, **kwargs):
             nonlocal called
             query_str = str(args[0])
@@ -192,10 +241,22 @@ class TestNewsDigestProcessor:
         mock_session.execute = AsyncMock(side_effect=mock_execute_side_effect)
 
         # Model only returns item 1 (index 1), completely omitting item 2
-        processor._flash_lite.classify_json = AsyncMock(side_effect=[
-            [{"index": 1, "impact": "LOW", "confidence": 0.85, "surprise_magnitude": "none", "currencies": ["USD"], "sentiments": ["NEUTRAL"], "key_data_point": ""}],
-            []  # micro retry also returns empty
-        ])
+        processor._flash_lite.classify_json = AsyncMock(
+            side_effect=[
+                [
+                    {
+                        "index": 1,
+                        "impact": "LOW",
+                        "confidence": 0.85,
+                        "surprise_magnitude": "none",
+                        "currencies": ["USD"],
+                        "sentiments": ["NEUTRAL"],
+                        "key_data_point": "",
+                    }
+                ],
+                [],  # micro retry also returns empty
+            ]
+        )
 
         count = await processor.classify_unscored_news(mock_session)
         assert count == 2
@@ -207,17 +268,17 @@ class TestNewsDigestProcessor:
     async def test_build_5day_macro_context_and_cache(self):
         processor = NewsDigestProcessor({})
         mock_session = create_mock_async_session()
-        
+
         brief_mock = MagicMock()
         brief_mock.macro_regime = "stagflation"
         brief_mock.risk_sentiment = "risk_off"
         brief_mock.currency_bias = {"USD": "bearish", "EUR": "bullish"}
-        
+
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = brief_mock
         mock_result.all.return_value = [
             ("Canada announces counter tariffs", "USD", "HIGH", datetime(2026, 8, 20, tzinfo=timezone.utc)),
-            ("Middle East tension escalates", "OIL", "BREAKING", datetime(2026, 8, 21, tzinfo=timezone.utc))
+            ("Middle East tension escalates", "OIL", "BREAKING", datetime(2026, 8, 21, tzinfo=timezone.utc)),
         ]
         mock_session.execute = AsyncMock(return_value=mock_result)
 
@@ -242,7 +303,12 @@ class TestNewsDigestProcessor:
         mock_session.commit = AsyncMock()
 
         # Item 1: German economic breakdown (MEDIUM)
-        item1 = NewsItem(id=1, title="Germany's Economic Model Is Broken", summary="Structural challenges in German industrial model", impact="MEDIUM")
+        item1 = NewsItem(
+            id=1,
+            title="Germany's Economic Model Is Broken",
+            summary="Structural challenges in German industrial model",
+            impact="MEDIUM",
+        )
         # Item 2: Routine data (HIGH)
         item2 = NewsItem(id=2, title="US Wholesale Inventories", summary="Routine inventory data", impact="HIGH")
         # Item 3: US CPI Surprise (MEDIUM)
@@ -253,11 +319,21 @@ class TestNewsDigestProcessor:
         # Model returns contradictory verdict for item 1 (HIGH with "keep medium" reason)
         # Model returns valid demotion for item 2
         # Model returns valid promotion for item 3
-        processor._classification_verifier.classify_json = AsyncMock(return_value=[
-            {"index": 1, "target_impact": "HIGH", "reason": "Germany economic breakdown analysis relevant to EUR but lacks immediate catalyst; keep MEDIUM"},
-            {"index": 2, "target_impact": "MEDIUM", "reason": "Routine inventory data matching consensus without policy cues"},
-            {"index": 3, "target_impact": "HIGH", "reason": "Tier-1 data surprise with direct Fed rate impact"}
-        ])
+        processor._classification_verifier.classify_json = AsyncMock(
+            return_value=[
+                {
+                    "index": 1,
+                    "target_impact": "HIGH",
+                    "reason": "Germany economic breakdown analysis relevant to EUR but lacks immediate catalyst; keep MEDIUM",
+                },
+                {
+                    "index": 2,
+                    "target_impact": "MEDIUM",
+                    "reason": "Routine inventory data matching consensus without policy cues",
+                },
+                {"index": 3, "target_impact": "HIGH", "reason": "Tier-1 data surprise with direct Fed rate impact"},
+            ]
+        )
 
         await processor._verify_high_medium_boundary(mock_session, news_items)
 
@@ -271,6 +347,7 @@ class TestNewsDigestProcessor:
 
     def test_extract_numeric_claims(self):
         from analysis.prefetch.news_digest import _extract_numeric_claims
+
         text = (
             "Gold spot traded at $4,550 after reaching 4550.50 earlier. "
             "Fed probability increased by 50 bps (or 0.5% / 0.50), while EUR/USD was 1.08542. "
@@ -290,6 +367,7 @@ class TestNewsDigestProcessor:
 
     def test_normalize_num_variants(self):
         from analysis.prefetch.news_digest import _normalize_num_variants
+
         # Percentages
         v_pct = _normalize_num_variants("50%")
         assert 50.0 in v_pct
@@ -333,6 +411,7 @@ class TestNewsDigestProcessor:
 
     def test_format_news_item_for_prompt(self):
         from analysis.prefetch.news_digest import _format_news_item_for_prompt
+
         # Case 1: Standard news item with full summary and key data point
         item = NewsItem(
             id=1,
@@ -382,7 +461,9 @@ class TestNewsDigestProcessor:
 
         # Macro Grounded scenario (valid numbers in source should NOT be flagged)
         macro_source = "Treasury auction of $950B concluded as fiscal deficit reached $1T with $20B reserve buffer."
-        macro_text = "Key Drivers: US debt management issued $950B in Treasuries, navigating $1T deficit and $20B buffers."
+        macro_text = (
+            "Key Drivers: US debt management issued $950B in Treasuries, navigating $1T deficit and $20B buffers."
+        )
         macro_ungrounded = _flag_ungrounded_numbers(macro_text, macro_source)
         assert macro_ungrounded == []
 
@@ -424,12 +505,16 @@ class TestNewsDigestProcessor:
 
         # Skenario USD & XTI: 16 million barrels -> 16M
         src_usd = "@barakravid: Around 40 tankers transited. Around 16 million barrels of oil moved out of the strait on Friday night."
-        sec_usd = "Current USD Bias: Bearish. Strait tanker traffic moved 16M barrels under heightened geopolitical friction."
+        sec_usd = (
+            "Current USD Bias: Bearish. Strait tanker traffic moved 16M barrels under heightened geopolitical friction."
+        )
         assert _flag_ungrounded_numbers(sec_usd, src_usd) == []
 
         # Skenario XAU & EUR: $6.4 billion & $1 trillion -> $6.4B & $1T
         src_xau = "Gold prices rose driven by U.S. Treasury's $6.4 billion buyback announcement. Bessent could tap near $1 trillion TGA."
-        sec_xau = "Current XAU Bias: Bullish. Gold supported by $6.4B Treasury buybacks and prospective $1T TGA drawdown."
+        sec_xau = (
+            "Current XAU Bias: Bullish. Gold supported by $6.4B Treasury buybacks and prospective $1T TGA drawdown."
+        )
         assert _flag_ungrounded_numbers(sec_xau, src_xau) == []
 
         # Skenario BTC: 4 billion, 6.69 billion, 5.1 billion -> $4B, $6.69B, $5.1B
@@ -450,18 +535,22 @@ class TestNewsDigestProcessor:
 
     def test_normalize_contradictions_various_keys(self):
         from analysis.prefetch.news_digest import _normalize_contradictions
-        
+
         # Test 1: Empty or non-list
         assert _normalize_contradictions(None) == []
         assert _normalize_contradictions("invalid") == []
         assert _normalize_contradictions([]) == []
 
         # Test 2: Standard schema format
-        std_input = [{
-            "section_a": "Macro", "section_b": "USD",
-            "claim_a": "USD Bullish", "claim_b": "USD Bearish",
-            "severity": "material"
-        }]
+        std_input = [
+            {
+                "section_a": "Macro",
+                "section_b": "USD",
+                "claim_a": "USD Bullish",
+                "claim_b": "USD Bearish",
+                "severity": "material",
+            }
+        ]
         res_std = _normalize_contradictions(std_input)
         assert len(res_std) == 1
         assert res_std[0]["claim_a"] == "USD Bullish"
@@ -470,10 +559,16 @@ class TestNewsDigestProcessor:
 
         # Test 3: Malformed keys (claim1, claimA, statement_a, section_1, etc.)
         malformed_input = [
-            {"section_1": "Global", "section_2": "EUR", "claim_1": "Rate Cut", "claim_2": "Rate Hike", "severity": "material"},
+            {
+                "section_1": "Global",
+                "section_2": "EUR",
+                "claim_1": "Rate Cut",
+                "claim_2": "Rate Hike",
+                "severity": "material",
+            },
             {"sectionA": "US", "sectionB": "JPY", "claimA": "Hawkish", "claimB": "Dovish", "severity": "HIGH"},
-            {"section_a": "XAU", "claim_a": "Gold rally", "severity": "minor"}, # missing section_b & claim_b
-            {"statement_a": "Oil surplus", "statement_b": "Oil deficit", "severity": "critical"}
+            {"section_a": "XAU", "claim_a": "Gold rally", "severity": "minor"},  # missing section_b & claim_b
+            {"statement_a": "Oil surplus", "statement_b": "Oil deficit", "severity": "critical"},
         ]
         res_malformed = _normalize_contradictions(malformed_input)
         assert len(res_malformed) == 4
@@ -489,26 +584,46 @@ class TestNewsDigestProcessor:
     @pytest.mark.asyncio
     async def test_news_digest_consistency_and_reconcile_malformed_keys(self):
         from analysis.prefetch.news_digest import NewsDigestProcessor
+
         processor = NewsDigestProcessor({})
 
         # Mock verifier to return malformed key contradictions
-        processor._verifier.classify_json = AsyncMock(return_value={
-            "has_contradictions": True,
-            "contradictions": [
-                {"claim1": "DXY strengthening", "claim2": "USD bias bearish", "section1": "Macro", "section2": "USD", "severity": "material"},
-                {"statement_a": "Minor nuance", "severity": "minor"}
-            ]
-        })
+        processor._verifier.classify_json = AsyncMock(
+            return_value={
+                "has_contradictions": True,
+                "contradictions": [
+                    {
+                        "claim1": "DXY strengthening",
+                        "claim2": "USD bias bearish",
+                        "section1": "Macro",
+                        "section2": "USD",
+                        "severity": "material",
+                    },
+                    {"statement_a": "Minor nuance", "severity": "minor"},
+                ],
+            }
+        )
         # Mock macro synth reconciliation
-        processor._macro_synth.generate = AsyncMock(return_value="Corrected digest text [RECONCILED: 1 material contradictions resolved]")
+        processor._macro_synth.generate = AsyncMock(
+            return_value="Corrected digest text [RECONCILED: 1 material contradictions resolved]"
+        )
 
         mock_session = create_mock_async_session()
         mock_session.commit = AsyncMock()
 
         # Reconcile shouldn't raise KeyError: 'claim_a'
-        reconciled = await processor._reconcile_digest_contradictions("Original digest text", [
-            {"claim1": "DXY strengthening", "claim2": "USD bias bearish", "section1": "Macro", "section2": "USD", "severity": "material"}
-        ])
+        reconciled = await processor._reconcile_digest_contradictions(
+            "Original digest text",
+            [
+                {
+                    "claim1": "DXY strengthening",
+                    "claim2": "USD bias bearish",
+                    "section1": "Macro",
+                    "section2": "USD",
+                    "severity": "material",
+                }
+            ],
+        )
         assert reconciled is not None
         assert "Corrected digest text" in reconciled
 
@@ -517,19 +632,21 @@ class TestNewsDigestProcessor:
         processor = NewsDigestProcessor({})
 
         # 1. Empty news items
-        res_empty = await processor._build_currency_signals_summary({}, ['USD', 'EUR'])
-        assert '| USD | NEUTRAL | - | 0 | No significant news |' in res_empty
-        assert '| EUR | NEUTRAL | - | 0 | No significant news |' in res_empty
+        res_empty = await processor._build_currency_signals_summary({}, ["USD", "EUR"])
+        assert "| USD | NEUTRAL | - | 0 | No significant news |" in res_empty
+        assert "| EUR | NEUTRAL | - | 0 | No significant news |" in res_empty
 
         # 2. Single isolated HIGH item without BREAKING -> smoothed to MIXED/NEUTRAL
         single_high_item = NewsItem(id=1, title="EUR Retail Sales Inching Up", impact="HIGH", sentiment="BULLISH_EUR")
-        res_single = await processor._build_currency_signals_summary({'EUR': [single_high_item]}, ['EUR'])
-        assert '| EUR | MIXED/NEUTRAL | LOW | +2 |' in res_single
+        res_single = await processor._build_currency_signals_summary({"EUR": [single_high_item]}, ["EUR"])
+        assert "| EUR | MIXED/NEUTRAL | LOW | +2 |" in res_single
 
         # 3. Single BREAKING item -> directional signal respected
-        single_breaking_item = NewsItem(id=2, title="ECB Emergency Rate Cut", impact="BREAKING", sentiment="BEARISH_EUR")
-        res_breaking = await processor._build_currency_signals_summary({'EUR': [single_breaking_item]}, ['EUR'])
-        assert '| EUR | BEARISH | MEDIUM | -3 |' in res_breaking
+        single_breaking_item = NewsItem(
+            id=2, title="ECB Emergency Rate Cut", impact="BREAKING", sentiment="BEARISH_EUR"
+        )
+        res_breaking = await processor._build_currency_signals_summary({"EUR": [single_breaking_item]}, ["EUR"])
+        assert "| EUR | BEARISH | MEDIUM | -3 |" in res_breaking
 
         # 4. Multi-item strong consensus -> BULLISH with HIGH confidence
         multi_strong = [
@@ -537,16 +654,16 @@ class TestNewsDigestProcessor:
             NewsItem(id=11, title="Fed Hawkish Stance Reinforced", impact="HIGH", sentiment="BULLISH_USD"),
             NewsItem(id=12, title="US Jobs Report Beats Forecast", impact="HIGH", sentiment="BULLISH_USD"),
         ]
-        res_strong = await processor._build_currency_signals_summary({'USD': multi_strong}, ['USD'])
-        assert '| USD | BULLISH | HIGH | +6 |' in res_strong
+        res_strong = await processor._build_currency_signals_summary({"USD": multi_strong}, ["USD"])
+        assert "| USD | BULLISH | HIGH | +6 |" in res_strong
 
         # 5. Mixed opposing items -> MIXED/NEUTRAL
         mixed_items = [
             NewsItem(id=20, title="GBP Inflation High", impact="HIGH", sentiment="BULLISH_GBP"),
             NewsItem(id=21, title="UK Recession Fears", impact="HIGH", sentiment="BEARISH_GBP"),
         ]
-        res_mixed = await processor._build_currency_signals_summary({'GBP': mixed_items}, ['GBP'])
-        assert '| GBP | MIXED/NEUTRAL | LOW | +0 |' in res_mixed
+        res_mixed = await processor._build_currency_signals_summary({"GBP": mixed_items}, ["GBP"])
+        assert "| GBP | MIXED/NEUTRAL | LOW | +0 |" in res_mixed
 
     @pytest.mark.asyncio
     async def test_create_news_digest_reconciliation_fallback_passive_note(self):
@@ -555,7 +672,16 @@ class TestNewsDigestProcessor:
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
-        item1 = NewsItem(id=1, source="rss", title="Fed rate path", summary="rates", impact="HIGH", currency_tags="USD", sentiment="BULLISH_USD", fetched_at=datetime.now(timezone.utc))
+        item1 = NewsItem(
+            id=1,
+            source="rss",
+            title="Fed rate path",
+            summary="rates",
+            impact="HIGH",
+            currency_tags="USD",
+            sentiment="BULLISH_USD",
+            fetched_at=datetime.now(timezone.utc),
+        )
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -566,15 +692,23 @@ class TestNewsDigestProcessor:
         processor._digest_generator.generate = AsyncMock(return_value="USD Nuance text")
 
         # Mock consistency check with material contradiction
-        processor._verifier.classify_json = AsyncMock(return_value={
-            "has_contradictions": True,
-            "contradictions": [
-                {"section_a": "Macro", "claim_a": "USD is Bullish", "section_b": "USD Nuances", "claim_b": "USD is Bearish", "severity": "material"}
-            ]
-        })
+        processor._verifier.classify_json = AsyncMock(
+            return_value={
+                "has_contradictions": True,
+                "contradictions": [
+                    {
+                        "section_a": "Macro",
+                        "claim_a": "USD is Bullish",
+                        "section_b": "USD Nuances",
+                        "claim_b": "USD is Bearish",
+                        "severity": "material",
+                    }
+                ],
+            }
+        )
 
         # Mock reconciliation failure (returns None) -> should trigger passive note fallback
-        with patch.object(processor, '_reconcile_digest_contradictions', AsyncMock(return_value=None)):
+        with patch.object(processor, "_reconcile_digest_contradictions", AsyncMock(return_value=None)):
             digest = await processor.create_news_digest(mock_session)
             assert digest is not None
             assert "### CONSISTENCY CHECK (belum terselesaikan — perlakukan dengan hati-hati)" in digest
@@ -593,11 +727,13 @@ class TestNewsDigestProcessor:
         items = [item1, item2, item3]
 
         # LLM returns string indices ("1", "2")
-        processor._classification_verifier.classify_json = AsyncMock(return_value=[
-            {"index": "1", "target_impact": "MEDIUM", "reason": "routine opinion only"},
-            {"index": "2.", "target_impact": "MEDIUM", "reason": "structural without catalyst"},
-            {"index": "3", "target_impact": "HIGH", "reason": "major market mover"}
-        ])
+        processor._classification_verifier.classify_json = AsyncMock(
+            return_value=[
+                {"index": "1", "target_impact": "MEDIUM", "reason": "routine opinion only"},
+                {"index": "2.", "target_impact": "MEDIUM", "reason": "structural without catalyst"},
+                {"index": "3", "target_impact": "HIGH", "reason": "major market mover"},
+            ]
+        )
 
         await processor._verify_high_medium_boundary(mock_session, items)
 
@@ -615,12 +751,15 @@ class TestNewsDigestProcessor:
         processor._verifier.classify_json = AsyncMock(return_value={})
 
         item1 = NewsItem(id=10, title="Federal Reserve Interest Rate Decision", summary="Fed policy update")
-        item2 = NewsItem(id=20, title="ECB President Lagarde Speech on Inflation", summary="European central bank updates")
+        item2 = NewsItem(
+            id=20, title="ECB President Lagarde Speech on Inflation", summary="European central bank updates"
+        )
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
         called = False
+
         def mock_execute_side_effect(*args, **kwargs):
             nonlocal called
             query_str = str(args[0])
@@ -636,13 +775,33 @@ class TestNewsDigestProcessor:
 
         # Pass 1 returns scalar unindexed dict -> wrapped as [dict], omitted during validation.
         # Micro-retry recovers both omitted items.
-        mock_classifier = AsyncMock(side_effect=[
-            {"impact": "LOW"},  # pass 1: scalar output
-            [
-                {"index": 1, "news_id": 10, "impact": "HIGH", "confidence": 0.9, "surprise_magnitude": "none", "currencies": ["USD"], "sentiments": ["NEUTRAL"], "key_data_point": ""},
-                {"index": 2, "news_id": 20, "impact": "LOW", "confidence": 0.85, "surprise_magnitude": "none", "currencies": ["EUR"], "sentiments": ["NEUTRAL"], "key_data_point": ""}
-            ]  # micro-retry pass
-        ])
+        mock_classifier = AsyncMock(
+            side_effect=[
+                {"impact": "LOW"},  # pass 1: scalar output
+                [
+                    {
+                        "index": 1,
+                        "news_id": 10,
+                        "impact": "HIGH",
+                        "confidence": 0.9,
+                        "surprise_magnitude": "none",
+                        "currencies": ["USD"],
+                        "sentiments": ["NEUTRAL"],
+                        "key_data_point": "",
+                    },
+                    {
+                        "index": 2,
+                        "news_id": 20,
+                        "impact": "LOW",
+                        "confidence": 0.85,
+                        "surprise_magnitude": "none",
+                        "currencies": ["EUR"],
+                        "sentiments": ["NEUTRAL"],
+                        "key_data_point": "",
+                    },
+                ],  # micro-retry pass
+            ]
+        )
         processor._flash_lite.classify_json = mock_classifier
         processor._classifier = processor._flash_lite
 
@@ -650,5 +809,3 @@ class TestNewsDigestProcessor:
         assert count == 2
         assert item1.impact == "HIGH"
         assert item2.impact == "LOW"
-
-

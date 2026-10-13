@@ -4,7 +4,12 @@ import logging
 import sys
 
 from monika.application.benchmark.task_specs import TASKS
-from monika.application.benchmark.model_registry import CANDIDATE_MODELS, get_candidate_models, get_tier_models, get_router_matrix
+from monika.application.benchmark.model_registry import (
+    CANDIDATE_MODELS,
+    get_candidate_models,
+    get_tier_models,
+    get_router_matrix,
+)
 from monika.application.benchmark.runner import run_benchmark
 from monika.application.benchmark.report import build_report
 from monika.core.config.settings import load_all_config
@@ -15,31 +20,69 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 def parse_args():
     p = argparse.ArgumentParser(
         description="Benchmark setiap LLM task-role terhadap model kandidat, "
-                    "mendukung live DB, synthetic 2026 fixtures, tier filtering, dan router comparison."
+        "mendukung live DB, synthetic 2026 fixtures, tier filtering, dan router comparison."
     )
-    p.add_argument("--tasks", nargs="*", default=None, help="Subset task id (default: semua atau target_tasks dari tier).")
+    p.add_argument(
+        "--tasks", nargs="*", default=None, help="Subset task id (default: semua atau target_tasks dari tier)."
+    )
     p.add_argument("--models", nargs="*", default=None, help="Subset model id.")
-    p.add_argument("--tier", choices=["system_one", "cheap_efficient", "cheap_smart", "high_intelligence"],
-                   default=None, help="Pilih kelompok tier model & task.")
-    p.add_argument("--use-fixtures", action="store_true", default=False,
-                   help="Gunakan synthetic market fixtures September 2026 (tanpa perlu DB live terisi).")
-    p.add_argument("--mock-llm", action="store_true", default=False,
-                   help="Gunakan mock LLM responses untuk dry run instan tanpa biaya API.")
-    p.add_argument("--compare-routers", action="store_true", default=False,
-                   help="Bandingkan model yang sama di direct provider vs OpenRouter vs 9router.")
-    p.add_argument("--symbols", nargs="*", default=None,
-                   help="Symbol untuk task per-asset (default: symbol pertama di asset_universe).")
-    p.add_argument("--judge-model", default="claude-sonnet-5",
-                   help="Model tunggal yang menilai output setiap kandidat.")
-    p.add_argument("--judge-models", nargs="*", default=None,
-                   help="Daftar model untuk Multi-Judge Ensemble (mis. claude-sonnet-5 gpt-4o deepseek-chat).")
-    p.add_argument("--reference-model", default="claude-sonnet-5",
-                   help="Model yang HANYA dipakai bikin artefak upstream tetap "
-                        "(bull claim utk debate_bear, bull+bear utk debate_judge) supaya perbandingan adil.")
-    p.add_argument("--concurrency", type=int, default=4,
-                   help="Concurrency utk task json/text/custom. Task agent/chat selalu diserialkan.")
-    p.add_argument("--mode", choices=["standard", "arena"], default="standard",
-                   help="Mode eksekusi: 'standard' (evaluasi task) atau 'arena' (turnamen head-to-head via AlphaArenaTournament).")
+    p.add_argument(
+        "--tier",
+        choices=["system_one", "cheap_efficient", "cheap_smart", "high_intelligence"],
+        default=None,
+        help="Pilih kelompok tier model & task.",
+    )
+    p.add_argument(
+        "--use-fixtures",
+        action="store_true",
+        default=False,
+        help="Gunakan synthetic market fixtures September 2026 (tanpa perlu DB live terisi).",
+    )
+    p.add_argument(
+        "--mock-llm",
+        action="store_true",
+        default=False,
+        help="Gunakan mock LLM responses untuk dry run instan tanpa biaya API.",
+    )
+    p.add_argument(
+        "--compare-routers",
+        action="store_true",
+        default=False,
+        help="Bandingkan model yang sama di direct provider vs OpenRouter vs 9router.",
+    )
+    p.add_argument(
+        "--symbols",
+        nargs="*",
+        default=None,
+        help="Symbol untuk task per-asset (default: symbol pertama di asset_universe).",
+    )
+    p.add_argument(
+        "--judge-model", default="claude-sonnet-5", help="Model tunggal yang menilai output setiap kandidat."
+    )
+    p.add_argument(
+        "--judge-models",
+        nargs="*",
+        default=None,
+        help="Daftar model untuk Multi-Judge Ensemble (mis. claude-sonnet-5 gpt-4o deepseek-chat).",
+    )
+    p.add_argument(
+        "--reference-model",
+        default="claude-sonnet-5",
+        help="Model yang HANYA dipakai bikin artefak upstream tetap "
+        "(bull claim utk debate_bear, bull+bear utk debate_judge) supaya perbandingan adil.",
+    )
+    p.add_argument(
+        "--concurrency",
+        type=int,
+        default=4,
+        help="Concurrency utk task json/text/custom. Task agent/chat selalu diserialkan.",
+    )
+    p.add_argument(
+        "--mode",
+        choices=["standard", "arena"],
+        default="standard",
+        help="Mode eksekusi: 'standard' (evaluasi task) atau 'arena' (turnamen head-to-head via AlphaArenaTournament).",
+    )
     p.add_argument("--output", default="benchmark_report.md")
     return p.parse_args()
 
@@ -108,17 +151,21 @@ async def main():
 
     if getattr(args, "mode", "standard") == "arena":
         from monika.application.benchmark.alpha_arena import AlphaArenaTournament
+
         tournament = AlphaArenaTournament()
         print("\n=== ALPHA ARENA HEAD-TO-HEAD TOURNAMENT ===")
         import itertools
         from monika.infrastructure.database.db import get_session
         from sqlalchemy import select
         from monika.application.benchmark.db_models import BenchmarkResult
+
         try:
             async with get_session() as sess:
-                res_rows = (await sess.execute(
-                    select(BenchmarkResult).where(BenchmarkResult.run_id == run_id)
-                )).scalars().all()
+                res_rows = (
+                    (await sess.execute(select(BenchmarkResult).where(BenchmarkResult.run_id == run_id)))
+                    .scalars()
+                    .all()
+                )
             model_scores: dict[str, list[float]] = {}
             for r in res_rows:
                 model_scores.setdefault(r.model_name, []).append(float(r.overall_score or 0.0))
@@ -128,14 +175,17 @@ async def main():
                 avg_a = sum(scores_a) / len(scores_a) if scores_a else 50.0
                 avg_b = sum(scores_b) / len(scores_b) if scores_b else 50.0
                 tournament.record_match(
-                    m_a, m_b,
+                    m_a,
+                    m_b,
                     metrics_a={"pnl_pct": avg_a, "sharpe_ratio": avg_a / 50.0},
-                    metrics_b={"pnl_pct": avg_b, "sharpe_ratio": avg_b / 50.0}
+                    metrics_b={"pnl_pct": avg_b, "sharpe_ratio": avg_b / 50.0},
                 )
             leaderboard = tournament.get_leaderboard()
             print("\n=== ALPHA ARENA LEADERBOARD ===")
             for lb in leaderboard:
-                print(f"#{lb['rank']} {lb['name']}: Elo {lb['elo']} (Record: {lb['record']}, WinRate: {lb['win_rate']}%)")
+                print(
+                    f"#{lb['rank']} {lb['name']}: Elo {lb['elo']} (Record: {lb['record']}, WinRate: {lb['win_rate']}%)"
+                )
         except Exception as e_arena:
             print(f"Arena tournament error (non-fatal): {e_arena}")
 

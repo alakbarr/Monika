@@ -38,13 +38,15 @@ class DebateBlackboard:
     ) -> None:
         """Appends concise bull claim and falsification criteria to blackboard."""
         triggers = falsification_triggers or []
-        self.bull_claims.append({
-            "thesis": thesis[:400],
-            "key_levels": key_levels or [],
-            "confidence": confidence,
-            "falsification_triggers": triggers,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
+        self.bull_claims.append(
+            {
+                "thesis": thesis[:400],
+                "key_levels": key_levels or [],
+                "confidence": confidence,
+                "falsification_triggers": triggers,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
         for trig in triggers:
             self.falsification_triggers.append({"side": "bull", "trigger": trig})
 
@@ -57,13 +59,15 @@ class DebateBlackboard:
     ) -> None:
         """Appends concise bear counter-claim and falsification criteria to blackboard."""
         triggers = falsification_triggers or []
-        self.bear_claims.append({
-            "thesis": thesis[:400],
-            "key_levels": key_levels or [],
-            "confidence": confidence,
-            "falsification_triggers": triggers,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
+        self.bear_claims.append(
+            {
+                "thesis": thesis[:400],
+                "key_levels": key_levels or [],
+                "confidence": confidence,
+                "falsification_triggers": triggers,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
         for trig in triggers:
             self.falsification_triggers.append({"side": "bear", "trigger": trig})
 
@@ -84,23 +88,27 @@ class DebateBlackboard:
         br_conf = latest_bear.get("confidence", 0.5)
         divergence = abs(b_conf - br_conf)
 
-        contradictions.append({
-            "type": "conviction_divergence",
-            "bull_confidence": b_conf,
-            "bear_confidence": br_conf,
-            "divergence_score": round(divergence, 2)
-        })
+        contradictions.append(
+            {
+                "type": "conviction_divergence",
+                "bull_confidence": b_conf,
+                "bear_confidence": br_conf,
+                "divergence_score": round(divergence, 2),
+            }
+        )
 
         # 2. Structural price level conflicts
         bull_levels = set(latest_bull.get("key_levels", []))
         bear_levels = set(latest_bear.get("key_levels", []))
         level_overlap = bull_levels & bear_levels
         if level_overlap:
-            contradictions.append({
-                "type": "contested_price_levels",
-                "levels": list(level_overlap),
-                "note": "Both sides targeting identical structural levels with opposing biases."
-            })
+            contradictions.append(
+                {
+                    "type": "contested_price_levels",
+                    "levels": list(level_overlap),
+                    "note": "Both sides targeting identical structural levels with opposing biases.",
+                }
+            )
 
         self.contradictions = contradictions
         return contradictions
@@ -112,14 +120,15 @@ class DebateBlackboard:
         """
         latest_bull = self.bull_claims[-1]["thesis"] if self.bull_claims else "No bullish thesis"
         latest_bear = self.bear_claims[-1]["thesis"] if self.bear_claims else "No bearish counter-thesis"
-        
+
         contradictions = self.extract_sparse_contradictions()
-        
+
         triggers_summary = (
             "\n".join(f"  - [{t['side'].upper()}]: {t['trigger']}" for t in self.falsification_triggers)
-            if self.falsification_triggers else "None specified"
+            if self.falsification_triggers
+            else "None specified"
         )
-        
+
         board = (
             f"=== S²-MAD SPARSE DEBATE BLACKBOARD [{self.symbol}] ===\n"
             f"[BULL ADVOCATE THESIS]: {latest_bull}\n"
@@ -138,5 +147,5 @@ class DebateBlackboard:
             "bear_claims": self.bear_claims,
             "falsification_triggers": self.falsification_triggers,
             "contradictions": self.contradictions,
-            "created_at": self.created_at
+            "created_at": self.created_at,
         }

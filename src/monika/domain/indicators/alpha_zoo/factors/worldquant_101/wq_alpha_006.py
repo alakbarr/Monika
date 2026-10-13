@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #6.
 
 Formula (paper appendix): -1 * correlation(open, volume, 10)
@@ -32,18 +31,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_006"
 
 __alpha_meta__ = {
-    'id': 'alpha101_006',
-    'nickname': 'Kakushadze Alpha #6',
-    'theme': ['volume', 'reversal'],
-    'formula_latex': '-1 * correlation(open, volume, 10)',
-    'columns_required': ['open', 'volume', 'close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 10,
-    'notes': '',
+    "id": "alpha101_006",
+    "nickname": "Kakushadze Alpha #6",
+    "theme": ["volume", "reversal"],
+    "formula_latex": "-1 * correlation(open, volume, 10)",
+    "columns_required": ["open", "volume", "close"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 10,
+    "notes": "",
 }
 
 
@@ -51,7 +50,6 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
     open_ = panel["open"]
     volume = panel["volume"]
-
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
     out = -1.0 * ts_corr(open_, volume, 10)

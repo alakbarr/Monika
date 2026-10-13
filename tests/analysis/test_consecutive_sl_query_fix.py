@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit Tests for Consecutive SL Query Fix in UnifiedThresholdCalculator.
 """
@@ -29,13 +30,12 @@ async def test_consecutive_sl_penalty_triggered_only_when_all_three_are_sl():
     mock_res.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_res
 
-    with patch("analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
-               AsyncMock(return_value=(6, "base"))):
+    with patch(
+        "analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+        AsyncMock(return_value=(6, "base")),
+    ):
         threshold, reason = await compute_unified_confluence_threshold(
-            session=mock_session,
-            symbol="EURUSD",
-            settings={"trading": {"risk": {}}},
-            stage1_confidence=0.8
+            session=mock_session, symbol="EURUSD", settings={"trading": {"risk": {}}}, stage1_confidence=0.8
         )
 
     assert "3_consecutive_sl_hits(EURUSD)" in reason
@@ -62,13 +62,12 @@ async def test_consecutive_sl_penalty_not_triggered_when_recent_win_exists():
     mock_res.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_res
 
-    with patch("analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
-               AsyncMock(return_value=(7, "base"))):
+    with patch(
+        "analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+        AsyncMock(return_value=(7, "base")),
+    ):
         threshold, reason = await compute_unified_confluence_threshold(
-            session=mock_session,
-            symbol="EURUSD",
-            settings={"trading": {"risk": {}}},
-            stage1_confidence=0.8
+            session=mock_session, symbol="EURUSD", settings={"trading": {"risk": {}}}, stage1_confidence=0.8
         )
 
     assert "3_consecutive_sl_hits(EURUSD)" not in reason

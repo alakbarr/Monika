@@ -28,7 +28,13 @@ from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
-from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator, TimesFMForecast, DXYData, TreasuryYield
+from monika.infrastructure.database.models import (
+    PriceOHLCV,
+    TechnicalIndicator,
+    TimesFMForecast,
+    DXYData,
+    TreasuryYield,
+)
 
 logger = logging.getLogger("TradingAgent.TimesFMEngine")
 
@@ -88,7 +94,9 @@ class TimesFMEngine:
                     )
                     cls._model_instance = model
                     cls._model_initialized = True
-                    logger.info(f"[TimesFMEngine] Successfully initialized TimesFM 3.0 ({model_id}) on device={device}.")
+                    logger.info(
+                        f"[TimesFMEngine] Successfully initialized TimesFM 3.0 ({model_id}) on device={device}."
+                    )
                     return cls._model_instance
 
                 # Approach 2: Legacy TimesFm v1/v2 compatibility
@@ -108,14 +116,18 @@ class TimesFMEngine:
 
                     cls._model_instance = model
                     cls._model_initialized = True
-                    logger.info(f"[TimesFMEngine] Successfully initialized TimesFM legacy ({model_id}) on backend={backend}.")
+                    logger.info(
+                        f"[TimesFMEngine] Successfully initialized TimesFM legacy ({model_id}) on backend={backend}."
+                    )
                     return cls._model_instance
 
             except Exception as e:
                 logger.warning(f"[TimesFMEngine] Neural model load note: {e}. Operating in robust statistical mode.")
 
         except ImportError:
-            logger.debug("[TimesFMEngine] PyTorch or timesfm library not available. Operating in robust statistical mode.")
+            logger.debug(
+                "[TimesFMEngine] PyTorch or timesfm library not available. Operating in robust statistical mode."
+            )
 
         cls._model_instance = None
         cls._model_initialized = True
@@ -146,17 +158,19 @@ class TimesFMEngine:
         if not target_rows or len(target_rows) < 30:
             return pd.DataFrame(), {}
 
-        target_df = pd.DataFrame([
-            {
-                "timestamp": r.timestamp,
-                "open": r.open,
-                "high": r.high,
-                "low": r.low,
-                "close": r.close,
-                "volume": r.volume or 0.0,
-            }
-            for r in target_rows
-        ]).set_index("timestamp")
+        target_df = pd.DataFrame(
+            [
+                {
+                    "timestamp": r.timestamp,
+                    "open": r.open,
+                    "high": r.high,
+                    "low": r.low,
+                    "close": r.close,
+                    "volume": r.volume or 0.0,
+                }
+                for r in target_rows
+            ]
+        ).set_index("timestamp")
 
         # Fetch kovariat makro
         covariates = {}
@@ -210,14 +224,16 @@ class TimesFMEngine:
         horizon_len = len(quantiles["q50"])
         envelope = []
         for i in range(horizon_len):
-            envelope.append({
-                "step": i + 1,
-                "q10": round(quantiles["q10"][i], 5),
-                "q30": round(quantiles["q30"][i], 5),
-                "q50": round(quantiles["q50"][i], 5),
-                "q70": round(quantiles["q70"][i], 5),
-                "q90": round(quantiles["q90"][i], 5),
-            })
+            envelope.append(
+                {
+                    "step": i + 1,
+                    "q10": round(quantiles["q10"][i], 5),
+                    "q30": round(quantiles["q30"][i], 5),
+                    "q50": round(quantiles["q50"][i], 5),
+                    "q70": round(quantiles["q70"][i], 5),
+                    "q90": round(quantiles["q90"][i], 5),
+                }
+            )
 
         return {
             "expected_range": round(expected_range, 5),
@@ -246,7 +262,11 @@ class TimesFMEngine:
             returns = np.diff(np.log(close_vals))
 
         # Drift & Volatilitas lokal
-        vol: float = float(np.std(returns[-48:])) if len(returns) >= 48 else (float(np.std(returns)) if len(returns) > 5 else 0.005)
+        vol: float = (
+            float(np.std(returns[-48:]))
+            if len(returns) >= 48
+            else (float(np.std(returns)) if len(returns) > 5 else 0.005)
+        )
         # Efek multivariat: jika kovariat makro (mis. DXY) memiliki korelasi kuat
         macro_bias_drift: float = 0.0
         if covariates:
@@ -259,16 +279,22 @@ class TimesFMEngine:
                         cov_trend: float = float(np.mean(cov_ret))
                         # Hubungan invers DXY vs FX/Gold
                         if "DXY" in cov_name:
-                            macro_bias_drift -= (cov_trend * 0.3)
+                            macro_bias_drift -= cov_trend * 0.3
                         else:
-                            macro_bias_drift += (cov_trend * 0.1)
+                            macro_bias_drift += cov_trend * 0.1
 
         # Standard normal quantiles: Q10 (-1.282), Q20 (-0.842), Q30 (-0.524), Q40 (-0.253),
         # Q50 (0.0), Q60 (+0.253), Q70 (+0.524), Q80 (+0.842), Q90 (+1.282)
         z_scores: Dict[str, float] = {
-            "q10": -1.282, "q20": -0.842, "q30": -0.524, "q40": -0.253,
+            "q10": -1.282,
+            "q20": -0.842,
+            "q30": -0.524,
+            "q40": -0.253,
             "q50": 0.0,
-            "q60": 0.253, "q70": 0.524, "q80": 0.842, "q90": 1.282,
+            "q60": 0.253,
+            "q70": 0.524,
+            "q80": 0.842,
+            "q90": 1.282,
         }
 
         quantiles: Dict[str, List[float]] = {k: [] for k in z_scores}
@@ -359,9 +385,13 @@ class TimesFMEngine:
                             model_backend = "neural_timesfm_3.0"
                             is_fallback = False
                         else:
-                            quantiles = self._generate_statistical_quantiles(target_df, covariates, horizon_steps, baseline_atr)
+                            quantiles = self._generate_statistical_quantiles(
+                                target_df, covariates, horizon_steps, baseline_atr
+                            )
                     else:
-                        quantiles = self._generate_statistical_quantiles(target_df, covariates, horizon_steps, baseline_atr)
+                        quantiles = self._generate_statistical_quantiles(
+                            target_df, covariates, horizon_steps, baseline_atr
+                        )
 
                 # Priority 2: Legacy TimesFM forecast() (Non-blocking worker thread)
                 elif hasattr(model, "forecast"):
@@ -373,13 +403,14 @@ class TimesFMEngine:
                     if isinstance(preds, (list, tuple)) and len(preds) >= 2:
                         raw_quantiles = preds[1]
                         quantiles = {
-                            f"q{d*10}": [float(val) for val in raw_quantiles[0, :, d-1]]
-                            for d in range(1, 10)
+                            f"q{d * 10}": [float(val) for val in raw_quantiles[0, :, d - 1]] for d in range(1, 10)
                         }
                         model_backend = "neural_timesfm_legacy"
                         is_fallback = False
                     else:
-                        quantiles = self._generate_statistical_quantiles(target_df, covariates, horizon_steps, baseline_atr)
+                        quantiles = self._generate_statistical_quantiles(
+                            target_df, covariates, horizon_steps, baseline_atr
+                        )
                 else:
                     quantiles = self._generate_statistical_quantiles(target_df, covariates, horizon_steps, baseline_atr)
             except Exception as infer_err:

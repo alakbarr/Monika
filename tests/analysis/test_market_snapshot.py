@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit tests for Verified Market Snapshot Ground Truth (H4).
 """
@@ -72,8 +73,8 @@ async def test_h4_market_snapshot_empty_db():
     mock_session.execute.side_effect = [
         mock_empty_scalar,  # OHLCV tf query -> miss
         mock_empty_scalar,  # OHLCV fallback (any timeframe) -> miss
-        mock_empty_rows,    # indicators tf query -> miss
-        mock_empty_rows,    # indicators fallback -> miss
+        mock_empty_rows,  # indicators tf query -> miss
+        mock_empty_rows,  # indicators fallback -> miss
     ]
 
     snapshot = await snapshot_gen.compute("GBPUSD", mock_session)
@@ -92,7 +93,7 @@ def test_format_as_markdown():
         "latest_open": 1.08200,
         "rsi_14": 48.5,
         "atr_14": 0.0045,
-        "bar_timestamp": "2026-09-06T12:00:00Z"
+        "bar_timestamp": "2026-09-06T12:00:00Z",
     }
     md = VerifiedMarketSnapshot.format_as_markdown(snapshot)
     assert "DETERMINISTIC MARKET GROUND TRUTH" in md
@@ -103,13 +104,7 @@ def test_format_as_markdown():
 
 def test_validate_plan_against_snapshot_valid():
     snapshot = {"latest_close": 1.0850}
-    plan = {
-        "action": "BUY",
-        "entry_price": 1.0850,
-        "stop_loss": 1.0800,
-        "take_profit": 1.0950,
-        "order_type": "MARKET"
-    }
+    plan = {"action": "BUY", "entry_price": 1.0850, "stop_loss": 1.0800, "take_profit": 1.0950, "order_type": "MARKET"}
     valid, issues = VerifiedMarketSnapshot.validate_plan_against_snapshot(plan, snapshot)
     assert valid is True
     assert len(issues) == 0
@@ -123,7 +118,7 @@ def test_validate_plan_against_snapshot_inverted_sl_tp():
         "entry_price": 1.0850,
         "stop_loss": 1.0900,  # Invalid for BUY
         "take_profit": 1.0800,  # Invalid for BUY
-        "order_type": "MARKET"
+        "order_type": "MARKET",
     }
     valid, issues = VerifiedMarketSnapshot.validate_plan_against_snapshot(bad_buy, snapshot)
     assert valid is False
@@ -136,7 +131,7 @@ def test_validate_plan_against_snapshot_inverted_sl_tp():
         "entry_price": 1.0850,
         "stop_loss": 1.0800,  # Invalid for SELL
         "take_profit": 1.0900,  # Invalid for SELL
-        "order_type": "MARKET"
+        "order_type": "MARKET",
     }
     valid, issues = VerifiedMarketSnapshot.validate_plan_against_snapshot(bad_sell, snapshot)
     assert valid is False
@@ -151,7 +146,7 @@ def test_validate_plan_against_snapshot_large_drift():
         "entry_price": 1.2500,  # > 15% drift on EURUSD
         "stop_loss": 1.2400,
         "take_profit": 1.2700,
-        "order_type": "MARKET"
+        "order_type": "MARKET",
     }
     valid, issues = VerifiedMarketSnapshot.validate_plan_against_snapshot(drifting_plan, snapshot)
     assert valid is False

@@ -32,7 +32,7 @@ ENCODING_CANDIDATES = ["utf-8-sig", "utf-8", "utf-16", "gbk", "latin-1"]
 class BrokerTrade:
     ticket: str
     symbol: str
-    action: str              # 'buy' | 'sell'
+    action: str  # 'buy' | 'sell'
     lots: float
     open_time: datetime
     close_time: datetime
@@ -56,7 +56,7 @@ class JournalParser:
         for enc in ENCODING_CANDIDATES:
             try:
                 return raw_bytes.decode(enc)
-            except (UnicodeDecodeError, LookupError):
+            except UnicodeDecodeError, LookupError:
                 continue
         return raw_bytes.decode("utf-8", errors="replace")
 
@@ -145,7 +145,11 @@ class JournalParser:
                 continue
 
             action_raw = get_val(("action", "type", "direction", "side")).lower()
-            action = "buy" if "buy" in action_raw or "long" in action_raw else ("sell" if "sell" in action_raw or "short" in action_raw else "")
+            action = (
+                "buy"
+                if "buy" in action_raw or "long" in action_raw
+                else ("sell" if "sell" in action_raw or "short" in action_raw else "")
+            )
             if not action:
                 continue
 
@@ -160,7 +164,9 @@ class JournalParser:
             tp = cls._parse_float(get_val(("t/p", "tp", "take profit")), 0.0)
 
             open_time = cls._parse_datetime(get_val(("open time", "open_time", "time", "date", "created_at")))
-            close_time = cls._parse_datetime(get_val(("close time", "close_time", "exit time", "closed_at"))) or open_time
+            close_time = (
+                cls._parse_datetime(get_val(("close time", "close_time", "exit time", "closed_at"))) or open_time
+            )
 
             if not open_time:
                 open_time = datetime.now(timezone.utc)

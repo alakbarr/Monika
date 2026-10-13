@@ -72,7 +72,7 @@ def test_fail_and_unconfirmed_action(manager):
 @pytest.mark.asyncio
 async def test_reconcile_at_boot_found_in_positions(manager):
     act = manager.begin_action(symbol="EURUSD", action="buy", volume=0.5, comment="AIAgent_nonce123")
-    
+
     mock_mt5 = AsyncMock()
     # Return matching position
     mock_mt5.get_open_positions.return_value = [

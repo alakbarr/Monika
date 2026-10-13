@@ -1,26 +1,48 @@
 """Daftar model kandidat dan konfigurasi tier benchmark.
 Mendukung pemuatan dinamis dari settings.yaml (benchmark.tiers, benchmark.candidates, benchmark.router_matrix).
 """
+
 from typing import Optional, Dict, List, Any
 
 CANDIDATE_MODELS: list[str] = [
     # Anthropic
-    "claude-opus-5", "claude-sonnet-5", "claude-sonnet-4-6", "claude-haiku-4-5-20251001",
+    "claude-opus-5",
+    "claude-sonnet-5",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5-20251001",
     # Google
-    "gemini-3.1-pro-preview", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash",
-    "gemini-3.5-flash-lite", "gemini-3.1-flash-lite",
+    "gemini-3.1-pro-preview",
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
     # OpenAI
-    "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
     # DeepSeek
-    "deepseek-v4-pro", "deepseek-v4-flash",
+    "deepseek-v4-pro",
+    "deepseek-v4-flash",
     # TypeSafe System One
-    "jev-latest", "jev-1.13",
+    "jev-latest",
+    "jev-1.13",
     # Stealth & OpenRouter Free Tier
-    "ox-alpha", "z-ai/glm-5.2:free", "google/gemma-4-31b:free", "nvidia/nemotron-3-ultra:free",
-    "meta-llama/north-mini-code:free", "cohere/laguna-xs-2.1:free", "openrouter/free",
+    "ox-alpha",
+    "z-ai/glm-5.2:free",
+    "google/gemma-4-31b:free",
+    "nvidia/nemotron-3-ultra:free",
+    "meta-llama/north-mini-code:free",
+    "cohere/laguna-xs-2.1:free",
+    "openrouter/free",
     # Groq (gratis)
-    "groq-compound", "groq-compound-mini", "groq-gpt-oss-120b", "groq-gpt-oss-20b",
-    "groq-qwen3.6-27b", "groq-qwen3.8-27b",
+    "groq-compound",
+    "groq-compound-mini",
+    "groq-gpt-oss-120b",
+    "groq-gpt-oss-20b",
+    "groq-qwen3.6-27b",
+    "groq-qwen3.8-27b",
 ]
 
 
@@ -75,18 +97,28 @@ def get_router_matrix(settings: Optional[dict] = None) -> dict[str, list[str]]:
             "groq:groq-qwen3.8-27b",
             "openrouter:qwen/qwen-2.5-72b-instruct",
             "9router:qwen/qwen-2.5-72b-instruct",
-        ]
+        ],
     }
 
 
-def make_role_config(max_tokens: int = 8192, max_tool_turns: int = 10,
-                      temperature: float = 0.0, thinking: str = "medium",
-                      seed: int = 42) -> dict:
+def make_role_config(
+    max_tokens: int = 8192, max_tool_turns: int = 10, temperature: float = 0.0, thinking: str = "medium", seed: int = 42
+) -> dict:
     """role_config generik yang diterima create_client() -> _create_client_instance()."""
     providers = (
-        "anthropic", "gemini", "openai", "deepseek", "groq",
-        "ollama", "openai_compatible", "openrouter", "typesafe",
-        "9router", "ninerouter", "nine_router", "vertex",
+        "anthropic",
+        "gemini",
+        "openai",
+        "deepseek",
+        "groq",
+        "ollama",
+        "openai_compatible",
+        "openrouter",
+        "typesafe",
+        "9router",
+        "ninerouter",
+        "nine_router",
+        "vertex",
     )
     return {
         "max_tokens": max_tokens,

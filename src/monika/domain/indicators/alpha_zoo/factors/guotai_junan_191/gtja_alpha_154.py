@@ -1,4 +1,3 @@
-
 """GTJA Alpha 154 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
@@ -6,6 +5,7 @@ Formula (verbatim from the report):
 
 Notes: Original returns boolean; we cast to float and multiply by -1.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -34,16 +34,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_154"
 
 __alpha_meta__ = {
-    'id': 'gtja191_154',
-    'theme': ['volume'],
-    'formula_latex': 'see body',
-    'columns_required': ['open', 'high', 'low', 'close', 'volume', 'amount'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 60,
-    'min_warmup_bars': 198,
-    'notes': 'Original returns boolean; we cast to float and multiply by -1.',
+    "id": "gtja191_154",
+    "theme": ["volume"],
+    "formula_latex": "see body",
+    "columns_required": ["open", "high", "low", "close", "volume", "amount"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 60,
+    "min_warmup_bars": 198,
+    "notes": "Original returns boolean; we cast to float and multiply by -1.",
 }
 
 

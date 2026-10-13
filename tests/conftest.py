@@ -8,9 +8,11 @@ if str(_src_dir) not in sys.path:
 
 import monika
 from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+
 install_legacy_compat()
 
 import os
+
 os.environ.setdefault("PTB_TIMEDELTA", "1")
 _cache_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".cache", "matplotlib"))
 os.makedirs(_cache_dir, exist_ok=True)
@@ -44,6 +46,7 @@ try:
     asyncpg.connection.Connection._clean_tasks = _safe_clean_tasks
 
     _orig_conn_del = getattr(asyncpg.connection.Connection, "__del__", None)
+
     def _safe_conn_del(self):
         try:
             _safe_clean_tasks(self)
@@ -54,10 +57,12 @@ try:
                 _orig_conn_del(self)
             except Exception:
                 pass
+
     asyncpg.connection.Connection.__del__ = _safe_conn_del
 
     _orig_cancel_cmd = getattr(asyncpg.connection.Connection, "_cancel_current_command", None)
     if _orig_cancel_cmd is not None:
+
         def _safe_cancel_current_command(self, waiter):
             if hasattr(self, "_loop") and (self._loop.is_closed() or not self._loop.is_running()):
                 coro = self._cancel(waiter)
@@ -69,6 +74,7 @@ try:
                 return
             if callable(_orig_cancel_cmd):
                 _orig_cancel_cmd(self, waiter)
+
         setattr(asyncpg.connection.Connection, "_cancel_current_command", _safe_cancel_current_command)
 except Exception:
     pass
@@ -79,14 +85,17 @@ except Exception:
 if sys.platform == "win32":
     try:
         from asyncio.proactor_events import _ProactorBasePipeTransport
+
         _orig_pipe_del = getattr(_ProactorBasePipeTransport, "__del__", None)
         if _orig_pipe_del is not None:
+
             def _safe_pipe_del(self):
                 if callable(_orig_pipe_del):
                     try:
                         _orig_pipe_del(self)
-                    except (ValueError, OSError):
+                    except ValueError, OSError:
                         pass
+
             _ProactorBasePipeTransport.__del__ = _safe_pipe_del
     except Exception:
         pass
@@ -128,6 +137,7 @@ def protect_live_db_from_test_activity_logs(monkeypatch):
     """
     try:
         from analysis.harness.agent_harness import AgentHarness
+
         orig_log = AgentHarness._log_tool_call
 
         async def guarded_log(self, session, *args, **kwargs):
@@ -143,6 +153,7 @@ def protect_live_db_from_test_activity_logs(monkeypatch):
         from unittest.mock import Mock
         import database.db
         from analysis.providers.base_provider import BaseLLMClient
+
         orig_llm_log = BaseLLMClient._log_tool_call
 
         async def guarded_llm_log(self, session, *args, **kwargs):
@@ -163,6 +174,7 @@ def protect_live_db_from_test_token_logs(monkeypatch):
     """
     try:
         from analysis.providers.base_provider import BaseLLMClient
+
         orig_save = BaseLLMClient._save_token_usage
 
         async def guarded_save(self, *args, **kwargs):
@@ -195,12 +207,14 @@ def protect_llm_provider_network_and_pools(monkeypatch):
     """
     try:
         from analysis.providers.openrouter_provider import OpenRouterProvider
+
         OpenRouterProvider._client_pool.clear()
     except Exception:
         pass
 
     try:
         from unittest.mock import MagicMock, AsyncMock
+
         def make_mock_async_openai(*args, **kwargs):
             mock_inst = MagicMock()
             mock_inst.base_url = kwargs.get("base_url", "https://api.openai.com/v1")
@@ -217,6 +231,7 @@ def protect_llm_provider_network_and_pools(monkeypatch):
 
     try:
         from analysis.providers.openrouter_provider import OpenRouterProvider
+
         OpenRouterProvider._client_pool.clear()
     except Exception:
         pass
@@ -237,7 +252,7 @@ def drain_orphan_async_tasks():
                 for t in pending:
                     t.cancel()
                 loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-    except (RuntimeError, Exception):
+    except RuntimeError, Exception:
         pass
 
 
@@ -254,6 +269,7 @@ def isolate_environment_mutations():
 def allow_tradingagent_log_propagation():
     """Memastikan log dari hierarki logger TradingAgent merambat ke root logger untuk caplog pytest."""
     import logging
+
     ta_logger = logging.getLogger("TradingAgent")
     prev_propagate = ta_logger.propagate
     prev_level = ta_logger.level
@@ -262,8 +278,6 @@ def allow_tradingagent_log_propagation():
     yield
     ta_logger.propagate = prev_propagate
     ta_logger.setLevel(prev_level)
-
-
 
 
 import pytest_asyncio
@@ -301,12 +315,12 @@ def create_mock_async_session():
     mock_session.rollback = AsyncMock()
     mock_session.flush = AsyncMock()
     mock_session.close = AsyncMock()
-    
+
     mock_nested = AsyncMock()
     mock_nested.__aenter__.return_value = mock_nested
     mock_nested.__aexit__.return_value = None
     mock_session.begin_nested = MagicMock(return_value=mock_nested)
-    
+
     mock_bind = MagicMock()
     mock_bind.dialect.name = "postgresql"
     mock_session.get_bind = MagicMock(return_value=mock_bind)
@@ -367,9 +381,7 @@ def reset_executed_analysis_ids():
     yield
     try:
         from monika.application.execution.service.execution_service import _EXECUTED_ANALYSIS_IDS
+
         _EXECUTED_ANALYSIS_IDS.clear()
     except Exception:
         pass
-
-
-

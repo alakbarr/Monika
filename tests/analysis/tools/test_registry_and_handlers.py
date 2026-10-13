@@ -68,13 +68,15 @@ async def test_tool_registry_dispatch():
     async def sample_handler(args, **ctx):
         return f"result for {args.get('item')}"
 
-    reg.register(ToolDefinition(
-        name="sample_tool",
-        description="A sample tool for testing dispatch",
-        parameters={"type": "object"},
-        handler=sample_handler,
-        toolset="test",
-    ))
+    reg.register(
+        ToolDefinition(
+            name="sample_tool",
+            description="A sample tool for testing dispatch",
+            parameters={"type": "object"},
+            handler=sample_handler,
+            toolset="test",
+        )
+    )
 
     res = await reg.dispatch("sample_tool", {"item": "gold"})
     assert res["is_error"] is False
@@ -89,6 +91,7 @@ async def test_tool_registry_dispatch():
 @pytest.mark.asyncio
 async def test_tool_definition_execute_duck_typing():
     """Verify ToolDefinition can be executed via .execute(...) like legacy ToolHandler."""
+
     async def sample_handler(args, **ctx):
         session = ctx.get("session")
         return f"executed for {args.get('item')} with session={session}"
@@ -101,4 +104,3 @@ async def test_tool_definition_execute_duck_typing():
     )
     res = await tdef.execute({"item": "silver"}, session="mock_sess")
     assert res == "executed for silver with session=mock_sess"
-

@@ -4,7 +4,16 @@ from monika.infrastructure.providers.base_provider import BaseLLMClient, extract
 
 logger = logging.getLogger("TradingAgent.NeutralRisk")
 
-RISK_SCHEMA = {'type': 'object', 'properties': {'risk_profile_assessment': {'type': 'string'}, 'recommended_multiplier': {'type': 'number'}, 'veto_trade': {'type': 'boolean', 'description': 'Set to true ONLY if a specific rule below is triggered'}}, 'required': ['risk_profile_assessment', 'recommended_multiplier', 'veto_trade']}
+RISK_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "risk_profile_assessment": {"type": "string"},
+        "recommended_multiplier": {"type": "number"},
+        "veto_trade": {"type": "boolean", "description": "Set to true ONLY if a specific rule below is triggered"},
+    },
+    "required": ["risk_profile_assessment", "recommended_multiplier", "veto_trade"],
+}
+
 
 async def analyze_risk_neutral_llm(client: BaseLLMClient, symbol: str, strict_context: dict) -> dict:
     min_rr = float(strict_context.get("min_rr_ratio", 1.3) or 1.3)
@@ -19,9 +28,10 @@ EVALUATION MANDATES:
    - Step down sizing (0.5 - 0.8) if open exposure is high, drawdown is building (daily_pnl < -1.0%), or liquidity conditions are mixed.
    - Recommend a multiplier in [0.4, 1.5]. (Exact numeric clamping is handled deterministically by the system).
 Return JSON with 'risk_profile_assessment' (terse qualitative breakdown of heat, exposure, and structural edge), 'recommended_multiplier', 'veto_trade'."""
-    user_msg = f'Symbol: {symbol}\nContext: {json.dumps(strict_context)}'
+    user_msg = f"Symbol: {symbol}\nContext: {json.dumps(strict_context)}"
     try:
         from monika.core.primitives.jev_primitives import build_risk_gate_neutral_questions
+
         direction = strict_context.get("direction") or strict_context.get("decision", "buy")
         jev_q = build_risk_gate_neutral_questions(symbol, direction=direction)
 
@@ -30,7 +40,7 @@ Return JSON with 'risk_profile_assessment' (terse qualitative breakdown of heat,
             user_message=user_msg,
             temperature=0.1,
             response_schema=RISK_SCHEMA,
-            jev_questions=jev_q
+            jev_questions=jev_q,
         )
         if not resp:
             raise ValueError("Empty response from LLM")
@@ -63,11 +73,13 @@ Return JSON with 'risk_profile_assessment' (terse qualitative breakdown of heat,
                     f"timing_ok={timing_ok}, sizing_ok={sizing_ok}, multiplier={mult}"
                 )
 
-        if 'veto_trade' not in data:
-            data['veto_trade'] = False
-        mult = data.get('recommended_multiplier')
-        if mult is not None and not data.get('veto_trade') and (not 0.4 <= float(mult) <= 1.5):
-            logger.warning(f"[RiskDebate][Neutral][{symbol}] LLM recommended_multiplier={mult} di luar rentang aritmetika terdokumentasi [0.4, 1.5]. Diteruskan (akan di-clamp), tapi mengindikasikan model salah menghitung formula preskriptif.")
+        if "veto_trade" not in data:
+            data["veto_trade"] = False
+        mult = data.get("recommended_multiplier")
+        if mult is not None and not data.get("veto_trade") and (not 0.4 <= float(mult) <= 1.5):
+            logger.warning(
+                f"[RiskDebate][Neutral][{symbol}] LLM recommended_multiplier={mult} di luar rentang aritmetika terdokumentasi [0.4, 1.5]. Diteruskan (akan di-clamp), tapi mengindikasikan model salah menghitung formula preskriptif."
+            )
         return data
     except Exception as e:
         logger.error(f"Risk LLM failed: {e}")
@@ -78,4 +90,3 @@ Return JSON with 'risk_profile_assessment' (terse qualitative breakdown of heat,
             "risk_profile_assessment": f"Fail-closed: {e}",
             "parse_error": True,
         }
-

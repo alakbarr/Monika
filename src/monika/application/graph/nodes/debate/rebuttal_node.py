@@ -26,8 +26,12 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
     if not actionable:
         return {}
 
-    configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
-    scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    configurable = (
+        config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
+    ) or {}
+    scheduler = (
+        configurable.get("scheduler") if isinstance(configurable, dict) else getattr(configurable, "scheduler", None)
+    )
     settings = scheduler.settings if scheduler else {}
     debate_cfg = settings.get("agent_architecture", {})
 
@@ -73,30 +77,32 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
                         bull_client, sym, original_context, fact_sheet, verified_bull_claim, bear_dissent
                     )
 
-                if not _is_grounded(rebuttal_res, curr_p, reference=fact_sheet if isinstance(fact_sheet, dict) else None):
-                    rebuttal_res['rebuttal_strength'] = max(1, rebuttal_res.get('rebuttal_strength', 5) - 2)
-                    rebuttal_res['ungrounded_penalty'] = True
+                if not _is_grounded(
+                    rebuttal_res, curr_p, reference=fact_sheet if isinstance(fact_sheet, dict) else None
+                ):
+                    rebuttal_res["rebuttal_strength"] = max(1, rebuttal_res.get("rebuttal_strength", 5) - 2)
+                    rebuttal_res["ungrounded_penalty"] = True
 
                 new_turn = deb.get("turn", 1) + 1
                 return sym, {
-                    'bull_rebuttal': rebuttal_res,
-                    'bear_rebuttal': rebuttal_res,
-                    'rebuttal': rebuttal_res,
-                    'pro_rebuttal': rebuttal_res,
-                    'turn': new_turn,
-                    'needs_rebuttal': False,
-                    'divergence': 0.0,
-                    'disagreement': 0,
+                    "bull_rebuttal": rebuttal_res,
+                    "bear_rebuttal": rebuttal_res,
+                    "rebuttal": rebuttal_res,
+                    "pro_rebuttal": rebuttal_res,
+                    "turn": new_turn,
+                    "needs_rebuttal": False,
+                    "divergence": 0.0,
+                    "disagreement": 0,
                 }
             except Exception as e:
                 logger.error(f"[{sym}] Rebuttal failed: {e}", exc_info=True)
                 new_turn = deb.get("turn", 1) + 1
                 return sym, {
-                    'turn': new_turn,
-                    'needs_rebuttal': False,
-                    'divergence': 0.0,
-                    'disagreement': 0,
-                    'rebuttal_error': str(e),
+                    "turn": new_turn,
+                    "needs_rebuttal": False,
+                    "divergence": 0.0,
+                    "disagreement": 0,
+                    "rebuttal_error": str(e),
                 }
 
     tasks = [_process_single(sym, r) for sym, r in actionable]

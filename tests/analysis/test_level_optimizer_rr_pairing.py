@@ -4,6 +4,7 @@ from tests.conftest import create_mock_async_session
 from analysis.calculators.intraday_level_optimizer import compute_optimal_levels
 from analysis.strategies.liquidity_sweep_edge import LiquiditySweepStructuralShift
 
+
 @pytest.mark.asyncio
 async def test_compute_optimal_levels_rr_pairing():
     """Verify that compute_optimal_levels pairs TP and SL to satisfy min_rr >= 1.3."""
@@ -21,11 +22,16 @@ async def test_compute_optimal_levels_rr_pairing():
         "volatility_regime": "normal",
     }
 
-    with patch("analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock) as m_adr, \
-         patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr, \
-         patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones, \
-         patch("analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock) as m_sweep:
-
+    with (
+        patch(
+            "analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock
+        ) as m_adr,
+        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr,
+        patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones,
+        patch(
+            "analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock
+        ) as m_sweep,
+    ):
         m_adr.return_value = mock_adr_ctx
         m_atr.return_value = 10.0
         m_sweep.return_value = {"sweep_detected": False}
@@ -49,6 +55,7 @@ async def test_compute_optimal_levels_rr_pairing():
         # Ensure best TP chosen is the one with compliant R:R (dist 55.0, low=2055.0)
         assert res["top_tp_candidates"][0]["price"] == 2055.0
 
+
 @pytest.mark.asyncio
 async def test_compute_optimal_levels_synthetic_tp():
     """Verify that when structural TPs cannot fulfill min_rr, a synthetic TP is generated within ADR room."""
@@ -65,11 +72,16 @@ async def test_compute_optimal_levels_synthetic_tp():
         "volatility_regime": "normal",
     }
 
-    with patch("analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock) as m_adr, \
-         patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr, \
-         patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones, \
-         patch("analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock) as m_sweep:
-
+    with (
+        patch(
+            "analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock
+        ) as m_adr,
+        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr,
+        patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones,
+        patch(
+            "analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock
+        ) as m_sweep,
+    ):
         m_adr.return_value = mock_adr_ctx
         m_atr.return_value = 10.0
         m_sweep.return_value = {"sweep_detected": False}
@@ -92,6 +104,7 @@ async def test_compute_optimal_levels_synthetic_tp():
         # Synthetic TP: 2000 + 26.5 * 1.5 = 2039.75
         assert top_tp["price"] == 2039.75
 
+
 @pytest.mark.asyncio
 async def test_compute_optimal_levels_insufficient_adr_room():
     """Verify that when required TP for min_rr exceeds ADR limits, entry is disallowed."""
@@ -108,11 +121,16 @@ async def test_compute_optimal_levels_insufficient_adr_room():
         "volatility_regime": "contracting",
     }
 
-    with patch("analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock) as m_adr, \
-         patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr, \
-         patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones, \
-         patch("analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock) as m_sweep:
-
+    with (
+        patch(
+            "analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock
+        ) as m_adr,
+        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr,
+        patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones,
+        patch(
+            "analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock
+        ) as m_sweep,
+    ):
         m_adr.return_value = mock_adr_ctx
         m_atr.return_value = 10.0
         m_sweep.return_value = {"sweep_detected": False}
@@ -126,6 +144,7 @@ async def test_compute_optimal_levels_insufficient_adr_room():
 
         assert res["entry_allowed"] is False
         assert "insufficient_rr_within_adr" in res.get("rejection_reason", "")
+
 
 @pytest.mark.asyncio
 async def test_compute_optimal_levels_with_existing_sl():
@@ -143,11 +162,16 @@ async def test_compute_optimal_levels_with_existing_sl():
         "volatility_regime": "normal",
     }
 
-    with patch("analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock) as m_adr, \
-         patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr, \
-         patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones, \
-         patch("analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock) as m_sweep:
-
+    with (
+        patch(
+            "analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock
+        ) as m_adr,
+        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr,
+        patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as m_zones,
+        patch(
+            "analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep", new_callable=AsyncMock
+        ) as m_sweep,
+    ):
         m_adr.return_value = mock_adr_ctx
         m_atr.return_value = 10.0
         m_sweep.return_value = {"sweep_detected": False}
@@ -167,6 +191,7 @@ async def test_compute_optimal_levels_with_existing_sl():
         assert res["top_sl_candidates"][0]["basis"] == "signal_prescribed_sl"
         assert res["selected_rr"] >= 1.3
 
+
 @pytest.mark.asyncio
 async def test_liquidity_sweep_computes_invalidation_stop_loss():
     """Verify that LiquiditySweepStructuralShift calculates SL from sweep_price +/- buffer."""
@@ -174,9 +199,10 @@ async def test_liquidity_sweep_computes_invalidation_stop_loss():
     strategy = LiquiditySweepStructuralShift(settings)
     session = create_mock_async_session()
 
-    with patch("analysis.strategies.liquidity_sweep_edge.detect_liquidity_sweep", new_callable=AsyncMock) as m_detect, \
-         patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr:
-
+    with (
+        patch("analysis.strategies.liquidity_sweep_edge.detect_liquidity_sweep", new_callable=AsyncMock) as m_detect,
+        patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr,
+    ):
         m_atr.return_value = 10.0
 
         # Bullish sweep: swept low at 2600.0

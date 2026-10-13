@@ -11,33 +11,36 @@ This component:
 4. Injects surprise context so LLM knows event already happened
 5. Executes actionable trades immediately
 """
+
 import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Any
 import monika.core.primitives.clock as clock
 
-logger = logging.getLogger('TradingAgent.PostReleaseAnalyzer')
+logger = logging.getLogger("TradingAgent.PostReleaseAnalyzer")
 
 CURRENCY_TO_SYMBOLS = {
-    'USD': ['XAUUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XTIUSD', 'BTCUSD', 'XBRUSD'],
-    'EUR': ['EURUSD'],
-    'GBP': ['GBPUSD'],
-    'JPY': ['USDJPY'],
-    'AUD': ['AUDUSD'],
-    'CAD': ['XTIUSD', 'XBRUSD'],
-    'XAU': ['XAUUSD'],
-    'XTI': ['XTIUSD', 'XBRUSD'],
-    'XBR': ['XTIUSD', 'XBRUSD'],
-    'BTC': ['BTCUSD'],
+    "USD": ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XTIUSD", "BTCUSD", "XBRUSD"],
+    "EUR": ["EURUSD"],
+    "GBP": ["GBPUSD"],
+    "JPY": ["USDJPY"],
+    "AUD": ["AUDUSD"],
+    "CAD": ["XTIUSD", "XBRUSD"],
+    "XAU": ["XAUUSD"],
+    "XTI": ["XTIUSD", "XBRUSD"],
+    "XBR": ["XTIUSD", "XBRUSD"],
+    "BTC": ["BTCUSD"],
 }
- 
+
 
 class _AwaitableNone:
     """Helper enabling stop() to be called both synchronously and awaited without warning."""
+
     def __await__(self):
         async def _noop():
             return None
+
         return _noop().__await__()
 
 
@@ -78,19 +81,19 @@ class PostReleaseAnalyzer:
         self._today_date: Optional[str] = None
         self._background_tasks: set[asyncio.Task] = set()
 
-        universe = settings.get('trading', {}).get('asset_universe', [])
-        self._universe = universe if universe else [
-            'XAUUSD', 'EURUSD', 'GBPUSD', 'USDJPY',
-            'AUDUSD', 'XTIUSD', 'BTCUSD', 'XBRUSD'
-        ]
+        universe = settings.get("trading", {}).get("asset_universe", [])
+        self._universe = (
+            universe if universe else ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XTIUSD", "BTCUSD", "XBRUSD"]
+        )
 
     async def start(self):
         """Main loop — polls for released calendar events."""
         self._running = True
         logger.info(
-            "[PostReleaseAnalyzer] Started — polling every %ds, "
-            "settle delay %ds, max %d reruns/day",
-            self._poll_seconds, self._settle_seconds, self._max_reruns_per_day
+            "[PostReleaseAnalyzer] Started — polling every %ds, settle delay %ds, max %d reruns/day",
+            self._poll_seconds,
+            self._settle_seconds,
+            self._max_reruns_per_day,
         )
         while self._running:
             try:
@@ -152,7 +155,7 @@ class PostReleaseAnalyzer:
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
 
-        today_str = now.strftime('%Y-%m-%d')
+        today_str = now.strftime("%Y-%m-%d")
         if self._today_date != today_str:
             self._today_date = today_str
             self._today_reruns = 0
@@ -164,13 +167,19 @@ class PostReleaseAnalyzer:
         window_start = now - timedelta(minutes=30)
 
         async with get_session() as session:
-            events = (await session.execute(
-                select(EconomicCalendar)
-                .where(EconomicCalendar.impact.in_(['high', 'High', 'HIGH']))
-                .where(EconomicCalendar.actual.isnot(None))
-                .where(EconomicCalendar.event_time >= window_start)
-                .where(EconomicCalendar.event_time <= now)
-            )).scalars().all()
+            events = (
+                (
+                    await session.execute(
+                        select(EconomicCalendar)
+                        .where(EconomicCalendar.impact.in_(["high", "High", "HIGH"]))
+                        .where(EconomicCalendar.actual.isnot(None))
+                        .where(EconomicCalendar.event_time >= window_start)
+                        .where(EconomicCalendar.event_time <= now)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
         new_events = [e for e in events if e.id not in self._processed_events]
         if not new_events:
@@ -194,12 +203,11 @@ class PostReleaseAnalyzer:
 
         if not affected_symbols:
             logger.debug(
-                f"[PostReleaseAnalyzer] Events found but no matching symbols "
-                f"for currencies: {affected_currencies}"
+                f"[PostReleaseAnalyzer] Events found but no matching symbols for currencies: {affected_currencies}"
             )
             return
 
-        event_names = ', '.join(str(e.event_name)[:40] for e in new_events[:3])
+        event_names = ", ".join(str(e.event_name)[:40] for e in new_events[:3])
         logger.warning(
             f"[PostReleaseAnalyzer] {len(new_events)} high-impact release(s): "
             f"{event_names} | Currencies: {affected_currencies} | "
@@ -212,7 +220,7 @@ class PostReleaseAnalyzer:
         # Calculate price settlement target time (15 min from event time)
         valid_times: list[datetime] = []
         for e in new_events:
-            ev_time = getattr(e, 'event_time', None)
+            ev_time = getattr(e, "event_time", None)
             if ev_time is not None:
                 if ev_time.tzinfo is None:
                     valid_times.append(ev_time.replace(tzinfo=timezone.utc))
@@ -261,6 +269,7 @@ class PostReleaseAnalyzer:
             # Calculate surprise direction
             try:
                 from monika.application.analysis.calculators.economic_surprise import _parse_numeric
+
                 act_val = _parse_numeric(e.actual)
                 fc_val = _parse_numeric(e.forecast)
                 if act_val is not None and fc_val is not None:
@@ -272,20 +281,20 @@ class PostReleaseAnalyzer:
                 pass
             lines.append(line)
 
-        lines.extend([
-            "",
-            "CRITICAL INSTRUCTIONS FOR POST-RELEASE ANALYSIS:",
-            "1. The event has ALREADY occurred. Do NOT apply pre-event confidence penalty.",
-            "2. The 15-minute price settlement window has passed. Analyze the ESTABLISHED reaction.",
-            "3. Focus on: surprise magnitude, initial market reaction direction, continuation potential.",
-            "4. If data clearly supports a directional move with good R:R, recommend BUY/SELL.",
-            "5. Only WAIT if the reaction is ambiguous or price has already moved to exhaustion.",
-        ])
-        return '\n'.join(lines)
+        lines.extend(
+            [
+                "",
+                "CRITICAL INSTRUCTIONS FOR POST-RELEASE ANALYSIS:",
+                "1. The event has ALREADY occurred. Do NOT apply pre-event confidence penalty.",
+                "2. The 15-minute price settlement window has passed. Analyze the ESTABLISHED reaction.",
+                "3. Focus on: surprise magnitude, initial market reaction direction, continuation potential.",
+                "4. If data clearly supports a directional move with good R:R, recommend BUY/SELL.",
+                "5. Only WAIT if the reaction is ambiguous or price has already moved to exhaustion.",
+            ]
+        )
+        return "\n".join(lines)
 
-    async def _run_targeted_reanalysis(
-        self, symbols: list[str], context: str, events: list
-    ):
+    async def _run_targeted_reanalysis(self, symbols: list[str], context: str, events: list):
         """Execute Stage 2 analysis for affected symbols under cycle_lock if available."""
         cycle_lock = getattr(self._cycle_scheduler, "_cycle_lock", None) if self._cycle_scheduler else None
         if cycle_lock:
@@ -294,9 +303,7 @@ class PostReleaseAnalyzer:
         else:
             await self._do_targeted_reanalysis(symbols, context, events)
 
-    async def _do_targeted_reanalysis(
-        self, symbols: list[str], context: str, events: list
-    ):
+    async def _do_targeted_reanalysis(self, symbols: list[str], context: str, events: list):
         """Execute Stage 2 analysis for affected symbols only."""
         if not self._per_asset:
             logger.warning("[PostReleaseAnalyzer] No PerAssetStage — cannot re-analyze")
@@ -307,17 +314,38 @@ class PostReleaseAnalyzer:
         try:
             # Per Option C: Refresh Stage 1 FundamentalBrief first ONLY if release is genuine Tier-1 (Rate decision, NFP, CPI)
             tier1_patterns = (
-                "interest rate", "rate decision", "fomc", "federal funds", "ecb", "boe", "bank rate",
-                "boj", "rba", "cash rate", "non-farm", "nonfarm", "nfp", "unemployment rate",
-                "consumer price", "cpi", "hicp", "core pce"
+                "interest rate",
+                "rate decision",
+                "fomc",
+                "federal funds",
+                "ecb",
+                "boe",
+                "bank rate",
+                "boj",
+                "rba",
+                "cash rate",
+                "non-farm",
+                "nonfarm",
+                "nfp",
+                "unemployment rate",
+                "consumer price",
+                "cpi",
+                "hicp",
+                "core pce",
             )
             is_tier1 = any(
-                any(p in (getattr(e, "event_name", "") or getattr(e, "name", "") or getattr(e, "event", "") or "").lower() for p in tier1_patterns)
+                any(
+                    p
+                    in (getattr(e, "event_name", "") or getattr(e, "name", "") or getattr(e, "event", "") or "").lower()
+                    for p in tier1_patterns
+                )
                 for e in (events or [])
             )
             if is_tier1 and self._fundamental:
                 try:
-                    logger.info("[PostReleaseAnalyzer] Tier-1 catalyst detected. Refreshing Stage 1 FundamentalBrief before Stage 2...")
+                    logger.info(
+                        "[PostReleaseAnalyzer] Tier-1 catalyst detected. Refreshing Stage 1 FundamentalBrief before Stage 2..."
+                    )
                     async with _gs() as f_session:
                         await self._fundamental.run(f_session, forced=True)
                     logger.info("[PostReleaseAnalyzer] Stage 1 refreshed successfully.")
@@ -334,8 +362,9 @@ class PostReleaseAnalyzer:
             )
 
             actionable = [
-                (sym, r) for sym, r in pa_results.items()
-                if r.get('decision') in ('buy', 'sell') and r.get('analysis_id')
+                (sym, r)
+                for sym, r in pa_results.items()
+                if r.get("decision") in ("buy", "sell") and r.get("analysis_id")
             ]
 
             # Execute actionable trades safely via ReactiveStateGraph or auto_execute check
@@ -351,6 +380,7 @@ class PostReleaseAnalyzer:
                     routed_via_graph = False
                     try:
                         from monika.application.graph.reactive_graph import get_reactive_graph
+
                         reactive_graph = get_reactive_graph()
                         scheduler_ctx = getattr(self, "_cycle_scheduler", None) or self
                         reactive_state = {
@@ -365,11 +395,15 @@ class PostReleaseAnalyzer:
                             "should_pause": False,
                         }
                         config = {"configurable": {"scheduler": scheduler_ctx}}
-                        logger.info("[PostReleaseAnalyzer] Routing actionable trades through LangGraph ReactiveStateGraph...")
+                        logger.info(
+                            "[PostReleaseAnalyzer] Routing actionable trades through LangGraph ReactiveStateGraph..."
+                        )
                         await reactive_graph.ainvoke(reactive_state, config=config)
                         routed_via_graph = True
                     except Exception as g_err:
-                        logger.error(f"[PostReleaseAnalyzer] LangGraph reactive execution failed: {g_err}", exc_info=True)
+                        logger.error(
+                            f"[PostReleaseAnalyzer] LangGraph reactive execution failed: {g_err}", exc_info=True
+                        )
 
                     # Fallback to direct execution service only if graph routing failed and exec_svc available
                     if not routed_via_graph and self._exec_svc:
@@ -377,19 +411,20 @@ class PostReleaseAnalyzer:
                         try:
                             if self._mt5:
                                 account = await self._mt5.get_account_info()
-                                equity = account.get('equity') if account else None
+                                equity = account.get("equity") if account else None
                         except Exception:
                             pass
 
                         from monika.infrastructure.database.models import AssetAnalysis
                         from sqlalchemy import select
+
                         for sym, r in actionable:
                             async with _gs() as session:
-                                ana = (await session.execute(
-                                    select(AssetAnalysis).where(
-                                        AssetAnalysis.id == r['analysis_id']
+                                ana = (
+                                    await session.execute(
+                                        select(AssetAnalysis).where(AssetAnalysis.id == r["analysis_id"])
                                     )
-                                )).scalar_one_or_none()
+                                ).scalar_one_or_none()
                                 if ana:
                                     try:
                                         await self._exec_svc.execute_analysis(session, ana, equity)
@@ -397,12 +432,10 @@ class PostReleaseAnalyzer:
                                             f"[PostReleaseAnalyzer] Direct execution fallback {sym}: {r['decision']}"
                                         )
                                     except Exception as e:
-                                        logger.error(
-                                            f"[PostReleaseAnalyzer] Execution failed {sym}: {e}"
-                                        )
+                                        logger.error(f"[PostReleaseAnalyzer] Execution failed {sym}: {e}")
 
             # Log activity
-            ev_names = ', '.join(str(e.event_name)[:30] for e in events[:3])
+            ev_names = ", ".join(str(e.event_name)[:30] for e in events[:3])
             logger.info(
                 f"[PostReleaseAnalyzer] Complete. Events: {ev_names} | "
                 f"Analyzed: {len(pa_results)} symbols | "
@@ -414,12 +447,11 @@ class PostReleaseAnalyzer:
             if actionable:
                 try:
                     from monika.infrastructure.infra.notifier import get_notifier
+
                     notifier = get_notifier()
-                    trade_summary = ', '.join(f"{s}: {r['decision'].upper()}" for s, r in actionable)
+                    trade_summary = ", ".join(f"{s}: {r['decision'].upper()}" for s, r in actionable)
                     await notifier.send(
-                        f"[LAPORAN] <b>Post-Release Trade Opportunity</b>\n"
-                        f"Events: {ev_names}\n"
-                        f"Trades: {trade_summary}"
+                        f"[LAPORAN] <b>Post-Release Trade Opportunity</b>\nEvents: {ev_names}\nTrades: {trade_summary}"
                     )
                 except Exception:
                     pass

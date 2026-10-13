@@ -44,7 +44,7 @@ class MarketDataScheduler:
         sched_cfg = settings.get("trading", {}).get("schedule", {})
         self.interval_seconds = int(sched_cfg.get("market_data_sync_interval_seconds", 180))  # Default 3 menit
         self.asset_universe: list[str] = settings.get("trading", {}).get("asset_universe", ["XAUUSD", "EURUSD"])
-        
+
         mt5_cfg = settings.get("trading", {}).get("mt5", {})
         self.timeframes: list[str] = mt5_cfg.get("timeframes", ["M15", "H1", "H4", "D1"])
         self._last_sync_time: Optional[datetime] = None
@@ -79,7 +79,9 @@ class MarketDataScheduler:
                     target_symbols = crypto_symbols
                     logger.debug(f"[MarketDataSync] Pasar forex tutup. Menyelaraskan crypto saja: {crypto_symbols}")
                 else:
-                    logger.debug("[MarketDataSync] Pasar forex tutup dan tidak ada simbol crypto. Sinkronisasi dilewati.")
+                    logger.debug(
+                        "[MarketDataSync] Pasar forex tutup dan tidak ada simbol crypto. Sinkronisasi dilewati."
+                    )
                     return {"status": "skipped", "reason": "market_closed"}
 
             summary = {"started_at": now_utc.isoformat(), "price_fetch": {}, "indicators": {}, "structure": {}}
@@ -101,6 +103,7 @@ class MarketDataScheduler:
                 if bus is None:
                     try:
                         from monika.application.protocol.event_bus import get_event_bus
+
                         bus = get_event_bus()
                     except Exception:
                         bus = None
@@ -115,6 +118,7 @@ class MarketDataScheduler:
                                 last = float(quote.get("last", 0.0) or 0.0)
                                 if bid > 0 or ask > 0:
                                     from monika.application.protocol.event_bus import TickPriceEvent
+
                                     t_evt = TickPriceEvent(
                                         symbol=sym,
                                         bid=bid,
@@ -131,6 +135,7 @@ class MarketDataScheduler:
                 try:
                     await sess.rollback()
                     from monika.infrastructure.database.safe_ops import _safe_expunge_all
+
                     await _safe_expunge_all(sess)
                 except Exception:
                     pass
@@ -143,6 +148,7 @@ class MarketDataScheduler:
                 try:
                     await sess.rollback()
                     from monika.infrastructure.database.safe_ops import _safe_expunge_all
+
                     await _safe_expunge_all(sess)
                 except Exception:
                     pass
@@ -182,15 +188,16 @@ class MarketDataScheduler:
         3. Seeds 2022-2026 historical macroeconomic milestones into MarketChronicle.
         """
         DEEP_REQ = {
-            "D1": 1400,   # ~4 years
-            "H4": 4500,   # ~3 years
-            "H1": 9000,   # ~1.5 years
+            "D1": 1400,  # ~4 years
+            "H4": 4500,  # ~3 years
+            "H1": 9000,  # ~1.5 years
         }
 
         async def _run_bootstrap(sess: AsyncSession) -> dict:
             from sqlalchemy import select, func
             from monika.infrastructure.database.models import PriceOHLCV, VIXData, DXYData
             from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+
             report = {"ohlcv_bulk": {}, "vix": 0, "dxy": 0, "milestones": 0}
 
             # 1. Check & Bulk-Load OHLCV from MT5
@@ -202,7 +209,9 @@ class MarketDataScheduler:
                         )
                         cnt = (await sess.execute(cnt_stmt)).scalar_one()
                         if cnt < int(needed_count * 0.75):
-                            logger.info(f"[DeepHistory] Bulk-loading {sym} {tf} from MT5: have {cnt}, requesting {needed_count}...")
+                            logger.info(
+                                f"[DeepHistory] Bulk-loading {sym} {tf} from MT5: have {cnt}, requesting {needed_count}..."
+                            )
                             try:
                                 res = await self._mt5.fetch_and_save_all(
                                     sess, symbols=[sym], timeframes=[tf], count=needed_count
@@ -217,7 +226,8 @@ class MarketDataScheduler:
                 if vix_cnt < 365:
                     logger.info(f"[DeepHistory] VIX rows={vix_cnt} (<365). Downloading 5y VIX history...")
                     from monika.infrastructure.data_ingestion.sources.vix_yfinance import VIXFetcher
-                    fred_key = self.settings.get('data_sources', {}).get('fred', {}).get('api_key')
+
+                    fred_key = self.settings.get("data_sources", {}).get("fred", {}).get("api_key")
                     vix_fetcher = VIXFetcher(sess, fred_api_key=fred_key)
                     report["vix"] = await vix_fetcher.fetch(period="5y")
             except Exception as e:
@@ -229,6 +239,7 @@ class MarketDataScheduler:
                 if dxy_cnt < 365:
                     logger.info(f"[DeepHistory] DXY rows={dxy_cnt} (<365). Downloading 5y DXY history...")
                     from monika.infrastructure.data_ingestion.sources.dxy_yfinance import DXYFetcher
+
                     dxy_fetcher = DXYFetcher(sess)
                     report["dxy"] = await dxy_fetcher.fetch(period="5y")
             except Exception as e:

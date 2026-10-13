@@ -33,7 +33,7 @@ logger = logging.getLogger("TradingAgent.MCP.Dispatcher")
 
 class MonikaMcpDispatcher:
     """Unified MCP Server Dispatcher.
-    
+
     Serves both:
     1. Built-in Quantitative Trading tools from MonikaMcpServer (positions, macro regime, calendar, playbooks).
     2. Dynamic tools registered in UnifiedToolRegistry (Pydantic v2 schemas).
@@ -56,7 +56,12 @@ class MonikaMcpDispatcher:
         # 2. Unified Tool Registry tools
         for t in unified_tool_registry.list_tools(only_available=True):
             input_model = getattr(t, "input_model", None)
-            if input_model is not None and isinstance(input_model, type) and issubclass(input_model, BaseModel) and input_model is not BaseModel:
+            if (
+                input_model is not None
+                and isinstance(input_model, type)
+                and issubclass(input_model, BaseModel)
+                and input_model is not BaseModel
+            ):
                 try:
                     schema = input_model.model_json_schema()
                     schema.pop("title", None)
@@ -149,7 +154,9 @@ class MonikaMcpDispatcher:
                         "content": [
                             {
                                 "type": "text",
-                                "text": json.dumps(result, indent=2) if isinstance(result, (dict, list)) else str(result),
+                                "text": json.dumps(result, indent=2)
+                                if isinstance(result, (dict, list))
+                                else str(result),
                             }
                         ]
                     },
@@ -160,9 +167,7 @@ class MonikaMcpDispatcher:
                     req_id,
                     {
                         "isError": True,
-                        "content": [
-                            {"type": "text", "text": f"Tool execution failed: {str(e)}"}
-                        ],
+                        "content": [{"type": "text", "text": f"Tool execution failed: {str(e)}"}],
                     },
                 )
 

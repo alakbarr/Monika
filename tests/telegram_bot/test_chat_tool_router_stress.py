@@ -25,6 +25,7 @@ def router():
 # Category 1: Boundary Slash Commands
 # ============================================================================
 
+
 def test_slash_macro_variations(router):
     """Test /macro command with various formats, parameters, and aliases."""
     target_macro_tools = {
@@ -33,7 +34,7 @@ def test_slash_macro_variations(router):
         "get_interest_rates",
         "get_eia_oil_inventory",
     }
-    
+
     variations = [
         "/macro",
         "/macro FOMC rate decision",
@@ -48,7 +49,7 @@ def test_slash_macro_variations(router):
         "/vix volatility update",
         "/dxy dollar index",
     ]
-    
+
     for query in variations:
         tools = router.route_tools_for_query(query)
         tool_names = {t["name"] for t in tools}
@@ -64,7 +65,7 @@ def test_slash_research_variations(router):
         "get_interest_rates",
         "get_eia_oil_inventory",
     }
-    
+
     variations = [
         "/research",
         "/research FOMC consensus whisper",
@@ -72,7 +73,7 @@ def test_slash_research_variations(router):
         "/riset mendalam dampak CPI",
         "  /research  ",
     ]
-    
+
     for query in variations:
         tools = router.route_tools_for_query(query)
         tool_names = {t["name"] for t in tools}
@@ -105,6 +106,7 @@ def test_unknown_slash_command_falls_through(router):
 # ============================================================================
 # Category 2: Conversational & Greeting Edge Cases
 # ============================================================================
+
 
 def test_pure_greetings_zero_tools(router):
     """Pure conversational greetings must return 0 tools."""
@@ -140,7 +142,7 @@ def test_greeting_with_symbol_retains_tools(router):
         ("Test kalender ekonomi hari ini", "get_economic_calendar"),
         ("Halo tolong pasang order buy ya", "propose_action"),
         ("Halo tolong riset mendalam event Fed", "web_search"),
-    ]
+    ],
 )
 def test_greeting_masking_functional_query(router, query, expected_tool):
     """
@@ -156,6 +158,7 @@ def test_greeting_masking_functional_query(router, query, expected_tool):
 # ============================================================================
 # Category 3: Complex Event Sentences (contoh_pertanyaan.md)
 # ============================================================================
+
 
 def test_contoh_pertanyaan_full_routing(router):
     """Test the full multi-paragraph query from contoh_pertanyaan.md."""
@@ -173,7 +176,7 @@ def test_contoh_pertanyaan_full_routing(router):
     )
     tools = router.route_tools_for_query(full_query)
     tool_names = {t["name"] for t in tools}
-    
+
     # Must include macro analysis suite
     assert "get_fedwatch_probabilities" in tool_names, "Full macro query must include get_fedwatch_probabilities"
     assert "get_treasury_yields" in tool_names, "Full macro query must include get_treasury_yields"
@@ -190,7 +193,7 @@ def test_contoh_pertanyaan_macro_excerpts(router):
         "Apakah ada history The Fed tidak searah dengan harapan pasar dan mengecoh konsensus?",
         "Cek yield Treasury 10Y dan cadangan minyak EIA jelang pengumuman suku bunga",
     ]
-    
+
     for text in excerpts:
         tools = router.route_tools_for_query(text)
         tool_names = {t["name"] for t in tools}
@@ -215,7 +218,7 @@ def test_contoh_pertanyaan_macro_excerpts(router):
         "Bagaimana proyeksi dot plot SEP The Fed?",
         "Forecast keputusan suku bunga FOMC",
         "Bagaimana proyeksi press conference Kevin Warsh apakah hawkish atau dovish pasca SEP dot plot?",
-    ]
+    ],
 )
 def test_timesfm_hijacking_macro_queries(router, query):
     """
@@ -241,12 +244,13 @@ def test_timesfm_hijacking_macro_queries(router, query):
 # Category 4: Mixed Intent Combinations & Keyword Collisions
 # ============================================================================
 
+
 def test_mixed_macro_and_technical(router):
     """Query combining macro event with technical chart inspection."""
     query = "Bagaimana data CPI inflasi dan dot plot Fed, dan tolong cek chart RSI SMC XAUUSD"
     tools = router.route_tools_for_query(query)
     tool_names = {t["name"] for t in tools}
-    
+
     assert "get_fedwatch_probabilities" in tool_names or "get_interest_rates" in tool_names
     assert "get_chart" in tool_names
     assert "get_smc_zones" in tool_names
@@ -257,7 +261,7 @@ def test_mixed_macro_and_portfolio(router):
     query = "Bagaimana saldo pnl dan open posisi saya menghadapi rilis suku bunga The Fed?"
     tools = router.route_tools_for_query(query)
     tool_names = {t["name"] for t in tools}
-    
+
     assert "get_account_info" in tool_names
     assert "get_open_positions" in tool_names
     assert "get_fedwatch_probabilities" in tool_names or "get_interest_rates" in tool_names
@@ -280,7 +284,7 @@ def test_multi_domain_complex_fallback(router):
         ("Riset probabilitas event suku bunga The Fed untuk setup buy emas", "get_fedwatch_probabilities"),
         ("The Fed buka suara soal suku bunga", "get_interest_rates"),
         ("The Fed tutup kemungkinan rate cut tahun ini", "get_interest_rates"),
-    ]
+    ],
 )
 def test_trade_intent_hijacking_research_and_macro(router, query, expected_tool):
     """
@@ -295,6 +299,7 @@ def test_trade_intent_hijacking_research_and_macro(router, query, expected_tool)
 # ============================================================================
 # Category 5: Adversarial, Malformed, and Robustness Inputs
 # ============================================================================
+
 
 def test_empty_input_returns_all_tools(router):
     """Empty string must return all tools as safe fallback."""

@@ -1,14 +1,31 @@
 import math
 
+
 def compress_tool_payload(
     data,
     strip_empty_collections: bool = True,
     preserve_keys: tuple = (
-        "events", "news", "bars", "trades", "positions",
-        "dxy", "vix", "fedwatch", "fedwatch_comparison", "comparisons", "treasury_yields", "interest_rates",
-        "cot_signals", "economic_calendar", "news_digest", "surprise_summary",
-        "eurusd_momentum", "market_session", "funding_rate", "fear_greed"
-    )
+        "events",
+        "news",
+        "bars",
+        "trades",
+        "positions",
+        "dxy",
+        "vix",
+        "fedwatch",
+        "fedwatch_comparison",
+        "comparisons",
+        "treasury_yields",
+        "interest_rates",
+        "cot_signals",
+        "economic_calendar",
+        "news_digest",
+        "surprise_summary",
+        "eurusd_momentum",
+        "market_session",
+        "funding_rate",
+        "fear_greed",
+    ),
 ):
     """
     Mengompresi payload JSON secara rekursif untuk mengurangi penggunaan token LLM:
@@ -23,18 +40,22 @@ def compress_tool_payload(
                 continue
             if strip_empty_collections and v in ([], {}) and k not in preserve_keys:
                 continue
-            
-            compressed_val = compress_tool_payload(v, strip_empty_collections=strip_empty_collections, preserve_keys=preserve_keys)
+
+            compressed_val = compress_tool_payload(
+                v, strip_empty_collections=strip_empty_collections, preserve_keys=preserve_keys
+            )
             if compressed_val is not None and compressed_val != "":
                 if not strip_empty_collections or compressed_val not in ([], {}) or k in preserve_keys:
                     compressed_dict[k] = compressed_val
-                
+
         return compressed_dict
 
     elif isinstance(data, list):
         compressed_list = []
         for item in data:
-            compressed_val = compress_tool_payload(item, strip_empty_collections=strip_empty_collections, preserve_keys=preserve_keys)
+            compressed_val = compress_tool_payload(
+                item, strip_empty_collections=strip_empty_collections, preserve_keys=preserve_keys
+            )
             if compressed_val is not None and compressed_val != "":
                 if not strip_empty_collections or compressed_val not in ([], {}):
                     compressed_list.append(compressed_val)

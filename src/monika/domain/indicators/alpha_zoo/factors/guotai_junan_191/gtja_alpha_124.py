@@ -1,11 +1,11 @@
-
 """GTJA Alpha 124 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     (CLOSE-VWAP)/DECAYLINEAR(RANK(TSMAX(CLOSE,30)),2)
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -33,16 +33,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_124"
 
 __alpha_meta__ = {
-    'id': 'gtja191_124',
-    'theme': ['reversal'],
-    'formula_latex': '(close-vwap)/decay_linear(rank(tsmax(close,30)),2)',
-    'columns_required': ['open', 'high', 'low', 'close', 'volume', 'amount'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 30,
-    'min_warmup_bars': 32,
-    'notes': '',
+    "id": "gtja191_124",
+    "theme": ["reversal"],
+    "formula_latex": "(close-vwap)/decay_linear(rank(tsmax(close,30)),2)",
+    "columns_required": ["open", "high", "low", "close", "volume", "amount"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 30,
+    "min_warmup_bars": 32,
+    "notes": "",
 }
 
 

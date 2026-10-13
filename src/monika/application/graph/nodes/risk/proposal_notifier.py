@@ -36,9 +36,13 @@ async def send_proposal_notifications(actionable: List[Tuple[str, Dict[str, Any]
             confidence = float(r.get("confidence", 0) or 0)
 
             async with get_session() as session:
-                ana = (await session.execute(
-                    select(AssetAnalysis).where(AssetAnalysis.id == analysis_id)
-                )).scalar_one_or_none() if analysis_id else None
+                ana = (
+                    (
+                        await session.execute(select(AssetAnalysis).where(AssetAnalysis.id == analysis_id))
+                    ).scalar_one_or_none()
+                    if analysis_id
+                    else None
+                )
 
             if not ana:
                 continue

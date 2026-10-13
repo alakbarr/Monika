@@ -74,7 +74,7 @@ class StreamingThinkScrubber:
                         content_out.append(before)
                     self._in_think_block = True
                     self._active_closing_tag = found_close
-                    self._buffer = self._buffer[earliest_idx + len(found_open):]
+                    self._buffer = self._buffer[earliest_idx + len(found_open) :]
                 else:
                     # Check for partial prefix of any opening tag at buffer end
                     partial_found = False
@@ -104,7 +104,7 @@ class StreamingThinkScrubber:
                     if thought:
                         thinking_out.append(thought)
                     self._in_think_block = False
-                    self._buffer = self._buffer[idx + len(self._active_closing_tag):]
+                    self._buffer = self._buffer[idx + len(self._active_closing_tag) :]
                 else:
                     # Check for partial prefix of active closing tag at buffer end
                     partial_found = False
@@ -166,4 +166,3 @@ class StreamingThinkScrubber:
     @property
     def total_thinking(self) -> str:
         return "".join(self._accumulated_thinking)
-

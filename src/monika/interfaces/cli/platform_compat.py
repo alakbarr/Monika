@@ -79,7 +79,12 @@ def detect_color_depth() -> ColorDepth:
 
     # Windows Terminal and modern terminals default to truecolor
     if sys.platform == "win32":
-        if os.environ.get("WT_SESSION") or os.environ.get("TERM_PROGRAM") in ("vscode", "hyper", "wezterm", "alacritty"):
+        if os.environ.get("WT_SESSION") or os.environ.get("TERM_PROGRAM") in (
+            "vscode",
+            "hyper",
+            "wezterm",
+            "alacritty",
+        ):
             return ColorDepth.TRUECOLOR
         return ColorDepth.ANSI_256
 

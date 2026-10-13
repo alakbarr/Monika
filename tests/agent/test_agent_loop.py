@@ -48,15 +48,14 @@ async def test_system_agent_loop_execute_ad_hoc_mock_graph():
                 "divergence_score": 0.35,
             }
         },
-        "investment_verdicts": {
-            "XAUUSD": {"action": "buy"}
-        },
+        "investment_verdicts": {"XAUUSD": {"action": "buy"}},
     }
 
     mock_graph = MagicMock()
     mock_graph.ainvoke = AsyncMock(return_value=mock_final_state)
 
     progress_log = []
+
     async def track_progress(msg: str):
         progress_log.append(msg)
 
@@ -108,10 +107,7 @@ async def test_adhoc_scheduler_proxy_get_symbol_paper_stats():
     # 2. Insufficient trades (< 5)
     mock_session = create_mock_async_session()
     mock_result = MagicMock()
-    records_few = [
-        PaperTradeRecord(symbol="XAUUSD", status="closed", exit_reason="tp_hit")
-        for _ in range(3)
-    ]
+    records_few = [PaperTradeRecord(symbol="XAUUSD", status="closed", exit_reason="tp_hit") for _ in range(3)]
     mock_result.scalars.return_value.all.return_value = records_few
     mock_session.execute = AsyncMock(return_value=mock_result)
 
@@ -158,4 +154,3 @@ async def test_paper_tracker_get_statistics_accepts_symbol():
     assert isinstance(stats, dict)
     assert stats["total_trades"] == 0
     assert stats["win_rate_pct"] == 0
-

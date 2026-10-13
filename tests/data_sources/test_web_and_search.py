@@ -89,6 +89,7 @@ async def test_web_tools_unified_registry_and_fetch(monkeypatch, tmp_path):
 
     # Mock web reader response
     from analysis.tools.domain import web_tools
+
     distiller = ContentDistiller(max_chars=2000, spill_dir=tmp_path)
     monkeypatch.setattr(web_tools, "_content_distiller", distiller)
 

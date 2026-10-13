@@ -29,9 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from database.models import (
-    Base, Order, OrderStatus, OrderEvent, Position, TradeOutcome, AssetAnalysis
-)
+from database.models import Base, Order, OrderStatus, OrderEvent, Position, TradeOutcome, AssetAnalysis
 from execution.broker_adapter import SimulatedBrokerAdapter, MT5LiveAdapter
 from execution.execution_service import ExecutionService, ExecutionResult
 from scheduler.order_reconciler import OrderReconciler
@@ -129,7 +127,9 @@ class TestPendingOrderAcceptedLifecycle:
             "execution": {"max_spread_multiplier": {"EURUSD": 5.0}},
         }
         svc = ExecutionService(settings=settings, broker_adapter=adapter, dry_run=False)
-        svc.gate.check = AsyncMock(return_value=MagicMock(approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[]))
+        svc.gate.check = AsyncMock(
+            return_value=MagicMock(approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[])
+        )
 
         order_plan = {
             "symbol": "EURUSD",
@@ -168,9 +168,7 @@ class TestPartialFillLifecycle:
     """Test partial fill handling and state transitions."""
 
     @pytest.mark.asyncio
-    async def test_order_partial_fill_and_subsequent_complete_fill(
-        self, async_sqlite_session, clean_event_bus
-    ):
+    async def test_order_partial_fill_and_subsequent_complete_fill(self, async_sqlite_session, clean_event_bus):
         """Verify incremental fill from ACCEPTED -> PARTIALLY_FILLED -> FILLED."""
         session = async_sqlite_session
         bus = clean_event_bus
@@ -196,20 +194,20 @@ class TestPartialFillLifecycle:
 
         # 1. Transition to ACCEPTED
         await svc._transition_order_state(
-            session, order, OrderStatus.ACCEPTED,
-            reason="Broker accepted limit order",
-            ticket=200001
+            session, order, OrderStatus.ACCEPTED, reason="Broker accepted limit order", ticket=200001
         )
         assert order.status == OrderStatus.ACCEPTED
         assert order.filled_volume == 0.0
 
         # 2. Partial fill of 0.4 lots
         await svc._transition_order_state(
-            session, order, OrderStatus.PARTIALLY_FILLED,
+            session,
+            order,
+            OrderStatus.PARTIALLY_FILLED,
             reason="Partial fill 0.4/1.0 lots",
             ticket=200001,
             executed_price=1.2650,
-            filled_volume=0.4
+            filled_volume=0.4,
         )
         assert order.status == OrderStatus.PARTIALLY_FILLED
         assert order.filled_volume == 0.4
@@ -217,11 +215,13 @@ class TestPartialFillLifecycle:
 
         # 3. Final fill of remaining 0.6 lots
         await svc._transition_order_state(
-            session, order, OrderStatus.FILLED,
+            session,
+            order,
+            OrderStatus.FILLED,
             reason="Remaining volume filled",
             ticket=200001,
             executed_price=1.2650,
-            filled_volume=1.0
+            filled_volume=1.0,
         )
         assert order.status == OrderStatus.FILLED
         assert order.filled_volume == 1.0
@@ -236,9 +236,7 @@ class TestOrderReconcilerWorker:
     """Comprehensive test suite for the OrderReconciler background worker."""
 
     @pytest.mark.asyncio
-    async def test_reconciler_pending_order_filled_in_terminal(
-        self, async_sqlite_session, clean_event_bus
-    ):
+    async def test_reconciler_pending_order_filled_in_terminal(self, async_sqlite_session, clean_event_bus):
         """
         Scenario: DB has an ACCEPTED pending order.
         MT5 terminal reports that the order is no longer in pending orders,
@@ -273,16 +271,20 @@ class TestOrderReconcilerWorker:
         # No pending orders, but position 778899 exists
         mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
-        mock_adapter.get_positions = AsyncMock(return_value=[{
-            "ticket": 778899,
-            "symbol": "USDJPY",
-            "direction": "buy",
-            "volume": 0.3,
-            "price_open": 155.18,
-            "sl": 154.50,
-            "tp": 156.50,
-            "time": clock.now(),
-        }])
+        mock_adapter.get_positions = AsyncMock(
+            return_value=[
+                {
+                    "ticket": 778899,
+                    "symbol": "USDJPY",
+                    "direction": "buy",
+                    "volume": 0.3,
+                    "price_open": 155.18,
+                    "sl": 154.50,
+                    "tp": 156.50,
+                    "time": clock.now(),
+                }
+            ]
+        )
 
         reconciler = OrderReconciler(
             settings={"trading": {"dry_run": False}},
@@ -312,9 +314,7 @@ class TestOrderReconcilerWorker:
         assert any(e.order_id == order.id and e.new_state == "filled" for e in received_events)
 
     @pytest.mark.asyncio
-    async def test_reconciler_pending_order_cancelled_externally(
-        self, async_sqlite_session, clean_event_bus
-    ):
+    async def test_reconciler_pending_order_cancelled_externally(self, async_sqlite_session, clean_event_bus):
         """
         Scenario: DB has an ACCEPTED pending order.
         Terminal reports neither a pending order nor an open position, and no deals exist.
@@ -359,9 +359,7 @@ class TestOrderReconcilerWorker:
         assert any(e.order_id == order.id and e.new_state == "cancelled" for e in received_events)
 
     @pytest.mark.asyncio
-    async def test_reconciler_pending_order_partial_fill_in_terminal(
-        self, async_sqlite_session, clean_event_bus
-    ):
+    async def test_reconciler_pending_order_partial_fill_in_terminal(self, async_sqlite_session, clean_event_bus):
         """
         Scenario: DB has an ACCEPTED order for 1.0 lots.
         Terminal reports the order is still pending, but volume_current is 0.6 lots (0.4 filled).
@@ -391,13 +389,17 @@ class TestOrderReconcilerWorker:
         await session.commit()
 
         mock_adapter = MagicMock()
-        mock_adapter.get_orders = AsyncMock(return_value=[{
-            "ticket": 445566,
-            "symbol": "EURUSD",
-            "volume_initial": 1.0,
-            "volume_current": 0.6,
-            "price_open": 1.0820,
-        }])
+        mock_adapter.get_orders = AsyncMock(
+            return_value=[
+                {
+                    "ticket": 445566,
+                    "symbol": "EURUSD",
+                    "volume_initial": 1.0,
+                    "volume_current": 0.6,
+                    "price_open": 1.0820,
+                }
+            ]
+        )
         mock_adapter.get_positions = AsyncMock(return_value=[])
 
         reconciler = OrderReconciler(
@@ -415,9 +417,7 @@ class TestOrderReconcilerWorker:
         assert any(e.order_id == order.id and e.new_state == "partially_filled" for e in received_events)
 
     @pytest.mark.asyncio
-    async def test_reconciler_open_position_closed_externally(
-        self, async_sqlite_session
-    ):
+    async def test_reconciler_open_position_closed_externally(self, async_sqlite_session):
         """
         Scenario: DB has an open Position.
         Terminal reports no open positions.
@@ -461,15 +461,15 @@ class TestOrderReconcilerWorker:
         assert pos.closed_at is not None
 
         # Verify TradeOutcome
-        outcome = (await session.execute(select(TradeOutcome).where(TradeOutcome.position_id == pos.id))).scalar_one_or_none()
+        outcome = (
+            await session.execute(select(TradeOutcome).where(TradeOutcome.position_id == pos.id))
+        ).scalar_one_or_none()
         assert outcome is not None
         assert outcome.symbol == "BTCUSD"
         assert outcome.exit_reason == "external_terminal_close"
 
     @pytest.mark.asyncio
-    async def test_reconciler_preserves_paper_position_when_terminal_empty(
-        self, async_sqlite_session
-    ):
+    async def test_reconciler_preserves_paper_position_when_terminal_empty(self, async_sqlite_session):
         """
         P0-2: Verify that paper positions (is_paper=True) are NEVER closed by
         OrderReconciler when the live MT5 terminal returns no open positions.
@@ -509,9 +509,7 @@ class TestOrderReconcilerWorker:
         assert pos.closed_at is None
 
     @pytest.mark.asyncio
-    async def test_reconciler_position_sltp_and_volume_modified_externally(
-        self, async_sqlite_session
-    ):
+    async def test_reconciler_position_sltp_and_volume_modified_externally(self, async_sqlite_session):
         """
         Scenario: DB has open Position with SL 1.0800, TP 1.0900, Vol 1.0.
         Terminal reports same position with SL 1.0820, TP 1.0950, Vol 0.5.
@@ -536,13 +534,17 @@ class TestOrderReconcilerWorker:
 
         mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
-        mock_adapter.get_positions = AsyncMock(return_value=[{
-            "ticket": 343434,
-            "symbol": "EURUSD",
-            "sl": 1.0820,
-            "tp": 1.0950,
-            "volume": 0.5,
-        }])
+        mock_adapter.get_positions = AsyncMock(
+            return_value=[
+                {
+                    "ticket": 343434,
+                    "symbol": "EURUSD",
+                    "sl": 1.0820,
+                    "tp": 1.0950,
+                    "volume": 0.5,
+                }
+            ]
+        )
 
         reconciler = OrderReconciler(
             settings={"trading": {"dry_run": False}},
@@ -558,9 +560,7 @@ class TestOrderReconcilerWorker:
         assert pos.volume == 0.5
 
     @pytest.mark.asyncio
-    async def test_reconciler_adopts_untracked_terminal_position(
-        self, async_sqlite_session
-    ):
+    async def test_reconciler_adopts_untracked_terminal_position(self, async_sqlite_session):
         """
         Scenario: Terminal has a position #{565656} that is not recorded in local DB.
         Reconciler must adopt it and create an open Position record.
@@ -569,16 +569,20 @@ class TestOrderReconcilerWorker:
 
         mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
-        mock_adapter.get_positions = AsyncMock(return_value=[{
-            "ticket": 565656,
-            "symbol": "XTIUSD",
-            "direction": "sell",
-            "volume": 0.2,
-            "price_open": 78.50,
-            "sl": 80.0,
-            "tp": 75.0,
-            "time": clock.now(),
-        }])
+        mock_adapter.get_positions = AsyncMock(
+            return_value=[
+                {
+                    "ticket": 565656,
+                    "symbol": "XTIUSD",
+                    "direction": "sell",
+                    "volume": 0.2,
+                    "price_open": 78.50,
+                    "sl": 80.0,
+                    "tp": 75.0,
+                    "time": clock.now(),
+                }
+            ]
+        )
 
         reconciler = OrderReconciler(
             settings={"trading": {"dry_run": False}},
@@ -612,6 +616,7 @@ class TestOrderReconcilerWorker:
         class AsyncContextManagerMock:
             async def __aenter__(self):
                 return async_sqlite_session
+
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 return None
 
@@ -641,25 +646,27 @@ class TestMainOrchestrationIntegration:
         assert agent.order_reconciler is None
 
         # Call _init_components with mocked dependencies
-        with patch("execution.mt5_client.MT5Client"), \
-             patch("execution.execution_service.ExecutionService"), \
-             patch("execution.ea_bridge.heartbeat_writer.HeartbeatManager"), \
-             patch("scheduler.graph_cycle_scheduler.GraphCycleScheduler"), \
-             patch("scheduler.news_watcher.NewsWatcher"), \
-             patch("telegram_bot.bot.TelegramBot"), \
-             patch("analysis.stages.fundamental_stage.FundamentalStage"), \
-             patch("analysis.stages.per_asset_stage.PerAssetStage"), \
-             patch("scheduler.market_data_scheduler.MarketDataScheduler"), \
-             patch("scheduler.macro_data_scheduler.MacroDataScheduler"), \
-             patch("scheduler.trigger_checker.TriggerChecker"), \
-             patch("scheduler.digest_slice_scheduler.DigestSliceScheduler"), \
-             patch("harness.engine.PluginEngine"), \
-             patch("analysis.memory.background_review.BackgroundReviewEngine"), \
-             patch("scheduler.universal_cron_scheduler.UniversalCronScheduler"), \
-             patch("scheduler.alpha_discovery_scheduler.AlphaDiscoveryScheduler"), \
-             patch("scheduler.strategy_synthesis_scheduler.StrategySynthesisScheduler"), \
-             patch("scheduler.playbook_curator.PlaybookCurator"), \
-             patch("utils.infra.notifier.AgentNotifier"):
+        with (
+            patch("execution.mt5_client.MT5Client"),
+            patch("execution.execution_service.ExecutionService"),
+            patch("execution.ea_bridge.heartbeat_writer.HeartbeatManager"),
+            patch("scheduler.graph_cycle_scheduler.GraphCycleScheduler"),
+            patch("scheduler.news_watcher.NewsWatcher"),
+            patch("telegram_bot.bot.TelegramBot"),
+            patch("analysis.stages.fundamental_stage.FundamentalStage"),
+            patch("analysis.stages.per_asset_stage.PerAssetStage"),
+            patch("scheduler.market_data_scheduler.MarketDataScheduler"),
+            patch("scheduler.macro_data_scheduler.MacroDataScheduler"),
+            patch("scheduler.trigger_checker.TriggerChecker"),
+            patch("scheduler.digest_slice_scheduler.DigestSliceScheduler"),
+            patch("harness.engine.PluginEngine"),
+            patch("analysis.memory.background_review.BackgroundReviewEngine"),
+            patch("scheduler.universal_cron_scheduler.UniversalCronScheduler"),
+            patch("scheduler.alpha_discovery_scheduler.AlphaDiscoveryScheduler"),
+            patch("scheduler.strategy_synthesis_scheduler.StrategySynthesisScheduler"),
+            patch("scheduler.playbook_curator.PlaybookCurator"),
+            patch("utils.infra.notifier.AgentNotifier"),
+        ):
             agent._init_components()
 
         assert agent.order_reconciler is not None
@@ -673,14 +680,13 @@ class TestReconcilerHardenedEdgeCases:
     def test_mt5_remote_gateway_adapter_instantiation_and_get_orders(self):
         """Verify MT5RemoteGatewayAdapter can be instantiated without TypeError."""
         from execution.broker_adapter import MT5RemoteGatewayAdapter
+
         adapter = MT5RemoteGatewayAdapter(gateway_url="http://localhost:8080")
         assert hasattr(adapter, "get_orders")
         assert callable(adapter.get_orders)
 
     @pytest.mark.asyncio
-    async def test_reconciler_aborts_on_terminal_disconnect_preserving_db_state(
-        self, async_sqlite_session
-    ):
+    async def test_reconciler_aborts_on_terminal_disconnect_preserving_db_state(self, async_sqlite_session):
         """
         Verify that if broker/MT5 fails or is disconnected, the reconciler
         skips the pass and DOES NOT falsely mark positions closed or orders cancelled.
@@ -730,9 +736,7 @@ class TestReconcilerHardenedEdgeCases:
         assert order.status == OrderStatus.ACCEPTED
 
     @pytest.mark.asyncio
-    async def test_reconciler_preserves_newly_submitted_order_within_grace_period(
-        self, async_sqlite_session
-    ):
+    async def test_reconciler_preserves_newly_submitted_order_within_grace_period(self, async_sqlite_session):
         """
         Verify that a newly SUBMITTED order (<45s old) is NOT immediately cancelled
         if it has not yet appeared in the terminal.
@@ -757,7 +761,10 @@ class TestReconcilerHardenedEdgeCases:
         mock_adapter.get_positions = AsyncMock(return_value=[])
 
         reconciler = OrderReconciler(
-            settings={"trading": {"dry_run": False}, "execution": {"reconciliation": {"submitted_grace_seconds": 45.0}}},
+            settings={
+                "trading": {"dry_run": False},
+                "execution": {"reconciliation": {"submitted_grace_seconds": 45.0}},
+            },
             broker_adapter=mock_adapter,
         )
 
@@ -768,9 +775,7 @@ class TestReconcilerHardenedEdgeCases:
         assert order.status == OrderStatus.SUBMITTED
 
     @pytest.mark.asyncio
-    async def test_reconciler_handles_order_with_none_ticket_without_matching_null_position(
-        self, async_sqlite_session
-    ):
+    async def test_reconciler_handles_order_with_none_ticket_without_matching_null_position(self, async_sqlite_session):
         """
         Verify that order with mt5_ticket=None does not match a Position with mt5_ticket=None
         due to 'IS NULL' SQL evaluation.
@@ -806,15 +811,19 @@ class TestReconcilerHardenedEdgeCases:
         mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
         # Terminal position has comment containing order's client_order_id
-        mock_adapter.get_positions = AsyncMock(return_value=[{
-            "ticket": 999001,
-            "symbol": "EURUSD",
-            "direction": "buy",
-            "volume": 0.2,
-            "price_open": 1.0850,
-            "comment": "ORD_NULL_01",
-            "time": clock.now(),
-        }])
+        mock_adapter.get_positions = AsyncMock(
+            return_value=[
+                {
+                    "ticket": 999001,
+                    "symbol": "EURUSD",
+                    "direction": "buy",
+                    "volume": 0.2,
+                    "price_open": 1.0850,
+                    "comment": "ORD_NULL_01",
+                    "time": clock.now(),
+                }
+            ]
+        )
 
         reconciler = OrderReconciler(
             settings={"trading": {"dry_run": False}},
@@ -834,9 +843,7 @@ class TestReconcilerHardenedEdgeCases:
         assert new_pos.mt5_ticket == 999001
 
     @pytest.mark.asyncio
-    async def test_reconciler_prevents_duplicate_trade_outcome(
-        self, async_sqlite_session
-    ):
+    async def test_reconciler_prevents_duplicate_trade_outcome(self, async_sqlite_session):
         """Verify multiple reconciliation passes on closed position do not duplicate TradeOutcome."""
         session = async_sqlite_session
 
@@ -866,30 +873,37 @@ class TestReconcilerHardenedEdgeCases:
         stats1 = await reconciler.reconcile_once(session=session)
         assert stats1.get("positions_closed") == 1
 
-        outcomes1 = (await session.execute(select(TradeOutcome).where(TradeOutcome.position_id == pos.id))).scalars().all()
+        outcomes1 = (
+            (await session.execute(select(TradeOutcome).where(TradeOutcome.position_id == pos.id))).scalars().all()
+        )
         assert len(outcomes1) == 1
 
         # Second pass should not duplicate TradeOutcome
         stats2 = await reconciler.reconcile_once(session=session)
         assert stats2.get("positions_closed") == 0
 
-        outcomes2 = (await session.execute(select(TradeOutcome).where(TradeOutcome.position_id == pos.id))).scalars().all()
+        outcomes2 = (
+            (await session.execute(select(TradeOutcome).where(TradeOutcome.position_id == pos.id))).scalars().all()
+        )
         assert len(outcomes2) == 1
 
     @pytest.mark.asyncio
     async def test_mt5_live_adapter_cancel_order_resolves_string_client_order_id(self):
         """Verify MT5LiveAdapter.cancel_order resolves string client_order_id to numeric ticket."""
         mock_mt5 = MagicMock()
-        mock_mt5.get_orders = AsyncMock(return_value=[{
-            "ticket": 444333,
-            "comment": "ORD#ord_abc1",
-            "client_order_id": "ord_abc1",
-            "symbol": "EURUSD",
-        }])
+        mock_mt5.get_orders = AsyncMock(
+            return_value=[
+                {
+                    "ticket": 444333,
+                    "comment": "ORD#ord_abc1",
+                    "client_order_id": "ord_abc1",
+                    "symbol": "EURUSD",
+                }
+            ]
+        )
         mock_mt5.cancel_order = AsyncMock(return_value={"success": True, "ticket": 444333})
 
         adapter = MT5LiveAdapter(mt5_client=mock_mt5, dry_run=False)
         res = await adapter.cancel_order("ord_abc1")
         assert res is True
         mock_mt5.cancel_order.assert_called_once_with(444333)
-

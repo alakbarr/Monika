@@ -1,6 +1,7 @@
 """
 Tests for vectorized Qlib158 factors and safe WorldQuant 101 factor primitives.
 """
+
 from __future__ import annotations
 
 import numpy as np

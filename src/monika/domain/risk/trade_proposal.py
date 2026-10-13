@@ -22,6 +22,7 @@ class TradeProposal(BaseModel):
     Immutable proposal contract emitted by Plane 1 (AI Analysis Playground)
     and validated independently by Plane 2 (Financial Fortress).
     """
+
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     proposal_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -66,7 +67,9 @@ class TradeProposal(BaseModel):
             if val is not None and (math.isnan(val) or math.isinf(val)):
                 raise ValueError(f"Field '{f_name}' cannot be NaN or Infinite: {val}")
 
-        is_trailing = bool(self.metadata.get("is_trailing") or self.metadata.get("trailing_stop") or self.metadata.get("runner"))
+        is_trailing = bool(
+            self.metadata.get("is_trailing") or self.metadata.get("trailing_stop") or self.metadata.get("runner")
+        )
         if self.direction in ("BUY", "SELL"):
             if self.entry_price <= 0.0:
                 raise ValueError(f"Active trade ({self.direction}) requires entry_price > 0, got {self.entry_price}")
@@ -84,7 +87,9 @@ class TradeProposal(BaseModel):
                         )
                 else:
                     if self.stop_loss >= self.entry_price:
-                        raise ValueError(f"BUY geometry violation: SL ({self.stop_loss}) must be < Entry ({self.entry_price})")
+                        raise ValueError(
+                            f"BUY geometry violation: SL ({self.stop_loss}) must be < Entry ({self.entry_price})"
+                        )
             elif self.direction == "SELL":
                 if not is_trailing:
                     if not (self.take_profit < self.entry_price < self.stop_loss):
@@ -93,7 +98,9 @@ class TradeProposal(BaseModel):
                         )
                 else:
                     if self.stop_loss <= self.entry_price:
-                        raise ValueError(f"SELL geometry violation: SL ({self.stop_loss}) must be > Entry ({self.entry_price})")
+                        raise ValueError(
+                            f"SELL geometry violation: SL ({self.stop_loss}) must be > Entry ({self.entry_price})"
+                        )
 
         return self
 
@@ -132,7 +139,9 @@ class TradeProposal(BaseModel):
         """Factory helper creating a validated TradeProposal with automated reasoning hash."""
         r_hash = cls.compute_reasoning_hash(reasoning_text)
         norm_dir = decision.strip().upper()
-        dir_val: Literal["BUY", "SELL", "WAIT"] = "BUY" if norm_dir == "BUY" else ("SELL" if norm_dir == "SELL" else "WAIT")
+        dir_val: Literal["BUY", "SELL", "WAIT"] = (
+            "BUY" if norm_dir == "BUY" else ("SELL" if norm_dir == "SELL" else "WAIT")
+        )
         return cls(
             symbol=symbol,
             direction=dir_val,
@@ -203,7 +212,11 @@ class FortressAdmissionValidator:
                 rejections.append(f"Lot size exceeds absolute fortress ceiling (50.0 lots): {proposal.lot_size}")
 
             # R:R ratio check (skip for trailing stop / runner strategies)
-            is_trailing = bool(proposal.metadata.get("is_trailing") or proposal.metadata.get("trailing_stop") or proposal.metadata.get("runner"))
+            is_trailing = bool(
+                proposal.metadata.get("is_trailing")
+                or proposal.metadata.get("trailing_stop")
+                or proposal.metadata.get("runner")
+            )
             if not is_trailing:
                 risk = abs(proposal.entry_price - proposal.stop_loss)
                 reward = abs(proposal.take_profit - proposal.entry_price)

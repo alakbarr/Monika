@@ -17,14 +17,18 @@ async def test_alpha_eurusd_6d622a_evaluates_without_nan_casting_error():
     # Generate 100 mock candles with varying/zero volumes
     mock_candles = []
     for i in range(100):
-        mock_candles.append(CandleDict({
-            "timestamp": f"2026-09-08T{i % 24:02d}:00:00Z",
-            "open": 1.0850 + (i * 0.0001),
-            "high": 1.0860 + (i * 0.0001),
-            "low": 1.0840 + (i * 0.0001),
-            "close": 1.0855 + (i * 0.0001),
-            "volume": 0.0 if i < 20 else (100.0 + i),
-        }))
+        mock_candles.append(
+            CandleDict(
+                {
+                    "timestamp": f"2026-09-08T{i % 24:02d}:00:00Z",
+                    "open": 1.0850 + (i * 0.0001),
+                    "high": 1.0860 + (i * 0.0001),
+                    "low": 1.0840 + (i * 0.0001),
+                    "close": 1.0855 + (i * 0.0001),
+                    "volume": 0.0 if i < 20 else (100.0 + i),
+                }
+            )
+        )
 
     with patch.object(strat, "get_historical_candles", AsyncMock(return_value=mock_candles)):
         sig = await strat.evaluate(create_mock_async_session(), "EURUSD", {})
@@ -72,6 +76,7 @@ class SynthesizedStrategy_alpha_test_buggy(EdgeStrategy):
 @pytest.mark.asyncio
 async def test_strategy_registry_evaluate_all_isolation():
     """Verify StrategyRegistry.evaluate_all continues when a strategy raises an exception."""
+
     class CrashingStrategy(EdgeStrategy):
         strategy_id: str = "alpha_crashing"
         applicable_symbols: set = {"EURUSD"}
@@ -90,7 +95,7 @@ async def test_strategy_registry_evaluate_all_isolation():
                 direction="buy",
                 valid=True,
                 confidence=0.8,
-                rationale="Healthy signal"
+                rationale="Healthy signal",
             )
 
     try:
@@ -161,7 +166,9 @@ class SynthesizedStrategy_alpha_test_fillna(EdgeStrategy):
         )
 """
     scheduler = StrategySynthesisScheduler({})
-    compiled_cls = scheduler.compile_strategy_class(code_with_deprecated_fillna, "SynthesizedStrategy_alpha_test_fillna")
+    compiled_cls = scheduler.compile_strategy_class(
+        code_with_deprecated_fillna, "SynthesizedStrategy_alpha_test_fillna"
+    )
     assert compiled_cls is not None
 
     strat = compiled_cls()
@@ -181,14 +188,16 @@ async def test_repaired_synthesized_strategies_execution():
     from analysis.strategies.synthesized.alpha_usdjpy_13a603 import SynthesizedStrategy_alpha_usdjpy_13a603
 
     mock_candles = [
-        CandleDict({
-            "timestamp": f"2026-09-08T{i % 24:02d}:00:00Z",
-            "open": 100.0 + i,
-            "high": 102.0 + i,
-            "low": 99.0 + i,
-            "close": 101.0 + i,
-            "volume": 50.0 + i,
-        })
+        CandleDict(
+            {
+                "timestamp": f"2026-09-08T{i % 24:02d}:00:00Z",
+                "open": 100.0 + i,
+                "high": 102.0 + i,
+                "low": 99.0 + i,
+                "close": 101.0 + i,
+                "volume": 50.0 + i,
+            }
+        )
         for i in range(120)
     ]
 
@@ -235,6 +244,7 @@ class SynthesizedStrategy_alpha_eof_repair(EdgeStrategy):
 """
     sanitized = StrategySynthesisScheduler.sanitize_strategy_code(code_with_missing_except)
     import ast
+
     # Must now be parseable by Python AST
     tree = ast.parse(sanitized)
     assert tree is not None
@@ -273,6 +283,7 @@ class SynthesizedStrategy_alpha_loop_repair(EdgeStrategy):
 """
     sanitized = StrategySynthesisScheduler.sanitize_strategy_code(code_with_loop_try)
     import ast
+
     tree = ast.parse(sanitized)
     assert tree is not None
     assert "except Exception:" in sanitized
@@ -305,7 +316,9 @@ class SynthesizedStrategy_alpha_test_compile_repair(EdgeStrategy):
             )
 """
     scheduler = StrategySynthesisScheduler({})
-    compiled_cls = scheduler.compile_strategy_class(code_missing_except, "SynthesizedStrategy_alpha_test_compile_repair")
+    compiled_cls = scheduler.compile_strategy_class(
+        code_missing_except, "SynthesizedStrategy_alpha_test_compile_repair"
+    )
     assert compiled_cls is not None
 
     strat = compiled_cls()
@@ -477,6 +490,7 @@ class SynthesizedStrategy_alpha_unclosed_paren(EdgeStrategy):
 """
     sanitized = StrategySynthesisScheduler.sanitize_strategy_code(code_with_unclosed_paren)
     import ast
+
     # Must now parse cleanly without '(' was never closed
     tree = ast.parse(sanitized)
     assert tree is not None
@@ -518,6 +532,7 @@ class SynthesizedStrategy_alpha_multiline_call(EdgeStrategy):
 """
     sanitized = StrategySynthesisScheduler.sanitize_strategy_code(multiline_unclosed)
     import ast
+
     tree = ast.parse(sanitized)
     assert tree is not None
     assert "limit=100)" in sanitized
@@ -550,7 +565,9 @@ class SynthesizedStrategy_alpha_test_compile_unclosed(EdgeStrategy):
         )
 """
     scheduler = StrategySynthesisScheduler({})
-    compiled_cls = scheduler.compile_strategy_class(code_with_unclosed, "SynthesizedStrategy_alpha_test_compile_unclosed")
+    compiled_cls = scheduler.compile_strategy_class(
+        code_with_unclosed, "SynthesizedStrategy_alpha_test_compile_unclosed"
+    )
     assert compiled_cls is not None
     inst = compiled_cls()
     sig = await inst.evaluate(create_mock_async_session(), "EURUSD", {})
@@ -568,11 +585,13 @@ async def test_strategy_registry_blacklists_and_purges_stub_synthesized_strategy
     StrategyRegistry._blacklisted_ids.clear()
     s_id = "alpha_test_blacklisted_stub_999"
 
-    stub_payload = json.dumps({
-        "strategy_id": s_id,
-        "class_name": f"SynthesizedStrategy_{s_id}",
-        "python_code": 'direction="buy" and confidence=0.82',
-    })
+    stub_payload = json.dumps(
+        {
+            "strategy_id": s_id,
+            "class_name": f"SynthesizedStrategy_{s_id}",
+            "python_code": 'direction="buy" and confidence=0.82',
+        }
+    )
     mock_config = SystemConfig(key=f"synthesized_strategy_{s_id}", value=stub_payload)
 
     mock_session = create_mock_async_session()
@@ -588,6 +607,7 @@ async def test_strategy_registry_blacklists_and_purges_stub_synthesized_strategy
     assert s_id in StrategyRegistry._blacklisted_ids
     # Verify delete was called
     from sqlalchemy.sql.dml import Delete
+
     delete_calls = [c for c in mock_session.execute.call_args_list if len(c.args) > 0 and isinstance(c.args[0], Delete)]
     assert len(delete_calls) >= 1
 
@@ -599,7 +619,9 @@ async def test_strategy_registry_blacklists_and_purges_stub_synthesized_strategy
 
     await StrategyRegistry.load_dynamic_parameters(mock_session)
     # delete should not be called again because it was already blacklisted
-    second_delete_calls = [c for c in mock_session.execute.call_args_list if len(c.args) > 0 and isinstance(c.args[0], Delete)]
+    second_delete_calls = [
+        c for c in mock_session.execute.call_args_list if len(c.args) > 0 and isinstance(c.args[0], Delete)
+    ]
     assert len(second_delete_calls) == 0
 
 
@@ -607,6 +629,7 @@ async def test_strategy_registry_blacklists_and_purges_stub_synthesized_strategy
 async def test_strategy_registry_evaluate_all_throttling():
     """Verify evaluate_all throttles load_dynamic_parameters within _load_interval."""
     import time
+
     mock_session = create_mock_async_session()
     StrategyRegistry._last_load_time = time.time()  # just loaded
 
@@ -630,11 +653,13 @@ async def test_strategy_registry_quarantines_uncompilable_strategy():
     StrategyRegistry._blacklisted_ids.clear()
     s_id = "alpha_uncompilable_broken_xyz"
 
-    broken_payload = json.dumps({
-        "strategy_id": s_id,
-        "class_name": f"SynthesizedStrategy_{s_id}",
-        "python_code": "def evaluate(self): if current_price > donchian_mid: return None",  # invalid syntax & undefined symbol
-    })
+    broken_payload = json.dumps(
+        {
+            "strategy_id": s_id,
+            "class_name": f"SynthesizedStrategy_{s_id}",
+            "python_code": "def evaluate(self): if current_price > donchian_mid: return None",  # invalid syntax & undefined symbol
+        }
+    )
     mock_config = SystemConfig(key=f"synthesized_strategy_{s_id}", value=broken_payload)
 
     mock_session = create_mock_async_session()
@@ -678,11 +703,13 @@ class {cls_name}(EdgeStrategy):
         return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction=None, valid=False, confidence=0.0)
 """.strip()
 
-    db_payload = json.dumps({
-        "strategy_id": s_id,
-        "class_name": cls_name,
-        "python_code": corrupt_db_code,
-    })
+    db_payload = json.dumps(
+        {
+            "strategy_id": s_id,
+            "class_name": cls_name,
+            "python_code": corrupt_db_code,
+        }
+    )
     mock_config = SystemConfig(key=f"synthesized_strategy_{s_id}", value=db_payload)
 
     mock_session = create_mock_async_session()
@@ -694,6 +721,7 @@ class {cls_name}(EdgeStrategy):
 
     # Resolve synth_dir dynamically from StrategyRegistry's actual module location
     import monika.application.analysis.strategies.registry as _reg_mod
+
     synth_dir = Path(_reg_mod.__file__).resolve().parent / "synthesized"
     synth_dir.mkdir(parents=True, exist_ok=True)
     test_disk_file = synth_dir / f"{s_id}.py"
@@ -707,7 +735,9 @@ class {cls_name}(EdgeStrategy):
         assert s_id not in StrategyRegistry._blacklisted_ids
 
         # Verified: DB was updated with the disk code
-        update_calls = [c for c in mock_session.execute.call_args_list if len(c.args) > 0 and isinstance(c.args[0], Update)]
+        update_calls = [
+            c for c in mock_session.execute.call_args_list if len(c.args) > 0 and isinstance(c.args[0], Update)
+        ]
         assert len(update_calls) >= 1
     finally:
         if test_disk_file.exists():
@@ -760,7 +790,7 @@ class SynthesizedStrategy_alpha_dict_test(EdgeStrategy):
 @pytest.mark.asyncio
 async def test_sanitize_strategy_code_repairs_invalid_replace():
     """Verify StrategySynthesisScheduler.sanitize_strategy_code auto-repairs invalid replace calls with Series/methods."""
-    raw_code = '''
+    raw_code = """
 from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any
@@ -794,7 +824,7 @@ class SynthesizedStrategy_alpha_test_replace(EdgeStrategy):
             rationale="Test replace repair",
             tags=["test"]
         )
-'''
+"""
     sanitized = StrategySynthesisScheduler.sanitize_strategy_code(raw_code)
     assert "df.replace([np.inf, -np.inf], np.nan).ffill().bfill()" in sanitized
     assert "df['close'].replace([float('inf'), float('-inf')], np.nan).ffill().bfill()" in sanitized
@@ -831,11 +861,3 @@ class SynthesizedStrategy_alpha_test_replace(EdgeStrategy):
     assert sig.valid is True
     assert "error" not in getattr(sig, "tags", [])
     assert sig.direction == "buy"
-
-
-
-
-
-
-
-

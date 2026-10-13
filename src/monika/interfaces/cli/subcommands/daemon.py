@@ -23,15 +23,15 @@ class DaemonSubcommand(Subcommand):
     def register_subparser(self, subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
         parser = subparsers.add_parser("daemon", help="Manage daemon process.")
         sub = parser.add_subparsers(dest="daemon_action")
-        
+
         # Subactions
         sub.add_parser("status", help="Show system status and daemon state.")
         sub.add_parser("pause", help="Pause trading proposals.")
         sub.add_parser("resume", help="Resume trading proposals.")
-        
+
         kill_p = sub.add_parser("kill", help="Trigger emergency kill switch.")
         kill_p.add_argument("-y", "--yes", action="store_true", help="Bypass confirmation prompt.")
-        
+
         stop_p = sub.add_parser("stop", help="Stop running Monika daemon.")
         stop_p.add_argument("-f", "--force", action="store_true", help="Force kill daemon.")
 

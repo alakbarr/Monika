@@ -82,7 +82,7 @@ SAMPLE_SETTINGS = {
                 "fallback_1": "gemini-3.5-flash",
                 "max_tokens": 4096,
             }
-        }
+        },
     }
 }
 
@@ -121,9 +121,7 @@ async def test_gemini_generate_calls_streaming_request():
     provider.free_api_keys = ["mock-key-1"]
 
     mock_result = StreamResult(
-        text='{"verdict": "BULLISH"}',
-        finish_reason="STOP",
-        usage={"promptTokenCount": 50, "candidatesTokenCount": 20}
+        text='{"verdict": "BULLISH"}', finish_reason="STOP", usage={"promptTokenCount": 50, "candidatesTokenCount": 20}
     )
 
     with patch("analysis.providers.gemini_provider.streaming_request", new_callable=AsyncMock) as mock_stream_req:
@@ -151,9 +149,7 @@ async def test_fallback_on_stream_timeout():
     )
 
     fallback_client = MagicMock()
-    fallback_client.classify_json = AsyncMock(
-        return_value={"winner": "BULL", "confidence": 0.85}
-    )
+    fallback_client.classify_json = AsyncMock(return_value={"winner": "BULL", "confidence": 0.85})
 
     def mock_create_instance(model_name, role_config, slot_name=None, task_role=None):
         if slot_name == "primary":
@@ -177,17 +173,14 @@ async def test_gemini_generate_streaming_timeout_fallback_to_non_streaming():
     provider.free_api_keys = ["mock-key-stalled", "mock-key-next"]
 
     mock_resp_dict = {
-        "candidates": [
-            {
-                "content": {"parts": [{"text": "Non-streaming fallback response"}]},
-                "finishReason": "STOP"
-            }
-        ],
-        "usageMetadata": {"promptTokenCount": 30, "candidatesTokenCount": 15}
+        "candidates": [{"content": {"parts": [{"text": "Non-streaming fallback response"}]}, "finishReason": "STOP"}],
+        "usageMetadata": {"promptTokenCount": 30, "candidatesTokenCount": 15},
     }
 
     with patch("analysis.providers.gemini_provider.streaming_request", new_callable=AsyncMock) as mock_stream:
-        mock_stream.side_effect = StreamTimeoutError("Streaming idle timeout (45s) after 47 chunks", idle_seconds=45.0, chunks_received=47)
+        mock_stream.side_effect = StreamTimeoutError(
+            "Streaming idle timeout (45s) after 47 chunks", idle_seconds=45.0, chunks_received=47
+        )
         with patch("analysis.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = mock_resp_dict
             with patch.object(provider, "_save_token_usage", new_callable=AsyncMock):

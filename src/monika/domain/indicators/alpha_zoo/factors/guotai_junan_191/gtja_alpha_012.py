@@ -1,4 +1,3 @@
-
 """GTJA Alpha #12.
 
 Formula: (RANK((OPEN - (SUM(VWAP,10)/10))) * (-1 * RANK(ABS((CLOSE - VWAP)))))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_012",
-    "theme": ['reversal', 'microstructure'],
-    "formula_latex": '(RANK((OPEN - (SUM(VWAP,10)/10))) * (-1 * RANK(ABS((CLOSE - VWAP)))))',
-    "columns_required": ['open', 'close', 'volume', 'amount'],
+    "theme": ["reversal", "microstructure"],
+    "formula_latex": "(RANK((OPEN - (SUM(VWAP,10)/10))) * (-1 * RANK(ABS((CLOSE - VWAP)))))",
+    "columns_required": ["open", "close", "volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 10,
     "min_warmup_bars": 11,
-    "notes": 'Open-minus-10d-vwap rank times negative rank of |close-vwap|.',
+    "notes": "Open-minus-10d-vwap rank times negative rank of |close-vwap|.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     o = panel["open"]

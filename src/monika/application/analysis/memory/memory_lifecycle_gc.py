@@ -125,22 +125,26 @@ class MemoryLifecycleGC:
             elif r >= self.archive_threshold:
                 node.status = "dormant"
                 dormant_nodes.append(node)
-                details.append({
-                    "id": node.id,
-                    "action": "dormant_flagged",
-                    "retention": r,
-                    "summary": node.summary[:60],
-                })
+                details.append(
+                    {
+                        "id": node.id,
+                        "action": "dormant_flagged",
+                        "retention": r,
+                        "summary": node.summary[:60],
+                    }
+                )
             else:
                 node.status = "archived"
                 archived_nodes.append(node)
                 chars_recovered += len(node.summary)
-                details.append({
-                    "id": node.id,
-                    "action": "archived_evicted",
-                    "retention": r,
-                    "summary": node.summary[:60],
-                })
+                details.append(
+                    {
+                        "id": node.id,
+                        "action": "archived_evicted",
+                        "retention": r,
+                        "summary": node.summary[:60],
+                    }
+                )
 
         # Save archived nodes to cold storage
         if archived_nodes:

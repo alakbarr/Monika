@@ -31,10 +31,38 @@ class FuturesEngine:
     """Calculates contract multipliers, margin requirements, and mark-to-market PnL."""
 
     CONTRACT_SPECS: Dict[str, FuturesContractSpec] = {
-        "ES": FuturesContractSpec(symbol="ES", multiplier=50.0, tick_size=0.25, initial_margin=12500.0, maint_margin=11500.0, exchange_fee_per_side=2.25),
-        "MES": FuturesContractSpec(symbol="MES", multiplier=5.0, tick_size=0.25, initial_margin=1250.0, maint_margin=1150.0, exchange_fee_per_side=0.55),
-        "GC": FuturesContractSpec(symbol="GC", multiplier=100.0, tick_size=0.10, initial_margin=11000.0, maint_margin=10000.0, exchange_fee_per_side=2.40),
-        "CL": FuturesContractSpec(symbol="CL", multiplier=1000.0, tick_size=0.01, initial_margin=7500.0, maint_margin=6800.0, exchange_fee_per_side=2.15),
+        "ES": FuturesContractSpec(
+            symbol="ES",
+            multiplier=50.0,
+            tick_size=0.25,
+            initial_margin=12500.0,
+            maint_margin=11500.0,
+            exchange_fee_per_side=2.25,
+        ),
+        "MES": FuturesContractSpec(
+            symbol="MES",
+            multiplier=5.0,
+            tick_size=0.25,
+            initial_margin=1250.0,
+            maint_margin=1150.0,
+            exchange_fee_per_side=0.55,
+        ),
+        "GC": FuturesContractSpec(
+            symbol="GC",
+            multiplier=100.0,
+            tick_size=0.10,
+            initial_margin=11000.0,
+            maint_margin=10000.0,
+            exchange_fee_per_side=2.40,
+        ),
+        "CL": FuturesContractSpec(
+            symbol="CL",
+            multiplier=1000.0,
+            tick_size=0.01,
+            initial_margin=7500.0,
+            maint_margin=6800.0,
+            exchange_fee_per_side=2.15,
+        ),
     }
 
     @classmethod
@@ -43,7 +71,14 @@ class FuturesEngine:
         for k, spec in cls.CONTRACT_SPECS.items():
             if norm.startswith(k):
                 return spec
-        return FuturesContractSpec(symbol=symbol, multiplier=1.0, tick_size=0.01, initial_margin=5000.0, maint_margin=4500.0, exchange_fee_per_side=2.0)
+        return FuturesContractSpec(
+            symbol=symbol,
+            multiplier=1.0,
+            tick_size=0.01,
+            initial_margin=5000.0,
+            maint_margin=4500.0,
+            exchange_fee_per_side=2.0,
+        )
 
     @classmethod
     def calculate_dollar_pnl(

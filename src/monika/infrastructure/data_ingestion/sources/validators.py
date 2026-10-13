@@ -20,16 +20,19 @@ INTRADAY_CACHE_TTL_SECONDS = 900  # 15 minutes
 
 class NoMarketDataError(Exception):
     """Raised when market data is completely absent or empty."""
+
     pass
 
 
 class StaleDataError(Exception):
     """Raised when market data exceeds the maximum permissible staleness."""
+
     pass
 
 
 class NonMonotonicDataError(Exception):
     """Raised when OHLCV time series is not chronologically ordered."""
+
     pass
 
 

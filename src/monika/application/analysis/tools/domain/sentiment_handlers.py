@@ -115,19 +115,25 @@ class SentimentToolHandlers:
             # 2. Live fetch fallback if cache missing/stale
             try:
                 if target_symbol.startswith("BTC") or target_symbol.startswith("ETH"):
-                    from monika.infrastructure.data_ingestion.scrapers.sentiment.binance_sentiment import BinanceSentimentFetcher
+                    from monika.infrastructure.data_ingestion.scrapers.sentiment.binance_sentiment import (
+                        BinanceSentimentFetcher,
+                    )
 
                     fetcher = BinanceSentimentFetcher(session)
                     return await _fetch_with_retry(fetcher)
                 else:
-                    from monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
+                    from monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment import (
+                        MyFxBookSentimentFetcher,
+                    )
 
                     fetcher = MyFxBookSentimentFetcher(session)
                     res = await _fetch_with_retry(fetcher)
                     if isinstance(res, dict) and "error" not in res and bool(res):
                         return res
                     # Graceful fallback to FXSSI if MyFxBook is blocked or unavailable
-                    from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
+                    from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import (
+                        FXSSISentimentFetcher,
+                    )
 
                     fxssi_fetcher = FXSSISentimentFetcher(session)
                     return await _fetch_with_retry(fxssi_fetcher)

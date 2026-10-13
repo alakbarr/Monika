@@ -1,6 +1,7 @@
 """
 Unit test untuk verifikasi pencatatan komprehensif token_usage_log.
 """
+
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
@@ -17,7 +18,16 @@ class DummyClient(BaseLLMClient):
     async def run_tool_agent(self, messages, tools, system_prompt):
         return None
 
-    async def run_agent(self, session, system_prompt, user_message, tools, stage_name="unknown", extra_context=None, prefetch_satisfied_tools=None):
+    async def run_agent(
+        self,
+        session,
+        system_prompt,
+        user_message,
+        tools,
+        stage_name="unknown",
+        extra_context=None,
+        prefetch_satisfied_tools=None,
+    ):
         return {"success": True}
 
     async def run_chat_loop(self, system_prompt, conversation_history, new_user_message, tools, tool_executor=None):
@@ -51,9 +61,10 @@ async def test_save_token_usage_records_comprehensive_fields():
 
     mock_session = create_mock_async_session()
 
-    with patch("database.models.TokenUsageLog") as MockTokenUsageLog, \
-         patch("utils.analytics.pricing.cost_usd", return_value=0.005) as mock_cost:
-
+    with (
+        patch("database.models.TokenUsageLog") as MockTokenUsageLog,
+        patch("utils.analytics.pricing.cost_usd", return_value=0.005) as mock_cost,
+    ):
         await client._save_token_usage(
             model_name="claude-sonnet-5",
             task_name="generate",
@@ -65,7 +76,7 @@ async def test_save_token_usage_records_comprehensive_fields():
             thinking_tokens=50,
             execution_time_ms=350,
             status="success",
-            slot_name="primary"
+            slot_name="primary",
         )
 
         MockTokenUsageLog.assert_called_once_with(

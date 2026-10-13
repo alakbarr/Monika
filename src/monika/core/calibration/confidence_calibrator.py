@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
 
-logger = logging.getLogger('TradingAgent.ConfidenceCalibrator')
+logger = logging.getLogger("TradingAgent.ConfidenceCalibrator")
 
 
 def fit_platt_scaling(confidences: List[float], outcomes: List[int], max_iter: int = 100) -> Tuple[float, float]:
@@ -71,27 +71,27 @@ def fit_isotonic_pav(confidences: List[float], outcomes: List[int]) -> List[Dict
         return []
     # Sort pairs by confidence ascending
     pairs = sorted(zip(confidences, outcomes), key=lambda x: x[0])
-    
+
     # Initialize blocks: (weight, sum_y, min_x, max_x)
     blocks = []
     for x, y in pairs:
-        blocks.append({'w': 1.0, 'sum_y': float(y), 'min_x': float(x), 'max_x': float(x), 'mean_y': float(y)})
+        blocks.append({"w": 1.0, "sum_y": float(y), "min_x": float(x), "max_x": float(x), "mean_y": float(y)})
 
     # Pool adjacent violators
     i = 0
     while i < len(blocks) - 1:
-        if blocks[i]['mean_y'] > blocks[i + 1]['mean_y']:
+        if blocks[i]["mean_y"] > blocks[i + 1]["mean_y"]:
             # Pool blocks i and i+1
             b1 = blocks[i]
             b2 = blocks[i + 1]
-            new_w = b1['w'] + b2['w']
-            new_sum = b1['sum_y'] + b2['sum_y']
+            new_w = b1["w"] + b2["w"]
+            new_sum = b1["sum_y"] + b2["sum_y"]
             pooled = {
-                'w': new_w,
-                'sum_y': new_sum,
-                'min_x': min(b1['min_x'], b2['min_x']),
-                'max_x': max(b1['max_x'], b2['max_x']),
-                'mean_y': new_sum / new_w
+                "w": new_w,
+                "sum_y": new_sum,
+                "min_x": min(b1["min_x"], b2["min_x"]),
+                "max_x": max(b1["max_x"], b2["max_x"]),
+                "mean_y": new_sum / new_w,
             }
             blocks[i] = pooled
             blocks.pop(i + 1)
@@ -101,10 +101,17 @@ def fit_isotonic_pav(confidences: List[float], outcomes: List[int]) -> List[Dict
         else:
             i += 1
 
-    return [{'min_x': round(b['min_x'], 4), 'max_x': round(b['max_x'], 4), 'calibrated_prob': round(b['mean_y'], 4)} for b in blocks]
+    return [
+        {"min_x": round(b["min_x"], 4), "max_x": round(b["max_x"], 4), "calibrated_prob": round(b["mean_y"], 4)}
+        for b in blocks
+    ]
 
 
-def calibrate_probability(raw_conf: float, platt_params: Optional[Tuple[float, float]] = None, pav_bins: Optional[List[Dict[str, float]]] = None) -> float:
+def calibrate_probability(
+    raw_conf: float,
+    platt_params: Optional[Tuple[float, float]] = None,
+    pav_bins: Optional[List[Dict[str, float]]] = None,
+) -> float:
     """
     Evaluates calibrated probability from raw model confidence using Platt Scaling or Isotonic PAV.
     """
@@ -116,59 +123,61 @@ def calibrate_probability(raw_conf: float, platt_params: Optional[Tuple[float, f
 
     if pav_bins:
         for b in pav_bins:
-            if b['min_x'] <= raw_conf <= b['max_x']:
-                return b['calibrated_prob']
-        if raw_conf < pav_bins[0]['min_x']:
-            return pav_bins[0]['calibrated_prob']
-        if raw_conf > pav_bins[-1]['max_x']:
-            return pav_bins[-1]['calibrated_prob']
+            if b["min_x"] <= raw_conf <= b["max_x"]:
+                return b["calibrated_prob"]
+        if raw_conf < pav_bins[0]["min_x"]:
+            return pav_bins[0]["calibrated_prob"]
+        if raw_conf > pav_bins[-1]["max_x"]:
+            return pav_bins[-1]["calibrated_prob"]
 
     return raw_conf
 
 
 async def compute_confidence_calibration(session: AsyncSession) -> dict:
-    records = (await session.execute(
-        select(PaperTradeRecord, AssetAnalysis)
-        .outerjoin(AssetAnalysis, PaperTradeRecord.analysis_id == AssetAnalysis.id)
-        .where(PaperTradeRecord.status == 'closed')
-        .where(PaperTradeRecord.exit_reason.in_(['sl_hit', 'tp_hit']))
-        .where(AssetAnalysis.confidence.isnot(None))
-    )).all()
+    records = (
+        await session.execute(
+            select(PaperTradeRecord, AssetAnalysis)
+            .outerjoin(AssetAnalysis, PaperTradeRecord.analysis_id == AssetAnalysis.id)
+            .where(PaperTradeRecord.status == "closed")
+            .where(PaperTradeRecord.exit_reason.in_(["sl_hit", "tp_hit"]))
+            .where(AssetAnalysis.confidence.isnot(None))
+        )
+    ).all()
 
     if len(records) < 20:
-        return {'status': 'insufficient_data', 'count': len(records), 'total_analyzed': len(records)}
+        return {"status": "insufficient_data", "count": len(records), "total_analyzed": len(records)}
 
     confidences = []
     outcomes = []
     bands = {
-        '0.60-0.65': {'wins': 0, 'total': 0},
-        '0.65-0.70': {'wins': 0, 'total': 0},
-        '0.70-0.75': {'wins': 0, 'total': 0},
-        '0.75-0.80': {'wins': 0, 'total': 0},
-        '0.80+': {'wins': 0, 'total': 0}
+        "0.60-0.65": {"wins": 0, "total": 0},
+        "0.65-0.70": {"wins": 0, "total": 0},
+        "0.70-0.75": {"wins": 0, "total": 0},
+        "0.75-0.80": {"wins": 0, "total": 0},
+        "0.80+": {"wins": 0, "total": 0},
     }
 
     for record, analysis in records:
         if not analysis or analysis.confidence is None:
             continue
         conf = float(analysis.confidence)
-        is_win = 1 if record.exit_reason == 'tp_hit' else 0
+        is_win = 1 if record.exit_reason == "tp_hit" else 0
         confidences.append(conf)
         outcomes.append(is_win)
 
         if conf < 0.65:
-            key = '0.60-0.65'
+            key = "0.60-0.65"
         elif conf < 0.7:
-            key = '0.65-0.70'
+            key = "0.65-0.70"
         elif conf < 0.75:
-            key = '0.70-0.75'
+            key = "0.70-0.75"
         elif conf < 0.8:
-            key = '0.75-0.80'
+            key = "0.75-0.80"
         else:
-            key = '0.80+'
-        bands[key]['total'] += 1
+            key = "0.80+"
+        bands[key]["total"] += 1
         if is_win:
-            bands[key]['wins'] += 1
+            bands[key]["wins"] += 1
 
     # Fit formal statistical models
     platt_a, platt_b = fit_platt_scaling(confidences, outcomes)
@@ -181,12 +190,12 @@ async def compute_confidence_calibration(session: AsyncSession) -> dict:
         if not analysis or analysis.confidence is None:
             continue
         c = float(analysis.confidence)
-        y = 1 if record.exit_reason == 'tp_hit' else 0
-        regime_str = str(getattr(analysis, 'market_regime', '') or '').lower()
-        if any(k in regime_str for k in ['trend', 'donchian', 'momentum', 'expansion']):
+        y = 1 if record.exit_reason == "tp_hit" else 0
+        regime_str = str(getattr(analysis, "market_regime", "") or "").lower()
+        if any(k in regime_str for k in ["trend", "donchian", "momentum", "expansion"]):
             trending_confs.append(c)
             trending_outcomes.append(y)
-        elif any(k in regime_str for k in ['range', 'reversion', 'chop', 'ranging']):
+        elif any(k in regime_str for k in ["range", "reversion", "chop", "ranging"]):
             ranging_confs.append(c)
             ranging_outcomes.append(y)
 
@@ -204,11 +213,11 @@ async def compute_confidence_calibration(session: AsyncSession) -> dict:
     total_valid = len(confidences)
 
     band_midpoints = {
-        '0.60-0.65': 0.625,
-        '0.65-0.70': 0.675,
-        '0.70-0.75': 0.725,
-        '0.75-0.80': 0.775,
-        '0.80+': 0.850,
+        "0.60-0.65": 0.625,
+        "0.65-0.70": 0.675,
+        "0.70-0.75": 0.725,
+        "0.75-0.80": 0.775,
+        "0.80+": 0.850,
     }
 
     for c, o in zip(confidences, outcomes):
@@ -218,43 +227,56 @@ async def compute_confidence_calibration(session: AsyncSession) -> dict:
 
     result = {}
     for band, data in bands.items():
-        if data['total'] > 0:
-            wr = data['wins'] / data['total'] * 100
-            acc = data['wins'] / data['total']
+        if data["total"] > 0:
+            wr = data["wins"] / data["total"] * 100
+            acc = data["wins"] / data["total"]
             conf_mid = band_midpoints.get(band, 0.7)
-            ece_weighted_diff += (data['total'] / total_valid) * abs(acc - conf_mid)
-            result[band] = {'win_rate': round(wr, 1), 'total': data['total'], 'calibrated': wr >= 40.0 and data['total'] >= 5}
+            ece_weighted_diff += (data["total"] / total_valid) * abs(acc - conf_mid)
+            result[band] = {
+                "win_rate": round(wr, 1),
+                "total": data["total"],
+                "calibrated": wr >= 40.0 and data["total"] >= 5,
+            }
 
     ece_score = round(ece_weighted_diff, 4) if total_valid > 0 else 0.0
-    bands_with_data = [(k, v) for k, v in result.items() if v['total'] >= 3]
-    is_monotonic = all((bands_with_data[i][1]['win_rate'] <= bands_with_data[i + 1][1]['win_rate'] for i in range(len(bands_with_data) - 1))) if len(bands_with_data) > 1 else False
+    bands_with_data = [(k, v) for k, v in result.items() if v["total"] >= 3]
+    is_monotonic = (
+        all(
+            (
+                bands_with_data[i][1]["win_rate"] <= bands_with_data[i + 1][1]["win_rate"]
+                for i in range(len(bands_with_data) - 1)
+            )
+        )
+        if len(bands_with_data) > 1
+        else False
+    )
 
     if not bands_with_data or len(bands_with_data) < 2:
-        status = 'insufficient_data'
-        recommendation = 'MAINTAIN'
+        status = "insufficient_data"
+        recommendation = "MAINTAIN"
     elif is_monotonic:
-        status = 'calibrated'
-        recommendation = 'MAINTAIN'
+        status = "calibrated"
+        recommendation = "MAINTAIN"
     else:
-        status = 'calibrated'
+        status = "calibrated"
         highest_band = bands_with_data[-1]
         lowest_band = bands_with_data[0]
-        if highest_band[1]['win_rate'] < lowest_band[1]['win_rate']:
-            recommendation = 'RAISE_THRESHOLD'
+        if highest_band[1]["win_rate"] < lowest_band[1]["win_rate"]:
+            recommendation = "RAISE_THRESHOLD"
         else:
-            recommendation = 'REVIEW_ONLY'
+            recommendation = "REVIEW_ONLY"
 
     return {
-        'status': status,
-        'bands': result,
-        'ece': ece_score,
-        'brier_score': brier_score,
-        'platt_scaling': {'a': platt_a, 'b': platt_b},
-        'isotonic_pav_bins': pav_bins,
-        'regime_models': regime_models,
-        'confidence_is_calibrated': is_monotonic,
-        'recommendation': recommendation,
-        'total_analyzed': total_valid,
+        "status": status,
+        "bands": result,
+        "ece": ece_score,
+        "brier_score": brier_score,
+        "platt_scaling": {"a": platt_a, "b": platt_b},
+        "isotonic_pav_bins": pav_bins,
+        "regime_models": regime_models,
+        "confidence_is_calibrated": is_monotonic,
+        "recommendation": recommendation,
+        "total_analyzed": total_valid,
     }
 
 
@@ -263,20 +285,22 @@ async def get_calibrated_confidence(session: AsyncSession, raw_conf: float, regi
     if not session:
         return round(min(raw_conf - 0.05, 0.65), 4) if raw_conf >= 0.50 else round(max(raw_conf - 0.05, 0.0), 4)
     try:
-        res = await session.execute(select(SystemConfig).where(SystemConfig.key == 'calibration_model_params'))
-        cfg = res.scalar_one_or_none() if hasattr(res, 'scalar_one_or_none') else None
-        if cfg and hasattr(cfg, 'value') and isinstance(cfg.value, str):
+        res = await session.execute(select(SystemConfig).where(SystemConfig.key == "calibration_model_params"))
+        cfg = res.scalar_one_or_none() if hasattr(res, "scalar_one_or_none") else None
+        if cfg and hasattr(cfg, "value") and isinstance(cfg.value, str):
             params = json.loads(cfg.value)
             # Check regime-specific model first if available
             if regime:
-                reg_key = "trending" if any(k in regime.lower() for k in ["trend", "momentum", "expansion"]) else "ranging"
+                reg_key = (
+                    "trending" if any(k in regime.lower() for k in ["trend", "momentum", "expansion"]) else "ranging"
+                )
                 reg_model = params.get("regime_models", {}).get(reg_key, {}).get("platt_scaling")
                 if reg_model and "a" in reg_model and "b" in reg_model:
                     return calibrate_probability(raw_conf, platt_params=(float(reg_model["a"]), float(reg_model["b"])))
-            
-            platt = params.get('platt_scaling')
-            if platt and 'a' in platt and 'b' in platt:
-                return calibrate_probability(raw_conf, platt_params=(float(platt['a']), float(platt['b'])))
+
+            platt = params.get("platt_scaling")
+            if platt and "a" in platt and "b" in platt:
+                return calibrate_probability(raw_conf, platt_params=(float(platt["a"]), float(platt["b"])))
     except Exception:
         pass
     # Fallback saat N < 60 atau calibration params belum ada:
@@ -288,35 +312,47 @@ async def get_calibrated_confidence(session: AsyncSession, raw_conf: float, regi
 
 async def apply_calibration_correction(session: AsyncSession, settings: dict) -> None:
     res = await compute_confidence_calibration(session)
-    if res.get('total_analyzed', 0) < 60:
-        logger.info(f"[ConfidenceCalibrator] Sample size ({res.get('total_analyzed', 0)}/60) insufficient for auto-correction.")
+    if res.get("total_analyzed", 0) < 60:
+        logger.info(
+            f"[ConfidenceCalibrator] Sample size ({res.get('total_analyzed', 0)}/60) insufficient for auto-correction."
+        )
         return
 
     # Persist calibration parameters for runtime inference
-    calib_cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == 'calibration_model_params'))).scalar_one_or_none()
-    params_payload = json.dumps({
-        'platt_scaling': res.get('platt_scaling'),
-        'isotonic_pav_bins': res.get('isotonic_pav_bins'),
-        'regime_models': res.get('regime_models', {}),
-        'ece': res.get('ece'),
-        'brier_score': res.get('brier_score'),
-        'total_analyzed': res.get('total_analyzed')
-    })
+    calib_cfg = (
+        await session.execute(select(SystemConfig).where(SystemConfig.key == "calibration_model_params"))
+    ).scalar_one_or_none()
+    params_payload = json.dumps(
+        {
+            "platt_scaling": res.get("platt_scaling"),
+            "isotonic_pav_bins": res.get("isotonic_pav_bins"),
+            "regime_models": res.get("regime_models", {}),
+            "ece": res.get("ece"),
+            "brier_score": res.get("brier_score"),
+            "total_analyzed": res.get("total_analyzed"),
+        }
+    )
     if calib_cfg:
         calib_cfg.value = params_payload
     else:
-        session.add(SystemConfig(key='calibration_model_params', value=params_payload))
+        session.add(SystemConfig(key="calibration_model_params", value=params_payload))
     await session.commit()
 
-    if res.get('status') == 'calibrated' and res.get('recommendation') == 'RAISE_THRESHOLD':
-        key = 'auto_execute_min_confidence_override'
+    if res.get("status") == "calibrated" and res.get("recommendation") == "RAISE_THRESHOLD":
+        key = "auto_execute_min_confidence_override"
         cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
-        current = float(cfg.value) if cfg and cfg.value else settings.get('trading', {}).get('auto_execute_min_confidence', 0.6)
+        current = (
+            float(cfg.value)
+            if cfg and cfg.value
+            else settings.get("trading", {}).get("auto_execute_min_confidence", 0.6)
+        )
         new_val = min(0.8, current + 0.05)
         if cfg:
             cfg.value = str(new_val)
         else:
             session.add(SystemConfig(key=key, value=str(new_val)))
         await session.commit()
-        logger.warning(f'[ConfidenceCalibrator] Confidence tidak terkalibrasi (ECE={res.get("ece")}, Brier={res.get("brier_score")}). '
-                        f'auto_execute_min_confidence dinaikkan: {current} -> {new_val}')
+        logger.warning(
+            f"[ConfidenceCalibrator] Confidence tidak terkalibrasi (ECE={res.get('ece')}, Brier={res.get('brier_score')}). "
+            f"auto_execute_min_confidence dinaikkan: {current} -> {new_val}"
+        )

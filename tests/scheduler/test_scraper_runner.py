@@ -4,15 +4,12 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from scheduler.scraper_runner import ScraperRunner
 
+
 class TestScraperRunner:
     @pytest.fixture
     def settings(self):
         return {
-            "trading": {
-                "schedule": {
-                    "scraper_stagger_seconds": 0
-                }
-            },
+            "trading": {"schedule": {"scraper_stagger_seconds": 0}},
             "scraping": {
                 "consecutive_failure_alert": 3,
                 "sources": {
@@ -21,9 +18,9 @@ class TestScraperRunner:
                     "tradingview": {"enabled": True},
                     "kitco": {"enabled": True},
                     "cme_fedwatch": {"enabled": True},
-                    "twitter": {"enabled": True}
-                }
-            }
+                    "twitter": {"enabled": True},
+                },
+            },
         }
 
     @pytest.mark.asyncio
@@ -110,7 +107,6 @@ class TestScraperRunner:
         # Only bloomberg enabled → 1 scraper × 5 saved
         assert res["saved"] == 5
 
-
     @pytest.mark.asyncio
     @patch("scheduler.scraper_runner.get_session")
     @patch("scheduler.scraper_runner.batch_save_calendar")
@@ -168,11 +164,11 @@ class TestScraperRunner:
         runner = ScraperRunner(settings)
         mock_scraper_1 = MagicMock()
         mock_scraper_2 = MagicMock()
-        
+
         runner._register_scraper(mock_scraper_1)
         runner._register_scraper(mock_scraper_2)
         assert len(runner._active_scrapers) == 2
-        
+
         runner.stop()
         assert not runner._running
         assert len(runner._active_scrapers) == 0
@@ -218,6 +214,7 @@ class TestScraperRunner:
     async def test_scraper_custom_timeouts(self, settings):
         runner = ScraperRunner(settings)
         from scheduler.scraper_runner import DEFAULT_SCRAPER_TIMEOUTS
+
         assert DEFAULT_SCRAPER_TIMEOUTS["calendar"] == 180.0
         assert DEFAULT_SCRAPER_TIMEOUTS["fedwatch"] == 120.0
         assert DEFAULT_SCRAPER_TIMEOUTS["rss"] == 60.0
@@ -265,6 +262,3 @@ class TestScraperRunner:
         assert len(runner._active_scrapers) == 0
         scraper.close.assert_called_once()
         mock_kill.assert_called_once_with(6666)
-
-
-

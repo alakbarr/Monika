@@ -29,7 +29,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
 from monika.application.analysis.harness.tool_batch_planner import ToolBatchPlanner
-from monika.application.analysis.harness.tool_repair import repair_tool_name, repair_tool_arguments, coerce_tool_arguments
+from monika.application.analysis.harness.tool_repair import (
+    repair_tool_name,
+    repair_tool_arguments,
+    coerce_tool_arguments,
+)
 from monika.core.telemetry.tracing.spans import llm_span
 
 logger = logging.getLogger("TradingAgent.AgentHarness")
@@ -46,6 +50,7 @@ MODEL_PRICING_PER_1M = {
 def calculate_turn_cost_usd(model_name: str, input_tokens: int, output_tokens: int, cached_tokens: int = 0) -> float:
     try:
         from monika.infrastructure.providers.pricing_catalog import cost_usd
+
         return cost_usd(
             model_name=model_name,
             input_tokens=input_tokens,
@@ -59,7 +64,9 @@ def calculate_turn_cost_usd(model_name: str, input_tokens: int, output_tokens: i
             if prefix in lower:
                 rates = p_rates
                 break
-        cost = (input_tokens * rates["input"] + output_tokens * rates["output"] + cached_tokens * rates["cache_read"]) / 1_000_000.0
+        cost = (
+            input_tokens * rates["input"] + output_tokens * rates["output"] + cached_tokens * rates["cache_read"]
+        ) / 1_000_000.0
         return round(cost, 6)
 
 
@@ -79,7 +86,7 @@ class AgentHarness:
     ):
         """
         Initialize the Agent Harness.
-        
+
         Args:
             llm_client: Underlying LLM client implementing run_tool_agent(messages, tools, system_prompt).
             settings: Global system configuration dictionary.
@@ -94,17 +101,22 @@ class AgentHarness:
         self.db_session = db_session
         self.compactor = ContextCompactionEngine(self.settings)
         from monika.application.analysis.tools.tool_guardrails import ToolGuardrailController
+
         self.guardrail_controller = ToolGuardrailController(self.settings)
         from monika.application.analysis.harness.context_compressor import ContextCompressor
+
         self.context_compressor = ContextCompressor(self.settings)
         from monika.application.analysis.harness.stall_guard import StallGuard
+
         self.stall_guard = StallGuard(
             warning_threshold=self.settings.get("stall_warning_threshold", 4),
             force_terminate_threshold=self.settings.get("stall_terminate_threshold", 7),
         )
         from monika.infrastructure.llm.data_dedup import DataFetchDeduplicator
+
         self.data_dedup = DataFetchDeduplicator()
         from monika.application.analysis.harness.verification_evidence_ledger import VerificationEvidenceLedger
+
         self.verification_ledger = VerificationEvidenceLedger()
 
         # Dual-Queue Steering Engine (Immediate Steering + Follow-Up Processing)
@@ -128,6 +140,7 @@ class AgentHarness:
         - mode='follow_up': drained after current loop finishes before going idle.
         """
         from monika.application.analysis.harness.harness_state import SteeringMessage
+
         msg = SteeringMessage(content=content, sender=sender, mode=mode)
         if mode == "follow_up":
             self._follow_up_queue.append(msg)
@@ -146,7 +159,20 @@ class AgentHarness:
         status_code = getattr(exc, "status_code", getattr(exc, "code", None))
         if status_code in (429, 502, 503, 504, 529):
             return True
-        if any(marker in err_str for marker in ("rate limit", "too many requests", "429", "timeout", "timed out", "overloaded", "529", "connection error", "temporarily unavailable")):
+        if any(
+            marker in err_str
+            for marker in (
+                "rate limit",
+                "too many requests",
+                "429",
+                "timeout",
+                "timed out",
+                "overloaded",
+                "529",
+                "connection error",
+                "temporarily unavailable",
+            )
+        ):
             return True
         return False
 
@@ -159,7 +185,16 @@ class AgentHarness:
         status_code = getattr(exc, "status_code", getattr(exc, "code", None))
         if status_code == 402:
             return True
-        if any(marker in err_str for marker in ("credit balance is too low", "insufficient credits", "insufficient_quota", "exceeded your current quota", "billing")):
+        if any(
+            marker in err_str
+            for marker in (
+                "credit balance is too low",
+                "insufficient credits",
+                "insufficient_quota",
+                "exceeded your current quota",
+                "billing",
+            )
+        ):
             return True
         return False
 
@@ -213,21 +248,25 @@ class AgentHarness:
             if not t_id:
                 t_id = f"truncated_{i}"
             t_name = b.get("name") if isinstance(b, dict) else getattr(b, "name", "tool")
-            results.append({
-                "type": "tool_result",
-                "tool_use_id": str(t_id),
-                "name": str(t_name),
-                "content": json.dumps({
-                    "status": "refused_truncated_response",
-                    "error": (
-                        "[SYSTEM ERROR] Your previous response was truncated by the output token limit. "
-                        "Tool call arguments are likely incomplete/corrupted and were NOT executed. "
-                        "Reduce your reasoning length and re-issue the tool call with fewer tools or shorter arguments. "
-                        "Do NOT repeat the same call verbatim."
+            results.append(
+                {
+                    "type": "tool_result",
+                    "tool_use_id": str(t_id),
+                    "name": str(t_name),
+                    "content": json.dumps(
+                        {
+                            "status": "refused_truncated_response",
+                            "error": (
+                                "[SYSTEM ERROR] Your previous response was truncated by the output token limit. "
+                                "Tool call arguments are likely incomplete/corrupted and were NOT executed. "
+                                "Reduce your reasoning length and re-issue the tool call with fewer tools or shorter arguments. "
+                                "Do NOT repeat the same call verbatim."
+                            ),
+                        }
                     ),
-                }),
-                "is_error": True,
-            })
+                    "is_error": True,
+                }
+            )
         return results
 
     async def _persist_assistant_turn(
@@ -277,7 +316,9 @@ class AgentHarness:
                 correlation_id=cycle_id or f"{stage_name}_{turn_index}",
                 actor=stage_name or "agent_harness",
             )
-            logger.debug(f"[{stage_name}][AgentHarness] Persisted pre-execute turn {turn_index} with {len(tool_calls)} tool calls.")
+            logger.debug(
+                f"[{stage_name}][AgentHarness] Persisted pre-execute turn {turn_index} with {len(tool_calls)} tool calls."
+            )
         except Exception as e:
             logger.error(f"[{stage_name}][AgentHarness] Failed to persist pre-execute turn: {e}", exc_info=True)
             raise RuntimeError(f"Audit invariant violation: Failed to persist pre-execute turn: {e}") from e
@@ -285,7 +326,7 @@ class AgentHarness:
     @staticmethod
     def _enforce_role_alternation(messages: List[dict]) -> List[dict]:
         """Repair message sequences to maintain strict role alternation.
-        
+
         Rules:
         - Never start with 'assistant' message (insert user placeholder for Anthropic)
         - Never two consecutive 'assistant' messages (insert hidden user placeholder)
@@ -296,10 +337,12 @@ class AgentHarness:
 
         repaired: List[dict] = []
         if messages[0].get("role") == "assistant":
-            repaired.append({
-                "role": "user",
-                "content": "[System: Begin analysis.]",
-            })
+            repaired.append(
+                {
+                    "role": "user",
+                    "content": "[System: Begin analysis.]",
+                }
+            )
         repaired.append(dict(messages[0]))
 
         for i in range(1, len(messages)):
@@ -310,10 +353,12 @@ class AgentHarness:
             prev_role = prev.get("role")
 
             if curr_role == "assistant" and prev_role == "assistant":
-                repaired.append({
-                    "role": "user",
-                    "content": "[System: Continue with your analysis.]",
-                })
+                repaired.append(
+                    {
+                        "role": "user",
+                        "content": "[System: Continue with your analysis.]",
+                    }
+                )
                 repaired.append(curr)
             elif curr_role == "user" and prev_role == "user":
                 prev_content = prev.get("content", "")
@@ -418,12 +463,9 @@ class AgentHarness:
                     parsed_args = raw_args or {}
 
                 tc_id = getattr(tc, "id", f"call_{fn_name}")
-                assistant_blocks.append({
-                    "type": "tool_use",
-                    "id": str(tc_id),
-                    "name": str(fn_name),
-                    "input": parsed_args
-                })
+                assistant_blocks.append(
+                    {"type": "tool_use", "id": str(tc_id), "name": str(fn_name), "input": parsed_args}
+                )
 
         # Case 2: Anthropic Message or MockResponse (has content list)
         elif has_content:
@@ -439,12 +481,9 @@ class AgentHarness:
                         t_name = b.get("name") if isinstance(b, dict) else getattr(b, "name", "")
                         t_input = b.get("input") if isinstance(b, dict) else getattr(b, "input", {})
                         t_id = b.get("id") if isinstance(b, dict) else getattr(b, "id", "")
-                        assistant_blocks.append({
-                            "type": "tool_use",
-                            "id": str(t_id),
-                            "name": str(t_name),
-                            "input": t_input
-                        })
+                        assistant_blocks.append(
+                            {"type": "tool_use", "id": str(t_id), "name": str(t_name), "input": t_input}
+                        )
                     elif isinstance(b, dict):
                         assistant_blocks.append(b)
             elif isinstance(raw_content, str) and raw_content:
@@ -469,7 +508,7 @@ class AgentHarness:
                 sig_args = str(tool_input)
         except Exception:
             sig_args = str(tool_input)
-        
+
         return f"{tool_name}:{hashlib.md5(sig_args.encode('utf-8')).hexdigest()}"
 
     # --------------------------------------------------------------------------
@@ -703,14 +742,13 @@ class AgentHarness:
         """
         session = session or getattr(self, "db_session", None)
         effective_max_turns = max_tool_turns or self.max_tool_turns
-        stage_symbol = (
-            stage_name.replace("per_asset_", "") if stage_name.startswith("per_asset_") else None
-        )
+        stage_symbol = stage_name.replace("per_asset_", "") if stage_name.startswith("per_asset_") else None
 
         # Minify tool definitions to eliminate verbose schema bloat across multi-turn ReAct loop
         if tools:
             try:
                 from monika.application.analysis.tools.tools_definitions import minify_tool_definitions
+
                 tools = minify_tool_definitions(tools)
             except Exception as e:
                 logger.debug(f"Tool minification fallback (non-fatal): {e}")
@@ -724,7 +762,10 @@ class AgentHarness:
         executor = tool_executor
         if executor is None:
             import sys
-            llm_mod = sys.modules.get(self.llm_client.__class__.__module__) if hasattr(self.llm_client, "__class__") else None
+
+            llm_mod = (
+                sys.modules.get(self.llm_client.__class__.__module__) if hasattr(self.llm_client, "__class__") else None
+            )
             executor_cls = getattr(llm_mod, "ToolExecutor", ToolExecutor) if llm_mod else ToolExecutor
             model_name = getattr(self.llm_client, "model", "unknown_model")
             executor = executor_cls(
@@ -836,13 +877,12 @@ class AgentHarness:
             # P0: Distill raw 50k prefetch bundle in messages[0] once Turn 1 has completed
             try:
                 from monika.application.analysis.harness.context_compressor import ContextCompressor
+
                 current_messages = ContextCompressor.distill_initial_bundle_after_turn_1(current_messages)
             except Exception as dist_err:
                 logger.debug(f"Prefetch bundle distillation skipped: {dist_err}")
 
-            current_messages = self.compactor.check_and_compact(
-                current_messages, context_window=context_win
-            )
+            current_messages = self.compactor.check_and_compact(current_messages, context_window=context_win)
 
             # Progressive Tool Observation Condensation: Prune tool outputs older than 1 turn to concise decisive state
             if turns > 2 and len(current_messages) > 4:
@@ -893,6 +933,7 @@ class AgentHarness:
                         role_safe_messages = self._enforce_role_alternation(current_messages)
                         try:
                             from monika.application.analysis.harness.message_repair import repair_message_history
+
                             role_safe_messages = repair_message_history(role_safe_messages)
                         except Exception as e:
                             logger.debug(f"Message repair skipped: {e}")
@@ -901,6 +942,7 @@ class AgentHarness:
                         # Clone messages before sending to prevent provider-specific
                         # canonicalization from corrupting durable conversation history.
                         import copy
+
                         send_messages = []
                         for msg in role_safe_messages:
                             cloned = {}
@@ -948,43 +990,62 @@ class AgentHarness:
                                     if isinstance(prev_c, str):
                                         send_messages[-1]["content"] = f"{prev_c}\n\n{update_notice}"
                                     elif isinstance(prev_c, list):
-                                        send_messages[-1]["content"].append({"type": "text", "text": f"\n\n{update_notice}"})
+                                        send_messages[-1]["content"].append(
+                                            {"type": "text", "text": f"\n\n{update_notice}"}
+                                        )
                                 else:
                                     send_messages.append({"role": "user", "content": update_notice})
-                                logger.info(f"[{stage_name}][AgentHarness] System prompt update appended in-history (token 0 prefix preserved).")
+                                logger.info(
+                                    f"[{stage_name}][AgentHarness] System prompt update appended in-history (token 0 prefix preserved)."
+                                )
 
                         # 1.3: Dynamic context isolation: inject into user message tail, never system prompt
                         if dynamic_sys and dynamic_sys != self._last_injected_dynamic_overlay:
                             self._last_injected_dynamic_overlay = dynamic_sys
                             snapshot_text = f"<volatile_overlay>\n{dynamic_sys}\n</volatile_overlay>"
-                            if send_messages and send_messages[0].get("role") == "user" and "<volatile_overlay>" not in str(send_messages[0].get("content", "")):
+                            if (
+                                send_messages
+                                and send_messages[0].get("role") == "user"
+                                and "<volatile_overlay>" not in str(send_messages[0].get("content", ""))
+                            ):
                                 prev_c = send_messages[0].get("content")
                                 if isinstance(prev_c, str):
                                     send_messages[0]["content"] = f"{prev_c}\n\n{snapshot_text}"
                                 elif isinstance(prev_c, list):
                                     send_messages[0]["content"].append({"type": "text", "text": f"\n\n{snapshot_text}"})
                             else:
-                                last_user_msg = next((m for m in reversed(send_messages) if m.get("role") == "user"), None)
+                                last_user_msg = next(
+                                    (m for m in reversed(send_messages) if m.get("role") == "user"), None
+                                )
                                 if last_user_msg:
                                     prev_c = last_user_msg.get("content")
                                     if isinstance(prev_c, str) and "<volatile_overlay>" not in prev_c:
                                         last_user_msg["content"] = f"{prev_c}\n\n{snapshot_text}"
                                     elif isinstance(prev_c, list):
-                                        has_snapshot = any("<volatile_overlay>" in str(b.get("text", "")) for b in prev_c if isinstance(b, dict))
+                                        has_snapshot = any(
+                                            "<volatile_overlay>" in str(b.get("text", ""))
+                                            for b in prev_c
+                                            if isinstance(b, dict)
+                                        )
                                         if not has_snapshot:
-                                            last_user_msg["content"].append({"type": "text", "text": f"\n\n{snapshot_text}"})
+                                            last_user_msg["content"].append(
+                                                {"type": "text", "text": f"\n\n{snapshot_text}"}
+                                            )
                                 else:
                                     send_messages.append({"role": "user", "content": snapshot_text})
 
-                        response = await self.llm_client.run_tool_agent(
-                            send_messages, tools, effective_sys
-                        )
+                        response = await self.llm_client.run_tool_agent(send_messages, tools, effective_sys)
                         break
                     except Exception as exc:
                         last_exc = exc
 
                         # ── Structured Error Recovery Pipeline (Phase 3) ──
-                        from monika.application.analysis.harness.error_classifier import ErrorClassifier, RecoveryAction, ErrorCategory
+                        from monika.application.analysis.harness.error_classifier import (
+                            ErrorClassifier,
+                            RecoveryAction,
+                            ErrorCategory,
+                        )
+
                         classified = ErrorClassifier.classify(exc)
 
                         await plugin_mgr.emit(
@@ -995,7 +1056,10 @@ class AgentHarness:
                             classified=classified,
                         )
 
-                        if classified.recovery == RecoveryAction.RETRY_WITH_COMPACTION and not _overflow_recovery_attempted:
+                        if (
+                            classified.recovery == RecoveryAction.RETRY_WITH_COMPACTION
+                            and not _overflow_recovery_attempted
+                        ):
                             _overflow_recovery_attempted = True
                             logger.warning(
                                 f"[{stage_name}][AgentHarness] {classified.message} "
@@ -1018,17 +1082,23 @@ class AgentHarness:
                             elif hasattr(self.llm_client, "_rotate_key"):
                                 self.llm_client._rotate_key()
                             if attempt < max_attempts - 1:
-                                raw_backoff = min(classified.retry_delay, 5.0) if classified.retry_delay > 0 else (2.0 * (2 ** attempt))
+                                raw_backoff = (
+                                    min(classified.retry_delay, 5.0)
+                                    if classified.retry_delay > 0
+                                    else (2.0 * (2**attempt))
+                                )
                                 backoff = raw_backoff * (1.0 - random.random() * 0.1)
                                 await asyncio.sleep(backoff)
                                 continue
 
-                        if (classified.recovery == RecoveryAction.RETRY_SAME or self._is_transient_error(exc)) and attempt < max_attempts - 1:
-                            raw_backoff = classified.retry_delay if classified.retry_delay > 0 else (2.0 * (2 ** attempt))
+                        if (
+                            classified.recovery == RecoveryAction.RETRY_SAME or self._is_transient_error(exc)
+                        ) and attempt < max_attempts - 1:
+                            raw_backoff = classified.retry_delay if classified.retry_delay > 0 else (2.0 * (2**attempt))
                             backoff = raw_backoff * (1.0 - random.random() * 0.1)
                             logger.warning(
                                 f"[{stage_name}][AgentHarness] Retryable error on turn {turns} "
-                                f"(attempt {attempt+1}/{max_attempts}): {exc}. Retrying in {backoff:.2f}s..."
+                                f"(attempt {attempt + 1}/{max_attempts}): {exc}. Retrying in {backoff:.2f}s..."
                             )
                             await asyncio.sleep(backoff)
                             continue
@@ -1045,8 +1115,12 @@ class AgentHarness:
 
                 if response is None:
                     is_billing = self._is_billing_error(last_exc)
-                    logger.error(f"[{stage_name}][AgentHarness] Provider error on turn {turns}: {last_exc} (is_billing={is_billing})")
-                    if (total_input_tokens > 0 or total_output_tokens > 0) and hasattr(self.llm_client, "_save_token_usage"):
+                    logger.error(
+                        f"[{stage_name}][AgentHarness] Provider error on turn {turns}: {last_exc} (is_billing={is_billing})"
+                    )
+                    if (total_input_tokens > 0 or total_output_tokens > 0) and hasattr(
+                        self.llm_client, "_save_token_usage"
+                    ):
                         try:
                             await self.llm_client._save_token_usage(
                                 model_name=getattr(self.llm_client, "model", "unknown"),
@@ -1065,10 +1139,12 @@ class AgentHarness:
                     current_messages = pre_turn_checkpoint
                     reporting_messages = [dict(m) for m in current_messages]
                     if reporting_messages and reporting_messages[-1].get("role") == "user":
-                        reporting_messages.append({
-                            "role": "assistant",
-                            "content": "[Analysis turn terminated prematurely due to provider error. State preserved.]"
-                        })
+                        reporting_messages.append(
+                            {
+                                "role": "assistant",
+                                "content": "[Analysis turn terminated prematurely due to provider error. State preserved.]",
+                            }
+                        )
                     return {
                         "success": False,
                         "error": str(last_exc),
@@ -1097,9 +1173,14 @@ class AgentHarness:
                     # ── Silent Overflow Detection (Input Token Ingestion Guard) ──
                     if in_tok > 0 and not _overflow_recovery_attempted:
                         from monika.infrastructure.llm.model_capabilities import MODEL_CAPABILITIES
+
                         model_name_check = getattr(self.llm_client, "model", "")
                         cap = MODEL_CAPABILITIES.get(model_name_check, None)
-                        context_window = getattr(cap, "context_window", 0) if cap else (cap.get("context_window", 0) if isinstance(cap, dict) else 0)
+                        context_window = (
+                            getattr(cap, "context_window", 0)
+                            if cap
+                            else (cap.get("context_window", 0) if isinstance(cap, dict) else 0)
+                        )
                         if context_window > 0 and in_tok > context_window:
                             logger.warning(
                                 f"[{stage_name}][AgentHarness] SILENT OVERFLOW detected: input_tokens={in_tok} > "
@@ -1113,8 +1194,12 @@ class AgentHarness:
                             )
                             continue
                 except Exception as norm_err:
-                    logger.error(f"[{stage_name}][AgentHarness] Response normalization error on turn {turns}: {norm_err}")
-                    if (total_input_tokens > 0 or total_output_tokens > 0) and hasattr(self.llm_client, "_save_token_usage"):
+                    logger.error(
+                        f"[{stage_name}][AgentHarness] Response normalization error on turn {turns}: {norm_err}"
+                    )
+                    if (total_input_tokens > 0 or total_output_tokens > 0) and hasattr(
+                        self.llm_client, "_save_token_usage"
+                    ):
                         try:
                             await self.llm_client._save_token_usage(
                                 model_name=getattr(self.llm_client, "model", "unknown"),
@@ -1174,6 +1259,7 @@ class AgentHarness:
             # ── Repetition Guard (Degenerate Echo Loop Prevention & History Cleansing) ──
             if final_text:
                 from monika.application.analysis.harness.repetition_guard import detect_text_repetition
+
                 is_degenerate, rep_snippet = detect_text_repetition(final_text)
                 if is_degenerate and turns < effective_max_turns:
                     logger.warning(
@@ -1191,13 +1277,15 @@ class AgentHarness:
                         elif hasattr(block, "text"):
                             setattr(block, "text", REPETITION_PRUNED_MSG)
 
-                    current_messages.append({
-                        "role": "user",
-                        "content": (
-                            "[GUARDRAIL ALERT: Degenerate repetition loop detected and pruned. "
-                            "Do NOT repeat previous narrative. Immediately submit your structured analytical verdict using the required tool now.]"
-                        )
-                    })
+                    current_messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "[GUARDRAIL ALERT: Degenerate repetition loop detected and pruned. "
+                                "Do NOT repeat previous narrative. Immediately submit your structured analytical verdict using the required tool now.]"
+                            ),
+                        }
+                    )
                     continue
 
             # ── C1: TRUNCATED TOOL CALL SAFETY ──
@@ -1207,7 +1295,8 @@ class AgentHarness:
             if self._check_truncation(response, stop_reason):
                 length_truncated = True
                 tool_use_blocks_check = [
-                    b for b in assistant_content
+                    b
+                    for b in assistant_content
                     if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
                 ]
                 if tool_use_blocks_check:
@@ -1226,11 +1315,13 @@ class AgentHarness:
 
             # ── Structured Response Validation (Phase 3) ──
             from monika.application.analysis.harness.error_classifier import ErrorClassifier, RecoveryAction
+
             resp_dict = {
                 "stop_reason": stop_reason,
                 "content": final_text,
                 "tool_calls": [
-                    b for b in assistant_content
+                    b
+                    for b in assistant_content
                     if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
                 ],
                 "reasoning": reasoning_content or "",
@@ -1238,17 +1329,29 @@ class AgentHarness:
             resp_issue = ErrorClassifier.classify_response(resp_dict)
             if resp_issue and not self._check_truncation(response, stop_reason) and turns < effective_max_turns:
                 if resp_issue.recovery in (RecoveryAction.INJECT_NUDGE, RecoveryAction.INJECT_CONTINUATION):
-                    logger.warning(f"[{stage_name}][AgentHarness] Response issue detected ({resp_issue.category.value}): injecting recovery nudge.")
-                    current_messages.append({"role": "user", "content": resp_issue.nudge_text or "[System: Please proceed.]"})
+                    logger.warning(
+                        f"[{stage_name}][AgentHarness] Response issue detected ({resp_issue.category.value}): injecting recovery nudge."
+                    )
+                    current_messages.append(
+                        {"role": "user", "content": resp_issue.nudge_text or "[System: Please proceed.]"}
+                    )
                     continue
                 elif resp_issue.recovery == RecoveryAction.RETRY_WITH_REDUCED_EFFORT:
-                    logger.warning(f"[{stage_name}][AgentHarness] Thinking budget exhausted without content: nudging direct conclusion.")
-                    current_messages.append({"role": "user", "content": "[System: Thinking budget exhausted without answer. Conclude directly.]"})
+                    logger.warning(
+                        f"[{stage_name}][AgentHarness] Thinking budget exhausted without content: nudging direct conclusion."
+                    )
+                    current_messages.append(
+                        {
+                            "role": "user",
+                            "content": "[System: Thinking budget exhausted without answer. Conclude directly.]",
+                        }
+                    )
                     continue
 
             # 6. Check Completion & Mandatory Tool Enforcement
             tool_use_blocks = [
-                b for b in assistant_content
+                b
+                for b in assistant_content
                 if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
             ]
 
@@ -1275,6 +1378,7 @@ class AgentHarness:
                         )
                 # ── Trade Proposal Verification Stop Gate ──
                 from monika.application.analysis.harness.trade_stop_gates import TradeStopGate
+
                 trade_verdict = TradeStopGate.evaluate(
                     final_text,
                     self.verification_ledger,
@@ -1294,12 +1398,14 @@ class AgentHarness:
                             f"[{stage_name}][AgentHarness] Reached max turns ({effective_max_turns}) without "
                             f"verified risk sizing. Candidate Preservation: safely downgrading decision to WAIT."
                         )
-                        final_text = json.dumps({
-                            "decision": "WAIT",
-                            "confidence": 0.0,
-                            "rationale": f"Downgraded to defensive WAIT: {trade_verdict.rejection_reason or 'Risk/sizing unverified before turn limit'}",
-                            "downgraded_by_stop_gate": True,
-                        })
+                        final_text = json.dumps(
+                            {
+                                "decision": "WAIT",
+                                "confidence": 0.0,
+                                "rationale": f"Downgraded to defensive WAIT: {trade_verdict.rejection_reason or 'Risk/sizing unverified before turn limit'}",
+                                "downgraded_by_stop_gate": True,
+                            }
+                        )
 
                 logger.info(
                     f"[{stage_name}][AgentHarness] Agent completed in {turns} turns with "
@@ -1309,13 +1415,10 @@ class AgentHarness:
                 # ── Dual-Queue Follow-Up Processing ──
                 if self._follow_up_queue and turns < effective_max_turns:
                     f_msg = self._follow_up_queue.popleft()
-                    logger.info(
-                        f"[{stage_name}][AgentHarness] Draining follow-up directive from '{f_msg.sender}'."
+                    logger.info(f"[{stage_name}][AgentHarness] Draining follow-up directive from '{f_msg.sender}'.")
+                    current_messages.append(
+                        {"role": "user", "content": f"[{f_msg.sender.upper()} FOLLOW-UP TASK]: {f_msg.content}"}
                     )
-                    current_messages.append({
-                        "role": "user",
-                        "content": f"[{f_msg.sender.upper()} FOLLOW-UP TASK]: {f_msg.content}"
-                    })
                     continue
 
                 break
@@ -1336,7 +1439,9 @@ class AgentHarness:
 
             prepared_calls = []
             for block in tool_use_blocks:
-                raw_name = str(block.get("name") or "") if isinstance(block, dict) else str(getattr(block, "name", "") or "")
+                raw_name = (
+                    str(block.get("name") or "") if isinstance(block, dict) else str(getattr(block, "name", "") or "")
+                )
                 raw_input = block.get("input") if isinstance(block, dict) else getattr(block, "input", {})
                 t_id = block.get("id") if isinstance(block, dict) else getattr(block, "id", "")
 
@@ -1352,7 +1457,11 @@ class AgentHarness:
                 # ── M5: Tool Schema Validation (Pi Pattern) ──
                 tool_schema_fn = getattr(executor, "get_tool_schema", None)
                 tool_schema = None
-                if callable(tool_schema_fn) and not inspect.iscoroutinefunction(tool_schema_fn) and type(tool_schema_fn).__name__ != "AsyncMock":
+                if (
+                    callable(tool_schema_fn)
+                    and not inspect.iscoroutinefunction(tool_schema_fn)
+                    and type(tool_schema_fn).__name__ != "AsyncMock"
+                ):
                     res = tool_schema_fn(t_name)
                     if isinstance(res, dict):
                         tool_schema = res
@@ -1363,6 +1472,7 @@ class AgentHarness:
 
                     try:
                         import jsonschema
+
                         jsonschema.validate(instance=t_input, schema=input_schema)
                     except ImportError:
                         req = input_schema.get("required", [])
@@ -1377,10 +1487,12 @@ class AgentHarness:
                         call_item["_schema_error"] = {
                             "type": "tool_result",
                             "tool_use_id": t_id,
-                            "content": json.dumps({
-                                "status": "schema_validation_error",
-                                "error": f"Invalid arguments for {t_name}: {schema_err}. Fix and re-call.",
-                            }),
+                            "content": json.dumps(
+                                {
+                                    "status": "schema_validation_error",
+                                    "error": f"Invalid arguments for {t_name}: {schema_err}. Fix and re-call.",
+                                }
+                            ),
                             "is_error": True,
                         }
                 prepared_calls.append(call_item)
@@ -1407,26 +1519,40 @@ class AgentHarness:
                     return {
                         "type": "tool_result",
                         "tool_use_id": c_id,
-                        "content": json.dumps({
-                            "status": "superseded",
-                            "notice": "Duplicate/empty submission call superseded by substantive parallel submission in the same turn."
-                        }),
+                        "content": json.dumps(
+                            {
+                                "status": "superseded",
+                                "notice": "Duplicate/empty submission call superseded by substantive parallel submission in the same turn.",
+                            }
+                        ),
                         "is_error": False,
                     }
 
                 # Final Turn Read Tools Lockdown: force agent to submit on final turn
-                terminal_tool = "submit_fundamental_brief" if ("fundamental" in stage_name.lower() or "stage1" in stage_name.lower()) else ("submit_asset_analysis" if ("asset" in stage_name.lower() or "stage2" in stage_name.lower()) else None)
+                terminal_tool = (
+                    "submit_fundamental_brief"
+                    if ("fundamental" in stage_name.lower() or "stage1" in stage_name.lower())
+                    else (
+                        "submit_asset_analysis"
+                        if ("asset" in stage_name.lower() or "stage2" in stage_name.lower())
+                        else None
+                    )
+                )
                 if turns >= effective_max_turns and terminal_tool and c_name != terminal_tool:
                     if c_name.startswith(("get_", "read_", "search_", "inspect_", "diff_")):
                         tool_calls_made += 1
-                        logger.warning(f"[{stage_name}][AgentHarness] Final turn read tool lockdown: blocked '{c_name}'. Forcing '{terminal_tool}'.")
+                        logger.warning(
+                            f"[{stage_name}][AgentHarness] Final turn read tool lockdown: blocked '{c_name}'. Forcing '{terminal_tool}'."
+                        )
                         return {
                             "type": "tool_result",
                             "tool_use_id": c_id,
-                            "content": json.dumps({
-                                "status": "read_tools_disabled",
-                                "error": f"Read tools are strictly disabled on final turn {turns}/{effective_max_turns}. You MUST call '{terminal_tool}' immediately with your synthesized analysis."
-                            }),
+                            "content": json.dumps(
+                                {
+                                    "status": "read_tools_disabled",
+                                    "error": f"Read tools are strictly disabled on final turn {turns}/{effective_max_turns}. You MUST call '{terminal_tool}' immediately with your synthesized analysis.",
+                                }
+                            ),
                             "is_error": True,
                         }
 
@@ -1441,9 +1567,7 @@ class AgentHarness:
                 guard_ctx = dict(kwargs)
                 if prefetch_satisfied_tools:
                     guard_ctx["prefetch_satisfied_tools"] = prefetch_satisfied_tools
-                guard_verdict = self.guardrail_controller.validate_tool_call(
-                    c_name, c_input, context=guard_ctx
-                )
+                guard_verdict = self.guardrail_controller.validate_tool_call(c_name, c_input, context=guard_ctx)
                 if not guard_verdict.allowed:
                     logger.warning(
                         f"[{stage_name}][AgentHarness] Guardrail blocked '{c_name}' ({guard_verdict.guard_name}): {guard_verdict.reason}"
@@ -1453,17 +1577,23 @@ class AgentHarness:
                     if guard_verdict.action in ("reject", "nudge"):
                         if c_name not in ("submit_fundamental_brief", "submit_asset_analysis"):
                             self.guardrail_controller.record_denial()
-                    status_val = "already_executed" if guard_verdict.guard_name == "AntiOscillationGuard" else f"guardrail_{guard_verdict.action}"
+                    status_val = (
+                        "already_executed"
+                        if guard_verdict.guard_name == "AntiOscillationGuard"
+                        else f"guardrail_{guard_verdict.action}"
+                    )
                     return {
                         "type": "tool_result",
                         "tool_use_id": c_id,
                         "name": c_name,
-                        "content": json.dumps({
-                            "status": status_val,
-                            "guard": guard_verdict.guard_name,
-                            "notice" if guard_verdict.action == "suppress" else "error": guard_verdict.reason,
-                            "suggested_fix": guard_verdict.suggested_fix,
-                        }),
+                        "content": json.dumps(
+                            {
+                                "status": status_val,
+                                "guard": guard_verdict.guard_name,
+                                "notice" if guard_verdict.action == "suppress" else "error": guard_verdict.reason,
+                                "suggested_fix": guard_verdict.suggested_fix,
+                            }
+                        ),
                         "is_error": guard_verdict.action in ("reject", "nudge"),
                     }
 
@@ -1505,7 +1635,9 @@ class AgentHarness:
                 # b. Tool Family Quota Enforcement
                 allowed, quota_warn = self.compactor.check_tool_family_quota(c_name, list(called_tools))
                 if not allowed:
-                    logger.warning(f"[{stage_name}][AgentHarness] Tool Family Quota Exceeded for '{c_name}': {quota_warn}")
+                    logger.warning(
+                        f"[{stage_name}][AgentHarness] Tool Family Quota Exceeded for '{c_name}': {quota_warn}"
+                    )
                     suppressed_result = {"status": "quota_exceeded", "notice": quota_warn}
                     tool_calls_made += 1
                     called_tools.add(c_name)
@@ -1524,8 +1656,13 @@ class AgentHarness:
                     # 1. Anti-laziness on Turn 1: WAIT cannot be submitted without inspecting technical structure or price action
                     if turns == 1 and decision in ("WAIT", "HOLD", "NEUTRAL", "PASS", "NO_TRADE"):
                         inspection_tools = {
-                            "get_smc_zones", "get_structure_breaks", "get_price_history",
-                            "get_indicator_snapshot", "get_mt5_bars", "get_atr", "get_swing_points"
+                            "get_smc_zones",
+                            "get_structure_breaks",
+                            "get_price_history",
+                            "get_indicator_snapshot",
+                            "get_mt5_bars",
+                            "get_atr",
+                            "get_swing_points",
                         }
                         if not any(t in called_tools for t in inspection_tools):
                             logger.warning(
@@ -1535,13 +1672,15 @@ class AgentHarness:
                             return {
                                 "type": "tool_result",
                                 "tool_use_id": c_id,
-                                "content": json.dumps({
-                                    "status": "anti_laziness_nudge",
-                                    "error": (
-                                        "Cannot conclude WAIT on turn 1 without inspecting technical structure or price action. "
-                                        "You must call get_smc_zones, get_structure_breaks, or get_price_history first."
-                                    ),
-                                }),
+                                "content": json.dumps(
+                                    {
+                                        "status": "anti_laziness_nudge",
+                                        "error": (
+                                            "Cannot conclude WAIT on turn 1 without inspecting technical structure or price action. "
+                                            "You must call get_smc_zones, get_structure_breaks, or get_price_history first."
+                                        ),
+                                    }
+                                ),
                                 "is_error": True,
                             }
 
@@ -1556,14 +1695,16 @@ class AgentHarness:
                             return {
                                 "type": "tool_result",
                                 "tool_use_id": c_id,
-                                "content": json.dumps({
-                                    "status": "blocked_by_stop_gate",
-                                    "error": (
-                                        f"Trade proposal ({decision} {target_sym}) blocked by TradeStopGate: "
-                                        f"No passing calculate_position_size or validate_risk_limits evidence recorded in ledger. "
-                                        f"You MUST call calculate_position_size with exact stop_loss and take_profit parameters first."
-                                    ),
-                                }),
+                                "content": json.dumps(
+                                    {
+                                        "status": "blocked_by_stop_gate",
+                                        "error": (
+                                            f"Trade proposal ({decision} {target_sym}) blocked by TradeStopGate: "
+                                            f"No passing calculate_position_size or validate_risk_limits evidence recorded in ledger. "
+                                            f"You MUST call calculate_position_size with exact stop_loss and take_profit parameters first."
+                                        ),
+                                    }
+                                ),
                                 "is_error": True,
                             }
 
@@ -1575,7 +1716,7 @@ class AgentHarness:
                                 prop_sl = float(c_input["stop_loss"])
                             if "entry" in c_input or "entry_price" in c_input:
                                 prop_entry = float(c_input.get("entry") or c_input.get("entry_price"))
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
 
                         is_intact, integrity_err = self.verification_ledger.verify_proposal_integrity(
@@ -1591,10 +1732,12 @@ class AgentHarness:
                                 "type": "tool_result",
                                 "tool_use_id": c_id,
                                 "name": c_name,
-                                "content": json.dumps({
-                                    "status": "blocked_by_parameter_integrity",
-                                    "error": f"Trade proposal blocked: {integrity_err}",
-                                }),
+                                "content": json.dumps(
+                                    {
+                                        "status": "blocked_by_parameter_integrity",
+                                        "error": f"Trade proposal blocked: {integrity_err}",
+                                    }
+                                ),
                                 "is_error": True,
                             }
 
@@ -1604,14 +1747,20 @@ class AgentHarness:
                 res_obj = None
                 try:
                     from monika.application.plugins.manager.manager import get_plugin_manager, PluginHook
+
                     plugin_mgr = get_plugin_manager()
-                    await plugin_mgr.emit(PluginHook.PRE_TOOL_CALL, tool_name=c_name, args=c_input, stage_name=stage_name)
+                    await plugin_mgr.emit(
+                        PluginHook.PRE_TOOL_CALL, tool_name=c_name, args=c_input, stage_name=stage_name
+                    )
 
                     from monika.core.telemetry.tracing.spans import tool_span
+
                     with tool_span(c_name, symbol=stage_symbol):
                         res_obj = await executor.execute(c_name, c_input)
 
-                    await plugin_mgr.emit(PluginHook.POST_TOOL_CALL, tool_name=c_name, args=c_input, result=res_obj, stage_name=stage_name)
+                    await plugin_mgr.emit(
+                        PluginHook.POST_TOOL_CALL, tool_name=c_name, args=c_input, result=res_obj, stage_name=stage_name
+                    )
                 except Exception as ex:
                     logger.error(f"[{stage_name}][AgentHarness] Tool execution exception in '{c_name}': {ex}")
                     res_obj = {"error": f"Tool execution failed: {str(ex)}", "tool": c_name}
@@ -1625,6 +1774,7 @@ class AgentHarness:
                 # Disk spillover check for payload > 16KB to prevent context window bloat and JSON truncation
                 try:
                     from monika.application.analysis.tools.tool_result_storage import get_tool_result_storage
+
                     res_obj, was_spilled = get_tool_result_storage().maybe_persist(c_name, c_input, res_obj)
                 except Exception as e:
                     logger.debug(f"[AgentHarness] Tool result spillover check error: {e}")
@@ -1632,12 +1782,21 @@ class AgentHarness:
                 # Format tool result block with validation and micro-pruning
                 try:
                     from monika.core.validation.tool_response_validator import ToolResponseValidator
+
                     sanitized_result, is_valid, warning = ToolResponseValidator.validate_and_sanitize(c_name, res_obj)
                     if not is_valid:
                         error_context = ToolResponseValidator.build_error_context(c_name, warning)
-                        tool_res_content = (json.dumps(sanitized_result, default=str) if not isinstance(sanitized_result, str) else sanitized_result) + error_context
+                        tool_res_content = (
+                            json.dumps(sanitized_result, default=str)
+                            if not isinstance(sanitized_result, str)
+                            else sanitized_result
+                        ) + error_context
                     else:
-                        tool_res_content = json.dumps(sanitized_result, ensure_ascii=False, default=str) if not isinstance(sanitized_result, str) else sanitized_result
+                        tool_res_content = (
+                            json.dumps(sanitized_result, ensure_ascii=False, default=str)
+                            if not isinstance(sanitized_result, str)
+                            else sanitized_result
+                        )
                 except Exception:
                     tool_res_content = json.dumps(res_obj, default=str) if not isinstance(res_obj, str) else res_obj
 
@@ -1649,21 +1808,31 @@ class AgentHarness:
                     tool_res_content = dedup_notice
 
                 # ── Untrusted Content Isolation & Threat Scanning ──
-                untrusted_tools = frozenset({
-                    "get_news_items", "get_news_digest", "get_retail_sentiment",
-                    "get_social_sentiment", "web_search", "get_cot_report", "scrape_url",
-                    "get_forex_sentiment", "get_fxssi_sentiment", "get_structured_sentiment",
-                })
+                untrusted_tools = frozenset(
+                    {
+                        "get_news_items",
+                        "get_news_digest",
+                        "get_retail_sentiment",
+                        "get_social_sentiment",
+                        "web_search",
+                        "get_cot_report",
+                        "scrape_url",
+                        "get_forex_sentiment",
+                        "get_fxssi_sentiment",
+                        "get_structured_sentiment",
+                    }
+                )
                 if c_name in untrusted_tools:
                     try:
                         from monika.core.security.threat_scanner import sanitize_or_block
+
                         tool_res_content = sanitize_or_block(tool_res_content, source=c_name)
                     except Exception:
                         pass
                     tool_res_content = (
                         f'<untrusted_external_content source="{c_name}">\n'
-                        f'{tool_res_content}\n'
-                        f'</untrusted_external_content>'
+                        f"{tool_res_content}\n"
+                        f"</untrusted_external_content>"
                     )
 
                 return {
@@ -1678,17 +1847,21 @@ class AgentHarness:
             segments = planner.plan_segments(prepared_calls)
             for seg_type, batch in segments:
                 if seg_type == "parallel" and len(batch) > 1:
-                    raw_results = await asyncio.gather(*[_execute_single_prepared_tool(tc) for tc in batch], return_exceptions=True)
+                    raw_results = await asyncio.gather(
+                        *[_execute_single_prepared_tool(tc) for tc in batch], return_exceptions=True
+                    )
                     for idx, res in enumerate(raw_results):
                         if isinstance(res, Exception):
                             tc = batch[idx]
                             logger.error(f"[{stage_name}][AgentHarness] Parallel tool {tc.get('name')} failed: {res}")
-                            tool_results.append({
-                                "type": "tool_result",
-                                "tool_use_id": tc.get("id", ""),
-                                "content": json.dumps({"status": "execution_error", "error": str(res)}),
-                                "is_error": True,
-                            })
+                            tool_results.append(
+                                {
+                                    "type": "tool_result",
+                                    "tool_use_id": tc.get("id", ""),
+                                    "content": json.dumps({"status": "execution_error", "error": str(res)}),
+                                    "is_error": True,
+                                }
+                            )
                         else:
                             tool_results.append(res)
                 else:
@@ -1698,18 +1871,28 @@ class AgentHarness:
                             tool_results.append(res)
                         except Exception as ex:
                             logger.error(f"[{stage_name}][AgentHarness] Sequential tool {tc.get('name')} failed: {ex}")
-                            tool_results.append({
-                                "type": "tool_result",
-                                "tool_use_id": tc.get("id", ""),
-                                "content": json.dumps({"status": "execution_error", "error": str(ex)}),
-                                "is_error": True,
-                            })
+                            tool_results.append(
+                                {
+                                    "type": "tool_result",
+                                    "tool_use_id": tc.get("id", ""),
+                                    "content": json.dumps({"status": "execution_error", "error": str(ex)}),
+                                    "is_error": True,
+                                }
+                            )
 
             # Append tool observations as next turn user message
             current_messages.append({"role": "user", "content": tool_results})
 
             # 7b. Penultimate Turn Forcing Directive: lock read tools and mandate terminal submission
-            terminal_sub_tool = "submit_fundamental_brief" if ("fundamental" in stage_name.lower() or "stage1" in stage_name.lower()) else ("submit_asset_analysis" if ("asset" in stage_name.lower() or "stage2" in stage_name.lower()) else None)
+            terminal_sub_tool = (
+                "submit_fundamental_brief"
+                if ("fundamental" in stage_name.lower() or "stage1" in stage_name.lower())
+                else (
+                    "submit_asset_analysis"
+                    if ("asset" in stage_name.lower() or "stage2" in stage_name.lower())
+                    else None
+                )
+            )
             if terminal_sub_tool and terminal_sub_tool not in called_tools and turns == effective_max_turns - 1:
                 forcing_directive = (
                     f"\n\n[CRITICAL MANDATORY INSTRUCTION — TURN BUDGET LIMIT REACHED]:\n"
@@ -1722,7 +1905,9 @@ class AgentHarness:
                     current_messages[-1]["content"].append({"type": "text", "text": forcing_directive})
                 elif current_messages:
                     current_messages[-1]["content"] = f"{current_messages[-1].get('content', '')}{forcing_directive}"
-                logger.info(f"[{stage_name}][AgentHarness] Injected Penultimate Turn Forcing Directive for '{terminal_sub_tool}' on turn {turns}/{effective_max_turns}.")
+                logger.info(
+                    f"[{stage_name}][AgentHarness] Injected Penultimate Turn Forcing Directive for '{terminal_sub_tool}' on turn {turns}/{effective_max_turns}."
+                )
 
             # 8. State-Aware Stall Guard Check (H-8)
             is_stall_warn, is_stall_terminate, stall_msg = self.stall_guard.check_stall()
@@ -1733,7 +1918,9 @@ class AgentHarness:
                     if isinstance(last_content, list):
                         last_content.append({"type": "text", "text": f"\n[STALL GUARD TERMINATION]: {stall_msg}"})
                     else:
-                        current_messages[-1]["content"] = f"{last_content or ''}\n\n[STALL GUARD TERMINATION]: {stall_msg}"
+                        current_messages[-1]["content"] = (
+                            f"{last_content or ''}\n\n[STALL GUARD TERMINATION]: {stall_msg}"
+                        )
                 if effective_max_turns > turns + 1:
                     effective_max_turns = turns + 1
             elif is_stall_warn and stall_msg:
@@ -1753,7 +1940,9 @@ class AgentHarness:
                 if ptc_refund_count < 3:
                     turns -= 1
                     ptc_refund_count += 1
-                    logger.debug(f"[{stage_name}][AgentHarness] PTC budget refund ({ptc_refund_count}/3): turn not counted")
+                    logger.debug(
+                        f"[{stage_name}][AgentHarness] PTC budget refund ({ptc_refund_count}/3): turn not counted"
+                    )
                 else:
                     logger.warning(f"[{stage_name}][AgentHarness] PTC budget refund cap reached ({ptc_refund_count}/3)")
 
@@ -1793,4 +1982,5 @@ class AgentHarness:
 
 # Register AgentHarness factory with BaseLLMClient to decouple infrastructure from application
 from monika.infrastructure.providers.base_provider import BaseLLMClient
+
 BaseLLMClient.register_agent_harness_factory(AgentHarness)

@@ -8,23 +8,53 @@ logger = logging.getLogger("TradingAgent.Harness.StallGuard")
 
 # Set of tools considered read-only / idempotent
 READ_ONLY_TOOLS: Set[str] = {
-    "get_price_history", "get_technical_indicators", "get_atr",
-    "get_swing_points", "get_structure_breaks", "get_smc_zones",
-    "get_fibonacci_levels", "get_optimal_intraday_levels", "get_daily_range_context",
-    "get_news_items", "get_news_digest", "get_retail_sentiment",
-    "get_funding_rate", "get_fear_greed_index", "get_forex_sentiment",
-    "get_fxssi_sentiment", "get_structured_sentiment", "get_dxy", "get_vix",
-    "get_fedwatch_probabilities", "get_yield_data", "get_cot_report",
-    "get_economic_calendar", "get_account_info", "get_open_positions", "get_trade_history",
-    "get_active_triggers", "get_system_health", "get_paper_trading_performance",
-    "get_verified_market_snapshot", "get_market_quote", "get_ohlcv", "get_rate",
-    "get_tick", "get_candles", "search_tools", "describe_tool",
+    "get_price_history",
+    "get_technical_indicators",
+    "get_atr",
+    "get_swing_points",
+    "get_structure_breaks",
+    "get_smc_zones",
+    "get_fibonacci_levels",
+    "get_optimal_intraday_levels",
+    "get_daily_range_context",
+    "get_news_items",
+    "get_news_digest",
+    "get_retail_sentiment",
+    "get_funding_rate",
+    "get_fear_greed_index",
+    "get_forex_sentiment",
+    "get_fxssi_sentiment",
+    "get_structured_sentiment",
+    "get_dxy",
+    "get_vix",
+    "get_fedwatch_probabilities",
+    "get_yield_data",
+    "get_cot_report",
+    "get_economic_calendar",
+    "get_account_info",
+    "get_open_positions",
+    "get_trade_history",
+    "get_active_triggers",
+    "get_system_health",
+    "get_paper_trading_performance",
+    "get_verified_market_snapshot",
+    "get_market_quote",
+    "get_ohlcv",
+    "get_rate",
+    "get_tick",
+    "get_candles",
+    "search_tools",
+    "describe_tool",
     "execute_analysis_code",
 }
 
 STATE_ADVANCING_TOOLS: Set[str] = {
-    "submit_asset_analysis", "submit_fundamental_brief", "propose_action",
-    "place_order", "modify_position", "close_position",
+    "submit_asset_analysis",
+    "submit_fundamental_brief",
+    "propose_action",
+    "place_order",
+    "modify_position",
+    "close_position",
 }
 
 
@@ -98,10 +128,7 @@ class StallGuard:
             return (False, True, msg)
 
         # 3. Check for warning condition
-        if (
-            self.consecutive_read_count >= self.warning_threshold
-            or content_repeat_count >= 3
-        ):
+        if self.consecutive_read_count >= self.warning_threshold or content_repeat_count >= 3:
             self.warning_issued = True
             msg = (
                 f"[STALL GUARD WARNING]: You have executed {self.consecutive_read_count} consecutive "

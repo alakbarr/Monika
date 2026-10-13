@@ -25,7 +25,7 @@ INVARIANT_PATTERN = re.compile(r"<mechanical-invariants>.*?</mechanical-invarian
 class InvariantTrajectoryCompressor:
     """
     Unified Trajectory Compression Engine.
-    
+
     Modes:
       - 'semantic' (Default): Uses an auxiliary lightweight LLM to summarize middle conversation turns
         while preserving technical precision, trading thesis, and mechanical invariants.
@@ -71,13 +71,13 @@ class InvariantTrajectoryCompressor:
     ) -> List[Dict[str, Any]]:
         """
         Compresses conversation trajectory.
-        
+
         Args:
             messages: Full list of message dictionaries.
             mode: 'semantic' (default) or 'fast'.
             summarizer_fn: Callable auxiliary summarizer for semantic mode.
             force: Force compaction regardless of token threshold.
-            
+
         Returns:
             Compacted list of messages conforming to provider schema requirements.
         """

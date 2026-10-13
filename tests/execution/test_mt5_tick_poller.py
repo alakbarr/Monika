@@ -123,4 +123,3 @@ async def test_tick_poller_threadsafe_async(mock_settings):
     assert received_events[0].symbol == "XAUUSD"
     assert received_events[0].bid == 2000.5
     assert received_events[0].ask == 2000.8
-

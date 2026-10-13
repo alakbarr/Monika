@@ -38,7 +38,7 @@ def sanitize_telegram_html(text: str) -> str:
 
     def _save_pre(match: re.Match) -> str:
         pre_blocks.append(match.group(1))
-        return f"___PRE_BLOCK_{len(pre_blocks)-1}___"
+        return f"___PRE_BLOCK_{len(pre_blocks) - 1}___"
 
     content = re.sub(r"```(?:[a-zA-Z0-9_-]+\n)?([\s\S]*?)```", _save_pre, text)
 
@@ -47,7 +47,7 @@ def sanitize_telegram_html(text: str) -> str:
 
     def _save_code(match: re.Match) -> str:
         code_blocks.append(match.group(1))
-        return f"___CODE_BLOCK_{len(code_blocks)-1}___"
+        return f"___CODE_BLOCK_{len(code_blocks) - 1}___"
 
     content = re.sub(r"`([^`\n]+)`", _save_code, content)
 
@@ -60,7 +60,7 @@ def sanitize_telegram_html(text: str) -> str:
 
     def _save_tag(match: re.Match) -> str:
         valid_tags.append(match.group(0))
-        return f"___TGTAG_{len(valid_tags)-1}___"
+        return f"___TGTAG_{len(valid_tags) - 1}___"
 
     content = tag_pattern.sub(_save_tag, content)
 

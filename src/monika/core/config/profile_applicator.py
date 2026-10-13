@@ -168,7 +168,11 @@ class ProfileApplicator:
 
         # Debater models (Bull, Bear, Specialists)
         if has_gemini:
-            debater_primary = "gemini-3.8-flash" if "high_analysis" in profile_key or profile_key == "low_latency_smart" else "gemini-3.5-flash-lite"
+            debater_primary = (
+                "gemini-3.8-flash"
+                if "high_analysis" in profile_key or profile_key == "low_latency_smart"
+                else "gemini-3.5-flash-lite"
+            )
             debater_fallback = "gemini-3.5-flash-lite"
         elif has_anthropic and "high_analysis" in profile_key:
             debater_primary = "claude-3-5-haiku-20241022"
@@ -206,23 +210,46 @@ class ProfileApplicator:
 
         # Group classification of the 49 roles
         heavy_roles = {
-            "stage1_fundamental", "stage1_escalation", "stage2_per_asset_primary",
-            "stage2_per_asset_secondary", "stage2_adjudicator", "debate_judge",
-            "trade_reflection", "portfolio_synthesis", "deep_research",
-            "report_synthesizer", "chat_telegram_complex", "macro_analyst",
+            "stage1_fundamental",
+            "stage1_escalation",
+            "stage2_per_asset_primary",
+            "stage2_per_asset_secondary",
+            "stage2_adjudicator",
+            "debate_judge",
+            "trade_reflection",
+            "portfolio_synthesis",
+            "deep_research",
+            "report_synthesizer",
+            "chat_telegram_complex",
+            "macro_analyst",
         }
 
         debater_roles = {
-            "debate_bull", "debate_bear", "sentiment_analyst", "specialist_technical",
-            "specialist_sentiment", "specialist_macro", "adversarial_check",
-            "portfolio_manager_per_trade", "fundamental_verifier", "pattern_context_verifier",
-            "risk_gate", "risk_gate_conservative", "risk_gate_aggressive", "risk_gate_neutral",
+            "debate_bull",
+            "debate_bear",
+            "sentiment_analyst",
+            "specialist_technical",
+            "specialist_sentiment",
+            "specialist_macro",
+            "adversarial_check",
+            "portfolio_manager_per_trade",
+            "fundamental_verifier",
+            "pattern_context_verifier",
+            "risk_gate",
+            "risk_gate_conservative",
+            "risk_gate_aggressive",
+            "risk_gate_neutral",
         }
 
         jev_micro_roles = {
-            "jev_news_realtime", "jev_trigger_validator", "jev_position_guard",
-            "jev_telegram_intent", "jev_exit_prescreen", "jev_confluence_gate",
-            "jev_session_timing_gate", "jev_debate_evaluator",
+            "jev_news_realtime",
+            "jev_trigger_validator",
+            "jev_position_guard",
+            "jev_telegram_intent",
+            "jev_exit_prescreen",
+            "jev_confluence_gate",
+            "jev_session_timing_gate",
+            "jev_debate_evaluator",
         }
 
         task_roles_config: Dict[str, Any] = {}
@@ -306,7 +333,9 @@ class ProfileApplicator:
         }
         try:
             AtomicConfigWriter.update_in_place(settings_path, payload)
-            logger.info(f"[ProfileApplicator] Successfully mapped all 49 task roles for profile '{profile_key}' into {settings_path}")
+            logger.info(
+                f"[ProfileApplicator] Successfully mapped all 49 task roles for profile '{profile_key}' into {settings_path}"
+            )
             return True
         except Exception as e:
             logger.error(f"[ProfileApplicator] Failed to apply profile to {settings_path}: {e}")

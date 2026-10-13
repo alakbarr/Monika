@@ -1,4 +1,3 @@
-
 """GTJA Alpha #17.
 
 Formula: (RANK(VWAP - MAX(VWAP,15))^DELTA(CLOSE,5))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_017",
-    "theme": ['reversal'],
-    "formula_latex": '(RANK(VWAP - MAX(VWAP,15))^DELTA(CLOSE,5))',
-    "columns_required": ['close', 'volume', 'amount'],
+    "theme": ["reversal"],
+    "formula_latex": "(RANK(VWAP - MAX(VWAP,15))^DELTA(CLOSE,5))",
+    "columns_required": ["close", "volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 15,
     "min_warmup_bars": 16,
-    "notes": 'rank(vwap - 15d max(vwap)) is non-positive; we use signed_power for safety.',
+    "notes": "rank(vwap - 15d max(vwap)) is non-positive; we use signed_power for safety.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]

@@ -83,4 +83,3 @@ async def test_structured_output_fallback_dict_response():
         render_fn=lambda d: str(d),
     )
     assert rendered == "Free text from dict payload"
-

@@ -5,6 +5,7 @@
 """
 Scraper Runner: Eksekutor periodik seluruh scraper (data disimpan ke DB).
 """
+
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -12,7 +13,12 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.adapters import batch_save_news, batch_save_calendar, batch_save_tweets, batch_save_fedwatch
+from monika.infrastructure.database.adapters import (
+    batch_save_news,
+    batch_save_calendar,
+    batch_save_tweets,
+    batch_save_fedwatch,
+)
 
 logger = logging.getLogger("TradingAgent.ScraperRunner")
 
@@ -46,9 +52,11 @@ class ScraperRunner:
         # Track consecutive failures per scraper name
         self._consecutive_failures: dict[str, int] = {}
         import threading
+
         self._scrapers_lock = threading.Lock()
         self._active_scrapers: set = set()
         from concurrent.futures import ThreadPoolExecutor
+
         self._executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="scraper_runner")
 
     def _register_scraper(self, scraper):
@@ -75,6 +83,7 @@ class ScraperRunner:
                 pid = getattr(scraper, "browser_pid", None)
                 if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0:
                     from monika.infrastructure.data_ingestion.scrapers.base_scraper import kill_process_tree
+
                     kill_process_tree(pid)
                 if hasattr(scraper, "close"):
                     scraper.close()
@@ -169,7 +178,9 @@ class ScraperRunner:
             # Success: reset failure counter
             if name in self._consecutive_failures:
                 if self._consecutive_failures[name] >= self.failure_alert_threshold:
-                    logger.info(f"Scraper '{name}' recovered after {self._consecutive_failures[name]} consecutive failures.")
+                    logger.info(
+                        f"Scraper '{name}' recovered after {self._consecutive_failures[name]} consecutive failures."
+                    )
                 del self._consecutive_failures[name]
             return result
         except asyncio.TimeoutError:
@@ -203,6 +214,7 @@ class ScraperRunner:
                 logger.warning(f"Scraper '{name}' consecutive failure threshold reached ({count}). Alerting admin.")
                 try:
                     from monika.infrastructure.infra.notifier import AgentNotifier
+
                     notifier = AgentNotifier()
                     await notifier.send_warning(msg)
                 except Exception as notify_err:
@@ -234,7 +246,10 @@ class ScraperRunner:
         source = "investing"
 
         def _fetch_investing():
-            from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import InvestingCalendarScraper
+            from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import (
+                InvestingCalendarScraper,
+            )
+
             scraper = self._register_scraper(InvestingCalendarScraper(headless=True))
             try:
                 return scraper.fetch_events(fast_mode=False)
@@ -253,15 +268,19 @@ class ScraperRunner:
         # 2. Coba ForexFactory (Fallback Utama, timeout 45s)
         if not events:
             logger.warning("InvestingCalendarScraper returned 0 events — activating ForexFactory fallback")
+
             def _fetch_ff():
-                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
+                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
+                    ForexFactoryCalendarScraper,
+                )
+
                 scraper = self._register_scraper(ForexFactoryCalendarScraper(headless=True))
                 try:
                     return scraper.fetch_events()
                 finally:
                     self._unregister_scraper(scraper)
                     scraper.close()
-            
+
             try:
                 events = await asyncio.wait_for(self._run_in_executor(_fetch_ff), timeout=45.0)
                 if events:
@@ -276,7 +295,10 @@ class ScraperRunner:
         if not events:
             logger.warning("ForexFactory fallback returned 0 events — activating Finnhub fallback")
             try:
-                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
+                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_finnhub import (
+                    FinnhubCalendarScraper,
+                )
+
                 scraper = FinnhubCalendarScraper()
                 if hasattr(scraper, "afetch_today_events"):
                     events = await asyncio.wait_for(scraper.afetch_today_events(), timeout=15.0)
@@ -297,10 +319,10 @@ class ScraperRunner:
                 raise RuntimeError("All calendar scraper sources failed to return events")
         return {"saved": n, "source": source}
 
-
     async def _fetch_tradingview(self) -> dict:
         def _fetch():
             from monika.infrastructure.data_ingestion.scrapers.news.tradingview_news import TradingViewNewsScraper
+
             scraper = self._register_scraper(TradingViewNewsScraper(headless=True))
             try:
                 return scraper.fetch_news(limit=15)
@@ -320,6 +342,7 @@ class ScraperRunner:
     async def _fetch_kitco(self) -> dict:
         def _fetch():
             from monika.infrastructure.data_ingestion.scrapers.news.kitco_news import KitcoNewsScraper
+
             scraper = self._register_scraper(KitcoNewsScraper(headless=True))
             try:
                 return scraper.fetch_news(limit=15)
@@ -339,6 +362,7 @@ class ScraperRunner:
     async def _fetch_fedwatch(self) -> dict:
         def _fetch():
             from monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch import FedWatchScraper
+
             scraper = self._register_scraper(FedWatchScraper(headless=True))
             try:
                 return scraper.fetch_probabilities()
@@ -358,6 +382,7 @@ class ScraperRunner:
     async def _fetch_twitter(self) -> dict:
         def _fetch():
             from monika.infrastructure.data_ingestion.scrapers.social.twitter_watch import TwitterWatchScraper
+
             list_url = self.enabled_sources.get("twitter", {}).get("list_url")
             scraper = self._register_scraper(TwitterWatchScraper(headless=True, list_url=list_url))
             try:
@@ -391,6 +416,7 @@ class ScraperRunner:
         from monika.infrastructure.data_ingestion.scrapers.news.rss_reuters import ReutersRssScraper
         from monika.infrastructure.data_ingestion.scrapers.news.rss_cnbc import CnbcRssScraper
         from monika.infrastructure.data_ingestion.scrapers.news.rss_ft import FinancialTimesRssScraper
+
         # Feed resmi bank sentral — prioritas tertinggi, tanpa risiko pemblokiran scraping
         from monika.infrastructure.data_ingestion.scrapers.news.rss_fed import FedRssScraper
         from monika.infrastructure.data_ingestion.scrapers.news.rss_ecb import EcbRssScraper
@@ -400,25 +426,28 @@ class ScraperRunner:
 
         rss_classes = [
             # Feed resmi bank sentral — prioritas tertinggi, aktif secara default
-            ("fed_official",  FedRssScraper,         self.enabled_sources.get("rss_fed", {}).get("enabled", True)),
-            ("ecb_official",  EcbRssScraper,         self.enabled_sources.get("rss_ecb", {}).get("enabled", True)),
-            ("boe_official",  BoeRssScraper,         self.enabled_sources.get("rss_boe", {}).get("enabled", True)),
-            ("boj_official",  BojRssScraper,         self.enabled_sources.get("rss_boj", {}).get("enabled", True)),
-            ("rba_official",  RbaRssScraper,         self.enabled_sources.get("rss_rba", {}).get("enabled", True)),
+            ("fed_official", FedRssScraper, self.enabled_sources.get("rss_fed", {}).get("enabled", True)),
+            ("ecb_official", EcbRssScraper, self.enabled_sources.get("rss_ecb", {}).get("enabled", True)),
+            ("boe_official", BoeRssScraper, self.enabled_sources.get("rss_boe", {}).get("enabled", True)),
+            ("boj_official", BojRssScraper, self.enabled_sources.get("rss_boj", {}).get("enabled", True)),
+            ("rba_official", RbaRssScraper, self.enabled_sources.get("rss_rba", {}).get("enabled", True)),
             # Berita finansial pihak ketiga
-            ("bloomberg",     BloombergRssScraper,   self.enabled_sources.get("rss_bloomberg", {}).get("enabled", True)),
-            ("wsj",           WsjRssScraper,         self.enabled_sources.get("rss_wsj", {}).get("enabled", True)),
-            ("marketwatch",   MarketwatchRssScraper, self.enabled_sources.get("rss_marketwatch", {}).get("enabled", True)),
-            ("dow_jones",     DowJonesRssScraper,    self.enabled_sources.get("rss_dow_jones", {}).get("enabled", True)),
-            ("forexlive",     ForexliveRssScraper,   self.enabled_sources.get("rss_forexlive", {}).get("enabled", True)),
-            ("fxstreet",      FxstreetRssScraper,    self.enabled_sources.get("rss_fxstreet", {}).get("enabled", True)),
-            ("investing",     InvestingRssScraper,   self.enabled_sources.get("rss_investing", {}).get("enabled", True)),
-            ("coindesk",      CoindeskRssScraper,    self.enabled_sources.get("rss_coindesk", {}).get("enabled", True)),
-            ("reuters",       ReutersRssScraper,     self.enabled_sources.get("rss_reuters", {}).get("enabled", True)),
-            ("cnbc",          CnbcRssScraper,        self.enabled_sources.get("rss_cnbc", {}).get("enabled", True)),
-            ("ft",            FinancialTimesRssScraper, self.enabled_sources.get("rss_ft", {}).get("enabled", True)),
+            ("bloomberg", BloombergRssScraper, self.enabled_sources.get("rss_bloomberg", {}).get("enabled", True)),
+            ("wsj", WsjRssScraper, self.enabled_sources.get("rss_wsj", {}).get("enabled", True)),
+            (
+                "marketwatch",
+                MarketwatchRssScraper,
+                self.enabled_sources.get("rss_marketwatch", {}).get("enabled", True),
+            ),
+            ("dow_jones", DowJonesRssScraper, self.enabled_sources.get("rss_dow_jones", {}).get("enabled", True)),
+            ("forexlive", ForexliveRssScraper, self.enabled_sources.get("rss_forexlive", {}).get("enabled", True)),
+            ("fxstreet", FxstreetRssScraper, self.enabled_sources.get("rss_fxstreet", {}).get("enabled", True)),
+            ("investing", InvestingRssScraper, self.enabled_sources.get("rss_investing", {}).get("enabled", True)),
+            ("coindesk", CoindeskRssScraper, self.enabled_sources.get("rss_coindesk", {}).get("enabled", True)),
+            ("reuters", ReutersRssScraper, self.enabled_sources.get("rss_reuters", {}).get("enabled", True)),
+            ("cnbc", CnbcRssScraper, self.enabled_sources.get("rss_cnbc", {}).get("enabled", True)),
+            ("ft", FinancialTimesRssScraper, self.enabled_sources.get("rss_ft", {}).get("enabled", True)),
         ]
-
 
         total_saved = 0
         for name, cls, enabled in rss_classes:
@@ -428,6 +457,7 @@ class ScraperRunner:
                 continue
             rss_name = f"rss_{name}"
             try:
+
                 def _fetch(klass=cls):
                     scraper = self._register_scraper(klass())
                     try:
@@ -457,6 +487,7 @@ class ScraperRunner:
                 if count == self.failure_alert_threshold:
                     try:
                         from monika.infrastructure.infra.notifier import AgentNotifier
+
                         notifier = AgentNotifier()
                         await notifier.send_warning(
                             f"[PERINGATAN] <b>RSS Scraper Alert</b>\n"

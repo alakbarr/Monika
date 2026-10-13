@@ -1441,7 +1441,9 @@ class ToolExecutor:
                 and not (is_weekend and (has_crypto_sentiment or pi.get("dominant_driver")))
             ):
                 try:
-                    from monika.application.analysis.calculators.macro_priced_in_calculator import calculate_macro_priced_in_baseline
+                    from monika.application.analysis.calculators.macro_priced_in_calculator import (
+                        calculate_macro_priced_in_baseline,
+                    )
 
                     baseline = await calculate_macro_priced_in_baseline(self.session)
                     if baseline.get("cot_positioning_percentile") is not None:
@@ -3336,7 +3338,9 @@ class ToolExecutor:
                 "intraday_range_strategy_enabled", True
             ) and decision in ("buy", "sell"):
                 try:
-                    from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
+                    from monika.application.analysis.calculators.daily_range_calculator import (
+                        compute_daily_range_context,
+                    )
 
                     _adr_probe = await compute_daily_range_context(self.session, symbol, self.settings)
                     if "error" in _adr_probe:
@@ -3644,7 +3648,9 @@ class ToolExecutor:
 
         # UNIFIED THRESHOLD ENFORCEMENT
         try:
-            from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
+            from monika.application.analysis.calculators.unified_threshold_calculator import (
+                compute_unified_confluence_threshold,
+            )
 
             final_threshold, threshold_reason = await compute_unified_confluence_threshold(
                 self.session, symbol, self.settings
@@ -3929,7 +3935,9 @@ class ToolExecutor:
                     f"[{symbol}] Confluence uplift soft-warning: reported={submitted_score}, verified_base={det_score}, uplift={non_det_uplift}. Capping effective_score to {effective_score} for threshold re-validation."
                 )
                 try:
-                    from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
+                    from monika.application.analysis.calculators.unified_threshold_calculator import (
+                        compute_unified_confluence_threshold,
+                    )
 
                     recheck_threshold, recheck_reason = await compute_unified_confluence_threshold(
                         self.session, symbol, self.settings

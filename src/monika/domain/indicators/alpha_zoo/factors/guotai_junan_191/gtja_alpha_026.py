@@ -1,4 +1,3 @@
-
 """GTJA Alpha #26.
 
 Formula: ((((SUM(CLOSE,7)/7)-CLOSE))+((CORR(VWAP,DELAY(CLOSE,5),230))))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_026",
-    "theme": ['momentum', 'microstructure'],
-    "formula_latex": '((((SUM(CLOSE,7)/7)-CLOSE))+((CORR(VWAP,DELAY(CLOSE,5),230))))',
-    "columns_required": ['close', 'volume', 'amount'],
+    "theme": ["momentum", "microstructure"],
+    "formula_latex": "((((SUM(CLOSE,7)/7)-CLOSE))+((CORR(VWAP,DELAY(CLOSE,5),230))))",
+    "columns_required": ["close", "volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 7,
     "min_warmup_bars": 35,
-    "notes": '230d corr approximated with 30d window; see notes.',
+    "notes": "230d corr approximated with 30d window; see notes.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]

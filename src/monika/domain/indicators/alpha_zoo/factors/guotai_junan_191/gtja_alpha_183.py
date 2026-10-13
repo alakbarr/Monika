@@ -1,11 +1,11 @@
-
 """GTJA Alpha 183 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     MAX(SUMAC(CLOSE-MEAN(CLOSE,24))) - MIN(SUMAC(CLOSE-MEAN(CLOSE,24))) / STD(CLOSE,24)
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_183"
 
 __alpha_meta__ = {
-    'id': 'gtja191_183',
-    'theme': ['volatility'],
-    'formula_latex': 'see body',
-    'columns_required': ['close'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 24,
-    'min_warmup_bars': 70,
-    'notes': '',
+    "id": "gtja191_183",
+    "theme": ["volatility"],
+    "formula_latex": "see body",
+    "columns_required": ["close"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 24,
+    "min_warmup_bars": 70,
+    "notes": "",
 }
 
 

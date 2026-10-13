@@ -20,27 +20,28 @@ from monika.core.security.nt_guard import is_dangerous_nt_namespace, SecurityVio
 # Hardline command patterns that MUST NEVER execute under any mode or posture
 HARDLINE_BLOCKLIST_PATTERNS = [
     # System destruction & formatting
-    re.compile(r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f*|-f*r[a-zA-Z]*)\s+(?:/|/etc|/usr|/bin|/var|~|\$HOME|\*)(?:/|\*|\s|$|;)", re.IGNORECASE),
+    re.compile(
+        r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f*|-f*r[a-zA-Z]*)\s+(?:/|/etc|/usr|/bin|/var|~|\$HOME|\*)(?:/|\*|\s|$|;)",
+        re.IGNORECASE,
+    ),
     re.compile(r"\b(del|erase|rd|rmdir)\s+.*(/s|/q).*(\\|C:\\|C:/)(?:\s|$|;)", re.IGNORECASE),
     re.compile(r"\b(mkfs|format)\b", re.IGNORECASE),
     re.compile(r"\bdd\s+.*of=(/dev/|\\\\.\b)", re.IGNORECASE),
-    
     # Forkbomb & Process Sabotage
     re.compile(r":\(\)\s*\{\s*:\|:&\s*\};:", re.IGNORECASE),
     re.compile(r"\bkill\s+-9\s+-1\b", re.IGNORECASE),
     re.compile(r"\b(shutdown|reboot|poweroff|halt)\b", re.IGNORECASE),
     re.compile(r"\b(Stop-Computer|Restart-Computer)\b", re.IGNORECASE),
     re.compile(r"\btaskkill\s+.*(/f|/im\s+python\.exe|/im\s+terminal64\.exe)\b", re.IGNORECASE),
-    
     # Sudo stdin password injection
     re.compile(r"echo\s+.*\|\s*sudo\s+-S\b", re.IGNORECASE),
-    
     # Direct access to shadow/credentials
     re.compile(r"\b(cat|type|more|less|head|tail)\s+.*(/etc/shadow|/etc/passwd|\.ssh/id_|\.env)\b", re.IGNORECASE),
-    
     # Cloud Instance Metadata Service (IMDS) SSRF Protection
-    re.compile(r"(?:169\.254\.169\.254|169\.254\.170\.2|metadata\.google\.internal|100\.100\.100\.200|fd00:ec2::254)", re.IGNORECASE),
-    
+    re.compile(
+        r"(?:169\.254\.169\.254|169\.254\.170\.2|metadata\.google\.internal|100\.100\.100\.200|fd00:ec2::254)",
+        re.IGNORECASE,
+    ),
     # Reverse shell & socket pipes
     re.compile(r"/dev/(?:tcp|udp)/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", re.IGNORECASE),
     re.compile(r"\bnc(?:\.traditional)?\s+-[a-zA-Z]*e\b|\bncat\s+.*--exec\b", re.IGNORECASE),
@@ -177,6 +178,7 @@ def assert_safe_write_path(target_path: str, safe_root: Optional[str] = None) ->
 
     target = Path(target_path).resolve()
     import tempfile
+
     temp_dir = Path(tempfile.gettempdir()).resolve()
 
     # 1. Check if inside safe root or temp dir
@@ -252,6 +254,7 @@ def assert_safe_read_path(target_path: str, safe_root: Optional[str] = None) -> 
 
     target = Path(target_path).resolve()
     import tempfile
+
     temp_dir = Path(tempfile.gettempdir()).resolve()
 
     # 1. Check if inside safe root or temp dir
@@ -322,7 +325,9 @@ class DenialCircuitBreaker:
         self._consecutive_denials += 1
         if self._consecutive_denials >= self.threshold:
             self._is_tripped = True
-            self._trip_reason = f"Security Circuit Breaker Tripped: {self._consecutive_denials} consecutive violations. Last: {reason}"
+            self._trip_reason = (
+                f"Security Circuit Breaker Tripped: {self._consecutive_denials} consecutive violations. Last: {reason}"
+            )
             return True
         return False
 
@@ -335,6 +340,7 @@ class DenialCircuitBreaker:
 
 class CommandSecurityViolationError(SecurityViolationError):
     """Raised when command execution violates terminal security policy."""
+
     pass
 
 

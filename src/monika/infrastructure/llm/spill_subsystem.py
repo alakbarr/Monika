@@ -29,17 +29,11 @@ class PostgresSpillSubsystem:
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
         compaction_cfg = self.settings.get("context_compaction", {})
-        self.spill_threshold: int = int(
-            compaction_cfg.get("spill_threshold_tokens", self.DEFAULT_SPILL_THRESHOLD)
-        )
+        self.spill_threshold: int = int(compaction_cfg.get("spill_threshold_tokens", self.DEFAULT_SPILL_THRESHOLD))
         self.compactor = ContextCompactionEngine(settings=self.settings)
 
     async def maybe_spill(
-        self,
-        session: AsyncSession,
-        tool_name: str,
-        output: str,
-        cycle_id: Optional[str] = None
+        self, session: AsyncSession, tool_name: str, output: str, cycle_id: Optional[str] = None
     ) -> str:
         """
         Evaluates output token size. If exceeding threshold, spills to DB and returns
@@ -63,7 +57,7 @@ class PostgresSpillSubsystem:
                 cycle_id=str(cycle_id) if cycle_id else "unassigned",
                 tool_name=tool_name,
                 token_count=tokens,
-                payload_text=output
+                payload_text=output,
             )
             session.add(spill_record)
             await session.flush()
@@ -84,11 +78,7 @@ class PostgresSpillSubsystem:
             return output
 
     async def retrieve_spill(
-        self,
-        session: AsyncSession,
-        blob_id: str,
-        offset: int = 0,
-        max_chars: int = 4000
+        self, session: AsyncSession, blob_id: str, offset: int = 0, max_chars: int = 4000
     ) -> Optional[str]:
         """
         Retrieves a spilled blob from PostgreSQL by its blob_id, with optional slicing.
@@ -102,5 +92,5 @@ class PostgresSpillSubsystem:
             return None
 
         if offset > 0 or max_chars < len(payload):
-            return payload[offset:offset + max_chars]
+            return payload[offset : offset + max_chars]
         return payload

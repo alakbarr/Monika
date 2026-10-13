@@ -2,6 +2,7 @@
 Telegram Bot formatters package.
 Re-exports canonical formatters and sanitizers for telegram messages.
 """
+
 from monika.interfaces.telegram.message_formatter import (
     make_header,
     make_footer,

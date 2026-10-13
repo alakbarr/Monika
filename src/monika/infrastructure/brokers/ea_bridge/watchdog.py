@@ -63,7 +63,11 @@ class EAWatchdog:
         if not alive:
             self._consecutive_failures += 1
             self._is_ea_alive = False
-            reason = f"EA heartbeat stale ({stale}s > {self.stale_threshold}s)" if stale >= 0 else "EA heartbeat file missing"
+            reason = (
+                f"EA heartbeat stale ({stale}s > {self.stale_threshold}s)"
+                if stale >= 0
+                else "EA heartbeat file missing"
+            )
             if not self._tripped:
                 self._tripped = True
                 logger.error(f"[EAWatchdog] TRIP: {reason}")
@@ -106,6 +110,7 @@ class EAWatchdog:
         """Emits circuit breaker trip on EventBus and invokes callback."""
         try:
             from monika.application.protocol.event_bus import get_event_bus, CircuitBreakerEvent
+
             bus = get_event_bus()
             bus.publish_nowait(CircuitBreakerEvent(component="MQL5_EA_Bridge", reason=reason))
         except Exception as e:

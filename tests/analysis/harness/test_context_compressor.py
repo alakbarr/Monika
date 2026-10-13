@@ -143,10 +143,7 @@ async def test_compression_not_triggered_when_message_count_high_but_chars_withi
     """Verify that having > (tail_turns * 2) + 2 messages does NOT trigger compression if total chars <= max_context_chars."""
     compressor = ContextCompressor(settings={})
     # 12 short messages (exceeds default tail_turns*2 + 2 = 8), but total chars is ~200
-    messages = [
-        {"role": "user" if i % 2 == 0 else "assistant", "content": f"msg {i}"}
-        for i in range(12)
-    ]
+    messages = [{"role": "user" if i % 2 == 0 else "assistant", "content": f"msg {i}"} for i in range(12)]
     res = await compressor.compress(messages, max_context_chars=5000, tail_turns=3)
     # Should NOT be compressed because total_chars is well within 5000 budget
     assert res == messages
@@ -314,6 +311,3 @@ def test_prune_oversized_tool_results_in_messages():
     assert TOOL_PRUNE_MARKER in tool_msg
     assert tool_msg.startswith("START_")
     assert tool_msg.endswith("_END")
-
-
-

@@ -14,7 +14,9 @@ async def test_harness_state_dual_queues():
     # Enqueue immediate steering
     state.enqueue_steering(SteeringMessage(content="Adjust risk to defensive", sender="operator", mode="immediate"))
     # Enqueue follow-up task
-    state.enqueue_steering(SteeringMessage(content="Scan correlation after close", sender="scheduler", mode="follow_up"))
+    state.enqueue_steering(
+        SteeringMessage(content="Scan correlation after close", sender="scheduler", mode="follow_up")
+    )
 
     assert len(state.steering_queue) == 1
     assert len(state.follow_up_queue) == 1
@@ -66,10 +68,7 @@ async def test_agent_harness_immediate_steering_injection():
     assert result["success"] is True
     # Verify steering directive was injected into context
     context = result["context_messages"]
-    steering_found = any(
-        "NEWS_WATCHER STEERING DIRECTIVE" in str(msg.get("content", ""))
-        for msg in context
-    )
+    steering_found = any("NEWS_WATCHER STEERING DIRECTIVE" in str(msg.get("content", "")) for msg in context)
     assert steering_found, "Immediate steering directive should be injected into messages"
 
 
@@ -122,10 +121,7 @@ async def test_agent_harness_follow_up_queue():
     assert result["success"] is True
     assert result["turns"] == 2
     context = result["context_messages"]
-    follow_up_found = any(
-        "RISK_GUARDIAN FOLLOW-UP TASK" in str(msg.get("content", ""))
-        for msg in context
-    )
+    follow_up_found = any("RISK_GUARDIAN FOLLOW-UP TASK" in str(msg.get("content", "")) for msg in context)
     assert follow_up_found, "Follow-up directive should be executed before loop goes idle"
 
 
@@ -183,8 +179,5 @@ async def test_agent_harness_truncation_safety_guard():
     assert result["length_truncated"] is True
     # Verify tool call was refused with safe truncation notice
     context = result["context_messages"]
-    refusal_found = any(
-        "refused_truncated_response" in str(msg.get("content", ""))
-        for msg in context
-    )
+    refusal_found = any("refused_truncated_response" in str(msg.get("content", "")) for msg in context)
     assert refusal_found, "Truncated tool calls must be refused safely"

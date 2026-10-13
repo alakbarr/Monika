@@ -42,10 +42,12 @@ def fallback_multimodal_to_text(messages: List[dict]) -> List[dict]:
                         source = block.get("source", {})
                         media_type = source.get("media_type", "image/png")
                         data_len = len(str(source.get("data", "")))
-                        new_blocks.append({
-                            "type": "text",
-                            "text": f"[CHART/IMAGE DOWGRADED TO TEXT: Type={media_type}, Size={data_len} bytes. Visual data omitted to maintain connection stability.]"
-                        })
+                        new_blocks.append(
+                            {
+                                "type": "text",
+                                "text": f"[CHART/IMAGE DOWGRADED TO TEXT: Type={media_type}, Size={data_len} bytes. Visual data omitted to maintain connection stability.]",
+                            }
+                        )
                     else:
                         new_blocks.append(block)
                 else:
@@ -59,6 +61,7 @@ class FailoverReason(str, Enum):
     Granular reason for provider failover or trading system recovery.
     Includes 30+ LLM API error causes + MT5 execution exceptions.
     """
+
     # Provider Auth & Quota
     AUTH = "auth"
     AUTH_TRANSIENT = "auth_transient"
@@ -320,6 +323,7 @@ class FailoverReason(str, Enum):
 
 class ErrorCategory(str, Enum):
     """Broad error category for harness routing, maintaining 100% backward compatibility."""
+
     CONTEXT_OVERFLOW = "context_overflow"
     RATE_LIMIT = "rate_limit"
     AUTH_ERROR = "auth_error"
@@ -348,6 +352,7 @@ class ErrorCategory(str, Enum):
 
 class RecoveryAction(str, Enum):
     """Actionable mitigation policy assigned by the classifier."""
+
     RETRY_SAME = "retry_same"
     RETRY_WITH_COMPACTION = "retry_with_compaction"
     RETRY_WITH_REDUCED_EFFORT = "retry_with_reduced_effort"
@@ -364,6 +369,7 @@ class RecoveryAction(str, Enum):
 @dataclass
 class ClassifiedError:
     """Classified error token providing prescriptive recovery instructions."""
+
     category: ErrorCategory
     recovery: RecoveryAction
     message: str
@@ -501,7 +507,12 @@ class ErrorClassifier:
             )
 
         # Rate limit
-        if status == 429 or "rate limit" in err_str or "too many requests" in err_str or "resource_exhausted" in err_str:
+        if (
+            status == 429
+            or "rate limit" in err_str
+            or "too many requests" in err_str
+            or "resource_exhausted" in err_str
+        ):
             retry_after = _extract_retry_after(exc)
             return ClassifiedError(
                 category=ErrorCategory.RATE_LIMIT,
@@ -540,7 +551,11 @@ class ErrorClassifier:
         if status in (500, 502, 503, 504, 529) or any(
             code in err_str for code in ("500 internal", "502 bad gateway", "503 service", "504 gateway", "overloaded")
         ):
-            reason = FailoverReason.MODEL_OVERLOADED if (status == 529 or "overloaded" in err_str) else FailoverReason.SERVER_ERROR
+            reason = (
+                FailoverReason.MODEL_OVERLOADED
+                if (status == 529 or "overloaded" in err_str)
+                else FailoverReason.SERVER_ERROR
+            )
             return ClassifiedError(
                 category=ErrorCategory.SERVER_ERROR,
                 recovery=RecoveryAction.RETRY_SAME,
@@ -559,7 +574,9 @@ class ErrorClassifier:
             )
 
         # Malformed tool arguments / JSON parse
-        if "json" in err_str and ("parse" in err_str or "decode" in err_str or "syntax" in err_str or "expecting value" in err_str):
+        if "json" in err_str and (
+            "parse" in err_str or "decode" in err_str or "syntax" in err_str or "expecting value" in err_str
+        ):
             return ClassifiedError(
                 category=ErrorCategory.MALFORMED_TOOL_ARGS,
                 recovery=RecoveryAction.REPAIR_AND_RETRY,
@@ -577,7 +594,9 @@ class ErrorClassifier:
             )
 
         # Multimodal size rejection
-        if any(w in err_str for w in ("image size", "payload too large", "unsupported image", "multimodal", "image decode")):
+        if any(
+            w in err_str for w in ("image size", "payload too large", "unsupported image", "multimodal", "image decode")
+        ):
             return ClassifiedError(
                 category=ErrorCategory.SERVER_ERROR,
                 recovery=RecoveryAction.RETRY_WITH_COMPACTION,
@@ -627,7 +646,9 @@ class ErrorClassifier:
                 message="Insufficient margin for requested lot size.",
                 reason=FailoverReason.MARGIN_INSUFFICIENT,
             )
-        if any(m in err_str for m in ("disconnected", "terminal not responding", "connection lost", "broker_disconnect")):
+        if any(
+            m in err_str for m in ("disconnected", "terminal not responding", "connection lost", "broker_disconnect")
+        ):
             return ClassifiedError(
                 category=ErrorCategory.BROKER_DISCONNECT,
                 recovery=RecoveryAction.RETRY_SAME,
@@ -668,7 +689,9 @@ class ErrorClassifier:
         return None
 
     @classmethod
-    def classify_trading_error(cls, exc_or_code: Union[Exception, int, str], context: Optional[dict] = None) -> ClassifiedError:
+    def classify_trading_error(
+        cls, exc_or_code: Union[Exception, int, str], context: Optional[dict] = None
+    ) -> ClassifiedError:
         """Dedicated classifier for MT5 return codes and execution exceptions."""
         code_str = str(exc_or_code).lower()
 

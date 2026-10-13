@@ -22,24 +22,21 @@ class TokenAuditor:
         """Mengembalikan ringkasan global konsumsi token dan estimasi biaya."""
         since = datetime.now(timezone.utc) - timedelta(hours=hours)
         async with get_session() as session:
-            stmt = (
-                select(
-                    func.count(TokenUsageLog.id).label("total_calls"),
-                    func.coalesce(func.sum(TokenUsageLog.input_tokens), 0).label("sum_input"),
-                    func.coalesce(func.sum(TokenUsageLog.output_tokens), 0).label("sum_output"),
-                    func.coalesce(func.sum(TokenUsageLog.thinking_tokens), 0).label("sum_thinking"),
-                    func.coalesce(func.sum(TokenUsageLog.total_tokens), 0).label("sum_total"),
-                    func.coalesce(func.sum(TokenUsageLog.cached_tokens), 0).label("sum_cached"),
-                    func.coalesce(func.sum(TokenUsageLog.cache_creation_tokens), 0).label("sum_cache_creation"),
-                    func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0).label("sum_cost"),
-                    func.coalesce(func.avg(TokenUsageLog.execution_time_ms), 0).label("avg_latency_ms"),
-                    func.sum(case((TokenUsageLog.status == "success", 1), else_=0)).label("success_count"),
-                    func.sum(case((TokenUsageLog.slot_name != "primary", 1), else_=0)).label("fallback_count"),
-                    func.sum(case((TokenUsageLog.status == "rate_limited", 1), else_=0)).label("rate_limit_count"),
-                    func.sum(case((TokenUsageLog.status == "error", 1), else_=0)).label("error_count"),
-                )
-                .where(TokenUsageLog.timestamp >= since)
-            )
+            stmt = select(
+                func.count(TokenUsageLog.id).label("total_calls"),
+                func.coalesce(func.sum(TokenUsageLog.input_tokens), 0).label("sum_input"),
+                func.coalesce(func.sum(TokenUsageLog.output_tokens), 0).label("sum_output"),
+                func.coalesce(func.sum(TokenUsageLog.thinking_tokens), 0).label("sum_thinking"),
+                func.coalesce(func.sum(TokenUsageLog.total_tokens), 0).label("sum_total"),
+                func.coalesce(func.sum(TokenUsageLog.cached_tokens), 0).label("sum_cached"),
+                func.coalesce(func.sum(TokenUsageLog.cache_creation_tokens), 0).label("sum_cache_creation"),
+                func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0).label("sum_cost"),
+                func.coalesce(func.avg(TokenUsageLog.execution_time_ms), 0).label("avg_latency_ms"),
+                func.sum(case((TokenUsageLog.status == "success", 1), else_=0)).label("success_count"),
+                func.sum(case((TokenUsageLog.slot_name != "primary", 1), else_=0)).label("fallback_count"),
+                func.sum(case((TokenUsageLog.status == "rate_limited", 1), else_=0)).label("rate_limit_count"),
+                func.sum(case((TokenUsageLog.status == "error", 1), else_=0)).label("error_count"),
+            ).where(TokenUsageLog.timestamp >= since)
             row = (await session.execute(stmt)).first()
             if not row or not row.total_calls:
                 return {
@@ -111,7 +108,7 @@ class TokenAuditor:
                     func.sum(TokenUsageLog.cached_tokens).label("sum_cached"),
                     func.sum(TokenUsageLog.cost_estimate).label("sum_cost"),
                     func.avg(TokenUsageLog.execution_time_ms).label("avg_latency_ms"),
-                    func.sum(case((TokenUsageLog.slot_name != "primary", 1), else_=0)).label("fallback_count")
+                    func.sum(case((TokenUsageLog.slot_name != "primary", 1), else_=0)).label("fallback_count"),
                 )
                 .where(TokenUsageLog.timestamp >= since)
                 .group_by(effective_role, TokenUsageLog.subsystem)
@@ -124,22 +121,24 @@ class TokenAuditor:
                 sum_out = int(m["sum_out"] or 0)
                 sum_thinking = int(m["sum_thinking"] or 0)
                 thinking_pct = round((sum_thinking / sum_out * 100.0), 2) if sum_out > 0 else 0.0
-                results.append({
-                    "task_role": m["task_role"],
-                    "subsystem": m["subsystem"] or "system",
-                    "calls": m["call_count"],
-                    "avg_input": round(float(m["avg_in"]), 1) if m["avg_in"] else 0.0,
-                    "avg_output": round(float(m["avg_out"]), 1) if m["avg_out"] else 0.0,
-                    "avg_thinking": round(float(m["avg_thinking"]), 1) if m["avg_thinking"] else 0.0,
-                    "sum_thinking": sum_thinking,
-                    "thinking_pct": thinking_pct,
-                    "avg_total": round(float(m["avg_total"]), 1) if m["avg_total"] else 0.0,
-                    "sum_total": int(m["sum_total"] or 0),
-                    "sum_cached": int(m["sum_cached"] or 0),
-                    "sum_cost_usd": round(float(m["sum_cost"]), 6) if m["sum_cost"] else 0.0,
-                    "avg_latency_ms": round(float(m["avg_latency_ms"]), 1) if m["avg_latency_ms"] else 0.0,
-                    "fallback_calls": int(m["fallback_count"] or 0),
-                })
+                results.append(
+                    {
+                        "task_role": m["task_role"],
+                        "subsystem": m["subsystem"] or "system",
+                        "calls": m["call_count"],
+                        "avg_input": round(float(m["avg_in"]), 1) if m["avg_in"] else 0.0,
+                        "avg_output": round(float(m["avg_out"]), 1) if m["avg_out"] else 0.0,
+                        "avg_thinking": round(float(m["avg_thinking"]), 1) if m["avg_thinking"] else 0.0,
+                        "sum_thinking": sum_thinking,
+                        "thinking_pct": thinking_pct,
+                        "avg_total": round(float(m["avg_total"]), 1) if m["avg_total"] else 0.0,
+                        "sum_total": int(m["sum_total"] or 0),
+                        "sum_cached": int(m["sum_cached"] or 0),
+                        "sum_cost_usd": round(float(m["sum_cost"]), 6) if m["sum_cost"] else 0.0,
+                        "avg_latency_ms": round(float(m["avg_latency_ms"]), 1) if m["avg_latency_ms"] else 0.0,
+                        "fallback_calls": int(m["fallback_count"] or 0),
+                    }
+                )
             return results
 
     @staticmethod
@@ -164,7 +163,7 @@ class TokenAuditor:
                 .order_by(func.sum(TokenUsageLog.total_tokens).desc())
             )
             rows = (await session.execute(stmt)).all()
-            
+
             total_tokens_all = sum(int(r._mapping["sum_total"] or 0) for r in rows)
             total_cost_all = sum(float(r._mapping["sum_cost"] or 0.0) for r in rows)
 
@@ -175,18 +174,20 @@ class TokenAuditor:
                 sum_cost = float(m["sum_cost"] or 0.0)
                 pct_tokens = round((sum_total / total_tokens_all * 100.0), 2) if total_tokens_all > 0 else 0.0
                 pct_cost = round((sum_cost / total_cost_all * 100.0), 2) if total_cost_all > 0 else 0.0
-                results.append({
-                    "subsystem": m["subsystem"],
-                    "calls": m["call_count"],
-                    "sum_input": int(m["sum_input"] or 0),
-                    "sum_output": int(m["sum_output"] or 0),
-                    "sum_thinking": int(m["sum_thinking"] or 0),
-                    "sum_total": sum_total,
-                    "sum_cached": int(m["sum_cached"] or 0),
-                    "sum_cost_usd": round(sum_cost, 6),
-                    "pct_tokens": pct_tokens,
-                    "pct_cost": pct_cost,
-                })
+                results.append(
+                    {
+                        "subsystem": m["subsystem"],
+                        "calls": m["call_count"],
+                        "sum_input": int(m["sum_input"] or 0),
+                        "sum_output": int(m["sum_output"] or 0),
+                        "sum_thinking": int(m["sum_thinking"] or 0),
+                        "sum_total": sum_total,
+                        "sum_cached": int(m["sum_cached"] or 0),
+                        "sum_cost_usd": round(sum_cost, 6),
+                        "pct_tokens": pct_tokens,
+                        "pct_cost": pct_cost,
+                    }
+                )
             return results
 
     @staticmethod
@@ -212,14 +213,16 @@ class TokenAuditor:
             results = []
             for r in rows:
                 m = dict(r._mapping)
-                results.append({
-                    "symbol": m["symbol"],
-                    "calls": m["call_count"],
-                    "sum_total": int(m["sum_total"] or 0),
-                    "sum_thinking": int(m["sum_thinking"] or 0),
-                    "sum_cached": int(m["sum_cached"] or 0),
-                    "sum_cost_usd": round(float(m["sum_cost"]), 6) if m["sum_cost"] else 0.0,
-                })
+                results.append(
+                    {
+                        "symbol": m["symbol"],
+                        "calls": m["call_count"],
+                        "sum_total": int(m["sum_total"] or 0),
+                        "sum_thinking": int(m["sum_thinking"] or 0),
+                        "sum_cached": int(m["sum_cached"] or 0),
+                        "sum_cost_usd": round(float(m["sum_cost"]), 6) if m["sum_cost"] else 0.0,
+                    }
+                )
             return results
 
     @staticmethod
@@ -247,28 +250,26 @@ class TokenAuditor:
             results = []
             for r in rows:
                 m = dict(r._mapping)
-                results.append({
-                    "provider": m["provider"],
-                    "model_name": m["model_name"],
-                    "calls": m["call_count"],
-                    "sum_input": int(m["sum_input"] or 0),
-                    "sum_output": int(m["sum_output"] or 0),
-                    "sum_thinking": int(m["sum_thinking"] or 0),
-                    "sum_total": int(m["sum_total"] or 0),
-                    "sum_cached": int(m["sum_cached"] or 0),
-                    "sum_cost_usd": round(float(m["sum_cost"]), 6) if m["sum_cost"] else 0.0,
-                })
+                results.append(
+                    {
+                        "provider": m["provider"],
+                        "model_name": m["model_name"],
+                        "calls": m["call_count"],
+                        "sum_input": int(m["sum_input"] or 0),
+                        "sum_output": int(m["sum_output"] or 0),
+                        "sum_thinking": int(m["sum_thinking"] or 0),
+                        "sum_total": int(m["sum_total"] or 0),
+                        "sum_cached": int(m["sum_cached"] or 0),
+                        "sum_cost_usd": round(float(m["sum_cost"]), 6) if m["sum_cost"] else 0.0,
+                    }
+                )
             return results
 
     @staticmethod
     async def get_recent_logs(limit: int = 50) -> List[Dict[str, Any]]:
         """Mengambil record log token terbaru dengan metadata lengkap."""
         async with get_session() as session:
-            stmt = (
-                select(TokenUsageLog)
-                .order_by(desc(TokenUsageLog.timestamp))
-                .limit(limit)
-            )
+            stmt = select(TokenUsageLog).order_by(desc(TokenUsageLog.timestamp)).limit(limit)
             rows = (await session.execute(stmt)).scalars().all()
             return [
                 {
@@ -323,17 +324,19 @@ class TokenAuditor:
                 sum_in = int(m["sum_input"] or 0)
                 sum_cached = int(m["sum_cached"] or 0)
                 cache_hit_rate = round((sum_cached / sum_in * 100.0), 2) if sum_in > 0 else 0.0
-                results.append({
-                    "subsystem": m["subsystem"],
-                    "slot_name": m["slot_name"],
-                    "calls": m["call_count"],
-                    "sum_input": sum_in,
-                    "sum_output": int(m["sum_output"] or 0),
-                    "sum_total": int(m["sum_total"] or 0),
-                    "sum_cached": sum_cached,
-                    "cache_hit_rate_pct": cache_hit_rate,
-                    "sum_cost_usd": round(float(m["sum_cost"]), 6) if m["sum_cost"] else 0.0,
-                })
+                results.append(
+                    {
+                        "subsystem": m["subsystem"],
+                        "slot_name": m["slot_name"],
+                        "calls": m["call_count"],
+                        "sum_input": sum_in,
+                        "sum_output": int(m["sum_output"] or 0),
+                        "sum_total": int(m["sum_total"] or 0),
+                        "sum_cached": sum_cached,
+                        "cache_hit_rate_pct": cache_hit_rate,
+                        "sum_cost_usd": round(float(m["sum_cost"]), 6) if m["sum_cost"] else 0.0,
+                    }
+                )
             return results
 
     @staticmethod
@@ -341,15 +344,12 @@ class TokenAuditor:
         """Audit komprehensif performa cache prompt (rasio hit cache per model dan global)."""
         since = datetime.now(timezone.utc) - timedelta(hours=hours)
         async with get_session() as session:
-            stmt_global = (
-                select(
-                    func.count(TokenUsageLog.id).label("total_calls"),
-                    func.coalesce(func.sum(TokenUsageLog.input_tokens), 0).label("sum_input"),
-                    func.coalesce(func.sum(TokenUsageLog.cached_tokens), 0).label("sum_cached"),
-                    func.coalesce(func.sum(TokenUsageLog.cache_creation_tokens), 0).label("sum_cache_creation"),
-                )
-                .where(TokenUsageLog.timestamp >= since)
-            )
+            stmt_global = select(
+                func.count(TokenUsageLog.id).label("total_calls"),
+                func.coalesce(func.sum(TokenUsageLog.input_tokens), 0).label("sum_input"),
+                func.coalesce(func.sum(TokenUsageLog.cached_tokens), 0).label("sum_cached"),
+                func.coalesce(func.sum(TokenUsageLog.cache_creation_tokens), 0).label("sum_cache_creation"),
+            ).where(TokenUsageLog.timestamp >= since)
             row_g = (await session.execute(stmt_global)).first()
             sum_input = int(row_g.sum_input) if row_g else 0
             sum_cached = int(row_g.sum_cached) if row_g else 0
@@ -374,13 +374,15 @@ class TokenAuditor:
                 m_in = int(m["sum_input"] or 0)
                 m_cached = int(m["sum_cached"] or 0)
                 m_hit_rate = round((m_cached / m_in * 100.0), 2) if m_in > 0 else 0.0
-                model_breakdown.append({
-                    "model_name": m["model_name"],
-                    "calls": m["calls"],
-                    "input_tokens": m_in,
-                    "cached_tokens": m_cached,
-                    "cache_hit_rate_pct": m_hit_rate,
-                })
+                model_breakdown.append(
+                    {
+                        "model_name": m["model_name"],
+                        "calls": m["calls"],
+                        "input_tokens": m_in,
+                        "cached_tokens": m_cached,
+                        "cache_hit_rate_pct": m_hit_rate,
+                    }
+                )
 
             return {
                 "time_window_hours": hours,
@@ -404,18 +406,15 @@ class TokenAuditor:
             effective_model = func.coalesce(TokenUsageLog.model_name, "unknown_model")
             effective_role = func.coalesce(TokenUsageLog.task_role, TokenUsageLog.task_name, "general")
 
-            stmt = (
-                select(
-                    effective_cycle.label("cycle_id"),
-                    effective_model.label("model_name"),
-                    effective_role.label("role"),
-                    func.count(TokenUsageLog.id).label("turns"),
-                    func.coalesce(func.sum(TokenUsageLog.total_tokens), 0).label("tokens"),
-                    func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0).label("cost_usd"),
-                    func.coalesce(func.avg(TokenUsageLog.execution_time_ms), 0.0).label("avg_latency_ms"),
-                )
-                .where(TokenUsageLog.timestamp >= since)
-            )
+            stmt = select(
+                effective_cycle.label("cycle_id"),
+                effective_model.label("model_name"),
+                effective_role.label("role"),
+                func.count(TokenUsageLog.id).label("turns"),
+                func.coalesce(func.sum(TokenUsageLog.total_tokens), 0).label("tokens"),
+                func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0).label("cost_usd"),
+                func.coalesce(func.avg(TokenUsageLog.execution_time_ms), 0.0).label("avg_latency_ms"),
+            ).where(TokenUsageLog.timestamp >= since)
             if cycle_id:
                 stmt = stmt.where(TokenUsageLog.cycle_id == cycle_id)
             stmt = stmt.group_by(effective_cycle, effective_model, effective_role).order_by(desc("cost_usd"))
@@ -457,14 +456,18 @@ class TokenAuditor:
                     cycles_dict[cid]["by_model"][model] = {"turns": 0, "tokens": 0, "cost_usd": 0.0}
                 cycles_dict[cid]["by_model"][model]["turns"] += c_turns
                 cycles_dict[cid]["by_model"][model]["tokens"] += c_tokens
-                cycles_dict[cid]["by_model"][model]["cost_usd"] = round(cycles_dict[cid]["by_model"][model]["cost_usd"] + c_cost, 6)
+                cycles_dict[cid]["by_model"][model]["cost_usd"] = round(
+                    cycles_dict[cid]["by_model"][model]["cost_usd"] + c_cost, 6
+                )
 
                 role = str(m["role"])
                 if role not in cycles_dict[cid]["by_role"]:
                     cycles_dict[cid]["by_role"][role] = {"turns": 0, "tokens": 0, "cost_usd": 0.0}
                 cycles_dict[cid]["by_role"][role]["turns"] += c_turns
                 cycles_dict[cid]["by_role"][role]["tokens"] += c_tokens
-                cycles_dict[cid]["by_role"][role]["cost_usd"] = round(cycles_dict[cid]["by_role"][role]["cost_usd"] + c_cost, 6)
+                cycles_dict[cid]["by_role"][role]["cost_usd"] = round(
+                    cycles_dict[cid]["by_role"][role]["cost_usd"] + c_cost, 6
+                )
 
             avg_turn_cost = round(total_cost / total_turns, 6) if total_turns > 0 else 0.0
 
@@ -477,5 +480,3 @@ class TokenAuditor:
                 "avg_cost_per_turn_usd": avg_turn_cost,
                 "cycles": list(cycles_dict.values()),
             }
-
-

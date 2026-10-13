@@ -85,6 +85,7 @@ class ABEvalRunner:
         try:
             from monika.application.analysis.validators.in_harness_grounding import InHarnessGroundingValidator
             from monika.application.evals.simulation_clock import get_pip_unit
+
             pip_u = get_pip_unit(symbol)
             curr_p = fixture.get("current_price", 1.0)
             spread_p = fixture.get("spread_pips", 1.0)

@@ -206,7 +206,9 @@ class UniversalCronScheduler:
             finally:
                 conn.close()
 
-        logger.info(f"[UniversalCron] Registered job '{job_id}' (next run: {datetime.datetime.fromtimestamp(next_run)})")
+        logger.info(
+            f"[UniversalCron] Registered job '{job_id}' (next run: {datetime.datetime.fromtimestamp(next_run)})"
+        )
         return job
 
     def register_execution_callback(self, cb: Callable[[CronJob], None]) -> None:
@@ -379,4 +381,3 @@ class UniversalCronScheduler:
                     logger.error(f"[UniversalCronWatchdog] Failed updating hung jobs status: {exc}")
 
         return hung_jobs
-

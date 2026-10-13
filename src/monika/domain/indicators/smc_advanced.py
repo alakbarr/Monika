@@ -23,6 +23,7 @@ logger = logging.getLogger("TradingAgent.Indicators.SMCAdvanced")
 @dataclass
 class InducementResult:
     """Outcome of Inducement (IDM) detection."""
+
     idm_detected: bool = False
     idm_price: float = 0.0
     idm_time: Optional[str] = None
@@ -36,6 +37,7 @@ class InducementResult:
 @dataclass
 class BreakerBlockResult:
     """Detected Breaker Block or Mitigation Block (failed order block with flipped polarity)."""
+
     breaker_detected: bool = False
     block_type: str = "BREAKER_BLOCK"  # "BREAKER_BLOCK" (swept prior liquidity) | "MITIGATION_BLOCK" (failure swing)
     direction: str = ""  # "BULLISH_SUPPORT" | "BEARISH_RESISTANCE"
@@ -51,6 +53,7 @@ class BreakerBlockResult:
 @dataclass
 class InvertedFVGResult:
     """Detected Inverted Fair Value Gap (IFVG)."""
+
     ifvg_detected: bool = False
     direction: str = ""  # "BULLISH_SUPPORT" | "BEARISH_RESISTANCE"
     price_low: float = 0.0
@@ -66,6 +69,7 @@ class InvertedFVGResult:
 @dataclass
 class JudasSwingResult:
     """Outcome of London Open (08:00 UTC) Judas Swing trap detection."""
+
     judas_detected: bool = False
     trap_direction: str = ""  # "BEARISH_TRAP" (swept Asian High, expected dump) | "BULLISH_TRAP"
     expansion_extreme: float = 0.0
@@ -79,6 +83,7 @@ class JudasSwingResult:
 @dataclass
 class EqualPoolResult:
     """Engineered Liquidity Pool formed by Equal Highs (EQH) or Equal Lows (EQL)."""
+
     pool_type: str = ""  # "EQH" (Buy-Side Liquidity) | "EQL" (Sell-Side Liquidity)
     price_level: float = 0.0
     touch_count: int = 0
@@ -87,11 +92,7 @@ class EqualPoolResult:
     is_swept: bool = False
 
 
-def detect_inducement(
-    df: pd.DataFrame,
-    swings: List[Dict[str, Any]],
-    trend: str = "bullish"
-) -> InducementResult:
+def detect_inducement(df: pd.DataFrame, swings: List[Dict[str, Any]], trend: str = "bullish") -> InducementResult:
     """
     Identifies the first minor internal pullback swing (Inducement / IDM).
     In SMC/ICT:
@@ -135,7 +136,7 @@ def detect_inducement(
             idm_price=round(idm_price, 5),
             idm_time=idm_time,
             is_swept=is_swept,
-            details={"trend": "bullish", "last_high": last_high.get("price")}
+            details={"trend": "bullish", "last_high": last_high.get("price")},
         )
     else:
         # Bearish: first internal swing high
@@ -162,14 +163,12 @@ def detect_inducement(
             idm_price=round(idm_price, 5),
             idm_time=idm_time,
             is_swept=is_swept,
-            details={"trend": "bearish", "last_low": last_low.get("price")}
+            details={"trend": "bearish", "last_low": last_low.get("price")},
         )
 
 
 def detect_breaker_blocks(
-    df: pd.DataFrame,
-    order_blocks: List[Any],
-    swings: Optional[List[Dict[str, Any]]] = None
+    df: pd.DataFrame, order_blocks: List[Any], swings: Optional[List[Dict[str, Any]]] = None
 ) -> List[BreakerBlockResult]:
     """
     Identifies Order Blocks that were violated with strong displacement and have flipped polarity.
@@ -186,9 +185,9 @@ def detect_breaker_blocks(
     if swings is None:
         swings = []
         for i in range(2, len(df) - 2):
-            if df["high"].iloc[i] == df["high"].iloc[i-2:i+3].max():
+            if df["high"].iloc[i] == df["high"].iloc[i - 2 : i + 3].max():
                 swings.append({"type": "high", "price": float(df["high"].iloc[i]), "time": str(df.index[i])})
-            if df["low"].iloc[i] == df["low"].iloc[i-2:i+3].min():
+            if df["low"].iloc[i] == df["low"].iloc[i - 2 : i + 3].min():
                 swings.append({"type": "low", "price": float(df["low"].iloc[i]), "time": str(df.index[i])})
 
     for ob in order_blocks:
@@ -215,18 +214,20 @@ def detect_breaker_blocks(
                         swept = True
 
                 b_type = "BREAKER_BLOCK" if swept else "MITIGATION_BLOCK"
-                breakers.append(BreakerBlockResult(
-                    breaker_detected=True,
-                    block_type=b_type,
-                    direction="BEARISH_RESISTANCE",
-                    price_low=round(price_low, 5),
-                    price_high=round(price_high, 5),
-                    original_ob_time=ob_time,
-                    broken_at=broken_time,
-                    retested=retested,
-                    liquidity_swept=swept,
-                    strength=(1.3 if swept else 1.0) * (1.2 if retested else 1.0)
-                ))
+                breakers.append(
+                    BreakerBlockResult(
+                        breaker_detected=True,
+                        block_type=b_type,
+                        direction="BEARISH_RESISTANCE",
+                        price_low=round(price_low, 5),
+                        price_high=round(price_high, 5),
+                        original_ob_time=ob_time,
+                        broken_at=broken_time,
+                        retested=retested,
+                        liquidity_swept=swept,
+                        strength=(1.3 if swept else 1.0) * (1.2 if retested else 1.0),
+                    )
+                )
         elif "bear" in ob_type.lower():
             # Bearish OB tertembus ke atas (close > price_high)
             broken_candles = df[df["close"] > price_high]
@@ -242,26 +243,25 @@ def detect_breaker_blocks(
                         swept = True
 
                 b_type = "BREAKER_BLOCK" if swept else "MITIGATION_BLOCK"
-                breakers.append(BreakerBlockResult(
-                    breaker_detected=True,
-                    block_type=b_type,
-                    direction="BULLISH_SUPPORT",
-                    price_low=round(price_low, 5),
-                    price_high=round(price_high, 5),
-                    original_ob_time=ob_time,
-                    broken_at=broken_time,
-                    retested=retested,
-                    liquidity_swept=swept,
-                    strength=(1.3 if swept else 1.0) * (1.2 if retested else 1.0)
-                ))
+                breakers.append(
+                    BreakerBlockResult(
+                        breaker_detected=True,
+                        block_type=b_type,
+                        direction="BULLISH_SUPPORT",
+                        price_low=round(price_low, 5),
+                        price_high=round(price_high, 5),
+                        original_ob_time=ob_time,
+                        broken_at=broken_time,
+                        retested=retested,
+                        liquidity_swept=swept,
+                        strength=(1.3 if swept else 1.0) * (1.2 if retested else 1.0),
+                    )
+                )
 
     return breakers
 
 
-def detect_inverted_fvg(
-    df: pd.DataFrame,
-    fvg_zones: List[Any]
-) -> List[InvertedFVGResult]:
+def detect_inverted_fvg(df: pd.DataFrame, fvg_zones: List[Any]) -> List[InvertedFVGResult]:
     """
     Identifies Inverted Fair Value Gaps (IFVG).
     An IFVG occurs when a previously formed FVG is completely closed through by candle body displacement:
@@ -292,45 +292,46 @@ def detect_inverted_fvg(
             if not inverting_candles.empty:
                 inv_time = str(inverting_candles.index[-1])
                 retested = bool(df["high"].iloc[-5:].max() >= price_low and last_close <= price_high)
-                ifvgs.append(InvertedFVGResult(
-                    ifvg_detected=True,
-                    direction="BEARISH_RESISTANCE",
-                    price_low=round(price_low, 5),
-                    price_high=round(price_high, 5),
-                    midpoint=midpoint,
-                    original_fvg_type="bullish",
-                    original_fvg_time=fvg_time,
-                    inverted_at=inv_time,
-                    retested=retested,
-                    strength=1.3 if retested else 1.0
-                ))
+                ifvgs.append(
+                    InvertedFVGResult(
+                        ifvg_detected=True,
+                        direction="BEARISH_RESISTANCE",
+                        price_low=round(price_low, 5),
+                        price_high=round(price_high, 5),
+                        midpoint=midpoint,
+                        original_fvg_type="bullish",
+                        original_fvg_time=fvg_time,
+                        inverted_at=inv_time,
+                        retested=retested,
+                        strength=1.3 if retested else 1.0,
+                    )
+                )
         # Bearish FVG inverted upward (close > price_high)
         elif "bear" in fvg_type.lower():
             inverting_candles = df[df["close"] > price_high]
             if not inverting_candles.empty:
                 inv_time = str(inverting_candles.index[-1])
                 retested = bool(df["low"].iloc[-5:].min() <= price_high and last_close >= price_low)
-                ifvgs.append(InvertedFVGResult(
-                    ifvg_detected=True,
-                    direction="BULLISH_SUPPORT",
-                    price_low=round(price_low, 5),
-                    price_high=round(price_high, 5),
-                    midpoint=midpoint,
-                    original_fvg_type="bearish",
-                    original_fvg_time=fvg_time,
-                    inverted_at=inv_time,
-                    retested=retested,
-                    strength=1.3 if retested else 1.0
-                ))
+                ifvgs.append(
+                    InvertedFVGResult(
+                        ifvg_detected=True,
+                        direction="BULLISH_SUPPORT",
+                        price_low=round(price_low, 5),
+                        price_high=round(price_high, 5),
+                        midpoint=midpoint,
+                        original_fvg_type="bearish",
+                        original_fvg_time=fvg_time,
+                        inverted_at=inv_time,
+                        retested=retested,
+                        strength=1.3 if retested else 1.0,
+                    )
+                )
 
     return ifvgs
 
 
 def detect_judas_swing(
-    df_m15: pd.DataFrame,
-    asian_high: float,
-    asian_low: float,
-    d1_bias: str = "bullish"
+    df_m15: pd.DataFrame, asian_high: float, asian_low: float, d1_bias: str = "bullish"
 ) -> JudasSwingResult:
     """
     Detects false London Open expansion strictly during 08:00 - 09:30 UTC designed to hunt retail stops.
@@ -378,7 +379,7 @@ def detect_judas_swing(
                     asian_high=round(asian_high, 5),
                     asian_low=round(asian_low, 5),
                     timestamp=ts_str,
-                    details=f"Swept Asian High {asian_high} during London Open (08:00-09:30 UTC) with {round(rejection_ratio*100, 1)}% rejection wick."
+                    details=f"Swept Asian High {asian_high} during London Open (08:00-09:30 UTC) with {round(rejection_ratio * 100, 1)}% rejection wick.",
                 )
 
         # Case 2: Bullish Trap (Swept Asian Low)
@@ -395,11 +396,10 @@ def detect_judas_swing(
                     asian_high=round(asian_high, 5),
                     asian_low=round(asian_low, 5),
                     timestamp=ts_str,
-                    details=f"Swept Asian Low {asian_low} during London Open (08:00-09:30 UTC) with {round(rejection_ratio*100, 1)}% rejection wick."
+                    details=f"Swept Asian Low {asian_low} during London Open (08:00-09:30 UTC) with {round(rejection_ratio * 100, 1)}% rejection wick.",
                 )
 
     return JudasSwingResult()
-
 
 
 def detect_equal_highs_lows(
@@ -421,9 +421,9 @@ def detect_equal_highs_lows(
         # Extract swings from DataFrame
         swings = []
         for i in range(1, len(data) - 1):
-            if data["high"].iloc[i] >= data["high"].iloc[i-1] and data["high"].iloc[i] >= data["high"].iloc[i+1]:
+            if data["high"].iloc[i] >= data["high"].iloc[i - 1] and data["high"].iloc[i] >= data["high"].iloc[i + 1]:
                 swings.append({"type": "high", "price": float(data["high"].iloc[i]), "time": str(data.index[i])})
-            if data["low"].iloc[i] <= data["low"].iloc[i-1] and data["low"].iloc[i] <= data["low"].iloc[i+1]:
+            if data["low"].iloc[i] <= data["low"].iloc[i - 1] and data["low"].iloc[i] <= data["low"].iloc[i + 1]:
                 swings.append({"type": "low", "price": float(data["low"].iloc[i]), "time": str(data.index[i])})
         if atr <= 0:
             atr = float(np.mean(data["high"] - data["low"])) if len(data) > 0 else 0.001
@@ -450,13 +450,15 @@ def detect_equal_highs_lows(
                 used_h[j] = True
         if len(cluster) >= min_touches:
             avg_price = sum(float(c["price"]) for c in cluster) / len(cluster)
-            pools.append(EqualPoolResult(
-                pool_type="EQH",
-                price_level=round(avg_price, 5),
-                touch_count=len(cluster),
-                tolerance_pips=round(tol * 10000, 2),
-                swing_times=[str(c.get("time", "")) for c in cluster]
-            ))
+            pools.append(
+                EqualPoolResult(
+                    pool_type="EQH",
+                    price_level=round(avg_price, 5),
+                    touch_count=len(cluster),
+                    tolerance_pips=round(tol * 10000, 2),
+                    swing_times=[str(c.get("time", "")) for c in cluster],
+                )
+            )
 
     # Cluster Lows (EQL)
     used_l = [False] * len(lows)
@@ -471,13 +473,15 @@ def detect_equal_highs_lows(
                 used_l[j] = True
         if len(cluster) >= min_touches:
             avg_price = sum(float(c["price"]) for c in cluster) / len(cluster)
-            pools.append(EqualPoolResult(
-                pool_type="EQL",
-                price_level=round(avg_price, 5),
-                touch_count=len(cluster),
-                tolerance_pips=round(tol * 10000, 2),
-                swing_times=[str(c.get("time", "")) for c in cluster]
-            ))
+            pools.append(
+                EqualPoolResult(
+                    pool_type="EQL",
+                    price_level=round(avg_price, 5),
+                    touch_count=len(cluster),
+                    tolerance_pips=round(tol * 10000, 2),
+                    swing_times=[str(c.get("time", "")) for c in cluster],
+                )
+            )
 
     return pools
 
@@ -505,13 +509,9 @@ def compute_ob_fvg_confluence(*args, **kwargs) -> Any:
             return {
                 "confluent": True,
                 "overlap_pct": overlap_pct,
-                "confluent_zone": [round(overlap_low, 5), round(overlap_high, 5)]
+                "confluent_zone": [round(overlap_low, 5), round(overlap_high, 5)],
             }
-        return {
-            "confluent": False,
-            "overlap_pct": 0.0,
-            "confluent_zone": None
-        }
+        return {"confluent": False, "overlap_pct": 0.0, "confluent_zone": None}
 
     # List mode
     obs = args[0] if len(args) > 0 else kwargs.get("obs", [])
@@ -562,27 +562,31 @@ def find_wick_to_wick_fvg(df: pd.DataFrame, min_atr: float = 0.0) -> List[Dict[s
         if c3["low"] > c1["high"]:
             gap_size = c3["low"] - c1["high"]
             if min_atr <= 0 or gap_size >= min_atr * 0.2:
-                implied_fvgs.append({
-                    "type": "bullish_implied_fvg",
-                    "gap_low": round(float(c1["high"]), 5),
-                    "gap_high": round(float(c3["low"]), 5),
-                    "midpoint": round(float(c1["high"] + c3["low"]) / 2.0, 5),
-                    "time": str(df.index[i - 1]),
-                    "gap_size_pips": round(gap_size * 10000, 2)
-                })
+                implied_fvgs.append(
+                    {
+                        "type": "bullish_implied_fvg",
+                        "gap_low": round(float(c1["high"]), 5),
+                        "gap_high": round(float(c3["low"]), 5),
+                        "midpoint": round(float(c1["high"] + c3["low"]) / 2.0, 5),
+                        "time": str(df.index[i - 1]),
+                        "gap_size_pips": round(gap_size * 10000, 2),
+                    }
+                )
 
         # Bearish Implied FVG: c3.high < c1.low
         elif c3["high"] < c1["low"]:
             gap_size = c1["low"] - c3["high"]
             if min_atr <= 0 or gap_size >= min_atr * 0.2:
-                implied_fvgs.append({
-                    "type": "bearish_implied_fvg",
-                    "gap_low": round(float(c3["high"]), 5),
-                    "gap_high": round(float(c1["low"]), 5),
-                    "midpoint": round(float(c1["low"] + c3["high"]) / 2.0, 5),
-                    "time": str(df.index[i - 1]),
-                    "gap_size_pips": round(gap_size * 10000, 2)
-                })
+                implied_fvgs.append(
+                    {
+                        "type": "bearish_implied_fvg",
+                        "gap_low": round(float(c3["high"]), 5),
+                        "gap_high": round(float(c1["low"]), 5),
+                        "midpoint": round(float(c1["low"] + c3["high"]) / 2.0, 5),
+                        "time": str(df.index[i - 1]),
+                        "gap_size_pips": round(gap_size * 10000, 2),
+                    }
+                )
 
     return implied_fvgs
 
@@ -610,7 +614,7 @@ def detect_smt_divergence(
             "divergence_type": "none",
             "asset1": asset1_name,
             "asset2": asset2_name,
-            "details": "Insufficient candle data for SMT divergence analysis"
+            "details": "Insufficient candle data for SMT divergence analysis",
         }
 
     sub1 = asset1_df.iloc[-lookback:]
@@ -635,20 +639,28 @@ def detect_smt_divergence(
             if h2_recent > h2_prior and l1_recent > l1_prior:
                 smt_detected = True
                 div_type = "bullish_smt"
-                details.append(f"{asset2_name} made Higher High ({h2_prior:.4f} -> {h2_recent:.4f}) while {asset1_name} refused to make Lower Low ({l1_prior:.4f} -> {l1_recent:.4f}), signaling institutional accumulation in {asset1_name}.")
+                details.append(
+                    f"{asset2_name} made Higher High ({h2_prior:.4f} -> {h2_recent:.4f}) while {asset1_name} refused to make Lower Low ({l1_prior:.4f} -> {l1_recent:.4f}), signaling institutional accumulation in {asset1_name}."
+                )
             elif l2_recent < l2_prior and h1_recent < h1_prior:
                 smt_detected = True
                 div_type = "bearish_smt"
-                details.append(f"{asset2_name} made Lower Low ({l2_prior:.4f} -> {l2_recent:.4f}) while {asset1_name} refused to make Higher High ({h1_prior:.4f} -> {h1_recent:.4f}), signaling institutional distribution in {asset1_name}.")
+                details.append(
+                    f"{asset2_name} made Lower Low ({l2_prior:.4f} -> {l2_recent:.4f}) while {asset1_name} refused to make Higher High ({h1_prior:.4f} -> {h1_recent:.4f}), signaling institutional distribution in {asset1_name}."
+                )
         else:
             if l1_recent < l1_prior and l2_recent > l2_prior:
                 smt_detected = True
                 div_type = "bullish_smt"
-                details.append(f"{asset1_name} made Lower Low while {asset2_name} made Higher Low, indicating bullish SMT divergence.")
+                details.append(
+                    f"{asset1_name} made Lower Low while {asset2_name} made Higher Low, indicating bullish SMT divergence."
+                )
             elif h1_recent > h1_prior and h2_recent < h2_prior:
                 smt_detected = True
                 div_type = "bearish_smt"
-                details.append(f"{asset1_name} made Higher High while {asset2_name} made Lower High, indicating bearish SMT divergence.")
+                details.append(
+                    f"{asset1_name} made Higher High while {asset2_name} made Lower High, indicating bearish SMT divergence."
+                )
 
         return {
             "smt_detected": smt_detected,
@@ -656,11 +668,7 @@ def detect_smt_divergence(
             "asset1": asset1_name,
             "asset2": asset2_name,
             "inverse_correlation": inverse_correlation,
-            "details": "; ".join(details) if details else "No SMT divergence detected across lookback window."
+            "details": "; ".join(details) if details else "No SMT divergence detected across lookback window.",
         }
     except Exception as e:
-        return {
-            "smt_detected": False,
-            "divergence_type": "none",
-            "error": str(e)
-        }
+        return {"smt_detected": False, "divergence_type": "none", "error": str(e)}

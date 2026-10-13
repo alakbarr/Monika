@@ -19,6 +19,7 @@ observability_router = APIRouter()
 # Distributed Tracing Endpoints
 # ---------------------------------------------------------------------------
 
+
 @observability_router.get("/api/traces", tags=["Observability"])
 async def get_traces(
     cycle_id: Optional[str] = Query(None, description="Filter spans by cycle_id"),
@@ -28,6 +29,7 @@ async def get_traces(
 ):
     """Retrieve distributed trace spans from the in-memory trace store."""
     from monika.core.telemetry.tracing.exporters import global_trace_store
+
     spans = global_trace_store.get_spans(limit=limit, trace_id=trace_id, cycle_id=cycle_id, kind=kind)
     return {"spans": spans, "total": len(spans)}
 
@@ -36,16 +38,14 @@ async def get_traces(
 async def get_trace_tree(trace_id: str):
     """Retrieve hierarchical trace tree for a specific trace_id."""
     from monika.core.telemetry.tracing.exporters import global_trace_store
+
     tree = global_trace_store.get_trace_tree(trace_id)
     if not tree:
         return JSONResponse(status_code=404, content={"detail": f"Trace {trace_id} not found."})
     return {"trace_id": trace_id, "roots": tree}
 
 
-def _build_graph_state_for_cycle(
-    cycle_id: Optional[str] = None,
-    symbol: Optional[str] = None
-) -> Dict[str, Any]:
+def _build_graph_state_for_cycle(cycle_id: Optional[str] = None, symbol: Optional[str] = None) -> Dict[str, Any]:
     """
     Constructs the LangGraph DAG topology state with node statuses, execution durations,
     token consumption, inputs, and payloads for the frontend visualizer.
@@ -56,7 +56,9 @@ def _build_graph_state_for_cycle(
     discovered_cycles = []
     seen = set()
     for s in reversed(global_trace_store._spans):
-        cid = s.attributes.get("cycle_id") or (s.name.split("cycle:")[-1] if s.kind == "cycle" and ":" in s.name else None)
+        cid = s.attributes.get("cycle_id") or (
+            s.name.split("cycle:")[-1] if s.kind == "cycle" and ":" in s.name else None
+        )
         if cid and cid not in seen:
             seen.add(cid)
             discovered_cycles.append(cid)
@@ -64,8 +66,11 @@ def _build_graph_state_for_cycle(
     target_cycle = cycle_id if cycle_id else (discovered_cycles[0] if discovered_cycles else "cycle-standby")
 
     cycle_spans = [
-        s for s in global_trace_store._spans
-        if s.attributes.get("cycle_id") == target_cycle or s.trace_id == target_cycle or (s.kind == "cycle" and target_cycle in s.name)
+        s
+        for s in global_trace_store._spans
+        if s.attributes.get("cycle_id") == target_cycle
+        or s.trace_id == target_cycle
+        or (s.kind == "cycle" and target_cycle in s.name)
     ]
 
     available_cycles = [
@@ -73,9 +78,7 @@ def _build_graph_state_for_cycle(
         for cid in discovered_cycles
     ]
     if not available_cycles:
-        available_cycles = [
-            {"cycle_id": "cycle-standby", "label": "Pipeline Standby (Ready)", "status": "idle"}
-        ]
+        available_cycles = [{"cycle_id": "cycle-standby", "label": "Pipeline Standby (Ready)", "status": "idle"}]
 
     def find_span(aliases: List[str]):
         for s in cycle_spans:
@@ -91,7 +94,9 @@ def _build_graph_state_for_cycle(
 
     # Identify node spans
     s_prefetch = find_span(["node:data_gathering", "data_gathering", "node:prefetch_data", "prefetch_data"])
-    s_fund = find_span(["node:fundamental_analysis", "fundamental_analysis", "node:fundamental_brief", "fundamental_brief"])
+    s_fund = find_span(
+        ["node:fundamental_analysis", "fundamental_analysis", "node:fundamental_brief", "fundamental_brief"]
+    )
     s_asset = find_span(["node:per_asset_analysis", "per_asset_analysis"])
     s_bull = find_span(["node:bull_advocate", "bull_advocate", "bull_thesis"])
     s_bear = find_span(["node:bear_dissent", "bear_dissent", "bear_thesis"])
@@ -173,10 +178,7 @@ def _build_graph_state_for_cycle(
         out_tok = node_span_obj.attributes.get("output_tokens", 0)
         cost = node_span_obj.attributes.get("cost_usd", 0.0)
 
-        child_llm_spans = [
-            s for s in cycle_spans
-            if s.parent_span_id == node_span_obj.span_id and s.kind == "llm"
-        ]
+        child_llm_spans = [s for s in cycle_spans if s.parent_span_id == node_span_obj.span_id and s.kind == "llm"]
 
         if filter_sym_val and node_id in ("per_asset_analysis", "bull_advocate", "bear_dissent", "debate_judge"):
             payload = node_span_obj.attributes.get("output_payload")
@@ -205,12 +207,7 @@ def _build_graph_state_for_cycle(
                 cost = max(cost, child_cost)
 
         total = in_tok + out_tok
-        return {
-            "input": in_tok,
-            "output": out_tok,
-            "total": total,
-            "cost_usd": round(cost, 6)
-        }
+        return {"input": in_tok, "output": out_tok, "total": total, "cost_usd": round(cost, 6)}
 
     def resolve_node(
         node_id: str,
@@ -275,15 +272,15 @@ def _build_graph_state_for_cycle(
                     output_data = {
                         "symbol": filter_sym,
                         "data": per_asset_map[filter_sym],
-                        "total_evaluated_assets": len(per_asset_map)
+                        "total_evaluated_assets": len(per_asset_map),
                     }
             elif node_id in ("bull_advocate", "bear_dissent", "debate_judge") and isinstance(output_data, dict):
                 trades = output_data.get("actionable_trades", [])
                 theses = output_data.get("asset_theses", {})
-                sym_debated = (
-                    any(t.get("symbol") == filter_sym or (isinstance(t, (list, tuple)) and t[0] == filter_sym) for t in trades)
-                    or (filter_sym in theses)
-                )
+                sym_debated = any(
+                    t.get("symbol") == filter_sym or (isinstance(t, (list, tuple)) and t[0] == filter_sym)
+                    for t in trades
+                ) or (filter_sym in theses)
                 if not sym_debated:
                     status = "skipped"
                     input_sum = f"Skipped: {filter_sym} did not meet confidence threshold for debate"
@@ -372,11 +369,14 @@ def _build_graph_state_for_cycle(
     completed_at = completed_nodes[-1] if (overall_status in ("completed", "failed") and completed_nodes) else None
 
     if target_cycle and not any(c["cycle_id"] == target_cycle for c in available_cycles):
-        available_cycles.insert(0, {
-            "cycle_id": target_cycle,
-            "label": f"Cycle #{target_cycle.split('-')[-1] if '-' in target_cycle else target_cycle[:12]}",
-            "status": overall_status
-        })
+        available_cycles.insert(
+            0,
+            {
+                "cycle_id": target_cycle,
+                "label": f"Cycle #{target_cycle.split('-')[-1] if '-' in target_cycle else target_cycle[:12]}",
+                "status": overall_status,
+            },
+        )
 
     return {
         "cycle_id": target_cycle,
@@ -402,6 +402,7 @@ def _build_graph_state_for_cycle(
 async def get_cycle_trace_summary(cycle_id: str, symbol: Optional[str] = Query(None)):
     """Retrieve aggregate telemetry and trace spans for a cycle."""
     from monika.core.telemetry.tracing.exporters import global_trace_store
+
     summary = global_trace_store.get_cycle_summary(cycle_id)
     spans = global_trace_store.get_spans(limit=500, cycle_id=cycle_id)
     graph_state = _build_graph_state_for_cycle(cycle_id, symbol=symbol)
@@ -411,7 +412,7 @@ async def get_cycle_trace_summary(cycle_id: str, symbol: Optional[str] = Query(N
 @observability_router.get("/api/observability/graph-state", tags=["Observability"])
 async def get_graph_state(
     cycle_id: Optional[str] = Query(None, description="Filter graph state by cycle_id. Defaults to latest cycle."),
-    symbol: Optional[str] = Query(None, description="Filter graph state and token/trade breakdown by asset symbol.")
+    symbol: Optional[str] = Query(None, description="Filter graph state and token/trade breakdown by asset symbol."),
 ):
     """
     Retrieve topology, execution status, latencies, tokens, and payloads
@@ -424,6 +425,7 @@ async def get_graph_state(
 # Advanced Observability Endpoints (Phase 5.2 - IMPROVEMENT-2)
 # ---------------------------------------------------------------------------
 
+
 @observability_router.get("/api/observability/playbook-tree", tags=["Observability"])
 async def get_playbook_tree():
     """
@@ -434,34 +436,40 @@ async def get_playbook_tree():
     from monika.infrastructure.database.models import PlaybookRuleAttribution
     from sqlalchemy import select
 
-    root = {
-        "name": "Trading Playbooks",
-        "type": "root",
-        "children": []
-    }
+    root = {"name": "Trading Playbooks", "type": "root", "children": []}
     symbols_map: Dict[str, Dict[str, Any]] = {}
 
     try:
         async with get_session() as session:
-            rows = (await session.execute(
-                select(PlaybookRuleAttribution).order_by(PlaybookRuleAttribution.symbol, PlaybookRuleAttribution.promoted_at.desc())
-            )).scalars().all()
+            rows = (
+                (
+                    await session.execute(
+                        select(PlaybookRuleAttribution).order_by(
+                            PlaybookRuleAttribution.symbol, PlaybookRuleAttribution.promoted_at.desc()
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
             for r in rows:
                 sym = r.symbol or "GLOBAL"
                 if sym not in symbols_map:
                     symbols_map[sym] = {"name": sym, "type": "symbol", "children": []}
-                symbols_map[sym]["children"].append({
-                    "id": r.id,
-                    "name": f"Rule-{r.rule_hash[:8]}",
-                    "status": r.status,
-                    "rule_text": r.rule_text,
-                    "times_triggered": r.times_triggered,
-                    "wins_count": r.wins_count,
-                    "losses_count": r.losses_count,
-                    "win_rate": r.win_rate,
-                    "total_pnl": r.total_pnl,
-                    "promoted_at": r.promoted_at.isoformat() if r.promoted_at else None,
-                })
+                symbols_map[sym]["children"].append(
+                    {
+                        "id": r.id,
+                        "name": f"Rule-{r.rule_hash[:8]}",
+                        "status": r.status,
+                        "rule_text": r.rule_text,
+                        "times_triggered": r.times_triggered,
+                        "wins_count": r.wins_count,
+                        "losses_count": r.losses_count,
+                        "win_rate": r.win_rate,
+                        "total_pnl": r.total_pnl,
+                        "promoted_at": r.promoted_at.isoformat() if r.promoted_at else None,
+                    }
+                )
     except Exception as e:
         logger.debug(f"Failed to load DB playbooks for tree: {e}")
 
@@ -483,23 +491,27 @@ async def get_playbook_tree():
                 is_stale = "[STATUS: STALE]" in content
             except Exception:
                 pass
-            symbols_map[sym]["children"].append({
-                "name": name,
-                "status": "stale" if is_stale else "active",
-                "source": "file",
-                "path": str(f.relative_to(base_dir)),
-            })
+            symbols_map[sym]["children"].append(
+                {
+                    "name": name,
+                    "status": "stale" if is_stale else "active",
+                    "source": "file",
+                    "path": str(f.relative_to(base_dir)),
+                }
+            )
         archive_dir = playbooks_dir / "archive"
         if archive_dir.exists():
             for f in archive_dir.glob("*.md"):
                 sym = "ARCHIVE"
                 if sym not in symbols_map:
                     symbols_map[sym] = {"name": sym, "type": "symbol", "children": []}
-                symbols_map[sym]["children"].append({
-                    "name": f.name,
-                    "status": "archived",
-                    "source": "file_archive",
-                })
+                symbols_map[sym]["children"].append(
+                    {
+                        "name": f.name,
+                        "status": "archived",
+                        "source": "file_archive",
+                    }
+                )
 
     root["children"] = list(symbols_map.values())
     return root
@@ -522,11 +534,11 @@ async def get_prompt_cache_metrics(limit: int = Query(20, ge=1, le=100)):
 
     try:
         async with get_session() as session:
-            rows = (await session.execute(
-                select(TokenUsageLog)
-                .order_by(desc(TokenUsageLog.timestamp))
-                .limit(limit * 10)
-            )).scalars().all()
+            rows = (
+                (await session.execute(select(TokenUsageLog).order_by(desc(TokenUsageLog.timestamp)).limit(limit * 10)))
+                .scalars()
+                .all()
+            )
 
             cycle_groups: Dict[str, Dict[str, Any]] = {}
             for r in rows:
@@ -548,7 +560,7 @@ async def get_prompt_cache_metrics(limit: int = Query(20, ge=1, le=100)):
                 grp["cached_tokens"] += c_tok
                 grp["input_tokens"] += i_tok
                 grp["cache_creation_tokens"] += cr_tok
-                grp["output_tokens"] += (r.output_tokens or 0)
+                grp["output_tokens"] += r.output_tokens or 0
                 grp["requests"] += 1
                 total_cached += c_tok
                 total_input += i_tok
@@ -598,7 +610,7 @@ async def get_tool_latencies():
                     "200-500ms": 0,
                     "500-1000ms": 0,
                     ">1000ms": 0,
-                }
+                },
             }
         rec = stats_by_tool[tname]
         rec["count"] += 1
@@ -622,15 +634,17 @@ async def get_tool_latencies():
         p90 = durations[int(cnt * 0.9)] if cnt else 0.0
         p99 = durations[int(cnt * 0.99)] if cnt else 0.0
         avg = round(sum(durations) / cnt, 2) if cnt else 0.0
-        summary.append({
-            "tool_name": tname,
-            "call_count": cnt,
-            "avg_ms": avg,
-            "p50_ms": round(p50, 2),
-            "p90_ms": round(p90, 2),
-            "p99_ms": round(p99, 2),
-            "buckets": data["buckets"],
-        })
+        summary.append(
+            {
+                "tool_name": tname,
+                "call_count": cnt,
+                "avg_ms": avg,
+                "p50_ms": round(p50, 2),
+                "p90_ms": round(p90, 2),
+                "p99_ms": round(p99, 2),
+                "buckets": data["buckets"],
+            }
+        )
 
     summary.sort(key=lambda x: x["call_count"], reverse=True)
     return {
@@ -645,6 +659,7 @@ async def get_trade_trajectories(limit: int = Query(50, ge=1, le=500)):
     Retrieve logged trade decision trajectories from TradeTrajectoryLogger JSONL logs.
     """
     from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+
     logger_inst = TradeTrajectoryLogger()
     records = logger_inst.load_recent_trajectories(limit=limit)
     return {
@@ -659,6 +674,7 @@ async def get_cycle_decision_lineage(cycle_id: str, target_seq: Optional[int] = 
     Retrieve decision lineage and SHA-256 chain integrity for a trading cycle from TradingCycleEventLog.
     """
     from monika.core.telemetry.trading_cycle_event_log import get_cycle_event_log
+
     event_log = get_cycle_event_log()
     reconstruction = event_log.reconstruct_cycle(cycle_id)
     is_valid, reason = event_log.verify_cycle_integrity(cycle_id)
@@ -677,4 +693,3 @@ async def get_cycle_decision_lineage(cycle_id: str, target_seq: Optional[int] = 
         "start_time": reconstruction.get("start_time"),
         "end_time": reconstruction.get("end_time"),
     }
-

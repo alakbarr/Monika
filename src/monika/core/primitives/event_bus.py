@@ -26,15 +26,18 @@ E = TypeVar("E", bound="AppEvent")
 # 1. Event Type Definitions
 # ==============================================================================
 
+
 @dataclass(frozen=True)
 class AppEvent:
     """Base class for all application domain events."""
+
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass(frozen=True)
 class TickPriceEvent(AppEvent):
     """Real-time market quote tick event."""
+
     symbol: str = ""
     bid: float = 0.0
     ask: float = 0.0
@@ -45,6 +48,7 @@ class TickPriceEvent(AppEvent):
 @dataclass(frozen=True)
 class BarClosedEvent(AppEvent):
     """Completed OHLCV candle bar event."""
+
     symbol: str = ""
     timeframe: str = ""
     open: float = 0.0
@@ -57,6 +61,7 @@ class BarClosedEvent(AppEvent):
 @dataclass(frozen=True)
 class OrderStateChangedEvent(AppEvent):
     """Order state transition event."""
+
     order_id: str = ""
     symbol: str = ""
     old_state: str = ""
@@ -67,6 +72,7 @@ class OrderStateChangedEvent(AppEvent):
 @dataclass(frozen=True)
 class RiskBreachEvent(AppEvent):
     """Risk gate or drawndown threshold breach event."""
+
     breach_type: str = ""
     symbol: Optional[str] = None
     details: dict = field(default_factory=dict)
@@ -76,6 +82,7 @@ class RiskBreachEvent(AppEvent):
 @dataclass(frozen=True)
 class CircuitBreakerEvent(AppEvent):
     """Circuit breaker state change event (e.g., FlashCrash, Margin, MaxLoss)."""
+
     component: str = ""
     reason: str = ""
     is_active: bool = True
@@ -85,6 +92,7 @@ class CircuitBreakerEvent(AppEvent):
 @dataclass(frozen=True)
 class PreRiskGateEvent(AppEvent):
     """Domain hook triggered prior to RiskGate evaluation."""
+
     symbol: str = ""
     direction: str = ""
     proposal: Any = None
@@ -94,6 +102,7 @@ class PreRiskGateEvent(AppEvent):
 @dataclass(frozen=True)
 class PreOrderEvent(AppEvent):
     """Domain hook triggered immediately before order dispatch to broker."""
+
     symbol: str = ""
     order_request: Any = None
     context: dict = field(default_factory=dict)
@@ -102,6 +111,7 @@ class PreOrderEvent(AppEvent):
 @dataclass(frozen=True)
 class PostFillEvent(AppEvent):
     """Domain hook triggered immediately after order fill confirmation."""
+
     ticket: Optional[int] = None
     symbol: str = ""
     volume: float = 0.0
@@ -114,9 +124,11 @@ class PostFillEvent(AppEvent):
 # 2. Subscription Metadata
 # ==============================================================================
 
+
 @dataclass
 class Subscription:
     """Handler subscription record with priority ordering."""
+
     event_type: Type[AppEvent]
     handler: Callable[..., Union[Coroutine[Any, Any, None], Any]]
     priority: int = 0  # Higher integer = earlier execution
@@ -125,6 +137,7 @@ class Subscription:
 # ==============================================================================
 # 3. Asynchronous Event Bus Implementation
 # ==============================================================================
+
 
 class EventBus:
     """
@@ -158,12 +171,12 @@ class EventBus:
     ) -> Callable[[E], Union[Coroutine[Any, Any, None], Any]]:
         """
         Register a subscriber for a specific event type or base class.
-        
+
         Args:
             event_type: The event class to subscribe to.
             handler: Async coroutine function or sync callable taking the event as argument.
             priority: Execution priority (higher executes first, default 0).
-            
+
         Returns:
             The handler function for convenience.
         """
@@ -190,7 +203,7 @@ class EventBus:
     ) -> bool:
         """
         Unsubscribe a handler from an event type.
-        
+
         Returns:
             True if handler was found and removed, False otherwise.
         """
@@ -198,14 +211,11 @@ class EventBus:
             return False
 
         initial_len = len(self._subscribers[event_type])
-        self._subscribers[event_type] = [
-            s for s in self._subscribers[event_type] if s.handler != handler
-        ]
+        self._subscribers[event_type] = [s for s in self._subscribers[event_type] if s.handler != handler]
         removed = len(self._subscribers[event_type]) < initial_len
         if removed:
             logger.debug(
-                f"[EventBus] Unsubscribed {getattr(handler, '__name__', str(handler))} "
-                f"from {event_type.__name__}"
+                f"[EventBus] Unsubscribed {getattr(handler, '__name__', str(handler))} from {event_type.__name__}"
             )
         return removed
 
@@ -233,13 +243,13 @@ class EventBus:
     async def publish(self, event: AppEvent) -> List[Any]:
         """
         Publish an event to all matching subscribers with full exception isolation.
-        
+
         Subscribers are invoked in priority groups; subscribers with identical priority
         are executed concurrently via asyncio.gather(return_exceptions=True).
-        
+
         Args:
             event: The AppEvent instance to publish.
-            
+
         Returns:
             List of results or exceptions returned by handlers.
         """
@@ -289,7 +299,7 @@ class EventBus:
         """
         Non-blocking fire-and-forget publish scheduled on the active asyncio event loop.
         Attaches a done callback to capture and log any unhandled task exceptions.
-        
+
         Returns:
             asyncio.Task if event loop is running, None otherwise.
         """
@@ -435,7 +445,7 @@ class EventBus:
         - 'drop_oldest': Drops oldest item if queue is full (streaming priority).
         - 'block': Awaits space in queue with optional timeout.
         - 'raise': Raises asyncio.QueueFull if queue is full.
-        
+
         Returns:
             True if queued, False if discarded/timed out.
         """
@@ -448,7 +458,9 @@ class EventBus:
                     _ = queue.get_nowait()
                     queue.task_done()
                     stats["dropped_count"] += 1
-                    logger.warning(f"[EventBus] Queue '{queue_name}' full, dropped oldest event (backpressure=drop_oldest).")
+                    logger.warning(
+                        f"[EventBus] Queue '{queue_name}' full, dropped oldest event (backpressure=drop_oldest)."
+                    )
                 except asyncio.QueueEmpty:
                     pass
             try:
@@ -483,7 +495,6 @@ class EventBus:
 
         else:
             raise ValueError(f"Unknown backpressure_mode: '{backpressure_mode}'")
-
 
     def start_queue_worker(self, queue_name: str = "default") -> asyncio.Task:
         """Start a background worker task that consumes from queue and publishes to subscribers."""
@@ -582,6 +593,7 @@ class ServicePredicate:
     Service availability registry and predicate checker (Phase 5).
     Provides Service.check() mechanism for conditional dispatch and graceful degradation.
     """
+
     _predicates: Dict[str, Callable[[], bool]] = {}
 
     @classmethod

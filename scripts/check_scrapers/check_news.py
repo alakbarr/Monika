@@ -25,6 +25,7 @@ if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 try:
     from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+
     install_legacy_compat()
 except Exception:
     pass
@@ -32,6 +33,7 @@ except Exception:
 # Muat environment variables dari file .env
 try:
     from dotenv import load_dotenv
+
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     root_dir = os.path.abspath(os.path.join(base_dir, ".."))
     for p in [os.path.join(root_dir, ".env"), os.path.join(base_dir, ".env")]:
@@ -43,11 +45,7 @@ except Exception:
 
 from scrapers.models import ScrapedNews
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(message)s",
-    datefmt="%H:%M:%S"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("CheckNews")
 
 
@@ -87,7 +85,13 @@ def check_kitco(headless: bool = False, limit: int = 5, pause: int = 3) -> dict:
         if pause > 0 and not headless:
             logger.info(f"Menahan browser selama {pause} detik sebelum ditutup...")
             time.sleep(pause)
-        return {"source": "Kitco News", "type": "Browser", "status": "SUCCESS" if news else "EMPTY", "count": len(news), "duration": duration}
+        return {
+            "source": "Kitco News",
+            "type": "Browser",
+            "status": "SUCCESS" if news else "EMPTY",
+            "count": len(news),
+            "duration": duration,
+        }
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         logger.error(f"[FAILED] Kitco News gagal: {e}")
@@ -114,7 +118,13 @@ def check_tradingview(headless: bool = False, limit: int = 5, pause: int = 3) ->
         if pause > 0 and not headless:
             logger.info(f"Menahan browser selama {pause} detik sebelum ditutup...")
             time.sleep(pause)
-        return {"source": "TradingView", "type": "Browser", "status": "SUCCESS" if news else "EMPTY", "count": len(news), "duration": duration}
+        return {
+            "source": "TradingView",
+            "type": "Browser",
+            "status": "SUCCESS" if news else "EMPTY",
+            "count": len(news),
+            "duration": duration,
+        }
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         logger.error(f"[FAILED] TradingView gagal: {e}")
@@ -174,7 +184,13 @@ def check_single_rss(name_key: str, display_name: str, scraper_cls, limit: int =
         duration = round(time.time() - start_time, 2)
         logger.info(f"[OK] {display_name}: {len(news)} artikel ({duration}s)")
         print_news_table(news, max_display=min(limit, 3))
-        return {"source": display_name, "type": "RSS", "status": "SUCCESS" if news else "EMPTY", "count": len(news), "duration": duration}
+        return {
+            "source": display_name,
+            "type": "RSS",
+            "status": "SUCCESS" if news else "EMPTY",
+            "count": len(news),
+            "duration": duration,
+        }
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         logger.error(f"[FAILED] {display_name} gagal: {e}")
@@ -189,10 +205,16 @@ def main():
     all_choices = ["all", "kitco", "tradingview", "rss"] + list(rss_map.keys())
 
     parser = argparse.ArgumentParser(description="Pemeriksaan Scraper Berita (Kitco, TradingView, dan 16 RSS Feeds)")
-    parser.add_argument("--source", choices=all_choices, default="all", help="Pilih sumber berita yang ingin diuji (default: all)")
+    parser.add_argument(
+        "--source", choices=all_choices, default="all", help="Pilih sumber berita yang ingin diuji (default: all)"
+    )
     parser.add_argument("--limit", type=int, default=5, help="Batas artikel yang diambil per sumber (default: 5)")
-    parser.add_argument("--headless", action="store_true", help="Jalankan browser scraper dalam mode headless (default: False/headed)")
-    parser.add_argument("--pause", type=int, default=3, help="Jeda penutupan browser untuk observasi visual dalam detik (default: 3)")
+    parser.add_argument(
+        "--headless", action="store_true", help="Jalankan browser scraper dalam mode headless (default: False/headed)"
+    )
+    parser.add_argument(
+        "--pause", type=int, default=3, help="Jeda penutupan browser untuk observasi visual dalam detik (default: 3)"
+    )
 
     args = parser.parse_args()
     headless_mode = args.headless
@@ -222,10 +244,14 @@ def main():
     print("  RINGKASAN HASIL PEMERIKSAAN BERITA")
     print("=" * 65)
     for r in results:
-        status_tag = "[OK]   " if r.get("status") == "SUCCESS" else ("[EMPTY]" if r.get("status") == "EMPTY" else "[FAIL] ")
+        status_tag = (
+            "[OK]   " if r.get("status") == "SUCCESS" else ("[EMPTY]" if r.get("status") == "EMPTY" else "[FAIL] ")
+        )
         count_str = f"{r.get('count', 0)} artikel" if "count" in r else r.get("error", "Error")
         type_str = f"[{r.get('type', 'Unknown')}]"
-        print(f"  {status_tag} {type_str:<10} {r['source']:<24} | Status: {r['status']:<8} | {count_str} ({r.get('duration', 0)}s)")
+        print(
+            f"  {status_tag} {type_str:<10} {r['source']:<24} | Status: {r['status']:<8} | {count_str} ({r.get('duration', 0)}s)"
+        )
     print("=" * 65 + "\n")
 
 

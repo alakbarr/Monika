@@ -29,6 +29,7 @@ class AdHocSchedulerProxy:
         if self._mt5 is None:
             try:
                 from monika.infrastructure.brokers.mt5_client import MT5Client
+
                 self._mt5 = MT5Client(settings=self.settings)
             except Exception:
                 pass
@@ -37,6 +38,7 @@ class AdHocSchedulerProxy:
         if self._risk_gate is None:
             try:
                 from monika.domain.risk.risk_gate import RiskGate
+
                 self._risk_gate = RiskGate(settings=self.settings)
             except Exception:
                 pass
@@ -45,6 +47,7 @@ class AdHocSchedulerProxy:
         if self._execution_service is None:
             try:
                 from monika.application.execution.execution_service import ExecutionService
+
                 self._execution_service = ExecutionService(
                     settings=self.settings,
                     mt5_client=self._mt5,
@@ -62,6 +65,7 @@ class AdHocSchedulerProxy:
         # Sub-stage components
         try:
             from monika.application.analysis.stages.fundamental_stage import FundamentalStage
+
             self._fundamental = FundamentalStage(self.settings)
         except Exception as e:
             logger.debug(f"Failed to instantiate FundamentalStage in AdHocSchedulerProxy: {e}")
@@ -69,6 +73,7 @@ class AdHocSchedulerProxy:
 
         try:
             from monika.application.analysis.stages.per_asset_stage import PerAssetStage
+
             self._per_asset = PerAssetStage(self.settings, mt5_client=self._mt5)
         except Exception as e:
             logger.debug(f"Failed to instantiate PerAssetStage in AdHocSchedulerProxy: {e}")
@@ -76,6 +81,7 @@ class AdHocSchedulerProxy:
 
         try:
             from monika.core.analytics.paper_tracker import PaperTracker
+
             self._paper_tracker = PaperTracker(self.settings)
         except Exception as e:
             logger.debug(f"Failed to instantiate PaperTracker in AdHocSchedulerProxy: {e}")
@@ -133,6 +139,7 @@ class AdHocSchedulerProxy:
         try:
             from monika.infrastructure.database.models import PaperTradeRecord
             from sqlalchemy import select
+
             stmt = (
                 select(PaperTradeRecord)
                 .where(PaperTradeRecord.symbol == symbol)

@@ -91,6 +91,7 @@ class BondYieldFetcher:
         # 2. Fetch sovereign curves via CentralBankWatch (UK, JP, AU 2Y & 10Y daily snapshots)
         try:
             from monika.infrastructure.data_ingestion.sources.central_bank_watch import CentralBankWatchFetcher
+
             cbw_fetcher = CentralBankWatchFetcher(self.session)
             cbw_yields = await cbw_fetcher.fetch_sovereign_yields()
             for k in ("UK_10Y", "UK_2Y", "JP_10Y", "JP_2Y", "AU_10Y", "AU_2Y"):
@@ -171,6 +172,7 @@ class BondYieldFetcher:
 
         if saved:
             from monika.infrastructure.database.safe_ops import safe_commit
+
             await safe_commit(self.session, label="BondYield.ECB")
 
         return saved
@@ -201,7 +203,7 @@ class BondYieldFetcher:
             try:
                 dt = datetime.strptime(date_str.strip(), "%Y-%m-%d").replace(tzinfo=timezone.utc)
                 val = float(val_str)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 continue
 
             try:
@@ -221,6 +223,7 @@ class BondYieldFetcher:
 
         if saved:
             from monika.infrastructure.database.safe_ops import safe_commit
+
             await safe_commit(self.session, label=f"BondYield.{label}")
 
         return saved

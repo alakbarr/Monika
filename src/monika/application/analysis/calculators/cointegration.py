@@ -83,7 +83,7 @@ def adf_test_approx(series: np.ndarray, max_lags: int = 1) -> Tuple[float, float
         beta, _, _, _ = np.linalg.lstsq(x_mat, dy, rcond=None)
         gamma = beta[1]
         residuals = dy - x_mat @ beta
-        s2 = np.sum(residuals ** 2) / (len(dy) - 2)
+        s2 = np.sum(residuals**2) / (len(dy) - 2)
         inv_xx = np.linalg.inv(x_mat.T @ x_mat)
         se_gamma = np.sqrt(s2 * inv_xx[1, 1])
         t_stat = gamma / se_gamma if se_gamma > 1e-12 else 0.0
@@ -109,7 +109,7 @@ def fit_ornstein_uhlenbeck(spread: np.ndarray, dt: float = 1.0) -> Tuple[float, 
     """
     Fits discrete AR(1) specification of continuous Ornstein-Uhlenbeck process:
     spread_{t} = a + b * spread_{t-1} + e_t
-    
+
     where:
     kappa = -ln(b) / dt
     theta = a / (1 - b)
@@ -198,4 +198,3 @@ def analyze_pairs_cointegration(
 
 # Alias for concise testing and strategy discovery
 test_cointegration_ou = analyze_pairs_cointegration
-

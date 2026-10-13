@@ -15,6 +15,7 @@ logger = logging.getLogger("TradingAgent.CLI.SetupWizard")
 
 _PASTE_CLEANER = re.compile(r"\x1b\[\s*200~|\x1b\[\s*201~")
 
+
 def clean_terminal_input(val: str) -> str:
     """Strip bracketed paste escape sequences and surrounding whitespace."""
     if not val:
@@ -71,6 +72,7 @@ class SetupWizard:
         """Check if Node.js/npx and 9router AI Gateway are available on the system."""
         import shutil
         import urllib.request
+
         node_installed = shutil.which("node") is not None
         npx_installed = shutil.which("npx") is not None
         router_bin = shutil.which("9router") is not None
@@ -93,10 +95,21 @@ class SetupWizard:
 
     def _test_mt5_connection(self, account: str, password: str, server: str, path: str) -> bool:
         """Performs live MT5 terminal handshake and checks AlgoTrading status."""
-        from monika.interfaces.cli.theme import get_console, stamp_ok, stamp_err, stamp_warn, stamp_info, BRASS, PAPER, MUTED
+        from monika.interfaces.cli.theme import (
+            get_console,
+            stamp_ok,
+            stamp_err,
+            stamp_warn,
+            stamp_info,
+            BRASS,
+            PAPER,
+            MUTED,
+        )
+
         console = get_console()
         try:
             from monika.infrastructure.brokers.mt5_compat import ensure_mt5_module
+
             mt5: Any = ensure_mt5_module()
         except ImportError:
             console.print(f"{stamp_err('MT5 PKG')} MetaTrader5 Python package or mt5linux bridge is not installed.")
@@ -118,7 +131,9 @@ class SetupWizard:
                 authorized = mt5.login(login=acc_num, password=password, server=server)
                 if not authorized:
                     err = mt5.last_error()
-                    console.print(f"{stamp_err('LOGIN FAIL')} Login failed for account {acc_num} on server '{server}': {err}")
+                    console.print(
+                        f"{stamp_err('LOGIN FAIL')} Login failed for account {acc_num} on server '{server}': {err}"
+                    )
                     mt5.shutdown()
                     return False
             except ValueError:
@@ -133,12 +148,18 @@ class SetupWizard:
             trade_mode = "DEMO" if acc_info.trade_mode == 0 else ("CONTEST" if acc_info.trade_mode == 1 else "REAL")
             console.print(f"\n  [bold {BRASS}]Broker:[/] {acc_info.company} ({server})")
             console.print(f"  [bold {BRASS}]Account:[/] {acc_info.login} [{trade_mode}]")
-            console.print(f"  [bold {BRASS}]Balance:[/] {acc_info.balance:.2f} {acc_info.currency} (Leverage 1:{acc_info.leverage})")
+            console.print(
+                f"  [bold {BRASS}]Balance:[/] {acc_info.balance:.2f} {acc_info.currency} (Leverage 1:{acc_info.leverage})"
+            )
 
         if term_info:
             if not term_info.trade_allowed:
-                console.print(f"\n{stamp_warn('ALGO TRADING OFF')} 'Algo Trading' button in MT5 toolbar is currently DISABLED!")
-                console.print(f"  [{MUTED}]Automated order execution requires Algo Trading. Click 'Algo Trading' in MT5 toolbar so it turns green.[/]")
+                console.print(
+                    f"\n{stamp_warn('ALGO TRADING OFF')} 'Algo Trading' button in MT5 toolbar is currently DISABLED!"
+                )
+                console.print(
+                    f"  [{MUTED}]Automated order execution requires Algo Trading. Click 'Algo Trading' in MT5 toolbar so it turns green.[/]"
+                )
             else:
                 console.print(f"{stamp_ok('ALGO TRADING')} Automated trading is enabled in MT5 terminal.")
 
@@ -148,7 +169,9 @@ class SetupWizard:
             s_info = mt5.symbol_info(probe_sym)
             if s_info:
                 spread = s_info.spread
-                console.print(f"{stamp_ok('MARKET WATCH')} Symbol {probe_sym} active (Spread: {spread} points, Bid: {s_info.bid}, Ask: {s_info.ask})")
+                console.print(
+                    f"{stamp_ok('MARKET WATCH')} Symbol {probe_sym} active (Spread: {spread} points, Bid: {s_info.bid}, Ask: {s_info.ask})"
+                )
 
         mt5.shutdown()
         console.print(f"{stamp_ok('HANDSHAKE')} MT5 Broker connection test successful!\n")
@@ -157,6 +180,7 @@ class SetupWizard:
     def _test_db_connection(self, db_url: str) -> bool:
         """Tests database connection string with simple SELECT 1."""
         from monika.interfaces.cli.theme import get_console, stamp_ok, stamp_err, stamp_info
+
         console = get_console()
         console.print(f"{stamp_info('PROBE')} Testing database connectivity...")
         try:
@@ -196,17 +220,21 @@ class SetupWizard:
         return {
             "mt5": not bool(os.environ.get("MT5_ACCOUNT") and os.environ.get("MT5_PASSWORD")),
             "db": not bool(os.environ.get("DATABASE_URL")),
-            "llm": not any(os.environ.get(k) for k in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY")),
+            "llm": not any(
+                os.environ.get(k) for k in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY")
+            ),
         }
 
     def _test_llm_connection(self, provider: str, api_key: str) -> bool:
         """Sends a 1-token lightweight completion to verify API key validity."""
         from monika.interfaces.cli.theme import get_console, stamp_ok, stamp_err, stamp_info
+
         console = get_console()
         console.print(f"{stamp_info('PROBE')} Testing {provider} API key validity...")
         try:
             if provider.lower() == "gemini":
                 from google import genai  # type: ignore
+
                 client = genai.Client(api_key=api_key)
                 client.models.generate_content(
                     model="gemini-3.5-flash",
@@ -216,6 +244,7 @@ class SetupWizard:
                 return True
             elif provider.lower() == "anthropic":
                 import anthropic
+
                 client = anthropic.Anthropic(api_key=api_key)
                 client.messages.create(
                     model="claude-3-5-haiku-20241022",
@@ -226,6 +255,7 @@ class SetupWizard:
                 return True
             elif provider.lower() in ("openai", "groq"):
                 import openai
+
                 base_url = "https://api.groq.com/openai/v1" if provider.lower() == "groq" else None
                 client = openai.OpenAI(api_key=api_key, base_url=base_url)
                 model = "llama-3.1-8b-instant" if provider.lower() == "groq" else "gpt-4o-mini"
@@ -243,8 +273,15 @@ class SetupWizard:
 
     def run_wizard(self, section: str = "all", quick: bool = False) -> bool:
         from monika.interfaces.cli.theme import (
-            get_console, PHOSPHOR_AMBER, BRASS,
-            stamp_ok, stamp_err, stamp_warn, stamp_info, MUTED, PAPER
+            get_console,
+            PHOSPHOR_AMBER,
+            BRASS,
+            stamp_ok,
+            stamp_err,
+            stamp_warn,
+            stamp_info,
+            MUTED,
+            PAPER,
         )
         from rich.prompt import Prompt, Confirm
         from monika.core.config.atomic_writer import AtomicConfigWriter
@@ -257,7 +294,9 @@ class SetupWizard:
 
         # Headless check
         if not sys.stdin or not hasattr(sys.stdin, "isatty") or not sys.stdin.isatty():
-            console.print(f"{stamp_warn('HEADLESS')} Non-interactive environment detected. Use `monika config set` or environment variables.")
+            console.print(
+                f"{stamp_warn('HEADLESS')} Non-interactive environment detected. Use `monika config set` or environment variables."
+            )
             return False
 
         env_updates: Dict[str, str] = {}
@@ -267,7 +306,7 @@ class SetupWizard:
         if quick:
             console.print(f"{stamp_info('QUICK')} Quick mode: checking unconfigured items...")
             for k, is_missing in missing_items.items():
-                status_icon = stamp_warn('MISSING') if is_missing else stamp_ok('CONFIGURED')
+                status_icon = stamp_warn("MISSING") if is_missing else stamp_ok("CONFIGURED")
                 console.print(f"  {status_icon} Component {k.upper()}")
 
         def _ask_step(prompt_text: str, default: str = "", password: bool = False) -> str:
@@ -294,9 +333,12 @@ class SetupWizard:
             tier_sel = _ask_step("Choose Package [1=Trial (Recommended) / 2=Full]", default="1")
             installed_tier = "full" if tier_sel == "2" else "trial"
             settings_updates["installation_tier"] = installed_tier
-            console.print(f"  {stamp_ok('PACKAGE SELECTED')} [bold {BRASS}]{installed_tier.upper()}[/] package configuration active.\n")
+            console.print(
+                f"  {stamp_ok('PACKAGE SELECTED')} [bold {BRASS}]{installed_tier.upper()}[/] package configuration active.\n"
+            )
         else:
             from monika.core.config.settings import get_installation_tier
+
             installed_tier = get_installation_tier(self.settings_path)
 
         current_step = 1
@@ -309,12 +351,20 @@ class SetupWizard:
                     current_step += 1
                     continue
 
-                console.print(f"\n{stamp_info('STEP 1/6')} [bold {BRASS}]MetaTrader 5 (MT5) Terminal Configuration[/] [{MUTED}]('b' to go back)[/]")
-                console.print(f"  [{MUTED}]Monika streams real-time candlestick quotes and spread data directly from MT5.[/]")
-                console.print(f"  [{MUTED}]For the Trial Package, a free [bold green]Demo Account[/] is recommended (zero financial risk).[/]\n")
+                console.print(
+                    f"\n{stamp_info('STEP 1/6')} [bold {BRASS}]MetaTrader 5 (MT5) Terminal Configuration[/] [{MUTED}]('b' to go back)[/]"
+                )
+                console.print(
+                    f"  [{MUTED}]Monika streams real-time candlestick quotes and spread data directly from MT5.[/]"
+                )
+                console.print(
+                    f"  [{MUTED}]For the Trial Package, a free [bold green]Demo Account[/] is recommended (zero financial risk).[/]\n"
+                )
 
                 if sys.platform != "win32":
-                    console.print(f"[{MUTED}]Linux/Unix host detected. MT5 typically runs via Remote Gateway, EA Bridge, or Wine.[/]")
+                    console.print(
+                        f"[{MUTED}]Linux/Unix host detected. MT5 typically runs via Remote Gateway, EA Bridge, or Wine.[/]"
+                    )
                     use_gateway = Confirm.ask("Use Remote MT5 Gateway / EA Bridge adapter?", default=True)
                     if use_gateway:
                         gw_url = _ask_step("Remote Gateway URL", default="http://127.0.0.1:8080")
@@ -326,16 +376,26 @@ class SetupWizard:
 
                 detected_mt5 = self.detect_mt5_path()
                 while not detected_mt5:
-                    console.print(f"  {stamp_warn('MT5 NOT FOUND')} MetaTrader 5 was not detected in standard system directories.")
+                    console.print(
+                        f"  {stamp_warn('MT5 NOT FOUND')} MetaTrader 5 was not detected in standard system directories."
+                    )
                     console.print(f"\n  [bold cyan]Quick MT5 Setup Guide (Free, ~2 minutes):[/]")
-                    console.print(f"    1. Download MT5: [bold underline cyan]https://www.metatrader5.com/en/download[/]")
+                    console.print(
+                        f"    1. Download MT5: [bold underline cyan]https://www.metatrader5.com/en/download[/]"
+                    )
                     console.print(f"    2. Run the installer and complete MetaTrader 5 installation.")
-                    console.print(f"    3. Open MT5 -> Menu [bold]File[/] -> [bold]Open an Account[/] -> select [bold]MetaQuotes-Demo[/].")
+                    console.print(
+                        f"    3. Open MT5 -> Menu [bold]File[/] -> [bold]Open an Account[/] -> select [bold]MetaQuotes-Demo[/]."
+                    )
                     console.print(f"    4. Create a free demo account (Leverage 1:100, virtual balance).")
                     console.print(f"    5. Note down your Account Number ([bold]Login[/]) and [bold]Password[/].")
-                    console.print(f"    6. In the MT5 toolbar, click [bold green]'Algo Trading'[/] so the icon turns green.\n")
+                    console.print(
+                        f"    6. In the MT5 toolbar, click [bold green]'Algo Trading'[/] so the icon turns green.\n"
+                    )
 
-                    action = _ask_step("Enter [r] to re-detect after installing MT5, or input custom terminal64.exe path", default="r")
+                    action = _ask_step(
+                        "Enter [r] to re-detect after installing MT5, or input custom terminal64.exe path", default="r"
+                    )
                     if action.lower() in ("b", "back"):
                         current_step = 0
                         break
@@ -345,13 +405,17 @@ class SetupWizard:
                             console.print(f"  {stamp_ok('MT5 FOUND')} Detected at: [bold]{detected_mt5}[/]\n")
                             break
                         else:
-                            console.print(f"  {stamp_warn('RETRY')} MT5 still not detected. Please verify installation completed.[/]\n")
+                            console.print(
+                                f"  {stamp_warn('RETRY')} MT5 still not detected. Please verify installation completed.[/]\n"
+                            )
                     elif os.path.exists(action):
                         detected_mt5 = action
                         console.print(f"  {stamp_ok('MT5 PATH')} Custom path accepted: [bold]{detected_mt5}[/]\n")
                         break
                     elif action.lower() in ("skip", "s"):
-                        console.print(f"  {stamp_warn('SKIP')} MT5 skipped temporarily. Warning: market candlestick data will not update without MT5!\n")
+                        console.print(
+                            f"  {stamp_warn('SKIP')} MT5 skipped temporarily. Warning: market candlestick data will not update without MT5!\n"
+                        )
                         break
 
                 if current_step == 0:
@@ -399,7 +463,9 @@ class SetupWizard:
                     current_step += 1
                     continue
 
-                console.print(f"\n{stamp_info('STEP 2/6')} [bold {BRASS}]Database Connection & Storage Engine[/] [{MUTED}]('b' to go back)[/]")
+                console.print(
+                    f"\n{stamp_info('STEP 2/6')} [bold {BRASS}]Database Connection & Storage Engine[/] [{MUTED}]('b' to go back)[/]"
+                )
 
                 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 data_dir = os.path.join(base_dir, "data")
@@ -409,22 +475,30 @@ class SetupWizard:
 
                 if installed_tier == "trial":
                     env_updates["DATABASE_URL"] = sqlite_url
-                    console.print(f"  {stamp_ok('DATABASE')} [bold green]Zero-Config SQLite[/] selected for Trial Package.")
+                    console.print(
+                        f"  {stamp_ok('DATABASE')} [bold green]Zero-Config SQLite[/] selected for Trial Package."
+                    )
                     console.print(f"  [{MUTED}]Storage path: [bold]{db_file}[/][/]")
-                    console.print(f"  [{MUTED}]No PostgreSQL server installation needed. Upgrade anytime via `python -m monika.interfaces.cli.main upgrade`.[/]\n")
+                    console.print(
+                        f"  [{MUTED}]No PostgreSQL server installation needed. Upgrade anytime via `python -m monika.interfaces.cli.main upgrade`.[/]\n"
+                    )
                     current_step += 1
                     continue
 
                 # Full Package database options
                 console.print(f"  1. [bold green]SQLite (Zero-Config)[/]: Fast local file storage at {db_file}")
-                console.print(f"  2. [bold {BRASS}]PostgreSQL 16+ (Production-Grade)[/]: Required for multi-process or live trading.")
+                console.print(
+                    f"  2. [bold {BRASS}]PostgreSQL 16+ (Production-Grade)[/]: Required for multi-process or live trading."
+                )
                 db_choice = _ask_step("Select database engine (1=SQLite / 2=PostgreSQL)", default="2")
                 if db_choice.lower() in ("b", "back"):
                     current_step -= 1
                     continue
 
                 if db_choice == "2":
-                    curr_db = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/monika_trading")
+                    curr_db = os.environ.get(
+                        "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/monika_trading"
+                    )
                     db_url = _ask_step("PostgreSQL Connection URL (asyncpg format)", default=curr_db)
                     if db_url.lower() in ("b", "back"):
                         current_step -= 1
@@ -440,42 +514,69 @@ class SetupWizard:
                         db_ok = self._test_db_connection(db_url)
 
                     if not db_ok:
-                        if Confirm.ask("PostgreSQL connection failed. Would you like to spawn a local PostgreSQL Docker container?", default=True):
+                        if Confirm.ask(
+                            "PostgreSQL connection failed. Would you like to spawn a local PostgreSQL Docker container?",
+                            default=True,
+                        ):
                             try:
                                 import subprocess
                                 import time
-                                console.print(f"{stamp_info('DOCKER')} Spawning PostgreSQL Docker container (monika-postgres)...")
-                                run_res = subprocess.run([
-                                    "docker", "run", "-d",
-                                    "--name", "monika-postgres",
-                                    "-e", "POSTGRES_PASSWORD=postgres",
-                                    "-e", "POSTGRES_DB=trading_agent",
-                                    "-p", "5432:5432",
-                                    "postgres:16-alpine"
-                                ], capture_output=True, text=True)
+
+                                console.print(
+                                    f"{stamp_info('DOCKER')} Spawning PostgreSQL Docker container (monika-postgres)..."
+                                )
+                                run_res = subprocess.run(
+                                    [
+                                        "docker",
+                                        "run",
+                                        "-d",
+                                        "--name",
+                                        "monika-postgres",
+                                        "-e",
+                                        "POSTGRES_PASSWORD=postgres",
+                                        "-e",
+                                        "POSTGRES_DB=trading_agent",
+                                        "-p",
+                                        "5432:5432",
+                                        "postgres:16-alpine",
+                                    ],
+                                    capture_output=True,
+                                    text=True,
+                                )
                                 if run_res.returncode == 0:
-                                    console.print(f"{stamp_ok('DOCKER')} Container monika-postgres started! Waiting 3s...")
+                                    console.print(
+                                        f"{stamp_ok('DOCKER')} Container monika-postgres started! Waiting 3s..."
+                                    )
                                     time.sleep(3)
                                     db_url = "postgresql+asyncpg://postgres:postgres@localhost:5432/trading_agent"
                                     env_updates["DATABASE_URL"] = db_url
                                     self._test_db_connection(db_url)
                                 else:
-                                    console.print(f"{stamp_warn('DOCKER')} Docker failed: {run_res.stderr or run_res.stdout}")
+                                    console.print(
+                                        f"{stamp_warn('DOCKER')} Docker failed: {run_res.stderr or run_res.stdout}"
+                                    )
                             except Exception as d_err:
                                 console.print(f"{stamp_warn('DOCKER')} Could not run docker: {d_err}")
 
                     if Confirm.ask("Run database migrations (alembic upgrade head) now?", default=True):
                         try:
                             import subprocess
+
                             console.print(f"{stamp_info('ALEMBIC')} Running database migrations...")
                             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                            res = subprocess.run(["alembic", "upgrade", "head"], cwd=base_dir, capture_output=True, text=True)
+                            res = subprocess.run(
+                                ["alembic", "upgrade", "head"], cwd=base_dir, capture_output=True, text=True
+                            )
                             if res.returncode == 0:
                                 console.print(f"{stamp_ok('MIGRATION')} Database schema migrated to latest head.")
                             else:
-                                console.print(f"{stamp_warn('MIGRATION')} Alembic warning/error: {res.stderr or res.stdout}")
+                                console.print(
+                                    f"{stamp_warn('MIGRATION')} Alembic warning/error: {res.stderr or res.stdout}"
+                                )
                         except Exception as mig_err:
-                            console.print(f"{stamp_warn('MIGRATION')} Could not execute alembic automatically: {mig_err}")
+                            console.print(
+                                f"{stamp_warn('MIGRATION')} Could not execute alembic automatically: {mig_err}"
+                            )
 
                 current_step += 1
                 continue
@@ -486,21 +587,35 @@ class SetupWizard:
                     current_step += 1
                     continue
 
-                console.print(f"\n{stamp_info('STEP 3/6')} [bold {BRASS}]LLM Provider Credentials & Multi-Key Setup[/] [{MUTED}]('b' to go back)[/]")
-                console.print(f"  [{MUTED}]Monika requires an AI model to evaluate macro news, detect SMC structure, and conduct Bull/Bear debates.[/]")
-                console.print(f"  [{MUTED}]Google Gemini Free Tier is recommended as a zero-cost option (no credit card required).[/]")
-                console.print(f"  [{PAPER}]👉 Get a free Gemini API key: [bold cyan]https://aistudio.google.com/apikey[/][/]")
-                console.print(f"  [{MUTED}]💡 Quota Tip: Flash-Lite provides ~500 RPD per key. Adding 2-3 keys enables automatic failover rotation.[/]\n")
+                console.print(
+                    f"\n{stamp_info('STEP 3/6')} [bold {BRASS}]LLM Provider Credentials & Multi-Key Setup[/] [{MUTED}]('b' to go back)[/]"
+                )
+                console.print(
+                    f"  [{MUTED}]Monika requires an AI model to evaluate macro news, detect SMC structure, and conduct Bull/Bear debates.[/]"
+                )
+                console.print(
+                    f"  [{MUTED}]Google Gemini Free Tier is recommended as a zero-cost option (no credit card required).[/]"
+                )
+                console.print(
+                    f"  [{PAPER}]👉 Get a free Gemini API key: [bold cyan]https://aistudio.google.com/apikey[/][/]"
+                )
+                console.print(
+                    f"  [{MUTED}]💡 Quota Tip: Flash-Lite provides ~500 RPD per key. Adding 2-3 keys enables automatic failover rotation.[/]\n"
+                )
 
                 curr_gemini = os.environ.get("GEMINI_API_KEYS") or os.environ.get("GEMINI_API_KEY", "")
-                gemini_input = _ask_step("Google Gemini API Key(s) (comma-separated if multiple)", password=True, default=curr_gemini)
+                gemini_input = _ask_step(
+                    "Google Gemini API Key(s) (comma-separated if multiple)", password=True, default=curr_gemini
+                )
                 if gemini_input.lower() in ("b", "back"):
                     current_step -= 1
                     continue
 
                 cleaned_gemini_keys = [k.strip() for k in gemini_input.split(",") if k.strip()]
                 if len(cleaned_gemini_keys) == 1:
-                    console.print(f"  [{MUTED}]1 Gemini API key registered. Adding 2-3 keys enables automatic failover rotation.[/]")
+                    console.print(
+                        f"  [{MUTED}]1 Gemini API key registered. Adding 2-3 keys enables automatic failover rotation.[/]"
+                    )
                     if Confirm.ask("Add a 2nd Gemini API key now for automatic failover?", default=False):
                         k2 = _ask_step("Paste 2nd Gemini API Key", password=True)
                         if k2.strip():
@@ -513,7 +628,9 @@ class SetupWizard:
                 if cleaned_gemini_keys:
                     env_updates["GEMINI_API_KEYS"] = ",".join(cleaned_gemini_keys)
                     env_updates["GEMINI_API_KEY"] = cleaned_gemini_keys[0]
-                    console.print(f"  {stamp_ok('GEMINI POOL')} Registered {len(cleaned_gemini_keys)} Gemini key(s) in active pool.")
+                    console.print(
+                        f"  {stamp_ok('GEMINI POOL')} Registered {len(cleaned_gemini_keys)} Gemini key(s) in active pool."
+                    )
                     if Confirm.ask("Test Gemini API key validity now (1-token completion)?", default=True):
                         valid_cnt = 0
                         for idx, key_cand in enumerate(cleaned_gemini_keys, 1):
@@ -521,18 +638,24 @@ class SetupWizard:
                             console.print(f"    Testing key #{idx} ({masked})...", end=" ")
                             if self._test_llm_connection("gemini", key_cand):
                                 valid_cnt += 1
-                        console.print(f"  {stamp_ok('GEMINI CHECK')} {valid_cnt}/{len(cleaned_gemini_keys)} key(s) verified operational.\n")
+                        console.print(
+                            f"  {stamp_ok('GEMINI CHECK')} {valid_cnt}/{len(cleaned_gemini_keys)} key(s) verified operational.\n"
+                        )
 
                 # Optional additional providers
                 want_more_providers = False
                 has_any_key = bool(cleaned_gemini_keys or os.environ.get("GEMINI_API_KEY"))
                 if not has_any_key:
-                    console.print(f"  {stamp_warn('NO GEMINI')} Gemini skipped. You must configure at least one alternative provider below.\n")
+                    console.print(
+                        f"  {stamp_warn('NO GEMINI')} Gemini skipped. You must configure at least one alternative provider below.\n"
+                    )
                     want_more_providers = True
                 elif installed_tier == "full":
                     want_more_providers = True
                 else:
-                    want_more_providers = Confirm.ask("Configure additional AI providers (OpenRouter, Groq, Anthropic, OpenAI)?", default=False)
+                    want_more_providers = Confirm.ask(
+                        "Configure additional AI providers (OpenRouter, Groq, Anthropic, OpenAI)?", default=False
+                    )
 
                 openrouter_key = ""
                 groq_key = ""
@@ -541,22 +664,38 @@ class SetupWizard:
 
                 if want_more_providers:
                     console.print(f"  [{MUTED}]Alternative Provider Options:[/]")
-                    openrouter_key = _ask_step("OpenRouter API Key (https://openrouter.ai/keys)", password=True, default=os.environ.get("OPENROUTER_API_KEY", ""))
+                    openrouter_key = _ask_step(
+                        "OpenRouter API Key (https://openrouter.ai/keys)",
+                        password=True,
+                        default=os.environ.get("OPENROUTER_API_KEY", ""),
+                    )
                     if openrouter_key.lower() in ("b", "back"):
                         current_step -= 1
                         continue
 
-                    groq_key = _ask_step("Groq API Key (https://console.groq.com/keys)", password=True, default=os.environ.get("GROQ_API_KEY", ""))
+                    groq_key = _ask_step(
+                        "Groq API Key (https://console.groq.com/keys)",
+                        password=True,
+                        default=os.environ.get("GROQ_API_KEY", ""),
+                    )
                     if groq_key.lower() in ("b", "back"):
                         current_step -= 1
                         continue
 
-                    anthropic_key = _ask_step("Anthropic Claude API Key (https://console.anthropic.com/)", password=True, default=os.environ.get("ANTHROPIC_API_KEY", ""))
+                    anthropic_key = _ask_step(
+                        "Anthropic Claude API Key (https://console.anthropic.com/)",
+                        password=True,
+                        default=os.environ.get("ANTHROPIC_API_KEY", ""),
+                    )
                     if anthropic_key.lower() in ("b", "back"):
                         current_step -= 1
                         continue
 
-                    openai_key = _ask_step("OpenAI API Key (https://platform.openai.com/api-keys)", password=True, default=os.environ.get("OPENAI_API_KEY", ""))
+                    openai_key = _ask_step(
+                        "OpenAI API Key (https://platform.openai.com/api-keys)",
+                        password=True,
+                        default=os.environ.get("OPENAI_API_KEY", ""),
+                    )
                     if openai_key.lower() in ("b", "back"):
                         current_step -= 1
                         continue
@@ -585,13 +724,19 @@ class SetupWizard:
                     openai_key or os.environ.get("OPENAI_API_KEY"),
                 ]
                 if not any(bool(k) for k in all_candidate_keys):
-                    console.print(f"\n{stamp_err('KEY REQUIRED')} [bold red]At least one AI Provider API key is required for Monika to operate![/]")
-                    console.print(f"  [{MUTED}]Obtain a free Gemini key at https://aistudio.google.com/apikey and try again.[/]\n")
+                    console.print(
+                        f"\n{stamp_err('KEY REQUIRED')} [bold red]At least one AI Provider API key is required for Monika to operate![/]"
+                    )
+                    console.print(
+                        f"  [{MUTED}]Obtain a free Gemini key at https://aistudio.google.com/apikey and try again.[/]\n"
+                    )
                     continue
 
                 # 9Router AI Gateway recommendation (Strongly recommended for ALL packages)
                 console.print(f"\n  [bold cyan]⚡ 9Router AI Gateway (Strongly Recommended)[/]")
-                console.print(f"  [{MUTED}]Functions as an intelligent local proxy on localhost:20128 for model load-balancing and failover.[/]")
+                console.print(
+                    f"  [{MUTED}]Functions as an intelligent local proxy on localhost:20128 for model load-balancing and failover.[/]"
+                )
                 router_stat = self.detect_9router_status()
                 if router_stat["running"]:
                     console.print(f"  {stamp_ok('9ROUTER')} 9Router AI Gateway detected active on localhost:20128.")
@@ -600,21 +745,42 @@ class SetupWizard:
                     enable_9r = Confirm.ask("Enable 9Router AI Gateway (localhost:20128)?", default=True)
                     if enable_9r:
                         settings_updates.setdefault("llm", {}).setdefault("nine_router", {})["enabled"] = True
-                        console.print(f"  {stamp_ok('9ROUTER')} 9Router AI Gateway enabled. Starts automatically with the launcher.\n")
+                        console.print(
+                            f"  {stamp_ok('9ROUTER')} 9Router AI Gateway enabled. Starts automatically with the launcher.\n"
+                        )
                 else:
                     console.print(f"  [{MUTED}]Node.js/npx not detected. 9Router skipped for now.[/]")
-                    console.print(f"  [{PAPER}]Tip: Install Node.js from https://nodejs.org to enable 9Router later.[/]\n")
+                    console.print(
+                        f"  [{PAPER}]Tip: Install Node.js from https://nodejs.org to enable 9Router later.[/]\n"
+                    )
 
                 # Model Architecture Profiles
                 from monika.core.config.profile_applicator import ProfileApplicator, PROFILE_METADATA
-                console.print(f"\n[bold {BRASS}]Select Model Configuration Profile (Automatically Maps All 49 Task Roles):[/]")
-                console.print(f"  1. [bold {BRASS}]High Analysis — High Frequency[/]: Scalping & intraday trading, deep multi-step reasoning")
-                console.print(f"  2. [bold {BRASS}]High Analysis — Low Frequency[/]: Swing trading & macro, deep reasoning, conservative rate limits")
-                console.print(f"  3. [bold {BRASS}]Simple Tasks — High Frequency[/]: Rapid signals, continuous polling, Flash-Lite (500 RPD)")
-                console.print(f"  4. [bold {BRASS}]Simple Tasks — Low Frequency[/]: Passive monitoring 1-2x/day, minimal token usage")
-                console.print(f"  5. [bold {BRASS}]Low Latency — Smart[/]: Swift reaction to price spikes with high-fidelity validation")
-                console.print(f"  6. [bold green]Low Latency — Cost-Optimized (Default)[/]: Free-tier friendly, fast execution, ideal for testing")
-                console.print(f"  7. [bold {MUTED}]Keep Current Configuration[/]: Retain existing task_roles in settings.yaml")
+
+                console.print(
+                    f"\n[bold {BRASS}]Select Model Configuration Profile (Automatically Maps All 49 Task Roles):[/]"
+                )
+                console.print(
+                    f"  1. [bold {BRASS}]High Analysis — High Frequency[/]: Scalping & intraday trading, deep multi-step reasoning"
+                )
+                console.print(
+                    f"  2. [bold {BRASS}]High Analysis — Low Frequency[/]: Swing trading & macro, deep reasoning, conservative rate limits"
+                )
+                console.print(
+                    f"  3. [bold {BRASS}]Simple Tasks — High Frequency[/]: Rapid signals, continuous polling, Flash-Lite (500 RPD)"
+                )
+                console.print(
+                    f"  4. [bold {BRASS}]Simple Tasks — Low Frequency[/]: Passive monitoring 1-2x/day, minimal token usage"
+                )
+                console.print(
+                    f"  5. [bold {BRASS}]Low Latency — Smart[/]: Swift reaction to price spikes with high-fidelity validation"
+                )
+                console.print(
+                    f"  6. [bold green]Low Latency — Cost-Optimized (Default)[/]: Free-tier friendly, fast execution, ideal for testing"
+                )
+                console.print(
+                    f"  7. [bold {MUTED}]Keep Current Configuration[/]: Retain existing task_roles in settings.yaml"
+                )
                 default_profile_choice = "6" if installed_tier == "trial" else "5"
                 preset_choice = _ask_step("Select profile (1-7)", default=default_profile_choice)
 
@@ -636,7 +802,9 @@ class SetupWizard:
                         "active_profile": sel_prof,
                         "task_roles": roles_dict,
                     }
-                    console.print(f"  {stamp_ok('PROFILE')} Successfully mapped all 49 task roles for profile '{sel_prof}'.")
+                    console.print(
+                        f"  {stamp_ok('PROFILE')} Successfully mapped all 49 task roles for profile '{sel_prof}'."
+                    )
 
                 current_step += 1
                 continue
@@ -647,11 +815,19 @@ class SetupWizard:
                     current_step += 1
                     continue
 
-                console.print(f"\n{stamp_info('STEP 4/6')} [bold {BRASS}]Risk Profile & Exposure Guardrails[/] [{MUTED}]('b' to go back)[/]")
+                console.print(
+                    f"\n{stamp_info('STEP 4/6')} [bold {BRASS}]Risk Profile & Exposure Guardrails[/] [{MUTED}]('b' to go back)[/]"
+                )
                 console.print(f"[{MUTED}]Select automated trading risk tolerance profile:[/]")
-                console.print(f"  1. [bold green]Conservative / Prop-Firm Safe[/]: Risk 0.5%/trade, Max Daily DD 2.0%, Max 2 Open Positions")
-                console.print(f"  2. [bold {BRASS}]Moderate / Standard Growth[/]: Risk 1.0%/trade, Max Daily DD 3.5%, Max 3 Open Positions")
-                console.print(f"  3. [bold red]Aggressive / High Yield[/]: Risk 2.0%/trade, Max Daily DD 5.0%, Max 5 Open Positions")
+                console.print(
+                    f"  1. [bold green]Conservative / Prop-Firm Safe[/]: Risk 0.5%/trade, Max Daily DD 2.0%, Max 2 Open Positions"
+                )
+                console.print(
+                    f"  2. [bold {BRASS}]Moderate / Standard Growth[/]: Risk 1.0%/trade, Max Daily DD 3.5%, Max 3 Open Positions"
+                )
+                console.print(
+                    f"  3. [bold red]Aggressive / High Yield[/]: Risk 2.0%/trade, Max Daily DD 5.0%, Max 5 Open Positions"
+                )
                 console.print(f"  4. [bold cyan]Custom Parameters[/]: Manual risk parameters input")
 
                 profile_choice = _ask_step("Select risk profile (1/2/3/4)", default="2")
@@ -677,7 +853,9 @@ class SetupWizard:
                 settings_updates["trading"]["risk"]["risk_percent_per_trade"] = risk_pct
                 settings_updates["trading"]["risk"]["max_daily_drawdown_percent"] = max_dd
                 settings_updates["trading"]["risk"]["max_concurrent_positions"] = max_pos
-                console.print(f"  {stamp_ok('RISK SET')} Risk: {risk_pct}% | Max DD: {max_dd}% | Max Positions: {max_pos}")
+                console.print(
+                    f"  {stamp_ok('RISK SET')} Risk: {risk_pct}% | Max DD: {max_dd}% | Max Positions: {max_pos}"
+                )
 
                 current_step += 1
                 continue
@@ -688,7 +866,9 @@ class SetupWizard:
                     current_step += 1
                     continue
 
-                console.print(f"\n{stamp_info('STEP 5/6')} [bold {BRASS}]Paper Trading Mode & Graduation Invariant[/] [{MUTED}]('b' to go back)[/]")
+                console.print(
+                    f"\n{stamp_info('STEP 5/6')} [bold {BRASS}]Paper Trading Mode & Graduation Invariant[/] [{MUTED}]('b' to go back)[/]"
+                )
                 console.print(f"[{MUTED}]Monika requires paper trading sandbox verification before live execution.[/]")
 
                 is_paper_str = _ask_step("Enable Paper Trading Mode? (y/n)", default="y")
@@ -697,13 +877,17 @@ class SetupWizard:
                     continue
                 is_paper = is_paper_str.lower() in ("y", "yes", "true", "1")
 
-                min_trades_str = _ask_step("Minimum paper trades target before live graduation (default: 50)", default="50")
+                min_trades_str = _ask_step(
+                    "Minimum paper trades target before live graduation (default: 50)", default="50"
+                )
                 if min_trades_str.lower() in ("b", "back"):
                     current_step -= 1
                     continue
                 min_trades = int(min_trades_str) if min_trades_str.isdigit() else 50
 
-                min_wr_str = _ask_step("Minimum win rate percent target before live graduation (default: 55.0)", default="55.0")
+                min_wr_str = _ask_step(
+                    "Minimum win rate percent target before live graduation (default: 55.0)", default="55.0"
+                )
                 if min_wr_str.lower() in ("b", "back"):
                     current_step -= 1
                     continue
@@ -714,7 +898,9 @@ class SetupWizard:
                     "min_paper_trades_before_live": min_trades,
                     "min_paper_win_rate_pct": min_wr,
                 }
-                console.print(f"  {stamp_ok('PAPER GATE')} Paper Trading: {is_paper} | Gate: {min_trades} Trades @ {min_wr}% Win Rate")
+                console.print(
+                    f"  {stamp_ok('PAPER GATE')} Paper Trading: {is_paper} | Gate: {min_trades} Trades @ {min_wr}% Win Rate"
+                )
 
                 current_step += 1
                 continue
@@ -725,13 +911,21 @@ class SetupWizard:
                     current_step += 1
                     continue
 
-                console.print(f"\n{stamp_info('STEP 6/6')} [bold {BRASS}]Telegram Bot & Mobile Oversight (Required)[/] [{MUTED}]('b' to go back)[/]")
-                console.print(f"  [{MUTED}]Telegram is Monika's primary oversight interface for real-time telemetry, trade approval cards, and emergency halts.[/]")
+                console.print(
+                    f"\n{stamp_info('STEP 6/6')} [bold {BRASS}]Telegram Bot & Mobile Oversight (Required)[/] [{MUTED}]('b' to go back)[/]"
+                )
+                console.print(
+                    f"  [{MUTED}]Telegram is Monika's primary oversight interface for real-time telemetry, trade approval cards, and emergency halts.[/]"
+                )
                 console.print(f"\n  [bold cyan]Quick Telegram Bot Setup (Free, ~1 minute):[/]")
                 console.print(f"    1. Open Telegram and search for [bold cyan]@BotFather[/]")
                 console.print(f"    2. Send [bold cyan]/newbot[/] and follow the prompts to name your bot")
-                console.print(f"    3. Copy the [bold]HTTP API Token[/] provided by BotFather (e.g. 123456789:ABCdefGHI...)")
-                console.print(f"    4. To get your numeric ID: search for [bold cyan]@userinfobot[/], send [bold cyan]/start[/], and copy your [bold]Id[/].\n")
+                console.print(
+                    f"    3. Copy the [bold]HTTP API Token[/] provided by BotFather (e.g. 123456789:ABCdefGHI...)"
+                )
+                console.print(
+                    f"    4. To get your numeric ID: search for [bold cyan]@userinfobot[/], send [bold cyan]/start[/], and copy your [bold]Id[/].\n"
+                )
 
                 curr_bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
                 bot_token = ""
@@ -740,7 +934,9 @@ class SetupWizard:
                     if bot_token.lower() in ("b", "back"):
                         break
                     if not bot_token.strip():
-                        console.print(f"  {stamp_err('REQUIRED')} Telegram Bot Token is required for trade proposals and system alerts.")
+                        console.print(
+                            f"  {stamp_err('REQUIRED')} Telegram Bot Token is required for trade proposals and system alerts."
+                        )
 
                 if bot_token.lower() in ("b", "back"):
                     current_step -= 1
@@ -753,7 +949,9 @@ class SetupWizard:
                     if chat_id.lower() in ("b", "back"):
                         break
                     if not chat_id.strip():
-                        console.print(f"  {stamp_err('REQUIRED')} Admin Chat ID is required to restrict commands exclusively to your account.")
+                        console.print(
+                            f"  {stamp_err('REQUIRED')} Admin Chat ID is required to restrict commands exclusively to your account."
+                        )
 
                 if chat_id.lower() in ("b", "back"):
                     current_step -= 1
@@ -768,7 +966,9 @@ class SetupWizard:
                 env_updates["TELEGRAM_BOT_TOKEN"] = bot_token
                 env_updates["TELEGRAM_ADMIN_CHAT_ID"] = chat_id
                 settings_updates.setdefault("telegram", {})["voice_enabled"] = voice_enabled
-                console.print(f"  {stamp_ok('TELEGRAM')} Telegram bot configured (Admin ID: {chat_id}, Voice: {voice_enabled})\n")
+                console.print(
+                    f"  {stamp_ok('TELEGRAM')} Telegram bot configured (Admin ID: {chat_id}, Voice: {voice_enabled})\n"
+                )
 
                 current_step += 1
                 continue
@@ -778,7 +978,11 @@ class SetupWizard:
         console.print(f"[{PHOSPHOR_AMBER}]              PRE-FLIGHT READINESS CHECKLIST                  [/]")
         console.print(f"[{PHOSPHOR_AMBER}]══════════════════════════════════════════════════════════════[/]\n")
 
-        db_type = "Zero-Config SQLite (WAL Mode)" if installed_tier == "trial" or "sqlite" in env_updates.get("DATABASE_URL", "") else "PostgreSQL 16+ Production"
+        db_type = (
+            "Zero-Config SQLite (WAL Mode)"
+            if installed_tier == "trial" or "sqlite" in env_updates.get("DATABASE_URL", "")
+            else "PostgreSQL 16+ Production"
+        )
         llm_providers = []
         if env_updates.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY"):
             llm_providers.append("Google Gemini")
@@ -792,14 +996,22 @@ class SetupWizard:
             llm_providers.append("OpenAI")
         llm_display = ", ".join(llm_providers) if llm_providers else "None"
 
-        console.print(f"  {stamp_ok('PACKAGE')}  Tier: [bold {BRASS}]{installed_tier.upper()}[/] | Execution: [bold green]Paper Trading Sandbox[/]")
+        console.print(
+            f"  {stamp_ok('PACKAGE')}  Tier: [bold {BRASS}]{installed_tier.upper()}[/] | Execution: [bold green]Paper Trading Sandbox[/]"
+        )
         console.print(f"  {stamp_ok('DATABASE')} Engine: [bold]{db_type}[/]")
         mt5_acc = env_updates.get("MT5_ACCOUNT") or os.environ.get("MT5_ACCOUNT", "Demo/Configured")
-        console.print(f"  {stamp_ok('TERMINAL')} MetaTrader 5: Account [bold]{mt5_acc}[/] ({env_updates.get('MT5_SERVER', 'MetaQuotes-Demo')})")
+        console.print(
+            f"  {stamp_ok('TERMINAL')} MetaTrader 5: Account [bold]{mt5_acc}[/] ({env_updates.get('MT5_SERVER', 'MetaQuotes-Demo')})"
+        )
         console.print(f"  {stamp_ok('AI FABRIC')} Models: [bold]{llm_display}[/]")
         tele_id = env_updates.get("TELEGRAM_ADMIN_CHAT_ID") or os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "Configured")
         console.print(f"  {stamp_ok('TELEGRAM')} Oversight: Admin ID [bold]{tele_id}[/]")
-        nine_r_status = "Enabled (localhost:20128)" if settings_updates.get("llm", {}).get("nine_router", {}).get("enabled") else "Optional (Skipped)"
+        nine_r_status = (
+            "Enabled (localhost:20128)"
+            if settings_updates.get("llm", {}).get("nine_router", {}).get("enabled")
+            else "Optional (Skipped)"
+        )
         console.print(f"  {stamp_info('9ROUTER')}  Gateway: [bold]{nine_r_status}[/]\n")
 
         # ── ATOMIC PERSISTENCE ──
@@ -818,7 +1030,9 @@ class SetupWizard:
         # 2. Update settings.yaml atomically
         try:
             AtomicConfigWriter.update_in_place(self.settings_path, settings_updates)
-            console.print(f"  {stamp_ok('CONFIG SAVED')} Settings updated in {self.settings_path} (comments preserved).")
+            console.print(
+                f"  {stamp_ok('CONFIG SAVED')} Settings updated in {self.settings_path} (comments preserved)."
+            )
         except Exception as e:
             console.print(f"  {stamp_err('CONFIG ERROR')} Failed to update {self.settings_path}: {e}")
             return False
@@ -826,6 +1040,7 @@ class SetupWizard:
         # 3. Write .monika_tier marker in root directory
         try:
             from monika.infrastructure.infra.paths import get_repo_root
+
             tier_marker = os.path.join(str(get_repo_root()), ".monika_tier")
             with open(tier_marker, "w", encoding="utf-8") as f:
                 f.write(installed_tier.strip().lower() + "\n")
@@ -833,11 +1048,15 @@ class SetupWizard:
             pass
 
         console.print(f"\n[{PHOSPHOR_AMBER}]══════════════════════════════════════════════════════════════[/]")
-        console.print(f"{stamp_ok('SETUP COMPLETED')} Monika successfully configured ({installed_tier.upper()} Package)!")
+        console.print(
+            f"{stamp_ok('SETUP COMPLETED')} Monika successfully configured ({installed_tier.upper()} Package)!"
+        )
         console.print(f"[{MUTED}]Next Recommended Steps:[/]")
         console.print(f"  1. System Diagnostics: [bold {BRASS}]python -m monika.interfaces.cli.main doctor[/]")
         console.print(f"  2. Trader Personality: [bold {BRASS}]python -m monika.interfaces.cli.main onboarding[/]")
-        console.print(f"  3. Launch Monika:      [bold {BRASS}]python -m monika.interfaces.cli.main run[/] (or use the launcher)")
+        console.print(
+            f"  3. Launch Monika:      [bold {BRASS}]python -m monika.interfaces.cli.main run[/] (or use the launcher)"
+        )
         if installed_tier == "trial":
             console.print(f"  4. Upgrade to Full:    [bold cyan]python -m monika.interfaces.cli.main upgrade[/]")
         console.print(f"[{PHOSPHOR_AMBER}]══════════════════════════════════════════════════════════════[/]\n")

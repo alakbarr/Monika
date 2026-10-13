@@ -1,4 +1,3 @@
-
 """GTJA Alpha #56.
 
 Formula: (RANK(OPEN-TSMIN(OPEN,12)) < RANK((RANK(CORR(SUM(((HIGH+LOW)/2),19),SUM(MEAN(VOLUME,40),19),13))^5)))
@@ -29,17 +28,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_056",
-    "theme": ['volume'],
-    "formula_latex": '(RANK(OPEN-TSMIN(OPEN,12)) < RANK((RANK(CORR(SUM(((HIGH+LOW)/2),19),SUM(MEAN(VOLUME,40),19),13))^5)))',
-    "columns_required": ['open', 'high', 'low', 'volume'],
+    "theme": ["volume"],
+    "formula_latex": "(RANK(OPEN-TSMIN(OPEN,12)) < RANK((RANK(CORR(SUM(((HIGH+LOW)/2),19),SUM(MEAN(VOLUME,40),19),13))^5)))",
+    "columns_required": ["open", "high", "low", "volume"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 19,
     "min_warmup_bars": 60,
-    "notes": 'Boolean comparator returns 1/0; 40d mean truncated.',
+    "notes": "Boolean comparator returns 1/0; 40d mean truncated.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     o = panel["open"]

@@ -1,4 +1,3 @@
-
 """GTJA Alpha 146 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
@@ -6,6 +5,7 @@ Formula (verbatim from the report):
 
 Notes: Standardised return deviation; SMA(.,61,2)=ewm(alpha=2/61).
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_146"
 
 __alpha_meta__ = {
-    'id': 'gtja191_146',
-    'theme': ['momentum'],
-    'formula_latex': 'see body',
-    'columns_required': ['close'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 60,
-    'min_warmup_bars': 81,
-    'notes': 'Standardised return deviation; SMA(.,61,2)=ewm(alpha=2/61).',
+    "id": "gtja191_146",
+    "theme": ["momentum"],
+    "formula_latex": "see body",
+    "columns_required": ["close"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 60,
+    "min_warmup_bars": 81,
+    "notes": "Standardised return deviation; SMA(.,61,2)=ewm(alpha=2/61).",
 }
 
 
@@ -54,15 +54,17 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     Returns:
         pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
     """
+
     def _sma(x, n, m):
         """SMA(x, n, m) per GTJA convention -> ewm with alpha = m/n."""
         return x.ewm(alpha=m / n, adjust=False).mean()
+
     c = panel["close"]
     ret = safe_div(c - c.shift(1), c.shift(1))
     ewm_ret = _sma(ret, 61, 2)
     dev = ret - ewm_ret
     left = ts_mean(dev, 20)
     right = dev
-    den = _sma(dev ** 2, 60, 2)
+    den = _sma(dev**2, 60, 2)
     out = safe_div(left * right, den)
     return out

@@ -62,30 +62,31 @@ class ContextScorer:
 
         if self._current_context is None:
             self._current_context = await self._fetch_or_compute_context(
-                symbol=symbol, match_date=None, bars_slice=historical_bars[-60:] if len(historical_bars) >= 60 else historical_bars
+                symbol=symbol,
+                match_date=None,
+                bars_slice=historical_bars[-60:] if len(historical_bars) >= 60 else historical_bars,
             )
 
         for match in matches:
             match_date = datetime.fromtimestamp(match.end_time, tz=timezone.utc)
             # Slice historical bars up to the match endpoint for OHLCV proxies
             slice_start = max(0, match.start_index - 30)
-            bars_slice = historical_bars[slice_start:match.end_index]
+            bars_slice = historical_bars[slice_start : match.end_index]
 
-            hist_ctx = await self._fetch_or_compute_context(
-                symbol=symbol, match_date=match_date, bars_slice=bars_slice
-            )
+            hist_ctx = await self._fetch_or_compute_context(symbol=symbol, match_date=match_date, bars_slice=bars_slice)
 
-            sim_score, coverage_ratio = self._compute_adaptive_similarity(
-                self._current_context, hist_ctx
-            )
+            sim_score, coverage_ratio = self._compute_adaptive_similarity(self._current_context, hist_ctx)
 
             match.context_score = float(sim_score)
             match.context_coverage = float(coverage_ratio)
             match.context_label = (
-                "HIGH" if sim_score >= 0.70 and coverage_ratio >= 0.60 else
-                "MEDIUM" if sim_score >= 0.40 and coverage_ratio >= 0.40 else
-                "LOW" if coverage_ratio >= 0.40 else
-                "UNVERIFIED"
+                "HIGH"
+                if sim_score >= 0.70 and coverage_ratio >= 0.60
+                else "MEDIUM"
+                if sim_score >= 0.40 and coverage_ratio >= 0.40
+                else "LOW"
+                if coverage_ratio >= 0.40
+                else "UNVERIFIED"
             )
 
     async def _fetch_or_compute_context(
@@ -144,7 +145,16 @@ class ContextScorer:
 
             if row and row.close and row.close > 0:
                 # Check that date is reasonably close (within 10 days)
-                if match_date and abs((match_date - row.date.replace(tzinfo=timezone.utc if row.date.tzinfo is None else row.date.tzinfo)).days) > 14:
+                if (
+                    match_date
+                    and abs(
+                        (
+                            match_date
+                            - row.date.replace(tzinfo=timezone.utc if row.date.tzinfo is None else row.date.tzinfo)
+                        ).days
+                    )
+                    > 14
+                ):
                     pass  # Fall through to OHLCV proxy
                 else:
                     return float(row.close), "db"
@@ -158,9 +168,7 @@ class ContextScorer:
 
         return 20.0, "default"
 
-    async def _get_dxy_trend_or_proxy(
-        self, match_date: Optional[datetime]
-    ) -> Tuple[str, str]:
+    async def _get_dxy_trend_or_proxy(self, match_date: Optional[datetime]) -> Tuple[str, str]:
         """Fetches DXY trend from DB or falls back to compute_usd_strength_proxy."""
         try:
             from monika.infrastructure.database.models import DXYData
@@ -190,6 +198,7 @@ class ContextScorer:
         # Fallback: compute USD strength proxy from Forex basket
         try:
             from monika.domain.market.usd_strength_proxy import compute_usd_strength_proxy
+
             proxy_res = await compute_usd_strength_proxy(
                 self.session, lookback_bars=20, timeframe="D1", as_of=match_date
             )
@@ -238,8 +247,7 @@ class ContextScorer:
 
         # ATR computation
         tr = np.maximum(
-            highs[1:] - lows[1:],
-            np.maximum(np.abs(highs[1:] - closes[:-1]), np.abs(lows[1:] - closes[:-1]))
+            highs[1:] - lows[1:], np.maximum(np.abs(highs[1:] - closes[:-1]), np.abs(lows[1:] - closes[:-1]))
         )
         atr = np.mean(tr[-14:]) if len(tr) >= 14 else np.mean(tr)
 
@@ -312,9 +320,7 @@ class ContextScorer:
             return "elevated"
         return "crisis"
 
-    def _compute_adaptive_similarity(
-        self, current: MarketContext, historical: MarketContext
-    ) -> Tuple[float, float]:
+    def _compute_adaptive_similarity(self, current: MarketContext, historical: MarketContext) -> Tuple[float, float]:
         """
         Tier 3: Dynamic Adaptive Weight Re-normalization.
         Only active/available dimensions contribute; total active weight scales to 1.0.
@@ -324,36 +330,36 @@ class ContextScorer:
 
         # 1. Volatility
         sub_scores["volatility_similarity"] = (
-            1.0 if current.vix_category == historical.vix_category else
-            0.5 if abs(current.vix_level - historical.vix_level) <= 8.0 else 0.0
+            1.0
+            if current.vix_category == historical.vix_category
+            else 0.5
+            if abs(current.vix_level - historical.vix_level) <= 8.0
+            else 0.0
         )
         active_weights["volatility_similarity"] = self.BASE_WEIGHTS["volatility_similarity"]
 
         # 2. USD Trend
         if historical.dxy_trend != "unknown" and current.dxy_trend != "unknown":
-            sub_scores["usd_trend_similarity"] = (
-                1.0 if current.dxy_trend == historical.dxy_trend else 0.0
-            )
+            sub_scores["usd_trend_similarity"] = 1.0 if current.dxy_trend == historical.dxy_trend else 0.0
             active_weights["usd_trend_similarity"] = self.BASE_WEIGHTS["usd_trend_similarity"]
 
         # 3. Market Regime
         sub_scores["regime_similarity"] = (
-            1.0 if current.market_regime == historical.market_regime else
-            0.5 if self._regimes_compatible(current.market_regime, historical.market_regime) else 0.0
+            1.0
+            if current.market_regime == historical.market_regime
+            else 0.5
+            if self._regimes_compatible(current.market_regime, historical.market_regime)
+            else 0.0
         )
         active_weights["regime_similarity"] = self.BASE_WEIGHTS["regime_similarity"]
 
         # 4. Rate Cycle
         if historical.rate_cycle != "unknown" and current.rate_cycle != "unknown":
-            sub_scores["rate_cycle_similarity"] = (
-                1.0 if current.rate_cycle == historical.rate_cycle else 0.0
-            )
+            sub_scores["rate_cycle_similarity"] = 1.0 if current.rate_cycle == historical.rate_cycle else 0.0
             active_weights["rate_cycle_similarity"] = self.BASE_WEIGHTS["rate_cycle_similarity"]
 
         # 5. Asset Trend
-        sub_scores["asset_trend_similarity"] = (
-            1.0 if current.asset_trend == historical.asset_trend else 0.0
-        )
+        sub_scores["asset_trend_similarity"] = 1.0 if current.asset_trend == historical.asset_trend else 0.0
         active_weights["asset_trend_similarity"] = self.BASE_WEIGHTS["asset_trend_similarity"]
 
         # Normalization
@@ -362,9 +368,7 @@ class ContextScorer:
         coverage = float(tot_active / tot_base) if tot_base > 0 else 1.0
 
         if tot_active > 0:
-            weighted_score = sum(
-                sub_scores[k] * (w / tot_active) for k, w in active_weights.items()
-            )
+            weighted_score = sum(sub_scores[k] * (w / tot_active) for k, w in active_weights.items())
             weighted_score = min(1.0, max(0.0, weighted_score))
         else:
             weighted_score = 0.5
@@ -383,9 +387,7 @@ class ContextScorer:
         ]
         return (r1, r2) in compatible_pairs
 
-    async def annotate_top_matches(
-        self, matches: List[PatternMatch], limit: int = 5
-    ) -> List[ContextAnnotation]:
+    async def annotate_top_matches(self, matches: List[PatternMatch], limit: int = 5) -> List[ContextAnnotation]:
         """Tier 2: Annotates top matches with historical narrative from MarketChronicle."""
         from monika.infrastructure.database.models import MarketChronicle
 
@@ -397,18 +399,23 @@ class ContextScorer:
             start_window = match_dt - timedelta(days=7)
             end_window = match_dt + timedelta(days=7)
 
-            stmt = select(MarketChronicle).where(
-                MarketChronicle.event_date.between(start_window, end_window)
-            ).order_by(desc(MarketChronicle.severity)).limit(3)
+            stmt = (
+                select(MarketChronicle)
+                .where(MarketChronicle.event_date.between(start_window, end_window))
+                .order_by(desc(MarketChronicle.severity))
+                .limit(3)
+            )
 
             res = await self.session.execute(stmt)
             chronicles = res.scalars().all()
 
-            annotations.append(ContextAnnotation(
-                match=match,
-                chronicle_events=[f"[{c.category.upper()}] {c.headline}" for c in chronicles],
-                context_label=match.context_label,
-                context_score=match.context_score,
-            ))
+            annotations.append(
+                ContextAnnotation(
+                    match=match,
+                    chronicle_events=[f"[{c.category.upper()}] {c.headline}" for c in chronicles],
+                    context_label=match.context_label,
+                    context_score=match.context_score,
+                )
+            )
 
         return annotations

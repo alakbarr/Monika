@@ -21,6 +21,7 @@ if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 try:
     from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+
     install_legacy_compat()
 except Exception:
     pass
@@ -110,8 +111,12 @@ MODELS_TO_BENCHMARK = [
     },
 ]
 
-JSON_OUTPUT_PATH = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_stage2_results.json"
-MARKDOWN_OUTPUT_PATH = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_stage2_per_asset_openrouter.md"
+JSON_OUTPUT_PATH = (
+    REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_stage2_results.json"
+)
+MARKDOWN_OUTPUT_PATH = (
+    REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_stage2_per_asset_openrouter.md"
+)
 
 
 def extract_turn_details(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -138,11 +143,13 @@ def extract_turn_details(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                         else:
                             text_parts.append(t_text)
                     elif b_type == "tool_use":
-                        tool_calls.append({
-                            "id": block.get("id"),
-                            "name": block.get("name"),
-                            "input": block.get("input"),
-                        })
+                        tool_calls.append(
+                            {
+                                "id": block.get("id"),
+                                "name": block.get("name"),
+                                "input": block.get("input"),
+                            }
+                        )
             elif isinstance(content, str):
                 text_parts.append(content)
 
@@ -158,11 +165,13 @@ def extract_turn_details(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                         parsed_args = raw_args
                 else:
                     parsed_args = raw_args
-                tool_calls.append({
-                    "id": tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", ""),
-                    "name": fn_name,
-                    "input": parsed_args,
-                })
+                tool_calls.append(
+                    {
+                        "id": tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", ""),
+                        "name": fn_name,
+                        "input": parsed_args,
+                    }
+                )
 
             current_turn = {
                 "turn_index": len(turns_data) + 1,
@@ -180,20 +189,24 @@ def extract_turn_details(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                 for block in content:
                     b_type = block.get("type") if isinstance(block, dict) else getattr(block, "type", None)
                     if b_type == "tool_result":
-                        tool_res_list.append({
-                            "tool_use_id": block.get("tool_use_id"),
-                            "content": block.get("content"),
-                        })
+                        tool_res_list.append(
+                            {
+                                "tool_use_id": block.get("tool_use_id"),
+                                "content": block.get("content"),
+                            }
+                        )
             if turns_data and tool_res_list:
                 turns_data[-1]["tool_results"].extend(tool_res_list)
 
         elif role == "tool":
             if turns_data:
-                turns_data[-1]["tool_results"].append({
-                    "tool_use_id": msg.get("tool_call_id"),
-                    "name": msg.get("name"),
-                    "content": msg.get("content"),
-                })
+                turns_data[-1]["tool_results"].append(
+                    {
+                        "tool_use_id": msg.get("tool_call_id"),
+                        "name": msg.get("name"),
+                        "content": msg.get("content"),
+                    }
+                )
 
     return turns_data
 
@@ -207,13 +220,19 @@ def generate_markdown_report(benchmark_data: Dict[str, Any]) -> str:
 
     md.append("# 📊 Benchmark Report: Task Role `stage2_per_asset` (OpenRouter)")
     md.append(f"**Execution Timestamp**: `{meta.get('timestamp')}`  ")
-    md.append(f"**Target Symbol**: `EURUSD` | **Total Models Evaluated**: `{len(models_res)}` | **Router**: `OpenRouter.ai` | **Isolation Mode**: `In-Memory Guarded Box (Zero DB write, Zero Broker Execution)`\n")
+    md.append(
+        f"**Target Symbol**: `EURUSD` | **Total Models Evaluated**: `{len(models_res)}` | **Router**: `OpenRouter.ai` | **Isolation Mode**: `In-Memory Guarded Box (Zero DB write, Zero Broker Execution)`\n"
+    )
     md.append("---\n")
 
     # 1. Executive Summary Table
     md.append("## 1. 🏆 Executive Comparison Matrix & Scorecard\n")
-    md.append("| Model | Thinking Level | Status | Latency | Turns | Tools | In / Out Tokens | Thinking Tokens | Cost ($ USD) | Decision | Conf | R:R | Confluence | Analysis Captured |")
-    md.append("| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+    md.append(
+        "| Model | Thinking Level | Status | Latency | Turns | Tools | In / Out Tokens | Thinking Tokens | Cost ($ USD) | Decision | Conf | R:R | Confluence | Analysis Captured |"
+    )
+    md.append(
+        "| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |"
+    )
 
     for m in models_res:
         captured = m.get("captured_payload") or {}
@@ -225,7 +244,7 @@ def generate_markdown_report(benchmark_data: Dict[str, Any]) -> str:
         think_tok = f"{m.get('thinking_tokens', 0):,}"
         cost = f"${m.get('cost_usd', 0.0):.4f}"
         lat = f"{m.get('latency_s', 0.0):.1f}s"
-        
+
         # Calculate R:R if available
         sl = captured.get("stop_loss")
         tp = captured.get("take_profit")
@@ -237,12 +256,14 @@ def generate_markdown_report(benchmark_data: Dict[str, Any]) -> str:
                 risk = abs(float(entry_px) - float(sl))
                 reward = abs(float(tp) - float(entry_px))
                 if risk > 0:
-                    rr_str = f"1:{reward/risk:.2f}"
+                    rr_str = f"1:{reward / risk:.2f}"
             except Exception:
                 pass
-        
+
         confluence_str = f"{captured.get('confluence_score', '-')}/14" if "confluence_score" in captured else "-"
-        md.append(f"| **{m.get('display_name')}** | `{m.get('thinking_level')}` | {status_icon} | {lat} | {m.get('turns', 0)} | {m.get('tool_calls_made', 0)} | {in_out} | {think_tok} | {cost} | `{decision}` | {conf} | {rr_str} | {confluence_str} | {captured_icon} |")
+        md.append(
+            f"| **{m.get('display_name')}** | `{m.get('thinking_level')}` | {status_icon} | {lat} | {m.get('turns', 0)} | {m.get('tool_calls_made', 0)} | {in_out} | {think_tok} | {cost} | `{decision}` | {conf} | {rr_str} | {confluence_str} | {captured_icon} |"
+        )
 
     md.append("\n---\n")
 
@@ -251,21 +272,27 @@ def generate_markdown_report(benchmark_data: Dict[str, Any]) -> str:
     md.append("Setiap model dievaluasi menggunakan input baku yang 100% identik di bawah ini:\n")
 
     md.append("<details>")
-    md.append("<summary><b>📄 System Prompt (`stage2_per_asset` - SMC/ICT Playbook) — Klik untuk membuka</b></summary>\n")
+    md.append(
+        "<summary><b>📄 System Prompt (`stage2_per_asset` - SMC/ICT Playbook) — Klik untuk membuka</b></summary>\n"
+    )
     md.append("```text")
     md.append(input_data.get("system_prompt", ""))
     md.append("```\n")
     md.append("</details>\n")
 
     md.append("<details>")
-    md.append("<summary><b>📦 User Message & Pre-Fetched Technical/SMC Data Bundle (EURUSD) — Klik untuk membuka</b></summary>\n")
+    md.append(
+        "<summary><b>📦 User Message & Pre-Fetched Technical/SMC Data Bundle (EURUSD) — Klik untuk membuka</b></summary>\n"
+    )
     md.append("```text")
     md.append(input_data.get("user_prompt", ""))
     md.append("```\n")
     md.append("</details>\n")
 
     md.append("<details>")
-    md.append("<summary><b>🛠️ Available Tool Definitions Schema (STAGE2_FROZEN_TOOLS Minified) — Klik untuk membuka</b></summary>\n")
+    md.append(
+        "<summary><b>🛠️ Available Tool Definitions Schema (STAGE2_FROZEN_TOOLS Minified) — Klik untuk membuka</b></summary>\n"
+    )
     md.append("```json")
     md.append(json.dumps(input_data.get("tool_schemas", []), indent=2))
     md.append("```\n")
@@ -280,8 +307,12 @@ def generate_markdown_report(benchmark_data: Dict[str, Any]) -> str:
         md.append(f"### 3.{idx}. Model: {m.get('display_name')}\n")
         md.append(f"- **OpenRouter Model ID**: `{m.get('model_id')}`")
         md.append(f"- **Thinking Effort / Level**: `{m.get('thinking_level')}`")
-        md.append(f"- **Execution Latency**: `{m.get('latency_s', 0.0):.2f}s` | **Turns Taken**: `{m.get('turns', 0)}` | **Tool Calls**: `{m.get('tool_calls_made', 0)}`")
-        md.append(f"- **Token Usage**: `{m.get('input_tokens', 0):,}` In | `{m.get('output_tokens', 0):,}` Out | `{m.get('thinking_tokens', 0):,}` Thinking | `{m.get('cached_tokens', 0):,}` Cached")
+        md.append(
+            f"- **Execution Latency**: `{m.get('latency_s', 0.0):.2f}s` | **Turns Taken**: `{m.get('turns', 0)}` | **Tool Calls**: `{m.get('tool_calls_made', 0)}`"
+        )
+        md.append(
+            f"- **Token Usage**: `{m.get('input_tokens', 0):,}` In | `{m.get('output_tokens', 0):,}` Out | `{m.get('thinking_tokens', 0):,}` Thinking | `{m.get('cached_tokens', 0):,}` Cached"
+        )
         md.append(f"- **Calculated Cost**: `${m.get('cost_usd', 0.0):.6f} USD`")
         if m.get("error"):
             md.append(f"- **Error Encountered**: `{m.get('error')}`")
@@ -293,7 +324,9 @@ def generate_markdown_report(benchmark_data: Dict[str, Any]) -> str:
             md.append(json.dumps(captured, indent=2))
             md.append("```\n")
         else:
-            md.append("\n> ⚠️ *`submit_asset_analysis` payload tidak tertangkap (model menyimpulkan via teks bebas atau batas turn tercapai).*\n")
+            md.append(
+                "\n> ⚠️ *`submit_asset_analysis` payload tidak tertangkap (model menyimpulkan via teks bebas atau batas turn tercapai).*\n"
+            )
 
         # Turn by turn trace
         turns = m.get("turns_trace", [])
@@ -350,11 +383,19 @@ def generate_markdown_report(benchmark_data: Dict[str, Any]) -> str:
     # 4. Comparative Synthesis & Insights
     md.append("## 4. 📈 Comparative Analysis & Insights\n")
     md.append("### 4.1. Konsistensi Penilaian Teknikal & SMC")
-    md.append("- Analisis per aset menguji kemampuan model membedakan zona diskon vs premium, mitigasi Order Block, FVG H4/H1, dan likuiditas buy-side/sell-side.")
-    md.append("- Evaluasi apakah model mampu mengenali divergensi antara bias makro Stage 1 (DXY bullish, EUR net short) dengan struktur harga teknikal (retest support / CHoCH pada M15).")
+    md.append(
+        "- Analisis per aset menguji kemampuan model membedakan zona diskon vs premium, mitigasi Order Block, FVG H4/H1, dan likuiditas buy-side/sell-side."
+    )
+    md.append(
+        "- Evaluasi apakah model mampu mengenali divergensi antara bias makro Stage 1 (DXY bullish, EUR net short) dengan struktur harga teknikal (retest support / CHoCH pada M15)."
+    )
     md.append("\n### 4.2. Kepatuhan Skema Validasi Finansial")
-    md.append("- Pydantic `SubmitAssetAnalysisSchema` mewajibkan Stop Loss, Take Profit (R:R >= 1.3), `invalidation_price`, `invalidation_direction`, `confluence_score` (0-14), dan `priced_in_score` (1-10) untuk keputusan buy/sell.")
-    md.append("- Keberhasilan penangkapan payload membuktikan ketangguhan sistem Monika dalam membimbing model menuju eksekusi deterministik.")
+    md.append(
+        "- Pydantic `SubmitAssetAnalysisSchema` mewajibkan Stop Loss, Take Profit (R:R >= 1.3), `invalidation_price`, `invalidation_direction`, `confluence_score` (0-14), dan `priced_in_score` (1-10) untuk keputusan buy/sell."
+    )
+    md.append(
+        "- Keberhasilan penangkapan payload membuktikan ketangguhan sistem Monika dalam membimbing model menuju eksekusi deterministik."
+    )
 
     return "\n".join(md)
 
@@ -376,6 +417,7 @@ async def main():
 
     # Freeze simulated clock to benchmark evaluation scenario time
     import utils.clock as clock
+
     clock.set_simulated_now(datetime(2026, 10, 4, 19, 0, 0, tzinfo=timezone.utc))
 
     symbol = "EURUSD"
@@ -401,6 +443,7 @@ async def main():
     user_prompt = f"{simulation_directive}\n\n{bundle_text}\n\nAnalyze {symbol} using pre-fetched data above, then submit your analysis."
 
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default=None, help="Specific model to run (e.g. gemini-3.8-flash)")
     parser.add_argument("--force", action="store_true", help="Force re-run even if model already succeeded")
@@ -435,13 +478,15 @@ async def main():
                 saved = json.load(f)
                 if isinstance(saved, dict) and "results" in saved:
                     benchmark_record = saved
-                    print(f"[*] Loaded {len(benchmark_record['results'])} existing results from {JSON_OUTPUT_PATH.name}")
+                    print(
+                        f"[*] Loaded {len(benchmark_record['results'])} existing results from {JSON_OUTPUT_PATH.name}"
+                    )
         except Exception as e:
             print(f"[Warning] Could not load existing benchmark results: {e}")
 
-
     targets_to_run = [
-        m for m in MODELS_TO_BENCHMARK
+        m
+        for m in MODELS_TO_BENCHMARK
         if not args.model or args.model.lower() in m["name"].lower() or args.model.lower() in m["model_id"].lower()
     ]
 
@@ -455,7 +500,9 @@ async def main():
         max_tokens = target["max_tokens"]
 
         # Check if already completed and successful
-        existing_match = next((r for r in benchmark_record["results"] if r.get("name") == name and r.get("success")), None)
+        existing_match = next(
+            (r for r in benchmark_record["results"] if r.get("name") == name and r.get("success")), None
+        )
         if existing_match and not args.force:
             print(f"\n[{i}/{total_models}] [SKIPPED] {disp} ({model_id}) already has successful results.")
             continue
@@ -541,7 +588,9 @@ async def main():
                             if tc.get("name") == "submit_asset_analysis" and tc.get("input"):
                                 model_result["captured_payload"] = tc["input"]
                                 model_result["success"] = True
-                                print("      [CAPTURED from turn trace] Captured submit_asset_analysis call from turn trace!")
+                                print(
+                                    "      [CAPTURED from turn trace] Captured submit_asset_analysis call from turn trace!"
+                                )
                                 break
                         if model_result["captured_payload"]:
                             break
@@ -549,7 +598,11 @@ async def main():
                 if not model_result["captured_payload"] and model_result["final_text"]:
                     # Heuristic fallback check
                     import re
-                    m_dec = re.search(r'\b(?:decision|action)\s*[:=]\s*["\']?\*?\*?(buy|sell|avoid|wait)\*?\*?["\']?', model_result["final_text"].lower())
+
+                    m_dec = re.search(
+                        r'\b(?:decision|action)\s*[:=]\s*["\']?\*?\*?(buy|sell|avoid|wait)\*?\*?["\']?',
+                        model_result["final_text"].lower(),
+                    )
                     if m_dec:
                         model_result["captured_payload"] = {
                             "symbol": symbol,
@@ -562,7 +615,9 @@ async def main():
                         model_result["recovered_via_heuristic"] = True
                         print("      [RECOVERED] Decision recovered from final text via heuristic extraction!")
 
-                print(f"      [OK] Finished in {elapsed:.1f}s | Turns: {model_result['turns']} | In/Out/Think: {model_result['input_tokens']}/{model_result['output_tokens']}/{model_result['thinking_tokens']}")
+                print(
+                    f"      [OK] Finished in {elapsed:.1f}s | Turns: {model_result['turns']} | In/Out/Think: {model_result['input_tokens']}/{model_result['output_tokens']}/{model_result['thinking_tokens']}"
+                )
                 if model_result["captured_payload"]:
                     dec = model_result["captured_payload"].get("decision")
                     conf = model_result["captured_payload"].get("confidence")
@@ -572,7 +627,7 @@ async def main():
 
                 break  # Successful attempt
             except Exception as e:
-                print(f"      [WARN] Attempt {attempt+1} encountered exception: {e}")
+                print(f"      [WARN] Attempt {attempt + 1} encountered exception: {e}")
                 model_result["error"] = str(e)
                 if attempt == 0:
                     print("      [WAIT] Retrying in 5 seconds...")

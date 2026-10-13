@@ -69,7 +69,9 @@ def _score_accuracy(
     return round((matches / total_checks) * 10.0, 2) if total_checks > 0 else 0.0
 
 
-def _score_latency(latency_s: float, target_ms: float = S1_LATENCY_TARGET_MS, ceiling_ms: float = S1_LATENCY_CEILING_MS) -> float:
+def _score_latency(
+    latency_s: float, target_ms: float = S1_LATENCY_TARGET_MS, ceiling_ms: float = S1_LATENCY_CEILING_MS
+) -> float:
     """
     Evaluates sub-second latency performance (0.0 - 10.0).
     <= target_ms -> 10.0
@@ -101,12 +103,12 @@ def _score_calibration(output: Dict[str, Any], expected: Dict[str, Any]) -> floa
             out_conf = output.get(f"{base_key}_confidence", output.get("confidence", 1.0))
             try:
                 out_conf = float(out_conf)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 out_conf = 0.5
             out_conf = max(0.0, min(1.0, out_conf))
 
             # Did the model match the expected target?
-            is_correct = (output.get(base_key) == expected.get(base_key))
+            is_correct = output.get(base_key) == expected.get(base_key)
             outcome = 1.0 if is_correct else 0.0
             brier_terms.append((out_conf - outcome) ** 2)
 
@@ -158,12 +160,7 @@ def score_system_one(
     cal = _score_calibration(output, expected)
     sch = _score_schema(output, questions)
 
-    overall = (
-        S1_WEIGHT_ACCURACY * acc
-        + S1_WEIGHT_LATENCY * lat
-        + S1_WEIGHT_CALIBRATION * cal
-        + S1_WEIGHT_SCHEMA * sch
-    )
+    overall = S1_WEIGHT_ACCURACY * acc + S1_WEIGHT_LATENCY * lat + S1_WEIGHT_CALIBRATION * cal + S1_WEIGHT_SCHEMA * sch
 
     # Compute ordinal tier distance if applicable
     ord_dist = 0

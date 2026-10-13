@@ -103,13 +103,26 @@ async def test_execute_proposal_duplicate_blocked():
             self.settings = {}
 
     service = MockExecutionService()
-    service.execute_preplanned_order = AsyncMock(return_value=ExecutionResult(
-        symbol="EURUSD", analysis_id=1, decision="buy", sizing=None,
-        risk_approved=True, risk_checks_passed=[], risk_checks_failed=[],
-        risk_rejection_reasons=[], executed=True, mt5_ticket=554433,
-        executed_price=1.0850, executed_lots=0.1, mt5_error=None,
-        position_id=1, timestamp=time.time(), elapsed_ms=10.0
-    ))
+    service.execute_preplanned_order = AsyncMock(
+        return_value=ExecutionResult(
+            symbol="EURUSD",
+            analysis_id=1,
+            decision="buy",
+            sizing=None,
+            risk_approved=True,
+            risk_checks_passed=[],
+            risk_checks_failed=[],
+            risk_rejection_reasons=[],
+            executed=True,
+            mt5_ticket=554433,
+            executed_price=1.0850,
+            executed_lots=0.1,
+            mt5_error=None,
+            position_id=1,
+            timestamp=time.time(),
+            elapsed_ms=10.0,
+        )
+    )
 
     prop = TradeProposal(
         symbol="EURUSD",

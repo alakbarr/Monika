@@ -23,16 +23,19 @@ def get_order_class() -> Any:
     global _order_model_class
     if _order_model_class is None:
         import sys
+
         models = sys.modules.get("monika.infrastructure.database.models")
         if models and hasattr(models, "Order"):
             _order_model_class = getattr(models, "Order")
         else:
             try:
                 import importlib
+
                 mod = importlib.import_module("monika.infrastructure.database.models")
                 _order_model_class = getattr(mod, "Order")
             except Exception:
                 from monika.domain.entities.order import OrderEntity
+
                 _order_model_class = OrderEntity
     return _order_model_class
 

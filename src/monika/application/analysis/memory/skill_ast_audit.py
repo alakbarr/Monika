@@ -20,38 +20,44 @@ from typing import List, Optional, Set, Tuple
 
 logger = logging.getLogger("TradingAgent.Memory.SkillAstAudit")
 
-DANGEROUS_IMPORTS = frozenset({
-    "ctypes",
-    "subprocess",
-    "shutil",
-    "pty",
-    "winreg",
-    "_winapi",
-    "multiprocessing",
-    "webbrowser",
-    "socketserver",
-})
+DANGEROUS_IMPORTS = frozenset(
+    {
+        "ctypes",
+        "subprocess",
+        "shutil",
+        "pty",
+        "winreg",
+        "_winapi",
+        "multiprocessing",
+        "webbrowser",
+        "socketserver",
+    }
+)
 
-DANGEROUS_CALLS = frozenset({
-    "compile",
-    "eval",
-    "exec",
-    "__import__",
-    "globals",
-    "locals",
-})
+DANGEROUS_CALLS = frozenset(
+    {
+        "compile",
+        "eval",
+        "exec",
+        "__import__",
+        "globals",
+        "locals",
+    }
+)
 
-DANGEROUS_ATTR_CALLS = frozenset({
-    ("os", "system"),
-    ("os", "popen"),
-    ("os", "spawn"),
-    ("os", "spawnl"),
-    ("os", "spawnv"),
-    ("os", "kill"),
-    ("os", "killpg"),
-    ("shutil", "rmtree"),
-    ("shutil", "move"),
-})
+DANGEROUS_ATTR_CALLS = frozenset(
+    {
+        ("os", "system"),
+        ("os", "popen"),
+        ("os", "spawn"),
+        ("os", "spawnl"),
+        ("os", "spawnv"),
+        ("os", "kill"),
+        ("os", "killpg"),
+        ("shutil", "rmtree"),
+        ("shutil", "move"),
+    }
+)
 
 MAX_ALLOWED_CYCLOMATIC_COMPLEXITY = 25
 MAX_ALLOWED_NESTING_DEPTH = 6
@@ -105,46 +111,54 @@ class _ComplexityAndSecurityVisitor(ast.NodeVisitor):
         for alias in node.names:
             root_mod = alias.name.split(".")[0].lower()
             if root_mod in DANGEROUS_IMPORTS:
-                self.violations.append(AstAuditViolation(
-                    line_number=node.lineno,
-                    rule_id="SEC_001_DANGEROUS_IMPORT",
-                    message=f"Import of forbidden dangerous module '{root_mod}' is prohibited.",
-                    severity="critical",
-                ))
+                self.violations.append(
+                    AstAuditViolation(
+                        line_number=node.lineno,
+                        rule_id="SEC_001_DANGEROUS_IMPORT",
+                        message=f"Import of forbidden dangerous module '{root_mod}' is prohibited.",
+                        severity="critical",
+                    )
+                )
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
         if node.module:
             root_mod = node.module.split(".")[0].lower()
             if root_mod in DANGEROUS_IMPORTS:
-                self.violations.append(AstAuditViolation(
-                    line_number=node.lineno,
-                    rule_id="SEC_001_DANGEROUS_IMPORT",
-                    message=f"Import from forbidden dangerous module '{root_mod}' is prohibited.",
-                    severity="critical",
-                ))
+                self.violations.append(
+                    AstAuditViolation(
+                        line_number=node.lineno,
+                        rule_id="SEC_001_DANGEROUS_IMPORT",
+                        message=f"Import from forbidden dangerous module '{root_mod}' is prohibited.",
+                        severity="critical",
+                    )
+                )
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call):
         if isinstance(node.func, ast.Name):
             func_name = node.func.id
             if func_name in DANGEROUS_CALLS:
-                self.violations.append(AstAuditViolation(
-                    line_number=node.lineno,
-                    rule_id="SEC_002_DANGEROUS_CALL",
-                    message=f"Direct invocation of hazardous builtin '{func_name}' is prohibited.",
-                    severity="critical",
-                ))
+                self.violations.append(
+                    AstAuditViolation(
+                        line_number=node.lineno,
+                        rule_id="SEC_002_DANGEROUS_CALL",
+                        message=f"Direct invocation of hazardous builtin '{func_name}' is prohibited.",
+                        severity="critical",
+                    )
+                )
         elif isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
             mod_name = node.func.value.id
             attr_name = node.func.attr
             if (mod_name, attr_name) in DANGEROUS_ATTR_CALLS:
-                self.violations.append(AstAuditViolation(
-                    line_number=node.lineno,
-                    rule_id="SEC_002_DANGEROUS_CALL",
-                    message=f"Invocation of hazardous function '{mod_name}.{attr_name}' is prohibited.",
-                    severity="critical",
-                ))
+                self.violations.append(
+                    AstAuditViolation(
+                        line_number=node.lineno,
+                        rule_id="SEC_002_DANGEROUS_CALL",
+                        message=f"Invocation of hazardous function '{mod_name}.{attr_name}' is prohibited.",
+                        severity="critical",
+                    )
+                )
         self.generic_visit(node)
 
     # Cyclomatic complexity branch points
@@ -197,12 +211,14 @@ class SkillAstAuditor:
         except SyntaxError as e:
             return AstAuditReport(
                 is_clean=False,
-                violations=[AstAuditViolation(
-                    line_number=e.lineno or 0,
-                    rule_id="SYNTAX_ERROR",
-                    message=f"SyntaxError in code: {e}",
-                    severity="critical",
-                )],
+                violations=[
+                    AstAuditViolation(
+                        line_number=e.lineno or 0,
+                        rule_id="SYNTAX_ERROR",
+                        message=f"SyntaxError in code: {e}",
+                        severity="critical",
+                    )
+                ],
             )
 
         visitor = _ComplexityAndSecurityVisitor()
@@ -210,21 +226,25 @@ class SkillAstAuditor:
 
         warnings = []
         if visitor.complexity > self.max_complexity:
-            visitor.violations.append(AstAuditViolation(
-                line_number=1,
-                rule_id="COMPLEXITY_EXCEEDED",
-                message=f"Cyclomatic complexity ({visitor.complexity}) exceeds threshold ({self.max_complexity}).",
-                severity="warning",
-            ))
+            visitor.violations.append(
+                AstAuditViolation(
+                    line_number=1,
+                    rule_id="COMPLEXITY_EXCEEDED",
+                    message=f"Cyclomatic complexity ({visitor.complexity}) exceeds threshold ({self.max_complexity}).",
+                    severity="warning",
+                )
+            )
             warnings.append(f"High cyclomatic complexity: {visitor.complexity}")
 
         if visitor.max_depth > self.max_depth:
-            visitor.violations.append(AstAuditViolation(
-                line_number=1,
-                rule_id="NESTING_DEPTH_EXCEEDED",
-                message=f"Nesting depth ({visitor.max_depth}) exceeds maximum ({self.max_depth}).",
-                severity="warning",
-            ))
+            visitor.violations.append(
+                AstAuditViolation(
+                    line_number=1,
+                    rule_id="NESTING_DEPTH_EXCEEDED",
+                    message=f"Nesting depth ({visitor.max_depth}) exceeds maximum ({self.max_depth}).",
+                    severity="warning",
+                )
+            )
             warnings.append(f"Deep block nesting: {visitor.max_depth}")
 
         is_clean = not any(v.severity == "critical" for v in visitor.violations)

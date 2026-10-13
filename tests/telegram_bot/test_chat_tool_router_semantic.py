@@ -51,7 +51,9 @@ def test_semantic_vector_routing_specialized_tools(router):
     via semantic vector similarity matching.
     """
     # 1. COT Report
-    cot_tools = router.route_tools_for_query("Show me institutional speculative positions from the Commitments of Traders")
+    cot_tools = router.route_tools_for_query(
+        "Show me institutional speculative positions from the Commitments of Traders"
+    )
     cot_names = [t["name"] for t in cot_tools]
     assert "get_cot_report" in cot_names
 
@@ -71,7 +73,9 @@ def test_semantic_vector_routing_specialized_tools(router):
     assert "get_market_correlations" in corr_names
 
     # 5. Edge Tracker Status
-    edge_tools = router.route_tools_for_query("How are our alpha edge strategies and walk forward win rates performing?")
+    edge_tools = router.route_tools_for_query(
+        "How are our alpha edge strategies and walk forward win rates performing?"
+    )
     edge_names = [t["name"] for t in edge_tools]
     assert "get_edge_tracker_status" in edge_names
 

@@ -125,7 +125,13 @@ class AnalysisCycleTree(Widget):
             "start_time": self._start_time,
             "status": "running",
             "steps": {
-                step: {"status": "waiting", "duration_s": 0.0, "input_tokens": 0, "output_tokens": 0, "token_history": []}
+                step: {
+                    "status": "waiting",
+                    "duration_s": 0.0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "token_history": [],
+                }
                 for step in self.PIPELINE_STEPS
             },
         }
@@ -227,7 +233,9 @@ class AnalysisCycleTree(Widget):
             start = cycle.get("start_time")
             elapsed_str = f"{time.time() - start:.1f}s" if start else "0.0s"
 
-            lines.append(f"[{t.primary}]◉ Analysis Cycle #{cid}[/] — [bold {t.text}]{sym}[/] [dim {t.muted}]({elapsed_str})[/]")
+            lines.append(
+                f"[{t.primary}]◉ Analysis Cycle #{cid}[/] — [bold {t.text}]{sym}[/] [dim {t.muted}]({elapsed_str})[/]"
+            )
 
             steps = cycle.get("steps", {})
             for i, step_name in enumerate(self.PIPELINE_STEPS):
@@ -260,7 +268,9 @@ class AnalysisCycleTree(Widget):
 
                 lines.append("".join(parts))
         else:
-            lines.append(f"[dim {t.muted}]○ No active analysis cycle. Standing by for market trigger or scheduled dispatch...[/]")
+            lines.append(
+                f"[dim {t.muted}]○ No active analysis cycle. Standing by for market trigger or scheduled dispatch...[/]"
+            )
 
         # 2. Historical completed cycles (Last 3 collapsed)
         if self.history_cycles:
@@ -276,7 +286,7 @@ class AnalysisCycleTree(Widget):
                 # Total tokens in historical cycle
                 tot_inp = sum(int(s.get("input_tokens", 0) or 0) for s in h.get("steps", {}).values())
                 tot_out = sum(int(s.get("output_tokens", 0) or 0) for s in h.get("steps", {}).values())
-                tok_summary = f"↑{tot_inp/1000:.1f}k ↓{tot_out/1000:.1f}k" if (tot_inp or tot_out) else ""
+                tok_summary = f"↑{tot_inp / 1000:.1f}k ↓{tot_out / 1000:.1f}k" if (tot_inp or tot_out) else ""
 
                 is_expanded = self.expanded_cycle_id == str(hcid)
                 glyph = "▲" if is_expanded else "▽"

@@ -1,11 +1,11 @@
-
 """GTJA Alpha 153 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
     (MEAN(CLOSE,3)+MEAN(CLOSE,6)+MEAN(CLOSE,12)+MEAN(CLOSE,24))/4
 
-Notes: 
+Notes:
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_153"
 
 __alpha_meta__ = {
-    'id': 'gtja191_153',
-    'theme': ['momentum'],
-    'formula_latex': '(mean(c,3)+mean(c,6)+mean(c,12)+mean(c,24))/4',
-    'columns_required': ['close'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 24,
-    'min_warmup_bars': 24,
-    'notes': '',
+    "id": "gtja191_153",
+    "theme": ["momentum"],
+    "formula_latex": "(mean(c,3)+mean(c,6)+mean(c,12)+mean(c,24))/4",
+    "columns_required": ["close"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 24,
+    "min_warmup_bars": 24,
+    "notes": "",
 }
 
 

@@ -45,6 +45,7 @@ class PerAssetStage(PerAssetRunner):
     Eksekutor Tahap 2: Menghasilkan keputusan trading (BUY/SELL/WAIT) per aset.
     Backward-compatible facade wrapping modular PerAssetRunner.
     """
+
     pass
 
 

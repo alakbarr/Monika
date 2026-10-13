@@ -1,4 +1,3 @@
-
 """GTJA Alpha #35.
 
 Formula: (MIN(RANK(DECAYLINEAR(DELTA(OPEN,1),15)), RANK(DECAYLINEAR(CORR(VOLUME,((OPEN*0.65)+(OPEN*0.35)),17),7))) * -1)
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_035",
-    "theme": ['volume'],
-    "formula_latex": '(MIN(RANK(DECAYLINEAR(DELTA(OPEN,1),15)), RANK(DECAYLINEAR(CORR(VOLUME,((OPEN*0.65)+(OPEN*0.35)),17),7))) * -1)',
-    "columns_required": ['open', 'volume'],
+    "theme": ["volume"],
+    "formula_latex": "(MIN(RANK(DECAYLINEAR(DELTA(OPEN,1),15)), RANK(DECAYLINEAR(CORR(VOLUME,((OPEN*0.65)+(OPEN*0.35)),17),7))) * -1)",
+    "columns_required": ["open", "volume"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 15,
     "min_warmup_bars": 25,
-    "notes": 'Element-wise min of two ranks, negated.',
+    "notes": "Element-wise min of two ranks, negated.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     o = panel["open"]
@@ -46,5 +46,4 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     p1 = rank(decay_linear(delta(o, 1), 15))
     weighted = o * 0.65 + o * 0.35
     p2 = rank(decay_linear(ts_corr(v, weighted, 17), 7))
-    return -1.0 * pd.DataFrame(np.minimum(p1.to_numpy(), p2.to_numpy()),
-                               index=o.index, columns=o.columns)
+    return -1.0 * pd.DataFrame(np.minimum(p1.to_numpy(), p2.to_numpy()), index=o.index, columns=o.columns)

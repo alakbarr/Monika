@@ -4,6 +4,7 @@ import os
 from tests.conftest import create_mock_async_session
 from utils.infra.notifier import AgentNotifier
 
+
 class TestNotifier:
     @patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "test_token", "TELEGRAM_ADMIN_CHAT_ID": "123"})
     @patch("utils.infra.notifier.Bot")
@@ -27,7 +28,9 @@ class TestNotifier:
         notifier.bot.send_message = AsyncMock()
 
         await notifier.send_critical("Crit")
-        notifier.bot.send_message.assert_called_with(chat_id="123", text="<b>[KRITIS] KESALAHAN SISTEM</b>\nCrit", parse_mode="HTML")
+        notifier.bot.send_message.assert_called_with(
+            chat_id="123", text="<b>[KRITIS] KESALAHAN SISTEM</b>\nCrit", parse_mode="HTML"
+        )
 
         await notifier.send_warning("Warn")
         notifier.bot.send_message.assert_called_with(chat_id="123", text="<b>[PERINGATAN]</b>\nWarn", parse_mode="HTML")
@@ -36,18 +39,22 @@ class TestNotifier:
         notifier.bot.send_message.assert_called_with(chat_id="123", text="<b>[INFORMASI]</b>\nInfo", parse_mode="HTML")
 
         await notifier.send("Custom HTML Direct Message")
-        notifier.bot.send_message.assert_called_with(chat_id="123", text="Custom HTML Direct Message", parse_mode="HTML")
+        notifier.bot.send_message.assert_called_with(
+            chat_id="123", text="Custom HTML Direct Message", parse_mode="HTML"
+        )
 
         await notifier.send_alert("System degraded")
-        notifier.bot.send_message.assert_called_with(chat_id="123", text="<b>[PERINGATAN]</b>\nSystem degraded", parse_mode="HTML")
+        notifier.bot.send_message.assert_called_with(
+            chat_id="123", text="<b>[PERINGATAN]</b>\nSystem degraded", parse_mode="HTML"
+        )
 
         summary = {
             "elapsed_total_s": 10.5,
             "api_cost_usd": 0.05,
             "per_asset": {
                 "BTCUSD": {"decision": "buy", "confidence": 0.8},
-                "USDJPY": {"decision": "skip", "confidence": 0.0, "skipped_by_cooldown": True}
-            }
+                "USDJPY": {"decision": "skip", "confidence": 0.0, "skipped_by_cooldown": True},
+            },
         }
         await notifier.send_cycle_summary(summary)
         call_args = notifier.bot.send_message.call_args[1]
@@ -56,7 +63,11 @@ class TestNotifier:
         assert "BTCUSD: BUY" in call_args["text"]
         assert "USDJPY: DILEWATI (cooldown)" in call_args["text"]
 
-    @patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "test_token", "TELEGRAM_ADMIN_ID": "456", "TELEGRAM_ADMIN_CHAT_ID": ""}, clear=False)
+    @patch.dict(
+        os.environ,
+        {"TELEGRAM_BOT_TOKEN": "test_token", "TELEGRAM_ADMIN_ID": "456", "TELEGRAM_ADMIN_CHAT_ID": ""},
+        clear=False,
+    )
     @patch("utils.infra.notifier.Bot")
     def test_old_env_var_does_not_work(self, mock_bot):
         """Verify that old TELEGRAM_ADMIN_ID env var no longer works (migration test)."""

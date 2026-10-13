@@ -33,6 +33,7 @@ logger = logging.getLogger("TradingAgent.Agent.AuxiliaryModelRouter")
 
 class AuxiliaryTaskType(str, enum.Enum):
     """Supported specialized auxiliary tasks."""
+
     COMPRESSION = "compression"
     TITLE_GENERATION = "title_generation"
     CLARIFY_OPTIONS = "clarify_options"
@@ -50,10 +51,11 @@ class ParameterRejectionLadder:
     """
     Sequentially removes optional LLM parameters upon HTTP 400 errors.
     """
-    RUNG_DROP_PENALTIES = 1     # Drop presence/frequency penalties
-    RUNG_DROP_TEMPERATURE = 2   # Drop temperature and top_p
-    RUNG_DROP_MAX_TOKENS = 3    # Drop max_tokens / max_completion_tokens
-    RUNG_BARE_MINIMUM = 4       # Send only model and messages
+
+    RUNG_DROP_PENALTIES = 1  # Drop presence/frequency penalties
+    RUNG_DROP_TEMPERATURE = 2  # Drop temperature and top_p
+    RUNG_DROP_MAX_TOKENS = 3  # Drop max_tokens / max_completion_tokens
+    RUNG_BARE_MINIMUM = 4  # Send only model and messages
 
     @classmethod
     def apply_rung(cls, rung: int, params: Dict[str, Any]) -> Dict[str, Any]:
@@ -119,11 +121,14 @@ class AuxiliaryModelRouter:
             self._task_role_mapping = self._build_mapping_from_settings(settings)
 
     @classmethod
-    def _build_mapping_from_settings(cls, settings: Optional[Dict[str, Any]]) -> Dict[AuxiliaryTaskType, Tuple[str, str]]:
+    def _build_mapping_from_settings(
+        cls, settings: Optional[Dict[str, Any]]
+    ) -> Dict[AuxiliaryTaskType, Tuple[str, str]]:
         s = settings
         if not s:
             try:
                 from monika.core.config.settings import load_settings
+
                 s = load_settings()
             except Exception:
                 s = {}
@@ -164,7 +169,13 @@ class AuxiliaryModelRouter:
         Executes an auxiliary task through the parameter ladder and reasoning floor stepper.
         """
         provider, model = self._task_role_mapping.get(
-            task, (self.settings.get("llm", {}).get("default_provider", "openrouter"), self.settings.get("llm", {}).get("default_model", "gpt-6.1-sol-medium")) if self.settings else ("openrouter", "gpt-6.1-sol-medium")
+            task,
+            (
+                self.settings.get("llm", {}).get("default_provider", "openrouter"),
+                self.settings.get("llm", {}).get("default_model", "gpt-6.1-sol-medium"),
+            )
+            if self.settings
+            else ("openrouter", "gpt-6.1-sol-medium"),
         )
         dispatch_caller = caller or self._default_caller
         if dispatch_caller is None:
@@ -208,7 +219,9 @@ class AuxiliaryModelRouter:
                     ReasoningFloorManager.record_floored_route(provider, model)
                     params["reasoning_effort"] = "low"
                     params.pop("temperature", None)
-                    logger.info(f"[AuxiliaryModelRouter] Stepped up reasoning floor for {provider}/{model}, retrying...")
+                    logger.info(
+                        f"[AuxiliaryModelRouter] Stepped up reasoning floor for {provider}/{model}, retrying..."
+                    )
                     continue
 
                 # Check if error is parameter-related (HTTP 400 / invalid_request_error)
@@ -222,4 +235,6 @@ class AuxiliaryModelRouter:
                 # If non-parameter error (e.g. 500, network, auth), raise immediately
                 raise
 
-        raise RuntimeError(f"[AuxiliaryModelRouter] All ladder rungs exhausted for {provider}/{model}: {last_exception}")
+        raise RuntimeError(
+            f"[AuxiliaryModelRouter] All ladder rungs exhausted for {provider}/{model}: {last_exception}"
+        )

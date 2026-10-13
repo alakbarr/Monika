@@ -12,16 +12,17 @@ from datetime import datetime, timezone
 
 
 class PhaseAction(Enum):
-    CONTINUE = "continue"    # Proceed to next phase or next turn
-    RETRY = "retry"          # Retry current phase with backoff
-    COMPACT = "compact"      # Trigger context compaction, then retry
-    BREAK = "break"          # Exit loop successfully (agent completed work)
-    ERROR = "error"          # Exit loop on fatal unrecoverable error
+    CONTINUE = "continue"  # Proceed to next phase or next turn
+    RETRY = "retry"  # Retry current phase with backoff
+    COMPACT = "compact"  # Trigger context compaction, then retry
+    BREAK = "break"  # Exit loop successfully (agent completed work)
+    ERROR = "error"  # Exit loop on fatal unrecoverable error
 
 
 @dataclass
 class SteeringMessage:
     """External steering directive or follow-up instruction injected into active harness loop."""
+
     content: str
     sender: str = "operator"
     timestamp: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
@@ -31,6 +32,7 @@ class SteeringMessage:
 @dataclass
 class PhaseVerdict:
     """Result of executing a single turn phase in the harness loop."""
+
     action: PhaseAction
     messages: Optional[List[dict]] = None
     tool_results: Optional[List[dict]] = None
@@ -42,6 +44,7 @@ class PhaseVerdict:
 @dataclass
 class HarnessState:
     """Complete mutable state for one execution of the AgentHarness."""
+
     messages: List[dict] = field(default_factory=list)
     system_prompt: Any = ""
     turn_count: int = 0
@@ -128,6 +131,7 @@ def prepare_turn_phase(state: HarnessState, current_messages: List[dict]) -> Pha
 
     state.turn_count += 1
     from monika.application.analysis.harness.agent_harness import AgentHarness
+
     role_safe = AgentHarness._enforce_role_alternation(current_messages)
     return PhaseVerdict(
         action=PhaseAction.CONTINUE,
@@ -150,7 +154,8 @@ def evaluate_response_phase(
     # 1. Truncation guard
     if AgentHarness._check_truncation(response, stop_reason):
         tool_blocks = [
-            b for b in (assistant_content or [])
+            b
+            for b in (assistant_content or [])
             if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
         ]
         if tool_blocks:
@@ -166,7 +171,8 @@ def evaluate_response_phase(
         "stop_reason": stop_reason,
         "content": final_text,
         "tool_calls": [
-            b for b in (assistant_content or [])
+            b
+            for b in (assistant_content or [])
             if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
         ],
         "reasoning": reasoning_content or "",
@@ -214,4 +220,3 @@ def handle_error_phase(state: HarnessState, exc: Exception) -> PhaseVerdict:
         error=exc,
         nudge_text=classified.message,
     )
-

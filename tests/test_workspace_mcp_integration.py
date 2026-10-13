@@ -16,7 +16,11 @@ from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
 from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
 from monika.application.analysis.tools.tool_executor import ToolExecutor
-from monika.interfaces.workspace.journal_helper import format_dataview_journal, format_spreadsheet_row, record_trade_to_workspace
+from monika.interfaces.workspace.journal_helper import (
+    format_dataview_journal,
+    format_spreadsheet_row,
+    record_trade_to_workspace,
+)
 
 
 @pytest.mark.asyncio
@@ -42,9 +46,7 @@ async def test_mcp_workspace_end_to_end():
     # 3. Verify ChatToolRouter Intent Matching
     router = ChatToolRouter(TELEGRAM_TOOLS)
     mcp_tool_defs = [
-        entry.get_anthropic_schema()
-        for name, entry in unified_tool_registry._tools.items()
-        if name.startswith("mcp_")
+        entry.get_anthropic_schema() for name, entry in unified_tool_registry._tools.items() if name.startswith("mcp_")
     ]
     router.update_tools(mcp_tool_defs)
 
@@ -156,6 +158,7 @@ async def test_mcp_workspace_end_to_end():
 
     finally:
         import shutil
+
         if os.path.exists(test_note):
             os.remove(test_note)
         if os.path.exists(test_sheet):
@@ -167,4 +170,3 @@ async def test_mcp_workspace_end_to_end():
 if __name__ == "__main__":
     asyncio.run(test_mcp_workspace_end_to_end())
     print("ALL TESTS PASSED SUCCESSFULLY!")
-

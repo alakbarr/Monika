@@ -32,7 +32,7 @@ async def test_quant_promoted_trade_synthesizes_levels():
                 "stop_loss": 0.0,
                 "take_profit": 0.0,
             }
-        }
+        },
     }
 
     scheduler = MagicMock()
@@ -66,14 +66,27 @@ async def test_quant_promoted_trade_synthesizes_levels():
     mock_db_res.scalar_one_or_none.return_value = 83000.0
     mock_session.execute.return_value = mock_db_res
 
-    with patch("database.db.get_session") as mock_get_sess, \
-         patch("analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate", new=AsyncMock(return_value=mock_arb_res)), \
-         patch("analysis.strategies.registry.StrategyRegistry.evaluate_all", new=AsyncMock(return_value=[mock_quant_signal])), \
-         patch("analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_decay, \
-         patch("analysis.calculators.regime_classifier.classify_market_regime", new=AsyncMock(return_value={"regime": "trending"})), \
-         patch("risk.risk_gate.RiskGate") as mock_rg_class, \
-         patch("analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit", new=AsyncMock(return_value=(True, []))):
-
+    with (
+        patch("database.db.get_session") as mock_get_sess,
+        patch(
+            "analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate",
+            new=AsyncMock(return_value=mock_arb_res),
+        ),
+        patch(
+            "analysis.strategies.registry.StrategyRegistry.evaluate_all",
+            new=AsyncMock(return_value=[mock_quant_signal]),
+        ),
+        patch("analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_decay,
+        patch(
+            "analysis.calculators.regime_classifier.classify_market_regime",
+            new=AsyncMock(return_value={"regime": "trending"}),
+        ),
+        patch("risk.risk_gate.RiskGate") as mock_rg_class,
+        patch(
+            "analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
+            new=AsyncMock(return_value=(True, [])),
+        ),
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         mock_decay.return_value.is_live_ready.return_value = True
 
@@ -128,7 +141,9 @@ async def test_risk_gate_node_persists_to_asset_analysis_without_setter_error():
     scheduler.settings = {"trading": {"risk": {"max_usd_exposure": 3}}}
     scheduler.mt5 = None
 
-    mock_quant_signal = MagicMock(valid=True, direction="buy", confidence=0.85, strategy_id="alpha_btc_1", meta={"strategy_id": "alpha_btc_1"})
+    mock_quant_signal = MagicMock(
+        valid=True, direction="buy", confidence=0.85, strategy_id="alpha_btc_1", meta={"strategy_id": "alpha_btc_1"}
+    )
     mock_arb_res = MagicMock(
         decision="buy",
         confidence=0.85,
@@ -148,14 +163,27 @@ async def test_risk_gate_node_persists_to_asset_analysis_without_setter_error():
     mock_db_res.scalar_one_or_none.return_value = 83000.0
     mock_session.execute.return_value = mock_db_res
 
-    with patch("database.db.get_session") as mock_get_sess, \
-         patch("analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate", new=AsyncMock(return_value=mock_arb_res)), \
-         patch("analysis.strategies.registry.StrategyRegistry.evaluate_all", new=AsyncMock(return_value=[mock_quant_signal])), \
-         patch("analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_decay, \
-         patch("analysis.calculators.regime_classifier.classify_market_regime", new=AsyncMock(return_value={"regime": "trending"})), \
-         patch("risk.risk_gate.RiskGate") as mock_rg_class, \
-         patch("analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit", new=AsyncMock(return_value=(True, []))):
-
+    with (
+        patch("database.db.get_session") as mock_get_sess,
+        patch(
+            "analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate",
+            new=AsyncMock(return_value=mock_arb_res),
+        ),
+        patch(
+            "analysis.strategies.registry.StrategyRegistry.evaluate_all",
+            new=AsyncMock(return_value=[mock_quant_signal]),
+        ),
+        patch("analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_decay,
+        patch(
+            "analysis.calculators.regime_classifier.classify_market_regime",
+            new=AsyncMock(return_value={"regime": "trending"}),
+        ),
+        patch("risk.risk_gate.RiskGate") as mock_rg_class,
+        patch(
+            "analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
+            new=AsyncMock(return_value=(True, [])),
+        ),
+    ):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         mock_decay.return_value.is_live_ready.return_value = True
 
@@ -174,4 +202,3 @@ async def test_risk_gate_node_persists_to_asset_analysis_without_setter_error():
         assert ana_record.stop_loss == 82000.0
         assert ana_record.take_profit == 85000.0
         assert mock_session.commit.called
-

@@ -25,7 +25,12 @@ def compute_state_digest(state: Dict[str, Any], protected_keys: tuple = ("symbol
 class StateFreezeGuard:
     """Context manager capturing pre-node state hash and asserting immutability on exit."""
 
-    def __init__(self, state: Dict[str, Any], protected_keys: tuple = ("symbol", "cycle_id", "macro_brief"), node_name: str = "node"):
+    def __init__(
+        self,
+        state: Dict[str, Any],
+        protected_keys: tuple = ("symbol", "cycle_id", "macro_brief"),
+        node_name: str = "node",
+    ):
         self.state = state
         self.protected_keys = protected_keys
         self.node_name = node_name
@@ -46,7 +51,9 @@ class StateFreezeGuard:
             )
 
 
-def assert_state_immutability(initial_state: Dict[str, Any], current_state: Dict[str, Any], protected_keys: tuple = ("symbol", "cycle_id")) -> None:
+def assert_state_immutability(
+    initial_state: Dict[str, Any], current_state: Dict[str, Any], protected_keys: tuple = ("symbol", "cycle_id")
+) -> None:
     """Asserts that protected keys in current_state match initial_state."""
     d1 = compute_state_digest(initial_state, protected_keys)
     d2 = compute_state_digest(current_state, protected_keys)

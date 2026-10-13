@@ -1,4 +1,3 @@
-
 """Kakushadze Alpha #62.
 
 Formula (paper appendix): (rank(correlation(vwap, sum(adv20,22), 10)) < rank(((rank(open)+rank(open)) < (rank((high+low)/2)+rank(high))))) * -1
@@ -33,18 +32,18 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "alpha101_062"
 
 __alpha_meta__ = {
-    'id': 'alpha101_062',
-    'nickname': 'Kakushadze Alpha #62',
-    'theme': ['volume'],
-    'formula_latex': '(rank(correlation(vwap, sum(adv20,22), 10)) < rank(((rank(open)+rank(open)) < (rank((high+low)/2)+rank(high))))) * -1',
-    'columns_required': ['open', 'high', 'low', 'volume', 'vwap', 'close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 35,
-    'notes': '',
+    "id": "alpha101_062",
+    "nickname": "Kakushadze Alpha #62",
+    "theme": ["volume"],
+    "formula_latex": "(rank(correlation(vwap, sum(adv20,22), 10)) < rank(((rank(open)+rank(open)) < (rank((high+low)/2)+rank(high))))) * -1",
+    "columns_required": ["open", "high", "low", "volume", "vwap", "close"],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_us", "equity_in", "equity_kr"],
+    "frequency": ["1D"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 35,
+    "notes": "",
 }
 
 

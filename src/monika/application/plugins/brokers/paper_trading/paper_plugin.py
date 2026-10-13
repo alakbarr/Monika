@@ -146,7 +146,9 @@ class PaperTradingBrokerPlugin(BrokerPlugin):
             is_paper=True,
         )
         self.positions[ticket] = pos
-        logger.info(f"[PaperTradingBroker] Simulated order FILLED: #{ticket} {direction.upper()} {lots} {sym} @ {entry_price}")
+        logger.info(
+            f"[PaperTradingBroker] Simulated order FILLED: #{ticket} {direction.upper()} {lots} {sym} @ {entry_price}"
+        )
         return {
             "success": True,
             "ticket": ticket,

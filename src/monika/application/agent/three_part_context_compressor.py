@@ -65,9 +65,7 @@ class ThreePartContextCompressor:
                         total_chars += len(part["text"])
         return total_chars // 4
 
-    def prune_tool_results_determinist(
-        self, messages: List[Dict[str, Any]]
-    ) -> Tuple[List[Dict[str, Any]], int]:
+    def prune_tool_results_determinist(self, messages: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], int]:
         """
         Replaces long tool output bodies in older messages with concise head/tail stubs.
         Operates entirely without LLM calls (Zero-Cost Token Recovery).
@@ -85,9 +83,7 @@ class ThreePartContextCompressor:
                     original_len = len(content)
                     head = content[: self.max_tool_output_chars // 2]
                     tail = content[-self.max_tool_output_chars // 2 :]
-                    stub = (
-                        f"{head}\n\n[... Deterministically pruned {original_len - len(head) - len(tail)} chars of historical tool output ...]\n\n{tail}"
-                    )
+                    stub = f"{head}\n\n[... Deterministically pruned {original_len - len(head) - len(tail)} chars of historical tool output ...]\n\n{tail}"
                     msg_copy["content"] = stub
                     chars_saved += original_len - len(stub)
 
@@ -146,10 +142,13 @@ class ThreePartContextCompressor:
                     exchange_text = "\n".join(f"[{m.get('role')}]: {m.get('content') or ''}" for m in tool_exchange)
                     try:
                         summary = exchange_summarizer(exchange_text)
-                        safe_append(compacted, {
-                            "role": "assistant",
-                            "content": f"[Historical Tool Execution Summary]: {summary}",
-                        })
+                        safe_append(
+                            compacted,
+                            {
+                                "role": "assistant",
+                                "content": f"[Historical Tool Execution Summary]: {summary}",
+                            },
+                        )
                         i = j
                         continue
                     except Exception as e:
@@ -216,7 +215,9 @@ class ThreePartContextCompressor:
                     }
                     middle_representation = [summary_message]
                 except Exception as exc:
-                    logger.warning(f"[ThreePartContextCompressor] Auxiliary summarization failed, falling back to pruned middle: {exc}")
+                    logger.warning(
+                        f"[ThreePartContextCompressor] Auxiliary summarization failed, falling back to pruned middle: {exc}"
+                    )
                     middle_representation = pruned_middle
             else:
                 middle_representation = pruned_middle
@@ -226,6 +227,7 @@ class ThreePartContextCompressor:
             compacted_messages = self._fix_tool_pairs(compacted_messages)
             try:
                 from monika.application.agent.moa_alternation import merge_same_role_messages
+
                 compacted_messages = merge_same_role_messages(compacted_messages)
             except ImportError:
                 pass
@@ -284,4 +286,3 @@ class ThreePartContextCompressor:
                         logger.debug(f"[ThreePartContextCompressor] Inserted stub for missing tool call {tc_id}")
 
         return final_messages
-

@@ -1,6 +1,7 @@
 """
 Unit tests for Isolated Subagent Harness (H3).
 """
+
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
@@ -162,4 +163,3 @@ async def test_h3_subagent_output_schema_auto_correction():
     assert result.get("schema_valid") is True
     assert result["parsed_output"]["bias"] == "bullish"
     assert result["parsed_output"]["level"] == 1.0850
-

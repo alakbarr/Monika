@@ -20,6 +20,7 @@ from scheduler.detached_cron_worker import DetachedCronWorker
 # 1. Cron NLP Parser Tests
 # ==============================================================================
 
+
 def test_cron_nlp_parser_expressions():
     # Minute intervals
     expr1, sec1, desc1 = parse_natural_schedule("every 5 minutes")
@@ -58,6 +59,7 @@ def test_cron_nlp_parser_expressions():
 # ==============================================================================
 # 2. Detached Cron Worker Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_detached_cron_worker_lifecycle_and_execution():

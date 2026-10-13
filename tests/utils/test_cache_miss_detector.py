@@ -86,15 +86,18 @@ def test_cache_miss_multi_context_isolation():
 def test_cache_miss_symbol_isolation_prevents_false_alarm():
     """Verify that EURUSD and GBPUSD calls under their respective symbol context keys do not trigger false miss."""
     detector = CacheMissDetector()
-    
+
     # EURUSD call cached 3692 tokens
-    rep_eur1 = detector.check(cached_tokens=3692, model="gemini-3.5-flash-lite", context_key="specialist:specialist_sentiment:EURUSD")
+    rep_eur1 = detector.check(
+        cached_tokens=3692, model="gemini-3.5-flash-lite", context_key="specialist:specialist_sentiment:EURUSD"
+    )
     assert rep_eur1.missed is False
     assert rep_eur1.reason == "first_call"
 
     # GBPUSD call has 0 cached tokens - should be treated as first_call, NOT prefix_changed
-    rep_gbp1 = detector.check(cached_tokens=0, model="gemini-3.5-flash-lite", context_key="specialist:specialist_sentiment:GBPUSD")
+    rep_gbp1 = detector.check(
+        cached_tokens=0, model="gemini-3.5-flash-lite", context_key="specialist:specialist_sentiment:GBPUSD"
+    )
     assert rep_gbp1.missed is False
     assert rep_gbp1.reason == "first_call"
     assert detector.get_summary()["total_misses"] == 0
-

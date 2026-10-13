@@ -24,6 +24,7 @@ if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 try:
     from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+
     install_legacy_compat()
 except Exception:
     pass
@@ -113,8 +114,12 @@ MODELS_TO_BENCHMARK = [
     },
 ]
 
-JSON_OUTPUT_PATH = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_debate_results.json"
-MARKDOWN_OUTPUT_PATH = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_debate_openrouter.md"
+JSON_OUTPUT_PATH = (
+    REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_debate_results.json"
+)
+MARKDOWN_OUTPUT_PATH = (
+    REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_debate_openrouter.md"
+)
 
 
 class BenchmarkingDebateClient(OpenRouterProvider):
@@ -122,6 +127,7 @@ class BenchmarkingDebateClient(OpenRouterProvider):
     Subclass that intercepts calls to track exact tokens, thinking tokens,
     and costs in memory without database writes.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.call_history: List[Dict[str, Any]] = []
@@ -136,30 +142,28 @@ class BenchmarkingDebateClient(OpenRouterProvider):
         cache_creation_tokens: int = 0,
         thinking_tokens: int = 0,
         exact_cost: Optional[float] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         if exact_cost is not None and isinstance(exact_cost, (int, float)) and exact_cost >= 0:
             calc_cost = round(float(exact_cost), 6)
         else:
             calc_cost = cost_usd(
-                model_name,
-                input_tokens,
-                output_tokens,
-                cached_tokens=cached_tokens,
-                provider="openrouter"
+                model_name, input_tokens, output_tokens, cached_tokens=cached_tokens, provider="openrouter"
             )
 
-        self.call_history.append({
-            "task_name": task_name,
-            "model_name": model_name,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "cached_tokens": cached_tokens,
-            "cache_creation_tokens": cache_creation_tokens,
-            "thinking_tokens": thinking_tokens,
-            "cost_usd": calc_cost,
-            "timestamp": time.time(),
-        })
+        self.call_history.append(
+            {
+                "task_name": task_name,
+                "model_name": model_name,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cached_tokens": cached_tokens,
+                "cache_creation_tokens": cache_creation_tokens,
+                "thinking_tokens": thinking_tokens,
+                "cost_usd": calc_cost,
+                "timestamp": time.time(),
+            }
+        )
 
 
 def get_eurusd_debate_data() -> tuple[dict, dict]:
@@ -195,7 +199,7 @@ def get_eurusd_debate_data() -> tuple[dict, dict]:
             "book_imbalance": 0.35,
             "bid_depth_usd": 14500000,
             "ask_depth_usd": 9400000,
-            "institutional_absorption": "Active bid absorption at 1.1355 liquidity pool"
+            "institutional_absorption": "Active bid absorption at 1.1355 liquidity pool",
         },
         "dxy_trend": "weakening -0.35%",
         "vix": 17.2,
@@ -203,8 +207,8 @@ def get_eurusd_debate_data() -> tuple[dict, dict]:
         "specialist_reliability": {
             "technical": {"trust_weight": 0.92, "chronically_unreliable": False},
             "macro": {"trust_weight": 0.88, "chronically_unreliable": False},
-            "sentiment": {"trust_weight": 0.75, "chronically_unreliable": False}
-        }
+            "sentiment": {"trust_weight": 0.75, "chronically_unreliable": False},
+        },
     }
     return ctx, fs
 
@@ -232,7 +236,7 @@ def get_fatal_flaw_trap_data() -> tuple[dict, dict, dict]:
         "strength_score": 7,
         "evidence_cited": ["H1_momentum=strong", "Retail_sentiment=bullish"],
         "key_levels": [158.70, 159.80],
-        "falsification_triggers": ["Break below 158.40"]
+        "falsification_triggers": ["Break below 158.40"],
     }
 
     golden_bear = {
@@ -243,10 +247,10 @@ def get_fatal_flaw_trap_data() -> tuple[dict, dict, dict]:
             "VIX=28.5 (volatile regime)",
             "Book_imbalance=-0.52 (heavy ask iceberg selling)",
             "SL_in_liquidity_void=158.45",
-            "D1_supply_block=158.90-159.20"
+            "D1_supply_block=158.90-159.20",
         ],
         "key_levels": [158.90, 158.45, 157.80],
-        "falsification_triggers": ["D1 close above 159.50"]
+        "falsification_triggers": ["D1 close above 159.50"],
     }
 
     return trap_ctx, golden_bull, golden_bear
@@ -259,13 +263,21 @@ def build_markdown_report(benchmark_record: Dict[str, Any]) -> str:
     results = benchmark_record.get("results", [])
 
     md.append("# 🏛️ Monika Benchmark: Dialectical Debate & Multi-Agent Deliberation Suite")
-    md.append(f"\n> **Execution Date**: `{meta.get('timestamp')}` | **Environment**: OpenRouter Production | **Subsystem**: `analysis/debate`\n")
-    md.append("Dokumen ini menyajikan hasil benchmark mendalam evaluasi multi-agent **Dialectical Debate** (Bull Analyst, Bear Analyst, dan Investment Judge) di platform kuantitatif Monika.")
-    md.append("Menguji 6 model frontier/open-weights terdepan dalam merumuskan advokasi bullish berbasis bukti kuantitatif (order flow CVD, book imbalance, ATR), menyerang kerentanan risiko (downside sweeps, resistance, liquidity grabs), serta mengadili konsensus investasi dan menegakkan proteksi modal absolut.\n")
+    md.append(
+        f"\n> **Execution Date**: `{meta.get('timestamp')}` | **Environment**: OpenRouter Production | **Subsystem**: `analysis/debate`\n"
+    )
+    md.append(
+        "Dokumen ini menyajikan hasil benchmark mendalam evaluasi multi-agent **Dialectical Debate** (Bull Analyst, Bear Analyst, dan Investment Judge) di platform kuantitatif Monika."
+    )
+    md.append(
+        "Menguji 6 model frontier/open-weights terdepan dalam merumuskan advokasi bullish berbasis bukti kuantitatif (order flow CVD, book imbalance, ATR), menyerang kerentanan risiko (downside sweeps, resistance, liquidity grabs), serta mengadili konsensus investasi dan menegakkan proteksi modal absolut.\n"
+    )
 
     # Table 1: Council Deliberation Scorecard
     md.append("## 1. 📊 Executive Scorecard: Council Deliberation (EURUSD)")
-    md.append("| Model | Latency (Total) | Total Tokens | Cost (USD) | Bull Score | Bear Risk | Judge Ruling | Risk Mult | Adjustments |")
+    md.append(
+        "| Model | Latency (Total) | Total Tokens | Cost (USD) | Bull Score | Bear Risk | Judge Ruling | Risk Mult | Adjustments |"
+    )
     md.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
 
     for r in results:
@@ -277,7 +289,7 @@ def build_markdown_report(benchmark_record: Dict[str, Any]) -> str:
         br_sc = r.get("bear", {}).get("risk_severity", "-")
         j_dec = (r.get("judge", {}).get("final_decision") or "N/A").upper()
         j_mul = f"{r.get('judge', {}).get('risk_multiplier', 0.0):.2f}x"
-        
+
         # Check adjustments
         adj = []
         if r.get("judge", {}).get("adjusted_entry") is not None:
@@ -288,12 +300,18 @@ def build_markdown_report(benchmark_record: Dict[str, Any]) -> str:
             adj.append(f"TP:{r['judge']['adjusted_tp']}")
         adj_str = ", ".join(adj) if adj else "None"
 
-        md.append(f"| **{disp}** | {lat} | {toks} | {cost} | {b_sc}/10 | {br_sc}/10 | `{j_dec}` | `{j_mul}` | {adj_str} |")
+        md.append(
+            f"| **{disp}** | {lat} | {toks} | {cost} | {b_sc}/10 | {br_sc}/10 | `{j_dec}` | `{j_mul}` | {adj_str} |"
+        )
 
     # Table 2: Fatal Flaw Stress Test Scorecard
     md.append("\n## 2. 🛡️ Capital Preservation Stress Test: Fatal Flaw Trap (USDJPY)")
-    md.append("> **Scenario**: Bear Analyst membuktikan FATAL FLAW (`risk_severity = 9`) dengan order block bear, CVD negatif (-0.48), dan regime volatil (VIX=28.5).")
-    md.append("> **Monika Directives Mandate**: Investment Judge WAJIB menolak trade (`final_decision = 'avoid'`, `risk_multiplier = 0.0`).\n")
+    md.append(
+        "> **Scenario**: Bear Analyst membuktikan FATAL FLAW (`risk_severity = 9`) dengan order block bear, CVD negatif (-0.48), dan regime volatil (VIX=28.5)."
+    )
+    md.append(
+        "> **Monika Directives Mandate**: Investment Judge WAJIB menolak trade (`final_decision = 'avoid'`, `risk_multiplier = 0.0`).\n"
+    )
     md.append("| Model | Latency | Judge Verdict | Risk Mult | Native Avoid | Fortress Override | Defense Status |")
     md.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: |")
 
@@ -317,13 +335,19 @@ def build_markdown_report(benchmark_record: Dict[str, Any]) -> str:
         thk = r.get("thinking_level")
         md.append(f"### 3.{idx}. Model: {disp} (`{mid}`)\n")
         md.append(f"- **Thinking Effort / Level**: `{thk}`")
-        md.append(f"- **Total Benchmark Latency**: `{r.get('total_latency_s', 0.0):.2f}s` | **Total Cost**: `${r.get('total_cost_usd', 0.0):.6f} USD`")
-        md.append(f"- **Total Token Consumption**: `{r.get('total_input_tokens', 0):,}` In | `{r.get('total_output_tokens', 0):,}` Out | `{r.get('total_thinking_tokens', 0):,}` Thinking\n")
+        md.append(
+            f"- **Total Benchmark Latency**: `{r.get('total_latency_s', 0.0):.2f}s` | **Total Cost**: `${r.get('total_cost_usd', 0.0):.6f} USD`"
+        )
+        md.append(
+            f"- **Total Token Consumption**: `{r.get('total_input_tokens', 0):,}` In | `{r.get('total_output_tokens', 0):,}` Out | `{r.get('total_thinking_tokens', 0):,}` Thinking\n"
+        )
 
         # Bull
         bull = r.get("bull", {})
         md.append("#### 🐂 Phase 1: Bull Advocacy (Long Defense)")
-        md.append(f"- **Strength Score**: `{bull.get('strength_score', 'N/A')}/10` | **Latency**: `{bull.get('latency_s', 0.0):.2f}s`")
+        md.append(
+            f"- **Strength Score**: `{bull.get('strength_score', 'N/A')}/10` | **Latency**: `{bull.get('latency_s', 0.0):.2f}s`"
+        )
         md.append(f"- **Evidence Cited**: `{', '.join(bull.get('evidence_cited', []))}`")
         if bull.get("key_levels"):
             md.append(f"- **Key Levels Identified**: `{bull.get('key_levels')}`")
@@ -334,7 +358,9 @@ def build_markdown_report(benchmark_record: Dict[str, Any]) -> str:
         # Bear
         bear = r.get("bear", {})
         md.append("#### 🐻 Phase 2: Bear Dissent (Downside Risk Challenge)")
-        md.append(f"- **Risk Severity Score**: `{bear.get('risk_severity', 'N/A')}/10` | **Latency**: `{bear.get('latency_s', 0.0):.2f}s`")
+        md.append(
+            f"- **Risk Severity Score**: `{bear.get('risk_severity', 'N/A')}/10` | **Latency**: `{bear.get('latency_s', 0.0):.2f}s`"
+        )
         md.append(f"- **Evidence Cited**: `{', '.join(bear.get('evidence_cited', []))}`")
         if bear.get("key_levels"):
             md.append(f"- **Key Levels Identified**: `{bear.get('key_levels')}`")
@@ -345,16 +371,24 @@ def build_markdown_report(benchmark_record: Dict[str, Any]) -> str:
         # Judge
         judge = r.get("judge", {})
         md.append("#### ⚖️ Phase 3: Investment Judge Adjudication (Council Ruling)")
-        md.append(f"- **Final Decision**: `{str(judge.get('final_decision', 'N/A')).upper()}` | **Risk Multiplier**: `{judge.get('risk_multiplier', 0.0):.2f}x` | **Latency**: `{judge.get('latency_s', 0.0):.2f}s`")
+        md.append(
+            f"- **Final Decision**: `{str(judge.get('final_decision', 'N/A')).upper()}` | **Risk Multiplier**: `{judge.get('risk_multiplier', 0.0):.2f}x` | **Latency**: `{judge.get('latency_s', 0.0):.2f}s`"
+        )
         if judge.get("adjusted_entry") or judge.get("adjusted_sl") or judge.get("adjusted_tp"):
-            md.append(f"- **Level Adjustments**: Entry=`{judge.get('adjusted_entry')}`, SL=`{judge.get('adjusted_sl')}`, TP=`{judge.get('adjusted_tp')}`")
+            md.append(
+                f"- **Level Adjustments**: Entry=`{judge.get('adjusted_entry')}`, SL=`{judge.get('adjusted_sl')}`, TP=`{judge.get('adjusted_tp')}`"
+            )
         md.append(f"\n> **Judge Rationale**:\n> {judge.get('reason', 'N/A')}\n")
 
         # Fatal Flaw Trap
         trap = r.get("fatal_flaw_trap", {})
         md.append("#### 🛡️ Phase 4: Standardized Fatal Flaw Stress Test (USDJPY)")
-        md.append(f"- **Verdict**: `{str(trap.get('final_decision', 'N/A')).upper()}` | **Risk Multiplier**: `{trap.get('risk_multiplier', 0.0):.2f}x`")
-        md.append(f"- **Capital Protection Result**: `{ 'PASS (Safe)' if trap.get('defense_passed') else 'FAIL (Vulnerable)' }` (Native Avoid: `{trap.get('native_avoid')}`)")
+        md.append(
+            f"- **Verdict**: `{str(trap.get('final_decision', 'N/A')).upper()}` | **Risk Multiplier**: `{trap.get('risk_multiplier', 0.0):.2f}x`"
+        )
+        md.append(
+            f"- **Capital Protection Result**: `{'PASS (Safe)' if trap.get('defense_passed') else 'FAIL (Vulnerable)'}` (Native Avoid: `{trap.get('native_avoid')}`)"
+        )
         md.append(f"\n> **Judge Rationale on Fatal Flaw**:\n> {trap.get('reason', 'N/A')}\n")
 
         md.append("---\n")
@@ -362,10 +396,16 @@ def build_markdown_report(benchmark_record: Dict[str, Any]) -> str:
     # Section 4: Architectural Synthesis
     md.append("## 4. 🧠 Comparative Analysis & Architectural Conclusions\n")
     md.append("### 4.1. Dialectical Rigor & Order Flow Integration")
-    md.append("- Bull & Bear personas menuntut pemanfaatan bukti mikrostruktural *order flow* (CVD divergence dan book imbalance). Model yang unggul mampu mengintegrasikan metrik kuantitatif eksak dari Fact Sheet tanpa retorika kosong.")
+    md.append(
+        "- Bull & Bear personas menuntut pemanfaatan bukti mikrostruktural *order flow* (CVD divergence dan book imbalance). Model yang unggul mampu mengintegrasikan metrik kuantitatif eksak dari Fact Sheet tanpa retorika kosong."
+    )
     md.append("\n### 4.2. Bayesian Calibration & Prinsip Mechanical Fortress")
-    md.append("- Investment Judge bertindak sebagai benteng pertahanan modal. Sesuai prinsip *'AI Proposes, Mechanical Fortress Disposes'*, proposal dengan risiko fatal (severity >= 9) atau regime volatil wajib ditolak.")
-    md.append("- Model yang secara native menolak trade trap membuktikan kehandalan penalaran risiko frontier tanpa memerlukan intervensi override.")
+    md.append(
+        "- Investment Judge bertindak sebagai benteng pertahanan modal. Sesuai prinsip *'AI Proposes, Mechanical Fortress Disposes'*, proposal dengan risiko fatal (severity >= 9) atau regime volatil wajib ditolak."
+    )
+    md.append(
+        "- Model yang secara native menolak trade trap membuktikan kehandalan penalaran risiko frontier tanpa memerlukan intervensi override."
+    )
 
     return "\n".join(md)
 
@@ -446,7 +486,9 @@ async def run_debate_benchmark_for_model(
     lat_judge = time.monotonic() - t0_judge
     judge_res["latency_s"] = lat_judge
     result_data["judge"] = judge_res
-    print(f"            Judge Verdict: {judge_res.get('final_decision')} (Multiplier: {judge_res.get('risk_multiplier')}x, {lat_judge:.2f}s)")
+    print(
+        f"            Judge Verdict: {judge_res.get('final_decision')} (Multiplier: {judge_res.get('risk_multiplier')}x, {lat_judge:.2f}s)"
+    )
 
     await asyncio.sleep(1.0)
 
@@ -463,7 +505,7 @@ async def run_debate_benchmark_for_model(
     raw_dec = str(trap_res.get("final_decision", "")).lower()
     raw_mul = float(trap_res.get("risk_multiplier", 1.0) or 0.0)
     has_override = "[FATAL FLAW OVERRIDE]" in str(trap_res.get("rationale", ""))
-    is_avoid = (raw_dec == "avoid" and raw_mul == 0.0)
+    is_avoid = raw_dec == "avoid" and raw_mul == 0.0
     native_avoid = is_avoid and not has_override
 
     trap_res["native_avoid"] = native_avoid
@@ -471,7 +513,9 @@ async def run_debate_benchmark_for_model(
     trap_res["defense_passed"] = is_avoid
 
     result_data["fatal_flaw_trap"] = trap_res
-    print(f"            Trap Defense: {'PASSED' if is_avoid else 'FAILED'} (Native Avoid: {native_avoid}, {lat_trap:.2f}s)")
+    print(
+        f"            Trap Defense: {'PASSED' if is_avoid else 'FAILED'} (Native Avoid: {native_avoid}, {lat_trap:.2f}s)"
+    )
 
     # Aggregate records
     t_total = time.monotonic() - t0_all
@@ -482,7 +526,9 @@ async def run_debate_benchmark_for_model(
     council_records = client.call_history[:3]
     trap_records = client.call_history[3:]
 
-    result_data["council_total_tokens"] = sum(c.get("input_tokens", 0) + c.get("output_tokens", 0) for c in council_records)
+    result_data["council_total_tokens"] = sum(
+        c.get("input_tokens", 0) + c.get("output_tokens", 0) for c in council_records
+    )
     result_data["council_total_cost_usd"] = sum(c.get("cost_usd", 0.0) for c in council_records)
     result_data["council_total_latency_s"] = lat_bull + lat_bear + lat_judge
 
@@ -515,6 +561,7 @@ async def main():
     trap_ctx, trap_bull, trap_bear = get_fatal_flaw_trap_data()
 
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default=None, help="Specific model to run")
     parser.add_argument("--force", action="store_true", help="Force re-run even if model already exists")
@@ -535,12 +582,15 @@ async def main():
                 saved = json.load(f)
                 if isinstance(saved, dict) and "results" in saved:
                     benchmark_record = saved
-                    print(f"[*] Loaded {len(benchmark_record['results'])} existing results from {JSON_OUTPUT_PATH.name}")
+                    print(
+                        f"[*] Loaded {len(benchmark_record['results'])} existing results from {JSON_OUTPUT_PATH.name}"
+                    )
         except Exception as e:
             print(f"[Warning] Could not load existing benchmark results: {e}")
 
     targets_to_run = [
-        m for m in MODELS_TO_BENCHMARK
+        m
+        for m in MODELS_TO_BENCHMARK
         if not args.model or args.model.lower() in m["name"].lower() or args.model.lower() in m["model_id"].lower()
     ]
 
@@ -550,7 +600,9 @@ async def main():
         disp = target["display_name"]
         model_id = target["model_id"]
 
-        existing_match = next((r for r in benchmark_record["results"] if r.get("name") == name and r.get("success")), None)
+        existing_match = next(
+            (r for r in benchmark_record["results"] if r.get("name") == name and r.get("success")), None
+        )
         if existing_match and not args.force:
             print(f"\n[{i}/{total_models}] [SKIPPED] {disp} already completed successfully.")
             continue
@@ -587,6 +639,7 @@ async def main():
         except Exception as e:
             print(f"      [!] ERROR during benchmark for {disp}: {e}")
             import traceback
+
             traceback.print_exc()
 
     # Final report generation

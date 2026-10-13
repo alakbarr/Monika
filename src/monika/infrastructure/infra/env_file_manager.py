@@ -61,7 +61,7 @@ class EnvFileManager:
                 if key in remaining_updates:
                     val = remaining_updates.pop(key)
                     # Quote value if it contains spaces or special characters
-                    if any(c in val for c in (' ', '#', '"', "'", '\n')):
+                    if any(c in val for c in (" ", "#", '"', "'", "\n")):
                         escaped_val = val.replace('"', '\\"')
                         new_lines.append(f'{key}="{escaped_val}"\n')
                     else:
@@ -75,7 +75,7 @@ class EnvFileManager:
                 new_lines.append("\n")
             new_lines.append("# Added by Setup Wizard\n")
             for key, val in remaining_updates.items():
-                if any(c in val for c in (' ', '#', '"', "'", '\n')):
+                if any(c in val for c in (" ", "#", '"', "'", "\n")):
                     escaped_val = val.replace('"', '\\"')
                     new_lines.append(f'{key}="{escaped_val}"\n')
                 else:
@@ -108,12 +108,23 @@ class EnvFileManager:
         """
         if env_path is None:
             # First check active process os.environ
-            has_mt5 = bool(os.environ.get("MT5_ACCOUNT")) or bool(os.environ.get("PAPER_TRADING_MODE")) or bool(os.environ.get("EXECUTION_ADAPTER"))
+            has_mt5 = (
+                bool(os.environ.get("MT5_ACCOUNT"))
+                or bool(os.environ.get("PAPER_TRADING_MODE"))
+                or bool(os.environ.get("EXECUTION_ADAPTER"))
+            )
             has_db = bool(os.environ.get("DATABASE_URL"))
-            has_llm = any(bool(os.environ.get(k)) for k in [
-                "GEMINI_API_KEY", "GEMINI_API_KEYS", "ANTHROPIC_API_KEY",
-                "OPENAI_API_KEY", "GROQ_API_KEY", "DEEPSEEK_API_KEY"
-            ])
+            has_llm = any(
+                bool(os.environ.get(k))
+                for k in [
+                    "GEMINI_API_KEY",
+                    "GEMINI_API_KEYS",
+                    "ANTHROPIC_API_KEY",
+                    "OPENAI_API_KEY",
+                    "GROQ_API_KEY",
+                    "DEEPSEEK_API_KEY",
+                ]
+            )
             if has_mt5 and has_db and has_llm:
                 return True
 
@@ -134,10 +145,19 @@ class EnvFileManager:
         except Exception:
             return False
 
-        file_has_mt5 = "MT5_ACCOUNT" in found_keys or "PAPER_TRADING_MODE" in found_keys or "EXECUTION_ADAPTER" in found_keys
+        file_has_mt5 = (
+            "MT5_ACCOUNT" in found_keys or "PAPER_TRADING_MODE" in found_keys or "EXECUTION_ADAPTER" in found_keys
+        )
         file_has_db = "DATABASE_URL" in found_keys
-        file_has_llm = any(k in found_keys for k in [
-            "GEMINI_API_KEY", "GEMINI_API_KEYS", "ANTHROPIC_API_KEY",
-            "OPENAI_API_KEY", "GROQ_API_KEY", "DEEPSEEK_API_KEY"
-        ])
+        file_has_llm = any(
+            k in found_keys
+            for k in [
+                "GEMINI_API_KEY",
+                "GEMINI_API_KEYS",
+                "ANTHROPIC_API_KEY",
+                "OPENAI_API_KEY",
+                "GROQ_API_KEY",
+                "DEEPSEEK_API_KEY",
+            ]
+        )
         return file_has_mt5 and file_has_db and file_has_llm

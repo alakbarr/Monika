@@ -49,11 +49,11 @@ class ToolObservationCondenser:
         tool_output: Union[str, dict, list],
         session: Optional[AsyncSession] = None,
         cycle_id: Optional[str] = None,
-        symbol: Optional[str] = None
+        symbol: Optional[str] = None,
     ) -> str:
         """
         Condenses a single tool output if it exceeds threshold tokens.
-        
+
         Returns:
             Condensed JSON string or formatted text with receipt & spill pointer if applicable.
         """
@@ -72,20 +72,20 @@ class ToolObservationCondenser:
         if token_count <= self.threshold_tokens:
             return raw_str
 
-        logger.debug(f"[ToolCondenser] Intercepted {tool_name} ({token_count} tokens > threshold {self.threshold_tokens}). Condensing...")
+        logger.debug(
+            f"[ToolCondenser] Intercepted {tool_name} ({token_count} tokens > threshold {self.threshold_tokens}). Condensing..."
+        )
 
         # Step 1: Spill raw output to Postgres if session is available
         spill_pointer = ""
         if session is not None:
             try:
                 spill_receipt = await self.spill_subsystem.maybe_spill(
-                    session=session,
-                    tool_name=tool_name,
-                    output=raw_str,
-                    cycle_id=cycle_id
+                    session=session, tool_name=tool_name, output=raw_str, cycle_id=cycle_id
                 )
                 if "db://spill/" in spill_receipt:
                     import re
+
                     match = re.search(r"db://spill/[a-zA-Z0-9_]+", spill_receipt)
                     if match:
                         spill_pointer = match.group(0)
@@ -103,13 +103,7 @@ class ToolObservationCondenser:
         )
         return condensed_str
 
-    def _apply_lfsp(
-        self,
-        tool_name: str,
-        raw_text: str,
-        symbol: Optional[str] = None,
-        spill_pointer: str = ""
-    ) -> str:
+    def _apply_lfsp(self, tool_name: str, raw_text: str, symbol: Optional[str] = None, spill_pointer: str = "") -> str:
         """Applies specialized financial condensation based on tool domain."""
         t_lower = (tool_name or "").lower()
 
@@ -187,7 +181,7 @@ class ToolObservationCondenser:
                 "net_change": round(raw_close - raw_open, 5),
             },
             "recent_bars": valid_bars[-10:],
-            "_condensed_note": f"Lossless Structural Projection active. Full {len(valid_bars)} bars compressed to extrema and recent 10 bars."
+            "_condensed_note": f"Lossless Structural Projection active. Full {len(valid_bars)} bars compressed to extrema and recent 10 bars.",
         }
         if spill_pointer:
             condensed["_spill_ref"] = spill_pointer
@@ -233,7 +227,7 @@ class ToolObservationCondenser:
             condensed = {
                 "unmitigated_zones": unmitigated,
                 "mitigated_zones_count": mitigated_count,
-                "_condensed_note": f"Preserved all {len(unmitigated)} active unmitigated zones. {mitigated_count} mitigated zones omitted."
+                "_condensed_note": f"Preserved all {len(unmitigated)} active unmitigated zones. {mitigated_count} mitigated zones omitted.",
             }
             if spill_pointer:
                 condensed["_spill_ref"] = spill_pointer
@@ -243,7 +237,11 @@ class ToolObservationCondenser:
             for z_key in ("zones", "smc_zones", "order_blocks", "fvg_zones"):
                 if z_key in condensed and isinstance(condensed[z_key], list):
                     raw_zones = condensed[z_key]
-                    unmit = [z for z in raw_zones if isinstance(z, dict) and not z.get("is_mitigated") and not z.get("mitigated")]
+                    unmit = [
+                        z
+                        for z in raw_zones
+                        if isinstance(z, dict) and not z.get("is_mitigated") and not z.get("mitigated")
+                    ]
                     mit_count = len(raw_zones) - len(unmit)
                     condensed[z_key] = unmit
                     condensed[f"{z_key}_mitigated_count"] = mit_count
@@ -258,18 +256,20 @@ class ToolObservationCondenser:
             compact_items = []
             for item in data[:6]:
                 if isinstance(item, dict):
-                    compact_items.append({
-                        "title": item.get("title", ""),
-                        "source": item.get("source", ""),
-                        "timestamp": item.get("timestamp", ""),
-                        "sentiment": item.get("sentiment", ""),
-                        "impact": item.get("impact", ""),
-                        "summary": (item.get("summary") or item.get("content") or "")[:200]
-                    })
+                    compact_items.append(
+                        {
+                            "title": item.get("title", ""),
+                            "source": item.get("source", ""),
+                            "timestamp": item.get("timestamp", ""),
+                            "sentiment": item.get("sentiment", ""),
+                            "impact": item.get("impact", ""),
+                            "summary": (item.get("summary") or item.get("content") or "")[:200],
+                        }
+                    )
             condensed = {
                 "items": compact_items,
                 "total_items_reported": len(data),
-                "_condensed_note": "Top 6 news headlines preserved with sentiment. Full text available in spill."
+                "_condensed_note": "Top 6 news headlines preserved with sentiment. Full text available in spill.",
             }
             if spill_pointer:
                 condensed["_spill_ref"] = spill_pointer

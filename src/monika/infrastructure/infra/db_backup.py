@@ -6,6 +6,7 @@
 Utilitas Backup Database — Membuat dump PostgreSQL berkala.
 Menggunakan pg_dump untuk backup SQL terkompresi (rotasi otomatis).
 """
+
 import asyncio
 import logging
 import os
@@ -36,6 +37,7 @@ async def create_backup(settings: dict, force: bool = False) -> dict:
 
     # Parse connection info from DATABASE_URL
     from urllib.parse import urlparse
+
     parsed = urlparse(db_url)
     if not parsed.hostname or not parsed.username:
         return {"error": "Cannot parse DATABASE_URL for backup"}
@@ -58,10 +60,14 @@ async def create_backup(settings: dict, force: bool = False) -> dict:
 
         cmd = [
             "pg_dump",
-            "-h", db_host,
-            "-p", db_port,
-            "-U", db_user,
-            "-d", db_name,
+            "-h",
+            db_host,
+            "-p",
+            db_port,
+            "-U",
+            db_user,
+            "-d",
+            db_name,
             "--no-password",
         ]
         returncode, stdout_str, stderr_str = await safe_subprocess_run(
@@ -71,21 +77,22 @@ async def create_backup(settings: dict, force: bool = False) -> dict:
         )
         if returncode != 0:
             raise RuntimeError(f"pg_dump failed: {stderr_str}")
-        
+
         import gzip
-        with gzip.open(backup_file, 'wb') as f:
-            f.write(stdout_str.encode('utf-8'))
-        
+
+        with gzip.open(backup_file, "wb") as f:
+            f.write(stdout_str.encode("utf-8"))
+
         file_size_mb = backup_file.stat().st_size / (1024 * 1024)
         logger.info(f"DB backup created: {backup_file} ({file_size_mb:.1f} MB)")
-        
+
         # Cleanup old backups
         all_backups = sorted(backup_dir.glob("trading_agent_*.sql.gz"))
         if len(all_backups) > keep_last_n:
             for old_backup in all_backups[:-keep_last_n]:
                 old_backup.unlink()
                 logger.info(f"Old backup removed: {old_backup}")
-        
+
         return {
             "success": True,
             "backup_file": str(backup_file),
@@ -93,7 +100,7 @@ async def create_backup(settings: dict, force: bool = False) -> dict:
             "timestamp": timestamp,
         }
 
-    except (subprocess.TimeoutExpired, asyncio.TimeoutError):
+    except subprocess.TimeoutExpired, asyncio.TimeoutError:
         return {"error": "pg_dump timed out after 120 seconds"}
     except FileNotFoundError:
         return {"error": "pg_dump not found. Ensure PostgreSQL client tools are installed."}

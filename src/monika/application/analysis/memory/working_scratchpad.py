@@ -63,7 +63,7 @@ class WorkingScratchpad:
             if num_field in updates and updates[num_field] is not None:
                 try:
                     state[num_field] = float(updates[num_field])
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
 
         # Textual & structured fields
@@ -95,7 +95,9 @@ class WorkingScratchpad:
                 state["notes"] = state["notes"][-10:]
 
         state["updated_at"] = datetime.now(timezone.utc).isoformat()
-        logger.debug(f"[WorkingScratchpad] Updated {symbol}: bias={state['bias']}, confluences={len(state['verified_confluences'])}")
+        logger.debug(
+            f"[WorkingScratchpad] Updated {symbol}: bias={state['bias']}, confluences={len(state['verified_confluences'])}"
+        )
         return state
 
     @classmethod

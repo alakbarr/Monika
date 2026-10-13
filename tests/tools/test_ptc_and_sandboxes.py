@@ -41,6 +41,7 @@ from analysis.tools.unified_registry import unified_tool_registry
 # 1. CodeExecutionRpcServer Tests
 # ==============================================================================
 
+
 def test_code_execution_rpc_lifecycle_and_auth():
     def mock_dispatch(name, args):
         return f"MOCK_RESULT_{name}_{args.get('val', '')}"
@@ -101,7 +102,7 @@ def test_monika_tools_client_code_generation():
         allowed_tools={"get_market_quote", "read_database_records"},
     )
     assert "_RPC_PORT = 12345" in client_code
-    assert "_RPC_TOKEN = \"test_token_abc\"" in client_code
+    assert '_RPC_TOKEN = "test_token_abc"' in client_code
     assert "def call_tool(" in client_code
     assert "def get_market_quote(" in client_code
 
@@ -109,6 +110,7 @@ def test_monika_tools_client_code_generation():
 # ==============================================================================
 # 2. PersistentSessionKernel Tests
 # ==============================================================================
+
 
 def test_persistent_session_kernel_state_retention():
     kernel = PersistentSessionKernel(session_id="test_persistence", timeout_seconds=15.0)
@@ -152,9 +154,11 @@ print(f"CELL2_SUM={result}")
 # 3. Domain Code Execution Tool Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_handle_execute_code_domain_tool():
     from analysis.tools.domain.code_execution_tool import shutdown_all_kernels
+
     try:
         input_params = ExecuteCodeInput(
             code="nums = [1, 2, 3, 4, 5]\nprint(f'SUM={sum(nums)}')",
@@ -172,6 +176,7 @@ async def test_handle_execute_code_domain_tool():
 # ==============================================================================
 # 4. LocalTerminalBackend Tests
 # ==============================================================================
+
 
 def test_local_terminal_backend():
     backend = LocalTerminalBackend()
@@ -194,6 +199,7 @@ def test_local_terminal_backend():
 # ==============================================================================
 # 5. MCP OAuth PKCE & Token Storage Tests
 # ==============================================================================
+
 
 def test_oauth_pkce_generation():
     verifier, challenge = generate_pkce_pair()
@@ -222,6 +228,7 @@ def test_oauth_token_storage():
 # ==============================================================================
 # 6. McpServerDispatcher Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_mcp_server_dispatcher_protocol():
@@ -269,6 +276,7 @@ async def test_mcp_server_dispatcher_protocol():
 # 7. Interactive Tools Tests (Clarify, Kanban, ComputerUse)
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_clarify_tool():
     params = ClarifyInput(
@@ -313,7 +321,7 @@ async def test_computer_use_safeguards():
     )
     resp = await handle_computer_use(params)
     # Either pyautogui missing error or coordinate bounds error
-    assert ("out of screen bounds" in resp.lower() or "gui automation unavailable" in resp.lower())
+    assert "out of screen bounds" in resp.lower() or "gui automation unavailable" in resp.lower()
 
 
 def test_persistent_session_kernel_ast_sandbox_blocks_restricted_code():

@@ -20,6 +20,7 @@ logger = logging.getLogger("TradingAgent.Agent.TurnStopGates")
 @dataclass
 class StopGateContext:
     """Carries mutation and proposal context during turn execution."""
+
     turn_id: str
     mutated_files: List[str] = field(default_factory=list)
     has_unverified_file_edits: bool = False
@@ -81,7 +82,7 @@ class TradingRiskStopGate:
                                     f"Financial Safety Invariant: SELL proposal on {act.get('symbol')} "
                                     f"has SL ({sl_val}) below or at entry ({e_val})."
                                 )
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             pass
 
         return True, None

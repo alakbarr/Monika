@@ -29,6 +29,7 @@ def mock_chat_agent_db_session():
 # AREA 1: IDEMPOTENCY OF _inject_macro_playbooks
 # ==============================================================================
 
+
 class TestInjectMacroPlaybooksIdempotency:
     """Stress test idempotency of playbook injection across multiple cycles."""
 
@@ -107,12 +108,15 @@ class TestInjectMacroPlaybooksIdempotency:
             # Document behavior: If guard only checks EVENT PROBABILITY PLAYBOOK,
             # dynamics_count may be 2. Let's verify whether it duplicated.
             is_duplicated = dynamics_count > 1
-            print(f"\n[EMPIRICAL TEST] Under asymmetric failure, market dynamics header count after 2 calls: {dynamics_count}")
+            print(
+                f"\n[EMPIRICAL TEST] Under asymmetric failure, market dynamics header count after 2 calls: {dynamics_count}"
+            )
 
 
 # ==============================================================================
 # AREA 2: PROMPT TYPE POLYMORPHISM (STRING VS TUPLE)
 # ==============================================================================
+
 
 class TestPromptTypePolymorphism:
     """Verify handling of string and tuple prompts across injection and subagent execution."""
@@ -205,6 +209,7 @@ class TestPromptTypePolymorphism:
 # AREA 3: GRACEFUL DEGRADATION WHEN load_skill RAISES AN EXCEPTION
 # ==============================================================================
 
+
 class TestLoadSkillGracefulDegradation:
     """Stress test failure modes when skills.loader.load_skill raises various exceptions."""
 
@@ -281,7 +286,12 @@ class TestLoadSkillGracefulDegradation:
                 {"reply": "Worker 1 report", "input_tokens": 50, "output_tokens": 25, "tool_calls_made": 1},
                 {"reply": "Worker 2 report", "input_tokens": 50, "output_tokens": 25, "tool_calls_made": 1},
                 {"reply": "Worker 3 report", "input_tokens": 50, "output_tokens": 25, "tool_calls_made": 1},
-                {"reply": "Synthesized brief without playbooks", "input_tokens": 100, "output_tokens": 50, "tool_calls_made": 0},
+                {
+                    "reply": "Synthesized brief without playbooks",
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "tool_calls_made": 0,
+                },
             ]
             mock_get_client.return_value = mock_client
             agent = ChatAgent(settings, 12345)
@@ -303,6 +313,7 @@ class TestLoadSkillGracefulDegradation:
 # ==============================================================================
 # AREA 4: TOOL PASSING & PROPOSED_ACTION PROPAGATION (TOOL_EXECUTOR NONE VS PROVIDED)
 # ==============================================================================
+
 
 class TestSynthesizerToolWiringAndPropagation:
     """Stress test Synthesizer tool passing, execution, and proposed_action propagation."""
@@ -504,17 +515,47 @@ class TestSynthesizerToolWiringAndPropagation:
 
             # 3 workers raise exceptions or return failure, Synthesizer still runs
             from analysis.subagent_spawner import SubagentResult
+
             failing_pool = MagicMock()
             failing_pool.decompose_research_query.return_value = [
                 MagicMock(role="worker_macro"),
                 MagicMock(role="worker_tech"),
                 MagicMock(role="worker_sent"),
             ]
-            failing_pool.run_parallel = AsyncMock(return_value=[
-                SubagentResult(worker_id="w1", role="worker_macro", content="", success=False, error="Timeout 75s", input_tokens=10, output_tokens=0, tool_calls_made=0),
-                SubagentResult(worker_id="w2", role="worker_tech", content="", success=False, error="RateLimit", input_tokens=10, output_tokens=0, tool_calls_made=0),
-                SubagentResult(worker_id="w3", role="worker_sent", content="Valid sentiment findings", success=True, error=None, input_tokens=20, output_tokens=15, tool_calls_made=1),
-            ])
+            failing_pool.run_parallel = AsyncMock(
+                return_value=[
+                    SubagentResult(
+                        worker_id="w1",
+                        role="worker_macro",
+                        content="",
+                        success=False,
+                        error="Timeout 75s",
+                        input_tokens=10,
+                        output_tokens=0,
+                        tool_calls_made=0,
+                    ),
+                    SubagentResult(
+                        worker_id="w2",
+                        role="worker_tech",
+                        content="",
+                        success=False,
+                        error="RateLimit",
+                        input_tokens=10,
+                        output_tokens=0,
+                        tool_calls_made=0,
+                    ),
+                    SubagentResult(
+                        worker_id="w3",
+                        role="worker_sent",
+                        content="Valid sentiment findings",
+                        success=True,
+                        error=None,
+                        input_tokens=20,
+                        output_tokens=15,
+                        tool_calls_made=1,
+                    ),
+                ]
+            )
 
             mock_client.run_chat_loop.return_value = {
                 "reply": "Executive Brief: Partial data synthesized.",

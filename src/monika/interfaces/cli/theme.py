@@ -35,22 +35,24 @@ CHARCOAL = "#14120E"
 SURFACE = "#1C1917"
 BORDER = "#3A352A"
 
-MONIKA_THEME = Theme({
-    "primary": PHOSPHOR_AMBER,
-    "brass": BRASS,
-    "profit": BULL_PROFIT,
-    "loss": BEAR_LOSS,
-    "warning": BRASS,
-    "muted": MUTED,
-    "dim": DIM,
-    "paper": PAPER,
-    "info": BRASS,
-    "stamp.ok": f"bold {BULL_PROFIT}",
-    "stamp.err": f"bold {BEAR_LOSS}",
-    "stamp.warn": f"bold {BRASS}",
-    "stamp.info": f"bold {BRASS}",
-    "stamp.exec": f"bold {PHOSPHOR_AMBER}",
-})
+MONIKA_THEME = Theme(
+    {
+        "primary": PHOSPHOR_AMBER,
+        "brass": BRASS,
+        "profit": BULL_PROFIT,
+        "loss": BEAR_LOSS,
+        "warning": BRASS,
+        "muted": MUTED,
+        "dim": DIM,
+        "paper": PAPER,
+        "info": BRASS,
+        "stamp.ok": f"bold {BULL_PROFIT}",
+        "stamp.err": f"bold {BEAR_LOSS}",
+        "stamp.warn": f"bold {BRASS}",
+        "stamp.info": f"bold {BRASS}",
+        "stamp.exec": f"bold {PHOSPHOR_AMBER}",
+    }
+)
 
 LEDGER_BOX = box.DOUBLE
 
@@ -592,6 +594,7 @@ def persist_theme_to_settings(theme_name: str, config_path: Optional[str] = None
     # 1. Try ruamel.yaml for comment-preserving round-trip
     try:
         from ruamel.yaml import YAML
+
         ruamel_yaml = YAML()
         ruamel_yaml.preserve_quotes = True
         with open(target_path, "r", encoding="utf-8") as f:
@@ -612,6 +615,7 @@ def persist_theme_to_settings(theme_name: str, config_path: Optional[str] = None
     # 2. Fallback: Surgical regex replacement to preserve comments and structure 100%
     try:
         import re
+
         with open(target_path, "r", encoding="utf-8") as f:
             content = f.read()
 

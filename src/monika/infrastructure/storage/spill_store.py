@@ -36,11 +36,7 @@ class SpillStore:
 
         head = text[:head_len]
         tail = text[-tail_len:] if tail_len > 0 else ""
-        return (
-            f"{head}\n\n"
-            f"[... {omitted:,} characters spilled to disk for context budget ...]\n\n"
-            f"{tail}"
-        )
+        return f"{head}\n\n[... {omitted:,} characters spilled to disk for context budget ...]\n\n{tail}"
 
     def spill_artifact(
         self,
@@ -72,7 +68,7 @@ class SpillStore:
             return {
                 "spilled": False,
                 "error": str(e),
-                "preview": serialized[:(preview_chars or self.max_preview_chars)],
+                "preview": serialized[: (preview_chars or self.max_preview_chars)],
             }
 
         preview_limit = preview_chars or self.max_preview_chars

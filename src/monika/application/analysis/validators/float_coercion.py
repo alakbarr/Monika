@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 def coerce_optional_float(value: Any) -> Optional[float]:
     """Defensively coerce LLM-generated values into clean floats.
-    
+
     Strips currency symbols ($ € £ ¥), commas, percentage signs, and whitespace.
     Returns None if value represents null or is unparseable.
     """
@@ -17,11 +17,11 @@ def coerce_optional_float(value: Any) -> Optional[float]:
     if not val_str or val_str.lower() in ("n/a", "none", "null", "-", "nan", "nil", "undefined"):
         return None
 
-    cleaned = re.sub(r'[$€£¥,]', '', val_str).strip()
-    cleaned = re.sub(r'\s*%\s*$', '', cleaned).strip()
+    cleaned = re.sub(r"[$€£¥,]", "", val_str).strip()
+    cleaned = re.sub(r"\s*%\s*$", "", cleaned).strip()
     try:
         return float(cleaned)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
 

@@ -133,7 +133,7 @@ class WebSearchService:
         ttl_min = search_cfg.get("cache_ttl_minutes", 15)
         try:
             self.cache_ttl = timedelta(minutes=float(ttl_min))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             self.cache_ttl = timedelta(minutes=15)
 
         self._max_cache_size = int(search_cfg.get("max_cache_size", 500))
@@ -301,13 +301,15 @@ class WebSearchService:
                             data = await resp.json()
                             results = []
                             for item in data.get("results", []):
-                                results.append({
-                                    "title": item.get("title", ""),
-                                    "url": item.get("url", ""),
-                                    "content": item.get("content", ""),
-                                    "score": item.get("score"),
-                                    "published_date": item.get("published_date"),
-                                })
+                                results.append(
+                                    {
+                                        "title": item.get("title", ""),
+                                        "url": item.get("url", ""),
+                                        "content": item.get("content", ""),
+                                        "score": item.get("score"),
+                                        "published_date": item.get("published_date"),
+                                    }
+                                )
                             # Rotate pointer forward on success for load-balancing
                             async with self._lock:
                                 self._current_key_index = (key_idx + 1) % total_keys
@@ -330,7 +332,9 @@ class WebSearchService:
                             continue
                         else:
                             text_err = await resp.text()
-                            logger.warning(f"[WebSearch] Tavily request failed with HTTP {resp.status}: {text_err[:100]}")
+                            logger.warning(
+                                f"[WebSearch] Tavily request failed with HTTP {resp.status}: {text_err[:100]}"
+                            )
                             async with self._lock:
                                 self._current_key_index = (key_idx + 1) % total_keys
                             continue
@@ -369,13 +373,15 @@ class WebSearchService:
                         web_results = data.get("web", {}).get("results", [])
                         results = []
                         for item in web_results:
-                            results.append({
-                                "title": item.get("title", ""),
-                                "url": item.get("url", ""),
-                                "content": item.get("description", ""),
-                                "score": None,
-                                "published_date": item.get("page_age"),
-                            })
+                            results.append(
+                                {
+                                    "title": item.get("title", ""),
+                                    "url": item.get("url", ""),
+                                    "content": item.get("description", ""),
+                                    "score": None,
+                                    "published_date": item.get("page_age"),
+                                }
+                            )
                         return {
                             "query": query,
                             "provider": "brave",
@@ -432,13 +438,15 @@ class WebSearchService:
                                         actual_url = unquote(match.group(1))
 
                                 snippet = snippet_elem.get_text(strip=True) if snippet_elem else ""
-                                results.append({
-                                    "title": title,
-                                    "url": actual_url,
-                                    "content": snippet,
-                                    "score": None,
-                                    "published_date": None,
-                                })
+                                results.append(
+                                    {
+                                        "title": title,
+                                        "url": actual_url,
+                                        "content": snippet,
+                                        "score": None,
+                                        "published_date": None,
+                                    }
+                                )
         except Exception as e:
             logger.warning(f"[WebSearch] DuckDuckGo fallback scraping failed: {e}")
 
@@ -453,6 +461,7 @@ class WebSearchService:
 
 
 _global_web_search_service: Optional[WebSearchService] = None
+
 
 def get_web_search_service(settings: Optional[dict] = None) -> WebSearchService:
     global _global_web_search_service

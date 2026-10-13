@@ -7,7 +7,6 @@ from database.models import NewsItem, FundamentalBrief, MarketChronicle
 
 
 class TestChronicleWriter:
-
     @pytest.mark.asyncio
     async def test_maybe_record_news_event_breaking(self):
         writer = ChronicleWriter({})
@@ -26,7 +25,7 @@ class TestChronicleWriter:
             summary="Immediate executive order signed amid trade tensions.",
             currency_tags="USD,CAD",
             impact="BREAKING",
-            fetched_at=datetime.now(timezone.utc)
+            fetched_at=datetime.now(timezone.utc),
         )
 
         entry = await writer.maybe_record_news_event(mock_session, news)
@@ -51,14 +50,14 @@ class TestChronicleWriter:
             structured_json='{"macro_regime": "risk_on"}',
             risk_sentiment="bullish",
             confidence=0.8,
-            generated_at=datetime.now(timezone.utc)
+            generated_at=datetime.now(timezone.utc),
         )
         curr_brief = FundamentalBrief(
             id=2,
             structured_json='{"macro_regime": "risk_off"}',
             risk_sentiment="bearish",
             confidence=0.85,
-            generated_at=datetime.now(timezone.utc)
+            generated_at=datetime.now(timezone.utc),
         )
 
         entry = await writer.maybe_record_regime_shift(mock_session, curr_brief, prev_brief)
@@ -82,7 +81,7 @@ class TestChronicleWriter:
             narrative="Canada pledges retaliation.",
             currencies_affected="USD,CAD",
             severity="critical",
-            is_ongoing=True
+            is_ongoing=True,
         )
 
         mock_result = MagicMock()

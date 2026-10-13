@@ -20,13 +20,15 @@ def sample_ohlcv():
     open_ = low + np.random.uniform(0.0, 1.0, n) * (high - low)
     volume = np.random.uniform(1000.0, 5000.0, n)
 
-    return pd.DataFrame({
-        "open": open_,
-        "high": high,
-        "low": low,
-        "close": close,
-        "volume": volume,
-    })
+    return pd.DataFrame(
+        {
+            "open": open_,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": volume,
+        }
+    )
 
 
 def test_registry_has_20_factors():

@@ -148,7 +148,7 @@ class AdHocSubagentManager:
                 start = cleaned.find("{")
                 end = cleaned.rfind("}")
                 if start != -1 and end != -1:
-                    data = json.loads(cleaned[start:end+1])
+                    data = json.loads(cleaned[start : end + 1])
                 else:
                     data = {}
 

@@ -21,7 +21,9 @@ memory_router = APIRouter(prefix="/api/memory", tags=["Memory"])
 
 
 class MemorySearchRequest(BaseModel):
-    query: str = Field(..., min_length=1, max_length=200, description="Keyword or phrase to search across reflections and lessons")
+    query: str = Field(
+        ..., min_length=1, max_length=200, description="Keyword or phrase to search across reflections and lessons"
+    )
     limit: int = Field(50, ge=1, le=200)
     symbol: Optional[str] = None
 
@@ -66,30 +68,32 @@ async def get_reflections(
 
             out = []
             for r in reflections:
-                out.append({
-                    "id": r.id,
-                    "symbol": r.symbol,
-                    "decision": r.decision,
-                    "confidence": r.confidence,
-                    "confluence_score": r.confluence_score,
-                    "rationale_summary": r.rationale_summary,
-                    "outcome_pnl_usd": r.outcome_pnl_usd,
-                    "holding_hours": r.holding_hours,
-                    "exit_reason": r.exit_reason,
-                    "was_profitable": r.was_profitable,
-                    "reflection_text": r.reflection_text,
-                    "next_trade_adjustment": r.next_trade_adjustment,
-                    "specific_lesson": r.specific_lesson,
-                    "lesson_tags": r.lesson_tags,
-                    "alpha_return": r.alpha_return,
-                    "process_was_sound": r.process_was_sound,
-                    "outcome_process_classification": r.outcome_process_classification,
-                    "macro_thesis_correct": r.macro_thesis_correct,
-                    "debate_verdict": r.debate_verdict,
-                    "debate_summary": r.debate_summary,
-                    "is_paper_whatif": r.is_paper_whatif,
-                    "whatif_reason": r.whatif_reason,
-                })
+                out.append(
+                    {
+                        "id": r.id,
+                        "symbol": r.symbol,
+                        "decision": r.decision,
+                        "confidence": r.confidence,
+                        "confluence_score": r.confluence_score,
+                        "rationale_summary": r.rationale_summary,
+                        "outcome_pnl_usd": r.outcome_pnl_usd,
+                        "holding_hours": r.holding_hours,
+                        "exit_reason": r.exit_reason,
+                        "was_profitable": r.was_profitable,
+                        "reflection_text": r.reflection_text,
+                        "next_trade_adjustment": r.next_trade_adjustment,
+                        "specific_lesson": r.specific_lesson,
+                        "lesson_tags": r.lesson_tags,
+                        "alpha_return": r.alpha_return,
+                        "process_was_sound": r.process_was_sound,
+                        "outcome_process_classification": r.outcome_process_classification,
+                        "macro_thesis_correct": r.macro_thesis_correct,
+                        "debate_verdict": r.debate_verdict,
+                        "debate_summary": r.debate_summary,
+                        "is_paper_whatif": r.is_paper_whatif,
+                        "whatif_reason": r.whatif_reason,
+                    }
+                )
             return out
     except Exception as e:
         logger.error(f"Error fetching decision reflections: {e}", exc_info=True)
@@ -118,19 +122,21 @@ async def get_lessons(
 
             out = []
             for item in lessons:
-                out.append({
-                    "id": item.id,
-                    "symbol": item.symbol,
-                    "lesson_text": item.lesson_text,
-                    "status": item.status,
-                    "proposed_at": item.proposed_at.isoformat() if item.proposed_at else None,
-                    "evaluated_trades_count": item.evaluated_trades_count,
-                    "win_rate_delta": item.win_rate_delta,
-                    "sharpe_delta": item.sharpe_delta,
-                    "promoted_at": item.promoted_at.isoformat() if item.promoted_at else None,
-                    "rejection_reason": item.rejection_reason,
-                    "condition_tags": item.condition_tags,
-                })
+                out.append(
+                    {
+                        "id": item.id,
+                        "symbol": item.symbol,
+                        "lesson_text": item.lesson_text,
+                        "status": item.status,
+                        "proposed_at": item.proposed_at.isoformat() if item.proposed_at else None,
+                        "evaluated_trades_count": item.evaluated_trades_count,
+                        "win_rate_delta": item.win_rate_delta,
+                        "sharpe_delta": item.sharpe_delta,
+                        "promoted_at": item.promoted_at.isoformat() if item.promoted_at else None,
+                        "rejection_reason": item.rejection_reason,
+                        "condition_tags": item.condition_tags,
+                    }
+                )
             return out
     except Exception as e:
         logger.error(f"Error fetching candidate lessons: {e}", exc_info=True)
@@ -148,22 +154,24 @@ async def get_playbooks(limit: int = Query(50, ge=1, le=200)) -> List[Dict[str, 
 
             out = []
             for p in records:
-                out.append({
-                    "id": p.id,
-                    "rule_hash": p.rule_hash,
-                    "symbol": p.symbol,
-                    "rule_text": p.rule_text,
-                    "status": p.status,
-                    "times_triggered": p.times_triggered,
-                    "wins_count": p.wins_count,
-                    "losses_count": p.losses_count,
-                    "total_pnl": p.total_pnl,
-                    "win_rate": p.win_rate,
-                    "last_triggered_at": p.last_triggered_at.isoformat() if p.last_triggered_at else None,
-                    "promoted_at": p.promoted_at.isoformat() if p.promoted_at else None,
-                    "deprecated_at": p.deprecated_at.isoformat() if p.deprecated_at else None,
-                    "deprecation_reason": p.deprecation_reason,
-                })
+                out.append(
+                    {
+                        "id": p.id,
+                        "rule_hash": p.rule_hash,
+                        "symbol": p.symbol,
+                        "rule_text": p.rule_text,
+                        "status": p.status,
+                        "times_triggered": p.times_triggered,
+                        "wins_count": p.wins_count,
+                        "losses_count": p.losses_count,
+                        "total_pnl": p.total_pnl,
+                        "win_rate": p.win_rate,
+                        "last_triggered_at": p.last_triggered_at.isoformat() if p.last_triggered_at else None,
+                        "promoted_at": p.promoted_at.isoformat() if p.promoted_at else None,
+                        "deprecated_at": p.deprecated_at.isoformat() if p.deprecated_at else None,
+                        "deprecation_reason": p.deprecation_reason,
+                    }
+                )
             return out
     except Exception as e:
         logger.warning(f"Error fetching playbook attributions: {e}")
@@ -184,6 +192,7 @@ async def search_memory(payload: MemorySearchRequest) -> Dict[str, Any]:
             if not is_mock_session:
                 try:
                     from monika.application.analysis.memory.session_search import SessionSearchEngine
+
                     engine = SessionSearchEngine()
                     hybrid_results = await engine.hybrid_search(
                         query=payload.query,
@@ -217,16 +226,18 @@ async def search_memory(payload: MemorySearchRequest) -> Dict[str, Any]:
 
                 r_res = await session.execute(r_stmt)
                 for r in r_res.scalars().all():
-                    reflections_out.append({
-                        "id": r.id,
-                        "symbol": r.symbol,
-                        "decision": r.decision,
-                        "outcome_pnl_usd": r.outcome_pnl_usd,
-                        "reflection_text": r.reflection_text,
-                        "specific_lesson": r.specific_lesson,
-                        "next_trade_adjustment": r.next_trade_adjustment,
-                        "was_profitable": r.was_profitable,
-                    })
+                    reflections_out.append(
+                        {
+                            "id": r.id,
+                            "symbol": r.symbol,
+                            "decision": r.decision,
+                            "outcome_pnl_usd": r.outcome_pnl_usd,
+                            "reflection_text": r.reflection_text,
+                            "specific_lesson": r.specific_lesson,
+                            "next_trade_adjustment": r.next_trade_adjustment,
+                            "was_profitable": r.was_profitable,
+                        }
+                    )
 
             # Query lessons
             l_stmt = (
@@ -245,13 +256,15 @@ async def search_memory(payload: MemorySearchRequest) -> Dict[str, Any]:
 
             l_res = await session.execute(l_stmt)
             for l in l_res.scalars().all():
-                lessons_out.append({
-                    "id": l.id,
-                    "symbol": l.symbol,
-                    "lesson_text": l.lesson_text,
-                    "status": l.status,
-                    "win_rate_delta": l.win_rate_delta,
-                })
+                lessons_out.append(
+                    {
+                        "id": l.id,
+                        "symbol": l.symbol,
+                        "lesson_text": l.lesson_text,
+                        "status": l.status,
+                        "win_rate_delta": l.win_rate_delta,
+                    }
+                )
 
         return {
             "query": payload.query,
@@ -273,15 +286,19 @@ class PlaybookRollbackRequest(BaseModel):
 async def get_playbook_history(name: str) -> List[Dict[str, Any]]:
     """Retrieve version mutation history for a specific playbook."""
     from monika.application.analysis.memory.playbook_ledger import PlaybookLedger
+
     ledger = PlaybookLedger()
     return ledger.list_history(playbook_name=name)
 
 
 @memory_router.post("/playbooks/{name}/rollback")
 @require_role(Role.ADMIN)
-async def rollback_playbook(name: str, request: Request, payload: Optional[PlaybookRollbackRequest] = None) -> Dict[str, Any]:
+async def rollback_playbook(
+    name: str, request: Request, payload: Optional[PlaybookRollbackRequest] = None
+) -> Dict[str, Any]:
     """Roll back a playbook rule to an immediate prior or specified SHA-256 target blob."""
     from monika.application.analysis.memory.playbook_ledger import PlaybookLedger
+
     ledger = PlaybookLedger()
     target_hash = payload.target_hash if payload else None
     success = ledger.rollback(playbook_name=name, target_hash=target_hash)

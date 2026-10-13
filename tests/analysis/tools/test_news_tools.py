@@ -41,7 +41,9 @@ async def test_handle_get_news_digest_empty_db():
     mock_result.scalar_one_or_none.return_value = None
     session.execute.return_value = mock_result
 
-    with patch("analysis.prefetch.digest_slice_generator.DigestSliceGenerator.assemble_12h_digest", new_callable=AsyncMock) as mock_assemble:
+    with patch(
+        "analysis.prefetch.digest_slice_generator.DigestSliceGenerator.assemble_12h_digest", new_callable=AsyncMock
+    ) as mock_assemble:
         mock_assemble.return_value = None
         res = await handle_get_news_digest({}, session=session)
 
@@ -68,7 +70,9 @@ async def test_handle_get_news_digest_with_legacy_news_digest():
     mock_result.scalar_one_or_none.return_value = dummy_digest
     session.execute.return_value = mock_result
 
-    with patch("analysis.prefetch.digest_slice_generator.DigestSliceGenerator.assemble_12h_digest", new_callable=AsyncMock) as mock_assemble:
+    with patch(
+        "analysis.prefetch.digest_slice_generator.DigestSliceGenerator.assemble_12h_digest", new_callable=AsyncMock
+    ) as mock_assemble:
         mock_assemble.return_value = None
         res = await handle_get_news_digest({}, session=session)
 
@@ -89,9 +93,11 @@ async def test_handle_get_news_digest_with_rolling_slices():
     mock_result.scalar_one_or_none.return_value = None
     session.execute = AsyncMock(return_value=mock_result)
 
-    assembled_text = "```digest_metadata\n{\"market_snapshot\": {\"dominant_themes\": [\"Inflation\"]}}\n```\nMacro Overview: Rolling slices active."
+    assembled_text = '```digest_metadata\n{"market_snapshot": {"dominant_themes": ["Inflation"]}}\n```\nMacro Overview: Rolling slices active.'
 
-    with patch("analysis.prefetch.digest_slice_generator.DigestSliceGenerator.assemble_12h_digest", new_callable=AsyncMock) as mock_assemble:
+    with patch(
+        "analysis.prefetch.digest_slice_generator.DigestSliceGenerator.assemble_12h_digest", new_callable=AsyncMock
+    ) as mock_assemble:
         mock_assemble.return_value = assembled_text
         res = await handle_get_news_digest({"hours_back": 12}, session=session)
 
@@ -109,7 +115,9 @@ async def test_handle_get_digest_slices():
     session.execute = AsyncMock(return_value=mock_result)
 
     assembled_text = "USD section: Bullish momentum."
-    with patch("analysis.prefetch.digest_slice_generator.DigestSliceGenerator.assemble_12h_digest", new_callable=AsyncMock) as mock_assemble:
+    with patch(
+        "analysis.prefetch.digest_slice_generator.DigestSliceGenerator.assemble_12h_digest", new_callable=AsyncMock
+    ) as mock_assemble:
         mock_assemble.return_value = assembled_text
         res = await handle_get_digest_slices({"slice_name": "USD"}, session=session)
 
@@ -141,10 +149,12 @@ async def test_get_precomputed_cot_signals_and_surprise_summary():
     session = MagicMock()
     mock_exec = MagicMock()
     mock_cfg = MagicMock()
-    mock_cfg.value = json.dumps({
-        "cot_signals": {"USD": {"signal": "bullish"}},
-        "surprise_summary": {"USD": {"score": 2.5, "trend": "positive"}}
-    })
+    mock_cfg.value = json.dumps(
+        {
+            "cot_signals": {"USD": {"signal": "bullish"}},
+            "surprise_summary": {"USD": {"score": 2.5, "trend": "positive"}},
+        }
+    )
     mock_exec.scalars.return_value.first.return_value = mock_cfg
     session.execute = AsyncMock(return_value=mock_exec)
 

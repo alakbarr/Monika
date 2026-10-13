@@ -46,9 +46,7 @@ class McpSchemaCache:
         raw = json.dumps(normalized, sort_keys=True)
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-    def get_cached_tools(
-        self, server_name: str, server_config: Dict[str, Any]
-    ) -> Optional[List[Dict[str, Any]]]:
+    def get_cached_tools(self, server_name: str, server_config: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
         """
         Retrieves cached tool definitions if the configuration fingerprint matches.
         Returns None if cache is missing, corrupted, or stale.
@@ -63,16 +61,12 @@ class McpSchemaCache:
 
             expected_hash = self.compute_config_hash(server_config)
             if data.get("config_hash") != expected_hash:
-                logger.debug(
-                    f"[McpSchemaCache] Config fingerprint mismatch for '{server_name}'. Cache invalidated."
-                )
+                logger.debug(f"[McpSchemaCache] Config fingerprint mismatch for '{server_name}'. Cache invalidated.")
                 return None
 
             tools = data.get("tools")
             if isinstance(tools, list):
-                logger.debug(
-                    f"[McpSchemaCache] Cache hit for '{server_name}': loaded {len(tools)} tools."
-                )
+                logger.debug(f"[McpSchemaCache] Cache hit for '{server_name}': loaded {len(tools)} tools.")
                 return tools
             return None
         except Exception as exc:

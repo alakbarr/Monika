@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 def test_event_loop_is_selector_on_windows():
     """Verify that on Windows configure_event_loop provides SelectorEventLoop (required by psycopg)."""
     from utils.infra.platform_compat import configure_event_loop, IS_WINDOWS
+
     if IS_WINDOWS:
         factory_dict = configure_event_loop()
         assert factory_dict.get("loop_factory") == asyncio.SelectorEventLoop
@@ -24,10 +25,10 @@ async def test_telegram_bot_lifecycle_and_send_notification_resilience():
 
     settings = {"trading": {}}
     bot = TelegramBot(settings)
-    
+
     # 1. Before start, is_running should be False
     assert bot.is_running is False
-    
+
     # 2. send_notification should return early without error when not running
     await bot.send_notification("Test notification before startup")
 
@@ -68,9 +69,9 @@ async def test_run_with_restart_clean_shutdown_behavior():
             return None
 
     comp = MockComponent()
-    
+
     # Run in restart wrapper
     await _run_with_restart("MockComponent", comp.run_loop, shutdown_event, max_restarts=3, base_delay=0.01)
-    
+
     # Should have executed once and stopped cleanly without looping restarts
     assert comp.call_count == 1

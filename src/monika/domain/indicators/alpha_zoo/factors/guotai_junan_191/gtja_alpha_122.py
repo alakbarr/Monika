@@ -1,4 +1,3 @@
-
 """GTJA Alpha 122 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
@@ -6,6 +5,7 @@ Formula (verbatim from the report):
 
 Notes: Triple SMA of log close.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_122"
 
 __alpha_meta__ = {
-    'id': 'gtja191_122',
-    'theme': ['momentum'],
-    'formula_latex': 'see body',
-    'columns_required': ['close'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 13,
-    'min_warmup_bars': 40,
-    'notes': 'Triple SMA of log close.',
+    "id": "gtja191_122",
+    "theme": ["momentum"],
+    "formula_latex": "see body",
+    "columns_required": ["close"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 13,
+    "min_warmup_bars": 40,
+    "notes": "Triple SMA of log close.",
 }
 
 
@@ -54,9 +54,11 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     Returns:
         pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
     """
+
     def _sma(x, n, m):
         """SMA(x, n, m) per GTJA convention -> ewm with alpha = m/n."""
         return x.ewm(alpha=m / n, adjust=False).mean()
+
     c = panel["close"]
     s = _sma(_sma(_sma(np.log(c), 13, 2), 13, 2), 13, 2)
     out = safe_div(s - s.shift(1), s.shift(1))

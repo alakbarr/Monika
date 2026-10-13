@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 """
 Unit tests for Interactive 2-Way Dashboard Control Endpoints (MED-02).
 Tests /api/actions/trigger-cycle, /api/actions/override-risk,
@@ -22,6 +23,7 @@ def client():
     # Clear and prepare dependencies
     _dependencies.clear()
     import os
+
     with patch.dict(os.environ, {"DASHBOARD_API_KEY": "test_admin_key"}):
         yield TestClient(app, headers={"X-API-Key": "test_admin_key"})
 
@@ -75,7 +77,7 @@ def test_override_risk_parameters(client):
         mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
-        
+
         # Mock no existing row
         mock_exec_res = MagicMock()
         mock_exec_res.scalar_one_or_none.return_value = None
@@ -222,7 +224,6 @@ def test_manual_order_submit(client):
     mock_risk_gate.evaluate_proposal = AsyncMock(return_value=mock_verdict)
 
     set_dashboard_dependencies(mt5_client=mock_mt5, risk_gate=mock_risk_gate)
-
 
     with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()
@@ -390,5 +391,3 @@ def test_shutdown_action_endpoint(client):
     data = resp.json()
     assert data["status"] == "shutting_down"
     assert "initiated" in data["message"].lower()
-
-

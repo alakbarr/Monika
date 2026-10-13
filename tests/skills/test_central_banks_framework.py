@@ -1,6 +1,7 @@
 import unittest
 from skills.loader import load_skill, compose_system_prompt, list_skills
 
+
 class TestCentralBanksFramework(unittest.TestCase):
     def test_central_banks_framework_exists(self):
         """Skill must be listed in available skills and loadable without error."""
@@ -59,5 +60,6 @@ class TestCentralBanksFramework(unittest.TestCase):
         self.assertIn("Data Priority Hierarchy", composed)
         self.assertIn("Relative Currency Attractiveness", composed)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -25,6 +25,7 @@ if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 try:
     from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+
     install_legacy_compat()
 except Exception:
     pass
@@ -32,6 +33,7 @@ except Exception:
 # Muat environment variables dari file .env
 try:
     from dotenv import load_dotenv
+
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     root_dir = os.path.abspath(os.path.join(base_dir, ".."))
     for p in [os.path.join(root_dir, ".env"), os.path.join(base_dir, ".env")]:
@@ -43,11 +45,7 @@ except Exception:
 
 from scrapers.models import CalendarEvent
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(message)s",
-    datefmt="%H:%M:%S"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("CheckCalendar")
 
 
@@ -57,7 +55,9 @@ def print_events_table(events: List[CalendarEvent], max_display: int = 10):
         print("   [!] Tidak ada data event yang ditemukan.")
         return
 
-    print(f"\n   {'TIME':<20} | {'CUR':<5} | {'IMPACT':<8} | {'EVENT NAME':<40} | {'ACTUAL':<10} | {'FORECAST':<10} | {'PREVIOUS':<10}")
+    print(
+        f"\n   {'TIME':<20} | {'CUR':<5} | {'IMPACT':<8} | {'EVENT NAME':<40} | {'ACTUAL':<10} | {'FORECAST':<10} | {'PREVIOUS':<10}"
+    )
     print("   " + "-" * 115)
     for e in events[:max_display]:
         time_str = str(e.time or "-")[:20]
@@ -67,7 +67,9 @@ def print_events_table(events: List[CalendarEvent], max_display: int = 10):
         actual_str = str(e.actual or "-")[:10]
         forecast_str = str(e.forecast or "-")[:10]
         prev_str = str(e.previous or "-")[:10]
-        print(f"   {time_str:<20} | {cur_str:<5} | {impact_str:<8} | {name_str:<40} | {actual_str:<10} | {forecast_str:<10} | {prev_str:<10}")
+        print(
+            f"   {time_str:<20} | {cur_str:<5} | {impact_str:<8} | {name_str:<40} | {actual_str:<10} | {forecast_str:<10} | {prev_str:<10}"
+        )
 
     if len(events) > max_display:
         print(f"   ... dan {len(events) - max_display} event lainnya.\n")
@@ -91,7 +93,12 @@ def check_forexfactory(headless: bool = False, pause: int = 3) -> dict:
         if pause > 0 and not headless:
             logger.info(f"Menahan browser selama {pause} detik sebelum ditutup...")
             time.sleep(pause)
-        return {"source": "ForexFactory", "status": "SUCCESS" if events else "EMPTY", "count": len(events), "duration": duration}
+        return {
+            "source": "ForexFactory",
+            "status": "SUCCESS" if events else "EMPTY",
+            "count": len(events),
+            "duration": duration,
+        }
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         logger.error(f"[FAILED] ForexFactory gagal: {e}")
@@ -118,7 +125,12 @@ def check_investing(headless: bool = False, pause: int = 3) -> dict:
         if pause > 0 and not headless:
             logger.info(f"Menahan browser selama {pause} detik sebelum ditutup...")
             time.sleep(pause)
-        return {"source": "Investing.com", "status": "SUCCESS" if events else "EMPTY", "count": len(events), "duration": duration}
+        return {
+            "source": "Investing.com",
+            "status": "SUCCESS" if events else "EMPTY",
+            "count": len(events),
+            "duration": duration,
+        }
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         logger.error(f"[FAILED] Investing.com gagal: {e}")
@@ -143,7 +155,12 @@ def check_finnhub() -> dict:
         duration = round(time.time() - start_time, 2)
         logger.info(f"[OK] Finnhub: Berhasil mengambil {len(events)} events ({duration}s)")
         print_events_table(events)
-        return {"source": "Finnhub (API)", "status": "SUCCESS" if events else "EMPTY", "count": len(events), "duration": duration}
+        return {
+            "source": "Finnhub (API)",
+            "status": "SUCCESS" if events else "EMPTY",
+            "count": len(events),
+            "duration": duration,
+        }
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         logger.error(f"[FAILED] Finnhub gagal: {e}")
@@ -151,10 +168,21 @@ def check_finnhub() -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Pemeriksaan Scraper Kalender Ekonomi (ForexFactory, Investing.com, Finnhub)")
-    parser.add_argument("--source", choices=["all", "forexfactory", "investing", "finnhub"], default="all", help="Pilih scraper kalender yang ingin diuji (default: all)")
-    parser.add_argument("--headless", action="store_true", help="Jalankan dalam mode headless background (default: False/headed)")
-    parser.add_argument("--pause", type=int, default=3, help="Jeda penutupan browser untuk observasi visual dalam detik (default: 3)")
+    parser = argparse.ArgumentParser(
+        description="Pemeriksaan Scraper Kalender Ekonomi (ForexFactory, Investing.com, Finnhub)"
+    )
+    parser.add_argument(
+        "--source",
+        choices=["all", "forexfactory", "investing", "finnhub"],
+        default="all",
+        help="Pilih scraper kalender yang ingin diuji (default: all)",
+    )
+    parser.add_argument(
+        "--headless", action="store_true", help="Jalankan dalam mode headless background (default: False/headed)"
+    )
+    parser.add_argument(
+        "--pause", type=int, default=3, help="Jeda penutupan browser untuk observasi visual dalam detik (default: 3)"
+    )
 
     args = parser.parse_args()
     headless_mode = args.headless
@@ -179,7 +207,9 @@ def main():
     print("  RINGKASAN HASIL PEMERIKSAAN KALENDER")
     print("=" * 60)
     for r in results:
-        status_tag = "[OK]   " if r.get("status") == "SUCCESS" else ("[EMPTY]" if r.get("status") == "EMPTY" else "[FAIL] ")
+        status_tag = (
+            "[OK]   " if r.get("status") == "SUCCESS" else ("[EMPTY]" if r.get("status") == "EMPTY" else "[FAIL] ")
+        )
         count_str = f"{r.get('count', 0)} events" if "count" in r else r.get("error", "Error")
         print(f"  {status_tag} {r['source']:<20} | Status: {r['status']:<8} | {count_str} ({r.get('duration', 0)}s)")
     print("=" * 60 + "\n")

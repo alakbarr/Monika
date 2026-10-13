@@ -1,4 +1,3 @@
-
 """GTJA Alpha #90.
 
 Formula: ((-1*RANK(CORR(RANK(VWAP),RANK(VOLUME),5))))
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_090",
-    "theme": ['volume'],
-    "formula_latex": '((-1*RANK(CORR(RANK(VWAP),RANK(VOLUME),5))))',
-    "columns_required": ['volume', 'amount'],
+    "theme": ["volume"],
+    "formula_latex": "((-1*RANK(CORR(RANK(VWAP),RANK(VOLUME),5))))",
+    "columns_required": ["volume", "amount"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 5,
     "min_warmup_bars": 6,
-    "notes": 'Negated rank of 5d corr(rank vwap, rank volume).',
+    "notes": "Negated rank of 5d corr(rank vwap, rank volume).",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     v = panel["volume"]

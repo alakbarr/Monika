@@ -26,14 +26,10 @@ from analysis.validators.market_snapshot import VerifiedMarketSnapshot
 @pytest.mark.asyncio
 async def test_settings_and_schema_validation():
     """Group 1: SC-10, SC-11, CW-12 - Config sections and dual paper_trading validation."""
-    cfg_root = TradingAgentConfig(
-        paper_trading=PaperTradingConfig(enabled=True, streak_loss_policy="warn_and_scale")
-    )
+    cfg_root = TradingAgentConfig(paper_trading=PaperTradingConfig(enabled=True, streak_loss_policy="warn_and_scale"))
     assert cfg_root.paper_trading.enabled is True
 
-    cfg_nested = TradingAgentConfig(
-        trading={"paper_trading": {"enabled": False, "streak_loss_policy": "strict"}}
-    )
+    cfg_nested = TradingAgentConfig(trading={"paper_trading": {"enabled": False, "streak_loss_policy": "strict"}})
     assert cfg_nested.trading["paper_trading"]["enabled"] is False
 
 
@@ -113,6 +109,7 @@ async def test_order_executor_lot_step_zero_guard():
 @pytest.mark.asyncio
 async def test_position_synchronizer_ea_heartbeat_guard():
     """Group 3: EX-13 - Stale EA alert only triggers if stale_seconds > 0."""
+
     class DummySync(PositionSynchronizerMixin):
         def __init__(self):
             self.settings = {"execution": {"mt5_common_dir": ""}}

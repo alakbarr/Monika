@@ -28,6 +28,7 @@ from database.fts5_cjk import Fts5SessionSearch
 # 1. MonikaMcpServer Protocol & Tool Execution Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_mcp_server_initialize_and_tool_list():
     server = MonikaMcpServer()
@@ -83,6 +84,7 @@ async def test_mcp_server_execute_quant_calc():
 # ==============================================================================
 # 2. McpEventBridge Tests
 # ==============================================================================
+
 
 @pytest.mark.asyncio
 async def test_mcp_event_bridge_debounced_detection():

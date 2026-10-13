@@ -6,7 +6,6 @@ from analysis.tools.tool_executor import ToolExecutor
 
 
 class TestReportAndSafeHaven:
-
     @pytest.mark.asyncio
     @patch("analysis.providers.llm_factory.get_client_for_task")
     @patch("utils.infra.notifier.AgentNotifier.send_markdown")
@@ -25,7 +24,7 @@ class TestReportAndSafeHaven:
             "trading": {
                 "schedule": {"analysis_cycle_hours": 8},
                 "asset_universe": ["XAUUSD", "EURUSD"],
-                "mt5": {"timeframes": ["H1", "H4"]}
+                "mt5": {"timeframes": ["H1", "H4"]},
             }
         }
 
@@ -33,14 +32,41 @@ class TestReportAndSafeHaven:
         scheduler._paper_tracker = MagicMock()
         scheduler._paper_tracker.get_statistics = AsyncMock(return_value={"win_rate_pct": 60.0, "total_trades": 15})
 
-        with patch("utils.analytics.analysis_tracker.get_direction_accuracy_report", AsyncMock(return_value={"direction_accuracy_4h": 65.0})), \
-             patch("utils.analytics.analysis_tracker.compute_factor_effectiveness", AsyncMock(return_value={"yields": {"win_rate": 70}})), \
-             patch("utils.analytics.edge_tracker.compute_edge_status", AsyncMock(return_value={"status": "positive_edge", "z_score": 1.8, "ci_lower": 52, "ci_upper": 68, "action": "Scale size"})), \
-             patch("utils.analytics.analysis_tracker.analyze_debate_impact", AsyncMock(return_value={"judge_alignment_pct": 75})), \
-             patch("utils.protocol.coherence_flag_tracker.compute_coherence_override_impact", AsyncMock(return_value={"insufficient_data": True})), \
-             patch("utils.llm.memory_compressor.compress_agent_memory", AsyncMock()), \
-             patch("utils.analytics.specialist_tracker.check_specialist_model_quality", AsyncMock(return_value={"alerts": []})):
-
+        with (
+            patch(
+                "utils.analytics.analysis_tracker.get_direction_accuracy_report",
+                AsyncMock(return_value={"direction_accuracy_4h": 65.0}),
+            ),
+            patch(
+                "utils.analytics.analysis_tracker.compute_factor_effectiveness",
+                AsyncMock(return_value={"yields": {"win_rate": 70}}),
+            ),
+            patch(
+                "utils.analytics.edge_tracker.compute_edge_status",
+                AsyncMock(
+                    return_value={
+                        "status": "positive_edge",
+                        "z_score": 1.8,
+                        "ci_lower": 52,
+                        "ci_upper": 68,
+                        "action": "Scale size",
+                    }
+                ),
+            ),
+            patch(
+                "utils.analytics.analysis_tracker.analyze_debate_impact",
+                AsyncMock(return_value={"judge_alignment_pct": 75}),
+            ),
+            patch(
+                "utils.protocol.coherence_flag_tracker.compute_coherence_override_impact",
+                AsyncMock(return_value={"insufficient_data": True}),
+            ),
+            patch("utils.llm.memory_compressor.compress_agent_memory", AsyncMock()),
+            patch(
+                "utils.analytics.specialist_tracker.check_specialist_model_quality",
+                AsyncMock(return_value={"alerts": []}),
+            ),
+        ):
             await scheduler._send_weekly_edge_assessment()
 
         mock_get_client.assert_called_with("report_synthesizer", settings)
@@ -71,7 +97,7 @@ class TestReportAndSafeHaven:
             "trading": {
                 "schedule": {"analysis_cycle_hours": 8},
                 "asset_universe": ["XAUUSD", "EURUSD"],
-                "mt5": {"timeframes": ["H1", "H4"]}
+                "mt5": {"timeframes": ["H1", "H4"]},
             }
         }
 
@@ -110,7 +136,10 @@ class TestReportAndSafeHaven:
 
         mock_session.execute.side_effect = mock_execute_fn
 
-        with patch("utils.calibration.prescreen_calibrator.compute_prescreen_skip_quality", AsyncMock(return_value={"local_heuristic": {"false_skip_rate_pct": 10.0}})):
+        with patch(
+            "utils.calibration.prescreen_calibrator.compute_prescreen_skip_quality",
+            AsyncMock(return_value={"local_heuristic": {"false_skip_rate_pct": 10.0}}),
+        ):
             # EURUSD and EUR/USD should be skipped due to non-safe-haven pause
             should_run_eur, reason_eur = await stage._run_prescreen(session=mock_session, symbol="EURUSD")
             assert should_run_eur is False
@@ -138,20 +167,20 @@ class TestReportAndSafeHaven:
         executor = ToolExecutor(session=mock_session, settings={})
 
         # Mock calculate_position_size on execution_handlers
-        executor.execution_handlers.calculate_position_size = AsyncMock(return_value={
-            "symbol": "EURUSD",
-            "recommended_lots": 0.5,
-            "pip_value": 10.0,
-            "sl_pips": 50.0,
-            "is_valid": True
-        })
+        executor.execution_handlers.calculate_position_size = AsyncMock(
+            return_value={
+                "symbol": "EURUSD",
+                "recommended_lots": 0.5,
+                "pip_value": 10.0,
+                "sl_pips": 50.0,
+                "is_valid": True,
+            }
+        )
 
         # Calling calculate_position_size directly through execute()
-        res = await executor.execute("calculate_position_size", {
-            "symbol": "EURUSD",
-            "entry_price": 1.0800,
-            "stop_loss": 1.0750
-        })
+        res = await executor.execute(
+            "calculate_position_size", {"symbol": "EURUSD", "entry_price": 1.0800, "stop_loss": 1.0750}
+        )
 
         assert res.get("is_valid") is True
         assert res.get("recommended_lots") == 0.5

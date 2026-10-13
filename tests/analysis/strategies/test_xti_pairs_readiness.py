@@ -11,15 +11,7 @@ async def test_xti_pairs_disabled():
     """Verify XTIPairsReadiness returns invalid EdgeSignal when disabled in settings."""
     strategy = XTIPairsReadiness()
     mock_session = create_mock_async_session()
-    settings = {
-        "trading": {
-            "edge_strategy": {
-                "xti_pairs_readiness": {
-                    "enabled": False
-                }
-            }
-        }
-    }
+    settings = {"trading": {"edge_strategy": {"xti_pairs_readiness": {"enabled": False}}}}
 
     res = await strategy.evaluate(mock_session, "XTIUSD", settings)
     assert isinstance(res, EdgeSignal)
@@ -32,16 +24,7 @@ async def test_xti_pairs_missing_data_uses_now_without_error():
     """Verify XTIPairsReadiness executes DB queries using 'now' without NameError."""
     strategy = XTIPairsReadiness()
     mock_session = create_mock_async_session()
-    settings = {
-        "trading": {
-            "edge_strategy": {
-                "xti_pairs_readiness": {
-                    "enabled": True,
-                    "brent_symbol": "XBRUSD"
-                }
-            }
-        }
-    }
+    settings = {"trading": {"edge_strategy": {"xti_pairs_readiness": {"enabled": True, "brent_symbol": "XBRUSD"}}}}
 
     # Mock DB execution returning empty list
     mock_res = MagicMock()
@@ -62,11 +45,7 @@ async def test_xti_pairs_successful_buy_signal_and_hedge_leg():
     settings = {
         "trading": {
             "edge_strategy": {
-                "xti_pairs_readiness": {
-                    "enabled": True,
-                    "brent_symbol": "XBRUSD",
-                    "z_entry_threshold": 2.0
-                }
+                "xti_pairs_readiness": {"enabled": True, "brent_symbol": "XBRUSD", "z_entry_threshold": 2.0}
             }
         }
     }
@@ -83,7 +62,7 @@ async def test_xti_pairs_successful_buy_signal_and_hedge_leg():
         # Slight variation in spread: 4.8, 5.0, 5.2
         xti_offset = 75.0 + (i * 0.2) + ((i % 3 - 1) * 0.2)
         xti_data.append((dt, xti_offset))
-    
+
     # Latest day (extreme spread)
     dt_latest = base_time + timedelta(days=14)
     brent_data.append((dt_latest, 85.0))
@@ -125,11 +104,7 @@ async def test_xti_pairs_successful_sell_signal_and_hedge_leg():
     settings = {
         "trading": {
             "edge_strategy": {
-                "xti_pairs_readiness": {
-                    "enabled": True,
-                    "brent_symbol": "XBRUSD",
-                    "z_entry_threshold": 2.0
-                }
+                "xti_pairs_readiness": {"enabled": True, "brent_symbol": "XBRUSD", "z_entry_threshold": 2.0}
             }
         }
     }
@@ -142,7 +117,7 @@ async def test_xti_pairs_successful_sell_signal_and_hedge_leg():
         brent_data.append((dt, 80.0 + (i * 0.2)))
         xti_offset = 75.0 + (i * 0.2) + ((i % 3 - 1) * 0.2)
         xti_data.append((dt, xti_offset))
-    
+
     # Latest day (abnormally tight spread, e.g. -5.0 -> WTI overvalued)
     dt_latest = base_time + timedelta(days=14)
     brent_data.append((dt_latest, 75.0))
@@ -171,4 +146,3 @@ async def test_xti_pairs_successful_sell_signal_and_hedge_leg():
     assert res.paired_leg.symbol == "XBRUSD"
     assert res.paired_leg.direction == "buy"
     assert res.paired_leg.valid is True
-

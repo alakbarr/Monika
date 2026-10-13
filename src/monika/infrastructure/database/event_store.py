@@ -4,6 +4,7 @@ Targeted Event Store — Append-only immutable event log for trading decisions.
 Events emitted at key decision points with correlation/causation chain.
 Supports post-mortem replay and audit trail queries.
 """
+
 import uuid
 import logging
 from datetime import datetime, timezone
@@ -71,6 +72,7 @@ class TradingEventStore:
     ) -> List[TradingEvent]:
         """Get all events in a correlation chain, ordered by creation time."""
         from sqlalchemy import select, asc
+
         q = (
             select(TradingEvent)
             .where(TradingEvent.correlation_id == str(correlation_id))

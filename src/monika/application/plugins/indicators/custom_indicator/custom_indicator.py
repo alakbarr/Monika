@@ -31,6 +31,7 @@ def calculate_vwap_deviation(args: Dict[str, Any]) -> Dict[str, Any]:
 
 class CustomIndicatorPlugin(TradingPlugin):
     """Custom technical indicator plugin for volume and price analysis."""
+
     metadata = PluginMetadata(
         id="custom_indicator_plugin",
         name="Custom Indicator Plugin",
@@ -41,11 +42,13 @@ class CustomIndicatorPlugin(TradingPlugin):
     )
 
     def calculate(self, symbol: str, current_price: float, vwap_reference: float) -> Dict[str, Any]:
-        return calculate_vwap_deviation({
-            "symbol": symbol,
-            "current_price": current_price,
-            "vwap_reference": vwap_reference,
-        })
+        return calculate_vwap_deviation(
+            {
+                "symbol": symbol,
+                "current_price": current_price,
+                "vwap_reference": vwap_reference,
+            }
+        )
 
 
 def initialize(manager: Optional[Any] = None, config: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:
@@ -56,4 +59,3 @@ def initialize(manager: Optional[Any] = None, config: Optional[Dict[str, Any]] =
 def post_cycle(cycle_data: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:
     """Invoked after trading cycle completion."""
     pass
-

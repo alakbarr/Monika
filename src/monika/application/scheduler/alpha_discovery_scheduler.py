@@ -72,6 +72,7 @@ STRATEGY_PARAM_SPACES: Dict[str, List[ParameterSpec]] = {
 @dataclass
 class AlphaHypothesis:
     """Hypothesis defining a specific strategy rule and parameter combination."""
+
     hypothesis_id: str
     name: str
     strategy_type: str  # e.g. "donchian_breakout", "trend_trailing", "liquidity_sweep", "mean_reversion"
@@ -83,6 +84,7 @@ class AlphaHypothesis:
 @dataclass
 class CandidateAlphaProposal:
     """A vetted alpha strategy proposal passing walk-forward efficiency thresholds."""
+
     proposal_id: str
     hypothesis: AlphaHypothesis
     overall_wfe: float
@@ -151,7 +153,6 @@ class AlphaDiscoveryScheduler:
         """Sets or updates the active EdgeStrategyRunner instance for hot-reloading."""
         self.edge_strategy_runner = runner
 
-
     def generate_hypotheses(self, symbols: Optional[List[str]] = None) -> List[AlphaHypothesis]:
         """
         Generates a diverse set of parameter variations and rule hypotheses
@@ -166,7 +167,7 @@ class AlphaDiscoveryScheduler:
             # 1. Donchian Breakout Variations
             for period in (14, 20, 30):
                 for zscore in (1.2, 1.5, 1.8):
-                    hyp_id = f"donchian_{sym}_p{period}_z{int(zscore*10)}"
+                    hyp_id = f"donchian_{sym}_p{period}_z{int(zscore * 10)}"
                     hypotheses.append(
                         AlphaHypothesis(
                             hypothesis_id=hyp_id,
@@ -185,7 +186,7 @@ class AlphaDiscoveryScheduler:
             # 2. Trend Trailing Volatility Variations
             for sl_atr in (1.2, 1.5, 2.0):
                 for tp_sl in (1.5, 2.0, 2.5):
-                    hyp_id = f"trend_trail_{sym}_sl{int(sl_atr*10)}_tp{int(tp_sl*10)}"
+                    hyp_id = f"trend_trail_{sym}_sl{int(sl_atr * 10)}_tp{int(tp_sl * 10)}"
                     hypotheses.append(
                         AlphaHypothesis(
                             hypothesis_id=hyp_id,
@@ -225,10 +226,7 @@ class AlphaDiscoveryScheduler:
         Evaluates a single alpha hypothesis using IsolatedStrategyBacktestHarness over historical window.
         Returns CandidateAlphaProposal if WFE > min_wfe (0.60) and OOS Sharpe > min_oos_sharpe (0.50).
         """
-        logger.debug(
-            f"[AlphaDiscovery] Evaluating hypothesis '{hypothesis.name}' "
-            f"on {hypothesis.symbol}..."
-        )
+        logger.debug(f"[AlphaDiscovery] Evaluating hypothesis '{hypothesis.name}' on {hypothesis.symbol}...")
 
         now = datetime.now(timezone.utc)
         start_date = now - timedelta(days=self.lookback_days)
@@ -277,7 +275,11 @@ class AlphaDiscoveryScheduler:
 
         # Plateau Pre-Optimization: Find parameter flat stability plateau on IS data before WFO
         param_specs = STRATEGY_PARAM_SPACES.get(hypothesis.strategy_type)
-        if param_specs and hasattr(harness, "fetch_historical_candles") and hasattr(harness, "_run_simulation_on_candles"):
+        if (
+            param_specs
+            and hasattr(harness, "fetch_historical_candles")
+            and hasattr(harness, "_run_simulation_on_candles")
+        ):
             try:
                 async with get_session() as opt_session:
                     all_candles = await harness.fetch_historical_candles(
@@ -367,7 +369,7 @@ class AlphaDiscoveryScheduler:
                 pnl_pct = float(getattr(trade, "pnl_pct", 0.0) or 0.0)
                 if pnl_pct > 0:
                     wins += 1
-                equity *= (1.0 + pnl_pct / 100.0)
+                equity *= 1.0 + pnl_pct / 100.0
                 if equity > peak:
                     peak = equity
                 dd = ((peak - equity) / peak) * 100.0 if peak > 0 else 0.0
@@ -381,8 +383,10 @@ class AlphaDiscoveryScheduler:
                 if fold_dd > max_dd_pct:
                     max_dd_pct = fold_dd
 
-        oos_win_rate = round((wins / total_oos_trades) * 100.0, 1) if total_oos_trades > 0 else (
-            float(getattr(result, "oos_win_rate_pct", 0.0)) if not isinstance(result, dict) else 0.0
+        oos_win_rate = (
+            round((wins / total_oos_trades) * 100.0, 1)
+            if total_oos_trades > 0
+            else (float(getattr(result, "oos_win_rate_pct", 0.0)) if not isinstance(result, dict) else 0.0)
         )
 
         min_oos_trades_threshold = getattr(self, "min_oos_trades", 20)
@@ -410,14 +414,18 @@ class AlphaDiscoveryScheduler:
         # Build proposal with auto-promotion to PAPER_ACTIVE if WFE >= min_wfe (0.60) and auto_deploy_paper is True
         proposal_id = f"alpha_{uuid.uuid4().hex[:8]}"
         if hasattr(harness, "generate_markdown_report"):
-            md_report = harness.generate_markdown_report(result if isinstance(result, dict) else {
-                "overall_wfe": wfe,
-                "aggregate_is_sharpe": is_sharpe,
-                "aggregate_oos_sharpe": oos_sharpe,
-                "dsr": dsr_score,
-                "all_oos_trades": oos_trades,
-                "alpha_validation": alpha_val,
-            })
+            md_report = harness.generate_markdown_report(
+                result
+                if isinstance(result, dict)
+                else {
+                    "overall_wfe": wfe,
+                    "aggregate_is_sharpe": is_sharpe,
+                    "aggregate_oos_sharpe": oos_sharpe,
+                    "dsr": dsr_score,
+                    "all_oos_trades": oos_trades,
+                    "alpha_validation": alpha_val,
+                }
+            )
         else:
             md_report = f"# Alpha Evaluation: {hypothesis.name}\nWFE: {wfe:.2f}"
 
@@ -451,15 +459,13 @@ class AlphaDiscoveryScheduler:
                 config_key = f"candidate_alpha_{proposal.proposal_id}"
                 config_val = json.dumps(proposal.to_dict())
 
-                existing = (await session.execute(
-                    select(SystemConfig).where(SystemConfig.key == config_key)
-                )).scalar_one_or_none()
+                existing = (
+                    await session.execute(select(SystemConfig).where(SystemConfig.key == config_key))
+                ).scalar_one_or_none()
 
                 if existing:
                     await session.execute(
-                        update(SystemConfig)
-                        .where(SystemConfig.key == config_key)
-                        .values(value=config_val)
+                        update(SystemConfig).where(SystemConfig.key == config_key).values(value=config_val)
                     )
                 else:
                     session.add(SystemConfig(key=config_key, value=config_val))
@@ -469,30 +475,26 @@ class AlphaDiscoveryScheduler:
                     # 1. Persist isolated per-symbol parameter key to prevent cross-asset overwrites
                     sym_param_key = f"strategy_params_{proposal.hypothesis.strategy_type}_{proposal.hypothesis.symbol}"
                     param_val = json.dumps(proposal.hypothesis.parameters)
-                    existing_sym = (await session.execute(
-                        select(SystemConfig).where(SystemConfig.key == sym_param_key)
-                    )).scalar_one_or_none()
+                    existing_sym = (
+                        await session.execute(select(SystemConfig).where(SystemConfig.key == sym_param_key))
+                    ).scalar_one_or_none()
 
                     if existing_sym:
                         await session.execute(
-                            update(SystemConfig)
-                            .where(SystemConfig.key == sym_param_key)
-                            .values(value=param_val)
+                            update(SystemConfig).where(SystemConfig.key == sym_param_key).values(value=param_val)
                         )
                     else:
                         session.add(SystemConfig(key=sym_param_key, value=param_val))
 
                     # 2. Maintain global key for backward compatibility
                     global_param_key = f"strategy_params_{proposal.hypothesis.strategy_type}"
-                    existing_global = (await session.execute(
-                        select(SystemConfig).where(SystemConfig.key == global_param_key)
-                    )).scalar_one_or_none()
+                    existing_global = (
+                        await session.execute(select(SystemConfig).where(SystemConfig.key == global_param_key))
+                    ).scalar_one_or_none()
 
                     if existing_global:
                         await session.execute(
-                            update(SystemConfig)
-                            .where(SystemConfig.key == global_param_key)
-                            .values(value=param_val)
+                            update(SystemConfig).where(SystemConfig.key == global_param_key).values(value=param_val)
                         )
                     else:
                         session.add(SystemConfig(key=global_param_key, value=param_val))
@@ -511,13 +513,16 @@ class AlphaDiscoveryScheduler:
                     for stype in target_types:
                         try:
                             from monika.application.analysis.strategies.registry import StrategyRegistry
+
                             StrategyRegistry.hot_reload(
                                 stype,
                                 proposal.hypothesis.parameters,
                                 symbol=proposal.hypothesis.symbol,
                             )
                         except Exception as reg_err:
-                            logger.debug(f"[AlphaDiscovery] StrategyRegistry hot_reload non-fatal for {stype}: {reg_err}")
+                            logger.debug(
+                                f"[AlphaDiscovery] StrategyRegistry hot_reload non-fatal for {stype}: {reg_err}"
+                            )
 
                         if self.edge_strategy_runner and hasattr(self.edge_strategy_runner, "hot_reload_strategy"):
                             try:
@@ -525,11 +530,14 @@ class AlphaDiscoveryScheduler:
                                     stype, proposal.hypothesis.parameters, symbol=proposal.hypothesis.symbol
                                 )
                             except Exception as run_err:
-                                logger.debug(f"[AlphaDiscovery] EdgeStrategyRunner hot_reload non-fatal for {stype}: {run_err}")
+                                logger.debug(
+                                    f"[AlphaDiscovery] EdgeStrategyRunner hot_reload non-fatal for {stype}: {run_err}"
+                                )
 
                     # Register into StrategyDecayMonitor as incubating (min 4 paper trades required)
                     try:
                         from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
                         decay_mon = get_strategy_decay_monitor()
                         decay_mon.register_incubating_strategy(proposal.hypothesis.strategy_type)
                         await decay_mon.save_to_db(session)
@@ -538,24 +546,32 @@ class AlphaDiscoveryScheduler:
                             f"(requires {decay_mon.MIN_INCUBATION_TRADES} paper trades before live execution)."
                         )
                     except Exception as d_err:
-                        logger.debug(f"[AlphaDiscovery] Failed to register incubating strategy in decay monitor: {d_err}")
+                        logger.debug(
+                            f"[AlphaDiscovery] Failed to register incubating strategy in decay monitor: {d_err}"
+                        )
 
-                session.add(ActivityLog(
-                    category="strategy",
-                    description=(
-                        f"Autonomous Alpha Discovered [{proposal.status}]: {proposal.hypothesis.name} "
-                        f"WFE={proposal.overall_wfe:.2f}, OOS_Sharpe={proposal.aggregate_oos_sharpe:.2f}, "
-                        f"Trades={proposal.total_oos_trades} (ID={proposal.proposal_id})"
-                    ),
-                    actor="alpha_discovery_scheduler",
-                    related_id=None,
-                ))
+                session.add(
+                    ActivityLog(
+                        category="strategy",
+                        description=(
+                            f"Autonomous Alpha Discovered [{proposal.status}]: {proposal.hypothesis.name} "
+                            f"WFE={proposal.overall_wfe:.2f}, OOS_Sharpe={proposal.aggregate_oos_sharpe:.2f}, "
+                            f"Trades={proposal.total_oos_trades} (ID={proposal.proposal_id})"
+                        ),
+                        actor="alpha_discovery_scheduler",
+                        related_id=None,
+                    )
+                )
                 await session.commit()
-                logger.debug(f"[AlphaDiscovery] Successfully persisted proposal {proposal.proposal_id} ({proposal.status}) to DB.")
+                logger.debug(
+                    f"[AlphaDiscovery] Successfully persisted proposal {proposal.proposal_id} ({proposal.status}) to DB."
+                )
 
             # Notify operator if notifier is available
             if self.notifier and hasattr(self.notifier, "send_info"):
-                deploy_badge = " <b>HOT-DEPLOYED TO PAPER TRADING</b>" if proposal.status == "PAPER_ACTIVE" else "PROPOSED"
+                deploy_badge = (
+                    " <b>HOT-DEPLOYED TO PAPER TRADING</b>" if proposal.status == "PAPER_ACTIVE" else "PROPOSED"
+                )
                 await self.notifier.send_info(
                     f" <b>Autonomous Alpha Discovered!</b>\n"
                     f"<b>Status:</b> {deploy_badge}\n"
@@ -577,9 +593,9 @@ class AlphaDiscoveryScheduler:
             async with get_session() as session:
                 if not target_prop:
                     config_key = f"candidate_alpha_{proposal_id}"
-                    row = (await session.execute(
-                        select(SystemConfig).where(SystemConfig.key == config_key)
-                    )).scalar_one_or_none()
+                    row = (
+                        await session.execute(select(SystemConfig).where(SystemConfig.key == config_key))
+                    ).scalar_one_or_none()
                     if row and row.value:
                         d = json.loads(row.value)
                         target_prop = CandidateAlphaProposal(
@@ -593,7 +609,7 @@ class AlphaDiscoveryScheduler:
                             is_overfit=d["is_overfit"],
                             status="PAPER_ACTIVE",
                             markdown_report=d.get("markdown_report", ""),
-                            max_drawdown_pct=d.get("max_drawdown_pct", 0.0)
+                            max_drawdown_pct=d.get("max_drawdown_pct", 0.0),
                         )
 
                 if not target_prop:
@@ -607,7 +623,6 @@ class AlphaDiscoveryScheduler:
         except Exception as e:
             logger.warning(f"[AlphaDiscovery] Promotion failed for {proposal_id}: {e}")
             return False
-
 
     async def run_discovery_cycle(self, max_evaluations: int = 5) -> List[CandidateAlphaProposal]:
         """
@@ -652,7 +667,11 @@ class AlphaDiscoveryScheduler:
             except asyncio.TimeoutError:
                 logger.debug("AlphaDiscoveryScheduler: Recovery wait timed out (120s), proceeding.")
 
-        startup_delay = float(self.settings.get("alpha_discovery", {}).get("startup_delay_seconds", 60.0)) if isinstance(self.settings, dict) else 60.0
+        startup_delay = (
+            float(self.settings.get("alpha_discovery", {}).get("startup_delay_seconds", 60.0))
+            if isinstance(self.settings, dict)
+            else 60.0
+        )
         if startup_delay > 0:
             logger.info(f"AlphaDiscoveryScheduler: Waiting {startup_delay:.0f}s before first discovery cycle...")
             try:

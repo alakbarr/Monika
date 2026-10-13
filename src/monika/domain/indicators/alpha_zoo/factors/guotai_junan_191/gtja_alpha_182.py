@@ -1,4 +1,3 @@
-
 """GTJA Alpha 182 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
@@ -6,6 +5,7 @@ Formula (verbatim from the report):
 
 Notes: Benchmark falls back to cross-sectional mean of close.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_182"
 
 __alpha_meta__ = {
-    'id': 'gtja191_182',
-    'theme': ['momentum'],
-    'formula_latex': 'see body',
-    'columns_required': ['open', 'high', 'low', 'close', 'volume'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 20,
-    'min_warmup_bars': 21,
-    'notes': 'Benchmark falls back to cross-sectional mean of close.',
+    "id": "gtja191_182",
+    "theme": ["momentum"],
+    "formula_latex": "see body",
+    "columns_required": ["open", "high", "low", "close", "volume"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 20,
+    "min_warmup_bars": 21,
+    "notes": "Benchmark falls back to cross-sectional mean of close.",
 }
 
 
@@ -54,6 +54,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     Returns:
         pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
     """
+
     def _bench_close():
         """Benchmark close fallback: cross-sectional mean of `close`."""
         if "benchmark_close" in panel:
@@ -64,11 +65,12 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
             index=c.index,
             columns=c.columns,
         )
+
     c = panel["close"]
     o = panel["open"]
     bench = _bench_close()
-    up = ((c > o) & (bench > bench.shift(1)))
-    dn = ((c < o) & (bench < bench.shift(1)))
+    up = (c > o) & (bench > bench.shift(1))
+    dn = (c < o) & (bench < bench.shift(1))
     # A bar with a missing open/close is neither up nor down (#1463).
     cond = (up | dn).astype("float64").where(c.notna() & o.notna())
     out = cond.rolling(20).sum() / 20.0

@@ -36,6 +36,7 @@ class IRiskRulePlugin(TradingPlugin, ABC):
     Contract for modular pre-trade risk inspection rules.
     Examples: Session trading hours filter, custom volatility bands, sector exposure limits.
     """
+
     category: PluginCategory = PluginCategory.RISK_RULE
 
     @abstractmethod
@@ -57,6 +58,7 @@ class IDynamicSizingPlugin(TradingPlugin, ABC):
     Contract for dynamic position sizing modifiers.
     Examples: Kelly Criterion adjustment, ATR volatility scaling, Win-streak scaling.
     """
+
     category: PluginCategory = PluginCategory.DYNAMIC_SIZING
 
     @abstractmethod
@@ -77,6 +79,7 @@ class IPostTradeInspectionPlugin(TradingPlugin, ABC):
     Contract for post-trade fills and closed position auditing.
     Examples: Slippage anomaly detection, execution latency tracker.
     """
+
     @abstractmethod
     async def inspect_post_trade(
         self,
@@ -92,6 +95,7 @@ class ModularRiskRegistry:
     Central registry for active modular risk rules and dynamic sizing plugins.
     Integrated into RiskGate to extend validation while preserving core safety invariants.
     """
+
     _instance: Optional["ModularRiskRegistry"] = None
 
     def __init__(self):

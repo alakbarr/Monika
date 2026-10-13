@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+
 # ==============================================================================
 # File: tests/risk/test_calendar_freshness.py
 # ==============================================================================
@@ -19,7 +20,7 @@ def settings():
                 "max_lot_size": 1.0,
                 "correlation_limit": 3,
                 "news_window_minutes": 15,
-                "max_portfolio_heat_pct": 4.0
+                "max_portfolio_heat_pct": 4.0,
             }
         }
     }

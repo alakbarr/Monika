@@ -1,4 +1,3 @@
-
 """GTJA Alpha 165 ( 191  alpha , 2014).
 
 Formula (verbatim from the report):
@@ -6,6 +5,7 @@ Formula (verbatim from the report):
 
 Notes: SUMAC = expanding cumulative sum approximated by rolling 48-day cumulative sum.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,16 +32,16 @@ from monika.domain.indicators.factor_primitives import (
 ALPHA_ID = "gtja191_165"
 
 __alpha_meta__ = {
-    'id': 'gtja191_165',
-    'theme': ['volatility'],
-    'formula_latex': 'see body',
-    'columns_required': ['close'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 48,
-    'min_warmup_bars': 142,
-    'notes': 'SUMAC = expanding cumulative sum approximated by rolling 48-day cumulative sum.',
+    "id": "gtja191_165",
+    "theme": ["volatility"],
+    "formula_latex": "see body",
+    "columns_required": ["close"],
+    "extras_required": [],
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 48,
+    "min_warmup_bars": 142,
+    "notes": "SUMAC = expanding cumulative sum approximated by rolling 48-day cumulative sum.",
 }
 
 

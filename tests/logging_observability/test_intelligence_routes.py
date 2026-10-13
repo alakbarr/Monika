@@ -259,7 +259,11 @@ def test_curate_skills_endpoint(client):
     mock_session = create_mock_async_session()
     with patch("logging_observability.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        with patch("analysis.memory.skill_crystallizer.SkillCrystallizer.curate_and_prune_skills", new_callable=AsyncMock, return_value=[]):
+        with patch(
+            "analysis.memory.skill_crystallizer.SkillCrystallizer.curate_and_prune_skills",
+            new_callable=AsyncMock,
+            return_value=[],
+        ):
             response = client.post("/api/skills/curate")
             assert response.status_code == 200
             data = response.json()
@@ -289,11 +293,13 @@ def test_crystallize_skills_now_endpoint(client):
     mock_session = create_mock_async_session()
     with patch("logging_observability.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        with patch("analysis.memory.skill_crystallizer.SkillCrystallizer.evaluate_and_crystallize", new_callable=AsyncMock, return_value=[{"name": "test_cryst"}]):
+        with patch(
+            "analysis.memory.skill_crystallizer.SkillCrystallizer.evaluate_and_crystallize",
+            new_callable=AsyncMock,
+            return_value=[{"name": "test_cryst"}],
+        ):
             response = client.post("/api/skills/crystallize", json={"symbol": "EURUSD"})
             assert response.status_code == 200
             data = response.json()
             assert data["status"] == "crystallized"
             assert data["count"] == 1
-
-

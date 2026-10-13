@@ -7,9 +7,18 @@ os.makedirs(target_dir, exist_ok=True)
 
 # 1. G1: Tokens & Forbidden Effects
 cmds_g1 = [
-    ("Raw Hex in TSX", 'git grep -n -E "#[0-9a-fA-F]{3,8}\\b" -- "trading-agent/logging_observability/dashboard/frontend/src/*.tsx" "trading-agent/logging_observability/dashboard/frontend/src/components"'),
-    ("Forbidden Effects (blur, rounded-full)", 'git grep -n -E "backdrop-filter|filter:\\s*blur|blur\\(|rounded-full|from-purple|to-indigo" -- "trading-agent/logging_observability/dashboard/frontend/src"'),
-    ("1.5px Non-integer Borders", 'git grep -n -E "border.*:\\s*\'?1\\.5px" -- "trading-agent/logging_observability/dashboard/frontend/src"')
+    (
+        "Raw Hex in TSX",
+        'git grep -n -E "#[0-9a-fA-F]{3,8}\\b" -- "trading-agent/logging_observability/dashboard/frontend/src/*.tsx" "trading-agent/logging_observability/dashboard/frontend/src/components"',
+    ),
+    (
+        "Forbidden Effects (blur, rounded-full)",
+        'git grep -n -E "backdrop-filter|filter:\\s*blur|blur\\(|rounded-full|from-purple|to-indigo" -- "trading-agent/logging_observability/dashboard/frontend/src"',
+    ),
+    (
+        "1.5px Non-integer Borders",
+        'git grep -n -E "border.*:\\s*\'?1\\.5px" -- "trading-agent/logging_observability/dashboard/frontend/src"',
+    ),
 ]
 
 out_g1 = []

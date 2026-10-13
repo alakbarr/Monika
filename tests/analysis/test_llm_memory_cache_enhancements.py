@@ -15,11 +15,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         self.settings = {
             "llm": {
                 "providers": {
-                    "gemini": {
-                        "api_key": "test-api-key-12345",
-                        "streaming": {"enabled": False},
-                        "timeout_seconds": 30
-                    }
+                    "gemini": {"api_key": "test-api-key-12345", "streaming": {"enabled": False}, "timeout_seconds": 30}
                 }
             }
         }
@@ -31,15 +27,13 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         provider.thinking_budget = 0
         provider.thinking_level = "none"
 
-        with patch("analysis.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock) as mock_fetch, \
-             patch("analysis.providers.gemini_provider.get_session"), \
-             patch("analysis.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True):
-            
+        with (
+            patch("analysis.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock) as mock_fetch,
+            patch("analysis.providers.gemini_provider.get_session"),
+            patch("analysis.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True),
+        ):
             mock_fetch.return_value = {
-                "candidates": [{
-                    "content": {"parts": [{"text": '{"result": "success"}'}]},
-                    "finishReason": "STOP"
-                }]
+                "candidates": [{"content": {"parts": [{"text": '{"result": "success"}'}]}, "finishReason": "STOP"}]
             }
 
             res = await provider.generate("test prompt", max_tokens=1024)
@@ -51,6 +45,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
     async def test_chronicle_writer_preserves_structural_events(self):
         """Event struktural (geopolitical, institutional, regime_shift) tidak di-resolve otomatis."""
         from analysis.memory.chronicle_writer import ChronicleWriter
+
         writer = ChronicleWriter()
 
         mock_session = create_mock_async_session()
@@ -71,7 +66,10 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
 
         await writer.maybe_record_regime_shift(mock_session, brief, prev_brief)
 
-        calls = [str(call[0][0].compile(compile_kwargs={"literal_binds": True})) for call in mock_session.execute.call_args_list]
+        calls = [
+            str(call[0][0].compile(compile_kwargs={"literal_binds": True}))
+            for call in mock_session.execute.call_args_list
+        ]
         update_queries = " ".join([q for q in calls if q.strip().startswith("UPDATE")])
         self.assertTrue(any("category = 'data_shock'" in q for q in calls))
         self.assertTrue(any("category = 'policy_change'" in q for q in calls))
@@ -82,7 +80,11 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         """Pastikan prompt spesialis 100% statis & symbol-agnostic demi KV cache hit."""
         for role, prompt in SPECIALIST_PROMPTS.items():
             self.assertNotIn("{symbol}", prompt, f"Prompt {role} mengandung {{symbol}}, merusak cache hit!")
-            self.assertIn("target asset", prompt.lower(), f"Prompt {role} harus menginstruksikan LLM membaca target asset dari user message.")
+            self.assertIn(
+                "target asset",
+                prompt.lower(),
+                f"Prompt {role} harus menginstruksikan LLM membaca target asset dari user message.",
+            )
 
     async def test_fact_sheet_includes_layer1_core_memory(self):
         """Pastikan fact_sheet memuat ringkasan Layer 1 Core Memory (regime & lessons)."""
@@ -105,9 +107,11 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         mock_exec_result.scalars.return_value = mock_scalars
         mock_session.execute.return_value = mock_exec_result
 
-        with patch("analysis.memory.layered_memory.LayeredMemoryManager.get_core_memory", new_callable=AsyncMock) as mock_get_core:
+        with patch(
+            "analysis.memory.layered_memory.LayeredMemoryManager.get_core_memory", new_callable=AsyncMock
+        ) as mock_get_core:
             mock_get_core.return_value = "=== REGIME: RISK_ON ===\nLessons: Avoid counter-trend breakout."
-            
+
             sheet = await build_fact_sheet(mock_session, analysis)
             self.assertIn("active_core_regime_and_lessons", sheet)
             self.assertIsNotNone(sheet["active_core_regime_and_lessons"])
@@ -118,6 +122,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
     async def test_chronicle_writer_bootstrap_seeding(self):
         """Pastikan seed_bootstrap_chronicles_if_empty membuat 5 seed struktural terverifikasi 2026 saat tabel kosong."""
         from analysis.memory.chronicle_writer import ChronicleWriter
+
         writer = ChronicleWriter()
 
         mock_session = create_mock_async_session()
@@ -134,14 +139,18 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
     async def test_anthropic_generate_builds_system_blocks_and_adaptive_efforts(self):
         """Pastikan Anthropic generate() memanggil _build_system_blocks dan mendukung level xhigh/max."""
         from analysis.providers.anthropic_provider import AnthropicProvider
+
         provider = AnthropicProvider(model="claude-sonnet-4-6", settings=self.settings, thinking_level="xhigh")
         provider.client = AsyncMock()
         mock_stream = AsyncMock()
         mock_stream.get_final_message.return_value = MagicMock(content=[MagicMock(text="test output")], usage=None)
 
-        with patch.object(provider, "_consume_anthropic_stream", return_value=mock_stream.get_final_message.return_value), \
-             patch("utils.api.claude_rate_limiter.ClaudeRateLimiter.acquire_session_slot", new_callable=AsyncMock):
-            
+        with (
+            patch.object(
+                provider, "_consume_anthropic_stream", return_value=mock_stream.get_final_message.return_value
+            ),
+            patch("utils.api.claude_rate_limiter.ClaudeRateLimiter.acquire_session_slot", new_callable=AsyncMock),
+        ):
             await provider.generate("hello", system="System instruction for cache")
             call_kwargs = provider._consume_anthropic_stream.call_args[0][0]
 
@@ -180,6 +189,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
     def test_openai_dynamic_headroom(self):
         """Pastikan OpenAI provider menerapkan headroom dinamis bertingkat sesuai thinking level."""
         from analysis.providers.openai_provider import OpenAIProvider
+
         provider = OpenAIProvider(model="o3-mini", max_tokens=4096, thinking_level="high", settings=self.settings)
         kwargs = {"max_tokens": 4096}
         provider._apply_reasoning_params(kwargs)
@@ -194,7 +204,9 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         from analysis.debate.bear_analyst import generate_bear_dissent
 
         mock_client = AsyncMock()
-        mock_client.generate_content.return_value = '{"bull_thesis": "Strong support", "strength_score": 8, "evidence_cited": ["ATR=1.5", "DXY=down"]}'
+        mock_client.generate_content.return_value = (
+            '{"bull_thesis": "Strong support", "strength_score": 8, "evidence_cited": ["ATR=1.5", "DXY=down"]}'
+        )
 
         await generate_bull_advocacy(mock_client, "EURUSD", {"decision": "buy"}, {})
         bull_sys = mock_client.generate_content.call_args[1]["system_prompt"]
@@ -203,7 +215,9 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         self.assertIn("target asset specified in the user message", bull_sys)
         self.assertIn("[TARGET ASSET]: EURUSD", bull_user)
 
-        mock_client.generate_content.return_value = '{"bear_dissent": "Weak resistance", "risk_severity": 6, "evidence_cited": ["ATR=1.5", "VIX=22.0"]}'
+        mock_client.generate_content.return_value = (
+            '{"bear_dissent": "Weak resistance", "risk_severity": 6, "evidence_cited": ["ATR=1.5", "VIX=22.0"]}'
+        )
         await generate_bear_dissent(mock_client, "GBPUSD", {"decision": "buy"}, {}, {})
         bear_sys = mock_client.generate_content.call_args[1]["system_prompt"]
         bear_user = mock_client.generate_content.call_args[1]["user_message"]
@@ -214,7 +228,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
     def test_cache_breakpoint_manager_skips_short_prompts_and_pads_near_threshold(self):
         """Pastikan CacheBreakpointManager tidak membuang token pada prompt pendek, tapi pad saat dekat threshold."""
         from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
-        
+
         # 1. Prompt pendek (< 10.000 char) tidak boleh dipad
         short_prompt = "You are a classifier."
         res_short = CacheBreakpointManager.pad_system_prompt_to_threshold(short_prompt, model_name="gemini-3.7-flash")
@@ -302,5 +316,3 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
                 break
         cache_hit_rate = common_len / max(len(sys_p1), len(sys_p2))
         self.assertGreaterEqual(cache_hit_rate, 0.99, "Prompt cache invariance harus mencapai >99% kestabilan prefix!")
-
-

@@ -41,8 +41,7 @@ async def test_order_emulator_breakeven_buy():
     )
     # Entry 2000.0, ATR 10.0, SL 1980.0
     await emulator.register_position(
-        ticket=101, symbol="XAUUSD", direction="buy",
-        entry_price=2000.0, current_sl=1980.0, atr=10.0
+        ticket=101, symbol="XAUUSD", direction="buy", entry_price=2000.0, current_sl=1980.0, atr=10.0
     )
 
     # Tick with price 2005 (profit 5 < 1.0 ATR) -> no adjustment
@@ -67,16 +66,15 @@ async def test_order_emulator_trailing_buy():
     mock_adjust = AsyncMock(return_value={"success": True})
     emulator = ClientOrderEmulator(
         on_sl_adjustment=mock_adjust,
-        settings={"trading": {"trailing_stop": {
-            "breakeven_atr_multiple": 1.0,
-            "trail_atr_multiple": 1.5,
-            "spread_buffer_atr": 0.1
-        }}},
+        settings={
+            "trading": {
+                "trailing_stop": {"breakeven_atr_multiple": 1.0, "trail_atr_multiple": 1.5, "spread_buffer_atr": 0.1}
+            }
+        },
     )
     # Entry 2000.0, ATR 10.0, SL 2001.0 (already at BE)
     await emulator.register_position(
-        ticket=102, symbol="XAUUSD", direction="buy",
-        entry_price=2000.0, current_sl=2001.0, atr=10.0
+        ticket=102, symbol="XAUUSD", direction="buy", entry_price=2000.0, current_sl=2001.0, atr=10.0
     )
 
     # Tick price 2025.0 (profit 25 >= 2.0 * ATR = 20.0) -> Trailing triggered!
@@ -94,16 +92,15 @@ async def test_order_emulator_breakeven_and_trailing_sell():
     mock_adjust = AsyncMock(return_value={"success": True})
     emulator = ClientOrderEmulator(
         on_sl_adjustment=mock_adjust,
-        settings={"trading": {"trailing_stop": {
-            "breakeven_atr_multiple": 1.0,
-            "trail_atr_multiple": 1.5,
-            "spread_buffer_atr": 0.1
-        }}},
+        settings={
+            "trading": {
+                "trailing_stop": {"breakeven_atr_multiple": 1.0, "trail_atr_multiple": 1.5, "spread_buffer_atr": 0.1}
+            }
+        },
     )
     # SELL: Entry 1.1000, ATR 0.0050, SL 1.1100
     await emulator.register_position(
-        ticket=201, symbol="EURUSD", direction="sell",
-        entry_price=1.1000, current_sl=1.1100, atr=0.0050
+        ticket=201, symbol="EURUSD", direction="sell", entry_price=1.1000, current_sl=1.1100, atr=0.0050
     )
 
     # 1. BE check: price drops to 1.0945 (profit = 1.1000 - 1.0945 = 0.0055 >= 1.0 * ATR 0.0050)
@@ -132,8 +129,7 @@ async def test_order_emulator_event_bus_integration():
     )
 
     await emulator.register_position(
-        ticket=301, symbol="BTCUSD", direction="buy",
-        entry_price=50000.0, current_sl=48000.0, atr=1000.0
+        ticket=301, symbol="BTCUSD", direction="buy", entry_price=50000.0, current_sl=48000.0, atr=1000.0
     )
 
     # Publish tick on EventBus
@@ -151,8 +147,12 @@ async def test_order_emulator_event_bus_integration():
 @pytest.mark.asyncio
 async def test_order_emulator_sync_positions():
     emulator = ClientOrderEmulator()
-    await emulator.register_position(ticket=1, symbol="EURUSD", direction="buy", entry_price=1.1, current_sl=1.09, atr=0.01)
-    await emulator.register_position(ticket=2, symbol="GBPUSD", direction="buy", entry_price=1.3, current_sl=1.29, atr=0.01)
+    await emulator.register_position(
+        ticket=1, symbol="EURUSD", direction="buy", entry_price=1.1, current_sl=1.09, atr=0.01
+    )
+    await emulator.register_position(
+        ticket=2, symbol="GBPUSD", direction="buy", entry_price=1.3, current_sl=1.29, atr=0.01
+    )
 
     class DummyPos:
         def __init__(self, ticket, symbol, direction, entry, sl):
@@ -184,8 +184,7 @@ async def test_order_emulator_dispatch_failure_retains_sl():
         settings={"trading": {"trailing_stop": {"breakeven_atr_multiple": 1.0, "spread_buffer_atr": 0.1}}},
     )
     pos = await emulator.register_position(
-        ticket=999, symbol="XAUUSD", direction="buy",
-        entry_price=2000.0, current_sl=1980.0, atr=10.0
+        ticket=999, symbol="XAUUSD", direction="buy", entry_price=2000.0, current_sl=1980.0, atr=10.0
     )
 
     tick = TickPriceEvent(symbol="XAUUSD", bid=2015.0, ask=2015.2, last=2015.0)
@@ -212,8 +211,7 @@ async def test_order_emulator_concurrent_ticks_guard():
         settings={"trading": {"trailing_stop": {"breakeven_atr_multiple": 1.0, "spread_buffer_atr": 0.1}}},
     )
     pos = await emulator.register_position(
-        ticket=777, symbol="XAUUSD", direction="buy",
-        entry_price=2000.0, current_sl=1980.0, atr=10.0
+        ticket=777, symbol="XAUUSD", direction="buy", entry_price=2000.0, current_sl=1980.0, atr=10.0
     )
 
     tick = TickPriceEvent(symbol="XAUUSD", bid=2015.0, ask=2015.2, last=2015.0)
@@ -244,8 +242,7 @@ async def test_order_emulator_atr_zero_and_preservation():
 
     # 1. Fresh position with atr=0.0 should have atr=0.0 (not 0.00001)
     pos = await emulator.register_position(
-        ticket=555, symbol="EURUSD", direction="buy",
-        entry_price=1.1000, current_sl=1.0900, atr=0.0
+        ticket=555, symbol="EURUSD", direction="buy", entry_price=1.1000, current_sl=1.0900, atr=0.0
     )
     assert pos.atr == 0.0
 
@@ -256,15 +253,13 @@ async def test_order_emulator_atr_zero_and_preservation():
 
     # 2. Re-register with valid ATR
     pos = await emulator.register_position(
-        ticket=555, symbol="EURUSD", direction="buy",
-        entry_price=1.1000, current_sl=1.0900, atr=0.0050
+        ticket=555, symbol="EURUSD", direction="buy", entry_price=1.1000, current_sl=1.0900, atr=0.0050
     )
     assert pos.atr == 0.0050
 
     # 3. Subsequent register with atr=0.0 preserves existing 0.0050
     pos = await emulator.register_position(
-        ticket=555, symbol="EURUSD", direction="buy",
-        entry_price=1.1000, current_sl=1.0900, atr=0.0
+        ticket=555, symbol="EURUSD", direction="buy", entry_price=1.1000, current_sl=1.0900, atr=0.0
     )
     assert pos.atr == 0.0050
 
@@ -278,8 +273,7 @@ async def test_order_emulator_trailing_activates_breakeven():
         settings={"trading": {"trailing_stop": {"breakeven_atr_multiple": 1.0, "trail_atr_multiple": 1.5}}},
     )
     pos = await emulator.register_position(
-        ticket=888, symbol="XAUUSD", direction="buy",
-        entry_price=2000.0, current_sl=1980.0, atr=10.0
+        ticket=888, symbol="XAUUSD", direction="buy", entry_price=2000.0, current_sl=1980.0, atr=10.0
     )
     # Direct jump to trailing stop territory (> 2.0x ATR)
     tick = TickPriceEvent(symbol="XAUUSD", bid=2030.0, ask=2030.2, last=2030.0)

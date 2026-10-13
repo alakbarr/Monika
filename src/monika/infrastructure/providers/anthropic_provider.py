@@ -30,8 +30,10 @@ logger = logging.getLogger("TradingAgent.AnthropicProvider")
 def __getattr__(name: str) -> Any:
     if name == "ToolExecutor":
         import importlib
+
         return importlib.import_module("monika.application.analysis.tools.tool_executor").ToolExecutor
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 def _build_system_blocks(system_prompt) -> list[dict]:
     """
@@ -48,26 +50,40 @@ def _build_system_blocks(system_prompt) -> list[dict]:
         static_text, dynamic_text = system_prompt
         blocks = []
         if static_text and static_text.strip():
-            blocks.append({'type': 'text', 'text': static_text, 'cache_control': {'type': 'ephemeral'}})
+            blocks.append({"type": "text", "text": static_text, "cache_control": {"type": "ephemeral"}})
         if dynamic_text and dynamic_text.strip():
-            blocks.append({'type': 'text', 'text': dynamic_text})
+            blocks.append({"type": "text", "text": dynamic_text})
         return blocks
     if isinstance(system_prompt, str) and not system_prompt.strip():
         return []
-    return [{'type': 'text', 'text': system_prompt, 'cache_control': {'type': 'ephemeral'}}]
+    return [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}]
+
+
 class AnthropicProvider(BaseLLMClient):
     """
     Klien async Anthropic (Claude) dengan dukungan tool loop multi-turn.
     """
 
-    def __init__(self, model: str, max_tokens: int = 8192, max_tool_turns: int = 15,
-                 thinking_level: str = "none", settings: Optional[dict] = None, temperature: float = 0.0, **kwargs):
+    def __init__(
+        self,
+        model: str,
+        max_tokens: int = 8192,
+        max_tool_turns: int = 15,
+        thinking_level: str = "none",
+        settings: Optional[dict] = None,
+        temperature: float = 0.0,
+        **kwargs,
+    ):
         super().__init__(model, max_tokens, max_tool_turns, thinking_level, settings, temperature, **kwargs)
         self.provider_name = "anthropic"
         from monika.core.security.credential_vault import vault
 
         api_key = kwargs.get("api_key") or vault.get_secret("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY", "")
-        if not api_key and hasattr(anthropic, "AsyncAnthropic") and "unittest.mock" in type(anthropic.AsyncAnthropic).__module__:
+        if (
+            not api_key
+            and hasattr(anthropic, "AsyncAnthropic")
+            and "unittest.mock" in type(anthropic.AsyncAnthropic).__module__
+        ):
             api_key = "mock_key"
 
         if not api_key:
@@ -87,6 +103,7 @@ class AnthropicProvider(BaseLLMClient):
         else:
             try:
                 from monika.infrastructure.llm.adaptive_thinking import QuantizedThinkingAllocator
+
                 quantized_budget = QuantizedThinkingAllocator.quantize(budget)
             except Exception:
                 quantized_budget = 4096 if budget >= 4000 else 1024
@@ -125,15 +142,9 @@ class AnthropicProvider(BaseLLMClient):
         async with self.client.messages.stream(**create_kwargs) as stream:
             stream_iter = stream.__aiter__()
             while True:
-                effective_timeout = (
-                    config.first_chunk_timeout if is_first_chunk
-                    else config.idle_timeout
-                )
+                effective_timeout = config.first_chunk_timeout if is_first_chunk else config.idle_timeout
                 try:
-                    event = await asyncio.wait_for(
-                        stream_iter.__anext__(),
-                        timeout=effective_timeout
-                    )
+                    event = await asyncio.wait_for(stream_iter.__anext__(), timeout=effective_timeout)
                 except StopAsyncIteration:
                     break
                 except asyncio.TimeoutError:
@@ -143,7 +154,7 @@ class AnthropicProvider(BaseLLMClient):
                         f"Anthropic streaming {timeout_type} timeout ({effective_timeout:.0f}s) "
                         f"for {self.model} after {chunks_received} events",
                         idle_seconds=now - last_event_time,
-                        chunks_received=chunks_received
+                        chunks_received=chunks_received,
                     )
 
                 now = time.monotonic()
@@ -151,7 +162,7 @@ class AnthropicProvider(BaseLLMClient):
                     raise StreamSafetyTimeoutError(
                         f"Anthropic stream safety timeout {config.safety_timeout:.0f}s exceeded for {self.model}",
                         idle_seconds=now - last_event_time,
-                        chunks_received=chunks_received
+                        chunks_received=chunks_received,
                     )
 
                 last_event_time = now
@@ -160,13 +171,20 @@ class AnthropicProvider(BaseLLMClient):
 
             return await stream.get_final_message()
 
-    async def generate(self, prompt: str, system: str = "", temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs: Any) -> Optional[str]:
+    async def generate(
+        self,
+        prompt: str,
+        system: str = "",
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs: Any,
+    ) -> Optional[str]:
         """Single-turn text generation dengan retry otomatis untuk transient errors & dukungan reasoning penuh."""
         if not self.client:
             return None
-            
-        use_thinking = self.thinking_level is not None and str(self.thinking_level).lower() != 'none'
-        ADAPTIVE_MODELS = ['sonnet-5', 'opus-5', 'opus-4-7', 'opus-4-8', 'sonnet-4-6', 'opus-4-6', 'adaptive']
+
+        use_thinking = self.thinking_level is not None and str(self.thinking_level).lower() != "none"
+        ADAPTIVE_MODELS = ["sonnet-5", "opus-5", "opus-4-7", "opus-4-8", "sonnet-4-6", "opus-4-6", "adaptive"]
         is_adaptive = use_thinking and any(x in self.model.lower() for x in ADAPTIVE_MODELS)
         thinking_budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(self.thinking_level, 4096)
 
@@ -191,15 +209,14 @@ class AnthropicProvider(BaseLLMClient):
             if is_adaptive:
                 create_kwargs["max_tokens"] = safe_max
                 create_kwargs["thinking"] = {"type": "adaptive"}
-                effort_level = self.thinking_level if self.thinking_level in ["low", "medium", "high", "xhigh", "max"] else "high"
+                effort_level = (
+                    self.thinking_level if self.thinking_level in ["low", "medium", "high", "xhigh", "max"] else "high"
+                )
                 create_kwargs["output_config"] = {"effort": effort_level}
             else:
                 create_kwargs["max_tokens"] = max(safe_max, thinking_budget + 4000)
                 create_kwargs["temperature"] = 1.0
-                create_kwargs["thinking"] = {
-                    "type": "enabled",
-                    "budget_tokens": thinking_budget
-                }
+                create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
         else:
             create_kwargs["max_tokens"] = safe_max
             create_kwargs["temperature"] = eff_temp
@@ -214,15 +231,23 @@ class AnthropicProvider(BaseLLMClient):
                     response = await self._consume_anthropic_stream(create_kwargs)
                 else:
                     response = await self.client.messages.create(**create_kwargs)
-                
-                if hasattr(response, 'usage') and response.usage:
-                    inp = getattr(response.usage, 'input_tokens', 0)
-                    outp = getattr(response.usage, 'output_tokens', 0)
-                    cached_in = getattr(response.usage, 'cache_read_input_tokens', 0) or 0
-                    cache_create = getattr(response.usage, 'cache_creation_input_tokens', 0) or 0
-                    outp_details = getattr(response.usage, 'output_tokens_details', None)
-                    thinking = getattr(outp_details, 'thinking_tokens', 0) or 0 if outp_details else 0
-                    await self._save_token_usage(self.model, "generate", inp, outp, cached_tokens=cached_in, cache_creation_tokens=cache_create, thinking_tokens=thinking)
+
+                if hasattr(response, "usage") and response.usage:
+                    inp = getattr(response.usage, "input_tokens", 0)
+                    outp = getattr(response.usage, "output_tokens", 0)
+                    cached_in = getattr(response.usage, "cache_read_input_tokens", 0) or 0
+                    cache_create = getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+                    outp_details = getattr(response.usage, "output_tokens_details", None)
+                    thinking = getattr(outp_details, "thinking_tokens", 0) or 0 if outp_details else 0
+                    await self._save_token_usage(
+                        self.model,
+                        "generate",
+                        inp,
+                        outp,
+                        cached_tokens=cached_in,
+                        cache_creation_tokens=cache_create,
+                        thinking_tokens=thinking,
+                    )
 
                 if response.content:
                     for block in response.content:
@@ -243,7 +268,9 @@ class AnthropicProvider(BaseLLMClient):
             except AnthropicRateLimitError as e:
                 if attempt == 0:
                     wait = 5.0 + random.uniform(0, 1.5)
-                    logger.warning(f"Anthropic generate 429 rate limit with {self.model}: {e}. Retrying in {wait:.1f}s...")
+                    logger.warning(
+                        f"Anthropic generate 429 rate limit with {self.model}: {e}. Retrying in {wait:.1f}s..."
+                    )
                     await asyncio.sleep(wait)
                     continue
                 logger.warning(f"Anthropic generate rate limited with {self.model}: {e}")
@@ -251,14 +278,16 @@ class AnthropicProvider(BaseLLMClient):
             except AnthropicAPIStatusError as e:
                 if e.status_code == 529 and attempt == 0:
                     wait = 6.0 + random.uniform(0, 2.0)
-                    logger.warning(f"Anthropic generate 529 overloaded with {self.model}: {e}. Retrying in {wait:.1f}s...")
+                    logger.warning(
+                        f"Anthropic generate 529 overloaded with {self.model}: {e}. Retrying in {wait:.1f}s..."
+                    )
                     await asyncio.sleep(wait)
                     continue
                 logger.warning(f"Anthropic generate API status error ({e.status_code}) with {self.model}: {e}")
                 return None
             except Exception as e:
                 err_str = str(e).lower()
-                is_transient = 'timeout' in err_str or '529' in err_str or 'overloaded' in err_str or '429' in err_str
+                is_transient = "timeout" in err_str or "529" in err_str or "overloaded" in err_str or "429" in err_str
                 if is_transient and attempt == 0:
                     logger.warning(f"Anthropic generate transient error with {self.model}: {e}. Retrying in 4s...")
                     await asyncio.sleep(4.0)
@@ -268,12 +297,24 @@ class AnthropicProvider(BaseLLMClient):
         return None
 
     THINKING_CAPABLE_MODELS = [
-        'claude-sonnet-5', 'claude-opus-5', 'claude-opus-4-8',
-        'claude-opus-4-7', 'claude-sonnet-4-6', 'claude-opus-4-6'
+        "claude-sonnet-5",
+        "claude-opus-5",
+        "claude-opus-4-8",
+        "claude-opus-4-7",
+        "claude-sonnet-4-6",
+        "claude-opus-4-6",
     ]
-    THINKING_BUDGETS = {'low': 1024, 'medium': 4096, 'high': 10000, 'xhigh': 16000, 'extended': 16000, 'max': 32000}
+    THINKING_BUDGETS = {"low": 1024, "medium": 4096, "high": 10000, "xhigh": 16000, "extended": 16000, "max": 32000}
 
-    async def classify_json(self, prompt: str, system_prompt: Optional[str] = None, schema: Optional[dict] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs: Any) -> Optional[dict]:
+    async def classify_json(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        schema: Optional[dict] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs: Any,
+    ) -> Optional[dict]:
         """Menghasilkan output JSON valid."""
         if not self.client:
             return None
@@ -281,15 +322,20 @@ class AnthropicProvider(BaseLLMClient):
         eff_temp = temperature if temperature is not None else self.default_temperature
         if schema:
             tool_def = {
-                'name': 'emit_structured_response',
-                'description': 'Emit the final structured JSON response conforming exactly to the schema.',
-                'input_schema': schema,
+                "name": "emit_structured_response",
+                "description": "Emit the final structured JSON response conforming exactly to the schema.",
+                "input_schema": schema,
             }
-            ADAPTIVE_MODELS = ['sonnet-5', 'opus-5', 'opus-4-7', 'opus-4-8', 'sonnet-4-6', 'opus-4-6', 'adaptive']
-            use_thinking = bool(self.thinking_level and str(self.thinking_level).lower() != "none" and any(x in self.model.lower() for x in self.THINKING_CAPABLE_MODELS))
+            ADAPTIVE_MODELS = ["sonnet-5", "opus-5", "opus-4-7", "opus-4-8", "sonnet-4-6", "opus-4-6", "adaptive"]
+            use_thinking = bool(
+                self.thinking_level
+                and str(self.thinking_level).lower() != "none"
+                and any(x in self.model.lower() for x in self.THINKING_CAPABLE_MODELS)
+            )
             is_adaptive = use_thinking and any(x in self.model.lower() for x in ADAPTIVE_MODELS)
-            
+
             from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
             cbm = CacheBreakpointManager()
             sys_blocks, cached_tools = cbm.wrap_classify_json(system_prompt, tool_def, pad_to_cache_threshold=True)
             if not sys_blocks:
@@ -298,10 +344,10 @@ class AnthropicProvider(BaseLLMClient):
                 cached_tools = [tool_def]
 
             create_kwargs = {
-                'model': self.model,
-                'system': sys_blocks,
-                'tools': cached_tools,
-                'messages': [{'role': 'user', 'content': prompt}],
+                "model": self.model,
+                "system": sys_blocks,
+                "tools": cached_tools,
+                "messages": [{"role": "user", "content": prompt}],
             }
             TELEGRAPHIC_DIRECTIVE = (
                 "\n\n[TELEGRAPHIC THINKING PROTOCOL]: Think strictly in dense analytical bullet points. "
@@ -315,23 +361,29 @@ class AnthropicProvider(BaseLLMClient):
 
             if use_thinking:
                 if is_adaptive:
-                    create_kwargs['max_tokens'] = max(self.max_tokens, output_headroom)
-                    create_kwargs['thinking'] = {'type': 'adaptive'}
-                    effort_level = self.thinking_level if self.thinking_level in ['low', 'medium', 'high', 'xhigh', 'max'] else 'high'
-                    create_kwargs['output_config'] = {'effort': effort_level}
+                    create_kwargs["max_tokens"] = max(self.max_tokens, output_headroom)
+                    create_kwargs["thinking"] = {"type": "adaptive"}
+                    effort_level = (
+                        self.thinking_level
+                        if self.thinking_level in ["low", "medium", "high", "xhigh", "max"]
+                        else "high"
+                    )
+                    create_kwargs["output_config"] = {"effort": effort_level}
                     # Adaptive thinking fully supports tool_choice
-                    create_kwargs['tool_choice'] = {'type': 'tool', 'name': 'emit_structured_response'}
+                    create_kwargs["tool_choice"] = {"type": "tool", "name": "emit_structured_response"}
                 else:
-                    budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(self.thinking_level, 4096)
-                    create_kwargs['max_tokens'] = max(self.max_tokens, budget + output_headroom)
-                    create_kwargs['thinking'] = {'type': 'enabled', 'budget_tokens': budget}
-                    create_kwargs['temperature'] = 1.0
-                    create_kwargs['messages'][0]['content'] = prompt + TELEGRAPHIC_DIRECTIVE
+                    budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(
+                        self.thinking_level, 4096
+                    )
+                    create_kwargs["max_tokens"] = max(self.max_tokens, budget + output_headroom)
+                    create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+                    create_kwargs["temperature"] = 1.0
+                    create_kwargs["messages"][0]["content"] = prompt + TELEGRAPHIC_DIRECTIVE
             else:
-                create_kwargs['max_tokens'] = self.max_tokens
-                create_kwargs['temperature'] = eff_temp
-                create_kwargs['tool_choice'] = {'type': 'tool', 'name': 'emit_structured_response'}
-            
+                create_kwargs["max_tokens"] = self.max_tokens
+                create_kwargs["temperature"] = eff_temp
+                create_kwargs["tool_choice"] = {"type": "tool", "name": "emit_structured_response"}
+
             response = None
             provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("anthropic", {})
             use_streaming = provider_cfg.get("streaming", {}).get("enabled", bool(self.settings))
@@ -349,7 +401,9 @@ class AnthropicProvider(BaseLLMClient):
                 except (AnthropicAPITimeoutError, AnthropicAPIConnectionError, AnthropicRateLimitError) as e:
                     if attempt == 0:
                         wait = 4.0 + random.uniform(0, 1.5)
-                        logger.warning(f"Anthropic classify_json transient error with {self.model}: {e}. Retrying in {wait:.1f}s...")
+                        logger.warning(
+                            f"Anthropic classify_json transient error with {self.model}: {e}. Retrying in {wait:.1f}s..."
+                        )
                         await asyncio.sleep(wait)
                         continue
                     logger.warning(f"Anthropic structured classify_json failed with {self.model}: {e}")
@@ -357,38 +411,52 @@ class AnthropicProvider(BaseLLMClient):
                 except AnthropicAPIStatusError as e:
                     if e.status_code == 529 and attempt == 0:
                         wait = 6.0 + random.uniform(0, 2.0)
-                        logger.warning(f"Anthropic classify_json 529 overloaded with {self.model}: {e}. Retrying in {wait:.1f}s...")
+                        logger.warning(
+                            f"Anthropic classify_json 529 overloaded with {self.model}: {e}. Retrying in {wait:.1f}s..."
+                        )
                         await asyncio.sleep(wait)
                         continue
                     logger.warning(f"Anthropic structured classify_json failed with {self.model}: {e}")
                     return None
                 except Exception as e:
-                    logger.warning(f'Anthropic structured classify_json failed with {self.model}: {e}')
+                    logger.warning(f"Anthropic structured classify_json failed with {self.model}: {e}")
                     return None
 
             if not response:
                 return None
 
-            if hasattr(response, 'usage') and response.usage:
-                inp = getattr(response.usage, 'input_tokens', 0)
-                outp = getattr(response.usage, 'output_tokens', 0)
-                cached_in = getattr(response.usage, 'cache_read_input_tokens', 0) or 0
-                cache_create = getattr(response.usage, 'cache_creation_input_tokens', 0) or 0
-                outp_details = getattr(response.usage, 'output_tokens_details', None)
-                thinking = getattr(outp_details, 'thinking_tokens', 0) or 0 if outp_details else 0
-                await self._save_token_usage(self.model, 'classify_json_structured', inp, outp,
-                                             cached_tokens=cached_in, cache_creation_tokens=cache_create, thinking_tokens=thinking)
+            if hasattr(response, "usage") and response.usage:
+                inp = getattr(response.usage, "input_tokens", 0)
+                outp = getattr(response.usage, "output_tokens", 0)
+                cached_in = getattr(response.usage, "cache_read_input_tokens", 0) or 0
+                cache_create = getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+                outp_details = getattr(response.usage, "output_tokens_details", None)
+                thinking = getattr(outp_details, "thinking_tokens", 0) or 0 if outp_details else 0
+                await self._save_token_usage(
+                    self.model,
+                    "classify_json_structured",
+                    inp,
+                    outp,
+                    cached_tokens=cached_in,
+                    cache_creation_tokens=cache_create,
+                    thinking_tokens=thinking,
+                )
 
             for block in response.content:
-                if block.type == 'tool_use':
+                if block.type == "tool_use":
                     return block.input
             if use_thinking:
-                logger.warning(f'[{self.model}] classify_json+thinking produced no tool_use; retrying with forced tool_choice.')
+                logger.warning(
+                    f"[{self.model}] classify_json+thinking produced no tool_use; retrying with forced tool_choice."
+                )
                 retry_kwargs = {
-                    'model': self.model, 'max_tokens': self.max_tokens, 'temperature': eff_temp,
-                    'system': system_prompt or '', 'tools': [tool_def],
-                    'tool_choice': {'type': 'tool', 'name': 'emit_structured_response'},
-                    'messages': [{'role': 'user', 'content': prompt}]
+                    "model": self.model,
+                    "max_tokens": self.max_tokens,
+                    "temperature": eff_temp,
+                    "system": system_prompt or "",
+                    "tools": [tool_def],
+                    "tool_choice": {"type": "tool", "name": "emit_structured_response"},
+                    "messages": [{"role": "user", "content": prompt}],
                 }
                 try:
                     if use_streaming:
@@ -396,39 +464,42 @@ class AnthropicProvider(BaseLLMClient):
                     else:
                         response = await self.client.messages.create(**retry_kwargs)
                     for block in response.content:
-                        if block.type == 'tool_use':
+                        if block.type == "tool_use":
                             return block.input
                 except Exception as re_err:
                     logger.warning(f"Anthropic classify_json forced retry failed with {self.model}: {re_err}")
             return None
-                
+
         res = await self.generate_text(
             prompt + "\n\nRespond with ONLY valid JSON, no markdown, no explanation.",
             system_prompt=system_prompt or "",
-            temperature=eff_temp
+            temperature=eff_temp,
         )
         if not res or res.startswith("ERROR:"):
             return None
         from monika.infrastructure.providers.base_provider import extract_and_parse_json
+
         parsed = extract_and_parse_json(res)
         if parsed is not None:
             return parsed
         logger.warning(f"JSON decode failed in Anthropic classify_json: {res[:200]}")
         return None
 
-
-
     async def run_tool_agent(self, messages: list, tools: list, system_prompt: str | tuple) -> Any:
         """Low-level multi-turn tool-calling. (Digunakan internal atau by agent_from_messages)."""
         if not self.client:
             raise Exception("Anthropic API client not initialized")
-            
-        ADAPTIVE_MODELS = ['sonnet-5', 'opus-5', 'opus-4-7', 'opus-4-8', 'sonnet-4-6', 'opus-4-6', 'adaptive']
-        use_thinking = bool(self.thinking_level and str(self.thinking_level).lower() != "none" and any(x in self.model.lower() for x in self.THINKING_CAPABLE_MODELS))
+
+        ADAPTIVE_MODELS = ["sonnet-5", "opus-5", "opus-4-7", "opus-4-8", "sonnet-4-6", "opus-4-6", "adaptive"]
+        use_thinking = bool(
+            self.thinking_level
+            and str(self.thinking_level).lower() != "none"
+            and any(x in self.model.lower() for x in self.THINKING_CAPABLE_MODELS)
+        )
         is_adaptive = use_thinking and any(x in self.model.lower() for x in ADAPTIVE_MODELS)
-        
+
         thinking_budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(self.thinking_level, 4096)
-            
+
         system_block = _build_system_blocks(system_prompt)
         cached_tools = list(tools)
         if cached_tools:
@@ -442,15 +513,16 @@ class AnthropicProvider(BaseLLMClient):
                 tool_res_block = {
                     "type": "tool_result",
                     "tool_use_id": m.get("tool_call_id", ""),
-                    "content": str(m.get("content", ""))
+                    "content": str(m.get("content", "")),
                 }
-                if normalized_messages and normalized_messages[-1].get("role") == "user" and isinstance(normalized_messages[-1].get("content"), list):
+                if (
+                    normalized_messages
+                    and normalized_messages[-1].get("role") == "user"
+                    and isinstance(normalized_messages[-1].get("content"), list)
+                ):
                     normalized_messages[-1]["content"].append(tool_res_block)
                 else:
-                    normalized_messages.append({
-                        "role": "user",
-                        "content": [tool_res_block]
-                    })
+                    normalized_messages.append({"role": "user", "content": [tool_res_block]})
             elif m.get("tool_calls"):
                 content_blocks = []
                 if m.get("content"):
@@ -464,50 +536,44 @@ class AnthropicProvider(BaseLLMClient):
                             fn_args = json.loads(fn_args)
                         except Exception:
                             fn_args = {}
-                    content_blocks.append({
-                        "type": "tool_use",
-                        "id": tc.get("id", f"toolu_{fn_name}"),
-                        "name": fn_name,
-                        "input": fn_args
-                    })
-                normalized_messages.append({
-                    "role": "assistant",
-                    "content": content_blocks
-                })
+                    content_blocks.append(
+                        {"type": "tool_use", "id": tc.get("id", f"toolu_{fn_name}"), "name": fn_name, "input": fn_args}
+                    )
+                normalized_messages.append({"role": "assistant", "content": content_blocks})
             else:
                 normalized_messages.append(m)
 
         from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
         cbm = CacheBreakpointManager()
         cached_messages = cbm.apply_to_messages(normalized_messages)
 
         create_kwargs = {
-            'model': self.model,
-            'system': system_block,
-            'tools': cached_tools,
-            'messages': cached_messages,
+            "model": self.model,
+            "system": system_block,
+            "tools": cached_tools,
+            "messages": cached_messages,
         }
-        
+
         # Safe auto-ceiling for Anthropic to prevent token truncation
         is_haiku = "haiku" in self.model.lower()
         safe_max = min(max(self.max_tokens, 8192), 8192) if is_haiku else max(self.max_tokens, 64000)
 
         if use_thinking:
             if is_adaptive:
-                create_kwargs['max_tokens'] = safe_max
-                create_kwargs['thinking'] = {'type': 'adaptive'}
-                effort_level = self.thinking_level if self.thinking_level in ['low', 'medium', 'high', 'xhigh', 'max'] else 'high'
-                create_kwargs['output_config'] = {'effort': effort_level}
+                create_kwargs["max_tokens"] = safe_max
+                create_kwargs["thinking"] = {"type": "adaptive"}
+                effort_level = (
+                    self.thinking_level if self.thinking_level in ["low", "medium", "high", "xhigh", "max"] else "high"
+                )
+                create_kwargs["output_config"] = {"effort": effort_level}
             else:
-                create_kwargs['max_tokens'] = max(safe_max, thinking_budget + 4000)
-                create_kwargs['temperature'] = 1.0
-                create_kwargs['thinking'] = {
-                    'type': 'enabled',
-                    'budget_tokens': thinking_budget
-                }
+                create_kwargs["max_tokens"] = max(safe_max, thinking_budget + 4000)
+                create_kwargs["temperature"] = 1.0
+                create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
         else:
-            create_kwargs['max_tokens'] = safe_max
-            create_kwargs['temperature'] = self.default_temperature
+            create_kwargs["max_tokens"] = safe_max
+            create_kwargs["temperature"] = self.default_temperature
 
         await ClaudeRateLimiter.acquire_session_slot(self.model)
         provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("anthropic", {})
@@ -516,7 +582,7 @@ class AnthropicProvider(BaseLLMClient):
             response = await self._consume_anthropic_stream(create_kwargs)
         else:
             response = await self.client.messages.create(**create_kwargs)
-        
+
         return response
 
     async def run_chat_loop(
@@ -529,14 +595,18 @@ class AnthropicProvider(BaseLLMClient):
     ) -> dict:
         if not self.client:
             raise ValueError("ANTHROPIC_API_KEY is not set (invalid api key). Claude client uninitialized.")
-        
+
         from monika.infrastructure.database.db import get_session
+
         async with get_session() as session:
             if tool_executor is not None:
                 executor = tool_executor
             else:
                 import importlib
-                tool_executor_cls = importlib.import_module("monika.application.analysis.tools.tool_executor").ToolExecutor
+
+                tool_executor_cls = importlib.import_module(
+                    "monika.application.analysis.tools.tool_executor"
+                ).ToolExecutor
                 executor = tool_executor_cls(session, settings=self.settings, model_name=self.model)
 
             messages = []
@@ -557,6 +627,7 @@ class AnthropicProvider(BaseLLMClient):
             repeated_chat_tool_count = 0
 
             from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
+
             compactor = ContextCompactionEngine(self.settings)
 
             while turns < self.max_tool_turns:
@@ -571,13 +642,13 @@ class AnthropicProvider(BaseLLMClient):
                     logger.error(f"Claude chat error: {e}")
                     return {"success": False, "reply": f"API error: {e}", "error": str(e)}
 
-                if hasattr(response, 'usage') and response.usage:
-                    total_input += getattr(response.usage, 'input_tokens', 0)
-                    total_output += getattr(response.usage, 'output_tokens', 0)
-                    total_cache_read += getattr(response.usage, 'cache_read_input_tokens', 0) or 0
-                    total_cache_create += getattr(response.usage, 'cache_creation_input_tokens', 0) or 0
-                    outp_details = getattr(response.usage, 'output_tokens_details', None)
-                    thinking = getattr(outp_details, 'thinking_tokens', 0) or 0 if outp_details else 0
+                if hasattr(response, "usage") and response.usage:
+                    total_input += getattr(response.usage, "input_tokens", 0)
+                    total_output += getattr(response.usage, "output_tokens", 0)
+                    total_cache_read += getattr(response.usage, "cache_read_input_tokens", 0) or 0
+                    total_cache_create += getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+                    outp_details = getattr(response.usage, "output_tokens_details", None)
+                    thinking = getattr(outp_details, "thinking_tokens", 0) or 0 if outp_details else 0
                     total_thinking += thinking
 
                 assistant_content = response.content
@@ -599,7 +670,7 @@ class AnthropicProvider(BaseLLMClient):
                             "success": False,
                             "reply": "Respon Claude terpotong (max_tokens). Eksekusi tool dibatalkan demi keamanan parameter trading.",
                             "error": "TRUNCATED_TOOL_CALLS",
-                            "aborted_tools": len(tool_blocks)
+                            "aborted_tools": len(tool_blocks),
                         }
 
                 if response.stop_reason == "end_turn":
@@ -611,7 +682,7 @@ class AnthropicProvider(BaseLLMClient):
                 for block in assistant_content:
                     if block.type != "tool_use":
                         continue
-                    
+
                     tool_name = block.name
                     tool_input = block.input
                     tool_use_id = block.id
@@ -629,42 +700,52 @@ class AnthropicProvider(BaseLLMClient):
                         repeated_chat_tool_count = 1
 
                     if repeated_chat_tool_count >= 2:
-                        logger.warning(f"[Anthropic][ChatLoop] Anti-Oscillation: Suppressing repeated tool call #{repeated_chat_tool_count} for {tool_name}")
+                        logger.warning(
+                            f"[Anthropic][ChatLoop] Anti-Oscillation: Suppressing repeated tool call #{repeated_chat_tool_count} for {tool_name}"
+                        )
                         suppressed_result = {
                             "status": "already_executed",
-                            "notice": f"Tool '{tool_name}' with identical parameters was already executed in this conversation turn. Do not repeat identical calls. Use data already obtained."
+                            "notice": f"Tool '{tool_name}' with identical parameters was already executed in this conversation turn. Do not repeat identical calls. Use data already obtained.",
                         }
                         tool_calls_made += 1
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": tool_use_id,
-                            "content": json.dumps(suppressed_result),
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tool_use_id,
+                                "content": json.dumps(suppressed_result),
+                            }
+                        )
                         continue
 
                     tool_calls_made += 1
 
                     if tool_name == "propose_action":
                         proposed_action = tool_input
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": tool_use_id,
-                            "content": json.dumps({"status": "proposed", "message": "Action proposed to user."})
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tool_use_id,
+                                "content": json.dumps({"status": "proposed", "message": "Action proposed to user."}),
+                            }
+                        )
                         continue
 
                     res = await executor.execute(tool_name, tool_input)
                     raw_res = json.dumps(res, default=str, ensure_ascii=False)
                     pruned_res = compactor.micro_prune(raw_res, tool_name=tool_name)
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": tool_use_id,
-                        "content": pruned_res
-                    })
+                    tool_results.append({"type": "tool_result", "tool_use_id": tool_use_id, "content": pruned_res})
 
                 messages.append({"role": "user", "content": tool_results})
 
-            await self._save_token_usage(self.model, "chat_telegram", total_input, total_output, cached_tokens=total_cache_read, cache_creation_tokens=total_cache_create, thinking_tokens=total_thinking)
+            await self._save_token_usage(
+                self.model,
+                "chat_telegram",
+                total_input,
+                total_output,
+                cached_tokens=total_cache_read,
+                cache_creation_tokens=total_cache_create,
+                thinking_tokens=total_thinking,
+            )
 
             return {
                 "success": True,
@@ -687,6 +768,7 @@ class AnthropicProvider(BaseLLMClient):
     ) -> None:
         try:
             from monika.infrastructure.database.db import get_session
+
             entry = ActivityLog(
                 timestamp=datetime.now(timezone.utc),
                 category="analysis",

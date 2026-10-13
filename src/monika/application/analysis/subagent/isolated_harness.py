@@ -7,6 +7,7 @@ Each specialist gets a dedicated AgentHarness instance with:
 - Timeout watchdog with clean cancellation
 - Structured output contract (only final result reaches parent)
 """
+
 import asyncio
 import json
 import logging
@@ -20,7 +21,9 @@ DEFAULT_TIMEOUT = 300  # 5 minutes per specialist
 HEARTBEAT_INTERVAL = 30  # Check liveness every 30s
 
 
-def _extract_and_validate(text: str, schema: dict, jsonschema_module: Any = None) -> Tuple[Optional[dict], Optional[str]]:
+def _extract_and_validate(
+    text: str, schema: dict, jsonschema_module: Any = None
+) -> Tuple[Optional[dict], Optional[str]]:
     """Extract JSON from text and validate against schema."""
     cleaned = text.strip()
     match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", cleaned, re.DOTALL)
@@ -34,7 +37,7 @@ def _extract_and_validate(text: str, schema: dict, jsonschema_module: Any = None
         end = text.rfind("}")
         if start != -1 and end != -1 and end > start:
             try:
-                data = json.loads(text[start:end + 1])
+                data = json.loads(text[start : end + 1])
             except Exception as je:
                 return None, f"JSON parse error: {je}"
         else:
@@ -168,16 +171,13 @@ class IsolatedSubagentRunner:
                     f"{result.get('tool_calls_made', 0)} tool calls"
                 )
             else:
-                logger.warning(
-                    f"[IsolatedSubagent:{role_name}] Failed: {result.get('error', 'unknown')}"
-                )
+                logger.warning(f"[IsolatedSubagent:{role_name}] Failed: {result.get('error', 'unknown')}")
 
             return result
 
         except asyncio.TimeoutError:
             logger.error(
-                f"[IsolatedSubagent:{role_name}] Timed out after {timeout}s — "
-                f"killing and returning partial result"
+                f"[IsolatedSubagent:{role_name}] Timed out after {timeout}s — killing and returning partial result"
             )
             return {
                 "success": False,
@@ -212,12 +212,7 @@ class IsolatedSubagentRunner:
             specs: List of dicts with keys:
                 role_name, llm_client, system_prompt, messages, tools, stage_name
         """
-        tasks = [
-            self.run_isolated(
-                session=session, timeout=timeout, **spec
-            )
-            for spec in specs
-        ]
+        tasks = [self.run_isolated(session=session, timeout=timeout, **spec) for spec in specs]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         final = []

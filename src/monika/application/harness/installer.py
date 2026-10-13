@@ -23,8 +23,10 @@ from monika.application.harness.engine import PluginEngine, get_plugin_engine
 
 logger = logging.getLogger("TradingAgent.Harness.Installer")
 
+
 def _resolve_config_path(filename: str) -> Path:
     from monika.infrastructure.infra.paths import CONFIG_DIR
+
     p = CONFIG_DIR / filename
     if p.exists():
         return p

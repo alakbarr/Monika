@@ -5,17 +5,19 @@
 from dataclasses import dataclass
 from typing import Optional, List
 
+
 @dataclass
 class CalendarEvent:
     time: str
     currency: str
-    impact: str # contoh: High, Medium, Low
+    impact: str  # contoh: High, Medium, Low
     event_name: str
     actual: Optional[str] = None
     forecast: Optional[str] = None
     previous: Optional[str] = None
     country: Optional[str] = None
     surprise_score: Optional[float] = None
+
 
 @dataclass
 class ScrapedNews:
@@ -28,6 +30,7 @@ class ScrapedNews:
     sentiment: Optional[str] = None
     key_data_point: Optional[str] = None
 
+
 @dataclass
 class ScrapedTweet:
     id: str
@@ -39,6 +42,7 @@ class ScrapedTweet:
     retweet_context: Optional[str] = None
     media_urls: Optional[List[str]] = None
 
+
 @dataclass
 class FedProbability:
     target_range: str
@@ -47,6 +51,7 @@ class FedProbability:
     prior_1d: Optional[float] = None
     prior_1w: Optional[float] = None
     prior_1m: Optional[float] = None
+
 
 @dataclass
 class FedMeeting:

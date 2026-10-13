@@ -54,12 +54,12 @@ async def test_filter_correlated_proposals_nan_handling():
     mock_result.scalars.return_value = mock_scalars
     session.execute.return_value = mock_result
 
-    actionable = [
-        ("GBPUSD", {"decision": "buy", "confidence": 0.8})
-    ]
+    actionable = [("GBPUSD", {"decision": "buy", "confidence": 0.8})]
 
     # Return float('nan') to trigger math.isnan check
-    with patch("risk.portfolio_correlation_gate.get_rolling_correlation", new=AsyncMock(return_value=(float("nan"), "test"))):
+    with patch(
+        "risk.portfolio_correlation_gate.get_rolling_correlation", new=AsyncMock(return_value=(float("nan"), "test"))
+    ):
         kept, rejected = await filter_correlated_proposals(session, actionable, threshold=0.7)
         assert len(kept) == 1
         assert kept[0][0] == "GBPUSD"

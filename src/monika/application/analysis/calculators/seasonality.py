@@ -18,8 +18,19 @@ import logging
 logger = logging.getLogger("TradingAgent.Calculators.Seasonality")
 
 MONTH_NAMES = [
-    "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    "",
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
 ]
 DAY_NAMES = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
 
@@ -58,11 +69,13 @@ class SeasonalityCalculator:
         if len(monthly_df) == 0:
             return {"error": "Insufficient history for monthly aggregation"}
 
-        monthly_returns = pd.DataFrame({
-            "return": monthly_df,
-            "month": monthly_df.index.month,
-            "year": monthly_df.index.year,
-        })
+        monthly_returns = pd.DataFrame(
+            {
+                "return": monthly_df,
+                "month": monthly_df.index.month,
+                "year": monthly_df.index.year,
+            }
+        )
 
         monthly_summary = {}
         for m in range(1, 13):
@@ -78,7 +91,9 @@ class SeasonalityCalculator:
                     "win_rate_pct": round(win_rate, 1),
                     "positive_years": pos_count,
                     "total_years": count,
-                    "tendency": "BULLISH" if avg_ret > 0.5 and win_rate >= 55.0 else ("BEARISH" if avg_ret < -0.5 and win_rate <= 45.0 else "NEUTRAL"),
+                    "tendency": "BULLISH"
+                    if avg_ret > 0.5 and win_rate >= 55.0
+                    else ("BEARISH" if avg_ret < -0.5 and win_rate <= 45.0 else "NEUTRAL"),
                 }
             else:
                 monthly_summary[MONTH_NAMES[m]] = {
@@ -130,10 +145,17 @@ class SeasonalityCalculator:
                     "avg_return_pct": round(avg_ret, 3),
                     "win_rate_pct": round(win_rate, 1),
                     "sample_size": count,
-                    "tendency": "BULLISH" if avg_ret > 0.05 and win_rate >= 53.0 else ("BEARISH" if avg_ret < -0.05 and win_rate <= 47.0 else "NEUTRAL"),
+                    "tendency": "BULLISH"
+                    if avg_ret > 0.05 and win_rate >= 53.0
+                    else ("BEARISH" if avg_ret < -0.05 and win_rate <= 47.0 else "NEUTRAL"),
                 }
             else:
-                dow_summary[DAY_NAMES[d]] = {"avg_return_pct": 0.0, "win_rate_pct": 0.0, "sample_size": 0, "tendency": "NO_DATA"}
+                dow_summary[DAY_NAMES[d]] = {
+                    "avg_return_pct": 0.0,
+                    "win_rate_pct": 0.0,
+                    "sample_size": 0,
+                    "tendency": "NO_DATA",
+                }
 
         return {
             "day_of_week_seasonality": dow_summary,

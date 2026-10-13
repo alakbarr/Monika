@@ -36,6 +36,7 @@ def get_database_url() -> str:
     """
     try:
         from monika.core.config.settings import load_settings
+
         settings = load_settings()
         cfg_url = (settings.get("database") or {}).get("url")
         if cfg_url and isinstance(cfg_url, str) and cfg_url.strip():
@@ -59,6 +60,7 @@ def __getattr__(name: str) -> Any:
         return get_database_url()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
+
 engine = None
 _async_session_factory = None
 _engine_lock = threading.Lock()
@@ -72,6 +74,7 @@ class _AsyncSessionLocalProxy:
 
     def __call__(self, *args, **kwargs):
         import sys
+
         mod = sys.modules.get("monika.infrastructure.database.db") or sys.modules.get("database.db")
         if mod is not None:
             current = getattr(mod, "AsyncSessionLocal", None)
@@ -82,6 +85,7 @@ class _AsyncSessionLocalProxy:
 
     def __getattr__(self, name):
         import sys
+
         mod = sys.modules.get("monika.infrastructure.database.db") or sys.modules.get("database.db")
         if mod is not None:
             current = getattr(mod, "AsyncSessionLocal", None)
@@ -103,10 +107,12 @@ AsyncSessionLocal = _AsyncSessionLocalProxy()
 def is_running_under_test_suite() -> bool:
     """Check if process or any ancestor in process tree is a test runner (e.g. pytest)."""
     import sys
+
     if "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ:
         return True
     try:
         import psutil
+
         curr = psutil.Process()
         for p in curr.parents():
             name = p.name().lower()
@@ -131,12 +137,14 @@ def get_tier() -> str:
     """Detect configured tier via canonical settings resolver with fallback to trial."""
     try:
         from monika.core.config.settings import get_installation_tier
+
         return get_installation_tier()
     except Exception:
         tier = os.getenv("MONIKA_TIER")
         if tier:
             return tier.strip().lower()
         from pathlib import Path
+
         _cur = Path(__file__).resolve().parent
         candidates = [
             Path.cwd() / ".monika_tier",
@@ -287,6 +295,7 @@ async def init_db() -> None:
             from alembic.config import Config
             from alembic import command
             from monika.infrastructure.infra.paths import get_repo_root
+
             alembic_ini = get_repo_root() / "alembic.ini"
             if not alembic_ini.exists():
                 alembic_ini = Path(__file__).resolve().parent.parent / "alembic.ini"
@@ -314,13 +323,20 @@ async def init_db() -> None:
         logger.error(f"Error initializing database: {e}")
         raise
 
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Yield database session for FastAPI dependency injection."""
-    sm = AsyncSessionLocal if (AsyncSessionLocal is not None and not isinstance(AsyncSessionLocal, _AsyncSessionLocalProxy)) else get_sessionmaker()
+    sm = (
+        AsyncSessionLocal
+        if (AsyncSessionLocal is not None and not isinstance(AsyncSessionLocal, _AsyncSessionLocalProxy))
+        else get_sessionmaker()
+    )
     async with sm() as session:
         yield session
 
+
 _SQLITE_WRITE_LOCKS: dict[Any, asyncio.Lock] = {}
+
 
 def _get_write_lock() -> asyncio.Lock:
     try:
@@ -331,10 +347,15 @@ def _get_write_lock() -> asyncio.Lock:
         _SQLITE_WRITE_LOCKS[loop] = asyncio.Lock()
     return _SQLITE_WRITE_LOCKS[loop]
 
+
 @asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Yield an async session as an asynchronous context manager (optimistic / non-blocking)."""
-    sm = AsyncSessionLocal if (AsyncSessionLocal is not None and not isinstance(AsyncSessionLocal, _AsyncSessionLocalProxy)) else get_sessionmaker()
+    sm = (
+        AsyncSessionLocal
+        if (AsyncSessionLocal is not None and not isinstance(AsyncSessionLocal, _AsyncSessionLocalProxy))
+        else get_sessionmaker()
+    )
     async with sm() as session:
         try:
             yield session
@@ -348,6 +369,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
             except Exception as rb_err:
                 logger.warning(f"Session rollback failed (original error preserved): {rb_err}")
             raise
+
 
 @asynccontextmanager
 async def get_write_session() -> AsyncGenerator[AsyncSession, None]:
@@ -385,10 +407,14 @@ async def get_write_session() -> AsyncGenerator[AsyncSession, None]:
                     pass
                 raise
 
+
 _IN_MEMORY_EXECUTION_LOCKS: dict[int, asyncio.Lock] = {}
 
+
 @asynccontextmanager
-async def transactional_advisory_lock(session: AsyncSession, lock_key: Union[int, str] = 778899) -> AsyncGenerator[bool, None]:
+async def transactional_advisory_lock(
+    session: AsyncSession, lock_key: Union[int, str] = 778899
+) -> AsyncGenerator[bool, None]:
     """
     Acquires a PostgreSQL transaction-level advisory lock (pg_try_advisory_xact_lock).
     Automatically releases when transaction commits/rolls back.
@@ -397,12 +423,13 @@ async def transactional_advisory_lock(session: AsyncSession, lock_key: Union[int
     """
     import hashlib
     from sqlalchemy import text
+
     bind = session.get_bind()
     dialect_name = getattr(getattr(bind, "dialect", None), "name", "")
-    
+
     # M-3: 64-bit positive signed integer key to prevent hash collision in pg_try_advisory_xact_lock
     numeric_key = (
-        (int.from_bytes(hashlib.sha256(lock_key.encode('utf-8')).digest()[:8], 'big') & 0x7FFFFFFFFFFFFFFF)
+        (int.from_bytes(hashlib.sha256(lock_key.encode("utf-8")).digest()[:8], "big") & 0x7FFFFFFFFFFFFFFF)
         if isinstance(lock_key, str)
         else int(lock_key)
     )
@@ -410,15 +437,16 @@ async def transactional_advisory_lock(session: AsyncSession, lock_key: Union[int
     if dialect_name == "postgresql":
         acquired = False
         try:
-            res = await session.execute(
-                text("SELECT pg_try_advisory_xact_lock(:key)"),
-                {"key": numeric_key}
-            )
+            res = await session.execute(text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": numeric_key})
             acquired = bool(res.scalar())
             if not acquired:
-                logger.warning(f"[DB] Could not acquire PostgreSQL transaction advisory lock {numeric_key} (concurrent transaction active).")
+                logger.warning(
+                    f"[DB] Could not acquire PostgreSQL transaction advisory lock {numeric_key} (concurrent transaction active)."
+                )
         except Exception as e:
-            logger.critical(f"[DB] PostgreSQL transaction advisory lock failed with error: {e}. BLOCKING execution (Fail-Closed).")
+            logger.critical(
+                f"[DB] PostgreSQL transaction advisory lock failed with error: {e}. BLOCKING execution (Fail-Closed)."
+            )
             acquired = False
 
         if not acquired:
@@ -431,6 +459,7 @@ async def transactional_advisory_lock(session: AsyncSession, lock_key: Union[int
         async with lock:
             yield True
 
+
 async def close_db() -> None:
     """Tutup koneksi database dengan aman."""
     global engine, _async_session_factory
@@ -442,5 +471,3 @@ async def close_db() -> None:
         engine = None
         _async_session_factory = None
         logger.info("Database engine disposed.")
-
-

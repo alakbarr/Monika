@@ -1,4 +1,3 @@
-
 """GTJA Alpha #88.
 
 Formula: (CLOSE-DELAY(CLOSE,20))/DELAY(CLOSE,20)*100
@@ -28,17 +27,18 @@ from monika.domain.indicators.factor_primitives import (
 
 __alpha_meta__ = {
     "id": "gtja191_088",
-    "theme": ['momentum'],
-    "formula_latex": '(CLOSE-DELAY(CLOSE,20))/DELAY(CLOSE,20)*100',
-    "columns_required": ['close'],
+    "theme": ["momentum"],
+    "formula_latex": "(CLOSE-DELAY(CLOSE,20))/DELAY(CLOSE,20)*100",
+    "columns_required": ["close"],
     "extras_required": [],
     "requires_sector": False,
     "universe": ["equity_cn"],
     "frequency": ["1d"],
     "decay_horizon": 20,
     "min_warmup_bars": 21,
-    "notes": '20d return pct.',
+    "notes": "20d return pct.",
 }
+
 
 def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]

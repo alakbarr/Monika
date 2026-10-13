@@ -52,13 +52,13 @@ from monika.domain.indicators.factor_primitives import (
 def microstructure_volume_price_rank_divergence(df: pd.DataFrame) -> pd.Series:
     delta_log_vol = np.log(df["volume"] + 1.0) - np.log(df["volume"].shift(1) + 1.0)
     intraday_ret = safe_div(df["close"] - df["open"], df["open"])
-    
+
     # Rolling correlation between volume change and price change
     r_vol = delta_log_vol.rolling(6).apply(lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False)
     r_ret = intraday_ret.rolling(6).apply(lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False)
-    
+
     corr = r_vol.rolling(6).corr(r_ret)
-    return - corr
+    return -corr
 
 
 # ==============================================================================
@@ -128,9 +128,9 @@ def microstructure_shadow_asymmetry(df: pd.DataFrame) -> pd.Series:
     candle_range = df["high"] - df["low"]
     body_high = np.maximum(df["open"], df["close"])
     body_low = np.minimum(df["open"], df["close"])
-    
+
     upper_shadow = df["high"] - body_high
     lower_shadow = body_low - df["low"]
-    
+
     asymmetry = safe_div(lower_shadow - upper_shadow, candle_range)
     return asymmetry.rolling(5, min_periods=1).mean()

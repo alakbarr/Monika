@@ -61,9 +61,9 @@ class TestEventProbabilityPlaybook(unittest.TestCase):
         content = load_skill("event_probability_playbook")
         self.assertIn("SECTION 2: CENTRAL BANK SURPRISE HISTORICAL PRECEDENTS", content)
         self.assertIn("1994 Greenspan Preemptive Strike", content)
-        self.assertIn("Sep 2013 Bernanke \"No-Taper\" Surprise", content)
-        self.assertIn("Sep 2015 Yellen \"China Shock / Global Risk\" Hold", content)
-        self.assertIn("Jul 2019 Powell \"Mid-Cycle Adjustment\" Hawkish Cut", content)
+        self.assertIn('Sep 2013 Bernanke "No-Taper" Surprise', content)
+        self.assertIn('Sep 2015 Yellen "China Shock / Global Risk" Hold', content)
+        self.assertIn('Jul 2019 Powell "Mid-Cycle Adjustment" Hawkish Cut', content)
         self.assertIn("Jun 2022 Powell 75bp Acceleration", content)
         # Multi-asset metrics
         self.assertIn("Yields", content)

@@ -51,7 +51,7 @@ def test_provider_profile_normalize_openai_dict():
                             "type": "function",
                             "function": {
                                 "name": "get_market_quote",
-                                "arguments": "{\"symbol\": \"EURUSD\"}",
+                                "arguments": '{"symbol": "EURUSD"}',
                             },
                         }
                     ],

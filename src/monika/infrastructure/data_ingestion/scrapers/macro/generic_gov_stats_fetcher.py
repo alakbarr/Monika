@@ -32,40 +32,172 @@ REPORT_COMPONENT_MAP: Dict[str, List[Dict[str, Any]]] = {
     "CPI": [
         {"name": "Headline CPI", "category": "headline", "weight": 100.0, "is_noise": False, "series_id": "CPIAUCSL"},
         {"name": "Core CPI", "category": "core", "weight": 79.5, "is_noise": False, "series_id": "CPILFESL"},
-        {"name": "Shelter / Rent", "category": "sticky", "weight": 36.2, "is_noise": False, "series_id": "CUSR0000SEHA"},
-        {"name": "Owners' Equivalent Rent (OER)", "category": "sticky", "weight": 26.8, "is_noise": False, "series_id": "CUSR0000SEHC"},
+        {
+            "name": "Shelter / Rent",
+            "category": "sticky",
+            "weight": 36.2,
+            "is_noise": False,
+            "series_id": "CUSR0000SEHA",
+        },
+        {
+            "name": "Owners' Equivalent Rent (OER)",
+            "category": "sticky",
+            "weight": 26.8,
+            "is_noise": False,
+            "series_id": "CUSR0000SEHC",
+        },
         {"name": "Energy", "category": "transitory", "weight": 6.9, "is_noise": True, "series_id": "CPIENGSL"},
         {"name": "Food & Beverages", "category": "sticky", "weight": 13.5, "is_noise": False, "series_id": "CPIUFDSL"},
-        {"name": "Used Cars and Trucks", "category": "transitory", "weight": 2.1, "is_noise": True, "series_id": "CUSR0000SETA02"},
-        {"name": "Transportation Services", "category": "core", "weight": 6.5, "is_noise": False, "series_id": "CUSR0000SAS4"},
-        {"name": "Medical Care Services", "category": "sticky", "weight": 6.8, "is_noise": False, "series_id": "CUSR0000SAM2"},
-        {"name": "Supercore Services (Services ex-Shelter)", "category": "core", "weight": 24.3, "is_noise": False, "series_id": "CUSR0000SASLE"},
+        {
+            "name": "Used Cars and Trucks",
+            "category": "transitory",
+            "weight": 2.1,
+            "is_noise": True,
+            "series_id": "CUSR0000SETA02",
+        },
+        {
+            "name": "Transportation Services",
+            "category": "core",
+            "weight": 6.5,
+            "is_noise": False,
+            "series_id": "CUSR0000SAS4",
+        },
+        {
+            "name": "Medical Care Services",
+            "category": "sticky",
+            "weight": 6.8,
+            "is_noise": False,
+            "series_id": "CUSR0000SAM2",
+        },
+        {
+            "name": "Supercore Services (Services ex-Shelter)",
+            "category": "core",
+            "weight": 24.3,
+            "is_noise": False,
+            "series_id": "CUSR0000SASLE",
+        },
     ],
     "NFP": [
-        {"name": "Total Nonfarm Payroll", "category": "headline", "weight": 100.0, "is_noise": False, "series_id": "PAYEMS"},
+        {
+            "name": "Total Nonfarm Payroll",
+            "category": "headline",
+            "weight": 100.0,
+            "is_noise": False,
+            "series_id": "PAYEMS",
+        },
         {"name": "Private Payrolls", "category": "core", "weight": 85.0, "is_noise": False, "series_id": "USPRIV"},
-        {"name": "Government Payrolls", "category": "transitory", "weight": 15.0, "is_noise": True, "series_id": "USGOVT"},
-        {"name": "Household Survey Employment", "category": "leading", "weight": 100.0, "is_noise": False, "series_id": "LNS12000000"},
-        {"name": "2-Month Net Payroll Revision", "category": "revision", "weight": 0.0, "is_noise": False, "series_id": "REVISION_NET"},
-        {"name": "Average Hourly Earnings (MoM)", "category": "core", "weight": 0.0, "is_noise": False, "series_id": "CES0500000003"},
-        {"name": "Average Weekly Hours", "category": "leading", "weight": 0.0, "is_noise": False, "series_id": "AWHAETP"},
-        {"name": "U-3 Unemployment Rate", "category": "headline", "weight": 0.0, "is_noise": False, "series_id": "UNRATE"},
-        {"name": "U-6 Underemployment Rate", "category": "core", "weight": 0.0, "is_noise": False, "series_id": "U6RATE"},
+        {
+            "name": "Government Payrolls",
+            "category": "transitory",
+            "weight": 15.0,
+            "is_noise": True,
+            "series_id": "USGOVT",
+        },
+        {
+            "name": "Household Survey Employment",
+            "category": "leading",
+            "weight": 100.0,
+            "is_noise": False,
+            "series_id": "LNS12000000",
+        },
+        {
+            "name": "2-Month Net Payroll Revision",
+            "category": "revision",
+            "weight": 0.0,
+            "is_noise": False,
+            "series_id": "REVISION_NET",
+        },
+        {
+            "name": "Average Hourly Earnings (MoM)",
+            "category": "core",
+            "weight": 0.0,
+            "is_noise": False,
+            "series_id": "CES0500000003",
+        },
+        {
+            "name": "Average Weekly Hours",
+            "category": "leading",
+            "weight": 0.0,
+            "is_noise": False,
+            "series_id": "AWHAETP",
+        },
+        {
+            "name": "U-3 Unemployment Rate",
+            "category": "headline",
+            "weight": 0.0,
+            "is_noise": False,
+            "series_id": "UNRATE",
+        },
+        {
+            "name": "U-6 Underemployment Rate",
+            "category": "core",
+            "weight": 0.0,
+            "is_noise": False,
+            "series_id": "U6RATE",
+        },
     ],
     "PCE": [
-        {"name": "Headline PCE Price Index", "category": "headline", "weight": 100.0, "is_noise": False, "series_id": "PCEPI"},
-        {"name": "Core PCE Price Index (Fed Target)", "category": "core", "weight": 82.0, "is_noise": False, "series_id": "PCEPILFE"},
-        {"name": "PCE Services ex-Energy & Housing", "category": "sticky", "weight": 50.0, "is_noise": False, "series_id": "PCE_SUPERCORE"},
+        {
+            "name": "Headline PCE Price Index",
+            "category": "headline",
+            "weight": 100.0,
+            "is_noise": False,
+            "series_id": "PCEPI",
+        },
+        {
+            "name": "Core PCE Price Index (Fed Target)",
+            "category": "core",
+            "weight": 82.0,
+            "is_noise": False,
+            "series_id": "PCEPILFE",
+        },
+        {
+            "name": "PCE Services ex-Energy & Housing",
+            "category": "sticky",
+            "weight": 50.0,
+            "is_noise": False,
+            "series_id": "PCE_SUPERCORE",
+        },
     ],
     "PPI": [
         {"name": "Final Demand PPI", "category": "headline", "weight": 100.0, "is_noise": False, "series_id": "PPIFIS"},
-        {"name": "Core PPI (ex-Food & Energy)", "category": "core", "weight": 75.0, "is_noise": False, "series_id": "PPIFES"},
-        {"name": "Final Demand Services", "category": "sticky", "weight": 65.0, "is_noise": False, "series_id": "WPSFD41"},
+        {
+            "name": "Core PPI (ex-Food & Energy)",
+            "category": "core",
+            "weight": 75.0,
+            "is_noise": False,
+            "series_id": "PPIFES",
+        },
+        {
+            "name": "Final Demand Services",
+            "category": "sticky",
+            "weight": 65.0,
+            "is_noise": False,
+            "series_id": "WPSFD41",
+        },
     ],
     "JOLTS": [
-        {"name": "Total Job Openings", "category": "leading", "weight": 100.0, "is_noise": False, "series_id": "JTSJOL"},
-        {"name": "Quits Rate (Wage Pressure Proxy)", "category": "core", "weight": 0.0, "is_noise": False, "series_id": "JTSQUR"},
-        {"name": "Layoffs and Discharges", "category": "leading", "weight": 0.0, "is_noise": False, "series_id": "JTSLDR"},
+        {
+            "name": "Total Job Openings",
+            "category": "leading",
+            "weight": 100.0,
+            "is_noise": False,
+            "series_id": "JTSJOL",
+        },
+        {
+            "name": "Quits Rate (Wage Pressure Proxy)",
+            "category": "core",
+            "weight": 0.0,
+            "is_noise": False,
+            "series_id": "JTSQUR",
+        },
+        {
+            "name": "Layoffs and Discharges",
+            "category": "leading",
+            "weight": 0.0,
+            "is_noise": False,
+            "series_id": "JTSLDR",
+        },
     ],
 }
 
@@ -165,7 +297,9 @@ class GenericGovStatsFetcher:
                 for s_id in key_series:
                     if not s_id or s_id in ("REVISION_NET", "PCE_SUPERCORE"):
                         continue
-                    url = f"{FRED_API_BASE_URL}?series_id={s_id}&api_key={api_key}&file_type=json&sort_order=desc&limit=3"
+                    url = (
+                        f"{FRED_API_BASE_URL}?series_id={s_id}&api_key={api_key}&file_type=json&sort_order=desc&limit=3"
+                    )
                     try:
                         async with http_client.get(url, ssl=False, timeout=aiohttp.ClientTimeout(total=8)) as resp:
                             if resp.status == 200:

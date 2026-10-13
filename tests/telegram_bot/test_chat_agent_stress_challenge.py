@@ -28,6 +28,7 @@ def agent():
 # Suite 1: Exact text from `contoh_pertanyaan.md`
 # ==============================================================================
 
+
 class TestContohPertanyaanBenchmark:
     """Empirical verification of exact query text from `contoh_pertanyaan.md`."""
 
@@ -111,6 +112,7 @@ class TestContohPertanyaanBenchmark:
 # ==============================================================================
 # Suite 2: Diverse Macro Event Queries (Supported)
 # ==============================================================================
+
 
 class TestDiverseMacroEventQueriesSupported:
     """Testing diverse macro event queries across languages, lengths, and nuances that are properly supported."""
@@ -205,6 +207,7 @@ class TestDiverseMacroEventQueriesSupported:
 # Suite 3: Empirical Vulnerability / Blind-Spot Investigations
 # ==============================================================================
 
+
 class TestMacroRoutingVulnerabilities:
     """
     EMPIRICAL CHALLENGER FINDINGS:
@@ -275,6 +278,7 @@ class TestMacroRoutingVulnerabilities:
 # ==============================================================================
 # Suite 4: Non-Macro Complex Queries, Simple Commands, Action Verbs
 # ==============================================================================
+
 
 class TestNonMacroAndActionQueries:
     """Ensure non-macro queries do NOT false-positive into deep_research."""
@@ -395,6 +399,7 @@ class TestNonMacroAndActionQueries:
 # ==============================================================================
 # Suite 5: Boundary Inputs & Adversarial Edge Cases
 # ==============================================================================
+
 
 class TestBoundaryAndAdversarialInputs:
     """Boundary values, malformed inputs, edge cases, and robustness."""

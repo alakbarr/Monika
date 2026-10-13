@@ -65,7 +65,9 @@ class TurnLivenessWatchdog:
             self._generation_counter += chunk_len
             self._last_gen_advance_time = now
         if step_name:
-            logger.debug(f"[TurnLiveness:{self.turn_id}] Activity heartbeat: {step_name} (gen={self._generation_counter})")
+            logger.debug(
+                f"[TurnLiveness:{self.turn_id}] Activity heartbeat: {step_name} (gen={self._generation_counter})"
+            )
 
     def start(self) -> None:
         """Starts background liveness inspection."""
@@ -126,4 +128,3 @@ class TurnLivenessWatchdog:
                 break
             except Exception as exc:
                 logger.error(f"[TurnLiveness:{self.turn_id}] Watchdog error: {exc}")
-

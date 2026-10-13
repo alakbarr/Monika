@@ -9,28 +9,16 @@ def test_find_completed_transaction_endpoints():
         {"role": "user", "content": "Analyze EURUSD"},
         {
             "role": "assistant",
-            "content": [
-                {"type": "tool_use", "id": "call_1", "name": "get_candles", "input": {"symbol": "EURUSD"}}
-            ]
+            "content": [{"type": "tool_use", "id": "call_1", "name": "get_candles", "input": {"symbol": "EURUSD"}}],
         },
-        {
-            "role": "user",
-            "content": [
-                {"type": "tool_result", "tool_use_id": "call_1", "content": '{"close": 1.0850}'}
-            ]
-        },
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "call_1", "content": '{"close": 1.0850}'}]},
         {
             "role": "assistant",
             "content": [
                 {"type": "tool_use", "id": "call_2", "name": "calculate_position_size", "input": {"symbol": "EURUSD"}}
-            ]
+            ],
         },
-        {
-            "role": "user",
-            "content": [
-                {"type": "tool_result", "tool_use_id": "call_2", "content": '{"lot": 0.1}'}
-            ]
-        },
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "call_2", "content": '{"lot": 0.1}'}]},
     ]
 
     endpoints = cbm.find_completed_transaction_endpoints(messages)
@@ -41,22 +29,10 @@ def test_apply_to_messages_with_transaction_endpoints():
     cbm = CacheBreakpointManager()
     messages = [
         {"role": "user", "content": "Analyze EURUSD"},
-        {
-            "role": "assistant",
-            "content": [{"type": "tool_use", "id": "call_1", "name": "get_candles", "input": {}}]
-        },
-        {
-            "role": "user",
-            "content": [{"type": "tool_result", "tool_use_id": "call_1", "content": "{}"}]
-        },
-        {
-            "role": "assistant",
-            "content": [{"type": "tool_use", "id": "call_2", "name": "get_ticks", "input": {}}]
-        },
-        {
-            "role": "user",
-            "content": [{"type": "tool_result", "tool_use_id": "call_2", "content": "{}"}]
-        },
+        {"role": "assistant", "content": [{"type": "tool_use", "id": "call_1", "name": "get_candles", "input": {}}]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "call_1", "content": "{}"}]},
+        {"role": "assistant", "content": [{"type": "tool_use", "id": "call_2", "name": "get_ticks", "input": {}}]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "call_2", "content": "{}"}]},
     ]
 
     updated = cbm.apply_to_messages(messages, max_message_breakpoints=2)
@@ -79,17 +55,18 @@ async def test_openai_content_addressed_cache_key():
     kwargs = {
         "messages": [
             {"role": "system", "content": "You are Monika MT5 quantitative trading agent."},
-            {"role": "user", "content": "Hello"}
+            {"role": "user", "content": "Hello"},
         ],
         "tools": [
             {"type": "function", "function": {"name": "calculate_position_size"}},
-            {"type": "function", "function": {"name": "get_candles"}}
-        ]
+            {"type": "function", "function": {"name": "get_candles"}},
+        ],
     }
     # Simulate the caching key block
     is_cache_key_supported = True
     clean_role = "risk_manager"
     import hashlib
+
     sys_content = "You are Monika MT5 quantitative trading agent."
     tool_names = sorted(["calculate_position_size", "get_candles"])
     cache_sig = f"{clean_role}:{hashlib.sha256(sys_content.encode('utf-8')).hexdigest()[:16]}:{','.join(tool_names)}"

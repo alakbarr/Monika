@@ -45,6 +45,7 @@ def _get_contract_size(symbol: str) -> float:
     sym = (symbol or "").upper()
     try:
         from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS
+
         clean = sym.replace("/", "").replace(".", "").replace("-", "")
         for k, spec in DEFAULT_INSTRUMENTS.items():
             if k in clean or clean in k:
@@ -55,17 +56,18 @@ def _get_contract_size(symbol: str) -> float:
     if "XAU" in sym or "GOLD" in sym:
         return 100.0  # 100 troy oz per lot
     if "ETH" in sym:
-        return 10.0   # 10 ETH per lot (DEFAULT_INSTRUMENTS)
+        return 10.0  # 10 ETH per lot (DEFAULT_INSTRUMENTS)
     if "BTC" in sym:
-        return 1.0    # 1 coin per lot
+        return 1.0  # 1 coin per lot
     if any(k in sym for k in ("XTI", "WTI", "USO", "OIL", "BRENT", "XBR", "UKOIL")):
-        return 1000.0 # 1,000 barrels per lot (DEFAULT_INSTRUMENTS: XTI=1000, XBR=1000)
-    return 100000.0   # 100,000 units standard FX lot
+        return 1000.0  # 1,000 barrels per lot (DEFAULT_INSTRUMENTS: XTI=1000, XBR=1000)
+    return 100000.0  # 100,000 units standard FX lot
 
 
 # ==============================================================================
 # 1. Abstract Broker Adapter Interface
 # ==============================================================================
+
 
 class BrokerAdapter(ABC):
     """
@@ -181,6 +183,7 @@ class BrokerAdapter(ABC):
 # 2. MT5 Live Adapter
 # ==============================================================================
 
+
 class MT5LiveAdapter(BrokerAdapter):
     """
     Adapter wrapping the live MT5Client instance.
@@ -201,8 +204,8 @@ class MT5LiveAdapter(BrokerAdapter):
 
     @property
     def dry_run(self) -> bool:
-        if self._service is not None and hasattr(self._service, 'dry_run'):
-            return getattr(self._service, 'dry_run')
+        if self._service is not None and hasattr(self._service, "dry_run"):
+            return getattr(self._service, "dry_run")
         return self._dry_run
 
     @dry_run.setter
@@ -211,10 +214,11 @@ class MT5LiveAdapter(BrokerAdapter):
 
     @property
     def mt5(self) -> Any:
-        if self._service is not None and hasattr(self._service, 'mt5') and self._service.mt5 is not None:
+        if self._service is not None and hasattr(self._service, "mt5") and self._service.mt5 is not None:
             return self._service.mt5
         if self._mt5 is None:
             from monika.infrastructure.brokers.mt5_client import MT5Client
+
             self._mt5 = MT5Client(settings=self.settings)
         return self._mt5
 
@@ -274,10 +278,18 @@ class MT5LiveAdapter(BrokerAdapter):
     async def submit_order(self, order: Any, **kwargs) -> dict:
         order = normalize_order_request(order)
         pip_size = _get_pip_size(order.symbol)
-        is_pending_type = (order.order_type or "market").upper() in ("LIMIT", "STOP", "BUY_LIMIT", "SELL_LIMIT", "BUY_STOP", "SELL_STOP")
+        is_pending_type = (order.order_type or "market").upper() in (
+            "LIMIT",
+            "STOP",
+            "BUY_LIMIT",
+            "SELL_LIMIT",
+            "BUY_STOP",
+            "SELL_STOP",
+        )
 
         if self.dry_run:
             import hashlib
+
             seed = f"{order.symbol}_{clock.now().isoformat()}_{order.client_order_id}"
             mock_ticket = int(hashlib.md5(seed.encode()).hexdigest(), 16) % 9000000 + 1000000
             if is_pending_type:
@@ -310,9 +322,11 @@ class MT5LiveAdapter(BrokerAdapter):
 
         max_spread_mult = kwargs.get("max_spread_multiplier")
         if max_spread_mult is None:
-            max_spread_mult = self.settings.get("execution", {}).get("max_spread_multiplier", {}).get(order.symbol, 10.0)
+            max_spread_mult = (
+                self.settings.get("execution", {}).get("max_spread_multiplier", {}).get(order.symbol, 10.0)
+            )
 
-        cid = (order.client_order_id or getattr(order, 'id', None) or 'UNKNOWN')[:8]
+        cid = (order.client_order_id or getattr(order, "id", None) or "UNKNOWN")[:8]
         comment = kwargs.get("comment", f"ORD#{cid}")
         res = await self.mt5.place_order(
             symbol=order.symbol,
@@ -362,7 +376,7 @@ class MT5LiveAdapter(BrokerAdapter):
                 ticket = None
                 try:
                     ticket = int(client_order_id)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     active_orders = await self.get_orders()
                     target_str = str(client_order_id)
                     for o in active_orders:
@@ -459,6 +473,7 @@ class MT5LiveAdapter(BrokerAdapter):
 # ==============================================================================
 # 3. Simulated Broker Adapter (100% Research-to-Live Parity)
 # ==============================================================================
+
 
 class SimulatedBrokerAdapter(BrokerAdapter):
     """
@@ -620,10 +635,7 @@ class SimulatedBrokerAdapter(BrokerAdapter):
         free_margin = acc.get("free_margin", 0.0)
 
         if required_margin > free_margin:
-            err_msg = (
-                f"Margin call: required margin ${required_margin:.2f} "
-                f"exceeds free margin ${free_margin:.2f}"
-            )
+            err_msg = f"Margin call: required margin ${required_margin:.2f} exceeds free margin ${free_margin:.2f}"
             logger.warning(f"[SimulatedBrokerAdapter] Order {order.client_order_id} rejected: {err_msg}")
             return {
                 "success": False,
@@ -649,7 +661,7 @@ class SimulatedBrokerAdapter(BrokerAdapter):
             ticket = self._next_ticket
             self._next_ticket += 1
         order.mt5_ticket = ticket
-        cid = (order.client_order_id or getattr(order, 'id', None) or 'UNKNOWN')[:8]
+        cid = (order.client_order_id or getattr(order, "id", None) or "UNKNOWN")[:8]
         comment = kwargs.get("comment", f"ORD#{cid}")
         actual_margin = (executed_volume * contract_size * fill_price) / self.leverage
         pos = {
@@ -721,7 +733,9 @@ class SimulatedBrokerAdapter(BrokerAdapter):
                 fill_res = self._fill_order_internal(pending_order, tick, **kw)
                 filled_results.append(fill_res)
                 if fill_res.get("status") == "partially_filled":
-                    pending_order.filled_volume = (pending_order.filled_volume or 0.0) + fill_res.get("executed_volume", 0.0)
+                    pending_order.filled_volume = (pending_order.filled_volume or 0.0) + fill_res.get(
+                        "executed_volume", 0.0
+                    )
                     if pending_order.filled_volume >= pending_order.requested_volume:
                         to_remove.append(client_id)
                 else:
@@ -826,21 +840,23 @@ class SimulatedBrokerAdapter(BrokerAdapter):
             if symbol and o.symbol.upper() != symbol.upper():
                 continue
             ticket = getattr(o, "mt5_ticket", None)
-            res.append({
-                "ticket": ticket,
-                "client_order_id": o.client_order_id,
-                "symbol": o.symbol,
-                "type": (o.order_type or "LIMIT").upper(),
-                "direction": (o.direction or "buy").lower(),
-                "volume": float(o.requested_volume),
-                "volume_initial": float(o.requested_volume),
-                "volume_current": float(o.requested_volume - (getattr(o, "filled_volume", 0.0) or 0.0)),
-                "price_open": float(o.requested_price) if o.requested_price else 0.0,
-                "sl": getattr(o, "sl", None),
-                "tp": getattr(o, "tp", None),
-                "time": getattr(o, "created_at", None) or clock.now(),
-                "status": "pending",
-            })
+            res.append(
+                {
+                    "ticket": ticket,
+                    "client_order_id": o.client_order_id,
+                    "symbol": o.symbol,
+                    "type": (o.order_type or "LIMIT").upper(),
+                    "direction": (o.direction or "buy").lower(),
+                    "volume": float(o.requested_volume),
+                    "volume_initial": float(o.requested_volume),
+                    "volume_current": float(o.requested_volume - (getattr(o, "filled_volume", 0.0) or 0.0)),
+                    "price_open": float(o.requested_price) if o.requested_price else 0.0,
+                    "sl": getattr(o, "sl", None),
+                    "tp": getattr(o, "tp", None),
+                    "time": getattr(o, "created_at", None) or clock.now(),
+                    "status": "pending",
+                }
+            )
         return res
 
     async def get_positions(self) -> List[dict]:
@@ -855,7 +871,7 @@ class SimulatedBrokerAdapter(BrokerAdapter):
                 unrealized = (tick["bid"] - pos["open_price"]) * contract_size * vol
             else:
                 unrealized = (pos["open_price"] - tick["ask"]) * contract_size * vol
-            
+
             p_copy = dict(pos)
             p_copy["pnl"] = round(unrealized, 2)
             p_copy["unrealized_pnl"] = round(unrealized, 2)
@@ -913,7 +929,7 @@ class SimulatedBrokerAdapter(BrokerAdapter):
                         "pnl": 0.0,
                         "error": f"Invalid close volume: {lots}. Must be > 0.",
                     }
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 return {
                     "success": False,
                     "ticket": ticket,
@@ -980,6 +996,7 @@ class SimulatedBrokerAdapter(BrokerAdapter):
 # 4. Remote Gateway Broker Adapter (Cross-Platform Linux / VPS)
 # ==============================================================================
 
+
 class MT5RemoteGatewayAdapter(BrokerAdapter):
     """
     Remote Gateway Broker Adapter for decoupled headless Linux / Ubuntu VPS deployment.
@@ -1005,6 +1022,7 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
         """Verify connectivity to remote gateway."""
         try:
             import aiohttp
+
             headers = {"Authorization": f"Bearer {self.api_token}"} if self.api_token else {}
             async with aiohttp.ClientSession() as session:
                 async with session.get(
@@ -1012,7 +1030,7 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
                     headers=headers,
                     timeout=aiohttp.ClientTimeout(total=self.timeout),
                 ) as resp:
-                    self._connected = (resp.status == 200)
+                    self._connected = resp.status == 200
                     return self._connected
         except Exception as e:
             logger.debug(f"[MT5RemoteGatewayAdapter] Connection check note: {e}")
@@ -1022,6 +1040,7 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
     async def get_tick(self, symbol: str) -> dict:
         try:
             import aiohttp
+
             headers = {"Authorization": f"Bearer {self.api_token}"} if self.api_token else {}
             async with aiohttp.ClientSession() as session:
                 async with session.get(
@@ -1049,10 +1068,15 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
         order = normalize_order_request(order)
         try:
             import aiohttp
+
             headers = {"Authorization": f"Bearer {self.api_token}"} if self.api_token else {}
             order_type_val = getattr(order.order_type, "value", str(order.order_type))
             volume = getattr(order, "volume", None) or getattr(order, "requested_volume", 0.0)
-            entry_price = getattr(order, "entry_price", None) or getattr(order, "requested_price", 0.0) or getattr(order, "price", 0.0)
+            entry_price = (
+                getattr(order, "entry_price", None)
+                or getattr(order, "requested_price", 0.0)
+                or getattr(order, "price", 0.0)
+            )
             direction = getattr(order, "direction", "buy")
             sl = kwargs.get("sl") or getattr(order, "stop_loss", None) or getattr(order, "sl", None)
             tp = kwargs.get("tp") or getattr(order, "take_profit", None) or getattr(order, "tp", None)
@@ -1086,6 +1110,7 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
     async def cancel_order(self, client_order_id: str) -> bool:
         try:
             import aiohttp
+
             headers = {"Authorization": f"Bearer {self.api_token}"} if self.api_token else {}
             async with aiohttp.ClientSession() as session:
                 async with session.delete(
@@ -1101,6 +1126,7 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
     async def close_position(self, ticket: int, lots: Optional[float] = None) -> dict:
         try:
             import aiohttp
+
             headers = {"Authorization": f"Bearer {self.api_token}"} if self.api_token else {}
             payload = {"lots": lots} if lots else {}
             async with aiohttp.ClientSession() as session:
@@ -1113,7 +1139,13 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
                     if resp.status == 200:
                         return await resp.json()
                     err_text = await resp.text()
-                    return {"success": False, "ticket": ticket, "price": 0.0, "pnl": 0.0, "error": f"Gateway error {resp.status}: {err_text}"}
+                    return {
+                        "success": False,
+                        "ticket": ticket,
+                        "price": 0.0,
+                        "pnl": 0.0,
+                        "error": f"Gateway error {resp.status}: {err_text}",
+                    }
         except Exception as e:
             logger.error(f"[MT5RemoteGatewayAdapter] close_position failed for {ticket}: {e}")
             return {"success": False, "ticket": ticket, "price": 0.0, "pnl": 0.0, "error": str(e)}
@@ -1121,6 +1153,7 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
     async def get_orders(self, symbol: Optional[str] = None) -> List[dict]:
         try:
             import aiohttp
+
             headers = {"Authorization": f"Bearer {self.api_token}"} if self.api_token else {}
             params = {"symbol": symbol} if symbol else {}
             async with aiohttp.ClientSession() as session:
@@ -1139,6 +1172,7 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
     async def get_positions(self) -> List[dict]:
         try:
             import aiohttp
+
             headers = {"Authorization": f"Bearer {self.api_token}"} if self.api_token else {}
             async with aiohttp.ClientSession() as session:
                 async with session.get(
@@ -1161,6 +1195,7 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
     async def get_account_info(self) -> dict:
         try:
             import aiohttp
+
             headers = {"Authorization": f"Bearer {self.api_token}"} if self.api_token else {}
             async with aiohttp.ClientSession() as session:
                 async with session.get(
@@ -1173,4 +1208,3 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
         except Exception as e:
             logger.warning(f"[MT5RemoteGatewayAdapter] get_account_info failed: {e}")
         return {"balance": 0.0, "equity": 0.0, "margin": 0.0, "free_margin": 0.0, "leverage": 100.0}
-

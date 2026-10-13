@@ -1,6 +1,7 @@
 """
 Schmitt-Trigger Regime Detector: Stateful hysteresis-based market regime classification.
 """
+
 from enum import Enum
 import logging
 from typing import Optional
@@ -11,9 +12,9 @@ logger = logging.getLogger("TradingAgent.SchmittRegimeDetector")
 
 
 class RegimeState(str, Enum):
-    DIVERSIFIED = "diversified"       # Normal market: full position sizing & multi-pair diversification
-    TRANSITIONING = "transitioning"   # Hysteresis band: maintain previous state, caution
-    FUSED = "fused"                   # Systemic crisis/high contagion: reduce heat, widen SL, limit concurrent
+    DIVERSIFIED = "diversified"  # Normal market: full position sizing & multi-pair diversification
+    TRANSITIONING = "transitioning"  # Hysteresis band: maintain previous state, caution
+    FUSED = "fused"  # Systemic crisis/high contagion: reduce heat, widen SL, limit concurrent
 
 
 class SchmittRegimeDetector:
@@ -57,7 +58,7 @@ class SchmittRegimeDetector:
         if n_assets < 2:
             return 0.0
 
-        recent = returns_matrix.iloc[-self.corr_window:]
+        recent = returns_matrix.iloc[-self.corr_window :]
         corr_matrix = recent.corr().fillna(0.0).values
 
         # Extract upper triangle excluding diagonal

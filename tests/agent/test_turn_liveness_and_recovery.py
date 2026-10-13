@@ -16,6 +16,7 @@ from telegram_bot.command_router import DIRECT_COMMANDS, CommandType
 @pytest.mark.asyncio
 async def test_turn_liveness_watchdog_generation_and_stall():
     stalls = []
+
     def on_hang(msg):
         stalls.append(msg)
 
@@ -49,7 +50,9 @@ def test_empty_response_guard_7_step_ladder():
     guard = EmptyResponseGuard()
 
     # Step 2 check: Dangling think tag
-    act_tag = guard.get_recovery_ladder_action("nous", "deepseek-r1", attempt=1, raw_response="<think>Evaluating trade setup...")
+    act_tag = guard.get_recovery_ladder_action(
+        "nous", "deepseek-r1", attempt=1, raw_response="<think>Evaluating trade setup..."
+    )
     assert act_tag.step == 2
     assert act_tag.action_type == "close_reasoning"
 
@@ -99,7 +102,9 @@ def test_streaming_think_scrubber_multi_tags():
     assert "Bullish structure." in c2
 
     # Test one-shot scrub_text with <reasoning>
-    content, thinking = StreamingThinkScrubber.scrub_text("<reasoning>Checking drawdown limits</reasoning>Action: BUY EURUSD")
+    content, thinking = StreamingThinkScrubber.scrub_text(
+        "<reasoning>Checking drawdown limits</reasoning>Action: BUY EURUSD"
+    )
     assert content == "Action: BUY EURUSD"
     assert thinking == "Checking drawdown limits"
 
