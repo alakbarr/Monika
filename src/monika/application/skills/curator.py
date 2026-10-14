@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Dict, FrozenSet, List, Optional, Set, Union
 
 from monika.application.skills.usage_tracker import SkillUsageTracker
+from monika.core.paths import get_skills_dir
 
 logger = logging.getLogger("TradingAgent.Skills.Curator")
 
@@ -42,7 +43,7 @@ class SkillCurator:
         if skills_dir:
             self.skills_dir = Path(skills_dir).resolve()
         else:
-            self.skills_dir = Path(__file__).resolve().parent
+            self.skills_dir = get_skills_dir()
 
         self.stale_days = stale_days or self.STALE_AFTER_DAYS
         self.archive_days = archive_days or self.ARCHIVE_AFTER_DAYS

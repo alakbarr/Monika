@@ -21,10 +21,11 @@ from typing import Any, Dict, Optional, Tuple
 from pydantic import BaseModel, Field
 
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
+from monika.core.paths import get_skills_dir
 
 logger = logging.getLogger("TradingAgent.Skills.ContinuousLearning")
 
-DEFAULT_CRYSTALLIZED_DIR = str(Path(__file__).resolve().parent / "crystallized")
+DEFAULT_CRYSTALLIZED_DIR = str(get_skills_dir() / "crystallized")
 
 
 class LearnSkillInput(BaseModel):
@@ -62,7 +63,7 @@ class ContinuousLearner:
         clean_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", skill_name.strip().lower())
         desc_clean = description.strip()[:80]
 
-        parent_dir = Path(base_dir) if base_dir is not None else Path(__file__).resolve().parent
+        parent_dir = Path(base_dir) if base_dir is not None else get_skills_dir()
 
         # Guard: Never allow overwriting core skills in trading or general
         for core_cat in ("trading", "general"):

@@ -20,6 +20,8 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 - Baseline Conviction: 88% (n=5)
 
 ## Core Tactical Directives
+- Align execution strictly with H4 market structure and key institutional liquidity pools.
+- Target internal liquidity sweeps during London/New York session overlap with verified FVGs.
 - Wait for Asian session low sweep before long entry with confirmed H4 BOS displacement and FVG rebalance.
 
 ## Execution Invariants

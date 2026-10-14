@@ -17,8 +17,10 @@ from typing import Optional
 
 logger = logging.getLogger("TradingAgent.SkillLoader")
 
-# Resolve skills base directory relative to this file
-_SKILLS_DIR = Path(__file__).parent / "trading"
+from monika.core.paths import get_skills_dir
+
+# Resolve canonical skills base directory
+_SKILLS_DIR = get_skills_dir() / "trading"
 
 
 def _sanitize_skill_name(name: str) -> str:

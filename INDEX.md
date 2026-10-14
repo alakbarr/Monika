@@ -215,8 +215,8 @@
   - `get_config_dir() -> Path`: Return canonical config directory, ensuring it exists.
   - `get_profiles_dir() -> Path`: Return canonical profiles directory, ensuring it exists.
   - `get_subagent_logs_dir() -> Path`: Return canonical subagent logs directory, ensuring it exists.
-  - `get_builtin_skills_dir() -> Path`: Return package-builtin skills directory.
-  - `get_skills_dir() -> Path`: Return user/runtime skills directory, ensuring it exists.
+  - `get_builtin_skills_dir() -> Path`: Return canonical skills directory (backward compatibility alias).
+  - `get_skills_dir() -> Path`: Return canonical skills directory, ensuring it exists.
   - `resolve_data_path(rel_or_name: str) -> Path`: Resolve a filename or sub-path inside the canonical data directory.
   - `resolve_config_path(rel_or_name: str) -> Path`: Resolve a config filename, checking active config/ first, then repo config/, then package defaults.
 

@@ -1,6 +1,6 @@
 ---
 name: macro-intermarket-decoupling-and-adversarial-reconciliation
-description: "Institutional playbook for intermarket anomalies, Gold vs Real Yield decoupling, DXY vs Spread divergence, and multi-horizon reconciliation."
+description: "Intermarket anomaly, decoupling, and multi-horizon macro reconciliation."
 category: TRADING
 version: 1.0.0
 platforms: [windows, linux, macos]

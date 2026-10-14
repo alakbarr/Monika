@@ -37,7 +37,6 @@ Output confluence assessment in EXACT format BEFORE calling `submit_asset_analys
 
 ```text
 CONFLUENCE SCORECARD FOR {SYMBOL}:
---- BASE STRUCTURAL FACTORS (0-14) ---
 [ ] F1_FUNDAMENTAL_BIAS: Macro brief supports {BUY/SELL}? YES(+2)/NO(0); Strong Conviction: YES(+3); Contra-Macro Setup (opposes Stage 1 bias when confidence >= 0.55): FORCED_PENALTY(-3) unless price breached Stage 1 invalidation level = __
 [ ] F2_DXY_CONFIRMS: DXY trend confirms direction? YES(+1)/NO(0) = __
 [ ] F3_D1_TREND: D1 trend aligns with H4 entry? YES(+2)/NO(0) = __
@@ -53,8 +52,8 @@ CONFLUENCE SCORECARD FOR {SYMBOL}:
 
 BASE STRUCTURAL SCORE: __ / 14
 
---- QUANT ALPHA & EXECUTION BONUSES (0 to +4) ---
-[ ] SWEEP_CONFIRMED: get_liquidity_sweep_context confirms structure? YES(+1)/NO(0) = __
+--- QUANT ALPHA & EXECUTION BONUSES (0 to +5) ---
+[ ] SWEEP_CONFIRMED: get_liquidity_sweep_context confirms structure? YES(+2)/NO(0) = __
 [ ] QUANT_STRATEGY_EDGE: StrategyRegistry confirms alpha signal? YES(+1)/NO(0) = __
 [ ] RR_RATIO_BONUS: Reward-to-Risk >= min_rr_ratio? YES(+1)/NO(0) = __
 [ ] ADR_TARGET_BONUS: TP inside 50-80% ADR band? YES(+1)/NO(0) = __
@@ -67,7 +66,7 @@ EFFECTIVE THRESHOLD: __ / 14 (Standard 7 + Dynamic Adjustments)
 DECISION: __ (BUY/SELL if Total Confluence >= Effective Threshold, WAIT if sub-threshold, AVOID if structural invalidation)
 ```
 
-`confluence_factors` IDs: `"fundamental_bias"`, `"dxy_confirms"`, `"d1_trend"`, `"rsi_neutral"`, `"near_fvg"`, `"near_order_block"`, `"in_ote_zone"`, `"near_sr_zone"`, `"cot_aligned"`, `"vix_ok"`, `"session_prime"`, `"liquidity_sweep_confirmed"`, `"quant_strategy_edge"`, `"rr_ratio_bonus"`, `"adr_target_bonus"`.
+`confluence_factors` IDs: `"fundamental_bias"`, `"dxy_confirms"`, `"d1_trend"`, `"rsi_neutral"`, `"near_fvg"`, `"near_order_block"`, `"in_ote_zone"`, `"near_sr_zone"`, `"cot_aligned"`, `"vix_ok"`, `"post_event_entry"`, `"session_prime"`, `"liquidity_sweep_confirmed"`, `"microstructure_ok"`, `"historical_pattern_consensus"`, `"quant_strategy_edge"`, `"rr_ratio_bonus"`, `"adr_target_bonus"`.
 
 ## AUTOMATED SERVER-SIDE RISK ENFORCEMENT RULES
 1. **ATR Missing**: BUY/SELL rejected.
@@ -75,6 +74,7 @@ DECISION: __ (BUY/SELL if Total Confluence >= Effective Threshold, WAIT if sub-t
 3. **Reward-to-Risk < 1.30**: Submission rejected.
 4. **Confluence Score < `{effective_threshold}` for BUY/SELL**: Submission rejected.
 5. **Priced-In Score $\ge 8$**: Mandatory `WAIT`. Hard block in RiskGate.
+6. **Contra-Macro Setup without Adjudication**: When currency confidence $\ge 0.70$, submitting BUY/SELL directly opposing the macro brief without explicit `specialist_adjudication` (with conflict_detected=true, resolution_path in ('override_macro', 'cancel_setup', 'hedged_entry', 'scale_out'), and $\ge 40$ chars justification citing structural level breach) is **HARD REJECTED** by the server.
 
 ## Decision Thresholds & Intraday Range Rules
 - **Take Profit Target Band**: 50%–80% of 5-day ADR (via `get_daily_range_context`).

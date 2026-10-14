@@ -1,6 +1,6 @@
 ---
 name: systemic-liquidity-and-treasury-plumbing
-description: "Institutional framework for Fed balance sheet mechanics, Net Liquidity formula, TGA/RRP plumbing, and credit spread thresholds."
+description: "Fed balance sheet, Net Liquidity formula, TGA/RRP, and credit stress."
 category: TRADING
 version: 1.0.0
 platforms: [windows, linux, macos]

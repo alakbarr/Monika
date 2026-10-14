@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from monika.application.skills.skills_guard import AuditReport, SkillsGuard
+from monika.core.paths import get_skills_dir
 
 logger = logging.getLogger("TradingAgent.Skills.SkillsHub")
 
@@ -68,7 +69,7 @@ class SkillsHub:
     """
 
     def __init__(self, search_directories: Optional[List[str]] = None):
-        base_dir = Path(__file__).resolve().parent
+        base_dir = get_skills_dir()
         self.search_directories = search_directories or [
             str(base_dir / "trading"),
             str(base_dir / "crystallized"),

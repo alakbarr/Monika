@@ -1,6 +1,6 @@
 ---
 name: macro-yield-curve-regimes
-description: "Institutional framework for 4-quadrant yield curve dynamics, spread steepening/flattening, and FX/asset transmission."
+description: "4-quadrant yield curve dynamics, spread shifts, and FX transmission."
 category: TRADING
 version: 1.0.0
 platforms: [windows, linux, macos]

@@ -51,8 +51,9 @@ PROFILES_DIR = BASE_DIR / "profiles"
 SUBAGENT_LOGS_DIR = LOGS_DIR / "subagents"
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]  # src/monika
-BUILTIN_SKILLS_DIR = PACKAGE_ROOT / "application" / "skills"
-USER_SKILLS_DIR = BASE_DIR / "skills"
+SKILLS_DIR = BASE_DIR / "skills"
+BUILTIN_SKILLS_DIR = SKILLS_DIR
+USER_SKILLS_DIR = SKILLS_DIR
 
 
 def get_repo_root() -> Path:
@@ -96,14 +97,15 @@ def get_subagent_logs_dir() -> Path:
 
 
 def get_builtin_skills_dir() -> Path:
-    """Return package-builtin skills directory."""
-    return BUILTIN_SKILLS_DIR
+    """Return canonical skills directory (backward compatibility alias)."""
+    SKILLS_DIR.mkdir(parents=True, exist_ok=True)
+    return SKILLS_DIR
 
 
 def get_skills_dir() -> Path:
-    """Return user/runtime skills directory, ensuring it exists."""
-    USER_SKILLS_DIR.mkdir(parents=True, exist_ok=True)
-    return USER_SKILLS_DIR
+    """Return canonical skills directory, ensuring it exists."""
+    SKILLS_DIR.mkdir(parents=True, exist_ok=True)
+    return SKILLS_DIR
 
 
 def resolve_data_path(rel_or_name: str) -> Path:

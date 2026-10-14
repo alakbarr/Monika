@@ -30,6 +30,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from monika.application.skills.curator import SkillCurator
 from monika.application.skills.skills_guard import AuditReport, SkillsGuard
 from monika.application.skills.skills_hub import SkillMetadata, SkillsHub
+from monika.core.paths import get_skills_dir
 
 logger = logging.getLogger("TradingAgent.Skills.SkillManager")
 
@@ -47,7 +48,7 @@ class SkillManager:
         if base_dir:
             self.base_dir = Path(base_dir).resolve()
         else:
-            self.base_dir = Path(__file__).resolve().parent
+            self.base_dir = get_skills_dir()
 
         self.skills_hub = skills_hub
 

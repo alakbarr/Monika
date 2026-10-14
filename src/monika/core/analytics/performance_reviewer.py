@@ -21,11 +21,10 @@ from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecor
 
 logger = logging.getLogger("TradingAgent.PerformanceReviewer")
 
-_PACKAGE_ROOT = Path(__file__).resolve().parent.parent.parent
-PERFORMANCE_NOTES_PATH = _PACKAGE_ROOT / "application" / "skills" / "trading" / "performance-notes" / "SKILL.md"
-FUNDAMENTAL_PERFORMANCE_NOTES_PATH = (
-    _PACKAGE_ROOT / "application" / "skills" / "trading" / "fundamental-performance-notes" / "SKILL.md"
-)
+from monika.core.paths import get_skills_dir
+
+PERFORMANCE_NOTES_PATH = get_skills_dir() / "trading" / "performance-notes" / "SKILL.md"
+FUNDAMENTAL_PERFORMANCE_NOTES_PATH = get_skills_dir() / "trading" / "fundamental-performance-notes" / "SKILL.md"
 
 
 async def generate_fundamental_performance_review(session: AsyncSession) -> str | None:
