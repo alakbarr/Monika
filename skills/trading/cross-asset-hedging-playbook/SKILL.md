@@ -22,8 +22,8 @@ tags: [cross_asset, intermarket, gold_dxy, commodity_spread, brent_wti, yield_co
 
 ### B. Crude Oil (Brent vs WTI Spread)
 - **Standard Spread**: Brent typically trades at a $\$3.00 - \$5.00$ premium over WTI due to coastal/seaborne freight logistics and sweeter light crude differentials.
-- **Spread Compression ($<\$2.00$)**: Signals US domestic supply bottlenecks or strong US export demand.
-- **Spread Blowout ($>\$7.00$)**: Signals geopolitical risk in the Middle East/Strait of Hormuz or European refinery stress.
+- **Spread Compression ($<\$2.00$ or $Z < -2.0$)**: Signals US domestic supply bottlenecks or strong US export demand. Mean-reversion edge: Short XTIUSD + Long XBRUSD.
+- **Spread Blowout ($>\$7.00$ or $Z > 2.0$)**: Signals geopolitical risk in the Middle East/Strait of Hormuz or European refinery stress. Mean-reversion edge: Long XTIUSD + Short XBRUSD.
 - **Execution Tool**: `get_commodity_spread("BRENT_WTI")`.
 
 ### C. Sovereign Yield Spreads vs FX Pairs
@@ -37,5 +37,9 @@ tags: [cross_asset, intermarket, gold_dxy, commodity_spread, brent_wti, yield_co
 1. **Direct Currency Beta Hedging**:
    - Long EURUSD + Long GBPUSD = High positive correlation ($+0.82$). This is NOT diversification; it is double long USD risk.
    - To hedge a Long XAUUSD position against unexpected dollar strength: Short AUDUSD or Long USDJPY (exploits dollar rally without liquidating gold core holding).
-2. **Commodity Pairs Hedging**:
-   - Long WTI Crude (XTIUSD) + Short Brent Crude (XBRUSD) when spread z-score $> 2.0$ (mean-reversion pair trade).
+2. **Commodity Pairs Hedging (Statistical Arbitrage)**:
+   - **Signal Generation**: Long WTI Crude (`XTIUSD`) + Short Brent Crude (`XBRUSD`) when spread $Z > 2.0$; Inverse when $Z < -2.0$ (`XTIPairsReadiness`).
+   - **ADF Stationarity Guard**: Pre-verify spread stationarity (ADF $p \le 0.15$). Do NOT enter during structural non-stationary regime shifts (e.g. active maritime blockade / war shocks).
+   - **Dollar-Neutral Lot Balancing**: Standard contracts are 1,000 bbl/lot for both. Scale hedge leg volume by $\frac{\text{Price}_{WTI}}{\text{Price}_{Brent}}$ (e.g. 0.90x when Brent is $105 and WTI is $94.60) to avoid directional dollar bias.
+   - **Partial Reversion Target**: Exit at $Z = 0.5$ (rather than $Z = 0.0$) to avoid negative overnight swap carry fee decay on CFD positions.
+   - **Orphan Guard Protocol**: Paired legs must share `pair_group_id`. If one leg hits SL/TP or is closed by broker, `PositionGuardian` automatically closes the remaining orphan leg immediately.

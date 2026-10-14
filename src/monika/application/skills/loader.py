@@ -389,7 +389,7 @@ def get_dynamic_micro_skills(symbol: str, context: Optional[dict] = None) -> lis
     if sym in ("BTCUSD", "ETHUSD", "SOLUSD") or "crypto" in sym.lower():
         if "crypto_analysis" not in skills:
             skills.insert(1, "crypto_analysis")
-    elif sym in ("XAUUSD", "XTIUSD", "BRENT", "XAGUSD") or "commodity" in sym.lower():
+    elif sym in ("XAUUSD", "XTIUSD", "XBRUSD", "BRENT", "XAGUSD") or "commodity" in sym.lower():
         if "commodity_analysis" not in skills:
             skills.insert(1, "commodity_analysis")
     elif sym in ("USDIDR", "IDR") or "idr" in sym.lower():

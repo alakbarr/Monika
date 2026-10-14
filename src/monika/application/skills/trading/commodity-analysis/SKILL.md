@@ -41,6 +41,20 @@ tags: [commodity, oil, xtiusd, xauusd, eia, opec, energy, inventory, gold]
    - **Refinery Turnaround Window (February–April & September–October)**: Scheduled maintenance reduces crude intake at Gulf Coast refiners; creates temporary physical surplus.
    - **Winter Heating Season (November–February)**: Distillate and heating oil drawdowns support sweet crude benchmarks.
 
+### Brent vs. WTI Spread Mechanics (XBRUSD vs XTIUSD)
+1. **Fundamental Basis**:
+   - Brent (`XBRUSD`) is seaborne light sweet crude (North Sea), priced waterborne for international export.
+   - WTI (`XTIUSD`) is pipeline-delivered light sweet crude (Cushing, Oklahoma, US).
+   - Normal spread baseline: Brent trades at a $+\$3.00\text{ to }+\$5.00$ premium over WTI due to coastal shipping advantages and global refining grade demand.
+2. **Statistical Dislocation & Mean Reversion**:
+   - **Abnormally Wide Spread ($Z > 2.0$, Spread $>\$7.00-\$10.00$)**: Geopolitical risk in Middle East/Europe or US export pipeline bottlenecks $\rightarrow$ WTI is undervalued relative to Brent. Quant edge: Long XTIUSD + Short XBRUSD (`XTIPairsReadiness`).
+   - **Abnormally Tight Spread ($Z < -2.0$, Spread $<\$2.00$)**: US supply shortages or European demand slump $\rightarrow$ WTI is overvalued relative to Brent. Quant edge: Short XTIUSD + Long XBRUSD.
+3. **Institutional Execution & Friction Constraints**:
+   - **ADF Stationarity Pre-condition**: Dislocation MUST be verified as stationary (ADF $p \le 0.15$). In structural trend shifts (e.g. protracted maritime embargoes), spread will trend/diverge; never counter-trend trade a non-stationary spread.
+   - **Negative Swap Carry Bleed**: CFD broker overnight swaps on crude oil are typically negative on BOTH long and short sides (~$-\$15$/lot/day). Always target partial reversion ($Z = 0.5$) rather than full $Z = 0.0$ to exit in 3–6 days before carrying costs erode net edge.
+   - **Dollar-Neutral Balancing**: Standard contract size is 1,000 bbl/lot for both symbols. Because Brent price is higher than WTI, scale the hedge leg lot size by $\frac{\text{Price}_{WTI}}{\text{Price}_{Brent}}$ to achieve true delta neutrality.
+   - **No Conflicting Naked Bets**: If a stat-arb spread pair is active or signaled, do not submit single-leg directional trades on XTIUSD or XBRUSD that oppose the mean-reversion vector.
+
 ### Cross-Asset Correlation Reference
 | Asset Pair | Expected Correlation | Interpretation & Regime |
 |:---|:---|:---|

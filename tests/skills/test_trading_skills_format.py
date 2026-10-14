@@ -133,3 +133,14 @@ def test_trading_skill_linter_zero_errors():
                 errors.append(f"{file_name}: {iss}")
 
     assert len(errors) == 0, f"Linter found errors in skills/trading: {errors}"
+
+
+def test_get_dynamic_micro_skills_includes_xbrusd_commodity_analysis():
+    """Ensure get_dynamic_micro_skills routes commodity_analysis to XBRUSD."""
+    from monika.application.skills.loader import get_dynamic_micro_skills
+
+    xbr_skills = get_dynamic_micro_skills("XBRUSD", {})
+    assert "commodity_analysis" in xbr_skills, "commodity_analysis missing from XBRUSD dynamic micro-skills"
+
+    xti_skills = get_dynamic_micro_skills("XTIUSD", {})
+    assert "commodity_analysis" in xti_skills, "commodity_analysis missing from XTIUSD dynamic micro-skills"

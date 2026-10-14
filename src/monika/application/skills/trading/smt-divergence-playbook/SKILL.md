@@ -10,7 +10,7 @@ tags: [smt, smc, ict, divergence, correlation, dxy, eurusd, gbpusd]
 # Smart Money Technique (SMT) Divergence Playbook
 
 ## 1. Overview & Institutional Rationale
-SMT (Smart Money Technique) Divergence occurs when two fundamentally or statistically correlated instruments fail to confirm each other's swing highs or swing lows. 
+SMT (Smart Money Technique) Divergence occurs when two fundamentally or statistically correlated instruments fail to confirm each other's swing highs or swing lows.
 This crack in correlation is one of the highest-conviction signatures of institutional accumulation or distribution:
 - When Pair A takes out liquidity (makes a Lower Low / Higher High) but Pair B fails to do so (makes a Higher Low / Lower High), the non-breaking pair exhibits underlying relative strength or weakness.
 - The failure to confirm signifies that smart money is actively absorbing orders without allowing the second asset to break structure.
@@ -23,6 +23,10 @@ This crack in correlation is one of the highest-conviction signatures of institu
    - `EURUSD` (or `GBPUSD`) vs `DXY`: Inverted correlation ($r \approx -0.90$).
 3. **Crypto Assets**:
    - `BTCUSD` vs `ETHUSD`: High correlation in crypto liquidity cycles.
+4. **Energy Benchmark Commodities**:
+   - `XTIUSD` (WTI) vs `XBRUSD` (Brent): Highest commodity correlation ($r \approx 0.95$).
+   - **Bullish Energy SMT**: XTIUSD sweeps key swing low (Lower Low) during London/NY open, but XBRUSD holds above its swing low (Higher Low) -> Signals institutional absorption in seaborne crude. Prioritize Long setups.
+   - **Bearish Energy SMT**: XTIUSD sweeps key swing high (Higher High), but XBRUSD fails to break high (Lower High) -> Signals institutional distribution. Prioritize Short setups.
 
 ## 3. Divergence Patterns & Signal Classification
 
