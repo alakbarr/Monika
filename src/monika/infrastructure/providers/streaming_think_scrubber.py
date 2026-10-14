@@ -151,6 +151,11 @@ class StreamingThinkScrubber:
 
         return c_delta, t_delta
 
+    def flush(self) -> str:
+        """Flushes remaining buffered content. Alias for finalize()[0]."""
+        c_delta, _ = self.finalize()
+        return c_delta
+
     @classmethod
     def scrub_text(cls, text: str) -> Tuple[str, str]:
         """One-shot utility to scrub reasoning tags from a complete text payload."""

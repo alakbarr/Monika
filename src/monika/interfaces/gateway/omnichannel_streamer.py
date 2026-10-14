@@ -232,4 +232,4 @@ class OmnichannelStreamer:
                     flags=re.IGNORECASE,
                 ).strip()
 
-            return clean_total or final_text
+            return clean_total

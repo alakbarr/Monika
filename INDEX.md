@@ -12345,6 +12345,7 @@
     - `__init__(tag_pairs: Optional[List[Tuple[str, str]]])`
     - `feed_chunk(chunk: str) -> Tuple[str, str]` - *Feeds an incoming stream chunk.*
     - `finalize() -> Tuple[str, str]` - *Flushes any remaining buffered text when stream ends.*
+    - `flush() -> str` - *Flushes remaining buffered content. Alias for finalize()[0].*
     - `scrub_text(text: str) -> Tuple[str, str]` - *One-shot utility to scrub reasoning tags from a complete text payload.*
     - `total_content() -> str`
     - `total_thinking() -> str`

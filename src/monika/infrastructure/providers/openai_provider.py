@@ -34,9 +34,7 @@ def _extract_message_text(choice) -> str:
         if any(tag in text.lower() for tag in ("<think>", "<thought>", "<reasoning>", "<scratchpad>")):
             from monika.infrastructure.providers.streaming_think_scrubber import StreamingThinkScrubber
 
-            scrubber = StreamingThinkScrubber()
-            clean_text, _ = scrubber.feed_chunk(text)
-            clean_text += scrubber.flush()
+            clean_text, _ = StreamingThinkScrubber.scrub_text(text)
             if clean_text.strip():
                 return clean_text.strip()
         return text

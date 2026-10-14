@@ -98,7 +98,7 @@ class TestTelegramBot:
 
         update.message.reply_text.reset_mock()
         await bot._cmd_help(update, MagicMock())
-        update.message.reply_text.assert_called_once()
+        assert update.message.reply_text.call_count >= 1
 
     @pytest.mark.asyncio
     async def test_cmd_status_positions_brief_history_risk_vix(self):

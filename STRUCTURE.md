@@ -886,6 +886,8 @@ Monika/
 │       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── macro-analysis-framework/
 │       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── macro-asset-transmission-matrix/
+│       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── macro-intermarket-decoupling-and-adversarial-reconciliation/
 │       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── macro-yield-curve-regimes/
@@ -906,6 +908,8 @@ Monika/
 │       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── playbooks/
 │       │   │   │   │   └── .playbook_lifecycle.json
+│       │   │   │   ├── post-event-orderflow-absorption/
+│       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── quant-research-workflow/
 │       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── retail-money-management/
@@ -3048,4 +3052,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 315 | **Total Tracked Files**: 2703
+**Total Tracked Directories**: 317 | **Total Tracked Files**: 2705
