@@ -26,10 +26,10 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 async def test_mt5_close_position_requote_retry():
     """Verify _close_position retries with updated tick price on requote retcode (10004)."""
     with (
-        patch("MetaTrader5.positions_get") as mock_pos_get,
-        patch("MetaTrader5.symbol_info_tick") as mock_tick,
-        patch("MetaTrader5.symbol_info") as mock_sym,
-        patch("MetaTrader5.order_send") as mock_order_send,
+        patch("MetaTrader5.positions_get", create=True) as mock_pos_get,
+        patch("MetaTrader5.symbol_info_tick", create=True) as mock_tick,
+        patch("MetaTrader5.symbol_info", create=True) as mock_sym,
+        patch("MetaTrader5.order_send", create=True) as mock_order_send,
     ):
         mock_pos = MagicMock()
         mock_pos.volume = 0.5
