@@ -189,6 +189,7 @@ INSTRUCTIONS:
         """Pulls recorded chronicle headlines near match date."""
         try:
             import importlib
+
             sa = importlib.import_module("sqlalchemy")
             select = sa.select
             desc = sa.desc
@@ -219,6 +220,7 @@ INSTRUCTIONS:
         """On-demand web search fallback with self-caching to MarketChronicle."""
         try:
             import importlib
+
             search_service = None
             try:
                 mod = importlib.import_module("monika.infrastructure.data_ingestion.sources.web_search")
@@ -252,6 +254,7 @@ INSTRUCTIONS:
                 MarketChronicle: Any = None
                 try:
                     import importlib
+
                     db_models = importlib.import_module("monika.infrastructure.database.models")
                     MarketChronicle = getattr(db_models, "MarketChronicle", None)
                 except Exception:

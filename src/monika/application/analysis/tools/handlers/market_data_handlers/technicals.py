@@ -230,7 +230,7 @@ async def handle_get_price_momentum(args: dict, **ctx) -> dict:
         lookback_close = float(rows[0].close)
         pct_change = (latest_close - lookback_close) / lookback_close * 100 if lookback_close else 0.0
         price_move = abs(latest_close - lookback_close)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         latest_close = 0.0
         lookback_close = 0.0
         pct_change = 0.0
@@ -263,7 +263,7 @@ async def handle_get_price_momentum(args: dict, **ctx) -> dict:
                 atr_value = float(raw_atr)
                 if atr_value > 0:
                     run_up_vs_atr = round(price_move / atr_value, 2)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             atr_value = None
             run_up_vs_atr = None
 

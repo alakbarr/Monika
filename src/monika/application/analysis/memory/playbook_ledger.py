@@ -248,7 +248,6 @@ class PlaybookLedger:
         return True
 
 
-
 __all__ = [
     "LedgerEntry",
     "PlaybookLedger",

@@ -437,9 +437,7 @@ def get_default_broker_client(settings: Any | None = None) -> Any:
         mod = sys.modules.get("monika.application.execution.broker_registry")
         if mod and hasattr(mod, "get_broker"):
             broker_name = (
-                settings.get("broker", {}).get("active_broker", "mt5")
-                if isinstance(settings, dict)
-                else "mt5"
+                settings.get("broker", {}).get("active_broker", "mt5") if isinstance(settings, dict) else "mt5"
             )
             return mod.get_broker(broker_name)
         import importlib
@@ -448,14 +446,9 @@ def get_default_broker_client(settings: Any | None = None) -> Any:
         get_broker_fn = getattr(mod, "get_broker", None)
         if get_broker_fn is not None:
             broker_name = (
-                settings.get("broker", {}).get("active_broker", "mt5")
-                if isinstance(settings, dict)
-                else "mt5"
+                settings.get("broker", {}).get("active_broker", "mt5") if isinstance(settings, dict) else "mt5"
             )
             return get_broker_fn(broker_name)
     except Exception:
         pass
     return None
-
-
-

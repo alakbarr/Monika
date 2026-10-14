@@ -55,7 +55,7 @@ class MT5ConnectionMixin(MT5MixinBase):
         raw_acc = _resolve_cred(["execution", "mt5_account"], "MT5_ACCOUNT", 0)
         try:
             self.account = int(raw_acc)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             self.account = 0
 
         self.password = str(_resolve_cred(["execution", "mt5_password"], "MT5_PASSWORD", ""))
@@ -72,7 +72,7 @@ class MT5ConnectionMixin(MT5MixinBase):
         raw_sec_acc = _resolve_cred(["execution", "mt5_secondary_account"], "MT5_SECONDARY_ACCOUNT", 0)
         try:
             self.secondary_account = int(raw_sec_acc)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             self.secondary_account = 0
 
         self.secondary_password = str(
@@ -217,7 +217,7 @@ class MT5ConnectionMixin(MT5MixinBase):
                 self._worker_task.cancel()
                 try:
                     await self._worker_task
-                except (asyncio.CancelledError, Exception):
+                except asyncio.CancelledError, Exception:
                     pass
             if queue is not None:
                 while not queue.empty():
@@ -318,7 +318,7 @@ class MT5ConnectionMixin(MT5MixinBase):
                 break
             try:
                 priority, counter, fn, args, kwargs, future = await queue.get()
-            except (asyncio.CancelledError, GeneratorExit):
+            except asyncio.CancelledError, GeneratorExit:
                 break
             except Exception as ex:
                 logger.error(f"[MT5PriorityWorker] Queue retrieval error: {ex}")

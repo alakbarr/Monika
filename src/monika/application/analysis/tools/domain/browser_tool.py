@@ -30,6 +30,7 @@ from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScrap
 
 logger = logging.getLogger("TradingAgent.Tools.Browser")
 
+
 class BrowserSessionManager:
     """Manages active browser scraper session lifetime."""
 

@@ -805,9 +805,7 @@ class RiskGate(
         from sqlalchemy import select
 
         sys_model = SystemConfig or resolve_model("SystemConfig")
-        cfg = (
-            await session.execute(select(sys_model).where(sys_model.key == "trading_paused"))
-        ).scalar_one_or_none()
+        cfg = (await session.execute(select(sys_model).where(sys_model.key == "trading_paused"))).scalar_one_or_none()
         if cfg and cfg.value:
             cfg.value = "false"
             logger.info("Edge-status auto-pause cleared.")

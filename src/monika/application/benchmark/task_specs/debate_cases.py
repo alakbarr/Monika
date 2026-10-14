@@ -27,7 +27,9 @@ from ..invoker import make_client
 from .base import BenchmarkCase, _sym, logger
 
 
-async def _get_debate_context(session: Any, settings: dict[str, Any], symbol: str) -> tuple[dict[str, Any], dict[str, Any]]:
+async def _get_debate_context(
+    session: Any, settings: dict[str, Any], symbol: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
     use_fixtures = settings.get("_use_fixtures", False)
     if not use_fixtures and session:
         try:

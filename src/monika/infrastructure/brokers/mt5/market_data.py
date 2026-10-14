@@ -56,9 +56,7 @@ class MT5MarketDataMixin(MT5MixinBase):
         norm_factor = 100.0 if is_cent else 1.0
 
         margin_mode_raw = getattr(info, "margin_mode", 2)
-        margin_mode_str = (
-            "hedging" if margin_mode_raw == 2 else ("netting" if margin_mode_raw in (0, 1) else "hedging")
-        )
+        margin_mode_str = "hedging" if margin_mode_raw == 2 else ("netting" if margin_mode_raw in (0, 1) else "hedging")
 
         return {
             "login": info.login,
@@ -275,9 +273,7 @@ class MT5MarketDataMixin(MT5MixinBase):
         if not isinstance(broker_offset, (int, float)):
             broker_offset = 0
         # Convert date_from / date_to from UTC to broker server time for MT5 API query
-        dt_from_broker = (
-            date_from + timedelta(seconds=broker_offset) if isinstance(date_from, datetime) else date_from
-        )
+        dt_from_broker = date_from + timedelta(seconds=broker_offset) if isinstance(date_from, datetime) else date_from
         dt_to_broker = date_to + timedelta(seconds=broker_offset) if isinstance(date_to, datetime) else date_to
 
         # Check if date range can be chunked

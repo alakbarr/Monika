@@ -562,9 +562,7 @@ def get_mt5_module(host: Optional[str] = None, port: Optional[int] = None) -> An
     if is_mt5linux_available():
         bridge = MT5BridgeProxy(host=host, port=port)
         MT5ModuleRegistry.set(bridge)
-        logger.info(
-            f"[MT5Compat] Using mt5linux RPC bridge proxy ({bridge.host}:{bridge.port})."
-        )
+        logger.info(f"[MT5Compat] Using mt5linux RPC bridge proxy ({bridge.host}:{bridge.port}).")
         return bridge
 
     # 3. Fallback Module

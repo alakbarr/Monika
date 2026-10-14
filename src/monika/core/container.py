@@ -101,7 +101,6 @@ class ServiceContainer:
     def plugin_manager(self) -> Any:
         return self.get("plugin_manager")
 
-
     _instance: Optional["ServiceContainer"] = None
 
     @classmethod

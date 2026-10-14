@@ -460,7 +460,6 @@ class WebSearchService:
             "total_results": len(results),
         }
 
-
     _instance: Optional["WebSearchService"] = None
 
     @classmethod

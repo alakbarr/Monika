@@ -56,18 +56,14 @@ def compute_prompt_invariants(
                 if ind and isinstance(ind, dict):
                     curr_px = ind.get("current_close") or ind.get("close")
             atr_raw = (
-                raw_bundle_data.get("get_atr_H4")
-                or raw_bundle_data.get("get_atr_D1")
-                or raw_bundle_data.get("get_atr")
+                raw_bundle_data.get("get_atr_H4") or raw_bundle_data.get("get_atr_D1") or raw_bundle_data.get("get_atr")
             )
             atr_f = atr_raw.get("atr") if isinstance(atr_raw, dict) else atr_raw
             adr_raw = raw_bundle_data.get("get_daily_range_context")
             adr_f = adr_raw.get("adr_5d") if isinstance(adr_raw, dict) else None
             smc_raw = raw_bundle_data.get("get_smc_zones_H4") or raw_bundle_data.get("get_smc_zones")
             smc_f = (
-                smc_raw
-                if isinstance(smc_raw, list)
-                else (smc_raw.get("zones") if isinstance(smc_raw, dict) else [])
+                smc_raw if isinstance(smc_raw, list) else (smc_raw.get("zones") if isinstance(smc_raw, dict) else [])
             )
             sr_raw = (
                 raw_bundle_data.get("get_fibonacci_levels_H4")
@@ -159,11 +155,7 @@ def extract_entry_price_from_analysis(analysis: Optional[Any]) -> Optional[float
     entry_price_val = None
     if analysis and getattr(analysis, "entry_zone", None):
         try:
-            ez = (
-                json.loads(analysis.entry_zone)
-                if isinstance(analysis.entry_zone, str)
-                else analysis.entry_zone
-            )
+            ez = json.loads(analysis.entry_zone) if isinstance(analysis.entry_zone, str) else analysis.entry_zone
             if isinstance(ez, dict) and "price" in ez:
                 entry_price_val = float(ez["price"])
         except Exception:
@@ -172,16 +164,16 @@ def extract_entry_price_from_analysis(analysis: Optional[Any]) -> Optional[float
         if getattr(analysis, "entry_price", None) is not None:
             try:
                 entry_price_val = float(analysis.entry_price)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
         elif getattr(analysis, "price_at_analysis", None) is not None:
             try:
                 entry_price_val = float(getattr(analysis, "price_at_analysis"))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
         elif getattr(analysis, "current_price", None) is not None:
             try:
                 entry_price_val = float(getattr(analysis, "current_price"))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
     return entry_price_val

@@ -200,12 +200,12 @@ class MT5ExecutionMixin(MT5MixinBase):
             return {"success": False, "error": "MT5 disconnected", "retcode": -1}
         try:
             ticket_id = int(str(ticket).strip())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Failed to parse ticket: {ticket!r}")
             return {"success": False, "error": f"Invalid ticket: {ticket}", "retcode": -1}
         try:
             result = await self._run(_modify_position, ticket_id, sl, tp, priority=PRIORITY_CRITICAL, timeout=3.0)
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError, asyncio.TimeoutError:
             logger.error(f"Modify position {ticket_id} timed out")
             return {"success": False, "error": f"Modify position {ticket_id} timed out", "retcode": -999}
 
@@ -227,7 +227,7 @@ class MT5ExecutionMixin(MT5MixinBase):
             return {"success": False, "error": "MT5 disconnected", "retcode": -1}
         try:
             ticket_id = int(str(ticket).strip())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Failed to parse ticket: {ticket!r}")
             return {"success": False, "error": f"Invalid ticket: {ticket}", "retcode": -1}
         eff_volume = lots if volume is None and lots is not None else volume
@@ -235,7 +235,7 @@ class MT5ExecutionMixin(MT5MixinBase):
             result = await self._run(
                 _close_position, ticket_id, eff_volume, comment, lots=lots, priority=PRIORITY_CRITICAL, timeout=3.0
             )
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError, asyncio.TimeoutError:
             logger.error(f"Close position {ticket_id} timed out")
             return {"success": False, "error": f"Close position {ticket_id} timed out", "retcode": -999}
 
@@ -265,7 +265,7 @@ class MT5ExecutionMixin(MT5MixinBase):
             return {"success": False, "error": "MT5 disconnected", "retcode": -1}
         try:
             ticket = int(str(ticket_or_id).strip())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Failed to parse ticket: {ticket_or_id!r}")
             return {"success": False, "error": f"Invalid ticket: {ticket_or_id}", "retcode": -1}
         return await self._run(_cancel_order, ticket, priority=PRIORITY_CRITICAL, timeout=3.0)
@@ -302,7 +302,7 @@ class MT5ExecutionMixin(MT5MixinBase):
             return []
         try:
             ticket_id = int(str(ticket).strip())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Failed to parse ticket: {ticket!r}")
             ticket_id = 0
         if ticket_id == 0:
@@ -325,7 +325,7 @@ class MT5ExecutionMixin(MT5MixinBase):
             return []
         try:
             ticket_id = int(str(target_ticket).strip())
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.warning(f"Failed to parse ticket: {target_ticket!r}")
             ticket_id = 0
         if ticket_id == 0:

@@ -14,7 +14,6 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 
-
 from monika.domain.models_resolver import resolve_model
 
 
@@ -84,7 +83,6 @@ class _RiskGateMixinBase:
         _mt5: Any
         flash_crash_detector: Any
         dynamic_correlation_matrix: Any
-
 
 
 __all__ = ["_RiskGateMixinBase", "resolve_model", "get_trading_day_start", "get_daily_risk_cutoff"]

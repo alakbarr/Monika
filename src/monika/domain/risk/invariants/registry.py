@@ -9,10 +9,12 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from collections.abc import Callable
 
+
 class InvariantViolationError(RuntimeError):
     """Raised when a non-negotiable trading safety invariant is breached."""
 
     pass
+
 
 logger = logging.getLogger("TradingAgent.RiskInvariants.Registry")
 

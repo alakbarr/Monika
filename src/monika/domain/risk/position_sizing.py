@@ -276,9 +276,7 @@ class PositionSizer:
                 quantiles = tfm_fc.get("quantiles", {})
                 tfm_calc = get_default_timesfm_alpha_calculator()
                 if quantiles and tfm_calc is not None:
-                    skew_alpha = tfm_calc.calculate_skew_from_quantiles(
-                        quantiles, current_price=entry_price
-                    )
+                    skew_alpha = tfm_calc.calculate_skew_from_quantiles(quantiles, current_price=entry_price)
                     skew_mult = tfm_calc.get_sizing_multiplier(skew_alpha, direction=direction)
                     if skew_mult != 1.0:
                         risk_pct *= skew_mult
@@ -955,7 +953,9 @@ class PositionSizer:
                         digits = int(info.get("digits", 5))
                         point = float(info.get("point", 0.00001))
                         stops_pts = float(info.get("stops_level", 0) or info.get("trade_stops_level", 0) or 0)
-                        tick_size = float(info.get("tick_size", 0.00001) or info.get("trade_tick_size", 0.00001) or 0.00001)
+                        tick_size = float(
+                            info.get("tick_size", 0.00001) or info.get("trade_tick_size", 0.00001) or 0.00001
+                        )
                         tick_value = float(info.get("tick_value", 1.0) or info.get("trade_tick_value", 1.0) or 1.0)
                         contract_size = float(
                             info.get("contract_size", 100_000) or info.get("trade_contract_size", 100_000) or 100_000
@@ -967,10 +967,16 @@ class PositionSizer:
                         digits = int(getattr(info, "digits", 5))
                         point = float(getattr(info, "point", 0.00001))
                         stops_pts = float(getattr(info, "trade_stops_level", 0) or getattr(info, "stops_level", 0) or 0)
-                        tick_size = float(getattr(info, "trade_tick_size", 0.00001) or getattr(info, "tick_size", 0.00001) or 0.00001)
-                        tick_value = float(getattr(info, "trade_tick_value", 1.0) or getattr(info, "tick_value", 1.0) or 1.0)
+                        tick_size = float(
+                            getattr(info, "trade_tick_size", 0.00001) or getattr(info, "tick_size", 0.00001) or 0.00001
+                        )
+                        tick_value = float(
+                            getattr(info, "trade_tick_value", 1.0) or getattr(info, "tick_value", 1.0) or 1.0
+                        )
                         contract_size = float(
-                            getattr(info, "trade_contract_size", 100_000) or getattr(info, "contract_size", 100_000) or 100_000
+                            getattr(info, "trade_contract_size", 100_000)
+                            or getattr(info, "contract_size", 100_000)
+                            or 100_000
                         )
                         min_lot = float(getattr(info, "volume_min", 0.01) or 0.01)
                         max_lot = float(getattr(info, "volume_max", 100.0) or 100.0)

@@ -129,6 +129,4 @@ def check_risk_gate_invariant(context: dict[str, Any]) -> Any:
         )
 
 
-InvariantRegistry.register_default_provider(
-    lambda reg: reg.register("risk_gate_limits", check_risk_gate_invariant)
-)
+InvariantRegistry.register_default_provider(lambda reg: reg.register("risk_gate_limits", check_risk_gate_invariant))

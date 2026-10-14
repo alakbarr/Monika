@@ -80,7 +80,9 @@ class SystemDoctor:
         if DATA_DIR.exists() and os.access(str(DATA_DIR), os.W_OK):
             self._record("Environment", "DataDir-Writable", "OK", f"Data directory verified and writable ({DATA_DIR}).")
         else:
-            self._record("Environment", "DataDir-Writable", "WARN", f"Data directory not writable or missing ({DATA_DIR}).")
+            self._record(
+                "Environment", "DataDir-Writable", "WARN", f"Data directory not writable or missing ({DATA_DIR})."
+            )
 
         # 3. Credential Vault file permissions check
         vault_path = DATA_DIR / "vault"
@@ -88,9 +90,19 @@ class SystemDoctor:
             try:
                 mode = vault_path.stat().st_mode
                 if os.name != "nt" and (mode & 0o077):
-                    self._record("Security", "Vault-Permissions", "WARN", f"Vault directory {vault_path} permissions too open ({oct(mode)}).")
+                    self._record(
+                        "Security",
+                        "Vault-Permissions",
+                        "WARN",
+                        f"Vault directory {vault_path} permissions too open ({oct(mode)}).",
+                    )
                 else:
-                    self._record("Security", "Vault-Permissions", "OK", f"Vault directory storage boundaries verified ({vault_path}).")
+                    self._record(
+                        "Security",
+                        "Vault-Permissions",
+                        "OK",
+                        f"Vault directory storage boundaries verified ({vault_path}).",
+                    )
             except Exception as e:
                 self._record("Security", "Vault-Permissions", "WARN", f"Vault access check note: {e}")
         else:

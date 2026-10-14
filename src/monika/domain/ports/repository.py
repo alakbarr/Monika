@@ -279,6 +279,7 @@ class SystemConfigRepositoryPort(Protocol):
 @runtime_checkable
 class RiskRepositoryPort(RiskDataProviderProtocol, Protocol):
     """Pure domain protocol for Risk state and metric persistence."""
+
     ...
 
 

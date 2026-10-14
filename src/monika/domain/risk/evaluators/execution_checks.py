@@ -33,9 +33,7 @@ logger = logging.getLogger("TradingAgent.RiskGate")
 class RiskExecutionChecksMixin(_RiskGateMixinBase):
     """Execution, order size, spread, duplicate, and loss streak validation mixin."""
 
-    async def _check_consecutive_losses(
-        self, session: Any, symbol: str, is_backtest: bool = False
-    ) -> tuple[bool, str]:
+    async def _check_consecutive_losses(self, session: Any, symbol: str, is_backtest: bool = False) -> tuple[bool, str]:
         """Check apakah symbol ini sedang dalam losing streak yang berbahaya."""
         if is_backtest:
             return (True, "consecutive_losses_backtest_ok")

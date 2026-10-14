@@ -224,7 +224,7 @@ async def handle_get_vix(args: dict, **ctx) -> dict:
     if latest:
         try:
             close_val_vix = float(getattr(latest, "close", 0.0) or 0.0)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             close_val_vix = 0.0
 
         if close_val_vix > 30:
@@ -263,7 +263,7 @@ async def handle_get_vix(args: dict, **ctx) -> dict:
         )
         try:
             r_close = float(r.close)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             r_close = 0.0
         history_list.append({"date": r_dt_str, "close": r_close})
 
@@ -542,7 +542,7 @@ async def handle_get_dxy(args: dict, **ctx) -> dict:
     latest = rows[0]
     try:
         latest_close = float(getattr(latest, "close", 0.0) or 0.0)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         latest_close = 0.0
 
     trend = "unknown"
@@ -552,7 +552,7 @@ async def handle_get_dxy(args: dict, **ctx) -> dict:
             older_close = float(getattr(older, "close", 0.0) or 0.0)
             diff = latest_close - older_close
             trend = "strengthening" if diff > 0 else "weakening"
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             trend = "unknown"
     elif len(rows) >= 2:
         older = rows[-1]
@@ -560,7 +560,7 @@ async def handle_get_dxy(args: dict, **ctx) -> dict:
             older_close = float(getattr(older, "close", 0.0) or 0.0)
             diff = latest_close - older_close
             trend = "strengthening" if diff > 0 else "weakening"
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             trend = "unknown"
 
     latest_dxy_date = latest.date.strftime("%Y-%m-%d") if hasattr(latest.date, "strftime") else str(latest.date)
@@ -569,7 +569,7 @@ async def handle_get_dxy(args: dict, **ctx) -> dict:
         r_dxy_dt = r.date.strftime("%Y-%m-%d") if hasattr(r.date, "strftime") else str(r.date or "")
         try:
             rc = round(float(r.close), 3)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             rc = 0.0
         dxy_history.append({"date": r_dxy_dt, "close": rc})
 

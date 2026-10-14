@@ -89,7 +89,7 @@ def acquire_single_instance_lock() -> bool:
                                     f"Aborting startup of PID {current_pid} to prevent port/MT5/Telegram conflicts."
                                 )
                                 return False
-                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        except psutil.NoSuchProcess, psutil.AccessDenied:
                             pass
         except Exception as e:
             logger.debug(f"[LOCK] Error inspecting PID file: {e}")

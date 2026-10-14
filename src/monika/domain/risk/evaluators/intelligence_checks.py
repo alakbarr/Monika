@@ -112,9 +112,7 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
             logger.error(f"[{symbol}] TimesFM expectancy check error (fail-closed): {e}")
             return False, f"TimesFM expectancy check failed (fail-closed): {e}"
 
-    async def _check_analysis_quality_scores(
-        self, analysis: Any, session: Any | None = None
-    ) -> tuple[bool, str]:
+    async def _check_analysis_quality_scores(self, analysis: Any, session: Any | None = None) -> tuple[bool, str]:
         """Validate that analysis has required quality scores before execution."""
         if analysis is None:
             return (False, "No analysis object provided")

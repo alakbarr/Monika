@@ -259,7 +259,7 @@ def _modify_position(ticket: Any, sl: Optional[float], tp: Optional[float]) -> d
 
     try:
         ticket_id = int(str(ticket).strip())
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         logger.warning(f"Failed to parse ticket: {ticket!r}")
         return {"success": False, "error": f"Invalid ticket: {ticket}", "retcode": -1}
 
@@ -320,7 +320,7 @@ def _close_position(
 
     try:
         ticket_id = int(str(ticket).strip())
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         logger.warning(f"Failed to parse ticket: {ticket!r}")
         return {"success": False, "price": None, "profit": None, "error": f"Invalid ticket: {ticket}", "retcode": -1}
 
@@ -513,7 +513,7 @@ def _cancel_order(ticket: Any) -> dict[str, Any]:
 
     try:
         ticket_id = int(str(ticket).strip())
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         logger.warning(f"Failed to parse ticket: {ticket!r}")
         ticket_id = 0
 
@@ -545,7 +545,7 @@ def _get_deal_history(ticket: Any) -> Any:
     mt5: Any = _mt5
     try:
         ticket_id = int(str(ticket).strip())
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         logger.warning(f"Failed to parse ticket: {ticket!r}")
         ticket_id = 0
     deals = mt5.history_deals_get(position=ticket_id)
@@ -558,7 +558,7 @@ def _get_order_history(ticket: Any) -> Any:
     mt5: Any = _mt5
     try:
         ticket_id = int(str(ticket).strip())
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         logger.warning(f"Failed to parse ticket: {ticket!r}")
         ticket_id = 0
     orders = mt5.history_orders_get(ticket=ticket_id)

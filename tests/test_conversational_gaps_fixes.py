@@ -26,7 +26,9 @@ def test_telegram_tools_registration():
     tool_names = [t.get("name") or t.get("function", {}).get("name") for t in OPERATOR_INTERACTIVE_TOOLS]
 
     assert "calculate_position_size" in tool_names, "CALCULATE_POSITION_SIZE must be in OPERATOR_INTERACTIVE_TOOLS"
-    assert "get_liquidity_sweep_context" in tool_names, "GET_LIQUIDITY_SWEEP_CONTEXT must be in OPERATOR_INTERACTIVE_TOOLS"
+    assert "get_liquidity_sweep_context" in tool_names, (
+        "GET_LIQUIDITY_SWEEP_CONTEXT must be in OPERATOR_INTERACTIVE_TOOLS"
+    )
     assert "scan_pattern_similarity" in tool_names, "SCAN_PATTERN_SIMILARITY must be in OPERATOR_INTERACTIVE_TOOLS"
     assert "calculate_margin" in tool_names, "CALCULATE_MARGIN must be in OPERATOR_INTERACTIVE_TOOLS"
     assert "create_price_alert" in tool_names, "CREATE_PRICE_ALERT must be in OPERATOR_INTERACTIVE_TOOLS"

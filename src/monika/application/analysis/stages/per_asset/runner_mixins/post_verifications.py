@@ -57,7 +57,7 @@ class PostProcessVerificationMixin(_RunnerMixinBase):
                 if not entry_payload.get("price") and analysis.entry_price is not None:
                     try:
                         entry_payload["price"] = float(analysis.entry_price)
-                    except (TypeError, ValueError):
+                    except TypeError, ValueError:
                         pass
                 raw_payload = {
                     "decision": analysis.decision,
