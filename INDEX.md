@@ -7413,6 +7413,12 @@
     - `__init__(settings: Optional[Dict[str, Any]]) -> None`
     - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
 
+#### `mock_pass.py`
+- **Path**: [`src/monika/application/analysis/strategies/synthesized/mock_pass.py`](src/monika/application/analysis/strategies/synthesized/mock_pass.py)
+- **Classes**:
+  - `class MockPassStrategy(EdgeStrategy)`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
+
 ### Folder: `src/monika/application/analysis/strategies/synthesized/quarantine` <a id="folder-srcmonikaapplicationanalysisstrategiessynthesizedquarantine"></a>
 
 #### `__init__.py` - *Quarantine package for experimental or unverified synthesized alphas.*
@@ -14033,7 +14039,7 @@
   - `async health_check()`: Health check endpoint.
   - `async list_models()`: List available models.
   - `set_agent_runner(runner: Optional[Callable[[str, str, Dict[str, Any]], Awaitable[str]]]) -> None`: Inject a custom agent execution pipeline or mock runner.
-  - `get_default_chat_agent()`: Lazily load and cache the default ChatAgent instance.
+  - `get_default_chat_agent()`: Lazily load and cache the default ChatAgent instance from monika.application.agent.chat_agent.
   - `async execute_query(session_id: str, user_text: str, metadata: Dict[str, Any]) -> str`: Dispatches query to registered runner or ChatAgent, with graceful fallback.
   - `async chat_completions(req: ChatCompletionRequest, request: Request)`: OpenAI-compatible Chat Completions endpoint.
   - `async tradingview_webhook(request: Request)`: Ingress point for TradingView Webhook Alerts.

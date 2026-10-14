@@ -375,7 +375,8 @@ Monika/
 │       │   │   │   │   ├── alpha_xtiusd_9ffd6d.py
 │       │   │   │   │   ├── alpha_xtiusd_dae3f9.py
 │       │   │   │   │   ├── alpha_xtiusd_f30ff5.py
-│       │   │   │   │   └── alpha_xtiusd_fd5506.py
+│       │   │   │   │   ├── alpha_xtiusd_fd5506.py
+│       │   │   │   │   └── mock_pass.py
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base_strategy.py
 │       │   │   │   ├── bb_volume_profile.py
@@ -3264,4 +3265,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 329 | **Total Tracked Files**: 2902
+**Total Tracked Directories**: 329 | **Total Tracked Files**: 2903
