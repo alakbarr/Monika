@@ -46,7 +46,6 @@ if TYPE_CHECKING:
     from monika.infrastructure.brokers.ea_bridge.watchdog import EAWatchdog
     from monika.infrastructure.brokers.mt5_client import MT5Client
     from monika.infrastructure.infra.notifier import AgentNotifier
-    from monika.interfaces.telegram.bot import TelegramBot
 
 logger = logging.getLogger("TradingAgent.Main")
 
@@ -89,7 +88,7 @@ class AgentLifecycleMixin:
     news_watcher: Optional[NewsWatcher]
     post_release_analyzer: Optional[PostReleaseAnalyzer]
     trigger_checker: Optional[TriggerChecker]
-    telegram_bot: Optional[TelegramBot]
+    telegram_bot: Optional[Any]
     notifier: Optional[AgentNotifier]
     flash_crash_detector: Optional[FlashCrashDetector]
     risk_parameter_reloader: Optional[Any]
@@ -100,6 +99,7 @@ class AgentLifecycleMixin:
     playbook_curator: Optional[Any]
     plugin_engine: Optional[Any]
     universal_cron: Optional[Any]
+    guardian_supervisor: Optional[Any]
     _active_scraper_runner: Optional[Any]
     _recovery_task: Optional[asyncio.Task[Any]]
     _tg_task: Optional[asyncio.Task[Any]]
@@ -287,6 +287,12 @@ class AgentLifecycleMixin:
                 t = asyncio.create_task(_run_with_restart(name, runner, self.shutdown_event), name=task_name)
             tasks_list.append(t)
             return t
+
+        if hasattr(self, "guardian_supervisor") and self.guardian_supervisor:
+            try:
+                self.guardian_supervisor.start()
+            except Exception as e:
+                logger.warning(f"GuardianSupervisor start note: {e}")
 
         if self.market_data_scheduler and hasattr(self.market_data_scheduler, "start"):
             _launch_task("MarketDataScheduler", self.market_data_scheduler.start, "market_data_scheduler")
@@ -571,6 +577,14 @@ class AgentLifecycleMixin:
                 logger.info("  [OK] MT5 disconnected")
         except Exception as e:
             logger.warning(f"  [WARN] MT5 disconnect error or timeout: {e}")
+
+        # Stop Multi-Process Guardian Supervisor
+        if hasattr(self, "guardian_supervisor") and self.guardian_supervisor:
+            try:
+                self.guardian_supervisor.stop()
+                logger.info("  [OK] GuardianSupervisor stopped")
+            except Exception as e:
+                logger.warning(f"  [WARN] GuardianSupervisor stop failed: {e}")
 
         # Stop EventBus workers
         if hasattr(self, "event_bus") and self.event_bus and hasattr(self.event_bus, "stop_workers"):

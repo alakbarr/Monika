@@ -111,8 +111,11 @@ async def _amain() -> None:
     if not acquire_single_instance_lock():
         sys.exit(0)
 
-    # Load settings (loads settings.yaml; scraping sources reside in settings.yaml:scraping.sources)
-    settings = load_all_config()
+    # Single composition root: bootstrap runtime and service container
+    from monika.application.bootstrap import bootstrap_application
+
+    container = bootstrap_application()
+    settings = container.settings
 
     # Configure Gemini Rate Limiter limits from settings
     from monika.infrastructure.api.gemini_rate_limiter import configure_from_settings
@@ -138,7 +141,7 @@ async def _amain() -> None:
     if not getattr(args, "action", None):
         setattr(args, "action", "execute")
 
-    agent = TradingAgent(settings, dry_run=args.dry_run)
+    agent = TradingAgent(settings, dry_run=args.dry_run, container=container)
     try:
         await agent.start()
     finally:

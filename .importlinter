@@ -8,9 +8,6 @@ source_modules =
     monika.core
 forbidden_modules =
     monika.interfaces
-ignore_imports =
-    monika.infrastructure.notifications.telegram_notifier -> monika.interfaces.telegram.sanitizer
-    monika.core.telemetry.doctor -> monika.interfaces.cli.doctor
 
 [importlinter:contract:2]
 name = Domain Layer Boundary
@@ -21,3 +18,11 @@ forbidden_modules =
     monika.interfaces
     monika.application
     monika.infrastructure
+
+[importlinter:contract:3]
+name = Application Layer Boundary
+type = forbidden
+source_modules =
+    monika.application
+forbidden_modules =
+    monika.interfaces

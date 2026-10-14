@@ -21,7 +21,7 @@ import secrets
 import time
 from typing import Any, AsyncGenerator, Awaitable, Callable, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
@@ -29,6 +29,8 @@ from pydantic import BaseModel, Field
 from monika.interfaces.dashboard.rbac import Role, resolve_role
 
 logger = logging.getLogger("TradingAgent.Gateway.ApiServer")
+
+gateway_router = APIRouter(tags=["Gateway & Ingress"])
 
 app = FastAPI(
     title="Monika AI Trading Agent API Server",
@@ -90,8 +92,8 @@ class ChatCompletionRequest(BaseModel):
     tools: Optional[List[Dict[str, Any]]] = None
 
 
-@app.get("/health")
-@app.get("/v1/status")
+@gateway_router.get("/health")
+@gateway_router.get("/v1/status")
 async def health_check():
     """Health check endpoint."""
     return {
@@ -103,7 +105,7 @@ async def health_check():
     }
 
 
-@app.get("/v1/models")
+@gateway_router.get("/v1/models")
 async def list_models():
     """List available models."""
     return {
@@ -219,7 +221,7 @@ async def execute_query(session_id: str, user_text: str, metadata: Dict[str, Any
         )
 
 
-@app.post("/v1/chat/completions")
+@gateway_router.post("/v1/chat/completions")
 async def chat_completions(req: ChatCompletionRequest, request: Request):
     """
     OpenAI-compatible Chat Completions endpoint.
@@ -311,8 +313,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request):
 # ---------------------------------------------------------------------------
 # Webhook Ingress Endpoints (TradingView & Omnichannel)
 # ---------------------------------------------------------------------------
-@app.post("/api/v1/webhooks/tradingview")
-@app.post("/webhooks/tradingview")
+@gateway_router.post("/api/v1/webhooks/tradingview")
+@gateway_router.post("/webhooks/tradingview")
 async def tradingview_webhook(request: Request):
     """
     Ingress point for TradingView Webhook Alerts.
@@ -356,8 +358,8 @@ async def tradingview_webhook(request: Request):
     }
 
 
-@app.post("/api/v1/webhooks/ingress")
-@app.post("/webhooks/ingress")
+@gateway_router.post("/api/v1/webhooks/ingress")
+@gateway_router.post("/webhooks/ingress")
 async def general_webhook_ingress(request: Request):
     """General purpose webhook ingress endpoint for external integrations."""
     from monika.interfaces.gateway.webhook_ingress import get_webhook_router
@@ -382,7 +384,7 @@ async def general_webhook_ingress(request: Request):
 # ---------------------------------------------------------------------------
 # Interactive PTY Terminal WebSocket Endpoint
 # ---------------------------------------------------------------------------
-@app.websocket("/ws/terminal")
+@gateway_router.websocket("/ws/terminal")
 async def terminal_websocket(websocket: WebSocket):
     """
     WebSocket endpoint for bidirectional interactive terminal console streaming.
@@ -483,3 +485,18 @@ async def terminal_websocket(websocket: WebSocket):
         logger.warning(f"[ApiServer] Terminal WebSocket error: {e}")
     finally:
         await manager.close_session(session.session_id)
+
+
+# Mount routes onto the standalone api_server app
+app.include_router(gateway_router)
+
+__all__ = [
+    "app",
+    "gateway_router",
+    "set_agent_runner",
+    "get_default_chat_agent",
+    "execute_query",
+    "AVAILABLE_MODELS",
+    "ChatMessage",
+    "ChatCompletionRequest",
+]

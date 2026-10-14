@@ -161,6 +161,13 @@ class NewsWatcher:
         )
         self._load_persistent_state()
 
+    def _track_task(self, coro: Any) -> asyncio.Task[Any]:
+        """Track background task strongly to prevent garbage collection."""
+        t = asyncio.create_task(coro)
+        self._background_tasks.add(t)
+        t.add_done_callback(self._background_tasks.discard)
+        return t
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -300,7 +307,7 @@ class NewsWatcher:
             try:
                 from monika.infrastructure.infra.notifier import AgentNotifier
 
-                asyncio.create_task(
+                self._track_task(
                     AgentNotifier().send_warning(
                         f"[PERINGATAN] News classification pipeline error. Menggunakan fallback shock-keyword konservatif "
                         f"(tanpa validasi berlapis normal) sampai pipeline pulih.\n{str(e)[:150]}"
@@ -372,7 +379,7 @@ class NewsWatcher:
                 )
                 symbols_text = f"Simbol terdampak: {', '.join(affected)}" if affected else "Simbol: Multi-aset/Makro"
                 notif_msg = f"[BREAKING NEWS] Terdeteksi berita berdampak tinggi:\n{top_items_text}\n{symbols_text}\nEvaluasi risiko dan re-analisis otomatis dipicu."
-                asyncio.create_task(AgentNotifier().send_warning(notif_msg))
+                self._track_task(AgentNotifier().send_warning(notif_msg))
             except Exception as notif_err:
                 logger.debug(f"Failed to send breaking news notification: {notif_err}")
 
@@ -750,7 +757,7 @@ class NewsWatcher:
                 await asyncio.sleep(remaining_wait)
 
             if self._cycle_scheduler:
-                asyncio.create_task(self._cycle_scheduler.run_once(forced=True))
+                self._track_task(self._cycle_scheduler.run_once(forced=True))
             return
 
         if want_full_cycle and self._forced_reruns_today >= self._max_forced_reruns:

@@ -311,6 +311,13 @@ class TaskRegistry:
         TaskRegistry._instance = self
 
     @classmethod
+    def get_instance(cls, shutdown_event: Optional[asyncio.Event] = None) -> "TaskRegistry":
+        if cls._instance is None:
+            ev = shutdown_event or asyncio.Event()
+            cls._instance = cls(shutdown_event=ev)
+        return cls._instance
+
+    @classmethod
     def reset(cls) -> None:
         cls._instance = None
 

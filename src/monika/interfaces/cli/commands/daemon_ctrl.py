@@ -449,6 +449,10 @@ async def _acli_run(args: Any) -> None:
     configure_from_settings(settings)
 
     # 3. Init DB & Health Checks
+    from monika.application.bootstrap import bootstrap_application
+
+    container = bootstrap_application(settings=settings)
+
     logger.info("Initializing database...")
     await cli_main.init_db()
 
@@ -460,7 +464,7 @@ async def _acli_run(args: Any) -> None:
         sys.exit(1)
 
     # 4. Instantiate & Start Agent
-    agent = cli_main.TradingAgent(settings=settings, dry_run=is_dry_run)
+    agent = cli_main.TradingAgent(settings=settings, dry_run=is_dry_run, container=container)
     try:
         await agent.start()
     finally:

@@ -41,6 +41,7 @@ class AgentMonitorsMixin:
     position_guardian: Optional[PositionGuardian]
     market_data_scheduler: Optional[MarketDataScheduler]
     risk_parameter_reloader: Optional[Any]
+    container: Optional[Any]
     publish_tick: Callable[..., Coroutine[Any, Any, None]]
 
     async def _run_tick_stream_loop(self) -> None:
@@ -193,7 +194,20 @@ class AgentMonitorsMixin:
 
     async def _run_dashboard(self) -> None:
         """Run the FastAPI dashboard server as an asyncio task with bind-retry resilience."""
-        from monika.interfaces.dashboard.api import run_dashboard_async, set_dashboard_dependencies
+        dashboard_runner = self.container.get("dashboard_runner") if self.container else None
+        if dashboard_runner:
+            await dashboard_runner(self)
+            return
+
+        try:
+            import importlib
+
+            dash_api = importlib.import_module("monika.interfaces.dashboard.api")
+            set_dashboard_dependencies = getattr(dash_api, "set_dashboard_dependencies")
+            run_dashboard_async = getattr(dash_api, "run_dashboard_async")
+        except Exception as imp_err:
+            logger.debug(f"Dashboard interface resolution note: {imp_err}")
+            return
 
         rg = getattr(self.execution_service, "risk_gate", None)
         reloader = getattr(self, "risk_parameter_reloader", None)
