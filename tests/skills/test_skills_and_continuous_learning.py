@@ -122,6 +122,7 @@ async def test_continuous_learner():
                 problem="Broker returns 10004 REQUOTE error on market order during news spike.",
                 solution="Switch to IOC (Immediate or Cancel) with 5 pips deviation tolerance or place pending stop order.",
                 category="crystallized",
+                base_dir=tmpdir,
             )
             assert ok is True
             assert os.path.exists(path)
