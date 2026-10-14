@@ -78,6 +78,7 @@ dev = [
     "import-linter>=2.1.0",
     "ruff",
     "pyright",
+    "pre-commit>=4.0.0",
 ]
 timesfm = [
     "torch>=2.14.0",

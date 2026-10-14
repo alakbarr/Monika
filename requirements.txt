@@ -78,6 +78,7 @@ openai>=1.14.0
 # Testing & Development
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
+pre-commit>=4.0.0
 
 # Google Workspace Integration
 gspread>=6.2.0
