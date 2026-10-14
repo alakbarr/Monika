@@ -43,7 +43,10 @@ class RecoveryMixin(_RunnerMixinBase):
             recovery_nudge = (
                 f"CRITICAL SYSTEM RECOVERY INSTRUCTION: You finished your turns without calling the required 'submit_asset_analysis' tool. "
                 f"You MUST call 'submit_asset_analysis' NOW with 'symbol': '{symbol}', 'decision' (buy/sell/wait/avoid), "
-                f"'confidence' (0.0 to 1.0), and 'rationale' based on your previous findings. Do not respond with plain text."
+                f"'confidence' (0.0 to 1.0), and 'rationale' based on your previous findings. "
+                f"If decision is 'buy' or 'sell', you MUST also include: 'stop_loss', 'take_profit', 'invalidation' (detailed string), "
+                f"'invalidation_price', 'invalidation_direction', 'entry_condition', 'reevaluation_trigger', 'confluence_score' (int 0-14), "
+                f"and 'priced_in_score' (int 1-10). Do not respond with plain text."
             )
             messages = [
                 {"role": "user", "content": user_message},
@@ -120,20 +123,43 @@ class RecoveryMixin(_RunnerMixinBase):
                         "rationale": final_text[:1000]
                         if final_text
                         else f"Extracted from model final text ({extracted_decision})",
-                        "invalidation": "Extracted via heuristic text recovery",
+                        "invalidation": f"Extracted via heuristic text recovery for {symbol} - structural invalidation",
                     }
                     if extracted_decision in ("buy", "sell"):
-                        fallback_payload["entry_condition"] = {"type": "market", "detail": "Extracted market entry"}
-                        # Try extracting numerical SL and TP from text if available
                         m_sl = re.search(r"(?:stop[-_\s]*loss|sl)\s*[:=]\s*([0-9.]+)", text_lower)
                         m_tp = re.search(r"(?:take[-_\s]*profit|tp)\s*[:=]\s*([0-9.]+)", text_lower)
+                        parsed_sl = None
+                        parsed_tp = None
                         if m_sl and m_tp:
                             try:
-                                fallback_payload["stop_loss"] = float(m_sl.group(1))
-                                fallback_payload["take_profit"] = float(m_tp.group(1))
+                                parsed_sl = float(m_sl.group(1))
+                                parsed_tp = float(m_tp.group(1))
                             except ValueError:
-                                fallback_payload["stop_loss"] = None
-                                fallback_payload["take_profit"] = None
+                                pass
+
+                        if parsed_sl is not None and parsed_tp is not None:
+                            fallback_payload["stop_loss"] = parsed_sl
+                            fallback_payload["take_profit"] = parsed_tp
+                            fallback_payload["entry_condition"] = {"type": "market", "detail": "Extracted market entry"}
+                            fallback_payload["invalidation_price"] = parsed_sl
+                            fallback_payload["invalidation_direction"] = (
+                                "below" if extracted_decision == "buy" else "above"
+                            )
+                            fallback_payload["reevaluation_trigger"] = {
+                                "type": "price_level",
+                                "symbol": symbol,
+                                "price": parsed_sl,
+                                "detail": f"Re-evaluate if SL breached at {parsed_sl}",
+                            }
+                            fallback_payload["confluence_score"] = 7
+                            fallback_payload["priced_in_score"] = 4
+                        else:
+                            extracted_decision = "wait"
+                            fallback_payload["decision"] = "wait"
+                            fallback_payload["rationale"] = (
+                                f"[HEURISTIC DOWNGRADE]: Text indicated directional trade but lacked valid SL/TP geometry. "
+                                f"Downgraded to WAIT under fail-closed safety policy.\n\n" + (final_text[:800] or "")
+                            )
 
                     from monika.application.analysis.tools.tool_executor import ToolExecutor
 

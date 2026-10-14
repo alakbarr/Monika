@@ -40,6 +40,27 @@ def test_coerce_optional_float_commas():
     assert coerce_optional_float("$2,500.00") == 2500.0
 
 
+def test_coerce_optional_float_european_commas():
+    # European decimal comma without dot
+    assert coerce_optional_float("1,0850") == 1.0850
+    assert coerce_optional_float("0,75") == 0.75
+    assert coerce_optional_float("155,20") == 155.20
+    # European thousands with dot and decimal with comma
+    assert coerce_optional_float("1.234,50") == 1234.50
+    assert coerce_optional_float("1.085,50") == 1085.50
+
+
+def test_coerce_optional_float_nan_inf_rejection():
+    import math
+
+    assert coerce_optional_float(float("nan")) is None
+    assert coerce_optional_float(float("inf")) is None
+    assert coerce_optional_float(float("-inf")) is None
+    assert coerce_optional_float("inf") is None
+    assert coerce_optional_float("-inf") is None
+    assert coerce_optional_float("nan") is None
+
+
 def test_coerce_optional_float_invalid_strings():
     assert coerce_optional_float("unknown") is None
     assert coerce_optional_float("invalid_number") is None

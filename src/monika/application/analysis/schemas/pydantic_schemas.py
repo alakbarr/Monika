@@ -661,11 +661,11 @@ class SubmitAssetAnalysisSchema(BaseModel):
 
     invalidation_price: Optional[float] = Field(
         None,
-        description='Optional but STRONGLY RECOMMENDED: The specific price level that invalidates your thesis. Example: if BUY and thesis invalid above 2420, set invalidation_price=2420, invalidation_direction="above". Used for automated monitoring of open positions.',
+        description='REQUIRED for buy/sell decisions: The specific price level that invalidates your thesis. Example: if BUY and thesis invalid below 2420, set invalidation_price=2420, invalidation_direction="below". Used for automated monitoring of open positions.',
     )
     invalidation_direction: Optional[Literal["above", "below"]] = Field(
         None,
-        description='"above" = thesis invalid if price closes ABOVE invalidation_price. "below" = thesis invalid if price closes BELOW invalidation_price.',
+        description='REQUIRED for buy/sell decisions: "above" = thesis invalid if price closes ABOVE invalidation_price. "below" = thesis invalid if price closes BELOW invalidation_price.',
     )
 
     reevaluation_trigger: Optional[ReevaluationTrigger] = Field(
@@ -715,6 +715,8 @@ class SubmitAssetAnalysisSchema(BaseModel):
 
         # 3. Auto-populate fallback reevaluation_trigger if missing
         decision = str(data.get("decision") or "").lower()
+        if data.get("decision"):
+            data["decision"] = decision
         if not data.get("reevaluation_trigger"):
             sym = data.get("symbol", "")
             if decision in ("buy", "sell"):

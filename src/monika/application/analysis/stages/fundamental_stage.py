@@ -119,7 +119,7 @@ MANDATORY PRE-SUBMISSION CHECKLIST (You must self-verify before calling submit_f
 [ ] Did I analyze DXY and clearly state the USD bias?
 [ ] Did I evaluate the relative central bank policy divergence (Fed vs ECB/BoE/BoJ/RBA)?
 [ ] Did I inspect Fed Net Liquidity and credit stress in the pre-fetched bundle and cite them in macro_narrative?
-[ ] Did I analyze VIX and clearly state risk sentiment (Risk On/Off/Neutral)?
+[ ] Did I analyze VIX and clearly state risk sentiment (risk-on, risk-off, or mixed)? Note: use 'mixed' when signals are balanced or neutral.
 [ ] Did I review the news digest for specific currency nuances?
 [ ] Did I provide a clear directional bias for ALL requested pairs?
 [ ] Did I include `currency_confidence` and `invalidation_conditions` for every non-neutral bias?
@@ -1069,7 +1069,8 @@ INSTRUCTIONS:
                                             .get("stage1_escalation", {})
                                         )
                                         cross_check_model = (
-                                            stage1_esc.get("fallback_2")
+                                            stage1_esc.get("fallback_1")
+                                            or stage1_esc.get("fallback_2")
                                             or stage1_esc.get("fallback")
                                             or stage1_esc.get("primary")
                                         )

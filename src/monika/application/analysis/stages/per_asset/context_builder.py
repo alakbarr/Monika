@@ -1064,12 +1064,22 @@ class ContextBuilderMixin:
         msg = f"""Analyze {symbol} and provide a trading decision for the current cycle.{special_notes}
 
 MANDATORY FIRST STEP:
-Call get_market_regime(symbols=["{symbol}"], timeframe="D1"). 
+Call get_market_regime(symbols=["{symbol}"], timeframe="D1").
 Read STEP 0 in your SMC/ICT playbook. You MUST adjust your confluence threshold based on the ADX value returned.
 """
         msg += (
             f"\nCRITICAL MANDATORY REQUIREMENT:\n"
             f"- If proposing BUY or SELL: you MUST call `calculate_position_size` FIRST before submitting. Direct unverified BUY/SELL is blocked by TradeStopGate.\n"
+            f"- For BUY or SELL decisions, you MUST supply ALL 9 execution fields in `submit_asset_analysis`:\n"
+            f"  1. `stop_loss` (float)\n"
+            f"  2. `take_profit` (float)\n"
+            f"  3. `invalidation` (detailed string >= 40 chars with specific price level)\n"
+            f"  4. `invalidation_price` (float level)\n"
+            f"  5. `invalidation_direction` ('above' or 'below')\n"
+            f"  6. `entry_condition` (dict e.g. {{'type': 'market', 'detail': '...'}})\n"
+            f"  7. `reevaluation_trigger` (dict e.g. {{'type': 'price_level', 'symbol': '{symbol}', 'price': ..., 'detail': '...'}})\n"
+            f"  8. `confluence_score` (integer 0-14)\n"
+            f"  9. `priced_in_score` (integer 1-10)\n"
             f"- If concluding WAIT on Turn 1: you MUST call at least one inspection tool (`get_smc_zones`, `get_structure_breaks`, etc.) first. Direct Turn-1 WAIT without inspection is blocked by Anti-Laziness gate.\n"
             f"- You MUST conclude your analysis by invoking the `submit_asset_analysis` tool with your decision (buy/sell/wait/avoid) "
             f'and full structured parameters for {symbol} (ensure argument "symbol": "{symbol}" is included).\n'
@@ -1096,7 +1106,11 @@ HYPOTHESIS-DRIVEN REASONING DIRECTIVE (Max 2-3 Iterative Turns):
 
         msg += f"""4. If the setup lacks confluence or structure is violated, you may conclude 'wait' or 'avoid'. NOTE: To conclude 'wait' on Turn 1, you MUST first inspect technical structure (e.g. call `get_smc_zones` or `get_structure_breaks`) — direct Turn-1 'wait' without technical verification is blocked by Anti-Laziness gate.
 5. MANDATORY SIZING BEFORE SUBMISSION: If proposing a directional trade (BUY/SELL), you MUST call `calculate_position_size` with exact entry, stop_loss, and take_profit FIRST. Never call `submit_asset_analysis` with BUY/SELL before `calculate_position_size` passes.
-6. Once verified, invoke `submit_asset_analysis` with your decision (buy/sell/wait/avoid) and full structured parameters for {symbol} (ensure argument "symbol": "{symbol}" is included).
+6. For BUY or SELL decisions, you MUST supply ALL 9 execution fields in `submit_asset_analysis`:
+   stop_loss (float), take_profit (float), invalidation (detailed string), invalidation_price (float),
+   invalidation_direction ('above'/'below'), entry_condition (dict), reevaluation_trigger (dict),
+   confluence_score (integer 0-14), and priced_in_score (integer 1-10).
+7. Once verified, invoke `submit_asset_analysis` with your decision (buy/sell/wait/avoid) and full structured parameters for {symbol} (ensure argument "symbol": "{symbol}" is included).
 
 CRITICAL MANDATORY REQUIREMENT:
 You MUST conclude your analysis by invoking the `submit_asset_analysis` tool.
