@@ -262,121 +262,6 @@ Monika/
 │       │   │   │   ├── per_asset_stage.py
 │       │   │   │   └── preflight_gate.py
 │       │   │   ├── strategies/
-│       │   │   │   ├── synthesized/
-│       │   │   │   │   ├── quarantine/
-│       │   │   │   │   │   ├── __init__.py
-│       │   │   │   │   │   └── alpha_btcusd_467904.py
-│       │   │   │   │   ├── __init__.py
-│       │   │   │   │   ├── alpha_audusd_27c20d.py
-│       │   │   │   │   ├── alpha_audusd_3a4246.py
-│       │   │   │   │   ├── alpha_audusd_5f9ce8.py
-│       │   │   │   │   ├── alpha_audusd_8acf60.py
-│       │   │   │   │   ├── alpha_audusd_932927.py
-│       │   │   │   │   ├── alpha_audusd_aacbcf.py
-│       │   │   │   │   ├── alpha_audusd_abe552.py
-│       │   │   │   │   ├── alpha_audusd_c2eab6.py
-│       │   │   │   │   ├── alpha_audusd_ce0c59.py
-│       │   │   │   │   ├── alpha_audusd_de5e1e.py
-│       │   │   │   │   ├── alpha_audusd_eb3084.py
-│       │   │   │   │   ├── alpha_btcusd_1230d3.py
-│       │   │   │   │   ├── alpha_btcusd_486acc.py
-│       │   │   │   │   ├── alpha_btcusd_50c0eb.py
-│       │   │   │   │   ├── alpha_btcusd_52d670.py
-│       │   │   │   │   ├── alpha_btcusd_8b05ec.py
-│       │   │   │   │   ├── alpha_btcusd_96feb9.py
-│       │   │   │   │   ├── alpha_btcusd_adf9b6.py
-│       │   │   │   │   ├── alpha_btcusd_b22661.py
-│       │   │   │   │   ├── alpha_btcusd_bd9200.py
-│       │   │   │   │   ├── alpha_btcusd_cbd98f.py
-│       │   │   │   │   ├── alpha_btcusd_ce0d23.py
-│       │   │   │   │   ├── alpha_btcusd_db91cc.py
-│       │   │   │   │   ├── alpha_btcusd_f91b83.py
-│       │   │   │   │   ├── alpha_eurusd_6c25e3.py
-│       │   │   │   │   ├── alpha_eurusd_6d622a.py
-│       │   │   │   │   ├── alpha_eurusd_76877d.py
-│       │   │   │   │   ├── alpha_eurusd_8060ed.py
-│       │   │   │   │   ├── alpha_eurusd_920843.py
-│       │   │   │   │   ├── alpha_eurusd_974ead.py
-│       │   │   │   │   ├── alpha_eurusd_a25dcb.py
-│       │   │   │   │   ├── alpha_eurusd_b7af66.py
-│       │   │   │   │   ├── alpha_eurusd_c89ba5.py
-│       │   │   │   │   ├── alpha_eurusd_fa2e45.py
-│       │   │   │   │   ├── alpha_gbpusd_1c9869.py
-│       │   │   │   │   ├── alpha_gbpusd_1fb4c5.py
-│       │   │   │   │   ├── alpha_gbpusd_4947d0.py
-│       │   │   │   │   ├── alpha_gbpusd_634767.py
-│       │   │   │   │   ├── alpha_gbpusd_867953.py
-│       │   │   │   │   ├── alpha_gbpusd_9f0652.py
-│       │   │   │   │   ├── alpha_gbpusd_b14ef8.py
-│       │   │   │   │   ├── alpha_gbpusd_b3f4b6.py
-│       │   │   │   │   ├── alpha_gbpusd_e73efc.py
-│       │   │   │   │   ├── alpha_usdjpy_131b6e.py
-│       │   │   │   │   ├── alpha_usdjpy_13a603.py
-│       │   │   │   │   ├── alpha_usdjpy_159711.py
-│       │   │   │   │   ├── alpha_usdjpy_41ec5b.py
-│       │   │   │   │   ├── alpha_usdjpy_4a7cd2.py
-│       │   │   │   │   ├── alpha_usdjpy_55884a.py
-│       │   │   │   │   ├── alpha_usdjpy_7c9264.py
-│       │   │   │   │   ├── alpha_usdjpy_8102fa.py
-│       │   │   │   │   ├── alpha_usdjpy_da40ef.py
-│       │   │   │   │   ├── alpha_usdjpy_e3c1b2.py
-│       │   │   │   │   ├── alpha_xauusd_133dfb.py
-│       │   │   │   │   ├── alpha_xauusd_3af460.py
-│       │   │   │   │   ├── alpha_xauusd_5044bf.py
-│       │   │   │   │   ├── alpha_xauusd_59cf5d.py
-│       │   │   │   │   ├── alpha_xauusd_5e8d45.py
-│       │   │   │   │   ├── alpha_xauusd_61842a.py
-│       │   │   │   │   ├── alpha_xauusd_63216a.py
-│       │   │   │   │   ├── alpha_xauusd_6e46d9.py
-│       │   │   │   │   ├── alpha_xauusd_72bf31.py
-│       │   │   │   │   ├── alpha_xauusd_7358c1.py
-│       │   │   │   │   ├── alpha_xauusd_754250.py
-│       │   │   │   │   ├── alpha_xauusd_75d1dc.py
-│       │   │   │   │   ├── alpha_xauusd_78210e.py
-│       │   │   │   │   ├── alpha_xauusd_94ad53.py
-│       │   │   │   │   ├── alpha_xauusd_96d26b.py
-│       │   │   │   │   ├── alpha_xauusd_a6d004.py
-│       │   │   │   │   ├── alpha_xauusd_a84e8d.py
-│       │   │   │   │   ├── alpha_xauusd_b01980.py
-│       │   │   │   │   ├── alpha_xauusd_b256b3.py
-│       │   │   │   │   ├── alpha_xauusd_b68a11.py
-│       │   │   │   │   ├── alpha_xauusd_bb1cfa.py
-│       │   │   │   │   ├── alpha_xauusd_ca7c75.py
-│       │   │   │   │   ├── alpha_xauusd_dfbed8.py
-│       │   │   │   │   ├── alpha_xbrusd_042cd9.py
-│       │   │   │   │   ├── alpha_xbrusd_0d2342.py
-│       │   │   │   │   ├── alpha_xbrusd_0f1bd3.py
-│       │   │   │   │   ├── alpha_xbrusd_176316.py
-│       │   │   │   │   ├── alpha_xbrusd_3e1575.py
-│       │   │   │   │   ├── alpha_xbrusd_3fe51d.py
-│       │   │   │   │   ├── alpha_xbrusd_5af3d8.py
-│       │   │   │   │   ├── alpha_xbrusd_6e7089.py
-│       │   │   │   │   ├── alpha_xbrusd_87e8fa.py
-│       │   │   │   │   ├── alpha_xbrusd_945526.py
-│       │   │   │   │   ├── alpha_xbrusd_9e8436.py
-│       │   │   │   │   ├── alpha_xbrusd_beb0e3.py
-│       │   │   │   │   ├── alpha_xbrusd_d4aee9.py
-│       │   │   │   │   ├── alpha_xbrusd_d7ab4a.py
-│       │   │   │   │   ├── alpha_xbrusd_e55dbf.py
-│       │   │   │   │   ├── alpha_xbrusd_e87a0b.py
-│       │   │   │   │   ├── alpha_xbrusd_eadd31.py
-│       │   │   │   │   ├── alpha_xbrusd_ec8f88.py
-│       │   │   │   │   ├── alpha_xtiusd_09ce88.py
-│       │   │   │   │   ├── alpha_xtiusd_16dc64.py
-│       │   │   │   │   ├── alpha_xtiusd_1793d0.py
-│       │   │   │   │   ├── alpha_xtiusd_2c4e39.py
-│       │   │   │   │   ├── alpha_xtiusd_374fa7.py
-│       │   │   │   │   ├── alpha_xtiusd_403155.py
-│       │   │   │   │   ├── alpha_xtiusd_43ae5f.py
-│       │   │   │   │   ├── alpha_xtiusd_487183.py
-│       │   │   │   │   ├── alpha_xtiusd_592069.py
-│       │   │   │   │   ├── alpha_xtiusd_83031c.py
-│       │   │   │   │   ├── alpha_xtiusd_880297.py
-│       │   │   │   │   ├── alpha_xtiusd_9ffd6d.py
-│       │   │   │   │   ├── alpha_xtiusd_dae3f9.py
-│       │   │   │   │   ├── alpha_xtiusd_f30ff5.py
-│       │   │   │   │   ├── alpha_xtiusd_fd5506.py
-│       │   │   │   │   └── mock_pass.py
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base_strategy.py
 │       │   │   │   ├── bb_volume_profile.py
@@ -918,8 +803,6 @@ Monika/
 │       │   ├── skills/
 │       │   │   ├── .tmp_audit/
 │       │   │   ├── crystallized/
-│       │   │   │   ├── mt5_slippage_defense/
-│       │   │   │   │   └── SKILL.md
 │       │   │   │   └── eurusd_trend.md
 │       │   │   ├── general/
 │       │   │   │   ├── academic-literature/
@@ -3234,10 +3117,8 @@ Monika/
 │   ├── MACRO_REALITY.md
 │   ├── plugin_catalog.yaml
 │   ├── settings.example.yaml
-│   ├── settings.yaml
 │   ├── settings.yaml.good
 │   └── TRADING_SOUL.md
-├── AGENTS.md
 ├── alembic.ini
 ├── benchmark_report.md
 ├── CHANGELOG.md
@@ -3246,7 +3127,6 @@ Monika/
 ├── DESIGN.md
 ├── docker-compose.yml
 ├── Dockerfile
-├── GEMINI.md
 ├── INDEX.md
 ├── LICENSE
 ├── Makefile
@@ -3265,4 +3145,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 329 | **Total Tracked Files**: 2903
+**Total Tracked Directories**: 326 | **Total Tracked Files**: 2788
