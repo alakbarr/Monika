@@ -41,9 +41,9 @@ async def compress_agent_memory(session: AsyncSession, settings: Optional[dict] 
 
         logger.info(f"Compressing {len(logs)} old logs across {len(grouped_logs)} categories...")
 
-        # We use a fast, light model (shadow/flash-lite) for summarization
+        # We use the summarizer role for log summarization
         settings = settings or {}
-        client = get_client_for_task("stage1_shadow_check", settings)
+        client = get_client_for_task("summarizer", settings)
 
         for category, descriptions in grouped_logs.items():
             if len(descriptions) == 0:

@@ -205,54 +205,57 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                 c_conf = args.get("currency_confidence")
                 if isinstance(c_conf, dict) and c_conf:
                     nums = [float(v) for v in c_conf.values() if isinstance(v, (int, float))]
-                    args["confidence"] = round(sum(nums) / len(nums), 2) if nums else 0.75
+                    args["confidence"] = round(sum(nums) / len(nums), 2) if nums else 0.0
                 else:
-                    args["confidence"] = 0.75
+                    args["confidence"] = 0.0
+                if str(args.get("decision", "")).lower() in ("buy", "sell"):
+                    args["decision"] = "wait"
+                    args["rationale"] = (
+                        str(args.get("rationale") or "")
+                        + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted confidence score."
+                    ).strip()
             elif req_key == "macro_regime":
                 args["macro_regime"] = "mixed"
             elif req_key == "timeframe":
                 args["timeframe"] = "H1"
             elif req_key == "key_data_points_used":
-                args["key_data_points_used"] = {
-                    "dxy_trend_5d": "strengthening",
-                    "vix_close": 16.7,
-                }
+                args["key_data_points_used"] = {}
             elif req_key == "checklist":
-                args["checklist"] = {"bias_vs_narrative_match": True, "contradiction_existed": False}
+                args["checklist"] = {"bias_vs_narrative_match": False, "contradiction_existed": True}
             elif req_key == "priced_in_assessment":
                 args["priced_in_assessment"] = {
-                    "dominant_driver": "Central bank policy expectations",
-                    "priced_in_score": 5,
-                    "sell_the_news_risk": "medium",
+                    "dominant_driver": "Unknown / missing driver",
+                    "priced_in_score": 0,
+                    "sell_the_news_risk": "high",
                 }
             elif req_key == "strongest_counter_thesis":
-                args["strongest_counter_thesis"] = (
-                    "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik "
-                    "arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
-                )
+                args["strongest_counter_thesis"] = "Counter-thesis unstated by model; risk held high."
             elif req_key == "risk_sentiment":
                 args["risk_sentiment"] = "mixed"
             elif req_key == "macro_narrative":
-                args["macro_narrative"] = (
-                    "Macro fundamental overview synthesized from pre-fetched market indicators, "
-                    "yield differentials, and monetary policy stances."
-                )
+                args["macro_narrative"] = "Macro narrative omitted by model; holding baseline mixed assumptions."
             elif req_key == "reevaluation_trigger":
                 args["reevaluation_trigger"] = {
                     "type": "time",
-                    "detail": "Re-evaluate market structure on next H4 candle close.",
+                    "detail": "Immediate reevaluation required due to missing model trigger.",
                 }
             elif req_key == "entry_condition":
                 args["entry_condition"] = {
                     "type": "market",
-                    "detail": "Market order execution at current institutional levels.",
+                    "detail": "Execution held pending valid institutional entry condition.",
                 }
             elif req_key == "rationale":
-                args["rationale"] = "Institutional confluence meets execution threshold based on technical structure."
+                args["rationale"] = "Model rationale omitted; evaluated under fail-closed safety policy."
             elif req_key == "confluence_score":
-                args["confluence_score"] = 8
+                args["confluence_score"] = 0
+                if str(args.get("decision", "")).lower() in ("buy", "sell"):
+                    args["decision"] = "wait"
+                    args["rationale"] = (
+                        str(args.get("rationale") or "")
+                        + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted confluence score."
+                    ).strip()
             elif req_key == "priced_in_score":
-                args["priced_in_score"] = 4
+                args["priced_in_score"] = 0
 
     # Derive invalidation price and direction from stop loss if missing
     if "stop_loss" in args and "invalidation_price" not in args:
@@ -537,29 +540,41 @@ def deep_repair_tool_arguments(
         elif missing_prop == "macro_regime":
             args["macro_regime"] = "mixed"
         elif missing_prop == "confidence":
-            args["confidence"] = 0.70
+            args["confidence"] = 0.0
+            if str(args.get("decision", "")).lower() in ("buy", "sell"):
+                args["decision"] = "wait"
+                args["rationale"] = (
+                    str(args.get("rationale") or "")
+                    + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted confidence score."
+                ).strip()
         elif missing_prop == "checklist":
-            args["checklist"] = {"bias_vs_narrative_match": True, "contradiction_existed": False}
+            args["checklist"] = {"bias_vs_narrative_match": False, "contradiction_existed": True}
         elif missing_prop == "reevaluation_trigger":
             args["reevaluation_trigger"] = {
                 "type": "time",
-                "detail": "Re-evaluate market structure on next H4 candle close.",
+                "detail": "Immediate reevaluation required due to missing model trigger.",
             }
         elif missing_prop == "entry_condition":
             args["entry_condition"] = {
                 "type": "market",
-                "detail": "Market order execution at current institutional levels.",
+                "detail": "Execution held pending valid institutional entry condition.",
             }
         elif missing_prop == "rationale":
             args["rationale"] = (
                 assistant_text[:500]
                 if assistant_text
-                else "Institutional confluence meets execution threshold based on technical structure."
+                else "Model rationale omitted; evaluated under fail-closed safety policy."
             )
         elif missing_prop == "confluence_score":
-            args["confluence_score"] = 8
+            args["confluence_score"] = 0
+            if str(args.get("decision", "")).lower() in ("buy", "sell"):
+                args["decision"] = "wait"
+                args["rationale"] = (
+                    str(args.get("rationale") or "")
+                    + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted confluence score."
+                ).strip()
         elif missing_prop == "priced_in_score":
-            args["priced_in_score"] = 4
+            args["priced_in_score"] = 0
         elif missing_prop in props and "default" in props[missing_prop]:
             args[missing_prop] = props[missing_prop]["default"]
 

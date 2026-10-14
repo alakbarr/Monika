@@ -74,6 +74,12 @@ DATABASE_IMMUTABLE_TABLES: Set[str] = {
     "trading_events",
     "telegram_conversations",
     "orders_log",
+    "risk_states",
+    "system_state",
+    "circuit_breakers",
+    "paper_trades",
+    "closed_trades",
+    "positions",
 }
 
 TERMINAL_ACTION_TOOLS: Set[str] = {

@@ -150,6 +150,10 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             r["entry_price"] = entry_price
 
                     conf = float(r.get("confidence", 0.5) or 0.5)
+                    raw_conf_score = r.get("confluence_score")
+                    if raw_conf_score is None and ana is not None:
+                        raw_conf_score = getattr(ana, "confluence_score", None)
+                    confluence_val = float(raw_conf_score) if raw_conf_score is not None else 0.0
 
                     reasoning_text = ""
                     if ana and hasattr(ana, "rationale") and not hasattr(ana.rationale, "_mock_name"):
@@ -169,8 +173,8 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             stop_loss=sl,
                             take_profit=tp,
                             lot_size=float(r.get("lot_size", 0.01) or 0.01),
-                            confluence_score=conf,
-                            confidence_override=conf_override,
+                            confluence_score=confluence_val,
+                            confidence_override=conf_override if conf_override is not None else conf,
                             reasoning_text=reasoning_text,
                             provenance_verified=True,
                             account_equity=equity,
