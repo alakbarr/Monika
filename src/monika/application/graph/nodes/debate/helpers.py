@@ -201,7 +201,8 @@ async def compute_actual_risk_state(session, settings: dict, mt5_client=None) ->
         except Exception as e:
             logger.debug(f"[DebateHelpers] Gagal ambil equity live, pakai fallback {equity}: {e}")
 
-    daily_pnl_pct = round((risk_state_obj.daily_pnl / equity) * 100, 3) if risk_state_obj and equity > 0 else 0.0
+    daily_pnl = getattr(risk_state_obj, "daily_pnl", 0.0) if risk_state_obj else 0.0
+    daily_pnl_pct = round((float(daily_pnl) / equity) * 100, 3) if equity > 0 else 0.0
 
     portfolio_heat_pct = 0.0
     try:
@@ -221,13 +222,12 @@ async def compute_actual_risk_state(session, settings: dict, mt5_client=None) ->
         logger.debug(f"[DebateHelpers] Perhitungan heat riil gagal, fallback estimasi: {e}")
         portfolio_heat_pct = float(open_pos) * 1.5
 
+    curr_dd = float(getattr(risk_state_obj, "current_drawdown", 0.0)) if risk_state_obj else 0.0
     return {
         "daily_pnl_pct": daily_pnl_pct,
         "open_positions": open_pos,
         "portfolio_heat_pct": portfolio_heat_pct,
-        "risk_budget_remaining_pct": max(0.0, 100.0 - float(risk_state_obj.current_drawdown) / 50.0 * 100)
-        if risk_state_obj
-        else 100.0,
+        "risk_budget_remaining_pct": max(0.0, 100.0 - curr_dd / 50.0 * 100),
     }
 
 
