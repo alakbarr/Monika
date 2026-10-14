@@ -93,7 +93,7 @@ def test_i8_modular_split_loading():
     """I8: load_settings merges modular split files (e.g. risk.yaml) if present."""
     with tempfile.TemporaryDirectory() as tmpdir:
         main_yaml = os.path.join(tmpdir, "settings.yaml")
-        risk_yaml = os.path.join(tmpdir, "monika.domain.risk.yaml")
+        risk_yaml = os.path.join(tmpdir, "risk.yaml")
 
         with open(main_yaml, "w", encoding="utf-8") as f:
             yaml.dump({"app_name": "Split Test", "trading": {"risk": {"max_concurrent_positions": 2}}}, f)

@@ -113,7 +113,7 @@ monika = "monika.interfaces.cli.main:main"
 
 [tool.ruff]
 line-length = 120
-target-version = "py314"
+target-version = "py313"
 exclude = [
     ".git",
     "venv",
