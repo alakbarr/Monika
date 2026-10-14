@@ -5,8 +5,9 @@ from monika.application.analysis.memory.skill_crystallizer import SkillCrystalli
 
 
 @pytest.mark.asyncio
-async def test_skill_crystallizer_cluster():
+async def test_skill_crystallizer_cluster(tmp_path):
     crystallizer = SkillCrystallizer(settings={"learning": {"min_crystallization_wins": 5}})
+    crystallizer.SKILLS_DIR = tmp_path
 
     mock_session = create_mock_async_session()
     mock_r1 = MagicMock()

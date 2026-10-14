@@ -53,6 +53,7 @@ class ContinuousLearner:
         problem: str,
         solution: str,
         category: str = "crystallized",
+        base_dir: Optional[Path | str] = None,
     ) -> Tuple[bool, str, str]:
         """
         Generates and saves a standardized SKILL.md file.
@@ -61,7 +62,8 @@ class ContinuousLearner:
         clean_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", skill_name.strip().lower())
         desc_clean = description.strip()[:80]
 
-        target_dir = Path(__file__).resolve().parent / category.lower() / clean_name
+        parent_dir = Path(base_dir) if base_dir is not None else Path(__file__).resolve().parent
+        target_dir = parent_dir / category.lower() / clean_name
         target_dir.mkdir(parents=True, exist_ok=True)
         target_file = target_dir / "SKILL.md"
 
