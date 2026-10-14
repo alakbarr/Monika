@@ -416,6 +416,82 @@ class MT5BridgeProxy:
                 pass
         return self._last_error
 
+    def account_info(self) -> Optional[Any]:
+        return getattr(self._bridge_client, "account_info", lambda: None)() if self._bridge_client else None
+
+    def terminal_info(self) -> Optional[Any]:
+        return getattr(self._bridge_client, "terminal_info", lambda: None)() if self._bridge_client else None
+
+    def symbol_info(self, symbol: str) -> Optional[Any]:
+        return getattr(self._bridge_client, "symbol_info", lambda s: None)(symbol) if self._bridge_client else None
+
+    def symbol_info_tick(self, symbol: str) -> Optional[Any]:
+        return getattr(self._bridge_client, "symbol_info_tick", lambda s: None)(symbol) if self._bridge_client else None
+
+    def positions_get(self, *args, **kwargs) -> Optional[tuple]:
+        return (
+            getattr(self._bridge_client, "positions_get", lambda *a, **kw: ())(*args, **kwargs)
+            if self._bridge_client
+            else ()
+        )
+
+    def orders_get(self, *args, **kwargs) -> Optional[tuple]:
+        return (
+            getattr(self._bridge_client, "orders_get", lambda *a, **kw: ())(*args, **kwargs)
+            if self._bridge_client
+            else ()
+        )
+
+    def history_deals_get(self, *args, **kwargs) -> Optional[tuple]:
+        return (
+            getattr(self._bridge_client, "history_deals_get", lambda *a, **kw: ())(*args, **kwargs)
+            if self._bridge_client
+            else ()
+        )
+
+    def history_orders_get(self, *args, **kwargs) -> Optional[tuple]:
+        return (
+            getattr(self._bridge_client, "history_orders_get", lambda *a, **kw: ())(*args, **kwargs)
+            if self._bridge_client
+            else ()
+        )
+
+    def copy_rates_from_pos(self, *args, **kwargs) -> Optional[Any]:
+        return (
+            getattr(self._bridge_client, "copy_rates_from_pos", lambda *a, **kw: None)(*args, **kwargs)
+            if self._bridge_client
+            else None
+        )
+
+    def copy_rates_range(self, *args, **kwargs) -> Optional[Any]:
+        return (
+            getattr(self._bridge_client, "copy_rates_range", lambda *a, **kw: None)(*args, **kwargs)
+            if self._bridge_client
+            else None
+        )
+
+    def order_send(self, *args, **kwargs) -> Optional[Any]:
+        return (
+            getattr(self._bridge_client, "order_send", lambda *a, **kw: None)(*args, **kwargs)
+            if self._bridge_client
+            else None
+        )
+
+    def market_book_add(self, symbol: str) -> bool:
+        return (
+            getattr(self._bridge_client, "market_book_add", lambda s: False)(symbol) if self._bridge_client else False
+        )
+
+    def market_book_get(self, symbol: str) -> Optional[Any]:
+        return getattr(self._bridge_client, "market_book_get", lambda s: None)(symbol) if self._bridge_client else None
+
+    def market_book_release(self, symbol: str) -> bool:
+        return (
+            getattr(self._bridge_client, "market_book_release", lambda s: False)(symbol)
+            if self._bridge_client
+            else False
+        )
+
     def __getattr__(self, name: str) -> Any:
         # 1. First check if it's a standard MT5 constant
         if name in MT5_CONSTANTS:

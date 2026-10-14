@@ -507,7 +507,9 @@ def ts_argmax(df: Any, n: int) -> Any:
     if HAS_BOTTLENECK and bn is not None:
         arr = input_df.to_numpy(dtype=np.float64)
         raw = bn.move_argmax(arr, window=n, min_count=n, axis=0)
-        res_df = pd.DataFrame(raw, index=input_df.index, columns=input_df.columns)
+        # Convert bottleneck reverse-offset (0=right, n-1=left) to 0-based window index (0=left, n-1=right)
+        converted = (n - 1) - raw
+        res_df = pd.DataFrame(converted, index=input_df.index, columns=input_df.columns)
         return res_df.iloc[:, 0].rename(s_name) if is_series else res_df
 
     def _argmax_last(sub: np.ndarray) -> float:
@@ -540,7 +542,9 @@ def ts_argmin(df: Any, n: int) -> Any:
     if HAS_BOTTLENECK and bn is not None:
         arr = input_df.to_numpy(dtype=np.float64)
         raw = bn.move_argmin(arr, window=n, min_count=n, axis=0)
-        res_df = pd.DataFrame(raw, index=input_df.index, columns=input_df.columns)
+        # Convert bottleneck reverse-offset (0=right, n-1=left) to 0-based window index (0=left, n-1=right)
+        converted = (n - 1) - raw
+        res_df = pd.DataFrame(converted, index=input_df.index, columns=input_df.columns)
         return res_df.iloc[:, 0].rename(s_name) if is_series else res_df
 
     def _argmin_last(sub: np.ndarray) -> float:

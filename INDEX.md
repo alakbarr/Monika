@@ -10262,6 +10262,20 @@
     - `login(login: int, password: str, server: str) -> bool` - *Otentikasi ke broker MT5 melalui RPC bridge.*
     - `shutdown() -> None` - *Memutuskan koneksi MT5 RPC.*
     - `last_error() -> Tuple[int, str]` - *Mengembalikan kode error terakhir.*
+    - `account_info() -> Optional[Any]`
+    - `terminal_info() -> Optional[Any]`
+    - `symbol_info(symbol: str) -> Optional[Any]`
+    - `symbol_info_tick(symbol: str) -> Optional[Any]`
+    - `positions_get() -> Optional[tuple]`
+    - `orders_get() -> Optional[tuple]`
+    - `history_deals_get() -> Optional[tuple]`
+    - `history_orders_get() -> Optional[tuple]`
+    - `copy_rates_from_pos() -> Optional[Any]`
+    - `copy_rates_range() -> Optional[Any]`
+    - `order_send() -> Optional[Any]`
+    - `market_book_add(symbol: str) -> bool`
+    - `market_book_get(symbol: str) -> Optional[Any]`
+    - `market_book_release(symbol: str) -> bool`
   - `class MT5FallbackModule`: Modul fallback yang digunakan ketika MT5 native maupun bridge RPC belum/tidak terhubung.
     - `__init__()`
     - `initialize() -> bool`
