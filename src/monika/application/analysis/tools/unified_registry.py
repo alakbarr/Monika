@@ -154,17 +154,17 @@ class ToolEntry:
         self.parallel_safe = parallel_safe
 
     def get_parameters_schema(self) -> Dict[str, Any]:
-        """Return base JSON schema parameters dictionary."""
+        """Return base JSON schema parameters dictionary with inlined references."""
+        from monika.application.analysis.schemas.schemas import _inline_refs
+
         if self.input_model is not None:
             schema = self.input_model.model_json_schema()
             schema.pop("title", None)
-            schema.pop("$defs", None)
-            return schema
+            return _inline_refs(schema)
         if self.parameters_schema:
             schema = dict(self.parameters_schema)
             schema.pop("title", None)
-            schema.pop("$defs", None)
-            return schema
+            return _inline_refs(schema)
         return {"type": "object", "properties": {}}
 
     def get_anthropic_schema(self) -> Dict[str, Any]:

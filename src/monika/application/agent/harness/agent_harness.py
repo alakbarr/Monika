@@ -1789,7 +1789,7 @@ class AgentHarness:
                 await self._log_tool_call(session, stage_name, c_name, c_input, res_obj)
                 self.guardrail_controller.record_tool_call(c_name, c_input, res_obj)
                 self.guardrail_controller.record_success()
-                self.stall_guard.record_call(c_name, res_obj)
+                self.stall_guard.record_call(c_name, res_obj, turn_idx=turns)
                 self.verification_ledger.record_tool_execution(c_name, c_input, res_obj)
 
                 # Disk spillover check for payload > 16KB to prevent context window bloat and JSON truncation

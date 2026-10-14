@@ -123,9 +123,14 @@ class PromptInjectionScanner:
             "risk_manipulation",
         ),
         (
-            re.compile(r"(?:buy|sell|long|short)\s+(?:immediately|now|everything|all\s+in)", re.IGNORECASE),
+            re.compile(r"(?:buy|sell|long|short)\s+(?:everything|all\s+in|without\s+(?:sl|stop|risk))", re.IGNORECASE),
             0.75,
-            "trade_manipulation",
+            "reckless_trade_manipulation",
+        ),
+        (
+            re.compile(r"(?:buy|sell|long|short)\s+(?:immediately|now)\b", re.IGNORECASE),
+            0.35,
+            "urgent_trade_directive",
         ),
         (re.compile(r"(?:force\s+execute|max\s+leverage)", re.IGNORECASE), 0.70, "forced_execution"),
     ]

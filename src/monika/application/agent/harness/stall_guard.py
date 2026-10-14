@@ -73,6 +73,7 @@ class StallGuard:
         self.warning_issued = False
         self.warning_turns_count = 0
         self.seen_content_hashes: deque[str] = deque(maxlen=10)
+        self._last_turn_idx: Optional[int] = None
 
     def is_read_only(self, tool_name: str) -> bool:
         if tool_name in STATE_ADVANCING_TOOLS:
@@ -81,16 +82,23 @@ class StallGuard:
             return True
         return tool_name.startswith(("get_", "read_", "query_", "fetch_", "search_", "load_"))
 
-    def record_call(self, tool_name: str, tool_result: Any = None) -> None:
-        """Record execution of a tool and update stall counters."""
-        if self.is_read_only(tool_name):
-            self.consecutive_read_count += 1
-            if self.warning_issued:
-                self.warning_turns_count += 1
-        else:
+    def record_call(self, tool_name: str, tool_result: Any = None, turn_idx: Optional[int] = None) -> None:
+        """Record execution of a tool and update stall counters per reasoning turn."""
+        if not self.is_read_only(tool_name):
             # Mutating / state-advancing tool breaks the stall
             self.reset()
             return
+
+        if turn_idx is not None:
+            if turn_idx != self._last_turn_idx:
+                self._last_turn_idx = turn_idx
+                self.consecutive_read_count += 1
+                if self.warning_issued:
+                    self.warning_turns_count += 1
+        else:
+            self.consecutive_read_count += 1
+            if self.warning_issued:
+                self.warning_turns_count += 1
 
         # Track result hash to catch identical query loops
         if tool_result is not None:
@@ -145,4 +153,5 @@ class StallGuard:
         self.consecutive_read_count = 0
         self.warning_issued = False
         self.warning_turns_count = 0
+        self._last_turn_idx = None
         self.seen_content_hashes.clear()

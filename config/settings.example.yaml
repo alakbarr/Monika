@@ -1860,7 +1860,7 @@ llm:
         ollama: none
         openai_compatible: none
       max_tokens: 2048
-      max_tool_turns: 3
+      max_tool_turns: null
       temperature: 0.0
       fallback_1: liquid-d1
       fallback_2: luna-decision
@@ -2286,7 +2286,7 @@ llm:
       temperature: 0.0
       fallback_1: muse-spark-1.3
     news_digest_verifier:
-      primary: jev-latest
+      primary: gemini-3.8-flash
       thinking:
         fallback_4: high
         fallback_5: max
@@ -2630,7 +2630,7 @@ llm:
         openrouter: max
         ollama: none
         openai_compatible: none
-      max_tokens: 512
+      max_tokens: 2048
       temperature: 0.0
       fallback_1: liquid-d1
       fallback_2: luna-decision
