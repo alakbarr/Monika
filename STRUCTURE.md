@@ -844,20 +844,14 @@ Monika/
 │       │   │   ├── config_manager.py
 │       │   │   ├── config_migrations.py
 │       │   │   ├── env_file_manager.py
-│       │   │   ├── google_credentials.json.example
-│       │   │   ├── historical_macro_milestones.json
 │       │   │   ├── hot_reload.py
 │       │   │   ├── key_validator.py
-│       │   │   ├── MACRO_REALITY.md
 │       │   │   ├── migrations.py
-│       │   │   ├── plugin_catalog.yaml
 │       │   │   ├── profile_applicator.py
 │       │   │   ├── protocols.py
 │       │   │   ├── schemas.py
 │       │   │   ├── security.py
-│       │   │   ├── settings.example.yaml
-│       │   │   ├── settings.py
-│       │   │   └── TRADING_SOUL.md
+│       │   │   └── settings.py
 │       │   ├── contracts/
 │       │   │   ├── __init__.py
 │       │   │   └── plugin.py
@@ -2917,4 +2911,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 249 | **Total Tracked Files**: 2638
+**Total Tracked Directories**: 249 | **Total Tracked Files**: 2632

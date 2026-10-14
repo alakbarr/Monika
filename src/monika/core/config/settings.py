@@ -9,6 +9,8 @@ from typing import Any, Dict, Literal, Optional, Union, overload
 
 import yaml
 
+from monika.core.paths import get_config_dir
+
 
 def _resolve_env_str(val: str) -> str:
     """Resolve ${VAR:default} environment variable placeholders recursively."""
@@ -127,19 +129,20 @@ def load_settings(
                                 active_profile_path = cand_cfg
                 except Exception:
                     pass
+            cfg_dir = get_config_dir()
+            cfg_yaml = cfg_dir / "settings.yaml"
+            cfg_example = cfg_dir / "settings.example.yaml"
+
             if active_profile_path:
                 path = active_profile_path
+            elif cfg_yaml.exists():
+                path = str(cfg_yaml)
+            elif cfg_example.exists():
+                path = str(cfg_example)
             elif os.path.exists("config/settings.yaml"):
                 path = "config/settings.yaml"
-            elif os.path.exists("config/settings.example.yaml"):
-                path = "config/settings.example.yaml"
             else:
-                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                cand = os.path.join(base_dir, "config", "settings.yaml")
-                if os.path.exists(cand):
-                    path = cand
-                else:
-                    path = os.path.join(base_dir, "config", "settings.example.yaml")
+                path = "config/settings.example.yaml"
 
         good_backup_path = f"{path}.good"
         try:

@@ -14,6 +14,8 @@ from collections.abc import Callable
 
 import yaml
 
+from monika.core.paths import get_config_dir
+
 logger = logging.getLogger("TradingAgent.ConfigManager")
 
 
@@ -29,12 +31,11 @@ class ConfigManager:
     def __init__(self, config_paths: list[str] | None = None):
         if config_paths is None:
             resolved_paths: list[str] = []
-            for cand in ["config/settings.yaml"]:
-                if os.path.exists(cand):
-                    resolved_paths.append(cand)
-            if not resolved_paths:
-                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                resolved_paths.append(os.path.join(base_dir, "config", "settings.yaml"))
+            canonical_cfg = get_config_dir() / "settings.yaml"
+            if canonical_cfg.exists():
+                resolved_paths.append(str(canonical_cfg))
+            elif os.path.exists("config/settings.yaml"):
+                resolved_paths.append("config/settings.yaml")
             self.config_paths = resolved_paths
         else:
             self.config_paths = config_paths

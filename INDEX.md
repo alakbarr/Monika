@@ -218,7 +218,7 @@
   - `get_builtin_skills_dir() -> Path`: Return canonical skills directory (backward compatibility alias).
   - `get_skills_dir() -> Path`: Return canonical skills directory, ensuring it exists.
   - `resolve_data_path(rel_or_name: str) -> Path`: Resolve a filename or sub-path inside the canonical data directory.
-  - `resolve_config_path(rel_or_name: str) -> Path`: Resolve a config filename, checking active config/ first, then repo config/, then package defaults.
+  - `resolve_config_path(rel_or_name: str) -> Path`: Resolve a config filename, checking active config/ first, then repo config/.
 
 #### `platform.py` - *Universal Cross-Platform & Event Loop Compatibility Engine.*
 - **Path**: [`src/monika/core/platform.py`](src/monika/core/platform.py)

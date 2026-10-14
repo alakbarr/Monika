@@ -121,7 +121,7 @@ def resolve_data_path(rel_or_name: str) -> Path:
 
 
 def resolve_config_path(rel_or_name: str) -> Path:
-    """Resolve a config filename, checking active config/ first, then repo config/, then package defaults."""
+    """Resolve a config filename, checking active config/ first, then repo config/."""
     get_config_dir()
     clean_name = rel_or_name.replace("\\", "/").replace("trading-agent/config/", "").lstrip("/")
     target = (CONFIG_DIR / Path(clean_name)).resolve()
@@ -130,8 +130,4 @@ def resolve_config_path(rel_or_name: str) -> Path:
     repo_cfg = (REPO_ROOT / "config" / Path(clean_name)).resolve()
     if repo_cfg.exists():
         return repo_cfg
-    # Fallback to package defaults in core/config/
-    pkg_default = PACKAGE_ROOT / "core" / "config" / Path(clean_name)
-    if pkg_default.exists():
-        return pkg_default
     return target
