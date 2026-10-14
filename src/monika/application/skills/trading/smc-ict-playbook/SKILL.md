@@ -37,8 +37,7 @@ Output confluence assessment in EXACT format BEFORE calling `submit_asset_analys
 
 ```text
 CONFLUENCE SCORECARD FOR {SYMBOL}:
---- BASE STRUCTURAL FACTORS (0-14) ---
-[ ] F1_FUNDAMENTAL_BIAS: Macro brief supports {BUY/SELL}? YES(+2)/NO(0); Strong Conviction: YES(+3) = __
+[ ] F1_FUNDAMENTAL_BIAS: Macro brief supports {BUY/SELL}? YES(+2)/NO(0); Strong Conviction: YES(+3); Contra-Macro Setup (opposes Stage 1 bias when confidence >= 0.70): FORCED_PENALTY(-3) unless price breached Stage 1 invalidation level = __
 [ ] F2_DXY_CONFIRMS: DXY trend confirms direction? YES(+1)/NO(0) = __
 [ ] F3_D1_TREND: D1 trend aligns with H4 entry? YES(+2)/NO(0) = __
 [ ] F4_RSI_NEUTRAL: RSI not overbought/oversold at entry? YES(+1)/NO(0) = __
@@ -75,6 +74,7 @@ DECISION: __ (BUY/SELL if Total Confluence >= Effective Threshold, WAIT if sub-t
 3. **Reward-to-Risk < 1.30**: Submission rejected.
 4. **Confluence Score < `{effective_threshold}` for BUY/SELL**: Submission rejected.
 5. **Priced-In Score $\ge 8$**: Mandatory `WAIT`. Hard block in RiskGate.
+6. **Contra-Macro Setup without Adjudication**: When currency confidence $\ge 0.70$, submitting BUY/SELL directly opposing the macro brief without explicit `specialist_adjudication` (with conflict_detected=true, resolution_path in ('override_macro', 'cancel_setup', 'hedged_entry', 'scale_out'), and $\ge 40$ chars justification citing structural level breach) is **HARD REJECTED** by the server.
 
 ## Decision Thresholds & Intraday Range Rules
 - **Take Profit Target Band**: 50%–80% of 5-day ADR (via `get_daily_range_context`).

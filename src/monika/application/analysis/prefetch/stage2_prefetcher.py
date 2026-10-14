@@ -547,6 +547,22 @@ class Stage2DataBundler:
                 lines.append(self._compress_history(value, symbol))
             elif "GET TECHNICAL INDICATORS" in label:
                 lines.append(self._format_technical_readable(value))
+            elif "GET FUNDAMENTAL BRIEF" in label and isinstance(value, dict):
+                matrix = value.get("per_asset_macro_matrix", {})
+                sym_ctx = matrix.get(symbol) or matrix.get(symbol.replace("/", ""))
+                if sym_ctx:
+                    lines.append(f"🎯 TARGET SYMBOL MACRO ANCHOR ({symbol}):")
+                    lines.append(
+                        f"  • Bias: {sym_ctx.get('directional_bias', '').upper()} (Confidence: {sym_ctx.get('confidence')})"
+                    )
+                    lines.append(f"  • Structural Driver: {sym_ctx.get('structural_driver')}")
+                    lines.append(f"  • Tactical Catalyst: {sym_ctx.get('tactical_catalyst')}")
+                    lines.append(f"  • Invalidation: {sym_ctx.get('invalidation_level')}")
+                    pi_score = value.get("asset_priced_in_scores", {}).get(symbol)
+                    if pi_score is not None:
+                        lines.append(f"  • Asset Priced-In Score: {pi_score}/10")
+                    lines.append("")
+                lines.append(self._compress_json(value))
             else:
                 lines.append(self._compress_json(value))
             lines.append("")

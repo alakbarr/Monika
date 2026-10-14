@@ -195,11 +195,20 @@ class PromptAssembler:
         skill_names = [
             "central_banks_framework",
             "macro_analysis_framework",
+            "macro_yield_curve_regimes",
+            "systemic_liquidity_and_treasury_plumbing",
+            "macro_intermarket_decoupling_and_adversarial_reconciliation",
+            "economic_indicator_nowcasting_and_transmission",
+            "cross_asset_regime_model",
+            "cot_positioning_playbook",
+            "commodity_analysis",
+            "crypto_analysis",
+            "carry_trade_playbook",
             "market_dynamics_framework",
             "risk_management_principles",
             "session_timing_rules",
         ]
-        skills = compose_system_prompt(*skill_names, max_tokens=5500)
+        skills = compose_system_prompt(*skill_names, max_tokens=14000)
         tier3_sections = [
             PromptSection(name="DOMAIN_SKILLS", content=_flatten_system_prompt(skills)),
         ]

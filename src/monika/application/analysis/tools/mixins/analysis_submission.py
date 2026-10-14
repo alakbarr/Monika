@@ -46,6 +46,316 @@ from monika.infrastructure.database.models import (
 class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
     """Mixin providing full AssetAnalysis validation, confluence scoring, and persistence."""
 
+    async def _cross_validate_priced_in(
+        self,
+        symbol: str,
+        decision: str,
+        rationale: str,
+        inp: dict,
+        errors: list[str],
+        brief_row: Any,
+    ) -> tuple[str, Any]:
+        """Cross-validate priced-in score with Stage 1 brief."""
+        try:
+            if not brief_row:
+                brief_row = (
+                    await self.session.execute(
+                        select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                    )
+                ).scalar_one_or_none()
+
+            if brief_row and brief_row.structured_json:
+                import json as _j
+
+                brief_data = _j.loads(brief_row.structured_json)
+                brief_priced_in = brief_data.get("priced_in_assessment", {})
+                brief_pi_score = brief_priced_in.get("priced_in_score") if brief_priced_in else None
+                asset_pi_map = brief_data.get("asset_priced_in_scores", {})
+                if isinstance(asset_pi_map, dict) and symbol in asset_pi_map and asset_pi_map[symbol] is not None:
+                    brief_pi_score = asset_pi_map[symbol]
+
+                submitted_pi = inp.get("priced_in_score")
+
+                if brief_pi_score is not None and submitted_pi is not None:
+                    priced_in_override = inp.get("priced_in_override_justification")
+
+                    # Check: Stage 2 asset score jauh lebih tinggi dari Stage 1 macro score
+                    if submitted_pi >= 8 and brief_pi_score <= 4 and decision in ("buy", "sell"):
+                        if not (
+                            priced_in_override
+                            and all(
+                                priced_in_override.get(k)
+                                for k in ["override_reason", "why_stage1_wrong", "post_event_evidence"]
+                            )
+                        ):
+                            errors.append(
+                                f"PRICED-IN CONFLICT (REVERSE): Your asset-specific score={submitted_pi} "
+                                f"contradicts Stage 1 macro score={brief_pi_score}. "
+                                f"Stage 1 says market not priced in, but you say asset is fully priced in. "
+                                f"Provide priced_in_override_justification with all 3 required fields, "
+                                f"or align your assessment with macro context."
+                            )
+
+                    if brief_pi_score >= 8 and submitted_pi <= 4 and decision in ("buy", "sell"):
+                        if priced_in_override and all(
+                            priced_in_override.get(k)
+                            for k in ["override_reason", "why_stage1_wrong", "post_event_evidence"]
+                        ):
+                            # Override diterima - log untuk audit
+                            rationale = (
+                                rationale
+                                + f"\n\n[SYSTEM: Priced-in override accepted with explicit justification: {_j.dumps(priced_in_override)}]"
+                            )
+                        else:
+                            errors.append(
+                                f"PRICED-IN CONFLICT HARD BLOCKED: Stage 1 priced_in_score={brief_pi_score}. To override, you must fill priced_in_override_justification with all 3 required fields. Keyword-based justification in rationale is NOT accepted."
+                            )
+
+                    # IMP-6: Tighten gap tolerance 3 → 2
+                    elif abs(brief_pi_score - submitted_pi) >= 2 and decision in ("buy", "sell"):
+                        direction_of_conflict = "underestimating" if submitted_pi < brief_pi_score else "overestimating"
+                        errors.append(
+                            f"PRICED-IN ASSESSMENT CONFLICT: Stage 1 macro assessment={brief_pi_score}/10, "
+                            f"your asset-specific assessment={submitted_pi}/10 (gap={abs(brief_pi_score - submitted_pi)}). "
+                            f"You appear to be {direction_of_conflict} priced-in risk. "
+                            f"Either explicitly justify this gap in rationale, or re-evaluate your score. "
+                            f"Unresolved 2+ point gaps suggest analysis inconsistency."
+                        )
+
+                    # IMP-6: Mid-range 5-7 now a THRESHOLD warning (not just a note)
+                    elif 5 <= submitted_pi <= 7 and decision in ("buy", "sell"):
+                        rationale = rationale + (
+                            f"\n\n[SYSTEM: Mid-range priced-in score ({submitted_pi}/10) detected. "
+                            f"If major event occurs within 12h and result meets expectations, "
+                            f"consider immediate re-evaluation for potential counter-trend opportunity.]"
+                        )
+
+                    # IMP-6: High score (8+) without override should force 'wait'
+                    if submitted_pi >= 8 and decision in ("buy", "sell") and not priced_in_override:
+                        errors.append(
+                            f"PRICED-IN HIGH SCORE BLOCK: Asset priced_in_score={submitted_pi}/10 >= 8. "
+                            f"Must use priced_in_override_justification to proceed with buy/sell, "
+                            f"or set decision to wait."
+                        )
+        except Exception as e:
+            logger.debug(f"Stage 1/2 priced-in cross-validation failed (non-fatal): {e}")
+
+        return rationale, brief_row
+
+    async def _cross_validate_directional_coherence(
+        self,
+        symbol: str,
+        decision: str,
+        rationale: str,
+        inp: dict,
+        errors: list[str],
+        brief_row: Any,
+    ) -> str:
+        """Cross-validate trade directional coherence against Stage 1 macro brief."""
+        if decision not in ("buy", "sell"):
+            return rationale
+
+        try:
+            import json as _json
+
+            from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
+            from monika.domain.market.bias_utils import normalize_bias
+
+            pair_info = SYMBOL_CURRENCY_MAP.get(symbol)
+
+            # Retrieve brief if not already retrieved
+            if not brief_row:
+                brief_row = (
+                    await self.session.execute(
+                        select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                    )
+                ).scalar_one_or_none()
+
+            if pair_info and brief_row and brief_row.structured_json:
+                _b_data = _json.loads(brief_row.structured_json)
+                _currency_bias = _b_data.get("currency_bias", {})
+                base_curr = pair_info["base"]
+                quote_curr = pair_info["quote"]
+                base_bias = normalize_bias(_currency_bias.get(base_curr, "neutral"))
+                quote_bias = normalize_bias(_currency_bias.get(quote_curr, "neutral"))
+
+                # 1. Base & Quote Directional Coherence Check
+                contradictions = []
+                if decision == "buy":
+                    if base_bias == "bearish":
+                        contradictions.append(f"{base_curr}='{base_bias}'")
+                    if quote_bias == "bullish":
+                        contradictions.append(f"{quote_curr}='{quote_bias}'")
+                elif decision == "sell":
+                    if base_bias == "bullish":
+                        contradictions.append(f"{base_curr}='{base_bias}'")
+                    if quote_bias == "bearish":
+                        contradictions.append(f"{quote_curr}='{quote_bias}'")
+
+                _reconciliation_keywords = [
+                    "trust price action",
+                    "trust brief",
+                    "trust the brief",
+                    "trust macro",
+                    "contradicts brief",
+                    "despite brief",
+                    "brief is stale",
+                    "overriding brief",
+                    "post-event",
+                    "brief may be wrong",
+                    "narrative shift",
+                    "technical overrides macro",
+                    "price action contradicts",
+                    "macro-technical conflict",
+                    "brief conflict",
+                    "coherence warning",
+                    "divergence closed",
+                    "pre-event positioning",
+                    "divergence",
+                    "ssvp",
+                    "discrepancy",
+                    "unresolved",
+                ]
+
+                if contradictions:
+                    contra_str = ", ".join(contradictions)
+                    conf_map = _b_data.get("currency_confidence", {})
+                    base_conf = float(conf_map.get(base_curr, 0.5)) if isinstance(conf_map, dict) else 0.5
+                    quote_conf = float(conf_map.get(quote_curr, 0.5)) if isinstance(conf_map, dict) else 0.5
+                    relevant_conf = max(
+                        base_conf if any(base_curr in c for c in contradictions) else 0.0,
+                        quote_conf if any(quote_curr in c for c in contradictions) else 0.0,
+                    )
+
+                    spec_adj = inp.get("specialist_adjudication")
+                    has_valid_adjudication = False
+                    if isinstance(spec_adj, dict):
+                        has_valid_adjudication = (
+                            bool(spec_adj.get("conflict_detected"))
+                            and spec_adj.get("resolution_path")
+                            in ("override_macro", "cancel_setup", "hedged_entry", "scale_out")
+                            and len(str(spec_adj.get("resolution_justification") or "").strip()) >= 40
+                        )
+
+                    if relevant_conf >= 0.70 and not has_valid_adjudication:
+                        errors.append(
+                            f"CONTRA_MACRO_HARD_REJECT: Keputusan {decision.upper()} untuk {symbol} secara langsung "
+                            f"menentang bias makro Stage 1 ({contra_str}) dengan confidence tinggi ({relevant_conf:.2f}). "
+                            f"Trading melawan makro dilarang kecuali Anda mengisi field 'specialist_adjudication' secara lengkap "
+                            f"(conflict_detected=true, resolution_path in ('override_macro', 'cancel_setup', 'hedged_entry', 'scale_out'), "
+                            f"dan justifikasi pembatalan level harga struktural minimal 40 karakter)."
+                        )
+                    else:
+                        _rationale_lower = (rationale or "").lower()
+                        _has_reconciliation = (
+                            any(kw in _rationale_lower for kw in _reconciliation_keywords) or has_valid_adjudication
+                        )
+
+                        if not _has_reconciliation:
+                            logger.warning(
+                                f"[{symbol}] DIRECTIONAL COHERENCE FLAG: "
+                                f"{decision.upper()} submitted but Stage 1 brief indicates {contra_str}. "
+                                f"No explicit reconciliation found in rationale. Appending coherence flag."
+                            )
+                            rationale = rationale + (
+                                f"\n\n[SYSTEM COHERENCE FLAG: {decision.upper()} submitted "
+                                f"despite Stage 1 brief indicating {contra_str}. "
+                                f"This creates a macro-technical conflict. "
+                                f"Human reviewer: verify that rationale above explicitly "
+                                f"addresses WHY technical analysis overrides macro bias.]"
+                            )
+                            inp["rationale"] = rationale
+        except Exception as _dcc_err:
+            logger.debug(f"Directional coherence check failed (non-fatal): {_dcc_err}")
+
+        return rationale
+
+    async def _validate_ssvp_and_context_drift(
+        self,
+        symbol: str,
+        decision: str,
+        rationale: str,
+        inp: dict,
+        errors: list[str],
+    ) -> tuple[Optional[str], Optional[float]]:
+        """Validate Context Discrepancy Score (SSVP/CDS) against system thresholds."""
+        if decision not in ("buy", "sell"):
+            return None, None
+
+        context_snapshot_id: Optional[str] = None
+        context_cds_score: Optional[float] = None
+        try:
+            import json as _j
+
+            from monika.application.protocol.context_snapshot import compute_context_snapshot_id
+
+            context_snapshot_id, _ = await compute_context_snapshot_id(self.session)
+            now_str = clock.now().strftime("%Y%m%d_%H")
+            mon_key = f"context_drift_{symbol}_{now_str}"
+            mon_cfg = (
+                await self.session.execute(select(SystemConfig).where(SystemConfig.key == mon_key))
+            ).scalar_one_or_none()
+            if mon_cfg and mon_cfg.value:
+                mon_data = _j.loads(mon_cfg.value)
+                context_cds_score = mon_data.get("cds_score")
+                if context_cds_score is not None:
+                    cds_block_threshold = (
+                        self.settings.get("ssvp", {}).get("cds_thresholds", {}).get("block_buysell", 0.65)
+                        if self.settings
+                        else 0.65
+                    )
+                    cds_warn_threshold = (
+                        self.settings.get("ssvp", {}).get("cds_thresholds", {}).get("warning", 0.35)
+                        if self.settings
+                        else 0.35
+                    )
+                    if context_cds_score >= cds_block_threshold:
+                        errors.append(
+                            f"SSVP BLOCKED: Context Discrepancy Score ({context_cds_score:.2f}) >= {cds_block_threshold:.2f}. "
+                            f'You MUST submit a "wait" decision until context drift is resolved.'
+                        )
+                    elif context_cds_score >= cds_warn_threshold:
+                        _rationale_lower = (rationale or "").lower()
+                        adj_obj = inp.get("specialist_adjudication") or {}
+                        adj_text = (
+                            str(adj_obj.get("resolution_justification", ""))
+                            + " "
+                            + str(adj_obj.get("conflict_reason", ""))
+                        ).lower()
+                        combined_text = _rationale_lower + " " + adj_text
+                        _reconciled = any(
+                            kw in combined_text
+                            for kw in [
+                                "trust price action",
+                                "trust brief",
+                                "trust the brief",
+                                "trust macro",
+                                "divergence",
+                                "pre-event positioning",
+                                "ssvp",
+                                "discrepancy",
+                                "unresolved",
+                                "contradicts brief",
+                                "despite brief",
+                                "overriding brief",
+                                "technical overrides macro",
+                                "override_macro",
+                                "price action overrides",
+                                "macro overrides",
+                            ]
+                        )
+                        if not _reconciled:
+                            errors.append(
+                                f"SSVP ADJUDICATION REQUIRED: CDS is {context_cds_score:.2f} (Warning Level >= {cds_warn_threshold:.2f}). "
+                                f"You must explicitly acknowledge and adjudicate the conflicting context in your "
+                                f'rationale (e.g. "I trust price action because..." or "I trust the brief because...") '
+                                f"before submitting {decision.upper()}."
+                            )
+        except Exception as ssvp_err:
+            logger.debug(f"SSVP data retrieval failed (non-fatal): {ssvp_err}")
+
+        return context_snapshot_id, context_cds_score
+
     async def _tool_submit_asset_analysis(self, inp: dict) -> dict:
         """Menyimpan analisis per aset dan memicu eksekusi."""
         inp.pop("submit_attempts", None)  # Toleransi tambahan argumen dari LLM
@@ -787,250 +1097,31 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
         except Exception as e:
             logger.debug(f"Unified threshold enforcement failed: {e}")
 
-        # --- NEW: Cross-validate priced-in score with Stage 1 brief ---
+        # --- Cross-validate priced-in score, directional coherence, and SSVP with Stage 1 brief ---
         brief_row = None
-        try:
-            brief_row = (
-                await self.session.execute(
-                    select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
-                )
-            ).scalar_one_or_none()
-
-            if brief_row and brief_row.structured_json:
-                import json as _j
-
-                brief_data = _j.loads(brief_row.structured_json)
-                brief_priced_in = brief_data.get("priced_in_assessment", {})
-                brief_pi_score = brief_priced_in.get("priced_in_score") if brief_priced_in else None
-
-                submitted_pi = inp.get("priced_in_score")
-
-                if brief_pi_score is not None and submitted_pi is not None:
-                    priced_in_override = inp.get("priced_in_override_justification")
-
-                    # Check: Stage 2 asset score jauh lebih tinggi dari Stage 1 macro score
-                    if submitted_pi >= 8 and brief_pi_score <= 4 and decision in ("buy", "sell"):
-                        if not (
-                            priced_in_override
-                            and all(
-                                priced_in_override.get(k)
-                                for k in ["override_reason", "why_stage1_wrong", "post_event_evidence"]
-                            )
-                        ):
-                            errors.append(
-                                f"PRICED-IN CONFLICT (REVERSE): Your asset-specific score={submitted_pi} "
-                                f"contradicts Stage 1 macro score={brief_pi_score}. "
-                                f"Stage 1 says market not priced in, but you say asset is fully priced in. "
-                                f"Provide priced_in_override_justification with all 3 required fields, "
-                                f"or align your assessment with macro context."
-                            )
-
-                    if brief_pi_score >= 8 and submitted_pi <= 4 and decision in ("buy", "sell"):
-                        if priced_in_override and all(
-                            priced_in_override.get(k)
-                            for k in ["override_reason", "why_stage1_wrong", "post_event_evidence"]
-                        ):
-                            # Override diterima - log untuk audit
-                            rationale = (
-                                rationale
-                                + f"\n\n[SYSTEM: Priced-in override accepted with explicit justification: {_j.dumps(priced_in_override)}]"
-                            )
-                        else:
-                            errors.append(
-                                f"PRICED-IN CONFLICT HARD BLOCKED: Stage 1 priced_in_score={brief_pi_score}. To override, you must fill priced_in_override_justification with all 3 required fields. Keyword-based justification in rationale is NOT accepted."
-                            )
-
-                    # IMP-6: Tighten gap tolerance 3 → 2
-                    elif abs(brief_pi_score - submitted_pi) >= 2 and decision in ("buy", "sell"):
-                        direction_of_conflict = "underestimating" if submitted_pi < brief_pi_score else "overestimating"
-                        errors.append(
-                            f"PRICED-IN ASSESSMENT CONFLICT: Stage 1 macro assessment={brief_pi_score}/10, "
-                            f"your asset-specific assessment={submitted_pi}/10 (gap={abs(brief_pi_score - submitted_pi)}). "
-                            f"You appear to be {direction_of_conflict} priced-in risk. "
-                            f"Either explicitly justify this gap in rationale, or re-evaluate your score. "
-                            f"Unresolved 2+ point gaps suggest analysis inconsistency."
-                        )
-
-                    # IMP-6: Mid-range 5-7 now a THRESHOLD warning (not just a note)
-                    elif 5 <= submitted_pi <= 7 and decision in ("buy", "sell"):
-                        rationale = rationale + (
-                            f"\n\n[SYSTEM: Mid-range priced-in score ({submitted_pi}/10) detected. "
-                            f"If major event occurs within 12h and result meets expectations, "
-                            f"consider immediate re-evaluation for potential counter-trend opportunity.]"
-                        )
-
-                    # IMP-6: High score (8+) without override should force 'wait'
-                    if submitted_pi >= 8 and decision in ("buy", "sell") and not priced_in_override:
-                        errors.append(
-                            f"PRICED-IN HIGH SCORE BLOCK: Asset priced_in_score={submitted_pi}/10 >= 8. "
-                            f"Must use priced_in_override_justification to proceed with buy/sell, "
-                            f"or set decision to wait."
-                        )
-        except Exception as e:
-            logger.debug(f"Stage 1/2 priced-in cross-validation failed (non-fatal): {e}")
-        # --- END NEW ---
-
-        # ============================================================
-        # DIRECTIONAL COHERENCE CHECK & CDS RESOLUTION VALIDATION (P0-A)
-        # Flags when trade direction contradicts Stage 1 brief.
-        # ============================================================
-        if decision in ("buy", "sell"):
-            try:
-                import json as _json
-
-                from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
-                from monika.domain.market.bias_utils import normalize_bias
-
-                pair_info = SYMBOL_CURRENCY_MAP.get(symbol)
-
-                # Retrieve brief if not already retrieved
-                if not brief_row:
-                    brief_row = (
-                        await self.session.execute(
-                            select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
-                        )
-                    ).scalar_one_or_none()
-
-                if pair_info and brief_row and brief_row.structured_json:
-                    _b_data = _json.loads(brief_row.structured_json)
-                    _currency_bias = _b_data.get("currency_bias", {})
-                    base_curr = pair_info["base"]
-                    quote_curr = pair_info["quote"]
-                    base_bias = normalize_bias(_currency_bias.get(base_curr, "neutral"))
-                    quote_bias = normalize_bias(_currency_bias.get(quote_curr, "neutral"))
-
-                    # 1. Base & Quote Directional Coherence Check
-                    contradictions = []
-                    if decision == "buy":
-                        if base_bias == "bearish":
-                            contradictions.append(f"{base_curr}='{base_bias}'")
-                        if quote_bias == "bullish":
-                            contradictions.append(f"{quote_curr}='{quote_bias}'")
-                    elif decision == "sell":
-                        if base_bias == "bullish":
-                            contradictions.append(f"{base_curr}='{base_bias}'")
-                        if quote_bias == "bearish":
-                            contradictions.append(f"{quote_curr}='{quote_bias}'")
-
-                    _reconciliation_keywords = [
-                        "trust price action",
-                        "trust brief",
-                        "trust the brief",
-                        "trust macro",
-                        "contradicts brief",
-                        "despite brief",
-                        "brief is stale",
-                        "overriding brief",
-                        "post-event",
-                        "brief may be wrong",
-                        "narrative shift",
-                        "technical overrides macro",
-                        "price action contradicts",
-                        "macro-technical conflict",
-                        "brief conflict",
-                        "coherence warning",
-                        "divergence closed",
-                        "pre-event positioning",
-                        "divergence",
-                        "ssvp",
-                        "discrepancy",
-                        "unresolved",
-                    ]
-
-                    if contradictions:
-                        _rationale_lower = (rationale or "").lower()
-                        _has_reconciliation = any(kw in _rationale_lower for kw in _reconciliation_keywords)
-
-                        if not _has_reconciliation:
-                            contra_str = ", ".join(contradictions)
-                            logger.warning(
-                                f"[{symbol}] DIRECTIONAL COHERENCE FLAG: "
-                                f"{decision.upper()} submitted but Stage 1 brief indicates {contra_str}. "
-                                f"No explicit reconciliation found in rationale. Appending coherence flag."
-                            )
-                            rationale = rationale + (
-                                f"\n\n[SYSTEM COHERENCE FLAG: {decision.upper()} submitted "
-                                f"despite Stage 1 brief indicating {contra_str}. "
-                                f"This creates a macro-technical conflict. "
-                                f"Human reviewer: verify that rationale above explicitly "
-                                f"addresses WHY technical analysis overrides macro bias.]"
-                            )
-                            inp["rationale"] = rationale
-            except Exception as _dcc_err:
-                logger.debug(f"Directional coherence check failed (non-fatal): {_dcc_err}")
-
-            context_snapshot_id = None
-            context_cds_score = None
-            try:
-                import json as _j
-
-                from monika.application.protocol.context_snapshot import compute_context_snapshot_id
-
-                context_snapshot_id, _ = await compute_context_snapshot_id(self.session)
-                now_str = clock.now().strftime("%Y%m%d_%H")
-                mon_key = f"context_drift_{symbol}_{now_str}"
-                mon_cfg = (
-                    await self.session.execute(select(SystemConfig).where(SystemConfig.key == mon_key))
-                ).scalar_one_or_none()
-                if mon_cfg and mon_cfg.value:
-                    mon_data = _j.loads(mon_cfg.value)
-                    context_cds_score = mon_data.get("cds_score")
-                    if context_cds_score is not None:
-                        cds_block_threshold = (
-                            self.settings.get("ssvp", {}).get("cds_thresholds", {}).get("block_buysell", 0.65)
-                            if self.settings
-                            else 0.65
-                        )
-                        cds_warn_threshold = (
-                            self.settings.get("ssvp", {}).get("cds_thresholds", {}).get("warning", 0.35)
-                            if self.settings
-                            else 0.35
-                        )
-                        if context_cds_score >= cds_block_threshold:
-                            errors.append(
-                                f"SSVP BLOCKED: Context Discrepancy Score ({context_cds_score:.2f}) >= {cds_block_threshold:.2f}. "
-                                f'You MUST submit a "wait" decision until context drift is resolved.'
-                            )
-                        elif context_cds_score >= cds_warn_threshold:
-                            _rationale_lower = (rationale or "").lower()
-                            adj_obj = inp.get("specialist_adjudication") or {}
-                            adj_text = (
-                                str(adj_obj.get("resolution_justification", ""))
-                                + " "
-                                + str(adj_obj.get("conflict_reason", ""))
-                            ).lower()
-                            combined_text = _rationale_lower + " " + adj_text
-                            _reconciled = any(
-                                kw in combined_text
-                                for kw in [
-                                    "trust price action",
-                                    "trust brief",
-                                    "trust the brief",
-                                    "trust macro",
-                                    "divergence",
-                                    "pre-event positioning",
-                                    "ssvp",
-                                    "discrepancy",
-                                    "unresolved",
-                                    "contradicts brief",
-                                    "despite brief",
-                                    "overriding brief",
-                                    "technical overrides macro",
-                                    "override_macro",
-                                    "price action overrides",
-                                    "macro overrides",
-                                ]
-                            )
-                            if not _reconciled:
-                                errors.append(
-                                    f"SSVP ADJUDICATION REQUIRED: CDS is {context_cds_score:.2f} (Warning Level >= {cds_warn_threshold:.2f}). "
-                                    f"You must explicitly acknowledge and adjudicate the conflicting context in your "
-                                    f'rationale (e.g. "I trust price action because..." or "I trust the brief because...") '
-                                    f"before submitting {decision.upper()}."
-                                )
-            except Exception as ssvp_err:
-                logger.debug(f"SSVP data retrieval failed (non-fatal): {ssvp_err}")
-        # ============================================================
+        rationale, brief_row = await self._cross_validate_priced_in(
+            symbol=symbol,
+            decision=decision,
+            rationale=rationale,
+            inp=inp,
+            errors=errors,
+            brief_row=brief_row,
+        )
+        rationale = await self._cross_validate_directional_coherence(
+            symbol=symbol,
+            decision=decision,
+            rationale=rationale,
+            inp=inp,
+            errors=errors,
+            brief_row=brief_row,
+        )
+        context_snapshot_id, context_cds_score = await self._validate_ssvp_and_context_drift(
+            symbol=symbol,
+            decision=decision,
+            rationale=rationale,
+            inp=inp,
+            errors=errors,
+        )
         # Hard ceiling: non-deterministic uplift cap
         if decision in ("buy", "sell") and inp.get("confluence_score"):
             submitted_score = inp["confluence_score"]

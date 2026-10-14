@@ -77,6 +77,7 @@ def get_tool_schema(pydantic_model: type[BaseModel]) -> dict:
 # =============================================================================
 
 from monika.application.analysis.schemas.pydantic_schemas import (
+    AssetMacroContext,
     EntryCondition,
     PricedInAssessment,
     PricedInOverrideJustification,

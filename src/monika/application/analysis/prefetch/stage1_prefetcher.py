@@ -417,8 +417,65 @@ class Stage1DataBundler:
                 satisfied_tools.add(tool_name)
 
         logger.info(f"Prefetch complete ({len(satisfied_tools)} tools satisfied). Compressing output for LLM context.")
+        terminal_dashboard = self._synthesize_tier1_terminal(bundled_data)
+        bundled_data = {"_tier1_executive_macro_terminal": terminal_dashboard, **bundled_data}
         compressed_json = self._compress_json(bundled_data)
         return compressed_json, satisfied_tools, bundled_data
+
+    def _synthesize_tier1_terminal(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Synthesizes high-saliency Tier 1 Executive Macro Terminal Dashboard."""
+        terminal: Dict[str, Any] = {}
+
+        # 1. Treasuries & Yield Curve
+        y_info = data.get("treasury_yields", {})
+        y_dict = y_info.get("yields_by_tenor", {}) if isinstance(y_info, dict) else {}
+        us02y = y_dict.get("2Y", [{}])[0].get("yield_pct") if "2Y" in y_dict and y_dict["2Y"] else None
+        us10y = y_dict.get("10Y", [{}])[0].get("yield_pct") if "10Y" in y_dict and y_dict["10Y"] else None
+        us30y = y_dict.get("30Y", [{}])[0].get("yield_pct") if "30Y" in y_dict and y_dict["30Y"] else None
+
+        spread_str = "N/A"
+        if us10y is not None and us02y is not None:
+            spread_bps = round((float(us10y) - float(us02y)) * 100, 1)
+            slope_regime = "Bull/Bear Steepener" if spread_bps > 0 else "Inverted/Flattener"
+            spread_str = f"{spread_bps:+.1f} bps ({slope_regime})"
+
+        terminal["treasury_curve_2s10s"] = (
+            f"2Y={us02y or 'N/A'}% | 10Y={us10y or 'N/A'}% | 30Y={us30y or 'N/A'}% | Spread={spread_str}"
+        )
+
+        ry_ctx = data.get("real_yield_context", {})
+        if isinstance(ry_ctx, dict) and ry_ctx.get("real_10y_yield_pct") is not None:
+            terminal["real_rates_context"] = (
+                f"10Y TIPS Real Yield={ry_ctx.get('real_10y_yield_pct')}% | Breakeven={ry_ctx.get('estimated_breakeven_inflation_pct', 'N/A')}%"
+            )
+
+        # 2. DXY & VIX
+        dxy_data = data.get("dxy", {})
+        dxy_val = dxy_data.get("value") if isinstance(dxy_data, dict) else None
+        vix_data = data.get("vix", {})
+        vix_val = vix_data.get("value") if isinstance(vix_data, dict) else None
+        terminal["market_volatility_dxy_vix"] = f"DXY={dxy_val or 'N/A'} | VIX={vix_val or 'N/A'}"
+
+        # 3. FedWatch Trajectory
+        fw_comp = data.get("fedwatch_comparison", {})
+        if isinstance(fw_comp, dict) and fw_comp.get("shift_summary"):
+            terminal["fedwatch_shift"] = fw_comp.get("shift_summary")
+
+        # 4. Central Bank Rates
+        cb_rates = data.get("central_bank_rates", {})
+        if isinstance(cb_rates, dict) and "rates" in cb_rates:
+            terminal["central_bank_policy_rates"] = {
+                k: v.get("rate")
+                for k, v in cb_rates["rates"].items()
+                if isinstance(v, dict) and v.get("rate") is not None
+            }
+
+        # 5. Crypto Funding Rate (if present)
+        f_rate = data.get("funding_rate", {})
+        if isinstance(f_rate, dict) and "funding_rate" in f_rate:
+            terminal["crypto_perp_funding_rate"] = f"{f_rate.get('funding_rate')}%"
+
+        return terminal
 
     def _compress_json(self, data: Dict[str, Any]) -> str:
         """Compress data to save tokens using caveman logic and context compressor."""

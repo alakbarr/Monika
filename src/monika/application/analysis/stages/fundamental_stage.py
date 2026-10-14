@@ -668,14 +668,22 @@ class FundamentalStage:
                 f"Fallback tools remain available in your schema to fetch them if needed."
             )
 
+        actual_user_message += (
+            "\n\n[MANDATORY SYNTHESIS REQUIREMENTS FOR SUBMIT_FUNDAMENTAL_BRIEF]:\n"
+            "1. Supply `key_drivers`: 2-4 concrete fundamental drivers.\n"
+            "2. Supply `per_asset_macro_matrix`: Provide AssetMacroContext for major assets (EURUSD, GBPUSD, USDJPY, AUDUSD, XAUUSD, BTCUSD, XTIUSD) with distinct `structural_driver` and `tactical_catalyst`.\n"
+            "3. Supply `asset_priced_in_scores`: Specific 1-10 priced-in scores per asset.\n"
+            "4. Classify `yield_curve_regime` ('bull_steepener', 'bear_steepener', 'bull_flattener', 'bear_flattener', or 'neutral') and `systemic_liquidity_trend` ('expanding', 'contracting', or 'neutral')."
+        )
+
         # Health-Aware Conditional Tool Pruning:
         # When prefetch is 100% healthy, prune redundant read tools to force direct synthesis and eliminate turn exhaustion.
         # If any core tool failed during prefetch, preserve it in the schema as an operational fallback.
         pruned_tools = prune_stage1_tools(base_tools, prefetch_satisfied_tools)
         tools_to_use = minify_tool_definitions(pruned_tools)
 
-        # Turn budget: strict 2 turns when prefetch is complete, 4 turns if fallback tools required.
-        stage1_max_turns = 2 if is_prefetch_healthy else 4
+        # Turn budget: 4 turns when prefetch is complete (synthesis + validation handling), 6 turns if fallback tools required.
+        stage1_max_turns = 4 if is_prefetch_healthy else 6
 
         for attempt in range(max_retries):
             try:

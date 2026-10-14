@@ -6358,6 +6358,10 @@
   - `class KeyDataPointsUsed(BaseModel)`
     - `validate_vix_close(v)`
     - `validate_optional_pcts(v)`
+  - `class AssetMacroContext(BaseModel)`
+    - `validate_asset_confidence(v)`
+    - `validate_asset_bias(v)`
+    - `coerce_context_strings(v)`
   - `class SubmitFundamentalBriefSchema(BaseModel)`
     - `harmonize_counter_thesis_and_primitives(data: Any) -> Any`
     - `validate_macro_regime_sfbs(v)`

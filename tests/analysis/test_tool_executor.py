@@ -1153,3 +1153,169 @@ class TestToolExecutor:
         assert saved_data.get("strongest_counter_thesis") is not None
         assert len(saved_data["strongest_counter_thesis"]) >= 50
         assert "invalidasi" in saved_data["strongest_counter_thesis"].lower()
+
+    @pytest.mark.asyncio
+    async def test_submit_fundamental_brief_persists_matrix_and_drivers(self):
+        mock_session = create_mock_async_session()
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
+        mock_session.refresh = AsyncMock()
+        executor = ToolExecutor(mock_session)
+        executor.called_tools.add("get_dxy")
+        executor.called_tools.add("get_vix")
+
+        def assign_id(brief):
+            brief.id = 99
+
+        mock_session.refresh.side_effect = assign_id
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalar.return_value = 0
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        brief_payload = {
+            "macro_narrative": "DXY strengthening while VIX drops to 15.5.",
+            "key_drivers": ["Labor market resiliency", "Yield curve steepening"],
+            "currency_bias": {
+                "USD": "bullish",
+                "EUR": "bearish",
+                "GBP": "neutral",
+                "JPY": "neutral",
+                "AUD": "neutral",
+                "XAU": "bearish",
+            },
+            "per_asset_macro_matrix": {
+                "EURUSD": {
+                    "directional_bias": "bearish",
+                    "time_horizon": "swing_structural",
+                    "structural_driver": "ECB cutting cycle vs Fed hawkish hold",
+                    "tactical_catalyst": "German PMI contraction",
+                    "invalidation_level": "EURUSD breaks above 1.0950 with H4 structure shift",
+                    "confidence": 0.85,
+                }
+            },
+            "asset_priced_in_scores": {"EURUSD": 7, "XAUUSD": 4},
+            "yield_curve_regime": "bull_steepener",
+            "systemic_liquidity_trend": "expanding",
+            "invalidation_conditions": {
+                "USD": "DXY closes below 103.50 with sustained volume drop",
+                "EUR": "EURUSD D1 closes above 1.0950 with macro shift",
+                "XAU": "Yields drop below 4.0% with strong safe-haven bid",
+            },
+            "currency_confidence": {"USD": 0.80, "EUR": 0.85, "XAU": 0.70},
+            "risk_sentiment": "mixed",
+            "macro_regime": "mixed",
+            "confidence": 0.80,
+            "checklist": {"bias_vs_narrative_match": True, "contradiction_existed": False},
+            "key_data_points_used": {"dxy_trend_5d": "strengthening", "vix_close": 15.5},
+            "priced_in_assessment": {
+                "dominant_driver": "Fed expectations",
+                "priced_in_score": 6,
+                "sell_the_news_risk": "medium",
+                "cot_positioning_percentile": 65.0,
+            },
+            "strongest_counter_thesis": "If US NFP prints negative and core PCE drops below 2.0%, USD will reverse violently.",
+        }
+
+        res = await executor._tool_submit_fundamental_brief(brief_payload)
+        assert res["status"] == "saved"
+        args, _ = mock_session.add.call_args
+        saved_brief = args[0]
+        saved_json = json.loads(saved_brief.structured_json)
+        assert saved_json["key_drivers"] == ["Labor market resiliency", "Yield curve steepening"]
+        assert "EURUSD" in saved_json["per_asset_macro_matrix"]
+        assert saved_json["per_asset_macro_matrix"]["EURUSD"]["directional_bias"] == "bearish"
+        assert saved_json["asset_priced_in_scores"]["EURUSD"] == 7
+        assert saved_json["yield_curve_regime"] == "bull_steepener"
+        assert saved_json["systemic_liquidity_trend"] == "expanding"
+
+    @pytest.mark.asyncio
+    @patch("monika.application.analysis.calculators.confluence_calculator.calculate_confluence")
+    async def test_submit_asset_analysis_contra_macro_hard_reject(self, mock_calc_conf):
+        mock_calc_conf.return_value = {"computed_score": 9}
+        mock_session = create_mock_async_session()
+
+        # Mock FundamentalBrief with EUR bearish, confidence 0.85
+        from monika.infrastructure.database.models import FundamentalBrief
+
+        mock_brief = FundamentalBrief(
+            id=101,
+            generated_at=datetime.now(timezone.utc),
+            confidence=0.85,
+            structured_json=json.dumps(
+                {
+                    "currency_bias": {"EUR": "bearish", "USD": "bullish"},
+                    "currency_confidence": {"EUR": 0.85, "USD": 0.80},
+                    "asset_priced_in_scores": {"EURUSD": 6},
+                    "priced_in_assessment": {"priced_in_score": 6},
+                }
+            ),
+        )
+
+        mock_ts = MagicMock()
+        mock_ts.scalar_one_or_none.return_value = datetime.now(timezone.utc)
+
+        def execute_side_effect(*args, **kwargs):
+            query = str(args[0]).lower()
+            res = MagicMock()
+            if "fundamental_briefs" in query:
+                res.scalar_one_or_none.return_value = mock_brief
+                res.scalars.return_value.all.return_value = [mock_brief]
+            elif "price_ohlcv" in query or "technical_indicators" in query:
+                res.scalar_one_or_none.return_value = datetime.now(timezone.utc)
+            else:
+                res.scalar_one_or_none.return_value = None
+                res.scalars.return_value.all.return_value = []
+            return res
+
+        mock_session.execute = AsyncMock(side_effect=execute_side_effect)
+        executor = ToolExecutor(mock_session)
+
+        # Propose BUY on EURUSD (contra-macro without specialist_adjudication)
+        res_rejected = await executor._tool_submit_asset_analysis(
+            {
+                "symbol": "EURUSD",
+                "decision": "buy",
+                "confidence": 0.80,
+                "rationale": "Strong H4 demand zone and FVG retest indicates bullish continuation.",
+                "stop_loss": 1.0800,
+                "take_profit": 1.0950,
+                "invalidation": "Invalid if price closes below 1.0780 with strong bearish momentum",
+                "priced_in_score": 6,
+                "confluence_score": 9,
+                "confluence_factors": ["order_block", "fvg_retest"],
+                "entry_condition": {"type": "market", "detail": "Immediate market entry"},
+                "invalidation_price": 1.0780,
+                "invalidation_direction": "below",
+            }
+        )
+        assert res_rejected["status"] == "validation_failed"
+        assert any("CONTRA_MACRO_HARD_REJECT" in err for err in res_rejected["errors"])
+
+        # Propose BUY on EURUSD WITH valid specialist_adjudication
+        res_with_adjudication = await executor._tool_submit_asset_analysis(
+            {
+                "symbol": "EURUSD",
+                "decision": "buy",
+                "confidence": 0.80,
+                "rationale": "Strong H4 demand zone overrides macro due to verified structural break.",
+                "stop_loss": 1.0800,
+                "take_profit": 1.0950,
+                "invalidation": "Invalid if price closes below 1.0780 with strong bearish momentum",
+                "priced_in_score": 6,
+                "confluence_score": 9,
+                "confluence_factors": ["order_block", "fvg_retest"],
+                "entry_condition": {"type": "market", "detail": "Immediate market entry"},
+                "invalidation_price": 1.0780,
+                "invalidation_direction": "below",
+                "specialist_adjudication": {
+                    "conflict_detected": True,
+                    "conflict_reason": "Stage 1 macro is bearish EUR (conf 0.85), but H4 price action printed clean CHoCH above 1.0850",
+                    "resolution_path": "override_macro",
+                    "resolution_justification": "Price has swept daily sell-side liquidity at 1.0790 and broken market structure to the upside, invalidating short-term macro bias.",
+                },
+            }
+        )
+        # Should not fail with CONTRA_MACRO_HARD_REJECT
+        assert not any("CONTRA_MACRO_HARD_REJECT" in err for err in res_with_adjudication.get("errors", []))

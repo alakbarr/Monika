@@ -556,9 +556,9 @@ def coerce_int(v: Any, default: Optional[int] = None) -> Optional[int]:
         # Strip score denominator like '/10' or '/ 10' or '%', 'pts'
         clean_s = re.sub(r"/\s*\d+$", "", s).strip()
         clean_s = re.sub(r"^[~><$€£¥\s]+|(?:%|\s+|pts|bps|pips)+$", "", clean_s, flags=re.IGNORECASE).strip()
-        if re.fullmatch(r"[-+]?\d+", clean_s):
+        if re.fullmatch(r"[-+]?\d+(?:\.0+)?", clean_s):
             try:
-                return int(clean_s)
+                return int(float(clean_s))
             except ValueError:
                 return default
     return default
@@ -992,6 +992,58 @@ class KeyDataPointsUsed(BaseModel):
         return coerce_float(v)
 
 
+class AssetMacroContext(BaseModel):
+    directional_bias: Literal["strong_bullish", "bullish", "bearish", "strong_bearish", "neutral"] = Field(
+        ..., description="Directional bias spesifik untuk aset ini."
+    )
+    time_horizon: Literal["intraday_tactical", "swing_structural", "multi_week"] = Field(
+        default="swing_structural", description="Horizon waktu dominan tesis."
+    )
+    structural_driver: str = Field(
+        ..., description="Pendorong struktural utama (mis. diferensial yield, de-dollarization, OPEC quota)."
+    )
+    tactical_catalyst: str = Field(
+        ..., description="Katalis jangka pendek sesi ini (mis. reaksi post-NFP, inventory EIA, data PPI)."
+    )
+    net_yield_differential_bps: Optional[float] = Field(
+        default=None, description="Estimasi diferensial spread imbal hasil (bps) jika relevan."
+    )
+    invalidation_level: str = Field(
+        ..., description="Level harga atau peristiwa spesifik yang membatalkan bias pada aset ini (min 20 char)."
+    )
+    confidence: float = Field(
+        default=0.70, ge=0.0, le=1.0, description="Tingkat keyakinan bias pada aset ini (0.0 - 1.0)."
+    )
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def validate_asset_confidence(cls, v):
+        val = coerce_float(v, None)
+        if val is not None:
+            if val > 1.0 and val <= 100.0:
+                val = val / 100.0
+            return max(0.0, min(1.0, val))
+        return 0.70
+
+    @field_validator("directional_bias", mode="before")
+    @classmethod
+    def validate_asset_bias(cls, v):
+        if isinstance(v, str):
+            b_clean = v.lower().strip().replace("-", "_").replace(" ", "_")
+            if b_clean in ["strong_bullish", "bullish", "bearish", "strong_bearish", "neutral"]:
+                return b_clean
+            if "bull" in b_clean:
+                return "bullish"
+            if "bear" in b_clean:
+                return "bearish"
+        return "neutral"
+
+    @field_validator("structural_driver", "tactical_catalyst", "invalidation_level", mode="before")
+    @classmethod
+    def coerce_context_strings(cls, v):
+        return coerce_str(v, default="Not specified")
+
+
 class SubmitFundamentalBriefSchema(BaseModel):
     checklist: ChecklistVerification = Field(
         default_factory=lambda: ChecklistVerification(
@@ -1020,6 +1072,27 @@ class SubmitFundamentalBriefSchema(BaseModel):
         description="A clear narrative summary of current macro conditions (2-4 paragraphs). Include key drivers, trends, and risks.",
     )
     key_drivers: List[str] = Field(default_factory=list, description="Key macro drivers identified in the brief.")
+    per_asset_macro_matrix: Dict[str, AssetMacroContext] = Field(
+        default_factory=dict,
+        description=(
+            "Matriks analisis makro spesifik per aset/simbol (mis. 'EURUSD', 'XAUUSD', 'BTCUSD', 'USDJPY', 'GBPUSD', 'AUDUSD', 'XTIUSD'). "
+            "Membedakan pendorong struktural vs katalis sesi taktis serta level invalidasi harga spesifik."
+        ),
+    )
+    asset_priced_in_scores: Dict[str, int] = Field(
+        default_factory=dict,
+        description=(
+            "Skor priced-in spesifik (1-10) per simbol aset. Memungkinkan pembedaan aset yang sudah fully priced-in vs yang masih lagging."
+        ),
+    )
+    yield_curve_regime: Optional[str] = Field(
+        default=None,
+        description="Regime kurva imbal hasil: 'bull_steepener', 'bear_steepener', 'bull_flattener', 'bear_flattener', atau 'neutral'.",
+    )
+    systemic_liquidity_trend: Optional[str] = Field(
+        default=None,
+        description="Tren likuiditas Fed: 'expanding', 'contracting', atau 'neutral'.",
+    )
     currency_bias: Dict[str, Literal["strong_bullish", "bullish", "bearish", "strong_bearish", "neutral"]] = Field(
         ...,
         description=(
@@ -1241,6 +1314,71 @@ class SubmitFundamentalBriefSchema(BaseModel):
                         "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik "
                         "arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
                     )
+
+            # Auto-heal per_asset_macro_matrix if missing or empty
+            matrix = data.get("per_asset_macro_matrix")
+            if not isinstance(matrix, dict):
+                matrix = {}
+            cb = data.get("currency_bias")
+            if isinstance(cb, dict):
+                _CCY_TO_ASSET = {
+                    "USD": "DXY",
+                    "EUR": "EURUSD",
+                    "GBP": "GBPUSD",
+                    "JPY": "USDJPY",
+                    "AUD": "AUDUSD",
+                    "XAU": "XAUUSD",
+                    "OIL": "XTIUSD",
+                    "XTI": "XTIUSD",
+                    "BTC": "BTCUSD",
+                }
+                inv = data.get("invalidation_conditions", {})
+                conf_dict = data.get("currency_confidence", {})
+                for ccy, bias in cb.items():
+                    asset_key = _CCY_TO_ASSET.get(str(ccy).upper(), str(ccy).upper())
+                    if asset_key not in matrix and str(ccy).upper() not in matrix:
+                        b_str = str(bias).lower()
+                        inv_text = inv.get(ccy) if isinstance(inv, dict) else None
+                        if not inv_text or len(str(inv_text).strip()) < 20:
+                            inv_text = f"Bias {ccy} {b_str} invalid if structural price levels break with regime shift"
+                        conf_raw = conf_dict.get(ccy) if isinstance(conf_dict, dict) else None
+                        if conf_raw is None:
+                            conf_raw = data.get("confidence", 0.70)
+                        c_float = coerce_float(conf_raw, 0.70)
+                        if c_float is not None:
+                            if c_float > 1.0 and c_float <= 100.0:
+                                c_float = c_float / 100.0
+                            c_float = max(0.0, min(1.0, c_float))
+                        else:
+                            c_float = 0.70
+                        matrix[asset_key] = {
+                            "directional_bias": b_str
+                            if b_str in ("strong_bullish", "bullish", "bearish", "strong_bearish", "neutral")
+                            else "neutral",
+                            "time_horizon": "swing_structural",
+                            "structural_driver": f"Macro regime {data.get('macro_regime', 'mixed')} and policy differential for {ccy}",
+                            "tactical_catalyst": "Intraday session momentum and scheduled high-impact events",
+                            "invalidation_level": str(inv_text),
+                            "confidence": c_float,
+                        }
+            data["per_asset_macro_matrix"] = matrix
+
+            # Auto-heal asset_priced_in_scores if missing or not dict
+            pi_scores = data.get("asset_priced_in_scores")
+            if not isinstance(pi_scores, dict) or not pi_scores:
+                base_pi = 5
+                pi_data = data.get("priced_in_assessment")
+                if isinstance(pi_data, dict):
+                    base_pi = coerce_int(pi_data.get("priced_in_score"), 5) or 5
+                elif isinstance(pi_data, (int, float)):
+                    base_pi = int(round(pi_data))
+                data["asset_priced_in_scores"] = {
+                    sym: base_pi for sym in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD", "BTCUSD", "XTIUSD"]
+                }
+            else:
+                data["asset_priced_in_scores"] = {
+                    str(k).upper(): coerce_int(v, 5) or 5 for k, v in pi_scores.items() if v is not None
+                }
         return data
 
     @field_validator("macro_regime", mode="before")
