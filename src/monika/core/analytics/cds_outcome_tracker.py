@@ -51,7 +51,7 @@ async def compute_cds_outcome_correlation(session: AsyncSession, days_back: int 
 
         entry = {"cds": cds, "is_win": is_win, "pnl": pnl, "symbol": analysis.symbol}
 
-        if cds >= 0.30:
+        if cds is not None and cds >= 0.30:
             high_cds.append(entry)
         else:
             low_cds.append(entry)

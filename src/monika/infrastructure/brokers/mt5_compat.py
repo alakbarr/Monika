@@ -280,8 +280,9 @@ def is_mt5linux_available() -> bool:
         pass
 
     try:
-        import pymt5linux
+        import importlib
 
+        importlib.import_module("pymt5linux")
         return True
     except ImportError, SyntaxError, Exception:
         pass
@@ -328,11 +329,14 @@ class MT5BridgeProxy:
 
         # 2. Try pymt5linux (modern, maintained)
         try:
-            from pymt5linux import MetaTrader5 as PyMT5LinuxBridge
+            import importlib
 
-            self._bridge_client = PyMT5LinuxBridge(host=self.host, port=self.port)
-            logger.info(f"[MT5Bridge] Initialized pymt5linux client -> {self.host}:{self.port}")
-            return self._bridge_client
+            pymt5_mod = importlib.import_module("pymt5linux")
+            PyMT5LinuxBridge = getattr(pymt5_mod, "MetaTrader5", None)
+            if PyMT5LinuxBridge is not None:
+                self._bridge_client = PyMT5LinuxBridge(host=self.host, port=self.port)
+                logger.info(f"[MT5Bridge] Initialized pymt5linux client -> {self.host}:{self.port}")
+                return self._bridge_client
         except ImportError, SyntaxError, Exception:
             pass
 

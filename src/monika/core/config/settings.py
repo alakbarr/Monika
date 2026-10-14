@@ -131,9 +131,15 @@ def load_settings(
                 path = active_profile_path
             elif os.path.exists("config/settings.yaml"):
                 path = "config/settings.yaml"
+            elif os.path.exists("config/settings.example.yaml"):
+                path = "config/settings.example.yaml"
             else:
                 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                path = os.path.join(base_dir, "config", "settings.yaml")
+                cand = os.path.join(base_dir, "config", "settings.yaml")
+                if os.path.exists(cand):
+                    path = cand
+                else:
+                    path = os.path.join(base_dir, "config", "settings.example.yaml")
 
         good_backup_path = f"{path}.good"
         try:

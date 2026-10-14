@@ -17,6 +17,7 @@ import base64
 import io
 import logging
 import os
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -43,10 +44,16 @@ class ComputerUseInput(BaseModel):
 
 def focus_mt5_window() -> bool:
     """Attempt to find and bring MetaTrader 5 window to foreground on Windows."""
+    if sys.platform != "win32":
+        return False
     try:
         import ctypes
 
-        user32 = ctypes.windll.user32
+        windll = getattr(ctypes, "windll", None)
+        winfunc = getattr(ctypes, "WINFUNCTYPE", None)
+        if not windll or not winfunc:
+            return False
+        user32 = windll.user32
         hwnd_target = None
 
         def enum_windows_callback(hwnd, extra):
@@ -62,7 +69,7 @@ def focus_mt5_window() -> bool:
                         return False
             return True
 
-        WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
+        WNDENUMPROC = winfunc(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
         user32.EnumWindows(WNDENUMPROC(enum_windows_callback), 0)
 
         if hwnd_target:

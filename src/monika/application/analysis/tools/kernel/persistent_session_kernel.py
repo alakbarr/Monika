@@ -151,7 +151,7 @@ def run_cell(code):
         status, trace = "exit", f"SystemExit: {exc.code}"
     except BaseException:
         status, trace = "error", traceback.format_exc()
-        
+
     saved_figs = _handle_matplotlib_figures()
     if saved_figs:
         for f in saved_figs:
@@ -182,7 +182,7 @@ while True:
             payload = {"status": "ok", "stdout": "[Kernel state reset]", "stderr": "", "traceback": ""}
         else:
             payload = run_cell(req.get("code", ""))
-            
+
         json_bytes = json.dumps(payload).encode("utf-8")
         frame_header = (_SENTINEL + " " + str(len(json_bytes)) + "\n").encode("utf-8")
         sys.stdout.buffer.write(frame_header + json_bytes + b"\n")
@@ -252,24 +252,26 @@ class PersistentSessionKernel:
 
         # Setup OS watchdog handle/pipe
         pass_fds = []
-        if _IS_WINDOWS:
+        if sys.platform == "win32":
             import ctypes
             import ctypes.wintypes
 
-            SYNCHRONIZE = 0x00100000
-            current_proc = ctypes.windll.kernel32.GetCurrentProcess()
-            target_proc_handle = ctypes.wintypes.HANDLE()
-            # Duplicate handle for inheritance
-            ctypes.windll.kernel32.DuplicateHandle(
-                current_proc,
-                current_proc,
-                current_proc,
-                ctypes.byref(target_proc_handle),
-                SYNCHRONIZE,
-                True,  # bInheritHandle
-                0,
-            )
-            child_env["MONIKA_PARENT_HANDLE"] = str(target_proc_handle.value)
+            windll = getattr(ctypes, "windll", None)
+            if windll:
+                SYNCHRONIZE = 0x00100000
+                current_proc = windll.kernel32.GetCurrentProcess()
+                target_proc_handle = ctypes.wintypes.HANDLE()
+                # Duplicate handle for inheritance
+                windll.kernel32.DuplicateHandle(
+                    current_proc,
+                    current_proc,
+                    current_proc,
+                    ctypes.byref(target_proc_handle),
+                    SYNCHRONIZE,
+                    True,  # bInheritHandle
+                    0,
+                )
+                child_env["MONIKA_PARENT_HANDLE"] = str(target_proc_handle.value)
         else:
             r_fd, w_fd = os.pipe()
             os.set_inheritable(r_fd, True)
