@@ -544,6 +544,12 @@ Monika/
 │       │   │   │   ├── smc_eurusd_h1_bull_displacement.json
 │       │   │   │   ├── smc_gbpusd_h1_choppy_trap.json
 │       │   │   │   └── smc_xauusd_m15_bear_sweep.json
+│       │   │   ├── results/
+│       │   │   │   ├── model_all.csv
+│       │   │   │   ├── model_cheap_efficient.csv
+│       │   │   │   ├── model_cheap_smart.csv
+│       │   │   │   ├── model_high_intelligence.csv
+│       │   │   │   └── model_quadrant_analysis.html
 │       │   │   ├── task_specs/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base.py
@@ -3028,4 +3034,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 311 | **Total Tracked Files**: 2687
+**Total Tracked Directories**: 312 | **Total Tracked Files**: 2692
