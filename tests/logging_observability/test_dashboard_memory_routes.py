@@ -47,7 +47,7 @@ class TestDashboardMemoryRoutes:
         mock_res.scalars.return_value.all.return_value = [mock_reflection]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        res = client.get("/api/memory/reflections?symbol=XAUUSD&limit=10")
+        res = client.get("/api/v1/memory/reflections?symbol=XAUUSD&limit=10")
         assert res.status_code == 200
         data = res.json()
         assert isinstance(data, list)
@@ -78,7 +78,7 @@ class TestDashboardMemoryRoutes:
         mock_res.scalars.return_value.all.return_value = [mock_lesson]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        res = client.get("/api/memory/lessons?status=shadow")
+        res = client.get("/api/v1/memory/lessons?status=shadow")
         assert res.status_code == 200
         data = res.json()
         assert isinstance(data, list)
@@ -100,7 +100,7 @@ class TestDashboardMemoryRoutes:
         mock_res.scalars.return_value.all.return_value = [mock_pb]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        res = client.get("/api/memory/playbooks")
+        res = client.get("/api/v1/memory/playbooks")
         assert res.status_code == 200
         data = res.json()
         assert isinstance(data, list)
@@ -140,7 +140,7 @@ class TestDashboardMemoryRoutes:
         mock_session.execute = AsyncMock(side_effect=[mock_res_r, mock_res_l])
 
         payload = {"query": "BOE", "limit": 10}
-        res = client.post("/api/memory/search", json=payload)
+        res = client.post("/api/v1/memory/search", json=payload)
         assert res.status_code == 200
         data = res.json()
         assert data["query"] == "BOE"

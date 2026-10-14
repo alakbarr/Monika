@@ -146,7 +146,7 @@ def test_action_close_batch_contract_synchronization():
             mock_session.commit = AsyncMock()
 
             resp = client.post(
-                "/api/actions/close-batch",
+                "/api/v1/actions/close-batch",
                 json={"tickets": [101, 102], "reason": "Test close batch"},
             )
 

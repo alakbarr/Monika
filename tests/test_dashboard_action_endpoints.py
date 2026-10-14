@@ -42,7 +42,7 @@ def test_trigger_cycle_success(client):
         mock_session.add = MagicMock()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
-        resp = client.post("/api/actions/trigger-cycle", json={"forced": True, "reason": "Operator request"})
+        resp = client.post("/api/v1/actions/trigger-cycle", json={"forced": True, "reason": "Operator request"})
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "triggered"
@@ -57,14 +57,14 @@ def test_trigger_cycle_already_running(client):
 
     set_dashboard_dependencies(cycle_scheduler=mock_cycle_sched)
 
-    resp = client.post("/api/actions/trigger-cycle", json={"forced": True})
+    resp = client.post("/api/v1/actions/trigger-cycle", json={"forced": True})
     assert resp.status_code == 409
     assert "already actively executing" in resp.json()["message"]
 
 
 def test_trigger_cycle_unavailable(client):
     """Verify POST /api/actions/trigger-cycle returns 503 if cycle scheduler is not registered."""
-    resp = client.post("/api/actions/trigger-cycle", json={"forced": True})
+    resp = client.post("/api/v1/actions/trigger-cycle", json={"forced": True})
     assert resp.status_code == 503
 
 
@@ -88,7 +88,7 @@ def test_override_risk_parameters(client):
             "max_daily_drawdown_percent": 2.5,
             "max_concurrent_positions": 3,
         }
-        resp = client.post("/api/actions/override-risk", json=payload)
+        resp = client.post("/api/v1/actions/override-risk", json=payload)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "success"
@@ -100,7 +100,7 @@ def test_override_risk_parameters(client):
 
 def test_override_risk_empty_payload(client):
     """Verify POST /api/actions/override-risk rejects empty payload with 400."""
-    resp = client.post("/api/actions/override-risk", json={})
+    resp = client.post("/api/v1/actions/override-risk", json={})
     assert resp.status_code == 400
 
 
@@ -114,7 +114,7 @@ def test_close_position_by_ticket(client):
         mock_session = create_mock_async_session()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
-        resp = client.post("/api/actions/close-position", json={"ticket": 123456, "reason": "Take Profit"})
+        resp = client.post("/api/v1/actions/close-position", json={"ticket": 123456, "reason": "Take Profit"})
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "success"
@@ -128,7 +128,7 @@ def test_close_position_by_ticket(client):
 
 def test_close_position_missing_identifier(client):
     """Verify POST /api/actions/close-position returns 400 if neither ticket nor position_id provided."""
-    resp = client.post("/api/actions/close-position", json={"reason": "Manual"})
+    resp = client.post("/api/v1/actions/close-position", json={"reason": "Manual"})
     assert resp.status_code == 400
 
 
@@ -152,7 +152,7 @@ def test_approve_trade_trigger(client):
         mock_exec_res.scalar_one_or_none.return_value = mock_trigger
         mock_session.execute = AsyncMock(return_value=mock_exec_res)
 
-        resp = client.post("/api/actions/approve-trade/99")
+        resp = client.post("/api/v1/actions/approve-trade/99")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "success"
@@ -170,7 +170,7 @@ def test_approve_trade_not_found(client):
         mock_exec_res.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_exec_res)
 
-        resp = client.post("/api/actions/approve-trade/99999")
+        resp = client.post("/api/v1/actions/approve-trade/99999")
         assert resp.status_code == 404
 
 
@@ -181,7 +181,7 @@ def test_batch_close_positions(client):
     set_dashboard_dependencies(emergency_manager=mock_emergency)
 
     payload = {"tickets": [101, 102], "reason": "Test emergency liquidation"}
-    resp = client.post("/api/actions/close-batch", json=payload)
+    resp = client.post("/api/v1/actions/close-batch", json=payload)
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "success"
@@ -202,7 +202,7 @@ def test_manual_order_preview(client):
         "tp": 1.0900,
         "volume": 0.2,
     }
-    resp = client.post("/api/orders/preview", json=payload)
+    resp = client.post("/api/v1/orders/preview", json=payload)
     assert resp.status_code == 200
     data = resp.json()
     assert data["symbol"] == "EURUSD"
@@ -241,7 +241,7 @@ def test_manual_order_submit(client):
             "comment": "Test:manual",
             "is_paper": False,
         }
-        resp = client.post("/api/orders/submit", json=payload)
+        resp = client.post("/api/v1/orders/submit", json=payload)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "success"
@@ -278,7 +278,7 @@ def test_manual_order_submit_paper(client):
             "comment": "Test:paper",
             "is_paper": True,
         }
-        resp = client.post("/api/orders/submit", json=payload)
+        resp = client.post("/api/v1/orders/submit", json=payload)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "success"
@@ -289,7 +289,7 @@ def test_manual_order_submit_paper(client):
 
 def test_market_candles_endpoint(client):
     """Verify GET /api/market/candles/{symbol} returns synthetic or live OHLCV bars."""
-    resp = client.get("/api/market/candles/EURUSD?timeframe=H4&count=20")
+    resp = client.get("/api/v1/market/candles/EURUSD?timeframe=H4&count=20")
     assert resp.status_code == 200
     data = resp.json()
     assert data["symbol"] == "EURUSD"
@@ -309,14 +309,14 @@ def test_market_structure_with_timesfm(client):
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
         with patch(
-            "monika.domain.indicators.timesfm_engine.TimesFMEngine.get_latest_forecast", new_callable=AsyncMock
+            "monika.infrastructure.ml.timesfm_engine.TimesFMEngine.get_latest_forecast", new_callable=AsyncMock
         ) as mock_fc:
             mock_fc.return_value = {
                 "generated_at": "2026-10-06T12:00:00Z",
                 "quantiles": {"q50": [1.086, 1.087]},
                 "horizon_steps": 12,
             }
-            resp = client.get("/api/market/structure/EURUSD?timeframe=H4")
+            resp = client.get("/api/v1/market/structure/EURUSD?timeframe=H4")
             assert resp.status_code == 200
             data = resp.json()
             assert data["symbol"] == "EURUSD"
@@ -372,7 +372,7 @@ def test_decision_dossier_endpoint(client):
         mock_exec.scalars.return_value = mock_scalars
         mock_session.execute = AsyncMock(return_value=mock_exec)
 
-        resp = client.get("/api/analysis/decision-dossier/42")
+        resp = client.get("/api/v1/analysis/decision-dossier/42")
         assert resp.status_code == 200
         dossier = resp.json()
         assert dossier["status"] == "success"
@@ -388,7 +388,7 @@ def test_decision_dossier_endpoint(client):
 
 def test_shutdown_action_endpoint(client):
     """Verify POST /api/actions/shutdown initiates graceful shutdown."""
-    resp = client.post("/api/actions/shutdown")
+    resp = client.post("/api/v1/actions/shutdown")
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "shutting_down"

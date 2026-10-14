@@ -17,7 +17,7 @@ from monika.interfaces.dashboard.rbac import Role, require_role
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Memory")
 
-memory_router = APIRouter(prefix="/api/memory", tags=["Memory"])
+memory_router = APIRouter(prefix="/api/v1/memory", tags=["Memory"])
 
 
 class MemorySearchRequest(BaseModel):

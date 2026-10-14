@@ -36,7 +36,7 @@ logger = logging.getLogger("TradingAgent.DashboardAPI.Trading.Orders")
 orders_router = APIRouter()
 
 
-@orders_router.get("/api/orders", tags=["Orders"])
+@orders_router.get("/api/v1/orders", tags=["Orders"])
 async def get_orders(
     limit: int = Query(default=30, ge=1, le=100),
     action: Optional[str] = Query(default=None, description="Filter: place, modify, close"),
@@ -63,7 +63,7 @@ async def get_orders(
         ]
 
 
-@orders_router.post("/api/orders/preview", tags=["Trading"])
+@orders_router.post("/api/v1/orders/preview", tags=["Trading"])
 @require_role(Role.OPERATOR)
 async def preview_manual_order(payload: ManualOrderPreviewRequest, request: Request):
     """Preview manual order metrics: lot sizing, risk amount, reward amount, RR ratio, margin."""
@@ -136,7 +136,7 @@ async def preview_manual_order(payload: ManualOrderPreviewRequest, request: Requ
     }
 
 
-@orders_router.post("/api/orders/submit", tags=["Trading"])
+@orders_router.post("/api/v1/orders/submit", tags=["Trading"])
 @require_role(Role.OPERATOR)
 async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Request):
     """Execute a manual trade order directly to MT5 or broker."""

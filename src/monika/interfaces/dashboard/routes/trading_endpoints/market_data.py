@@ -36,7 +36,7 @@ logger = logging.getLogger("TradingAgent.DashboardAPI.Trading.Market_data")
 market_data_router = APIRouter()
 
 
-@market_data_router.get("/api/market/indicators/{symbol}", tags=["Market Data"])
+@market_data_router.get("/api/v1/market/indicators/{symbol}", tags=["Market Data"])
 @require_role(Role.VIEWER)
 async def get_technical_indicators_snapshot(
     symbol: str,
@@ -99,7 +99,7 @@ async def get_technical_indicators_snapshot(
         }
 
 
-@market_data_router.get("/api/market/structure/{symbol}", tags=["Market Data"])
+@market_data_router.get("/api/v1/market/structure/{symbol}", tags=["Market Data"])
 @require_role(Role.VIEWER)
 async def get_market_structure_levels(
     symbol: str,
@@ -213,7 +213,7 @@ async def get_market_structure_levels(
         }
 
 
-@market_data_router.get("/api/market/candles/{symbol}", tags=["Market Data"])
+@market_data_router.get("/api/v1/market/candles/{symbol}", tags=["Market Data"])
 @require_role(Role.VIEWER)
 async def get_market_candles(
     symbol: str,

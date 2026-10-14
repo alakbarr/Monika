@@ -79,17 +79,17 @@ def test_rbac_endpoint_enforcement(client):
     }
     with patch.dict(os.environ, env):
         # 1. Viewer trying operator action (trigger-cycle) -> 403
-        res = client.post("/api/actions/trigger-cycle", headers={"X-API-Key": "view_key"}, json={"forced": True})
+        res = client.post("/api/v1/actions/trigger-cycle", headers={"X-API-Key": "view_key"}, json={"forced": True})
         assert res.status_code == 403
         assert "operator" in res.json()["detail"].lower()
 
         # 2. Operator trying operator action (trigger-cycle) -> allowed through RBAC (503 if sched uninit)
-        res = client.post("/api/actions/trigger-cycle", headers={"X-API-Key": "ops_key"}, json={"forced": True})
+        res = client.post("/api/v1/actions/trigger-cycle", headers={"X-API-Key": "ops_key"}, json={"forced": True})
         assert res.status_code != 403
 
         # 3. Operator trying admin action (override-risk) -> 403
         res = client.post(
-            "/api/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"risk_percent_per_trade": 1.5}
+            "/api/v1/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"risk_percent_per_trade": 1.5}
         )
         assert res.status_code == 403
         assert "admin" in res.json()["detail"].lower()
@@ -104,7 +104,7 @@ def test_rbac_endpoint_enforcement(client):
             mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
             res = client.post(
-                "/api/actions/override-risk", headers={"X-API-Key": "adm_key"}, json={"risk_percent_per_trade": 1.5}
+                "/api/v1/actions/override-risk", headers={"X-API-Key": "adm_key"}, json={"risk_percent_per_trade": 1.5}
             )
             assert res.status_code == 200
             assert res.json()["status"] == "success"
@@ -117,7 +117,7 @@ def test_rbac_endpoint_enforcement(client):
 
 def test_get_config_settings(client):
     """Verify GET /api/config/settings returns valid settings dictionary and raw YAML."""
-    res = client.get("/api/config/settings")
+    res = client.get("/api/v1/config/settings")
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "success"
@@ -128,7 +128,7 @@ def test_get_config_settings(client):
 
 def test_get_config_schema(client):
     """Verify GET /api/config/schema returns JSON schema for TradingAgentConfig."""
-    res = client.get("/api/config/schema")
+    res = client.get("/api/v1/config/schema")
     assert res.status_code == 200
     data = res.json()
     assert "properties" in data
@@ -150,7 +150,7 @@ def test_put_config_settings_validation_failure(client):
             },
             "reason": "Test invalid config",
         }
-        res = client.put("/api/config/settings", headers={"X-API-Key": "adm_key"}, json=invalid_payload)
+        res = client.put("/api/v1/config/settings", headers={"X-API-Key": "adm_key"}, json=invalid_payload)
         assert res.status_code == 422
         assert res.json()["status"] == "validation_error"
 
@@ -185,7 +185,7 @@ def test_put_config_settings_success(client, tmp_path):
                 mock_session.add = MagicMock()
                 mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
-                res = client.put("/api/config/settings", headers={"X-API-Key": "adm_key"}, json=valid_payload)
+                res = client.put("/api/v1/config/settings", headers={"X-API-Key": "adm_key"}, json=valid_payload)
                 assert res.status_code == 200
                 data = res.json()
                 assert data["status"] == "success"
@@ -197,7 +197,7 @@ def test_put_config_settings_role_forbidden(client):
     """Verify operator or viewer cannot edit configuration (Admin required)."""
     env = {"DASHBOARD_API_KEYS": "admin:adm_key,operator:ops_key,viewer:view_key"}
     with patch.dict(os.environ, env):
-        res = client.put("/api/config/settings", headers={"X-API-Key": "ops_key"}, json={"settings": {}})
+        res = client.put("/api/v1/config/settings", headers={"X-API-Key": "ops_key"}, json={"settings": {}})
         assert res.status_code == 403
 
 
@@ -226,7 +226,7 @@ def test_list_sessions(client):
 
         mock_session.execute.side_effect = [mock_res1, mock_res2]
 
-        res = client.get("/api/sessions")
+        res = client.get("/api/v1/sessions")
         assert res.status_code == 200
         items = res.json()
         assert len(items) == 1
@@ -253,7 +253,7 @@ def test_get_session_messages(client):
         mock_res.scalars.return_value.all.return_value = [msg1]
         mock_session.execute.return_value = mock_res
 
-        res = client.get("/api/sessions/dash:admin/messages")
+        res = client.get("/api/v1/sessions/dash:admin/messages")
         assert res.status_code == 200
         msgs = res.json()
         assert len(msgs) == 1
@@ -265,7 +265,7 @@ def test_get_auth_role(client):
     """Verify GET /api/auth/role returns resolved caller role."""
     env = {"DASHBOARD_API_KEYS": "operator:ops_123"}
     with patch.dict(os.environ, env):
-        res = client.get("/api/auth/role", headers={"X-API-Key": "ops_123"})
+        res = client.get("/api/v1/auth/role", headers={"X-API-Key": "ops_123"})
         assert res.status_code == 200
         assert res.json()["role"] == "operator"
 
@@ -340,24 +340,24 @@ def test_override_risk_validation_bounds(client):
     with patch.dict(os.environ, env):
         # 1. Out of bounds high risk_percent_per_trade (> 5.0)
         res = client.post(
-            "/api/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"risk_percent_per_trade": 10.0}
+            "/api/v1/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"risk_percent_per_trade": 10.0}
         )
         assert res.status_code == 422
 
         # 2. Out of bounds low risk_percent_per_trade (< 0.1)
         res = client.post(
-            "/api/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"risk_percent_per_trade": 0.05}
+            "/api/v1/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"risk_percent_per_trade": 0.05}
         )
         assert res.status_code == 422
 
         # 3. Out of bounds high max_daily_drawdown_percent (> 20.0)
         res = client.post(
-            "/api/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"max_daily_drawdown_percent": 25.0}
+            "/api/v1/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"max_daily_drawdown_percent": 25.0}
         )
         assert res.status_code == 422
 
         # 4. Out of bounds low max_daily_drawdown_percent (< 0.5)
         res = client.post(
-            "/api/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"max_daily_drawdown_percent": 0.2}
+            "/api/v1/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"max_daily_drawdown_percent": 0.2}
         )
         assert res.status_code == 422

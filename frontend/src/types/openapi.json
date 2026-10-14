@@ -1,0 +1,6608 @@
+{
+  "components": {
+    "schemas": {
+      "ActionStatusResponse": {
+        "properties": {
+          "details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional extra execution details",
+            "title": "Details"
+          },
+          "message": {
+            "default": "",
+            "description": "Descriptive outcome message",
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "description": "Action outcome: ok, success, error, or killed",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "ActionStatusResponse",
+        "type": "object"
+      },
+      "AuthRoleResponse": {
+        "properties": {
+          "authenticated": {
+            "default": false,
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "is_localhost": {
+            "default": true,
+            "title": "Is Localhost",
+            "type": "boolean"
+          },
+          "role": {
+            "default": "viewer",
+            "description": "Active RBAC role",
+            "title": "Role",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "title": "AuthRoleResponse",
+        "type": "object"
+      },
+      "BacktestRunRequest": {
+        "properties": {
+          "days": {
+            "default": 30,
+            "description": "Lookback days",
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          },
+          "initial_equity": {
+            "default": 10000.0,
+            "description": "Initial account equity",
+            "exclusiveMinimum": 0.0,
+            "title": "Initial Equity",
+            "type": "number"
+          },
+          "mode": {
+            "default": "full",
+            "description": "Backtest mode: full, replay, walk_forward",
+            "title": "Mode",
+            "type": "string"
+          },
+          "step_hours": {
+            "default": 6,
+            "description": "Step hours",
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "Step Hours",
+            "type": "integer"
+          }
+        },
+        "title": "BacktestRunRequest",
+        "type": "object"
+      },
+      "BatchCloseRequest": {
+        "properties": {
+          "filter_type": {
+            "default": "all",
+            "description": "'all', 'profit_only', or 'loss_only'",
+            "title": "Filter Type",
+            "type": "string"
+          },
+          "reason": {
+            "default": "Batch close from Dashboard",
+            "title": "Reason",
+            "type": "string"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional symbol filter",
+            "title": "Symbol"
+          },
+          "tickets": {
+            "description": "Specific MT5 position tickets to close",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Tickets",
+            "type": "array"
+          }
+        },
+        "title": "BatchCloseRequest",
+        "type": "object"
+      },
+      "BenchmarkRunRequest": {
+        "properties": {
+          "compare_routers": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": false,
+            "description": "Test router matrix (direct vs OpenRouter vs 9router)",
+            "title": "Compare Routers"
+          },
+          "concurrency": {
+            "anyOf": [
+              {
+                "maximum": 16.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 4,
+            "description": "Async job concurrency",
+            "title": "Concurrency"
+          },
+          "judge_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Judge model name",
+            "title": "Judge Model"
+          },
+          "judge_models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Judge ensemble model names",
+            "title": "Judge Models"
+          },
+          "models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Subset model names/IDs to evaluate",
+            "title": "Models"
+          },
+          "provider_route": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Provider router/prefix: direct, openrouter, 9router, groq, gemini, etc.",
+            "title": "Provider Route"
+          },
+          "reference_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Upstream reference model",
+            "title": "Reference Model"
+          },
+          "symbols": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Asset symbols for per-asset analysis",
+            "title": "Symbols"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Single task role ID to evaluate",
+            "title": "Task Id"
+          },
+          "tasks": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Subset task IDs to evaluate",
+            "title": "Tasks"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tier filter: system_one, cheap_efficient, cheap_smart, high_intelligence",
+            "title": "Tier"
+          },
+          "use_fixtures": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": false,
+            "description": "Use synthetic September 2026 market fixtures",
+            "title": "Use Fixtures"
+          }
+        },
+        "title": "BenchmarkRunRequest",
+        "type": "object"
+      },
+      "BulkBreakevenRequest": {
+        "properties": {
+          "only_profit": {
+            "default": true,
+            "description": "Only move positions currently in profit to breakeven",
+            "title": "Only Profit",
+            "type": "boolean"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional symbol filter, e.g. EURUSD",
+            "title": "Symbol"
+          }
+        },
+        "title": "BulkBreakevenRequest",
+        "type": "object"
+      },
+      "ChatCompletionRequest": {
+        "properties": {
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 4096,
+            "title": "Max Tokens"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "model": {
+            "default": "monika-trader",
+            "title": "Model",
+            "type": "string"
+          },
+          "stream": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": false,
+            "title": "Stream"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 0.7,
+            "title": "Temperature"
+          },
+          "tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tools"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 1.0,
+            "title": "Top P"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "ChatCompletionRequest",
+        "type": "object"
+      },
+      "ChatMessage": {
+        "properties": {
+          "content": {
+            "title": "Content"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ChatMessage",
+        "type": "object"
+      },
+      "ClosePositionRequest": {
+        "properties": {
+          "paper_trade_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "PaperTradeRecord ID",
+            "title": "Paper Trade Id"
+          },
+          "percentage": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Percentage of position to close (1-100)",
+            "title": "Percentage"
+          },
+          "position_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Database Position record ID",
+            "title": "Position Id"
+          },
+          "reason": {
+            "default": "Manual close from Dashboard",
+            "description": "Closure reason",
+            "title": "Reason",
+            "type": "string"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Currency symbol",
+            "title": "Symbol"
+          },
+          "ticket": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "MT5 deal/order ticket number",
+            "title": "Ticket"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Partial volume/lots to close",
+            "title": "Volume"
+          }
+        },
+        "title": "ClosePositionRequest",
+        "type": "object"
+      },
+      "ConfigUpdateRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "Config updated via Dashboard",
+            "description": "Reason for activity audit log",
+            "title": "Reason"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "description": "Full settings dictionary to validate and persist",
+            "title": "Settings",
+            "type": "object"
+          }
+        },
+        "required": [
+          "settings"
+        ],
+        "title": "ConfigUpdateRequest",
+        "type": "object"
+      },
+      "CrystallizeSkillRequest": {
+        "properties": {
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional symbol filter, e.g. EURUSD",
+            "title": "Symbol"
+          }
+        },
+        "title": "CrystallizeSkillRequest",
+        "type": "object"
+      },
+      "DeprecateSkillRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "Operator manual deprecation",
+            "description": "Reason for deprecating skill",
+            "title": "Reason"
+          }
+        },
+        "title": "DeprecateSkillRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthDiagnostics": {
+        "properties": {
+          "active_tasks": {
+            "default": 0,
+            "title": "Active Tasks",
+            "type": "integer"
+          },
+          "active_threads": {
+            "default": 0,
+            "title": "Active Threads",
+            "type": "integer"
+          },
+          "disk_usage_gb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disk Usage Gb"
+          },
+          "memory_usage_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Usage Mb"
+          },
+          "python_version": {
+            "default": "",
+            "title": "Python Version",
+            "type": "string"
+          }
+        },
+        "title": "HealthDiagnostics",
+        "type": "object"
+      },
+      "HealthStatusResponse": {
+        "properties": {
+          "db_connected": {
+            "default": true,
+            "title": "Db Connected",
+            "type": "boolean"
+          },
+          "diagnostics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HealthDiagnostics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gemini_api_available": {
+            "default": true,
+            "title": "Gemini Api Available",
+            "type": "boolean"
+          },
+          "heartbeat_age_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heartbeat Age Seconds"
+          },
+          "last_analysis_cycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Analysis Cycle"
+          },
+          "last_scraper_run": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Scraper Run"
+          },
+          "mt5_connected": {
+            "default": true,
+            "title": "Mt5 Connected",
+            "type": "boolean"
+          },
+          "status": {
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uptime_seconds": {
+            "default": 0.0,
+            "title": "Uptime Seconds",
+            "type": "number"
+          }
+        },
+        "title": "HealthStatusResponse",
+        "type": "object"
+      },
+      "ManualOrderPreviewRequest": {
+        "properties": {
+          "direction": {
+            "default": "buy",
+            "description": "'buy' or 'sell'",
+            "title": "Direction",
+            "type": "string"
+          },
+          "entry_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Entry price (or current market price)",
+            "title": "Entry Price"
+          },
+          "fixed_lots": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fixed lots override",
+            "title": "Fixed Lots"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Alias for entry_price",
+            "title": "Price"
+          },
+          "risk_percent": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 0.1,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Risk percentage override",
+            "title": "Risk Percent"
+          },
+          "sl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stop loss price",
+            "title": "Sl"
+          },
+          "symbol": {
+            "description": "Trading instrument symbol",
+            "minLength": 1,
+            "title": "Symbol",
+            "type": "string"
+          },
+          "tp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Take profit price",
+            "title": "Tp"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Alias for fixed_lots",
+            "title": "Volume"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "title": "ManualOrderPreviewRequest",
+        "type": "object"
+      },
+      "ManualOrderSubmitRequest": {
+        "properties": {
+          "comment": {
+            "default": "Manual:Dashboard",
+            "description": "Order comment",
+            "title": "Comment",
+            "type": "string"
+          },
+          "direction": {
+            "default": "buy",
+            "description": "'buy' or 'sell'",
+            "title": "Direction",
+            "type": "string"
+          },
+          "is_paper": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Explicit paper trading toggle",
+            "title": "Is Paper"
+          },
+          "lots": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Order volume in lots",
+            "title": "Lots"
+          },
+          "order_type": {
+            "default": "buy",
+            "description": "'buy', 'sell', 'buy_limit', 'sell_limit', 'buy_stop', 'sell_stop'",
+            "title": "Order Type",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Order execution/limit/stop price",
+            "title": "Price"
+          },
+          "sl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stop loss price",
+            "title": "Sl"
+          },
+          "symbol": {
+            "minLength": 1,
+            "title": "Symbol",
+            "type": "string"
+          },
+          "tp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Take profit price",
+            "title": "Tp"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Order volume alias",
+            "title": "Volume"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "title": "ManualOrderSubmitRequest",
+        "type": "object"
+      },
+      "MemorySearchRequest": {
+        "properties": {
+          "limit": {
+            "default": 50,
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "description": "Keyword or phrase to search across reflections and lessons",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "MemorySearchRequest",
+        "type": "object"
+      },
+      "ModifyPositionRequest": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "Mod:dashboard",
+            "description": "Audit note or comment",
+            "title": "Comment"
+          },
+          "sl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "New stop loss price",
+            "title": "Sl"
+          },
+          "tp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "New take profit price",
+            "title": "Tp"
+          }
+        },
+        "title": "ModifyPositionRequest",
+        "type": "object"
+      },
+      "OverrideRiskRequest": {
+        "properties": {
+          "auto_execute": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Execute"
+          },
+          "custom_overrides": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Arbitrary additional risk parameters",
+            "title": "Custom Overrides"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "TTL duration in seconds before override reverts",
+            "title": "Duration Seconds"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO timestamp when override expires",
+            "title": "Expires At"
+          },
+          "max_concurrent_positions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Max open concurrent positions",
+            "title": "Max Concurrent Positions"
+          },
+          "max_daily_drawdown_percent": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 0.5,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Max daily drawdown limit in % (e.g. 0.5 - 20.0)",
+            "title": "Max Daily Drawdown Percent"
+          },
+          "max_lot_per_symbol": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Max lot size per symbol",
+            "title": "Max Lot Per Symbol"
+          },
+          "max_risk_amount_usd": {
+            "anyOf": [
+              {
+                "maximum": 50000.0,
+                "minimum": 10.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Risk Amount Usd"
+          },
+          "max_weekly_drawdown_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Max weekly drawdown limit in %",
+            "title": "Max Weekly Drawdown Percent"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Audit reason for risk override",
+            "title": "Reason"
+          },
+          "risk_percent_per_trade": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 0.1,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Risk percent per trade (e.g. 0.1 - 5.0)",
+            "title": "Risk Percent Per Trade"
+          },
+          "system_paused": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Paused"
+          }
+        },
+        "title": "OverrideRiskRequest",
+        "type": "object"
+      },
+      "PingResponse": {
+        "properties": {
+          "status": {
+            "default": "pong",
+            "title": "Status",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "title": "PingResponse",
+        "type": "object"
+      },
+      "PlaybookRollbackRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "Manual operator rollback from dashboard",
+            "title": "Reason"
+          },
+          "target_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Hash"
+          }
+        },
+        "title": "PlaybookRollbackRequest",
+        "type": "object"
+      },
+      "PluginInstallRequest": {
+        "properties": {
+          "package_name": {
+            "description": "Pip package name, GitHub URL, or .whl path",
+            "title": "Package Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "package_name"
+        ],
+        "title": "PluginInstallRequest",
+        "type": "object"
+      },
+      "PluginToggleRequest": {
+        "properties": {
+          "category": {
+            "default": "custom",
+            "description": "Plugin category (e.g. analysis_pipeline, broker, scheduler)",
+            "title": "Category",
+            "type": "string"
+          },
+          "enabled": {
+            "description": "Desired activation state",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "plugin_id": {
+            "description": "Unique ID of the plugin to toggle",
+            "title": "Plugin Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plugin_id",
+          "enabled"
+        ],
+        "title": "PluginToggleRequest",
+        "type": "object"
+      },
+      "PluginUninstallRequest": {
+        "properties": {
+          "package_name": {
+            "description": "Package name to uninstall via pip",
+            "title": "Package Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "package_name"
+        ],
+        "title": "PluginUninstallRequest",
+        "type": "object"
+      },
+      "SteerRequest": {
+        "properties": {
+          "message": {
+            "description": "Steering instruction or tactical directive for analysis cycle",
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "steer",
+            "description": "Delivery mode ('steer' or 'follow_up')",
+            "title": "Mode"
+          },
+          "symbols": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional target symbols affected",
+            "title": "Symbols"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "SteerRequest",
+        "type": "object"
+      },
+      "TrailingOverrideRequest": {
+        "properties": {
+          "atr_multiplier": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Trailing stop ATR multiplier (e.g. 1.5)",
+            "title": "Atr Multiplier"
+          },
+          "breakeven_atr_multiple": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ATR multiple to trigger BE",
+            "title": "Breakeven Atr Multiple"
+          },
+          "breakeven_pips": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fixed profit in pips to trigger BE",
+            "title": "Breakeven Pips"
+          },
+          "enabled": {
+            "default": true,
+            "description": "Enable or disable trailing stop",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "reset_to_default": {
+            "default": false,
+            "description": "Reset trailing stop to system defaults",
+            "title": "Reset To Default",
+            "type": "boolean"
+          },
+          "trail_atr_multiple": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Alias for atr_multiplier",
+            "title": "Trail Atr Multiple"
+          },
+          "trailing_pips": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fixed trailing distance in pips",
+            "title": "Trailing Pips"
+          }
+        },
+        "title": "TrailingOverrideRequest",
+        "type": "object"
+      },
+      "TriggerCycleRequest": {
+        "properties": {
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ad-hoc context or specific hypothesis to analyze",
+            "title": "Context"
+          },
+          "forced": {
+            "default": true,
+            "description": "Force execution even if scheduled time hasn't arrived",
+            "title": "Forced",
+            "type": "boolean"
+          },
+          "reason": {
+            "default": "Manual trigger from Dashboard",
+            "description": "Reason for triggering cycle",
+            "title": "Reason",
+            "type": "string"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional target symbol for ad-hoc analysis",
+            "title": "Symbol"
+          }
+        },
+        "title": "TriggerCycleRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Real-time observability dashboard for the AI Trading Agent.",
+    "title": "AI Trading Agent \u2014 Dashboard API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/actions/approve-trade/{trade_id}": {
+      "post": {
+        "description": "Approve a pending trade trigger or asset analysis for order execution.",
+        "operationId": "action_approve_trade_api_v1_actions_approve_trade__trade_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trade_id",
+            "required": true,
+            "schema": {
+              "title": "Trade Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Action Approve Trade",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/bulk-breakeven": {
+      "post": {
+        "description": "Move Stop Loss to Entry Price across profitable positions.",
+        "operationId": "action_bulk_breakeven_api_v1_actions_bulk_breakeven_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkBreakevenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Action Bulk Breakeven",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/close-batch": {
+      "post": {
+        "description": "Close multiple positions selectively in a single batch request.",
+        "operationId": "action_close_batch_api_v1_actions_close_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchCloseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Action Close Batch",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/close-position": {
+      "post": {
+        "description": "Close floating position in MT5/broker or synthetic paper trade (full or partial).",
+        "operationId": "action_close_position_api_v1_actions_close_position_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClosePositionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Action Close Position",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/emergency-kill": {
+      "post": {
+        "description": "Trigger emergency kill switch and position liquidation safely via daemon.",
+        "operationId": "action_emergency_kill_api_v1_actions_emergency_kill_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Action Emergency Kill",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/kill-symbol/{symbol}": {
+      "post": {
+        "description": "Emergency close all open positions for a single currency/symbol.",
+        "operationId": "action_kill_symbol_api_v1_actions_kill_symbol__symbol__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Action Kill Symbol",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/override-risk": {
+      "post": {
+        "description": "Update dynamic risk parameters in SystemConfig and runtime settings with duration support.",
+        "operationId": "action_override_risk_api_v1_actions_override_risk_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideRiskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Action Override Risk",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/pause": {
+      "post": {
+        "description": "Pause system trading operations.",
+        "operationId": "action_pause_trading_api_v1_actions_pause_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Action Pause Trading",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/pause-trading": {
+      "post": {
+        "description": "Pause system trading operations.",
+        "operationId": "action_pause_trading_api_v1_actions_pause_trading_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Action Pause Trading",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/resume": {
+      "post": {
+        "description": "Resume system trading operations, clearing kill switch, pause flags, and resetting EffectGate.",
+        "operationId": "action_resume_trading_api_v1_actions_resume_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Action Resume Trading",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/resume-trading": {
+      "post": {
+        "description": "Resume system trading operations, clearing kill switch, pause flags, and resetting EffectGate.",
+        "operationId": "action_resume_trading_api_v1_actions_resume_trading_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Action Resume Trading",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/shutdown": {
+      "post": {
+        "description": "Gracefully request system/daemon shutdown.",
+        "operationId": "shutdown_system_api_v1_actions_shutdown_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Shutdown System",
+        "tags": [
+          "System",
+          "System"
+        ]
+      }
+    },
+    "/api/v1/actions/steer": {
+      "post": {
+        "description": "Inject operator steering instruction / directive into active or next cycle.",
+        "operationId": "action_steer_api_v1_actions_steer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SteerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Action Steer",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/trigger-cycle": {
+      "post": {
+        "description": "Trigger the LangGraph analysis cycle immediately with optional symbol and context guidance.",
+        "operationId": "action_trigger_cycle_api_v1_actions_trigger_cycle_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/TriggerCycleRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Action Trigger Cycle",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/actions/unsuspend": {
+      "post": {
+        "description": "Lift trading suspension on all instruments or specific symbol.",
+        "operationId": "action_unsuspend_symbols_api_v1_actions_unsuspend_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Action Unsuspend Symbols",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/activity": {
+      "get": {
+        "description": "Log aktivitas (berdukungan paginasi & filter).",
+        "operationId": "get_activity_api_v1_activity_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by category",
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by category",
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Activity",
+        "tags": [
+          "Activity"
+        ]
+      }
+    },
+    "/api/v1/analysis": {
+      "get": {
+        "description": "Riwayat analisis Stage 2 AI per aset.",
+        "operationId": "get_analysis_api_v1_analysis_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Analysis",
+        "tags": [
+          "Analysis"
+        ]
+      }
+    },
+    "/api/v1/analysis-quality-realtime": {
+      "get": {
+        "description": "Real-time analysis quality metrics for monitoring dashboard.",
+        "operationId": "get_analysis_quality_realtime_api_v1_analysis_quality_realtime_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Analysis Quality Realtime",
+        "tags": [
+          "Performance"
+        ]
+      }
+    },
+    "/api/v1/analysis/decision-dossier/{analysis_id}": {
+      "get": {
+        "description": "1-Click Decision Dossier (Phase 4):\nAggregates full decision lineage and rationale across:\n- Stage 1: Macro & Fundamental Context (Brief, DXY bias, Risk sentiment)\n- Stage 2: Tactical Confluence & SMC (Factors, Entry/SL/TP, Invalidation, SSVP)\n- Stage 3: Adversarial Debate (Bull vs Bear thesis, Judge verdict)\n- Stage 4: RiskGate Mechanical Fortress (22 rules scorecard, execution notes)\n- Stage 5: Execution Telemetry & Hash Lineage (Signals, Position, SHA-256 verification)",
+        "operationId": "get_decision_dossier_api_v1_analysis_decision_dossier__analysis_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "title": "Analysis Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional MT5 ticket filter for execution telemetry",
+            "in": "query",
+            "name": "ticket",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional MT5 ticket filter for execution telemetry",
+              "title": "Ticket"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Decision Dossier",
+        "tags": [
+          "Analysis"
+        ]
+      }
+    },
+    "/api/v1/auth/role": {
+      "get": {
+        "description": "Retrieve authenticated caller's current role and environment status.",
+        "operationId": "get_auth_role_api_v1_auth_role_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthRoleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Auth Role",
+        "tags": [
+          "System",
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/backtest/run": {
+      "post": {
+        "description": "Trigger an asynchronous backtest run in the background.",
+        "operationId": "trigger_backtest_run_api_v1_backtest_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BacktestRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Trigger Backtest Run Api V1 Backtest Run Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger Backtest Run",
+        "tags": [
+          "Backtest"
+        ]
+      }
+    },
+    "/api/v1/backtest/runs": {
+      "get": {
+        "description": "List historical backtest run records with summary metrics.",
+        "operationId": "list_backtest_runs_api_v1_backtest_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Backtest Runs Api V1 Backtest Runs Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Backtest Runs",
+        "tags": [
+          "Backtest"
+        ]
+      }
+    },
+    "/api/v1/backtest/runs/{run_id}": {
+      "get": {
+        "description": "Get detailed telemetry and executed trades for a specific backtest run.",
+        "operationId": "get_backtest_run_details_api_v1_backtest_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Max trades to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Max trades to return",
+              "title": "Limit"
+            }
+          },
+          {
+            "description": "Offset for trades pagination",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Offset for trades pagination",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Backtest Run Details Api V1 Backtest Runs  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Backtest Run Details",
+        "tags": [
+          "Backtest"
+        ]
+      }
+    },
+    "/api/v1/benchmark/compare": {
+      "get": {
+        "description": "Compare all models evaluated on a specific task_role across benchmark runs,\nproviding quality score, speed/latency, and dual cost (with vs without cache hit).",
+        "operationId": "compare_task_benchmarks_api_v1_benchmark_compare_get",
+        "parameters": [
+          {
+            "description": "Target task role ID to compare",
+            "in": "query",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "description": "Target task role ID to compare",
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Compare Task Benchmarks Api V1 Benchmark Compare Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compare Task Benchmarks",
+        "tags": [
+          "Benchmark"
+        ]
+      }
+    },
+    "/api/v1/benchmark/leaderboard": {
+      "get": {
+        "description": "Get aggregated model rankings across tasks (Accuracy, Cost, Latency, ELO).",
+        "operationId": "get_benchmark_leaderboard_api_v1_benchmark_leaderboard_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Benchmark Leaderboard Api V1 Benchmark Leaderboard Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Benchmark Leaderboard",
+        "tags": [
+          "Benchmark"
+        ]
+      }
+    },
+    "/api/v1/benchmark/models": {
+      "get": {
+        "description": "List model registry candidates, tiers, and router matrices.",
+        "operationId": "list_benchmark_models_api_v1_benchmark_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Benchmark Models Api V1 Benchmark Models Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Benchmark Models",
+        "tags": [
+          "Benchmark"
+        ]
+      }
+    },
+    "/api/v1/benchmark/quadrant/{run_id}": {
+      "get": {
+        "description": "Get quadrant matrix data (Cost / Latency vs Quality Score) for bubble chart visualization.",
+        "operationId": "get_benchmark_quadrant_chart_data_api_v1_benchmark_quadrant__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Benchmark Quadrant Chart Data Api V1 Benchmark Quadrant  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Benchmark Quadrant Chart Data",
+        "tags": [
+          "Benchmark"
+        ]
+      }
+    },
+    "/api/v1/benchmark/run": {
+      "post": {
+        "description": "Trigger a new asynchronous benchmark execution.",
+        "operationId": "trigger_benchmark_run_api_v1_benchmark_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BenchmarkRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Trigger Benchmark Run Api V1 Benchmark Run Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger Benchmark Run",
+        "tags": [
+          "Benchmark"
+        ]
+      }
+    },
+    "/api/v1/benchmark/runs": {
+      "get": {
+        "description": "List past benchmark runs.",
+        "operationId": "list_benchmark_runs_api_v1_benchmark_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Benchmark Runs Api V1 Benchmark Runs Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Benchmark Runs",
+        "tags": [
+          "Benchmark"
+        ]
+      }
+    },
+    "/api/v1/benchmark/runs/{run_id}": {
+      "get": {
+        "description": "Get full details and individual results for a benchmark run.",
+        "operationId": "get_benchmark_run_detail_api_v1_benchmark_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Benchmark Run Detail Api V1 Benchmark Runs  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Benchmark Run Detail",
+        "tags": [
+          "Benchmark"
+        ]
+      }
+    },
+    "/api/v1/benchmark/tasks": {
+      "get": {
+        "description": "List all available benchmark evaluation tasks.",
+        "operationId": "list_benchmark_tasks_api_v1_benchmark_tasks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Benchmark Tasks Api V1 Benchmark Tasks Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Benchmark Tasks",
+        "tags": [
+          "Benchmark"
+        ]
+      }
+    },
+    "/api/v1/brief": {
+      "get": {
+        "description": "Ringkasan Stage 1 (Fundamental Brief) paling baru.",
+        "operationId": "get_brief_api_v1_brief_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Brief",
+        "tags": [
+          "System",
+          "Analysis"
+        ]
+      }
+    },
+    "/api/v1/calendar/events": {
+      "get": {
+        "description": "Retrieve scheduled macroeconomic calendar events.",
+        "operationId": "get_calendar_events_api_v1_calendar_events_get",
+        "parameters": [
+          {
+            "description": "Currency filter, e.g. USD, EUR, XAU",
+            "in": "query",
+            "name": "currency",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Currency filter, e.g. USD, EUR, XAU",
+              "title": "Currency"
+            }
+          },
+          {
+            "description": "Impact filter: high, medium, low",
+            "in": "query",
+            "name": "impact",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Impact filter: high, medium, low",
+              "title": "Impact"
+            }
+          },
+          {
+            "description": "Window in days ahead",
+            "in": "query",
+            "name": "days_ahead",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "description": "Window in days ahead",
+              "maximum": 30,
+              "minimum": 1,
+              "title": "Days Ahead",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Max items to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Max items to return",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Calendar Events",
+        "tags": [
+          "Intelligence & Market Data",
+          "Calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/upcoming": {
+      "get": {
+        "description": "Retrieve high impact macroeconomic events scheduled within next 24 hours.",
+        "operationId": "get_upcoming_high_impact_events_api_v1_calendar_upcoming_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Upcoming High Impact Events",
+        "tags": [
+          "Intelligence & Market Data",
+          "Calendar"
+        ]
+      }
+    },
+    "/api/v1/config/plugins/schemas": {
+      "get": {
+        "description": "Return dictionary of plugin_id -> JSON Schema for registered plugins.",
+        "operationId": "get_all_plugin_config_schemas_api_v1_config_plugins_schemas_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get All Plugin Config Schemas",
+        "tags": [
+          "Config",
+          "Config"
+        ]
+      }
+    },
+    "/api/v1/config/plugins/{plugin_id}/schema": {
+      "get": {
+        "description": "Return JSON Schema for a specific plugin configuration if available.",
+        "operationId": "get_plugin_config_schema_api_v1_config_plugins__plugin_id__schema_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plugin_id",
+            "required": true,
+            "schema": {
+              "title": "Plugin Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Plugin Config Schema",
+        "tags": [
+          "Config",
+          "Config"
+        ]
+      }
+    },
+    "/api/v1/config/schema": {
+      "get": {
+        "description": "Return Pydantic TradingAgentConfig as JSON Schema for form rendering.",
+        "operationId": "get_config_schema_api_v1_config_schema_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Config Schema",
+        "tags": [
+          "Config",
+          "Config"
+        ]
+      }
+    },
+    "/api/v1/config/settings": {
+      "get": {
+        "description": "Return full settings.yaml as structured JSON along with raw YAML text with secrets masked.",
+        "operationId": "get_config_settings_api_v1_config_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Config Settings",
+        "tags": [
+          "Config",
+          "Config"
+        ]
+      },
+      "put": {
+        "description": "Validate payload, create .bak backup, write settings.yaml, trigger hot-reload, and log.",
+        "operationId": "update_config_settings_api_v1_config_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Config Settings",
+        "tags": [
+          "Config",
+          "Config"
+        ]
+      }
+    },
+    "/api/v1/debate-outcomes": {
+      "get": {
+        "description": "Ambil ringkasan hasil debate bull/bear & adjudikasi spesialis (M-4).",
+        "operationId": "get_debate_outcomes_api_v1_debate_outcomes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Debate Outcomes",
+        "tags": [
+          "Analysis"
+        ]
+      }
+    },
+    "/api/v1/decision-distribution": {
+      "get": {
+        "operationId": "get_decision_distribution_api_v1_decision_distribution_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Decision Distribution",
+        "tags": [
+          "Analysis"
+        ]
+      }
+    },
+    "/api/v1/edge-metrics": {
+      "get": {
+        "description": "Key metrics untuk monitoring apakah sistem masih memiliki edge positif.\nIni adalah dashboard paling penting untuk trading system health.",
+        "operationId": "get_edge_metrics_api_v1_edge_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Edge Metrics",
+        "tags": [
+          "Performance"
+        ]
+      }
+    },
+    "/api/v1/factor-analysis": {
+      "get": {
+        "description": "Mengukur seberapa akurat confluence factor vs PnL sesungguhnya.",
+        "operationId": "get_factor_analysis_api_v1_factor_analysis_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Factor Analysis",
+        "tags": [
+          "Performance"
+        ]
+      }
+    },
+    "/api/v1/gemini-quota": {
+      "get": {
+        "description": "Cek kuota rate limiter API Gemini (harian).",
+        "operationId": "get_gemini_quota_api_v1_gemini_quota_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Gemini Quota",
+        "tags": [
+          "System",
+          "System"
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "description": "Mengecek uptime, koneksi DB, dan status koneksi MT5 (Liveness Probe).",
+        "operationId": "get_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Health",
+        "tags": [
+          "System",
+          "System"
+        ]
+      }
+    },
+    "/api/v1/health/diagnostics": {
+      "get": {
+        "description": "Diagnostik internal mendalam: kuota LLM, freshness data, heartbeat, biaya API.",
+        "operationId": "get_health_diagnostics_api_v1_health_diagnostics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Health Diagnostics",
+        "tags": [
+          "System",
+          "System"
+        ]
+      }
+    },
+    "/api/v1/kill": {
+      "post": {
+        "description": "Trigger emergency kill switch and position liquidation safely via daemon.",
+        "operationId": "action_emergency_kill_api_v1_kill_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Action Emergency Kill",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/market/candles/{symbol}": {
+      "get": {
+        "description": "Retrieve OHLCV candlestick bars for financial Canvas charts.",
+        "operationId": "get_market_candles_api_v1_market_candles__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Timeframe e.g. M15, H1, H4, D1",
+            "in": "query",
+            "name": "timeframe",
+            "required": false,
+            "schema": {
+              "default": "H4",
+              "description": "Timeframe e.g. M15, H1, H4, D1",
+              "title": "Timeframe",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "count",
+            "required": false,
+            "schema": {
+              "default": 150,
+              "maximum": 1000,
+              "minimum": 10,
+              "title": "Count",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Market Candles",
+        "tags": [
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/market/cot": {
+      "get": {
+        "description": "Retrieve historical CFTC Commitments of Traders (COT) institutional positioning.",
+        "operationId": "get_cot_reports_api_v1_market_cot_get",
+        "parameters": [
+          {
+            "description": "CFTC market code, e.g. 099741 (EUR)",
+            "in": "query",
+            "name": "market_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "CFTC market code, e.g. 099741 (EUR)",
+              "title": "Market Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cot Reports",
+        "tags": [
+          "Intelligence & Market Data",
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/market/fear-greed": {
+      "get": {
+        "description": "Retrieve market Fear & Greed index.",
+        "operationId": "get_market_fear_greed_api_v1_market_fear_greed_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Market Fear Greed",
+        "tags": [
+          "Intelligence & Market Data",
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/market/fedwatch": {
+      "get": {
+        "description": "Retrieve CME FedWatch probabilities and central bank rate expectations.",
+        "operationId": "get_market_fedwatch_api_v1_market_fedwatch_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Market Fedwatch",
+        "tags": [
+          "Intelligence & Market Data",
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/market/indicators/{symbol}": {
+      "get": {
+        "description": "Retrieve computed technical indicators (MA, RSI, MACD, BB, ATR) for a symbol.",
+        "operationId": "get_technical_indicators_snapshot_api_v1_market_indicators__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Timeframe e.g. M15, H1, H4, D1",
+            "in": "query",
+            "name": "timeframe",
+            "required": false,
+            "schema": {
+              "default": "H1",
+              "description": "Timeframe e.g. M15, H1, H4, D1",
+              "title": "Timeframe",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Technical Indicators Snapshot",
+        "tags": [
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/market/sentiment-composite": {
+      "get": {
+        "description": "Retrieve multi-asset sentiment composite (Crypto, Forex, and Institutional COT).",
+        "operationId": "get_market_sentiment_composite_api_v1_market_sentiment_composite_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Market Sentiment Composite",
+        "tags": [
+          "Intelligence & Market Data",
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/market/structure/{symbol}": {
+      "get": {
+        "description": "Retrieve SMC market structure levels: Order Blocks, FVGs, and Structure Breaks.",
+        "operationId": "get_market_structure_levels_api_v1_market_structure__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Timeframe e.g. M15, H1, H4, D1",
+            "in": "query",
+            "name": "timeframe",
+            "required": false,
+            "schema": {
+              "default": "H4",
+              "description": "Timeframe e.g. M15, H1, H4, D1",
+              "title": "Timeframe",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Market Structure Levels",
+        "tags": [
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/market/yields": {
+      "get": {
+        "description": "Retrieve US Treasury yields, 2s10s yield curve spread, and international sovereign bond yields.",
+        "operationId": "get_market_yields_api_v1_market_yields_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Market Yields",
+        "tags": [
+          "Intelligence & Market Data",
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/mcp/messages": {
+      "post": {
+        "description": "Receives JSON-RPC requests from MCP clients and returns response.",
+        "operationId": "mcp_post_message_api_v1_mcp_messages_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sessionId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sessionid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mcp Post Message",
+        "tags": [
+          "Model Context Protocol"
+        ]
+      }
+    },
+    "/api/v1/mcp/sse": {
+      "get": {
+        "description": "Server-Sent Events (SSE) endpoint for standard MCP client connections.",
+        "operationId": "mcp_sse_endpoint_api_v1_mcp_sse_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mcp Sse Endpoint",
+        "tags": [
+          "Model Context Protocol"
+        ]
+      }
+    },
+    "/api/v1/mcp/tools": {
+      "get": {
+        "description": "List all MCP tools exposed by Monika.",
+        "operationId": "list_mcp_tools_api_v1_mcp_tools_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Mcp Tools",
+        "tags": [
+          "Model Context Protocol"
+        ]
+      }
+    },
+    "/api/v1/memory/lessons": {
+      "get": {
+        "description": "Retrieve candidate and promoted empirical trading lessons.",
+        "operationId": "get_lessons_api_v1_memory_lessons_get",
+        "parameters": [
+          {
+            "description": "Filter by asset symbol",
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by asset symbol",
+              "title": "Symbol"
+            }
+          },
+          {
+            "description": "Filter by status (shadow, promoted, rejected)",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status (shadow, promoted, rejected)",
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Get Lessons Api V1 Memory Lessons Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Lessons",
+        "tags": [
+          "Memory"
+        ]
+      }
+    },
+    "/api/v1/memory/playbooks": {
+      "get": {
+        "description": "Retrieve playbook rule attributions and performance evolutions.",
+        "operationId": "get_playbooks_api_v1_memory_playbooks_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Get Playbooks Api V1 Memory Playbooks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Playbooks",
+        "tags": [
+          "Memory"
+        ]
+      }
+    },
+    "/api/v1/memory/playbooks/{name}/history": {
+      "get": {
+        "description": "Retrieve version mutation history for a specific playbook.",
+        "operationId": "get_playbook_history_api_v1_memory_playbooks__name__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Get Playbook History Api V1 Memory Playbooks  Name  History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Playbook History",
+        "tags": [
+          "Memory"
+        ]
+      }
+    },
+    "/api/v1/memory/playbooks/{name}/rollback": {
+      "post": {
+        "description": "Roll back a playbook rule to an immediate prior or specified SHA-256 target blob.",
+        "operationId": "rollback_playbook_api_v1_memory_playbooks__name__rollback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PlaybookRollbackRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Rollback Playbook Api V1 Memory Playbooks  Name  Rollback Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rollback Playbook",
+        "tags": [
+          "Memory"
+        ]
+      }
+    },
+    "/api/v1/memory/reflections": {
+      "get": {
+        "description": "Retrieve historical post-trade reflections, lessons learned, and what-if analyses.",
+        "operationId": "get_reflections_api_v1_memory_reflections_get",
+        "parameters": [
+          {
+            "description": "Filter by asset symbol (e.g. XAUUSD)",
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by asset symbol (e.g. XAUUSD)",
+              "title": "Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by profitable trades",
+            "in": "query",
+            "name": "profitable_only",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by profitable trades",
+              "title": "Profitable Only"
+            }
+          },
+          {
+            "description": "Filter by paper what-if reflections",
+            "in": "query",
+            "name": "whatif_only",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by paper what-if reflections",
+              "title": "Whatif Only"
+            }
+          },
+          {
+            "description": "Keyword search in reflection/lesson text",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keyword search in reflection/lesson text",
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Get Reflections Api V1 Memory Reflections Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Reflections",
+        "tags": [
+          "Memory"
+        ]
+      }
+    },
+    "/api/v1/memory/search": {
+      "post": {
+        "description": "Unified search over reflections and lessons learned.",
+        "operationId": "search_memory_api_v1_memory_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemorySearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Search Memory Api V1 Memory Search Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Memory",
+        "tags": [
+          "Memory"
+        ]
+      }
+    },
+    "/api/v1/metrics": {
+      "get": {
+        "description": "Prometheus metrics scrape endpoint.",
+        "operationId": "get_metrics_api_v1_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Metrics",
+        "tags": [
+          "System",
+          "Observability"
+        ]
+      }
+    },
+    "/api/v1/news/classified": {
+      "get": {
+        "description": "Retrieve intelligence-classified news items with sentiment and impact tags.",
+        "operationId": "get_classified_news_api_v1_news_classified_get",
+        "parameters": [
+          {
+            "description": "Currency or asset tag, e.g. USD, EUR, XAU",
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Currency or asset tag, e.g. USD, EUR, XAU",
+              "title": "Symbol"
+            }
+          },
+          {
+            "description": "Sentiment filter, e.g. bullish, bearish, neutral",
+            "in": "query",
+            "name": "sentiment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Sentiment filter, e.g. bullish, bearish, neutral",
+              "title": "Sentiment"
+            }
+          },
+          {
+            "description": "Impact filter: BREAKING, HIGH, MEDIUM, LOW",
+            "in": "query",
+            "name": "impact",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Impact filter: BREAKING, HIGH, MEDIUM, LOW",
+              "title": "Impact"
+            }
+          },
+          {
+            "description": "Time window in hours",
+            "in": "query",
+            "name": "hours",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "description": "Time window in hours",
+              "maximum": 168,
+              "minimum": 1,
+              "title": "Hours",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Classified News",
+        "tags": [
+          "Intelligence & Market Data",
+          "News"
+        ]
+      }
+    },
+    "/api/v1/news/sentiment": {
+      "get": {
+        "description": "Aggregate 24-hour sentiment scores across tracked currencies.",
+        "operationId": "get_aggregated_sentiment_api_v1_news_sentiment_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Aggregated Sentiment",
+        "tags": [
+          "Intelligence & Market Data",
+          "News"
+        ]
+      }
+    },
+    "/api/v1/observability/cycles/{cycle_id}/lineage": {
+      "get": {
+        "description": "Retrieve decision lineage and SHA-256 chain integrity for a trading cycle from TradingCycleEventLog.",
+        "operationId": "get_cycle_decision_lineage_api_v1_observability_cycles__cycle_id__lineage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cycle_id",
+            "required": true,
+            "schema": {
+              "title": "Cycle Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_seq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Seq"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cycle Decision Lineage",
+        "tags": [
+          "Observability",
+          "Observability"
+        ]
+      }
+    },
+    "/api/v1/observability/graph-state": {
+      "get": {
+        "description": "Retrieve topology, execution status, latencies, tokens, and payloads\nfor the LangGraph multi-agent pipeline visualizer.",
+        "operationId": "get_graph_state_api_v1_observability_graph_state_get",
+        "parameters": [
+          {
+            "description": "Filter graph state by cycle_id. Defaults to latest cycle.",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter graph state by cycle_id. Defaults to latest cycle.",
+              "title": "Cycle Id"
+            }
+          },
+          {
+            "description": "Filter graph state and token/trade breakdown by asset symbol.",
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter graph state and token/trade breakdown by asset symbol.",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Graph State",
+        "tags": [
+          "Observability",
+          "Observability"
+        ]
+      }
+    },
+    "/api/v1/observability/playbook-tree": {
+      "get": {
+        "description": "Visualisasi grafik pohon turunan playbook dari MicroPlaybookCompiler.\nMenggabungkan playbook di database (PlaybookRuleAttribution) dan file sistem (skills/trading/playbooks/).",
+        "operationId": "get_playbook_tree_api_v1_observability_playbook_tree_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Playbook Tree",
+        "tags": [
+          "Observability",
+          "Observability"
+        ]
+      }
+    },
+    "/api/v1/observability/prompt-cache-metrics": {
+      "get": {
+        "description": "Grafik metrik prompt cache hit rate vs miss rate per siklus.\nMengambil data dari TokenUsageLog.",
+        "operationId": "get_prompt_cache_metrics_api_v1_observability_prompt_cache_metrics_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Prompt Cache Metrics",
+        "tags": [
+          "Observability",
+          "Observability"
+        ]
+      }
+    },
+    "/api/v1/observability/tool-latencies": {
+      "get": {
+        "description": "Histogram dan distribusi latensi eksekusi tool handler.\nMengambil data dari global_trace_store spans dengan kind='tool'.",
+        "operationId": "get_tool_latencies_api_v1_observability_tool_latencies_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Tool Latencies",
+        "tags": [
+          "Observability",
+          "Observability"
+        ]
+      }
+    },
+    "/api/v1/observability/trajectories": {
+      "get": {
+        "description": "Retrieve logged trade decision trajectories from TradeTrajectoryLogger JSONL logs.",
+        "operationId": "get_trade_trajectories_api_v1_observability_trajectories_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Trade Trajectories",
+        "tags": [
+          "Observability",
+          "Observability"
+        ]
+      }
+    },
+    "/api/v1/orders": {
+      "get": {
+        "description": "Audit trail percobaan order (sukses & gagal/tolak).",
+        "operationId": "get_orders_api_v1_orders_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter: place, modify, close",
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter: place, modify, close",
+              "title": "Action"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Orders",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/preview": {
+      "post": {
+        "description": "Preview manual order metrics: lot sizing, risk amount, reward amount, RR ratio, margin.",
+        "operationId": "preview_manual_order_api_v1_orders_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualOrderPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Manual Order",
+        "tags": [
+          "Trading"
+        ]
+      }
+    },
+    "/api/v1/orders/submit": {
+      "post": {
+        "description": "Execute a manual trade order directly to MT5 or broker.",
+        "operationId": "submit_manual_order_api_v1_orders_submit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualOrderSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Manual Order",
+        "tags": [
+          "Trading"
+        ]
+      }
+    },
+    "/api/v1/overview": {
+      "get": {
+        "description": "Data metrik ringkas untuk highlight kartu dashboard.",
+        "operationId": "get_overview_api_v1_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Overview",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
+    "/api/v1/paper-trading": {
+      "get": {
+        "description": "Rangkuman PnL paper trading, win rate & detail performa.",
+        "operationId": "get_paper_trading_stats_api_v1_paper_trading_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Paper Trading Stats",
+        "tags": [
+          "Performance"
+        ]
+      }
+    },
+    "/api/v1/ping": {
+      "get": {
+        "operationId": "ping_api_v1_ping_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ping",
+        "tags": [
+          "System",
+          "System"
+        ]
+      }
+    },
+    "/api/v1/plugins": {
+      "get": {
+        "description": "Retrieve full list of registered, installed, and discovered plugins with current status.",
+        "operationId": "get_plugins_api_v1_plugins_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Plugins Api V1 Plugins Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Plugins",
+        "tags": [
+          "Plugins"
+        ]
+      }
+    },
+    "/api/v1/plugins/": {
+      "get": {
+        "description": "Retrieve full list of registered, installed, and discovered plugins with current status.",
+        "operationId": "get_plugins_api_v1_plugins__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Plugins Api V1 Plugins  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Plugins",
+        "tags": [
+          "Plugins"
+        ]
+      }
+    },
+    "/api/v1/plugins/catalog": {
+      "get": {
+        "description": "Retrieve curated marketplace catalog of official and community plugins.",
+        "operationId": "get_plugin_catalog_api_v1_plugins_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Plugin Catalog Api V1 Plugins Catalog Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Plugin Catalog",
+        "tags": [
+          "Plugins"
+        ]
+      }
+    },
+    "/api/v1/plugins/install": {
+      "post": {
+        "description": "Execute asynchronous pip install inside Monika's virtualenv.",
+        "operationId": "install_plugin_api_v1_plugins_install_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PluginInstallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Install Plugin Api V1 Plugins Install Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Install Plugin",
+        "tags": [
+          "Plugins"
+        ]
+      }
+    },
+    "/api/v1/plugins/toggle": {
+      "post": {
+        "description": "Dynamically enable or disable a plugin in settings.yaml and runtime.",
+        "operationId": "toggle_plugin_api_v1_plugins_toggle_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PluginToggleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Toggle Plugin Api V1 Plugins Toggle Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Toggle Plugin",
+        "tags": [
+          "Plugins"
+        ]
+      }
+    },
+    "/api/v1/plugins/uninstall": {
+      "post": {
+        "description": "Execute asynchronous pip uninstall.",
+        "operationId": "uninstall_plugin_api_v1_plugins_uninstall_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PluginUninstallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Uninstall Plugin Api V1 Plugins Uninstall Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Uninstall Plugin",
+        "tags": [
+          "Plugins"
+        ]
+      }
+    },
+    "/api/v1/positions": {
+      "get": {
+        "description": "Daftar historis atau posisi yang masih terbuka dengan data yang diperkaya.",
+        "operationId": "get_positions_api_v1_positions_get",
+        "parameters": [
+          {
+            "description": "Filter by status: open, closed, all",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "open",
+              "description": "Filter by status: open, closed, all",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Positions",
+        "tags": [
+          "Positions"
+        ]
+      }
+    },
+    "/api/v1/positions/{ticket}/breakeven": {
+      "post": {
+        "description": "Move Stop Loss to Entry Price (Breakeven) for a single open position.",
+        "operationId": "action_position_breakeven_api_v1_positions__ticket__breakeven_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket",
+            "required": true,
+            "schema": {
+              "title": "Ticket",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Action Position Breakeven",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/positions/{ticket}/modify": {
+      "post": {
+        "description": "Modify Stop Loss and Take Profit levels of an active position.",
+        "operationId": "modify_position_api_v1_positions__ticket__modify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket",
+            "required": true,
+            "schema": {
+              "title": "Ticket",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModifyPositionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Modify Position",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/positions/{ticket}/trailing": {
+      "post": {
+        "description": "Set dynamic or static trailing stop override per position ticket.",
+        "operationId": "action_trailing_override_api_v1_positions__ticket__trailing_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket",
+            "required": true,
+            "schema": {
+              "title": "Ticket",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrailingOverrideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Action Trailing Override",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/reports/tearsheet/latest": {
+      "get": {
+        "description": "Generate institutional quant tearsheet metrics from closed trading performance.",
+        "operationId": "get_latest_tearsheet_api_v1_reports_tearsheet_latest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Latest Tearsheet",
+        "tags": [
+          "Intelligence & Market Data",
+          "Observability"
+        ]
+      }
+    },
+    "/api/v1/resume": {
+      "post": {
+        "description": "Resume system trading operations, clearing kill switch, pause flags, and resetting EffectGate.",
+        "operationId": "action_resume_trading_api_v1_resume_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Action Resume Trading",
+        "tags": [
+          "Actions"
+        ]
+      }
+    },
+    "/api/v1/risk": {
+      "get": {
+        "description": "State PnL hari ini, status auto-trading (paused/active), margin, dan parameter risiko.",
+        "operationId": "get_risk_api_v1_risk_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Risk",
+        "tags": [
+          "Risk"
+        ]
+      }
+    },
+    "/api/v1/risk/correlation-matrix": {
+      "get": {
+        "description": "Compute rolling cross-asset correlation matrix and aggregate portfolio heat score.",
+        "operationId": "get_risk_correlation_matrix_api_v1_risk_correlation_matrix_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Risk Correlation Matrix",
+        "tags": [
+          "Risk"
+        ]
+      }
+    },
+    "/api/v1/risk/scorecard": {
+      "get": {
+        "description": "Evaluate 22-point deterministic Risk Gate rules scorecard for live telemetry.",
+        "operationId": "get_risk_scorecard_api_v1_risk_scorecard_get",
+        "parameters": [
+          {
+            "description": "Asset symbol to evaluate against risk gate",
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "default": "EURUSD",
+              "description": "Asset symbol to evaluate against risk gate",
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Risk Scorecard",
+        "tags": [
+          "Risk"
+        ]
+      }
+    },
+    "/api/v1/sessions": {
+      "get": {
+        "description": "List conversation sessions with message counts, activity times, and preview.",
+        "operationId": "list_sessions_api_v1_sessions_get",
+        "parameters": [
+          {
+            "description": "'telegram' or 'dashboard'",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "'telegram' or 'dashboard'",
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Sessions",
+        "tags": [
+          "Sessions"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}/messages": {
+      "get": {
+        "description": "Retrieve conversation transcript for a given session.",
+        "operationId": "get_session_messages_api_v1_sessions__session_id__messages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Session Messages",
+        "tags": [
+          "Sessions"
+        ]
+      }
+    },
+    "/api/v1/setup/submit": {
+      "post": {
+        "description": "Receive and persist configuration submitted from Web Onboarding Wizard.",
+        "operationId": "submit_setup_configuration_api_v1_setup_submit_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Submit Setup Configuration"
+      }
+    },
+    "/api/v1/signals/mt5": {
+      "get": {
+        "description": "Ambil riwayat sinyal dan korelasi eksekusi MT5 yang diperkaya dengan analisis AI (M-4).",
+        "operationId": "get_mt5_signals_api_v1_signals_mt5_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Mt5 Signals",
+        "tags": [
+          "Execution"
+        ]
+      }
+    },
+    "/api/v1/skills": {
+      "get": {
+        "description": "List all registered autonomous skills and playbooks with frontmatter metadata.",
+        "operationId": "get_skills_catalog_api_v1_skills_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Skills Catalog",
+        "tags": [
+          "Intelligence & Market Data",
+          "Skills"
+        ]
+      }
+    },
+    "/api/v1/skills/crystallize": {
+      "post": {
+        "description": "Trigger on-demand skill crystallization for a symbol or all resolved profitable setups.",
+        "operationId": "crystallize_skills_now_api_v1_skills_crystallize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CrystallizeSkillRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Crystallize Skills Now",
+        "tags": [
+          "Intelligence & Market Data",
+          "Skills"
+        ]
+      }
+    },
+    "/api/v1/skills/crystallized": {
+      "get": {
+        "description": "Retrieve all autonomously crystallized skills with attribution & win-rate metrics.",
+        "operationId": "get_crystallized_skills_api_v1_skills_crystallized_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Crystallized Skills",
+        "tags": [
+          "Intelligence & Market Data",
+          "Skills"
+        ]
+      }
+    },
+    "/api/v1/skills/curate": {
+      "post": {
+        "description": "Evaluate and prune degraded crystallized skills whose win rate dropped below threshold.",
+        "operationId": "curate_crystallized_skills_api_v1_skills_curate_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Curate Crystallized Skills",
+        "tags": [
+          "Intelligence & Market Data",
+          "Skills"
+        ]
+      }
+    },
+    "/api/v1/skills/{name}/deprecate": {
+      "post": {
+        "description": "Manually deprecate an underperforming or stale crystallized skill.",
+        "operationId": "deprecate_crystallized_skill_api_v1_skills__name__deprecate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeprecateSkillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Deprecate Crystallized Skill",
+        "tags": [
+          "Intelligence & Market Data",
+          "Skills"
+        ]
+      }
+    },
+    "/api/v1/skills/{name}/stats": {
+      "get": {
+        "description": "Retrieve live empirical attribution statistics for a crystallized skill.",
+        "operationId": "get_skill_stats_api_v1_skills__name__stats_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Skill Stats",
+        "tags": [
+          "Intelligence & Market Data",
+          "Skills"
+        ]
+      }
+    },
+    "/api/v1/ssvp-health": {
+      "get": {
+        "description": "Monitor metric performa SSVP.",
+        "operationId": "get_ssvp_health_api_v1_ssvp_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Ssvp Health",
+        "tags": [
+          "SSVP"
+        ]
+      }
+    },
+    "/api/v1/tokens/context-tracker": {
+      "get": {
+        "description": "Get active cycle and session context window utilization metrics (Q5).",
+        "operationId": "get_context_tracker_metrics_api_v1_tokens_context_tracker_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Context Tracker Metrics",
+        "tags": [
+          "Token Audit"
+        ]
+      }
+    },
+    "/api/v1/tokens/cycles": {
+      "get": {
+        "description": "Get per-turn cost tracking and cost accumulator per cycle per model per role (PR-21).",
+        "operationId": "get_tokens_by_cycle_api_v1_tokens_cycles_get",
+        "parameters": [
+          {
+            "description": "Filter by specific cycle_id",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "description": "Filter by specific cycle_id",
+              "title": "Cycle Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Time window in hours",
+            "in": "query",
+            "name": "hours",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "description": "Time window in hours",
+              "maximum": 720,
+              "minimum": 1,
+              "title": "Hours",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tokens By Cycle",
+        "tags": [
+          "Token Audit"
+        ]
+      }
+    },
+    "/api/v1/tokens/per-turn-cost": {
+      "get": {
+        "description": "Get average and aggregated turn cost metrics across AI models and roles (PR-21).",
+        "operationId": "get_per_turn_cost_metrics_api_v1_tokens_per_turn_cost_get",
+        "parameters": [
+          {
+            "description": "Time window in hours",
+            "in": "query",
+            "name": "hours",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "description": "Time window in hours",
+              "maximum": 720,
+              "minimum": 1,
+              "title": "Hours",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Per Turn Cost Metrics",
+        "tags": [
+          "Token Audit"
+        ]
+      }
+    },
+    "/api/v1/tokens/recent": {
+      "get": {
+        "description": "Get recent token log records with full audit metadata.",
+        "operationId": "get_tokens_recent_api_v1_tokens_recent_get",
+        "parameters": [
+          {
+            "description": "Max records to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Max records to return",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tokens Recent",
+        "tags": [
+          "Token Audit"
+        ]
+      }
+    },
+    "/api/v1/tokens/roles": {
+      "get": {
+        "description": "Get breakdown of token consumption by 32 AI task roles.",
+        "operationId": "get_tokens_by_role_api_v1_tokens_roles_get",
+        "parameters": [
+          {
+            "description": "Time window in hours",
+            "in": "query",
+            "name": "hours",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "description": "Time window in hours",
+              "maximum": 720,
+              "minimum": 1,
+              "title": "Hours",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tokens By Role",
+        "tags": [
+          "Token Audit"
+        ]
+      }
+    },
+    "/api/v1/tokens/subsystems": {
+      "get": {
+        "description": "Get breakdown of token consumption by subsystem (stage1, stage2, debate, news, etc.).",
+        "operationId": "get_tokens_by_subsystem_api_v1_tokens_subsystems_get",
+        "parameters": [
+          {
+            "description": "Time window in hours",
+            "in": "query",
+            "name": "hours",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "description": "Time window in hours",
+              "maximum": 720,
+              "minimum": 1,
+              "title": "Hours",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tokens By Subsystem",
+        "tags": [
+          "Token Audit"
+        ]
+      }
+    },
+    "/api/v1/tokens/summary": {
+      "get": {
+        "description": "Get global summary of token consumption, prompt cache savings, and estimated USD cost.",
+        "operationId": "get_tokens_summary_api_v1_tokens_summary_get",
+        "parameters": [
+          {
+            "description": "Time window in hours",
+            "in": "query",
+            "name": "hours",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "description": "Time window in hours",
+              "maximum": 720,
+              "minimum": 1,
+              "title": "Hours",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tokens Summary",
+        "tags": [
+          "Token Audit"
+        ]
+      }
+    },
+    "/api/v1/tokens/symbols": {
+      "get": {
+        "description": "Get breakdown of token consumption per currency symbol.",
+        "operationId": "get_tokens_by_symbol_api_v1_tokens_symbols_get",
+        "parameters": [
+          {
+            "description": "Time window in hours",
+            "in": "query",
+            "name": "hours",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "description": "Time window in hours",
+              "maximum": 720,
+              "minimum": 1,
+              "title": "Hours",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tokens By Symbol",
+        "tags": [
+          "Token Audit"
+        ]
+      }
+    },
+    "/api/v1/traces": {
+      "get": {
+        "description": "Retrieve distributed trace spans from the in-memory trace store.",
+        "operationId": "get_traces_api_v1_traces_get",
+        "parameters": [
+          {
+            "description": "Filter spans by cycle_id",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter spans by cycle_id",
+              "title": "Cycle Id"
+            }
+          },
+          {
+            "description": "Filter spans by trace_id",
+            "in": "query",
+            "name": "trace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter spans by trace_id",
+              "title": "Trace Id"
+            }
+          },
+          {
+            "description": "Filter by kind: cycle, node, llm, tool",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by kind: cycle, node, llm, tool",
+              "title": "Kind"
+            }
+          },
+          {
+            "description": "Max spans to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Max spans to return",
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Traces",
+        "tags": [
+          "Observability",
+          "Observability"
+        ]
+      }
+    },
+    "/api/v1/traces/cycle/{cycle_id}": {
+      "get": {
+        "description": "Retrieve aggregate telemetry and trace spans for a cycle.",
+        "operationId": "get_cycle_trace_summary_api_v1_traces_cycle__cycle_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cycle_id",
+            "required": true,
+            "schema": {
+              "title": "Cycle Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cycle Trace Summary",
+        "tags": [
+          "Observability",
+          "Observability"
+        ]
+      }
+    },
+    "/api/v1/traces/search": {
+      "get": {
+        "description": "Search trace spans with performance and error filters.",
+        "operationId": "search_traces_api_v1_traces_search_get",
+        "parameters": [
+          {
+            "description": "Span kind: llm, tool, node, cycle",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Span kind: llm, tool, node, cycle",
+              "title": "Kind"
+            }
+          },
+          {
+            "description": "Minimum duration in ms",
+            "in": "query",
+            "name": "min_duration_ms",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum duration in ms",
+              "title": "Min Duration Ms"
+            }
+          },
+          {
+            "description": "OK or ERROR",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "OK or ERROR",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "LLM provider name",
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "LLM provider name",
+              "title": "Provider"
+            }
+          },
+          {
+            "description": "Model name",
+            "in": "query",
+            "name": "model",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Model name",
+              "title": "Model"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Traces",
+        "tags": [
+          "trace-search"
+        ]
+      }
+    },
+    "/api/v1/traces/slow-llm": {
+      "get": {
+        "description": "Shortcut: find LLM calls slower than threshold.",
+        "operationId": "slow_llm_calls_api_v1_traces_slow_llm_get",
+        "parameters": [
+          {
+            "description": "Duration threshold in ms",
+            "in": "query",
+            "name": "threshold_ms",
+            "required": false,
+            "schema": {
+              "default": 15000.0,
+              "description": "Duration threshold in ms",
+              "title": "Threshold Ms",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Slow Llm Calls",
+        "tags": [
+          "trace-search"
+        ]
+      }
+    },
+    "/api/v1/traces/{trace_id}": {
+      "get": {
+        "description": "Retrieve hierarchical trace tree for a specific trace_id.",
+        "operationId": "get_trace_tree_api_v1_traces__trace_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trace_id",
+            "required": true,
+            "schema": {
+              "title": "Trace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Trace Tree",
+        "tags": [
+          "Observability",
+          "Observability"
+        ]
+      }
+    },
+    "/api/v1/triggers": {
+      "get": {
+        "description": "Ambil daftar trade triggers kondisional (M-4).",
+        "operationId": "get_trade_triggers_api_v1_triggers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Trade Triggers",
+        "tags": [
+          "Analysis"
+        ]
+      }
+    },
+    "/api/v1/vix": {
+      "get": {
+        "description": "Data historis VIX untuk chart sparkline.",
+        "operationId": "get_vix_api_v1_vix_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Vix",
+        "tags": [
+          "System",
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/webhooks/ingress": {
+      "post": {
+        "description": "General purpose webhook ingress endpoint for external integrations.",
+        "operationId": "general_webhook_ingress_api_v1_webhooks_ingress_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "General Webhook Ingress",
+        "tags": [
+          "Gateway & Ingress"
+        ]
+      }
+    },
+    "/api/v1/webhooks/tradingview": {
+      "post": {
+        "description": "Ingress point for TradingView Webhook Alerts.\nNormalizes Pine Script alerts and routes to the internal event pipeline.",
+        "operationId": "tradingview_webhook_api_v1_webhooks_tradingview_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tradingview Webhook",
+        "tags": [
+          "Gateway & Ingress"
+        ]
+      }
+    },
+    "/api/v1/ws/ticket": {
+      "post": {
+        "description": "Generate an ephemeral, single-use ticket for secure WebSocket connection.",
+        "operationId": "create_ws_ticket_api_v1_ws_ticket_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Ws Ticket",
+        "tags": [
+          "WebSocket"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Health check endpoint.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Check",
+        "tags": [
+          "Gateway & Ingress"
+        ]
+      }
+    },
+    "/v1/chat/completions": {
+      "post": {
+        "description": "OpenAI-compatible Chat Completions endpoint.\nSupports both standard JSON and Server-Sent Events (SSE) streaming.",
+        "operationId": "chat_completions_v1_chat_completions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chat Completions",
+        "tags": [
+          "Gateway & Ingress"
+        ]
+      }
+    },
+    "/v1/models": {
+      "get": {
+        "description": "List available models.",
+        "operationId": "list_models_v1_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Models",
+        "tags": [
+          "Gateway & Ingress"
+        ]
+      }
+    },
+    "/v1/status": {
+      "get": {
+        "description": "Health check endpoint.",
+        "operationId": "health_check_v1_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Check",
+        "tags": [
+          "Gateway & Ingress"
+        ]
+      }
+    },
+    "/webhooks/ingress": {
+      "post": {
+        "description": "General purpose webhook ingress endpoint for external integrations.",
+        "operationId": "general_webhook_ingress_webhooks_ingress_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "General Webhook Ingress",
+        "tags": [
+          "Gateway & Ingress"
+        ]
+      }
+    },
+    "/webhooks/tradingview": {
+      "post": {
+        "description": "Ingress point for TradingView Webhook Alerts.\nNormalizes Pine Script alerts and routes to the internal event pipeline.",
+        "operationId": "tradingview_webhook_webhooks_tradingview_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Tradingview Webhook",
+        "tags": [
+          "Gateway & Ingress"
+        ]
+      }
+    }
+  }
+}

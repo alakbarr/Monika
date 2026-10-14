@@ -18,7 +18,7 @@ def client(monkeypatch):
 
 
 def test_get_plugins_endpoint(client):
-    resp = client.get("/api/plugins")
+    resp = client.get("/api/v1/plugins")
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"
@@ -28,7 +28,7 @@ def test_get_plugins_endpoint(client):
 
 
 def test_get_plugin_catalog_endpoint(client):
-    resp = client.get("/api/plugins/catalog")
+    resp = client.get("/api/v1/plugins/catalog")
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"
@@ -46,7 +46,7 @@ def test_toggle_plugin_endpoint(client):
             "category": "analysis_pipeline",
             "enabled": True,
         }
-        resp = client.post("/api/plugins/toggle", json=payload)
+        resp = client.post("/api/v1/plugins/toggle", json=payload)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
@@ -57,7 +57,7 @@ def test_toggle_plugin_endpoint(client):
 def test_install_plugin_validation_rejection(client):
     # Attempt command injection
     payload = {"package_name": "malicious; rm -rf /"}
-    resp = client.post("/api/plugins/install", json=payload)
+    resp = client.post("/api/v1/plugins/install", json=payload)
     assert resp.status_code == 400
 
 
@@ -66,7 +66,7 @@ def test_install_plugin_mock_success(client):
         mock_pip.return_value = (True, "Successfully installed monika-plugin-test-1.0.0")
 
         payload = {"package_name": "monika-plugin-test"}
-        resp = client.post("/api/plugins/install", json=payload)
+        resp = client.post("/api/v1/plugins/install", json=payload)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
@@ -75,14 +75,14 @@ def test_install_plugin_mock_success(client):
 
 
 def test_get_all_plugin_config_schemas(client):
-    resp = client.get("/api/config/plugins/schemas")
+    resp = client.get("/api/v1/config/plugins/schemas")
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, dict)
 
 
 def test_get_specific_plugin_config_schema(client):
-    resp = client.get("/api/config/plugins/macro_to_asset/schema")
+    resp = client.get("/api/v1/config/plugins/macro_to_asset/schema")
     assert resp.status_code == 200
     data = resp.json()
     assert "$schema" in data or "type" in data

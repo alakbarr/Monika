@@ -51,7 +51,7 @@ def _is_origin_allowed(websocket: WebSocket, is_localhost: bool) -> bool:
     return origin in allowed
 
 
-@router.post("/api/ws/ticket", tags=["WebSocket"])
+@router.post("/api/v1/ws/ticket", tags=["WebSocket"])
 @require_role(Role.VIEWER)
 async def create_ws_ticket(request: Request):
     """Generate an ephemeral, single-use ticket for secure WebSocket connection."""
@@ -739,7 +739,7 @@ async def websocket_agent_chat(websocket: WebSocket):
             turn_task.cancel()
 
 
-@router.get("/api/sessions", tags=["Sessions"])
+@router.get("/api/v1/sessions", tags=["Sessions"])
 @require_role(Role.VIEWER)
 async def list_sessions(
     request: Request,
@@ -798,7 +798,7 @@ async def list_sessions(
         return results
 
 
-@router.get("/api/sessions/{session_id}/messages", tags=["Sessions"])
+@router.get("/api/v1/sessions/{session_id}/messages", tags=["Sessions"])
 @require_role(Role.VIEWER)
 async def get_session_messages(
     session_id: str,

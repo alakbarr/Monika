@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Observability")
 
-observability_router = APIRouter()
+observability_router = APIRouter(prefix="/api/v1", tags=["Observability"])
 
 
 # ---------------------------------------------------------------------------
@@ -20,7 +20,7 @@ observability_router = APIRouter()
 # ---------------------------------------------------------------------------
 
 
-@observability_router.get("/api/traces", tags=["Observability"])
+@observability_router.get("/traces", tags=["Observability"])
 async def get_traces(
     cycle_id: Optional[str] = Query(None, description="Filter spans by cycle_id"),
     trace_id: Optional[str] = Query(None, description="Filter spans by trace_id"),
@@ -34,7 +34,7 @@ async def get_traces(
     return {"spans": spans, "total": len(spans)}
 
 
-@observability_router.get("/api/traces/{trace_id}", tags=["Observability"])
+@observability_router.get("/traces/{trace_id}", tags=["Observability"])
 async def get_trace_tree(trace_id: str):
     """Retrieve hierarchical trace tree for a specific trace_id."""
     from monika.core.telemetry.tracing.exporters import global_trace_store
@@ -398,7 +398,7 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None, symbol: Optiona
     }
 
 
-@observability_router.get("/api/traces/cycle/{cycle_id}", tags=["Observability"])
+@observability_router.get("/traces/cycle/{cycle_id}", tags=["Observability"])
 async def get_cycle_trace_summary(cycle_id: str, symbol: Optional[str] = Query(None)):
     """Retrieve aggregate telemetry and trace spans for a cycle."""
     from monika.core.telemetry.tracing.exporters import global_trace_store
@@ -409,7 +409,7 @@ async def get_cycle_trace_summary(cycle_id: str, symbol: Optional[str] = Query(N
     return {"cycle_id": cycle_id, "summary": summary, "spans": spans, "graph_state": graph_state}
 
 
-@observability_router.get("/api/observability/graph-state", tags=["Observability"])
+@observability_router.get("/observability/graph-state", tags=["Observability"])
 async def get_graph_state(
     cycle_id: Optional[str] = Query(None, description="Filter graph state by cycle_id. Defaults to latest cycle."),
     symbol: Optional[str] = Query(None, description="Filter graph state and token/trade breakdown by asset symbol."),
@@ -426,7 +426,7 @@ async def get_graph_state(
 # ---------------------------------------------------------------------------
 
 
-@observability_router.get("/api/observability/playbook-tree", tags=["Observability"])
+@observability_router.get("/observability/playbook-tree", tags=["Observability"])
 async def get_playbook_tree():
     """
     Visualisasi grafik pohon turunan playbook dari MicroPlaybookCompiler.
@@ -518,7 +518,7 @@ async def get_playbook_tree():
     return root
 
 
-@observability_router.get("/api/observability/prompt-cache-metrics", tags=["Observability"])
+@observability_router.get("/observability/prompt-cache-metrics", tags=["Observability"])
 async def get_prompt_cache_metrics(limit: int = Query(20, ge=1, le=100)):
     """
     Grafik metrik prompt cache hit rate vs miss rate per siklus.
@@ -587,7 +587,7 @@ async def get_prompt_cache_metrics(limit: int = Query(20, ge=1, le=100)):
     }
 
 
-@observability_router.get("/api/observability/tool-latencies", tags=["Observability"])
+@observability_router.get("/observability/tool-latencies", tags=["Observability"])
 async def get_tool_latencies():
     """
     Histogram dan distribusi latensi eksekusi tool handler.
@@ -655,7 +655,7 @@ async def get_tool_latencies():
     }
 
 
-@observability_router.get("/api/observability/trajectories", tags=["Observability"])
+@observability_router.get("/observability/trajectories", tags=["Observability"])
 async def get_trade_trajectories(limit: int = Query(50, ge=1, le=500)):
     """
     Retrieve logged trade decision trajectories from TradeTrajectoryLogger JSONL logs.
@@ -670,7 +670,7 @@ async def get_trade_trajectories(limit: int = Query(50, ge=1, le=500)):
     }
 
 
-@observability_router.get("/api/observability/cycles/{cycle_id}/lineage", tags=["Observability"])
+@observability_router.get("/observability/cycles/{cycle_id}/lineage", tags=["Observability"])
 async def get_cycle_decision_lineage(cycle_id: str, target_seq: Optional[int] = Query(None)):
     """
     Retrieve decision lineage and SHA-256 chain integrity for a trading cycle from TradingCycleEventLog.

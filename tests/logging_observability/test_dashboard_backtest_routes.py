@@ -41,7 +41,7 @@ def test_list_backtest_runs():
     with patch("monika.interfaces.dashboard.routes.backtest.get_session") as mock_get_session:
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
-        resp = client.get("/api/backtest/runs")
+        resp = client.get("/api/v1/backtest/runs")
         assert resp.status_code == 200
         data = resp.json()
         assert data["total"] == 1
@@ -95,7 +95,7 @@ def test_get_backtest_run_details():
     with patch("monika.interfaces.dashboard.routes.backtest.get_session") as mock_get_session:
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
-        resp = client.get("/api/backtest/runs/42")
+        resp = client.get("/api/v1/backtest/runs/42")
         assert resp.status_code == 200
         data = resp.json()
         assert data["run"]["id"] == 42
@@ -109,7 +109,7 @@ def test_trigger_backtest_run():
     with patch.dict(os.environ, {"DASHBOARD_API_KEYS": "admin:test_adm_key"}):
         with patch("monika.interfaces.dashboard.routes.backtest._execute_background_backtest"):
             resp = client.post(
-                "/api/backtest/run",
+                "/api/v1/backtest/run",
                 headers={"X-API-Key": "test_adm_key"},
                 json={"days": 14, "mode": "full", "initial_equity": 20000.0, "step_hours": 4},
             )

@@ -1,4 +1,4 @@
-const BASE = '/api';
+const BASE = '/api/v1';
 
 export type TokenStorageType = 'session' | 'memory' | 'local';
 
@@ -144,22 +144,22 @@ export const api = {
 
   // Token Audit & Observability
   tokensSummary: (hours = 24) =>
-    get<import('../types/api').TokenSummary>(`/v1/tokens/summary?hours=${hours}`),
+    get<import('../types/api').TokenSummary>(`/tokens/summary?hours=${hours}`),
   tokensRoles: (hours = 24) =>
     get<{ total_roles: number; items: import('../types/api').TokenRoleItem[] }>(
-      `/v1/tokens/roles?hours=${hours}`
+      `/tokens/roles?hours=${hours}`
     ),
   tokensSubsystems: (hours = 24) =>
     get<{ total_subsystems: number; items: import('../types/api').TokenSubsystemItem[] }>(
-      `/v1/tokens/subsystems?hours=${hours}`
+      `/tokens/subsystems?hours=${hours}`
     ),
   tokensSymbols: (hours = 24) =>
     get<{ total_symbols: number; items: import('../types/api').TokenSymbolItem[] }>(
-      `/v1/tokens/symbols?hours=${hours}`
+      `/tokens/symbols?hours=${hours}`
     ),
   tokensRecent: (limit = 50) =>
     get<{ total: number; items: import('../types/api').TokenRecentLog[] }>(
-      `/v1/tokens/recent?limit=${limit}`
+      `/tokens/recent?limit=${limit}`
     ),
 
   // Signals, Triggers & Debate Outcomes
@@ -309,15 +309,15 @@ export const api = {
 
   // Token Context & Turn Cost
   tokenContextTracker: () =>
-    get<Record<string, any>>('/v1/tokens/context-tracker'),
+    get<Record<string, any>>('/tokens/context-tracker'),
   tokenCycles: (cycleId?: string, hours = 24) => {
     const sp = new URLSearchParams();
     if (cycleId) sp.append('cycle_id', cycleId);
     sp.append('hours', String(hours));
-    return get<Record<string, any>>(`/v1/tokens/cycles?${sp.toString()}`);
+    return get<Record<string, any>>(`/tokens/cycles?${sp.toString()}`);
   },
   tokenPerTurnCost: (hours = 24) =>
-    get<import('../types/api').TokenTurnCostMetrics>(`/v1/tokens/per-turn-cost?hours=${hours}`),
+    get<import('../types/api').TokenTurnCostMetrics>(`/tokens/per-turn-cost?hours=${hours}`),
 
   // Orders Audit Trail
   orders: (limit = 50, action?: string) =>

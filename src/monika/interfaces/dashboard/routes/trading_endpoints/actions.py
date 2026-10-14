@@ -36,7 +36,7 @@ logger = logging.getLogger("TradingAgent.DashboardAPI.Trading.Actions")
 actions_router = APIRouter()
 
 
-@actions_router.post("/api/actions/trigger-cycle", tags=["Actions"])
+@actions_router.post("/api/v1/actions/trigger-cycle", tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def action_trigger_cycle(request: Request, body: Optional[TriggerCycleRequest] = None):
     """Trigger the LangGraph analysis cycle immediately with optional symbol and context guidance."""
@@ -109,7 +109,7 @@ async def action_trigger_cycle(request: Request, body: Optional[TriggerCycleRequ
     }
 
 
-@actions_router.post("/api/actions/steer", tags=["Actions"])
+@actions_router.post("/api/v1/actions/steer", tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def action_steer(body: SteerRequest, request: Request):
     """Inject operator steering instruction / directive into active or next cycle."""
@@ -163,7 +163,7 @@ async def action_steer(body: SteerRequest, request: Request):
     }
 
 
-@actions_router.post("/api/actions/kill-symbol/{symbol}", tags=["Actions"])
+@actions_router.post("/api/v1/actions/kill-symbol/{symbol}", tags=["Actions"])
 @require_role(Role.ADMIN)
 async def action_kill_symbol(symbol: str, request: Request):
     """Emergency close all open positions for a single currency/symbol."""
@@ -214,8 +214,8 @@ async def action_kill_symbol(symbol: str, request: Request):
     return {"status": "success", "symbol": sym, "result": res}
 
 
-@actions_router.post("/api/actions/emergency-kill", tags=["Actions"])
-@actions_router.post("/api/kill", tags=["Actions"])
+@actions_router.post("/api/v1/actions/emergency-kill", tags=["Actions"])
+@actions_router.post("/api/v1/kill", tags=["Actions"])
 @require_role(Role.ADMIN)
 async def action_emergency_kill(request: Request):
     """Trigger emergency kill switch and position liquidation safely via daemon."""
@@ -250,9 +250,9 @@ async def action_emergency_kill(request: Request):
     return {"status": "success", "message": "Emergency kill switch activated. Position closures completed."}
 
 
-@actions_router.post("/api/actions/resume", tags=["Actions"])
-@actions_router.post("/api/actions/resume-trading", tags=["Actions"])
-@actions_router.post("/api/resume", tags=["Actions"])
+@actions_router.post("/api/v1/actions/resume", tags=["Actions"])
+@actions_router.post("/api/v1/actions/resume-trading", tags=["Actions"])
+@actions_router.post("/api/v1/resume", tags=["Actions"])
 @require_role(Role.ADMIN)
 async def action_resume_trading(request: Request):
     """Resume system trading operations, clearing kill switch, pause flags, and resetting EffectGate."""
@@ -285,8 +285,8 @@ async def action_resume_trading(request: Request):
     return {"status": "success", "message": "Trading resumed. All pause & kill flags cleared, EffectGate reset."}
 
 
-@actions_router.post("/api/actions/pause", tags=["Actions"])
-@actions_router.post("/api/actions/pause-trading", tags=["Actions"])
+@actions_router.post("/api/v1/actions/pause", tags=["Actions"])
+@actions_router.post("/api/v1/actions/pause-trading", tags=["Actions"])
 @require_role(Role.ADMIN)
 async def action_pause_trading(request: Request):
     """Pause system trading operations."""
@@ -309,7 +309,7 @@ async def action_pause_trading(request: Request):
     return {"status": "success", "message": "System trading paused."}
 
 
-@actions_router.post("/api/actions/unsuspend", tags=["Actions"])
+@actions_router.post("/api/v1/actions/unsuspend", tags=["Actions"])
 @require_role(Role.ADMIN)
 async def action_unsuspend_symbols(request: Request):
     """Lift trading suspension on all instruments or specific symbol."""
@@ -342,7 +342,8 @@ async def action_unsuspend_symbols(request: Request):
     return {"status": "success", "cleared": sym_list}
 
 
-@actions_router.api_route("/api/actions/approve-trade/{trade_id}", methods=["POST", "PUT"], tags=["Actions"])
+@actions_router.post("/api/v1/actions/approve-trade/{trade_id}", tags=["Actions"])
+@actions_router.put("/api/v1/actions/approve-trade/{trade_id}", tags=["Actions"], include_in_schema=False)
 @require_role(Role.OPERATOR)
 async def action_approve_trade(trade_id: int, request: Request):
     """Approve a pending trade trigger or asset analysis for order execution."""

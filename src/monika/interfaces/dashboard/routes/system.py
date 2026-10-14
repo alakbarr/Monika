@@ -16,10 +16,16 @@ from fastapi.responses import PlainTextResponse
 
 from monika.interfaces.dashboard.rbac import Role
 from monika.interfaces.dashboard.routes.common import _start_time
+from monika.interfaces.dashboard.schemas import (
+    ActionStatusResponse,
+    AuthRoleResponse,
+    HealthStatusResponse,
+    PingResponse,
+)
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.System")
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1", tags=["System"])
 system_router = router
 
 
@@ -40,12 +46,11 @@ def _parse_iso_datetime(val: Any) -> Optional[datetime]:
     return None
 
 
-@router.get("/api/ping", tags=["System"])
+@router.get("/ping", response_model=PingResponse, tags=["System"])
 async def ping():
     return {"status": "pong", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
-@router.get("/api/metrics", tags=["Observability"])
 @router.get("/metrics", tags=["Observability"])
 async def get_metrics():
     """Prometheus metrics scrape endpoint."""
@@ -58,7 +63,7 @@ async def get_metrics():
     return PlainTextResponse(content=raw_prom, media_type="text/plain; version=0.0.4; charset=utf-8")
 
 
-@router.get("/api/health", tags=["System"])
+@router.get("/health", response_model=HealthStatusResponse, tags=["System"])
 async def get_health():
     """Mengecek uptime, koneksi DB, dan status koneksi MT5 (Liveness Probe)."""
     from monika.infrastructure.database.db import get_engine
@@ -101,7 +106,7 @@ async def get_health():
     }
 
 
-@router.get("/api/health/diagnostics", tags=["System"])
+@router.get("/health/diagnostics", tags=["System"])
 async def get_health_diagnostics():
     """Diagnostik internal mendalam: kuota LLM, freshness data, heartbeat, biaya API."""
     from monika.infrastructure.database.db import get_engine
@@ -218,7 +223,7 @@ async def get_health_diagnostics():
     }
 
 
-@router.get("/api/gemini-quota", tags=["System"])
+@router.get("/gemini-quota", tags=["System"])
 async def get_gemini_quota():
     """Cek kuota rate limiter API Gemini (harian)."""
     from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
@@ -246,7 +251,7 @@ async def get_gemini_quota():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/vix", tags=["Market Data"])
+@router.get("/vix", tags=["Market Data"])
 async def get_vix(limit: int = Query(default=30, ge=1, le=90)):
     """Data historis VIX untuk chart sparkline."""
     from sqlalchemy import select
@@ -270,7 +275,7 @@ async def get_vix(limit: int = Query(default=30, ge=1, le=90)):
         ]
 
 
-@router.get("/api/brief", tags=["Analysis"])
+@router.get("/brief", tags=["Analysis"])
 async def get_brief():
     """Ringkasan Stage 1 (Fundamental Brief) paling baru."""
     from sqlalchemy import select
@@ -304,18 +309,19 @@ async def get_brief():
         }
 
 
-@router.get("/api/auth/role", tags=["Auth"])
+@router.get("/auth/role", response_model=AuthRoleResponse, tags=["Auth"])
 async def get_auth_role(request: Request):
     """Retrieve authenticated caller's current role and environment status."""
     role = getattr(request.state, "role", Role.VIEWER) if request else Role.ADMIN
     is_localhost = getattr(request.state, "is_localhost", False) if request else True
     return {
         "role": role.value if isinstance(role, Role) else str(role),
+        "authenticated": bool(getattr(request.state, "role", None)),
         "is_localhost": is_localhost,
     }
 
 
-@router.post("/api/actions/shutdown", tags=["System"])
+@router.post("/actions/shutdown", response_model=ActionStatusResponse, tags=["System"])
 async def shutdown_system(request: Request):
     """Gracefully request system/daemon shutdown."""
     import asyncio

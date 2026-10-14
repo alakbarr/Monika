@@ -34,7 +34,7 @@ class TestObservabilityEndpoints:
         mock_res.scalars.return_value.all.return_value = [rule]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/observability/playbook-tree")
+        response = client.get("/api/v1/observability/playbook-tree")
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Trading Playbooks"
@@ -57,7 +57,7 @@ class TestObservabilityEndpoints:
         mock_res.scalars.return_value.all.return_value = [log]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/observability/prompt-cache-metrics?limit=10")
+        response = client.get("/api/v1/observability/prompt-cache-metrics?limit=10")
         assert response.status_code == 200
         data = response.json()
         assert "overall_hit_rate_pct" in data
@@ -83,7 +83,7 @@ class TestObservabilityEndpoints:
         )
         global_trace_store.record_span(rec)
 
-        response = client.get("/api/observability/tool-latencies")
+        response = client.get("/api/v1/observability/tool-latencies")
         assert response.status_code == 200
         data = response.json()
         assert "total_tool_calls" in data

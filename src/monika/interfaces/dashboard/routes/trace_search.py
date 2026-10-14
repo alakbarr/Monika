@@ -12,7 +12,7 @@ from monika.core.telemetry.tracing.exporters import global_trace_store
 
 logger = logging.getLogger("TradingAgent.Dashboard.TraceSearch")
 
-trace_search_router = APIRouter(prefix="/api/traces", tags=["trace-search"])
+trace_search_router = APIRouter(prefix="/api/v1/traces", tags=["trace-search"])
 
 
 @trace_search_router.get("/search")

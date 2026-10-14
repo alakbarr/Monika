@@ -36,7 +36,7 @@ logger = logging.getLogger("TradingAgent.DashboardAPI.Trading.Positions")
 positions_router = APIRouter()
 
 
-@positions_router.get("/api/positions", tags=["Positions"])
+@positions_router.get("/api/v1/positions", tags=["Positions"])
 async def get_positions(
     status: str = Query(default="open", description="Filter by status: open, closed, all"),
     limit: int = Query(default=50, ge=1, le=200),
@@ -104,7 +104,7 @@ async def get_positions(
         return results
 
 
-@positions_router.post("/api/actions/close-position", tags=["Actions"])
+@positions_router.post("/api/v1/actions/close-position", tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def action_close_position(payload: ClosePositionRequest, request: Request):
     """Close floating position in MT5/broker or synthetic paper trade (full or partial)."""
@@ -198,7 +198,7 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
     }
 
 
-@positions_router.post("/api/positions/{ticket}/breakeven", tags=["Actions"])
+@positions_router.post("/api/v1/positions/{ticket}/breakeven", tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def action_position_breakeven(ticket: int, request: Request):
     """Move Stop Loss to Entry Price (Breakeven) for a single open position."""
@@ -265,7 +265,7 @@ async def action_position_breakeven(ticket: int, request: Request):
     }
 
 
-@positions_router.post("/api/actions/bulk-breakeven", tags=["Actions"])
+@positions_router.post("/api/v1/actions/bulk-breakeven", tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def action_bulk_breakeven(payload: BulkBreakevenRequest, request: Request):
     """Move Stop Loss to Entry Price across profitable positions."""
@@ -302,7 +302,7 @@ async def action_bulk_breakeven(payload: BulkBreakevenRequest, request: Request)
     return {"status": "success", "result": res}
 
 
-@positions_router.post("/api/positions/{ticket}/trailing", tags=["Actions"])
+@positions_router.post("/api/v1/positions/{ticket}/trailing", tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def action_trailing_override(ticket: int, payload: TrailingOverrideRequest, request: Request):
     """Set dynamic or static trailing stop override per position ticket."""
@@ -350,7 +350,7 @@ async def action_trailing_override(ticket: int, payload: TrailingOverrideRequest
     return {"status": "success", "ticket": ticket, "message": msg}
 
 
-@positions_router.post("/api/actions/close-batch", tags=["Actions"])
+@positions_router.post("/api/v1/actions/close-batch", tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def action_close_batch(payload: BatchCloseRequest, request: Request):
     """Close multiple positions selectively in a single batch request."""
@@ -409,7 +409,7 @@ async def action_close_batch(payload: BatchCloseRequest, request: Request):
     }
 
 
-@positions_router.post("/api/positions/{ticket}/modify", tags=["Actions"])
+@positions_router.post("/api/v1/positions/{ticket}/modify", tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def modify_position(ticket: int, payload: ModifyPositionRequest, request: Request):
     """Modify Stop Loss and Take Profit levels of an active position."""

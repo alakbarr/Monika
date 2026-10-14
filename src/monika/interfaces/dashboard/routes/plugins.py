@@ -26,7 +26,7 @@ from monika.interfaces.dashboard.routes.common import (
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Plugins")
 
-router = APIRouter(tags=["Plugins"])
+router = APIRouter(prefix="/api/v1/plugins", tags=["Plugins"])
 plugins_router = router
 
 
@@ -44,7 +44,8 @@ class PluginUninstallRequest(BaseModel):
     package_name: str = Field(description="Package name to uninstall via pip")
 
 
-@router.get("/api/plugins")
+@router.get("")
+@router.get("/")
 @require_role(Role.VIEWER)
 async def get_plugins(request: Request) -> Dict[str, Any]:
     """Retrieve full list of registered, installed, and discovered plugins with current status."""
@@ -61,7 +62,7 @@ async def get_plugins(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/plugins/catalog")
+@router.get("/catalog")
 @require_role(Role.VIEWER)
 async def get_plugin_catalog(request: Request) -> Dict[str, Any]:
     """Retrieve curated marketplace catalog of official and community plugins."""
@@ -77,7 +78,7 @@ async def get_plugin_catalog(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/plugins/toggle")
+@router.post("/toggle")
 @require_role(Role.ADMIN)
 async def toggle_plugin(request: Request, body: PluginToggleRequest) -> Dict[str, Any]:
     """Dynamically enable or disable a plugin in settings.yaml and runtime."""
@@ -107,7 +108,7 @@ async def toggle_plugin(request: Request, body: PluginToggleRequest) -> Dict[str
     }
 
 
-@router.post("/api/plugins/install")
+@router.post("/install")
 @require_role(Role.ADMIN)
 async def install_plugin(request: Request, body: PluginInstallRequest) -> Dict[str, Any]:
     """Execute asynchronous pip install inside Monika's virtualenv."""
@@ -138,7 +139,7 @@ async def install_plugin(request: Request, body: PluginInstallRequest) -> Dict[s
     }
 
 
-@router.post("/api/plugins/uninstall")
+@router.post("/uninstall")
 @require_role(Role.ADMIN)
 async def uninstall_plugin(request: Request, body: PluginUninstallRequest) -> Dict[str, Any]:
     """Execute asynchronous pip uninstall."""
