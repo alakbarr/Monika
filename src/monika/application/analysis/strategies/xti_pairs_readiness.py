@@ -19,7 +19,7 @@ BRENT_MT5_SYMBOL = "XBRUSD"
 class XTIPairsReadiness(EdgeStrategy):
     strategy_id = "xti_pairs_readiness"
     applicable_symbols = {"XTIUSD"}
-    compatible_regimes = {"RANGE", "TREND", "WEAK_TREND", "VOLATILE_CHOP"}
+    compatible_regimes = {"RANGE", "WEAK_TREND", "VOLATILE_CHOP"}
     factor_family = "stat_arb"
 
     async def evaluate(self, session, symbol, settings) -> EdgeSignal:
@@ -29,10 +29,15 @@ class XTIPairsReadiness(EdgeStrategy):
 
         now = clock.now()
         brent_symbol = cfg.get("brent_symbol", BRENT_MT5_SYMBOL)
-        z_entry = cfg.get("z_entry_threshold", 2.0)
-        z_tp = cfg.get("z_tp_target", 0.0)  # Mean reversion target
-        z_sl = cfg.get("z_sl_threshold", 3.0)  # Stop if spread diverges more
-        max_hold = cfg.get("max_hold_minutes", 7200)  # 5 trading days
+        lookback_bars = int(cfg.get("lookback_bars", 60))
+        z_entry = float(cfg.get("z_entry_threshold", 2.0))
+        z_tp = float(cfg.get("z_tp_target", 0.5))  # Partial mean reversion target (avoids swap decay)
+        z_sl = float(cfg.get("z_sl_threshold", 3.0))  # Stop if spread diverges more
+        max_hold = int(cfg.get("max_hold_minutes", 14400))  # 10 trading days (14400 mins) to match half-life
+        adf_max_p_cfg = cfg.get("adf_max_pvalue", 0.15)
+        adf_max_p = float(adf_max_p_cfg) if adf_max_p_cfg is not None else None
+
+        query_limit = max(lookback_bars + 15, 75)
 
         # Fetch Brent from DB (replaces yfinance)
         brent_rows = (
@@ -44,7 +49,7 @@ class XTIPairsReadiness(EdgeStrategy):
                     PriceOHLCV.timestamp <= now,
                 )
                 .order_by(PriceOHLCV.timestamp.desc())
-                .limit(30)
+                .limit(query_limit)
             )
         ).all()
         if not brent_rows:
@@ -60,7 +65,7 @@ class XTIPairsReadiness(EdgeStrategy):
                     PriceOHLCV.timestamp <= now,
                 )
                 .order_by(PriceOHLCV.timestamp.desc())
-                .limit(30)
+                .limit(query_limit)
             )
         ).all()
         if not xti_rows:
@@ -96,7 +101,7 @@ class XTIPairsReadiness(EdgeStrategy):
             )
         else:
             # We must not include the current unclosed bar in the mean/std calculation to avoid lookahead bias
-            historical_spreads = df["spread"].iloc[:-1] if len(df) > 1 else df["spread"]
+            historical_spreads = df["spread"].iloc[:-1].tail(lookback_bars) if len(df) > 1 else df["spread"]
             if len(historical_spreads) < 2:
                 return EdgeSignal(
                     self.strategy_id,
@@ -109,6 +114,16 @@ class XTIPairsReadiness(EdgeStrategy):
             mean_spread = float(np.mean(np.asarray(historical_spreads, dtype=float)))
             std_spread = float(np.std(np.asarray(historical_spreads, dtype=float)))
             spread = float(df["spread"].iloc[-1])
+
+        if last_xti <= 0 or brent <= 0:
+            return EdgeSignal(
+                self.strategy_id,
+                symbol,
+                None,
+                False,
+                0.0,
+                rationale=f"Invalid pricing data: XTI={last_xti}, Brent={brent}",
+            )
 
         direction = None
         confluence = 0.0
@@ -129,6 +144,36 @@ class XTIPairsReadiness(EdgeStrategy):
                 rationale += f"Spread is within normal range (Z={z_score:.1f})."
         else:
             rationale += "Not enough spread volatility to compute Z-score."
+
+        if not direction:
+            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale=rationale)
+
+        # Stationarity / Cointegration Pre-Condition (ADF test)
+        # In trending / non-stationary regimes, spread diverges and mean-reversion fails.
+        if len(historical_spreads) >= 15 and adf_max_p is not None and adf_max_p > 0:
+            try:
+                from statsmodels.tsa.stattools import adfuller
+
+                try:
+                    adf_res = adfuller(np.asarray(historical_spreads, dtype=float), autolag="AIC", result_object=False)
+                except TypeError:
+                    adf_res = adfuller(np.asarray(historical_spreads, dtype=float), autolag="AIC")
+                p_val = float(adf_res[1])
+                if p_val > adf_max_p:
+                    return EdgeSignal(
+                        self.strategy_id,
+                        symbol,
+                        None,
+                        False,
+                        0.0,
+                        rationale=(
+                            f"{rationale} [REJECTED: Spread non-stationary (ADF p={p_val:.3f} > {adf_max_p:.2f}). "
+                            "Refusing to counter-trend in diverging/trending spread regime.]"
+                        ),
+                    )
+                rationale += f" Stationarity confirmed (ADF p={p_val:.3f} <= {adf_max_p:.2f})."
+            except Exception as adf_err:
+                logger.debug(f"ADF test failed in xti_pairs (non-fatal): {adf_err}")
 
         # TimesFM 3.0 Multivariate Confirmation for Oil Spread
         tfm_meta = {}
@@ -152,12 +197,9 @@ class XTIPairsReadiness(EdgeStrategy):
         except Exception as tfm_err:
             logger.debug(f"TimesFM check failed in xti_pairs (non-fatal): {tfm_err}")
 
-        if not direction:
-            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale=rationale)
-
         # Calculate spread-based SL/TP for both legs
         if direction == "buy":  # WTI undervalued, spread too wide
-            # TP: spread narrows to mean → WTI rises, Brent falls (or both converge)
+            # TP: spread narrows toward mean → WTI rises, Brent falls (or both converge)
             tp_spread_change = spread - (mean_spread + z_tp * std_spread)
             sl_spread_change = (mean_spread + z_sl * std_spread) - spread
             # Split change 50/50 between legs
@@ -167,13 +209,18 @@ class XTIPairsReadiness(EdgeStrategy):
             brn_sl = brent + abs(sl_spread_change) / 2
             brn_direction = "sell"
         else:  # WTI overvalued, spread too tight
-            tp_spread_change = (mean_spread + z_tp * std_spread) - spread
+            # TP: spread widens toward mean → Brent rises, WTI falls (or both converge)
+            tp_spread_change = (mean_spread - z_tp * std_spread) - spread
             sl_spread_change = spread - (mean_spread - z_sl * std_spread)
             wti_tp = last_xti - tp_spread_change / 2
             wti_sl = last_xti + abs(sl_spread_change) / 2
             brn_tp = brent + tp_spread_change / 2
             brn_sl = brent - abs(sl_spread_change) / 2
             brn_direction = "buy"
+
+        # Dollar-neutral sizing multiplier for the hedge leg
+        # Ensures Notional(Brent) == Notional(WTI)
+        hedge_size_multiplier = round(last_xti / brent, 2)
 
         # Build paired EdgeSignal
         brent_leg = EdgeSignal(
@@ -189,7 +236,11 @@ class XTIPairsReadiness(EdgeStrategy):
             exit_style="spread_pair",
             rationale=f"Hedge leg: {brn_direction} {brent_symbol}",
             tags=["xti_pairs_readiness", "stat_arb", "hedge_leg"],
-            meta={"is_hedge_leg": True, "z_score": z_score},
+            meta={
+                "is_hedge_leg": True,
+                "z_score": z_score,
+                "size_multiplier": hedge_size_multiplier,
+            },
         )
 
         return EdgeSignal(
@@ -205,6 +256,12 @@ class XTIPairsReadiness(EdgeStrategy):
             exit_style="spread_pair",
             rationale=rationale,
             tags=["xti_pairs_readiness", "stat_arb", "primary_leg"],
-            meta={"brent_price": brent, "wti_price": last_xti, "spread": spread, "z_score": z_score},
+            meta={
+                "brent_price": brent,
+                "wti_price": last_xti,
+                "spread": spread,
+                "z_score": z_score,
+                "hedge_ratio": hedge_size_multiplier,
+            },
             paired_leg=brent_leg,  # ← Links the hedge leg
         )

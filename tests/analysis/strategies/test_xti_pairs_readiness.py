@@ -146,3 +146,113 @@ async def test_xti_pairs_successful_sell_signal_and_hedge_leg():
     assert res.paired_leg.symbol == "XBRUSD"
     assert res.paired_leg.direction == "buy"
     assert res.paired_leg.valid is True
+
+
+def test_xti_pairs_regimes_excludes_trend():
+    """Verify XTIPairsReadiness does not include TREND in compatible_regimes."""
+    assert "TREND" not in XTIPairsReadiness.compatible_regimes
+    assert "RANGE" in XTIPairsReadiness.compatible_regimes
+
+
+@pytest.mark.asyncio
+async def test_xti_pairs_rejects_non_stationary_trending_spread():
+    """Verify XTIPairsReadiness rejects signal when spread is non-stationary / trending (ADF p > 0.15)."""
+    strategy = XTIPairsReadiness()
+    mock_session = create_mock_async_session()
+    settings = {
+        "trading": {
+            "edge_strategy": {
+                "xti_pairs_readiness": {
+                    "enabled": True,
+                    "brent_symbol": "XBRUSD",
+                    "z_entry_threshold": 2.0,
+                    "adf_max_pvalue": 0.15,
+                }
+            }
+        }
+    }
+
+    base_time = datetime(2026, 9, 10, 0, 0, tzinfo=timezone.utc)
+    # Generate 25 days of monotonically drifting / trending spread (random walk with drift: non-stationary)
+    brent_data = []
+    xti_data = []
+    for i in range(25):
+        dt = base_time + timedelta(days=i)
+        # Brent drifts upward strongly while XTI stays flat -> spread strongly trending
+        brent_data.append((dt, 70.0 + (i * 0.8)))
+        xti_data.append((dt, 70.0))
+
+    # Latest bar triggers high Z-score
+    dt_latest = base_time + timedelta(days=25)
+    brent_data.append((dt_latest, 100.0))
+    xti_data.append((dt_latest, 70.0))
+
+    brent_res = MagicMock()
+    brent_res.all.return_value = list(reversed(brent_data))
+    xti_res = MagicMock()
+    xti_res.all.return_value = list(reversed(xti_data))
+    mock_session.execute = AsyncMock(side_effect=[brent_res, xti_res])
+
+    res = await strategy.evaluate(mock_session, "XTIUSD", settings)
+    assert isinstance(res, EdgeSignal)
+    assert res.valid is False
+    assert "REJECTED: Spread non-stationary" in res.rationale
+
+
+@pytest.mark.asyncio
+async def test_xti_pairs_dollar_neutral_size_multiplier():
+    """Verify hedge leg has correct dollar-neutral size_multiplier = last_xti / brent."""
+    strategy = XTIPairsReadiness()
+    mock_session = create_mock_async_session()
+    settings = {
+        "trading": {
+            "edge_strategy": {
+                "xti_pairs_readiness": {"enabled": True, "brent_symbol": "XBRUSD", "z_entry_threshold": 2.0}
+            }
+        }
+    }
+
+    base_time = datetime(2026, 9, 10, 0, 0, tzinfo=timezone.utc)
+    brent_data = []
+    xti_data = []
+    for i in range(14):
+        dt = base_time + timedelta(days=i)
+        brent_data.append((dt, 100.0 + (i * 0.1)))
+        xti_offset = 80.0 + (i * 0.1) + ((i % 3 - 1) * 0.2)
+        xti_data.append((dt, xti_offset))
+
+    # Latest: Brent = 110.0, XTI = 80.0 -> spread 30.0 -> Z > 2.0
+    dt_latest = base_time + timedelta(days=14)
+    brent_data.append((dt_latest, 110.0))
+    xti_data.append((dt_latest, 80.0))
+
+    brent_res = MagicMock()
+    brent_res.all.return_value = list(reversed(brent_data))
+    xti_res = MagicMock()
+    xti_res.all.return_value = list(reversed(xti_data))
+    mock_session.execute = AsyncMock(side_effect=[brent_res, xti_res])
+
+    res = await strategy.evaluate(mock_session, "XTIUSD", settings)
+    assert res.valid is True
+    assert res.paired_leg is not None
+    # 80.0 / 110.0 = 0.73
+    assert res.paired_leg.meta.get("size_multiplier") == 0.73
+    assert res.meta.get("hedge_ratio") == 0.73
+
+
+@pytest.mark.asyncio
+async def test_xti_pairs_rejects_zero_or_negative_price():
+    """Verify XTIPairsReadiness fails closed if prices are zero or negative."""
+    strategy = XTIPairsReadiness()
+    mock_session = create_mock_async_session()
+    settings = {"trading": {"edge_strategy": {"xti_pairs_readiness": {"enabled": True, "brent_symbol": "XBRUSD"}}}}
+
+    dt = datetime(2026, 9, 10, 0, 0, tzinfo=timezone.utc)
+    brent_res = MagicMock()
+    brent_res.all.return_value = [(dt, 0.0)]
+    xti_res = MagicMock()
+    xti_res.all.return_value = [(dt, 70.0)]
+    mock_session.execute = AsyncMock(side_effect=[brent_res, xti_res])
+
+    res = await strategy.evaluate(mock_session, "XTIUSD", settings)
+    assert res.valid is False
