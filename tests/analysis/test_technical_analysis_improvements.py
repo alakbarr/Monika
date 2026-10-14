@@ -272,3 +272,93 @@ class TestTechnicalAnalysisImprovements:
         prices = [ob["price_high"] for ob in trimmed_obs]
         assert 1.0810 in prices
         assert 1.0790 in prices
+
+    # ------------------------------------------------------------------
+    # H8: Confluence Fundamental Bias Matrix Priority & Differential
+    # ------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_confluence_fundamental_bias_prioritizes_matrix_and_prevents_dual_bonus(self):
+        from monika.application.analysis.calculators.confluence_calculator import calculate_confluence
+        from monika.infrastructure.database.models import FundamentalBrief
+
+        mock_session = create_mock_async_session()
+
+        # Scenario 1: Both USD and JPY bearish in currency_bias (no matrix)
+        # Net differential = (-1) - (-1) = 0 -> neither gets fundamental bias bonus.
+        brief_neutral = FundamentalBrief(
+            id=1,
+            generated_at=datetime.now(timezone.utc),
+            confidence=0.80,
+            structured_json=json.dumps(
+                {
+                    "currency_bias": {"USD": "bearish", "JPY": "bearish"},
+                }
+            ),
+        )
+
+        def exec_side_effect(*args, **kwargs):
+            query = str(args[0]).lower()
+            res = MagicMock()
+            if "fundamental_brief" in query:
+                res.scalar_one_or_none.return_value = brief_neutral
+                res.scalars.return_value.all.return_value = [brief_neutral]
+            else:
+                res.scalar_one_or_none.return_value = None
+                res.scalars.return_value.all.return_value = []
+            return res
+
+        mock_session.execute = AsyncMock(side_effect=exec_side_effect)
+
+        res_buy = await calculate_confluence(
+            mock_session, "USDJPY", entry_price=150.0, sl=149.0, tp=152.0, direction="buy"
+        )
+        res_sell = await calculate_confluence(
+            mock_session, "USDJPY", entry_price=150.0, sl=151.0, tp=148.0, direction="sell"
+        )
+
+        diff = abs(res_buy["computed_score"] - res_sell["computed_score"])
+        assert diff <= 1
+
+        # Scenario 2: per_asset_macro_matrix specifies USDJPY is bullish (+2)
+        brief_matrix = FundamentalBrief(
+            id=2,
+            generated_at=datetime.now(timezone.utc),
+            confidence=0.80,
+            structured_json=json.dumps(
+                {
+                    "currency_bias": {"USD": "bearish", "JPY": "bearish"},
+                    "per_asset_macro_matrix": {
+                        "USDJPY": {
+                            "directional_bias": "bullish",
+                            "confidence": 0.75,
+                            "structural_driver": "Yield spread divergence and carry demand",
+                            "tactical_catalyst": "Intraday session momentum",
+                            "invalidation_level": "Invalid if breaks 148.00",
+                        }
+                    },
+                }
+            ),
+        )
+
+        def exec_side_effect_matrix(*args, **kwargs):
+            query = str(args[0]).lower()
+            res = MagicMock()
+            if "fundamental_brief" in query:
+                res.scalar_one_or_none.return_value = brief_matrix
+                res.scalars.return_value.all.return_value = [brief_matrix]
+            else:
+                res.scalar_one_or_none.return_value = None
+                res.scalars.return_value.all.return_value = []
+            return res
+
+        mock_session.execute = AsyncMock(side_effect=exec_side_effect_matrix)
+
+        res_buy_matrix = await calculate_confluence(
+            mock_session, "USDJPY", entry_price=150.0, sl=149.0, tp=152.0, direction="buy"
+        )
+        res_sell_matrix = await calculate_confluence(
+            mock_session, "USDJPY", entry_price=150.0, sl=151.0, tp=148.0, direction="sell"
+        )
+
+        # BUY gets the fundamental bias bonus (+2), SELL does not
+        assert res_buy_matrix["computed_score"] >= res_sell_matrix["computed_score"] + 2

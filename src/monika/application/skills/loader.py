@@ -379,6 +379,7 @@ def get_dynamic_micro_skills(symbol: str, context: Optional[dict] = None) -> lis
         "smc_ict_playbook",
         "market_dynamics_framework",
         "liquidity_and_macro_edge",
+        "post_event_orderflow_absorption",
         "risk_management_principles",
         "session_timing_rules",
         "lessons_learned",

@@ -179,18 +179,36 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 base_bias = normalize_bias(_currency_bias.get(base_curr, "neutral"))
                 quote_bias = normalize_bias(_currency_bias.get(quote_curr, "neutral"))
 
-                # 1. Base & Quote Directional Coherence Check
+                # 1. Base & Quote Directional Coherence Check (with per_asset_macro_matrix priority)
                 contradictions = []
-                if decision == "buy":
-                    if base_bias == "bearish":
-                        contradictions.append(f"{base_curr}='{base_bias}'")
-                    if quote_bias == "bullish":
-                        contradictions.append(f"{quote_curr}='{quote_bias}'")
-                elif decision == "sell":
-                    if base_bias == "bullish":
-                        contradictions.append(f"{base_curr}='{base_bias}'")
-                    if quote_bias == "bearish":
-                        contradictions.append(f"{quote_curr}='{quote_bias}'")
+                matrix = _b_data.get("per_asset_macro_matrix", {})
+                clean_sym = symbol.upper().replace("/", "")
+                asset_ctx = matrix.get(clean_sym) or matrix.get(symbol.upper())
+                asset_bias = ""
+                asset_conf = 0.5
+                if isinstance(asset_ctx, dict):
+                    asset_bias = normalize_bias(asset_ctx.get("directional_bias", "neutral"))
+                    try:
+                        asset_conf = float(asset_ctx.get("confidence", 0.70))
+                    except ValueError, TypeError:
+                        asset_conf = 0.70
+
+                if asset_bias and asset_bias != "neutral":
+                    if decision == "buy" and asset_bias == "bearish":
+                        contradictions.append(f"{symbol}='{asset_bias}' (matrix)")
+                    elif decision == "sell" and asset_bias == "bullish":
+                        contradictions.append(f"{symbol}='{asset_bias}' (matrix)")
+                else:
+                    if decision == "buy":
+                        if base_bias == "bearish":
+                            contradictions.append(f"{base_curr}='{base_bias}'")
+                        if quote_bias == "bullish":
+                            contradictions.append(f"{quote_curr}='{quote_bias}'")
+                    elif decision == "sell":
+                        if base_bias == "bullish":
+                            contradictions.append(f"{base_curr}='{base_bias}'")
+                        if quote_bias == "bearish":
+                            contradictions.append(f"{quote_curr}='{quote_bias}'")
 
                 _reconciliation_keywords = [
                     "trust price action",
@@ -225,6 +243,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     relevant_conf = max(
                         base_conf if any(base_curr in c for c in contradictions) else 0.0,
                         quote_conf if any(quote_curr in c for c in contradictions) else 0.0,
+                        asset_conf if any(symbol in c for c in contradictions) else 0.0,
                     )
 
                     spec_adj = inp.get("specialist_adjudication")
@@ -237,10 +256,10 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                             and len(str(spec_adj.get("resolution_justification") or "").strip()) >= 40
                         )
 
-                    if relevant_conf >= 0.70 and not has_valid_adjudication:
+                    if relevant_conf >= 0.55 and not has_valid_adjudication:
                         errors.append(
                             f"CONTRA_MACRO_HARD_REJECT: Keputusan {decision.upper()} untuk {symbol} secara langsung "
-                            f"menentang bias makro Stage 1 ({contra_str}) dengan confidence tinggi ({relevant_conf:.2f}). "
+                            f"menentang bias makro Stage 1 ({contra_str}) dengan confidence ({relevant_conf:.2f} >= 0.55). "
                             f"Trading melawan makro dilarang kecuali Anda mengisi field 'specialist_adjudication' secara lengkap "
                             f"(conflict_detected=true, resolution_path in ('override_macro', 'cancel_setup', 'hedged_entry', 'scale_out'), "
                             f"dan justifikasi pembatalan level harga struktural minimal 40 karakter)."

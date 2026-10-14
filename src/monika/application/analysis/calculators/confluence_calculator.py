@@ -521,34 +521,73 @@ async def calculate_confluence(
         if brief and brief.structured_json:
             try:
                 b_data = json.loads(brief.structured_json)
-                c_bias = b_data.get("currency_bias", {})
-
-                # Extrapolate for symbol
                 import re as _re
 
                 clean_sym = _re.sub(r"[^A-Z]", "", symbol.upper())
-                base = clean_sym[:3]
-                quote = clean_sym[3:6]
-                base_bias = str(c_bias.get(base, "")).lower()
-                if not base_bias and base in ("XTI", "XBR"):
-                    base_bias = str(c_bias.get("OIL", "")).lower()
-                elif not base_bias and base == "XAU":
-                    base_bias = str(c_bias.get("GOLD", "")).lower()
+                matrix = b_data.get("per_asset_macro_matrix", {})
+                asset_entry = matrix.get(clean_sym) or matrix.get(symbol.upper())
 
-                quote_bias = str(c_bias.get(quote, "")).lower()
-                if not quote_bias and quote == "USD":
-                    quote_bias = str(c_bias.get("USD", "")).lower()
+                asset_bias = ""
+                if isinstance(asset_entry, dict):
+                    asset_bias = str(asset_entry.get("directional_bias", "")).lower()
 
-                if test_direction == "buy":
-                    if "bullish" in base_bias or "bearish" in quote_bias:
-                        score += 2
-                        if "strong" in base_bias or "strong" in quote_bias:
-                            score += 1
-                elif test_direction == "sell":
-                    if "bearish" in base_bias or "bullish" in quote_bias:
-                        score += 2
-                        if "strong" in base_bias or "strong" in quote_bias:
-                            score += 1
+                if asset_bias:
+                    if test_direction == "buy":
+                        if "bullish" in asset_bias:
+                            score += 2
+                            if "strong" in asset_bias:
+                                score += 1
+                    elif test_direction == "sell":
+                        if "bearish" in asset_bias:
+                            score += 2
+                            if "strong" in asset_bias:
+                                score += 1
+                else:
+                    c_bias = b_data.get("currency_bias", {})
+                    base = clean_sym[:3]
+                    quote = clean_sym[3:6]
+                    base_bias = str(c_bias.get(base, "")).lower()
+                    if not base_bias and base in ("XTI", "XBR"):
+                        base_bias = str(c_bias.get("OIL", "")).lower()
+                    elif not base_bias and base == "XAU":
+                        base_bias = str(c_bias.get("GOLD", "")).lower()
+
+                    quote_bias = str(c_bias.get(quote, "")).lower()
+                    if not quote_bias and quote == "USD":
+                        quote_bias = str(c_bias.get("USD", "")).lower()
+
+                    # Net directional differential scoring:
+                    # Avoid dual-award when base and quote have the same bias direction
+                    b_score = (
+                        2
+                        if "strong_bull" in base_bias
+                        else (
+                            1
+                            if "bull" in base_bias
+                            else (-2 if "strong_bear" in base_bias else (-1 if "bear" in base_bias else 0))
+                        )
+                    )
+                    q_score = (
+                        2
+                        if "strong_bull" in quote_bias
+                        else (
+                            1
+                            if "bull" in quote_bias
+                            else (-2 if "strong_bear" in quote_bias else (-1 if "bear" in quote_bias else 0))
+                        )
+                    )
+                    net_diff = b_score - q_score
+
+                    if test_direction == "buy":
+                        if net_diff >= 2:
+                            score += 3
+                        elif net_diff >= 1:
+                            score += 2
+                    elif test_direction == "sell":
+                        if net_diff <= -2:
+                            score += 3
+                        elif net_diff <= -1:
+                            score += 2
             except Exception:
                 pass
 

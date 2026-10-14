@@ -455,3 +455,71 @@ def test_submit_fundamental_brief_checklist_resilience():
     obj3 = SubmitFundamentalBriefSchema.model_validate(payload_str_bools)
     assert obj3.checklist.bias_vs_narrative_match is True
     assert obj3.checklist.contradiction_existed is False
+
+
+def test_fundamental_brief_transmission_matrix_and_usdjpy_inversion():
+    """Verify that auto-healed per_asset_macro_matrix handles USDJPY without direction inversion."""
+    from monika.application.analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
+
+    # Case A: USD bullish, JPY bearish -> USDJPY MUST be bullish/strong_bullish
+    payload_a = {
+        "macro_narrative": "USD bullish due to Fed hawkishness, JPY bearish due to dovish BOJ policy stance.",
+        "currency_bias": {
+            "USD": "bullish",
+            "EUR": "bearish",
+            "GBP": "neutral",
+            "JPY": "bearish",
+            "AUD": "neutral",
+            "XAU": "bearish",
+        },
+        "confidence": 0.80,
+        "risk_sentiment": "mixed",
+        "macro_regime": "mixed",
+        "strongest_counter_thesis": "Counter thesis: If US data softens and BOJ surprises with rate hike above 0.50% then bias inverts.",
+    }
+    brief_a = SubmitFundamentalBriefSchema.model_validate(payload_a)
+    matrix_a = brief_a.per_asset_macro_matrix
+    assert "USDJPY" in matrix_a
+    assert matrix_a["USDJPY"].directional_bias in ("bullish", "strong_bullish")
+    assert "EURUSD" in matrix_a
+    assert matrix_a["EURUSD"].directional_bias in ("bearish", "strong_bearish")
+    assert brief_a.yield_curve_regime == "neutral"
+    assert brief_a.systemic_liquidity_trend == "neutral"
+
+    # Case B: Both USD and JPY bearish -> USDJPY net differential is neutral, NOT bearish
+    payload_b = {
+        "macro_narrative": "Both USD and JPY softening due to broad risk-on capital rotation into commodities.",
+        "currency_bias": {
+            "USD": "bearish",
+            "EUR": "bullish",
+            "GBP": "neutral",
+            "JPY": "bearish",
+            "AUD": "bullish",
+            "XAU": "bullish",
+        },
+        "confidence": 0.75,
+        "risk_sentiment": "risk-on",
+        "macro_regime": "risk_on",
+        "strongest_counter_thesis": "Counter thesis: If risk sentiment reverses abruptly and safe havens surge then USD and JPY rally.",
+    }
+    brief_b = SubmitFundamentalBriefSchema.model_validate(payload_b)
+    matrix_b = brief_b.per_asset_macro_matrix
+    assert matrix_b["USDJPY"].directional_bias == "neutral"
+    assert matrix_b["EURUSD"].directional_bias in ("bullish", "strong_bullish")
+
+
+def test_submit_fundamental_brief_tool_schema_required_fields():
+    """Verify that SUBMIT_FUNDAMENTAL_BRIEF tool schema requires per_asset_macro_matrix and transmission fields."""
+    from monika.application.analysis.tools.tools_definitions import SUBMIT_FUNDAMENTAL_BRIEF
+
+    schema = SUBMIT_FUNDAMENTAL_BRIEF["input_schema"]
+    req = schema.get("required", [])
+    for field in (
+        "per_asset_macro_matrix",
+        "asset_priced_in_scores",
+        "yield_curve_regime",
+        "systemic_liquidity_trend",
+        "strongest_counter_thesis",
+        "priced_in_assessment",
+    ):
+        assert field in req, f"Field '{field}' must be required in SUBMIT_FUNDAMENTAL_BRIEF schema"

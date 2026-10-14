@@ -886,6 +886,10 @@ Monika/
 │       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── macro-analysis-framework/
 │       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── macro-intermarket-decoupling-and-adversarial-reconciliation/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── macro-yield-curve-regimes/
+│       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── market-dynamics-framework/
 │       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── mql5-ea-builder/
@@ -913,6 +917,8 @@ Monika/
 │       │   │   │   ├── smc-ict-playbook/
 │       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── smt-divergence-playbook/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── systemic-liquidity-and-treasury-plumbing/
 │       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── telegram-persona/
 │       │   │   │   │   └── SKILL.md
@@ -3042,4 +3048,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 312 | **Total Tracked Files**: 2700
+**Total Tracked Directories**: 315 | **Total Tracked Files**: 2703

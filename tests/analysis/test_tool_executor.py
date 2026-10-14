@@ -1319,3 +1319,74 @@ class TestToolExecutor:
         )
         # Should not fail with CONTRA_MACRO_HARD_REJECT
         assert not any("CONTRA_MACRO_HARD_REJECT" in err for err in res_with_adjudication.get("errors", []))
+
+    @pytest.mark.asyncio
+    @patch("monika.application.analysis.calculators.confluence_calculator.calculate_confluence")
+    async def test_submit_asset_analysis_contra_macro_hard_reject_calibrated_threshold(self, mock_calc_conf):
+        """Verify that CONTRA_MACRO_HARD_REJECT triggers at calibrated confidence 0.58 and checks per_asset_macro_matrix."""
+        mock_calc_conf.return_value = {"computed_score": 9}
+        mock_session = create_mock_async_session()
+
+        from monika.infrastructure.database.models import FundamentalBrief
+
+        # Mock FundamentalBrief with per_asset_macro_matrix USDJPY bearish at confidence 0.58
+        mock_brief = FundamentalBrief(
+            id=102,
+            generated_at=datetime.now(timezone.utc),
+            confidence=0.60,
+            structured_json=json.dumps(
+                {
+                    "currency_bias": {"USD": "neutral", "JPY": "neutral"},
+                    "currency_confidence": {"USD": 0.50, "JPY": 0.50},
+                    "per_asset_macro_matrix": {
+                        "USDJPY": {
+                            "directional_bias": "bearish",
+                            "confidence": 0.58,
+                            "structural_driver": "BOJ rate normalization vs Fed neutral pivot",
+                            "tactical_catalyst": "Yield spread compression",
+                            "invalidation_level": "Invalid if USDJPY breaks above 158.00 with high momentum",
+                        }
+                    },
+                    "asset_priced_in_scores": {"USDJPY": 5},
+                    "priced_in_assessment": {"priced_in_score": 5},
+                }
+            ),
+        )
+
+        def execute_side_effect(*args, **kwargs):
+            query = str(args[0]).lower()
+            res = MagicMock()
+            if "fundamental_briefs" in query:
+                res.scalar_one_or_none.return_value = mock_brief
+                res.scalars.return_value.all.return_value = [mock_brief]
+            elif "price_ohlcv" in query or "technical_indicators" in query:
+                res.scalar_one_or_none.return_value = datetime.now(timezone.utc)
+            else:
+                res.scalar_one_or_none.return_value = None
+                res.scalars.return_value.all.return_value = []
+            return res
+
+        mock_session.execute = AsyncMock(side_effect=execute_side_effect)
+        executor = ToolExecutor(mock_session)
+
+        # Propose BUY on USDJPY opposing matrix directional bias without specialist adjudication
+        res_rejected = await executor._tool_submit_asset_analysis(
+            {
+                "symbol": "USDJPY",
+                "decision": "buy",
+                "confidence": 0.75,
+                "rationale": "Intraday momentum bounce from support.",
+                "stop_loss": 154.00,
+                "take_profit": 156.50,
+                "invalidation": "Invalid if price breaks below 153.50",
+                "priced_in_score": 5,
+                "confluence_score": 8,
+                "confluence_factors": ["order_block"],
+                "entry_condition": {"type": "market", "detail": "Immediate entry"},
+                "invalidation_price": 153.50,
+                "invalidation_direction": "below",
+            }
+        )
+        assert res_rejected["status"] == "validation_failed"
+        assert any("CONTRA_MACRO_HARD_REJECT" in err for err in res_rejected["errors"])
+        assert any("0.58 >= 0.55" in err for err in res_rejected["errors"])

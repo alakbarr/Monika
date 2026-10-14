@@ -37,7 +37,7 @@ Output confluence assessment in EXACT format BEFORE calling `submit_asset_analys
 
 ```text
 CONFLUENCE SCORECARD FOR {SYMBOL}:
-[ ] F1_FUNDAMENTAL_BIAS: Macro brief supports {BUY/SELL}? YES(+2)/NO(0); Strong Conviction: YES(+3); Contra-Macro Setup (opposes Stage 1 bias when confidence >= 0.70): FORCED_PENALTY(-3) unless price breached Stage 1 invalidation level = __
+[ ] F1_FUNDAMENTAL_BIAS: Macro brief supports {BUY/SELL}? YES(+2)/NO(0); Strong Conviction: YES(+3); Contra-Macro Setup (opposes Stage 1 bias when confidence >= 0.55): FORCED_PENALTY(-3) unless price breached Stage 1 invalidation level = __
 [ ] F2_DXY_CONFIRMS: DXY trend confirms direction? YES(+1)/NO(0) = __
 [ ] F3_D1_TREND: D1 trend aligns with H4 entry? YES(+2)/NO(0) = __
 [ ] F4_RSI_NEUTRAL: RSI not overbought/oversold at entry? YES(+1)/NO(0) = __

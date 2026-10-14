@@ -6365,6 +6365,8 @@
   - `class SubmitFundamentalBriefSchema(BaseModel)`
     - `harmonize_counter_thesis_and_primitives(data: Any) -> Any`
     - `validate_macro_regime_sfbs(v)`
+    - `validate_yield_curve_regime(v)`
+    - `validate_systemic_liquidity_trend(v)`
     - `validate_risk_sentiment_sfbs(v)`
     - `validate_currency_bias_sfbs(v)`
     - `validate_confidence(v)`

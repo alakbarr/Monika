@@ -1075,23 +1075,25 @@ class SubmitFundamentalBriefSchema(BaseModel):
     per_asset_macro_matrix: Dict[str, AssetMacroContext] = Field(
         default_factory=dict,
         description=(
-            "Matriks analisis makro spesifik per aset/simbol (mis. 'EURUSD', 'XAUUSD', 'BTCUSD', 'USDJPY', 'GBPUSD', 'AUDUSD', 'XTIUSD'). "
+            "WAJIB: Matriks analisis makro spesifik per aset/simbol (mis. 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'BTCUSD', 'XTIUSD'). "
             "Membedakan pendorong struktural vs katalis sesi taktis serta level invalidasi harga spesifik."
         ),
     )
     asset_priced_in_scores: Dict[str, int] = Field(
         default_factory=dict,
         description=(
-            "Skor priced-in spesifik (1-10) per simbol aset. Memungkinkan pembedaan aset yang sudah fully priced-in vs yang masih lagging."
+            "WAJIB: Skor priced-in spesifik (1-10) per simbol aset. Memungkinkan pembedaan aset yang sudah fully priced-in vs yang masih lagging."
         ),
     )
-    yield_curve_regime: Optional[str] = Field(
-        default=None,
-        description="Regime kurva imbal hasil: 'bull_steepener', 'bear_steepener', 'bull_flattener', 'bear_flattener', atau 'neutral'.",
+    yield_curve_regime: Optional[
+        Literal["bull_steepener", "bear_steepener", "bull_flattener", "bear_flattener", "neutral"]
+    ] = Field(
+        default="neutral",
+        description="WAJIB: Regime kurva imbal hasil: 'bull_steepener', 'bear_steepener', 'bull_flattener', 'bear_flattener', atau 'neutral'.",
     )
-    systemic_liquidity_trend: Optional[str] = Field(
-        default=None,
-        description="Tren likuiditas Fed: 'expanding', 'contracting', atau 'neutral'.",
+    systemic_liquidity_trend: Optional[Literal["expanding", "contracting", "neutral"]] = Field(
+        default="neutral",
+        description="WAJIB: Tren likuiditas Fed: 'expanding', 'contracting', atau 'neutral'.",
     )
     currency_bias: Dict[str, Literal["strong_bullish", "bullish", "bearish", "strong_bearish", "neutral"]] = Field(
         ...,
@@ -1315,49 +1317,76 @@ class SubmitFundamentalBriefSchema(BaseModel):
                         "arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
                     )
 
+            # Auto-heal yield_curve_regime and systemic_liquidity_trend if omitted
+            if not data.get("yield_curve_regime"):
+                data["yield_curve_regime"] = "neutral"
+            if not data.get("systemic_liquidity_trend"):
+                data["systemic_liquidity_trend"] = "neutral"
+
             # Auto-heal per_asset_macro_matrix if missing or empty
             matrix = data.get("per_asset_macro_matrix")
             if not isinstance(matrix, dict):
                 matrix = {}
             cb = data.get("currency_bias")
             if isinstance(cb, dict):
-                _CCY_TO_ASSET = {
-                    "USD": "DXY",
-                    "EUR": "EURUSD",
-                    "GBP": "GBPUSD",
-                    "JPY": "USDJPY",
-                    "AUD": "AUDUSD",
-                    "XAU": "XAUUSD",
-                    "OIL": "XTIUSD",
-                    "XTI": "XTIUSD",
-                    "BTC": "BTCUSD",
-                }
                 inv = data.get("invalidation_conditions", {})
                 conf_dict = data.get("currency_confidence", {})
-                for ccy, bias in cb.items():
-                    asset_key = _CCY_TO_ASSET.get(str(ccy).upper(), str(ccy).upper())
-                    if asset_key not in matrix and str(ccy).upper() not in matrix:
-                        b_str = str(bias).lower()
-                        inv_text = inv.get(ccy) if isinstance(inv, dict) else None
+
+                def _calc_net_bias(b_str: str, q_str: str) -> str:
+                    b_map = {"strong_bullish": 2, "bullish": 1, "neutral": 0, "bearish": -1, "strong_bearish": -2}
+                    b_val = b_map.get(b_str, 1 if "bull" in b_str else (-1 if "bear" in b_str else 0))
+                    q_val = b_map.get(q_str, 1 if "bull" in q_str else (-1 if "bear" in q_str else 0))
+                    net = b_val - q_val
+                    if net >= 2:
+                        return "strong_bullish"
+                    elif net == 1:
+                        return "bullish"
+                    elif net == 0:
+                        return "neutral"
+                    elif net == -1:
+                        return "bearish"
+                    else:
+                        return "strong_bearish"
+
+                _ASSET_PAIRS = {
+                    "EURUSD": ("EUR", "USD"),
+                    "GBPUSD": ("GBP", "USD"),
+                    "USDJPY": ("USD", "JPY"),
+                    "AUDUSD": ("AUD", "USD"),
+                    "XAUUSD": ("XAU", "USD"),
+                    "BTCUSD": ("BTC", "USD"),
+                    "XTIUSD": ("OIL" if "OIL" in cb else "XTI", "USD"),
+                }
+
+                regime_str = str(data.get("macro_regime", "mixed")).replace("_", " ").title()
+                risk_sent = str(data.get("risk_sentiment", "mixed"))
+
+                for asset_sym, (base_c, quote_c) in _ASSET_PAIRS.items():
+                    if asset_sym not in matrix:
+                        b_bias = str(cb.get(base_c, "neutral")).lower()
+                        q_bias = str(cb.get(quote_c, "neutral")).lower()
+                        dir_bias = _calc_net_bias(b_bias, q_bias)
+
+                        inv_text = inv.get(base_c) or inv.get(asset_sym) if isinstance(inv, dict) else None
                         if not inv_text or len(str(inv_text).strip()) < 20:
-                            inv_text = f"Bias {ccy} {b_str} invalid if structural price levels break with regime shift"
-                        conf_raw = conf_dict.get(ccy) if isinstance(conf_dict, dict) else None
-                        if conf_raw is None:
-                            conf_raw = data.get("confidence", 0.70)
-                        c_float = coerce_float(conf_raw, 0.70)
+                            inv_text = f"Bias {asset_sym} {dir_bias} invalid if structural price levels break with regime shift"
+
+                        c_raw = conf_dict.get(base_c) if isinstance(conf_dict, dict) else None
+                        if c_raw is None:
+                            c_raw = data.get("confidence", 0.70)
+                        c_float = coerce_float(c_raw, 0.70)
                         if c_float is not None:
                             if c_float > 1.0 and c_float <= 100.0:
                                 c_float = c_float / 100.0
                             c_float = max(0.0, min(1.0, c_float))
                         else:
                             c_float = 0.70
-                        matrix[asset_key] = {
-                            "directional_bias": b_str
-                            if b_str in ("strong_bullish", "bullish", "bearish", "strong_bearish", "neutral")
-                            else "neutral",
+
+                        matrix[asset_sym] = {
+                            "directional_bias": dir_bias,
                             "time_horizon": "swing_structural",
-                            "structural_driver": f"Macro regime {data.get('macro_regime', 'mixed')} and policy differential for {ccy}",
-                            "tactical_catalyst": "Intraday session momentum and scheduled high-impact events",
+                            "structural_driver": f"{regime_str} regime; {base_c} ({b_bias}) vs {quote_c} ({q_bias}) policy and macro differential",
+                            "tactical_catalyst": f"Intermarket liquidity flow, risk sentiment ({risk_sent}), and scheduled high-impact events",
                             "invalidation_level": str(inv_text),
                             "confidence": c_float,
                         }
@@ -1402,6 +1431,32 @@ class SubmitFundamentalBriefSchema(BaseModel):
             if any(k in clean for k in ["transition", "pivot", "plateau"]):
                 return MacroRegime.TRANSITION
         return MacroRegime.MIXED
+
+    @field_validator("yield_curve_regime", mode="before")
+    @classmethod
+    def validate_yield_curve_regime(cls, v):
+        if isinstance(v, str):
+            clean = v.lower().strip().replace("-", "_").replace(" ", "_")
+            if clean in ["bull_steepener", "bear_steepener", "bull_flattener", "bear_flattener", "neutral"]:
+                return clean
+            if "steep" in clean:
+                return "bull_steepener" if "bull" in clean else "bear_steepener"
+            if "flat" in clean:
+                return "bull_flattener" if "bull" in clean else "bear_flattener"
+        return "neutral"
+
+    @field_validator("systemic_liquidity_trend", mode="before")
+    @classmethod
+    def validate_systemic_liquidity_trend(cls, v):
+        if isinstance(v, str):
+            clean = v.lower().strip().replace("-", "_").replace(" ", "_")
+            if clean in ["expanding", "contracting", "neutral"]:
+                return clean
+            if any(k in clean for k in ["expand", "growth", "loose", "positive"]):
+                return "expanding"
+            if any(k in clean for k in ["contract", "drain", "tight", "negative"]):
+                return "contracting"
+        return "neutral"
 
     @field_validator("risk_sentiment", mode="before")
     @classmethod

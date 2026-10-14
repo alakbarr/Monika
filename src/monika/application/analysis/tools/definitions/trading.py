@@ -27,25 +27,28 @@ SUBMIT_FUNDAMENTAL_BRIEF = _tool(
         "Submit your completed fundamental analysis brief. "
         "Call this ONCE after you have gathered all necessary data and formed your analysis. "
         "This saves the structured brief to the database for use in the per-asset analysis stage. "
-        "CRITICAL RULES: 'risk_sentiment' MUST be strictly one of: 'risk-on', 'risk-off', or 'mixed' (do NOT use 'neutral'). "
-        "Root field 'confidence' (float between 0.0 and 1.0) is REQUIRED. "
-        "WAJIB mengisi field 'priced_in_assessment' secara komprehensif, jangan pernah dibiarkan kosong. "
+        "CRITICAL RULES:\n"
+        "- 'risk_sentiment' MUST be strictly one of: 'risk-on', 'risk-off', or 'mixed' (do NOT use 'neutral').\n"
+        "- Root field 'confidence' (float between 0.0 and 1.0) is REQUIRED.\n"
+        "- 'per_asset_macro_matrix' is REQUIRED: provide explicit transmission context (directional_bias, structural_driver, tactical_catalyst, invalidation_level) for EURUSD, GBPUSD, USDJPY, AUDUSD, XAUUSD, BTCUSD, and XTIUSD.\n"
+        "- 'asset_priced_in_scores' is REQUIRED: specific 1-10 scores per asset.\n"
+        "- 'yield_curve_regime' ('bull_steepener', 'bear_steepener', 'bull_flattener', 'bear_flattener', or 'neutral') and 'systemic_liquidity_trend' ('expanding', 'contracting', or 'neutral') are REQUIRED.\n"
+        "- WAJIB mengisi field 'priced_in_assessment' dan 'strongest_counter_thesis' (min 50 chars).\n"
         "Do NOT submit until you are confident in your analysis."
     ),
     properties=_fundamental_brief_schema["properties"],
     required=[
-        r
-        for r in _fundamental_brief_schema.get("required", [])
-        if r
-        in {
-            "macro_narrative",
-            "currency_bias",
-            "macro_regime",
-            "risk_sentiment",
-            "confidence",
-            "priced_in_assessment",
-            "strongest_counter_thesis",
-        }
+        "macro_narrative",
+        "currency_bias",
+        "macro_regime",
+        "risk_sentiment",
+        "confidence",
+        "priced_in_assessment",
+        "strongest_counter_thesis",
+        "per_asset_macro_matrix",
+        "asset_priced_in_scores",
+        "yield_curve_regime",
+        "systemic_liquidity_trend",
     ],
 )
 
