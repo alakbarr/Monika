@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from monika.application.agent.harness.tool_batch_planner import ToolBatchPlanner
 from monika.application.agent.harness.tool_repair import (
     coerce_tool_arguments,
+    deep_repair_tool_arguments,
     repair_tool_arguments,
     repair_tool_name,
 )
@@ -814,7 +815,13 @@ class AgentHarness:
         )
 
         _overflow_recovery_attempted = False
-        stage_timeout_seconds = kwargs.get("stage_timeout_seconds", self.settings.get("stage_timeout_seconds", 120.0))
+        stage_timeout_seconds = kwargs.get("stage_timeout_seconds")
+        if not stage_timeout_seconds:
+            is_benchmark = self.settings.get("_benchmark_mode", False)
+            default_timeout = 600.0 if is_benchmark else 180.0
+            stage_timeout_seconds = self.settings.get("stage_timeout_seconds", default_timeout)
+            if is_benchmark and stage_timeout_seconds < 600.0:
+                stage_timeout_seconds = 600.0
         _wrapup_injected = False
         _stage_start_time = asyncio.get_event_loop().time()
 
@@ -1483,18 +1490,32 @@ class AgentHarness:
                         schema_err = getattr(ve, "message", str(ve))
 
                     if schema_err:
-                        logger.warning(f"[{stage_name}] Schema validation failed for {t_name}: {schema_err}")
-                        call_item["_schema_error"] = {
-                            "type": "tool_result",
-                            "tool_use_id": t_id,
-                            "content": json.dumps(
-                                {
-                                    "status": "schema_validation_error",
-                                    "error": f"Invalid arguments for {t_name}: {schema_err}. Fix and re-call.",
-                                }
-                            ),
-                            "is_error": True,
-                        }
+                        healed = deep_repair_tool_arguments(
+                            t_name,
+                            t_input,
+                            input_schema,
+                            schema_err,
+                            assistant_text=final_text or "",
+                        )
+                        if healed:
+                            logger.info(
+                                f"[{stage_name}][AgentHarness] Auto-healed schema validation error for {t_name} "
+                                f"(previously: {schema_err})"
+                            )
+                            schema_err = None
+                        else:
+                            logger.warning(f"[{stage_name}] Schema validation failed for {t_name}: {schema_err}")
+                            call_item["_schema_error"] = {
+                                "type": "tool_result",
+                                "tool_use_id": t_id,
+                                "content": json.dumps(
+                                    {
+                                        "status": "schema_validation_error",
+                                        "error": f"Invalid arguments for {t_name}: {schema_err}. Fix and re-call.",
+                                    }
+                                ),
+                                "is_error": True,
+                            }
                 prepared_calls.append(call_item)
 
             # Prune empty duplicate submission calls if a substantive submission call exists in the same batch

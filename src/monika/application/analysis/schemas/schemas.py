@@ -42,13 +42,22 @@ def _inline_refs(schema, defs=None):
                         merged["type"].append("null")
                 elif "type" not in merged:
                     merged["anyOf"] = [resolved_non_null, {"type": "null"}]
+                if "default" in merged and merged["default"] is None:
+                    del merged["default"]
                 return merged
             elif null_branches and len(non_null_branches) > 1:
                 merged = {k: v for k, v in schema.items()}
                 merged["anyOf"] = [_inline_refs(s, defs) for s in any_of]
+                if "default" in merged and merged["default"] is None:
+                    del merged["default"]
                 return merged
 
-        return {k: _inline_refs(v, defs) for k, v in schema.items()}
+        res = {}
+        for k, v in schema.items():
+            if k == "default" and v is None:
+                continue
+            res[k] = _inline_refs(v, defs)
+        return res
 
     elif isinstance(schema, list):
         return [_inline_refs(item, defs) for item in schema]

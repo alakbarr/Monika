@@ -115,6 +115,7 @@ scripts/*
 !scripts/convert_tui_svg_to_png.js
 !scripts/benchmark_stage1_openrouter.py
 !scripts/benchmark_stage2_openrouter.py
+!scripts/generate_benchmark_leaderboard.py
 !scripts/update_economic_calendar.py
 !scripts/benchmark_debate_openrouter.py
 !scripts/benchmark_news_classification_openrouter.py

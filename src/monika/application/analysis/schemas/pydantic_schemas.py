@@ -211,7 +211,14 @@ class EntryCondition(BaseModel):
         if isinstance(data, dict):
             if "detail" not in data or not data.get("detail"):
                 data["detail"] = str(data.get("price") or data.get("type") or "Market entry")
-            if "type" not in data or not data.get("type"):
+            raw_type = str(data.get("type", "")).strip().lower()
+            if raw_type in ("market", "instant", "market_order", "now"):
+                data["type"] = "market"
+            elif raw_type in ("limit", "pending", "limit_order", "fvg_entry", "ob_entry"):
+                data["type"] = "limit"
+            elif raw_type in ("trigger", "stop", "stop_order", "breakout"):
+                data["type"] = "trigger"
+            elif not raw_type:
                 data["type"] = "market"
         return data
 
@@ -242,7 +249,16 @@ class ReevaluationTrigger(BaseModel):
         if isinstance(data, dict):
             if "detail" not in data or not data.get("detail"):
                 data["detail"] = str(data.get("price") or data.get("type") or "Re-evaluate")
-            if "type" not in data or not data.get("type"):
+            raw_t = str(data.get("type", "")).strip().lower()
+            if raw_t in ("price", "level", "price_level", "price_action", "sl", "tp"):
+                data["type"] = "price_level"
+            elif raw_t in ("time", "date", "timer", "schedule", "review", "periodic"):
+                data["type"] = "time"
+            elif raw_t in ("indicator", "rsi", "adx", "ema", "fvg", "ob", "structure"):
+                data["type"] = "indicator"
+            elif raw_t in ("news", "event", "nfp", "cpi", "fomc", "catalyst"):
+                data["type"] = "news"
+            elif not raw_t:
                 data["type"] = "time"
         return data
 
@@ -725,7 +741,15 @@ class SubmitAssetAnalysisSchema(BaseModel):
                     "detail": "Standard wait: re-evaluate on next 4-hour cycle or when key level is tested",
                 }
 
-        # 4. Auto-populate fallback invalidation if missing for avoid/wait
+        # 4. Normalisasi invalidation_direction jika ada
+        if data.get("invalidation_direction"):
+            raw_dir = str(data["invalidation_direction"]).lower().strip()
+            if raw_dir in ("up", "above", "long", "bull", "bullish", "higher", "top"):
+                data["invalidation_direction"] = "above"
+            elif raw_dir in ("down", "below", "short", "bear", "bearish", "lower", "bottom"):
+                data["invalidation_direction"] = "below"
+
+        # 5. Auto-populate fallback invalidation if missing for avoid/wait
         if not data.get("invalidation"):
             if decision == "avoid":
                 data["invalidation"] = "Not applicable: asset avoided this cycle."
@@ -942,19 +966,47 @@ class SubmitFundamentalBriefSchema(BaseModel):
                 data["macro_narrative"] = coerce_str(
                     data.get("narrative") or data.get("summary") or data.get("overview")
                 )
-            if not data.get("risk_sentiment"):
-                raw_sent = (
-                    str(data.get("market_sentiment") or data.get("sentiment") or "mixed")
-                    .lower()
-                    .strip()
-                    .replace("_", "-")
-                )
-                if "risk-off" in raw_sent or "off" in raw_sent or "bear" in raw_sent:
-                    data["risk_sentiment"] = "risk-off"
-                elif "risk-on" in raw_sent or "on" in raw_sent or "bull" in raw_sent:
-                    data["risk_sentiment"] = "risk-on"
+            # Always normalize risk_sentiment and resolve aliases
+            raw_sent = (
+                str(data.get("risk_sentiment") or data.get("market_sentiment") or data.get("sentiment") or "mixed")
+                .lower()
+                .strip()
+                .replace("_", "-")
+            )
+            if "neutral" in raw_sent or "mixed" in raw_sent or "balanc" in raw_sent:
+                data["risk_sentiment"] = "mixed"
+            elif "risk-off" in raw_sent or "off" in raw_sent or "bear" in raw_sent:
+                data["risk_sentiment"] = "risk-off"
+            elif "risk-on" in raw_sent or "on" in raw_sent or "bull" in raw_sent:
+                data["risk_sentiment"] = "risk-on"
+            else:
+                data["risk_sentiment"] = "mixed"
+
+            # Auto-populate confidence if omitted
+            if data.get("confidence") is None:
+                c_conf = data.get("currency_confidence")
+                if isinstance(c_conf, dict) and c_conf:
+                    nums = [float(v) for v in c_conf.values() if isinstance(v, (int, float))]
+                    data["confidence"] = round(sum(nums) / len(nums), 2) if nums else 0.75
                 else:
-                    data["risk_sentiment"] = "mixed"
+                    data["confidence"] = 0.75
+
+            if data.get("macro_regime"):
+                r_lower = str(data["macro_regime"]).lower().strip().replace("-", "_")
+                if "risk_on" in r_lower or "expansion" in r_lower or "growth" in r_lower:
+                    data["macro_regime"] = "risk_on"
+                elif "risk_off" in r_lower or "crisis" in r_lower:
+                    data["macro_regime"] = "risk_off"
+                elif "stagflation" in r_lower:
+                    data["macro_regime"] = "stagflation"
+                elif "disinflation" in r_lower:
+                    data["macro_regime"] = "disinflation"
+                elif "transition" in r_lower:
+                    data["macro_regime"] = "transition"
+                else:
+                    data["macro_regime"] = "mixed"
+            else:
+                data["macro_regime"] = "mixed"
 
             # Auto-heal priced_in_assessment if omitted or stringified
             if not data.get("priced_in_assessment"):

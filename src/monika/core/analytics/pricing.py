@@ -75,6 +75,7 @@ PRICING: dict[str, Price] = {
     "claude-3-5-haiku": Price(0.80, 0.08, 4.00),
     "claude-3-5-haiku-20241022": Price(0.80, 0.08, 4.00),
     # --- Google Gemini Models ---
+    "gemini-4-argon": Price(2.00, 0.10, 10.00, "Google Gemini 4 Argon frontier reasoning rate"),
     "gemini-3.8-flash": Price(1.50, 0.15, 7.50),
     "gemini-3.7-flash": Price(1.50, 0.15, 7.50, "Free tier direct / Paid tier rate"),
     "gemini-3.6-flash": Price(1.50, 0.15, 7.50),
@@ -192,6 +193,7 @@ OPENROUTER_PRICING_MAP: dict[str, str] = {
     "openai/o1": "o1",
     "openai/o3-mini": "o3-mini",
     # Google
+    "google/gemini-4-argon": "gemini-4-argon",
     "google/gemini-3.8-flash": "gemini-3.8-flash",
     "google/gemini-3.7-flash": "gemini-3.7-flash",
     "google/gemini-3.6-flash": "gemini-3.6-flash",

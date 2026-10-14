@@ -66,6 +66,77 @@ def _canonicalize_schema(schema: Any) -> Any:
         return {k: _canonicalize_schema(v) for k, v in sorted(schema.items())}
     if isinstance(schema, list):
         return [_canonicalize_schema(item) for item in schema]
+    return schema
+
+
+def sanitize_tool_parameters_schema(schema_dict: Any) -> Any:
+    """
+    Sanitize JSON Schema for OpenAI / OpenRouter function calling parameters.
+    Guarantees 100% compliance with JSON Schema Draft-07 function calling specifications:
+    1. Removes any 'default' field whose value is None / null (avoids Azure/OpenAI 400 'None is not valid under any of the given schemas').
+    2. Simplifies nullable type arrays like ["string", "null"] to "string" or standard types (avoids Meta 400 'null is not valid under any of the schemas').
+    3. Simplifies anyOf with null branches: anyOf: [T, {"type": "null"}] -> T.
+    4. Ensures array schemas always contain an 'items' specification.
+    5. Ensures object schemas always have 'properties' dict.
+    6. Recursively cleans all nested objects, properties, and definitions.
+    """
+    if not isinstance(schema_dict, dict):
+        return schema_dict
+
+    import copy
+
+    s = copy.deepcopy(schema_dict)
+
+    def _clean(d: Any) -> Any:
+        if isinstance(d, dict):
+            # 1. Remove default if None
+            if "default" in d and d["default"] is None:
+                del d["default"]
+
+            # 2. Simplify type: [T, "null"] -> T
+            if "type" in d and isinstance(d["type"], list):
+                non_null_types = [t for t in d["type"] if t != "null"]
+                if len(non_null_types) == 1:
+                    d["type"] = non_null_types[0]
+                elif len(non_null_types) > 1:
+                    d["type"] = non_null_types[0]
+                else:
+                    d["type"] = "string"
+
+            # 3. Simplify anyOf with null branches
+            if "anyOf" in d and isinstance(d["anyOf"], list):
+                non_null_branches = [
+                    b
+                    for b in d["anyOf"]
+                    if not (isinstance(b, dict) and (b.get("type") == "null" or b == {"type": "null"}))
+                ]
+                if len(non_null_branches) == 1 and isinstance(non_null_branches[0], dict):
+                    cleaned_branch = _clean(non_null_branches[0])
+                    del d["anyOf"]
+                    d.update(cleaned_branch)
+                elif len(non_null_branches) > 1:
+                    d["anyOf"] = [_clean(b) for b in non_null_branches]
+                else:
+                    del d["anyOf"]
+                    d["type"] = "string"
+
+            # 4. Guarantee array has items
+            if d.get("type") == "array" and "items" not in d:
+                d["items"] = {"type": "string"}
+
+            # 5. Guarantee object has properties
+            if d.get("type") == "object" and "properties" not in d:
+                d["properties"] = {}
+
+            # Recurse for all keys
+            for k, v in list(d.items()):
+                d[k] = _clean(v)
+            return d
+        elif isinstance(d, list):
+            return [_clean(item) for item in d]
+        return d
+
+    return _clean(s)
 
 
 def make_openai_strict_schema(schema_dict: dict) -> dict:
@@ -1087,12 +1158,14 @@ class OpenAIProvider(BaseLLMClient):
 
         converted = []
         for i, t in enumerate(sorted_tools):
+            raw_params = t.get("input_schema") or t.get("parameters") or {"type": "object", "properties": {}}
+            clean_params = sanitize_tool_parameters_schema(raw_params)
             tool_obj = {
                 "type": "function",
                 "function": {
                     "name": t["name"],
                     "description": t.get("description", ""),
-                    "parameters": _canonicalize_schema(t.get("input_schema", {"type": "object", "properties": {}})),
+                    "parameters": _canonicalize_schema(clean_params),
                 },
             }
             if supports_cache_control and i == len(sorted_tools) - 1:

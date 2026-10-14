@@ -29,11 +29,15 @@ if sys.stdout.encoding != "utf-8":
     except Exception:
         pass
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from monika.core.config.settings import load_all_config
 from monika.infrastructure.database.db import init_db, get_session
 from monika.application.benchmark.task_specs import _stage1_system_prompt, STAGE1_USER_MESSAGE_TEXT
 from monika.application.benchmark.fixture_loader import get_synthetic_stage1_bundle
-from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS
+from monika.application.analysis.tools.tools_definitions import MACRO_ANALYSIS_TOOLS
 from monika.application.analysis.prefetch.stage1_prefetcher import (
     PREFETCH_KEY_TO_TOOL,
     CORE_STAGE1_PREFETCH_TOOLS,
@@ -45,6 +49,20 @@ from monika.core.analytics.pricing import cost_usd
 
 MODELS_TO_BENCHMARK = [
     {
+        "name": "deepseek-v4.1-flash",
+        "display_name": "DeepSeek v4.1 Flash (max)",
+        "model_id": "deepseek/deepseek-v4.1-flash",
+        "thinking_level": "max",
+        "max_tokens": 32768,
+    },
+    {
+        "name": "gemini-4-argon",
+        "display_name": "Gemini 4 Argon (high)",
+        "model_id": "google/gemini-4-argon",
+        "thinking_level": "high",
+        "max_tokens": 16384,
+    },
+    {
         "name": "gpt-6.1-sol",
         "display_name": "GPT-6.1 Sol (high)",
         "model_id": "openai/gpt-6.1-sol",
@@ -52,44 +70,9 @@ MODELS_TO_BENCHMARK = [
         "max_tokens": 16384,
     },
     {
-        "name": "claude-opus-5.5",
-        "display_name": "Claude Opus 5.5 (high)",
-        "model_id": "anthropic/claude-opus-5.5",
-        "thinking_level": "high",
-        "max_tokens": 16384,
-    },
-    {
-        "name": "grok-4.6",
-        "display_name": "Grok 4.6 (high)",
-        "model_id": "x-ai/grok-4.6",
-        "thinking_level": "high",
-        "max_tokens": 16384,
-    },
-    {
         "name": "muse-spark-1.3",
-        "display_name": "Muse Spark 1.3 (xhigh)",
+        "display_name": "Muse Spark 1.3 (max)",
         "model_id": "meta/muse-spark-1.3",
-        "thinking_level": "xhigh",
-        "max_tokens": 24576,
-    },
-    {
-        "name": "mimo-v2.6-pro",
-        "display_name": "MiMo v2.6 Pro (max)",
-        "model_id": "xiaomi/mimo-v2.6-pro",
-        "thinking_level": "max",
-        "max_tokens": 32768,
-    },
-    {
-        "name": "deepseek-v4-pro",
-        "display_name": "DeepSeek v4 Pro (max)",
-        "model_id": "deepseek/deepseek-v4-pro",
-        "thinking_level": "max",
-        "max_tokens": 32768,
-    },
-    {
-        "name": "kimi-k3",
-        "display_name": "Kimi k3 (max)",
-        "model_id": "moonshotai/kimi-k3",
         "thinking_level": "max",
         "max_tokens": 32768,
     },
@@ -101,9 +84,9 @@ MODELS_TO_BENCHMARK = [
         "max_tokens": 16384,
     },
     {
-        "name": "deepseek-v4.1-flash",
-        "display_name": "DeepSeek v4.1 Flash (max)",
-        "model_id": "deepseek/deepseek-v4.1-flash",
+        "name": "kimi-k3",
+        "display_name": "Kimi k3 (max)",
+        "model_id": "moonshotai/kimi-k3",
         "thinking_level": "max",
         "max_tokens": 32768,
     },
@@ -111,6 +94,13 @@ MODELS_TO_BENCHMARK = [
         "name": "glm-5.3",
         "display_name": "GLM-5.3 (max)",
         "model_id": "z-ai/glm-5.3",
+        "thinking_level": "max",
+        "max_tokens": 32768,
+    },
+    {
+        "name": "deepseek-v4-pro",
+        "display_name": "DeepSeek v4 Pro (max)",
+        "model_id": "deepseek/deepseek-v4-pro",
         "thinking_level": "max",
         "max_tokens": 32768,
     },
@@ -415,7 +405,7 @@ async def main():
     system_prompt = _stage1_system_prompt(settings)
     bundle = get_synthetic_stage1_bundle()
     synthetic_satisfied_tools = set(CORE_STAGE1_PREFETCH_TOOLS)
-    pruned_stage1_tools = prune_stage1_tools(STAGE1_TOOLS, synthetic_satisfied_tools)
+    pruned_stage1_tools = prune_stage1_tools(MACRO_ANALYSIS_TOOLS, synthetic_satisfied_tools)
 
     simulation_directive = (
         "[BENCHMARK SIMULATION CONTEXT & TEMPORAL ANCHOR]\n"
@@ -518,7 +508,7 @@ async def main():
                 client = OpenRouterProvider(
                     model=model_id,
                     max_tokens=max_tokens,
-                    max_tool_turns=2,
+                    max_tool_turns=6,
                     thinking_level=thinking_level,
                     settings=settings,
                     temperature=0.0,
@@ -533,7 +523,7 @@ async def main():
                             user_message=user_prompt,
                             tools=pruned_stage1_tools,
                             stage_name="benchmark_stage1_fundamental",
-                            max_tool_turns=2,
+                            max_tool_turns=6,
                             prefetch_satisfied_tools=synthetic_satisfied_tools,
                         )
                         captured = box.get("result")
@@ -557,10 +547,30 @@ async def main():
                     provider="openrouter",
                 )
 
+                # Extract turn-by-turn trace first
+                raw_messages = result.get("context_messages", [])
+                model_result["turns_trace"] = extract_turn_details(raw_messages)
+
+                # Tier 1: Captured payload from guarded box
                 if captured and "payload" in captured:
                     model_result["captured_payload"] = captured["payload"]
                     model_result["success"] = True
-                elif model_result["final_text"]:
+                else:
+                    # Tier 2: Check turns_trace for submit_fundamental_brief call
+                    for t in model_result.get("turns_trace", []):
+                        for tc in t.get("tool_calls", []):
+                            if tc.get("name") == "submit_fundamental_brief" and tc.get("input"):
+                                model_result["captured_payload"] = tc["input"]
+                                model_result["success"] = True
+                                print(
+                                    "      [CAPTURED from turn trace] Captured submit_fundamental_brief call from turn trace!"
+                                )
+                                break
+                        if model_result["captured_payload"]:
+                            break
+
+                # Tier 3 & 4: Fallback to final text heuristic if still not captured
+                if not model_result["captured_payload"] and model_result["final_text"]:
                     from monika.application.analysis.stages.fundamental_stage_recovery import (
                         recover_fundamental_brief_from_text,
                     )
@@ -571,10 +581,6 @@ async def main():
                         model_result["success"] = True
                         model_result["recovered_via_heuristic"] = True
                         print("      [RECOVERED] Brief recovered from final text via heuristic extraction!")
-
-                # Extract turn-by-turn trace
-                raw_messages = result.get("context_messages", [])
-                model_result["turns_trace"] = extract_turn_details(raw_messages)
 
                 print(
                     f"      [OK] Finished in {elapsed:.1f}s | Turns: {model_result['turns']} | In/Out/Think: {model_result['input_tokens']}/{model_result['output_tokens']}/{model_result['thinking_tokens']}"

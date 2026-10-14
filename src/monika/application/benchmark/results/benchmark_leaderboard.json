@@ -1,0 +1,773 @@
+[
+  {
+    "name": "kimi-k3",
+    "display_name": "Kimi k3 (max)",
+    "composite_score": 91.6,
+    "stage1_score": 97.0,
+    "stage2_score": 88.0,
+    "stage1_eval": {
+      "grounding_score": 30.0,
+      "invalidation_score": 25.0,
+      "priced_in_score": 25.0,
+      "efficiency_score": 17.0,
+      "total_score": 97.0,
+      "breakdown": {
+        "grounding": {
+          "points": 30.0,
+          "checks": {
+            "cites_dxy": true,
+            "cites_nfp_labor": true,
+            "cites_treasury_yields": true,
+            "cites_vix_sentiment": true,
+            "cites_fedwatch_rates": true,
+            "cites_energy_geopolitics": true
+          }
+        },
+        "invalidation": {
+          "points": 25.0,
+          "valid_invalidation_count": 7,
+          "total_required": 7
+        },
+        "priced_in_and_counter": {
+          "points": 25.0,
+          "has_dominant_driver": true,
+          "has_valid_score": true,
+          "counter_thesis_length": 566
+        },
+        "efficiency": {
+          "points": 17.0,
+          "latency_s": 43.74,
+          "latency_points": 10.0,
+          "total_tokens": 33601
+        }
+      }
+    },
+    "stage2_eval": {
+      "risk_math_score": 35.0,
+      "structural_grounding_score": 15.0,
+      "decision_discipline_score": 20.0,
+      "execution_sizing_score": 18.0,
+      "total_score": 88.0,
+      "breakdown": {
+        "risk_and_math": {
+          "points": 35.0,
+          "details": {
+            "decision": "sell",
+            "sl_tp_correct_side": true,
+            "rr_ratio": 1.67,
+            "adr_sanity": true
+          }
+        },
+        "structural_grounding": {
+          "points": 15.0,
+          "confluence_score": 14,
+          "matched_concepts": [
+            "fvg",
+            "liquidity",
+            "swing",
+            "ema",
+            "premium"
+          ]
+        },
+        "decision_discipline": {
+          "points": 20.0,
+          "has_invalidation_level": true,
+          "has_reevaluation_trigger": true
+        },
+        "execution_and_sizing": {
+          "points": 18.0,
+          "latency_s": 54.3,
+          "suggested_lots": null
+        }
+      }
+    },
+    "decision_s2": "sell",
+    "total_latency_s": 98.0,
+    "total_cost_usd": 0.4984,
+    "rank": 1
+  },
+  {
+    "name": "deepseek-v4.1-flash",
+    "display_name": "DeepSeek v4.1 Flash (max)",
+    "composite_score": 91.6,
+    "stage1_score": 97.0,
+    "stage2_score": 88.0,
+    "stage1_eval": {
+      "grounding_score": 30.0,
+      "invalidation_score": 25.0,
+      "priced_in_score": 25.0,
+      "efficiency_score": 17.0,
+      "total_score": 97.0,
+      "breakdown": {
+        "grounding": {
+          "points": 30.0,
+          "checks": {
+            "cites_dxy": true,
+            "cites_nfp_labor": true,
+            "cites_treasury_yields": true,
+            "cites_vix_sentiment": true,
+            "cites_fedwatch_rates": true,
+            "cites_energy_geopolitics": true
+          }
+        },
+        "invalidation": {
+          "points": 25.0,
+          "valid_invalidation_count": 6,
+          "total_required": 6
+        },
+        "priced_in_and_counter": {
+          "points": 25.0,
+          "has_dominant_driver": true,
+          "has_valid_score": true,
+          "counter_thesis_length": 320
+        },
+        "efficiency": {
+          "points": 17.0,
+          "latency_s": 40.83,
+          "latency_points": 10.0,
+          "total_tokens": 45328
+        }
+      }
+    },
+    "stage2_eval": {
+      "risk_math_score": 35.0,
+      "structural_grounding_score": 15.0,
+      "decision_discipline_score": 20.0,
+      "execution_sizing_score": 18.0,
+      "total_score": 88.0,
+      "breakdown": {
+        "risk_and_math": {
+          "points": 35.0,
+          "details": {
+            "decision": "sell",
+            "sl_tp_correct_side": true,
+            "rr_ratio": 1.5,
+            "adr_sanity": true
+          }
+        },
+        "structural_grounding": {
+          "points": 15.0,
+          "confluence_score": 13,
+          "matched_concepts": [
+            "fvg",
+            "ema",
+            "premium"
+          ]
+        },
+        "decision_discipline": {
+          "points": 20.0,
+          "has_invalidation_level": true,
+          "has_reevaluation_trigger": true
+        },
+        "execution_and_sizing": {
+          "points": 18.0,
+          "latency_s": 60.6,
+          "suggested_lots": null
+        }
+      }
+    },
+    "decision_s2": "sell",
+    "total_latency_s": 101.4,
+    "total_cost_usd": 0.0874,
+    "rank": 2
+  },
+  {
+    "name": "glm-5.3-flash",
+    "display_name": "GLM-5.3 Flash (max)",
+    "composite_score": 90.8,
+    "stage1_score": 96.2,
+    "stage2_score": 87.2,
+    "stage1_eval": {
+      "grounding_score": 30.0,
+      "invalidation_score": 25.0,
+      "priced_in_score": 25.0,
+      "efficiency_score": 16.2,
+      "total_score": 96.2,
+      "breakdown": {
+        "grounding": {
+          "points": 30.0,
+          "checks": {
+            "cites_dxy": true,
+            "cites_nfp_labor": true,
+            "cites_treasury_yields": true,
+            "cites_vix_sentiment": true,
+            "cites_fedwatch_rates": true,
+            "cites_energy_geopolitics": true
+          }
+        },
+        "invalidation": {
+          "points": 25.0,
+          "valid_invalidation_count": 7,
+          "total_required": 7
+        },
+        "priced_in_and_counter": {
+          "points": 25.0,
+          "has_dominant_driver": true,
+          "has_valid_score": true,
+          "counter_thesis_length": 1161
+        },
+        "efficiency": {
+          "points": 16.2,
+          "latency_s": 102.82,
+          "latency_points": 9.2,
+          "total_tokens": 36887
+        }
+      }
+    },
+    "stage2_eval": {
+      "risk_math_score": 35.0,
+      "structural_grounding_score": 15.0,
+      "decision_discipline_score": 20.0,
+      "execution_sizing_score": 17.2,
+      "total_score": 87.2,
+      "breakdown": {
+        "risk_and_math": {
+          "points": 35.0,
+          "details": {
+            "decision": "sell",
+            "sl_tp_correct_side": true,
+            "rr_ratio": 1.5,
+            "adr_sanity": true
+          }
+        },
+        "structural_grounding": {
+          "points": 15.0,
+          "confluence_score": 13,
+          "matched_concepts": [
+            "fvg",
+            "liquidity",
+            "swing",
+            "ema",
+            "bos",
+            "choch"
+          ]
+        },
+        "decision_discipline": {
+          "points": 20.0,
+          "has_invalidation_level": true,
+          "has_reevaluation_trigger": true
+        },
+        "execution_and_sizing": {
+          "points": 17.2,
+          "latency_s": 104.73,
+          "suggested_lots": null
+        }
+      }
+    },
+    "decision_s2": "sell",
+    "total_latency_s": 207.6,
+    "total_cost_usd": 0.0304,
+    "rank": 3
+  },
+  {
+    "name": "gemini-4-argon",
+    "display_name": "Gemini 4 Argon (high)",
+    "composite_score": 89.8,
+    "stage1_score": 92.4,
+    "stage2_score": 88.0,
+    "stage1_eval": {
+      "grounding_score": 30.0,
+      "invalidation_score": 25.0,
+      "priced_in_score": 25.0,
+      "efficiency_score": 12.4,
+      "total_score": 92.4,
+      "breakdown": {
+        "grounding": {
+          "points": 30.0,
+          "checks": {
+            "cites_dxy": true,
+            "cites_nfp_labor": true,
+            "cites_treasury_yields": true,
+            "cites_vix_sentiment": true,
+            "cites_fedwatch_rates": true,
+            "cites_energy_geopolitics": true
+          }
+        },
+        "invalidation": {
+          "points": 25.0,
+          "valid_invalidation_count": 8,
+          "total_required": 8
+        },
+        "priced_in_and_counter": {
+          "points": 25.0,
+          "has_dominant_driver": true,
+          "has_valid_score": true,
+          "counter_thesis_length": 302
+        },
+        "efficiency": {
+          "points": 12.4,
+          "latency_s": 147.56,
+          "latency_points": 8.4,
+          "total_tokens": 50748
+        }
+      }
+    },
+    "stage2_eval": {
+      "risk_math_score": 35.0,
+      "structural_grounding_score": 15.0,
+      "decision_discipline_score": 20.0,
+      "execution_sizing_score": 18.0,
+      "total_score": 88.0,
+      "breakdown": {
+        "risk_and_math": {
+          "points": 35.0,
+          "details": {
+            "decision": "sell",
+            "sl_tp_correct_side": true,
+            "rr_ratio": 1.46,
+            "adr_sanity": true
+          }
+        },
+        "structural_grounding": {
+          "points": 15.0,
+          "confluence_score": 12,
+          "matched_concepts": [
+            "fvg",
+            "liquidity",
+            "swing",
+            "bos",
+            "choch"
+          ]
+        },
+        "decision_discipline": {
+          "points": 20.0,
+          "has_invalidation_level": true,
+          "has_reevaluation_trigger": true
+        },
+        "execution_and_sizing": {
+          "points": 18.0,
+          "latency_s": 54.4,
+          "suggested_lots": null
+        }
+      }
+    },
+    "decision_s2": "sell",
+    "total_latency_s": 202.0,
+    "total_cost_usd": 0.5594,
+    "rank": 4
+  },
+  {
+    "name": "gemini-3.8-flash",
+    "display_name": "Gemini 3.8 Flash (high)",
+    "composite_score": 83.3,
+    "stage1_score": 76.5,
+    "stage2_score": 87.8,
+    "stage1_eval": {
+      "grounding_score": 20.0,
+      "invalidation_score": 25.0,
+      "priced_in_score": 19.0,
+      "efficiency_score": 12.5,
+      "total_score": 76.5,
+      "breakdown": {
+        "grounding": {
+          "points": 20.0,
+          "checks": {
+            "cites_dxy": true,
+            "cites_nfp_labor": false,
+            "cites_treasury_yields": true,
+            "cites_vix_sentiment": true,
+            "cites_fedwatch_rates": true,
+            "cites_energy_geopolitics": false
+          }
+        },
+        "invalidation": {
+          "points": 25.0,
+          "valid_invalidation_count": 5,
+          "total_required": 5
+        },
+        "priced_in_and_counter": {
+          "points": 19.0,
+          "has_dominant_driver": true,
+          "has_valid_score": true,
+          "counter_thesis_length": 154
+        },
+        "efficiency": {
+          "points": 12.5,
+          "latency_s": 141.63,
+          "latency_points": 8.5,
+          "total_tokens": 52884
+        }
+      }
+    },
+    "stage2_eval": {
+      "risk_math_score": 35.0,
+      "structural_grounding_score": 15.0,
+      "decision_discipline_score": 20.0,
+      "execution_sizing_score": 17.8,
+      "total_score": 87.8,
+      "breakdown": {
+        "risk_and_math": {
+          "points": 35.0,
+          "details": {
+            "decision": "sell",
+            "sl_tp_correct_side": true,
+            "rr_ratio": 1.5,
+            "adr_sanity": true
+          }
+        },
+        "structural_grounding": {
+          "points": 15.0,
+          "confluence_score": 12,
+          "matched_concepts": [
+            "ob",
+            "fvg",
+            "liquidity",
+            "swing",
+            "bos",
+            "choch"
+          ]
+        },
+        "decision_discipline": {
+          "points": 20.0,
+          "has_invalidation_level": true,
+          "has_reevaluation_trigger": true
+        },
+        "execution_and_sizing": {
+          "points": 17.8,
+          "latency_s": 69.36,
+          "suggested_lots": null
+        }
+      }
+    },
+    "decision_s2": "sell",
+    "total_latency_s": 211.0,
+    "total_cost_usd": 0.4937,
+    "rank": 5
+  },
+  {
+    "name": "gpt-6.1-sol",
+    "display_name": "GPT-6.1 Sol (high)",
+    "composite_score": 82.8,
+    "stage1_score": 59.2,
+    "stage2_score": 98.6,
+    "stage1_eval": {
+      "grounding_score": 25.0,
+      "invalidation_score": 0.0,
+      "priced_in_score": 19.0,
+      "efficiency_score": 15.2,
+      "total_score": 59.2,
+      "breakdown": {
+        "grounding": {
+          "points": 25.0,
+          "checks": {
+            "cites_dxy": true,
+            "cites_nfp_labor": false,
+            "cites_treasury_yields": true,
+            "cites_vix_sentiment": true,
+            "cites_fedwatch_rates": true,
+            "cites_energy_geopolitics": true
+          }
+        },
+        "invalidation": {
+          "points": 0.0,
+          "valid_invalidation_count": 0,
+          "total_required": 1
+        },
+        "priced_in_and_counter": {
+          "points": 19.0,
+          "has_dominant_driver": true,
+          "has_valid_score": true,
+          "counter_thesis_length": 362
+        },
+        "efficiency": {
+          "points": 15.2,
+          "latency_s": 155.63,
+          "latency_points": 8.2,
+          "total_tokens": 41403
+        }
+      }
+    },
+    "stage2_eval": {
+      "risk_math_score": 35.0,
+      "structural_grounding_score": 25.0,
+      "decision_discipline_score": 20.0,
+      "execution_sizing_score": 18.6,
+      "total_score": 98.6,
+      "breakdown": {
+        "risk_and_math": {
+          "points": 35.0,
+          "details": {
+            "decision": "wait",
+            "wait_substantive": true,
+            "wait_cites_risk": true
+          }
+        },
+        "structural_grounding": {
+          "points": 25.0,
+          "confluence_score": 6,
+          "matched_concepts": [
+            "ob",
+            "fvg",
+            "ema"
+          ]
+        },
+        "decision_discipline": {
+          "points": 20.0,
+          "has_invalidation_level": true,
+          "has_reevaluation_trigger": true
+        },
+        "execution_and_sizing": {
+          "points": 18.6,
+          "latency_s": 134.29,
+          "suggested_lots": null
+        }
+      }
+    },
+    "decision_s2": "wait",
+    "total_latency_s": 289.9,
+    "total_cost_usd": 0.41,
+    "rank": 6
+  },
+  {
+    "name": "muse-spark-1.3",
+    "display_name": "Muse Spark 1.3 (max)",
+    "composite_score": 77.0,
+    "stage1_score": 95.0,
+    "stage2_score": 65.0,
+    "stage1_eval": {
+      "grounding_score": 30.0,
+      "invalidation_score": 25.0,
+      "priced_in_score": 25.0,
+      "efficiency_score": 15.0,
+      "total_score": 95.0,
+      "breakdown": {
+        "grounding": {
+          "points": 30.0,
+          "checks": {
+            "cites_dxy": true,
+            "cites_nfp_labor": true,
+            "cites_treasury_yields": true,
+            "cites_vix_sentiment": true,
+            "cites_fedwatch_rates": true,
+            "cites_energy_geopolitics": true
+          }
+        },
+        "invalidation": {
+          "points": 25.0,
+          "valid_invalidation_count": 8,
+          "total_required": 8
+        },
+        "priced_in_and_counter": {
+          "points": 25.0,
+          "has_dominant_driver": true,
+          "has_valid_score": true,
+          "counter_thesis_length": 371
+        },
+        "efficiency": {
+          "points": 15.0,
+          "latency_s": 168.56,
+          "latency_points": 8.0,
+          "total_tokens": 34708
+        }
+      }
+    },
+    "stage2_eval": {
+      "risk_math_score": 35.0,
+      "structural_grounding_score": 10.0,
+      "decision_discipline_score": 0.0,
+      "execution_sizing_score": 20.0,
+      "total_score": 65.0,
+      "breakdown": {
+        "risk_and_math": {
+          "points": 35.0,
+          "details": {
+            "decision": "wait",
+            "wait_substantive": true,
+            "wait_cites_risk": true
+          }
+        },
+        "structural_grounding": {
+          "points": 10.0,
+          "confluence_score": null,
+          "matched_concepts": [
+            "ob",
+            "fvg"
+          ]
+        },
+        "decision_discipline": {
+          "points": 0.0,
+          "has_invalidation_level": false,
+          "has_reevaluation_trigger": false
+        },
+        "execution_and_sizing": {
+          "points": 20.0,
+          "latency_s": 38.59,
+          "suggested_lots": null
+        }
+      }
+    },
+    "decision_s2": "wait",
+    "total_latency_s": 207.2,
+    "total_cost_usd": 0.1671,
+    "rank": 7
+  },
+  {
+    "name": "deepseek-v4-pro",
+    "display_name": "DeepSeek v4 Pro (max)",
+    "composite_score": 65.0,
+    "stage1_score": 89.3,
+    "stage2_score": 48.8,
+    "stage1_eval": {
+      "grounding_score": 30.0,
+      "invalidation_score": 25.0,
+      "priced_in_score": 25.0,
+      "efficiency_score": 9.3,
+      "total_score": 89.3,
+      "breakdown": {
+        "grounding": {
+          "points": 30.0,
+          "checks": {
+            "cites_dxy": true,
+            "cites_nfp_labor": true,
+            "cites_treasury_yields": true,
+            "cites_vix_sentiment": true,
+            "cites_fedwatch_rates": true,
+            "cites_energy_geopolitics": true
+          }
+        },
+        "invalidation": {
+          "points": 25.0,
+          "valid_invalidation_count": 7,
+          "total_required": 7
+        },
+        "priced_in_and_counter": {
+          "points": 25.0,
+          "has_dominant_driver": true,
+          "has_valid_score": true,
+          "counter_thesis_length": 539
+        },
+        "efficiency": {
+          "points": 9.3,
+          "latency_s": 312.76,
+          "latency_points": 5.3,
+          "total_tokens": 67300
+        }
+      }
+    },
+    "stage2_eval": {
+      "risk_math_score": 0.0,
+      "structural_grounding_score": 15.0,
+      "decision_discipline_score": 20.0,
+      "execution_sizing_score": 13.8,
+      "total_score": 48.8,
+      "breakdown": {
+        "risk_and_math": {
+          "points": 0.0,
+          "details": {
+            "decision": "sell",
+            "missing_prices": true
+          }
+        },
+        "structural_grounding": {
+          "points": 15.0,
+          "confluence_score": 14,
+          "matched_concepts": [
+            "fvg",
+            "liquidity",
+            "swing"
+          ]
+        },
+        "decision_discipline": {
+          "points": 20.0,
+          "has_invalidation_level": true,
+          "has_reevaluation_trigger": true
+        },
+        "execution_and_sizing": {
+          "points": 13.8,
+          "latency_s": 286.58,
+          "suggested_lots": null
+        }
+      }
+    },
+    "decision_s2": "sell",
+    "total_latency_s": 599.3,
+    "total_cost_usd": 0.1933,
+    "rank": 8
+  },
+  {
+    "name": "glm-5.3",
+    "display_name": "GLM-5.3 (max)",
+    "composite_score": 60.0,
+    "stage1_score": 85.4,
+    "stage2_score": 43.0,
+    "stage1_eval": {
+      "grounding_score": 30.0,
+      "invalidation_score": 25.0,
+      "priced_in_score": 25.0,
+      "efficiency_score": 5.4,
+      "total_score": 85.4,
+      "breakdown": {
+        "grounding": {
+          "points": 30.0,
+          "checks": {
+            "cites_dxy": true,
+            "cites_nfp_labor": true,
+            "cites_treasury_yields": true,
+            "cites_vix_sentiment": true,
+            "cites_fedwatch_rates": true,
+            "cites_energy_geopolitics": true
+          }
+        },
+        "invalidation": {
+          "points": 25.0,
+          "valid_invalidation_count": 7,
+          "total_required": 7
+        },
+        "priced_in_and_counter": {
+          "points": 25.0,
+          "has_dominant_driver": true,
+          "has_valid_score": true,
+          "counter_thesis_length": 545
+        },
+        "efficiency": {
+          "points": 5.4,
+          "latency_s": 522.94,
+          "latency_points": 1.4,
+          "total_tokens": 127058
+        }
+      }
+    },
+    "stage2_eval": {
+      "risk_math_score": 0.0,
+      "structural_grounding_score": 15.0,
+      "decision_discipline_score": 20.0,
+      "execution_sizing_score": 8.0,
+      "total_score": 43.0,
+      "breakdown": {
+        "risk_and_math": {
+          "points": 0.0,
+          "details": {
+            "decision": "sell",
+            "missing_prices": true
+          }
+        },
+        "structural_grounding": {
+          "points": 15.0,
+          "confluence_score": 13,
+          "matched_concepts": [
+            "fvg",
+            "liquidity",
+            "swing",
+            "ema",
+            "bos",
+            "choch"
+          ]
+        },
+        "decision_discipline": {
+          "points": 20.0,
+          "has_invalidation_level": true,
+          "has_reevaluation_trigger": true
+        },
+        "execution_and_sizing": {
+          "points": 8.0,
+          "latency_s": 749.84,
+          "suggested_lots": null
+        }
+      }
+    },
+    "decision_s2": "sell",
+    "total_latency_s": 1272.8,
+    "total_cost_usd": 0.3936,
+    "rank": 9
+  }
+]

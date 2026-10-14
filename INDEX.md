@@ -5050,6 +5050,7 @@
   - `repair_tool_name(raw_name: str) -> str`: Auto-repair hallucinated, aliased, or namespaced tool names.
   - `repair_tool_arguments(args: Any) -> Dict[str, Any]`: Repair corrupted JSON arguments (trailing commas, python constants, single quotes, XML tags).
   - `coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]) -> Dict[str, Any]`: Coerce stringified primitives, arrays, objects, and enums in tool arguments to match expected JSON schema types.
+  - `deep_repair_tool_arguments(tool_name: str, args: Dict[str, Any], schema: Dict[str, Any], ...) -> bool`: Attempt intelligent, self-healing repair of tool arguments when jsonschema.validate() fails.
 
 #### `trade_stop_gates.py` - *Trade Stop Gates for Trading Agent Harness.*
 - **Path**: [`src/monika/application/agent/harness/trade_stop_gates.py`](src/monika/application/agent/harness/trade_stop_gates.py)
@@ -12248,6 +12249,7 @@
     - `async run_tool_agent(messages: list, tools: list, system_prompt: Any)`
     - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict`
 - **Top-Level Functions**:
+  - `sanitize_tool_parameters_schema(schema_dict: Any) -> Any`: Sanitize JSON Schema for OpenAI / OpenRouter function calling parameters.
   - `make_openai_strict_schema(schema_dict: dict) -> dict`: Transforms standard Pydantic JSON schema into OpenAI strict: true compliant schema.
 
 #### `openrouter_provider.py` - *OpenRouterProvider — Provider untuk model OpenRouter via OpenAI-compatible API.*

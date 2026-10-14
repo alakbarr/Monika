@@ -75,6 +75,8 @@ OPENROUTER_MODEL_ALIASES = {
     "z-ai/glm-5.1": "z-ai/glm-5.1",
     "z-ai/glm-5": "z-ai/glm-5",
     # --- Google Pro/Preview (OpenRouter routing) ---
+    "gemini-4-argon": "google/gemini-4-argon",
+    "google/gemini-4-argon": "google/gemini-4-argon",
     "gemini-3.1-pro-preview": "google/gemini-3.1-pro-preview",
     "gemini-2.5-pro": "google/gemini-3.8-flash",
     "gemini-2.5-flash": "google/gemini-3.5-flash",

@@ -29,17 +29,35 @@ if sys.stdout.encoding != "utf-8":
     except Exception:
         pass
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from monika.core.config.settings import load_all_config
 from monika.infrastructure.database.db import init_db, get_session
 from monika.application.benchmark.task_specs import _stage2_system_prompt
 from monika.application.benchmark.fixture_loader import get_synthetic_stage2_bundle
-from monika.application.analysis.tools.tools_definitions import STAGE2_FROZEN_TOOLS, minify_tool_definitions
+from monika.application.analysis.tools.tools_definitions import PER_ASSET_ANALYSIS_TOOLS, minify_tool_definitions
 from monika.application.benchmark.db_access import guarded_tool_executor
 from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
 from monika.core.analytics.pricing import cost_usd
 
-# Evaluated models (Claude Opus 5.5 and Grok 4.6 explicitly excluded)
+# Evaluated models
 MODELS_TO_BENCHMARK = [
+    {
+        "name": "deepseek-v4.1-flash",
+        "display_name": "DeepSeek v4.1 Flash (max)",
+        "model_id": "deepseek/deepseek-v4.1-flash",
+        "thinking_level": "max",
+        "max_tokens": 32768,
+    },
+    {
+        "name": "gemini-4-argon",
+        "display_name": "Gemini 4 Argon (high)",
+        "model_id": "google/gemini-4-argon",
+        "thinking_level": "high",
+        "max_tokens": 16384,
+    },
     {
         "name": "gpt-6.1-sol",
         "display_name": "GPT-6.1 Sol (high)",
@@ -49,29 +67,8 @@ MODELS_TO_BENCHMARK = [
     },
     {
         "name": "muse-spark-1.3",
-        "display_name": "Muse Spark 1.3 (xhigh)",
+        "display_name": "Muse Spark 1.3 (max)",
         "model_id": "meta/muse-spark-1.3",
-        "thinking_level": "xhigh",
-        "max_tokens": 24576,
-    },
-    {
-        "name": "mimo-v2.6-pro",
-        "display_name": "MiMo v2.6 Pro (max)",
-        "model_id": "xiaomi/mimo-v2.6-pro",
-        "thinking_level": "max",
-        "max_tokens": 32768,
-    },
-    {
-        "name": "deepseek-v4-pro",
-        "display_name": "DeepSeek v4 Pro (max)",
-        "model_id": "deepseek/deepseek-v4-pro",
-        "thinking_level": "max",
-        "max_tokens": 32768,
-    },
-    {
-        "name": "kimi-k3",
-        "display_name": "Kimi k3 (max)",
-        "model_id": "moonshotai/kimi-k3",
         "thinking_level": "max",
         "max_tokens": 32768,
     },
@@ -83,9 +80,9 @@ MODELS_TO_BENCHMARK = [
         "max_tokens": 16384,
     },
     {
-        "name": "deepseek-v4.1-flash",
-        "display_name": "DeepSeek v4.1 Flash (max)",
-        "model_id": "deepseek/deepseek-v4.1-flash",
+        "name": "kimi-k3",
+        "display_name": "Kimi k3 (max)",
+        "model_id": "moonshotai/kimi-k3",
         "thinking_level": "max",
         "max_tokens": 32768,
     },
@@ -93,6 +90,13 @@ MODELS_TO_BENCHMARK = [
         "name": "glm-5.3",
         "display_name": "GLM-5.3 (max)",
         "model_id": "z-ai/glm-5.3",
+        "thinking_level": "max",
+        "max_tokens": 32768,
+    },
+    {
+        "name": "deepseek-v4-pro",
+        "display_name": "DeepSeek v4 Pro (max)",
+        "model_id": "deepseek/deepseek-v4-pro",
         "thinking_level": "max",
         "max_tokens": 32768,
     },
@@ -285,7 +289,7 @@ def generate_markdown_report(benchmark_data: Dict[str, Any]) -> str:
 
     md.append("<details>")
     md.append(
-        "<summary><b>🛠️ Available Tool Definitions Schema (STAGE2_FROZEN_TOOLS Minified) — Klik untuk membuka</b></summary>\n"
+        "<summary><b>🛠️ Available Tool Definitions Schema (PER_ASSET_ANALYSIS_TOOLS Minified) — Klik untuk membuka</b></summary>\n"
     )
     md.append("```json")
     md.append(json.dumps(input_data.get("tool_schemas", []), indent=2))
@@ -420,7 +424,7 @@ async def main():
 
     system_prompt = _stage2_system_prompt(settings, symbol, cot_code, threshold)
     bundle_text, raw_bundle = get_synthetic_stage2_bundle(symbol)
-    minified_stage2_tools = minify_tool_definitions(STAGE2_FROZEN_TOOLS)
+    minified_stage2_tools = minify_tool_definitions(PER_ASSET_ANALYSIS_TOOLS)
 
     simulation_directive = (
         "[BENCHMARK SIMULATION CONTEXT & TEMPORAL ANCHOR]\n"
@@ -430,9 +434,10 @@ async def main():
         "Do NOT evaluate data against real-world wall-clock dates or reject data as stale.\n"
         "Analyze EURUSD using the pre-fetched data and reach a decisive conclusion.\n"
         "MANDATORY EXECUTION DIRECTIVES:\n"
+        "- All OHLCV bars, indicators, and SMC structures are ALREADY PRE-FETCHED in the prompt. Do NOT call redundant price history tools.\n"
         "- If your decision is BUY or SELL: You MUST call 'calculate_position_size' first with your proposed entry_price, stop_loss, and direction to verify sizing and register risk evidence in the ledger. Then call 'submit_asset_analysis'.\n"
         "- If your decision is WAIT or AVOID: You can call 'submit_asset_analysis' directly with your rationale.\n"
-        "- Conclude your analysis by calling 'submit_asset_analysis'."
+        "- Conclude your analysis decisively by calling 'submit_asset_analysis'."
     )
     user_prompt = f"{simulation_directive}\n\n{bundle_text}\n\nAnalyze {symbol} using pre-fetched data above, then submit your analysis."
 
@@ -530,7 +535,7 @@ async def main():
                 client = OpenRouterProvider(
                     model=model_id,
                     max_tokens=max_tokens,
-                    max_tool_turns=4,
+                    max_tool_turns=8,
                     thinking_level=thinking_level,
                     settings=settings,
                     temperature=0.0,
@@ -545,7 +550,7 @@ async def main():
                             user_message=user_prompt,
                             tools=minified_stage2_tools,
                             stage_name=f"benchmark_stage2_{symbol}",
-                            max_tool_turns=4,
+                            max_tool_turns=8,
                         )
                         captured = box.get("result")
                 elapsed = time.perf_counter() - t0
