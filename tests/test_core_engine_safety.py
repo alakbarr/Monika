@@ -104,13 +104,25 @@ class TestTimesFMAsyncForwardPass:
 
 
 class TestDynamicMicroSkills:
-    def test_get_dynamic_micro_skills_basic_and_crystallized(self):
+    def test_get_dynamic_micro_skills_basic_and_crystallized(self, tmp_path):
         """Verify dynamic micro-skills resolution including crystallized skills for symbol."""
-        skills = get_dynamic_micro_skills("EURUSD")
-        assert "adjudication_framework" in skills
-        assert "smc_ict_playbook" in skills
-        # eurusd_trend is in skills/crystallized/
-        assert "eurusd_trend" in skills
+        from monika.core.paths import get_skills_dir
+
+        crystallized_dir = get_skills_dir() / "crystallized"
+        crystallized_dir.mkdir(parents=True, exist_ok=True)
+        test_skill = crystallized_dir / "eurusd_trend.md"
+        try:
+            test_skill.write_text(
+                "---\nname: crystallized_eurusd_trend\nsymbol: EURUSD\nstatus: active\n---\n",
+                encoding="utf-8",
+            )
+            skills = get_dynamic_micro_skills("EURUSD")
+            assert "adjudication_framework" in skills
+            assert "smc_ict_playbook" in skills
+            assert "eurusd_trend" in skills
+        finally:
+            if test_skill.exists():
+                test_skill.unlink()
 
     def test_get_dynamic_micro_skills_regime_routing(self, tmp_path):
         """Verify dynamic routing of micro-playbook when regime is passed."""
