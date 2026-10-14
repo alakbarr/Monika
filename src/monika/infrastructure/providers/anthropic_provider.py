@@ -224,6 +224,8 @@ class AnthropicProvider(BaseLLMClient):
             create_kwargs["max_tokens"] = max(safe_max, thinking_budget + 4000)
             create_kwargs["temperature"] = 1.0
             create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
+            if self.thinking_level and str(self.thinking_level).lower() != "none":
+                create_kwargs["output_config"] = {"effort": self.thinking_level}
         else:
             create_kwargs["max_tokens"] = safe_max
             create_kwargs["temperature"] = eff_temp
@@ -307,7 +309,6 @@ class AnthropicProvider(BaseLLMClient):
         "claude-opus-5.5",
         "claude-sonnet-5.5",
         "claude-fable-5.1",
-        "claude-haiku-5.5",
         "claude-sonnet-5",
         "claude-opus-5",
         "claude-opus-4-8",
@@ -371,13 +372,13 @@ class AnthropicProvider(BaseLLMClient):
 
             if use_thinking:
                 budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(self.thinking_level, 4096)
-                create_kwargs["max_tokens"] = max(self.max_tokens, budget + output_headroom)
+                create_kwargs["max_tokens"] = max(eff_tokens, budget + output_headroom)
                 create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
                 create_kwargs["temperature"] = 1.0
                 create_kwargs["tool_choice"] = {"type": "auto"}
                 create_kwargs["messages"][0]["content"] = prompt + TELEGRAPHIC_DIRECTIVE
             else:
-                create_kwargs["max_tokens"] = self.max_tokens
+                create_kwargs["max_tokens"] = eff_tokens
                 create_kwargs["temperature"] = eff_temp
                 create_kwargs["tool_choice"] = {"type": "tool", "name": "emit_structured_response"}
 
@@ -448,7 +449,7 @@ class AnthropicProvider(BaseLLMClient):
                 )
                 retry_kwargs = {
                     "model": self.model,
-                    "max_tokens": self.max_tokens,
+                    "max_tokens": eff_tokens,
                     "temperature": eff_temp,
                     "system": system_prompt or "",
                     "tools": [tool_def],

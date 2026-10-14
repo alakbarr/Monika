@@ -459,7 +459,7 @@ class AgentHarness:
                     try:
                         parsed_args = json.loads(raw_args)
                     except Exception:
-                        parsed_args = {}
+                        parsed_args = repair_tool_arguments(raw_args)
                 else:
                     parsed_args = raw_args or {}
 
@@ -1508,6 +1508,7 @@ class AgentHarness:
                             call_item["_schema_error"] = {
                                 "type": "tool_result",
                                 "tool_use_id": t_id,
+                                "name": t_name,
                                 "content": json.dumps(
                                     {
                                         "status": "schema_validation_error",
@@ -1540,6 +1541,7 @@ class AgentHarness:
                     return {
                         "type": "tool_result",
                         "tool_use_id": c_id,
+                        "name": c_name,
                         "content": json.dumps(
                             {
                                 "status": "superseded",
@@ -1568,6 +1570,7 @@ class AgentHarness:
                         return {
                             "type": "tool_result",
                             "tool_use_id": c_id,
+                            "name": c_name,
                             "content": json.dumps(
                                 {
                                     "status": "read_tools_disabled",

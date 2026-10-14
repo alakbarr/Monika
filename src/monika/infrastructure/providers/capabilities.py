@@ -483,6 +483,35 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         context_window=128000,
         supports_native_thinking=True,
     ),
+    "muse-wonder": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "wonder-full": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
+    # xAI Frontier
+    "grok-4.7": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
+    "grok-4.7-vision": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
     # Moonshot AI Frontier
     "kimi-k3": ModelCapabilities(
         supports_caching=False,

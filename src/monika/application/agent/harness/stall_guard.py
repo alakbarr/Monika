@@ -103,7 +103,7 @@ class StallGuard:
         # Track result hash to catch identical query loops
         if tool_result is not None:
             try:
-                res_str = json.dumps(tool_result, sort_keys=True, default=str)
+                res_str = f"{tool_name}:{json.dumps(tool_result, sort_keys=True, default=str)}"
                 h = hashlib.md5(res_str.encode("utf-8")).hexdigest()
                 self.seen_content_hashes.append(h)
             except Exception:

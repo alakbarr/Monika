@@ -521,6 +521,9 @@ class FallbackClientWrapper(BaseLLMClient):
     Wrapper that tries primary model, and if it fails, tries fallback models.
     """
 
+    _shared_role_slot_cooldowns: dict[str, dict[str, float]] = {}
+    _shared_role_backoff: dict[str, dict[str, int]] = {}
+
     def __init__(
         self, factory: LLMFactory, primary: str, fallbacks: list[str], role_config: dict, task_role: str = "default"
     ):
@@ -532,9 +535,14 @@ class FallbackClientWrapper(BaseLLMClient):
         self.max_cost_per_call = (
             float(role_config["max_cost_per_call"]) if role_config.get("max_cost_per_call") is not None else None
         )
-        self._primary_cooldown_until = None
-        self._slot_cooldowns: dict[str, float] = {}
-        self._slot_backoff_count: dict[str, int] = {}
+        if self.task_role not in self._shared_role_slot_cooldowns:
+            self._shared_role_slot_cooldowns[self.task_role] = {}
+        self._slot_cooldowns: dict[str, float] = self._shared_role_slot_cooldowns[self.task_role]
+
+        if self.task_role not in self._shared_role_backoff:
+            self._shared_role_backoff[self.task_role] = {}
+        self._slot_backoff_count: dict[str, int] = self._shared_role_backoff[self.task_role]
+        self._primary_cooldown_until = self._slot_cooldowns.get("primary")
 
         primary_provider = factory._resolve_provider(primary)
         primary_thinking = factory._resolve_thinking_level(primary, role_config, primary_provider, slot_name="primary")
@@ -573,16 +581,24 @@ class FallbackClientWrapper(BaseLLMClient):
         for s in expired:
             self._slot_cooldowns.pop(s, None)
 
-        if not self._primary_cooldown_until:
-            return False
-        if now >= self._primary_cooldown_until:
+        primary_cd = self._slot_cooldowns.get("primary")
+        if primary_cd is None and self._primary_cooldown_until is not None:
+            if now >= self._primary_cooldown_until:
+                self._primary_cooldown_until = None
+                self.model = self.primary
+                return True
+        elif primary_cd is not None and now >= primary_cd:
             logger.info(
                 f"[{self.task_role}][FallbackClientWrapper] Primary model '{self.primary}' "
                 f"cooldown expired — restoring to primary."
             )
+            self._slot_cooldowns.pop("primary", None)
             self._primary_cooldown_until = None
             self.model = self.primary
             return True
+        elif primary_cd is not None:
+            self._primary_cooldown_until = primary_cd
+            return False
         return False
 
     def set_thinking_budget(self, budget: int) -> None:
@@ -829,16 +845,28 @@ class FallbackClientWrapper(BaseLLMClient):
                     call_coro: Any = method(*safe_args, **safe_kwargs)
                     result = await asyncio.wait_for(call_coro, timeout=per_model_timeout)
 
-                    if method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages"]:
+                    if method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages", "run_tool_agent"]:
                         if isinstance(result, dict) and result.get("success") is False:
                             # Treat as failure if the agent loop failed completely
                             last_failed_dict = result
                             last_error = result.get("error", "Unknown error in agent loop")
                             logger.warning(f"Model {model} ({slot_name}) failed in {method_name}: {last_error}")
+                            cnt = self._slot_backoff_count.get(slot_name, 0)
+                            cd_duration = min(60.0 * (2**cnt), 1800.0)
+                            self._slot_cooldowns[slot_name] = time.time() + cd_duration
+                            self._slot_backoff_count[slot_name] = cnt + 1
+                            if slot_name == "primary":
+                                self._primary_cooldown_until = self._slot_cooldowns[slot_name]
                             break
 
                     if result is None and method_name in ["generate", "classify_json", "generate_content"]:
                         logger.warning(f"Model {model} ({slot_name}) returned None in {method_name}")
+                        cnt = self._slot_backoff_count.get(slot_name, 0)
+                        cd_duration = min(60.0 * (2**cnt), 1800.0)
+                        self._slot_cooldowns[slot_name] = time.time() + cd_duration
+                        self._slot_backoff_count[slot_name] = cnt + 1
+                        if slot_name == "primary":
+                            self._primary_cooldown_until = self._slot_cooldowns[slot_name]
                         break
 
                     # Normalize metadata when fallback generative LLM answers a Jev-intended task
@@ -977,13 +1005,19 @@ class FallbackClientWrapper(BaseLLMClient):
                         f"reason={reason.value}, detail={detail}, type={type(e).__name__}"
                     )
 
-                    # Strategy 1: Compress — don't failover
+                    # Strategy 1: Compress — don't failover for agent loops, but failover for single-turn calls
                     if reason.should_compress:
-                        logger.info(
-                            f"[{self.task_role}] {reason.value} — "
-                            f"propagating for upstream compaction (not failing over)"
-                        )
-                        raise  # Let agent_harness.py C2 handle compression
+                        if method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages", "run_tool_agent"]:
+                            logger.info(
+                                f"[{self.task_role}] {reason.value} — "
+                                f"propagating for upstream compaction (not failing over)"
+                            )
+                            raise  # Let agent_harness.py C2 handle compression
+                        else:
+                            logger.info(
+                                f"[{self.task_role}] {reason.value} in single-turn {method_name} — "
+                                f"failing over to next fallback candidate."
+                            )
 
                     # Strategy 1b: Completion ceiling exceeded — clamp max_tokens and retry same slot in-place
                     if reason.is_completion_ceiling:

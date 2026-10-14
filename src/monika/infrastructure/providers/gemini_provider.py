@@ -64,6 +64,12 @@ def _sanitize_schema_for_gemini(schema: dict) -> dict:
     if not isinstance(schema, dict):
         return schema
 
+    from monika.application.analysis.schemas.schemas import _inline_refs
+
+    schema = _inline_refs(schema)
+    if not isinstance(schema, dict):
+        return schema
+
     sanitized = {}
     for k, v in schema.items():
         if k == "additionalProperties":
@@ -370,17 +376,27 @@ class GeminiProvider(BaseLLMClient):
                 self.resolved_thinking_level = "LOW"
             self.thinking_level = self.resolved_thinking_level.lower()
 
-    def _build_thinking_config(self) -> dict:
+    def _build_thinking_config(self) -> Optional[dict]:
         """
         Builds model-compatible thinkingConfig for Google Gemini API.
         - Gemini 2.5 series models use 'thinkingBudget' (integer).
-        - Gemini 3.x / Flash series models use 'thinkingLevel' (Enum: LOW/MEDIUM/HIGH/MINIMAL).
+        - Gemini 3.x / 4.x (Argon) series models use 'thinkingLevel' (Enum: LOW/MEDIUM/HIGH/MINIMAL).
+        - Legacy models (1.5/2.0) omit thinkingConfig to avoid 400 Bad Request.
         """
-        model_name = str(self.model).lower()
-        if "2.5" in model_name:
-            if self.thinking_level and str(self.thinking_level).lower() == "none":
+        resolved = str(getattr(self, "resolved_model", None) or self.model).lower()
+        is_thinking_off = str(self.thinking_level or "none").lower() in ("none", "off")
+
+        # Models with native thinking support: 2.5, 3.x, 4.x, argon
+        if not any(k in resolved for k in ("2.5", "3.", "3-", "4.", "4-", "argon")):
+            return None
+
+        if "2.5" in resolved:
+            if is_thinking_off:
                 return {"thinkingBudget": 0}
             return {"thinkingBudget": max(0, self.thinking_budget or 0)}
+
+        if is_thinking_off:
+            return {"thinkingLevel": "MINIMAL"}
         return {"thinkingLevel": self.resolved_thinking_level}
 
     async def generate(
@@ -439,9 +455,11 @@ class GeminiProvider(BaseLLMClient):
             "generationConfig": {
                 "maxOutputTokens": eff_max_tokens,
                 "temperature": eff_temp,
-                "thinkingConfig": self._build_thinking_config(),
             },
         }
+        thinking_cfg = self._build_thinking_config()
+        if thinking_cfg is not None:
+            payload["generationConfig"]["thinkingConfig"] = thinking_cfg
 
         if flat_sys:
             payload["systemInstruction"] = {"parts": [{"text": flat_sys}]}
@@ -878,9 +896,11 @@ class GeminiProvider(BaseLLMClient):
             "generationConfig": {
                 "temperature": self.default_temperature,
                 "maxOutputTokens": eff_max_tokens,
-                "thinkingConfig": self._build_thinking_config(),
             },
         }
+        thinking_cfg = self._build_thinking_config()
+        if thinking_cfg is not None:
+            payload["generationConfig"]["thinkingConfig"] = thinking_cfg
         if flat_sys:
             from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 

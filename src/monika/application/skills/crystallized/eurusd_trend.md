@@ -20,7 +20,8 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 - Baseline Conviction: 88% (n=5)
 
 ## Core Tactical Directives
-- <MagicMock name='mock.chat.completions.create().choices.__getitem__().message.content' id='2322507262880'>
+- Align execution strictly with H4 market structure and key institutional liquidity pools.
+- Target internal liquidity sweeps during London/New York session overlap with verified FVGs.
 
 ## Execution Invariants
 - Minimum Confluence Score: 7.5 / 14.0

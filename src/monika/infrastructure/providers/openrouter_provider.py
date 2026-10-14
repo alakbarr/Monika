@@ -414,21 +414,21 @@ class OpenRouterProvider(OpenAIProvider):
 
     def _apply_provider_routing(self, kwargs: dict) -> None:
         """Injects OpenRouter provider routing configuration for lowest latency, session affinity, and parameter safety."""
-        require_params = bool(
-            (self.settings or {})
-            .get("llm", {})
-            .get("providers", {})
-            .get("openrouter", {})
-            .get("require_parameters", False)
-        )
+        or_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("openrouter", {})
+        require_params = bool(or_cfg.get("require_parameters", False))
+        sort_pref = str(or_cfg.get("sort", "latency"))
+        provider_order = or_cfg.get("order")
         extra = kwargs.setdefault("extra_body", {})
         if isinstance(extra, dict) and "provider" not in extra:
-            extra["provider"] = {
-                "sort": "latency",
+            prov_dict: dict[str, Any] = {
+                "sort": sort_pref,
                 "require_parameters": require_params,
                 "data_collection": "deny",
                 "allow_fallbacks": True,
             }
+            if provider_order and isinstance(provider_order, list):
+                prov_dict["order"] = provider_order
+            extra["provider"] = prov_dict
         session_id = (
             kwargs.pop("session_id", None)
             or getattr(self, "session_id", None)

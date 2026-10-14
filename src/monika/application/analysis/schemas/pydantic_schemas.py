@@ -149,6 +149,58 @@ class SentimentAnalysisSchema(BaseModel):
     narrative: str
     retail_vs_institutional: str
 
+    @field_validator("overall_band", mode="before")
+    @classmethod
+    def validate_overall_band(cls, v):
+        if isinstance(v, SentimentBand):
+            return v
+        if isinstance(v, str):
+            clean = v.strip().lower().replace("_", " ").replace("-", " ")
+            mapping = {
+                "bullish": SentimentBand.BULLISH,
+                "strong bullish": SentimentBand.BULLISH,
+                "mildly bullish": SentimentBand.MILDLY_BULLISH,
+                "mild bullish": SentimentBand.MILDLY_BULLISH,
+                "neutral": SentimentBand.NEUTRAL,
+                "mixed": SentimentBand.MIXED,
+                "mildly bearish": SentimentBand.MILDLY_BEARISH,
+                "mild bearish": SentimentBand.MILDLY_BEARISH,
+                "bearish": SentimentBand.BEARISH,
+                "strong bearish": SentimentBand.BEARISH,
+            }
+            if clean in mapping:
+                return mapping[clean]
+            if "bull" in clean:
+                return SentimentBand.BULLISH
+            if "bear" in clean:
+                return SentimentBand.BEARISH
+        return SentimentBand.NEUTRAL
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def validate_confidence(cls, v):
+        if isinstance(v, ConfidenceLevel):
+            return v
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            for c in ConfidenceLevel:
+                if clean == c.value or clean == c.name.lower():
+                    return c
+        return ConfidenceLevel.MEDIUM
+
+    @field_validator("overall_score", mode="before")
+    @classmethod
+    def validate_overall_score(cls, v):
+        res = coerce_float(v)
+        if res is not None:
+            return max(0.0, min(10.0, res))
+        return 5.0
+
+    @field_validator("narrative", "retail_vs_institutional", mode="before")
+    @classmethod
+    def validate_strings(cls, v):
+        return coerce_str(v)
+
 
 # =============================================================================
 # Sub-Schemas (Migrated from schemas.py)
@@ -172,6 +224,13 @@ class SpecialistAdjudication(BaseModel):
     def coerce_specialist_adjudication(cls, data: Any) -> Any:
         if isinstance(data, str):
             s = data.strip()
+            if not s or s.lower() in ("none", "null", "n/a", "no", "false", "{}"):
+                return {
+                    "conflict_detected": False,
+                    "conflict_reason": None,
+                    "resolution_path": None,
+                    "resolution_justification": None,
+                }
             return {
                 "conflict_detected": True,
                 "conflict_reason": s,
@@ -184,6 +243,11 @@ class SpecialistAdjudication(BaseModel):
                 data["conflict_detected"] = cd.lower() in ("true", "1", "yes", "y")
             elif cd is None:
                 data["conflict_detected"] = bool(data.get("conflict_reason"))
+            if data.get("resolution_path"):
+                rp = str(data["resolution_path"]).strip().lower()
+                data["resolution_path"] = (
+                    rp if rp in ("override_macro", "cancel_setup", "scale_out", "hedged_entry") else None
+                )
         return data
 
 
@@ -260,6 +324,16 @@ class ReevaluationTrigger(BaseModel):
                 data["type"] = "news"
             elif not raw_t:
                 data["type"] = "time"
+
+            if "direction" in data and data["direction"]:
+                dir_raw = str(data["direction"]).strip().lower()
+                data["direction"] = (
+                    dir_raw
+                    if dir_raw in ("above", "below")
+                    else ("above" if "above" in dir_raw else ("below" if "below" in dir_raw else None))
+                )
+            if "price" in data and data["price"] is not None:
+                data["price"] = coerce_float(data["price"])
         return data
 
     @model_validator(mode="after")
@@ -372,9 +446,16 @@ def coerce_string_list(v: Any, default: Optional[List[str]] = None) -> Optional[
         if not s or s.lower() in ("none", "null", "n/a", "[]", "{}"):
             return default if default is not None else []
         if "\n" in s or "," in s:
-            items = [item.strip().lstrip("-*•0123456789. ") for item in re.split(r"[\n,]+", s)]
-            return [item for item in items if item]
-        return [s]
+            raw_items = re.split(r"[\n,]+", s)
+            items = []
+            for item in raw_items:
+                clean_item = item.strip()
+                # Strip only bullet / numbered prefixes (e.g. '1. ', '- ', '• ') preserving numeric dates/prices
+                clean_item = re.sub(r"^[-*•\d]+[.)]\s*", "", clean_item).strip()
+                if clean_item:
+                    items.append(clean_item)
+            return items
+        return [re.sub(r"^[-*•\d]+[.)]\s*", "", s).strip()]
     if isinstance(v, (list, tuple, set)):
         result = []
         for item in v:
@@ -425,12 +506,12 @@ def coerce_float(v: Any, default: Optional[float] = None) -> Optional[float]:
     (e.g., '58.4%', '+12.5%', '~4.25', 'N/A', 'none', 'null', 'not quoted') into float or None.
     Rejects descriptive strings containing ambiguous text (e.g. 'target near 1.0850 or 1.0900').
     """
-    if v is None:
+    if v is None or isinstance(v, bool):
         return default
     if isinstance(v, (int, float)):
         return float(v)
     if isinstance(v, str):
-        s = v.strip()
+        s = v.strip().replace(",", "")
         if not s or s.lower() in (
             "none",
             "null",
@@ -448,7 +529,8 @@ def coerce_float(v: Any, default: Optional[float] = None) -> Optional[float]:
         ):
             return default
         clean_s = re.sub(r"^[~><$€£¥\s]+|(?:%|\s+|pts|bps|pips|long|short)+$", "", s, flags=re.IGNORECASE).strip()
-        if re.fullmatch(r"[-+]?\d+(?:\.\d+)?", clean_s):
+        # Supports standard decimals and scientific notation (e.g. 1e-4)
+        if re.fullmatch(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?", clean_s):
             try:
                 return float(clean_s)
             except ValueError:
@@ -461,14 +543,14 @@ def coerce_int(v: Any, default: Optional[int] = None) -> Optional[int]:
     Safely coerces strings (e.g. '8', '8/10', '8.0', 'N/A') into int or None.
     Rejects descriptive strings to prevent extraction of arbitrary numbers.
     """
-    if v is None:
+    if v is None or isinstance(v, bool):
         return default
     if isinstance(v, int):
         return v
     if isinstance(v, float):
         return int(round(v))
     if isinstance(v, str):
-        s = v.strip()
+        s = v.strip().replace(",", "")
         if not s or s.lower() in ("none", "null", "n/a", "na", "nan", "nil", "unknown", "not_applicable", "-", "--"):
             return default
         # Strip score denominator like '/10' or '/ 10' or '%', 'pts'
@@ -477,11 +559,6 @@ def coerce_int(v: Any, default: Optional[int] = None) -> Optional[int]:
         if re.fullmatch(r"[-+]?\d+", clean_s):
             try:
                 return int(clean_s)
-            except ValueError:
-                return default
-        if re.fullmatch(r"[-+]?\d+\.0+", clean_s):
-            try:
-                return int(float(clean_s))
             except ValueError:
                 return default
     return default
@@ -510,9 +587,16 @@ class UpcomingRiskEvent(BaseModel):
                 )
             if not data.get("time"):
                 data["time"] = coerce_str(data.get("event_time") or data.get("date") or "upcoming")
-            if not data.get("expected_impact"):
-                impact_raw = str(data.get("impact") or data.get("severity") or "medium").lower()
-                data["expected_impact"] = impact_raw if impact_raw in ("high", "medium", "low") else "medium"
+            impact_raw = (
+                str(data.get("expected_impact") or data.get("impact") or data.get("severity") or "medium")
+                .strip()
+                .lower()
+            )
+            data["expected_impact"] = (
+                impact_raw
+                if impact_raw in ("high", "medium", "low")
+                else ("high" if "high" in impact_raw else ("low" if "low" in impact_raw else "medium"))
+            )
         return data
 
 
@@ -545,6 +629,24 @@ class PricedInAssessment(BaseModel):
         None,
         description="Ringkasan pergeseran ekspektasi FedWatch sebelum vs sesudah rilis data atau 24h shift (mis. 'Hike odds 37.1% vs 45.0% pre-event (-7.9%)')",
     )
+
+    @field_validator("sell_the_news_risk", mode="before")
+    @classmethod
+    def validate_sell_the_news_risk(cls, v):
+        if not v:
+            return "not_applicable"
+        s = str(v).strip().lower()
+        if s in ("high", "medium", "low", "not_applicable"):
+            return s
+        if s in ("n/a", "na", "none", "not applicable", "not-applicable", "no"):
+            return "not_applicable"
+        if "high" in s:
+            return "high"
+        if "low" in s:
+            return "low"
+        if "med" in s:
+            return "medium"
+        return "not_applicable"
 
     @field_validator("key_unpriced_drivers", mode="before")
     @classmethod
@@ -658,6 +760,46 @@ class SubmitAssetAnalysisSchema(BaseModel):
     @classmethod
     def validate_scores(cls, v):
         return coerce_int(v)
+
+    @field_validator("invalidation_direction", mode="before")
+    @classmethod
+    def validate_invalidation_direction(cls, v):
+        if v is None:
+            return None
+        s = str(v).strip().lower()
+        if s in ("above", "below"):
+            return s
+        if "above" in s or "over" in s or "up" in s:
+            return "above"
+        if "below" in s or "under" in s or "down" in s:
+            return "below"
+        return None
+
+    @field_validator("specialist_adjudication", mode="before")
+    @classmethod
+    def validate_specialist_adjudication_field(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if not s or s in ("none", "null", "n/a", "no", "false", "{}"):
+                return None
+        if isinstance(v, dict) and not v:
+            return None
+        return v
+
+    @field_validator("priced_in_override_justification", mode="before")
+    @classmethod
+    def validate_override_justification_field(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if not s or s in ("none", "null", "n/a", "no", "false", "{}"):
+                return None
+        if isinstance(v, dict) and not v:
+            return None
+        return v
 
     invalidation_price: Optional[float] = Field(
         None,
@@ -1073,19 +1215,8 @@ class SubmitFundamentalBriefSchema(BaseModel):
                 for ccy, bias in cb.items():
                     b_str = str(bias).lower()
                     if b_str != "neutral" and (ccy not in inv or not str(inv[ccy]).strip()):
-                        level_defaults = {
-                            "USD": "DXY D1 close below 101.20 with unexpected dovish Fed repricing",
-                            "EUR": "EURUSD D1 close above 1.1420 with ECB emergency rate hike announcement",
-                            "GBP": "GBPUSD D1 close above 1.3450 with hawkish BoE MPC vote split 8-1",
-                            "JPY": "USDJPY D1 close above 146.50 indicating BoJ rate normalization delay",
-                            "AUD": "AUDUSD D1 close above 0.6680 backed by China stimulus commodity surge",
-                            "XAU": "XAUUSD D1 close below 2620.00 indicating institutional profit taking",
-                            "OIL": "WTI crude close below 68.50 USD on Middle East diplomatic de-escalation",
-                            "BTC": "BTCUSD D1 close below 81000 USD on sudden systemic liquidity contraction",
-                        }
-                        inv[ccy] = level_defaults.get(
-                            ccy.upper(),
-                            f"Thesis for {ccy} {bias} invalidated if price breaks structural key level with regime shift",
+                        inv[ccy] = (
+                            f"Bias {ccy.upper()} {bias} invalid if macroeconomic data or key structural price levels break with regime shift"
                         )
 
             # Auto-synthesize strongest_counter_thesis if missing or too short (< 50 chars)
@@ -1239,6 +1370,8 @@ def make_openai_strict_schema(schema_dict: dict) -> dict:
     def _patch_object(obj: dict):
         if not isinstance(obj, dict):
             return
+
+        obj.pop("default", None)
 
         if obj.get("type") == "object" or "properties" in obj:
             obj["additionalProperties"] = False

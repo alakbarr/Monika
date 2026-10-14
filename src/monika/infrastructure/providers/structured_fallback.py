@@ -172,8 +172,24 @@ def parse_structured_output(
         if pydantic_model:
             try:
                 model_inst = pydantic_model.model_validate(combined)
-            except ValidationError:
-                pass
+            except ValidationError as ve:
+                if defaults:
+                    return StructuredOutputResult(
+                        data=dict(defaults),
+                        success=False,
+                        degradation_stage="default_fallback",
+                        error=f"Regex field recovery extracted fields but failed Pydantic validation: {ve}",
+                        missing_fields=expected_fields,
+                    )
+                return StructuredOutputResult(
+                    data=combined,
+                    success=False,
+                    degradation_stage="failed",
+                    error=f"Regex field recovery extracted fields but failed Pydantic validation: {ve}",
+                    missing_fields=missing,
+                    extracted_fields=list(combined.keys()),
+                    model_instance=None,
+                )
 
         return StructuredOutputResult(
             data=combined,

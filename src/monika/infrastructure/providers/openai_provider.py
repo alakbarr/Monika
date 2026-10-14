@@ -30,7 +30,16 @@ def _extract_message_text(choice) -> str:
     # 1. Standard message content
     content = getattr(msg, "content", None)
     if content is not None and str(content).strip():
-        return str(content)
+        text = str(content)
+        if any(tag in text.lower() for tag in ("<think>", "<thought>", "<reasoning>", "<scratchpad>")):
+            from monika.infrastructure.providers.streaming_think_scrubber import StreamingThinkScrubber
+
+            scrubber = StreamingThinkScrubber()
+            clean_text, _ = scrubber.feed_chunk(text)
+            clean_text += scrubber.flush()
+            if clean_text.strip():
+                return clean_text.strip()
+        return text
 
     # 2. Direct reasoning attributes
     reasoning = getattr(msg, "reasoning", None) or getattr(msg, "reasoning_content", None)
@@ -356,6 +365,8 @@ class OpenAIProvider(BaseLLMClient):
                 kwargs["max_tokens"] = safe_tokens
         elif is_reasoning_model:
             kwargs["max_completion_tokens"] = max(requested_tokens + 4096, 4096)
+            kwargs.pop("max_tokens", None)
+            kwargs.pop("temperature", None)
 
         if provider_name == "groq":
             if "max_tokens" in kwargs:
@@ -1269,11 +1280,15 @@ class OpenAIProvider(BaseLLMClient):
                         if k in m and m[k] is not None:
                             ast_msg[k] = m[k]
                     norm_messages.append(ast_msg)
-                elif text_parts:
-                    norm_messages.append({"role": role, "content": " ".join(text_parts)})
-
-                if tool_results:
-                    norm_messages.extend(tool_results)
+                    if tool_results:
+                        norm_messages.extend(tool_results)
+                        tool_results = []
+                else:
+                    if tool_results:
+                        norm_messages.extend(tool_results)
+                        tool_results = []
+                    if text_parts:
+                        norm_messages.append({"role": role, "content": " ".join(text_parts)})
             elif role == "tool":
                 tid = m.get("tool_call_id", "")
                 raw_name = m.get("name")

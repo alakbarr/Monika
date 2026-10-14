@@ -63,7 +63,15 @@ class ContinuousLearner:
         desc_clean = description.strip()[:80]
 
         parent_dir = Path(base_dir) if base_dir is not None else Path(__file__).resolve().parent
-        target_dir = parent_dir / category.lower() / clean_name
+
+        # Guard: Never allow overwriting core skills in trading or general
+        for core_cat in ("trading", "general"):
+            if (parent_dir / core_cat / clean_name).exists():
+                return False, f"Cannot overwrite core system skill '{clean_name}' in category '{core_cat}'.", ""
+
+        # Enforce category strictly to crystallized
+        category = "crystallized"
+        target_dir = parent_dir / category / clean_name
         target_dir.mkdir(parents=True, exist_ok=True)
         target_file = target_dir / "SKILL.md"
 
@@ -97,6 +105,25 @@ platforms:
         try:
             with open(target_file, "w", encoding="utf-8") as f:
                 f.write(content)
+
+            # Security Audit via SkillsGuard
+            from monika.application.skills.skills_guard import SkillsGuard
+
+            report = SkillsGuard.audit_skill_directory(str(target_dir), skill_name=clean_name)
+            if not report.is_safe:
+                if target_file.exists():
+                    target_file.unlink()
+                reasons = [f.message for f in report.findings]
+                return False, f"Skill '{clean_name}' failed security audit: {reasons}", ""
+
+            # Invalidate skill loader cache so new skill is immediately recognized
+            try:
+                from monika.application.skills.loader import invalidate_cache
+
+                invalidate_cache()
+            except Exception:
+                pass
+
             logger.info(f"[ContinuousLearner] Successfully crystallized skill '{clean_name}' at {target_file}")
             return True, f"Skill '{clean_name}' successfully crystallized into persistent memory.", str(target_file)
         except Exception as exc:

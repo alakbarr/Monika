@@ -309,6 +309,9 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 
             if response:
                 content_str = str(response).strip()
+                if "MagicMock" in content_str or "<Mock" in content_str:
+                    logger.warning("[SkillCrystallizer] Detected Mock object in LLM response string; ignoring.")
+                    content_str = ""
                 for line in content_str.splitlines():
                     cleaned = line.strip()
                     if cleaned.startswith("- ") or cleaned.startswith("* "):

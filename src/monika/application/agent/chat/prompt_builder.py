@@ -124,6 +124,7 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
                         "market_dynamics_framework",
                         "telegram_persona",
                         "intent-resolution",
+                        "prompt-intent-disambiguation",
                     ):
                         continue
                     try:
@@ -329,11 +330,11 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
         except Exception:
             pass
 
-        # Append intent-resolution skill (intent decomposition & anti-slop guidelines)
+        # Append prompt-intent-disambiguation skill (intent decomposition & anti-slop guidelines)
         try:
             from monika.application.skills.loader import load_skill
 
-            intent_res = load_skill("intent-resolution")
+            intent_res = load_skill("prompt-intent-disambiguation") or load_skill("intent-resolution")
             if intent_res:
                 lines.append("\n---\n")
                 lines.append(intent_res)

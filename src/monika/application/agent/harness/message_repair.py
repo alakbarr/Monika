@@ -64,7 +64,7 @@ def _drop_orphaned_tool_results(msgs: List[Dict[str, Any]]) -> List[Dict[str, An
     valid_tool_ids: Set[str] = set()
 
     for msg in msgs:
-        if msg.get("role") == "assistant":
+        if msg.get("role") in ("assistant", "model"):
             for tc in msg.get("tool_calls", []):
                 if isinstance(tc, dict) and tc.get("id"):
                     valid_tool_ids.add(str(tc["id"]))
@@ -79,7 +79,7 @@ def _drop_orphaned_tool_results(msgs: List[Dict[str, Any]]) -> List[Dict[str, An
         role = msg.get("role")
         if role == "tool":
             tid = msg.get("tool_call_id")
-            if tid and str(tid) not in valid_tool_ids:
+            if not tid or not str(tid).strip() or str(tid) not in valid_tool_ids:
                 continue
         elif role == "user" and isinstance(msg.get("content"), list):
             # Anthropic style tool_result inside user role
@@ -87,9 +87,11 @@ def _drop_orphaned_tool_results(msgs: List[Dict[str, Any]]) -> List[Dict[str, An
             for block in msg["content"]:
                 if isinstance(block, dict) and block.get("type") == "tool_result":
                     tid = block.get("tool_use_id")
-                    if tid and str(tid) not in valid_tool_ids:
+                    if not tid or not str(tid).strip() or str(tid) not in valid_tool_ids:
                         continue
                 filtered_blocks.append(block)
+            if not filtered_blocks:
+                continue
             msg["content"] = filtered_blocks
 
         cleaned.append(msg)
@@ -110,7 +112,7 @@ def _prune_unanswered_tool_calls(msgs: List[Dict[str, Any]]) -> List[Dict[str, A
                     answered_tool_ids.add(str(block["tool_use_id"]))
 
     for msg in msgs:
-        if msg.get("role") == "assistant":
+        if msg.get("role") in ("assistant", "model"):
             if "tool_calls" in msg and isinstance(msg["tool_calls"], list):
                 msg["tool_calls"] = [
                     tc for tc in msg["tool_calls"] if isinstance(tc, dict) and str(tc.get("id")) in answered_tool_ids
@@ -130,7 +132,7 @@ def _prune_unanswered_tool_calls(msgs: List[Dict[str, Any]]) -> List[Dict[str, A
 
     cleaned = []
     for msg in msgs:
-        if msg.get("role") == "assistant":
+        if msg.get("role") in ("assistant", "model"):
             content = msg.get("content")
             has_content = bool(content.strip()) if isinstance(content, str) else bool(content)
             has_tool_calls = bool(msg.get("tool_calls"))

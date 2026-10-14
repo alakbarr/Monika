@@ -6321,6 +6321,10 @@
     - `validate_brief_string_lists(v)`
     - `validate_macro_bias(v)`
   - `class SentimentAnalysisSchema(BaseModel)`
+    - `validate_overall_band(v)`
+    - `validate_confidence(v)`
+    - `validate_overall_score(v)`
+    - `validate_strings(v)`
   - `class SpecialistAdjudication(BaseModel)`
     - `coerce_specialist_adjudication(data: Any) -> Any`
   - `class EntryCondition(BaseModel)`
@@ -6333,6 +6337,7 @@
   - `class UpcomingRiskEvent(BaseModel)`
     - `coerce_risk_event(data: Any) -> Any`
   - `class PricedInAssessment(BaseModel)`
+    - `validate_sell_the_news_risk(v)`
     - `validate_unpriced_drivers(v)`
     - `validate_dominant_driver(v)`
     - `validate_priced_in_score(v)`
@@ -6343,6 +6348,9 @@
     - `validate_asset_confidence(v)`
     - `validate_prices(v)`
     - `validate_scores(v)`
+    - `validate_invalidation_direction(v)`
+    - `validate_specialist_adjudication_field(v)`
+    - `validate_override_justification_field(v)`
     - `normalize_and_alias_fields(data: Any) -> Any` - *Resolve symbol aliases and normalize symbol casing/formatting before validation.*
     - `validate_trade_parameters()` - *Enforce SL/TP/entry_condition presence when decision is buy or sell.*
   - `class ChecklistVerification(BaseModel)`

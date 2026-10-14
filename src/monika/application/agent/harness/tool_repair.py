@@ -10,31 +10,80 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger("TradingAgent.ToolRepair")
 
 TOOL_NAME_ALIASES: Dict[str, str] = {
+    # Search & Web
     "run_shell": "web_search",
     "search": "web_search",
     "search_web": "web_search",
     "google_search": "web_search",
+    "academic_search": "search_academic",
+    "arxiv_search": "search_academic",
+    "fetch_url": "read_url",
+    "url_reader": "read_url",
+    # Price & Technical Data
     "fetch_price": "get_price_data",
     "get_prices": "get_price_data",
     "price_data": "get_price_data",
     "technical_analysis": "get_technical_analysis",
     "get_ta": "get_technical_analysis",
+    "get_technical_indicator": "get_technical_indicators",
     "calculate_size": "calculate_position_size",
     "position_size": "calculate_position_size",
+    "get_quote": "get_market_quote",
+    "market_quote": "get_market_quote",
+    "fetch_quote": "get_market_quote",
+    "quote": "get_market_quote",
+    # Submissions
     "submit_analysis": "submit_asset_analysis",
     "submit_asset": "submit_asset_analysis",
     "submit_trade_analysis": "submit_asset_analysis",
+    "submit_asset_analysis_schema": "submit_asset_analysis",
     "submit_brief": "submit_fundamental_brief",
     "submit_fundamental": "submit_fundamental_brief",
+    "submit_fundamental_analysis": "submit_fundamental_brief",
+    "submit_fundamental_brief_schema": "submit_fundamental_brief",
+    # Macro & Calendar
     "market_snapshot": "get_verified_market_snapshot",
     "verified_snapshot": "get_verified_market_snapshot",
     "ground_truth_snapshot": "get_verified_market_snapshot",
     "get_calendar": "get_economic_calendar",
     "get_economic_calendars": "get_economic_calendar",
+    "get_treasury_yield": "get_treasury_yields",
+    "get_interest_rate": "get_interest_rates",
+    "get_market_sessions": "get_market_session",
+    "surprise_summary": "get_surprise_summary",
+    "economic_surprise_summary": "get_surprise_summary",
+    "get_economic_surprise_summary": "get_surprise_summary",
+    # Sentiment & COT
+    "get_precomputed_cot_signal": "get_precomputed_cot_signals",
+    "get_cot_signals": "get_precomputed_cot_signals",
+    "cot_signals": "get_precomputed_cot_signals",
+    "precomputed_cot": "get_precomputed_cot_signals",
+    # Account & Positions
     "get_positions": "get_open_positions",
     "get_open_position": "get_open_positions",
     "write_scratchpad": "update_scratchpad",
     "read_scratchpad": "read_scratchpad",
+    # News & Intel
+    "get_news_item": "get_news_items",
+    "get_news": "get_news_digest",
+    "save_intelligence": "save_market_intelligence",
+    "save_intel": "save_market_intelligence",
+    "list_intelligence": "list_active_intelligence",
+    "list_intel": "list_active_intelligence",
+    "archive_intel": "archive_market_intelligence",
+    # SMC & Structural Tools
+    "analytical_query": "run_analytical_query",
+    "query_analytics": "run_analytical_query",
+    "get_inducement": "get_inducements",
+    "inducements": "get_inducements",
+    "get_breaker_block": "get_breaker_blocks",
+    "breaker_blocks": "get_breaker_blocks",
+    "get_equal_highs": "get_equal_highs_lows",
+    "get_equal_lows": "get_equal_highs_lows",
+    "equal_highs_lows": "get_equal_highs_lows",
+    "judas_swing": "get_judas_swing",
+    "wick_fvg": "get_wick_to_wick_fvg",
+    "wick_to_wick_fvg": "get_wick_to_wick_fvg",
 }
 
 
@@ -98,6 +147,11 @@ def _parse_xml_parameters(text: str) -> Optional[Dict[str, Any]]:
         for k1, k2, val in matches:
             key = (k1 or k2).strip()
             v_str = val.strip()
+            if "<parameter" in v_str.lower() or "<arg" in v_str.lower():
+                nested_xml = _parse_xml_parameters(v_str)
+                if nested_xml:
+                    res[key] = nested_xml
+                    continue
             try:
                 parsed_v = json.loads(v_str)
                 res[key] = parsed_v
@@ -138,10 +192,23 @@ def repair_tool_arguments(args: Any) -> Dict[str, Any]:
     if not args_str:
         return {}
 
+    # Strip markdown code fences if present
+    if "```" in args_str:
+        fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", args_str, re.IGNORECASE)
+        if fence_match:
+            args_str = fence_match.group(1).strip()
+
     # Check for pure XML parameter block first
     xml_dict = _parse_xml_parameters(args_str)
     if xml_dict:
         return xml_dict
+
+    # If text is wrapped in conversational filler, extract the outermost JSON object
+    if not args_str.startswith("{") and "{" in args_str and "}" in args_str:
+        fb = args_str.find("{")
+        lb = args_str.rfind("}")
+        if fb != -1 and lb != -1 and lb > fb:
+            args_str = args_str[fb : lb + 1]
 
     # Try standard parse first
     try:
@@ -166,7 +233,10 @@ def repair_tool_arguments(args: Any) -> Dict[str, Any]:
     cleaned = re.sub(r"\bTrue\b", "true", cleaned)
     cleaned = re.sub(r"\bFalse\b", "false", cleaned)
 
-    # 3. Single quotes to double quotes
+    # 3. Single-quoted keys: 'key': -> "key":
+    cleaned = re.sub(r"(?<=[{,\s])'([a-zA-Z0-9_]+)'\s*:", r'"\1":', cleaned)
+
+    # 4. Single quotes to double quotes if purely single-quoted
     if "'" in cleaned and '"' not in cleaned:
         cleaned = cleaned.replace("'", '"')
 
@@ -221,11 +291,11 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
             elif req_key == "key_data_points_used":
                 args["key_data_points_used"] = {}
             elif req_key == "checklist":
-                args["checklist"] = {"bias_vs_narrative_match": False, "contradiction_existed": True}
+                args["checklist"] = {"bias_vs_narrative_match": True, "contradiction_existed": False}
             elif req_key == "priced_in_assessment":
                 args["priced_in_assessment"] = {
                     "dominant_driver": "Unknown / missing driver",
-                    "priced_in_score": 0,
+                    "priced_in_score": 1,
                     "sell_the_news_risk": "high",
                 }
             elif req_key == "strongest_counter_thesis":
@@ -244,6 +314,12 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                     "type": "market",
                     "detail": "Execution held pending valid institutional entry condition.",
                 }
+                if str(args.get("decision", "")).lower() in ("buy", "sell"):
+                    args["decision"] = "wait"
+                    args["rationale"] = (
+                        str(args.get("rationale") or "")
+                        + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted entry condition."
+                    ).strip()
             elif req_key == "rationale":
                 args["rationale"] = "Model rationale omitted; evaluated under fail-closed safety policy."
             elif req_key == "confluence_score":
@@ -255,7 +331,13 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                         + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted confluence score."
                     ).strip()
             elif req_key == "priced_in_score":
-                args["priced_in_score"] = 0
+                args["priced_in_score"] = 1
+                if str(args.get("decision", "")).lower() in ("buy", "sell"):
+                    args["decision"] = "wait"
+                    args["rationale"] = (
+                        str(args.get("rationale") or "")
+                        + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted priced-in score."
+                    ).strip()
 
     # Derive invalidation price and direction from stop loss if missing
     if "stop_loss" in args and "invalidation_price" not in args:
@@ -548,7 +630,7 @@ def deep_repair_tool_arguments(
                     + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted confidence score."
                 ).strip()
         elif missing_prop == "checklist":
-            args["checklist"] = {"bias_vs_narrative_match": False, "contradiction_existed": True}
+            args["checklist"] = {"bias_vs_narrative_match": True, "contradiction_existed": False}
         elif missing_prop == "reevaluation_trigger":
             args["reevaluation_trigger"] = {
                 "type": "time",
@@ -559,6 +641,12 @@ def deep_repair_tool_arguments(
                 "type": "market",
                 "detail": "Execution held pending valid institutional entry condition.",
             }
+            if str(args.get("decision", "")).lower() in ("buy", "sell"):
+                args["decision"] = "wait"
+                args["rationale"] = (
+                    str(args.get("rationale") or "")
+                    + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted entry condition."
+                ).strip()
         elif missing_prop == "rationale":
             args["rationale"] = (
                 assistant_text[:500]
@@ -574,7 +662,13 @@ def deep_repair_tool_arguments(
                     + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted confluence score."
                 ).strip()
         elif missing_prop == "priced_in_score":
-            args["priced_in_score"] = 0
+            args["priced_in_score"] = 1
+            if str(args.get("decision", "")).lower() in ("buy", "sell"):
+                args["decision"] = "wait"
+                args["rationale"] = (
+                    str(args.get("rationale") or "")
+                    + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted priced-in score."
+                ).strip()
         elif missing_prop in props and "default" in props[missing_prop]:
             args[missing_prop] = props[missing_prop]["default"]
 

@@ -179,7 +179,7 @@ MANDATORY ADJUSTMENT CONSTRAINT: If proposing adjusted_entry, adjusted_sl, or ad
 
 {get_universal_execution_discipline()}
 
-[TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Verify math against ATR and risk tables. reason must be at most 2 concise sentences based strictly on factual evidence. Zero fluff.
+[TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Verify math against ATR and risk tables. reason must be an analytically rigorous synthesis (citing explicit R:R, ATR multiples, and counter-thesis verification) based strictly on factual evidence. Zero fluff.
 Respond in valid JSON format conforming to the schema."""
 
     schema = {

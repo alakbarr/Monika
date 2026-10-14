@@ -39,7 +39,7 @@ Output confluence assessment in EXACT format BEFORE calling `submit_asset_analys
 CONFLUENCE SCORECARD FOR {SYMBOL}:
 --- BASE STRUCTURAL FACTORS (0-14) ---
 [ ] F1_FUNDAMENTAL_BIAS: Macro brief supports {BUY/SELL}? YES(+2)/NO(0); Strong Conviction: YES(+3) = __
-[ ] F2_DXY_CONFIRMS: DXY trend confirms direction? YES(+1)/NO(0) = __  
+[ ] F2_DXY_CONFIRMS: DXY trend confirms direction? YES(+1)/NO(0) = __
 [ ] F3_D1_TREND: D1 trend aligns with H4 entry? YES(+2)/NO(0) = __
 [ ] F4_RSI_NEUTRAL: RSI not overbought/oversold at entry? YES(+1)/NO(0) = __
 [ ] F5_FVG_PROXIMITY: Entry within 0.5x ATR of unfilled FVG? YES(+2)/NO(0) = __
@@ -53,8 +53,8 @@ CONFLUENCE SCORECARD FOR {SYMBOL}:
 
 BASE STRUCTURAL SCORE: __ / 14
 
---- QUANT ALPHA & EXECUTION BONUSES (0 to +4) ---
-[ ] SWEEP_CONFIRMED: get_liquidity_sweep_context confirms structure? YES(+1)/NO(0) = __
+--- QUANT ALPHA & EXECUTION BONUSES (0 to +5) ---
+[ ] SWEEP_CONFIRMED: get_liquidity_sweep_context confirms structure? YES(+2)/NO(0) = __
 [ ] QUANT_STRATEGY_EDGE: StrategyRegistry confirms alpha signal? YES(+1)/NO(0) = __
 [ ] RR_RATIO_BONUS: Reward-to-Risk >= min_rr_ratio? YES(+1)/NO(0) = __
 [ ] ADR_TARGET_BONUS: TP inside 50-80% ADR band? YES(+1)/NO(0) = __
@@ -67,7 +67,7 @@ EFFECTIVE THRESHOLD: __ / 14 (Standard 7 + Dynamic Adjustments)
 DECISION: __ (BUY/SELL if Total Confluence >= Effective Threshold, WAIT if sub-threshold, AVOID if structural invalidation)
 ```
 
-`confluence_factors` IDs: `"fundamental_bias"`, `"dxy_confirms"`, `"d1_trend"`, `"rsi_neutral"`, `"near_fvg"`, `"near_order_block"`, `"in_ote_zone"`, `"near_sr_zone"`, `"cot_aligned"`, `"vix_ok"`, `"session_prime"`, `"liquidity_sweep_confirmed"`, `"quant_strategy_edge"`, `"rr_ratio_bonus"`, `"adr_target_bonus"`.
+`confluence_factors` IDs: `"fundamental_bias"`, `"dxy_confirms"`, `"d1_trend"`, `"rsi_neutral"`, `"near_fvg"`, `"near_order_block"`, `"in_ote_zone"`, `"near_sr_zone"`, `"cot_aligned"`, `"vix_ok"`, `"post_event_entry"`, `"session_prime"`, `"liquidity_sweep_confirmed"`, `"microstructure_ok"`, `"historical_pattern_consensus"`, `"quant_strategy_edge"`, `"rr_ratio_bonus"`, `"adr_target_bonus"`.
 
 ## AUTOMATED SERVER-SIDE RISK ENFORCEMENT RULES
 1. **ATR Missing**: BUY/SELL rejected.
