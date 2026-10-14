@@ -123,30 +123,32 @@ async def test_tool_executor_dispatches_remediated_tools():
     mock_session = create_mock_async_session()
     executor = ToolExecutor(session=mock_session, settings={"trading": {"symbols": ["EURUSD", "XAUUSD"]}})
 
-    # 1. calculate_margin
     with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client") as mock_mt5_getter:
         mock_client = MagicMock()
         mock_client.calc_margin = MagicMock(return_value={"symbol": "XAUUSD", "lot": 0.5, "required_margin": 250.0})
         mock_client.get_symbol_info_tick = MagicMock(return_value=MagicMock(ask=2650.0, bid=2649.8))
+        mock_client.get_symbol_info = MagicMock(
+            return_value=MagicMock(
+                volume_min=0.01, volume_max=100.0, volume_step=0.01, trade_tick_size=0.00001, trade_tick_value=1.0
+            )
+        )
+        mock_client.get_account_info = AsyncMock(return_value={"equity": 10500.0, "balance": 10000.0})
         mock_mt5_getter.return_value = mock_client
 
+        # 1. calculate_margin
         margin_res = await executor.execute("calculate_margin", {"symbol": "XAUUSD", "lot_size": 0.5})
         assert margin_res.get("symbol") == "XAUUSD"
         assert margin_res.get("required_margin") == 250.0
 
-    # 2. calculate_position_size
-    pos_res = await executor.execute(
-        "calculate_position_size", {"symbol": "EURUSD", "entry_price": 1.0850, "stop_loss": 1.0820, "risk_pct": 1.0}
-    )
-    assert pos_res.get("symbol") == "EURUSD"
-    assert "recommended_lots" in pos_res or "lot_size" in pos_res or "suggested_lot" in pos_res
+        # 2. calculate_position_size
+        pos_res = await executor.execute(
+            "calculate_position_size",
+            {"symbol": "EURUSD", "entry_price": 1.0850, "stop_loss": 1.0820, "risk_pct": 1.0},
+        )
+        assert pos_res.get("symbol") == "EURUSD"
+        assert "recommended_lots" in pos_res or "lot_size" in pos_res or "suggested_lot" in pos_res
 
-    # 3. get_risk_state
-    with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client") as mock_mt5_getter:
-        mock_client = MagicMock()
-        mock_client.get_account_info = AsyncMock(return_value={"equity": 10500.0, "balance": 10000.0})
-        mock_mt5_getter.return_value = mock_client
-
+        # 3. get_risk_state
         risk_res = await executor.execute("get_risk_state", {})
         assert "current_equity" in risk_res or "starting_equity" in risk_res or "status" in risk_res
 
