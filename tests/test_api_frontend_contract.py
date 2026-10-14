@@ -35,45 +35,53 @@ def extract_frontend_api_paths() -> Set[str]:
         pytest.skip("frontend/src/lib/api.ts does not exist")
 
     content = API_TS_PATH.read_text(encoding="utf-8")
-
-    # Match calls like: get<...>('/path...'), post<...>(`/path...`), etc.
-    # Exclude helper functions or non-endpoint strings
-    pattern = re.compile(r"""(?:get|post|put|delete|patch)<[^>]*>\(\s*[`'"](/[^`'"?#\s$]+)""")
-    matches = pattern.findall(content)
-
     paths: Set[str] = set()
-    for m in matches:
-        # Normalize template strings, e.g. /traces/${encodeURIComponent(traceId)} -> /traces/{trace_id}
-        # In our regex we captured up to the first $ or ?, so /traces/ is captured
-        cleaned = m.rstrip("/")
+
+    # 1. Plain strings: get<...>('/path...'), post<...>("/path...")
+    pattern_plain = re.compile(r"""(?:get|post|put|delete|patch)<[^>]*>\(\s*['"](/[^'"]+)['"]""")
+    for m in pattern_plain.findall(content):
+        cleaned = m.split("?")[0].rstrip("/")
         if cleaned:
             paths.add(cleaned)
 
-    # Also capture template paths where variables are inline
-    template_pattern = re.compile(r"""(?:get|post|put|delete|patch)<[^>]*>\(\s*`(/[^`"?#]+)""")
-    for tm in template_pattern.findall(content):
-        # normalize dynamic params: e.g. /positions/${ticket}/breakeven -> /positions/{ticket}/breakeven
-        normalized = re.sub(r"\$\{[^}]+\}", "{param}", tm).rstrip("/")
-        if normalized:
-            paths.add(normalized)
+    # 2. Template strings: get<...>(`/path...`)
+    pattern_template = re.compile(r"""(?:get|post|put|delete|patch)<[^>]*>\(\s*`(/[^`]+)`""")
+    for tm in pattern_template.findall(content):
+        # Strip conditional query expressions e.g. ${qs ? ...} or ${x !== undefined ? ...}
+        stripped = re.sub(r"\$\{[^}]*\?[^}]*\}", "", tm)
+        # Split on hardcoded query params if any
+        base = stripped.split("?")[0]
+        # Normalize dynamic path params like ${ticket} or ${encodeURIComponent(id)} to {param}
+        norm = re.sub(r"\$\{[^}]+\}", "{param}", base).rstrip("/")
+        if norm:
+            paths.add(norm)
 
     return paths
 
 
-def extract_all_app_routes(application: Any) -> list[APIRoute]:
-    """Recursively extract all APIRoute instances from FastAPI application, traversing _IncludedRouter."""
+def extract_all_app_routes(router_or_app: Any) -> list[APIRoute]:
+    """Recursively extract all APIRoute instances from FastAPI application or router, traversing nested routers."""
     collected: list[APIRoute] = []
-    for r in application.routes:
-        if isinstance(r, APIRoute):
-            collected.append(r)
-        elif hasattr(r, "original_router") and hasattr(r.original_router, "routes"):
-            for sub_r in r.original_router.routes:
-                if isinstance(sub_r, APIRoute):
-                    collected.append(sub_r)
-        elif hasattr(r, "routes"):
-            for sub_r in getattr(r, "routes", []):
-                if isinstance(sub_r, APIRoute):
-                    collected.append(sub_r)
+    visited: set[int] = set()
+
+    def _recurse(item: Any) -> None:
+        item_id = id(item)
+        if item_id in visited:
+            return
+        visited.add(item_id)
+
+        if isinstance(item, APIRoute):
+            collected.append(item)
+            return
+
+        if hasattr(item, "original_router"):
+            _recurse(item.original_router)
+
+        if hasattr(item, "routes"):
+            for sub_item in item.routes:
+                _recurse(sub_item)
+
+    _recurse(router_or_app)
     return collected
 
 
@@ -130,8 +138,8 @@ def test_frontend_routes_exist_on_backend():
         if target_norm in backend_normalized:
             continue
 
-        # If path ends with {param}, check if backend has matching prefix
-        if any(b.startswith(target_norm) or target_norm.startswith(b) for b in backend_normalized):
+        # If path ends with {param}, check if backend has matching prefix (ignoring root empty string)
+        if any(b and (b.startswith(target_norm) or target_norm.startswith(b)) for b in backend_normalized):
             continue
 
         unmatched_paths.append((raw, target_norm))
