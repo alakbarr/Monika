@@ -375,8 +375,7 @@ Monika/
 │       │   │   │   │   ├── alpha_xtiusd_9ffd6d.py
 │       │   │   │   │   ├── alpha_xtiusd_dae3f9.py
 │       │   │   │   │   ├── alpha_xtiusd_f30ff5.py
-│       │   │   │   │   ├── alpha_xtiusd_fd5506.py
-│       │   │   │   │   └── mock_pass.py
+│       │   │   │   │   └── alpha_xtiusd_fd5506.py
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base_strategy.py
 │       │   │   │   ├── bb_volume_profile.py
@@ -660,20 +659,11 @@ Monika/
 │       │   │   │   ├── smc_gbpusd_h1_choppy_trap.json
 │       │   │   │   └── smc_xauusd_m15_bear_sweep.json
 │       │   │   ├── results/
-│       │   │   │   ├── benchmark_debate_openrouter.md
-│       │   │   │   ├── benchmark_debate_results.json
-│       │   │   │   ├── benchmark_news_classification_openrouter.md
-│       │   │   │   ├── benchmark_news_classification_results.json
-│       │   │   │   ├── benchmark_stage1_fundamental_openrouter.md
-│       │   │   │   ├── benchmark_stage1_results.json
-│       │   │   │   ├── benchmark_stage2_per_asset_openrouter.md
-│       │   │   │   ├── benchmark_stage2_results.json
 │       │   │   │   ├── model_all.csv
 │       │   │   │   ├── model_cheap_efficient.csv
 │       │   │   │   ├── model_cheap_smart.csv
 │       │   │   │   ├── model_high_intelligence.csv
-│       │   │   │   ├── model_quadrant_analysis.html
-│       │   │   │   └── news_classification_openrouter.json
+│       │   │   │   └── model_quadrant_analysis.html
 │       │   │   ├── task_specs/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base.py
@@ -1111,7 +1101,6 @@ Monika/
 │       │   │   │   │   │       ├── fe1dac6d38e01bceab93a65fd188d415aaeaf89a27b3e9bf929527ba15b60604
 │       │   │   │   │   │       └── fe989f38aff1a7729a40ef3d61f53a93c50fa38f22261c98c056e0b12652735c
 │       │   │   │   │   ├── archive/
-│       │   │   │   │   ├── .curator_ledger.jsonl
 │       │   │   │   │   └── .playbook_lifecycle.json
 │       │   │   │   ├── quant-research-workflow/
 │       │   │   │   │   └── SKILL.md
@@ -3275,4 +3264,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 329 | **Total Tracked Files**: 2913
+**Total Tracked Directories**: 329 | **Total Tracked Files**: 2902
