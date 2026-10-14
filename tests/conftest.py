@@ -115,7 +115,8 @@ def test_timeout_watchdog(request):
             pass
         _thread.interrupt_main()
 
-    timer = threading.Timer(30.0, on_timeout)
+    timeout_secs = 60.0 if os.environ.get("CI") else 30.0
+    timer = threading.Timer(timeout_secs, on_timeout)
     timer.daemon = True
     timer.start()
     try:

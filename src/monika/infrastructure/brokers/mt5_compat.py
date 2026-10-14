@@ -421,7 +421,11 @@ class MT5BridgeProxy:
         if name in MT5_CONSTANTS:
             return MT5_CONSTANTS[name]
 
-        # 2. Forward method call to remote bridge client
+        # 2. Reject private/dunder attribute lookup immediately without attempting network connection
+        if name.startswith("_"):
+            raise AttributeError(f"MetaTrader5 object has no attribute '{name}'")
+
+        # 3. Forward method call to remote bridge client
         if self._bridge_client is not None:
             try:
                 return getattr(self._bridge_client, name)
