@@ -122,10 +122,11 @@ class SkillCrystallizer:
                 if isinstance(row, (tuple, list)):
                     r = row[0] if len(row) > 0 else row
                     regime_raw = row[1] if len(row) > 1 else None
-                elif not is_mock_row and hasattr(row, "_mapping"):
+                elif not is_mock_row and hasattr(row, "_mapping") and hasattr(row, "__getitem__"):
                     try:
-                        r = row[0]
-                        regime_raw = row[1]
+                        getitem = getattr(row, "__getitem__")
+                        r = getitem(0)
+                        regime_raw = getitem(1)
                     except IndexError, TypeError, KeyError:
                         r = row
                         regime_raw = getattr(r, "market_regime_at_analysis", None)
