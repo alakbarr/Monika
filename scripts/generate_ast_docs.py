@@ -45,6 +45,14 @@ IGNORED_DIRS: Set[str] = {
     ".cache",
     "moa-traces",
     ".hypothesis",
+    "synthesized",
+    "mt5_slippage_defense",
+}
+
+IGNORED_FILES: Set[str] = {
+    "AGENTS.md",
+    "GEMINI.md",
+    "settings.yaml",
 }
 
 IGNORED_EXTENSIONS: Set[str] = {
@@ -87,7 +95,7 @@ def generate_structure_tree(root: Path) -> str:
         nonlocal total_files, total_dirs
         try:
             entries = sorted(
-                [e for e in current_dir.iterdir() if e.name not in IGNORED_DIRS],
+                [e for e in current_dir.iterdir() if e.name not in IGNORED_DIRS and e.name not in IGNORED_FILES],
                 key=lambda e: (not e.is_dir(), e.name.lower()),
             )
         except PermissionError:
@@ -118,7 +126,10 @@ def generate_structure_tree(root: Path) -> str:
         [
             f
             for f in root.iterdir()
-            if f.is_file() and f.suffix.lower() not in IGNORED_EXTENSIONS and not f.name.startswith(".")
+            if f.is_file()
+            and f.suffix.lower() not in IGNORED_EXTENSIONS
+            and not f.name.startswith(".")
+            and f.name not in IGNORED_FILES
         ],
         key=lambda f: f.name.lower(),
     )
@@ -245,6 +256,10 @@ def generate_index_content() -> str:
     modules_by_package: Dict[str, List[ModuleInfo]] = defaultdict(list)
 
     for py_file in sorted(SRC_DIR.rglob("*.py")):
+        if any(ignored in py_file.parts for ignored in IGNORED_DIRS):
+            continue
+        if py_file.name in IGNORED_FILES:
+            continue
         if py_file.name == "__init__.py" and py_file.stat().st_size == 0:
             continue
         mod_info = parse_module(py_file)
