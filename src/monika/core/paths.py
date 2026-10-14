@@ -109,10 +109,10 @@ def get_skills_dir() -> Path:
 def resolve_data_path(rel_or_name: str) -> Path:
     """Resolve a filename or sub-path inside the canonical data directory."""
     get_data_dir()
-    clean_name = rel_or_name.replace("trading-agent/data/", "").replace("trading-agent\\data\\", "").lstrip("/\\")
-    target = (DATA_DIR / clean_name).resolve()
+    clean_name = rel_or_name.replace("\\", "/").replace("trading-agent/data/", "").lstrip("/")
+    target = (DATA_DIR / Path(clean_name)).resolve()
     if not target.exists():
-        repo_data = (REPO_ROOT / "data" / clean_name).resolve()
+        repo_data = (REPO_ROOT / "data" / Path(clean_name)).resolve()
         if repo_data.exists():
             return repo_data
     return target
@@ -121,15 +121,15 @@ def resolve_data_path(rel_or_name: str) -> Path:
 def resolve_config_path(rel_or_name: str) -> Path:
     """Resolve a config filename, checking active config/ first, then repo config/, then package defaults."""
     get_config_dir()
-    clean_name = rel_or_name.replace("trading-agent/config/", "").replace("trading-agent\\config\\", "").lstrip("/\\")
-    target = (CONFIG_DIR / clean_name).resolve()
+    clean_name = rel_or_name.replace("\\", "/").replace("trading-agent/config/", "").lstrip("/")
+    target = (CONFIG_DIR / Path(clean_name)).resolve()
     if target.exists():
         return target
-    repo_cfg = (REPO_ROOT / "config" / clean_name).resolve()
+    repo_cfg = (REPO_ROOT / "config" / Path(clean_name)).resolve()
     if repo_cfg.exists():
         return repo_cfg
     # Fallback to package defaults in core/config/
-    pkg_default = PACKAGE_ROOT / "core" / "config" / clean_name
+    pkg_default = PACKAGE_ROOT / "core" / "config" / Path(clean_name)
     if pkg_default.exists():
         return pkg_default
     return target
