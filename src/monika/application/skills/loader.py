@@ -398,7 +398,17 @@ def get_dynamic_micro_skills(symbol: str, context: Optional[dict] = None) -> lis
         if "emerging-markets-idr" not in skills:
             skills.insert(1, "emerging-markets-idr")
 
-    # Dynamic autonomous micro-playbook routing
+    # Active empirical playbook injection from quantitative screener
+    active_pb = str(ctx.get("active_playbook") or ctx.get("playbook_id") or "").strip()
+    if active_pb:
+        for candidate in (active_pb, f"{active_pb}_playbook", active_pb.removesuffix("_playbook")):
+            candidate_clean = candidate.lower()
+            pb_path = _SKILLS_DIR / "playbooks" / f"{candidate_clean}.md"
+            if pb_path.exists() and candidate_clean not in skills:
+                skills.insert(2, candidate_clean)
+                break
+
+    # Dynamic autonomous micro-playbook routing by regime
     regime = str(ctx.get("regime") or ctx.get("macro_regime") or "").lower().strip()
     if regime:
         regime_tokens = [regime]

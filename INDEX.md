@@ -4011,6 +4011,9 @@
 
 ### Folder: `src/monika/domain/market` <a id="folder-srcmonikadomainmarket"></a>
 
+#### `__init__.py` - *Domain market utilities and playbook screener.*
+- **Path**: [`src/monika/domain/market/__init__.py`](src/monika/domain/market/__init__.py)
+
 #### `bias_utils.py` - *Centralized helper untuk normalisasi & perbandingan currency_bias.*
 - **Path**: [`src/monika/domain/market/bias_utils.py`](src/monika/domain/market/bias_utils.py)
 - **Top-Level Functions**:
@@ -6343,6 +6346,7 @@
     - `validate_priced_in_score(v)`
     - `validate_percentiles(v)`
   - `class SubmitAssetAnalysisSchema(BaseModel)`
+    - `validate_playbook_id_field(v)`
     - `coerce_string_fields(v)` - *Coerce dict/list/non-string to string for LLMs that return structured data.*
     - `coerce_string_lists(v)` - *Coerce list of mixed dicts/strings/numbers into a clean list of strings.*
     - `validate_asset_confidence(v)`

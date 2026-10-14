@@ -796,6 +796,53 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
         except Exception as e:
             logger.error(f"Failed to fetch alpha lessons: {e}")
 
+        # Quantitative Playbook Signal Screener (Pillar 1: Institutional Screener)
+        try:
+            from monika.domain.market.playbook_screener import PlaybookScreener
+
+            h1_data = data.get("get_price_history_H1", {})
+            h1_bars = h1_data.get("bars", []) if isinstance(h1_data, dict) else []
+            if not h1_bars and isinstance(data.get("get_price_history_H4"), dict):
+                h1_bars = data.get("get_price_history_H4", {}).get("bars", [])
+
+            h1_tech = data.get("get_technical_indicators_H1", {})
+            h1_indicators = h1_tech.get("indicators", h1_tech) if isinstance(h1_tech, dict) else {}
+
+            macro_bias = None
+            if isinstance(data.get("get_fundamental_brief"), dict):
+                macro_bias = data.get("get_fundamental_brief", {}).get("macro_bias")
+
+            cooldown_set = set()
+            try:
+                from monika.application.analysis.memory.playbook_lifecycle import (
+                    PlaybookLifecycleManager,
+                    PlaybookState,
+                )
+
+                plm = PlaybookLifecycleManager()
+                for pb_name, pb_meta in plm.list_all_playbooks().items():
+                    if getattr(pb_meta, "state", None) in (PlaybookState.STALE, PlaybookState.ARCHIVED):
+                        cooldown_set.add(pb_name)
+            except Exception as plm_err:
+                logger.debug(f"[{symbol}] Failed to read playbook cooldown state (non-fatal): {plm_err}")
+
+            screening_report = PlaybookScreener.screen(
+                symbol=symbol,
+                bars=h1_bars,
+                indicators=h1_indicators,
+                now_utc=now,
+                macro_regime=macro_bias,
+                cooldown_playbooks=cooldown_set,
+            )
+            data["playbook_screening"] = screening_report
+            if screening_report.active_signals:
+                data["active_playbook_id"] = screening_report.active_signals[0].playbook_name
+
+            lines.append(screening_report.format_for_prompt())
+            lines.append("")
+        except Exception as pb_screen_err:
+            logger.debug(f"[{symbol}] Playbook screener execution non-fatal: {pb_screen_err}")
+
         # Inject snapshot timestamp into bundle tail metadata
         lines.append(f"── BUNDLE METADATA ──\nData snapshot time: {ts}\n")
 

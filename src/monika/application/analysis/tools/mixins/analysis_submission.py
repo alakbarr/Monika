@@ -1300,6 +1300,9 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
         invalidation_price = inp.get("invalidation_price")
         invalidation_direction = inp.get("invalidation_direction")
+        playbook_id = inp.get("playbook_id") or inp.get("source_strategy_id")
+        if playbook_id:
+            logger.info(f"[{symbol}] AssetAnalysis linked to empirical playbook: {playbook_id}")
 
         if decision in ("buy", "sell") and entry_price and atr_value_for_validation:
             proximity_warnings = await self._validate_smc_entry_proximity(
@@ -1362,6 +1365,8 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 existing.context_snapshot_id = context_snapshot_id
                 existing.ssvp_cds_score_at_analysis = context_cds_score
                 existing.decision_source = "llm_stage2"
+                if playbook_id:
+                    existing.source_strategy_id = str(playbook_id).strip()
                 existing_rationale = existing.rationale or ""
                 if key_news_events_considered:
                     news_strs = [str(x).strip() for x in key_news_events_considered if str(x).strip()]
@@ -1405,6 +1410,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             context_snapshot_id=context_snapshot_id,
             ssvp_cds_score_at_analysis=context_cds_score,
             decision_source="llm_stage2",
+            source_strategy_id=str(playbook_id).strip() if playbook_id else None,
         )
 
         # Ambil harga terkini saat AI menyimpan analisis

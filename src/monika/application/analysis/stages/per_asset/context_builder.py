@@ -261,6 +261,7 @@ class ContextBuilderMixin:
         effective_threshold: int,
         tool_order_guidance: str,
         detected_regime: Optional[str] = None,
+        active_playbook: Optional[str] = None,
     ) -> tuple[tuple[str, str] | str, Optional[dict]]:
         """Compose system prompt: prioritize skill files, fallback to inline template."""
         _min_rr_val = self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
@@ -332,7 +333,10 @@ class ContextBuilderMixin:
                     gdms = get_dynamic_micro_skills
                     if gdms is None:
                         from monika.application.skills.loader import get_dynamic_micro_skills as gdms
-                    active_micro_skills = gdms(symbol, {"regime": detected_regime or ""})
+                    active_micro_skills = gdms(
+                        symbol,
+                        {"regime": detected_regime or "", "active_playbook": active_playbook or ""},
+                    )
                     extra_playbooks = [s for s in active_micro_skills if s not in skill_names]
                     if extra_playbooks:
                         extra_content = _compose_skill(*extra_playbooks, symbol=symbol, SYMBOL=symbol)

@@ -100,7 +100,8 @@ class OutcomeLinker:
                         regime = "ranging"
                         if analysis and getattr(analysis, "market_regime_at_analysis", None):
                             regime = str(analysis.market_regime_at_analysis).lower()
-                        playbook_name = f"{sym_clean.lower()}_{regime}_playbook"
+                        source_strat_id = getattr(analysis, "source_strategy_id", None) if analysis else None
+                        playbook_name = source_strat_id or f"{sym_clean.lower()}_{regime}_playbook"
 
                         entry = (
                             getattr(analysis, "entry_price", None) or getattr(analysis, "price_at_analysis", None)

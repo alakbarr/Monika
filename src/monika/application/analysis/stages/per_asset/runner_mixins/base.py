@@ -130,6 +130,7 @@ class _RunnerMixinBase:
         effective_threshold: int,
         tool_order_guidance: str,
         detected_regime: Optional[str] = None,
+        active_playbook: Optional[str] = None,
     ) -> tuple[tuple[str, str] | str, Optional[dict]]: ...
 
     def _build_user_message(self, symbol: str) -> str: ...

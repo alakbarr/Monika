@@ -164,9 +164,11 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         except Exception as ws_err:
             logger.debug(f"[{symbol}] WorkingScratchpad init non-fatal: {ws_err}")
 
-        # Extract detected regime from bundle data or classify
+        # Extract detected regime and active playbook from bundle data or classify
         detected_regime = ""
+        active_playbook = ""
         if isinstance(raw_bundle_data, dict):
+            active_playbook = str(raw_bundle_data.get("active_playbook_id", "") or "")
             mr = raw_bundle_data.get("market_regime")
             if isinstance(mr, dict):
                 sym_reg = mr.get(symbol)
@@ -187,7 +189,12 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
 
         # Compose system prompt
         system_prompt, abort_prompt_res = self._compose_stage2_system_prompt(
-            symbol, cot_code, effective_threshold, tool_order_guidance, detected_regime=detected_regime
+            symbol,
+            cot_code,
+            effective_threshold,
+            tool_order_guidance,
+            detected_regime=detected_regime,
+            active_playbook=active_playbook,
         )
         if abort_prompt_res:
             return abort_prompt_res

@@ -712,6 +712,15 @@ class SubmitAssetAnalysisSchema(BaseModel):
         None, description="Take profit price level. Required if decision is 'buy' or 'sell'."
     )
 
+    playbook_id: Optional[str] = Field(
+        None,
+        description=(
+            "OPTIONAL / RECOMMENDED: The specific empirical playbook ID triggered and validated for this trade setup, "
+            "e.g. 'xauusd_london_expansion_playbook' or 'eurusd_asian_range_breakout_playbook'. "
+            "If specified, order invariants and performance attribution are linked directly to this empirical playbook."
+        ),
+    )
+
     invalidation: str = Field(
         ...,
         description=(
@@ -723,6 +732,23 @@ class SubmitAssetAnalysisSchema(BaseModel):
             "Also fill invalidation_price and invalidation_direction fields separately for monitoring."
         ),
     )
+
+    @field_validator("playbook_id", mode="before")
+    @classmethod
+    def validate_playbook_id_field(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            clean = v.strip()
+            if not clean or clean.lower() in ("none", "null", "n/a", "no", "false"):
+                return None
+            return clean
+        if isinstance(v, dict):
+            name = v.get("name") or v.get("playbook_id") or v.get("id")
+            if name:
+                return str(name).strip()
+            return None
+        return str(v).strip()
 
     @field_validator("invalidation", "news_impact_assessment", "rationale", mode="before")
     @classmethod

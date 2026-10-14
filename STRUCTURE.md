@@ -2790,6 +2790,7 @@ Monika/
 │   ├── benchmark_news_classification_openrouter.py
 │   ├── benchmark_stage1_openrouter.py
 │   ├── benchmark_stage2_openrouter.py
+│   ├── build_empirical_playbooks.py
 │   ├── capture_dashboard_screenshots.js
 │   ├── capture_tui_screenshots.py
 │   ├── check_env_keys.py
@@ -2911,4 +2912,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 249 | **Total Tracked Files**: 2632
+**Total Tracked Directories**: 249 | **Total Tracked Files**: 2633
