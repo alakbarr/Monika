@@ -56,7 +56,7 @@ class EmergencyExitCoordinator:
         cls.exit_code = code
         import sys
 
-        for mod_name in ("main", "__main__"):
+        for mod_name in ("main", "__main__", "monika.application.main", "monika.application.orchestrator"):
             main_mod = sys.modules.get(mod_name)
             if main_mod is not None:
                 try:

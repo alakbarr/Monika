@@ -341,10 +341,18 @@ async def inject_telemetry_reliability_into_fact_sheet(session, fact_sheet: dict
 
 def sync_facade_patches():
     """Propagate any monkey-patched module attributes from debate_node facade to sub-agent modules."""
-    curr_mod = sys.modules.get("graph.nodes.debate_node")
+    curr_mod = sys.modules.get("monika.application.graph.nodes.debate_node") or sys.modules.get(
+        "graph.nodes.debate_node"
+    )
     if not curr_mod:
         return
     mod_names = [
+        "monika.application.graph.nodes.debate.bull_advocate_node",
+        "monika.application.graph.nodes.debate.bear_dissent_node",
+        "monika.application.graph.nodes.debate.rebuttal_node",
+        "monika.application.graph.nodes.debate.debate_judge_node",
+        "monika.application.graph.nodes.debate.risk_evaluator_node",
+        "monika.application.graph.nodes.debate.helpers",
         "graph.nodes.debate.bull_advocate_node",
         "graph.nodes.debate.bear_dissent_node",
         "graph.nodes.debate.rebuttal_node",

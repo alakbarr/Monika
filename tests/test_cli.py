@@ -4,7 +4,7 @@ Unit Tests for Trading Agent CLI Entrypoint (cli/main.py).
 
 import pytest
 import yaml
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from tests.conftest import create_mock_async_session
 from monika.interfaces.cli.main import parse_args, _acli_run
 
@@ -42,7 +42,7 @@ async def test_acli_run_paper_mode():
         await _acli_run(args)
 
         # Verify TradingAgent instantiation
-        MockAgentClass.assert_called_once_with(settings=mock_settings, dry_run=True)
+        MockAgentClass.assert_called_once_with(settings=mock_settings, dry_run=True, container=ANY)
         assert mock_settings["paper_trading"]["enabled"] is True
         mock_agent.start.assert_awaited_once()
 
@@ -66,7 +66,7 @@ async def test_acli_run_live_mode():
         await _acli_run(args)
 
         # Verify TradingAgent instantiation
-        MockAgentClass.assert_called_once_with(settings=mock_settings, dry_run=False)
+        MockAgentClass.assert_called_once_with(settings=mock_settings, dry_run=False, container=ANY)
         assert mock_settings["trading"]["auto_execute"] is True
         mock_agent.start.assert_awaited_once()
 
