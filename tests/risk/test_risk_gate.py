@@ -336,8 +336,14 @@ class TestRiskGate:
         assert cutoff.hour == 21
 
         # No session test
-        state_no_sess = await get_current_risk_state(None)
-        assert state_no_sess["status"] in ("unavailable", "normal")
+        with (
+            patch("monika.infrastructure.database.db.get_session") as mock_gs,
+            patch("monika.infrastructure.brokers.mt5_client.get_mt5_client") as mock_gmc,
+        ):
+            mock_gmc.return_value = None
+            mock_gs.side_effect = Exception("No DB")
+            state_no_sess = await get_current_risk_state(None)
+            assert state_no_sess["status"] in ("unavailable", "normal")
 
         # Mock session test with risk_row
         mock_risk_state = MagicMock()
@@ -353,11 +359,13 @@ class TestRiskGate:
         mock_exec.scalar.return_value = 2
         mock_session.execute.return_value = mock_exec
 
-        state = await get_current_risk_state(mock_session, settings)
-        assert state["current_drawdown_pct"] == 0.8
-        assert state["is_trading_paused"] is False
-        assert state["open_positions_count"] == 2
-        assert state["status"] == "normal"
+        with patch("monika.infrastructure.brokers.mt5_client.get_mt5_client") as mock_gmc:
+            mock_gmc.return_value = None
+            state = await get_current_risk_state(mock_session, settings)
+            assert state["current_drawdown_pct"] == 0.8
+            assert state["is_trading_paused"] is False
+            assert state["open_positions_count"] == 2
+            assert state["status"] == "normal"
 
     @pytest.mark.asyncio
     async def test_check_daily_drawdown_first_trade_unrealized_loss(self, settings):
