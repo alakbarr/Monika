@@ -7413,12 +7413,6 @@
     - `__init__(settings: Optional[Dict[str, Any]]) -> None`
     - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
 
-#### `mock_pass.py`
-- **Path**: [`src/monika/application/analysis/strategies/synthesized/mock_pass.py`](src/monika/application/analysis/strategies/synthesized/mock_pass.py)
-- **Classes**:
-  - `class MockPassStrategy(EdgeStrategy)`
-    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
-
 ### Folder: `src/monika/application/analysis/strategies/synthesized/quarantine` <a id="folder-srcmonikaapplicationanalysisstrategiessynthesizedquarantine"></a>
 
 #### `__init__.py` - *Quarantine package for experimental or unverified synthesized alphas.*
