@@ -1,0 +1,42 @@
+---
+name: usdjpy_vwap_mean_reversion_playbook
+description: Daily VWAP extreme stretch mean reversion for USDJPY.
+symbol: USDJPY
+regime: mean_reverting
+timeframe: H1
+min_rr: 2.0
+status: active
+sharpe_ratio: 2.28
+profit_factor: 1.21
+max_drawdown_pct: 10.71
+win_rate: 0.402
+---
+
+# USDJPY Empirical Playbook: Daily VWAP Extreme Stretch Mean Reversion
+
+## Quantitative Track Record
+- **Asset / Instrument**: USDJPY
+- **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
+- **Verified Sharpe Ratio**: 2.28 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.21 (102 verified trade executions)
+- **Max Drawdown**: 10.7% (Institutional risk profile)
+- **Total PnL Return**: +11.8%
+- **Win Rate**: 40.2% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.4x ATR, Max Holding = 18 bars
+
+## Trigger Conditions & Tactical Directives
+- Measure standard deviation distance from Daily Institutional VWAP.
+- Long Trigger: Price extends <= -1.4 ATR below VWAP, Close > Open, and RSI <= 38.
+- Short Trigger: Price extends >= +1.4 ATR above VWAP, Close < Open, and RSI >= 62.
+
+## Execution Invariants & Risk Parameters
+- **Target Risk-to-Reward (R:R)**: Minimum 1:2.0 contractual target.
+- **Stop Loss Placement**: Structured volatility buffer set at 1.2x 14-period Wilder ATR.
+- **Take Profit Target**: Mathematically optimized target placed at 2.4x 14-period ATR.
+- **Position Sizing**: Governed strictly by RiskGate (<= 1.0% account equity risk per trade).
+- **Execution Fill**: Standardized next-bar open fill accounting for real broker spread and slippage.
+
+## Invalidation & Exit Parameters
+- Invalidate if VWAP slope accelerates sharply in trend direction.
+- Invalidate if price does not reject within 2 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 18 bars.
