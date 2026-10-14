@@ -133,7 +133,7 @@ class AdHocSubagentManager:
                 raw_result = await asyncio.wait_for(
                     llm_client.generate(
                         prompt=user_prompt,
-                        system_prompt=system_prompt,
+                        system=system_prompt,
                         temperature=0.1,
                     ),
                     timeout=timeout,

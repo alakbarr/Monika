@@ -193,9 +193,14 @@ class AnthropicProvider(BaseLLMClient):
         if not self.client:
             return None
 
-        use_thinking = self.thinking_level is not None and str(self.thinking_level).lower() != "none"
-        ADAPTIVE_MODELS = ["sonnet-5", "opus-5", "opus-4-7", "opus-4-8", "sonnet-4-6", "opus-4-6", "adaptive"]
-        is_adaptive = use_thinking and any(x in self.model.lower() for x in ADAPTIVE_MODELS)
+        if not system and "system_prompt" in kwargs:
+            system = kwargs.pop("system_prompt")
+
+        use_thinking = bool(
+            self.thinking_level
+            and str(self.thinking_level).lower() != "none"
+            and any(x in self.model.lower() for x in self.THINKING_CAPABLE_MODELS)
+        )
         thinking_budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(self.thinking_level, 4096)
 
         eff_tokens = max_tokens if max_tokens is not None else self.max_tokens
@@ -216,17 +221,9 @@ class AnthropicProvider(BaseLLMClient):
             create_kwargs["system"] = _build_system_blocks(system)
 
         if use_thinking:
-            if is_adaptive:
-                create_kwargs["max_tokens"] = safe_max
-                create_kwargs["thinking"] = {"type": "adaptive"}
-                effort_level = (
-                    self.thinking_level if self.thinking_level in ["low", "medium", "high", "xhigh", "max"] else "high"
-                )
-                create_kwargs["output_config"] = {"effort": effort_level}
-            else:
-                create_kwargs["max_tokens"] = max(safe_max, thinking_budget + 4000)
-                create_kwargs["temperature"] = 1.0
-                create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
+            create_kwargs["max_tokens"] = max(safe_max, thinking_budget + 4000)
+            create_kwargs["temperature"] = 1.0
+            create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
         else:
             create_kwargs["max_tokens"] = safe_max
             create_kwargs["temperature"] = eff_temp
@@ -307,12 +304,17 @@ class AnthropicProvider(BaseLLMClient):
         return None
 
     THINKING_CAPABLE_MODELS = [
+        "claude-opus-5.5",
+        "claude-sonnet-5.5",
+        "claude-fable-5.1",
+        "claude-haiku-5.5",
         "claude-sonnet-5",
         "claude-opus-5",
         "claude-opus-4-8",
         "claude-opus-4-7",
         "claude-sonnet-4-6",
         "claude-opus-4-6",
+        "claude-3-7-sonnet",
     ]
     THINKING_BUDGETS = {"low": 1024, "medium": 4096, "high": 10000, "xhigh": 16000, "extended": 16000, "max": 32000}
 
@@ -336,13 +338,11 @@ class AnthropicProvider(BaseLLMClient):
                 "description": "Emit the final structured JSON response conforming exactly to the schema.",
                 "input_schema": schema,
             }
-            ADAPTIVE_MODELS = ["sonnet-5", "opus-5", "opus-4-7", "opus-4-8", "sonnet-4-6", "opus-4-6", "adaptive"]
             use_thinking = bool(
                 self.thinking_level
                 and str(self.thinking_level).lower() != "none"
                 and any(x in self.model.lower() for x in self.THINKING_CAPABLE_MODELS)
             )
-            is_adaptive = use_thinking and any(x in self.model.lower() for x in ADAPTIVE_MODELS)
 
             from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
@@ -370,25 +370,12 @@ class AnthropicProvider(BaseLLMClient):
             output_headroom = 4096 if is_haiku else 8192
 
             if use_thinking:
-                if is_adaptive:
-                    create_kwargs["max_tokens"] = max(self.max_tokens, output_headroom)
-                    create_kwargs["thinking"] = {"type": "adaptive"}
-                    effort_level = (
-                        self.thinking_level
-                        if self.thinking_level in ["low", "medium", "high", "xhigh", "max"]
-                        else "high"
-                    )
-                    create_kwargs["output_config"] = {"effort": effort_level}
-                    # Adaptive thinking fully supports tool_choice
-                    create_kwargs["tool_choice"] = {"type": "tool", "name": "emit_structured_response"}
-                else:
-                    budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(
-                        self.thinking_level, 4096
-                    )
-                    create_kwargs["max_tokens"] = max(self.max_tokens, budget + output_headroom)
-                    create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
-                    create_kwargs["temperature"] = 1.0
-                    create_kwargs["messages"][0]["content"] = prompt + TELEGRAPHIC_DIRECTIVE
+                budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(self.thinking_level, 4096)
+                create_kwargs["max_tokens"] = max(self.max_tokens, budget + output_headroom)
+                create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+                create_kwargs["temperature"] = 1.0
+                create_kwargs["tool_choice"] = {"type": "auto"}
+                create_kwargs["messages"][0]["content"] = prompt + TELEGRAPHIC_DIRECTIVE
             else:
                 create_kwargs["max_tokens"] = self.max_tokens
                 create_kwargs["temperature"] = eff_temp
@@ -500,14 +487,11 @@ class AnthropicProvider(BaseLLMClient):
         if not self.client:
             raise Exception("Anthropic API client not initialized")
 
-        ADAPTIVE_MODELS = ["sonnet-5", "opus-5", "opus-4-7", "opus-4-8", "sonnet-4-6", "opus-4-6", "adaptive"]
         use_thinking = bool(
             self.thinking_level
             and str(self.thinking_level).lower() != "none"
             and any(x in self.model.lower() for x in self.THINKING_CAPABLE_MODELS)
         )
-        is_adaptive = use_thinking and any(x in self.model.lower() for x in ADAPTIVE_MODELS)
-
         thinking_budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(self.thinking_level, 4096)
 
         system_block = _build_system_blocks(system_prompt)
@@ -570,17 +554,9 @@ class AnthropicProvider(BaseLLMClient):
         safe_max = min(max(self.max_tokens, 8192), 8192) if is_haiku else max(self.max_tokens, 64000)
 
         if use_thinking:
-            if is_adaptive:
-                create_kwargs["max_tokens"] = safe_max
-                create_kwargs["thinking"] = {"type": "adaptive"}
-                effort_level = (
-                    self.thinking_level if self.thinking_level in ["low", "medium", "high", "xhigh", "max"] else "high"
-                )
-                create_kwargs["output_config"] = {"effort": effort_level}
-            else:
-                create_kwargs["max_tokens"] = max(safe_max, thinking_budget + 4000)
-                create_kwargs["temperature"] = 1.0
-                create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
+            create_kwargs["max_tokens"] = max(safe_max, thinking_budget + 4000)
+            create_kwargs["temperature"] = 1.0
+            create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
         else:
             create_kwargs["max_tokens"] = safe_max
             create_kwargs["temperature"] = self.default_temperature

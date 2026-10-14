@@ -100,7 +100,9 @@ def _sanitize_schema_for_gemini(schema: dict) -> dict:
 
 
 GEMINI_MODEL_ALIASES = {
-    # Safe Gemini 3.x Models (Active)
+    # Safe Gemini 3.x & 4.x Models (Active)
+    "gemini-4-argon": "gemini-4-argon",
+    "gemini-4": "gemini-4-argon",
     "gemini-3.5-flash": "gemini-3.5-flash",
     "gemini-3.6-flash": "gemini-3.6-flash",
     "gemini-3.7-flash": "gemini-3.7-flash",
@@ -390,6 +392,9 @@ class GeminiProvider(BaseLLMClient):
         response_schema: Optional[dict] = None,
         **kwargs: Any,
     ) -> Optional[str]:
+        if not system and "system_prompt" in kwargs:
+            system = kwargs.pop("system_prompt")
+
         static_sys = system
         dynamic_sys = ""
         if isinstance(system, tuple) and len(system) >= 2:
@@ -427,6 +432,7 @@ class GeminiProvider(BaseLLMClient):
                     actual_budget = max(tb if tb is not None else 0, 2048)
                 eff_max_tokens = max(eff_max_tokens, actual_budget + 8192, 16384)
 
+        eff_max_tokens = min(eff_max_tokens, 65536)
         eff_temp = temperature if temperature is not None else self.default_temperature
         payload = {
             "contents": contents,
@@ -864,6 +870,8 @@ class GeminiProvider(BaseLLMClient):
             else:
                 min_headroom = max(tb, 2048)
             eff_max_tokens = max(eff_max_tokens + min_headroom, eff_max_tokens, min_headroom + 4096, 12288)
+
+        eff_max_tokens = min(eff_max_tokens, 65536)
 
         payload = {
             "contents": gemini_contents,

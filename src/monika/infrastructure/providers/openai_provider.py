@@ -296,7 +296,23 @@ class OpenAIProvider(BaseLLMClient):
             or False
         )
 
-        is_reasoning_model = any(x in self.model.lower() for x in ["o1", "o3", "gpt-5"])
+        REASONING_SUBSTRINGS = (
+            "o1",
+            "o3",
+            "o4",
+            "gpt-5",
+            "gpt-6",
+            "deepseek-v4",
+            "r1",
+            "glm-5",
+            "muse-spark",
+            "kimi-k",
+            "gemini-4",
+            "fable",
+            "opus-5",
+            "sonnet-5",
+        )
+        is_reasoning_model = any(x in self.model.lower() for x in REASONING_SUBSTRINGS)
         requested_tokens = int(kwargs.get("max_tokens") or kwargs.get("max_completion_tokens") or self.max_tokens)
 
         floor_map = {
@@ -566,26 +582,7 @@ class OpenAIProvider(BaseLLMClient):
             extra_headers = kwargs.get("extra_headers") or {}
             kwargs["extra_headers"] = {**affinity_headers, **extra_headers}
 
-        # Prompt cache key optimization for modern OpenAI models (o1, o3, gpt-4o, gpt-5)
-        if provider_name == "openai":
-            is_cache_key_supported = any(
-                m in str(self.model).lower() for m in ("gpt-4o", "gpt-4.1", "gpt-5", "o1", "o3")
-            )
-            if is_cache_key_supported:
-                clean_role = re.sub(r"[^a-zA-Z0-9_-]", "_", str(getattr(self, "role", "agent")))
-                sys_content = ""
-                for m in kwargs.get("messages") or []:
-                    if isinstance(m, dict) and m.get("role") == "system":
-                        sys_content = str(m.get("content") or "")
-                        break
-                tool_names = sorted(
-                    [t.get("function", {}).get("name", "") for t in (kwargs.get("tools") or []) if isinstance(t, dict)]
-                )
-                cache_sig = f"{clean_role}:{hashlib.sha256(sys_content.encode('utf-8')).hexdigest()[:16]}:{','.join(tool_names)}"
-                cache_key = f"monika_{hashlib.sha256(cache_sig.encode('utf-8')).hexdigest()[:24]}"
-                kwargs.setdefault("prompt_cache_key", cache_key)
-
-        provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get(provider_name, {})
+        provider_cfg = (self.settings or {}).get("llm", {}).get(provider_name, {})
         use_streaming = provider_cfg.get("streaming", {}).get("enabled", bool(self.settings))
 
         if use_streaming:
@@ -698,6 +695,8 @@ class OpenAIProvider(BaseLLMClient):
     ) -> Optional[str]:
         if not self.client:
             return None
+        if not system and "system_prompt" in kwargs:
+            system = kwargs.pop("system_prompt")
         messages = []
         static_sys = system
         dynamic_sys = ""

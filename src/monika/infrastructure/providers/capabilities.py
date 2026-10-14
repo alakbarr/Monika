@@ -33,6 +33,46 @@ class ModelCapabilities:
 # Known model capability registry
 MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     # Anthropic
+    "claude-opus-5.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-sonnet-5.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-fable-5.1": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-fable-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-haiku-5.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=False,
+    ),
     "claude-sonnet-5": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
@@ -88,6 +128,14 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         prompt_cache_strategy="anthropic_system_and_3",
     ),
     # Google Gemini
+    "gemini-4-argon": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=1000000,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
     "gemini-3.8-flash": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
@@ -237,6 +285,13 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         context_window=500000,
         supports_native_thinking=True,
     ),
+    "gpt-6.1-sol": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=1050000,
+        supports_native_thinking=True,
+    ),
     "gpt-6-sol": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
@@ -373,6 +428,37 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         max_output_tokens=65536,
         supports_structured_output=True,
     ),
+    # Zhipu / GLM Frontier
+    "glm-5.3": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "glm-5.3-flash": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    # Meta Frontier
+    "muse-spark-1.3": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    # Moonshot AI Frontier
+    "kimi-k3": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
     # TypeSafe Jev System One
     "jev-latest": ModelCapabilities(
         supports_tool_choice=False,
@@ -461,6 +547,25 @@ def get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities:
     for prefix in ("9router/", "9r/"):
         if clean_name.startswith(prefix):
             stripped = clean_name[len(prefix) :]
+            if stripped in MODEL_CAPABILITIES:
+                return MODEL_CAPABILITIES[stripped]
+            clean_name = stripped
+            break
+
+    # Handle OpenRouter vendor slug stripping (e.g. anthropic/claude-sonnet-5.5 -> claude-sonnet-5.5)
+    for vendor in (
+        "anthropic/",
+        "google/",
+        "openai/",
+        "deepseek/",
+        "z-ai/",
+        "zhipu/",
+        "meta/",
+        "moonshotai/",
+        "moonshot/",
+    ):
+        if clean_name.startswith(vendor):
+            stripped = clean_name[len(vendor) :]
             if stripped in MODEL_CAPABILITIES:
                 return MODEL_CAPABILITIES[stripped]
             clean_name = stripped

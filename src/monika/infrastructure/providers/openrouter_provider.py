@@ -24,6 +24,8 @@ logger = logging.getLogger("TradingAgent.OpenRouterProvider")
 
 OPENROUTER_MODEL_ALIASES = {
     # --- Anthropic ---
+    "claude-fable-5.1": "anthropic/claude-fable-5.1",
+    "fable-5.1": "anthropic/claude-fable-5.1",
     "claude-fable-5": "anthropic/claude-fable-5",
     "fable-5": "anthropic/claude-fable-5",
     "claude-opus-5.5": "anthropic/claude-opus-5.5",
@@ -47,6 +49,8 @@ OPENROUTER_MODEL_ALIASES = {
     "claude-sonnet-4.5": "anthropic/claude-sonnet-4.5",
     "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
     "sonnet-4.5": "anthropic/claude-sonnet-4.5",
+    "claude-haiku-5.5": "anthropic/claude-haiku-5.5",
+    "haiku-5.5": "anthropic/claude-haiku-5.5",
     "claude-haiku-4.5": "anthropic/claude-haiku-4.5-20251001",
     "claude-haiku-4-5": "anthropic/claude-haiku-4.5-20251001",
     "claude-haiku-4-5-20251001": "anthropic/claude-haiku-4.5-20251001",
