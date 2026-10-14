@@ -36,7 +36,7 @@ logger = logging.getLogger("TradingAgent.DashboardAPI.Trading.Risk")
 risk_router = APIRouter()
 
 
-@risk_router.get("/api/risk", tags=["Risk"])
+@risk_router.get("/api/v1/risk", tags=["Risk"])
 async def get_risk():
     """State PnL hari ini, status auto-trading (paused/active), margin, dan parameter risiko."""
     from sqlalchemy import desc, select
@@ -166,7 +166,7 @@ async def get_risk():
         }
 
 
-@risk_router.get("/api/risk/scorecard", tags=["Risk"])
+@risk_router.get("/api/v1/risk/scorecard", tags=["Risk"])
 @require_role(Role.VIEWER)
 async def get_risk_scorecard(
     symbol: str = Query(default="EURUSD", description="Asset symbol to evaluate against risk gate"),
@@ -182,7 +182,7 @@ async def get_risk_scorecard(
         return await risk_gate.get_current_scorecard(session=session, symbol=symbol.upper())
 
 
-@risk_router.get("/api/risk/correlation-matrix", tags=["Risk"])
+@risk_router.get("/api/v1/risk/correlation-matrix", tags=["Risk"])
 @require_role(Role.VIEWER)
 async def get_risk_correlation_matrix():
     """Compute rolling cross-asset correlation matrix and aggregate portfolio heat score."""
@@ -217,7 +217,7 @@ async def get_risk_correlation_matrix():
         }
 
 
-@risk_router.post("/api/actions/override-risk", tags=["Actions"])
+@risk_router.post("/api/v1/actions/override-risk", tags=["Actions"])
 @require_role(Role.ADMIN)
 async def action_override_risk(payload: OverrideRiskRequest, request: Request):
     """Update dynamic risk parameters in SystemConfig and runtime settings with duration support."""

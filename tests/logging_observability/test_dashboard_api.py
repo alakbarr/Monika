@@ -20,7 +20,7 @@ class TestDashboardAPI:
         mock_res.scalar_one_or_none.return_value = datetime.datetime.now()
         mock_conn.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/health")
+        response = client.get("/api/v1/health")
         assert response.status_code == 200
         data = response.json()
         assert "status" in data
@@ -36,7 +36,7 @@ class TestDashboardAPI:
         mock_res.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/overview")
+        response = client.get("/api/v1/overview")
         assert response.status_code == 200
         data = response.json()
         assert "agent_status" in data
@@ -65,7 +65,7 @@ class TestDashboardAPI:
         mock_res.scalars().all.return_value = [pos]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/positions")
+        response = client.get("/api/v1/positions")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -89,7 +89,7 @@ class TestDashboardAPI:
         mock_res.scalars().all.return_value = [act]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/activity")
+        response = client.get("/api/v1/activity")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -117,7 +117,7 @@ class TestDashboardAPI:
         mock_res.scalars().all.return_value = [a]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/analysis")
+        response = client.get("/api/v1/analysis")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -143,7 +143,7 @@ class TestDashboardAPI:
         mock_res.scalars().all.return_value = [o]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/orders")
+        response = client.get("/api/v1/orders")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -166,7 +166,7 @@ class TestDashboardAPI:
         mock_res.scalar_one_or_none.return_value = r
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/risk")
+        response = client.get("/api/v1/risk")
         assert response.status_code == 200
         data = response.json()
         assert data["daily_pnl"] == 100.0
@@ -190,7 +190,7 @@ class TestDashboardAPI:
         mock_res.scalar_one_or_none.return_value = real_risk
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/risk")
+        response = client.get("/api/v1/risk")
         assert response.status_code == 200
         data = response.json()
         assert data["daily_pnl"] == 50.0
@@ -198,7 +198,7 @@ class TestDashboardAPI:
 
         # Now test with dynamic starting_balance attached
         setattr(real_risk, "starting_balance", 1000.0)
-        response2 = client.get("/api/risk")
+        response2 = client.get("/api/v1/risk")
         assert response2.status_code == 200
         data2 = response2.json()
         assert data2["daily_pnl_pct"] == 5.0
@@ -217,7 +217,7 @@ class TestDashboardAPI:
         mock_res.scalars().all.return_value = [v]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/vix")
+        response = client.get("/api/v1/vix")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -240,7 +240,7 @@ class TestDashboardAPI:
         mock_res.scalar_one_or_none.return_value = b
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/brief")
+        response = client.get("/api/v1/brief")
         assert response.status_code == 200
         data = response.json()
         brief_data = data.get("brief", data)
@@ -288,21 +288,21 @@ class TestDashboardAPI:
         global_trace_store.record_span(rec)
 
         # 1. GET /api/traces
-        res = client.get("/api/traces")
+        res = client.get("/api/v1/traces")
         assert res.status_code == 200
         data = res.json()
         assert "spans" in data
         assert any(s["trace_id"] == "test_trc_001" for s in data["spans"])
 
         # 2. GET /api/traces/{trace_id}
-        res_tree = client.get("/api/traces/test_trc_001")
+        res_tree = client.get("/api/v1/traces/test_trc_001")
         assert res_tree.status_code == 200
         tree_data = res_tree.json()
         assert tree_data["trace_id"] == "test_trc_001"
         assert len(tree_data["roots"]) >= 1
 
         # 3. GET /api/traces/cycle/{cycle_id}
-        res_cycle = client.get("/api/traces/cycle/test_cycle_001")
+        res_cycle = client.get("/api/v1/traces/cycle/test_cycle_001")
         assert res_cycle.status_code == 200
         cycle_data = res_cycle.json()
         assert cycle_data["cycle_id"] == "test_cycle_001"
@@ -333,7 +333,7 @@ class TestDashboardAPI:
         mock_res.scalars().all.return_value = [ana]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/debate-outcomes?limit=10")
+        response = client.get("/api/v1/debate-outcomes?limit=10")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] == 1
@@ -364,7 +364,7 @@ class TestDashboardAPI:
         mock_res.scalars().all.return_value = [sig]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/signals/mt5?limit=10")
+        response = client.get("/api/v1/signals/mt5?limit=10")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] == 1
@@ -389,7 +389,7 @@ class TestDashboardAPI:
         mock_res.scalars().all.return_value = [trig]
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/triggers?status=pending")
+        response = client.get("/api/v1/triggers?status=pending")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] == 1
@@ -469,17 +469,17 @@ class TestDashboardAPI:
         }
         with patch.dict(os.environ, env):
             # 1. Viewer trying operator action (trigger-cycle) -> 403
-            res = client.post("/api/actions/trigger-cycle", headers={"X-API-Key": "view_key"}, json={"forced": True})
+            res = client.post("/api/v1/actions/trigger-cycle", headers={"X-API-Key": "view_key"}, json={"forced": True})
             assert res.status_code == 403
             assert "operator" in res.json()["detail"].lower()
 
             # 2. Operator trying operator action (trigger-cycle) -> allowed through RBAC
-            res = client.post("/api/actions/trigger-cycle", headers={"X-API-Key": "ops_key"}, json={"forced": True})
+            res = client.post("/api/v1/actions/trigger-cycle", headers={"X-API-Key": "ops_key"}, json={"forced": True})
             assert res.status_code != 403
 
             # 3. Operator trying admin action (override-risk) -> 403
             res = client.post(
-                "/api/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"risk_percent_per_trade": 1.5}
+                "/api/v1/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"risk_percent_per_trade": 1.5}
             )
             assert res.status_code == 403
             assert "admin" in res.json()["detail"].lower()
@@ -488,7 +488,7 @@ class TestDashboardAPI:
     # Phase 2: Config Management Tests
     # -----------------------------------------------------------------------
     def test_get_config_settings(self):
-        res = client.get("/api/config/settings")
+        res = client.get("/api/v1/config/settings")
         assert res.status_code == 200
         data = res.json()
         assert data["status"] == "success"
@@ -497,7 +497,7 @@ class TestDashboardAPI:
         assert "file_path" in data
 
     def test_get_config_schema(self):
-        res = client.get("/api/config/schema")
+        res = client.get("/api/v1/config/schema")
         assert res.status_code == 200
         data = res.json()
         assert "properties" in data
@@ -516,7 +516,7 @@ class TestDashboardAPI:
                 },
                 "reason": "Test invalid config",
             }
-            res = client.put("/api/config/settings", headers={"X-API-Key": "adm_key"}, json=invalid_payload)
+            res = client.put("/api/v1/config/settings", headers={"X-API-Key": "adm_key"}, json=invalid_payload)
             assert res.status_code == 422
             assert res.json()["status"] == "validation_error"
 
@@ -549,7 +549,7 @@ class TestDashboardAPI:
                     mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
                     res = client.put(
-                        "/api/config/settings",
+                        "/api/v1/config/settings",
                         headers={"X-API-Key": "test_adm_key"},
                         json=valid_payload,
                     )
@@ -562,7 +562,7 @@ class TestDashboardAPI:
     def test_put_config_settings_role_forbidden(self):
         env = {"DASHBOARD_API_KEYS": "admin:adm_key,operator:ops_key,viewer:view_key"}
         with patch.dict(os.environ, env):
-            res = client.put("/api/config/settings", headers={"X-API-Key": "ops_key"}, json={"settings": {}})
+            res = client.put("/api/v1/config/settings", headers={"X-API-Key": "ops_key"}, json={"settings": {}})
             assert res.status_code == 403
 
     def test_spoofed_forwarded_for_cannot_bypass_rbac(self):
@@ -570,7 +570,7 @@ class TestDashboardAPI:
         env = {"DASHBOARD_API_KEYS": "", "DASHBOARD_API_KEY": ""}
         with patch.dict(os.environ, env):
             # Remote client sending spoofed loopback header without API key
-            res = client.get("/api/overview", headers={"X-Forwarded-For": "127.0.0.1"})
+            res = client.get("/api/v1/overview", headers={"X-Forwarded-For": "127.0.0.1"})
             assert res.status_code == 403
             assert "DASHBOARD_API_KEY must be configured for remote network access" in res.json().get("detail", "")
 
@@ -596,7 +596,7 @@ class TestDashboardAPI:
 
             mock_session.execute.side_effect = [mock_res1, mock_res2]
 
-            res = client.get("/api/sessions")
+            res = client.get("/api/v1/sessions")
             assert res.status_code == 200
             items = res.json()
             assert len(items) == 1
@@ -621,7 +621,7 @@ class TestDashboardAPI:
             mock_res.scalars.return_value.all.return_value = [msg1]
             mock_session.execute.return_value = mock_res
 
-            res = client.get("/api/sessions/dash:admin/messages")
+            res = client.get("/api/v1/sessions/dash:admin/messages")
             assert res.status_code == 200
             msgs = res.json()
             assert len(msgs) == 1
@@ -631,7 +631,7 @@ class TestDashboardAPI:
     def test_get_auth_role(self):
         env = {"DASHBOARD_API_KEYS": "operator:ops_123"}
         with patch.dict(os.environ, env):
-            res = client.get("/api/auth/role", headers={"X-API-Key": "ops_123"})
+            res = client.get("/api/v1/auth/role", headers={"X-API-Key": "ops_123"})
             assert res.status_code == 200
             assert res.json()["role"] == "operator"
 
@@ -684,7 +684,7 @@ class TestDashboardAPI:
                     mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
                     res = client.put(
-                        "/api/config/settings",
+                        "/api/v1/config/settings",
                         headers={"X-API-Key": "test_adm_key"},
                         json=partial_payload,
                     )
@@ -717,7 +717,7 @@ class TestDashboardAPI:
     # -----------------------------------------------------------------------
     def test_get_graph_state_default(self):
         """Test GET /api/observability/graph-state returns valid LangGraph topology."""
-        res = client.get("/api/observability/graph-state")
+        res = client.get("/api/v1/observability/graph-state")
         assert res.status_code == 200
         data = res.json()
 
@@ -754,7 +754,7 @@ class TestDashboardAPI:
 
     def test_get_graph_state_with_cycle_id(self):
         """Test GET /api/observability/graph-state with specific cycle_id."""
-        res = client.get("/api/observability/graph-state?cycle_id=cycle-custom-2026")
+        res = client.get("/api/v1/observability/graph-state?cycle_id=cycle-custom-2026")
         assert res.status_code == 200
         data = res.json()
         assert data["cycle_id"] == "cycle-custom-2026"
@@ -817,7 +817,7 @@ class TestDashboardAPI:
         global_trace_store.record_span(risk_span)
         global_trace_store.record_span(exec_span)
 
-        res = client.get(f"/api/observability/graph-state?cycle_id={test_cycle}")
+        res = client.get(f"/api/v1/observability/graph-state?cycle_id={test_cycle}")
         assert res.status_code == 200
         data = res.json()
         assert data["cycle_id"] == test_cycle
@@ -849,7 +849,7 @@ class TestDashboardAPI:
 
     def test_get_graph_state_non_existent_cycle_pending(self):
         """Test that querying a non-existent cycle returns pending nodes rather than fake executed trades."""
-        res = client.get("/api/observability/graph-state?cycle_id=cycle-ghost-999")
+        res = client.get("/api/v1/observability/graph-state?cycle_id=cycle-ghost-999")
         assert res.status_code == 200
         data = res.json()
         assert data["cycle_id"] == "cycle-ghost-999"
@@ -880,7 +880,7 @@ class TestDashboardAPI:
         )
         global_trace_store.record_span(llm_span)
 
-        res = client.get(f"/api/observability/graph-state?cycle_id={test_cycle}")
+        res = client.get(f"/api/v1/observability/graph-state?cycle_id={test_cycle}")
         assert res.status_code == 200
         data = res.json()
         nodes_by_id = {n["id"]: n for n in data["nodes"]}
@@ -891,7 +891,7 @@ class TestDashboardAPI:
 
     def test_get_cycle_trace_summary_enriched(self):
         """Test that GET /api/traces/cycle/{cycle_id} returns enriched graph_state."""
-        res = client.get("/api/traces/cycle/cycle-summary-test")
+        res = client.get("/api/v1/traces/cycle/cycle-summary-test")
         assert res.status_code == 200
         data = res.json()
         assert "cycle_id" in data
@@ -903,11 +903,11 @@ class TestDashboardAPI:
     def test_pagination_limits_bounded_validation(self):
         """Test that query parameters enforce ge=1 and le bounds."""
         # limit=0 should fail validation (ge=1)
-        res_zero = client.get("/api/positions?limit=0")
+        res_zero = client.get("/api/v1/positions?limit=0")
         assert res_zero.status_code == 422
 
         # limit=500 should fail validation (le=200)
-        res_over = client.get("/api/positions?limit=500")
+        res_over = client.get("/api/v1/positions?limit=500")
         assert res_over.status_code == 422
 
     def test_get_graph_state_per_symbol_filtering(self):
@@ -949,7 +949,7 @@ class TestDashboardAPI:
         )
         global_trace_store.record_span(asset_span)
 
-        res = client.get(f"/api/observability/graph-state?cycle_id={test_cycle}&symbol=EURUSD")
+        res = client.get(f"/api/v1/observability/graph-state?cycle_id={test_cycle}&symbol=EURUSD")
         assert res.status_code == 200
         data = res.json()
         assert data["cycle_id"] == test_cycle
@@ -1022,7 +1022,7 @@ class TestDashboardAPI:
         global_trace_store.record_span(reflect_span)
         global_trace_store.record_span(risk_span)
 
-        res = client.get(f"/api/observability/graph-state?cycle_id={test_cycle}")
+        res = client.get(f"/api/v1/observability/graph-state?cycle_id={test_cycle}")
         assert res.status_code == 200
         data = res.json()
         nodes_by_id = {n["id"]: n for n in data["nodes"]}

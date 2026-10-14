@@ -19,7 +19,7 @@ from monika.interfaces.dashboard.routes.common import _safe_json
 
 logger = logging.getLogger("TradingAgent.Dashboard.Backtest")
 
-backtest_router = APIRouter(prefix="/api/backtest", tags=["Backtest"])
+backtest_router = APIRouter(prefix="/api/v1/backtest", tags=["Backtest"])
 
 
 class BacktestRunRequest(BaseModel):

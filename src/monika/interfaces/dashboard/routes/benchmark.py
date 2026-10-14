@@ -30,7 +30,7 @@ from monika.interfaces.dashboard.routes.common import _safe_json, broadcast_live
 
 logger = logging.getLogger("TradingAgent.Dashboard.Benchmark")
 
-benchmark_router = APIRouter(prefix="/api/benchmark", tags=["Benchmark"])
+benchmark_router = APIRouter(prefix="/api/v1/benchmark", tags=["Benchmark"])
 
 
 class BenchmarkRunRequest(BaseModel):

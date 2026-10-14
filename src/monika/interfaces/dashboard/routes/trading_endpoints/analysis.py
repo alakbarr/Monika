@@ -36,7 +36,7 @@ logger = logging.getLogger("TradingAgent.DashboardAPI.Trading.Analysis")
 analysis_router = APIRouter()
 
 
-@analysis_router.get("/api/analysis", tags=["Analysis"])
+@analysis_router.get("/api/v1/analysis", tags=["Analysis"])
 async def get_analysis(
     limit: int = Query(default=20, ge=1, le=100),
     symbol: Optional[str] = Query(default=None),
@@ -81,7 +81,7 @@ async def get_analysis(
         return results
 
 
-@analysis_router.get("/api/analysis/decision-dossier/{analysis_id}", tags=["Analysis"])
+@analysis_router.get("/api/v1/analysis/decision-dossier/{analysis_id}", tags=["Analysis"])
 async def get_decision_dossier(
     analysis_id: str,
     ticket: Optional[int] = Query(None, description="Optional MT5 ticket filter for execution telemetry"),
@@ -381,7 +381,7 @@ async def get_decision_dossier(
         return dossier
 
 
-@analysis_router.get("/api/decision-distribution", tags=["Analysis"])
+@analysis_router.get("/api/v1/decision-distribution", tags=["Analysis"])
 async def get_decision_distribution():
     from sqlalchemy import func, select
 
@@ -414,7 +414,7 @@ async def get_decision_distribution():
         return distribution
 
 
-@analysis_router.get("/api/debate-outcomes", tags=["Analysis"])
+@analysis_router.get("/api/v1/debate-outcomes", tags=["Analysis"])
 async def get_debate_outcomes(limit: int = Query(default=20, ge=1, le=100)):
     """Ambil ringkasan hasil debate bull/bear & adjudikasi spesialis (M-4)."""
     from sqlalchemy import select
@@ -487,8 +487,8 @@ async def get_debate_outcomes(limit: int = Query(default=20, ge=1, le=100)):
         return {"total": len(results), "items": results}
 
 
-@analysis_router.get("/api/signals/mt5", tags=["Execution"])
-@analysis_router.get("/api/mt5/signals", tags=["Execution"], include_in_schema=False)
+@analysis_router.get("/api/v1/signals/mt5", tags=["Execution"])
+@analysis_router.get("/api/v1/mt5/signals", tags=["Execution"], include_in_schema=False)
 async def get_mt5_signals(limit: int = Query(default=50, ge=1, le=200)):
     """Ambil riwayat sinyal dan korelasi eksekusi MT5 yang diperkaya dengan analisis AI (M-4)."""
     from sqlalchemy import select
@@ -560,7 +560,7 @@ async def get_mt5_signals(limit: int = Query(default=50, ge=1, le=200)):
         }
 
 
-@analysis_router.get("/api/triggers", tags=["Analysis"])
+@analysis_router.get("/api/v1/triggers", tags=["Analysis"])
 async def get_trade_triggers(status: Optional[str] = None, limit: int = Query(default=50, ge=1, le=200)):
     """Ambil daftar trade triggers kondisional (M-4)."""
     from monika.infrastructure.database.db import AsyncSessionLocal

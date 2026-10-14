@@ -307,7 +307,7 @@ def test_client():
 
 
 def test_api_get_tasks(test_client):
-    response = test_client.get("/api/benchmark/tasks")
+    response = test_client.get("/api/v1/benchmark/tasks")
     assert response.status_code == 200
     data = response.json()
     assert "tasks" in data
@@ -316,7 +316,7 @@ def test_api_get_tasks(test_client):
 
 
 def test_api_get_models(test_client):
-    response = test_client.get("/api/benchmark/models")
+    response = test_client.get("/api/v1/benchmark/models")
     assert response.status_code == 200
     data = response.json()
     assert "candidates" in data
@@ -343,13 +343,13 @@ def test_api_get_runs_and_leaderboard_empty_or_mocked(test_client):
 
     with patch("monika.interfaces.dashboard.routes.benchmark.get_session", return_value=MockAsyncSessionCM()):
         # Test runs list
-        response = test_client.get("/api/benchmark/runs")
+        response = test_client.get("/api/v1/benchmark/runs")
         assert response.status_code == 200
         data = response.json()
         assert "runs" in data
 
         # Test leaderboard
-        response_lb = test_client.get("/api/benchmark/leaderboard")
+        response_lb = test_client.get("/api/v1/benchmark/leaderboard")
         assert response_lb.status_code == 200
         lb_data = response_lb.json()
         assert "leaderboard" in lb_data
@@ -393,7 +393,7 @@ def test_api_get_compare_task_benchmarks(test_client):
             return None
 
     with patch("monika.interfaces.dashboard.routes.benchmark.get_session", return_value=MockAsyncSessionCM()):
-        response = test_client.get("/api/benchmark/compare?task_id=stage1_fundamental")
+        response = test_client.get("/api/v1/benchmark/compare?task_id=stage1_fundamental")
         assert response.status_code == 200
         data = response.json()
         assert data["task_id"] == "stage1_fundamental"

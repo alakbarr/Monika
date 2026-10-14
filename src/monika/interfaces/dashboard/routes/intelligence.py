@@ -37,10 +37,10 @@ from monika.interfaces.dashboard.routes.common import (
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Intelligence")
 
-intelligence_router = APIRouter(tags=["Intelligence & Market Data"])
+intelligence_router = APIRouter(prefix="/api/v1", tags=["Intelligence & Market Data"])
 
 
-@intelligence_router.get("/api/calendar/events", tags=["Calendar"])
+@intelligence_router.get("/calendar/events", tags=["Calendar"])
 @require_role(Role.VIEWER)
 async def get_calendar_events(
     currency: Optional[str] = Query(default=None, description="Currency filter, e.g. USD, EUR, XAU"),
@@ -80,7 +80,7 @@ async def get_calendar_events(
         ]
 
 
-@intelligence_router.get("/api/calendar/upcoming", tags=["Calendar"])
+@intelligence_router.get("/calendar/upcoming", tags=["Calendar"])
 @require_role(Role.VIEWER)
 async def get_upcoming_high_impact_events():
     """Retrieve high impact macroeconomic events scheduled within next 24 hours."""
@@ -115,7 +115,7 @@ async def get_upcoming_high_impact_events():
         ]
 
 
-@intelligence_router.get("/api/market/cot", tags=["Market Data"])
+@intelligence_router.get("/market/cot", tags=["Market Data"])
 @require_role(Role.VIEWER)
 async def get_cot_reports(
     market_code: Optional[str] = Query(default=None, description="CFTC market code, e.g. 099741 (EUR)"),
@@ -152,7 +152,7 @@ async def get_cot_reports(
         ]
 
 
-@intelligence_router.get("/api/news/classified", tags=["News"])
+@intelligence_router.get("/news/classified", tags=["News"])
 @require_role(Role.VIEWER)
 async def get_classified_news(
     symbol: Optional[str] = Query(default=None, description="Currency or asset tag, e.g. USD, EUR, XAU"),
@@ -192,7 +192,7 @@ async def get_classified_news(
         ]
 
 
-@intelligence_router.get("/api/news/sentiment", tags=["News"])
+@intelligence_router.get("/news/sentiment", tags=["News"])
 @require_role(Role.VIEWER)
 async def get_aggregated_sentiment():
     """Aggregate 24-hour sentiment scores across tracked currencies."""
@@ -234,7 +234,7 @@ async def get_aggregated_sentiment():
         }
 
 
-@intelligence_router.get("/api/skills", tags=["Skills"])
+@intelligence_router.get("/skills", tags=["Skills"])
 @require_role(Role.VIEWER)
 async def get_skills_catalog():
     """List all registered autonomous skills and playbooks with frontmatter metadata."""
@@ -255,7 +255,7 @@ async def get_skills_catalog():
     return {"skills": skills_list, "total": len(skills_list)}
 
 
-@intelligence_router.get("/api/reports/tearsheet/latest", tags=["Observability"])
+@intelligence_router.get("/reports/tearsheet/latest", tags=["Observability"])
 @require_role(Role.VIEWER)
 async def get_latest_tearsheet():
     """Generate institutional quant tearsheet metrics from closed trading performance."""
@@ -309,7 +309,7 @@ async def get_latest_tearsheet():
         }
 
 
-@intelligence_router.get("/api/market/fedwatch", tags=["Market Data"])
+@intelligence_router.get("/market/fedwatch", tags=["Market Data"])
 @require_role(Role.VIEWER)
 async def get_market_fedwatch():
     """Retrieve CME FedWatch probabilities and central bank rate expectations."""
@@ -374,7 +374,7 @@ async def get_market_fedwatch():
         }
 
 
-@intelligence_router.get("/api/market/yields", tags=["Market Data"])
+@intelligence_router.get("/market/yields", tags=["Market Data"])
 @require_role(Role.VIEWER)
 async def get_market_yields():
     """Retrieve US Treasury yields, 2s10s yield curve spread, and international sovereign bond yields."""
@@ -428,7 +428,7 @@ async def get_market_yields():
         }
 
 
-@intelligence_router.get("/api/market/fear-greed", tags=["Market Data"])
+@intelligence_router.get("/market/fear-greed", tags=["Market Data"])
 @require_role(Role.VIEWER)
 async def get_market_fear_greed():
     """Retrieve market Fear & Greed index."""
@@ -454,7 +454,7 @@ async def get_market_fear_greed():
         }
 
 
-@intelligence_router.get("/api/market/sentiment-composite", tags=["Market Data"])
+@intelligence_router.get("/market/sentiment-composite", tags=["Market Data"])
 @require_role(Role.VIEWER)
 async def get_market_sentiment_composite():
     """Retrieve multi-asset sentiment composite (Crypto, Forex, and Institutional COT)."""
@@ -530,7 +530,7 @@ async def get_market_sentiment_composite():
 # ---------------------------------------------------------------------------
 
 
-@intelligence_router.get("/api/skills/crystallized", tags=["Skills"])
+@intelligence_router.get("/skills/crystallized", tags=["Skills"])
 @require_role(Role.VIEWER)
 async def get_crystallized_skills():
     """Retrieve all autonomously crystallized skills with attribution & win-rate metrics."""
@@ -601,7 +601,7 @@ async def get_crystallized_skills():
     return {"skills": skills, "total": len(skills)}
 
 
-@intelligence_router.get("/api/skills/{name}/stats", tags=["Skills"])
+@intelligence_router.get("/skills/{name}/stats", tags=["Skills"])
 @require_role(Role.VIEWER)
 async def get_skill_stats(name: str):
     """Retrieve live empirical attribution statistics for a crystallized skill."""
@@ -630,7 +630,7 @@ async def get_skill_stats(name: str):
         }
 
 
-@intelligence_router.post("/api/skills/curate", tags=["Skills"])
+@intelligence_router.post("/skills/curate", tags=["Skills"])
 @require_role(Role.OPERATOR)
 async def curate_crystallized_skills(request: Request):
     """Evaluate and prune degraded crystallized skills whose win rate dropped below threshold."""
@@ -649,7 +649,7 @@ async def curate_crystallized_skills(request: Request):
         return {"status": "curated", "pruned_skills": pruned, "pruned_count": len(pruned)}
 
 
-@intelligence_router.post("/api/skills/{name}/deprecate", tags=["Skills"])
+@intelligence_router.post("/skills/{name}/deprecate", tags=["Skills"])
 @require_role(Role.OPERATOR)
 async def deprecate_crystallized_skill(name: str, payload: DeprecateSkillRequest, request: Request):
     """Manually deprecate an underperforming or stale crystallized skill."""
@@ -684,7 +684,7 @@ async def deprecate_crystallized_skill(name: str, payload: DeprecateSkillRequest
     return {"status": "deprecated" if success else "failed", "skill_name": clean_name, "success": success}
 
 
-@intelligence_router.post("/api/skills/crystallize", tags=["Skills"])
+@intelligence_router.post("/skills/crystallize", tags=["Skills"])
 @require_role(Role.OPERATOR)
 async def crystallize_skills_now(request: Request, payload: Optional[CrystallizeSkillRequest] = None):
     """Trigger on-demand skill crystallization for a symbol or all resolved profitable setups."""

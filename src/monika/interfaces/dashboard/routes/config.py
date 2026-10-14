@@ -28,7 +28,7 @@ from monika.interfaces.dashboard.routes.common import (
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Config")
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/config", tags=["Config"])
 config_router = router
 
 
@@ -140,7 +140,7 @@ def _mask_yaml_text(text: str) -> str:
     return masked_text
 
 
-@router.get("/api/config/settings", tags=["Config"])
+@router.get("/settings", tags=["Config"])
 @require_role(Role.VIEWER)
 async def get_config_settings(request: Request):
     """Return full settings.yaml as structured JSON along with raw YAML text with secrets masked."""
@@ -167,7 +167,7 @@ async def get_config_settings(request: Request):
     }
 
 
-@router.get("/api/config/schema", tags=["Config"])
+@router.get("/schema", tags=["Config"])
 @require_role(Role.VIEWER)
 async def get_config_schema(request: Request):
     """Return Pydantic TradingAgentConfig as JSON Schema for form rendering."""
@@ -180,7 +180,7 @@ async def get_config_schema(request: Request):
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 
-@router.get("/api/config/plugins/schemas", tags=["Config"])
+@router.get("/plugins/schemas", tags=["Config"])
 @require_role(Role.VIEWER)
 async def get_all_plugin_config_schemas(request: Request):
     """Return dictionary of plugin_id -> JSON Schema for registered plugins."""
@@ -209,7 +209,7 @@ async def get_all_plugin_config_schemas(request: Request):
     return schemas
 
 
-@router.get("/api/config/plugins/{plugin_id}/schema", tags=["Config"])
+@router.get("/plugins/{plugin_id}/schema", tags=["Config"])
 @require_role(Role.VIEWER)
 async def get_plugin_config_schema(plugin_id: str, request: Request):
     """Return JSON Schema for a specific plugin configuration if available."""
@@ -236,7 +236,7 @@ async def get_plugin_config_schema(plugin_id: str, request: Request):
     }
 
 
-@router.put("/api/config/settings", tags=["Config"])
+@router.put("/settings", tags=["Config"])
 @require_role(Role.ADMIN)
 async def update_config_settings(payload: ConfigUpdateRequest, request: Request):
     """Validate payload, create .bak backup, write settings.yaml, trigger hot-reload, and log."""

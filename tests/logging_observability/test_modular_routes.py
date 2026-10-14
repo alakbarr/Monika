@@ -88,7 +88,7 @@ def test_request_models_validation():
 def test_ping_endpoint_via_testclient():
     """Verify /api/ping responds via TestClient."""
     client = TestClient(app)
-    response = client.get("/api/ping")
+    response = client.get("/api/v1/ping")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "pong"
@@ -114,7 +114,7 @@ def test_steer_endpoint():
             mock_session = create_mock_async_session()
             mock_sess_cls.return_value.__aenter__.return_value = mock_session
             response = client.post(
-                "/api/actions/steer",
+                "/api/v1/actions/steer",
                 json={"message": "Focus on DXY correlation during NFP", "mode": "steer", "symbols": ["EURUSD"]},
             )
             assert response.status_code == 200
@@ -133,7 +133,7 @@ def test_calendar_upcoming_endpoint():
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
 
-        response = client.get("/api/calendar/upcoming")
+        response = client.get("/api/v1/calendar/upcoming")
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -146,7 +146,7 @@ def test_skills_catalog_endpoint():
             "monika.interfaces.dashboard.routes.intelligence.get_skill_metadata",
             return_value={"description": "Test"},
         ):
-            response = client.get("/api/skills")
+            response = client.get("/api/v1/skills")
             assert response.status_code == 200
             data = response.json()
             assert "skills" in data
@@ -181,7 +181,7 @@ def test_modify_position_endpoint():
             mock_session.commit = AsyncMock()
 
             response = client.post(
-                "/api/positions/99999/modify",
+                "/api/v1/positions/99999/modify",
                 json={"sl": 1.0550, "tp": 1.0850, "comment": "Tighter SL"},
             )
             assert response.status_code == 200
@@ -206,7 +206,7 @@ def test_market_indicators_endpoint():
             "monika.domain.indicators.technical.TechnicalIndicatorCalculator.get_snapshot",
             return_value={"RSI_14": 55.4},
         ):
-            response = client.get("/api/market/indicators/EURUSD?timeframe=H1")
+            response = client.get("/api/v1/market/indicators/EURUSD?timeframe=H1")
             assert response.status_code == 200
             data = response.json()
             assert data["symbol"] == "EURUSD"
@@ -225,7 +225,7 @@ def test_market_structure_endpoint():
         mock_res.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_res)
 
-        response = client.get("/api/market/structure/EURUSD?timeframe=H4")
+        response = client.get("/api/v1/market/structure/EURUSD?timeframe=H4")
         assert response.status_code == 200
         data = response.json()
         assert data["symbol"] == "EURUSD"
@@ -242,7 +242,7 @@ def test_trade_trajectories_endpoint():
         "monika.application.benchmark.trade_trajectory_logger.TradeTrajectoryLogger.load_recent_trajectories",
         return_value=[{"symbol": "EURUSD", "decision": "BUY", "ticket": 12345, "timestamp": "2026-09-24T00:00:00Z"}],
     ):
-        response = client.get("/api/observability/trajectories?limit=10")
+        response = client.get("/api/v1/observability/trajectories?limit=10")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] == 1
@@ -268,7 +268,7 @@ def test_cycle_decision_lineage_endpoint():
     mock_event_log.trace_decision_lineage.return_value = []
 
     with patch("monika.core.telemetry.trading_cycle_event_log.get_cycle_event_log", return_value=mock_event_log):
-        response = client.get("/api/observability/cycles/cycle-test-1/lineage?target_seq=2")
+        response = client.get("/api/v1/observability/cycles/cycle-test-1/lineage?target_seq=2")
         assert response.status_code == 200
         data = response.json()
         assert data["cycle_id"] == "cycle-test-1"

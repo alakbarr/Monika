@@ -162,7 +162,7 @@ async def verify_api_key(request: Request, call_next):
     is_localhost = direct_ip in ("127.0.0.1", "::1", "localhost", "testclient") and not forwarded
     path = request.url.path
 
-    if path == "/api/ping":
+    if path in ("/api/ping", "/api/v1/ping"):
         return await call_next(request)
 
     if allowed_ips and not is_localhost:
@@ -288,7 +288,7 @@ async def serve_setup_page():
     raise HTTPException(status_code=404, detail="Setup page template not found")
 
 
-@app.post("/api/setup/submit")
+@app.post("/api/v1/setup/submit")
 @require_role(Role.ADMIN)
 async def submit_setup_configuration(request: Request):
     """Receive and persist configuration submitted from Web Onboarding Wizard."""

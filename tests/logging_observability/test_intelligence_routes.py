@@ -21,17 +21,17 @@ def client(monkeypatch):
 def test_intelligence_router_routes_registered():
     """Verify all intelligence endpoints exist in the router."""
     routes = [r.path for r in intelligence_router.routes]
-    assert "/api/calendar/events" in routes
-    assert "/api/calendar/upcoming" in routes
-    assert "/api/market/cot" in routes
-    assert "/api/news/classified" in routes
-    assert "/api/news/sentiment" in routes
-    assert "/api/skills" in routes
-    assert "/api/reports/tearsheet/latest" in routes
-    assert "/api/market/fedwatch" in routes
-    assert "/api/market/yields" in routes
-    assert "/api/market/fear-greed" in routes
-    assert "/api/market/sentiment-composite" in routes
+    assert "/api/v1/calendar/events" in routes
+    assert "/api/v1/calendar/upcoming" in routes
+    assert "/api/v1/market/cot" in routes
+    assert "/api/v1/news/classified" in routes
+    assert "/api/v1/news/sentiment" in routes
+    assert "/api/v1/skills" in routes
+    assert "/api/v1/reports/tearsheet/latest" in routes
+    assert "/api/v1/market/fedwatch" in routes
+    assert "/api/v1/market/yields" in routes
+    assert "/api/v1/market/fear-greed" in routes
+    assert "/api/v1/market/sentiment-composite" in routes
 
 
 def test_get_calendar_events_mocked(client):
@@ -43,7 +43,7 @@ def test_get_calendar_events_mocked(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/calendar/events?days_ahead=7")
+        response = client.get("/api/v1/calendar/events?days_ahead=7")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -58,7 +58,7 @@ def test_get_upcoming_calendar_mocked(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/calendar/upcoming?hours_ahead=24")
+        response = client.get("/api/v1/calendar/upcoming?hours_ahead=24")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -73,7 +73,7 @@ def test_get_cot_data_mocked(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/market/cot?symbol=EURUSD")
+        response = client.get("/api/v1/market/cot?symbol=EURUSD")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -88,7 +88,7 @@ def test_get_classified_news_mocked(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/news/classified?limit=10")
+        response = client.get("/api/v1/news/classified?limit=10")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -103,7 +103,7 @@ def test_get_news_sentiment_mocked(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/news/sentiment?hours=24")
+        response = client.get("/api/v1/news/sentiment?hours=24")
         assert response.status_code == 200
         data = response.json()
         assert "total_articles" in data
@@ -112,7 +112,7 @@ def test_get_news_sentiment_mocked(client):
 
 def test_get_skills_endpoint(client):
     """Test /api/skills endpoint."""
-    response = client.get("/api/skills")
+    response = client.get("/api/v1/skills")
     assert response.status_code == 200
     data = response.json()
     assert "skills" in data
@@ -122,7 +122,7 @@ def test_get_skills_endpoint(client):
 
 def test_get_plugins_endpoint(client):
     """Test /api/plugins endpoint."""
-    response = client.get("/api/plugins")
+    response = client.get("/api/v1/plugins")
     assert response.status_code == 200
     data = response.json()
     assert "plugins" in data
@@ -139,7 +139,7 @@ def test_get_latest_tearsheet_mocked(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/reports/tearsheet/latest")
+        response = client.get("/api/v1/reports/tearsheet/latest")
         assert response.status_code == 200
         data = response.json()
         assert "total_trades" in data
@@ -156,7 +156,7 @@ def test_get_market_fedwatch_mocked(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/market/fedwatch")
+        response = client.get("/api/v1/market/fedwatch")
         assert response.status_code == 200
         data = response.json()
         assert "fedwatch" in data
@@ -174,7 +174,7 @@ def test_get_market_yields_mocked(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/market/yields")
+        response = client.get("/api/v1/market/yields")
         assert response.status_code == 200
         data = response.json()
         assert "treasury_yields" in data
@@ -193,7 +193,7 @@ def test_get_market_fear_greed_mocked(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/market/fear-greed")
+        response = client.get("/api/v1/market/fear-greed")
         assert response.status_code == 200
         data = response.json()
         assert "current_value" in data
@@ -210,7 +210,7 @@ def test_get_market_sentiment_composite_mocked(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/market/sentiment-composite")
+        response = client.get("/api/v1/market/sentiment-composite")
         assert response.status_code == 200
         data = response.json()
         assert "crypto" in data
@@ -229,7 +229,7 @@ def test_get_crystallized_skills_endpoint(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/skills/crystallized")
+        response = client.get("/api/v1/skills/crystallized")
         assert response.status_code == 200
         data = response.json()
         assert "skills" in data
@@ -246,7 +246,7 @@ def test_get_skill_stats_endpoint(client):
 
     with patch("monika.interfaces.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
-        response = client.get("/api/skills/eurusd_trend/stats")
+        response = client.get("/api/v1/skills/eurusd_trend/stats")
         assert response.status_code == 200
         data = response.json()
         assert data["skill_name"] == "eurusd_trend"
@@ -264,7 +264,7 @@ def test_curate_skills_endpoint(client):
             new_callable=AsyncMock,
             return_value=[],
         ):
-            response = client.post("/api/skills/curate")
+            response = client.post("/api/v1/skills/curate")
             assert response.status_code == 200
             data = response.json()
             assert data["status"] == "curated"
@@ -283,7 +283,7 @@ def test_deprecate_skill_endpoint(client):
         with patch(
             "monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer.deprecate_skill", return_value=True
         ):
-            response = client.post("/api/skills/test_skill/deprecate", json={"reason": "Test deprecation"})
+            response = client.post("/api/v1/skills/test_skill/deprecate", json={"reason": "Test deprecation"})
             assert response.status_code == 200
             data = response.json()
             assert data["status"] == "deprecated"
@@ -300,7 +300,7 @@ def test_crystallize_skills_now_endpoint(client):
             new_callable=AsyncMock,
             return_value=[{"name": "test_cryst"}],
         ):
-            response = client.post("/api/skills/crystallize", json={"symbol": "EURUSD"})
+            response = client.post("/api/v1/skills/crystallize", json={"symbol": "EURUSD"})
             assert response.status_code == 200
             data = response.json()
             assert data["status"] == "crystallized"

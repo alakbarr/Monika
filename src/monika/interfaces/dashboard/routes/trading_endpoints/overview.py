@@ -36,7 +36,7 @@ logger = logging.getLogger("TradingAgent.DashboardAPI.Trading.Overview")
 overview_router = APIRouter()
 
 
-@overview_router.get("/api/overview", tags=["Dashboard"])
+@overview_router.get("/api/v1/overview", tags=["Dashboard"])
 async def get_overview():
     """Data metrik ringkas untuk highlight kartu dashboard."""
     from sqlalchemy import select
@@ -99,7 +99,7 @@ async def get_overview():
         }
 
 
-@overview_router.get("/api/paper-trading", tags=["Performance"])
+@overview_router.get("/api/v1/paper-trading", tags=["Performance"])
 async def get_paper_trading_stats():
     """Rangkuman PnL paper trading, win rate & detail performa."""
     from monika.core.analytics.paper_tracker import PaperTracker
@@ -111,7 +111,7 @@ async def get_paper_trading_stats():
         return stats
 
 
-@overview_router.get("/api/activity", tags=["Activity"])
+@overview_router.get("/api/v1/activity", tags=["Activity"])
 async def get_activity(
     limit: int = Query(default=50, ge=1, le=200),
     category: Optional[str] = Query(default=None, description="Filter by category"),
@@ -138,7 +138,7 @@ async def get_activity(
         ]
 
 
-@overview_router.get("/api/factor-analysis", tags=["Performance"])
+@overview_router.get("/api/v1/factor-analysis", tags=["Performance"])
 async def get_factor_analysis():
     """Mengukur seberapa akurat confluence factor vs PnL sesungguhnya."""
     from monika.core.analytics.analysis_tracker import compute_factor_effectiveness
@@ -149,7 +149,7 @@ async def get_factor_analysis():
         return result
 
 
-@overview_router.get("/api/edge-metrics", tags=["Performance"])
+@overview_router.get("/api/v1/edge-metrics", tags=["Performance"])
 async def get_edge_metrics():
     """
     Key metrics untuk monitoring apakah sistem masih memiliki edge positif.
@@ -221,7 +221,7 @@ async def get_edge_metrics():
         }
 
 
-@overview_router.get("/api/analysis-quality-realtime", tags=["Performance"])
+@overview_router.get("/api/v1/analysis-quality-realtime", tags=["Performance"])
 async def get_analysis_quality_realtime():
     """Real-time analysis quality metrics for monitoring dashboard."""
     from sqlalchemy import or_, select
@@ -295,7 +295,7 @@ async def get_analysis_quality_realtime():
         }
 
 
-@overview_router.get("/api/ssvp-health", tags=["SSVP"])
+@overview_router.get("/api/v1/ssvp-health", tags=["SSVP"])
 async def get_ssvp_health():
     """Monitor metric performa SSVP."""
     from sqlalchemy import select

@@ -18,7 +18,7 @@ from monika.application.analysis.mcp.dispatcher import MonikaMcpDispatcher
 
 logger = logging.getLogger("TradingAgent.Dashboard.MCP")
 
-mcp_router = APIRouter(prefix="/api/mcp", tags=["Model Context Protocol"])
+mcp_router = APIRouter(prefix="/api/v1/mcp", tags=["Model Context Protocol"])
 
 # Session queue store for active SSE client connections
 _active_mcp_sessions: Dict[str, asyncio.Queue] = {}
@@ -62,8 +62,8 @@ async def mcp_sse_endpoint(request: Request):
     logger.info(f"[MCP-SSE] Client connected. Session ID: {session_id}")
 
     async def event_generator():
-        # Step 1: Send endpoint event directing POST requests to /api/mcp/messages
-        post_endpoint = f"/api/mcp/messages?sessionId={session_id}"
+        # Step 1: Send endpoint event directing POST requests to /api/v1/mcp/messages
+        post_endpoint = f"/api/v1/mcp/messages?sessionId={session_id}"
         yield f"event: endpoint\ndata: {post_endpoint}\n\n"
 
         try:
