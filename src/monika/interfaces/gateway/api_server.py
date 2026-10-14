@@ -193,7 +193,7 @@ def set_agent_runner(runner: Optional[Callable[[str, str, Dict[str, Any]], Await
 
 
 def get_default_chat_agent():
-    """Lazily load and cache the default ChatAgent instance."""
+    """Lazily load and cache the default ChatAgent instance from monika.application.agent.chat_agent."""
     return GatewayAgentRuntime.get_default_chat_agent()
 
 
