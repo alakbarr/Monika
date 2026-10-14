@@ -1243,6 +1243,12 @@ llm:
       context_window: 128000
       supports_tool_calling: true
       cost_tier: low
+    gpt-6-astra:
+      provider: openrouter
+      context_window: 500000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
     gpt-6.1-sol:
       provider: openrouter
       context_window: 1050000
@@ -1676,6 +1682,12 @@ llm:
       context_window: 1000000
       supports_tool_calling: true
       cost_tier: free
+    gemini-4-argon:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
     gemini-3.8-flash:
       provider: openrouter
       context_window: 1000000
@@ -3020,4 +3032,3 @@ benchmark:
       - "groq:groq-qwen3.8-27b"
       - "openrouter:qwen/qwen-2.5-72b-instruct"
       - "9router:qwen/qwen-2.5-72b-instruct"
-

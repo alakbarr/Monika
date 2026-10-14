@@ -545,6 +545,12 @@ Monika/
 │       │   │   │   ├── smc_gbpusd_h1_choppy_trap.json
 │       │   │   │   └── smc_xauusd_m15_bear_sweep.json
 │       │   │   ├── results/
+│       │   │   │   ├── benchmark_leaderboard.json
+│       │   │   │   ├── benchmark_leaderboard.md
+│       │   │   │   ├── benchmark_stage1_fundamental_openrouter.md
+│       │   │   │   ├── benchmark_stage1_results.json
+│       │   │   │   ├── benchmark_stage2_per_asset_openrouter.md
+│       │   │   │   ├── benchmark_stage2_results.json
 │       │   │   │   ├── model_all.csv
 │       │   │   │   ├── model_cheap_efficient.csv
 │       │   │   │   ├── model_cheap_smart.csv
@@ -564,6 +570,7 @@ Monika/
 │       │   │   │   └── stage2_cases.py
 │       │   │   ├── __init__.py
 │       │   │   ├── alpha_arena.py
+│       │   │   ├── benchmark_scorer.py
 │       │   │   ├── config.py
 │       │   │   ├── db_access.py
 │       │   │   ├── db_models.py
@@ -2921,6 +2928,7 @@ Monika/
 │   ├── convert_tui_svg_to_png.js
 │   ├── download_timesfm_weights.py
 │   ├── generate_ast_docs.py
+│   ├── generate_benchmark_leaderboard.py
 │   ├── generate_model_quadrant.py
 │   ├── generate_openapi_types.py
 │   ├── heal_kill_switch_state.py
@@ -3034,4 +3042,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 312 | **Total Tracked Files**: 2692
+**Total Tracked Directories**: 312 | **Total Tracked Files**: 2700

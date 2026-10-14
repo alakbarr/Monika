@@ -8404,6 +8404,15 @@
 - **Top-Level Functions**:
   - `update_elo(rating_a: float, rating_b: float, score_a: float, ...) -> Tuple[float, float, float, float]`: Standard Elo rating calculation.
 
+#### `benchmark_scorer.py` - *Deterministic Multi-Pillar Benchmark Scorer for Monika Trading Agents.*
+- **Path**: [`src/monika/application/benchmark/benchmark_scorer.py`](src/monika/application/benchmark/benchmark_scorer.py)
+- **Top-Level Functions**:
+  - `score_stage1_fundamental(payload: Optional[Dict[str, Any]], meta: Dict[str, Any]) -> Dict[str, Any]`: Evaluates Stage 1 Fundamental Brief across 4 objective pillars (0 - 100):
+  - `score_stage2_per_asset(payload: Optional[Dict[str, Any]], meta: Dict[str, Any], sizing_info: Optional[Dict[str, Any]]) -> Dict[str, Any]`: Evaluates Stage 2 Per-Asset Primary Execution across 4 objective pillars (0 - 100):
+  - `compute_composite_benchmark_score(stage1_score: float, stage2_score: float) -> float`: Weighted composite benchmark score:
+  - `generate_leaderboard_data(stage1_results: List[Dict[str, Any]], stage2_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]`: Merges Stage 1 and Stage 2 benchmark outputs and scores each model deterministically.
+  - `generate_leaderboard_markdown(leaderboard: List[Dict[str, Any]]) -> str`: Formats the ranked leaderboard into clean GitHub-flavored Markdown.
+
 #### `config.py` - *Benchmark configuration constants — single source of truth for magic numbers.*
 - **Path**: [`src/monika/application/benchmark/config.py`](src/monika/application/benchmark/config.py)
 

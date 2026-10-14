@@ -104,6 +104,8 @@ OPENROUTER_MODEL_ALIASES = {
     "moonshot/kimi-k3": "moonshotai/kimi-k3",
     "moonshotai/kimi-k3": "moonshotai/kimi-k3",
     # --- OpenAI ---
+    "gpt-6-astra": "openai/gpt-6-astra",
+    "openai/gpt-6-astra": "openai/gpt-6-astra",
     "gpt-6.1-sol": "openai/gpt-6.1-sol",
     "gpt-sol-6.1": "openai/gpt-6.1-sol",
     "gpt-6-sol": "openai/gpt-6-sol",

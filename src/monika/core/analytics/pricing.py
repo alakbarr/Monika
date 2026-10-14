@@ -93,6 +93,7 @@ PRICING: dict[str, Price] = {
     "gemini-2.5-flash": Price(0.15, 0.0375, 0.60),
     "gemini-2.0-flash": Price(0.10, 0.025, 0.40),
     # --- OpenAI Models ---
+    "gpt-6-astra": Price(2.00, 0.10, 10.00),
     "gpt-6.1-sol": Price(2.00, 0.10, 10.00),
     "gpt-sol-6.1": Price(2.00, 0.10, 10.00),
     "gpt-6-sol": Price(2.00, 0.10, 10.00),
@@ -176,6 +177,7 @@ OPENROUTER_PRICING_MAP: dict[str, str] = {
     "deepseek/deepseek-r1": "deepseek-reasoner",
     "deepseek/deepseek-reasoner": "deepseek-reasoner",
     # OpenAI
+    "openai/gpt-6-astra": "gpt-6-astra",
     "openai/gpt-6.1-sol": "gpt-6.1-sol",
     "openai/gpt-sol-6.1": "gpt-6.1-sol",
     "openai/gpt-sol-5.6": "gpt-5.6-sol",
