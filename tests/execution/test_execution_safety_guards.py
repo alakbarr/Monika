@@ -57,9 +57,27 @@ async def test_cw1_adhoc_scheduler_proxy_data_node():
         mock_vdf.return_value = {"ready": True, "stale_assets": [], "warnings": [], "errors": []}
         mock_sess = create_mock_async_session()
         mock_gs.return_value.__aenter__.return_value = mock_sess
-        with patch(
-            "monika.application.analysis.calculators.economic_surprise.compute_surprise_scores", new_callable=AsyncMock
-        ) as mock_css:
+        with (
+            patch(
+                "monika.application.analysis.calculators.economic_surprise.compute_surprise_scores",
+                new_callable=AsyncMock,
+            ) as mock_css,
+            patch(
+                "monika.infrastructure.brokers.mt5_client.MT5Client.fetch_and_save_all",
+                new_callable=AsyncMock,
+                return_value={"rates_saved": 0},
+            ),
+            patch(
+                "monika.application.analysis.prefetch.news_digest.NewsDigestProcessor.classify_unscored_news",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+            patch(
+                "monika.application.analysis.prefetch.news_digest.NewsDigestProcessor.create_news_digest",
+                new_callable=AsyncMock,
+                return_value="",
+            ),
+        ):
             mock_css.return_value = 0
             res = await fetch_data_node(
                 {"summary": {"is_ad_hoc": True}, "symbols": ["XAUUSD"], "actionable_trades": []},
