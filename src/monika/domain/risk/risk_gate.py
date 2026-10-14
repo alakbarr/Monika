@@ -983,9 +983,13 @@ async def get_current_risk_state(session: Any | None = None, settings: dict | No
         if callable(get_client_fn):
             client: Any = get_client_fn(settings)
             if client:
-                acc = await client.get_account_info()
-                if acc and acc.get("equity"):
-                    live_equity = float(acc["equity"])
+                try:
+                    async with asyncio.timeout(2.0):
+                        acc = await client.get_account_info()
+                        if acc and acc.get("equity"):
+                            live_equity = float(acc["equity"])
+                except Exception:
+                    pass
     except Exception:
         pass
     if live_equity <= 0:
