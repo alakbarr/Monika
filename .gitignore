@@ -123,6 +123,7 @@ scripts/*
 !scripts/migrate_sqlite_to_canonical.py
 !scripts/audit_settings_keys.py
 !scripts/generate_openapi_types.py
+!scripts/generate_ast_docs.py
 contoh_pertanyaan.md
 prompt_benchmark.md
 

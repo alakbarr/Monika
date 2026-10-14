@@ -17,7 +17,7 @@
 
 Rather than relying on naive single-prompt LLM execution or rigid, static indicator-based Expert Advisors, Monika implements a decoupled, multi-stage architecture:
 1. **Perception & Macro Ingestion:** Automated scraping and structured parsing of macroeconomic calendars, central bank communications (Federal Reserve, ECB, BOJ, BOE, Bank Indonesia), breaking news feeds, and sentiment matrices.
-2. **Deterministic Microstructure & Alpha Zoo:** Exact mathematical computation of Classical Indicators, Smart Money Concepts (SMC), Liquidity Sweeps, Order Blocks, Fair Value Gaps (FVG), Extreme Value Theory (EVT) tail risk, and over 900 quantitative factor formulas (WorldQuant 101, Qlib 158, Academic & Microstructure alphas), supplemented by optional Google TimesFM 3.0 deep forecasting.
+2. **Deterministic Microstructure & Alpha Zoo:** Exact mathematical computation of Classical Indicators, Smart Money Concepts (SMC), Liquidity Sweeps, Order Blocks, Fair Value Gaps (FVG), Extreme Value Theory (EVT) tail risk, and over 463 quantitative factor formulas (WorldQuant 101, Qlib 158, Academic & Microstructure alphas), supplemented by optional Google TimesFM 3.0 deep forecasting.
 3. **Dual-System Reasoning Architecture:**
    - **System 1 (JEV Fast-Reflex):** Sub-second rule-based reflex filters, session timing gates, realtime news escalations, and position safety guards.
    - **System 2 (Cognitive Synthesis):** Multi-agent dialectical adversarial debates (Bull vs. Bear specialists) adjudicated by an impartial Investment Judge on a stateful LangGraph StateGraph.

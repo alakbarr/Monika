@@ -7,9 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.1.0] - 2026-10-05
+## [1.0.0] - 2026-10-14
 
-### Comprehensive User Capability & Quantitative Intelligence Remediation (Q1-Q150)
+### Official Release: Clean Architecture & Mechanical Fortress Hardening
+
+#### Architectural Transformation
+- **Strict Clean Architecture (Inward Dependencies Only)**:
+  - Full restructuring into 5 canonical tiers: `core`, `domain`, `application`, `infrastructure`, and `interfaces`.
+  - Elimination of 1,860+ cross-layer import violations; enforced via `import-linter` (3 contracts kept, 0 broken).
+  - Decomposition of all historical god-modules (`executor.py`, `order_executor.py`, `chat_agent.py`, `bot.py`, `main.py`) into cohesive packages.
+- **Autonomous Mechanical Fortress & RiskGate**:
+  - Absolute separation between probabilistic LLM hypotheses and deterministic order execution.
+  - Fail-closed risk validation pipeline covering position sizing, drawdown ceilings, and risk-of-ruin bounds.
+  - Isolated OS `GuardianProcess` on dedicated port 8001 providing unblockable `/kill` liquidation even during primary daemon lockups.
+- **Unified Composition Root & Runtime Isolation**:
+  - Centralized dependency injection via `ServiceContainer` and `bootstrap_application()`.
+  - Canonical SQLite database consolidation (`monika.db` in WAL mode) and relocation of all runtime state churn outside git source trees.
+- **Standardized API v1 & Automated OpenAPI Contract Sync**:
+  - Full migration of 95+ REST endpoints to `/api/v1` with typed Pydantic `response_model` definitions.
+  - Automated OpenAPI TypeScript generator (`scripts/generate_openapi_types.py`) guaranteeing zero drift against frontend client.
+  - Automated AST documentation engine (`scripts/generate_ast_docs.py`) generating `INDEX.md` and `STRUCTURE.md`.
+
+---
+
+## [0.9.0] - 2026-10-05
+
+### Quantitative Intelligence & Market Data Cascade (Q1-Q150)
 
 #### Added
 - **Multi-Source Market Data Cascade**:

@@ -1,177 +1,14 @@
-# ==================================================
-# CODEBASE DIRECTORY STRUCTURE — MONIKA (MT5 TRADING AGENT)
-# ==================================================
+# Project Structure & Directory Layout
 
+> **Auto-Generated File**: Generated via `python scripts/generate_ast_docs.py`.
+> Do not edit manually.
+
+```text
 Monika/
-├── .dockerignore
-├── .env.example
-├── .git-blame-ignore-revs
-├── .gitattributes
-├── .github
-│   ├── ISSUE_TEMPLATE
-│   │   ├── bug_report.md
-│   │   └── feature_request.md
-│   ├── pull_request_template.md
-│   └── workflows
-│       └── ci.yml
-├── .gitignore
-├── .importlinter
-├── .pre-commit-config.yaml
-├── AGENTS.md
-├── CHANGELOG.md
-├── CODE_OF_CONDUCT.md
-├── CONTRIBUTING.md
-├── DESIGN.md
-├── Dockerfile
-├── GEMINI.md
-├── INDEX.md
-├── LICENSE
-├── Makefile
-├── PRD.md
-├── README.md
-├── SECURITY.md
-├── STRUCTURE.md
-├── monika.bat
-├── deploy
-│   ├── Dockerfile.mt5-wine
-│   ├── docker-compose.vps.yml
-│   ├── entrypoint_mt5.sh
-│   └── vps_deployment_guide.md
-├── docker-compose.yml
-├── docs
-│   ├── ROADMAP_SRC_MONIKA.md
-│   ├── SETUP_GUIDE.md
-│   ├── images
-│   │   ├── 02_trading_desk_signals.png
-│   │   ├── 03_trading_desk_market.png
-│   │   ├── 04_market_intelligence_pipeline_dag.png
-│   │   ├── 05_market_intelligence_macro_brief.png
-│   │   ├── 06_ledger_risk_limits.png
-│   │   ├── 07_ledger_llm_token_audit.png
-│   │   ├── 08_telegraph_desk_console_chat.png
-│   │   ├── 09_system_configuration.png
-│   │   ├── 10_terminal_ui_tui.png
-│   │   ├── 10_terminal_ui_tui.svg
-│   │   └── dashboard
-│   ├── quality
-│   │   └── baseline.json
-│   └── ux-audit
-│       ├── AUDIT.md
-│       ├── COVERAGE.md
-│       ├── DECISIONS.md
-│       ├── FINDINGS.md
-│       ├── PLAN.md
-│       ├── STATE.md
-│       ├── SURFACES.md
-│       ├── SYSTEM-MAP.md
-│       ├── evidence
-│       ├── iterations
-│       │   ├── 01
-│       │   │   └── summary.md
-│       │   └── 02
-│       │       └── summary.md
-│       └── surfaces
-│           ├── TUI-DASH-OVERVIEW.md
-│           ├── WEB-DLG-DOSSIER.md
-│           ├── WEB-SHELL-HEADER.md
-│           ├── WEB-SHELL-STATUSBAR.md
-│           ├── WEB-TRD-OVERVIEW.md
-│           ├── WEB-TRD-POSITIONS.md
-│           └── WEB-TRD-SIGNALS.md
-├── frontend
-│   ├── .env.example
-│   ├── .gitignore
-│   ├── README.md
-│   ├── eslint.config.js
-│   ├── index.html
-│   ├── package.json
-│   ├── postcss.config.js
-│   ├── tailwind.config.js
-│   ├── tsconfig.app.json
-│   ├── tsconfig.json
-│   ├── tsconfig.node.json
-│   ├── vite.config.ts
-│   ├── dist
-│   └── src
-│       ├── App.tsx
-│       ├── main.tsx
-│       ├── components
-│       ├── hooks
-│       ├── services
-│       └── types
-├── pyproject.toml
-
-├── pyrightconfig.json
-├── pytest.ini
-├── scripts
-│   ├── analyze_news_classification_mismatches.py
-│   ├── audit_token_usage.py
-│   ├── benchmark_debate_openrouter.py
-│   ├── benchmark_news_classification_openrouter.py
-│   ├── benchmark_stage1_openrouter.py
-│   ├── benchmark_stage2_openrouter.py
-│   ├── build_curated_benchmark_fixtures.py
-│   ├── capture_dashboard_screenshots.js
-│   ├── capture_tui_screenshots.py
-│   ├── check_all_models.py
-│   ├── check_env_keys.py
-│   ├── check_incomplete.py
-│   ├── check_scrapers
-│   │   ├── __init__.py
-│   │   ├── check_calendar.py
-│   │   ├── check_cme.py
-│   │   ├── check_news.py
-│   │   ├── check_sentiment.py
-│   │   └── check_twitter.py
-│   ├── compile_alphas_to_catalog.py
-│   ├── consolidate_sqlite_dbs.py
-│   ├── convert_tui_svg_to_png.js
-│   ├── download_timesfm_weights.py
-│   ├── extract_production_fixtures.py
-│   ├── extract_realistic_fixtures.py
-│   ├── generate_full_benchmark_dashboard.py
-│   ├── generate_model_quadrant.py
-│   ├── heal_kill_switch_state.py
-│   ├── migrate_runtime_home.py
-│   ├── migrate_sqlite_to_canonical.py
-│   ├── reset_paper_trades.py
-│   ├── run_tests.bat
-│   ├── run_tests.sh
-│   ├── update_benchmark_table.py
-│   ├── update_economic_calendar.py
-│   ├── update_index_toc.py
-│   └── ux_audit_baseline_scan.py
-├── skills-lock.json
-├── start_monika.bat
-├── start_monika.sh
-├── typings
-│   ├── MetaTrader5
-│   │   └── __init__.pyi
-│   ├── bottleneck
-│   │   └── __init__.pyi
-│   ├── concurrent_log_handler
-│   │   └── __init__.pyi
-│   ├── hmmlearn
-│   │   ├── __init__.pyi
-│   │   └── hmm.pyi
-│   ├── ib_insync
-│   │   └── __init__.pyi
-│   ├── mt5linux
-│   │   └── __init__.pyi
-│   ├── uvloop
-│   │   └── __init__.pyi
-│   └── weasyprint
-│       └── __init__.pyi
-├── src
-│   └── monika
-│       ├── __init__.py
-│       ├── application
-│       │   ├── agent
-│       │   │   ├── __init__.py
-│       │   │   ├── agent_loop.py
-│       │   │   ├── auxiliary_model_router.py
-│       │   │   ├── bounded_response.py
-│       │   │   ├── chat
+│   └── monika/
+│       ├── application/
+│       │   ├── agent/
+│       │   │   ├── chat/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── action_execution.py
 │       │   │   │   ├── action_state.py
@@ -183,14 +20,7 @@ Monika/
 │       │   │   │   ├── prompt_builder.py
 │       │   │   │   ├── streaming.py
 │       │   │   │   └── tiers.py
-│       │   │   ├── chat_agent.py
-│       │   │   ├── chat_compaction.py
-│       │   │   ├── chat_tool_router.py
-│       │   │   ├── deadline.py
-│       │   │   ├── empty_response_guard.py
-│       │   │   ├── error_classifier.py
-│       │   │   ├── estop.py
-│       │   │   ├── harness
+│       │   │   ├── harness/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── agent_harness.py
 │       │   │   │   ├── context_compressor.py
@@ -205,10 +35,7 @@ Monika/
 │       │   │   │   ├── tool_repair.py
 │       │   │   │   ├── trade_stop_gates.py
 │       │   │   │   └── verification_evidence_ledger.py
-│       │   │   ├── moa_alternation.py
-│       │   │   ├── moa_loop.py
-│       │   │   ├── moa_trace.py
-│       │   │   ├── monitors
+│       │   │   ├── monitors/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── db_health.py
 │       │   │   │   ├── drawdown_monitor.py
@@ -217,6 +44,20 @@ Monika/
 │       │   │   │   ├── process_guardian.py
 │       │   │   │   ├── scraper_loop.py
 │       │   │   │   └── startup_watchdog.py
+│       │   │   ├── __init__.py
+│       │   │   ├── agent_loop.py
+│       │   │   ├── auxiliary_model_router.py
+│       │   │   ├── bounded_response.py
+│       │   │   ├── chat_agent.py
+│       │   │   ├── chat_compaction.py
+│       │   │   ├── chat_tool_router.py
+│       │   │   ├── deadline.py
+│       │   │   ├── empty_response_guard.py
+│       │   │   ├── error_classifier.py
+│       │   │   ├── estop.py
+│       │   │   ├── moa_alternation.py
+│       │   │   ├── moa_loop.py
+│       │   │   ├── moa_trace.py
 │       │   │   ├── readonly_replay_cache.py
 │       │   │   ├── repetition_guard.py
 │       │   │   ├── scratchpad_guard.py
@@ -233,46 +74,11 @@ Monika/
 │       │   │   ├── turn_preflight_gate.py
 │       │   │   ├── turn_stop_gates.py
 │       │   │   └── turn_tool_round.py
-│       │   ├── analysis
-│       │   │   ├── __init__.py
-│       │   │   ├── arbitration
+│       │   ├── analysis/
+│       │   │   ├── arbitration/
 │       │   │   │   ├── __init__.py
 │       │   │   │   └── signal_arbitrator.py
-│       │   │   ├── calculators
-│       │   │   │   ├── __pycache__
-│       │   │   │   │   ├── __init__.cpython-314.pyc
-│       │   │   │   │   ├── adaptive_policy.cpython-314.pyc
-│       │   │   │   │   ├── cointegration.cpython-314.pyc
-│       │   │   │   │   ├── confluence_calculator.cpython-314.pyc
-│       │   │   │   │   ├── copula_tail_risk.cpython-314.pyc
-│       │   │   │   │   ├── daily_range_calculator.cpython-314.pyc
-│       │   │   │   │   ├── economic_surprise.cpython-314.pyc
-│       │   │   │   │   ├── evt_tail_calculator.cpython-314.pyc
-│       │   │   │   │   ├── factor_ic.cpython-314.pyc
-│       │   │   │   │   ├── garch_volatility.cpython-314.pyc
-│       │   │   │   │   ├── hierarchical_risk_parity.cpython-314.pyc
-│       │   │   │   │   ├── hmm_regime.cpython-314.pyc
-│       │   │   │   │   ├── intraday_level_optimizer.cpython-314.pyc
-│       │   │   │   │   ├── invariant_calculator.cpython-314.pyc
-│       │   │   │   │   ├── leading_indicator_mapper.cpython-314.pyc
-│       │   │   │   │   ├── liquidity_sweep_detector.cpython-314.pyc
-│       │   │   │   │   ├── macro_bias_filter.cpython-314.pyc
-│       │   │   │   │   ├── macro_priced_in_calculator.cpython-314.pyc
-│       │   │   │   │   ├── options_volatility_hedging.cpython-314.pyc
-│       │   │   │   │   ├── quant_plateau_optimizer.cpython-314.pyc
-│       │   │   │   │   ├── quantlib_core.cpython-314.pyc
-│       │   │   │   │   ├── regime_classifier.cpython-314.pyc
-│       │   │   │   │   ├── rolling_correlation_calculator.cpython-314.pyc
-│       │   │   │   │   ├── seasonality.cpython-314.pyc
-│       │   │   │   │   ├── stage1_priced_in.cpython-314.pyc
-│       │   │   │   │   ├── taylor_rule.cpython-314.pyc
-│       │   │   │   │   ├── timesfm_alpha.cpython-314.pyc
-│       │   │   │   │   ├── timesfm_residual_validator.cpython-314.pyc
-│       │   │   │   │   ├── unified_threshold_calculator.cpython-314.pyc
-│       │   │   │   │   ├── universal_cb_differ.cpython-314.pyc
-│       │   │   │   │   ├── universal_liquidity_analyzer.cpython-314.pyc
-│       │   │   │   │   ├── universal_macro_analyzer.cpython-314.pyc
-│       │   │   │   │   └── volume_profile.cpython-314.pyc
+│       │   │   ├── calculators/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── adaptive_policy.py
 │       │   │   │   ├── cointegration.py
@@ -306,27 +112,7 @@ Monika/
 │       │   │   │   ├── universal_liquidity_analyzer.py
 │       │   │   │   ├── universal_macro_analyzer.py
 │       │   │   │   └── volume_profile.py
-│       │   │   ├── debate
-│       │   │   │   ├── __pycache__
-│       │   │   │   │   ├── __init__.cpython-314.pyc
-│       │   │   │   │   ├── adjustment_validator.cpython-314.pyc
-│       │   │   │   │   ├── aggressive_risk_llm.cpython-314.pyc
-│       │   │   │   │   ├── bear_analyst.cpython-314.pyc
-│       │   │   │   │   ├── blackboard.cpython-314.pyc
-│       │   │   │   │   ├── bull_analyst.cpython-314.pyc
-│       │   │   │   │   ├── conservative_risk_llm.cpython-314.pyc
-│       │   │   │   │   ├── deterministic_risk.cpython-314.pyc
-│       │   │   │   │   ├── discussion_engine.cpython-314.pyc
-│       │   │   │   │   ├── exact_decimal_math.cpython-314.pyc
-│       │   │   │   │   ├── fact_sheet.cpython-314.pyc
-│       │   │   │   │   ├── investment_judge.cpython-314.pyc
-│       │   │   │   │   ├── macro_bear_analyst.cpython-314.pyc
-│       │   │   │   │   ├── macro_bull_analyst.cpython-314.pyc
-│       │   │   │   │   ├── macro_debate_validator.cpython-314.pyc
-│       │   │   │   │   ├── macro_judge.cpython-314.pyc
-│       │   │   │   │   ├── multi_persona_risk_llm.cpython-314.pyc
-│       │   │   │   │   ├── neutral_risk_llm.cpython-314.pyc
-│       │   │   │   │   └── portfolio_manager.cpython-314.pyc
+│       │   │   ├── debate/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── adjustment_validator.py
 │       │   │   │   ├── aggressive_risk_llm.py
@@ -334,6 +120,7 @@ Monika/
 │       │   │   │   ├── blackboard.py
 │       │   │   │   ├── bull_analyst.py
 │       │   │   │   ├── conservative_risk_llm.py
+│       │   │   │   ├── debate_orchestrator.py
 │       │   │   │   ├── deterministic_risk.py
 │       │   │   │   ├── discussion_engine.py
 │       │   │   │   ├── exact_decimal_math.py
@@ -346,13 +133,12 @@ Monika/
 │       │   │   │   ├── multi_persona_risk_llm.py
 │       │   │   │   ├── neutral_risk_llm.py
 │       │   │   │   └── portfolio_manager.py
-│       │   │   ├── event_broadcaster.py
-│       │   │   ├── grounding
+│       │   │   ├── grounding/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── declared_figures.py
 │       │   │   │   ├── provenance_tagger.py
 │       │   │   │   └── surgical_redaction.py
-│       │   │   ├── harness
+│       │   │   ├── harness/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── agent_harness.py
 │       │   │   │   ├── context_compressor.py
@@ -367,14 +153,20 @@ Monika/
 │       │   │   │   ├── tool_repair.py
 │       │   │   │   ├── trade_stop_gates.py
 │       │   │   │   └── verification_evidence_ledger.py
-│       │   │   ├── journal
+│       │   │   ├── journal/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── attribution_engine.py
 │       │   │   │   ├── behavioral_diagnostics.py
 │       │   │   │   ├── journal_parser.py
 │       │   │   │   └── shadow_extractor.py
-│       │   │   ├── macro_pipeline_plugin.py
-│       │   │   ├── mcp
+│       │   │   ├── mcp/
+│       │   │   │   ├── servers/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── excel_server.py
+│       │   │   │   │   ├── fetch_server.py
+│       │   │   │   │   ├── filesystem_server.py
+│       │   │   │   │   ├── google_sheets_server.py
+│       │   │   │   │   └── sqlite_server.py
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── client.py
 │       │   │   │   ├── dispatcher.py
@@ -384,47 +176,8 @@ Monika/
 │       │   │   │   ├── mcp_serve.py
 │       │   │   │   ├── oauth_handler.py
 │       │   │   │   ├── protocol.py
-│       │   │   │   ├── server.py
-│       │   │   │   └── servers
-│       │   │   │       ├── __init__.py
-│       │   │   │       ├── excel_server.py
-│       │   │   │       ├── fetch_server.py
-│       │   │   │       ├── filesystem_server.py
-│       │   │   │       ├── google_sheets_server.py
-│       │   │   └── sqlite_server.py
-│       │   │   ├── memory
-│       │   │   │   ├── __pycache__
-│       │   │   │   │   ├── __init__.cpython-314.pyc
-│       │   │   │   │   ├── alpha_calculator.cpython-314.pyc
-│       │   │   │   │   ├── background_review.cpython-314.pyc
-│       │   │   │   │   ├── background_review_fork.cpython-314.pyc
-│       │   │   │   │   ├── chronicle_writer.cpython-314.pyc
-│       │   │   │   │   ├── context_engine.cpython-314.pyc
-│       │   │   │   │   ├── counterfactual_simulator.cpython-314.pyc
-│       │   │   │   │   ├── decision_log.cpython-314.pyc
-│       │   │   │   │   ├── failure_taxonomy.cpython-314.pyc
-│       │   │   │   │   ├── frozen_snapshot.cpython-314.pyc
-│       │   │   │   │   ├── layered_memory.cpython-314.pyc
-│       │   │   │   │   ├── lesson_consolidator.cpython-314.pyc
-│       │   │   │   │   ├── mechanical_anchor_index.cpython-314.pyc
-│       │   │   │   │   ├── memory_lifecycle_gc.cpython-314.pyc
-│       │   │   │   │   ├── negative_constraint_generator.cpython-314.pyc
-│       │   │   │   │   ├── outcome_linker.cpython-314.pyc
-│       │   │   │   │   ├── playbook_ledger.cpython-314.pyc
-│       │   │   │   │   ├── playbook_lifecycle.cpython-314.pyc
-│       │   │   │   │   ├── playbook_linter.cpython-314.pyc
-│       │   │   │   │   ├── progressive_loader.cpython-314.pyc
-│       │   │   │   │   ├── prompt_cache_boundary.cpython-314.pyc
-│       │   │   │   │   ├── reflector.cpython-314.pyc
-│       │   │   │   │   ├── session_search.cpython-314.pyc
-│       │   │   │   │   ├── sharegpt_exporter.cpython-314.pyc
-│       │   │   │   │   ├── skill_ast_audit.cpython-314.pyc
-│       │   │   │   │   ├── skill_crystallizer.cpython-314.pyc
-│       │   │   │   │   ├── skill_curator.cpython-314.pyc
-│       │   │   │   │   ├── skill_evolution.cpython-314.pyc
-│       │   │   │   │   ├── skill_ledger_sha.cpython-314.pyc
-│       │   │   │   │   ├── trajectory_compressor.cpython-314.pyc
-│       │   │   │   │   └── working_scratchpad.cpython-314.pyc
+│       │   │   │   └── server.py
+│       │   │   ├── memory/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── alpha_calculator.py
 │       │   │   │   ├── background_review.py
@@ -456,12 +209,8 @@ Monika/
 │       │   │   │   ├── skill_ledger_sha.py
 │       │   │   │   ├── trajectory_compressor.py
 │       │   │   │   └── working_scratchpad.py
-│       │   │   ├── pipeline_plugin.py
-│       │   │   ├── prefetch
-│       │   │   │   ├── __init__.py
-│       │   │   │   ├── digest_slice_generator.py
-│       │   │   │   ├── macro_preprocessor.py
-│       │   │   │   ├── news_digest
+│       │   │   ├── prefetch/
+│       │   │   │   ├── news_digest/
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   ├── base.py
 │       │   │   │   │   ├── classification.py
@@ -472,31 +221,27 @@ Monika/
 │       │   │   │   │   ├── processor.py
 │       │   │   │   │   ├── summaries.py
 │       │   │   │   │   └── verification.py
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── digest_slice_generator.py
+│       │   │   │   ├── macro_preprocessor.py
 │       │   │   │   ├── news_digest.py
 │       │   │   │   ├── pipeline.py
 │       │   │   │   ├── sentiment_aggregator.py
 │       │   │   │   ├── stage1_prefetcher.py
 │       │   │   │   └── stage2_prefetcher.py
-│       │   │   ├── prompt
+│       │   │   ├── prompt/
 │       │   │   │   ├── __init__.py
 │       │   │   │   └── prompt_assembler.py
-│       │   │   ├── prompt_sections.py
-│       │   │   ├── research
+│       │   │   ├── research/
+│       │   │   │   ├── __init__.py
 │       │   │   │   └── macro_playbook_runner.py
-│       │   │   ├── scenario_tree.py
-│       │   │   ├── schemas
+│       │   │   ├── schemas/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── pydantic_schemas.py
 │       │   │   │   └── schemas.py
-│       │   │   ├── stages
-│       │   │   │   ├── __init__.py
-│       │   │   │   ├── fundamental_stage.py
-│       │   │   │   ├── fundamental_stage_recovery.py
-│       │   │   │   ├── per_asset
-│       │   │   │   │   ├── __init__.py
-│       │   │   │   │   ├── context_builder.py
-│       │   │   │   │   ├── runner.py
-│       │   │   │   │   ├── runner_mixins
+│       │   │   ├── stages/
+│       │   │   │   ├── per_asset/
+│       │   │   │   │   ├── runner_mixins/
 │       │   │   │   │   │   ├── __init__.py
 │       │   │   │   │   │   ├── base.py
 │       │   │   │   │   │   ├── batch_orchestrator.py
@@ -505,143 +250,21 @@ Monika/
 │       │   │   │   │   │   ├── recovery.py
 │       │   │   │   │   │   ├── single_asset.py
 │       │   │   │   │   │   └── single_asset_helpers.py
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── context_builder.py
+│       │   │   │   │   ├── runner.py
 │       │   │   │   │   ├── specialist_council.py
 │       │   │   │   │   ├── specialist_pipeline.py
 │       │   │   │   │   └── verifiers.py
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── fundamental_stage.py
+│       │   │   │   ├── fundamental_stage_recovery.py
 │       │   │   │   ├── per_asset_stage.py
 │       │   │   │   └── preflight_gate.py
-│       │   │   ├── strategies
-│       │   │   │   ├── __pycache__
-│       │   │   │   │   ├── __init__.cpython-314.pyc
-│       │   │   │   │   ├── base_strategy.cpython-314.pyc
-│       │   │   │   │   ├── bb_volume_profile.cpython-314.pyc
-│       │   │   │   │   ├── btc_donchian_breakout.cpython-314.pyc
-│       │   │   │   │   ├── decay_monitor.cpython-314.pyc
-│       │   │   │   │   ├── evidence_store.cpython-314.pyc
-│       │   │   │   │   ├── gap_fade.cpython-314.pyc
-│       │   │   │   │   ├── hypothesis_registry.cpython-314.pyc
-│       │   │   │   │   ├── liquidity_sweep_edge.cpython-314.pyc
-│       │   │   │   │   ├── pretrade_gate.cpython-314.pyc
-│       │   │   │   │   ├── registry.cpython-314.pyc
-│       │   │   │   │   ├── smc_fvg.cpython-314.pyc
-│       │   │   │   │   ├── strategy_plugin.cpython-314.pyc
-│       │   │   │   │   ├── tri_convergent_alpha.cpython-314.pyc
-│       │   │   │   │   ├── tsm_momentum.cpython-314.pyc
-│       │   │   │   │   ├── xau_trend_engine.cpython-314.pyc
-│       │   │   │   │   └── xti_pairs_readiness.cpython-314.pyc
-│       │   │   │   ├── synthesized
-│       │   │   │   │   ├── __pycache__
-│       │   │   │   │   │   ├── __init__.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_audusd_27c20d.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_audusd_3a4246.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_audusd_5f9ce8.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_audusd_8acf60.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_audusd_932927.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_audusd_aacbcf.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_audusd_abe552.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_audusd_c2eab6.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_audusd_ce0c59.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_audusd_de5e1e.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_audusd_eb3084.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_1230d3.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_486acc.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_50c0eb.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_52d670.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_8b05ec.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_96feb9.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_adf9b6.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_b22661.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_bd9200.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_cbd98f.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_ce0d23.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_db91cc.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_btcusd_f91b83.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_eurusd_6c25e3.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_eurusd_6d622a.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_eurusd_76877d.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_eurusd_8060ed.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_eurusd_920843.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_eurusd_974ead.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_eurusd_a25dcb.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_eurusd_b7af66.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_eurusd_c89ba5.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_eurusd_fa2e45.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_gbpusd_1c9869.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_gbpusd_1fb4c5.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_gbpusd_4947d0.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_gbpusd_634767.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_gbpusd_867953.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_gbpusd_9f0652.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_gbpusd_b14ef8.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_gbpusd_b3f4b6.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_gbpusd_e73efc.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_usdjpy_131b6e.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_usdjpy_13a603.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_usdjpy_159711.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_usdjpy_41ec5b.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_usdjpy_4a7cd2.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_usdjpy_55884a.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_usdjpy_7c9264.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_usdjpy_8102fa.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_usdjpy_da40ef.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_usdjpy_e3c1b2.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_133dfb.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_3af460.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_5044bf.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_59cf5d.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_5e8d45.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_61842a.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_63216a.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_6e46d9.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_72bf31.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_7358c1.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_754250.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_75d1dc.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_78210e.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_94ad53.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_96d26b.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_a6d004.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_a84e8d.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_b01980.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_b256b3.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_b68a11.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_bb1cfa.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_ca7c75.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xauusd_dfbed8.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_042cd9.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_0d2342.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_0f1bd3.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_176316.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_3e1575.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_3fe51d.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_5af3d8.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_6e7089.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_87e8fa.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_945526.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_9e8436.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_beb0e3.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_d4aee9.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_d7ab4a.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_e55dbf.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_e87a0b.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_eadd31.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xbrusd_ec8f88.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_09ce88.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_16dc64.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_1793d0.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_2c4e39.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_374fa7.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_403155.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_43ae5f.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_487183.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_592069.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_83031c.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_880297.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_9ffd6d.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_dae3f9.cpython-314.pyc
-│       │   │   │   │   │   ├── alpha_xtiusd_f30ff5.cpython-314.pyc
-│       │   │   │   │   │   └── alpha_xtiusd_fd5506.cpython-314.pyc
-│       │   │   │   │   ├── quarantine
+│       │   │   ├── strategies/
+│       │   │   │   ├── synthesized/
+│       │   │   │   │   ├── quarantine/
+│       │   │   │   │   │   ├── __init__.py
 │       │   │   │   │   │   └── alpha_btcusd_467904.py
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   ├── alpha_audusd_27c20d.py
@@ -752,7 +375,8 @@ Monika/
 │       │   │   │   │   ├── alpha_xtiusd_9ffd6d.py
 │       │   │   │   │   ├── alpha_xtiusd_dae3f9.py
 │       │   │   │   │   ├── alpha_xtiusd_f30ff5.py
-│       │   │   │   │   └── alpha_xtiusd_fd5506.py
+│       │   │   │   │   ├── alpha_xtiusd_fd5506.py
+│       │   │   │   │   └── mock_pass.py
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base_strategy.py
 │       │   │   │   ├── bb_volume_profile.py
@@ -770,217 +394,185 @@ Monika/
 │       │   │   │   ├── tsm_momentum.py
 │       │   │   │   ├── xau_trend_engine.py
 │       │   │   │   └── xti_pairs_readiness.py
-│       │   │   ├── subagent
+│       │   │   ├── subagent/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── adhoc_manager.py
 │       │   │   │   └── isolated_harness.py
-│       │   │   ├── subagent_blackboard.py
-│       │   │   ├── subagent_spawner.py
-│       │   │   └── validators
-│       │   │       ├── __init__.py
-│       │   │       ├── adjudication_verifier.py
-│       │   │       ├── adversarial_check.py
-│       │   │       ├── confluence_verifier.py
-│       │   │       ├── core_data_validator.py
-│       │   │       ├── cross_timeframe_gate.py
-│       │   │       ├── float_coercion.py
-│       │   │       ├── fundamental_verifier.py
-│       │   │       ├── in_harness_grounding.py
-│       │   │       ├── market_snapshot.py
-│       │   │       ├── output_verifier.py
-│       │   │       └── precommit_gate.py
-│       │   │   └── tools
-│       │   │       ├── __init__.py
-│       │   │       ├── base_handler.py
-│       │   │       ├── composite_tools.py
-│       │   │       ├── core
-│       │   │       │   ├── __init__.py
-│       │   │       │   ├── coercion.py
-│       │   │       │   ├── decorator.py
-│       │   │       │   ├── definition.py
-│       │   │       │   ├── dispatcher.py
-│       │   │       │   └── toolset_registry.py
-│       │   │       ├── definitions
-│       │   │       │   ├── __init__.py
-│       │   │       │   ├── base.py
-│       │   │       │   ├── groups.py
-│       │   │       │   ├── intelligence.py
-│       │   │       │   ├── macro.py
-│       │   │       │   ├── market.py
-│       │   │       │   ├── smc.py
-│       │   │       │   ├── system.py
-│       │   │       │   └── trading.py
-│       │   │       ├── domain
-│       │   │       │   ├── __init__.py
-│       │   │       │   ├── browser_tool.py
-│       │   │       │   ├── clarify_tool.py
-│       │   │       │   ├── code_execution_tool.py
-│       │   │       │   ├── code_search_tool.py
-│       │   │       │   ├── computer_use_tool.py
-│       │   │       │   ├── cron_tool.py
-│       │   │       │   ├── delegate_tool.py
-│       │   │       │   ├── execution_handlers.py
-│       │   │       │   ├── file_tools.py
-│       │   │       │   ├── kanban_tools.py
-│       │   │       │   ├── macro_handlers.py
-│       │   │       │   ├── multimodal_tools.py
-│       │   │       │   ├── position_handlers.py
-│       │   │       │   ├── sentiment_handlers.py
-│       │   │       │   ├── skill_tools.py
-│       │   │       │   ├── spill_reader_tool.py
-│       │   │       │   ├── technical_handlers.py
-│       │   │       │   ├── terminal_tools.py
-│       │   │       │   ├── todo_tool.py
-│       │   │       │   ├── tool_search_tools.py
-│       │   │       │   └── web_tools.py
-│       │   │       ├── environments
-│       │   │       │   ├── __init__.py
-│       │   │       │   ├── base_environment.py
-│       │   │       │   ├── pty_query_responder.py
-│       │   │       │   ├── tier1_inprocess.py
-│       │   │       │   ├── tier2_kernel.py
-│       │   │       │   └── tier3_docker.py
-│       │   │       ├── executor.py
-│       │   │       ├── file_patch_engine.py
-│       │   │       ├── handlers
-│       │   │       │   ├── __init__.py
-│       │   │       │   ├── advanced_quant_tools.py
-│       │   │       │   ├── analysis_submit.py
-│       │   │       │   ├── analytical_query_builder.py
-│       │   │       │   ├── behavioral_alert_tool.py
-│       │   │       │   ├── broker_profile_tool.py
-│       │   │       │   ├── category_loader.py
-│       │   │       │   ├── chart_bridge_tools.py
-│       │   │       │   ├── db_tools.py
-│       │   │       │   ├── execution_handlers.py
-│       │   │       │   ├── intelligence.py
-│       │   │       │   ├── macro
-│       │   │       │   │   ├── __init__.py
-│       │   │       │   │   ├── base.py
-│       │   │       │   │   ├── calendar.py
-│       │   │       │   │   ├── central_banks.py
-│       │   │       │   │   ├── fixed_income.py
-│       │   │       │   │   ├── regime.py
-│       │   │       │   │   ├── registration.py
-│       │   │       │   │   └── sentiment_commodities.py
-│       │   │       │   ├── macro_data.py
-│       │   │       │   ├── macro_tools.py
-│       │   │       │   ├── market_data.py
-│       │   │       │   ├── market_data_handlers
-│       │   │       │   │   ├── __init__.py
-│       │   │       │   │   ├── base.py
-│       │   │       │   │   ├── charts.py
-│       │   │       │   │   ├── quotes_prices.py
-│       │   │       │   │   ├── registration.py
-│       │   │       │   │   ├── structures_smc.py
-│       │   │       │   │   └── technicals.py
-│       │   │       │   ├── market_data_tools.py
-│       │   │       │   ├── news_tools.py
-│       │   │       │   ├── pattern_similarity_tools.py
-│       │   │       │   ├── phase_transition.py
-│       │   │       │   ├── position_mgmt.py
-│       │   │       │   ├── ptc_handler.py
-│       │   │       │   ├── scratchpad.py
-│       │   │       │   ├── sentiment_data.py
-│       │   │       │   ├── sentiment_tools.py
-│       │   │       │   ├── skills_tools.py
-│       │   │       │   ├── smc_tools.py
-│       │   │       │   ├── system_info.py
-│       │   │       │   ├── timesfm.py
-│       │   │       │   ├── trade_intel
-│       │   │       │   │   ├── __init__.py
-│       │   │       │   │   ├── base.py
-│       │   │       │   │   ├── debate.py
-│       │   │       │   │   ├── operations.py
-│       │   │       │   │   ├── performance.py
-│       │   │       │   │   ├── registry.py
-│       │   │       │   │   ├── reporting.py
-│       │   │       │   │   └── simulation.py
-│       │   │       │   ├── trade_intel.py
-│       │   │       │   ├── trading_tools.py
-│       │   │       │   └── verified_snapshot.py
-│       │   │       ├── kernel
-│       │   │       │   ├── __init__.py
-│       │   │       │   ├── code_execution_rpc.py
-│       │   │       │   ├── env_sanitizer.py
-│       │   │       │   ├── output_spiller.py
-│       │   │       │   ├── persistent_kernel.py
-│       │   │       │   ├── persistent_session_kernel.py
-│       │   │       │   └── sandbox_runner.py
-│       │   │       ├── loop_guard.py
-│       │   │       ├── mixins
-│       │   │       │   ├── __init__.py
-│       │   │       │   ├── analysis_submission.py
-│       │   │       │   ├── analysis_validation.py
-│       │   │       │   ├── base.py
-│       │   │       │   ├── brief_submission.py
-│       │   │       │   └── system_tools.py
-│       │   │       ├── quant_sandbox
-│       │   │       │   ├── __init__.py
-│       │   │       │   └── rpc_server.py
-│       │   │       ├── registry.py
-│       │   │       ├── terminal_process_engine.py
-│       │   │       ├── tool_catalog.py
-│       │   │       ├── tool_executor.py
-│       │   │       ├── tool_guardrails.py
-│       │   │       ├── tool_plugin.py
-│       │   │       ├── tool_registry.py
-│       │   │       ├── tool_result_storage.py
-│       │   │       ├── tool_search_engine.py
-│       │   │       ├── tool_selector.py
-│       │   │       ├── tool_spill.py
-│       │   │       ├── tools_definitions.py
-│       │   │       └── unified_registry.py
-│       │   ├── graph
-│       │   │   ├── __init__.py
-│       │   │   ├── grounding.py
-│       │   │   ├── nodes
+│       │   │   ├── tools/
+│       │   │   │   ├── core/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── coercion.py
+│       │   │   │   │   ├── decorator.py
+│       │   │   │   │   ├── definition.py
+│       │   │   │   │   ├── dispatcher.py
+│       │   │   │   │   └── toolset_registry.py
+│       │   │   │   ├── definitions/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── base.py
+│       │   │   │   │   ├── groups.py
+│       │   │   │   │   ├── intelligence.py
+│       │   │   │   │   ├── macro.py
+│       │   │   │   │   ├── market.py
+│       │   │   │   │   ├── smc.py
+│       │   │   │   │   ├── system.py
+│       │   │   │   │   └── trading.py
+│       │   │   │   ├── domain/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── browser_tool.py
+│       │   │   │   │   ├── clarify_tool.py
+│       │   │   │   │   ├── code_execution_tool.py
+│       │   │   │   │   ├── code_search_tool.py
+│       │   │   │   │   ├── computer_use_tool.py
+│       │   │   │   │   ├── cron_tool.py
+│       │   │   │   │   ├── delegate_tool.py
+│       │   │   │   │   ├── execution_handlers.py
+│       │   │   │   │   ├── file_tools.py
+│       │   │   │   │   ├── kanban_tools.py
+│       │   │   │   │   ├── macro_handlers.py
+│       │   │   │   │   ├── multimodal_tools.py
+│       │   │   │   │   ├── position_handlers.py
+│       │   │   │   │   ├── sentiment_handlers.py
+│       │   │   │   │   ├── skill_tools.py
+│       │   │   │   │   ├── spill_reader_tool.py
+│       │   │   │   │   ├── technical_handlers.py
+│       │   │   │   │   ├── terminal_tools.py
+│       │   │   │   │   ├── todo_tool.py
+│       │   │   │   │   ├── tool_search_tools.py
+│       │   │   │   │   └── web_tools.py
+│       │   │   │   ├── environments/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── base_environment.py
+│       │   │   │   │   ├── pty_query_responder.py
+│       │   │   │   │   ├── tier1_inprocess.py
+│       │   │   │   │   ├── tier2_kernel.py
+│       │   │   │   │   └── tier3_docker.py
+│       │   │   │   ├── handlers/
+│       │   │   │   │   ├── macro/
+│       │   │   │   │   │   ├── __init__.py
+│       │   │   │   │   │   ├── base.py
+│       │   │   │   │   │   ├── calendar.py
+│       │   │   │   │   │   ├── central_banks.py
+│       │   │   │   │   │   ├── fixed_income.py
+│       │   │   │   │   │   ├── regime.py
+│       │   │   │   │   │   ├── registration.py
+│       │   │   │   │   │   └── sentiment_commodities.py
+│       │   │   │   │   ├── market_data_handlers/
+│       │   │   │   │   │   ├── __init__.py
+│       │   │   │   │   │   ├── base.py
+│       │   │   │   │   │   ├── charts.py
+│       │   │   │   │   │   ├── quotes_prices.py
+│       │   │   │   │   │   ├── registration.py
+│       │   │   │   │   │   ├── structures_smc.py
+│       │   │   │   │   │   └── technicals.py
+│       │   │   │   │   ├── trade_intel/
+│       │   │   │   │   │   ├── __init__.py
+│       │   │   │   │   │   ├── base.py
+│       │   │   │   │   │   ├── debate.py
+│       │   │   │   │   │   ├── operations.py
+│       │   │   │   │   │   ├── performance.py
+│       │   │   │   │   │   ├── registry.py
+│       │   │   │   │   │   ├── reporting.py
+│       │   │   │   │   │   └── simulation.py
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── advanced_quant_tools.py
+│       │   │   │   │   ├── analysis_submit.py
+│       │   │   │   │   ├── analytical_query_builder.py
+│       │   │   │   │   ├── behavioral_alert_tool.py
+│       │   │   │   │   ├── broker_profile_tool.py
+│       │   │   │   │   ├── category_loader.py
+│       │   │   │   │   ├── chart_bridge_tools.py
+│       │   │   │   │   ├── db_tools.py
+│       │   │   │   │   ├── execution_handlers.py
+│       │   │   │   │   ├── intelligence.py
+│       │   │   │   │   ├── macro_data.py
+│       │   │   │   │   ├── macro_tools.py
+│       │   │   │   │   ├── market_data.py
+│       │   │   │   │   ├── market_data_tools.py
+│       │   │   │   │   ├── news_tools.py
+│       │   │   │   │   ├── pattern_similarity_tools.py
+│       │   │   │   │   ├── phase_transition.py
+│       │   │   │   │   ├── position_mgmt.py
+│       │   │   │   │   ├── ptc_handler.py
+│       │   │   │   │   ├── scratchpad.py
+│       │   │   │   │   ├── sentiment_data.py
+│       │   │   │   │   ├── sentiment_tools.py
+│       │   │   │   │   ├── skills_tools.py
+│       │   │   │   │   ├── smc_tools.py
+│       │   │   │   │   ├── system_info.py
+│       │   │   │   │   ├── timesfm.py
+│       │   │   │   │   ├── trade_intel.py
+│       │   │   │   │   ├── trading_tools.py
+│       │   │   │   │   └── verified_snapshot.py
+│       │   │   │   ├── kernel/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── code_execution_rpc.py
+│       │   │   │   │   ├── env_sanitizer.py
+│       │   │   │   │   ├── output_spiller.py
+│       │   │   │   │   ├── persistent_kernel.py
+│       │   │   │   │   ├── persistent_session_kernel.py
+│       │   │   │   │   └── sandbox_runner.py
+│       │   │   │   ├── mixins/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── analysis_submission.py
+│       │   │   │   │   ├── analysis_validation.py
+│       │   │   │   │   ├── base.py
+│       │   │   │   │   ├── brief_submission.py
+│       │   │   │   │   └── system_tools.py
+│       │   │   │   ├── quant_sandbox/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   └── rpc_server.py
 │       │   │   │   ├── __init__.py
-│       │   │   │   ├── data_node.py
-│       │   │   │   ├── debate
-│       │   │   │   │   ├── __init__.py
-│       │   │   │   │   ├── bear_dissent_node.py
-│       │   │   │   │   ├── bull_advocate_node.py
-│       │   │   │   │   ├── debate_judge_node.py
-│       │   │   │   │   ├── helpers.py
-│       │   │   │   │   ├── rebuttal_node.py
-│       │   │   │   │   ├── risk_evaluator_node.py
-│       │   │   │   │   ├── round_robin_risk_nodes.py
-│       │   │   │   │   └── subgraph.py
-│       │   │   │   ├── debate_node.py
-│       │   │   │   ├── execution_node.py
-│       │   │   │   ├── fundamental_node.py
-│       │   │   │   ├── per_asset_node.py
-│       │   │   │   ├── plan_refinement_node.py
-│       │   │   │   ├── reflection_node.py
-│       │   │   │   ├── risk
-│       │   │   │   │   ├── __init__.py
-│       │   │   │   │   ├── level_synthesizer.py
-│       │   │   │   │   ├── portfolio_synthesis.py
-│       │   │   │   │   ├── proposal_notifier.py
-│       │   │   │   │   ├── quant_arbitration.py
-│       │   │   │   │   └── rejection_auditor.py
-│       │   │   │   ├── risk_gate_node.py
-│       │   │   │   └── state_pruner.py
-│       │   │   ├── reactive_graph.py
-│       │   │   ├── state.py
-│       │   │   ├── team_compiler.py
-│       │   │   └── workflow.py
-│       │   ├── backtest
+│       │   │   │   ├── base_handler.py
+│       │   │   │   ├── composite_tools.py
+│       │   │   │   ├── executor.py
+│       │   │   │   ├── file_patch_engine.py
+│       │   │   │   ├── loop_guard.py
+│       │   │   │   ├── registry.py
+│       │   │   │   ├── terminal_process_engine.py
+│       │   │   │   ├── tool_catalog.py
+│       │   │   │   ├── tool_executor.py
+│       │   │   │   ├── tool_guardrails.py
+│       │   │   │   ├── tool_plugin.py
+│       │   │   │   ├── tool_registry.py
+│       │   │   │   ├── tool_result_storage.py
+│       │   │   │   ├── tool_search_engine.py
+│       │   │   │   ├── tool_selector.py
+│       │   │   │   ├── tool_spill.py
+│       │   │   │   ├── tools_definitions.py
+│       │   │   │   └── unified_registry.py
+│       │   │   ├── validators/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── adjudication_verifier.py
+│       │   │   │   ├── adversarial_check.py
+│       │   │   │   ├── confluence_verifier.py
+│       │   │   │   ├── core_data_validator.py
+│       │   │   │   ├── cross_timeframe_gate.py
+│       │   │   │   ├── float_coercion.py
+│       │   │   │   ├── fundamental_verifier.py
+│       │   │   │   ├── in_harness_grounding.py
+│       │   │   │   ├── market_snapshot.py
+│       │   │   │   ├── output_verifier.py
+│       │   │   │   └── precommit_gate.py
 │       │   │   ├── __init__.py
-│       │   │   ├── alpha_validation.py
-│       │   │   ├── batch_scenario_runner.py
-│       │   │   ├── benchmark_tracker.py
-│       │   │   ├── decision_memory.py
-│       │   │   ├── engines
+│       │   │   ├── event_broadcaster.py
+│       │   │   ├── macro_pipeline_plugin.py
+│       │   │   ├── pipeline_plugin.py
+│       │   │   ├── prompt_sections.py
+│       │   │   ├── scenario_tree.py
+│       │   │   ├── subagent_blackboard.py
+│       │   │   └── subagent_spawner.py
+│       │   ├── backtest/
+│       │   │   ├── engines/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── crypto_engine.py
 │       │   │   │   ├── equity_engine.py
 │       │   │   │   ├── forex_engine.py
 │       │   │   │   └── futures_engine.py
-│       │   │   ├── fixtures
-│       │   │   │   ├── full_replay_candles.json
-│       │   │   │   └── replay_candles.json
+│       │   │   ├── __init__.py
+│       │   │   ├── alpha_validation.py
+│       │   │   ├── batch_scenario_runner.py
+│       │   │   ├── benchmark_tracker.py
+│       │   │   ├── decision_memory.py
 │       │   │   ├── isolated_strategy_harness.py
 │       │   │   ├── matrix_alignment.py
 │       │   │   ├── monte_carlo_engine.py
@@ -992,26 +584,97 @@ Monika/
 │       │   │   ├── statistical_tests.py
 │       │   │   ├── time_machine.py
 │       │   │   └── walk_forward_engine.py
-│       │   ├── benchmark
-│       │   │   ├── __init__.py
-│       │   │   ├── alpha_arena.py
-│       │   │   ├── config.py
-│       │   │   ├── db_access.py
-│       │   │   ├── db_models.py
-│       │   │   ├── deterministic.py
-│       │   │   ├── fixture_loader.py
-│       │   │   ├── fixtures
-│       │   │   ├── invoker.py
-│       │   │   ├── judge.py
-│       │   │   ├── model_registry.py
-│       │   │   ├── paired_evaluator.py
-│       │   │   ├── pricing.py
-│       │   │   ├── prompt_evolution.py
-│       │   │   ├── report.py
-│       │   │   ├── results
-│       │   │   ├── runner.py
-│       │   │   ├── system_one_scorer.py
-│       │   │   ├── task_specs
+│       │   ├── benchmark/
+│       │   │   ├── fixtures/
+│       │   │   │   ├── debate/
+│       │   │   │   │   ├── eurusd_dialectical_clash.json
+│       │   │   │   │   ├── jev_debate_micro_clash.json
+│       │   │   │   │   └── stage2_adjudication_conflict.json
+│       │   │   │   ├── macro/
+│       │   │   │   │   ├── cot_institutional_report.json
+│       │   │   │   │   ├── economic_calendar_week.json
+│       │   │   │   │   ├── escalation_geopolitical_crisis.json
+│       │   │   │   │   ├── fomc_press_conference_transcript.txt
+│       │   │   │   │   ├── full_production_stage1_bundle.json
+│       │   │   │   │   ├── golden_macro_stage1_20261001.json
+│       │   │   │   │   ├── raw_unfiltered_transcript_12p.txt
+│       │   │   │   │   ├── session_reports_multi_asset.json
+│       │   │   │   │   └── shadow_check_audit_case.json
+│       │   │   │   ├── news/
+│       │   │   │   │   ├── breaking_news_escalation.json
+│       │   │   │   │   ├── production_curated_news_digest.json
+│       │   │   │   │   ├── production_news_1000_daily.json
+│       │   │   │   │   └── raw_news_batch_25.json
+│       │   │   │   ├── omnichannel/
+│       │   │   │   │   ├── interactive_reasoning_prompts.json
+│       │   │   │   │   ├── telegram_conversations.json
+│       │   │   │   │   └── voice_transcripts_id_en.json
+│       │   │   │   ├── per_asset/
+│       │   │   │   │   ├── btcusd_golden_bundle.json
+│       │   │   │   │   ├── eurusd_golden_bundle.json
+│       │   │   │   │   ├── full_production_stage2_bundles.json
+│       │   │   │   │   ├── gbpusd_golden_bundle.json
+│       │   │   │   │   ├── prescreen_multi_asset_matrix.json
+│       │   │   │   │   ├── usdjpy_golden_bundle.json
+│       │   │   │   │   ├── xauusd_golden_bundle.json
+│       │   │   │   │   └── xtiusd_golden_bundle.json
+│       │   │   │   ├── risk/
+│       │   │   │   │   ├── adversarial_liquidity_trap.json
+│       │   │   │   │   ├── curated_decision_reflections.json
+│       │   │   │   │   ├── multi_asset_concurrent_orders.json
+│       │   │   │   │   ├── risk_gate_defensive_drawdown.json
+│       │   │   │   │   ├── risk_gate_production_state.json
+│       │   │   │   │   └── trade_reflection_postmortem.json
+│       │   │   │   ├── specialists/
+│       │   │   │   │   ├── pattern_historical_match_case.json
+│       │   │   │   │   ├── sentiment_cot_retail_matrix.json
+│       │   │   │   │   └── technical_multi_tf_indicators.json
+│       │   │   │   ├── system1_jev/
+│       │   │   │   │   ├── jev_confluence_gate_state.json
+│       │   │   │   │   ├── jev_reflex_suite.json
+│       │   │   │   │   └── jev_session_timing_state.json
+│       │   │   │   ├── _market_snapshot_2026_09.json
+│       │   │   │   ├── macro_dxy_eur_divergence.json
+│       │   │   │   ├── macro_fomc_blackout.json
+│       │   │   │   ├── metadata.json
+│       │   │   │   ├── news_hormuz_escalation.json
+│       │   │   │   ├── news_nfp_release.json
+│       │   │   │   ├── production_macro_snapshot.json
+│       │   │   │   ├── production_news_snapshot.json
+│       │   │   │   ├── production_smc_snapshot_btcusd.json
+│       │   │   │   ├── production_smc_snapshot_eurusd.json
+│       │   │   │   ├── production_smc_snapshot_gbpusd.json
+│       │   │   │   ├── production_smc_snapshot_usdjpy.json
+│       │   │   │   ├── production_smc_snapshot_xauusd.json
+│       │   │   │   ├── production_smc_snapshot_xtiusd.json
+│       │   │   │   ├── risk_eurusd_daily_drawdown.json
+│       │   │   │   ├── risk_eurusd_spread_spike.json
+│       │   │   │   ├── risk_portfolio_max_heat.json
+│       │   │   │   ├── risk_xauusd_high_vix_defensive.json
+│       │   │   │   ├── s1_exit_prescreen_gbpusd.json
+│       │   │   │   ├── s1_news_breaking_iran.json
+│       │   │   │   ├── s1_position_guard_xauusd.json
+│       │   │   │   ├── s1_stage2_prescreen_eurusd.json
+│       │   │   │   ├── s1_trigger_stale_eurusd.json
+│       │   │   │   ├── smc_eurusd_h1_bull_displacement.json
+│       │   │   │   ├── smc_gbpusd_h1_choppy_trap.json
+│       │   │   │   └── smc_xauusd_m15_bear_sweep.json
+│       │   │   ├── results/
+│       │   │   │   ├── benchmark_debate_openrouter.md
+│       │   │   │   ├── benchmark_debate_results.json
+│       │   │   │   ├── benchmark_news_classification_openrouter.md
+│       │   │   │   ├── benchmark_news_classification_results.json
+│       │   │   │   ├── benchmark_stage1_fundamental_openrouter.md
+│       │   │   │   ├── benchmark_stage1_results.json
+│       │   │   │   ├── benchmark_stage2_per_asset_openrouter.md
+│       │   │   │   ├── benchmark_stage2_results.json
+│       │   │   │   ├── model_all.csv
+│       │   │   │   ├── model_cheap_efficient.csv
+│       │   │   │   ├── model_cheap_smart.csv
+│       │   │   │   ├── model_high_intelligence.csv
+│       │   │   │   ├── model_quadrant_analysis.html
+│       │   │   │   └── news_classification_openrouter.json
+│       │   │   ├── task_specs/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base.py
 │       │   │   │   ├── chat_cases.py
@@ -1023,67 +686,138 @@ Monika/
 │       │   │   │   ├── risk_cases.py
 │       │   │   │   ├── specialist_cases.py
 │       │   │   │   └── stage2_cases.py
+│       │   │   ├── __init__.py
+│       │   │   ├── alpha_arena.py
+│       │   │   ├── config.py
+│       │   │   ├── db_access.py
+│       │   │   ├── db_models.py
+│       │   │   ├── deterministic.py
+│       │   │   ├── fixture_loader.py
+│       │   │   ├── invoker.py
+│       │   │   ├── judge.py
+│       │   │   ├── model_registry.py
+│       │   │   ├── paired_evaluator.py
+│       │   │   ├── pricing.py
+│       │   │   ├── prompt_evolution.py
+│       │   │   ├── report.py
+│       │   │   ├── run_benchmark.py
+│       │   │   ├── runner.py
+│       │   │   ├── system_one_scorer.py
 │       │   │   ├── task_specs.py
 │       │   │   ├── token_drift_tracker.py
 │       │   │   └── trade_trajectory_logger.py
-│       │   ├── bootstrap.py
-│       │   ├── evals
-│       │   │   ├── __init__.py
-│       │   │   ├── eval_metrics.py
-│       │   │   ├── eval_runner.py
-│       │   │   ├── hostile_market_probe.py
-│       │   │   ├── oracles
+│       │   ├── data/
+│       │   │   ├── cache/
+│       │   │   │   └── spillover/
+│       │   │   │       ├── spill_giant_output_tool_1bc070491ccb8ecb.txt
+│       │   │   │       └── spill_test_tool_8c88122e882160a4.txt
+│       │   │   ├── sandbox_scratch/
+│       │   │   └── clean_shutdown.flag
+│       │   ├── evals/
+│       │   │   ├── fixtures/
+│       │   │   │   ├── risk_trap_daily_dd.json
+│       │   │   │   ├── risk_trap_spread_spike.json
+│       │   │   │   ├── smc_bear_sweep.json
+│       │   │   │   ├── smc_bull_displacement.json
+│       │   │   │   ├── smc_choppy_trap.json
+│       │   │   │   └── tool_jailbreak_trap.json
+│       │   │   ├── oracles/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── macro_regime_oracle.py
 │       │   │   │   ├── risk_compliance_oracle.py
 │       │   │   │   ├── smc_geometry_oracle.py
 │       │   │   │   ├── tool_safety_oracle.py
 │       │   │   │   └── trade_discipline_oracle.py
+│       │   │   ├── __init__.py
+│       │   │   ├── eval_metrics.py
+│       │   │   ├── eval_runner.py
+│       │   │   ├── hostile_market_probe.py
 │       │   │   ├── runner.py
 │       │   │   └── simulation_clock.py
-│       │   ├── execution
+│       │   ├── execution/
+│       │   │   ├── service/
+│       │   │   │   ├── executors/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── analysis_executor.py
+│       │   │   │   │   ├── analysis_preflight.py
+│       │   │   │   │   ├── analysis_submission.py
+│       │   │   │   │   ├── base.py
+│       │   │   │   │   ├── paired_executor.py
+│       │   │   │   │   ├── preplanned_executor.py
+│       │   │   │   │   ├── proposal_executor.py
+│       │   │   │   │   └── tranche_executor.py
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── base.py
+│       │   │   │   ├── emergency_manager.py
+│       │   │   │   ├── multi_account_adapter.py
+│       │   │   │   ├── order_executor.py
+│       │   │   │   ├── order_lifecycle_service.py
+│       │   │   │   ├── position_synchronizer.py
+│       │   │   │   ├── reconciliation.py
+│       │   │   │   ├── risk_evaluator.py
+│       │   │   │   ├── self_healing_executor.py
+│       │   │   │   └── trade_confirm.py
 │       │   │   ├── __init__.py
 │       │   │   ├── broker_registry.py
 │       │   │   ├── effect_gate.py
 │       │   │   ├── execution_service.py
-│       │   │   ├── health_check.py
-│       │   │   └── service
-│       │   │       ├── __init__.py
-│       │   │       ├── base.py
-│       │   │       ├── emergency_manager.py
-│       │   │       ├── executors
-│       │   │       │   ├── __init__.py
-│       │   │       │   ├── analysis_executor.py
-│       │   │       │   ├── analysis_preflight.py
-│       │   │       │   ├── analysis_submission.py
-│       │   │       │   ├── base.py
-│       │   │       │   ├── paired_executor.py
-│       │   │       │   ├── preplanned_executor.py
-│       │   │       │   ├── proposal_executor.py
-│       │   │       │   └── tranche_executor.py
-│       │   │       ├── multi_account_adapter.py
-│       │   │       ├── order_executor.py
-│       │   │       ├── order_lifecycle_service.py
-│       │   │       ├── position_synchronizer.py
-│       │   │       ├── reconciliation.py
-│       │   │       ├── risk_evaluator.py
-│       │   │       ├── self_healing_executor.py
-│       │   │       └── trade_confirm.py
-│       │   ├── governance
+│       │   │   └── health_check.py
+│       │   ├── governance/
 │       │   │   ├── __init__.py
 │       │   │   └── run_manifest.py
-│       │   ├── harness
+│       │   ├── graph/
+│       │   │   ├── nodes/
+│       │   │   │   ├── debate/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── bear_dissent_node.py
+│       │   │   │   │   ├── bull_advocate_node.py
+│       │   │   │   │   ├── debate_judge_node.py
+│       │   │   │   │   ├── helpers.py
+│       │   │   │   │   ├── rebuttal_node.py
+│       │   │   │   │   ├── risk_evaluator_node.py
+│       │   │   │   │   ├── round_robin_risk_nodes.py
+│       │   │   │   │   └── subgraph.py
+│       │   │   │   ├── risk/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── level_synthesizer.py
+│       │   │   │   │   ├── portfolio_synthesis.py
+│       │   │   │   │   ├── proposal_notifier.py
+│       │   │   │   │   ├── quant_arbitration.py
+│       │   │   │   │   └── rejection_auditor.py
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── data_node.py
+│       │   │   │   ├── debate_node.py
+│       │   │   │   ├── execution_node.py
+│       │   │   │   ├── fundamental_node.py
+│       │   │   │   ├── per_asset_node.py
+│       │   │   │   ├── plan_refinement_node.py
+│       │   │   │   ├── reflection_node.py
+│       │   │   │   ├── risk_gate_node.py
+│       │   │   │   └── state_pruner.py
+│       │   │   ├── presets/
+│       │   │   │   ├── crypto_trading_desk.yaml
+│       │   │   │   ├── gold_commodity_desk.yaml
+│       │   │   │   ├── investment_committee.yaml
+│       │   │   │   └── macro_rates_fx_desk.yaml
 │       │   │   ├── __init__.py
-│       │   │   ├── adapters
+│       │   │   ├── grounding.py
+│       │   │   ├── reactive_graph.py
+│       │   │   ├── state.py
+│       │   │   ├── team_compiler.py
+│       │   │   └── workflow.py
+│       │   ├── harness/
+│       │   │   ├── adapters/
 │       │   │   │   ├── __init__.py
 │       │   │   │   └── functional_adapter.py
+│       │   │   ├── __init__.py
 │       │   │   ├── context.py
 │       │   │   ├── contract.py
 │       │   │   ├── engine.py
 │       │   │   ├── installer.py
 │       │   │   └── lifecycle.py
-│       │   ├── main.py
-│       │   ├── orchestrator
+│       │   ├── logs/
+│       │   │   └── trade_trajectories.jsonl
+│       │   ├── orchestrator/
 │       │   │   ├── __init__.py
 │       │   │   ├── agent.py
 │       │   │   ├── builder.py
@@ -1091,35 +825,69 @@ Monika/
 │       │   │   ├── lifecycle.py
 │       │   │   ├── monitors.py
 │       │   │   └── recovery.py
-│       │   ├── plugins
-│       │   │   ├── __init__.py
-│       │   │   ├── alerts
-│       │   │   │   └── discord_alert
-│       │   │   ├── analysis_pipelines
-│       │   │   │   ├── macro_to_asset
-│       │   │   │   └── technical_scalping
-│       │   │   ├── brokers
-│       │   │   │   ├── mt5_local
-│       │   │   │   └── paper_trading
-│       │   │   ├── indicators
-│       │   │   │   └── custom_indicator
-│       │   │   ├── engine
-│       │   │   │   ├── __init__.py
-│       │   │   │   ├── adapters
+│       │   ├── plugins/
+│       │   │   ├── alerts/
+│       │   │   │   └── discord_alert/
+│       │   │   │       ├── __init__.py
+│       │   │   │       ├── discord_alert.py
+│       │   │   │       └── plugin.yaml
+│       │   │   ├── analysis_pipelines/
+│       │   │   │   ├── macro_to_asset/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── macro_to_asset_pipeline.py
+│       │   │   │   │   └── plugin.yaml
+│       │   │   │   └── technical_scalping/
+│       │   │   │       ├── __init__.py
+│       │   │   │       ├── plugin.yaml
+│       │   │   │       └── scalping_pipeline.py
+│       │   │   ├── brokers/
+│       │   │   │   ├── mt5_local/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── mt5_plugin.py
+│       │   │   │   │   └── plugin.yaml
+│       │   │   │   └── paper_trading/
+│       │   │   │       ├── __init__.py
+│       │   │   │       ├── paper_plugin.py
+│       │   │   │       └── plugin.yaml
+│       │   │   ├── engine/
+│       │   │   │   ├── adapters/
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   └── functional_adapter.py
+│       │   │   │   ├── __init__.py
 │       │   │   │   ├── context.py
 │       │   │   │   ├── contract.py
 │       │   │   │   ├── engine.py
 │       │   │   │   ├── installer.py
 │       │   │   │   └── lifecycle.py
+│       │   │   ├── indicators/
+│       │   │   │   └── custom_indicator/
+│       │   │   │       ├── __init__.py
+│       │   │   │       ├── custom_indicator.py
+│       │   │   │       └── plugin.yaml
+│       │   │   ├── manager/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── extension_loader.py
+│       │   │   │   └── manager.py
+│       │   │   ├── scrapers/
+│       │   │   │   └── example_scraper/
+│       │   │   │       ├── __init__.py
+│       │   │   │       ├── example_scraper.py
+│       │   │   │       └── plugin.yaml
+│       │   │   ├── __init__.py
 │       │   │   ├── kernel.py
 │       │   │   ├── loader.py
-│       │   │   ├── manifest.py
-│       │   │   └── scrapers
-│       │   │       └── example_scraper
-│       │   ├── run_benchmark.py
-│       │   ├── scheduler
+│       │   │   └── manifest.py
+│       │   ├── protocol/
+│       │   │   ├── __init__.py
+│       │   │   ├── brief_contamination_guard.py
+│       │   │   ├── coherence_flag_tracker.py
+│       │   │   ├── context_coherence.py
+│       │   │   ├── context_snapshot.py
+│       │   │   ├── cross_agent_sync.py
+│       │   │   ├── enhanced_cds.py
+│       │   │   ├── event_bus.py
+│       │   │   └── ssvp_coordinator.py
+│       │   ├── scheduler/
 │       │   │   ├── __init__.py
 │       │   │   ├── active_calendar_poller.py
 │       │   │   ├── adhoc_proxy.py
@@ -1146,8 +914,9 @@ Monika/
 │       │   │   ├── trailing_stop_manager.py
 │       │   │   ├── trigger_checker.py
 │       │   │   ├── unified_cron_engine.py
-│       │   │   └── universal_cron_scheduler.py
-│       │   ├── services
+│       │   │   ├── universal_cron_scheduler.py
+│       │   │   └── wall_clock.py
+│       │   ├── services/
 │       │   │   ├── __init__.py
 │       │   │   ├── general_harness_service.py
 │       │   │   ├── market_data_service.py
@@ -1155,25 +924,232 @@ Monika/
 │       │   │   ├── portfolio_service.py
 │       │   │   ├── system_status_service.py
 │       │   │   └── trading_service.py
-│       │   └── skills
-│       │       ├── __init__.py
-│       │       ├── continuous_learning.py
-│       │       ├── curator.py
-│       │       ├── loader.py
-│       │       ├── skill_manager.py
-│       │       ├── skills_guard.py
-│       │       ├── skills_hub.py
-│       │       ├── trading_skill_linter.py
-│       │       ├── unified_runtime.py
-│       │       └── usage_tracker.py
-│       ├── core
-│       │   ├── __init__.py
-│       │   ├── exceptions.py
-│       │   ├── paths.py
-│       │   ├── contracts
+│       │   ├── skills/
+│       │   │   ├── .tmp_audit/
+│       │   │   ├── crystallized/
+│       │   │   │   ├── mt5_slippage_defense/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   └── eurusd_trend.md
+│       │   │   ├── general/
+│       │   │   │   ├── academic-literature/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── code-optimization/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── codebase-inspection/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── data-science-modeling/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── database-analytics-and-reporting/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── desktop-gui-computer-use/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── devops-automation/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── financial-research/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── institutional-document-reporting/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── intent-resolution/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── os-terminal-automation/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── prompt-intent-disambiguation/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── quant-math-verification/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── research-analysis/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── software-development/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── system-devops-lifecycle/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── systematic-debugging/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   └── web-research-fallback/
+│       │   │   │       └── SKILL.md
+│       │   │   ├── operator/
+│       │   │   │   └── USER.md
+│       │   │   ├── research/
+│       │   │   │   └── playbooks/
+│       │   │   │       ├── premarket_london_brief.md
+│       │   │   │       ├── premarket_ny_brief.md
+│       │   │   │       └── weekly_cot_outlook.md
+│       │   │   ├── trading/
+│       │   │   │   ├── adjudication-framework/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── beginner-trading-curriculum/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── carry-trade-playbook/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── caveman-mode/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── central-banks-framework/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── commodity-analysis/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── cot-positioning-playbook/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── cross-asset-contagion-matrix/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── cross-asset-hedging-playbook/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── cross-asset-regime-model/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── crypto-analysis/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── daily-catalyst-and-opportunity-playbook/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── economic-indicator-nowcasting-and-transmission/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── emerging-markets-idr/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── event-probability-playbook/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── exotic-fx-sovereign-swap/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── fundamental-performance-notes/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── lessons-learned/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── liquidity-and-macro-edge/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── macro-analysis-framework/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── market-dynamics-framework/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── mql5-ea-builder/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── options-volatility-hedging/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── orderbook-liquidity-microstructure/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── parameter-plateau-optimizer/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── partial-take-profit-and-runner-management/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── performance-notes/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── playbooks/
+│       │   │   │   │   ├── .backups/
+│       │   │   │   │   │   └── blobs/
+│       │   │   │   │   │       ├── 068b6e75d426a78f5ea78d70db1d074d8198da6395264bde1bcae08b7a1fae02
+│       │   │   │   │   │       ├── 08d4b3167c1a9fae748c27354b3d04170d4f5e4cfce01ee40881e7b1d852c501
+│       │   │   │   │   │       ├── 09f1fa50b1bc46111c11df41ee1ce390948f4eefe5bc32a13babe56517c2ae75
+│       │   │   │   │   │       ├── 0b603630240a7f15fed48024f9d9476729b558ad15a533d7314e8e9df1e434ad
+│       │   │   │   │   │       ├── 0e6f8a01a77f5cd12a618d21ae4184a8eec3b950dedc46d514ed858afb8d69ae
+│       │   │   │   │   │       ├── 112f4165a5b4706842aa721859f4bcea1c3914611e1be244886f5fbb8cd05ced
+│       │   │   │   │   │       ├── 11f32e05f29c22df4bd471248c1fae6f924323eabb0b7b8c67d471fbd8bb300b
+│       │   │   │   │   │       ├── 128fd139564d21b5b60bb570380429ee7b4a928d2026cbd18f840be0c4c64328
+│       │   │   │   │   │       ├── 1294c0f1ab61ba666e6be37b4f587f52bfce61f33f2ce8e94488b7d113ba0f45
+│       │   │   │   │   │       ├── 17cd76dc97197b78aac9570e3a59050025c4c66c218e0bb4bcf8dbeac5cbf6bc
+│       │   │   │   │   │       ├── 205e4b7b7b4adfb8b06bbfffeea0ddd4c24edd899f4b09adfc1354aa052718ac
+│       │   │   │   │   │       ├── 21d27974196be8cb996e396c0125c43cceabd6760c8fa0a67219cefb0e639c6c
+│       │   │   │   │   │       ├── 220682f2f260751bee43b26b047fe8dc25a461dedd48fd1c79e35bc03694a70e
+│       │   │   │   │   │       ├── 23994285d5ce56461c74674baf43e6a36f0852c28161eda0f4a901a7759a4618
+│       │   │   │   │   │       ├── 26fd0c5a51b701a1b65c2efebeab8e44706e997e2c25c8f0d988b90a8d76d7a8
+│       │   │   │   │   │       ├── 2a481b327d97b1567398f7c719a668117b018dc374d2d5d70d54e8abdadf90a4
+│       │   │   │   │   │       ├── 2dff7ca120a3db8e3492044c409f90f7802b4f444308928614fa0732f22531c0
+│       │   │   │   │   │       ├── 2e8f3a2b0912a4b4e217f8a4204de2024a7887f4d5111e9920da831bba7fe37b
+│       │   │   │   │   │       ├── 309b466d6f642a624eb1acbfd5a41df12630b436b750479abaa6d21b6ea3b858
+│       │   │   │   │   │       ├── 326878a593d08e510fc59631207f1f315caa7663e86896e8a9ae2eeb5c1c473f
+│       │   │   │   │   │       ├── 33f18a48483f9d624940b8e5d16cdb8d72a133b272806700db6758d09c177f4a
+│       │   │   │   │   │       ├── 3a3f2a3fc20ed91e25d8ed47a0a89ee36b8d588229cc9be64018e99aa9566e28
+│       │   │   │   │   │       ├── 3b4022250d801c1c3ab73458c07a1cd397d6e6dfe890a34dc71ba4cd512f0201
+│       │   │   │   │   │       ├── 3f7dffe63d893f569928ca4059cd52011bbafe93cc0f324cefecfd1f68d5c86a
+│       │   │   │   │   │       ├── 435a808fa88e0cfd1a715d8ef375e003e3feb2aa2e0fd981a1ff847e152d4a5d
+│       │   │   │   │   │       ├── 476ae2f89cbb91465c6abf4c50727efb4fb79e89c3f7af061ccf4a5c10ad812f
+│       │   │   │   │   │       ├── 4abf6a576a1a679a3e0a3b8ac000ee8a1d8182bf97ba0658a5ab2cdfec702798
+│       │   │   │   │   │       ├── 4c40fff39bfb340c25e780539c4739380bd42f67444e52a00dd77ab4b8a31346
+│       │   │   │   │   │       ├── 55d8341a7c58010c77af77b600bf1f7f6bf3f71d177eed779db4fc731f3efd94
+│       │   │   │   │   │       ├── 593ad3548719fd5fc1107c64dc539cb9020dd2f0bfb35277fd754fd7f56f7274
+│       │   │   │   │   │       ├── 63ca6c740bf12a153eb216ad8e52938738b8d73f312e806cef2b39236a530156
+│       │   │   │   │   │       ├── 647f0ba682156278a6a34adc6647f4a44c192ec348ca59bb2a97d196f9b9ad81
+│       │   │   │   │   │       ├── 6b4c2c335215bba721c343c4f6a27a548f01ded55783afe12a195d3b641ff9e7
+│       │   │   │   │   │       ├── 6e2c5d14e630bcda71e3a6a10cdba11e4ce51eee9185edd607c779f86d64a086
+│       │   │   │   │   │       ├── 75b5ea6dd5ed1ab86e29a30a78156599271bdb2b4ddc2493d83e2dbf57f3a26e
+│       │   │   │   │   │       ├── 75e6ebd5a41a4019e50bbdd6b59e44111b695598f3b0de2ad49b58838d13d03b
+│       │   │   │   │   │       ├── 78d5722a68fb3c2b52dc836330be0e2459402af8102add36fc332338db9dcda6
+│       │   │   │   │   │       ├── 7c9acd4e8739d5ae652582c9cf6421bfc4b1da6f78e551497efd4131abcc9528
+│       │   │   │   │   │       ├── 829f6ad99bc175bf5c4d8443f82f87141ec89c75ea0a1bfb01fc645658a36cca
+│       │   │   │   │   │       ├── 83536d593068c7f833bcf24fa69c6d80372a12828b3fbb42cb4fb8b10d66d3db
+│       │   │   │   │   │       ├── 8d879b55ccf0d279b9444c8150f06ffde1976b7952e6a109fc7e7050e5ba9b2b
+│       │   │   │   │   │       ├── 90eec2d4cbe51ff7fc5647bb910a9ded0c4b06355ec83d8454ca9f193c5f939d
+│       │   │   │   │   │       ├── 93289170f532a94900bb6f677ee9395354d0e6feaf2bc55e743e9967299dde5d
+│       │   │   │   │   │       ├── a208597e59d62c3ec906ae700287d8605d347a7fd206ac57b92749748f9c66dd
+│       │   │   │   │   │       ├── a289d2a7dceb125e482095be446b2f05bdbc058f6f45d17b04080a6879824daa
+│       │   │   │   │   │       ├── a7cb3c727f8911873bf88860e6c50a3a73305d4b1037f2cf0d1c539a33299f39
+│       │   │   │   │   │       ├── a8e31aa253bec58ac148ad603b654dbade8ffb708af530874ff9d1ff863dcdfb
+│       │   │   │   │   │       ├── ae01863b244cddad720f5e088890a4711a03e5e9a5dccac9fc6d0a1a0861baf8
+│       │   │   │   │   │       ├── afdac71ceda1278e4ed9e196b65ee2ee842cfee1ad6de4ad24f67ca35a829b14
+│       │   │   │   │   │       ├── b012c7c74646c6b4395d73bb3ad3e94e679e0739a4b98dff34b3c32dc3913465
+│       │   │   │   │   │       ├── b080d0d2c985693063637788821b4819a78c2ecaebc591079346b8b26720adc9
+│       │   │   │   │   │       ├── b24d3bcc1f85c5c7d9dff0a3064a12c906877e810e5dbdbf714ffa541fd77084
+│       │   │   │   │   │       ├── b6c0d8ba37509995070c1f8f232f7b4d21f79ba535b7898caf17bebc9647686e
+│       │   │   │   │   │       ├── bd22546834c7ba7c1974197b491c9ab32feb1d76974122a6fe650e079e5e4088
+│       │   │   │   │   │       ├── c1474dc18ea3ec3db8cba15b6e2f7d168a9074feab9a77a19dd802e9ce4d0a9a
+│       │   │   │   │   │       ├── c53e7b3bf38e01ae6a46fc81dd60df4195090010ab7da3b5a9f025aa04e5ac5e
+│       │   │   │   │   │       ├── c90588be25bfa9e562c6049f260767b0d383e1788194bc689fd4ca6c34f4de41
+│       │   │   │   │   │       ├── ce607b5141075896af73392c3254c7fc35a414b040e351b31024a284d6e4e3ec
+│       │   │   │   │   │       ├── d1233ecde60e855cee1b8d141708f3e91eb3bf33b6714b2cfbc17627df7c8561
+│       │   │   │   │   │       ├── d5641e8f599d086d90af7f40ad20386d02876cfb20ba0840971bd5596600776f
+│       │   │   │   │   │       ├── da9960c05bed73c6bf988a3635252766fdb46ec88fcd12f944527154a4acfa0e
+│       │   │   │   │   │       ├── de61dd8b1b39e8dd6c68bf38591eeac0bbb694d52cd87f58fe029c69848cee9c
+│       │   │   │   │   │       ├── dfb40463621898e5cec09e508a02b3c3e0c3cf3331304921879303698cc63f09
+│       │   │   │   │   │       ├── e4efe8011be78407f8df88c9ae585db265347f32ddd8a5e29a831bbf9c5141e6
+│       │   │   │   │   │       ├── e5ebf35c618a456ec3d7b800c111421d6d904bff55dc1551906a7e000add9510
+│       │   │   │   │   │       ├── e9f54694b9331eab8087ab2b9a01fbf38cb0bde0d1cf57027f7d7d594d8e342f
+│       │   │   │   │   │       ├── eb22161b31e329f229e2ce51ae2b172aaa7a1043036475a99f1a1f9c9a8613a5
+│       │   │   │   │   │       ├── eba4676eaef025a190ecec0c6da94aea34866a657c77f1a303bf8aca81e45f3c
+│       │   │   │   │   │       ├── ebe014671b1b0d4aa6470f6f22fde57c89bfa1d1f87d97c16ffa67964f927e41
+│       │   │   │   │   │       ├── eeecb789f6af17f117ee6760118769b2560fd8220e1d58a39ab0dbd1ff1188a5
+│       │   │   │   │   │       ├── f1f32ad01d99047d7d3dd927f29ac27f595e129d4f47b3553830c129c57a731d
+│       │   │   │   │   │       ├── f202a8edc5a28324c69d6697ae2c6183e8b097151f720e2004ed5611d32418ff
+│       │   │   │   │   │       ├── f3cb1fae12f3f72aceae9215e966e794567f908c695a62eff1e7fda178096a1c
+│       │   │   │   │   │       ├── f54aedfd1e3072cc65af36aae5da7388a79ed1b79e6ddc52196d481864a3fc74
+│       │   │   │   │   │       ├── f608e15b55f5f52893c2c598dd55d0a06b2c331c62acab76065e293c7da4435a
+│       │   │   │   │   │       ├── f96e83102d34c2976da980d295ef6574bb1e4758aaa7d41e3755ae4b2f2df1af
+│       │   │   │   │   │       ├── fe1dac6d38e01bceab93a65fd188d415aaeaf89a27b3e9bf929527ba15b60604
+│       │   │   │   │   │       └── fe989f38aff1a7729a40ef3d61f53a93c50fa38f22261c98c056e0b12652735c
+│       │   │   │   │   ├── archive/
+│       │   │   │   │   ├── .curator_ledger.jsonl
+│       │   │   │   │   └── .playbook_lifecycle.json
+│       │   │   │   ├── quant-research-workflow/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── retail-money-management/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── risk-management-principles/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── session-timing-rules/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── smc-ict-playbook/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── smt-divergence-playbook/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── telegram-persona/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── timeframe-duration-profiler/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── trading-tutor/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   ├── user-chart-collaborative-analysis/
+│       │   │   │   │   └── SKILL.md
+│       │   │   │   └── walk-forward-optimization/
+│       │   │   │       └── SKILL.md
 │       │   │   ├── __init__.py
-│       │   │   └── plugin.py
-│       │   ├── analytics
+│       │   │   ├── continuous_learning.py
+│       │   │   ├── curator.py
+│       │   │   ├── loader.py
+│       │   │   ├── skill_manager.py
+│       │   │   ├── skills_guard.py
+│       │   │   ├── skills_hub.py
+│       │   │   ├── trading_skill_linter.py
+│       │   │   ├── unified_runtime.py
+│       │   │   └── usage_tracker.py
+│       │   ├── __init__.py
+│       │   ├── bootstrap.py
+│       │   └── main.py
+│       ├── core/
+│       │   ├── analytics/
 │       │   │   ├── __init__.py
 │       │   │   ├── adversarial_outcome_tracker.py
 │       │   │   ├── agent_performance_monitor.py
@@ -1192,26 +1168,39 @@ Monika/
 │       │   │   ├── strategy_edge_tracker.py
 │       │   │   ├── token_auditor.py
 │       │   │   └── trade_autopsy.py
-│       │   ├── calibration
+│       │   ├── calibration/
 │       │   │   ├── __init__.py
 │       │   │   ├── cds_threshold_calibrator.py
 │       │   │   ├── confidence_calibrator.py
 │       │   │   ├── cot_thresholds.py
 │       │   │   └── prescreen_calibrator.py
-│       │   ├── config
+│       │   ├── config/
 │       │   │   ├── __init__.py
 │       │   │   ├── atomic_writer.py
 │       │   │   ├── config_manager.py
 │       │   │   ├── config_migrations.py
+│       │   │   ├── env_file_manager.py
+│       │   │   ├── google_credentials.json.example
+│       │   │   ├── historical_macro_milestones.json
 │       │   │   ├── hot_reload.py
 │       │   │   ├── key_validator.py
+│       │   │   ├── MACRO_REALITY.md
 │       │   │   ├── migrations.py
+│       │   │   ├── plugin_catalog.yaml
 │       │   │   ├── profile_applicator.py
 │       │   │   ├── protocols.py
 │       │   │   ├── schemas.py
 │       │   │   ├── security.py
-│       │   │   └── settings.py
-│       │   ├── primitives
+│       │   │   ├── settings.example.yaml
+│       │   │   ├── settings.py
+│       │   │   └── TRADING_SOUL.md
+│       │   ├── contracts/
+│       │   │   ├── __init__.py
+│       │   │   └── plugin.py
+│       │   ├── data/
+│       │   │   └── vault/
+│       │   │       └── vault.key
+│       │   ├── primitives/
 │       │   │   ├── __init__.py
 │       │   │   ├── clock.py
 │       │   │   ├── constants.py
@@ -1222,9 +1211,10 @@ Monika/
 │       │   │   ├── retry.py
 │       │   │   ├── turn_marker.py
 │       │   │   └── worktree.py
-│       │   ├── security
+│       │   ├── security/
 │       │   │   ├── __init__.py
 │       │   │   ├── credential_vault.py
+│       │   │   ├── log_redactor.py
 │       │   │   ├── nt_guard.py
 │       │   │   ├── prompt_injection_scanner.py
 │       │   │   ├── ssrf_guard.py
@@ -1232,12 +1222,25 @@ Monika/
 │       │   │   ├── terminal_guard.py
 │       │   │   ├── threat_detector.py
 │       │   │   └── threat_scanner.py
-│       │   ├── streaming
+│       │   ├── streaming/
 │       │   │   ├── __init__.py
 │       │   │   ├── sanitizer.py
 │       │   │   ├── stream_scrubber.py
 │       │   │   └── streaming_lease.py
-│       │   ├── telemetry
+│       │   ├── telemetry/
+│       │   │   ├── reporting/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── docx_report_generator.py
+│       │   │   │   ├── pdf_report_generator.py
+│       │   │   │   ├── pptx_deck_generator.py
+│       │   │   │   └── tearsheet_generator.py
+│       │   │   ├── tracing/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── context.py
+│       │   │   │   ├── exporters.py
+│       │   │   │   ├── otlp_exporter.py
+│       │   │   │   ├── spans.py
+│       │   │   │   └── tracer.py
 │       │   │   ├── __init__.py
 │       │   │   ├── activity_logger.py
 │       │   │   ├── delegation_live_log.py
@@ -1245,66 +1248,30 @@ Monika/
 │       │   │   ├── metrics_exporter.py
 │       │   │   ├── operator_feedback.py
 │       │   │   ├── report_writer.py
-│       │   │   ├── reporting
-│       │   │   │   ├── __init__.py
-│       │   │   │   ├── docx_report_generator.py
-│       │   │   │   ├── pdf_report_generator.py
-│       │   │   │   ├── pptx_deck_generator.py
-│       │   │   │   └── tearsheet_generator.py
 │       │   │   ├── run_card.py
 │       │   │   ├── sinks.py
 │       │   │   ├── token_budgeter.py
-│       │   │   └── tracing
-│       │   │       ├── __init__.py
-│       │   │       ├── context.py
-│       │   │       └── exporters.py
-│       │   └── validation
-│       │       ├── __init__.py
-│       │       ├── data_temporal_validator.py
-│       │       ├── data_validator.py
-│       │       ├── indicator_sanitizer.py
-│       │       └── tool_response_validator.py
-│       │       ├── activity_logger.py
-│       │       ├── delegation_live_log.py
-│       │       ├── metrics_exporter.py
-│       │       ├── operator_feedback.py
-│       │       ├── report_writer.py
-│       │       ├── reporting
-│       │       │   ├── __init__.py
-│       │       │   ├── docx_report_generator.py
-│       │       │   ├── pdf_report_generator.py
-│       │       │   ├── pptx_deck_generator.py
-│       │       │   └── tearsheet_generator.py
-│       │       ├── run_card.py
-│       │       ├── sinks.py
-│       │       ├── token_budgeter.py
-│       │       ├── tracing
-│       │       │   ├── __init__.py
-│       │       │   ├── context.py
-│       │       │   ├── exporters.py
-│       │       │   ├── otlp_exporter.py
-│       │       │   ├── spans.py
-│       │       │   └── tracer.py
-│       │       └── trading_cycle_event_log.py
-│       ├── domain
+│       │   │   └── trading_cycle_event_log.py
+│       │   ├── validation/
+│       │   │   ├── __init__.py
+│       │   │   ├── data_temporal_validator.py
+│       │   │   ├── data_validator.py
+│       │   │   ├── indicator_sanitizer.py
+│       │   │   └── tool_response_validator.py
 │       │   ├── __init__.py
-│       │   ├── models_resolver.py
-│       │   ├── entities
+│       │   ├── container.py
+│       │   ├── exceptions.py
+│       │   ├── paths.py
+│       │   └── platform.py
+│       ├── domain/
+│       │   ├── entities/
 │       │   │   ├── __init__.py
 │       │   │   ├── order.py
 │       │   │   ├── order_status.py
 │       │   │   ├── position.py
 │       │   │   ├── snapshots.py
 │       │   │   └── trade_trigger.py
-│       │   ├── ports
-│       │   │   ├── __init__.py
-│       │   │   ├── execution.py
-│       │   │   ├── llm.py
-│       │   │   ├── market_data.py
-│       │   │   ├── notifier.py
-│       │   │   ├── repository.py
-│       │   │   └── unit_of_work.py
-│       │   ├── execution
+│       │   ├── execution/
 │       │   │   ├── __init__.py
 │       │   │   ├── base.py
 │       │   │   ├── broker_plugin.py
@@ -1313,9 +1280,516 @@ Monika/
 │       │   │   ├── sizing_calculator.py
 │       │   │   ├── state_machine.py
 │       │   │   └── verification_engine.py
-│       │   ├── indicators
+│       │   ├── indicators/
+│       │   │   ├── alpha_zoo/
+│       │   │   │   ├── catalog/
+│       │   │   │   │   ├── factors.json
+│       │   │   │   │   └── synthesized_strategies.json
+│       │   │   │   ├── factors/
+│       │   │   │   │   ├── academic/
+│       │   │   │   │   │   ├── __init__.py
+│       │   │   │   │   │   ├── amihud_illiquidity.py
+│       │   │   │   │   │   ├── betting_against_beta.py
+│       │   │   │   │   │   ├── carhart_momentum.py
+│       │   │   │   │   │   ├── conservative_minus_aggressive.py
+│       │   │   │   │   │   ├── correlation_rewiring.py
+│       │   │   │   │   │   ├── high_minus_low_value.py
+│       │   │   │   │   │   ├── market_excess_return.py
+│       │   │   │   │   │   ├── proximity_52_week_high.py
+│       │   │   │   │   │   ├── return_skewness.py
+│       │   │   │   │   │   ├── robust_minus_weak_profitability.py
+│       │   │   │   │   │   ├── short_term_reversal.py
+│       │   │   │   │   │   └── small_minus_big_size.py
+│       │   │   │   │   ├── fundamental/
+│       │   │   │   │   │   ├── __init__.py
+│       │   │   │   │   │   ├── asset_growth.py
+│       │   │   │   │   │   ├── earnings_yield.py
+│       │   │   │   │   │   ├── gross_profitability.py
+│       │   │   │   │   │   └── return_on_equity.py
+│       │   │   │   │   ├── guotai_junan_191/
+│       │   │   │   │   │   ├── __init__.py
+│       │   │   │   │   │   ├── gtja_alpha_001.py
+│       │   │   │   │   │   ├── gtja_alpha_002.py
+│       │   │   │   │   │   ├── gtja_alpha_003.py
+│       │   │   │   │   │   ├── gtja_alpha_004.py
+│       │   │   │   │   │   ├── gtja_alpha_005.py
+│       │   │   │   │   │   ├── gtja_alpha_006.py
+│       │   │   │   │   │   ├── gtja_alpha_007.py
+│       │   │   │   │   │   ├── gtja_alpha_008.py
+│       │   │   │   │   │   ├── gtja_alpha_009.py
+│       │   │   │   │   │   ├── gtja_alpha_010.py
+│       │   │   │   │   │   ├── gtja_alpha_011.py
+│       │   │   │   │   │   ├── gtja_alpha_012.py
+│       │   │   │   │   │   ├── gtja_alpha_013.py
+│       │   │   │   │   │   ├── gtja_alpha_014.py
+│       │   │   │   │   │   ├── gtja_alpha_015.py
+│       │   │   │   │   │   ├── gtja_alpha_016.py
+│       │   │   │   │   │   ├── gtja_alpha_017.py
+│       │   │   │   │   │   ├── gtja_alpha_018.py
+│       │   │   │   │   │   ├── gtja_alpha_019.py
+│       │   │   │   │   │   ├── gtja_alpha_020.py
+│       │   │   │   │   │   ├── gtja_alpha_021.py
+│       │   │   │   │   │   ├── gtja_alpha_022.py
+│       │   │   │   │   │   ├── gtja_alpha_023.py
+│       │   │   │   │   │   ├── gtja_alpha_024.py
+│       │   │   │   │   │   ├── gtja_alpha_025.py
+│       │   │   │   │   │   ├── gtja_alpha_026.py
+│       │   │   │   │   │   ├── gtja_alpha_027.py
+│       │   │   │   │   │   ├── gtja_alpha_028.py
+│       │   │   │   │   │   ├── gtja_alpha_029.py
+│       │   │   │   │   │   ├── gtja_alpha_030.py
+│       │   │   │   │   │   ├── gtja_alpha_031.py
+│       │   │   │   │   │   ├── gtja_alpha_032.py
+│       │   │   │   │   │   ├── gtja_alpha_033.py
+│       │   │   │   │   │   ├── gtja_alpha_034.py
+│       │   │   │   │   │   ├── gtja_alpha_035.py
+│       │   │   │   │   │   ├── gtja_alpha_036.py
+│       │   │   │   │   │   ├── gtja_alpha_037.py
+│       │   │   │   │   │   ├── gtja_alpha_038.py
+│       │   │   │   │   │   ├── gtja_alpha_039.py
+│       │   │   │   │   │   ├── gtja_alpha_040.py
+│       │   │   │   │   │   ├── gtja_alpha_041.py
+│       │   │   │   │   │   ├── gtja_alpha_042.py
+│       │   │   │   │   │   ├── gtja_alpha_043.py
+│       │   │   │   │   │   ├── gtja_alpha_044.py
+│       │   │   │   │   │   ├── gtja_alpha_045.py
+│       │   │   │   │   │   ├── gtja_alpha_046.py
+│       │   │   │   │   │   ├── gtja_alpha_047.py
+│       │   │   │   │   │   ├── gtja_alpha_048.py
+│       │   │   │   │   │   ├── gtja_alpha_049.py
+│       │   │   │   │   │   ├── gtja_alpha_050.py
+│       │   │   │   │   │   ├── gtja_alpha_051.py
+│       │   │   │   │   │   ├── gtja_alpha_052.py
+│       │   │   │   │   │   ├── gtja_alpha_053.py
+│       │   │   │   │   │   ├── gtja_alpha_054.py
+│       │   │   │   │   │   ├── gtja_alpha_055.py
+│       │   │   │   │   │   ├── gtja_alpha_056.py
+│       │   │   │   │   │   ├── gtja_alpha_057.py
+│       │   │   │   │   │   ├── gtja_alpha_058.py
+│       │   │   │   │   │   ├── gtja_alpha_059.py
+│       │   │   │   │   │   ├── gtja_alpha_060.py
+│       │   │   │   │   │   ├── gtja_alpha_061.py
+│       │   │   │   │   │   ├── gtja_alpha_062.py
+│       │   │   │   │   │   ├── gtja_alpha_063.py
+│       │   │   │   │   │   ├── gtja_alpha_064.py
+│       │   │   │   │   │   ├── gtja_alpha_065.py
+│       │   │   │   │   │   ├── gtja_alpha_066.py
+│       │   │   │   │   │   ├── gtja_alpha_067.py
+│       │   │   │   │   │   ├── gtja_alpha_068.py
+│       │   │   │   │   │   ├── gtja_alpha_069.py
+│       │   │   │   │   │   ├── gtja_alpha_070.py
+│       │   │   │   │   │   ├── gtja_alpha_071.py
+│       │   │   │   │   │   ├── gtja_alpha_072.py
+│       │   │   │   │   │   ├── gtja_alpha_073.py
+│       │   │   │   │   │   ├── gtja_alpha_074.py
+│       │   │   │   │   │   ├── gtja_alpha_075.py
+│       │   │   │   │   │   ├── gtja_alpha_076.py
+│       │   │   │   │   │   ├── gtja_alpha_077.py
+│       │   │   │   │   │   ├── gtja_alpha_078.py
+│       │   │   │   │   │   ├── gtja_alpha_079.py
+│       │   │   │   │   │   ├── gtja_alpha_080.py
+│       │   │   │   │   │   ├── gtja_alpha_081.py
+│       │   │   │   │   │   ├── gtja_alpha_082.py
+│       │   │   │   │   │   ├── gtja_alpha_083.py
+│       │   │   │   │   │   ├── gtja_alpha_084.py
+│       │   │   │   │   │   ├── gtja_alpha_085.py
+│       │   │   │   │   │   ├── gtja_alpha_086.py
+│       │   │   │   │   │   ├── gtja_alpha_087.py
+│       │   │   │   │   │   ├── gtja_alpha_088.py
+│       │   │   │   │   │   ├── gtja_alpha_089.py
+│       │   │   │   │   │   ├── gtja_alpha_090.py
+│       │   │   │   │   │   ├── gtja_alpha_091.py
+│       │   │   │   │   │   ├── gtja_alpha_092.py
+│       │   │   │   │   │   ├── gtja_alpha_093.py
+│       │   │   │   │   │   ├── gtja_alpha_094.py
+│       │   │   │   │   │   ├── gtja_alpha_095.py
+│       │   │   │   │   │   ├── gtja_alpha_096.py
+│       │   │   │   │   │   ├── gtja_alpha_097.py
+│       │   │   │   │   │   ├── gtja_alpha_098.py
+│       │   │   │   │   │   ├── gtja_alpha_099.py
+│       │   │   │   │   │   ├── gtja_alpha_100.py
+│       │   │   │   │   │   ├── gtja_alpha_101.py
+│       │   │   │   │   │   ├── gtja_alpha_102.py
+│       │   │   │   │   │   ├── gtja_alpha_103.py
+│       │   │   │   │   │   ├── gtja_alpha_104.py
+│       │   │   │   │   │   ├── gtja_alpha_105.py
+│       │   │   │   │   │   ├── gtja_alpha_106.py
+│       │   │   │   │   │   ├── gtja_alpha_107.py
+│       │   │   │   │   │   ├── gtja_alpha_108.py
+│       │   │   │   │   │   ├── gtja_alpha_109.py
+│       │   │   │   │   │   ├── gtja_alpha_110.py
+│       │   │   │   │   │   ├── gtja_alpha_111.py
+│       │   │   │   │   │   ├── gtja_alpha_112.py
+│       │   │   │   │   │   ├── gtja_alpha_113.py
+│       │   │   │   │   │   ├── gtja_alpha_114.py
+│       │   │   │   │   │   ├── gtja_alpha_115.py
+│       │   │   │   │   │   ├── gtja_alpha_116.py
+│       │   │   │   │   │   ├── gtja_alpha_117.py
+│       │   │   │   │   │   ├── gtja_alpha_118.py
+│       │   │   │   │   │   ├── gtja_alpha_119.py
+│       │   │   │   │   │   ├── gtja_alpha_120.py
+│       │   │   │   │   │   ├── gtja_alpha_121.py
+│       │   │   │   │   │   ├── gtja_alpha_122.py
+│       │   │   │   │   │   ├── gtja_alpha_123.py
+│       │   │   │   │   │   ├── gtja_alpha_124.py
+│       │   │   │   │   │   ├── gtja_alpha_125.py
+│       │   │   │   │   │   ├── gtja_alpha_126.py
+│       │   │   │   │   │   ├── gtja_alpha_127.py
+│       │   │   │   │   │   ├── gtja_alpha_128.py
+│       │   │   │   │   │   ├── gtja_alpha_129.py
+│       │   │   │   │   │   ├── gtja_alpha_130.py
+│       │   │   │   │   │   ├── gtja_alpha_131.py
+│       │   │   │   │   │   ├── gtja_alpha_132.py
+│       │   │   │   │   │   ├── gtja_alpha_133.py
+│       │   │   │   │   │   ├── gtja_alpha_134.py
+│       │   │   │   │   │   ├── gtja_alpha_135.py
+│       │   │   │   │   │   ├── gtja_alpha_136.py
+│       │   │   │   │   │   ├── gtja_alpha_137.py
+│       │   │   │   │   │   ├── gtja_alpha_138.py
+│       │   │   │   │   │   ├── gtja_alpha_139.py
+│       │   │   │   │   │   ├── gtja_alpha_140.py
+│       │   │   │   │   │   ├── gtja_alpha_141.py
+│       │   │   │   │   │   ├── gtja_alpha_142.py
+│       │   │   │   │   │   ├── gtja_alpha_143.py
+│       │   │   │   │   │   ├── gtja_alpha_144.py
+│       │   │   │   │   │   ├── gtja_alpha_145.py
+│       │   │   │   │   │   ├── gtja_alpha_146.py
+│       │   │   │   │   │   ├── gtja_alpha_147.py
+│       │   │   │   │   │   ├── gtja_alpha_148.py
+│       │   │   │   │   │   ├── gtja_alpha_149.py
+│       │   │   │   │   │   ├── gtja_alpha_150.py
+│       │   │   │   │   │   ├── gtja_alpha_151.py
+│       │   │   │   │   │   ├── gtja_alpha_152.py
+│       │   │   │   │   │   ├── gtja_alpha_153.py
+│       │   │   │   │   │   ├── gtja_alpha_154.py
+│       │   │   │   │   │   ├── gtja_alpha_155.py
+│       │   │   │   │   │   ├── gtja_alpha_156.py
+│       │   │   │   │   │   ├── gtja_alpha_157.py
+│       │   │   │   │   │   ├── gtja_alpha_158.py
+│       │   │   │   │   │   ├── gtja_alpha_159.py
+│       │   │   │   │   │   ├── gtja_alpha_160.py
+│       │   │   │   │   │   ├── gtja_alpha_161.py
+│       │   │   │   │   │   ├── gtja_alpha_162.py
+│       │   │   │   │   │   ├── gtja_alpha_163.py
+│       │   │   │   │   │   ├── gtja_alpha_164.py
+│       │   │   │   │   │   ├── gtja_alpha_165.py
+│       │   │   │   │   │   ├── gtja_alpha_166.py
+│       │   │   │   │   │   ├── gtja_alpha_167.py
+│       │   │   │   │   │   ├── gtja_alpha_168.py
+│       │   │   │   │   │   ├── gtja_alpha_169.py
+│       │   │   │   │   │   ├── gtja_alpha_170.py
+│       │   │   │   │   │   ├── gtja_alpha_171.py
+│       │   │   │   │   │   ├── gtja_alpha_172.py
+│       │   │   │   │   │   ├── gtja_alpha_173.py
+│       │   │   │   │   │   ├── gtja_alpha_174.py
+│       │   │   │   │   │   ├── gtja_alpha_175.py
+│       │   │   │   │   │   ├── gtja_alpha_176.py
+│       │   │   │   │   │   ├── gtja_alpha_177.py
+│       │   │   │   │   │   ├── gtja_alpha_178.py
+│       │   │   │   │   │   ├── gtja_alpha_179.py
+│       │   │   │   │   │   ├── gtja_alpha_180.py
+│       │   │   │   │   │   ├── gtja_alpha_181.py
+│       │   │   │   │   │   ├── gtja_alpha_182.py
+│       │   │   │   │   │   ├── gtja_alpha_183.py
+│       │   │   │   │   │   ├── gtja_alpha_184.py
+│       │   │   │   │   │   ├── gtja_alpha_185.py
+│       │   │   │   │   │   ├── gtja_alpha_186.py
+│       │   │   │   │   │   ├── gtja_alpha_187.py
+│       │   │   │   │   │   ├── gtja_alpha_188.py
+│       │   │   │   │   │   ├── gtja_alpha_189.py
+│       │   │   │   │   │   ├── gtja_alpha_190.py
+│       │   │   │   │   │   └── gtja_alpha_191.py
+│       │   │   │   │   ├── microsoft_qlib_158/
+│       │   │   │   │   │   ├── __init__.py
+│       │   │   │   │   │   ├── candlestick_body_magnitude.py
+│       │   │   │   │   │   ├── candlestick_body_ratio.py
+│       │   │   │   │   │   ├── candlestick_body_shift.py
+│       │   │   │   │   │   ├── candlestick_body_shift_ratio.py
+│       │   │   │   │   │   ├── candlestick_length.py
+│       │   │   │   │   │   ├── candlestick_lower_shadow.py
+│       │   │   │   │   │   ├── candlestick_lower_shadow_ratio.py
+│       │   │   │   │   │   ├── candlestick_upper_shadow.py
+│       │   │   │   │   │   ├── candlestick_upper_shadow_ratio.py
+│       │   │   │   │   │   ├── close_open_dispersion_10.py
+│       │   │   │   │   │   ├── close_open_dispersion_20.py
+│       │   │   │   │   │   ├── close_open_dispersion_30.py
+│       │   │   │   │   │   ├── close_open_dispersion_5.py
+│       │   │   │   │   │   ├── close_open_dispersion_60.py
+│       │   │   │   │   │   ├── count_down_ratio_10.py
+│       │   │   │   │   │   ├── count_down_ratio_20.py
+│       │   │   │   │   │   ├── count_down_ratio_30.py
+│       │   │   │   │   │   ├── count_down_ratio_5.py
+│       │   │   │   │   │   ├── count_down_ratio_60.py
+│       │   │   │   │   │   ├── count_negative_returns_10.py
+│       │   │   │   │   │   ├── count_negative_returns_20.py
+│       │   │   │   │   │   ├── count_negative_returns_30.py
+│       │   │   │   │   │   ├── count_negative_returns_5.py
+│       │   │   │   │   │   ├── count_negative_returns_60.py
+│       │   │   │   │   │   ├── count_positive_returns_10.py
+│       │   │   │   │   │   ├── count_positive_returns_20.py
+│       │   │   │   │   │   ├── count_positive_returns_30.py
+│       │   │   │   │   │   ├── count_positive_returns_5.py
+│       │   │   │   │   │   ├── count_positive_returns_60.py
+│       │   │   │   │   │   ├── index_max_high_10.py
+│       │   │   │   │   │   ├── index_max_high_20.py
+│       │   │   │   │   │   ├── index_max_high_30.py
+│       │   │   │   │   │   ├── index_max_high_5.py
+│       │   │   │   │   │   ├── index_max_high_60.py
+│       │   │   │   │   │   ├── index_max_min_difference_10.py
+│       │   │   │   │   │   ├── index_max_min_difference_20.py
+│       │   │   │   │   │   ├── index_max_min_difference_30.py
+│       │   │   │   │   │   ├── index_max_min_difference_5.py
+│       │   │   │   │   │   ├── index_max_min_difference_60.py
+│       │   │   │   │   │   ├── index_min_low_10.py
+│       │   │   │   │   │   ├── index_min_low_20.py
+│       │   │   │   │   │   ├── index_min_low_30.py
+│       │   │   │   │   │   ├── index_min_low_5.py
+│       │   │   │   │   │   ├── index_min_low_60.py
+│       │   │   │   │   │   ├── market_beta_10.py
+│       │   │   │   │   │   ├── market_beta_20.py
+│       │   │   │   │   │   ├── market_beta_30.py
+│       │   │   │   │   │   ├── market_beta_5.py
+│       │   │   │   │   │   ├── market_beta_60.py
+│       │   │   │   │   │   ├── moving_average_10.py
+│       │   │   │   │   │   ├── moving_average_20.py
+│       │   │   │   │   │   ├── moving_average_30.py
+│       │   │   │   │   │   ├── moving_average_5.py
+│       │   │   │   │   │   ├── moving_average_60.py
+│       │   │   │   │   │   ├── moving_average_x10.py
+│       │   │   │   │   │   ├── moving_average_x20.py
+│       │   │   │   │   │   ├── moving_average_x30.py
+│       │   │   │   │   │   ├── moving_average_x5.py
+│       │   │   │   │   │   ├── moving_average_x60.py
+│       │   │   │   │   │   ├── percentile_price_rank_10.py
+│       │   │   │   │   │   ├── percentile_price_rank_20.py
+│       │   │   │   │   │   ├── percentile_price_rank_30.py
+│       │   │   │   │   │   ├── percentile_price_rank_5.py
+│       │   │   │   │   │   ├── percentile_price_rank_60.py
+│       │   │   │   │   │   ├── price_volume_correlation_10.py
+│       │   │   │   │   │   ├── price_volume_correlation_20.py
+│       │   │   │   │   │   ├── price_volume_correlation_30.py
+│       │   │   │   │   │   ├── price_volume_correlation_5.py
+│       │   │   │   │   │   ├── price_volume_correlation_60.py
+│       │   │   │   │   │   ├── quantile_down_ratio_10.py
+│       │   │   │   │   │   ├── quantile_down_ratio_20.py
+│       │   │   │   │   │   ├── quantile_down_ratio_30.py
+│       │   │   │   │   │   ├── quantile_down_ratio_5.py
+│       │   │   │   │   │   ├── quantile_down_ratio_60.py
+│       │   │   │   │   │   ├── quantile_up_ratio_10.py
+│       │   │   │   │   │   ├── quantile_up_ratio_20.py
+│       │   │   │   │   │   ├── quantile_up_ratio_30.py
+│       │   │   │   │   │   ├── quantile_up_ratio_5.py
+│       │   │   │   │   │   ├── quantile_up_ratio_60.py
+│       │   │   │   │   │   ├── rate_of_change_10.py
+│       │   │   │   │   │   ├── rate_of_change_20.py
+│       │   │   │   │   │   ├── rate_of_change_30.py
+│       │   │   │   │   │   ├── rate_of_change_5.py
+│       │   │   │   │   │   ├── rate_of_change_60.py
+│       │   │   │   │   │   ├── raw_stochastic_value_10.py
+│       │   │   │   │   │   ├── raw_stochastic_value_20.py
+│       │   │   │   │   │   ├── raw_stochastic_value_30.py
+│       │   │   │   │   │   ├── raw_stochastic_value_5.py
+│       │   │   │   │   │   ├── raw_stochastic_value_60.py
+│       │   │   │   │   │   ├── regression_r_squared_10.py
+│       │   │   │   │   │   ├── regression_r_squared_20.py
+│       │   │   │   │   │   ├── regression_r_squared_30.py
+│       │   │   │   │   │   ├── regression_r_squared_5.py
+│       │   │   │   │   │   ├── regression_r_squared_60.py
+│       │   │   │   │   │   ├── regression_residual_10.py
+│       │   │   │   │   │   ├── regression_residual_20.py
+│       │   │   │   │   │   ├── regression_residual_30.py
+│       │   │   │   │   │   ├── regression_residual_5.py
+│       │   │   │   │   │   ├── regression_residual_60.py
+│       │   │   │   │   │   ├── rolling_min_10.py
+│       │   │   │   │   │   ├── rolling_min_20.py
+│       │   │   │   │   │   ├── rolling_min_30.py
+│       │   │   │   │   │   ├── rolling_min_5.py
+│       │   │   │   │   │   ├── rolling_min_60.py
+│       │   │   │   │   │   ├── rolling_volatility_10.py
+│       │   │   │   │   │   ├── rolling_volatility_20.py
+│       │   │   │   │   │   ├── rolling_volatility_30.py
+│       │   │   │   │   │   ├── rolling_volatility_5.py
+│       │   │   │   │   │   ├── rolling_volatility_60.py
+│       │   │   │   │   │   ├── sum_negative_returns_10.py
+│       │   │   │   │   │   ├── sum_negative_returns_20.py
+│       │   │   │   │   │   ├── sum_negative_returns_30.py
+│       │   │   │   │   │   ├── sum_negative_returns_5.py
+│       │   │   │   │   │   ├── sum_negative_returns_60.py
+│       │   │   │   │   │   ├── sum_positive_returns_10.py
+│       │   │   │   │   │   ├── sum_positive_returns_20.py
+│       │   │   │   │   │   ├── sum_positive_returns_30.py
+│       │   │   │   │   │   ├── sum_positive_returns_5.py
+│       │   │   │   │   │   ├── sum_positive_returns_60.py
+│       │   │   │   │   │   ├── sum_price_drops_10.py
+│       │   │   │   │   │   ├── sum_price_drops_20.py
+│       │   │   │   │   │   ├── sum_price_drops_30.py
+│       │   │   │   │   │   ├── sum_price_drops_5.py
+│       │   │   │   │   │   ├── sum_price_drops_60.py
+│       │   │   │   │   │   ├── volume_moving_average_10.py
+│       │   │   │   │   │   ├── volume_moving_average_20.py
+│       │   │   │   │   │   ├── volume_moving_average_30.py
+│       │   │   │   │   │   ├── volume_moving_average_5.py
+│       │   │   │   │   │   ├── volume_moving_average_60.py
+│       │   │   │   │   │   ├── volume_sum_drops_10.py
+│       │   │   │   │   │   ├── volume_sum_drops_20.py
+│       │   │   │   │   │   ├── volume_sum_drops_30.py
+│       │   │   │   │   │   ├── volume_sum_drops_5.py
+│       │   │   │   │   │   ├── volume_sum_drops_60.py
+│       │   │   │   │   │   ├── volume_sum_negative_10.py
+│       │   │   │   │   │   ├── volume_sum_negative_20.py
+│       │   │   │   │   │   ├── volume_sum_negative_30.py
+│       │   │   │   │   │   ├── volume_sum_negative_5.py
+│       │   │   │   │   │   ├── volume_sum_negative_60.py
+│       │   │   │   │   │   ├── volume_sum_positive_10.py
+│       │   │   │   │   │   ├── volume_sum_positive_20.py
+│       │   │   │   │   │   ├── volume_sum_positive_30.py
+│       │   │   │   │   │   ├── volume_sum_positive_5.py
+│       │   │   │   │   │   ├── volume_sum_positive_60.py
+│       │   │   │   │   │   ├── volume_volatility_10.py
+│       │   │   │   │   │   ├── volume_volatility_20.py
+│       │   │   │   │   │   ├── volume_volatility_30.py
+│       │   │   │   │   │   ├── volume_volatility_5.py
+│       │   │   │   │   │   ├── volume_volatility_60.py
+│       │   │   │   │   │   ├── volume_weighted_volatility_10.py
+│       │   │   │   │   │   ├── volume_weighted_volatility_20.py
+│       │   │   │   │   │   ├── volume_weighted_volatility_30.py
+│       │   │   │   │   │   ├── volume_weighted_volatility_5.py
+│       │   │   │   │   │   └── volume_weighted_volatility_60.py
+│       │   │   │   │   ├── worldquant_101/
+│       │   │   │   │   │   ├── __init__.py
+│       │   │   │   │   │   ├── wq_alpha_001.py
+│       │   │   │   │   │   ├── wq_alpha_002.py
+│       │   │   │   │   │   ├── wq_alpha_003.py
+│       │   │   │   │   │   ├── wq_alpha_004.py
+│       │   │   │   │   │   ├── wq_alpha_005.py
+│       │   │   │   │   │   ├── wq_alpha_006.py
+│       │   │   │   │   │   ├── wq_alpha_007.py
+│       │   │   │   │   │   ├── wq_alpha_008.py
+│       │   │   │   │   │   ├── wq_alpha_009.py
+│       │   │   │   │   │   ├── wq_alpha_010.py
+│       │   │   │   │   │   ├── wq_alpha_011.py
+│       │   │   │   │   │   ├── wq_alpha_012.py
+│       │   │   │   │   │   ├── wq_alpha_013.py
+│       │   │   │   │   │   ├── wq_alpha_014.py
+│       │   │   │   │   │   ├── wq_alpha_015.py
+│       │   │   │   │   │   ├── wq_alpha_016.py
+│       │   │   │   │   │   ├── wq_alpha_017.py
+│       │   │   │   │   │   ├── wq_alpha_018.py
+│       │   │   │   │   │   ├── wq_alpha_019.py
+│       │   │   │   │   │   ├── wq_alpha_020.py
+│       │   │   │   │   │   ├── wq_alpha_021.py
+│       │   │   │   │   │   ├── wq_alpha_022.py
+│       │   │   │   │   │   ├── wq_alpha_023.py
+│       │   │   │   │   │   ├── wq_alpha_024.py
+│       │   │   │   │   │   ├── wq_alpha_025.py
+│       │   │   │   │   │   ├── wq_alpha_026.py
+│       │   │   │   │   │   ├── wq_alpha_027.py
+│       │   │   │   │   │   ├── wq_alpha_028.py
+│       │   │   │   │   │   ├── wq_alpha_029.py
+│       │   │   │   │   │   ├── wq_alpha_030.py
+│       │   │   │   │   │   ├── wq_alpha_031.py
+│       │   │   │   │   │   ├── wq_alpha_032.py
+│       │   │   │   │   │   ├── wq_alpha_033.py
+│       │   │   │   │   │   ├── wq_alpha_034.py
+│       │   │   │   │   │   ├── wq_alpha_035.py
+│       │   │   │   │   │   ├── wq_alpha_036.py
+│       │   │   │   │   │   ├── wq_alpha_037.py
+│       │   │   │   │   │   ├── wq_alpha_038.py
+│       │   │   │   │   │   ├── wq_alpha_039.py
+│       │   │   │   │   │   ├── wq_alpha_040.py
+│       │   │   │   │   │   ├── wq_alpha_041.py
+│       │   │   │   │   │   ├── wq_alpha_042.py
+│       │   │   │   │   │   ├── wq_alpha_043.py
+│       │   │   │   │   │   ├── wq_alpha_044.py
+│       │   │   │   │   │   ├── wq_alpha_045.py
+│       │   │   │   │   │   ├── wq_alpha_046.py
+│       │   │   │   │   │   ├── wq_alpha_047.py
+│       │   │   │   │   │   ├── wq_alpha_048.py
+│       │   │   │   │   │   ├── wq_alpha_049.py
+│       │   │   │   │   │   ├── wq_alpha_050.py
+│       │   │   │   │   │   ├── wq_alpha_051.py
+│       │   │   │   │   │   ├── wq_alpha_052.py
+│       │   │   │   │   │   ├── wq_alpha_053.py
+│       │   │   │   │   │   ├── wq_alpha_054.py
+│       │   │   │   │   │   ├── wq_alpha_055.py
+│       │   │   │   │   │   ├── wq_alpha_056.py
+│       │   │   │   │   │   ├── wq_alpha_057.py
+│       │   │   │   │   │   ├── wq_alpha_058.py
+│       │   │   │   │   │   ├── wq_alpha_059.py
+│       │   │   │   │   │   ├── wq_alpha_060.py
+│       │   │   │   │   │   ├── wq_alpha_061.py
+│       │   │   │   │   │   ├── wq_alpha_062.py
+│       │   │   │   │   │   ├── wq_alpha_063.py
+│       │   │   │   │   │   ├── wq_alpha_064.py
+│       │   │   │   │   │   ├── wq_alpha_065.py
+│       │   │   │   │   │   ├── wq_alpha_066.py
+│       │   │   │   │   │   ├── wq_alpha_067.py
+│       │   │   │   │   │   ├── wq_alpha_068.py
+│       │   │   │   │   │   ├── wq_alpha_069.py
+│       │   │   │   │   │   ├── wq_alpha_070.py
+│       │   │   │   │   │   ├── wq_alpha_071.py
+│       │   │   │   │   │   ├── wq_alpha_072.py
+│       │   │   │   │   │   ├── wq_alpha_073.py
+│       │   │   │   │   │   ├── wq_alpha_074.py
+│       │   │   │   │   │   ├── wq_alpha_075.py
+│       │   │   │   │   │   ├── wq_alpha_076.py
+│       │   │   │   │   │   ├── wq_alpha_077.py
+│       │   │   │   │   │   ├── wq_alpha_078.py
+│       │   │   │   │   │   ├── wq_alpha_079.py
+│       │   │   │   │   │   ├── wq_alpha_080.py
+│       │   │   │   │   │   ├── wq_alpha_081.py
+│       │   │   │   │   │   ├── wq_alpha_082.py
+│       │   │   │   │   │   ├── wq_alpha_083.py
+│       │   │   │   │   │   ├── wq_alpha_084.py
+│       │   │   │   │   │   ├── wq_alpha_085.py
+│       │   │   │   │   │   ├── wq_alpha_086.py
+│       │   │   │   │   │   ├── wq_alpha_087.py
+│       │   │   │   │   │   ├── wq_alpha_088.py
+│       │   │   │   │   │   ├── wq_alpha_089.py
+│       │   │   │   │   │   ├── wq_alpha_090.py
+│       │   │   │   │   │   ├── wq_alpha_091.py
+│       │   │   │   │   │   ├── wq_alpha_092.py
+│       │   │   │   │   │   ├── wq_alpha_093.py
+│       │   │   │   │   │   ├── wq_alpha_094.py
+│       │   │   │   │   │   ├── wq_alpha_095.py
+│       │   │   │   │   │   ├── wq_alpha_096.py
+│       │   │   │   │   │   ├── wq_alpha_097.py
+│       │   │   │   │   │   ├── wq_alpha_098.py
+│       │   │   │   │   │   ├── wq_alpha_099.py
+│       │   │   │   │   │   ├── wq_alpha_100.py
+│       │   │   │   │   │   └── wq_alpha_101.py
+│       │   │   │   │   └── __init__.py
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── academic_factors.py
+│       │   │   │   ├── alpha101.py
+│       │   │   │   ├── fundamental_factors.py
+│       │   │   │   ├── meta.py
+│       │   │   │   ├── microstructure_factors.py
+│       │   │   │   ├── qlib158.py
+│       │   │   │   ├── registry.py
+│       │   │   │   └── vector_factor_engine.py
+│       │   │   ├── pattern_similarity/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── context_scorer.py
+│       │   │   │   ├── context_verifier.py
+│       │   │   │   ├── engine.py
+│       │   │   │   ├── feature_extractor.py
+│       │   │   │   ├── models.py
+│       │   │   │   ├── normalizer.py
+│       │   │   │   ├── outcome_analyzer.py
+│       │   │   │   └── scanner.py
 │       │   │   ├── __init__.py
-│       │   ├── market
+│       │   │   ├── candlestick_patterns.py
+│       │   │   ├── chart_patterns.py
+│       │   │   ├── factor_primitives.py
+│       │   │   ├── micro_alpha_zoo.py
+│       │   │   ├── microstructure.py
+│       │   │   ├── order_flow.py
+│       │   │   ├── regime_detector.py
+│       │   │   ├── smc_advanced.py
+│       │   │   ├── structure.py
+│       │   │   └── technical.py
+│       │   ├── market/
 │       │   │   ├── __init__.py
 │       │   │   ├── bias_utils.py
 │       │   │   ├── brent_yfinance.py
@@ -1327,72 +1801,52 @@ Monika/
 │       │   │   ├── session_info.py
 │       │   │   ├── swap_estimator.py
 │       │   │   └── usd_strength_proxy.py
-│       │   │   ├── alpha_zoo
+│       │   ├── ports/
+│       │   │   ├── __init__.py
+│       │   │   ├── execution.py
+│       │   │   ├── llm.py
+│       │   │   ├── market_data.py
+│       │   │   ├── notifier.py
+│       │   │   ├── repository.py
+│       │   │   └── unit_of_work.py
+│       │   ├── risk/
+│       │   │   ├── domain/
 │       │   │   │   ├── __init__.py
-│       │   │   │   ├── academic_factors.py
-│       │   │   │   ├── alpha101.py
-│       │   │   │   ├── factors
-│       │   │   │   ├── fundamental_factors.py
-│       │   │   │   ├── meta.py
-│       │   │   │   ├── microstructure_factors.py
-│       │   │   │   ├── qlib158.py
+│       │   │   │   └── instruments.py
+│       │   │   ├── evaluators/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── base.py
+│       │   │   │   ├── execution_checks.py
+│       │   │   │   ├── intelligence_checks.py
+│       │   │   │   ├── market_checks.py
+│       │   │   │   └── portfolio_checks.py
+│       │   │   ├── instruments/
+│       │   │   │   ├── __init__.py
+│       │   │   │   └── instruments.py
+│       │   │   ├── invariants/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── position_count_invariant.py
 │       │   │   │   ├── registry.py
-│       │   │   │   └── vector_factor_engine.py
-│       │   │   ├── candlestick_patterns.py
-│       │   │   ├── chart_patterns.py
-│       │   │   ├── divergence.py
-│       │   │   ├── econometrics.py
-│       │   │   ├── factor_primitives.py
-│       │   │   ├── micro_alpha_zoo.py
-│       │   │   ├── microstructure.py
-│       │   │   ├── order_flow.py
-│       │   │   ├── pattern_similarity
-│       │   │   │   ├── __init__.py
-│       │   │   │   ├── context_scorer.py
-│       │   │   │   ├── context_verifier.py
-│       │   │   │   ├── engine.py
-│       │   │   │   ├── feature_extractor.py
-│       │   │   │   ├── models.py
-│       │   │   │   ├── normalizer.py
-│       │   │   │   ├── outcome_analyzer.py
-│       │   │   │   └── scanner.py
-│       │   │   ├── regime_detector.py
-│       │   │   ├── smc_advanced.py
-│       │   │   ├── structure.py
-│       │   │   └── technical.py
-│       │   └── risk
-│       │       ├── __init__.py
-│       │       ├── approval_hub.py
-│       │       ├── correlation_matrix.py
-│       │       ├── crypto_audit_ledger.py
-│       │       ├── evaluators
-│       │       │   ├── __init__.py
-│       │       │   ├── base.py
-│       │       │   ├── execution_checks.py
-│       │       │   ├── intelligence_checks.py
-│       │       │   ├── market_checks.py
-│       │       │   └── portfolio_checks.py
-│       │       ├── execution_simulator.py
-│       │       ├── instruments
-│       │       │   ├── __init__.py
-│       │       │   └── instruments.py
-│       │       ├── invariants
-│       │       │   ├── __init__.py
-│       │       │   ├── position_count_invariant.py
-│       │       │   ├── registry.py
-│       │       │   ├── risk_gate_invariant.py
-│       │       │   └── state_immutability_invariant.py
-│       │       ├── pending_action.py
-│       │       ├── portfolio_correlation_gate.py
-│       │       ├── portfolio_optimizer.py
-│       │       ├── ports.py
-│       │       ├── position_sizing.py
-│       │       ├── risk_gate.py
-│       │       ├── risk_rule_plugin.py
-│       │       └── trade_proposal.py
-│       ├── infrastructure
+│       │   │   │   ├── risk_gate_invariant.py
+│       │   │   │   └── state_immutability_invariant.py
+│       │   │   ├── __init__.py
+│       │   │   ├── approval_hub.py
+│       │   │   ├── approval_transport.py
+│       │   │   ├── correlation_matrix.py
+│       │   │   ├── crypto_audit_ledger.py
+│       │   │   ├── execution_simulator.py
+│       │   │   ├── pending_action.py
+│       │   │   ├── portfolio_correlation_gate.py
+│       │   │   ├── portfolio_optimizer.py
+│       │   │   ├── ports.py
+│       │   │   ├── position_sizing.py
+│       │   │   ├── risk_gate.py
+│       │   │   ├── risk_rule_plugin.py
+│       │   │   └── trade_proposal.py
 │       │   ├── __init__.py
-│       │   ├── api
+│       │   └── models_resolver.py
+│       ├── infrastructure/
+│       │   ├── api/
 │       │   │   ├── __init__.py
 │       │   │   ├── claude_rate_limiter.py
 │       │   │   ├── credential_pool.py
@@ -1402,22 +1856,14 @@ Monika/
 │       │   │   ├── http_retry.py
 │       │   │   ├── openrouter_rate_limiter.py
 │       │   │   └── streaming.py
-│       │   ├── brokers
-│       │   │   ├── __init__.py
-│       │   │   ├── approval_transport.py
-│       │   │   ├── audit_logger.py
-│       │   │   ├── broker_adapter.py
-│       │   │   ├── ea_bridge
+│       │   ├── brokers/
+│       │   │   ├── ea_bridge/
 │       │   │   │   ├── __init__.py
-│       │   │   │   ├── contract_types.py
-│       │   │   │   ├── file_protocol.py
-│       │   │   │   ├── mql5_bridge.py
-│       │   │   │   ├── rate_limiter.py
-│       │   │   │   ├── types.py
+│       │   │   │   ├── AIAgent_EA.ex5
+│       │   │   │   ├── AIAgent_EA.mq5
+│       │   │   │   ├── heartbeat_writer.py
 │       │   │   │   └── watchdog.py
-│       │   │   ├── ibkr_adapter.py
-│       │   │   ├── idempotency_guard.py
-│       │   │   ├── mt5
+│       │   │   ├── mt5/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base.py
 │       │   │   │   ├── client.py
@@ -1427,22 +1873,99 @@ Monika/
 │       │   │   │   ├── market_data.py
 │       │   │   │   ├── order_ops.py
 │       │   │   │   └── primitives.py
+│       │   │   ├── __init__.py
+│       │   │   ├── approval_transport.py
+│       │   │   ├── audit_logger.py
+│       │   │   ├── broker_adapter.py
+│       │   │   ├── ibkr_adapter.py
+│       │   │   ├── idempotency_guard.py
 │       │   │   ├── mt5_client.py
 │       │   │   ├── mt5_compat.py
 │       │   │   ├── paper_tracker.py
 │       │   │   └── rate_throttler.py
-│       │   ├── credentials
+│       │   ├── credentials/
 │       │   │   ├── __init__.py
 │       │   │   ├── credential_pool.py
 │       │   │   └── error_taxonomy.py
-│       │   ├── database
-│       │   │   ├── __init__.py
-│       │   │   ├── base_repository.py
-│       │   │   ├── clean_stale_proposals.py
-│       │   │   ├── compat.py
-│       │   │   ├── connection.py
-│       │   │   ├── db.py
-│       │   │   ├── domain_models
+│       │   ├── data/
+│       │   ├── data_ingestion/
+│       │   │   ├── data/
+│       │   │   │   └── sessions/
+│       │   │   │       └── twitter_quarantined.json
+│       │   │   ├── scrapers/
+│       │   │   │   ├── calendar/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── calendar_finnhub.py
+│       │   │   │   │   ├── calendar_forexfactory.py
+│       │   │   │   │   └── calendar_investing.py
+│       │   │   │   ├── macro/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── bank_indonesia.py
+│       │   │   │   │   ├── central_bank_doc_scraper.py
+│       │   │   │   │   ├── cme_fedwatch.py
+│       │   │   │   │   ├── generic_gov_stats_fetcher.py
+│       │   │   │   │   └── macro_trigger_router.py
+│       │   │   │   ├── news/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── kitco_news.py
+│       │   │   │   │   ├── rss_base.py
+│       │   │   │   │   ├── rss_bloomberg.py
+│       │   │   │   │   ├── rss_boe.py
+│       │   │   │   │   ├── rss_boj.py
+│       │   │   │   │   ├── rss_cnbc.py
+│       │   │   │   │   ├── rss_coindesk.py
+│       │   │   │   │   ├── rss_dow_jones.py
+│       │   │   │   │   ├── rss_ecb.py
+│       │   │   │   │   ├── rss_fed.py
+│       │   │   │   │   ├── rss_forexlive.py
+│       │   │   │   │   ├── rss_ft.py
+│       │   │   │   │   ├── rss_fxstreet.py
+│       │   │   │   │   ├── rss_investing.py
+│       │   │   │   │   ├── rss_marketwatch.py
+│       │   │   │   │   ├── rss_rba.py
+│       │   │   │   │   ├── rss_reuters.py
+│       │   │   │   │   ├── rss_wsj.py
+│       │   │   │   │   └── tradingview_news.py
+│       │   │   │   ├── sentiment/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── binance_sentiment.py
+│       │   │   │   │   ├── fxssi_sentiment.py
+│       │   │   │   │   └── myfxbook_sentiment.py
+│       │   │   │   ├── social/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   └── twitter_watch.py
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── base_scraper.py
+│       │   │   │   └── models.py
+│       │   │   ├── sources/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── academic_search.py
+│       │   │   │   ├── bond_yields_fetcher.py
+│       │   │   │   ├── bond_yields_yfinance.py
+│       │   │   │   ├── bps_stats.py
+│       │   │   │   ├── brent_yfinance.py
+│       │   │   │   ├── central_bank_watch.py
+│       │   │   │   ├── cftc_cot.py
+│       │   │   │   ├── circuit_breaker.py
+│       │   │   │   ├── coinglass_funding.py
+│       │   │   │   ├── crypto_orderbook_depth.py
+│       │   │   │   ├── dxy_yfinance.py
+│       │   │   │   ├── eia_oil_inventory.py
+│       │   │   │   ├── fear_greed.py
+│       │   │   │   ├── fed_liquidity_h41_fetcher.py
+│       │   │   │   ├── fred_treasury_yield.py
+│       │   │   │   ├── gold_physical_radar.py
+│       │   │   │   ├── leading_survey_fetcher.py
+│       │   │   │   ├── market_stress_auction_fetcher.py
+│       │   │   │   ├── prediction_market.py
+│       │   │   │   ├── sovereign_yield_spreads.py
+│       │   │   │   ├── validators.py
+│       │   │   │   ├── vix_yfinance.py
+│       │   │   │   ├── web_reader.py
+│       │   │   │   └── web_search.py
+│       │   │   └── __init__.py
+│       │   ├── database/
+│       │   │   ├── domain_models/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── analysis.py
 │       │   │   │   ├── base.py
@@ -1451,28 +1974,21 @@ Monika/
 │       │   │   │   ├── news.py
 │       │   │   │   ├── system.py
 │       │   │   │   └── trading.py
-│       │   │   ├── emergency_audit.py
-│       │   │   ├── engine.py
-│       │   │   ├── fts5_tokenizer.py
-│       │   │   ├── migrations
+│       │   │   ├── migrations/
+│       │   │   │   ├── versions/
+│       │   │   │   │   ├── 0001_initial_schema.py
+│       │   │   │   │   ├── 0002_user_prefs_and_journal.py
+│       │   │   │   │   ├── 0003_add_benchmark_tables_and_cache_cost_columns.py
+│       │   │   │   │   ├── 0004_fk_cascade_integrity.py
+│       │   │   │   │   ├── 0005_sync_missing_indexes_and_constraints.py
+│       │   │   │   │   ├── 0006_consolidate_and_numeric.py
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   └── c83c5e451412_sync_schema_indexes_types_and_.py
+│       │   │   │   ├── __init__.py
 │       │   │   │   ├── env.py
-│       │   │   │   ├── script.py.mako
-│       │   │   │   └── versions
-│       │   │   │       ├── 0006_consolidate_and_numeric.py
-│       │   │   │       ├── 001_initial_schema.py
-│       │   │   │       ├── 002_add_fts5_virtual_tables.py
-│       │   │   │       ├── 003_add_session_wal_and_pruning.py
-│       │   │   │       ├── 004_add_user_market_intel.py
-│       │   │   │       ├── 005_add_phase2_compression.py
-│       │   │   │       ├── 006_add_phase3_runtime.py
-│       │   │   │       ├── 007_add_phase4_rewind.py
-│       │   │   │       └── 008_foreign_key_audit.py
-│       │   │   ├── models.py
-│       │   │   ├── phase2_compaction.py
-│       │   │   ├── phase2_prune_ledger.py
-│       │   │   ├── phase3_runtime.py
-│       │   │   ├── prune_database.py
-│       │   │   ├── repositories
+│       │   │   │   ├── README
+│       │   │   │   └── script.py.mako
+│       │   │   ├── repositories/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── activity_log_repository.py
 │       │   │   │   ├── position_repository.py
@@ -1480,141 +1996,26 @@ Monika/
 │       │   │   │   ├── system_config_repository.py
 │       │   │   │   ├── trade_proposal_repository.py
 │       │   │   │   └── unit_of_work.py
-│       │   │   ├── session_db.py
+│       │   │   ├── __init__.py
+│       │   │   ├── adapters.py
+│       │   │   ├── async_db.py
+│       │   │   ├── backup.py
+│       │   │   ├── cleanup.py
+│       │   │   ├── db.py
+│       │   │   ├── event_store.py
+│       │   │   ├── fts5_cjk.py
+│       │   │   ├── models.py
+│       │   │   ├── repair_ledger.py
+│       │   │   ├── safe_ops.py
 │       │   │   ├── session_db_wal.py
-│       │   │   ├── sqlite_concurrency.py
-│       │   │   └── user_market_intel.py
-│       │   ├── data_ingestion
-│       │   │   ├── __init__.py
-│       │   │   ├── scrapers
+│       │   │   └── session_lifecycle.py
+│       │   ├── graph/
+│       │   │   ├── checkpointers/
 │       │   │   │   ├── __init__.py
-│       │   │   │   ├── base_scraper.py
-│       │   │   │   ├── calendar
-│       │   │   │   │   ├── __init__.py
-│       │   │   │   │   ├── calendar_forexfactory.py
-│       │   │   │   │   └── calendar_investing.py
-│       │   │   │   ├── macro
-│       │   │   │   │   ├── __init__.py
-│       │   │   │   │   ├── bank_indonesia.py
-│       │   │   │   │   ├── bps_stats.py
-│       │   │   │   │   ├── central_bank_doc_scraper.py
-│       │   │   │   │   ├── cot_scraper.py
-│       │   │   │   │   ├── esdm_scraper.py
-│       │   │   │   │   ├── fed_calendar.py
-│       │   │   │   │   ├── fitch_ratings.py
-│       │   │   │   │   ├── moody_ratings.py
-│       │   │   │   │   ├── s_and_p_ratings.py
-│       │   │   │   │   └── sovereign_yield_spreads.py
-│       │   │   │   ├── news
-│       │   │   │   │   ├── __init__.py
-│       │   │   │   │   ├── base_news.py
-│       │   │   │   │   ├── bisnis_com.py
-│       │   │   │   │   ├── bloomberg_commodities.py
-│       │   │   │   │   ├── cnbc_indonesia.py
-│       │   │   │   │   ├── content_fetcher.py
-│       │   │   │   │   ├── detik_finance.py
-│       │   │   │   │   ├── investing_news.py
-│       │   │   │   │   ├── kontan.py
-│       │   │   │   │   ├── reuters_commodities.py
-│       │   │   │   │   └── web_search.py
-│       │   │   │   ├── playwright_scraper.py
-│       │   │   │   ├── scraper_factory.py
-│       │   │   │   ├── sentiment
-│       │   │   │   │   ├── __init__.py
-│       │   │   │   │   ├── cme_fedwatch.py
-│       │   │   │   │   ├── fear_and_greed.py
-│       │   │   │   │   ├── fxstreet_sentiment.py
-│       │   │   │   │   ├── myfxbook_sentiment.py
-│       │   │   │   │   └── retail_sentiment.py
-│       │   │   │   └── social
-│       │   │   │       ├── __init__.py
-│       │   │   │       ├── stocktwits.py
-│       │   │   │       ├── twitter_nitter.py
-│       │   │   │       └── twitter_scraper.py
-│       │   │   └── sources
-│       │   │       ├── __init__.py
-│       │   │       ├── base_fetcher.py
-│       │   │       ├── bi_rate.py
-│       │   │       ├── cftc_cot.py
-│       │   │       ├── crypto_fear_greed.py
-│       │   │       ├── dxy_fred.py
-│       │   │       ├── dxy_yfinance.py
-│       │   │       ├── eia_petroleum.py
-│       │   │       ├── gold_rates.py
-│       │   │       ├── icdx_data.py
-│       │   │       ├── idr_interbank.py
-│       │   │       ├── idx_market.py
-│       │   │       ├── metals_rates.py
-│       │   │       ├── myfxbook_api.py
-│       │   │       ├── news_fetcher.py
-│       │   │       ├── oil_price.py
-│       │   │       ├── oil_rates.py
-│       │   │       ├── s_and_p_commodity.py
-│       │   │       ├── treasury_yields.py
-│       │   │       ├── us_cpi.py
-│       │   │       ├── us_nonfarm_payrolls.py
-│       │   │       ├── us_retail_sales.py
-│       │   │       ├── vix_fetcher.py
-│       │   │       ├── vix_yfinance.py
-│       │   │       └── world_bank.py
-│       │   ├── graph
-│       │   │   ├── __init__.py
-│       │   │   └── checkpointers
-│       │   │       ├── __init__.py
-│       │   │       ├── dual_checkpointer.py
-│       │   │       └── sqlite_checkpointer.py
-│       │   ├── ml
-│       │   │   ├── __init__.py
-│       │   │   └── timesfm_engine.py
-│       │   ├── providers
-│       │   │   ├── __init__.py
-│       │   │   ├── ai21_provider.py
-│       │   │   ├── anthropic_provider.py
-│       │   │   ├── bedrock_provider.py
-│       │   │   ├── cerebras_provider.py
-│       │   │   ├── circuit_breaker.py
-│       │   │   ├── cohere_provider.py
-│       │   │   ├── deepseek_provider.py
-│       │   │   ├── fireworks_provider.py
-│       │   │   ├── gemini_provider.py
-│       │   │   ├── groq_provider.py
-│       │   │   ├── huggingface_provider.py
-│       │   │   ├── llm_factory.py
-│       │   │   ├── mistral_provider.py
-│       │   │   ├── mock_provider.py
-│       │   │   ├── ollama_provider.py
-│       │   │   ├── openai_provider.py
-│       │   │   ├── openrouter_provider.py
-│       │   │   ├── perplexity_provider.py
-│       │   │   ├── provider_failover_classifier.py
-│       │   │   ├── provider_registry.py
-│       │   │   ├── request_budget.py
-│       │   │   ├── samba_provider.py
-│       │   │   ├── streaming_think_scrubber.py
-│       │   │   ├── together_provider.py
-│       │   ├── mcp
-│       │   │   ├── __init__.py
-│       │   │   ├── client.py
-│       │   │   ├── dispatcher.py
-│       │   │   ├── event_bridge.py
-│       │   │   ├── mcp_death_supervisor.py
-│       │   │   ├── mcp_schema_cache.py
-│       │   │   ├── mcp_serve.py
-│       │   │   ├── oauth_handler.py
-│       │   │   ├── protocol.py
-│       │   │   ├── server.py
-│       │   │   └── servers
-│       │   │       ├── __init__.py
-│       │   │       ├── excel_server.py
-│       │   │       ├── fetch_server.py
-│       │   │       ├── filesystem_server.py
-│       │   │       ├── google_sheets_server.py
-│       │   │       └── sqlite_server.py
-│       │   ├── notifications
-│       │   │   ├── __init__.py
-│       │   │   ├── discord_notifier.py
-│       │   │   └── telegram_notifier.py
-│       │   ├── infra
+│       │   │   │   ├── dual_checkpointer.py
+│       │   │   │   └── sqlite_checkpointer.py
+│       │   │   └── __init__.py
+│       │   ├── infra/
 │       │   │   ├── __init__.py
 │       │   │   ├── audit_settings_keys.py
 │       │   │   ├── container.py
@@ -1627,9 +2028,8 @@ Monika/
 │       │   │   ├── paths.py
 │       │   │   ├── platform_compat.py
 │       │   │   └── worktree_manager.py
-│       │   ├── llm
-│       │   │   ├── __init__.py
-│       │   │   ├── rate_limiting
+│       │   ├── llm/
+│       │   │   ├── rate_limiting/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── claude_rate_limiter.py
 │       │   │   │   ├── credential_pool.py
@@ -1639,6 +2039,7 @@ Monika/
 │       │   │   │   ├── http_retry.py
 │       │   │   │   ├── openrouter_rate_limiter.py
 │       │   │   │   └── streaming.py
+│       │   │   ├── __init__.py
 │       │   │   ├── adaptive_thinking.py
 │       │   │   ├── cache_breakpoint_manager.py
 │       │   │   ├── cache_miss_detector.py
@@ -1666,164 +2067,1212 @@ Monika/
 │       │   │   ├── semantic_cache.py
 │       │   │   ├── spill_subsystem.py
 │       │   │   └── tool_condenser.py
-│       │   ├── storage
+│       │   ├── mcp/
+│       │   │   ├── servers/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── excel_server.py
+│       │   │   │   ├── fetch_server.py
+│       │   │   │   ├── filesystem_server.py
+│       │   │   │   ├── google_sheets_server.py
+│       │   │   │   └── sqlite_server.py
+│       │   │   ├── __init__.py
+│       │   │   ├── client.py
+│       │   │   ├── dispatcher.py
+│       │   │   ├── event_bridge.py
+│       │   │   ├── mcp_death_supervisor.py
+│       │   │   ├── mcp_schema_cache.py
+│       │   │   ├── mcp_serve.py
+│       │   │   ├── oauth_handler.py
+│       │   │   ├── protocol.py
+│       │   │   └── server.py
+│       │   ├── ml/
+│       │   │   ├── __init__.py
+│       │   │   └── timesfm_engine.py
+│       │   ├── notifications/
+│       │   │   ├── __init__.py
+│       │   │   ├── discord_notifier.py
+│       │   │   └── telegram_notifier.py
+│       │   ├── providers/
+│       │   │   ├── __init__.py
+│       │   │   ├── anthropic_provider.py
+│       │   │   ├── backend_identity.py
+│       │   │   ├── base_provider.py
+│       │   │   ├── capabilities.py
+│       │   │   ├── deepseek_provider.py
+│       │   │   ├── error_classifier.py
+│       │   │   ├── gemini_provider.py
+│       │   │   ├── groq_provider.py
+│       │   │   ├── llm_factory.py
+│       │   │   ├── nine_router_provider.py
+│       │   │   ├── ollama_provider.py
+│       │   │   ├── openai_provider.py
+│       │   │   ├── openrouter_provider.py
+│       │   │   ├── pricing_catalog.py
+│       │   │   ├── provider_failover_classifier.py
+│       │   │   ├── provider_profile.py
+│       │   │   ├── provider_registry.py
+│       │   │   ├── runtime_model_registry.py
+│       │   │   ├── streaming_think_scrubber.py
+│       │   │   ├── structured_fallback.py
+│       │   │   ├── trajectory_compressor.py
+│       │   │   └── typesafe_provider.py
+│       │   ├── sandboxes/
+│       │   │   ├── __init__.py
+│       │   │   ├── base.py
+│       │   │   ├── docker_backend.py
+│       │   │   ├── local_backend.py
+│       │   │   ├── pty_bridge.py
+│       │   │   └── worktree_manager.py
+│       │   ├── storage/
 │       │   │   ├── __init__.py
 │       │   │   ├── journal_helper.py
 │       │   │   └── spill_store.py
-│       │   └── sandboxes
-│       │       ├── __init__.py
-│       │       ├── base.py
-│       │       ├── docker_backend.py
-│       │       ├── local_backend.py
-│       │       └── pty_bridge.py
-│       └── interfaces
-│           ├── __init__.py
-│           ├── cli
-│           │   ├── __init__.py
-│           │   ├── analysis_tree.py
-│           │   ├── busy_input.py
-│           │   ├── chat
-│           │   │   ├── __init__.py
-│           │   │   ├── commands.py
-│           │   │   ├── completer.py
-│           │   │   ├── prompt.py
-│           │   │   ├── renderer.py
-│           │   │   ├── session.py
-│           │   │   └── theme.py
-│           │   ├── commands
-│           │   │   ├── __init__.py
-│           │   │   ├── analysis_ctrl.py
-│           │   │   ├── benchmark_ctrl.py
-│           │   │   ├── config_ctrl.py
-│           │   │   ├── daemon_ctrl.py
-│           │   │   ├── inspect_ctrl.py
-│           │   │   └── parser.py
-│           │   ├── context.py
-│           │   ├── doctor.py
-│           │   ├── main.py
-│           │   ├── onboarding_trader.py
-│           │   ├── overlays
-│           │   │   ├── __init__.py
-│           │   │   ├── approval_modal.py
-│           │   │   └── plugin_install_modal.py
-│           │   ├── platform_compat.py
-│           │   ├── plugins.py
-│           │   ├── profile_manager.py
-│           │   ├── setup_wizard.py
-│           │   ├── sparklines.py
-│           │   ├── subcommands
-│           │   │   ├── __init__.py
-│           │   │   ├── base.py
-│           │   │   ├── daemon.py
-│           │   │   ├── mcp.py
-│           │   │   ├── runcard.py
-│           │   │   ├── simulation.py
-│           │   │   ├── trading.py
-│           │   │   └── upgrade.py
-│           │   ├── theme.py
-│           │   ├── tui.py
-│           │   ├── tui_app
-│           │   │   ├── __init__.py
-│           │   │   ├── base.py
-│           │   │   ├── constants.py
-│           │   │   ├── dashboard.py
-│           │   │   ├── entrypoints.py
-│           │   │   ├── mixins
-│           │   │   │   ├── __init__.py
-│           │   │   │   ├── actions.py
-│           │   │   │   ├── data_sync.py
-│           │   │   │   ├── navigation.py
-│           │   │   │   ├── plugins_benchmark.py
-│           │   │   │   └── websocket.py
-│           │   │   └── widgets.py
-│           │   ├── tui_chat.py
-│           │   └── width_budget.py
-│           ├── dashboard
-│           │   ├── __init__.py
-│           │   ├── api.py
-│           │   ├── log_streamer.py
-│           │   ├── pty_bridge.py
-│           │   ├── rbac.py
-│           │   ├── schemas.py
-│           │   ├── routes
-│           │   │   ├── __init__.py
-│           │   │   ├── backtest.py
-│           │   │   ├── benchmark.py
-│           │   │   ├── common.py
-│           │   │   ├── config.py
-│           │   │   ├── intelligence.py
-│           │   │   ├── mcp_server.py
-│           │   │   ├── memory.py
-│           │   │   ├── observability.py
-│           │   │   ├── plugins.py
-│           │   │   ├── system.py
-│           │   │   ├── tokens.py
-│           │   │   ├── trace_search.py
-│           │   │   ├── trading.py
-│           │   │   ├── trading_endpoints
-│           │   │   │   ├── __init__.py
-│           │   │   │   ├── actions.py
-│           │   │   │   ├── analysis.py
-│           │   │   │   ├── market_data.py
-│           │   │   │   ├── orders.py
-│           │   │   │   ├── overview.py
-│           │   │   │   ├── positions.py
-│           │   │   │   └── risk.py
-│           │   │   └── websocket.py
-│           │   └── ws_ticket.py
-│           ├── gateway
-│           │   ├── __init__.py
-│           │   ├── acp_server.py
-│           │   ├── api_server.py
-│           │   ├── bot_loop_guard.py
-│           │   ├── channel_router.py
-│           │   ├── delivery_ledger.py
-│           │   ├── omnichannel_router.py
-│           │   ├── omnichannel_streamer.py
-│           │   ├── pairing.py
-│           │   ├── platform_base.py
-│           │   ├── platforms
-│           │   │   ├── __init__.py
-│           │   │   ├── discord_adapter.py
-│           │   │   ├── slack_adapter.py
-│           │   │   ├── telegram_adapter.py
-│           │   │   └── webhook_adapter.py
-│           │   ├── stream_consumer.py
-│           │   ├── turn_lease.py
-│           │   └── webhook_ingress.py
-│           └── telegram
-│               ├── __init__.py
-│               ├── base.py
-│               ├── bot.py
-│               ├── chat_agent.py
-│               ├── chat_compaction.py
-│               ├── chat_tool_router.py
-│               ├── command_router.py
-│               ├── formatters
-│               │   ├── __init__.py
-│               │   └── text_builders.py
-│               ├── fuzzy_router.py
-│               ├── handlers
-│               │   ├── __init__.py
-│               │   ├── admin_commands.py
-│               │   ├── callback_handler.py
-│               │   ├── market_commands.py
-│               │   ├── media_handlers.py
-│               │   ├── system_commands.py
-│               │   └── trading_commands.py
-│               ├── message_formatter.py
-│               ├── routers
-│               │   ├── __init__.py
-│               │   ├── admin_router.py
-│               │   ├── market_router.py
-│               │   ├── quant_router.py
-│               │   ├── risk_router.py
-│               │   └── trading_router.py
-│               ├── sanitizer.py
-│               ├── topic_manager.py
-│               ├── voice_handler.py
-│               └── voice_safety_gate.py
-│           └── workspace
-│               ├── __init__.py
-│               └── journal_helper.py
-└── tests
+│       │   └── __init__.py
+│       ├── interfaces/
+│       │   ├── cli/
+│       │   │   ├── chat/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── commands.py
+│       │   │   │   ├── completer.py
+│       │   │   │   ├── prompt.py
+│       │   │   │   ├── renderer.py
+│       │   │   │   ├── session.py
+│       │   │   │   └── theme.py
+│       │   │   ├── commands/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── analysis_ctrl.py
+│       │   │   │   ├── benchmark_ctrl.py
+│       │   │   │   ├── config_ctrl.py
+│       │   │   │   ├── daemon_ctrl.py
+│       │   │   │   ├── inspect_ctrl.py
+│       │   │   │   └── parser.py
+│       │   │   ├── overlays/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── approval_modal.py
+│       │   │   │   └── plugin_install_modal.py
+│       │   │   ├── subcommands/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── base.py
+│       │   │   │   ├── daemon.py
+│       │   │   │   ├── mcp.py
+│       │   │   │   ├── runcard.py
+│       │   │   │   ├── simulation.py
+│       │   │   │   ├── trading.py
+│       │   │   │   └── upgrade.py
+│       │   │   ├── tui_app/
+│       │   │   │   ├── mixins/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── actions.py
+│       │   │   │   │   ├── data_sync.py
+│       │   │   │   │   ├── navigation.py
+│       │   │   │   │   ├── plugins_benchmark.py
+│       │   │   │   │   └── websocket.py
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── base.py
+│       │   │   │   ├── constants.py
+│       │   │   │   ├── dashboard.py
+│       │   │   │   ├── entrypoints.py
+│       │   │   │   └── widgets.py
+│       │   │   ├── __init__.py
+│       │   │   ├── analysis_tree.py
+│       │   │   ├── busy_input.py
+│       │   │   ├── context.py
+│       │   │   ├── doctor.py
+│       │   │   ├── main.py
+│       │   │   ├── onboarding_trader.py
+│       │   │   ├── platform_compat.py
+│       │   │   ├── plugins.py
+│       │   │   ├── profile_manager.py
+│       │   │   ├── setup_wizard.py
+│       │   │   ├── sparklines.py
+│       │   │   ├── theme.py
+│       │   │   ├── tui.py
+│       │   │   ├── tui_chat.py
+│       │   │   └── width_budget.py
+│       │   ├── dashboard/
+│       │   │   ├── routes/
+│       │   │   │   ├── trading_endpoints/
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── actions.py
+│       │   │   │   │   ├── analysis.py
+│       │   │   │   │   ├── market_data.py
+│       │   │   │   │   ├── orders.py
+│       │   │   │   │   ├── overview.py
+│       │   │   │   │   ├── positions.py
+│       │   │   │   │   └── risk.py
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── backtest.py
+│       │   │   │   ├── benchmark.py
+│       │   │   │   ├── common.py
+│       │   │   │   ├── config.py
+│       │   │   │   ├── intelligence.py
+│       │   │   │   ├── mcp_server.py
+│       │   │   │   ├── memory.py
+│       │   │   │   ├── observability.py
+│       │   │   │   ├── plugins.py
+│       │   │   │   ├── system.py
+│       │   │   │   ├── tokens.py
+│       │   │   │   ├── trace_search.py
+│       │   │   │   ├── trading.py
+│       │   │   │   └── websocket.py
+│       │   │   ├── __init__.py
+│       │   │   ├── api.py
+│       │   │   ├── log_streamer.py
+│       │   │   ├── pty_bridge.py
+│       │   │   ├── rbac.py
+│       │   │   ├── schemas.py
+│       │   │   └── ws_ticket.py
+│       │   ├── data/
+│       │   ├── gateway/
+│       │   │   ├── platforms/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── discord_adapter.py
+│       │   │   │   ├── slack_adapter.py
+│       │   │   │   ├── telegram_adapter.py
+│       │   │   │   └── webhook_adapter.py
+│       │   │   ├── __init__.py
+│       │   │   ├── acp_server.py
+│       │   │   ├── api_server.py
+│       │   │   ├── bot_loop_guard.py
+│       │   │   ├── channel_router.py
+│       │   │   ├── delivery_ledger.py
+│       │   │   ├── omnichannel_router.py
+│       │   │   ├── omnichannel_streamer.py
+│       │   │   ├── pairing.py
+│       │   │   ├── platform_base.py
+│       │   │   ├── stream_consumer.py
+│       │   │   ├── turn_lease.py
+│       │   │   └── webhook_ingress.py
+│       │   ├── logs/
+│       │   ├── telegram/
+│       │   │   ├── formatters/
+│       │   │   │   ├── __init__.py
+│       │   │   │   └── text_builders.py
+│       │   │   ├── handlers/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── admin_commands.py
+│       │   │   │   ├── callback_handler.py
+│       │   │   │   ├── market_commands.py
+│       │   │   │   ├── media_handlers.py
+│       │   │   │   ├── system_commands.py
+│       │   │   │   └── trading_commands.py
+│       │   │   ├── routers/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── admin_router.py
+│       │   │   │   ├── market_router.py
+│       │   │   │   ├── quant_router.py
+│       │   │   │   ├── risk_router.py
+│       │   │   │   └── trading_router.py
+│       │   │   ├── __init__.py
+│       │   │   ├── base.py
+│       │   │   ├── bot.py
+│       │   │   ├── chat_agent.py
+│       │   │   ├── chat_compaction.py
+│       │   │   ├── chat_tool_router.py
+│       │   │   ├── command_router.py
+│       │   │   ├── fuzzy_router.py
+│       │   │   ├── message_formatter.py
+│       │   │   ├── sanitizer.py
+│       │   │   ├── topic_manager.py
+│       │   │   ├── voice_handler.py
+│       │   │   └── voice_safety_gate.py
+│       │   ├── workspace/
+│       │   │   ├── __init__.py
+│       │   │   └── journal_helper.py
+│       │   └── __init__.py
+│       └── __init__.py
+│   ├── public/
+│   │   ├── favicon.svg
+│   │   ├── icons.svg
+│   │   └── mobius-master.svg
+│   ├── src/
+│   │   ├── assets/
+│   │   │   ├── react.svg
+│   │   │   └── vite.svg
+│   │   ├── components/
+│   │   │   ├── charts/
+│   │   │   │   ├── CandlestickChart.tsx
+│   │   │   │   ├── DecisionDistribution.tsx
+│   │   │   │   ├── EquityChart.tsx
+│   │   │   │   ├── FactorHeatmap.tsx
+│   │   │   │   ├── VixSparkline.tsx
+│   │   │   │   └── WinRateGauge.tsx
+│   │   │   ├── layout/
+│   │   │   │   ├── BreadcrumbBar.tsx
+│   │   │   │   ├── GlobalStatusBar.tsx
+│   │   │   │   ├── Header.tsx
+│   │   │   │   ├── MobileNavDrawer.tsx
+│   │   │   │   ├── navigation.ts
+│   │   │   │   └── Sidebar.tsx
+│   │   │   ├── panels/
+│   │   │   │   ├── config/
+│   │   │   │   │   ├── ConfigDiffModal.tsx
+│   │   │   │   │   └── ConfigSection.tsx
+│   │   │   │   ├── graph/
+│   │   │   │   │   ├── GraphControls.tsx
+│   │   │   │   │   ├── GraphEdge.tsx
+│   │   │   │   │   ├── GraphInspector.tsx
+│   │   │   │   │   ├── GraphNode.tsx
+│   │   │   │   │   └── graphUtils.ts
+│   │   │   │   ├── tokens/
+│   │   │   │   │   ├── TokenCharts.tsx
+│   │   │   │   │   └── TokenRoleTable.tsx
+│   │   │   │   ├── ActivityFeed.tsx
+│   │   │   │   ├── AgentChatPanel.tsx
+│   │   │   │   ├── AnalysisGrid.tsx
+│   │   │   │   ├── BacktestPanel.tsx
+│   │   │   │   ├── BenchmarkPanel.tsx
+│   │   │   │   ├── CockpitBar.tsx
+│   │   │   │   ├── ConfigEditorPanel.tsx
+│   │   │   │   ├── DebateOutcomesPanel.tsx
+│   │   │   │   ├── DecisionDossierModal.tsx
+│   │   │   │   ├── EdgeMetricsPanel.tsx
+│   │   │   │   ├── GraphVisualizerPanel.tsx
+│   │   │   │   ├── MarketDataPanel.tsx
+│   │   │   │   ├── MemoryBrowserPanel.tsx
+│   │   │   │   ├── ObservabilityPanel.tsx
+│   │   │   │   ├── PerformancePanel.tsx
+│   │   │   │   ├── PluginManagerPanel.tsx
+│   │   │   │   ├── PositionsTable.tsx
+│   │   │   │   ├── RiskPanel.tsx
+│   │   │   │   ├── SessionBrowserPanel.tsx
+│   │   │   │   ├── SignalsTriggersPanel.tsx
+│   │   │   │   ├── SkillManagerPanel.tsx
+│   │   │   │   ├── SystemPanel.tsx
+│   │   │   │   ├── TerminalPanel.tsx
+│   │   │   │   └── TokenAuditPanel.tsx
+│   │   │   └── ui/
+│   │   │       ├── AnalogDial.tsx
+│   │   │       ├── ApprovalModal.tsx
+│   │   │       ├── Badge.tsx
+│   │   │       ├── BootSequence.tsx
+│   │   │       ├── Card.tsx
+│   │   │       ├── CommandPalette.tsx
+│   │   │       ├── ConfirmModal.tsx
+│   │   │       ├── EmptyState.tsx
+│   │   │       ├── ErrorBoundary.tsx
+│   │   │       ├── Icons.tsx
+│   │   │       ├── KeyboardShortcutsPanel.tsx
+│   │   │       ├── LedgerTable.tsx
+│   │   │       ├── ManualOrderDrawer.tsx
+│   │   │       ├── MarkdownRenderer.tsx
+│   │   │       ├── MetricCard.tsx
+│   │   │       ├── MonikaInfiniteIcon.tsx
+│   │   │       ├── SegmentedProgressBar.tsx
+│   │   │       ├── Skeleton.tsx
+│   │   │       ├── StatusIndicator.tsx
+│   │   │       ├── ThemeToggle.tsx
+│   │   │       ├── TickerTape.tsx
+│   │   │       ├── TypewriterButton.tsx
+│   │   │       ├── VuMeter.tsx
+│   │   │       ├── WeekendGapBanner.tsx
+│   │   │       └── WindowFrame.tsx
+│   │   ├── hooks/
+│   │   │   ├── useAgentChatWs.ts
+│   │   │   ├── usePolling.ts
+│   │   │   └── useWebSocket.ts
+│   │   ├── lib/
+│   │   │   ├── api.ts
+│   │   │   ├── formatters.ts
+│   │   │   └── soundEffects.ts
+│   │   ├── store/
+│   │   │   └── dashboardStore.ts
+│   │   ├── theme/
+│   │   │   └── tokens.ts
+│   │   ├── types/
+│   │   │   ├── api.ts
+│   │   │   ├── openapi.json
+│   │   │   └── openapi.ts
+│   │   ├── App.css
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   └── main.tsx
+│   ├── .gitignore
+│   ├── .oxlintrc.json
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── README.md
+│   ├── tsconfig.app.json
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   └── vite.config.ts
+│   ├── agent/
+│   │   ├── test_agent_loop.py
+│   │   ├── test_core_and_error_taxonomy.py
+│   │   ├── test_memory_skills_and_traps.py
+│   │   ├── test_moa_loop.py
+│   │   ├── test_multiagent_and_delegation.py
+│   │   ├── test_pgvector_startup_check.py
+│   │   ├── test_runtime_enhancements.py
+│   │   ├── test_runtime_lifecycle.py
+│   │   ├── test_startup_watchdog.py
+│   │   ├── test_startup_watchdog_enhancement.py
+│   │   ├── test_task_registry.py
+│   │   ├── test_turn_hardening_and_guards.py
+│   │   ├── test_turn_lease_manager.py
+│   │   └── test_turn_liveness_and_recovery.py
+│   ├── analysis/
+│   │   ├── arbitration/
+│   │   │   └── test_recency_brier_weighting.py
+│   │   ├── calculators/
+│   │   │   └── test_quant_plateau_optimizer.py
+│   │   ├── debate/
+│   │   │   └── test_market_aware_judge.py
+│   │   ├── grounding/
+│   │   │   └── test_extended_grounding.py
+│   │   ├── harness/
+│   │   │   ├── test_agent_harness.py
+│   │   │   ├── test_capabilities_and_structured.py
+│   │   │   ├── test_context_compressor.py
+│   │   │   ├── test_critical_harness.py
+│   │   │   ├── test_error_classifier.py
+│   │   │   ├── test_prompt_cache_architecture.py
+│   │   │   ├── test_prompt_tiers_and_state.py
+│   │   │   ├── test_structured_context_engine.py
+│   │   │   ├── test_tool_batch_and_repair.py
+│   │   │   └── test_trade_stop_and_segment_planner.py
+│   │   ├── mcp/
+│   │   │   ├── test_mcp.py
+│   │   │   ├── test_mcp_and_integrations.py
+│   │   │   ├── test_mcp_client_manager.py
+│   │   │   └── test_mcp_dispatcher_and_routes.py
+│   │   ├── memory/
+│   │   │   ├── test_counterfactual_simulator.py
+│   │   │   ├── test_failure_taxonomy.py
+│   │   │   ├── test_negative_constraint_generator.py
+│   │   │   ├── test_playbook_ledger.py
+│   │   │   ├── test_playbook_lifecycle.py
+│   │   │   ├── test_skill_curator.py
+│   │   │   └── test_specialist_and_playbook.py
+│   │   ├── providers/
+│   │   │   ├── test_capabilities.py
+│   │   │   ├── test_credential_pool_routing.py
+│   │   │   ├── test_failover_expanded.py
+│   │   │   ├── test_fallback_wrapper_cooldown.py
+│   │   │   ├── test_llm_and_streaming.py
+│   │   │   ├── test_nine_router_provider.py
+│   │   │   ├── test_prompt_caching_enhancements.py
+│   │   │   ├── test_providers_and_cost_engine.py
+│   │   │   ├── test_structured_fallback.py
+│   │   │   └── test_typesafe_provider.py
+│   │   ├── strategies/
+│   │   │   ├── test_quant_discovery_pipeline.py
+│   │   │   ├── test_strategy_registry_summary.py
+│   │   │   ├── test_synthesized_strategy_resilience.py
+│   │   │   └── test_xti_pairs_readiness.py
+│   │   ├── tools/
+│   │   │   ├── test_domain_handlers.py
+│   │   │   ├── test_domain_universal_tools.py
+│   │   │   ├── test_handlers_regression.py
+│   │   │   ├── test_loop_guard.py
+│   │   │   ├── test_market_quote_tool.py
+│   │   │   ├── test_news_tools.py
+│   │   │   ├── test_ptc_and_sandboxes.py
+│   │   │   ├── test_ptc_execution.py
+│   │   │   ├── test_registry.py
+│   │   │   ├── test_registry_and_handlers.py
+│   │   │   ├── test_sandbox_and_delegation.py
+│   │   │   ├── test_security_interceptors.py
+│   │   │   ├── test_skills_tools.py
+│   │   │   ├── test_spill_reader_tool.py
+│   │   │   ├── test_tool_catalog_and_spill.py
+│   │   │   ├── test_tool_deadlines_and_availability.py
+│   │   │   ├── test_tool_engine_and_patching.py
+│   │   │   ├── test_tool_executor_timesfm.py
+│   │   │   ├── test_tool_guardrails.py
+│   │   │   ├── test_tooling_and_sandbox.py
+│   │   │   ├── test_unified_registry.py
+│   │   │   ├── test_unified_tooling.py
+│   │   │   └── test_universal_tools.py
+│   │   ├── __init__.py
+│   │   ├── test_adhoc_and_quant_sandbox.py
+│   │   ├── test_adjudication_and_risk.py
+│   │   ├── test_adjudication_framework.py
+│   │   ├── test_adjustment_validator.py
+│   │   ├── test_adversarial_dialectic_debate.py
+│   │   ├── test_agent_harness_steering_truncation.py
+│   │   ├── test_arbitrator_borderline_guard.py
+│   │   ├── test_audit_sota_enhancements.py
+│   │   ├── test_candidate_lessons_shadow_validation.py
+│   │   ├── test_central_bank_rates.py
+│   │   ├── test_chronicle_writer.py
+│   │   ├── test_closed_loop_memory.py
+│   │   ├── test_composite_tools.py
+│   │   ├── test_concurrent_macro_analysts.py
+│   │   ├── test_confluence_verifier.py
+│   │   ├── test_consecutive_sl_query_fix.py
+│   │   ├── test_context_compressor_hardening.py
+│   │   ├── test_copula_tail_risk.py
+│   │   ├── test_core_data_validator.py
+│   │   ├── test_cross_timeframe_gate.py
+│   │   ├── test_daily_range_calculator.py
+│   │   ├── test_daily_range_timesfm.py
+│   │   ├── test_debate_risk_and_pm.py
+│   │   ├── test_decay_monitor.py
+│   │   ├── test_deliberation_and_redaction.py
+│   │   ├── test_denial_breaker_guard.py
+│   │   ├── test_digest_slice_generator.py
+│   │   ├── test_domain_handlers.py
+│   │   ├── test_economic_surprise.py
+│   │   ├── test_error_classifier.py
+│   │   ├── test_exact_decimal_math.py
+│   │   ├── test_fallback_restore.py
+│   │   ├── test_float_coercion.py
+│   │   ├── test_frozen_memory_snapshot.py
+│   │   ├── test_fundamental_prefetch_compliance.py
+│   │   ├── test_fundamental_stage.py
+│   │   ├── test_funding_rate_and_fedwatch_fixes.py
+│   │   ├── test_gemini_and_news_fixes.py
+│   │   ├── test_gemini_token_governance.py
+│   │   ├── test_groq_provider.py
+│   │   ├── test_hierarchical_risk_parity.py
+│   │   ├── test_hypothesis_and_evidence.py
+│   │   ├── test_in_harness_grounding.py
+│   │   ├── test_invariant_calculator.py
+│   │   ├── test_isolated_harness.py
+│   │   ├── test_jev_news_classifier.py
+│   │   ├── test_jev_verifiers_and_builders.py
+│   │   ├── test_layered_memory.py
+│   │   ├── test_level_optimizer_rr_pairing.py
+│   │   ├── test_llm_factory.py
+│   │   ├── test_llm_memory_cache_enhancements.py
+│   │   ├── test_macro_debate.py
+│   │   ├── test_macro_playbook_runner.py
+│   │   ├── test_macro_preprocessor.py
+│   │   ├── test_macro_priced_in_calculator.py
+│   │   ├── test_market_intelligence_tools.py
+│   │   ├── test_market_snapshot.py
+│   │   ├── test_mechanical_risk_gate.py
+│   │   ├── test_multi_timeframe_tool.py
+│   │   ├── test_news_digest.py
+│   │   ├── test_openai_provider.py
+│   │   ├── test_openrouter_provider.py
+│   │   ├── test_output_verifier.py
+│   │   ├── test_per_asset_stage.py
+│   │   ├── test_per_asset_stage_recovery.py
+│   │   ├── test_pipeline_defensive_bias_fixes.py
+│   │   ├── test_pipeline_plugins.py
+│   │   ├── test_playbook_rule_attribution.py
+│   │   ├── test_precommit_gate.py
+│   │   ├── test_preflight_gate.py
+│   │   ├── test_pricing_audit.py
+│   │   ├── test_progressive_tools.py
+│   │   ├── test_prompt_cache_stability.py
+│   │   ├── test_prompt_quality_gates.py
+│   │   ├── test_provenance_tagger.py
+│   │   ├── test_provider_failover_classifier.py
+│   │   ├── test_provider_registry.py
+│   │   ├── test_providers.py
+│   │   ├── test_providers_streaming.py
+│   │   ├── test_regime_and_factor_parity.py
+│   │   ├── test_sandbox_runner.py
+│   │   ├── test_scenario_tree.py
+│   │   ├── test_session_search.py
+│   │   ├── test_signal_arbitrator_bayesian_pooling.py
+│   │   ├── test_signal_arbitrator_runtime_integration.py
+│   │   ├── test_signal_arbitrator_timesfm.py
+│   │   ├── test_signal_arbitrator_volatile_chop.py
+│   │   ├── test_skill_crystallizer.py
+│   │   ├── test_skill_crystallizer_curation.py
+│   │   ├── test_skill_evolution.py
+│   │   ├── test_sota_harness_integration.py
+│   │   ├── test_stage1_priced_in.py
+│   │   ├── test_stage2_bundle_truncation.py
+│   │   ├── test_stage2_prefetcher.py
+│   │   ├── test_stall_guard.py
+│   │   ├── test_streaming.py
+│   │   ├── test_structured_output_degradation.py
+│   │   ├── test_subagent_blackboard.py
+│   │   ├── test_summary_fallback.py
+│   │   ├── test_system_config_upsert.py
+│   │   ├── test_technical_analysis_improvements.py
+│   │   ├── test_telegram_tools_integration.py
+│   │   ├── test_token_logging.py
+│   │   ├── test_tool_executor.py
+│   │   ├── test_tool_executor_concurrency.py
+│   │   ├── test_tool_registry.py
+│   │   ├── test_tools_definitions.py
+│   │   ├── test_unified_threshold_calculator.py
+│   │   ├── test_universal_cache_telemetry.py
+│   │   └── test_working_scratchpad.py
+│   ├── architecture/
+│   │   ├── test_docs_parity.py
+│   │   ├── test_domain_ports_compliance.py
+│   │   └── test_layer_contracts.py
+│   ├── backtest/
+│   │   ├── __init__.py
+│   │   ├── test_alpha_validation.py
+│   │   ├── test_benchmark_tracker.py
+│   │   ├── test_fase7_lookahead_and_kelly.py
+│   │   ├── test_langgraph_backtest_parity.py
+│   │   ├── test_monte_carlo_block_bootstrap.py
+│   │   ├── test_offline_signal_engine_no_lookahead.py
+│   │   ├── test_outcome_evaluator.py
+│   │   ├── test_outcome_evaluator_dynamic_friction.py
+│   │   ├── test_outcome_evaluator_realism.py
+│   │   ├── test_point_in_time_engine.py
+│   │   ├── test_point_in_time_full_mode.py
+│   │   ├── test_purged_wfe_and_pbo.py
+│   │   ├── test_report_generator_daily_sharpe_sortino.py
+│   │   ├── test_statistical_tests.py
+│   │   ├── test_time_machine.py
+│   │   └── test_walk_forward_purged.py
+│   ├── benchmark/
+│   │   ├── test_alpha_arena.py
+│   │   ├── test_benchmark_engine_and_integration.py
+│   │   ├── test_gepa_full.py
+│   │   ├── test_judge_ensemble_integration.py
+│   │   ├── test_paired_evaluator.py
+│   │   ├── test_prompt_evolution.py
+│   │   └── test_trade_trajectory.py
+│   ├── cli/
+│   │   ├── test_analysis_tree.py
+│   │   ├── test_approval_modal.py
+│   │   ├── test_busy_input.py
+│   │   ├── test_chat_suite.py
+│   │   ├── test_doctor_and_profile.py
+│   │   ├── test_platform_compat.py
+│   │   ├── test_plugin_cli.py
+│   │   ├── test_setup_and_doctor.py
+│   │   ├── test_sparklines.py
+│   │   ├── test_theme_packs.py
+│   │   ├── test_tui_components.py
+│   │   └── test_tui_ergonomics.py
+│   ├── config/
+│   │   ├── __init__.py
+│   │   ├── test_atomic_writer.py
+│   │   ├── test_config_manager.py
+│   │   ├── test_config_migrations.py
+│   │   ├── test_config_schemas.py
+│   │   ├── test_hot_reload.py
+│   │   ├── test_key_validator.py
+│   │   ├── test_migrations.py
+│   │   ├── test_modular_config.py
+│   │   ├── test_settings.py
+│   │   ├── test_settings_llm.py
+│   │   └── test_settings_task_roles.py
+│   ├── data_sources/
+│   │   ├── __init__.py
+│   │   ├── test_bond_yields.py
+│   │   ├── test_central_bank_watch.py
+│   │   ├── test_cftc_cot.py
+│   │   ├── test_circuit_breaker.py
+│   │   ├── test_dxy_yfinance.py
+│   │   ├── test_fred_treasury_yield.py
+│   │   ├── test_prediction_market.py
+│   │   ├── test_validators.py
+│   │   ├── test_vix_yfinance.py
+│   │   ├── test_web_and_search.py
+│   │   ├── test_web_reader.py
+│   │   └── test_web_search.py
+│   ├── database/
+│   │   ├── __init__.py
+│   │   ├── test_adapters.py
+│   │   ├── test_cleanup.py
+│   │   ├── test_core_runtime_and_memory.py
+│   │   ├── test_db.py
+│   │   ├── test_domain_models_and_subagent.py
+│   │   ├── test_event_store.py
+│   │   ├── test_foreign_key_and_test_hygiene.py
+│   │   ├── test_hybrid_state.py
+│   │   ├── test_models.py
+│   │   ├── test_repositories.py
+│   │   ├── test_schema_completeness_and_migrations.py
+│   │   ├── test_session_fts_and_rewind.py
+│   │   ├── test_sqlite_concurrency_fix.py
+│   │   ├── test_unified_state_and_compression.py
+│   │   └── test_user_market_intel.py
+│   ├── deploy/
+│   │   └── test_deployment_configs.py
+│   ├── evals/
+│   │   ├── __init__.py
+│   │   ├── test_eval_metrics_and_ab_runner.py
+│   │   ├── test_evals_and_observability.py
+│   │   ├── test_offline_evals.py
+│   │   ├── test_offline_oracles.py
+│   │   └── test_simulation_and_oracles.py
+│   ├── execution/
+│   │   ├── __init__.py
+│   │   ├── test_broker_plugins.py
+│   │   ├── test_broker_registry.py
+│   │   ├── test_ea_bridge.py
+│   │   ├── test_ea_watchdog.py
+│   │   ├── test_effect_gate.py
+│   │   ├── test_execution_broker_routing.py
+│   │   ├── test_execution_concurrency.py
+│   │   ├── test_execution_orchestration.py
+│   │   ├── test_execution_order_invariants.py
+│   │   ├── test_execution_safety_guards.py
+│   │   ├── test_execution_service.py
+│   │   ├── test_fase5_mt5_watchdog_scrapers.py
+│   │   ├── test_flake_tolerant_health.py
+│   │   ├── test_heartbeat_writer.py
+│   │   ├── test_idempotency_guard.py
+│   │   ├── test_inflight_reconciliation.py
+│   │   ├── test_modular_execution_service.py
+│   │   ├── test_mt5_chunked_fetch.py
+│   │   ├── test_mt5_client.py
+│   │   ├── test_mt5_compat.py
+│   │   ├── test_mt5_ohlcv_sync.py
+│   │   ├── test_mt5_priority_queue.py
+│   │   ├── test_mt5_profile_and_commit.py
+│   │   ├── test_mt5_tick_poller.py
+│   │   ├── test_order_emulator.py
+│   │   ├── test_order_reconciliation.py
+│   │   ├── test_paired_execution.py
+│   │   ├── test_partial_fill_and_slippage.py
+│   │   ├── test_rate_throttler.py
+│   │   ├── test_real_concurrency_locking.py
+│   │   ├── test_self_healing_executor.py
+│   │   ├── test_service_base.py
+│   │   ├── test_staged_order_execution.py
+│   │   ├── test_tranche_execution.py
+│   │   └── test_verification_engine.py
+│   ├── gateway/
+│   │   ├── test_gateway_and_api_server.py
+│   │   ├── test_gateways_and_approvals.py
+│   │   ├── test_omnichannel_and_hitl.py
+│   │   ├── test_omnichannel_stream.py
+│   │   ├── test_omnichannel_streamer.py
+│   │   └── test_universal_ecosystem.py
+│   ├── graph/
+│   │   ├── test_context_hygiene.py
+│   │   ├── test_debate_convergence.py
+│   │   ├── test_debate_subgraph.py
+│   │   ├── test_dual_checkpointer.py
+│   │   ├── test_reactive_graph.py
+│   │   ├── test_risk_gate_node_levels.py
+│   │   ├── test_state_pruner_and_checkpointer.py
+│   │   └── test_workflow_authoritative_checkpointer.py
+│   ├── harness/
+│   │   ├── test_domain_plugins_integration.py
+│   │   ├── test_functional_compatibility.py
+│   │   ├── test_installer_service.py
+│   │   ├── test_message_repair.py
+│   │   ├── test_plugin_engine.py
+│   │   ├── test_plugin_kernel_namespace.py
+│   │   ├── test_repetition_and_candidate.py
+│   │   ├── test_threat_scanner.py
+│   │   ├── test_trading_agent_harness_integration.py
+│   │   └── test_unified_plugin_engine.py
+│   ├── indicators/
+│   │   ├── __init__.py
+│   │   ├── test_advanced_volatility.py
+│   │   ├── test_factor_primitives.py
+│   │   ├── test_micro_alpha_zoo.py
+│   │   ├── test_microstructure.py
+│   │   ├── test_pattern_similarity.py
+│   │   ├── test_qlib_and_wq_factors.py
+│   │   ├── test_regime_detector.py
+│   │   ├── test_structure.py
+│   │   ├── test_technical.py
+│   │   └── test_timesfm_engine.py
+│   ├── logging_observability/
+│   │   ├── __init__.py
+│   │   ├── test_activity_logger.py
+│   │   ├── test_cost_tracking_dashboard.py
+│   │   ├── test_cycle_event_log_and_feedback.py
+│   │   ├── test_dashboard_api.py
+│   │   ├── test_dashboard_backtest_routes.py
+│   │   ├── test_dashboard_memory_routes.py
+│   │   ├── test_dashboard_observability.py
+│   │   ├── test_dashboard_observability_endpoints.py
+│   │   ├── test_dashboard_plugins_routes.py
+│   │   ├── test_intelligence_routes.py
+│   │   ├── test_log_streamer.py
+│   │   ├── test_modular_routes.py
+│   │   ├── test_otlp_exporter.py
+│   │   ├── test_report_writer.py
+│   │   ├── test_tearsheet_generator.py
+│   │   ├── test_token_budgeter.py
+│   │   ├── test_trace_search.py
+│   │   ├── test_tracing.py
+│   │   └── test_websocket_stream_scrubber.py
+│   ├── mcp/
+│   │   └── test_bidirectional_mcp.py
+│   ├── memory/
+│   │   ├── test_adaptive_context_engine.py
+│   │   ├── test_background_review_async.py
+│   │   ├── test_learning_loop_and_ledger.py
+│   │   └── test_trajectory_exporter.py
+│   ├── perf/
+│   │   ├── test_memory_budget.py
+│   │   └── test_microstructure_perf.py
+│   ├── plugins/
+│   │   ├── test_plugin_lifecycle.py
+│   │   ├── test_plugin_manifest_and_loader.py
+│   │   └── test_reference_plugins.py
+│   ├── prompt_eval/
+│   │   ├── fixtures/
+│   │   │   └── smc_ict_fixtures.json
+│   │   ├── __init__.py
+│   │   └── test_prompt_eval.py
+│   ├── provider/
+│   │   ├── __init__.py
+│   │   ├── test_credential_pool.py
+│   │   ├── test_error_taxonomy.py
+│   │   ├── test_role_fallback_chain.py
+│   │   └── test_universal_provider.py
+│   ├── risk/
+│   │   ├── __init__.py
+│   │   ├── test_approval_hub.py
+│   │   ├── test_bounded_mandate_and_runcard.py
+│   │   ├── test_calendar_freshness.py
+│   │   ├── test_daily_rollover_ny_close.py
+│   │   ├── test_execution_simulator.py
+│   │   ├── test_flash_crash_risk_gate.py
+│   │   ├── test_fortress_invariants.py
+│   │   ├── test_invariant_registry.py
+│   │   ├── test_invariants_and_replay.py
+│   │   ├── test_pending_action.py
+│   │   ├── test_portfolio_correlation_gate.py
+│   │   ├── test_position_sizing.py
+│   │   ├── test_property_sizing_hypothesis.py
+│   │   ├── test_risk_gate.py
+│   │   ├── test_risk_gate_expectancy.py
+│   │   ├── test_risk_rule_pipeline.py
+│   │   ├── test_safety_audit.py
+│   │   ├── test_subsystem5_risk_and_dom.py
+│   │   ├── test_timesfm_decoupled_risk_gate.py
+│   │   └── test_trade_proposal.py
+│   ├── scheduler/
+│   │   ├── __init__.py
+│   │   ├── test_alpha_discovery_closed_loop.py
+│   │   ├── test_alpha_discovery_overhaul.py
+│   │   ├── test_cron_nlp_and_worker.py
+│   │   ├── test_cycle_scheduler.py
+│   │   ├── test_digest_slice_scheduler.py
+│   │   ├── test_edge_strategy_runner.py
+│   │   ├── test_flash_crash_detector.py
+│   │   ├── test_friday_gap_protection.py
+│   │   ├── test_macro_data_scheduler.py
+│   │   ├── test_market_data_scheduler.py
+│   │   ├── test_multi_stage_trade_plan.py
+│   │   ├── test_news_watcher.py
+│   │   ├── test_news_watcher_turn_lease.py
+│   │   ├── test_playbook_curator.py
+│   │   ├── test_position_exit_reviewer.py
+│   │   ├── test_post_release_analyzer.py
+│   │   ├── test_report_and_safehaven.py
+│   │   ├── test_scraper_runner.py
+│   │   ├── test_strategy_synthesis_historical_sandbox.py
+│   │   ├── test_strategy_synthesis_scheduler.py
+│   │   ├── test_synthesis_hypothesis_lineage.py
+│   │   ├── test_task_plugin_lifecycle.py
+│   │   ├── test_trailing_stop_manager.py
+│   │   ├── test_trigger_checker.py
+│   │   ├── test_unified_cron_and_security.py
+│   │   ├── test_unified_cron_outbox.py
+│   │   ├── test_universal_cron.py
+│   │   └── test_user_intel_cycle_injection.py
+│   ├── scrapers/
+│   │   ├── calendar/
+│   │   │   ├── __init__.py
+│   │   │   ├── test_calendar_finnhub.py
+│   │   │   ├── test_calendar_forexfactory.py
+│   │   │   └── test_calendar_investing.py
+│   │   ├── macro/
+│   │   │   ├── __init__.py
+│   │   │   └── test_cme_fedwatch.py
+│   │   ├── news/
+│   │   │   ├── __init__.py
+│   │   │   ├── test_kitco_news.py
+│   │   │   ├── test_rss_base.py
+│   │   │   ├── test_rss_bloomberg.py
+│   │   │   ├── test_rss_cnbc.py
+│   │   │   ├── test_rss_coindesk.py
+│   │   │   ├── test_rss_dow_jones.py
+│   │   │   ├── test_rss_forexlive.py
+│   │   │   ├── test_rss_ft.py
+│   │   │   ├── test_rss_fxstreet.py
+│   │   │   ├── test_rss_investing.py
+│   │   │   ├── test_rss_marketwatch.py
+│   │   │   ├── test_rss_reuters.py
+│   │   │   ├── test_rss_wsj.py
+│   │   │   └── test_tradingview_news.py
+│   │   ├── sentiment/
+│   │   │   └── test_sentiment_scrapers.py
+│   │   ├── social/
+│   │   │   ├── __init__.py
+│   │   │   └── test_twitter_watch.py
+│   │   ├── __init__.py
+│   │   ├── test_base_scraper.py
+│   │   ├── test_scraper_language_isolation.py
+│   │   └── test_scraper_models.py
+│   ├── security/
+│   │   ├── test_credential_vault.py
+│   │   ├── test_fase4_central_config_and_security.py
+│   │   ├── test_security_guards.py
+│   │   └── test_supply_chain_and_win32.py
+│   ├── services/
+│   │   ├── test_portfolio_service.py
+│   │   ├── test_system_status_service.py
+│   │   └── test_trading_service.py
+│   ├── skills/
+│   │   ├── __init__.py
+│   │   ├── test_central_banks_framework.py
+│   │   ├── test_event_probability_playbook.py
+│   │   ├── test_event_probability_stress.py
+│   │   ├── test_loader.py
+│   │   ├── test_playbook_stress_challenge.py
+│   │   ├── test_progressive_playbook_disclosure.py
+│   │   ├── test_skill_curator.py
+│   │   ├── test_skill_engine.py
+│   │   ├── test_skills_and_continuous_learning.py
+│   │   ├── test_trading_skill_linter.py
+│   │   ├── test_trading_skills_format.py
+│   │   └── test_unified_skills.py
+│   ├── strategies/
+│   │   ├── test_gap_fade.py
+│   │   ├── test_liquidity_sweep_edge.py
+│   │   ├── test_pretrade_gate.py
+│   │   ├── test_strategy_edge_tracker.py
+│   │   └── test_tsm_momentum.py
+│   ├── support/
+│   │   ├── __init__.py
+│   │   └── replay_provider.py
+│   ├── telegram_bot/
+│   │   ├── __init__.py
+│   │   ├── test_backtest_command.py
+│   │   ├── test_bot.py
+│   │   ├── test_chat_agent.py
+│   │   ├── test_chat_agent_deep_research.py
+│   │   ├── test_chat_agent_deep_research_stress.py
+│   │   ├── test_chat_agent_stress_challenge.py
+│   │   ├── test_chat_agent_tool_understanding.py
+│   │   ├── test_chat_compaction_and_control.py
+│   │   ├── test_chat_database_access.py
+│   │   ├── test_chat_tool_router.py
+│   │   ├── test_chat_tool_router_semantic.py
+│   │   ├── test_chat_tool_router_stress.py
+│   │   ├── test_command_handlers_descriptors.py
+│   │   ├── test_command_router.py
+│   │   ├── test_fase6_outbound_queue_and_sync.py
+│   │   ├── test_fuzzy_and_confirm.py
+│   │   ├── test_plugins_telegram.py
+│   │   ├── test_progressive_tools.py
+│   │   ├── test_sanitizer.py
+│   │   ├── test_session_approval.py
+│   │   ├── test_telegram_enhancements.py
+│   │   ├── test_telegram_pairing.py
+│   │   ├── test_telegram_streaming_tools.py
+│   │   └── test_voice_handler.py
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── test_analysis_tracker.py
+│   │   ├── test_analytics_trackers.py
+│   │   ├── test_brief_contamination_guard.py
+│   │   ├── test_cache_breakpoint.py
+│   │   ├── test_cache_immutability_and_replay.py
+│   │   ├── test_cache_miss_detector.py
+│   │   ├── test_caveman_compressor.py
+│   │   ├── test_cds_outcome_tracker.py
+│   │   ├── test_chart_generator.py
+│   │   ├── test_confidence_calibrator.py
+│   │   ├── test_constrained_sampling.py
+│   │   ├── test_container_hierarchical.py
+│   │   ├── test_context_coherence.py
+│   │   ├── test_context_compaction.py
+│   │   ├── test_context_tracker.py
+│   │   ├── test_cost_tracker.py
+│   │   ├── test_cot_thresholds.py
+│   │   ├── test_credit_balance_tracker.py
+│   │   ├── test_cross_agent_sync.py
+│   │   ├── test_currency_utils.py
+│   │   ├── test_cycle_budget_guard.py
+│   │   ├── test_data_dedup.py
+│   │   ├── test_data_freshness_macro_expansion.py
+│   │   ├── test_data_validator.py
+│   │   ├── test_db_backup.py
+│   │   ├── test_deferred_dispatcher.py
+│   │   ├── test_edge_tracker.py
+│   │   ├── test_embedding.py
+│   │   ├── test_enhanced_cds.py
+│   │   ├── test_env_file_manager.py
+│   │   ├── test_event_bus.py
+│   │   ├── test_event_bus_enhancements.py
+│   │   ├── test_event_loop.py
+│   │   ├── test_http_retry.py
+│   │   ├── test_instrument_identity.py
+│   │   ├── test_lfsp_compression.py
+│   │   ├── test_log_redactor_and_container.py
+│   │   ├── test_lossless_condensation_integrity.py
+│   │   ├── test_notifier.py
+│   │   ├── test_paper_trade_detection_method_fix.py
+│   │   ├── test_paper_trading_streak_policy.py
+│   │   ├── test_platt_isotonic_calibration.py
+│   │   ├── test_plugins.py
+│   │   ├── test_plugins_extended.py
+│   │   ├── test_pricing_tier.py
+│   │   ├── test_prompt_ab_test.py
+│   │   ├── test_prompt_assembler.py
+│   │   ├── test_prompt_caching.py
+│   │   ├── test_prompt_compressor.py
+│   │   ├── test_prompt_tiering.py
+│   │   ├── test_quantized_thinking.py
+│   │   ├── test_retry_decorator.py
+│   │   ├── test_sota_harness_alpha.py
+│   │   ├── test_sota_harness_beta.py
+│   │   ├── test_sota_harness_gamma.py
+│   │   ├── test_spill_store.py
+│   │   ├── test_ssvp.py
+│   │   ├── test_ssvp_coordinator.py
+│   │   ├── test_stream_scrubber.py
+│   │   ├── test_threat_detector.py
+│   │   ├── test_token_auditor.py
+│   │   ├── test_token_efficiency_and_anti_loop.py
+│   │   ├── test_tool_condenser.py
+│   │   ├── test_utility_upgrades.py
+│   │   └── test_wall_clock.py
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── golden_news_classification.py
+│   ├── test_alpha_calculator.py
+│   ├── test_alpha_discovery_scheduler.py
+│   ├── test_alpha_observability_partitioning.py
+│   ├── test_analytical_query.py
+│   ├── test_analytics_advanced.py
+│   ├── test_api_frontend_contract.py
+│   ├── test_architecture_parity.py
+│   ├── test_audit_remediation_consolidated.py
+│   ├── test_audit_round1_core_invariants.py
+│   ├── test_audit_round1_execution_invariants.py
+│   ├── test_audit_round2_core_invariants.py
+│   ├── test_audit_round2_execution_invariants.py
+│   ├── test_audit_round2_remediation.py
+│   ├── test_audit_round3_core_invariants.py
+│   ├── test_audit_round3_institutional.py
+│   ├── test_audit_round3_remediation.py
+│   ├── test_audit_round4_core_invariants.py
+│   ├── test_audit_round4_execution_invariants.py
+│   ├── test_audit_round4_remediation.py
+│   ├── test_bootstrap_composition_root.py
+│   ├── test_bulkhead_isolation.py
+│   ├── test_bulletproof_harness.py
+│   ├── test_capability_gaps.py
+│   ├── test_cds_threshold_calibrator.py
+│   ├── test_chat_tool_router.py
+│   ├── test_cli.py
+│   ├── test_cli_theme.py
+│   ├── test_codebase_hygiene_and_consolidation.py
+│   ├── test_consolidation_audit.py
+│   ├── test_conversational_gaps_fixes.py
+│   ├── test_core_engine_safety.py
+│   ├── test_core_exceptions.py
+│   ├── test_core_remediation_invariants.py
+│   ├── test_critical_fixes_verification.py
+│   ├── test_dashboard_action_endpoints.py
+│   ├── test_database_concurrency.py
+│   ├── test_debate_concurrency.py
+│   ├── test_debate_node.py
+│   ├── test_debate_node_smoke.py
+│   ├── test_econometric_models.py
+│   ├── test_engine_critical_fixes.py
+│   ├── test_enhancements_verification.py
+│   ├── test_env_example_parity.py
+│   ├── test_event_driven_harness.py
+│   ├── test_event_loop_and_shutdown.py
+│   ├── test_event_probability_flow.py
+│   ├── test_execution_invariants.py
+│   ├── test_execution_remediation_invariants.py
+│   ├── test_extended_polish_invariants.py
+│   ├── test_fedwatch_comparison.py
+│   ├── test_gap_analysis_remediation.py
+│   ├── test_god_object_decomposition_audit.py
+│   ├── test_graph_workflow.py
+│   ├── test_installation_tiers.py
+│   ├── test_interfaces_and_observability_verification.py
+│   ├── test_issue_investigation_reproduction.py
+│   ├── test_live_macro_fetching.py
+│   ├── test_log_issues_and_paper_trade_fixes.py
+│   ├── test_m2_empirical_stress.py
+│   ├── test_main.py
+│   ├── test_margin_monitor.py
+│   ├── test_memory_constructors.py
+│   ├── test_model_quadrant_analysis_html.py
+│   ├── test_model_quadrant_generator.py
+│   ├── test_model_routing_config.py
+│   ├── test_module_import_integrity.py
+│   ├── test_monika_capability_expansion.py
+│   ├── test_order_flow_engine.py
+│   ├── test_order_state_machine_parity.py
+│   ├── test_outcome_linker_pips.py
+│   ├── test_paper_tracker_fix.py
+│   ├── test_paths.py
+│   ├── test_platform_compat.py
+│   ├── test_process_guardian.py
+│   ├── test_provider_and_tools_verification.py
+│   ├── test_provider_signatures.py
+│   ├── test_pydantic_schemas.py
+│   ├── test_real_functional_verification.py
+│   ├── test_reflector_alpha.py
+│   ├── test_remediation_fixes.py
+│   ├── test_rolling_correlation.py
+│   ├── test_scraper_check_scripts.py
+│   ├── test_sentiment_aggregator.py
+│   ├── test_smc_advanced.py
+│   ├── test_sota_frontier_upgrade.py
+│   ├── test_stage1_prefetcher.py
+│   ├── test_stategraph_and_safety_verification.py
+│   ├── test_strategies_smc_bb.py
+│   ├── test_subagent_spawner.py
+│   ├── test_system_hotfixes_verification.py
+│   ├── test_system_polish_invariants.py
+│   ├── test_system_wiring_audit.py
+│   ├── test_telegram_message_formatter.py
+│   ├── test_token_efficiency_architectural.py
+│   ├── test_toolsets_and_terminal_guard.py
+│   ├── test_universal_macro_and_capability_remediation.py
+│   ├── test_vector_factor_engine.py
+│   └── test_workspace_mcp_integration.py
+│   ├── check_scrapers/
+│   │   ├── __init__.py
+│   │   ├── check_calendar.py
+│   │   ├── check_cme.py
+│   │   ├── check_news.py
+│   │   ├── check_sentiment.py
+│   │   └── check_twitter.py
+│   ├── analyze_news_classification_mismatches.py
+│   ├── audit_settings_keys.py
+│   ├── audit_token_usage.py
+│   ├── benchmark_debate_openrouter.py
+│   ├── benchmark_news_classification_openrouter.py
+│   ├── benchmark_stage1_openrouter.py
+│   ├── benchmark_stage2_openrouter.py
+│   ├── build_curated_benchmark_fixtures.py
+│   ├── capture_dashboard_screenshots.js
+│   ├── capture_tui_screenshots.py
+│   ├── check_all_models.py
+│   ├── check_env_keys.py
+│   ├── check_incomplete.py
+│   ├── codemod_legacy_imports.py
+│   ├── compile_alphas_to_catalog.py
+│   ├── consolidate_sqlite_dbs.py
+│   ├── convert_tui_svg_to_png.js
+│   ├── download_timesfm_weights.py
+│   ├── extract_production_fixtures.py
+│   ├── extract_realistic_fixtures.py
+│   ├── generate_ast_docs.py
+│   ├── generate_full_benchmark_dashboard.py
+│   ├── generate_model_quadrant.py
+│   ├── generate_openapi_types.py
+│   ├── heal_kill_switch_state.py
+│   ├── migrate_runtime_home.py
+│   ├── migrate_sqlite_to_canonical.py
+│   ├── reset_paper_trades.py
+│   ├── run_tests.bat
+│   ├── run_tests.sh
+│   ├── update_benchmark_table.py
+│   ├── update_economic_calendar.py
+│   ├── update_index_toc.py
+│   └── ux_audit_baseline_scan.py
+│   ├── docker-compose.vps.yml
+│   ├── Dockerfile.mt5-wine
+│   ├── entrypoint_mt5.sh
+│   ├── tradeagent.service
+│   └── vps_deployment_guide.md
+│   ├── adr/
+│   │   ├── ADR-001-clean-architecture-layer-boundaries.md
+│   │   ├── ADR-002-mechanical-fortress-and-riskgate-invariants.md
+│   │   ├── ADR-003-independent-guardian-watchdog-process.md
+│   │   ├── ADR-004-canonical-sqlite-and-state-directory.md
+│   │   └── ADR-005-unified-api-v1-and-openapi-contract-sync.md
+│   ├── architecture/
+│   │   └── OVERVIEW.md
+│   ├── images/
+│   │   ├── dashboard/
+│   │   │   ├── 01_tui_overview_dark.svg
+│   │   │   ├── 01_tui_overview_light.svg
+│   │   │   ├── 02_tui_analysis_dark.svg
+│   │   │   ├── 02_tui_analysis_light.svg
+│   │   │   ├── 03_tui_signals_dark.svg
+│   │   │   ├── 03_tui_signals_light.svg
+│   │   │   ├── 04_tui_risk_dark.svg
+│   │   │   ├── 04_tui_risk_light.svg
+│   │   │   ├── 05_tui_performance_dark.svg
+│   │   │   ├── 05_tui_performance_light.svg
+│   │   │   ├── 06_tui_market_dark.svg
+│   │   │   ├── 06_tui_market_light.svg
+│   │   │   ├── 07_tui_plugins_dark.svg
+│   │   │   ├── 07_tui_plugins_light.svg
+│   │   │   ├── 08_tui_benchmark_dark.svg
+│   │   │   ├── 08_tui_benchmark_light.svg
+│   │   │   ├── 09_tui_chat_dark.svg
+│   │   │   ├── 09_tui_chat_light.svg
+│   │   │   ├── 10_tui_modal_kill_dark.svg
+│   │   │   ├── 10_tui_modal_kill_light.svg
+│   │   └── 10_terminal_ui_tui.svg
+│   ├── quality/
+│   │   └── baseline.json
+│   ├── ux-audit/
+│   │   ├── evidence/
+│   │   │   ├── collect_evidence.py
+│   │   │   ├── g1-tokens-and-forbidden-effects.txt
+│   │   │   ├── g11-tui-audit.txt
+│   │   │   ├── g2-contrast-scan.txt
+│   │   │   ├── g3-type-floor-scan.txt
+│   │   │   └── g4-target-and-controls-scan.txt
+│   │   ├── iterations/
+│   │   │   ├── 01/
+│   │   │   │   └── summary.md
+│   │   │   ├── 02/
+│   │   │   │   └── summary.md
+│   │   │   └── 03/
+│   │   │       └── summary.md
+│   │   ├── surfaces/
+│   │   │   ├── TUI-DASH-OVERVIEW.md
+│   │   │   ├── WEB-DLG-DOSSIER.md
+│   │   │   ├── WEB-SHELL-HEADER.md
+│   │   │   ├── WEB-SHELL-STATUSBAR.md
+│   │   │   ├── WEB-TRD-OVERVIEW.md
+│   │   │   ├── WEB-TRD-POSITIONS.md
+│   │   │   └── WEB-TRD-SIGNALS.md
+│   │   ├── AUDIT.md
+│   │   ├── COVERAGE.md
+│   │   ├── DECISIONS.md
+│   │   ├── FINDINGS.md
+│   │   ├── PLAN.md
+│   │   ├── STATE.md
+│   │   ├── SURFACES.md
+│   │   └── SYSTEM-MAP.md
+│   ├── ROADMAP_SRC_MONIKA.md
+│   └── SETUP_GUIDE.md
+│   ├── google_credentials.json
+│   ├── google_credentials.json.example
+│   ├── historical_macro_milestones.json
+│   ├── MACRO_REALITY.md
+│   ├── plugin_catalog.yaml
+│   ├── settings.example.yaml
+│   ├── settings.yaml
+│   ├── settings.yaml.good
+│   └── TRADING_SOUL.md
+├── AGENTS.md
+├── alembic.ini
+├── benchmark_report.md
+├── CHANGELOG.md
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── DESIGN.md
+├── docker-compose.yml
+├── Dockerfile
+├── GEMINI.md
+├── INDEX.md
+├── LICENSE
+├── Makefile
+├── monika.bat
+├── PRD.md
+├── pyproject.toml
+├── pyrightconfig.json
+├── pytest.ini
+├── README.md
+├── requirements-timesfm.txt
+├── requirements.txt
+├── SECURITY.md
+├── skills-lock.json
+├── start_monika.bat
+├── start_monika.sh
+├── STRUCTURE.md
+```
+
+**Total Tracked Directories**: 329 | **Total Tracked Files**: 2913
