@@ -137,7 +137,7 @@ def load_settings(
 
         good_backup_path = f"{path}.good"
         try:
-            with open(path, encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 raw_loaded = yaml.safe_load(f)
                 settings = dict(raw_loaded) if isinstance(raw_loaded, dict) else {}
             # Update last-known-good disk backup on successful load
