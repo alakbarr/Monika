@@ -544,12 +544,6 @@ Monika/
 │       │   │   │   ├── smc_eurusd_h1_bull_displacement.json
 │       │   │   │   ├── smc_gbpusd_h1_choppy_trap.json
 │       │   │   │   └── smc_xauusd_m15_bear_sweep.json
-│       │   │   ├── results/
-│       │   │   │   ├── model_all.csv
-│       │   │   │   ├── model_cheap_efficient.csv
-│       │   │   │   ├── model_cheap_smart.csv
-│       │   │   │   ├── model_high_intelligence.csv
-│       │   │   │   └── model_quadrant_analysis.html
 │       │   │   ├── task_specs/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base.py
@@ -582,13 +576,6 @@ Monika/
 │       │   │   ├── task_specs.py
 │       │   │   ├── token_drift_tracker.py
 │       │   │   └── trade_trajectory_logger.py
-│       │   ├── data/
-│       │   │   ├── cache/
-│       │   │   │   └── spillover/
-│       │   │   │       ├── spill_giant_output_tool_1bc070491ccb8ecb.txt
-│       │   │   │       └── spill_test_tool_8c88122e882160a4.txt
-│       │   │   ├── sandbox_scratch/
-│       │   │   └── clean_shutdown.flag
 │       │   ├── evals/
 │       │   │   ├── fixtures/
 │       │   │   │   ├── risk_trap_daily_dd.json
@@ -691,8 +678,6 @@ Monika/
 │       │   │   ├── engine.py
 │       │   │   ├── installer.py
 │       │   │   └── lifecycle.py
-│       │   ├── logs/
-│       │   │   └── trade_trajectories.jsonl
 │       │   ├── orchestrator/
 │       │   │   ├── __init__.py
 │       │   │   ├── agent.py
@@ -801,7 +786,6 @@ Monika/
 │       │   │   ├── system_status_service.py
 │       │   │   └── trading_service.py
 │       │   ├── skills/
-│       │   │   ├── .tmp_audit/
 │       │   │   ├── crystallized/
 │       │   │   │   └── eurusd_trend.md
 │       │   │   ├── general/
@@ -904,87 +888,6 @@ Monika/
 │       │   │   │   ├── performance-notes/
 │       │   │   │   │   └── SKILL.md
 │       │   │   │   ├── playbooks/
-│       │   │   │   │   ├── .backups/
-│       │   │   │   │   │   └── blobs/
-│       │   │   │   │   │       ├── 068b6e75d426a78f5ea78d70db1d074d8198da6395264bde1bcae08b7a1fae02
-│       │   │   │   │   │       ├── 08d4b3167c1a9fae748c27354b3d04170d4f5e4cfce01ee40881e7b1d852c501
-│       │   │   │   │   │       ├── 09f1fa50b1bc46111c11df41ee1ce390948f4eefe5bc32a13babe56517c2ae75
-│       │   │   │   │   │       ├── 0b603630240a7f15fed48024f9d9476729b558ad15a533d7314e8e9df1e434ad
-│       │   │   │   │   │       ├── 0e6f8a01a77f5cd12a618d21ae4184a8eec3b950dedc46d514ed858afb8d69ae
-│       │   │   │   │   │       ├── 112f4165a5b4706842aa721859f4bcea1c3914611e1be244886f5fbb8cd05ced
-│       │   │   │   │   │       ├── 11f32e05f29c22df4bd471248c1fae6f924323eabb0b7b8c67d471fbd8bb300b
-│       │   │   │   │   │       ├── 128fd139564d21b5b60bb570380429ee7b4a928d2026cbd18f840be0c4c64328
-│       │   │   │   │   │       ├── 1294c0f1ab61ba666e6be37b4f587f52bfce61f33f2ce8e94488b7d113ba0f45
-│       │   │   │   │   │       ├── 17cd76dc97197b78aac9570e3a59050025c4c66c218e0bb4bcf8dbeac5cbf6bc
-│       │   │   │   │   │       ├── 205e4b7b7b4adfb8b06bbfffeea0ddd4c24edd899f4b09adfc1354aa052718ac
-│       │   │   │   │   │       ├── 21d27974196be8cb996e396c0125c43cceabd6760c8fa0a67219cefb0e639c6c
-│       │   │   │   │   │       ├── 220682f2f260751bee43b26b047fe8dc25a461dedd48fd1c79e35bc03694a70e
-│       │   │   │   │   │       ├── 23994285d5ce56461c74674baf43e6a36f0852c28161eda0f4a901a7759a4618
-│       │   │   │   │   │       ├── 26fd0c5a51b701a1b65c2efebeab8e44706e997e2c25c8f0d988b90a8d76d7a8
-│       │   │   │   │   │       ├── 2a481b327d97b1567398f7c719a668117b018dc374d2d5d70d54e8abdadf90a4
-│       │   │   │   │   │       ├── 2dff7ca120a3db8e3492044c409f90f7802b4f444308928614fa0732f22531c0
-│       │   │   │   │   │       ├── 2e8f3a2b0912a4b4e217f8a4204de2024a7887f4d5111e9920da831bba7fe37b
-│       │   │   │   │   │       ├── 309b466d6f642a624eb1acbfd5a41df12630b436b750479abaa6d21b6ea3b858
-│       │   │   │   │   │       ├── 326878a593d08e510fc59631207f1f315caa7663e86896e8a9ae2eeb5c1c473f
-│       │   │   │   │   │       ├── 33f18a48483f9d624940b8e5d16cdb8d72a133b272806700db6758d09c177f4a
-│       │   │   │   │   │       ├── 3a3f2a3fc20ed91e25d8ed47a0a89ee36b8d588229cc9be64018e99aa9566e28
-│       │   │   │   │   │       ├── 3b4022250d801c1c3ab73458c07a1cd397d6e6dfe890a34dc71ba4cd512f0201
-│       │   │   │   │   │       ├── 3f7dffe63d893f569928ca4059cd52011bbafe93cc0f324cefecfd1f68d5c86a
-│       │   │   │   │   │       ├── 435a808fa88e0cfd1a715d8ef375e003e3feb2aa2e0fd981a1ff847e152d4a5d
-│       │   │   │   │   │       ├── 476ae2f89cbb91465c6abf4c50727efb4fb79e89c3f7af061ccf4a5c10ad812f
-│       │   │   │   │   │       ├── 4abf6a576a1a679a3e0a3b8ac000ee8a1d8182bf97ba0658a5ab2cdfec702798
-│       │   │   │   │   │       ├── 4c40fff39bfb340c25e780539c4739380bd42f67444e52a00dd77ab4b8a31346
-│       │   │   │   │   │       ├── 55d8341a7c58010c77af77b600bf1f7f6bf3f71d177eed779db4fc731f3efd94
-│       │   │   │   │   │       ├── 593ad3548719fd5fc1107c64dc539cb9020dd2f0bfb35277fd754fd7f56f7274
-│       │   │   │   │   │       ├── 63ca6c740bf12a153eb216ad8e52938738b8d73f312e806cef2b39236a530156
-│       │   │   │   │   │       ├── 647f0ba682156278a6a34adc6647f4a44c192ec348ca59bb2a97d196f9b9ad81
-│       │   │   │   │   │       ├── 6b4c2c335215bba721c343c4f6a27a548f01ded55783afe12a195d3b641ff9e7
-│       │   │   │   │   │       ├── 6e2c5d14e630bcda71e3a6a10cdba11e4ce51eee9185edd607c779f86d64a086
-│       │   │   │   │   │       ├── 75b5ea6dd5ed1ab86e29a30a78156599271bdb2b4ddc2493d83e2dbf57f3a26e
-│       │   │   │   │   │       ├── 75e6ebd5a41a4019e50bbdd6b59e44111b695598f3b0de2ad49b58838d13d03b
-│       │   │   │   │   │       ├── 78d5722a68fb3c2b52dc836330be0e2459402af8102add36fc332338db9dcda6
-│       │   │   │   │   │       ├── 7c9acd4e8739d5ae652582c9cf6421bfc4b1da6f78e551497efd4131abcc9528
-│       │   │   │   │   │       ├── 829f6ad99bc175bf5c4d8443f82f87141ec89c75ea0a1bfb01fc645658a36cca
-│       │   │   │   │   │       ├── 83536d593068c7f833bcf24fa69c6d80372a12828b3fbb42cb4fb8b10d66d3db
-│       │   │   │   │   │       ├── 8d879b55ccf0d279b9444c8150f06ffde1976b7952e6a109fc7e7050e5ba9b2b
-│       │   │   │   │   │       ├── 90eec2d4cbe51ff7fc5647bb910a9ded0c4b06355ec83d8454ca9f193c5f939d
-│       │   │   │   │   │       ├── 93289170f532a94900bb6f677ee9395354d0e6feaf2bc55e743e9967299dde5d
-│       │   │   │   │   │       ├── a208597e59d62c3ec906ae700287d8605d347a7fd206ac57b92749748f9c66dd
-│       │   │   │   │   │       ├── a289d2a7dceb125e482095be446b2f05bdbc058f6f45d17b04080a6879824daa
-│       │   │   │   │   │       ├── a7cb3c727f8911873bf88860e6c50a3a73305d4b1037f2cf0d1c539a33299f39
-│       │   │   │   │   │       ├── a8e31aa253bec58ac148ad603b654dbade8ffb708af530874ff9d1ff863dcdfb
-│       │   │   │   │   │       ├── ae01863b244cddad720f5e088890a4711a03e5e9a5dccac9fc6d0a1a0861baf8
-│       │   │   │   │   │       ├── afdac71ceda1278e4ed9e196b65ee2ee842cfee1ad6de4ad24f67ca35a829b14
-│       │   │   │   │   │       ├── b012c7c74646c6b4395d73bb3ad3e94e679e0739a4b98dff34b3c32dc3913465
-│       │   │   │   │   │       ├── b080d0d2c985693063637788821b4819a78c2ecaebc591079346b8b26720adc9
-│       │   │   │   │   │       ├── b24d3bcc1f85c5c7d9dff0a3064a12c906877e810e5dbdbf714ffa541fd77084
-│       │   │   │   │   │       ├── b6c0d8ba37509995070c1f8f232f7b4d21f79ba535b7898caf17bebc9647686e
-│       │   │   │   │   │       ├── bd22546834c7ba7c1974197b491c9ab32feb1d76974122a6fe650e079e5e4088
-│       │   │   │   │   │       ├── c1474dc18ea3ec3db8cba15b6e2f7d168a9074feab9a77a19dd802e9ce4d0a9a
-│       │   │   │   │   │       ├── c53e7b3bf38e01ae6a46fc81dd60df4195090010ab7da3b5a9f025aa04e5ac5e
-│       │   │   │   │   │       ├── c90588be25bfa9e562c6049f260767b0d383e1788194bc689fd4ca6c34f4de41
-│       │   │   │   │   │       ├── ce607b5141075896af73392c3254c7fc35a414b040e351b31024a284d6e4e3ec
-│       │   │   │   │   │       ├── d1233ecde60e855cee1b8d141708f3e91eb3bf33b6714b2cfbc17627df7c8561
-│       │   │   │   │   │       ├── d5641e8f599d086d90af7f40ad20386d02876cfb20ba0840971bd5596600776f
-│       │   │   │   │   │       ├── da9960c05bed73c6bf988a3635252766fdb46ec88fcd12f944527154a4acfa0e
-│       │   │   │   │   │       ├── de61dd8b1b39e8dd6c68bf38591eeac0bbb694d52cd87f58fe029c69848cee9c
-│       │   │   │   │   │       ├── dfb40463621898e5cec09e508a02b3c3e0c3cf3331304921879303698cc63f09
-│       │   │   │   │   │       ├── e4efe8011be78407f8df88c9ae585db265347f32ddd8a5e29a831bbf9c5141e6
-│       │   │   │   │   │       ├── e5ebf35c618a456ec3d7b800c111421d6d904bff55dc1551906a7e000add9510
-│       │   │   │   │   │       ├── e9f54694b9331eab8087ab2b9a01fbf38cb0bde0d1cf57027f7d7d594d8e342f
-│       │   │   │   │   │       ├── eb22161b31e329f229e2ce51ae2b172aaa7a1043036475a99f1a1f9c9a8613a5
-│       │   │   │   │   │       ├── eba4676eaef025a190ecec0c6da94aea34866a657c77f1a303bf8aca81e45f3c
-│       │   │   │   │   │       ├── ebe014671b1b0d4aa6470f6f22fde57c89bfa1d1f87d97c16ffa67964f927e41
-│       │   │   │   │   │       ├── eeecb789f6af17f117ee6760118769b2560fd8220e1d58a39ab0dbd1ff1188a5
-│       │   │   │   │   │       ├── f1f32ad01d99047d7d3dd927f29ac27f595e129d4f47b3553830c129c57a731d
-│       │   │   │   │   │       ├── f202a8edc5a28324c69d6697ae2c6183e8b097151f720e2004ed5611d32418ff
-│       │   │   │   │   │       ├── f3cb1fae12f3f72aceae9215e966e794567f908c695a62eff1e7fda178096a1c
-│       │   │   │   │   │       ├── f54aedfd1e3072cc65af36aae5da7388a79ed1b79e6ddc52196d481864a3fc74
-│       │   │   │   │   │       ├── f608e15b55f5f52893c2c598dd55d0a06b2c331c62acab76065e293c7da4435a
-│       │   │   │   │   │       ├── f96e83102d34c2976da980d295ef6574bb1e4758aaa7d41e3755ae4b2f2df1af
-│       │   │   │   │   │       ├── fe1dac6d38e01bceab93a65fd188d415aaeaf89a27b3e9bf929527ba15b60604
-│       │   │   │   │   │       └── fe989f38aff1a7729a40ef3d61f53a93c50fa38f22261c98c056e0b12652735c
-│       │   │   │   │   ├── archive/
 │       │   │   │   │   └── .playbook_lifecycle.json
 │       │   │   │   ├── quant-research-workflow/
 │       │   │   │   │   └── SKILL.md
@@ -1070,9 +973,6 @@ Monika/
 │       │   ├── contracts/
 │       │   │   ├── __init__.py
 │       │   │   └── plugin.py
-│       │   ├── data/
-│       │   │   └── vault/
-│       │   │       └── vault.key
 │       │   ├── primitives/
 │       │   │   ├── __init__.py
 │       │   │   ├── clock.py
@@ -1732,7 +1632,6 @@ Monika/
 │       │   ├── brokers/
 │       │   │   ├── ea_bridge/
 │       │   │   │   ├── __init__.py
-│       │   │   │   ├── AIAgent_EA.ex5
 │       │   │   │   ├── AIAgent_EA.mq5
 │       │   │   │   ├── heartbeat_writer.py
 │       │   │   │   └── watchdog.py
@@ -1760,7 +1659,6 @@ Monika/
 │       │   │   ├── __init__.py
 │       │   │   ├── credential_pool.py
 │       │   │   └── error_taxonomy.py
-│       │   ├── data/
 │       │   ├── data_ingestion/
 │       │   │   ├── data/
 │       │   │   │   └── sessions/
@@ -2095,7 +1993,6 @@ Monika/
 │       │   │   ├── rbac.py
 │       │   │   ├── schemas.py
 │       │   │   └── ws_ticket.py
-│       │   ├── data/
 │       │   ├── gateway/
 │       │   │   ├── platforms/
 │       │   │   │   ├── __init__.py
@@ -2116,7 +2013,6 @@ Monika/
 │       │   │   ├── stream_consumer.py
 │       │   │   ├── turn_lease.py
 │       │   │   └── webhook_ingress.py
-│       │   ├── logs/
 │       │   ├── telegram/
 │       │   │   ├── formatters/
 │       │   │   │   ├── __init__.py
@@ -3006,28 +2902,19 @@ Monika/
 │   │   ├── check_news.py
 │   │   ├── check_sentiment.py
 │   │   └── check_twitter.py
-│   ├── analyze_news_classification_mismatches.py
 │   ├── audit_settings_keys.py
 │   ├── audit_token_usage.py
 │   ├── benchmark_debate_openrouter.py
 │   ├── benchmark_news_classification_openrouter.py
 │   ├── benchmark_stage1_openrouter.py
 │   ├── benchmark_stage2_openrouter.py
-│   ├── build_curated_benchmark_fixtures.py
 │   ├── capture_dashboard_screenshots.js
 │   ├── capture_tui_screenshots.py
-│   ├── check_all_models.py
 │   ├── check_env_keys.py
-│   ├── check_incomplete.py
-│   ├── codemod_legacy_imports.py
 │   ├── compile_alphas_to_catalog.py
-│   ├── consolidate_sqlite_dbs.py
 │   ├── convert_tui_svg_to_png.js
 │   ├── download_timesfm_weights.py
-│   ├── extract_production_fixtures.py
-│   ├── extract_realistic_fixtures.py
 │   ├── generate_ast_docs.py
-│   ├── generate_full_benchmark_dashboard.py
 │   ├── generate_model_quadrant.py
 │   ├── generate_openapi_types.py
 │   ├── heal_kill_switch_state.py
@@ -3036,7 +2923,6 @@ Monika/
 │   ├── reset_paper_trades.py
 │   ├── run_tests.bat
 │   ├── run_tests.sh
-│   ├── update_benchmark_table.py
 │   ├── update_economic_calendar.py
 │   ├── update_index_toc.py
 │   └── ux_audit_baseline_scan.py
@@ -3074,7 +2960,7 @@ Monika/
 │   │   │   ├── 09_tui_chat_dark.svg
 │   │   │   ├── 09_tui_chat_light.svg
 │   │   │   ├── 10_tui_modal_kill_dark.svg
-│   │   │   ├── 10_tui_modal_kill_light.svg
+│   │   │   └── 10_tui_modal_kill_light.svg
 │   │   └── 10_terminal_ui_tui.svg
 │   ├── quality/
 │   │   └── baseline.json
@@ -3111,16 +2997,13 @@ Monika/
 │   │   └── SYSTEM-MAP.md
 │   ├── ROADMAP_SRC_MONIKA.md
 │   └── SETUP_GUIDE.md
-│   ├── google_credentials.json
 │   ├── google_credentials.json.example
 │   ├── historical_macro_milestones.json
 │   ├── MACRO_REALITY.md
 │   ├── plugin_catalog.yaml
 │   ├── settings.example.yaml
-│   ├── settings.yaml.good
 │   └── TRADING_SOUL.md
 ├── alembic.ini
-├── benchmark_report.md
 ├── CHANGELOG.md
 ├── CODE_OF_CONDUCT.md
 ├── CONTRIBUTING.md
@@ -3145,4 +3028,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 326 | **Total Tracked Files**: 2788
+**Total Tracked Directories**: 311 | **Total Tracked Files**: 2687

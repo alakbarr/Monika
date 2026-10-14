@@ -22,6 +22,7 @@ import ast
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+import subprocess
 from typing import Dict, List, Optional, Set, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -76,8 +77,25 @@ IGNORED_EXTENSIONS: Set[str] = {
 # ==============================================================================
 
 
+def get_tracked_paths(root: Path) -> Tuple[Optional[Set[str]], Optional[Set[str]]]:
+    """Retrieve set of tracked files and directories from git for deterministic tree generation."""
+    try:
+        res = subprocess.run(["git", "ls-files"], cwd=str(root), capture_output=True, text=True, check=True)
+        files = {line.strip().replace("\\", "/") for line in res.stdout.splitlines() if line.strip()}
+        dirs = set()
+        for f in files:
+            parts = f.split("/")
+            for i in range(1, len(parts)):
+                dirs.add("/".join(parts[:i]))
+        return files, dirs
+    except Exception:
+        return None, None
+
+
 def generate_structure_tree(root: Path) -> str:
     """Generate an ASCII tree of the repository structure."""
+    tracked_files, tracked_dirs = get_tracked_paths(root)
+
     lines: List[str] = [
         "# Project Structure & Directory Layout",
         "",
@@ -94,10 +112,22 @@ def generate_structure_tree(root: Path) -> str:
     def walk_dir(current_dir: Path, prefix: str = ""):
         nonlocal total_files, total_dirs
         try:
-            entries = sorted(
-                [e for e in current_dir.iterdir() if e.name not in IGNORED_DIRS and e.name not in IGNORED_FILES],
-                key=lambda e: (not e.is_dir(), e.name.lower()),
-            )
+            raw_entries = [
+                e for e in current_dir.iterdir() if e.name not in IGNORED_DIRS and e.name not in IGNORED_FILES
+            ]
+            if tracked_files is not None and tracked_dirs is not None:
+                entries = []
+                for e in raw_entries:
+                    rel = e.relative_to(root).as_posix()
+                    if e.is_dir() and rel in tracked_dirs:
+                        entries.append(e)
+                    elif e.is_file() and rel in tracked_files and e.suffix.lower() not in IGNORED_EXTENSIONS:
+                        entries.append(e)
+            else:
+                entries = [
+                    e for e in raw_entries if e.is_dir() or (e.is_file() and e.suffix.lower() not in IGNORED_EXTENSIONS)
+                ]
+            entries = sorted(entries, key=lambda e: (not e.is_dir(), e.name.lower()))
         except PermissionError:
             return
 
@@ -111,9 +141,8 @@ def generate_structure_tree(root: Path) -> str:
                 lines.append(f"{prefix}{connector}{entry.name}/")
                 walk_dir(entry, prefix + child_prefix)
             else:
-                if entry.suffix.lower() not in IGNORED_EXTENSIONS:
-                    total_files += 1
-                    lines.append(f"{prefix}{connector}{entry.name}")
+                total_files += 1
+                lines.append(f"{prefix}{connector}{entry.name}")
 
     # Walk primary project folders
     for top_folder in ("src", "frontend", "tests", "scripts", "deploy", "docs", "config"):
@@ -122,17 +151,20 @@ def generate_structure_tree(root: Path) -> str:
             walk_dir(p, "│   ")
 
     # Add top-level files
-    top_files = sorted(
-        [
-            f
-            for f in root.iterdir()
-            if f.is_file()
-            and f.suffix.lower() not in IGNORED_EXTENSIONS
-            and not f.name.startswith(".")
-            and f.name not in IGNORED_FILES
-        ],
-        key=lambda f: f.name.lower(),
-    )
+    raw_top_files = [
+        f
+        for f in root.iterdir()
+        if f.is_file()
+        and f.suffix.lower() not in IGNORED_EXTENSIONS
+        and not f.name.startswith(".")
+        and f.name not in IGNORED_FILES
+    ]
+    if tracked_files is not None:
+        top_files = [f for f in raw_top_files if f.relative_to(root).as_posix() in tracked_files]
+    else:
+        top_files = raw_top_files
+    top_files = sorted(top_files, key=lambda f: f.name.lower())
+
     for f in top_files:
         lines.append(f"├── {f.name}")
 
@@ -251,11 +283,14 @@ def parse_module(py_file: Path) -> Optional[ModuleInfo]:
     )
 
 
-def generate_index_content() -> str:
+def generate_index_content(root: Path = ROOT_DIR) -> str:
     """Scan src/monika and generate complete synthetic AST INDEX.md."""
+    tracked_files, _ = get_tracked_paths(root)
     modules_by_package: Dict[str, List[ModuleInfo]] = defaultdict(list)
 
     for py_file in sorted(SRC_DIR.rglob("*.py")):
+        if tracked_files is not None and py_file.relative_to(root).as_posix() not in tracked_files:
+            continue
         if any(ignored in py_file.parts for ignored in IGNORED_DIRS):
             continue
         if py_file.name in IGNORED_FILES:
