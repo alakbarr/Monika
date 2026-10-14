@@ -607,4 +607,3 @@ from monika.domain.risk.ports import register_risk_data_provider_factory
 register_risk_data_provider_factory(
     lambda session=None, settings=None: SqlAlchemyRiskRepository(session=session, settings=settings)
 )
-

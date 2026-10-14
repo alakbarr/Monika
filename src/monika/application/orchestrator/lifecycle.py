@@ -148,7 +148,7 @@ class AgentLifecycleMixin:
             if loop is not None:
                 try:
                     loop.add_signal_handler(sig, lambda s=sig.name: _signal_handler(s))
-                except (NotImplementedError, RuntimeError):
+                except NotImplementedError, RuntimeError:
                     # Windows: add_signal_handler not supported for all signals
                     signal.signal(sig, lambda s, f, n=sig.name: _signal_handler(n))
             else:
@@ -179,7 +179,7 @@ class AgentLifecycleMixin:
                 if loop is not None:
                     try:
                         loop.add_signal_handler(sighup, _sighup_handler)
-                    except (NotImplementedError, RuntimeError):
+                    except NotImplementedError, RuntimeError:
                         signal.signal(sighup, lambda s, f: _sighup_handler())
                 else:
                     signal.signal(sighup, lambda s, f: _sighup_handler())
@@ -619,7 +619,7 @@ class AgentLifecycleMixin:
             self._tg_task.cancel()
             try:
                 await asyncio.wait_for(self._tg_task, timeout=5.0)
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except asyncio.CancelledError, asyncio.TimeoutError:
                 pass
 
         logger.info("Shutdown complete. Goodbye.")

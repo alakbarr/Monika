@@ -38,7 +38,7 @@ async def handle_get_treasury_yields(args: dict, **ctx) -> dict:
     if "2Y" in by_tenor and "10Y" in by_tenor:
         try:
             spread = round(by_tenor["10Y"][0]["yield_pct"] - by_tenor["2Y"][0]["yield_pct"], 3)
-        except (IndexError, TypeError):
+        except IndexError, TypeError:
             pass
 
     # Fed Net Liquidity calculation: Total Assets (WALCL in Millions/1000) - TGA (WTREGEN in Billions) - Reverse Repo (RRPONTSYD in Billions)

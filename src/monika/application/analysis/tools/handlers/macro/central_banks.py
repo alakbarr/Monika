@@ -219,7 +219,7 @@ async def handle_get_central_bank_expectations(args: dict, **ctx) -> dict:
     if compare_hours_ago is not None:
         try:
             ref_time = clock.now() - timedelta(hours=float(compare_hours_ago))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             pass
     elif event_time_arg:
         ref_time = _parse_iso_or_str_dt(event_time_arg)
@@ -395,7 +395,7 @@ async def handle_get_fedwatch_probabilities(args: dict, **ctx) -> dict:
     else:
         try:
             limit = int(limit)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             limit = 4
 
     # Determine reference comparison time if requested
@@ -403,7 +403,7 @@ async def handle_get_fedwatch_probabilities(args: dict, **ctx) -> dict:
     if compare_hours_ago is not None:
         try:
             ref_time = clock.now() - timedelta(hours=float(compare_hours_ago))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             pass
     elif event_time_arg:
         ref_time = _parse_iso_or_str_dt(event_time_arg)

@@ -333,6 +333,7 @@ class PatternSimilarityEngine:
         if not llm_client:
             try:
                 import importlib
+
                 mod = importlib.import_module("monika.infrastructure.providers.llm_factory")
                 get_client = getattr(mod, "get_client_for_task", None)
                 if get_client:

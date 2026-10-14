@@ -16,6 +16,7 @@ from monika.domain.entities.order_status import OrderStatus
 
 logger = logging.getLogger("TradingAgent.ExecutionService.OrderCreator")
 
+
 def get_order_class() -> Any:
     """Dynamically resolves order class without static infrastructure coupling."""
     return OrderCreator.get_order_class()

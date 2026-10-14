@@ -210,6 +210,3 @@ def test_per_asset_runner_decomposition_and_submodules():
     # Verify functions
     assert callable(runner._get_asyncio)
     assert callable(runner._get_clock)
-
-
-

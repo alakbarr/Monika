@@ -86,7 +86,6 @@ class OperatorFeedbackManager:
         """Return all feedback records for a given cycle."""
         return [fb for fb in self._feedback_store if fb.cycle_id == cycle_id]
 
-
     _instance: Optional["OperatorFeedbackManager"] = None
 
     @classmethod

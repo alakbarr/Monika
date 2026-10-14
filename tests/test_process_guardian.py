@@ -57,8 +57,9 @@ def test_guardian_request_handler_status(tmp_path: Path):
     hb_file.write_text(str(time.time()), encoding="utf-8")
     kill_file = tmp_path / "kill_switch.flag"
 
-    with patch("monika.application.agent.monitors.process_guardian._get_heartbeat_path", return_value=hb_file), patch(
-        "monika.application.agent.monitors.process_guardian._get_kill_flag_path", return_value=kill_file
+    with (
+        patch("monika.application.agent.monitors.process_guardian._get_heartbeat_path", return_value=hb_file),
+        patch("monika.application.agent.monitors.process_guardian._get_kill_flag_path", return_value=kill_file),
     ):
         mock_socket = MockSocket(b"GET /health HTTP/1.1\r\nHost: localhost\r\n\r\n")
 

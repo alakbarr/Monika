@@ -99,7 +99,7 @@ def _build_timeframe_map() -> dict[str, int]:
             "W1": mt5.TIMEFRAME_W1,
             "MN1": mt5.TIMEFRAME_MN1,
         }
-    except (ImportError, Exception):
+    except ImportError, Exception:
         # Standard MT5 timeframe ENUM constants fallback for mock / Linux CI environments
         return {
             "M1": 1,

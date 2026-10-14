@@ -356,11 +356,6 @@ class PositionRepository(PositionRepositoryPort):
 
     async def get_recent_order_executed_analysis_ids(self, limit: int = 500) -> Sequence[int]:
         """Fetch recent executed asset analysis IDs from orders."""
-        stmt = (
-            select(Order.analysis_id)
-            .where(Order.analysis_id.isnot(None))
-            .order_by(Order.id.desc())
-            .limit(limit)
-        )
+        stmt = select(Order.analysis_id).where(Order.analysis_id.isnot(None)).order_by(Order.id.desc()).limit(limit)
         res = await self.session.execute(stmt)
         return [int(aid) for aid in res.scalars().all() if aid is not None]

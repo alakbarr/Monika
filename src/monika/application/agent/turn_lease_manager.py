@@ -166,6 +166,7 @@ class SymbolTurnLeaseManager:
                 return existing.holder_id
             return None
 
+
 def get_symbol_lease_manager() -> SymbolTurnLeaseManager:
     """Get or initialize global SymbolTurnLeaseManager singleton."""
     return SymbolTurnLeaseManager.get_instance()

@@ -31,7 +31,9 @@ from ..fixture_loader import (
 from .base import BenchmarkCase, _sym
 
 
-async def _build_strict_risk_context(session: Any, settings: dict[str, Any], ex: Any, symbol: str) -> tuple[dict[str, Any], Any]:
+async def _build_strict_risk_context(
+    session: Any, settings: dict[str, Any], ex: Any, symbol: str
+) -> tuple[dict[str, Any], Any]:
     use_fixtures = settings.get("_use_fixtures", False)
     if not use_fixtures and session:
         try:

@@ -91,13 +91,7 @@ async def compute_usd_strength_proxy(
             components[symbol] = round(pct, 4)
         if total_weight_used >= 0.5:
             normalized_change = weighted_change / total_weight_used
-            direction = (
-                "strengthening"
-                if normalized_change > 0
-                else "weakening"
-                if normalized_change < 0
-                else "flat"
-            )
+            direction = "strengthening" if normalized_change > 0 else "weakening" if normalized_change < 0 else "flat"
             return {
                 "weighted_usd_change_pct": round(normalized_change, 4),
                 "direction": direction,
@@ -128,9 +122,7 @@ async def compute_usd_strength_proxy(
         from sqlalchemy import select
 
         rows = (
-            (await session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(lookback_bars)))
-            .scalars()
-            .all()
+            (await session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(lookback_bars))).scalars().all()
         )
         if not rows or len(rows) < 2:
             return {

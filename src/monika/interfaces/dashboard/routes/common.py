@@ -23,6 +23,7 @@ _dependencies: Dict[str, Any] = {}
 _active_websockets: set[WebSocket] = set()
 _client_queues: Dict[WebSocket, asyncio.Queue] = {}
 
+
 # WebSocket Monotonic Sequence Watermark & Replay Buffer (Phase 7.3)
 class StreamSequenceManager:
     """Manages monotonic sequence counter and ring buffer for live websocket stream events."""

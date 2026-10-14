@@ -286,7 +286,7 @@ def generate_index_content() -> str:
     # Generate Package & Module Details
     for pkg in sorted_packages:
         anchor = pkg.replace("/", "").replace("_", "").replace(".", "").replace("-", "")
-        lines.append(f"### Folder: `{pkg}` <a id=\"folder-{anchor}\"></a>")
+        lines.append(f'### Folder: `{pkg}` <a id="folder-{anchor}"></a>')
         lines.append("")
 
         for mod in modules_by_package[pkg]:
