@@ -41,6 +41,14 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         prompt_cache_strategy="anthropic_system_and_3",
         supports_native_thinking=True,
     ),
+    "opus-5.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
     "claude-sonnet-5.5": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
@@ -49,7 +57,23 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         prompt_cache_strategy="anthropic_system_and_3",
         supports_native_thinking=True,
     ),
+    "sonnet-5.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
     "claude-fable-5.1": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "fable-5.1": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
         max_output_tokens=16384,
@@ -66,6 +90,14 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         supports_native_thinking=True,
     ),
     "claude-haiku-5.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=False,
+    ),
+    "haiku-5.5": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
         max_output_tokens=8192,

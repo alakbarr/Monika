@@ -1066,6 +1066,18 @@ llm:
       supports_tool_calling: true
       supports_caching: true
       cost_tier: high
+    fable-5.1:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    claude-fable-5.1:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
     claude-opus-5.5:
       provider: openrouter
       context_window: 200000
@@ -1138,6 +1150,12 @@ llm:
       supports_tool_calling: true
       supports_caching: true
       cost_tier: high
+    sonnet-5.5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
     sonnet-5:
       provider: openrouter
       context_window: 200000
@@ -1180,6 +1198,18 @@ llm:
       supports_tool_calling: true
       supports_caching: true
       cost_tier: medium
+    haiku-5.5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: low
+    claude-haiku-5.5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: low
     haiku-4.5:
       provider: openrouter
       context_window: 200000

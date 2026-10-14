@@ -41,6 +41,7 @@ OPENROUTER_MODEL_ALIASES = {
     "claude-opus-4.5": "anthropic/claude-opus-4.5",
     "opus-4.5": "anthropic/claude-opus-4.5",
     "claude-sonnet-5.5": "anthropic/claude-sonnet-5.5",
+    "sonnet-5.5": "anthropic/claude-sonnet-5.5",
     "claude-sonnet-5": "anthropic/claude-sonnet-5",
     "sonnet-5": "anthropic/claude-sonnet-5",
     "claude-sonnet-4.6": "anthropic/claude-sonnet-4.6",
