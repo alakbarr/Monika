@@ -125,8 +125,8 @@ class SkillCrystallizer:
                 elif not is_mock_row and hasattr(row, "_mapping"):
                     try:
                         r = row[0]
-                        regime_raw = row[1] if len(row) > 1 else None
-                    except Exception:
+                        regime_raw = row[1]
+                    except IndexError, TypeError, KeyError:
                         r = row
                         regime_raw = getattr(r, "market_regime_at_analysis", None)
                 else:

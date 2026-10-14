@@ -46,6 +46,14 @@ SECRET_PATTERNS = [
 class _WindowsCredManager:
     """Internal ctypes wrapper for advapi32 Windows Credential Manager."""
 
+    CREDENTIALW: Any = None
+    ctypes: Any = None
+    wintypes: Any = None
+    CredWriteW: Any = None
+    CredReadW: Any = None
+    CredDeleteW: Any = None
+    CredFree: Any = None
+
     def __init__(self):
         self.available = False
         if sys.platform != "win32":

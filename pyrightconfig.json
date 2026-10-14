@@ -21,6 +21,8 @@
   "venv": "venv",
   "extraPaths": ["src"],
   "typeCheckingMode": "standard",
+  "pythonPlatform": "Windows",
+  "pythonVersion": "3.14",
   "reportMissingTypeStubs": false,
   "reportMissingImports": true,
   "reportMissingModuleSource": false

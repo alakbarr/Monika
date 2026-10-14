@@ -30,6 +30,8 @@ async def compute_specialist_reliability(session: AsyncSession, days_back: int =
         "macro": {"correct": 0, "total": 0},
     }
     for analysis, trade in rows:
+        if not analysis.specialist_biases_json:
+            continue
         try:
             data = json.loads(analysis.specialist_biases_json)
             biases = data.get("biases", {})

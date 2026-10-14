@@ -32,6 +32,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ruff import-linter
+          pip install -e .
 
       - name: Run Ruff Lint
         run: |
@@ -42,6 +43,8 @@ jobs:
           ruff format --check .
 
       - name: Run Import Linter (Architecture Contracts)
+        env:
+          PYTHONPATH: src
         run: |
           lint-imports
 
@@ -111,6 +114,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e .
+
+      - name: Setup Configuration from Template
+        run: |
+          cp config/settings.example.yaml config/settings.yaml
 
       - name: Apply Database Migrations (Alembic)
         env:
