@@ -21,13 +21,14 @@ from typing import Any, Callable, Coroutine, Optional, Tuple
 logger = logging.getLogger("TradingAgent.Gateway.OmnichannelStreamer")
 
 _CODE_FENCE_REGEX = re.compile(r"^```", re.MULTILINE)
-_THINK_CLOSED_REGEX = re.compile(r"<think>(.*?)</think>", re.DOTALL | re.IGNORECASE)
-_THINK_OPEN_REGEX = re.compile(r"<think>.*$", re.DOTALL | re.IGNORECASE)
+_THINK_CLOSED_REGEX = re.compile(r"<(?:think|thought)>(.*?)</(?:think|thought)>", re.DOTALL | re.IGNORECASE)
+_THINK_OPEN_REGEX = re.compile(r"<(?:think|thought)>.*$", re.DOTALL | re.IGNORECASE)
 
 
 def scrub_thinking_tokens(text: str) -> Tuple[str, str]:
     """
-    Separates internal thinking tokens (<think>...</think>) from public conversational text.
+    Separates internal thinking tokens (<think>...</think> or <thought>...</thought>)
+    from public conversational text. Handles unclosed tags cleanly.
     Returns (cleaned_text, thoughts).
     """
     if not text:
@@ -40,10 +41,11 @@ def scrub_thinking_tokens(text: str) -> Tuple[str, str]:
     cleaned = _THINK_CLOSED_REGEX.sub("", text)
     unclosed_m = _THINK_OPEN_REGEX.search(cleaned)
     if unclosed_m:
-        thoughts.append(unclosed_m.group(0).replace("<think>", "").strip())
+        raw_unclosed = re.sub(r"^<(?:think|thought)>", "", unclosed_m.group(0), flags=re.IGNORECASE)
+        thoughts.append(raw_unclosed.strip())
         cleaned = _THINK_OPEN_REGEX.sub("", cleaned)
 
-    return cleaned.strip(), "\n".join(thoughts).strip()
+    return cleaned.strip(), "\n".join(t for t in thoughts if t).strip()
 
 
 def balance_code_fences(text: str) -> str:
@@ -198,6 +200,12 @@ class OmnichannelStreamer:
             final_text = self._current_bubble_text
             if self.scrub_thinking:
                 final_text, _ = scrub_thinking_tokens(final_text)
+                final_text = re.sub(
+                    r"<(?:think|thought)>[\s\S]*?(?:</(?:think|thought)>|$)",
+                    "",
+                    final_text,
+                    flags=re.IGNORECASE,
+                ).strip()
 
             final_text = balance_code_fences(final_text)
             if not final_text.strip():
@@ -214,4 +222,14 @@ class OmnichannelStreamer:
                 except Exception as e:
                     logger.debug(f"[OmnichannelStreamer] Final edit error: {e}")
 
-            return self._total_accumulated_text
+            clean_total = self._total_accumulated_text
+            if self.scrub_thinking:
+                clean_total, _ = scrub_thinking_tokens(clean_total)
+                clean_total = re.sub(
+                    r"<(?:think|thought)>[\s\S]*?(?:</(?:think|thought)>|$)",
+                    "",
+                    clean_total,
+                    flags=re.IGNORECASE,
+                ).strip()
+
+            return clean_total or final_text

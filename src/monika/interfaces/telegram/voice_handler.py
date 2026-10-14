@@ -285,9 +285,9 @@ class VoiceHandler:
             if chat_m:
                 candidate_models.append(chat_m)
             for live_m in (
+                "openai/whisper-large-v3-turbo",
                 "gemini-3.8-flash",
-                "gemini-3.7-flash",
-                "gemini-3.5-flash",
+                "gemini-4-argon",
             ):
                 if live_m not in candidate_models:
                     candidate_models.append(live_m)
@@ -378,6 +378,23 @@ class VoiceHandler:
                     # C. Gemini multimodal endpoint
                     elif "gemini" in m_lower or not ("whisper" in m_lower):
                         if not gemini_key:
+                            if openrouter_key:
+                                try:
+                                    form = aiohttp.FormData()
+                                    form.add_field("file", audio, filename="audio.ogg", content_type=mime_type)
+                                    form.add_field("model", "openai/whisper-large-v3-turbo")
+                                    headers = {"Authorization": f"Bearer {openrouter_key}"}
+                                    url = "https://openrouter.ai/api/v1/audio/transcriptions"
+                                    async with http_session.post(
+                                        url, data=form, headers=headers, timeout=aiohttp.ClientTimeout(total=30)
+                                    ) as resp:
+                                        if resp.status == 200:
+                                            data = await resp.json()
+                                            text = data.get("text", "")
+                                            if text and str(text).strip():
+                                                return str(text).strip()
+                                except Exception as e:
+                                    logger.debug(f"[VoiceHandler] OpenRouter whisper fallback failed: {e}")
                             continue
                         clean_gemini_model = model_name
                         if clean_gemini_model.startswith("google/"):

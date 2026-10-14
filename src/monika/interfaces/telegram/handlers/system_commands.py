@@ -99,10 +99,31 @@ class TelegramSystemCommandsMixin(_TelegramBotMixinBase):
             return await self._reject_unauthorized(update)
         from monika.interfaces.telegram.command_router import CommandRouter
 
-        await update.message.reply_text(
-            CommandRouter.build_help_text(),
-            parse_mode=ParseMode.MARKDOWN,
-        )
+        help_text = CommandRouter.build_help_text()
+        if len(help_text) <= 3900:
+            await update.message.reply_text(
+                help_text,
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+
+        chunks: list[str] = []
+        current: list[str] = []
+        current_len = 0
+        for line in help_text.splitlines(keepends=True):
+            if current_len + len(line) > 3900:
+                chunks.append("".join(current))
+                current = [line]
+                current_len = len(line)
+            else:
+                current.append(line)
+                current_len += len(line)
+        if current:
+            chunks.append("".join(current))
+
+        for chunk in chunks:
+            if chunk.strip():
+                await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_stats(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message:

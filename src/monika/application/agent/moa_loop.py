@@ -211,6 +211,7 @@ class MoARuntime:
         default_preset: str = "trading_quant_moa",
         default_timeout: float = 30.0,
         trace_dir: Optional[str] = None,
+        settings: Optional[Dict[str, Any]] = None,
     ):
         """
         Args:
@@ -219,11 +220,35 @@ class MoARuntime:
             default_preset: Default preset key in MOA_PRESETS.
             default_timeout: Timeout per LLM call in seconds.
             trace_dir: Optional directory for JSONL trace logging.
+            settings: Optional configuration settings mapping for dynamic model resolution.
         """
         self.llm_caller = llm_caller or self._default_llm_caller
         self.default_preset = default_preset
         self.default_timeout = default_timeout
         self.trace_dir = trace_dir
+        self.settings = settings or {}
+
+    def _resolve_preset(self, preset_key: str) -> Dict[str, Any]:
+        """Resolves preset definition, allowing dynamic overrides from settings.yaml."""
+        base_preset = MOA_PRESETS.get(preset_key, MOA_PRESETS["trading_quant_moa"])
+        preset = {
+            "description": base_preset.get("description", ""),
+            "proposers": [dict(p) for p in base_preset.get("proposers", [])],
+            "aggregator": dict(base_preset.get("aggregator", {})),
+        }
+
+        if not self.settings:
+            return preset
+
+        task_roles = self.settings.get("llm", {}).get("task_roles", {})
+        synth_role = task_roles.get("debate_synthesizer") or task_roles.get("stage2_synthesis")
+        if synth_role and isinstance(synth_role, dict):
+            m = synth_role.get("primary") or synth_role.get("model")
+            if m:
+                preset["aggregator"]["model"] = m
+                preset["aggregator"]["label"] = synth_role.get("label", m)
+
+        return preset
 
     def _default_llm_caller(self, slot: Dict[str, Any], messages: List[Dict[str, Any]]) -> str:
         """Default fallback LLM invocation. Can be monkeypatched or overridden."""
@@ -298,7 +323,7 @@ class MoARuntime:
         """
         start_total = time.monotonic()
         preset_key = preset_name or self.default_preset
-        preset = MOA_PRESETS.get(preset_key, MOA_PRESETS["trading_quant_moa"])
+        preset = self._resolve_preset(preset_key)
         proposers = preset.get("proposers", [])
         aggregator = preset.get("aggregator", {})
         timeout_sec = timeout or self.default_timeout

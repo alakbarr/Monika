@@ -19,6 +19,16 @@ def test_scrub_thinking_tokens():
     assert cleaned == "XAUUSD is currently bullish."
     assert "Analyzing market context..." in thoughts
 
+    raw_thought = "<thought>Evaluating macro risks...</thought>Gold is steady."
+    cleaned_t, thoughts_t = scrub_thinking_tokens(raw_thought)
+    assert cleaned_t == "Gold is steady."
+    assert "Evaluating macro risks..." in thoughts_t
+
+    raw_unclosed = "<think>Still reasoning about SL\nTP levels..."
+    cleaned_u, thoughts_u = scrub_thinking_tokens(raw_unclosed)
+    assert cleaned_u == ""
+    assert "Still reasoning about SL" in thoughts_u
+
 
 def test_balance_code_fences():
     text_with_open = "Here is Python code:\n```python\nprint('hello')"
