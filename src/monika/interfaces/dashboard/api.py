@@ -250,11 +250,15 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # ---------------------------------------------------------------------------
-# Mount Modular Routers
+# Mount Modular Routers & Unified Gateway Ingress
 # ---------------------------------------------------------------------------
 
 for router in all_routers:
     app.include_router(router)
+
+from monika.interfaces.gateway.api_server import gateway_router
+
+app.include_router(gateway_router)
 
 
 # ---------------------------------------------------------------------------
@@ -456,8 +460,9 @@ def run_dashboard(host: Optional[str] = None, port: Optional[int] = None, reload
     _host = host or os.getenv("DASHBOARD_HOST", "127.0.0.1")
     _port = port or int(os.getenv("DASHBOARD_PORT", 8000))
     logger.info(f"Starting Dashboard API on http://{_host}:{_port}")
+    target_app = "monika.interfaces.dashboard.api:app" if reload else app
     uvicorn.run(
-        "logging_observability.dashboard.api:app",
+        target_app,
         host=_host,
         port=_port,
         reload=reload,

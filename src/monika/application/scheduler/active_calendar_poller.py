@@ -277,7 +277,9 @@ class ActiveCalendarPoller:
         if self._news_watcher is not None:
             try:
                 logger.info("[ActiveCalendarPoller] Triggering immediate NewsWatcher run for pseudo-news")
-                asyncio.create_task(self._news_watcher.run_once())
+                nw_task = asyncio.create_task(self._news_watcher.run_once())
+                self._background_tasks.add(nw_task)
+                nw_task.add_done_callback(self._background_tasks.discard)
             except Exception as e:
                 logger.debug(f"Direct NewsWatcher trigger failed (non-fatal): {e}")
 
@@ -290,6 +292,8 @@ class ActiveCalendarPoller:
                 ev_name = e.get("event_name") if isinstance(e, dict) else getattr(e, "event_name", "")
                 if ev_name:
                     logger.info(f"[ActiveCalendarPoller] Routing calendar release '{ev_name}' to MacroTriggerRouter...")
-                    asyncio.create_task(router.on_calendar_event_released(ev_name))
+                    r_task = asyncio.create_task(router.on_calendar_event_released(ev_name))
+                    self._background_tasks.add(r_task)
+                    r_task.add_done_callback(self._background_tasks.discard)
         except Exception as e:
             logger.debug(f"[ActiveCalendarPoller] MacroTriggerRouter hook failed (non-fatal): {e}")

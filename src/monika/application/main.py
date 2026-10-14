@@ -46,11 +46,11 @@ for _fence_key, _fence_val in _initial_host_env.items():
         os.environ[_fence_key] = _fence_val
 
 # ---------------------------------------------------------------------------
-# Bootstrap runtime & network hardening
+# Bootstrap application composition root & runtime hardening
 # ---------------------------------------------------------------------------
-from monika.application.bootstrap import install_bootstrap_hardening
+from monika.application.bootstrap import bootstrap_application
 
-install_bootstrap_hardening()
+bootstrap_application()
 
 # ---------------------------------------------------------------------------
 # Bootstrap logging immediately

@@ -42,7 +42,6 @@ if TYPE_CHECKING:
     from monika.infrastructure.brokers.ea_bridge.watchdog import EAWatchdog
     from monika.infrastructure.brokers.mt5_client import MT5Client
     from monika.infrastructure.infra.notifier import AgentNotifier
-    from monika.interfaces.telegram.bot import TelegramBot
 
 
 class TradingAgent(AgentBuilderMixin, AgentRecoveryMixin, AgentMonitorsMixin, AgentLifecycleMixin):
@@ -56,7 +55,7 @@ class TradingAgent(AgentBuilderMixin, AgentRecoveryMixin, AgentMonitorsMixin, Ag
     news_watcher: Optional[NewsWatcher]
     digest_slice_scheduler: Optional[DigestSliceScheduler]
     trigger_checker: Optional[TriggerChecker]
-    telegram_bot: Optional[TelegramBot]
+    telegram_bot: Optional[Any]
     heartbeat_mgr: Optional[HeartbeatManager]
     ea_watchdog: Optional[EAWatchdog]
     market_data_scheduler: Optional[MarketDataScheduler]
@@ -88,6 +87,7 @@ class TradingAgent(AgentBuilderMixin, AgentRecoveryMixin, AgentMonitorsMixin, Ag
     container: Optional[Any]
     plugin_engine: Optional[Any]
     universal_cron: Optional[Any]
+    guardian_supervisor: Optional[Any]
     _recovery_task: Optional[asyncio.Task[Any]]
     _tg_task: Optional[asyncio.Task[Any]]
     _mt5_degraded: bool
@@ -97,7 +97,12 @@ class TradingAgent(AgentBuilderMixin, AgentRecoveryMixin, AgentMonitorsMixin, Ag
     _background_tasks: set[asyncio.Task[Any]]
     _tasks: list[asyncio.Task[Any]]
 
-    def __init__(self, settings: dict[str, Any], dry_run: bool = False) -> None:
+    def __init__(
+        self,
+        settings: dict[str, Any],
+        dry_run: bool = False,
+        container: Optional[Any] = None,
+    ) -> None:
         self.settings = settings
         paper_cfg = self.settings.get("trading", {}).get("paper_trading", {})
         if "enabled" in paper_cfg:
@@ -151,9 +156,15 @@ class TradingAgent(AgentBuilderMixin, AgentRecoveryMixin, AgentMonitorsMixin, Ag
         self.config_manager = None
         self.position_supervisor = None
         self.task_registry = None
-        self.container = None
+        if container is not None:
+            self.container = container
+        else:
+            from monika.core.container import get_container
+
+            self.container = get_container()
         self.plugin_engine = None
         self.universal_cron = None
+        self.guardian_supervisor = None
         self._background_tasks = set()
         self._tasks = []
 

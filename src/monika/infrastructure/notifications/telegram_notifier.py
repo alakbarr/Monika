@@ -24,8 +24,8 @@ from telegram import Bot
 from telegram.error import TelegramError
 
 from monika.core.paths import DATA_DIR
+from monika.core.streaming.sanitizer import sanitize_telegram_html
 from monika.domain.ports import NotifierPort
-from monika.interfaces.telegram.sanitizer import sanitize_telegram_html
 
 logger = logging.getLogger("TradingAgent.Notifier")
 

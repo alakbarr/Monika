@@ -39,7 +39,6 @@ if TYPE_CHECKING:
     from monika.infrastructure.brokers.ea_bridge.watchdog import EAWatchdog
     from monika.infrastructure.brokers.mt5_client import MT5Client
     from monika.infrastructure.infra.notifier import AgentNotifier
-    from monika.interfaces.telegram.bot import TelegramBot
 
 logger = logging.getLogger("TradingAgent.Main")
 
@@ -76,7 +75,7 @@ class AgentBuilderMixin:
     news_watcher: Optional[NewsWatcher]
     post_release_analyzer: Optional[PostReleaseAnalyzer]
     trigger_checker: Optional[TriggerChecker]
-    telegram_bot: Optional[TelegramBot]
+    telegram_bot: Optional[Any]
     notifier: Optional[AgentNotifier]
     flash_crash_detector: Optional[FlashCrashDetector]
     risk_parameter_reloader: Optional[Any]
@@ -88,6 +87,7 @@ class AgentBuilderMixin:
     container: Optional[Any]
     plugin_engine: Optional[Any]
     universal_cron: Optional[Any]
+    guardian_supervisor: Optional[Any]
     request_fallback_consent: Callable[[str], Any]
 
     def _init_components(self) -> None:
@@ -109,7 +109,6 @@ class AgentBuilderMixin:
         from monika.application.scheduler.trigger_checker import TriggerChecker
         from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager
         from monika.infrastructure.brokers.mt5_client import MT5Client
-        from monika.interfaces.telegram.bot import TelegramBot
 
         self.event_bus = get_event_bus()
         self.mt5_client = MT5Client(settings=self.settings)
@@ -261,13 +260,28 @@ class AgentBuilderMixin:
             recovery_event=self._recovery_complete,
         )
 
-        self.telegram_bot = TelegramBot(
-            settings=self.settings,
-            execution_service=self.execution_service,
-            cycle_scheduler=self.cycle_scheduler,
-        )
-        self.telegram_bot._activity_log = self._activity_log
-        self.telegram_bot.task_registry = self.task_registry
+        # Telegram Bot (Presentation Interface)
+        bot_instance = self.container.get("telegram_bot") if self.container else None
+        if bot_instance is not None:
+            self.telegram_bot = bot_instance
+        else:
+            try:
+                import importlib
+
+                tg_mod = importlib.import_module("monika.interfaces.telegram.bot")
+                TelegramBotCls = getattr(tg_mod, "TelegramBot")
+                self.telegram_bot = TelegramBotCls(
+                    settings=self.settings,
+                    execution_service=self.execution_service,
+                    cycle_scheduler=self.cycle_scheduler,
+                )
+            except Exception as tg_err:
+                logger.debug(f"TelegramBot interface resolution note: {tg_err}")
+                self.telegram_bot = None
+
+        if self.telegram_bot is not None:
+            self.telegram_bot._activity_log = self._activity_log
+            self.telegram_bot.task_registry = self.task_registry
 
         from monika.infrastructure.infra.notifier import AgentNotifier
 
@@ -349,45 +363,6 @@ class AgentBuilderMixin:
             if self.trailing_stop_manager and hasattr(self.trailing_stop_manager, "on_tick"):
                 self.event_bus.subscribe(TickPriceEvent, self.trailing_stop_manager.on_tick, priority=5)
 
-            # Observability live feed forwarder to dashboard WebSockets
-            try:
-                from monika.interfaces.dashboard.api import broadcast_live_event
-
-                async def _on_live_tick(evt: TickPriceEvent):
-                    await broadcast_live_event(
-                        "tick",
-                        {
-                            "symbol": evt.symbol,
-                            "bid": evt.bid,
-                            "ask": evt.ask,
-                            "spread": evt.spread,
-                            "timestamp": evt.timestamp.isoformat()
-                            if hasattr(evt.timestamp, "isoformat")
-                            else str(evt.timestamp),
-                        },
-                    )
-
-                async def _on_live_order(evt: OrderStateChangedEvent):
-                    await broadcast_live_event(
-                        "order_state_change",
-                        {
-                            "order_id": evt.order_id,
-                            "symbol": evt.symbol,
-                            "old_state": evt.old_state,
-                            "new_state": evt.new_state,
-                            "details": evt.details,
-                            "timestamp": evt.timestamp.isoformat()
-                            if hasattr(evt.timestamp, "isoformat")
-                            else str(evt.timestamp),
-                        },
-                    )
-
-                self.event_bus.subscribe(TickPriceEvent, _on_live_tick, priority=1)
-                self.event_bus.subscribe(OrderStateChangedEvent, _on_live_order, priority=1)
-                logger.info("  [OK] EventBus live feed wired to Dashboard WebSocket broadcast")
-            except Exception as ws_err:
-                logger.debug(f"Dashboard WebSocket EventBus subscriber wiring note: {ws_err}")
-
             from monika.application.protocol.event_bus import CircuitBreakerEvent, RiskBreachEvent
 
             async def _on_circuit_breaker(evt: CircuitBreakerEvent):
@@ -403,49 +378,13 @@ class AgentBuilderMixin:
                         await self.execution_service.trigger_circuit_breaker(f"{evt.component}: {evt.reason}")
                     except Exception as cb_err:
                         logger.error(f"[EventBus] Failed to dispatch circuit breaker to ExecutionService: {cb_err}")
-                try:
-                    from monika.interfaces.dashboard.api import broadcast_live_event
-
-                    await broadcast_live_event(
-                        "circuit_breaker",
-                        {
-                            "component": evt.component,
-                            "reason": evt.reason,
-                            "is_active": evt.is_active,
-                            "cooldown_seconds": evt.cooldown_seconds,
-                            "timestamp": evt.timestamp.isoformat()
-                            if hasattr(evt.timestamp, "isoformat")
-                            else str(evt.timestamp),
-                        },
-                    )
-                except Exception as ws_err:
-                    logger.debug(f"Circuit breaker websocket broadcast error: {ws_err}")
 
             async def _on_risk_breach(evt: RiskBreachEvent):
                 logger.warning(f"[EventBus] Risk breach received: {evt.breach_type} (severity={evt.severity})")
-                try:
-                    from monika.interfaces.dashboard.api import broadcast_live_event
-
-                    await broadcast_live_event(
-                        "risk_breach",
-                        {
-                            "breach_type": evt.breach_type,
-                            "symbol": evt.symbol,
-                            "severity": evt.severity,
-                            "details": evt.details,
-                            "timestamp": evt.timestamp.isoformat()
-                            if hasattr(evt.timestamp, "isoformat")
-                            else str(evt.timestamp),
-                        },
-                    )
-                except Exception as ws_err:
-                    logger.debug(f"Risk breach websocket broadcast error: {ws_err}")
 
             self.event_bus.subscribe(CircuitBreakerEvent, _on_circuit_breaker, priority=10)
             self.event_bus.subscribe(RiskBreachEvent, _on_risk_breach, priority=10)
-            logger.info(
-                "  [OK] EventBus CircuitBreakerEvent and RiskBreachEvent subscribed for safety protection and WebSocket broadcast"
-            )
+            logger.info("  [OK] EventBus CircuitBreakerEvent and RiskBreachEvent subscribed for safety protection")
 
         # Berikan recovery_complete event ke cycle_scheduler agar bisa menunggu
         if hasattr(self, "cycle_scheduler") and self.cycle_scheduler is not None:
@@ -517,7 +456,15 @@ class AgentBuilderMixin:
             logger.info("  [OK] UnifiedCronEngine initialized")
         except Exception as e:
             logger.warning(f"UnifiedCronEngine initialization error: {e}")
-            self.universal_cron = None
+        # Initialize Multi-Process Guardian Supervisor
+        try:
+            from monika.application.agent.monitors.process_guardian import GuardianSupervisor
+
+            self.guardian_supervisor = GuardianSupervisor(settings=self.settings)
+            logger.info("  [OK] Multi-Process GuardianSupervisor initialized")
+        except Exception as e:
+            logger.warning(f"GuardianSupervisor initialization error: {e}")
+            self.guardian_supervisor = None
 
         logger.info("All components initialized")
 

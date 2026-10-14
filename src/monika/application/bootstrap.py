@@ -248,3 +248,120 @@ def bootstrap_runtime() -> None:
 
 # Alias for backward compatibility
 install_bootstrap_hardening = bootstrap_runtime
+
+
+def build_application_container(
+    settings: Optional[dict[str, Any]] = None,
+    overrides: Optional[dict[str, Any]] = None,
+) -> Any:
+    """
+    Build and configure the canonical ServiceContainer for Monika.
+    Registers domain ports, infrastructure adapters, and application services.
+    """
+    from monika.core.container import ServiceContainer, get_container
+
+    container = get_container()
+
+    if settings is None:
+        from monika.core.config.settings import load_all_config
+
+        cfg = load_all_config()
+    else:
+        cfg = settings
+
+    container.register("settings", cfg)
+
+    # Core singletons and factories
+    from monika.core.primitives.event_bus import get_event_bus
+
+    container.register_factory("event_bus", lambda c: get_event_bus())
+
+    from monika.core.telemetry.activity_logger import ActivityLogger
+
+    container.register_factory("activity_logger", lambda c: ActivityLogger.get_instance())
+
+    from monika.application.agent.task_registry import TaskRegistry
+
+    container.register_factory("task_registry", lambda c: TaskRegistry.get_instance())
+
+    # Infrastructure ports & adapters
+    from monika.infrastructure.database.repositories.unit_of_work import SqlAlchemyUnitOfWork
+
+    container.register_factory("unit_of_work", lambda c: SqlAlchemyUnitOfWork())
+
+    from monika.infrastructure.brokers.mt5_client import MT5Client
+
+    container.register_factory("mt5_client", lambda c: MT5Client(settings=c.get("settings", {})))
+
+    from monika.domain.risk.risk_gate import RiskGate
+
+    container.register_factory("risk_gate", lambda c: RiskGate(settings=c.get("settings", {})))
+
+    # Canonical application services
+    from monika.application.services.market_data_service import MarketDataService
+    from monika.application.services.market_intel_service import MarketIntelService
+    from monika.application.services.portfolio_service import PortfolioService
+    from monika.application.services.system_status_service import SystemStatusService
+    from monika.application.services.trading_service import TradingService
+
+    container.register("portfolio_service", PortfolioService)
+    container.register("trading_service", TradingService)
+    container.register("market_data_service", MarketDataService)
+    container.register("system_status_service", SystemStatusService)
+    container.register("market_intel_service", MarketIntelService)
+
+    # Execution service
+    from monika.application.execution.execution_service import ExecutionService
+
+    container.register_factory(
+        "execution_service",
+        lambda c: ExecutionService(
+            settings=c.get("settings", {}),
+            mt5_client=c.get("mt5_client"),
+            risk_gate=c.get("risk_gate"),
+        ),
+    )
+
+    from monika.infrastructure.credentials.credential_pool import CredentialPool
+
+    container.register_factory("credential_pool", lambda c: CredentialPool.get_instance())
+
+    from monika.application.harness.engine import PluginEngine
+
+    container.register_factory(
+        "plugin_engine",
+        lambda c: PluginEngine(
+            container=c,
+            event_bus=c.get("event_bus"),
+            task_registry=c.get("task_registry"),
+        ),
+    )
+
+    if overrides:
+        for k, v in overrides.items():
+            container.register(k, v)
+
+    return container
+
+
+def bootstrap_application(
+    settings: Optional[dict[str, Any]] = None,
+    overrides: Optional[dict[str, Any]] = None,
+) -> Any:
+    """
+    Unified one-shot application composition root.
+    Hardens runtime/networking and configures the canonical ServiceContainer.
+    """
+    bootstrap_runtime()
+    container = build_application_container(settings=settings, overrides=overrides)
+    return container
+
+
+__all__ = [
+    "BootstrapRuntime",
+    "race_dual_stack_socket",
+    "bootstrap_runtime",
+    "install_bootstrap_hardening",
+    "build_application_container",
+    "bootstrap_application",
+]

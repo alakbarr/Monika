@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from monika.application.scheduler.market_data_scheduler import MarketDataScheduler
     from monika.application.scheduler.position_guardian import PositionGuardian
     from monika.infrastructure.brokers.mt5_client import MT5Client
-    from monika.interfaces.telegram.bot import TelegramBot
 
 logger = logging.getLogger("TradingAgent.Main")
 
@@ -40,7 +39,7 @@ class AgentRecoveryMixin:
     position_guardian: Optional[PositionGuardian]
     market_data_scheduler: Optional[MarketDataScheduler]
     cycle_scheduler: Optional[GraphCycleScheduler]
-    telegram_bot: Optional[TelegramBot]
+    telegram_bot: Optional[Any]
     _create_background_task: Callable[..., asyncio.Task[Any]]
 
     async def publish_tick(self, symbol: str, bid: float, ask: float, last: float = 0.0, spread: float = 0.0) -> None:

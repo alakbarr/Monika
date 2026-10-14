@@ -214,6 +214,7 @@ Monika/
 │       │   │   │   ├── drawdown_monitor.py
 │       │   │   │   ├── margin_monitor.py
 │       │   │   │   ├── paper_trade_monitor.py
+│       │   │   │   ├── process_guardian.py
 │       │   │   │   ├── scraper_loop.py
 │       │   │   │   └── startup_watchdog.py
 │       │   │   ├── readonly_replay_cache.py

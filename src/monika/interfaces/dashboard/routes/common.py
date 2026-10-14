@@ -72,9 +72,93 @@ def record_stream_event(message: dict) -> dict:
     return StreamSequenceManager.record_event(message)
 
 
+def attach_dashboard_event_listeners(event_bus: Any) -> None:
+    """Wire EventBus events to dashboard WebSocket live broadcast."""
+    if event_bus is None or getattr(event_bus, "_dashboard_attached", False):
+        return
+    try:
+        from monika.core.contracts.plugin import (
+            CircuitBreakerEvent,
+            OrderStateChangedEvent,
+            RiskBreachEvent,
+            TickPriceEvent,
+        )
+
+        async def _on_live_tick(evt: TickPriceEvent):
+            await broadcast_live_event(
+                "tick",
+                {
+                    "symbol": evt.symbol,
+                    "bid": evt.bid,
+                    "ask": evt.ask,
+                    "spread": evt.spread,
+                    "timestamp": evt.timestamp.isoformat()
+                    if hasattr(evt.timestamp, "isoformat")
+                    else str(evt.timestamp),
+                },
+            )
+
+        async def _on_live_order(evt: OrderStateChangedEvent):
+            await broadcast_live_event(
+                "order_state_change",
+                {
+                    "order_id": evt.order_id,
+                    "symbol": evt.symbol,
+                    "old_state": evt.old_state,
+                    "new_state": evt.new_state,
+                    "details": evt.details,
+                    "timestamp": evt.timestamp.isoformat()
+                    if hasattr(evt.timestamp, "isoformat")
+                    else str(evt.timestamp),
+                },
+            )
+
+        async def _on_circuit_breaker(evt: CircuitBreakerEvent):
+            await broadcast_live_event(
+                "circuit_breaker",
+                {
+                    "component": evt.component,
+                    "reason": evt.reason,
+                    "is_active": evt.is_active,
+                    "cooldown_seconds": evt.cooldown_seconds,
+                    "timestamp": evt.timestamp.isoformat()
+                    if hasattr(evt.timestamp, "isoformat")
+                    else str(evt.timestamp),
+                },
+            )
+
+        async def _on_risk_breach(evt: RiskBreachEvent):
+            await broadcast_live_event(
+                "risk_breach",
+                {
+                    "breach_type": evt.breach_type,
+                    "symbol": evt.symbol,
+                    "severity": evt.severity,
+                    "details": evt.details,
+                    "timestamp": evt.timestamp.isoformat()
+                    if hasattr(evt.timestamp, "isoformat")
+                    else str(evt.timestamp),
+                },
+            )
+
+        event_bus.subscribe(TickPriceEvent, _on_live_tick, priority=1)
+        event_bus.subscribe(OrderStateChangedEvent, _on_live_order, priority=1)
+        event_bus.subscribe(CircuitBreakerEvent, _on_circuit_breaker, priority=1)
+        event_bus.subscribe(RiskBreachEvent, _on_risk_breach, priority=1)
+        setattr(event_bus, "_dashboard_attached", True)
+        logger.info("[Dashboard] EventBus live feed forwarders successfully registered.")
+    except Exception as e:
+        logger.debug(f"[Dashboard] EventBus attachment note: {e}")
+
+
 def set_dashboard_dependencies(**kwargs) -> None:
     """Register runtime agent dependencies for interactive dashboard endpoints."""
     _dependencies.update(kwargs)
+    eb = kwargs.get("event_bus")
+    if eb is None and "agent" in kwargs:
+        eb = getattr(kwargs["agent"], "event_bus", None)
+    if eb is not None:
+        attach_dashboard_event_listeners(eb)
 
 
 def get_dashboard_dependency(name: str) -> Optional[Any]:
