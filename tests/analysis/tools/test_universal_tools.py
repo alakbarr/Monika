@@ -88,6 +88,9 @@ def test_terminal_process_engine():
         poll_res = engine.poll_process(sid)
         assert poll_res["success"] is True
 
+        # Clean up background process before exiting TemporaryDirectory
+        engine.kill_process(sid)
+
 
 def test_tool_search_engine():
     engine = ToolSearchEngine(token_budget=1000)

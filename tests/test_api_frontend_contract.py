@@ -18,7 +18,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Set
+from typing import Any, Set
 
 import pytest
 from fastapi.routing import APIRoute
@@ -60,14 +60,30 @@ def extract_frontend_api_paths() -> Set[str]:
     return paths
 
 
+def extract_all_app_routes(application: Any) -> list[APIRoute]:
+    """Recursively extract all APIRoute instances from FastAPI application, traversing _IncludedRouter."""
+    collected: list[APIRoute] = []
+    for r in application.routes:
+        if isinstance(r, APIRoute):
+            collected.append(r)
+        elif hasattr(r, "original_router") and hasattr(r.original_router, "routes"):
+            for sub_r in r.original_router.routes:
+                if isinstance(sub_r, APIRoute):
+                    collected.append(sub_r)
+        elif hasattr(r, "routes"):
+            for sub_r in getattr(r, "routes", []):
+                if isinstance(sub_r, APIRoute):
+                    collected.append(sub_r)
+    return collected
+
+
 def get_backend_routes() -> Set[str]:
     """Extract all registered paths from FastAPI app routes."""
     paths: Set[str] = set()
-    for route in app.routes:
-        if isinstance(route, APIRoute):
-            # Normalize path parameters to {param}
-            norm = re.sub(r"\{[a-zA-Z0-9_]+\}", "{param}", route.path).rstrip("/")
-            paths.add(norm)
+    for route in extract_all_app_routes(app):
+        # Normalize path parameters to {param}
+        norm = re.sub(r"\{[a-zA-Z0-9_]+\}", "{param}", route.path).rstrip("/")
+        paths.add(norm)
     return paths
 
 
@@ -89,13 +105,12 @@ def test_api_v1_route_prefix_compliance():
     }
 
     violating_routes = []
-    for route in app.routes:
-        if isinstance(route, APIRoute):
-            p = route.path.rstrip("/")
-            if p in exempt_paths:
-                continue
-            if not p.startswith("/api/v1"):
-                violating_routes.append((route.methods, route.path))
+    for route in extract_all_app_routes(app):
+        p = route.path.rstrip("/")
+        if p in exempt_paths:
+            continue
+        if not p.startswith("/api/v1"):
+            violating_routes.append((route.methods, route.path))
 
     assert not violating_routes, f"Found unversioned API routes without /api/v1 prefix: {violating_routes}"
 

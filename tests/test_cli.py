@@ -1071,6 +1071,7 @@ def test_ensure_daemon_running_when_already_running(monkeypatch):
 
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     monkeypatch.setattr("monika.interfaces.cli.main.is_daemon_running", lambda url=None: True)
+    monkeypatch.setattr("monika.interfaces.cli.context.is_daemon_running", lambda url=None: True)
 
     args = MagicMock()
     args.no_daemon = False
@@ -1085,11 +1086,12 @@ def test_ensure_daemon_running_spawns_process(monkeypatch):
 
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     monkeypatch.setattr("monika.infrastructure.infra.env_file_manager.EnvFileManager.is_configured", lambda: True)
-    states = [False, True]
-    monkeypatch.setattr(
-        "monika.interfaces.cli.main.is_daemon_running", lambda url=None: states.pop(0) if states else True
-    )
-    monkeypatch.setattr("monika.interfaces.cli.main.spawn_daemon_background", MagicMock(return_value=99999))
+    mock_is_daemon = MagicMock(side_effect=[False, True, True])
+    monkeypatch.setattr("monika.interfaces.cli.main.is_daemon_running", mock_is_daemon)
+    monkeypatch.setattr("monika.interfaces.cli.context.is_daemon_running", mock_is_daemon)
+    mock_spawn = MagicMock(return_value=99999)
+    monkeypatch.setattr("monika.interfaces.cli.main.spawn_daemon_background", mock_spawn)
+    monkeypatch.setattr("monika.interfaces.cli.context.spawn_daemon_background", mock_spawn)
     monkeypatch.setattr("time.sleep", lambda s: None)
 
     args = MagicMock()
