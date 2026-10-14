@@ -5020,7 +5020,7 @@
   - `class StallGuard`: State-Aware Stall Guard (H-8).
     - `__init__(warning_threshold: int, force_terminate_threshold: int)`
     - `is_read_only(tool_name: str) -> bool`
-    - `record_call(tool_name: str, tool_result: Any) -> None` - *Record execution of a tool and update stall counters.*
+    - `record_call(tool_name: str, tool_result: Any, turn_idx: Optional[int]) -> None` - *Record execution of a tool and update stall counters per reasoning turn.*
     - `check_stall() -> Tuple[bool, bool, Optional[str]]` - *Evaluate current execution state for stall conditions.*
     - `reset() -> None` - *Reset stall counters upon state-advancing actions.*
 
@@ -6921,7 +6921,7 @@
 - **Classes**:
   - `class ToolEntry`: Registered tool definition metadata supporting Pydantic models and dynamic JSON schemas.
     - `__init__(name: str, category: str, description: str, ...)`
-    - `get_parameters_schema() -> Dict[str, Any]` - *Return base JSON schema parameters dictionary.*
+    - `get_parameters_schema() -> Dict[str, Any]` - *Return base JSON schema parameters dictionary with inlined references.*
     - `get_anthropic_schema() -> Dict[str, Any]` - *Convert to Anthropic tool schema format.*
     - `get_openai_schema() -> Dict[str, Any]` - *Convert to OpenAI tool function format.*
     - `get_gemini_schema() -> Dict[str, Any]` - *Convert to Gemini function declaration format.*
@@ -13342,7 +13342,7 @@
     - `async feed_token(token: str) -> None` - *Process an incoming token from the streaming generator.*
     - `async finish() -> str` - *Finalizes streaming, removes cursor, and commits clean text to message.*
 - **Top-Level Functions**:
-  - `scrub_thinking_tokens(text: str) -> Tuple[str, str]`: Separates internal thinking tokens (<think>...</think>) from public conversational text.
+  - `scrub_thinking_tokens(text: str) -> Tuple[str, str]`: Separates internal thinking tokens (<think>...</think> or <thought>...</thought>)
   - `balance_code_fences(text: str) -> str`: Balances unclosed markdown code blocks for partial streaming message previews.
 
 #### `pairing.py` - *Production Paired DM Authorization and Direct Message Security Gateway.*
