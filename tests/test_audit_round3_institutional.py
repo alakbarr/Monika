@@ -82,7 +82,7 @@ def test_f2_2_dashboard_api_metrics_endpoint():
     from monika.interfaces.dashboard.api import app
 
     client = TestClient(app)
-    resp = client.get("/api/metrics")
+    resp = client.get("/api/v1/metrics")
     assert resp.status_code == 200
     assert "text/plain" in resp.headers["content-type"]
     assert "trading_agent_agent_uptime_seconds" in resp.text

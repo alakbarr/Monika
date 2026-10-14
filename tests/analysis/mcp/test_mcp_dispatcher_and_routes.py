@@ -66,7 +66,7 @@ async def test_mcp_cli_subcommand_instantiation():
 async def test_dashboard_mcp_routes():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # Test tools listing
-        resp = await ac.get("/api/mcp/tools")
+        resp = await ac.get("/api/v1/mcp/tools")
         assert resp.status_code == 200
         data = resp.json()
         assert "tools" in data
@@ -79,7 +79,7 @@ async def test_dashboard_mcp_routes():
             "method": "initialize",
             "params": {},
         }
-        post_resp = await ac.post("/api/mcp/messages", json=rpc_req)
+        post_resp = await ac.post("/api/v1/mcp/messages", json=rpc_req)
         assert post_resp.status_code == 200
         body = post_resp.json()
         assert body["id"] == 42

@@ -87,7 +87,7 @@ async def test_f0_3_dashboard_api_ip_whitelisting():
     client = TestClient(app)
 
     # 1. Public ping should always succeed
-    resp_ping = client.get("/api/ping")
+    resp_ping = client.get("/api/v1/ping")
     assert resp_ping.status_code == 200
 
     # 2. Remote IP with DASHBOARD_ALLOWED_IPS configured
@@ -102,13 +102,15 @@ async def test_f0_3_dashboard_api_ip_whitelisting():
     ):
         # Unauthorized remote IP
         resp_blocked = client.get(
-            "/api/health", headers={"X-Forwarded-For": "203.0.113.1", "X-API-Key": "secret_key_123"}
+            "/api/v1/health", headers={"X-Forwarded-For": "203.0.113.1", "X-API-Key": "secret_key_123"}
         )
         assert resp_blocked.status_code == 403
         assert "not authorized" in resp_blocked.json().get("detail", "")
 
         # Authorized remote IP with valid key
-        resp_ok = client.get("/api/health", headers={"X-Forwarded-For": "192.168.1.100", "X-API-Key": "secret_key_123"})
+        resp_ok = client.get(
+            "/api/v1/health", headers={"X-Forwarded-For": "192.168.1.100", "X-API-Key": "secret_key_123"}
+        )
         assert resp_ok.status_code == 200
 
 

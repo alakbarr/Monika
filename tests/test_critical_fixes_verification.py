@@ -32,7 +32,7 @@ def test_backtest_rbac_protection(client):
     with patch.dict(os.environ, env):
         # 1. Viewer trying operator action (trigger backtest) -> 403
         res = client.post(
-            "/api/backtest/run",
+            "/api/v1/backtest/run",
             headers={"X-API-Key": "view_key"},
             json={"days": 7, "mode": "full", "initial_equity": 10000.0, "step_hours": 6},
         )
@@ -42,7 +42,7 @@ def test_backtest_rbac_protection(client):
         # 2. Operator role CAN trigger backtest POST
         with patch("monika.interfaces.dashboard.routes.backtest._execute_background_backtest"):
             res_post_ok = client.post(
-                "/api/backtest/run",
+                "/api/v1/backtest/run",
                 headers={"X-API-Key": "ops_key"},
                 json={"days": 7, "mode": "full", "initial_equity": 10000.0, "step_hours": 6},
             )
@@ -54,7 +54,7 @@ def test_backtest_rbac_protection(client):
             mock_sess = create_mock_async_session()
             mock_get_sess.return_value.__aenter__.return_value = mock_sess
 
-            res_get = client.get("/api/backtest/runs", headers={"X-API-Key": "view_key"})
+            res_get = client.get("/api/v1/backtest/runs", headers={"X-API-Key": "view_key"})
             assert res_get.status_code == 200
 
 
@@ -156,7 +156,7 @@ def test_get_risk_enriched_fields(mock_session_local, client):
     )
 
     with patch("monika.interfaces.dashboard.rbac.resolve_role", return_value=Role.VIEWER):
-        res = client.get("/api/risk")
+        res = client.get("/api/v1/risk")
         assert res.status_code == 200
         data = res.json()
         assert "margin_usage_pct" in data
