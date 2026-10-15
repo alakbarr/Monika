@@ -144,6 +144,14 @@ class HeartbeatManager:
 
     def get_watchdog(self, check_interval_seconds: float = 15.0) -> Any:
         """PR-16: Returns an active EAWatchdog instance bound to this manager."""
+        if self._watchdog_factory is None:
+            import importlib
+
+            try:
+                importlib.import_module("monika.infrastructure.brokers.ea_bridge.watchdog")
+            except ImportError:
+                pass
+
         if self._watchdog_factory is not None:
             return self._watchdog_factory(
                 heartbeat_manager=self,
