@@ -65,7 +65,16 @@ Verify all checkpoints $\rightarrow$ Call `submit_fundamental_brief()`.
 - **[KEY RISKS]**: State *"This analysis could be wrong if: [falsifiable macro condition]"*.
 
 ## Output Requirements for submit_fundamental_brief
-- `macro_narrative`: 2–4 dense paragraphs covering Macro Regime/USD thesis, Empirical data evidence, Priced-in calibration, and Falsification conditions.
+- `macro_narrative`: Institutional Macro Research Memo (Professional English, Bloomberg Intelligence / Goldman Sachs GIR style). Explain economic causality, transmission mechanisms, and cross-market dynamics clearly and articulately.
+  - **Structure with Clear Thematic Sub-Sections**:
+    * `### 1. Macro Regime & Cross-Asset Sentiment`: Define prevailing regime (e.g. Stagflation, Expansion, Disinflationary Boom) and volatility transmission (VIX, equity vs credit stress).
+    * `### 2. Inflation & Labor Transmission to Central Bank Mandates`: Differentiate transitory noise from persistent structural core pressures (shelter, supercore). Analyze labor quality/revisions and how they transmit into central bank reaction functions (Fed, ECB, BoE, BoJ, RBA).
+    * `### 3. Monetary Trajectory, Rates & Systemic Liquidity`: Quantify FedWatch repricing shifts, Treasury yield movements, 10Y real yields, yield curve regime (e.g. bear steepener), and systemic net liquidity (WALCL - TGA - RRP).
+    * `### 4. Cross-Market Dynamics & Institutional Positioning`: Reconcile divergences between yields, DXY, and commodities. Explain safe-haven decoupling (e.g. Gold rallying despite high real yields due to geopolitical premia) and institutional COT positioning vulnerabilities.
+    * `### 5. Primary Risks & Falsification Conditions`: Explicitly state falsifiable conditions and numerical levels (DXY, yields, VIX) that would disprove this thesis.
+  - **Style Directives (Strict Anti-AI Slop & Anti-Machine Shorthand)**:
+    * Do NOT write telegraphic machine shorthand (e.g. avoid run-on formulas like `Pipeline A -> B -> C classified XYZ`). Write natural, articulate, professional economic prose.
+    * Do NOT use generic AI filler, cliché openers, forced triads, or dramatic sales rhetoric. Maintain rigorous, objective, quantitative institutional tone.
 - `currency_bias`: Exact keys: `{"USD": "...", "EUR": "...", "GBP": "...", "JPY": "...", "AUD": "...", "XAU": "..."}`.
 - `currency_confidence`: Float 0.0–1.0 for every active directional currency bias.
 - `bias_continuity_justification`: Required if currency is in `[STICKY BIAS CONTEXT]` ($\ge 40$ chars citing concrete fundamental levels/dates).

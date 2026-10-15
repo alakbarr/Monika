@@ -31,6 +31,112 @@ from monika.infrastructure.database.models import (
 )
 
 
+def format_macro_intelligence_dossier(inp: dict, now: datetime, valid_until: Optional[datetime] = None) -> str:
+    """
+    Synthesizes a complete, institutional Macro Intelligence Dossier for storage in
+    FundamentalBrief.content_markdown, presenting all Stage 1 dimensions clearly for
+    the Dashboard (BriefTab) and Telegram (/brief).
+    """
+    ts_str = now.strftime("%Y-%m-%d %H:%M UTC")
+    valid_str = valid_until.strftime("%Y-%m-%d %H:%M UTC") if valid_until else "12 hours"
+    regime = str(inp.get("macro_regime", "mixed")).upper().replace("-", "_")
+    sentiment = str(inp.get("risk_sentiment", "mixed")).upper()
+    conf = float(inp.get("confidence", 0.5) or 0.5)
+    conf_str = f"{conf:.0%}"
+    liquidity = str(inp.get("systemic_liquidity_trend", "neutral") or "neutral").upper()
+    yield_curve = str(inp.get("yield_curve_regime", "neutral") or "neutral").upper()
+
+    doc = [
+        "# 🏛️ MONIKA MACRO INTELLIGENCE DOSSIER // STAGE 1 BRIEF",
+        f"**Session Timestamp**: `{ts_str}` | **Validity**: Until `{valid_str}`",
+        f"**Macro Regime**: `{regime}` | **Risk Sentiment**: `{sentiment}` | **Overall Confidence**: `{conf_str}`",
+        f"**Systemic Net Liquidity**: `{liquidity}` | **Yield Curve Regime**: `{yield_curve}`",
+        "",
+        "---",
+        "",
+        "## 1. Executive Macroeconomic Narrative & Causality Transmission",
+        (inp.get("macro_narrative") or "(No narrative recorded)").strip(),
+        "",
+        "---",
+        "",
+    ]
+
+    bias_map = inp.get("currency_bias") or {}
+    conf_map = inp.get("currency_confidence") or {}
+    inval_map = inp.get("invalidation_conditions") or {}
+    if bias_map and isinstance(bias_map, dict):
+        doc.append("## 2. Currency Bias & Attractiveness Matrix")
+        doc.append("| Currency | Directional Bias | Confidence | Invalidation Trigger Level |")
+        doc.append("| :--- | :---: | :---: | :--- |")
+        priority_order = ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "OIL", "BTC"]
+        seen_ccy = set()
+        for ccy in priority_order:
+            if ccy in bias_map:
+                seen_ccy.add(ccy)
+                b_val = str(bias_map[ccy]).upper()
+                c_val = f"{float(conf_map.get(ccy, conf)):.0%}" if ccy in conf_map else "N/A"
+                i_val = str(inval_map.get(ccy, "-"))
+                doc.append(f"| **{ccy}** | `{b_val}` | {c_val} | {i_val} |")
+        for ccy, b in bias_map.items():
+            if ccy not in seen_ccy:
+                b_val = str(b).upper()
+                c_val = f"{float(conf_map.get(ccy, conf)):.0%}" if ccy in conf_map else "N/A"
+                i_val = str(inval_map.get(ccy, "-"))
+                doc.append(f"| **{ccy}** | `{b_val}` | {c_val} | {i_val} |")
+        doc.append("")
+        doc.append("---")
+        doc.append("")
+
+    matrix = inp.get("per_asset_macro_matrix") or {}
+    pi_scores = inp.get("asset_priced_in_scores") or {}
+    if matrix and isinstance(matrix, dict):
+        doc.append("## 3. Per-Asset Macro Transmission Matrix")
+        doc.append("| Asset | Bias | Priced-In | Structural Driver | Tactical Catalyst | Invalidation Level |")
+        doc.append("| :--- | :---: | :---: | :--- | :--- | :--- |")
+        for sym, item in matrix.items():
+            if isinstance(item, dict):
+                d_bias = str(item.get("directional_bias", "neutral")).upper()
+                pi_s = f"{pi_scores.get(sym)}/10" if sym in pi_scores else "-"
+                struct = str(item.get("structural_driver", "-"))
+                tact = str(item.get("tactical_catalyst", "-"))
+                inval = str(item.get("invalidation_level", "-"))
+                doc.append(f"| **{sym}** | `{d_bias}` | {pi_s} | {struct} | {tact} | {inval} |")
+        doc.append("")
+        doc.append("---")
+        doc.append("")
+
+    priced_in = inp.get("priced_in_assessment") or {}
+    if priced_in and isinstance(priced_in, dict):
+        doc.append("## 4. Market Pricing, Expectations & Positioning")
+        if priced_in.get("dominant_driver"):
+            doc.append(f"- **Dominant Market Driver**: {priced_in['dominant_driver']}")
+        p_score = priced_in.get("priced_in_score", "N/A")
+        stn_risk = str(priced_in.get("sell_the_news_risk", "N/A")).upper()
+        doc.append(f"- **Priced-In Composite**: `{p_score}/10` | **Sell-The-News Exhaustion Risk**: `{stn_risk}`")
+        if priced_in.get("fedwatch_shift_summary"):
+            doc.append(f"- **FedWatch Trajectory Shift**: {priced_in['fedwatch_shift_summary']}")
+        cot_p = priced_in.get("cot_positioning_percentile")
+        ret_p = priced_in.get("retail_sentiment_percentile")
+        if cot_p is not None or ret_p is not None:
+            doc.append(
+                f"- **Positioning Percentiles**: COT Non-Commercial: `{cot_p if cot_p is not None else 'N/A'}%` | "
+                f"Retail Sentiment: `{ret_p if ret_p is not None else 'N/A'}%`"
+            )
+        if priced_in.get("upcoming_event_context"):
+            doc.append(f"- **Upcoming Catalyst Context**: {priced_in['upcoming_event_context']}")
+        doc.append("")
+        doc.append("---")
+        doc.append("")
+
+    counter_thesis = inp.get("strongest_counter_thesis")
+    if counter_thesis:
+        doc.append("## 5. Strongest Counter-Thesis & Falsification Conditions")
+        doc.append(f"> ⚠️ **Falsification Argument**:  \n> {str(counter_thesis).strip()}")
+        doc.append("")
+
+    return "\n".join(doc)
+
+
 class FundamentalBriefMixin(_ToolExecutorMixinBase):
     """Mixin providing fundamental brief validation and submission logic."""
 
@@ -793,10 +899,12 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                     priced_in["sell_the_news_risk"] = "not_applicable"
             inp["priced_in_assessment"] = priced_in
 
+        dossier_markdown = format_macro_intelligence_dossier(inp, now=now, valid_until=valid_until)
+
         brief = FundamentalBrief(
             generated_at=now,
             valid_until=valid_until,
-            content_markdown=inp.get("macro_narrative", ""),
+            content_markdown=dossier_markdown,
             structured_json=_json.dumps(
                 {
                     "generated_at": now.isoformat(),

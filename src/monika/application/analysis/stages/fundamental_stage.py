@@ -106,6 +106,18 @@ CORE CENTRAL BANK & CURRENCY ATTRACTIVENESS DIRECTIVES:
    - Treasury Auction Tails: Inspect `treasury_auction_results` (10Y/2Y). A negative tail and >65% indirect bidding denote robust foreign debt demand. A positive tail (>1.2 bps) denotes soft absorption and yields tailing out higher.
 6. GRANULAR REPORT BREAKDOWN & SIGNAL-TO-NOISE:
    - When evaluating recent macro surprises (CPI, NFP, PCE), do NOT rely on headlines alone. Distinguish transitory noise (e.g. volatile energy, used car declines) from persistent structural pressure (shelter, OER, supercore services). Cite whether the surprise alters the reaction function or is mere noise.
+7. INSTITUTIONAL MACRO RESEARCH MEMO FORMAT FOR macro_narrative:
+   - Write macro_narrative in professional institutional English (Bloomberg Intelligence / Goldman Sachs GIR style).
+   - Explain underlying economic causality and transmission mechanisms (how data alters central bank policy paths, how rate expectations reshape yield curves and real yields, and how liquidity dictates risk appetite).
+   - Structure clearly using Markdown sub-sections:
+     * `### 1. Macro Regime & Cross-Asset Sentiment`
+     * `### 2. Inflation & Labor Transmission to Central Bank Mandates`
+     * `### 3. Monetary Trajectory, Rates & Systemic Liquidity`
+     * `### 4. Cross-Market Dynamics & Institutional Positioning`
+     * `### 5. Primary Risks & Falsification Conditions`
+   - STRICT STYLE DIRECTIVES:
+     * Absolutely NO machine shorthand strings (avoid 'Pipeline A -> B -> C classified XYZ'). Write complete, articulate, reasoned economic prose.
+     * Absolutely NO generic AI slop, cliché openers, forced triads, or dramatic sales rhetoric. Maintain rigorous, objective, quantitative institutional analysis.
 
 IMPORTANT FOR currency_bias:
 - Required: USD, EUR, GBP, JPY, AUD, XAU

@@ -52,14 +52,30 @@ def _dispatch_to_listener(
     listener: Callable[[str, Dict[str, Any]], Any], event_type: str, payload: Dict[str, Any]
 ) -> None:
     try:
+        if inspect.iscoroutinefunction(listener):
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop is not None and loop.is_running():
+                coro = listener(event_type, payload)
+                loop.create_task(_safe_await(coro))
+            else:
+                logger.debug(f"Cannot dispatch async listener {listener}: no active event loop running")
+            return
+
         res = listener(event_type, payload)
         if inspect.isawaitable(res):
             try:
                 loop = asyncio.get_running_loop()
                 if loop.is_running():
                     loop.create_task(_safe_await(res))
+                elif inspect.iscoroutine(res):
+                    res.close()
             except RuntimeError:
-                pass
+                if inspect.iscoroutine(res):
+                    res.close()
     except Exception as exc:
         logger.debug(f"[EventBroadcaster] Listener dispatch error: {exc}")
 

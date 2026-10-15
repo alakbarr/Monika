@@ -1100,7 +1100,12 @@ class SubmitFundamentalBriefSchema(BaseModel):
     )
     macro_narrative: str = Field(
         ...,
-        description="A clear narrative summary of current macro conditions (2-4 paragraphs). Include key drivers, trends, and risks.",
+        description=(
+            "An articulate, institutional macro research memo (Bloomberg Intelligence / Goldman Sachs GIR style). "
+            "Explains economic causality, transmission mechanics, and cross-market dynamics across structured Markdown "
+            "sub-sections (1. Macro Regime & Sentiment, 2. Inflation & Labor Transmission, 3. Monetary Trajectory & Liquidity, "
+            "4. Cross-Market Dynamics & Positioning, 5. Primary Risks & Falsification Conditions). Avoid machine shorthand or generic AI slop."
+        ),
     )
     key_drivers: List[str] = Field(default_factory=list, description="Key macro drivers identified in the brief.")
     per_asset_macro_matrix: Dict[str, AssetMacroContext] = Field(

@@ -184,12 +184,20 @@ async def apply_portfolio_synthesis_reduction(
                                 mult = max(0.1, min(1.0, float(size_adj[sym])))
                             except TypeError, ValueError:
                                 continue
-                            ana = await adj_session.get(AssetAnalysis, r["analysis_id"])
-                            if ana:
-                                new_mult = round((ana.risk_multiplier or 1.0) * mult, 3)
-                                ana.risk_multiplier = new_mult
-                                r["risk_multiplier"] = new_mult
-                                logger.info(f"[PortfolioSynthesis] {sym} risk_multiplier -> {new_mult} (persisted)")
+                            analysis_id = r.get("analysis_id")
+                            new_mult = round(float(r.get("risk_multiplier", 1.0) or 1.0) * mult, 3)
+                            r["risk_multiplier"] = new_mult
+                            if analysis_id:
+                                ana = await adj_session.get(AssetAnalysis, analysis_id)
+                                if ana:
+                                    ana.risk_multiplier = new_mult
+                                    logger.info(f"[PortfolioSynthesis] {sym} risk_multiplier -> {new_mult} (persisted)")
+                                else:
+                                    logger.info(
+                                        f"[PortfolioSynthesis] {sym} risk_multiplier -> {new_mult} (in-memory, id {analysis_id} not in db)"
+                                    )
+                            else:
+                                logger.info(f"[PortfolioSynthesis] {sym} risk_multiplier -> {new_mult} (in-memory)")
                     await adj_session.commit()
 
             removed_trades = [(sym, r) for sym, r in actionable if sym not in keep_symbols]

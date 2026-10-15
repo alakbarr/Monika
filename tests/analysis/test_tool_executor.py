@@ -186,7 +186,8 @@ class TestToolExecutor:
         mock_session.add.assert_called_once()
         args, _ = mock_session.add.call_args
         assert isinstance(args[0], FundamentalBrief)
-        assert args[0].content_markdown == "test DXY is up, VIX is down"
+        assert "MONIKA MACRO INTELLIGENCE DOSSIER" in args[0].content_markdown
+        assert "test DXY is up, VIX is down" in args[0].content_markdown
 
     @pytest.mark.asyncio
     async def test_get_technical_indicators_success(self):

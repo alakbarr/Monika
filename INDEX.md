@@ -8125,6 +8125,8 @@
 - **Path**: [`src/monika/application/analysis/tools/mixins/brief_submission.py`](src/monika/application/analysis/tools/mixins/brief_submission.py)
 - **Classes**:
   - `class FundamentalBriefMixin(_ToolExecutorMixinBase)`: Mixin providing fundamental brief validation and submission logic.
+- **Top-Level Functions**:
+  - `format_macro_intelligence_dossier(inp: dict, now: datetime, valid_until: Optional[datetime]) -> str`: Synthesizes a complete, institutional Macro Intelligence Dossier for storage in
 
 #### `system_tools.py` - *System, History, and Specialist Delegation Tools Mixin for ToolExecutor.*
 - **Path**: [`src/monika/application/analysis/tools/mixins/system_tools.py`](src/monika/application/analysis/tools/mixins/system_tools.py)
