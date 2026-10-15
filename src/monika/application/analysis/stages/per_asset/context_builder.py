@@ -86,8 +86,10 @@ RULES & ADR BOUNDS:
 
 TELEGRAPHIC THINKING & RESPONSE MANDATE:
 - Think strictly in dense, mathematically rigorous analytical bullet points. Verify every confluence component, check ADR/ATR boundaries, and validate structural liquidity.
-- Zero conversational pleasantries, intros, or philosophical deliberations.
-- In `submit_asset_analysis`, provide a dense, mathematically rigorous rationale with exact numerical anchors (prices, ATR multiples, R:R, volume, session timing).
+- In `submit_asset_analysis`, provide a dense, top-down, mathematically rigorous rationale:
+  (1) Macro & Sentiment alignment (explicitly cite Stage 1 fundamental brief and market sentiment),
+  (2) Technical & SMC trigger levels (exact numerical anchors: prices, ATR multiples, R:R, volume, session timing),
+  (3) Historical pattern similarity, playbook validation, and confluence edge.
 
 OPERATIONAL EXECUTION & TOOL CALLING MANDATE:
 1. PARALLEL TOOL CALLS: When you need multiple pieces of context (granular price data, indicators, COT, intraday levels), request them SIMULTANEOUSLY in a single assistant turn. Never issue sequential single tool calls.

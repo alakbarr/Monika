@@ -2606,6 +2606,7 @@ Monika/
 │   │   ├── test_fuzzy_and_confirm.py
 │   │   ├── test_plugins_telegram.py
 │   │   ├── test_progressive_tools.py
+│   │   ├── test_proposal_notifier.py
 │   │   ├── test_sanitizer.py
 │   │   ├── test_session_approval.py
 │   │   ├── test_telegram_enhancements.py
@@ -2927,4 +2928,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 250 | **Total Tracked Files**: 2647
+**Total Tracked Directories**: 250 | **Total Tracked Files**: 2648

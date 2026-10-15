@@ -689,7 +689,12 @@ class SubmitAssetAnalysisSchema(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in this decision (0.0 to 1.0).")
     rationale: str = Field(
         ...,
-        description="Concise reasoning for the decision. Must be auditable by a human. Include key confluence factors.",
+        description=(
+            "Top-down structured reasoning for the decision: "
+            "(1) Macro & Sentiment alignment with Stage 1 brief, "
+            "(2) Technical & SMC trigger levels (exact numerical anchors, ATR multiples, R:R), "
+            "(3) Confluence factors, historical pattern similarity, and quantitative edge."
+        ),
     )
 
     specialist_adjudication: Optional[SpecialistAdjudication] = Field(
