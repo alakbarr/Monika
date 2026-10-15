@@ -78,8 +78,8 @@ def test_alembic_migration_chain_continuity():
 
     assert len(visited) == len(nodes), f"Broken chain! Total nodes: {len(nodes)}, Visited in sequence: {len(visited)}"
     assert visited[0] == "t1a2b3c4d5e6", f"Expected root revision to be t1a2b3c4d5e6, got {visited[0]}"
-    assert visited[-1] == "0006_consolidate_and_numeric", (
-        f"Expected head revision to be 0006_consolidate_and_numeric, got {visited[-1]}"
+    assert visited[-1] == "0007_sync_queue_schemas", (
+        f"Expected head revision to be 0007_sync_queue_schemas, got {visited[-1]}"
     )
 
 
