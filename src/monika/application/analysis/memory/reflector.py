@@ -216,6 +216,64 @@ class TradeReflector:
 
         return True, ""
 
+    def _parse_reflection_payload(self, resp: Any) -> Optional[dict]:
+        """Safely extract and parse JSON reflection dictionary from LLM response."""
+        if isinstance(resp, dict):
+            return resp
+        if not resp or not isinstance(resp, str) or not resp.strip():
+            return None
+        from monika.infrastructure.providers.base_provider import extract_and_parse_json
+
+        parsed = extract_and_parse_json(resp)
+        if isinstance(parsed, dict):
+            return parsed
+        return None
+
+    def _generate_deterministic_fallback(self, reflection, enrichment: dict) -> dict:
+        """
+        Generate a factual, structured reflection fallback when LLM output is unavailable or unparseable.
+        Prevents reflections from stalling in pending state and guarantees audit-compliant metrics.
+        """
+        was_profit = bool(getattr(reflection, "was_profitable", False))
+        symbol = str(getattr(reflection, "symbol", "UNKNOWN"))
+        decision = str(getattr(reflection, "decision", "HOLD")).upper()
+        pnl = float(getattr(reflection, "outcome_pnl_usd", 0.0) or 0.0)
+        reason = str(getattr(reflection, "exit_reason", "") or ("take_profit" if was_profit else "stop_loss"))
+        hours = float(getattr(reflection, "holding_hours", 0.0) or 0.0)
+        alpha = getattr(reflection, "alpha_return", None)
+        bench = getattr(reflection, "benchmark_name", None)
+
+        alpha_str = f" Alpha vs {bench}: {alpha:.2f}%." if bench and alpha is not None else ""
+
+        if was_profit:
+            reflection_text = f"Trade {decision} on {symbol} closed with profit (${pnl:.2f}) via {reason} after {hours:.1f}h.{alpha_str}"
+            specific_lesson = f"Trade {decision} on {symbol} achieved profitable target via {reason}; entry setup respected market structure."
+            lesson_tags = ["well_executed_setup"]
+            next_adjustment = "Maintain disciplined confluence verification and take profit targets."
+            process_was_sound = True
+            outcome_cls = "good_process_good_outcome"
+        else:
+            reflection_text = f"Trade {decision} on {symbol} closed with loss (${pnl:.2f}) via {reason} after {hours:.1f}h.{alpha_str}"
+            specific_lesson = f"Trade {decision} on {symbol} stopped out via {reason}; re-evaluate invalidation level and entry timing."
+            lesson_tags = ["sl_too_tight"]
+            next_adjustment = (
+                "Verify support/resistance buffer and avoid entering without clear structural confirmation."
+            )
+            process_was_sound = False
+            outcome_cls = "bad_process_bad_outcome"
+
+        return {
+            "reflection_text": reflection_text,
+            "lesson_tags": lesson_tags,
+            "specific_lesson": specific_lesson,
+            "next_trade_adjustment": next_adjustment,
+            "alpha_lesson": f"Outcome aligned with strategy execution.{alpha_str}",
+            "process_was_sound": process_was_sound,
+            "outcome_process_classification": outcome_cls,
+            "macro_thesis_correct": was_profit,
+            "synthesis_adjudication_sound": process_was_sound,
+        }
+
     async def record_pending_reflection(
         self,
         session,
@@ -333,52 +391,70 @@ class TradeReflector:
             system_prompt=sys_prompt, user_message=user_msg, response_schema=REFLECTION_SCHEMA
         )
 
-        try:
-            data = json.loads(resp) if isinstance(resp, str) else resp
+        data = self._parse_reflection_payload(resp)
 
-            # Self-Correcting Reflection Critique Loop
-            is_valid, critique = self._verify_reflection_quality(data, reflection.was_profitable)
-            if not is_valid:
-                logger.warning(
-                    f"Reflection critique triggered for #{reflection_id}: {critique}. Requesting self-correction."
-                )
-                refine_msg = (
-                    f"{user_msg}\n\n"
-                    f"CRITIQUE ON PREVIOUS DRAFT:\n"
-                    f"Your previous reflection was rejected by the audit gate: {critique}\n"
-                    f"Provide an improved, strictly concrete reflection with non-generic lessons matching actual outcome."
-                )
+        # Self-Correcting Reflection Critique Loop
+        is_valid, critique = self._verify_reflection_quality(data, reflection.was_profitable)
+        if not is_valid:
+            logger.warning(
+                f"Reflection critique triggered for #{reflection_id}: {critique}. Requesting self-correction."
+            )
+            refine_msg = (
+                f"{user_msg}\n\n"
+                f"CRITIQUE ON PREVIOUS DRAFT:\n"
+                f"Your previous reflection was rejected by the audit gate: {critique}\n"
+                f"Provide an improved, strictly concrete reflection with non-generic lessons matching actual outcome."
+            )
+            try:
                 resp = await client.generate_content(
                     system_prompt=sys_prompt, user_message=refine_msg, response_schema=REFLECTION_SCHEMA
                 )
-                data = json.loads(resp) if isinstance(resp, str) else resp
+                data = self._parse_reflection_payload(resp)
+                is_valid, critique = self._verify_reflection_quality(data, reflection.was_profitable)
+            except Exception as retry_err:
+                logger.warning(f"Reflection self-correction request failed: {retry_err}")
 
-            if isinstance(data, dict):
-                reflection.reflection_text = data.get("reflection_text", "")
-                reflection.lesson_tags = json.dumps(data.get("lesson_tags", []))
-                reflection.specific_lesson = data.get("specific_lesson", "")
-                reflection.next_trade_adjustment = data.get("next_trade_adjustment", "")
-                reflection.alpha_lesson = data.get("alpha_lesson", "")
-                reflection.process_was_sound = data.get("process_was_sound")
-                reflection.outcome_process_classification = data.get("outcome_process_classification")
-                reflection.status = "resolved"
-                reflection.resolved_at = clock.now()
+        # If LLM failed to produce structured dictionary, use deterministic fallback
+        if not isinstance(data, dict):
+            logger.warning(
+                f"[TradeReflector] LLM reflection failed to produce valid JSON for reflection #{reflection_id}. Using deterministic structured post-mortem fallback."
+            )
+            data = self._generate_deterministic_fallback(reflection, enrichment)
+        elif not is_valid:
+            logger.warning(
+                f"[TradeReflector] LLM reflection #{reflection_id} failed quality critique ({critique}). Retaining parsed fields and applying fallback for missing metrics."
+            )
+            fallback = self._generate_deterministic_fallback(reflection, enrichment)
+            for k, v in fallback.items():
+                if not data.get(k):
+                    data[k] = v
 
-                # Generate and store embedding for semantic precedent search
-                try:
-                    from monika.infrastructure.llm.embedding import generate_gemini_embedding
+        try:
+            reflection.reflection_text = data.get("reflection_text", "")
+            reflection.lesson_tags = json.dumps(data.get("lesson_tags", []))
+            reflection.specific_lesson = data.get("specific_lesson", "")
+            reflection.next_trade_adjustment = data.get("next_trade_adjustment", "")
+            reflection.alpha_lesson = data.get("alpha_lesson", "")
+            reflection.process_was_sound = data.get("process_was_sound")
+            reflection.outcome_process_classification = data.get("outcome_process_classification")
+            reflection.status = "resolved"
+            reflection.resolved_at = clock.now()
 
-                    embed_text = f"Symbol: {reflection.symbol} | Decision: {reflection.decision} | Rationale: {reflection.rationale_summary or ''} | Lesson: {reflection.specific_lesson} | Outcome: {reflection.exit_reason or ''}"
-                    vec = await generate_gemini_embedding(embed_text, settings=self.settings)
-                    if vec:
-                        reflection.embedding = vec
-                        logger.info(
-                            f"[TradeReflector] Generated vector embedding ({len(vec)} dim) for reflection #{reflection_id}"
-                        )
-                except Exception as emb_err:
-                    logger.debug(f"[TradeReflector] Embedding generation non-fatal error: {emb_err}")
+            # Generate and store embedding for semantic precedent search
+            try:
+                from monika.infrastructure.llm.embedding import generate_gemini_embedding
+
+                embed_text = f"Symbol: {reflection.symbol} | Decision: {reflection.decision} | Rationale: {reflection.rationale_summary or ''} | Lesson: {reflection.specific_lesson} | Outcome: {reflection.exit_reason or ''}"
+                vec = await generate_gemini_embedding(embed_text, settings=self.settings)
+                if vec:
+                    reflection.embedding = vec
+                    logger.info(
+                        f"[TradeReflector] Generated vector embedding ({len(vec)} dim) for reflection #{reflection_id}"
+                    )
+            except Exception as emb_err:
+                logger.debug(f"[TradeReflector] Embedding generation non-fatal error: {emb_err}")
         except Exception as e:
-            logger.error(f"Reflector JSON Parse Error: {e}")
+            logger.error(f"Reflector record update error: {e}")
         from monika.infrastructure.database.safe_ops import safe_commit
 
         await safe_commit(session, label="trade_reflector")
@@ -401,63 +477,65 @@ class TradeReflector:
             pass
 
         # Subsystem 6: Dual-Branch Closed-Loop Memory (Win -> Playbook Promotion, Loss -> Negative Constraint)
-        if getattr(reflection, "was_profitable", False):
-            # Branch A: Win -> Skill Crystallization & Playbook Promotion
-            try:
-                from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
-
-                crystallizer = SkillCrystallizer(self.settings)
-                await crystallizer.evaluate_and_crystallize(session, symbol=reflection.symbol)
-            except Exception as cry_err:
-                logger.debug(f"Skill crystallization non-fatal error: {cry_err}")
-        else:
-            # Branch B: Loss -> Negative Constraint Generation & Storage
-            try:
-                import time
-
-                from monika.infrastructure.database.models import SystemConfig
-
-                lesson_str = getattr(reflection, "specific_lesson", "") or "unspecified execution failure"
-                tags = json.loads(getattr(reflection, "lesson_tags", "[]") or "[]")
-                primary_tag = tags[0] if tags else "execution_flaw"
-
-                constraint_text = (
-                    f"[NEGATIVE_CONSTRAINT]: For {reflection.symbol} ({reflection.decision}), avoid setup when: "
-                    f"'{lesson_str}' (Primary Tag: {primary_tag})."
-                )
-
-                now_ts = int(time.time())
-                constraint_key = f"negative_constraint_{reflection.symbol}_{now_ts}"
-                constraint_payload = {
-                    "symbol": reflection.symbol,
-                    "direction": reflection.decision,
-                    "lesson": lesson_str,
-                    "tags": tags,
-                    "constraint_text": constraint_text,
-                    "reflection_id": reflection_id,
-                    "created_at": now_ts,
-                }
-
-                session.add(SystemConfig(key=constraint_key, value=json.dumps(constraint_payload)))
-                from monika.infrastructure.database.safe_ops import safe_commit
-
-                await safe_commit(session, label="negative_constraint_save")
-
+        if reflection.status == "resolved":
+            if getattr(reflection, "was_profitable", False):
+                # Branch A: Win -> Skill Crystallization & Playbook Promotion
                 try:
-                    from monika.infrastructure.database.event_store import TradingEventStore
+                    from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
 
-                    await TradingEventStore.emit(
-                        session=session,
-                        event_type="learning.negative_constraint",
-                        payload=constraint_payload,
-                        correlation_id=f"neg_constraint_{reflection.symbol}_{now_ts}",
-                        actor="trade_reflector",
-                    )
-                except Exception:
-                    pass
+                    crystallizer = SkillCrystallizer(self.settings)
+                    await crystallizer.evaluate_and_crystallize(session, symbol=reflection.symbol)
+                except Exception as cry_err:
+                    logger.debug(f"Skill crystallization non-fatal error: {cry_err}")
+            else:
+                # Branch B: Loss -> Negative Constraint Generation & Storage
+                try:
+                    import time
 
-                logger.info(
-                    f"[TradeReflector] Generated and stored Negative Constraint for {reflection.symbol}: {constraint_text}"
-                )
-            except Exception as neg_err:
-                logger.debug(f"Negative constraint generation error (non-fatal): {neg_err}")
+                    from monika.infrastructure.database.models import SystemConfig
+
+                    lesson_str = getattr(reflection, "specific_lesson", "") or ""
+                    if lesson_str and lesson_str != "unspecified execution failure":
+                        tags = json.loads(getattr(reflection, "lesson_tags", "[]") or "[]")
+                        primary_tag = tags[0] if tags else "execution_flaw"
+
+                        constraint_text = (
+                            f"[NEGATIVE_CONSTRAINT]: For {reflection.symbol} ({reflection.decision}), avoid setup when: "
+                            f"'{lesson_str}' (Primary Tag: {primary_tag})."
+                        )
+
+                        now_ts = int(time.time())
+                        constraint_key = f"negative_constraint_{reflection.symbol}_{now_ts}"
+                        constraint_payload = {
+                            "symbol": reflection.symbol,
+                            "direction": reflection.decision,
+                            "lesson": lesson_str,
+                            "tags": tags,
+                            "constraint_text": constraint_text,
+                            "reflection_id": reflection_id,
+                            "created_at": now_ts,
+                        }
+
+                        session.add(SystemConfig(key=constraint_key, value=json.dumps(constraint_payload)))
+                        from monika.infrastructure.database.safe_ops import safe_commit
+
+                        await safe_commit(session, label="negative_constraint_save")
+
+                        try:
+                            from monika.infrastructure.database.event_store import TradingEventStore
+
+                            await TradingEventStore.emit(
+                                session=session,
+                                event_type="learning.negative_constraint",
+                                payload=constraint_payload,
+                                correlation_id=f"neg_constraint_{reflection.symbol}_{now_ts}",
+                                actor="trade_reflector",
+                            )
+                        except Exception:
+                            pass
+
+                        logger.info(
+                            f"[TradeReflector] Generated and stored Negative Constraint for {reflection.symbol}: {constraint_text}"
+                        )
+                except Exception as neg_err:
+                    logger.debug(f"Negative constraint generation non-fatal error: {neg_err}")

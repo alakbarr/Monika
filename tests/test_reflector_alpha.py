@@ -110,3 +110,97 @@ async def test_stage2_prefetcher_alpha_lessons_none_safe():
     assert lines[1] == "Lesson: Lesson with alpha return"
     assert lines[2] == "[Recent] Alpha: N/A"
     assert lines[3] == "Lesson: Lesson with None alpha return"
+
+
+@pytest.mark.asyncio
+async def test_reflector_handles_empty_response_with_fallback():
+    """Verify that an empty LLM response is handled gracefully with deterministic fallback without crashing."""
+    settings = {}
+    with (
+        patch("monika.application.analysis.memory.reflector.get_client_for_task") as mock_get_client,
+        patch("monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer") as mock_cryst,
+    ):
+        mock_cryst.return_value.evaluate_and_crystallize = AsyncMock()
+        mock_client = AsyncMock()
+        mock_client.generate_content.return_value = ""  # Empty string simulates failed / blocked generation
+        mock_get_client.return_value = mock_client
+
+        reflector = TradeReflector(settings=settings)
+        session = create_mock_async_session()
+        mock_reflection = DecisionReflection(
+            id=1,
+            status="pending",
+            is_paper_whatif=False,
+            rationale_summary="Bought breakout.",
+            decision="BUY",
+            confidence=0.8,
+            outcome_pnl_usd=-35.0,
+            was_profitable=False,
+            holding_hours=1.5,
+            exit_reason="sl_hit",
+            benchmark_name="DXY",
+            alpha_return=-0.8,
+            symbol="XAUUSD",
+        )
+        session.get.return_value = mock_reflection
+
+        await reflector.reflect_on_trade(session, 1)
+
+        assert mock_reflection.status == "resolved"
+        assert "stopped out via sl_hit" in mock_reflection.specific_lesson
+        assert mock_reflection.process_was_sound is False
+        assert mock_reflection.outcome_process_classification == "bad_process_bad_outcome"
+
+
+@pytest.mark.asyncio
+async def test_reflector_handles_markdown_and_thoughts():
+    """Verify that markdown code fences and reasoning model <think> tags are stripped and parsed cleanly."""
+    settings = {}
+    with (
+        patch("monika.application.analysis.memory.reflector.get_client_for_task") as mock_get_client,
+        patch("monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer") as mock_cryst,
+    ):
+        mock_cryst.return_value.evaluate_and_crystallize = AsyncMock()
+        mock_client = AsyncMock()
+        mock_client.generate_content.return_value = (
+            "<think>Analyzing trade outcome...</think>\n"
+            "```json\n"
+            "{\n"
+            '  "reflection_text": "Good technical execution.",\n'
+            '  "lesson_tags": ["well_executed_setup"],\n'
+            '  "specific_lesson": "Valid technical breakout on H4 timeframe occurred with clear momentum.",\n'
+            '  "next_trade_adjustment": "Maintain current risk reward ratio.",\n'
+            '  "alpha_lesson": "Outperformed the benchmark significantly.",\n'
+            '  "process_was_sound": true,\n'
+            '  "outcome_process_classification": "good_process_good_outcome",\n'
+            '  "macro_thesis_correct": true,\n'
+            '  "synthesis_adjudication_sound": true\n'
+            "}\n"
+            "```"
+        )
+        mock_get_client.return_value = mock_client
+
+        reflector = TradeReflector(settings=settings)
+        session = create_mock_async_session()
+        mock_reflection = DecisionReflection(
+            id=1,
+            status="pending",
+            is_paper_whatif=False,
+            rationale_summary="Bought breakout.",
+            decision="BUY",
+            confidence=0.85,
+            outcome_pnl_usd=120.0,
+            was_profitable=True,
+            holding_hours=4.0,
+            exit_reason="tp_hit",
+            benchmark_name="DXY",
+            alpha_return=2.5,
+            symbol="XAUUSD",
+        )
+        session.get.return_value = mock_reflection
+
+        await reflector.reflect_on_trade(session, 1)
+
+        assert mock_reflection.status == "resolved"
+        assert "Valid technical breakout on H4 timeframe" in mock_reflection.specific_lesson
+        assert mock_reflection.process_was_sound is True
