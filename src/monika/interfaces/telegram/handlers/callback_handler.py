@@ -516,7 +516,7 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
             )
             return
 
-        if data.startswith("confirm:"):
+        if data.startswith("confirm:") or data.startswith("approve:"):
             if not self._is_admin(update):
                 await query.answer("[AKSES DITOLAK] Action confirmation only permitted for Admin.", show_alert=True)
                 return

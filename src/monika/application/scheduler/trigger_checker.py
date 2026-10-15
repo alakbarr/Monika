@@ -290,7 +290,7 @@ class TriggerChecker:
 
                                         keyboard = None
                                         try:
-                                            keyboard = AgentNotifier.build_confirm_keyboard(str(ana_id))
+                                            keyboard = AgentNotifier.build_trade_proposal_keyboard(str(ana_id))
                                         except Exception as kb_err:
                                             logger.debug(
                                                 f"Could not build inline keyboard for trade proposal: {kb_err}"
@@ -302,7 +302,7 @@ class TriggerChecker:
                                             f"<b>Action:</b> {dec}\n"
                                             f"<b>Confidence:</b> {conf:.2f}\n"
                                             f"<b>SL:</b> {sl} | <b>TP:</b> {tp}\n\n"
-                                            f"Gunakan tombol di bawah atau kirim <code>/approve {ana_id}</code>.",
+                                            f"Gunakan tombol di bawah untuk memutuskan.",
                                             reply_markup=keyboard,
                                         )
                                     except Exception as notify_err:

@@ -23,7 +23,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
@@ -351,6 +351,18 @@ class CommandRouter:
                 [
                     InlineKeyboardButton("[GAGAL] Deny", callback_data=f"reject:{action_id}"),
                 ],
+            ]
+        )
+
+    @staticmethod
+    def build_trade_proposal_keyboard(analysis_id: Any) -> InlineKeyboardMarkup:
+        """Create clean inline keyboard with Approve and Reject buttons for trade proposals."""
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("✅ Setujui (Eksekusi)", callback_data=f"confirm:{analysis_id}"),
+                    InlineKeyboardButton("❌ Tolak (Lewati)", callback_data=f"reject:{analysis_id}"),
+                ]
             ]
         )
 

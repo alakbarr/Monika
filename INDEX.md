@@ -9164,10 +9164,10 @@
   - `async ai_portfolio_synthesis(actionable: List[Tuple[str, Dict[str, Any]]], session: Any, settings: Dict[str, Any], ...) -> Dict[str, Any]`: Executes AI portfolio-level synthesis when multiple trades are proposed simultaneously.
   - `async apply_portfolio_synthesis_reduction(actionable: List[Tuple[str, Dict[str, Any]]], scheduler: Any, state: Mapping[str, Any]) -> Tuple[List[Tuple[str, Dict[str, Any]]], List[Dict[str, Any]]]`: Invokes AI portfolio synthesis when >= 3 trades are proposed, applies size adjustments,
 
-#### `proposal_notifier.py` - *Formats and dispatches trade proposal notifications to Telegram operators*
+#### `proposal_notifier.py` - *Formats and dispatches top-down trade proposal notifications to Telegram operators*
 - **Path**: [`src/monika/application/graph/nodes/risk/proposal_notifier.py`](src/monika/application/graph/nodes/risk/proposal_notifier.py)
 - **Top-Level Functions**:
-  - `async send_proposal_notifications(actionable: List[Tuple[str, Dict[str, Any]]]) -> None`: Constructs Telegram HTML cards and sends trade proposal alerts to operators.
+  - `async send_proposal_notifications(actionable: List[Tuple[str, Dict[str, Any]]]) -> None`: Constructs top-down Telegram HTML cards with interactive inline buttons
 
 #### `quant_arbitration.py` - *Evaluates algorithmic quant alphas from StrategyRegistry across candidate symbols*
 - **Path**: [`src/monika/application/graph/nodes/risk/quant_arbitration.py`](src/monika/application/graph/nodes/risk/quant_arbitration.py)
@@ -12134,6 +12134,7 @@
     - `async send_alert(message: str)` - *Mengirim alert peringatan / degradasi sistem.*
     - `async send_cycle_summary(summary: dict)`
     - `build_confirm_keyboard(action_id: str)` - *Create inline keyboard for AI action proposal confirmation (3-Tier Session Gate).*
+    - `build_trade_proposal_keyboard(analysis_id: Any)` - *Create clean inline keyboard with Approve and Reject buttons for trade proposals.*
 - **Top-Level Functions**:
   - `get_notifier() -> AgentNotifier`: Helper factory function to get an AgentNotifier instance.
 
@@ -13554,6 +13555,7 @@
     - `parse(update: Update) -> Optional[ParsedCommand]` - *Mengurai update Telegram menjadi objek ParsedCommand.*
     - `build_help_text() -> str`
     - `build_confirm_keyboard(action_id: str) -> InlineKeyboardMarkup` - *Create inline keyboard for AI action proposal confirmation (3-Tier Session Gate).*
+    - `build_trade_proposal_keyboard(analysis_id: Any) -> InlineKeyboardMarkup` - *Create clean inline keyboard with Approve and Reject buttons for trade proposals.*
     - `build_close_keyboard(ticket: int, volume: Optional[float]) -> InlineKeyboardMarkup` - *Create inline keyboard for position closure confirmation.*
 
 #### `fuzzy_router.py` - *File: telegram_bot/fuzzy_router.py*

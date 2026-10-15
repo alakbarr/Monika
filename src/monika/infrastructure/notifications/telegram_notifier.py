@@ -18,7 +18,7 @@ import os
 import re
 from collections import deque
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from telegram import Bot
 from telegram.error import TelegramError
@@ -274,6 +274,20 @@ class AgentNotifier(NotifierPort):
                 [
                     InlineKeyboardButton("[GAGAL] Deny", callback_data=f"reject:{action_id}"),
                 ],
+            ]
+        )
+
+    @staticmethod
+    def build_trade_proposal_keyboard(analysis_id: Any):
+        """Create clean inline keyboard with Approve and Reject buttons for trade proposals."""
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("✅ Setujui (Eksekusi)", callback_data=f"confirm:{analysis_id}"),
+                    InlineKeyboardButton("❌ Tolak (Lewati)", callback_data=f"reject:{analysis_id}"),
+                ]
             ]
         )
 
