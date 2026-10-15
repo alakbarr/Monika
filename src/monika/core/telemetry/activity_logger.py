@@ -28,7 +28,7 @@ load_dotenv()
 
 CATEGORIES = frozenset({"trading", "analysis", "risk", "system", "scraping", "telegram"})
 LOG_FORMAT_FILE = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
-LOG_FORMAT_CONSOLE = "%(asctime)s | %(levelname)-8s | %(message)s"
+LOG_FORMAT_CONSOLE = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
@@ -144,6 +144,7 @@ def setup_logging(
     # --- Console handler ---
     console = logging.StreamHandler()
     console.setLevel(level)
+    console.setFormatter(RedactingFormatter(LOG_FORMAT_CONSOLE, datefmt=DATE_FORMAT))
     masking_filter = SensitiveMaskingFilter()
     file_handler.addFilter(masking_filter)
     error_handler.addFilter(masking_filter)
