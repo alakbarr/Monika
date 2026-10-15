@@ -2786,6 +2786,18 @@ Monika/
 │   │   ├── check_news.py
 │   │   ├── check_sentiment.py
 │   │   └── check_twitter.py
+│   ├── empirical_alpha/
+│   │   ├── __init__.py
+│   │   ├── asset_pool_signals.py
+│   │   ├── baseline_signals.py
+│   │   ├── evaluator.py
+│   │   ├── metadata.py
+│   │   ├── multi_indicator_signals.py
+│   │   ├── omni_signals.py
+│   │   ├── session_signals.py
+│   │   ├── signals.py
+│   │   ├── targeted_signals.py
+│   │   └── ultra_signals.py
 │   ├── audit_settings_keys.py
 │   ├── audit_token_usage.py
 │   ├── benchmark_debate_openrouter.py
@@ -2914,4 +2926,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 249 | **Total Tracked Files**: 2635
+**Total Tracked Directories**: 250 | **Total Tracked Files**: 2646

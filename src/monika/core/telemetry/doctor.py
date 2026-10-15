@@ -275,7 +275,13 @@ class SystemDoctor:
         ]
         active_count = 0
         for env_var, name in providers:
-            if os.getenv(env_var) or (env_var == "GEMINI_API_KEY" and os.getenv("GEMINI_API_KEYS")):
+            has_key = (
+                bool(os.getenv(env_var))
+                or (env_var == "GEMINI_API_KEY" and bool(os.getenv("GEMINI_API_KEYS")))
+                or (env_var == "GROQ_API_KEY" and bool(os.getenv("GROQ_API_KEYS")))
+                or (env_var == "ANTHROPIC_API_KEY" and bool(os.getenv("ANTHROPIC_API_KEYS")))
+            )
+            if has_key:
                 self._record("Credentials", env_var, "OK", f"{name} API key configured.")
                 active_count += 1
             else:

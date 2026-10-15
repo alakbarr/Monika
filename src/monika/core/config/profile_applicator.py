@@ -123,7 +123,7 @@ class ProfileApplicator:
             "openrouter": bool(env.get("OPENROUTER_API_KEY") or env.get("OPENROUTER_API_KEYS")),
             "anthropic": bool(env.get("ANTHROPIC_API_KEY") or env.get("ANTHROPIC_API_KEYS")),
             "openai": bool(env.get("OPENAI_API_KEY")),
-            "groq": bool(env.get("GROQ_API_KEY")),
+            "groq": bool(env.get("GROQ_API_KEY") or env.get("GROQ_API_KEYS")),
             "deepseek": bool(env.get("DEEPSEEK_API_KEY")),
             "9router": bool(env.get("ENABLE_9ROUTER", "true").lower() in ("1", "true", "yes")),
         }
