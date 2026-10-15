@@ -107,13 +107,21 @@ class EvidenceFirstVerifier:
             violations.append("ASSERT_5: Invalidation condition missing or too vague (minimum 10 characters).")
 
         # 6. Confidence Score
-        if confidence < 0.50:
-            violations.append(f"ASSERT_6: Confidence ({confidence:.2f}) is below execution floor (0.50).")
+        decision_source = str(signal.get("decision_source") or "").lower()
+        is_edge_signal = decision_source == "edge_registry" or bool(signal.get("source_strategy_id"))
+        min_confidence = 0.30 if is_edge_signal else 0.50
+        if confidence < min_confidence:
+            violations.append(
+                f"ASSERT_6: Confidence ({confidence:.2f}) is below execution floor ({min_confidence:.2f})."
+            )
 
-        # 7. Confluence Score
-        min_conf = float(signal.get("min_confluence") or getattr(self, "min_confluence", 4))
-        if confluence_score < min_conf:
-            violations.append(f"ASSERT_7: Confluence score ({confluence_score}/14) is below threshold ({min_conf}).")
+        # 7. Confluence Score (LLM Stage 2 signals require 14-point scorecard, quantitative edge signals are exempted)
+        if not is_edge_signal:
+            min_conf = float(signal.get("min_confluence") or getattr(self, "min_confluence", 4))
+            if confluence_score < min_conf:
+                violations.append(
+                    f"ASSERT_7: Confluence score ({confluence_score}/14) is below threshold ({min_conf})."
+                )
 
         # 8. Priced-in Score Overheat Guard
         if priced_in_score >= 8:

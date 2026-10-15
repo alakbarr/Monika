@@ -89,3 +89,50 @@ def test_record_evidence_payload_hash():
     assert "payload_hash" in rec
     expected_hash = hashlib.sha256(json.dumps(decision_payload, sort_keys=True, default=str).encode()).hexdigest()
     assert rec["payload_hash"] == expected_hash
+
+
+@pytest.mark.asyncio
+async def test_pre_trade_assertions_edge_registry_exempt_assert_7():
+    verifier = EvidenceFirstVerifier()
+    # Quantitative edge strategy signal without LLM confluence score
+    edge_signal = {
+        "symbol": "EURUSD",
+        "decision": "BUY",
+        "entry_price": 1.0850,
+        "stop_loss": 1.0820,
+        "take_profit": 1.0920,
+        "confidence": 0.45,
+        "confluence_score": 0,
+        "priced_in_score": 0,
+        "invalidation": "Strategy exit: smc_fvg",
+        "key_evidence": ["FVG zone mitigation", "R:R 2.33"],
+        "quote_age_seconds": 10,
+        "decision_source": "edge_registry",
+        "source_strategy_id": "smc_fvg",
+    }
+    passed, violations = await verifier.pre_trade_assertions(edge_signal)
+    assert passed is True
+    assert len(violations) == 0
+
+
+@pytest.mark.asyncio
+async def test_pre_trade_assertions_edge_registry_low_confidence():
+    verifier = EvidenceFirstVerifier()
+    edge_signal = {
+        "symbol": "EURUSD",
+        "decision": "BUY",
+        "entry_price": 1.0850,
+        "stop_loss": 1.0820,
+        "take_profit": 1.0920,
+        "confidence": 0.25,  # below 0.30 floor
+        "confluence_score": 0,
+        "priced_in_score": 0,
+        "invalidation": "Strategy exit: smc_fvg",
+        "key_evidence": ["FVG zone mitigation", "R:R 2.33"],
+        "decision_source": "edge_registry",
+        "source_strategy_id": "smc_fvg",
+    }
+    passed, violations = await verifier.pre_trade_assertions(edge_signal)
+    assert passed is False
+    assert any("ASSERT_6" in v for v in violations)
+    assert not any("ASSERT_7" in v for v in violations)

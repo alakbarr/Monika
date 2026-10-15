@@ -1688,7 +1688,8 @@ class AgentHarness:
                             "get_atr",
                             "get_swing_points",
                         }
-                        if not any(t in called_tools for t in inspection_tools):
+                        all_inspected_tools = set(called_tools) | set(prefetch_satisfied_tools or [])
+                        if not any(t in all_inspected_tools for t in inspection_tools):
                             logger.warning(
                                 f"[{stage_name}][AgentHarness] Anti-laziness: blocked premature WAIT on turn 1 without technical inspection."
                             )

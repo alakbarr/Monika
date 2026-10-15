@@ -669,7 +669,11 @@ class FallbackClientWrapper(BaseLLMClient):
             per_model_timeout = float(explicit_timeout)
         elif method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages"]:
             max_turns = float((self.role_config or {}).get("max_tool_turns", 15))
-            per_model_timeout = max(300.0, max_turns * 45.0)
+            cfg_pm_timeout = (self.role_config or {}).get("per_model_timeout_seconds")
+            if cfg_pm_timeout is not None:
+                per_model_timeout = float(cfg_pm_timeout)
+            else:
+                per_model_timeout = max(300.0, max_turns * 45.0)
         elif self.task_role in HOT_PATH_ROLES:
             max_turns = float((self.role_config or {}).get("max_tool_turns", 3))
             per_model_timeout = max(45.0, min(120.0, max_turns * 30.0))

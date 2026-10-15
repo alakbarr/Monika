@@ -399,3 +399,135 @@ async def test_harness_prompt_cache_hardening_with_plain_string(mock_session, du
     assert result["success"] is True
     called_sys = dummy_client.mock_run_tool_agent.call_args[0][2]
     assert called_sys == "Simple plain prompt"
+
+
+@pytest.mark.asyncio
+async def test_harness_anti_laziness_blocks_premature_wait_on_turn_1(dummy_client, mock_session):
+    """Verify that submitting WAIT on turn 1 without prior tool calls or prefetch triggers anti-laziness nudge."""
+    harness = AgentHarness(dummy_client, max_tool_turns=4)
+
+    mock_executor = AsyncMock()
+    mock_executor.execute = AsyncMock(side_effect=[{"zones": ["demand_1"]}, {"status": "submitted"}])
+
+    # Turn 1: Model immediately attempts to submit WAIT without inspection
+    resp1 = MockResponse(
+        content=[
+            MockBlock(
+                "tool_use",
+                name="submit_asset_analysis",
+                input={"symbol": "EURUSD", "decision": "WAIT", "timeframe": "M15"},
+                id="c1",
+            )
+        ],
+        stop_reason="tool_use",
+        input_tokens=50,
+        output_tokens=20,
+    )
+    # Turn 2: In response to anti-laziness nudge, model calls get_smc_zones
+    resp2 = MockResponse(
+        content=[
+            MockBlock(
+                "tool_use",
+                name="get_smc_zones",
+                input={"symbol": "EURUSD"},
+                id="c2",
+            )
+        ],
+        stop_reason="tool_use",
+        input_tokens=50,
+        output_tokens=20,
+    )
+    # Turn 3: Having inspected zones, model legitimately submits WAIT
+    resp3 = MockResponse(
+        content=[
+            MockBlock(
+                "tool_use",
+                name="submit_asset_analysis",
+                input={"symbol": "EURUSD", "decision": "WAIT", "timeframe": "M15"},
+                id="c3",
+            )
+        ],
+        stop_reason="tool_use",
+        input_tokens=50,
+        output_tokens=20,
+    )
+    # Turn 4: Final conclusion
+    resp4 = MockResponse(
+        content=[MockBlock("text", text="Done")],
+        stop_reason="end_turn",
+        input_tokens=20,
+        output_tokens=10,
+    )
+    dummy_client.mock_run_tool_agent.side_effect = [resp1, resp2, resp3, resp4]
+
+    result = await harness.run_agent_from_messages(
+        session=mock_session,
+        system_prompt="Analyze EURUSD",
+        messages=[{"role": "user", "content": "Start"}],
+        tools=[{"name": "get_smc_zones"}, {"name": "submit_asset_analysis"}],
+        stage_name="per_asset_EURUSD",
+        prefetch_satisfied_tools=None,
+        tool_executor=mock_executor,
+    )
+
+    assert result["success"] is True
+
+    # Check context messages for the anti-laziness nudge on turn 1
+    tool_results = [
+        b["content"]
+        for m in result["context_messages"]
+        if m["role"] == "user" and isinstance(m["content"], list)
+        for b in m["content"]
+        if b.get("type") == "tool_result"
+    ]
+    assert any("anti_laziness_nudge" in str(c) for c in tool_results)
+
+    # Turn 2 executed get_smc_zones, Turn 3 executed submit_asset_analysis
+    assert mock_executor.execute.call_count == 2
+    assert mock_executor.execute.call_args_list[0][0][0] == "get_smc_zones"
+    assert mock_executor.execute.call_args_list[1][0][0] == "submit_asset_analysis"
+
+
+@pytest.mark.asyncio
+async def test_harness_anti_laziness_allows_wait_with_prefetch_satisfied_tools(dummy_client, mock_session):
+    """Verify that prefetch_satisfied_tools allows immediate WAIT submission on turn 1."""
+    harness = AgentHarness(dummy_client, max_tool_turns=3)
+
+    mock_executor = AsyncMock()
+    mock_executor.execute = AsyncMock(return_value={"status": "submitted"})
+
+    resp1 = MockResponse(
+        content=[
+            MockBlock(
+                "tool_use",
+                name="submit_asset_analysis",
+                input={"symbol": "EURUSD", "decision": "WAIT", "timeframe": "M15"},
+                id="c1",
+            )
+        ],
+        stop_reason="tool_use",
+        input_tokens=50,
+        output_tokens=20,
+    )
+    resp2 = MockResponse(
+        content=[MockBlock("text", text="Analysis complete")],
+        stop_reason="end_turn",
+        input_tokens=50,
+        output_tokens=20,
+    )
+    dummy_client.mock_run_tool_agent.side_effect = [resp1, resp2]
+
+    result = await harness.run_agent_from_messages(
+        session=mock_session,
+        system_prompt="Analyze EURUSD",
+        messages=[{"role": "user", "content": "Start"}],
+        tools=[{"name": "submit_asset_analysis"}],
+        stage_name="per_asset_EURUSD",
+        prefetch_satisfied_tools={"get_smc_zones", "get_price_history"},
+        tool_executor=mock_executor,
+    )
+
+    assert result["success"] is True
+    assert mock_executor.execute.call_count == 1
+    call_args = mock_executor.execute.call_args[0]
+    assert call_args[0] == "submit_asset_analysis"

@@ -305,6 +305,8 @@ class AnalysisSubmissionMixin(_ExecutionServiceMixinBase):
                         "key_evidence": key_evidence,
                         "confluence_factors_json": key_evidence,
                         "rationale": getattr(analysis, "rationale", ""),
+                        "decision_source": getattr(analysis, "decision_source", None),
+                        "source_strategy_id": getattr(analysis, "source_strategy_id", None),
                     }
                     passed, assertions_failed = await self.evidence_verifier.pre_trade_assertions(
                         signal_dict, session=session
