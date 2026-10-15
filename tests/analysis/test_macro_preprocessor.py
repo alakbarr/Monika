@@ -114,7 +114,7 @@ class TestMacroPreprocessor:
     @pytest.mark.asyncio
     async def test_compute_surprise_summary_handles_offset_naive_datetime(self, preprocessor):
         session = create_mock_async_session()
-        naive_dt = datetime(2026, 10, 8, 12, 0, 0)
+        naive_dt = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=2)
         event = EconomicCalendar(
             currency="USD", event_name="NFP", impact="high", surprise_score=2.5, event_time=naive_dt
         )
