@@ -1636,6 +1636,7 @@ Monika/
 │       │   │   │   │   ├── 0004_fk_cascade_integrity.py
 │       │   │   │   │   ├── 0005_sync_missing_indexes_and_constraints.py
 │       │   │   │   │   ├── 0006_consolidate_and_numeric.py
+│       │   │   │   │   ├── 0007_sync_queue_indexes_and_nullability.py
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   └── c83c5e451412_sync_schema_indexes_types_and_.py
 │       │   │   │   ├── __init__.py
@@ -2926,4 +2927,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 250 | **Total Tracked Files**: 2646
+**Total Tracked Directories**: 250 | **Total Tracked Files**: 2647

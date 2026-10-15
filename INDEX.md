@@ -11361,6 +11361,12 @@
   - `upgrade() -> None`: Upgrade schema: add operational tables and numeric dual-read columns.
   - `downgrade() -> None`: Downgrade schema: remove numeric expanded columns and operational tables.
 
+#### `0007_sync_queue_indexes_and_nullability.py` - *sync_queue_indexes_and_nullability*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0007_sync_queue_indexes_and_nullability.py`](src/monika/infrastructure/database/migrations/versions/0007_sync_queue_indexes_and_nullability.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Upgrade schema: sync queue tables column nullability and missing indexes.
+  - `downgrade() -> None`: Downgrade schema: revert nullability constraints and drop added indexes.
+
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)
 - **Top-Level Functions**:
