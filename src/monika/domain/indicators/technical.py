@@ -189,6 +189,11 @@ class TechnicalIndicatorCalculator:
             bar_ts = df.index[-1] if not df.empty else clock.now()
             if isinstance(bar_ts, pd.Timestamp):
                 bar_ts = bar_ts.to_pydatetime()
+            if isinstance(bar_ts, datetime):
+                if bar_ts.tzinfo is None:
+                    bar_ts = bar_ts.replace(tzinfo=timezone.utc)
+                else:
+                    bar_ts = bar_ts.astimezone(timezone.utc)
             add_res: Any = self.session.add(
                 TechnicalIndicator(
                     symbol=symbol,
@@ -278,9 +283,12 @@ class TechnicalIndicatorCalculator:
         if not df.index.is_monotonic_increasing:
             df.sort_index(inplace=True)
 
+        # Ensure index is timezone-aware UTC
+        df.index = pd.to_datetime(df.index, utc=True)
+
         # For D1, normalize timestamps to daily boundaries to prevent hour shifts from dropping candles
         if timeframe.upper() == "D1" and len(df) > 1:
-            df.index = pd.to_datetime([pd.Timestamp(t).strftime("%Y-%m-%d") for t in df.index])
+            df.index = pd.to_datetime([pd.Timestamp(t).strftime("%Y-%m-%d") for t in df.index], utc=True)
             df = df.loc[~df.index.duplicated(keep="last")]
 
         # Resample and forward-fill to handle missing candles without time distortion
@@ -326,6 +334,9 @@ class TechnicalIndicatorCalculator:
                     df = deduped
             except Exception as e:
                 logger.debug(f"Resampling error for {symbol}/{timeframe} (fallback to raw): {e}")
+
+        if df is not None and not df.empty:
+            df.index = pd.to_datetime(df.index, utc=True)
 
         return cast(Optional[pd.DataFrame], df)
 
@@ -545,7 +556,32 @@ class TechnicalIndicatorCalculator:
         Menyimpan indikator (upsert per timestamp) agar data sinkron
         dengan bar/candle terbaru.
         """
-        timestamps = list(indicators.keys())
+        # Defensive normalization: ensure all timestamps are timezone-aware UTC datetime objects
+        clean_indicators: dict[datetime, list[dict]] = {}
+        for raw_ts, entries in indicators.items():
+            if raw_ts is None or pd.isna(raw_ts):
+                continue
+            if isinstance(raw_ts, pd.Timestamp):
+                ts_pydt = raw_ts.to_pydatetime()
+            elif isinstance(raw_ts, datetime):
+                ts_pydt = raw_ts
+            else:
+                parsed_ts = pd.Timestamp(raw_ts)
+                if pd.isna(parsed_ts):
+                    continue
+                ts_pydt = parsed_ts.to_pydatetime()
+
+            if not isinstance(ts_pydt, datetime):
+                continue
+
+            if ts_pydt.tzinfo is None:
+                ts_final = ts_pydt.replace(tzinfo=timezone.utc)
+            else:
+                ts_final = ts_pydt.astimezone(timezone.utc)
+
+            clean_indicators[ts_final] = entries
+
+        timestamps = list(clean_indicators.keys())
         if not timestamps:
             return 0
 
@@ -568,7 +604,7 @@ class TechnicalIndicatorCalculator:
 
         saved = 0
         for ts in timestamps:
-            for entry in indicators.get(ts, []):
+            for entry in clean_indicators.get(ts, []):
                 self.session.add(
                     TechnicalIndicator(
                         symbol=symbol,

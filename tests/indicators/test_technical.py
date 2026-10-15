@@ -293,6 +293,29 @@ class TestTechnicalIndicatorCalculator:
         assert df is not None
         # Harus terdeduplikasi menjadi 2 bar (1 bar per tanggal unik: 25 Sep & 26 Sep)
         assert len(df) == 2
+        assert df.index.tz is not None
+        assert str(df.index.tz) == "UTC"
+
+    @pytest.mark.asyncio
+    async def test_save_normalizes_tz_naive_and_timestamp(self, calc):
+        """Verifikasi bahwa _save menormalisasi Timestamp / naive datetime menjadi timezone-aware UTC datetime."""
+        calc.session.execute = AsyncMock()
+        calc.session.add = MagicMock()
+
+        naive_ts = pd.Timestamp("2026-05-28 00:00:00")
+        naive_dt = datetime(2026, 5, 29, 0, 0)
+        indicators = {
+            naive_ts: [{"name": "SMA_5", "value_json": "100.0"}],
+            naive_dt: [{"name": "SMA_5", "value_json": "101.0"}],
+        }
+
+        saved = await calc._save("XAUUSD", "D1", indicators)
+        assert saved == 2
+        added_indicators = [call[0][0] for call in calc.session.add.call_args_list]
+        for ind in added_indicators:
+            assert isinstance(ind.timestamp, datetime)
+            assert ind.timestamp.tzinfo is not None
+            assert ind.timestamp.tzinfo == timezone.utc
 
     @pytest.mark.asyncio
     async def test_compute_all_and_save_bounded_to_recent_bars(self, calc):
