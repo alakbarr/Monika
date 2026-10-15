@@ -9,8 +9,60 @@ from monika.application.graph.nodes.risk.proposal_notifier import (
 from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
 
-def test_format_proposal_card_top_down():
+def test_format_proposal_card_llm_verbatim_zero_drift():
+    """Verify that LLM Stage 2 proposals display the authentic verbatim rationale without drift."""
     mock_brief = MagicMock()
+    mock_brief.id = 101
+    mock_brief.macro_regime = "DATA_DEPENDENT_STAGNATION"
+    mock_brief.risk_sentiment = "mixed"
+    mock_brief.currency_bias = {"GBP": "bullish", "USD": "bearish"}
+    mock_brief.macro_narrative = "US core disinflation stalls while labor prints soft revisions."
+
+    llm_rationale_text = (
+        "1. Makro: Divergensi BoE hawkish vs Fed dovish mendukung bias long, namun DXY rebound dari support D1.\n"
+        "2. Teknikal: H4 FVG terisi di 1.3280 dengan sweep liquidity Asia High. Rejection candle H1 mengonfirmasi entry.\n"
+        "3. Edge: Konfluensi 6 faktor dengan validasi rasio R:R 1:1.62."
+    )
+
+    mock_ana = MagicMock()
+    mock_ana.symbol = "GBPUSD"
+    mock_ana.decision = "sell"
+    mock_ana.confidence = 0.60
+    mock_ana.entry_zone = json.dumps({"type": "market", "price": 1.32675})
+    mock_ana.price_at_analysis = 1.32675
+    mock_ana.stop_loss = 1.32962
+    mock_ana.take_profit = 1.32210
+    mock_ana.rationale = llm_rationale_text
+    mock_ana.confluence_factors_json = json.dumps(["rsi_exhaustion", "h1_atr_band_penetration"])
+    mock_ana.invalidation = "Close H1 above 1.32962"
+    mock_ana.source_strategy_id = None
+    mock_ana.decision_source = "stage2_per_asset"
+    mock_ana.debate_verdict = "Consensus reached for short setup on liquidity sweep."
+    mock_ana.debate_bear_dissent = None
+
+    card = _format_proposal_card("GBPUSD", mock_ana, mock_brief)
+
+    # Verbatim AI rationale displayed directly under clean Rationale heading
+    assert "<b>Rationale:</b>\n" in card
+    assert "Analisis Langsung AI" not in card
+    assert "🧠" not in card
+    assert "🏛" not in card
+    assert llm_rationale_text in card
+    assert "Konsensus Debat:</b> Consensus reached for short setup" in card
+    assert "Close H1 above 1.32962" in card
+
+    # Macro & Parameters displayed honestly
+    assert "<b>Konteks Makro & Sentimen:</b>" in card
+    assert "Sentimen & Rezim #101:</b> MIXED (<code>DATA_DEPENDENT_STAGNATION</code>)" in card
+    assert "GBP [Bullish] vs USD [Bearish]" in card
+    assert "R:R:</b> 1:1.62" in card
+    assert "/approve" not in card
+
+
+def test_format_proposal_card_quant():
+    """Verify that quantitative strategy proposals display the strategy signal and factor family."""
+    mock_brief = MagicMock()
+    mock_brief.id = 326
     mock_brief.macro_regime = "DATA_DEPENDENT_STAGNATION"
     mock_brief.risk_sentiment = "mixed"
     mock_brief.currency_bias = {"GBP": "bullish", "USD": "bearish"}
@@ -35,35 +87,14 @@ def test_format_proposal_card_top_down():
 
     card = _format_proposal_card("GBPUSD", mock_ana, mock_brief)
 
-    # 1. Structure Assertions
-    assert "[PROPOSAL TRANSAKSI] 🔴 GBPUSD — SELL" in card
-    assert "• <b>Aksi:</b> SELL (Keyakinan: 60%)" in card
-    assert "1.32675" in card
-    assert "1.32962" in card
-    assert "1.32210" in card
+    assert "<b>Rationale:</b>" in card
+    assert "Logika Sinyal Kuantitatif" not in card
+    assert "🤖" not in card
+    assert "🏛" not in card
+    assert "Pemicu Sinyal (<code>alpha_gbpusd_4947d0</code>):</b> GBPUSD ATR exhaustion sell signal" in card
+    assert "Keluarga Faktor:" in card
     assert "R:R:</b> 1:1.62" in card
-
-    # 2. Top-down Macro & Sentiment
-    assert "Faktor Makro & Sentimen:" in card
-    assert "MIXED" in card
-    assert "DATA_DEPENDENT_STAGNATION" in card
-    assert "GBP [Bullish] vs USD [Bearish]" in card
-    assert "US core disinflation stalls" in card
-
-    # 3. Technical Confirmation
-    assert "Konfirmasi Teknikal:" in card
-    assert "Pemicu Setup:</b> GBPUSD ATR exhaustion sell signal" in card
-    assert "rsi_exhaustion, h1_atr_band_penetration" in card
-    assert "Close H1 above 1.32962" in card
-
-    # 4. Quantitative & Edge Backtest
-    assert "Kuantitatif, Pola & Backtest:" in card
-    assert "alpha_gbpusd_4947d0" in card
-    assert "Mean-reversion statistik" in card
-
-    # 5. No slash commands
     assert "/approve" not in card
-    assert "/reject" not in card
 
 
 def test_build_trade_proposal_keyboard():

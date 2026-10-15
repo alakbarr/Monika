@@ -4,8 +4,13 @@
 # ==============================================================================
 
 """
-Formats and dispatches top-down trade proposal notifications to Telegram operators
+Formats and dispatches authentic trade proposal notifications to Telegram operators
 with interactive inline keyboard buttons (Approve/Reject) for human-in-the-loop validation.
+
+Guarantees ZERO DRIFT between decision generator (LLM / Quant) and operator view:
+- For AI LLM decisions: Presents the LLM's authentic, unadulterated rationale directly.
+- For Quant decisions: Presents the strategy's factual signal output and dynamic factor family.
+- Never fabricates or hardcodes static narratives.
 """
 
 from __future__ import annotations
@@ -19,12 +24,8 @@ logger = logging.getLogger("TradingAgent.Graph.Risk.ProposalNotifier")
 
 def _format_proposal_card(sym: str, ana: Any, brief: Optional[Any]) -> str:
     """
-    Constructs a top-down structured trade proposal message for Telegram operators.
-    Encompasses:
-      1. Execution Parameters & Risk:Reward
-      2. Macro & Sentiment context (Fundamental Brief)
-      3. Technical Triggers & Structure
-      4. Quantitative Strategy, Historical Pattern & Backtest Edge
+    Constructs an authentic, drift-free structured trade proposal card for Telegram operators.
+    Preserves verbatim reasoning of the decision-maker while presenting verified quantitative metrics.
     """
     direction = str(getattr(ana, "decision", "UNKNOWN") or "UNKNOWN").upper()
     dir_emoji = "🟢" if direction == "BUY" else "🔴"
@@ -74,12 +75,14 @@ def _format_proposal_card(sym: str, ana: Any, brief: Optional[Any]) -> str:
     sl_display = f"{sl_val:.5f}{sl_pips_str}" if sl_val is not None else "N/A"
     tp_display = f"{tp_val:.5f}{tp_pips_str}" if tp_val is not None else "N/A"
 
-    # 2. Macro & Sentiment context
+    # 2. Macro & Sentiment context from database
     macro_lines: List[str] = []
     if brief:
+        brief_id = getattr(brief, "id", None)
+        id_str = f" #{brief_id}" if brief_id else ""
         regime = getattr(brief, "macro_regime", "") or "Mixed / Data Dependent"
         sentiment = (getattr(brief, "risk_sentiment", "") or "Neutral").upper()
-        macro_lines.append(f"• <b>Sentimen & Rezim:</b> {sentiment} (<code>{regime}</code>)")
+        macro_lines.append(f"• <b>Sentimen & Rezim{id_str}:</b> {sentiment} (<code>{regime}</code>)")
 
         bias = getattr(brief, "currency_bias", {}) or {}
         if len(sym) >= 6:
@@ -97,44 +100,86 @@ def _format_proposal_card(sym: str, ana: Any, brief: Optional[Any]) -> str:
             first_sentence = narrative.split("\n")[0].split(". ")[0].strip()
             if len(first_sentence) > 160:
                 first_sentence = first_sentence[:157] + "..."
-            macro_lines.append(f"• <b>Faktor Fundamental:</b> {first_sentence}.")
+            macro_lines.append(f"• <b>Narasi Makro:</b> {first_sentence}.")
     else:
-        macro_lines.append("• <b>Makro:</b> Sinyal quant intraday (kondisi makro tidak membatasi).")
+        macro_lines.append("• <b>Makro:</b> Mode mandiri (tidak ada ketergantungan brief aktif).")
 
     macro_section = "\n".join(macro_lines)
 
-    # 3. Technical Trigger & Structure
-    tech_lines: List[str] = []
+    # 3. Decision Source Disambiguation: LLM Reasoning vs Quant Strategy Signal
+    strategy_id = getattr(ana, "source_strategy_id", None)
+    dec_source = getattr(ana, "decision_source", None) or "system"
     clean_rationale = (getattr(ana, "rationale", "") or "").strip()
-    if clean_rationale:
-        parts = clean_rationale.split(" | [Arbitrator:")
-        primary_tech = parts[0].strip()
-        tech_lines.append(f"• <b>Pemicu Setup:</b> {primary_tech}")
 
-    conf_factors_json = getattr(ana, "confluence_factors_json", None)
-    if conf_factors_json:
+    is_llm = not strategy_id or dec_source in (
+        "llm_debate",
+        "llm_stage2",
+        "langgraph_stage2",
+        "stage2_per_asset",
+    )
+
+    core_reasoning_section: str
+    if is_llm:
+        # LLM Direct Output: preserve exact verbatim reasoning
+        debate_dissent = getattr(ana, "debate_bear_dissent", None)
+        debate_verdict = getattr(ana, "debate_verdict", None)
+        debate_block = ""
+        if debate_verdict or debate_dissent:
+            d_parts = []
+            if debate_verdict:
+                d_parts.append(f"• <b>Konsensus Debat:</b> {debate_verdict}")
+            if debate_dissent:
+                d_parts.append(f"• <b>Argumen Penyeimbang:</b> {debate_dissent}")
+            debate_block = "\n" + "\n".join(d_parts)
+
+        inval_str = ""
+        inval = getattr(ana, "invalidation", None)
+        if inval:
+            inval_str = f"\n• <b>Invalidasi Level:</b> <code>{inval}</code>"
+
+        core_reasoning_section = f"<b>Rationale:</b>\n{clean_rationale}{debate_block}{inval_str}"
+    else:
+        # Quant Strategy Signal: extract exact signal and lookup real strategy attributes
+        strat_family = "quant"
+        strat_desc = ""
         try:
-            factors = json.loads(conf_factors_json)
-            if isinstance(factors, list) and factors:
-                tech_lines.append(f"• <b>Konfluensi Indikator:</b> {', '.join(str(f) for f in factors)}")
+            from monika.application.analysis.strategies.registry import StrategyRegistry
+
+            strat_cls = StrategyRegistry.get(str(strategy_id))
+            if strat_cls:
+                strat_family = getattr(strat_cls, "factor_family", "quant")
+                doc = (strat_cls.__doc__ or "").strip()
+                if doc:
+                    strat_desc = f" ({doc.splitlines()[0].strip()})"
         except Exception:
             pass
 
-    inval = getattr(ana, "invalidation", None)
-    if inval:
-        tech_lines.append(f"• <b>Invalidasi Level:</b> <code>{inval}</code>")
+        parts = clean_rationale.split(" | [Arbitrator:")
+        primary_signal = parts[0].strip()
 
-    tech_section = "\n".join(tech_lines) if tech_lines else f"• {clean_rationale}"
+        conf_factors_str = ""
+        conf_factors_json = getattr(ana, "confluence_factors_json", None)
+        if conf_factors_json:
+            try:
+                factors = json.loads(conf_factors_json)
+                if isinstance(factors, list) and factors:
+                    conf_factors_str = f"\n• <b>Konfluensi Indikator:</b> {', '.join(str(f) for f in factors)}"
+            except Exception:
+                pass
 
-    # 4. Strategy & Edge Backtest
-    strategy_id = getattr(ana, "source_strategy_id", None) or "quant_strategy"
-    dec_source = getattr(ana, "decision_source", None) or "SignalArbitrator"
-    edge_lines = [
-        f"• <b>Model Strategi:</b> <code>{strategy_id}</code>",
-        f"• <b>Arbitrase Sinyal:</b> {dec_source}",
-        "• <b>Edge & Validasi Pola:</b> Mean-reversion statistik saat harga menembus band ATR ekstrem dengan konfirmasi penolakan sumbu lilin (rejection wick).",
-    ]
-    edge_section = "\n".join(edge_lines)
+        inval_str = ""
+        inval = getattr(ana, "invalidation", None)
+        if inval:
+            inval_str = f"\n• <b>Invalidasi:</b> <code>{inval}</code>"
+
+        core_reasoning_section = (
+            f"<b>Rationale:</b>\n"
+            f"• <b>Pemicu Sinyal (<code>{strategy_id}</code>):</b> {primary_signal}\n"
+            f"• <b>Keluarga Faktor:</b> <code>{strat_family}</code>{strat_desc}\n"
+            f"• <b>Sumber Arbitrase:</b> {dec_source}"
+            f"{conf_factors_str}"
+            f"{inval_str}"
+        )
 
     return (
         f"<b>[PROPOSAL TRANSAKSI] {dir_emoji} {sym} — {direction}</b>\n\n"
@@ -143,12 +188,9 @@ def _format_proposal_card(sym: str, ana: Any, brief: Optional[Any]) -> str:
         f"• <b>Entry:</b> <code>{entry_display}</code>\n"
         f"• <b>Stop Loss:</b> <code>{sl_display}</code>\n"
         f"• <b>Take Profit:</b> <code>{tp_display}</code>{rr_str}\n\n"
-        f"🏛 <b>Faktor Makro & Sentimen:</b>\n"
+        f"{core_reasoning_section}\n\n"
+        f"<b>Konteks Makro & Sentimen:</b>\n"
         f"{macro_section}\n\n"
-        f"📊 <b>Konfirmasi Teknikal:</b>\n"
-        f"{tech_section}\n\n"
-        f"🧬 <b>Kuantitatif, Pola & Backtest:</b>\n"
-        f"{edge_section}\n\n"
         f"<i>Silakan tinjau dan klik tombol di bawah untuk memutuskan.</i>"
     )
 
