@@ -91,7 +91,14 @@ class PromptInjectionScanner:
 
     # Persona hijacking / DAN patterns (weight: 0.70 - 0.80)
     JAILBREAK_PATTERNS = [
-        (re.compile(r"\b(?:DAN|Do\s+Anything\s+Now)\b", re.IGNORECASE), 0.75, "dan_jailbreak"),
+        (
+            re.compile(
+                r"\b(?:Do\s+Anything\s+Now|(?:act\s+as|you\s+are(?:\s+now)?|pretend\s+to\s+be|called|named|enable)\s+DAN\b|DAN\s+(?:mode|jailbreak|prompt|version|\d+(?:\.\d+)?)|(?:mode|jailbreak|prompt)\s+DAN\b)",
+                re.IGNORECASE,
+            ),
+            0.75,
+            "dan_jailbreak",
+        ),
         (
             re.compile(r"unrestricted\s+mode|jailbreak|developer\s+mode\s+output", re.IGNORECASE),
             0.70,
