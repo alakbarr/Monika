@@ -404,3 +404,95 @@ async def test_fallback_wrapper_typesafe_array_schema_skip_audit():
         audit_msgs = [m for m in warn_msgs if "[LLMFallbackAudit]" in m]
         assert len(audit_msgs) == 1
         assert "does not support top-level array schema in classify_json" in audit_msgs[0]
+
+
+def test_resolve_provider_disabled_fallback_to_openrouter():
+    settings = {
+        "llm": {
+            "providers": {
+                "deepseek": {"enabled": False},
+                "openai": {"enabled": False},
+                "anthropic": {"enabled": False},
+                "openrouter": {"enabled": True},
+            },
+        }
+    }
+    factory = LLMFactory(settings)
+    assert factory._resolve_provider("deepseek-v4.1-flash") == "openrouter"
+    assert factory._resolve_provider("gpt-6-astra") == "openrouter"
+    assert factory._resolve_provider("claude-sonnet-5") == "openrouter"
+
+
+@pytest.mark.asyncio
+async def test_run_agent_timeout_not_capped_by_hot_path():
+    settings = {
+        "llm": {
+            "providers": {"openrouter": {"enabled": True}},
+            "task_roles": {
+                "stage2_per_asset_primary": {
+                    "primary": "test-agent-model",
+                    "max_tool_turns": 12,
+                }
+            },
+        }
+    }
+    factory = LLMFactory(settings)
+    mock_client = AsyncMock()
+    mock_client.run_agent.return_value = {"success": True, "final_text": "analysis completed"}
+
+    with (
+        patch.object(factory, "_create_client_instance", return_value=mock_client),
+        patch("asyncio.wait_for", wraps=asyncio.wait_for) as mock_wait_for,
+    ):
+        wrapper = FallbackClientWrapper(
+            factory,
+            "test-agent-model",
+            [],
+            settings["llm"]["task_roles"]["stage2_per_asset_primary"],
+            task_role="stage2_per_asset_primary",
+        )
+        res = await wrapper.run_agent(
+            session=None,
+            system_prompt="sys",
+            user_message="user",
+            tools=[],
+        )
+        assert res["success"] is True
+        # Verify that asyncio.wait_for was called with agent timeout budget (12 * 45 = 540s), not 120s
+        assert mock_wait_for.called
+        timeout_arg = mock_wait_for.call_args[1].get("timeout")
+        assert timeout_arg >= 300.0
+        assert timeout_arg == 540.0
+
+
+@pytest.mark.asyncio
+async def test_all_models_cooldown_returns_descriptive_error():
+    settings = {
+        "llm": {
+            "providers": {"openrouter": {"enabled": True}},
+            "task_roles": {
+                "test_cooldown": {
+                    "primary": "model-1",
+                    "fallback_1": "model-2",
+                }
+            },
+        }
+    }
+    factory = LLMFactory(settings)
+    wrapper = FallbackClientWrapper(
+        factory,
+        "model-1",
+        ["model-2"],
+        settings["llm"]["task_roles"]["test_cooldown"],
+        task_role="test_cooldown",
+    )
+    import time
+
+    wrapper._slot_cooldowns["primary"] = time.time() + 9999.0
+    wrapper._slot_cooldowns["fallback_1"] = time.time() + 9999.0
+
+    res = await wrapper.run_agent(session=None, system_prompt="s", user_message="u", tools=[])
+    assert res["success"] is False
+    assert res["error"] is not None
+    assert "All candidate models skipped" in res["error"]
+    assert "None" != res["error"]

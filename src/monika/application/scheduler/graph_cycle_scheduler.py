@@ -1019,44 +1019,66 @@ class GraphCycleScheduler(CycleScheduler):
             try:
                 decisions = final_state.get("summary", {}).get("per_asset", {})
                 has_buy_sell = any(
-                    r.get("decision") in ("buy", "sell") for r in decisions.values() if isinstance(r, dict)
-                )
+                    str(r.get("decision", "")).lower() in ("buy", "sell")
+                    for r in decisions.values()
+                    if isinstance(r, dict)
+                ) or bool(final_state.get("actionable_trades"))
 
-                # P3-4 TODO: This consecutive_wait_count is currently unused by the rest of the system.
-                # Future expansion: Expose this to FundamentalStage to allow it to widen its search
-                # parameters if the system has been waiting too long without any trades.
-                consecutive_wait = 0 if has_buy_sell else (prior_insights.get("consecutive_wait_count", 0) + 1)
-
-                cycle_state_to_save = {
-                    "consecutive_wait_count": consecutive_wait,
-                    "last_buy_sell_cycle": datetime.now(timezone.utc).isoformat()
-                    if has_buy_sell
-                    else prior_insights.get("last_buy_sell_cycle"),
-                    "last_cycle_vix": summary.get("data_validation", {}).get("vix_latest", None),
-                    "last_cycle_decisions": {
-                        sym: r.get("decision") for sym, r in decisions.items() if isinstance(r, dict)
-                    },
-                }
-
-                if consecutive_wait >= 5:
-                    logger.warning(
-                        f"5+ consecutive WAIT-only cycles. Possible threshold too high or market regime issue."
-                    )
-                    from monika.infrastructure.infra.notifier import AgentNotifier
-
-                    await AgentNotifier().send_warning(
-                        f"[PERINGATAN] <b>No Trades for {consecutive_wait} Cycles</b>\n"
-                        f"All assets returning WAIT/AVOID for {consecutive_wait} consecutive cycles.\n"
-                        f"Consider reviewing: (1) VIX threshold, (2) confluence threshold, "
-                        f"(3) market regime, (4) data quality."
-                    )
+                from datetime import timedelta
+                import json
+                from sqlalchemy import select
+                from monika.infrastructure.database.models import AssetAnalysis, SystemConfig
 
                 async with get_session() as state_session:
-                    import json
+                    if not has_buy_sell:
+                        try:
+                            recent_cutoff = datetime.now(timezone.utc) - timedelta(hours=4)
+                            recent_p = (
+                                (
+                                    await state_session.execute(
+                                        select(AssetAnalysis.id).where(
+                                            AssetAnalysis.generated_at >= recent_cutoff,
+                                            AssetAnalysis.decision.in_(["buy", "sell", "BUY", "SELL"]),
+                                        )
+                                    )
+                                )
+                                .scalars()
+                                .first()
+                            )
+                            if recent_p:
+                                has_buy_sell = True
+                        except Exception as p_err:
+                            logger.debug(f"Recent proposals check note: {p_err}")
 
-                    from sqlalchemy import select
+                    has_analysis_errors = bool(summary.get("per_asset_errors")) or any(
+                        r.get("decision") in ("error", None) for r in decisions.values() if isinstance(r, dict)
+                    )
 
-                    from monika.infrastructure.database.models import SystemConfig
+                    consecutive_wait = 0 if has_buy_sell else (prior_insights.get("consecutive_wait_count", 0) + 1)
+
+                    cycle_state_to_save = {
+                        "consecutive_wait_count": consecutive_wait,
+                        "last_buy_sell_cycle": datetime.now(timezone.utc).isoformat()
+                        if has_buy_sell
+                        else prior_insights.get("last_buy_sell_cycle"),
+                        "last_cycle_vix": summary.get("data_validation", {}).get("vix_latest", None),
+                        "last_cycle_decisions": {
+                            sym: r.get("decision") for sym, r in decisions.items() if isinstance(r, dict)
+                        },
+                    }
+
+                    if consecutive_wait >= 5 and not has_analysis_errors:
+                        logger.warning(
+                            f"5+ consecutive WAIT-only cycles. Possible threshold too high or market regime issue."
+                        )
+                        from monika.infrastructure.infra.notifier import AgentNotifier
+
+                        await AgentNotifier().send_warning(
+                            f"[PERINGATAN] <b>No Trades for {consecutive_wait} Cycles</b>\n"
+                            f"All assets returning WAIT/AVOID for {consecutive_wait} consecutive cycles.\n"
+                            f"Consider reviewing: (1) VIX threshold, (2) confluence threshold, "
+                            f"(3) market regime, (4) data quality."
+                        )
 
                     cfg = (
                         await state_session.execute(select(SystemConfig).where(SystemConfig.key == "prior_cycle_state"))

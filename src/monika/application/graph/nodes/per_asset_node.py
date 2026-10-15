@@ -232,8 +232,14 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
         logger.error(f"Stage 2 errors for: {error_detail}")
         summary["per_asset_errors"] = error_symbols
 
-        # Notifikasi jika ada error yang tidak expected
-        unexpected_errors = [e for e in error_symbols if "timeout" not in e.get("error", "").lower()]
+        # Notifikasi jika ada error yang tidak expected (kecualikan timeout dan cooldown)
+        unexpected_errors = [
+            e
+            for e in error_symbols
+            if "timeout" not in str(e.get("error") or "").lower()
+            and "timed out" not in str(e.get("error") or "").lower()
+            and "cooldown" not in str(e.get("error") or "").lower()
+        ]
         if unexpected_errors and len(unexpected_errors) >= 2:
             try:
                 from monika.infrastructure.infra.notifier import AgentNotifier
@@ -241,7 +247,12 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
                 await AgentNotifier().send_warning(
                     f"[PERINGATAN] <b>Analysis Errors</b>\n"
                     f"{len(unexpected_errors)} symbols had unexpected errors:\n"
-                    + "\n".join([f"• {e['symbol']}: {e['error'][:80]}" for e in unexpected_errors[:3]])
+                    + "\n".join(
+                        [
+                            f"• {e['symbol']}: {str(e.get('error') or 'Unknown error')[:80]}"
+                            for e in unexpected_errors[:3]
+                        ]
+                    )
                 )
             except Exception:
                 pass

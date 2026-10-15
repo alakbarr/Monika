@@ -24,11 +24,6 @@ _UNSUPPORTED_SCHEMA_ROUTES: set[tuple[str, str]] = set()
 
 # Trading hot-path roles requiring zero-downtime eager failover
 HOT_PATH_ROLES: set[str] = {
-    "stage1_fundamental",
-    "stage2_per_asset_primary",
-    "stage2_per_asset_secondary",
-    "stage2",
-    "stage2_essential",
     "debate",
     "debate_judge",
     "bull_debater",
@@ -167,6 +162,7 @@ class LLMFactory:
 
     def __init__(self, settings: dict):
         self._settings = settings
+        self.settings = settings
         self._llm_config = settings.get("llm", {})
         self._providers = self._llm_config.get("providers", {})
         self._catalog = self._llm_config.get("model_catalog", {})
@@ -286,11 +282,26 @@ class LLMFactory:
             return "gemini"
         if "gemini" in name:
             return "gemini"
+        providers_dict = getattr(self, "_providers", {}) or (getattr(self, "settings", {}) or {}).get("llm", {}).get(
+            "providers", {}
+        )
         if "claude" in name or "haiku" in name:
+            prov_entry = providers_dict.get("anthropic")
+            if prov_entry is not None and prov_entry.get("enabled") is False:
+                if providers_dict.get("openrouter", {}).get("enabled", True):
+                    return "openrouter"
             return "anthropic"
         if "gpt" in name:
+            prov_entry = providers_dict.get("openai")
+            if prov_entry is not None and prov_entry.get("enabled") is False:
+                if providers_dict.get("openrouter", {}).get("enabled", True):
+                    return "openrouter"
             return "openai"
         if "deepseek" in name:
+            prov_entry = providers_dict.get("deepseek")
+            if prov_entry is not None and prov_entry.get("enabled") is False:
+                if providers_dict.get("openrouter", {}).get("enabled", True):
+                    return "openrouter"
             return "deepseek"
         if "ollama" in name:
             return "ollama"
@@ -652,16 +663,16 @@ class FallbackClientWrapper(BaseLLMClient):
             except Exception as e:
                 logger.debug(f"[CircuitBreaker] Cached budget check error: {e}")
 
-        # Stage-aware fast timeouts for hot-path trading
+        # Stage-aware fast timeouts for hot-path trading vs agent harness loops
         explicit_timeout = kwargs.pop("_per_model_timeout", None)
         if explicit_timeout is not None:
             per_model_timeout = float(explicit_timeout)
-        elif self.task_role in HOT_PATH_ROLES:
-            max_turns = float((self.role_config or {}).get("max_tool_turns", 3))
-            per_model_timeout = max(45.0, min(120.0, max_turns * 30.0))
         elif method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages"]:
             max_turns = float((self.role_config or {}).get("max_tool_turns", 15))
             per_model_timeout = max(300.0, max_turns * 45.0)
+        elif self.task_role in HOT_PATH_ROLES:
+            max_turns = float((self.role_config or {}).get("max_tool_turns", 3))
+            per_model_timeout = max(45.0, min(120.0, max_turns * 30.0))
         else:
             per_model_timeout = 180.0
 
@@ -1180,6 +1191,9 @@ class FallbackClientWrapper(BaseLLMClient):
                             pass
 
                     break
+
+        if last_error is None:
+            last_error = "All candidate models skipped (active cooldown or provider circuits open)"
 
         logger.error(f"All fallback models failed for {method_name}. Last error: {last_error}")
 
