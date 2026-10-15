@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 1.67
 status: active
-sharpe_ratio: 2.05
-profit_factor: 1.22
-max_drawdown_pct: 5.55
-win_rate: 0.476
+sharpe_ratio: 1.23
+profit_factor: 1.13
+max_drawdown_pct: 5.41
+win_rate: 0.451
 ---
 
 # GBPUSD Empirical Playbook: High-Volume Engulfing Reversal Pattern
@@ -17,12 +17,12 @@ win_rate: 0.476
 ## Quantitative Track Record
 - **Asset / Instrument**: GBPUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.05 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.22 (82 verified trade executions)
-- **Max Drawdown**: 5.5% (Institutional risk profile)
-- **Total PnL Return**: +8.7%
-- **Win Rate**: 47.6% (Normalized at minimum 1:1.67 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
+- **Verified Sharpe Ratio**: 1.23 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.13 (82 verified trade executions)
+- **Max Drawdown**: 5.4% (Institutional risk profile)
+- **Total PnL Return**: +5.2%
+- **Win Rate**: 45.1% (Normalized at minimum 1:1.67 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
 
 ## Trigger Conditions & Tactical Directives
 - Current candle body >= 1.2x previous candle body and >= 0.6x 14-period ATR.
@@ -39,4 +39,4 @@ win_rate: 0.476
 ## Invalidation & Exit Parameters
 - Invalidate if engulfing candle has an opposing wick > 40% of its body.
 - Invalidate if the preceding trend was fewer than 3 bars.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 28 bars.

@@ -6,10 +6,10 @@ regime: breakout
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 1.92
-profit_factor: 1.22
-max_drawdown_pct: 5.6
-win_rate: 0.45
+sharpe_ratio: 2.1
+profit_factor: 1.26
+max_drawdown_pct: 5.69
+win_rate: 0.474
 ---
 
 # EURUSD Empirical Playbook: Carter Volatility Squeeze Expansion Breakout
@@ -17,12 +17,12 @@ win_rate: 0.45
 ## Quantitative Track Record
 - **Asset / Instrument**: EURUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 1.92 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.22 (20 verified trade executions)
-- **Max Drawdown**: 5.6% (Institutional risk profile)
-- **Total PnL Return**: +2.4%
-- **Win Rate**: 45.0% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Verified Sharpe Ratio**: 2.10 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.26 (19 verified trade executions)
+- **Max Drawdown**: 5.7% (Institutional risk profile)
+- **Total PnL Return**: +2.6%
+- **Win Rate**: 47.4% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Detect squeeze condition: Bollinger Bands compress strictly inside Keltner Channels.
@@ -39,4 +39,4 @@ win_rate: 0.45
 ## Invalidation & Exit Parameters
 - Invalidate if squeeze fires and immediately reverses inside prior 2-bar low/high.
 - Invalidate if ATR contracts by more than 30% during the breakout candle.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

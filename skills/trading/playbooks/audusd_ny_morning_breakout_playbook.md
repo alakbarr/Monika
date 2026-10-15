@@ -8,7 +8,7 @@ min_rr: 2.0
 status: active
 sharpe_ratio: 1.78
 profit_factor: 1.11
-max_drawdown_pct: 6.56
+max_drawdown_pct: 7.07
 win_rate: 0.372
 ---
 
@@ -19,10 +19,10 @@ win_rate: 0.372
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
 - **Verified Sharpe Ratio**: 1.78 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.11 (86 verified trade executions)
-- **Max Drawdown**: 6.6% (Institutional risk profile)
+- **Max Drawdown**: 7.1% (Institutional risk profile)
 - **Total PnL Return**: +5.5%
 - **Win Rate**: 37.2% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.4x ATR, Max Holding = 18 bars
+- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.4x ATR, Max Holding = 20 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during high-liquidity New York morning open (13:00 to 15:00 UTC).
@@ -40,4 +40,4 @@ win_rate: 0.372
 ## Invalidation & Exit Parameters
 - Invalidate if breakout candle fails to hold beyond the 6-hour boundary.
 - Invalidate during major US FOMC interest rate announcements.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 18 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 20 bars.

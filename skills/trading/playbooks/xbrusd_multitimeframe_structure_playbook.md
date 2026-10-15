@@ -6,9 +6,9 @@ regime: trending
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 2.52
-profit_factor: 1.17
-max_drawdown_pct: 12.76
+sharpe_ratio: 2.34
+profit_factor: 1.16
+max_drawdown_pct: 11.98
 win_rate: 0.405
 ---
 
@@ -17,12 +17,12 @@ win_rate: 0.405
 ## Quantitative Track Record
 - **Asset / Instrument**: XBRUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.52 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.17 (259 verified trade executions)
-- **Max Drawdown**: 12.8% (Institutional risk profile)
-- **Total PnL Return**: +30.1%
+- **Verified Sharpe Ratio**: 2.34 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.16 (257 verified trade executions)
+- **Max Drawdown**: 12.0% (Institutional risk profile)
+- **Total PnL Return**: +27.6%
 - **Win Rate**: 40.5% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 14 bars
+- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 16 bars
 
 ## Trigger Conditions & Tactical Directives
 - Higher timeframe alignment: H4 EMA 50 > H4 EMA 200 (Bull) or H4 EMA 50 < H4 EMA 200 (Bear).
@@ -39,4 +39,4 @@ win_rate: 0.405
 ## Invalidation & Exit Parameters
 - Invalidate if H1 prints opposing CHoCH breaking structural swing low/high.
 - Invalidate if H4 trend structure flattens.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 14 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 16 bars.

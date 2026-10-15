@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 2.59
-profit_factor: 1.32
-max_drawdown_pct: 7.29
-win_rate: 0.451
+sharpe_ratio: 2.7
+profit_factor: 1.35
+max_drawdown_pct: 7.92
+win_rate: 0.432
 ---
 
 # EURUSD Empirical Playbook: 24-Hour Range Extreme Rejection Wick Sweep
@@ -17,12 +17,12 @@ win_rate: 0.451
 ## Quantitative Track Record
 - **Asset / Instrument**: EURUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.59 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.32 (82 verified trade executions)
-- **Max Drawdown**: 7.3% (Institutional risk profile)
-- **Total PnL Return**: +14.1%
-- **Win Rate**: 45.1% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Verified Sharpe Ratio**: 2.70 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.35 (81 verified trade executions)
+- **Max Drawdown**: 7.9% (Institutional risk profile)
+- **Total PnL Return**: +15.4%
+- **Win Rate**: 43.2% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Candle total range >= 1.0x 14-period ATR.
@@ -39,4 +39,4 @@ win_rate: 0.451
 ## Invalidation & Exit Parameters
 - Invalidate if subsequent candle breaks the extreme tip of the rejection wick.
 - Invalidate if spread widens beyond asset risk limit.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

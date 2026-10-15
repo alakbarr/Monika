@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 1.32
-profit_factor: 1.16
+sharpe_ratio: 1.29
+profit_factor: 1.15
 max_drawdown_pct: 7.89
-win_rate: 0.424
+win_rate: 0.397
 ---
 
 # XBRUSD Empirical Playbook: Asian Midday Institutional Drift Continuation
@@ -17,12 +17,12 @@ win_rate: 0.424
 ## Quantitative Track Record
 - **Asset / Instrument**: XBRUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 1.32 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.16 (151 verified trade executions)
+- **Verified Sharpe Ratio**: 1.29 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.15 (151 verified trade executions)
 - **Max Drawdown**: 7.9% (Institutional risk profile)
-- **Total PnL Return**: +13.0%
-- **Win Rate**: 42.4% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Total PnL Return**: +13.4%
+- **Win Rate**: 39.7% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during quiet Asian midday window (04:00 to 06:00 UTC).
@@ -39,4 +39,4 @@ win_rate: 0.424
 ## Invalidation & Exit Parameters
 - Invalidate if European pre-market orderflow disrupts trend before 06:00 UTC.
 - Invalidate if price crosses back across the 20-period EMA.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

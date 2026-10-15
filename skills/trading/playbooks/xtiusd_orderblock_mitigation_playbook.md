@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 1.67
 status: active
-sharpe_ratio: 2.19
-profit_factor: 1.22
-max_drawdown_pct: 5.94
-win_rate: 0.469
+sharpe_ratio: 1.74
+profit_factor: 1.18
+max_drawdown_pct: 6.27
+win_rate: 0.438
 ---
 
 # XTIUSD Empirical Playbook: Institutional Orderblock Mitigation & Retest
@@ -17,12 +17,12 @@ win_rate: 0.469
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.19 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.22 (128 verified trade executions)
-- **Max Drawdown**: 5.9% (Institutional risk profile)
-- **Total PnL Return**: +15.5%
-- **Win Rate**: 46.9% (Normalized at minimum 1:1.67 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
+- **Verified Sharpe Ratio**: 1.74 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.18 (128 verified trade executions)
+- **Max Drawdown**: 6.3% (Institutional risk profile)
+- **Total PnL Return**: +12.4%
+- **Win Rate**: 43.8% (Normalized at minimum 1:1.67 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
 
 ## Trigger Conditions & Tactical Directives
 - Identify institutional orderblock (last opposing candle before sharp 2-bar displacement).
@@ -39,4 +39,4 @@ win_rate: 0.469
 ## Invalidation & Exit Parameters
 - Invalidate if price prints a full body close through the distal boundary of the orderblock.
 - Invalidate if orderblock has been mitigated more than once.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 28 bars.

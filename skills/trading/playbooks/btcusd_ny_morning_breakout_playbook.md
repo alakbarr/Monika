@@ -6,10 +6,10 @@ regime: breakout
 timeframe: H1
 min_rr: 1.57
 status: active
-sharpe_ratio: 4.12
-profit_factor: 1.3
-max_drawdown_pct: 5.0
-win_rate: 0.443
+sharpe_ratio: 4.94
+profit_factor: 1.38
+max_drawdown_pct: 5.5
+win_rate: 0.475
 ---
 
 # BTCUSD Empirical Playbook: New York Morning Session Expansion Breakout
@@ -17,12 +17,12 @@ win_rate: 0.443
 ## Quantitative Track Record
 - **Asset / Instrument**: BTCUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 4.12 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.30 (61 verified trade executions)
-- **Max Drawdown**: 5.0% (Institutional risk profile)
-- **Total PnL Return**: +9.2%
-- **Win Rate**: 44.3% (Normalized at minimum 1:1.57 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.4x ATR, Take-Profit = 2.2x ATR, Max Holding = 16 bars
+- **Verified Sharpe Ratio**: 4.94 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.38 (61 verified trade executions)
+- **Max Drawdown**: 5.5% (Institutional risk profile)
+- **Total PnL Return**: +11.9%
+- **Win Rate**: 47.5% (Normalized at minimum 1:1.57 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.4x ATR, Take-Profit = 2.2x ATR, Max Holding = 20 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during high-liquidity New York morning open (13:00 to 15:00 UTC).
@@ -40,4 +40,4 @@ win_rate: 0.443
 ## Invalidation & Exit Parameters
 - Invalidate if breakout candle fails to hold beyond the 6-hour boundary.
 - Invalidate during major US FOMC interest rate announcements.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 16 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 20 bars.

@@ -6,10 +6,10 @@ regime: breakout
 timeframe: H1
 min_rr: 1.8
 status: active
-sharpe_ratio: 7.49
-profit_factor: 1.63
-max_drawdown_pct: 3.27
-win_rate: 0.529
+sharpe_ratio: 6.21
+profit_factor: 1.53
+max_drawdown_pct: 3.6
+win_rate: 0.471
 ---
 
 # XTIUSD Empirical Playbook: Carter Volatility Squeeze Expansion Breakout
@@ -17,12 +17,12 @@ win_rate: 0.529
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 7.49 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.63 (17 verified trade executions)
-- **Max Drawdown**: 3.3% (Institutional risk profile)
-- **Total PnL Return**: +5.2%
-- **Win Rate**: 52.9% (Normalized at minimum 1:1.8 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 1.8x ATR, Max Holding = 12 bars
+- **Verified Sharpe Ratio**: 6.21 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.53 (17 verified trade executions)
+- **Max Drawdown**: 3.6% (Institutional risk profile)
+- **Total PnL Return**: +4.3%
+- **Win Rate**: 47.1% (Normalized at minimum 1:1.8 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 1.8x ATR, Max Holding = 14 bars
 
 ## Trigger Conditions & Tactical Directives
 - Detect squeeze condition: Bollinger Bands compress strictly inside Keltner Channels.
@@ -39,4 +39,4 @@ win_rate: 0.529
 ## Invalidation & Exit Parameters
 - Invalidate if squeeze fires and immediately reverses inside prior 2-bar low/high.
 - Invalidate if ATR contracts by more than 30% during the breakout candle.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 12 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 14 bars.

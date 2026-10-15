@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 3.07
-profit_factor: 1.23
-max_drawdown_pct: 8.31
-win_rate: 0.4
+sharpe_ratio: 3.86
+profit_factor: 1.31
+max_drawdown_pct: 8.62
+win_rate: 0.423
 ---
 
 # BTCUSD Empirical Playbook: High-Volume Engulfing Reversal Pattern
@@ -17,12 +17,12 @@ win_rate: 0.4
 ## Quantitative Track Record
 - **Asset / Instrument**: BTCUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 3.07 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.23 (105 verified trade executions)
-- **Max Drawdown**: 8.3% (Institutional risk profile)
-- **Total PnL Return**: +14.1%
-- **Win Rate**: 40.0% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 14 bars
+- **Verified Sharpe Ratio**: 3.86 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.31 (104 verified trade executions)
+- **Max Drawdown**: 8.6% (Institutional risk profile)
+- **Total PnL Return**: +19.1%
+- **Win Rate**: 42.3% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 16 bars
 
 ## Trigger Conditions & Tactical Directives
 - Current candle body >= 1.2x previous candle body and >= 0.6x 14-period ATR.
@@ -39,4 +39,4 @@ win_rate: 0.4
 ## Invalidation & Exit Parameters
 - Invalidate if engulfing candle has an opposing wick > 40% of its body.
 - Invalidate if the preceding trend was fewer than 3 bars.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 14 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 16 bars.

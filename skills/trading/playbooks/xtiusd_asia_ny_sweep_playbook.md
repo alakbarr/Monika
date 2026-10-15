@@ -6,9 +6,9 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 3.3
-profit_factor: 1.38
-max_drawdown_pct: 5.86
+sharpe_ratio: 3.83
+profit_factor: 1.46
+max_drawdown_pct: 4.08
 win_rate: 0.463
 ---
 
@@ -17,12 +17,12 @@ win_rate: 0.463
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 3.30 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.38 (41 verified trade executions)
-- **Max Drawdown**: 5.9% (Institutional risk profile)
-- **Total PnL Return**: +8.4%
+- **Verified Sharpe Ratio**: 3.83 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.46 (41 verified trade executions)
+- **Max Drawdown**: 4.1% (Institutional risk profile)
+- **Total PnL Return**: +10.3%
 - **Win Rate**: 46.3% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during New York opening session (13:00 to 15:00 UTC).
@@ -40,4 +40,4 @@ win_rate: 0.463
 ## Invalidation & Exit Parameters
 - Invalidate if New York volume drives a full body close beyond the Asian boundary.
 - Invalidate during major US FOMC interest rate announcements.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

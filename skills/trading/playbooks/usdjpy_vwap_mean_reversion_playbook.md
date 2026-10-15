@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 2.28
-profit_factor: 1.21
-max_drawdown_pct: 10.71
-win_rate: 0.402
+sharpe_ratio: 2.25
+profit_factor: 1.2
+max_drawdown_pct: 11.76
+win_rate: 0.396
 ---
 
 # USDJPY Empirical Playbook: Daily VWAP Extreme Stretch Mean Reversion
@@ -17,12 +17,12 @@ win_rate: 0.402
 ## Quantitative Track Record
 - **Asset / Instrument**: USDJPY
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.28 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.21 (102 verified trade executions)
-- **Max Drawdown**: 10.7% (Institutional risk profile)
-- **Total PnL Return**: +11.8%
-- **Win Rate**: 40.2% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.4x ATR, Max Holding = 18 bars
+- **Verified Sharpe Ratio**: 2.25 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.20 (101 verified trade executions)
+- **Max Drawdown**: 11.8% (Institutional risk profile)
+- **Total PnL Return**: +11.9%
+- **Win Rate**: 39.6% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.4x ATR, Max Holding = 20 bars
 
 ## Trigger Conditions & Tactical Directives
 - Measure standard deviation distance from Daily Institutional VWAP.
@@ -39,4 +39,4 @@ win_rate: 0.402
 ## Invalidation & Exit Parameters
 - Invalidate if VWAP slope accelerates sharply in trend direction.
 - Invalidate if price does not reject within 2 bars.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 18 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 20 bars.

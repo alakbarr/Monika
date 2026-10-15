@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 2.36
-profit_factor: 1.28
-max_drawdown_pct: 5.42
-win_rate: 0.462
+sharpe_ratio: 1.65
+profit_factor: 1.2
+max_drawdown_pct: 7.71
+win_rate: 0.403
 ---
 
 # AUDUSD Empirical Playbook: 24-Hour Range Extreme Rejection Wick Sweep
@@ -17,12 +17,12 @@ win_rate: 0.462
 ## Quantitative Track Record
 - **Asset / Instrument**: AUDUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.36 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.28 (78 verified trade executions)
-- **Max Drawdown**: 5.4% (Institutional risk profile)
-- **Total PnL Return**: +12.0%
-- **Win Rate**: 46.2% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Verified Sharpe Ratio**: 1.65 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.20 (77 verified trade executions)
+- **Max Drawdown**: 7.7% (Institutional risk profile)
+- **Total PnL Return**: +8.6%
+- **Win Rate**: 40.3% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Candle total range >= 1.0x 14-period ATR.
@@ -39,4 +39,4 @@ win_rate: 0.462
 ## Invalidation & Exit Parameters
 - Invalidate if subsequent candle breaks the extreme tip of the rejection wick.
 - Invalidate if spread widens beyond asset risk limit.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

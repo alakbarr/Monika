@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 2.22
-profit_factor: 1.26
-max_drawdown_pct: 10.88
-win_rate: 0.456
+sharpe_ratio: 2.99
+profit_factor: 1.38
+max_drawdown_pct: 10.78
+win_rate: 0.475
 ---
 
 # GBPUSD Empirical Playbook: HTF Swing Liquidity Sweep & Displacement
@@ -17,12 +17,12 @@ win_rate: 0.456
 ## Quantitative Track Record
 - **Asset / Instrument**: GBPUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.22 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.26 (79 verified trade executions)
-- **Max Drawdown**: 10.9% (Institutional risk profile)
-- **Total PnL Return**: +11.2%
-- **Win Rate**: 45.6% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Verified Sharpe Ratio**: 2.99 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.38 (80 verified trade executions)
+- **Max Drawdown**: 10.8% (Institutional risk profile)
+- **Total PnL Return**: +17.0%
+- **Win Rate**: 47.5% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Map rolling 48-hour swing high (BSL) and swing low (SSL) excluding latest 2 bars.
@@ -39,4 +39,4 @@ win_rate: 0.456
 ## Invalidation & Exit Parameters
 - Invalidate if price prints a full body close beyond the sweep extreme.
 - Invalidate if trade remains stagnant without momentum for 12 bars.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

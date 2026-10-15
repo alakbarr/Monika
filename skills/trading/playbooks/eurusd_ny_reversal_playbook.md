@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 1.57
 status: active
-sharpe_ratio: 6.21
-profit_factor: 1.54
-max_drawdown_pct: 4.93
-win_rate: 0.531
+sharpe_ratio: 5.86
+profit_factor: 1.52
+max_drawdown_pct: 5.64
+win_rate: 0.51
 ---
 
 # EURUSD Empirical Playbook: New York Institutional Liquidity Reversal
@@ -17,12 +17,12 @@ win_rate: 0.531
 ## Quantitative Track Record
 - **Asset / Instrument**: EURUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 6.21 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.54 (49 verified trade executions)
-- **Max Drawdown**: 4.9% (Institutional risk profile)
+- **Verified Sharpe Ratio**: 5.86 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.52 (49 verified trade executions)
+- **Max Drawdown**: 5.6% (Institutional risk profile)
 - **Total PnL Return**: +12.6%
-- **Win Rate**: 53.1% (Normalized at minimum 1:1.57 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.4x ATR, Take-Profit = 2.2x ATR, Max Holding = 16 bars
+- **Win Rate**: 51.0% (Normalized at minimum 1:1.57 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.4x ATR, Take-Profit = 2.2x ATR, Max Holding = 20 bars
 
 ## Trigger Conditions & Tactical Directives
 - Monitor New York open session between 13:00 and 16:00 UTC.
@@ -40,4 +40,4 @@ win_rate: 0.531
 ## Invalidation & Exit Parameters
 - Invalidate if price prints two consecutive H1 closes beyond the swept extreme.
 - Invalidate during major US FOMC interest rate decisions.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 16 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 20 bars.

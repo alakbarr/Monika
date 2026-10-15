@@ -42,10 +42,10 @@ class TestPlaybookScreener:
     ]
 
     def test_registry_loads_all_assets(self) -> None:
-        """Every symbol in the universe must have at least 15 verified empirical playbooks."""
+        """Every symbol in the universe must have at least 25 verified empirical playbooks."""
         for sym in self.UNIVERSE_SYMBOLS:
             specs = PlaybookRegistry.load_playbooks_for_symbol(sym)
-            assert len(specs) >= 15, f"{sym} must have at least 15 playbooks, found {len(specs)}"
+            assert len(specs) >= 25, f"{sym} must have at least 25 playbooks, found {len(specs)}"
             for spec in specs:
                 assert spec.symbol == sym
                 assert spec.profit_factor >= 1.0, f"{spec.name} PF must be >= 1.0"

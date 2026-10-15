@@ -6,8 +6,8 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 7.72
-profit_factor: 2.13
+sharpe_ratio: 6.42
+profit_factor: 1.89
 max_drawdown_pct: 6.0
 win_rate: 0.533
 ---
@@ -17,12 +17,12 @@ win_rate: 0.533
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 7.72 (Zero-Lookahead simulation)
-- **Profit Factor**: 2.13 (30 verified trade executions)
+- **Verified Sharpe Ratio**: 6.42 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.89 (30 verified trade executions)
 - **Max Drawdown**: 6.0% (Institutional risk profile)
-- **Total PnL Return**: +15.2%
+- **Total PnL Return**: +13.1%
 - **Win Rate**: 53.3% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.4x ATR, Take-Profit = 2.8x ATR, Max Holding = 20 bars
+- **Calibrated Horizon**: Stop-Loss = 1.4x ATR, Take-Profit = 2.8x ATR, Max Holding = 24 bars
 
 ## Trigger Conditions & Tactical Directives
 - Detect opening price gap relative to prior bar close >= 0.35x 14-period ATR.
@@ -39,4 +39,4 @@ win_rate: 0.533
 ## Invalidation & Exit Parameters
 - Invalidate if gap extends beyond 1.5x ATR indicating fundamental runaway breakaway gap.
 - Invalidate if gap is not filled within specified holding horizon.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 20 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.

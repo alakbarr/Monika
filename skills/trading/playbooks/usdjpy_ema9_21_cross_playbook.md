@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 1.67
 status: active
-sharpe_ratio: 2.31
-profit_factor: 1.25
-max_drawdown_pct: 5.99
-win_rate: 0.462
+sharpe_ratio: 1.45
+profit_factor: 1.16
+max_drawdown_pct: 7.51
+win_rate: 0.455
 ---
 
 # USDJPY Empirical Playbook: Fast EMA 9/21 Trend Crossover & Expansion
@@ -17,12 +17,12 @@ win_rate: 0.462
 ## Quantitative Track Record
 - **Asset / Instrument**: USDJPY
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.31 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.25 (106 verified trade executions)
-- **Max Drawdown**: 6.0% (Institutional risk profile)
-- **Total PnL Return**: +13.2%
-- **Win Rate**: 46.2% (Normalized at minimum 1:1.67 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
+- **Verified Sharpe Ratio**: 1.45 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.16 (101 verified trade executions)
+- **Max Drawdown**: 7.5% (Institutional risk profile)
+- **Total PnL Return**: +8.0%
+- **Win Rate**: 45.5% (Normalized at minimum 1:1.67 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
 
 ## Trigger Conditions & Tactical Directives
 - Calculate 9-period and 21-period EMA on H1.
@@ -39,4 +39,4 @@ win_rate: 0.462
 ## Invalidation & Exit Parameters
 - Invalidate if EMAs converge back together within 2 bars (whipsaw filter).
 - Invalidate if crossover occurs in flat 200 EMA slope.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 28 bars.

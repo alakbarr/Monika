@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 2.5
 status: active
-sharpe_ratio: 3.27
-profit_factor: 1.31
-max_drawdown_pct: 13.77
-win_rate: 0.369
+sharpe_ratio: 3.14
+profit_factor: 1.3
+max_drawdown_pct: 13.23
+win_rate: 0.361
 ---
 
 # XAUUSD Empirical Playbook: Multi-Horizon Time-Series Momentum
@@ -17,12 +17,12 @@ win_rate: 0.369
 ## Quantitative Track Record
 - **Asset / Instrument**: XAUUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 3.27 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.31 (233 verified trade executions)
-- **Max Drawdown**: 13.8% (Institutional risk profile)
-- **Total PnL Return**: +53.1%
-- **Win Rate**: 36.9% (Normalized at minimum 1:2.5 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 3.0x ATR, Max Holding = 22 bars
+- **Verified Sharpe Ratio**: 3.14 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.30 (233 verified trade executions)
+- **Max Drawdown**: 13.2% (Institutional risk profile)
+- **Total PnL Return**: +51.1%
+- **Win Rate**: 36.1% (Normalized at minimum 1:2.5 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
 
 ## Trigger Conditions & Tactical Directives
 - Compute 12-bar and 48-bar Rate of Change (ROC) momentum on H1.
@@ -39,4 +39,4 @@ win_rate: 0.369
 ## Invalidation & Exit Parameters
 - Invalidate if shorter ROC flips opposite to longer ROC.
 - Invalidate if price closes across EMA 50 against momentum direction.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 22 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.

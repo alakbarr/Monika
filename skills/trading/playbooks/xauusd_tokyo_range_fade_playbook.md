@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.13
 status: active
-sharpe_ratio: 4.87
-profit_factor: 1.61
-max_drawdown_pct: 2.99
-win_rate: 0.5
+sharpe_ratio: 5.49
+profit_factor: 1.73
+max_drawdown_pct: 4.14
+win_rate: 0.489
 ---
 
 # XAUUSD Empirical Playbook: Tokyo Midday Range Boundary Mean Reversion
@@ -17,12 +17,12 @@ win_rate: 0.5
 ## Quantitative Track Record
 - **Asset / Instrument**: XAUUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 4.87 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.61 (48 verified trade executions)
-- **Max Drawdown**: 3.0% (Institutional risk profile)
-- **Total PnL Return**: +15.7%
-- **Win Rate**: 50.0% (Normalized at minimum 1:2.13 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.5x ATR, Take-Profit = 3.2x ATR, Max Holding = 24 bars
+- **Verified Sharpe Ratio**: 5.49 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.73 (47 verified trade executions)
+- **Max Drawdown**: 4.1% (Institutional risk profile)
+- **Total PnL Return**: +18.5%
+- **Win Rate**: 48.9% (Normalized at minimum 1:2.13 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.5x ATR, Take-Profit = 3.2x ATR, Max Holding = 28 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during quiet Tokyo midday session (02:00 to 05:00 UTC).
@@ -40,4 +40,4 @@ win_rate: 0.5
 ## Invalidation & Exit Parameters
 - Invalidate if Australian or Chinese macroeconomic data prints during the bar.
 - Invalidate if price closes beyond the 4-hour extreme.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 28 bars.

@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 2.94
-profit_factor: 1.24
-max_drawdown_pct: 9.05
-win_rate: 0.4
+sharpe_ratio: 2.85
+profit_factor: 1.23
+max_drawdown_pct: 9.51
+win_rate: 0.412
 ---
 
 # BTCUSD Empirical Playbook: Mid-London Session Trend Continuation
@@ -17,12 +17,12 @@ win_rate: 0.4
 ## Quantitative Track Record
 - **Asset / Instrument**: BTCUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.94 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.24 (85 verified trade executions)
-- **Max Drawdown**: 9.1% (Institutional risk profile)
-- **Total PnL Return**: +11.8%
-- **Win Rate**: 40.0% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.4x ATR, Max Holding = 18 bars
+- **Verified Sharpe Ratio**: 2.85 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.23 (85 verified trade executions)
+- **Max Drawdown**: 9.5% (Institutional risk profile)
+- **Total PnL Return**: +11.6%
+- **Win Rate**: 41.2% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.4x ATR, Max Holding = 20 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during established London trend hours (10:00 to 12:00 UTC).
@@ -39,4 +39,4 @@ win_rate: 0.4
 ## Invalidation & Exit Parameters
 - Invalidate if price closes beyond EMA 50 during European midday.
 - Invalidate before high-impact UK/European inflation or rate decisions.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 18 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 20 bars.

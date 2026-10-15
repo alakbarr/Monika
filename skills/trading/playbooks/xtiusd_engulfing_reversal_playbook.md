@@ -6,9 +6,9 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.5
 status: active
-sharpe_ratio: 2.58
-profit_factor: 1.25
-max_drawdown_pct: 6.97
+sharpe_ratio: 2.77
+profit_factor: 1.27
+max_drawdown_pct: 6.63
 win_rate: 0.354
 ---
 
@@ -17,12 +17,12 @@ win_rate: 0.354
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.58 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.25 (79 verified trade executions)
-- **Max Drawdown**: 7.0% (Institutional risk profile)
-- **Total PnL Return**: +12.1%
+- **Verified Sharpe Ratio**: 2.77 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.27 (79 verified trade executions)
+- **Max Drawdown**: 6.6% (Institutional risk profile)
+- **Total PnL Return**: +13.5%
 - **Win Rate**: 35.4% (Normalized at minimum 1:2.5 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 3.0x ATR, Max Holding = 22 bars
+- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
 
 ## Trigger Conditions & Tactical Directives
 - Current candle body >= 1.2x previous candle body and >= 0.6x 14-period ATR.
@@ -39,4 +39,4 @@ win_rate: 0.354
 ## Invalidation & Exit Parameters
 - Invalidate if engulfing candle has an opposing wick > 40% of its body.
 - Invalidate if the preceding trend was fewer than 3 bars.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 22 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.

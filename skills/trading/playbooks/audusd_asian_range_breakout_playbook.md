@@ -22,7 +22,7 @@ win_rate: 0.417
 - **Max Drawdown**: 5.2% (Institutional risk profile)
 - **Total PnL Return**: +8.3%
 - **Win Rate**: 41.7% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Identify the Asian consolidation high and low between 00:00 and 06:00 UTC.
@@ -39,4 +39,4 @@ win_rate: 0.417
 ## Invalidation & Exit Parameters
 - Invalidate setup if price prints an immediate false-break rejection pinbar back inside the range.
 - Invalidate if volume fails to expand on the breakout bar.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

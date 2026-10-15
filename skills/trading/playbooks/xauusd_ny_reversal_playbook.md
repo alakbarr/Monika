@@ -4,11 +4,11 @@ description: New York institutional opening reversal playbook for XAUUSD.
 symbol: XAUUSD
 regime: mean_reverting
 timeframe: H1
-min_rr: 2.0
+min_rr: 1.57
 status: active
-sharpe_ratio: 4.8
-profit_factor: 1.49
-max_drawdown_pct: 4.28
+sharpe_ratio: 5.68
+profit_factor: 1.48
+max_drawdown_pct: 4.16
 win_rate: 0.5
 ---
 
@@ -17,12 +17,12 @@ win_rate: 0.5
 ## Quantitative Track Record
 - **Asset / Instrument**: XAUUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 4.80 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.49 (38 verified trade executions)
-- **Max Drawdown**: 4.3% (Institutional risk profile)
-- **Total PnL Return**: +9.2%
-- **Win Rate**: 50.0% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.4x ATR, Take-Profit = 2.8x ATR, Max Holding = 20 bars
+- **Verified Sharpe Ratio**: 5.68 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.48 (38 verified trade executions)
+- **Max Drawdown**: 4.2% (Institutional risk profile)
+- **Total PnL Return**: +9.1%
+- **Win Rate**: 50.0% (Normalized at minimum 1:1.57 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.4x ATR, Take-Profit = 2.2x ATR, Max Holding = 20 bars
 
 ## Trigger Conditions & Tactical Directives
 - Monitor New York open session between 13:00 and 16:00 UTC.
@@ -31,9 +31,9 @@ win_rate: 0.5
 - Long Trigger: Price sweeps London low, rejects, closes higher than open, with RSI <= 44.
 
 ## Execution Invariants & Risk Parameters
-- **Target Risk-to-Reward (R:R)**: Minimum 1:2.0 contractual target.
+- **Target Risk-to-Reward (R:R)**: Minimum 1:1.57 contractual target.
 - **Stop Loss Placement**: Structured volatility buffer set at 1.4x 14-period Wilder ATR.
-- **Take Profit Target**: Mathematically optimized target placed at 2.8x 14-period ATR.
+- **Take Profit Target**: Mathematically optimized target placed at 2.2x 14-period ATR.
 - **Position Sizing**: Governed strictly by RiskGate (<= 1.0% account equity risk per trade).
 - **Execution Fill**: Standardized next-bar open fill accounting for real broker spread and slippage.
 

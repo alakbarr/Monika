@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 1.67
 status: active
-sharpe_ratio: 4.26
-profit_factor: 1.45
+sharpe_ratio: 3.08
+profit_factor: 1.32
 max_drawdown_pct: 3.44
-win_rate: 0.533
+win_rate: 0.464
 ---
 
 # BTCUSD Empirical Playbook: Asian High/Low Sweep During New York Open
@@ -17,12 +17,12 @@ win_rate: 0.533
 ## Quantitative Track Record
 - **Asset / Instrument**: BTCUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 4.26 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.45 (30 verified trade executions)
+- **Verified Sharpe Ratio**: 3.08 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.32 (28 verified trade executions)
 - **Max Drawdown**: 3.4% (Institutional risk profile)
-- **Total PnL Return**: +6.5%
-- **Win Rate**: 53.3% (Normalized at minimum 1:1.67 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
+- **Total PnL Return**: +4.4%
+- **Win Rate**: 46.4% (Normalized at minimum 1:1.67 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during New York opening session (13:00 to 15:00 UTC).
@@ -40,4 +40,4 @@ win_rate: 0.533
 ## Invalidation & Exit Parameters
 - Invalidate if New York volume drives a full body close beyond the Asian boundary.
 - Invalidate during major US FOMC interest rate announcements.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 28 bars.

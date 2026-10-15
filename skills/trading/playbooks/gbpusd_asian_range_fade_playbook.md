@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.5
 status: active
-sharpe_ratio: 5.18
-profit_factor: 1.62
-max_drawdown_pct: 6.39
-win_rate: 0.432
+sharpe_ratio: 5.3
+profit_factor: 1.65
+max_drawdown_pct: 6.06
+win_rate: 0.428
 ---
 
 # GBPUSD Empirical Playbook: Asian Range Boundary Mean Reversion
@@ -17,12 +17,12 @@ win_rate: 0.432
 ## Quantitative Track Record
 - **Asset / Instrument**: GBPUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 5.18 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.62 (183 verified trade executions)
-- **Max Drawdown**: 6.4% (Institutional risk profile)
-- **Total PnL Return**: +88.2%
-- **Win Rate**: 43.2% (Normalized at minimum 1:2.5 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 3.0x ATR, Max Holding = 22 bars
+- **Verified Sharpe Ratio**: 5.30 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.65 (180 verified trade executions)
+- **Max Drawdown**: 6.1% (Institutional risk profile)
+- **Total PnL Return**: +90.5%
+- **Win Rate**: 42.8% (Normalized at minimum 1:2.5 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during low-volatility Asian hours (23:00 to 05:00 UTC).
@@ -40,4 +40,4 @@ win_rate: 0.432
 ## Invalidation & Exit Parameters
 - Invalidate immediately if volume spikes > 2.0x volume MA indicating breakout regime.
 - Invalidate if trade is held past European open (06:00 UTC).
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 22 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.

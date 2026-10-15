@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 2.28
-profit_factor: 1.33
+sharpe_ratio: 2.53
+profit_factor: 1.39
 max_drawdown_pct: 7.53
-win_rate: 0.485
+win_rate: 0.515
 ---
 
 # XBRUSD Empirical Playbook: Two-Bar Railway Track Swing Reversal
@@ -17,12 +17,12 @@ win_rate: 0.485
 ## Quantitative Track Record
 - **Asset / Instrument**: XBRUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.28 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.33 (68 verified trade executions)
+- **Verified Sharpe Ratio**: 2.53 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.39 (66 verified trade executions)
 - **Max Drawdown**: 7.5% (Institutional risk profile)
-- **Total PnL Return**: +12.4%
-- **Win Rate**: 48.5% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Total PnL Return**: +14.9%
+- **Win Rate**: 51.5% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Two consecutive strong candles each with body >= 0.6x 14-period ATR.
@@ -39,4 +39,4 @@ win_rate: 0.485
 ## Invalidation & Exit Parameters
 - Invalidate if second candle fails to recover at least 90% of the first candle body.
 - Invalidate if wick on reversal side exceeds 35% of total bar.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

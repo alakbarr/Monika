@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 1.67
 status: active
-sharpe_ratio: 2.3
-profit_factor: 1.25
-max_drawdown_pct: 9.21
-win_rate: 0.441
+sharpe_ratio: 2.58
+profit_factor: 1.29
+max_drawdown_pct: 9.04
+win_rate: 0.455
 ---
 
 # BTCUSD Empirical Playbook: MACD Zero-Line Momentum Expansion
@@ -17,12 +17,12 @@ win_rate: 0.441
 ## Quantitative Track Record
 - **Asset / Instrument**: BTCUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.30 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.25 (102 verified trade executions)
-- **Max Drawdown**: 9.2% (Institutional risk profile)
-- **Total PnL Return**: +12.7%
-- **Win Rate**: 44.1% (Normalized at minimum 1:1.67 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
+- **Verified Sharpe Ratio**: 2.58 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.29 (101 verified trade executions)
+- **Max Drawdown**: 9.0% (Institutional risk profile)
+- **Total PnL Return**: +15.1%
+- **Win Rate**: 45.5% (Normalized at minimum 1:1.67 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
 
 ## Trigger Conditions & Tactical Directives
 - Calculate MACD (12, 26, 9) on H1.
@@ -39,4 +39,4 @@ win_rate: 0.441
 ## Invalidation & Exit Parameters
 - Invalidate if MACD histogram prints a declining bar within 2 bars of entry.
 - Invalidate if price falls back across EMA 50.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 28 bars.

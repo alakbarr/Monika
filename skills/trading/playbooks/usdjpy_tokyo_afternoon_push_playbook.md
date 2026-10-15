@@ -6,9 +6,9 @@ regime: trending
 timeframe: H1
 min_rr: 1.5
 status: active
-sharpe_ratio: 1.94
-profit_factor: 1.14
-max_drawdown_pct: 13.21
+sharpe_ratio: 1.82
+profit_factor: 1.13
+max_drawdown_pct: 12.88
 win_rate: 0.444
 ---
 
@@ -17,12 +17,12 @@ win_rate: 0.444
 ## Quantitative Track Record
 - **Asset / Instrument**: USDJPY
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 1.94 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.14 (180 verified trade executions)
-- **Max Drawdown**: 13.2% (Institutional risk profile)
-- **Total PnL Return**: +12.9%
+- **Verified Sharpe Ratio**: 1.82 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.13 (180 verified trade executions)
+- **Max Drawdown**: 12.9% (Institutional risk profile)
+- **Total PnL Return**: +12.2%
 - **Win Rate**: 44.4% (Normalized at minimum 1:1.5 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 1.8x ATR, Max Holding = 14 bars
+- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 1.8x ATR, Max Holding = 16 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during late Tokyo / Singapore afternoon session (05:00 to 07:00 UTC).
@@ -39,4 +39,4 @@ win_rate: 0.444
 ## Invalidation & Exit Parameters
 - Invalidate if volatility collapses below minimum execution spread threshold.
 - Invalidate if European pre-market news disrupts trend structure.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 14 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 16 bars.

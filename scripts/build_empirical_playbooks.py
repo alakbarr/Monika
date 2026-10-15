@@ -1259,6 +1259,347 @@ def get_all_signal_generators(ev: Evaluator) -> Dict[str, Any]:
 
     sigs["macd_pullback"] = sig_macd_pullback
 
+    # 61. Tokyo Open Liquidity Sweep (00-02 UTC)
+    def sig_tokyo_open_sweep(i):
+        if ev.hours[i] in (0, 1, 2):
+            rh = np.max(ev.highs[max(0, i - 12) : i])
+            rl = np.min(ev.lows[max(0, i - 12) : i])
+            if ev.highs[i] > rh and ev.closes[i] < rh and ev.closes[i] < ev.opens[i]:
+                return "sell"
+            elif ev.lows[i] < rl and ev.closes[i] > rl and ev.closes[i] > ev.opens[i]:
+                return "buy"
+        return None
+
+    sigs["tokyo_open_sweep"] = sig_tokyo_open_sweep
+
+    # 62. Frankfurt Momentum Continuation (06-07 UTC)
+    def sig_frankfurt_continuation(i):
+        if ev.hours[i] in (6, 7):
+            if ev.closes[i] > ev.ema20[i] and ev.closes[i] > ev.opens[i] and ev.volumes[i] >= 1.1 * ev.vol_ma20[i]:
+                return "buy"
+            elif ev.closes[i] < ev.ema20[i] and ev.closes[i] < ev.opens[i] and ev.volumes[i] >= 1.1 * ev.vol_ma20[i]:
+                return "sell"
+        return None
+
+    sigs["frankfurt_continuation"] = sig_frankfurt_continuation
+
+    # 63. London Lunch Mean Reversion (11-13 UTC)
+    def sig_london_lunch_fade(i):
+        if ev.hours[i] in (11, 12):
+            if ev.rsi14[i] >= 64 and ev.closes[i] < ev.opens[i]:
+                return "sell"
+            elif ev.rsi14[i] <= 36 and ev.closes[i] > ev.opens[i]:
+                return "buy"
+        return None
+
+    sigs["london_lunch_fade"] = sig_london_lunch_fade
+
+    # 64. H4 Macro Trend H1 Pullback
+    def sig_h4_trend_h1_pullback(i):
+        bull_htf = ev.h4_ema50[i] > ev.h4_ema200[i]
+        bear_htf = ev.h4_ema50[i] < ev.h4_ema200[i]
+        if bull_htf and ev.lows[i] <= ev.ema20[i] and ev.closes[i] > ev.ema20[i] and ev.closes[i] > ev.opens[i]:
+            return "buy"
+        elif bear_htf and ev.highs[i] >= ev.ema20[i] and ev.closes[i] < ev.ema20[i] and ev.closes[i] < ev.opens[i]:
+            return "sell"
+        return None
+
+    sigs["h4_trend_h1_pullback"] = sig_h4_trend_h1_pullback
+
+    # 65. Asian Box Compression Breakout
+    def sig_asian_box_compression(i):
+        if ev.hours[i] in (7, 8):
+            ah = np.max(ev.highs[max(0, i - 7) : i])
+            al = np.min(ev.lows[max(0, i - 7) : i])
+            rng = ah - al
+            if rng <= 0.9 * ev.atr14[i]:
+                if ev.closes[i] > ah and ev.closes[i] > ev.opens[i]:
+                    return "buy"
+                elif ev.closes[i] < al and ev.closes[i] < ev.opens[i]:
+                    return "sell"
+        return None
+
+    sigs["asian_box_compression"] = sig_asian_box_compression
+
+    # 66. Turtle Soup 20-bar False Breakout Sweep
+    def sig_turtle_soup_sweep(i):
+        if i >= 22:
+            prev_high = np.max(ev.highs[i - 20 : i - 1])
+            prev_low = np.min(ev.lows[i - 20 : i - 1])
+            if ev.highs[i] > prev_high and ev.closes[i] < prev_high and ev.closes[i] < ev.opens[i]:
+                return "sell"
+            elif ev.lows[i] < prev_low and ev.closes[i] > prev_low and ev.closes[i] > ev.opens[i]:
+                return "buy"
+        return None
+
+    sigs["turtle_soup_sweep"] = sig_turtle_soup_sweep
+
+    # 67. VWAP 2-StdDev Extreme Fade
+    def sig_vwap_band_2std_fade(i):
+        diff = (ev.closes[i] - ev.vwap[i]) / max(1e-5, ev.atr14[i])
+        if diff >= 1.5 and ev.closes[i] < ev.opens[i]:
+            return "sell"
+        elif diff <= -1.5 and ev.closes[i] > ev.opens[i]:
+            return "buy"
+        return None
+
+    sigs["vwap_band_2std_fade"] = sig_vwap_band_2std_fade
+
+    # 68. Double Inside Bar Breakout
+    def sig_double_inside_bar(i):
+        if i >= 3:
+            ib1 = ev.highs[i - 1] <= ev.highs[i - 2] and ev.lows[i - 1] >= ev.lows[i - 2]
+            ib2 = ev.highs[i - 2] <= ev.highs[i - 3] and ev.lows[i - 2] >= ev.lows[i - 3]
+            if ib1 and ib2:
+                if ev.closes[i] > ev.highs[i - 1] and ev.closes[i] > ev.opens[i]:
+                    return "buy"
+                elif ev.closes[i] < ev.lows[i - 1] and ev.closes[i] < ev.opens[i]:
+                    return "sell"
+        return None
+
+    sigs["double_inside_bar"] = sig_double_inside_bar
+
+    # 69. Three Candle Institutional Momentum Thrust
+    def sig_three_candle_thrust(i):
+        if i >= 3:
+            c1_bull = ev.closes[i - 2] > ev.opens[i - 2]
+            c2_bull = ev.closes[i - 1] > ev.opens[i - 1]
+            c3_bull = ev.closes[i] > ev.opens[i] and ev.closes[i] > ev.closes[i - 1]
+            if c1_bull and c2_bull and c3_bull and ev.closes[i] > ev.ema50[i]:
+                return "buy"
+            c1_bear = ev.closes[i - 2] < ev.opens[i - 2]
+            c2_bear = ev.closes[i - 1] < ev.opens[i - 1]
+            c3_bear = ev.closes[i] < ev.opens[i] and ev.closes[i] < ev.closes[i - 1]
+            if c1_bear and c2_bear and c3_bear and ev.closes[i] < ev.ema50[i]:
+                return "sell"
+        return None
+
+    sigs["three_candle_thrust"] = sig_three_candle_thrust
+
+    # 70. Supertrend ATR Trail Bounce
+    def sig_supertrend_bounce(i):
+        if ev.closes[i] > ev.ema50[i] and ev.lows[i] <= ev.ema50[i] + 0.35 * ev.atr14[i] and ev.closes[i] > ev.opens[i]:
+            return "buy"
+        elif (
+            ev.closes[i] < ev.ema50[i]
+            and ev.highs[i] >= ev.ema50[i] - 0.35 * ev.atr14[i]
+            and ev.closes[i] < ev.opens[i]
+        ):
+            return "sell"
+        return None
+
+    sigs["supertrend_bounce"] = sig_supertrend_bounce
+
+    # 71. ADR Exhaustion Reversal
+    def sig_adr_exhaustion_reversal(i):
+        if i >= 24:
+            d_high = np.max(ev.highs[i - 24 : i])
+            d_low = np.min(ev.lows[i - 24 : i])
+            rng = d_high - d_low
+            if rng >= 1.1 * ev.atr14[i]:
+                if ev.highs[i] >= d_high and ev.closes[i] < ev.opens[i] and ev.rsi14[i] >= 60:
+                    return "sell"
+                elif ev.lows[i] <= d_low and ev.closes[i] > ev.opens[i] and ev.rsi14[i] <= 40:
+                    return "buy"
+        return None
+
+    sigs["adr_exhaustion_reversal"] = sig_adr_exhaustion_reversal
+
+    # 72. FVG Discount / Premium Retest
+    def sig_fvg_discount_retest(i):
+        if i >= 4:
+            bull_fvg = ev.lows[i - 1] > ev.highs[i - 3]
+            bear_fvg = ev.highs[i - 1] < ev.lows[i - 3]
+            if (
+                bull_fvg
+                and ev.lows[i] <= (ev.lows[i - 1] + ev.highs[i - 3]) / 2.0
+                and ev.closes[i] > ev.opens[i]
+                and ev.closes[i] > ev.ema50[i]
+            ):
+                return "buy"
+            elif (
+                bear_fvg
+                and ev.highs[i] >= (ev.highs[i - 1] + ev.lows[i - 3]) / 2.0
+                and ev.closes[i] < ev.opens[i]
+                and ev.closes[i] < ev.ema50[i]
+            ):
+                return "sell"
+        return None
+
+    sigs["fvg_discount_retest"] = sig_fvg_discount_retest
+
+    # 73. London / NY Transition (15-17 UTC)
+    def sig_london_ny_transition(i):
+        if ev.hours[i] in (15, 16):
+            if ev.closes[i] > ev.ema20[i] and ev.closes[i] > ev.opens[i] and ev.rsi14[i] >= 52:
+                return "buy"
+            elif ev.closes[i] < ev.ema20[i] and ev.closes[i] < ev.opens[i] and ev.rsi14[i] <= 48:
+                return "sell"
+        return None
+
+    sigs["london_ny_transition"] = sig_london_ny_transition
+
+    # 74. AUD Asia Tokyo Drift (02-05 UTC)
+    def sig_aud_asia_tokyo_drift(i):
+        if ev.hours[i] in (2, 3, 4):
+            if ev.closes[i] > ev.ema20[i] and ev.closes[i] > ev.opens[i] and ev.volumes[i] >= 1.05 * ev.vol_ma20[i]:
+                return "buy"
+            elif ev.closes[i] < ev.ema20[i] and ev.closes[i] < ev.opens[i] and ev.volumes[i] >= 1.05 * ev.vol_ma20[i]:
+                return "sell"
+        return None
+
+    sigs["aud_asia_tokyo_drift"] = sig_aud_asia_tokyo_drift
+
+    # 75. GBP Cable London Open Breakout (08-09 UTC)
+    def sig_gbp_cable_breakout(i):
+        if ev.hours[i] in (8, 9):
+            pre_h = np.max(ev.highs[max(0, i - 6) : i])
+            pre_l = np.min(ev.lows[max(0, i - 6) : i])
+            if ev.closes[i] > pre_h and ev.closes[i] > ev.opens[i]:
+                return "buy"
+            elif ev.closes[i] < pre_l and ev.closes[i] < ev.opens[i]:
+                return "sell"
+        return None
+
+    sigs["gbp_cable_breakout"] = sig_gbp_cable_breakout
+
+    # 76. EMA Retest with MACD Confluence
+    def sig_ema_retest_macd(i):
+        if (
+            ev.closes[i] > ev.ema50[i]
+            and ev.lows[i] <= ev.ema21[i]
+            and ev.closes[i] > ev.ema21[i]
+            and ev.macd_hist[i] > 0
+            and ev.closes[i] > ev.opens[i]
+        ):
+            return "buy"
+        elif (
+            ev.closes[i] < ev.ema50[i]
+            and ev.highs[i] >= ev.ema21[i]
+            and ev.closes[i] < ev.ema21[i]
+            and ev.macd_hist[i] < 0
+            and ev.closes[i] < ev.opens[i]
+        ):
+            return "sell"
+        return None
+
+    sigs["ema_retest_macd"] = sig_ema_retest_macd
+
+    # 77. Two-Bar Momentum Thrust
+    def sig_two_bar_thrust(i):
+        if i >= 2:
+            body1 = abs(ev.closes[i - 1] - ev.opens[i - 1])
+            body2 = abs(ev.closes[i] - ev.opens[i])
+            if body1 >= 0.5 * ev.atr14[i] and body2 >= 0.5 * ev.atr14[i]:
+                if ev.closes[i - 1] > ev.opens[i - 1] and ev.closes[i] > ev.opens[i] and ev.closes[i] > ev.highs[i - 1]:
+                    return "buy"
+                elif (
+                    ev.closes[i - 1] < ev.opens[i - 1] and ev.closes[i] < ev.opens[i] and ev.closes[i] < ev.lows[i - 1]
+                ):
+                    return "sell"
+        return None
+
+    sigs["two_bar_thrust"] = sig_two_bar_thrust
+
+    # 78. StochRSI Pullback in Trend
+    def sig_stoch_trend_pullback(i):
+        if (
+            ev.closes[i] > ev.ema50[i]
+            and ev.stoch_k[i - 1] <= 32
+            and ev.stoch_k[i] > ev.stoch_d[i]
+            and ev.closes[i] > ev.opens[i]
+        ):
+            return "buy"
+        elif (
+            ev.closes[i] < ev.ema50[i]
+            and ev.stoch_k[i - 1] >= 68
+            and ev.stoch_k[i] < ev.stoch_d[i]
+            and ev.closes[i] < ev.opens[i]
+        ):
+            return "sell"
+        return None
+
+    sigs["stoch_trend_pullback"] = sig_stoch_trend_pullback
+
+    # 79. Asian Range Mean Revert Multibar
+    def sig_asian_range_mean_revert(i):
+        if ev.hours[i] in (23, 0, 1, 2, 3):
+            if ev.closes[i] > ev.bb_upper[i] and ev.closes[i] < ev.opens[i]:
+                return "sell"
+            elif ev.closes[i] < ev.bb_lower[i] and ev.closes[i] > ev.opens[i]:
+                return "buy"
+        return None
+
+    sigs["asian_range_mean_revert"] = sig_asian_range_mean_revert
+
+    # 80. Sydney Session Opening Breakout
+    def sig_aud_sydney_breakout(i):
+        if ev.hours[i] in (21, 22, 23):
+            prev_h = np.max(ev.highs[max(0, i - 4) : i])
+            prev_l = np.min(ev.lows[max(0, i - 4) : i])
+            if ev.closes[i] > prev_h and ev.closes[i] > ev.opens[i]:
+                return "buy"
+            elif ev.closes[i] < prev_l and ev.closes[i] < ev.opens[i]:
+                return "sell"
+        return None
+
+    sigs["aud_sydney_breakout"] = sig_aud_sydney_breakout
+
+    # 81. MACD Zero Line Bounce
+    def sig_macd_zero_bounce(i):
+        if ev.macd_line[i] > 0 and abs(ev.macd_line[i]) < 0.0008 and ev.macd_hist[i] > 0 and ev.closes[i] > ev.ema20[i]:
+            return "buy"
+        elif (
+            ev.macd_line[i] < 0 and abs(ev.macd_line[i]) < 0.0008 and ev.macd_hist[i] < 0 and ev.closes[i] < ev.ema20[i]
+        ):
+            return "sell"
+        return None
+
+    sigs["macd_zero_bounce"] = sig_macd_zero_bounce
+
+    # 82. 12-bar Donchian Tight Breakout
+    def sig_donchian12_breakout(i):
+        if i >= 12:
+            dh = np.max(ev.highs[i - 12 : i])
+            dl = np.min(ev.lows[i - 12 : i])
+            if ev.closes[i] > dh and ev.closes[i] > ev.ema50[i]:
+                return "buy"
+            elif ev.closes[i] < dl and ev.closes[i] < ev.ema50[i]:
+                return "sell"
+        return None
+
+    sigs["donchian12_breakout"] = sig_donchian12_breakout
+
+    # 83. RSI Trend Zone Pullback
+    def sig_rsi_trend_zone_pullback(i):
+        if ev.closes[i] > ev.ema50[i] and 40 <= ev.rsi14[i] <= 48 and ev.closes[i] > ev.opens[i]:
+            return "buy"
+        elif ev.closes[i] < ev.ema50[i] and 52 <= ev.rsi14[i] <= 60 and ev.closes[i] < ev.opens[i]:
+            return "sell"
+        return None
+
+    sigs["rsi_trend_zone_pullback"] = sig_rsi_trend_zone_pullback
+
+    # 84. EMA 9/21 Pullback Continuation
+    def sig_ema9_21_pullback(i):
+        if (
+            ev.ema9[i] > ev.ema21[i]
+            and ev.lows[i] <= ev.ema9[i]
+            and ev.closes[i] > ev.ema9[i]
+            and ev.closes[i] > ev.opens[i]
+        ):
+            return "buy"
+        elif (
+            ev.ema9[i] < ev.ema21[i]
+            and ev.highs[i] >= ev.ema9[i]
+            and ev.closes[i] < ev.ema9[i]
+            and ev.closes[i] < ev.opens[i]
+        ):
+            return "sell"
+        return None
+
+    sigs["ema9_21_pullback"] = sig_ema9_21_pullback
+
     return sigs
 
 
@@ -2107,6 +2448,336 @@ SETUP_DOCS: Dict[str, Dict[str, Any]] = {
             "- Invalidate if price breaks opposite the 20-period EMA."
         ),
     },
+    "tokyo_open_sweep": {
+        "title": "Tokyo Open Session Liquidity Sweep",
+        "regime": "mean_reverting",
+        "desc_template": "Tokyo open liquidity sweep playbook for {symbol}.",
+        "trigger": (
+            "- Active during Tokyo open hours between 00:00 and 02:00 UTC.\n"
+            "- Map rolling 12-hour high and low liquidity extremes.\n"
+            "- Long Trigger: Low sweeps 12-hour low, closes back inside with bullish candle.\n"
+            "- Short Trigger: High sweeps 12-hour high, closes back inside with bearish candle."
+        ),
+        "invalidation": (
+            "- Invalidate if price closes consecutively beyond swept extreme.\n"
+            "- Invalidate if volume surge exceeds 2.5x volume MA."
+        ),
+    },
+    "frankfurt_continuation": {
+        "title": "Frankfurt Pre-Market Momentum Continuation",
+        "regime": "trending",
+        "desc_template": "Frankfurt pre-market continuation playbook for {symbol}.",
+        "trigger": (
+            "- Active during European pre-market hours (06:00 to 07:00 UTC).\n"
+            "- Long Trigger: Close > EMA 20, Close > Open, and volume >= 1.1x volume MA.\n"
+            "- Short Trigger: Close < EMA 20, Close < Open, and volume >= 1.1x volume MA."
+        ),
+        "invalidation": (
+            "- Invalidate if price closes back across EMA 20 before London open.\n"
+            "- Invalidate during high-impact European economic releases."
+        ),
+    },
+    "london_lunch_fade": {
+        "title": "London Midday Session Mean Reversion Fade",
+        "regime": "mean_reverting",
+        "desc_template": "London midday session mean reversion for {symbol}.",
+        "trigger": (
+            "- Active during European midday lull (11:00 to 12:00 UTC).\n"
+            "- Long Trigger: RSI <= 36 and candle prints bullish rejection close.\n"
+            "- Short Trigger: RSI >= 64 and candle prints bearish rejection close."
+        ),
+        "invalidation": (
+            "- Invalidate if price breaks session high/low with increasing volume.\n"
+            "- Invalidate if held past New York open (13:00 UTC)."
+        ),
+    },
+    "h4_trend_h1_pullback": {
+        "title": "H4 Macro Trend Alignment & H1 EMA Pullback",
+        "regime": "trending",
+        "desc_template": "H4 macro trend and H1 pullback playbook for {symbol}.",
+        "trigger": (
+            "- Long Trigger: H4 EMA 50 > H4 EMA 200, H1 Low tests EMA 20, and closes bullish.\n"
+            "- Short Trigger: H4 EMA 50 < H4 EMA 200, H1 High tests EMA 20, and closes bearish."
+        ),
+        "invalidation": (
+            "- Invalidate if H1 candle body closes across EMA 50.\n- Invalidate if H4 trend structure breaks."
+        ),
+    },
+    "asian_box_compression": {
+        "title": "Asian Range Volatility Compression Breakout",
+        "regime": "breakout",
+        "desc_template": "Asian range box compression breakout for {symbol}.",
+        "trigger": (
+            "- Asian session 7-hour range contracts strictly <= 0.9x 14-period ATR.\n"
+            "- Long Trigger: H1 Close at 07:00 or 08:00 UTC breaks above Asian range.\n"
+            "- Short Trigger: H1 Close at 07:00 or 08:00 UTC breaks below Asian range."
+        ),
+        "invalidation": (
+            "- Invalidate if price immediately re-enters the compressed range.\n"
+            "- Invalidate if breakout bar displays long rejection wick."
+        ),
+    },
+    "turtle_soup_sweep": {
+        "title": "Turtle Soup 20-Bar False Breakout Reversal",
+        "regime": "mean_reverting",
+        "desc_template": "Turtle soup false breakout sweep for {symbol}.",
+        "trigger": (
+            "- Map 20-period swing high and swing low boundaries.\n"
+            "- Long Trigger: Low pierces 20-bar low but closes back above with bullish bar.\n"
+            "- Short Trigger: High pierces 20-bar high but closes back below with bearish bar."
+        ),
+        "invalidation": (
+            "- Invalidate if subsequent candle breaks the extreme wick tip.\n"
+            "- Invalidate if volume exceeds 2.0x 20-period volume MA."
+        ),
+    },
+    "vwap_band_2std_fade": {
+        "title": "VWAP Multi-Band Statistical Stretch Reversion",
+        "regime": "mean_reverting",
+        "desc_template": "VWAP 2-stddev boundary mean reversion for {symbol}.",
+        "trigger": (
+            "- Calculate intraday session VWAP and ATR-normalized deviation.\n"
+            "- Long Trigger: Price extends <= -1.5x ATR from VWAP and prints bullish close.\n"
+            "- Short Trigger: Price extends >= +1.5x ATR from VWAP and prints bearish close."
+        ),
+        "invalidation": (
+            "- Invalidate if price prints two consecutive closes accelerating away from VWAP.\n"
+            "- Invalidate during central bank rate announcements."
+        ),
+    },
+    "double_inside_bar": {
+        "title": "Double Inside Bar Coiling Spring Breakout",
+        "regime": "breakout",
+        "desc_template": "Double inside bar coiling breakout for {symbol}.",
+        "trigger": (
+            "- Detect two consecutive inside bars: Bar[i-1] inside Bar[i-2] inside Bar[i-3].\n"
+            "- Long Trigger: H1 Close breaks above Bar[i-1] high with Close > Open.\n"
+            "- Short Trigger: H1 Close breaks below Bar[i-1] low with Close < Open."
+        ),
+        "invalidation": (
+            "- Invalidate if breakout candle fails to close outside the mother bar range.\n"
+            "- Invalidate if volatility contracts below minimum trading threshold."
+        ),
+    },
+    "three_candle_thrust": {
+        "title": "Three-Bar Institutional Impulse Continuation",
+        "regime": "trending",
+        "desc_template": "Three candle institutional thrust for {symbol}.",
+        "trigger": (
+            "- Long Trigger: 3 consecutive bullish bars, Close > EMA 50, and expanding close.\n"
+            "- Short Trigger: 3 consecutive bearish bars, Close < EMA 50, and expanding close."
+        ),
+        "invalidation": (
+            "- Invalidate if subsequent candle fully engulfs the third thrust bar.\n"
+            "- Invalidate if price stalls at major HTF support/resistance."
+        ),
+    },
+    "supertrend_bounce": {
+        "title": "Supertrend Trailing Dynamic Trend Bounce",
+        "regime": "trending",
+        "desc_template": "Supertrend ATR trail trend bounce for {symbol}.",
+        "trigger": (
+            "- Long Trigger: Close > EMA 50, Low tests dynamic EMA 50 buffer, and closes bullish.\n"
+            "- Short Trigger: Close < EMA 50, High tests dynamic EMA 50 buffer, and closes bearish."
+        ),
+        "invalidation": (
+            "- Invalidate if candle body closes fully across EMA 50 line.\n"
+            "- Invalidate if higher timeframe MACD histogram turns divergent."
+        ),
+    },
+    "adr_exhaustion_reversal": {
+        "title": "24-Hour Range Exhaustion Mean Reversion",
+        "regime": "mean_reverting",
+        "desc_template": "Average daily range exhaustion reversal for {symbol}.",
+        "trigger": (
+            "- Rolling 24-hour range expands >= 1.1x 14-period ATR.\n"
+            "- Long Trigger: Low tests 24h low, RSI <= 40, and candle closes bullish.\n"
+            "- Short Trigger: High tests 24h high, RSI >= 60, and candle closes bearish."
+        ),
+        "invalidation": (
+            "- Invalidate if price prints a runaway trend candle closing beyond the extreme.\n"
+            "- Invalidate if fundamental catalyst triggers sustained orderflow."
+        ),
+    },
+    "fvg_discount_retest": {
+        "title": "Fair Value Gap 50% Midpoint Mitigation",
+        "regime": "trending",
+        "desc_template": "Fair Value Gap discount retest for {symbol}.",
+        "trigger": (
+            "- Identify 3-bar Fair Value Gap imbalance on H1 chart.\n"
+            "- Long Trigger: Bullish FVG, Low tests 50% midpoint, Close > EMA 50, bullish close.\n"
+            "- Short Trigger: Bearish FVG, High tests 50% midpoint, Close < EMA 50, bearish close."
+        ),
+        "invalidation": (
+            "- Invalidate if price closes completely through the FVG zone.\n"
+            "- Invalidate if momentum reverses against the underlying trend."
+        ),
+    },
+    "london_ny_transition": {
+        "title": "London NY Overlap Transition Trend Momentum",
+        "regime": "trending",
+        "desc_template": "London NY session transition momentum for {symbol}.",
+        "trigger": (
+            "- Active during London close and NY continuation hours (15:00 to 16:00 UTC).\n"
+            "- Long Trigger: Close > EMA 20, Close > Open, and RSI >= 52.\n"
+            "- Short Trigger: Close < EMA 20, Close < Open, and RSI <= 48."
+        ),
+        "invalidation": (
+            "- Invalidate if price reverses across EMA 20 prior to session close.\n"
+            "- Invalidate if market volume dries up below 0.7x MA."
+        ),
+    },
+    "aud_asia_tokyo_drift": {
+        "title": "Asian Morning Session Institutional Trend Drift",
+        "regime": "trending",
+        "desc_template": "Asian session trend drift playbook for {symbol}.",
+        "trigger": (
+            "- Active during Tokyo liquidity build (02:00 to 04:00 UTC).\n"
+            "- Long Trigger: Close > EMA 20, Close > Open, and volume >= 1.05x volume MA.\n"
+            "- Short Trigger: Close < EMA 20, Close < Open, and volume >= 1.05x volume MA."
+        ),
+        "invalidation": (
+            "- Invalidate if price crosses back across the 20-period EMA.\n"
+            "- Invalidate if pre-London orderflow disrupts the trend."
+        ),
+    },
+    "gbp_cable_breakout": {
+        "title": "London Morning Opening Range Expansion Breakout",
+        "regime": "breakout",
+        "desc_template": "London morning cable range breakout for {symbol}.",
+        "trigger": (
+            "- Active during London market open (08:00 to 09:00 UTC).\n"
+            "- Map preceding 6-hour pre-London high and low range.\n"
+            "- Long Trigger: Close breaks above 6-hour high and Close > Open.\n"
+            "- Short Trigger: Close breaks below 6-hour low and Close < Open."
+        ),
+        "invalidation": (
+            "- Invalidate if price immediately re-enters pre-London range.\n"
+            "- Invalidate if breakout bar prints rejection wick > 50% of range."
+        ),
+    },
+    "ema_retest_macd": {
+        "title": "EMA 21 Trend Retest with MACD Confluence",
+        "regime": "trending",
+        "desc_template": "EMA pullback with MACD confluence for {symbol}.",
+        "trigger": (
+            "- Long Trigger: Close > EMA 50, Low tests EMA 21, Close > EMA 21, MACD Hist > 0.\n"
+            "- Short Trigger: Close < EMA 50, High tests EMA 21, Close < EMA 21, MACD Hist < 0."
+        ),
+        "invalidation": (
+            "- Invalidate if candle body closes completely across EMA 50.\n"
+            "- Invalidate if MACD histogram turns against trend direction."
+        ),
+    },
+    "two_bar_thrust": {
+        "title": "Two-Bar Consecutive Momentum Range Thrust",
+        "regime": "trending",
+        "desc_template": "Two-bar consecutive momentum thrust for {symbol}.",
+        "trigger": (
+            "- Two consecutive directional bars with bodies >= 0.5x 14-period ATR.\n"
+            "- Long Trigger: Bar[i-1] and Bar[i] close higher, and Close breaks Bar[i-1] high.\n"
+            "- Short Trigger: Bar[i-1] and Bar[i] close lower, and Close breaks Bar[i-1] low."
+        ),
+        "invalidation": (
+            "- Invalidate if subsequent bar immediately retraces > 50% of thrust range.\n"
+            "- Invalidate if volume contracts significantly on second bar."
+        ),
+    },
+    "stoch_trend_pullback": {
+        "title": "Stochastic Trend Retest & Dynamic Continuation",
+        "regime": "trending",
+        "desc_template": "Stochastic trend pullback playbook for {symbol}.",
+        "trigger": (
+            "- Long Trigger: Close > EMA 50, Stoch %K <= 32, turns above %D, Close > Open.\n"
+            "- Short Trigger: Close < EMA 50, Stoch %K >= 68, turns below %D, Close < Open."
+        ),
+        "invalidation": (
+            "- Invalidate if price breaks across EMA 50 before entry execution.\n"
+            "- Invalidate if Stochastic indicator remains pinned at opposing extreme."
+        ),
+    },
+    "asian_range_mean_revert": {
+        "title": "Asian Session Outer Band Mean Reversion",
+        "regime": "mean_reverting",
+        "desc_template": "Asian session boundary range revert for {symbol}.",
+        "trigger": (
+            "- Active during low-volatility Asian hours (23:00 to 03:00 UTC).\n"
+            "- Long Trigger: Close pierces below Lower Bollinger Band and closes bullish.\n"
+            "- Short Trigger: Close pierces above Upper Bollinger Band and closes bearish."
+        ),
+        "invalidation": (
+            "- Invalidate if Bollinger Bands expand sharply into volatility breakout.\n"
+            "- Invalidate if held past European pre-market open (06:00 UTC)."
+        ),
+    },
+    "aud_sydney_breakout": {
+        "title": "Sydney Session Opening Liquidity Breakout",
+        "regime": "breakout",
+        "desc_template": "Sydney opening session range breakout for {symbol}.",
+        "trigger": (
+            "- Active during Sydney open hours (21:00 to 23:00 UTC).\n"
+            "- Map preceding 4-hour consolidation high and low.\n"
+            "- Long Trigger: Close breaks above 4-hour high and Close > Open.\n"
+            "- Short Trigger: Close breaks below 4-hour low and Close < Open."
+        ),
+        "invalidation": (
+            "- Invalidate if breakout candle fails to hold outside 4-hour range.\n"
+            "- Invalidate if spread widens beyond asset risk limit."
+        ),
+    },
+    "macd_zero_bounce": {
+        "title": "MACD Zero-Line Trend Equilibrium Bounce",
+        "regime": "trending",
+        "desc_template": "MACD zero line trend bounce playbook for {symbol}.",
+        "trigger": (
+            "- Long Trigger: MACD Line > 0, tests zero line, MACD Hist > 0, Close > EMA 20.\n"
+            "- Short Trigger: MACD Line < 0, tests zero line, MACD Hist < 0, Close < EMA 20."
+        ),
+        "invalidation": (
+            "- Invalidate if MACD line crosses zero into opposing territory.\n"
+            "- Invalidate if price breaks opposite the 20-period EMA."
+        ),
+    },
+    "donchian12_breakout": {
+        "title": "12-Period Donchian Dynamic Momentum Breakout",
+        "regime": "breakout",
+        "desc_template": "12-bar Donchian channel breakout for {symbol}.",
+        "trigger": (
+            "- Calculate 12-period Donchian Channel on H1 timeframe.\n"
+            "- Long Trigger: Close breaks above 12-period high and Close > EMA 50.\n"
+            "- Short Trigger: Close breaks below 12-period low and Close < EMA 50."
+        ),
+        "invalidation": (
+            "- Invalidate if breakout bar prints rejection wick > 50% of candle range.\n"
+            "- Invalidate if price re-enters channel midpoint."
+        ),
+    },
+    "rsi_trend_zone_pullback": {
+        "title": "RSI Equilibrium Zone Trend Pullback Continuation",
+        "regime": "trending",
+        "desc_template": "RSI trend continuation pullback for {symbol}.",
+        "trigger": (
+            "- Long Trigger: Close > EMA 50, RSI tests 40-48 zone, and closes bullish.\n"
+            "- Short Trigger: Close < EMA 50, RSI tests 52-60 zone, and closes bearish."
+        ),
+        "invalidation": (
+            "- Invalidate if RSI crosses opposite zone extreme (<35 or >65).\n"
+            "- Invalidate if candle body closes across EMA 50."
+        ),
+    },
+    "ema9_21_pullback": {
+        "title": "Dual EMA 9/21 Dynamic Trend Pullback",
+        "regime": "trending",
+        "desc_template": "EMA 9/21 trend pullback playbook for {symbol}.",
+        "trigger": (
+            "- Long Trigger: EMA 9 > EMA 21, Low tests EMA 9, Close > EMA 9, bullish close.\n"
+            "- Short Trigger: EMA 9 < EMA 21, High tests EMA 9, Close < EMA 9, bearish close."
+        ),
+        "invalidation": (
+            "- Invalidate if candle body closes completely across EMA 21.\n"
+            "- Invalidate if EMA 9 crosses back across EMA 21."
+        ),
+    },
 }
 
 
@@ -2205,22 +2876,27 @@ def run_pipeline():
             pass
 
     param_grid = [
-        {"sl": 0.8, "tp": 1.4, "hold": 10},
-        {"sl": 0.8, "tp": 1.6, "hold": 12},
-        {"sl": 1.0, "tp": 1.5, "hold": 10},
-        {"sl": 1.0, "tp": 1.8, "hold": 12},
-        {"sl": 1.0, "tp": 2.0, "hold": 14},
-        {"sl": 1.2, "tp": 1.8, "hold": 14},
-        {"sl": 1.2, "tp": 2.2, "hold": 16},
-        {"sl": 1.2, "tp": 2.4, "hold": 18},
-        {"sl": 1.2, "tp": 3.0, "hold": 22},
-        {"sl": 1.4, "tp": 2.2, "hold": 16},
-        {"sl": 1.4, "tp": 2.8, "hold": 20},
-        {"sl": 1.5, "tp": 2.5, "hold": 20},
-        {"sl": 1.5, "tp": 3.2, "hold": 24},
-        {"sl": 1.5, "tp": 3.5, "hold": 28},
-        {"sl": 1.8, "tp": 3.0, "hold": 24},
-        {"sl": 1.8, "tp": 3.6, "hold": 30},
+        {"sl": 0.6, "tp": 1.2, "hold": 10},
+        {"sl": 0.6, "tp": 1.5, "hold": 12},
+        {"sl": 0.8, "tp": 1.4, "hold": 12},
+        {"sl": 0.8, "tp": 1.6, "hold": 14},
+        {"sl": 0.8, "tp": 2.0, "hold": 18},
+        {"sl": 1.0, "tp": 1.5, "hold": 12},
+        {"sl": 1.0, "tp": 1.8, "hold": 14},
+        {"sl": 1.0, "tp": 2.0, "hold": 16},
+        {"sl": 1.0, "tp": 2.5, "hold": 20},
+        {"sl": 1.2, "tp": 1.8, "hold": 16},
+        {"sl": 1.2, "tp": 2.2, "hold": 18},
+        {"sl": 1.2, "tp": 2.4, "hold": 20},
+        {"sl": 1.2, "tp": 3.0, "hold": 24},
+        {"sl": 1.4, "tp": 2.2, "hold": 20},
+        {"sl": 1.4, "tp": 2.8, "hold": 24},
+        {"sl": 1.5, "tp": 2.5, "hold": 24},
+        {"sl": 1.5, "tp": 3.2, "hold": 28},
+        {"sl": 1.5, "tp": 3.8, "hold": 36},
+        {"sl": 1.8, "tp": 3.0, "hold": 28},
+        {"sl": 1.8, "tp": 3.6, "hold": 36},
+        {"sl": 2.0, "tp": 4.0, "hold": 48},
     ]
 
     total_playbooks_created = 0
@@ -2250,7 +2926,7 @@ def run_pipeline():
                 m = ev.simulate_signals(s_fn, sl_mult=p["sl"], tp_mult=p["tp"], max_hold=p["hold"])
                 if (
                     m["total_trades"] >= 15
-                    and m["profit_factor"] > 1.0
+                    and m["profit_factor"] >= 1.03
                     and m["total_pnl_pct"] > 0
                     and m["max_drawdown_pct"] <= 15.0
                 ):
@@ -2274,10 +2950,10 @@ def run_pipeline():
         candidate_setups.sort(
             key=lambda x: (x["metrics"]["profit_factor"], x["metrics"]["total_pnl_pct"]), reverse=True
         )
-        selected_setups = candidate_setups[:15]
+        selected_setups = candidate_setups[:26]
 
-        if len(selected_setups) < 15:
-            print(f"[{sym}] WARNING: Only {len(selected_setups)} reached threshold!")
+        if len(selected_setups) < 25:
+            print(f"[{sym}] WARNING: Only {len(selected_setups)} reached target threshold!")
 
         sym_playbooks = []
         for item in selected_setups:

@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 1.75
 status: active
-sharpe_ratio: 5.65
-profit_factor: 1.34
+sharpe_ratio: 5.86
+profit_factor: 1.36
 max_drawdown_pct: 10.4
-win_rate: 0.446
+win_rate: 0.455
 ---
 
 # XAUUSD Empirical Playbook: Four-Bar Momentum Exhaustion Reversal
@@ -17,12 +17,12 @@ win_rate: 0.446
 ## Quantitative Track Record
 - **Asset / Instrument**: XAUUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 5.65 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.34 (101 verified trade executions)
+- **Verified Sharpe Ratio**: 5.86 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.36 (101 verified trade executions)
 - **Max Drawdown**: 10.4% (Institutional risk profile)
-- **Total PnL Return**: +19.7%
-- **Win Rate**: 44.6% (Normalized at minimum 1:1.75 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 0.8x ATR, Take-Profit = 1.4x ATR, Max Holding = 10 bars
+- **Total PnL Return**: +21.1%
+- **Win Rate**: 45.5% (Normalized at minimum 1:1.75 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 0.8x ATR, Take-Profit = 1.4x ATR, Max Holding = 12 bars
 
 ## Trigger Conditions & Tactical Directives
 - Long Trigger: Four consecutive bearish bars with RSI <= 40 followed by bullish close.
@@ -38,4 +38,4 @@ win_rate: 0.446
 ## Invalidation & Exit Parameters
 - Invalidate if price prints a new extreme beyond the 4-bar exhaustion high/low.
 - Invalidate during major scheduled central bank rate announcements.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 10 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 12 bars.

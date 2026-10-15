@@ -22,7 +22,7 @@ win_rate: 0.468
 - **Max Drawdown**: 10.8% (Institutional risk profile)
 - **Total PnL Return**: +6.7%
 - **Win Rate**: 46.8% (Normalized at minimum 1:1.5 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 1.5x ATR, Max Holding = 10 bars
+- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 1.5x ATR, Max Holding = 12 bars
 
 ## Trigger Conditions & Tactical Directives
 - Monitor market hours 07:00, 08:00, and 09:00 UTC during European liquidity surge.
@@ -40,4 +40,4 @@ win_rate: 0.468
 ## Invalidation & Exit Parameters
 - Invalidate if breakout bar closes with a rejection wick > 50% of total candle range.
 - Invalidate setup if macroeconomic news event occurs within 30 minutes of open.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 10 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 12 bars.

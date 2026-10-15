@@ -1453,6 +1453,7 @@ Monika/
 │       │   │   ├── dynamic_correlation.py
 │       │   │   ├── instrument_identity.py
 │       │   │   ├── news_impact_keywords.py
+│       │   │   ├── playbook_screener.py
 │       │   │   ├── session_info.py
 │       │   │   ├── swap_estimator.py
 │       │   │   └── usd_strength_proxy.py
@@ -2566,6 +2567,7 @@ Monika/
 │   │   ├── test_event_probability_playbook.py
 │   │   ├── test_event_probability_stress.py
 │   │   ├── test_loader.py
+│   │   ├── test_playbook_screener.py
 │   │   ├── test_playbook_stress_challenge.py
 │   │   ├── test_progressive_playbook_disclosure.py
 │   │   ├── test_skill_curator.py
@@ -2912,4 +2914,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 249 | **Total Tracked Files**: 2633
+**Total Tracked Directories**: 249 | **Total Tracked Files**: 2635

@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 4.78
-profit_factor: 1.38
-max_drawdown_pct: 5.16
-win_rate: 0.452
+sharpe_ratio: 4.01
+profit_factor: 1.32
+max_drawdown_pct: 6.17
+win_rate: 0.429
 ---
 
 # AUDUSD Empirical Playbook: New York Institutional Liquidity Reversal
@@ -17,12 +17,12 @@ win_rate: 0.452
 ## Quantitative Track Record
 - **Asset / Instrument**: AUDUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 4.78 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.38 (42 verified trade executions)
-- **Max Drawdown**: 5.2% (Institutional risk profile)
-- **Total PnL Return**: +9.0%
-- **Win Rate**: 45.2% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.4x ATR, Max Holding = 18 bars
+- **Verified Sharpe Ratio**: 4.01 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.32 (42 verified trade executions)
+- **Max Drawdown**: 6.2% (Institutional risk profile)
+- **Total PnL Return**: +7.5%
+- **Win Rate**: 42.9% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.4x ATR, Max Holding = 20 bars
 
 ## Trigger Conditions & Tactical Directives
 - Monitor New York open session between 13:00 and 16:00 UTC.
@@ -40,4 +40,4 @@ win_rate: 0.452
 ## Invalidation & Exit Parameters
 - Invalidate if price prints two consecutive H1 closes beyond the swept extreme.
 - Invalidate during major US FOMC interest rate decisions.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 18 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 20 bars.

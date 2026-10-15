@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 2.69
-profit_factor: 1.32
-max_drawdown_pct: 5.9
-win_rate: 0.4
+sharpe_ratio: 2.78
+profit_factor: 1.33
+max_drawdown_pct: 6.42
+win_rate: 0.417
 ---
 
 # GBPUSD Empirical Playbook: Institutional Fair Value Gap Mitigation
@@ -17,12 +17,12 @@ win_rate: 0.4
 ## Quantitative Track Record
 - **Asset / Instrument**: GBPUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.69 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.32 (60 verified trade executions)
-- **Max Drawdown**: 5.9% (Institutional risk profile)
-- **Total PnL Return**: +10.5%
-- **Win Rate**: 40.0% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Verified Sharpe Ratio**: 2.78 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.33 (60 verified trade executions)
+- **Max Drawdown**: 6.4% (Institutional risk profile)
+- **Total PnL Return**: +11.5%
+- **Win Rate**: 41.7% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Identify 3-bar Fair Value Gap (FVG) imbalance on H1.
@@ -39,4 +39,4 @@ win_rate: 0.4
 ## Invalidation & Exit Parameters
 - Invalidate if candle body closes completely through the FVG (invalidated imbalance).
 - Invalidate if higher timeframe trend flips against the FVG direction.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

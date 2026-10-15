@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 3.96
+sharpe_ratio: 4.01
 profit_factor: 1.34
-max_drawdown_pct: 12.18
-win_rate: 0.438
+max_drawdown_pct: 10.44
+win_rate: 0.429
 ---
 
 # XAUUSD Empirical Playbook: Alexander Elder Triple Screen Trend Pullback
@@ -17,12 +17,12 @@ win_rate: 0.438
 ## Quantitative Track Record
 - **Asset / Instrument**: XAUUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 3.96 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.34 (178 verified trade executions)
-- **Max Drawdown**: 12.2% (Institutional risk profile)
-- **Total PnL Return**: +36.7%
-- **Win Rate**: 43.8% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 14 bars
+- **Verified Sharpe Ratio**: 4.01 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.34 (177 verified trade executions)
+- **Max Drawdown**: 10.4% (Institutional risk profile)
+- **Total PnL Return**: +39.3%
+- **Win Rate**: 42.9% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 16 bars
 
 ## Trigger Conditions & Tactical Directives
 - Higher Timeframe (H4) trend filter: EMA 50 > EMA 200 (Bull) or EMA 50 < EMA 200 (Bear).
@@ -39,4 +39,4 @@ win_rate: 0.438
 ## Invalidation & Exit Parameters
 - Invalidate if H4 trend structure invalidates with EMA 50/200 cross.
 - Invalidate if Stochastic %K recrosses %D within 2 bars.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 14 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 16 bars.

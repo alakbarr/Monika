@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 2.79
-profit_factor: 1.44
+sharpe_ratio: 3.16
+profit_factor: 1.53
 max_drawdown_pct: 7.14
-win_rate: 0.5
+win_rate: 0.579
 ---
 
 # XTIUSD Empirical Playbook: New York Institutional Liquidity Reversal
@@ -17,12 +17,12 @@ win_rate: 0.5
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.79 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.44 (38 verified trade executions)
+- **Verified Sharpe Ratio**: 3.16 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.53 (38 verified trade executions)
 - **Max Drawdown**: 7.1% (Institutional risk profile)
-- **Total PnL Return**: +9.8%
-- **Win Rate**: 50.0% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Total PnL Return**: +11.7%
+- **Win Rate**: 57.9% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Monitor New York open session between 13:00 and 16:00 UTC.
@@ -40,4 +40,4 @@ win_rate: 0.5
 ## Invalidation & Exit Parameters
 - Invalidate if price prints two consecutive H1 closes beyond the swept extreme.
 - Invalidate during major US FOMC interest rate decisions.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

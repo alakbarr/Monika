@@ -6,10 +6,10 @@ regime: breakout
 timeframe: H1
 min_rr: 2.5
 status: active
-sharpe_ratio: 1.64
+sharpe_ratio: 1.61
 profit_factor: 1.14
-max_drawdown_pct: 7.0
-win_rate: 0.351
+max_drawdown_pct: 7.38
+win_rate: 0.338
 ---
 
 # USDJPY Empirical Playbook: New York Morning Session Expansion Breakout
@@ -17,12 +17,12 @@ win_rate: 0.351
 ## Quantitative Track Record
 - **Asset / Instrument**: USDJPY
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 1.64 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.14 (74 verified trade executions)
-- **Max Drawdown**: 7.0% (Institutional risk profile)
-- **Total PnL Return**: +6.2%
-- **Win Rate**: 35.1% (Normalized at minimum 1:2.5 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 3.0x ATR, Max Holding = 22 bars
+- **Verified Sharpe Ratio**: 1.61 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.14 (71 verified trade executions)
+- **Max Drawdown**: 7.4% (Institutional risk profile)
+- **Total PnL Return**: +6.0%
+- **Win Rate**: 33.8% (Normalized at minimum 1:2.5 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during high-liquidity New York morning open (13:00 to 15:00 UTC).
@@ -40,4 +40,4 @@ win_rate: 0.351
 ## Invalidation & Exit Parameters
 - Invalidate if breakout candle fails to hold beyond the 6-hour boundary.
 - Invalidate during major US FOMC interest rate announcements.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 22 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.

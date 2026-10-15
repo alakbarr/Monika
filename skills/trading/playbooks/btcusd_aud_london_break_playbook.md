@@ -6,10 +6,10 @@ regime: breakout
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 3.99
-profit_factor: 1.52
-max_drawdown_pct: 7.75
-win_rate: 0.436
+sharpe_ratio: 4.33
+profit_factor: 1.57
+max_drawdown_pct: 7.76
+win_rate: 0.462
 ---
 
 # BTCUSD Empirical Playbook: London Open Liquidity Breakout & Expansion
@@ -17,12 +17,12 @@ win_rate: 0.436
 ## Quantitative Track Record
 - **Asset / Instrument**: BTCUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 3.99 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.52 (39 verified trade executions)
+- **Verified Sharpe Ratio**: 4.33 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.57 (39 verified trade executions)
 - **Max Drawdown**: 7.8% (Institutional risk profile)
-- **Total PnL Return**: +10.4%
-- **Win Rate**: 43.6% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Total PnL Return**: +12.1%
+- **Win Rate**: 46.2% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during European session open (07:00 and 08:00 UTC).
@@ -40,4 +40,4 @@ win_rate: 0.436
 ## Invalidation & Exit Parameters
 - Invalidate if breakout candle exhibits an opposing wick > 50% of total range.
 - Invalidate if European market opens with zero volume expansion.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

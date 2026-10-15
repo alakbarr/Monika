@@ -4057,6 +4057,23 @@
 #### `news_impact_keywords.py` - *Sumber tunggal untuk taksonomi shock/high-impact keywords — dipakai oleh*
 - **Path**: [`src/monika/domain/market/news_impact_keywords.py`](src/monika/domain/market/news_impact_keywords.py)
 
+#### `playbook_screener.py` - *Deterministic Playbook Signal Screener Engine.*
+- **Path**: [`src/monika/domain/market/playbook_screener.py`](src/monika/domain/market/playbook_screener.py)
+- **Classes**:
+  - `class PlaybookSpec`: Formal specification of an empirical trading playbook.
+  - `class PlaybookTriggerSignal`: Deterministic trade signal emitted by an empirical playbook.
+  - `class PlaybookScreeningReport`: Structured report returned by the Playbook Screener.
+    - `format_for_prompt() -> str` - *Format screening result as a concise, high-confluence prompt card for LLM.*
+  - `class PlaybookRegistry`: Caches and resolves empirical playbook specifications from disk.
+    - `get_playbooks_dir() -> Path` - *Resolve the playbooks directory path.*
+    - `set_playbooks_dir(custom_dir: Path) -> None` - *Explicitly override directory for testing.*
+    - `load_playbooks_for_symbol(symbol: str) -> List[PlaybookSpec]` - *Load and cache all playbook specifications for a given symbol.*
+  - `class PlaybookScreener`: Deterministic quantitative signal screener.
+    - `compute_atr(bars: List[Dict[str, Any]], period: int) -> float` - *Compute Wilder's ATR over a list of OHLCV bars.*
+    - `compute_ema(values: List[float], period: int) -> float` - *Compute Exponential Moving Average.*
+    - `compute_rsi(closes: List[float], period: int) -> float` - *Compute Relative Strength Index.*
+    - `screen(symbol: str, bars: List[Dict[str, Any]], indicators: Optional[Dict[str, Any]], ...) -> PlaybookScreeningReport` - *Screen the latest bars for symbol against all 15 empirical playbooks.*
+
 #### `session_info.py` - *Market session tracking and timing rules utility.*
 - **Path**: [`src/monika/domain/market/session_info.py`](src/monika/domain/market/session_info.py)
 - **Top-Level Functions**:

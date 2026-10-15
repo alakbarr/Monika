@@ -812,6 +812,50 @@ class PlaybookScreener:
                         [f"Breakout regime match: New 20-bar low ({donchian_low20:.{prec}f})"],
                         macro_regime,
                     )
+            elif spec.regime == "trending":
+                if current_close > ema50 and current_close > current_open and ema21 > ema50:
+                    signal = cls._create_signal(
+                        spec,
+                        "BUY",
+                        current_close,
+                        atr,
+                        prec,
+                        [f"Trend regime alignment: Close ({current_close:.{prec}f}) > EMA50 and EMA21 > EMA50"],
+                        macro_regime,
+                    )
+                elif current_close < ema50 and current_close < current_open and ema21 < ema50:
+                    signal = cls._create_signal(
+                        spec,
+                        "SELL",
+                        current_close,
+                        atr,
+                        prec,
+                        [f"Trend regime alignment: Close ({current_close:.{prec}f}) < EMA50 and EMA21 < EMA50"],
+                        macro_regime,
+                    )
+            elif spec.regime == "mean_reverting":
+                if current_low <= donchian_low20 + (0.35 * atr) and current_close > current_open and rsi <= 42:
+                    signal = cls._create_signal(
+                        spec,
+                        "BUY",
+                        current_close,
+                        atr,
+                        prec,
+                        [f"Mean-reverting support bounce: Low near 20-bar low, RSI oversold ({rsi:.1f} <= 42)"],
+                        macro_regime,
+                    )
+                elif current_high >= donchian_high20 - (0.35 * atr) and current_close < current_open and rsi >= 58:
+                    signal = cls._create_signal(
+                        spec,
+                        "SELL",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"Mean-reverting resistance rejection: High near 20-bar high, RSI overbought ({rsi:.1f} >= 58)"
+                        ],
+                        macro_regime,
+                    )
 
             if signal is not None:
                 report.active_signals.append(signal)

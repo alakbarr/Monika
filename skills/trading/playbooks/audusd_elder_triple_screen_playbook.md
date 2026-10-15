@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 2.13
 status: active
-sharpe_ratio: 1.72
-profit_factor: 1.18
-max_drawdown_pct: 11.13
-win_rate: 0.413
+sharpe_ratio: 1.3
+profit_factor: 1.13
+max_drawdown_pct: 10.49
+win_rate: 0.385
 ---
 
 # AUDUSD Empirical Playbook: Alexander Elder Triple Screen Trend Pullback
@@ -17,12 +17,12 @@ win_rate: 0.413
 ## Quantitative Track Record
 - **Asset / Instrument**: AUDUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 1.72 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.18 (150 verified trade executions)
-- **Max Drawdown**: 11.1% (Institutional risk profile)
-- **Total PnL Return**: +15.1%
-- **Win Rate**: 41.3% (Normalized at minimum 1:2.13 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.5x ATR, Take-Profit = 3.2x ATR, Max Holding = 24 bars
+- **Verified Sharpe Ratio**: 1.30 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.13 (148 verified trade executions)
+- **Max Drawdown**: 10.5% (Institutional risk profile)
+- **Total PnL Return**: +11.2%
+- **Win Rate**: 38.5% (Normalized at minimum 1:2.13 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.5x ATR, Take-Profit = 3.2x ATR, Max Holding = 28 bars
 
 ## Trigger Conditions & Tactical Directives
 - Higher Timeframe (H4) trend filter: EMA 50 > EMA 200 (Bull) or EMA 50 < EMA 200 (Bear).
@@ -39,4 +39,4 @@ win_rate: 0.413
 ## Invalidation & Exit Parameters
 - Invalidate if H4 trend structure invalidates with EMA 50/200 cross.
 - Invalidate if Stochastic %K recrosses %D within 2 bars.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 28 bars.

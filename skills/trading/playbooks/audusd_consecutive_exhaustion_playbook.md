@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 1.03
-profit_factor: 1.12
-max_drawdown_pct: 12.79
-win_rate: 0.415
+sharpe_ratio: 1.13
+profit_factor: 1.13
+max_drawdown_pct: 11.35
+win_rate: 0.409
 ---
 
 # AUDUSD Empirical Playbook: Four-Bar Momentum Exhaustion Reversal
@@ -17,12 +17,12 @@ win_rate: 0.415
 ## Quantitative Track Record
 - **Asset / Instrument**: AUDUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 1.03 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.12 (94 verified trade executions)
-- **Max Drawdown**: 12.8% (Institutional risk profile)
-- **Total PnL Return**: +5.8%
-- **Win Rate**: 41.5% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Verified Sharpe Ratio**: 1.13 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.13 (93 verified trade executions)
+- **Max Drawdown**: 11.3% (Institutional risk profile)
+- **Total PnL Return**: +6.9%
+- **Win Rate**: 40.9% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Long Trigger: Four consecutive bearish bars with RSI <= 40 followed by bullish close.
@@ -38,4 +38,4 @@ win_rate: 0.415
 ## Invalidation & Exit Parameters
 - Invalidate if price prints a new extreme beyond the 4-bar exhaustion high/low.
 - Invalidate during major scheduled central bank rate announcements.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

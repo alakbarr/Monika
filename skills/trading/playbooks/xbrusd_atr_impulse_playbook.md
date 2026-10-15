@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 1.67
 status: active
-sharpe_ratio: 4.29
-profit_factor: 1.5
-max_drawdown_pct: 6.23
-win_rate: 0.517
+sharpe_ratio: 3.15
+profit_factor: 1.36
+max_drawdown_pct: 6.82
+win_rate: 0.487
 ---
 
 # XBRUSD Empirical Playbook: ATR Expansion Large-Body Impulse Thrust
@@ -17,12 +17,12 @@ win_rate: 0.517
 ## Quantitative Track Record
 - **Asset / Instrument**: XBRUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 4.29 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.50 (116 verified trade executions)
-- **Max Drawdown**: 6.2% (Institutional risk profile)
-- **Total PnL Return**: +30.0%
-- **Win Rate**: 51.7% (Normalized at minimum 1:1.67 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
+- **Verified Sharpe Ratio**: 3.15 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.36 (115 verified trade executions)
+- **Max Drawdown**: 6.8% (Institutional risk profile)
+- **Total PnL Return**: +22.3%
+- **Win Rate**: 48.7% (Normalized at minimum 1:1.67 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
 
 ## Trigger Conditions & Tactical Directives
 - Filter for expansion candle with range >= 1.4x ATR and body >= 70% of candle range.
@@ -39,4 +39,4 @@ win_rate: 0.517
 ## Invalidation & Exit Parameters
 - Invalidate if subsequent bar closes past the 50% mark of the impulse candle.
 - Invalidate if impulse candle displays exhaustion wicks > 30% of total range.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 28 bars.

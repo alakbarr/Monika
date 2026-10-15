@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 4.54
-profit_factor: 1.37
-max_drawdown_pct: 9.73
-win_rate: 0.452
+sharpe_ratio: 4.16
+profit_factor: 1.34
+max_drawdown_pct: 9.97
+win_rate: 0.44
 ---
 
 # XTIUSD Empirical Playbook: Two-Bar Railway Track Swing Reversal
@@ -17,12 +17,12 @@ win_rate: 0.452
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 4.54 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.37 (84 verified trade executions)
-- **Max Drawdown**: 9.7% (Institutional risk profile)
-- **Total PnL Return**: +17.5%
-- **Win Rate**: 45.2% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 14 bars
+- **Verified Sharpe Ratio**: 4.16 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.34 (84 verified trade executions)
+- **Max Drawdown**: 10.0% (Institutional risk profile)
+- **Total PnL Return**: +16.3%
+- **Win Rate**: 44.0% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 16 bars
 
 ## Trigger Conditions & Tactical Directives
 - Two consecutive strong candles each with body >= 0.6x 14-period ATR.
@@ -39,4 +39,4 @@ win_rate: 0.452
 ## Invalidation & Exit Parameters
 - Invalidate if second candle fails to recover at least 90% of the first candle body.
 - Invalidate if wick on reversal side exceeds 35% of total bar.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 14 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 16 bars.

@@ -6,10 +6,10 @@ regime: breakout
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 7.65
-profit_factor: 2.29
-max_drawdown_pct: 2.84
-win_rate: 0.552
+sharpe_ratio: 6.64
+profit_factor: 2.08
+max_drawdown_pct: 3.43
+win_rate: 0.517
 ---
 
 # XAUUSD Empirical Playbook: London Open Volume Expansion Breakout
@@ -17,12 +17,12 @@ win_rate: 0.552
 ## Quantitative Track Record
 - **Asset / Instrument**: XAUUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 7.65 (Zero-Lookahead simulation)
-- **Profit Factor**: 2.29 (29 verified trade executions)
-- **Max Drawdown**: 2.8% (Institutional risk profile)
-- **Total PnL Return**: +16.2%
-- **Win Rate**: 55.2% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 30 bars
+- **Verified Sharpe Ratio**: 6.64 (Zero-Lookahead simulation)
+- **Profit Factor**: 2.08 (29 verified trade executions)
+- **Max Drawdown**: 3.4% (Institutional risk profile)
+- **Total PnL Return**: +14.5%
+- **Win Rate**: 51.7% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
 
 ## Trigger Conditions & Tactical Directives
 - Monitor market hours 07:00, 08:00, and 09:00 UTC during European liquidity surge.
@@ -40,4 +40,4 @@ win_rate: 0.552
 ## Invalidation & Exit Parameters
 - Invalidate if breakout bar closes with a rejection wick > 50% of total candle range.
 - Invalidate setup if macroeconomic news event occurs within 30 minutes of open.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 30 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.

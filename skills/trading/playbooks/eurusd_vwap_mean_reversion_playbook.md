@@ -4,12 +4,12 @@ description: Daily VWAP extreme stretch mean reversion for EURUSD.
 symbol: EURUSD
 regime: mean_reverting
 timeframe: H1
-min_rr: 2.0
+min_rr: 1.57
 status: active
-sharpe_ratio: 4.2
-profit_factor: 1.53
-max_drawdown_pct: 7.0
-win_rate: 0.506
+sharpe_ratio: 5.37
+profit_factor: 1.62
+max_drawdown_pct: 5.17
+win_rate: 0.535
 ---
 
 # EURUSD Empirical Playbook: Daily VWAP Extreme Stretch Mean Reversion
@@ -17,12 +17,12 @@ win_rate: 0.506
 ## Quantitative Track Record
 - **Asset / Instrument**: EURUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 4.20 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.53 (85 verified trade executions)
-- **Max Drawdown**: 7.0% (Institutional risk profile)
-- **Total PnL Return**: +22.5%
-- **Win Rate**: 50.6% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.4x ATR, Take-Profit = 2.8x ATR, Max Holding = 20 bars
+- **Verified Sharpe Ratio**: 5.37 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.62 (86 verified trade executions)
+- **Max Drawdown**: 5.2% (Institutional risk profile)
+- **Total PnL Return**: +26.0%
+- **Win Rate**: 53.5% (Normalized at minimum 1:1.57 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.4x ATR, Take-Profit = 2.2x ATR, Max Holding = 20 bars
 
 ## Trigger Conditions & Tactical Directives
 - Measure standard deviation distance from Daily Institutional VWAP.
@@ -30,9 +30,9 @@ win_rate: 0.506
 - Short Trigger: Price extends >= +1.4 ATR above VWAP, Close < Open, and RSI >= 62.
 
 ## Execution Invariants & Risk Parameters
-- **Target Risk-to-Reward (R:R)**: Minimum 1:2.0 contractual target.
+- **Target Risk-to-Reward (R:R)**: Minimum 1:1.57 contractual target.
 - **Stop Loss Placement**: Structured volatility buffer set at 1.4x 14-period Wilder ATR.
-- **Take Profit Target**: Mathematically optimized target placed at 2.8x 14-period ATR.
+- **Take Profit Target**: Mathematically optimized target placed at 2.2x 14-period ATR.
 - **Position Sizing**: Governed strictly by RiskGate (<= 1.0% account equity risk per trade).
 - **Execution Fill**: Standardized next-bar open fill accounting for real broker spread and slippage.
 
