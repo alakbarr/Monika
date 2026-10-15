@@ -179,6 +179,14 @@ def _run_guardian_loop(
     """
     logger.info(f"[GuardianProcess] Initialized on PID {os.getpid()} supervising primary PID {primary_pid}")
 
+    # Defensive disarm: ensure startup watchdog never runs inside guardian child process
+    try:
+        from monika.application.agent.monitors.startup_watchdog import global_startup_watchdog
+
+        global_startup_watchdog.mark_complete()
+    except Exception:
+        pass
+
     handler_class = GuardianRequestHandler
     handler_class.primary_pid = primary_pid
 

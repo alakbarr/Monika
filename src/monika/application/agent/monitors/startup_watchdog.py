@@ -6,6 +6,7 @@ Dumps all thread tracebacks via faulthandler on timeout and enforces bounded exi
 
 import faulthandler
 import logging
+import multiprocessing
 import os
 import sys
 import threading
@@ -37,6 +38,18 @@ class StartupWatchdog:
 
     def start(self, timeout_seconds: Optional[float] = None):
         """Start watchdog thread. Safe to call multiple times (idempotent)."""
+        # Only the main trading process should run startup deadlock detection
+        if multiprocessing.current_process().name != "MainProcess":
+            logger.debug(
+                "[StartupWatchdog] Skipped startup watchdog in child process %s",
+                multiprocessing.current_process().name,
+            )
+            return
+
+        if any("--multiprocessing" in arg for arg in sys.argv):
+            logger.debug("[StartupWatchdog] Skipped startup watchdog in multiprocessing child process")
+            return
+
         with self._lock:
             if timeout_seconds:
                 self._timeout = timeout_seconds
@@ -143,6 +156,10 @@ global_startup_watchdog = StartupWatchdog()
 def arm_startup_watchdog(timeout_s: float = 180.0):
     """Early bootstrap hook to arm watchdog before application imports."""
     if ("pytest" in sys.modules) or ("PYTEST_CURRENT_TEST" in os.environ):
+        return
+    if multiprocessing.current_process().name != "MainProcess":
+        return
+    if any("--multiprocessing" in arg for arg in sys.argv):
         return
     global_startup_watchdog.start(timeout_seconds=timeout_s)
 

@@ -42,3 +42,28 @@ def test_watchdog_triggers_on_timeout():
         time.sleep(0.05)
     assert deadlock_triggered is True
     assert watchdog.is_complete is False
+
+
+def test_watchdog_skipped_in_child_process():
+    """Verify watchdog does not arm inside multiprocessing child processes."""
+    from unittest.mock import patch, MagicMock
+
+    mock_proc = MagicMock()
+    mock_proc.name = "guardian-process"
+
+    with patch("multiprocessing.current_process", return_value=mock_proc):
+        watchdog = StartupWatchdog(timeout_seconds=1)
+        watchdog.start()
+        assert watchdog._started is False
+        assert watchdog._thread is None
+
+
+def test_watchdog_skipped_with_multiprocessing_fork_arg():
+    """Verify watchdog does not arm if spawned with --multiprocessing-fork in sys.argv."""
+    from unittest.mock import patch
+
+    with patch("sys.argv", ["python", "--multiprocessing-fork"]):
+        watchdog = StartupWatchdog(timeout_seconds=1)
+        watchdog.start()
+        assert watchdog._started is False
+        assert watchdog._thread is None

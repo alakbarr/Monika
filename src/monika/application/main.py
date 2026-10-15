@@ -22,8 +22,15 @@ import sys
 import types
 from typing import Any, Optional
 
-# Arm startup watchdog early before heavy application imports (skipped in test runner)
-if "pytest" not in sys.modules and "PYTEST_CURRENT_TEST" not in os.environ:
+# Arm startup watchdog early before heavy application imports (skipped in test runner and child processes)
+import multiprocessing
+
+if (
+    "pytest" not in sys.modules
+    and "PYTEST_CURRENT_TEST" not in os.environ
+    and multiprocessing.current_process().name == "MainProcess"
+    and not any("--multiprocessing" in arg for arg in sys.argv)
+):
     from monika.application.agent.monitors.startup_watchdog import arm_startup_watchdog
 
     arm_startup_watchdog(timeout_s=180.0)
