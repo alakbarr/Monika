@@ -388,14 +388,22 @@ class PatternSimilarityEngine:
 
     async def _fetch_historical_bars(self, symbol: str, timeframe: str, lookback_years: float) -> Optional[np.ndarray]:
         """Fetches historical price bars up to lookback_years."""
-        from sqlalchemy import select
+        from sqlalchemy import func, select
         from monika.domain.models_resolver import resolve_model
 
         PriceOHLCV = resolve_model("PriceOHLCV")
         if not PriceOHLCV:
             return None
 
-        since = datetime.now(timezone.utc) - timedelta(days=int(lookback_years * 365))
+        # Anchor lookback window to the latest available bar in the database
+        stmt_max = select(func.max(PriceOHLCV.timestamp)).where(
+            PriceOHLCV.symbol == symbol,
+            PriceOHLCV.timeframe == timeframe,
+        )
+        max_ts_val = (await self.session.execute(stmt_max)).scalar()
+        ref_time = max_ts_val if max_ts_val else datetime.now(timezone.utc)
+        since = ref_time - timedelta(days=int(lookback_years * 365))
+
         stmt = (
             select(PriceOHLCV)
             .where(

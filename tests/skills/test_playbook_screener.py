@@ -203,3 +203,14 @@ class TestPlaybookScreener:
             {"active_playbook": "xauusd_london_expansion_playbook"},
         )
         assert "xauusd_london_expansion_playbook" in skills
+
+    def test_dynamic_micro_skills_regime_fallback_to_registry(self) -> None:
+        """When active_playbook is not explicitly passed, get_dynamic_micro_skills routes via PlaybookRegistry."""
+        skills = get_dynamic_micro_skills(
+            "EURUSD",
+            {"regime": "trending"},
+        )
+        # Should dynamically pick the highest PF EURUSD trending playbook (e.g. eurusd_ema_trend_retest_playbook)
+        matched_playbooks = [s for s in skills if s.startswith("eurusd_") and "playbook" in s]
+        assert len(matched_playbooks) > 0
+        assert matched_playbooks[0] in skills

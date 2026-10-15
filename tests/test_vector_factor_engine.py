@@ -65,6 +65,7 @@ def test_vector_factor_engine_evaluation(sample_ohlcv_df):
     assert "EURUSD" in prompt_str
     assert "TRENDING" in prompt_str
     assert "Composite Alpha Score" in prompt_str
+    assert "CONFLUENCE BONUS [QUANT_STRATEGY_EDGE]" in prompt_str
 
 
 def test_vector_factor_engine_regime_filtering(sample_ohlcv_df):

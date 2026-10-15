@@ -437,6 +437,31 @@ def get_dynamic_micro_skills(symbol: str, context: Optional[dict] = None) -> lis
             if matched:
                 break
 
+        if not matched:
+            try:
+                from monika.domain.market.playbook_screener import PlaybookRegistry
+
+                specs = PlaybookRegistry.load_playbooks_for_symbol(sym)
+                target_regimes = set(regime_tokens)
+                if "trend" in regime:
+                    target_regimes.update(["trending", "trend"])
+                if "range" in regime or "chop" in regime or "mean" in regime:
+                    target_regimes.update(["mean_reverting", "range", "ranging"])
+                if "break" in regime:
+                    target_regimes.update(["breakout", "expansion"])
+                if "volatil" in regime:
+                    target_regimes.update(["volatile", "high_volatility"])
+                if "compress" in regime or "squeeze" in regime:
+                    target_regimes.update(["compression", "low_volatility"])
+
+                for spec in specs:
+                    if spec.regime.lower() in target_regimes and spec.name not in skills:
+                        skills.insert(2, spec.name)
+                        matched = True
+                        break
+            except Exception as e:
+                logger.debug(f"PlaybookRegistry regime load non-fatal: {e}")
+
     # Crystallized operational playbooks (closed-loop learning)
     try:
         from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer

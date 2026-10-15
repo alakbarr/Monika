@@ -277,7 +277,17 @@ class PlaybookRegistry:
         sr = _safe_float(fm.get("sharpe_ratio"), 2.0)
         max_dd = _safe_float(fm.get("max_drawdown_pct"), 8.0)
         min_rr = _safe_float(fm.get("min_rr"), 1.5)
-        regime = fm.get("regime", "trend")
+        raw_regime = str(fm.get("regime", "trending")).lower().strip()
+        if raw_regime in ("trend", "trending"):
+            regime = "trending"
+        elif raw_regime in ("range", "ranging", "mean_reverting", "mean_reversion"):
+            regime = "mean_reverting"
+        elif raw_regime in ("breakout", "momentum"):
+            regime = "breakout"
+        elif raw_regime in ("volatile", "volatility"):
+            regime = "volatile"
+        else:
+            regime = raw_regime
         timeframe = fm.get("timeframe", "H1")
         description = fm.get("description", "")
         status = fm.get("status", "active")
@@ -406,6 +416,31 @@ class PlaybookScreener:
         return float(100.0 - (100.0 / (1.0 + rs)))
 
     @classmethod
+    def compute_stoch(
+        cls,
+        closes: List[float],
+        highs: List[float],
+        lows: List[float],
+        k_period: int = 14,
+        d_period: int = 3,
+    ) -> Tuple[float, float]:
+        """Compute Fast/Slow Stochastic Oscillator (%K, %D)."""
+        if len(closes) < k_period + d_period:
+            return 50.0, 50.0
+
+        k_values: List[float] = []
+        for i in range(len(closes) - d_period, len(closes)):
+            window_high = max(highs[max(0, i - k_period + 1) : i + 1])
+            window_low = min(lows[max(0, i - k_period + 1) : i + 1])
+            denom = window_high - window_low
+            k = ((closes[i] - window_low) / max(1e-8, denom)) * 100.0
+            k_values.append(k)
+
+        curr_k = k_values[-1]
+        curr_d = sum(k_values) / float(len(k_values))
+        return float(curr_k), float(curr_d)
+
+    @classmethod
     def screen(
         cls,
         symbol: str,
@@ -458,20 +493,45 @@ class PlaybookScreener:
 
         rsi = float(ind_dict.get("rsi_14") or ind_dict.get("rsi") or cls.compute_rsi(closes, 14))
         ema9 = cls.compute_ema(closes, 9)
+        ema20 = cls.compute_ema(closes, 20)
         ema21 = cls.compute_ema(closes, 21)
+        ema34 = cls.compute_ema(closes, 34)
+        ema40 = cls.compute_ema(closes, 40)
         ema50 = cls.compute_ema(closes, 50)
+        ema200 = cls.compute_ema(closes, 200)
         avg_vol20 = sum(volumes[-20:]) / max(1.0, len(volumes[-20:])) if len(volumes) >= 5 else 1.0
 
         # Session & Bar Timing
         hour_utc = now.hour
-        # Pre-London / Asian session reference (last 7 bars or 00:00-06:00 window)
         pre_london_bars = bars[-8:-1] if len(bars) >= 8 else bars[:-1]
         pre_london_high = max([float(b.get("high", 0.0)) for b in pre_london_bars]) if pre_london_bars else current_high
         pre_london_low = min([float(b.get("low", 0.0)) for b in pre_london_bars]) if pre_london_bars else current_low
         asian_range = pre_london_high - pre_london_low
 
-        donchian_high20 = max(highs[-21:-1]) if len(highs) >= 21 else max(highs)
-        donchian_low20 = min(lows[-21:-1]) if len(lows) >= 21 else min(lows)
+        # Dynamic Donchian channel helper
+        def _get_donchian(p_bars: int) -> Tuple[float, float]:
+            p = max(2, min(p_bars, len(highs) - 1))
+            h_win = highs[-p - 1 : -1] if len(highs) >= p + 1 else highs[:-1]
+            l_win = lows[-p - 1 : -1] if len(lows) >= p + 1 else lows[:-1]
+            dh = max(h_win) if h_win else current_high
+            dl = min(l_win) if l_win else current_low
+            return dh, dl
+
+        donchian_high20, donchian_low20 = _get_donchian(20)
+
+        # 20-period standard deviation for Bollinger Band evaluations
+        sma20 = sum(closes[-20:]) / max(1.0, len(closes[-20:])) if len(closes) >= 20 else current_close
+        std20 = math.sqrt(sum((c - sma20) ** 2 for c in closes[-20:]) / 20.0) if len(closes) >= 20 else max(atr, 1e-4)
+
+        # Fast Stochastic (14, 3)
+        stoch14_k, stoch14_d = cls.compute_stoch(closes, highs, lows, 14, 3)
+
+        # Wick and Body characteristics for Rejection / Pinbar detection
+        upper_wick = current_high - max(current_open, current_close)
+        lower_wick = min(current_open, current_close) - current_low
+        candle_body = abs(current_close - current_open)
+        swing_high12 = max(highs[-13:-1]) if len(highs) >= 13 else current_high
+        swing_low12 = min(lows[-13:-1]) if len(lows) >= 13 else current_low
 
         prec = _PRICE_PRECISION.get(sym_clean, 4)
 
@@ -555,9 +615,14 @@ class PlaybookScreener:
                             macro_regime,
                         )
 
-            # Archetype 3: Tokyo / Asian Range Fade (Mean Reversion)
-            elif "tokyo_range_fade" in name_lower or "asian_range_fade" in name_lower:
-                if hour_utc in (1, 2, 3, 4, 5):
+            # Archetype 3: Tokyo / Asian Range Fade & Drift (Mean Reversion)
+            elif (
+                "tokyo_range_fade" in name_lower
+                or "asian_range_fade" in name_lower
+                or "tokyo_w" in name_lower
+                or "asian_lunch_drift" in name_lower
+            ):
+                if hour_utc in (1, 2, 3, 4, 5, 6):
                     near_high = current_high >= pre_london_high - (0.2 * atr)
                     near_low = current_low <= pre_london_low + (0.2 * atr)
                     if near_high and current_close < current_open and rsi > 58:
@@ -568,8 +633,8 @@ class PlaybookScreener:
                             atr,
                             prec,
                             [
-                                f"Tokyo Session ({hour_utc:02d}:00 UTC) range fade setup",
-                                f"Tested upper Asian boundary ({pre_london_high:.{prec}f}) with bearish rejection candle",
+                                f"Tokyo/Asian Session ({hour_utc:02d}:00 UTC) range fade setup",
+                                f"Tested upper boundary ({pre_london_high:.{prec}f}) with bearish rejection candle",
                                 f"RSI exhausted ({rsi:.1f} > 58)",
                             ],
                             macro_regime,
@@ -582,8 +647,8 @@ class PlaybookScreener:
                             atr,
                             prec,
                             [
-                                f"Tokyo Session ({hour_utc:02d}:00 UTC) range fade setup",
-                                f"Tested lower Asian boundary ({pre_london_low:.{prec}f}) with bullish rejection candle",
+                                f"Tokyo/Asian Session ({hour_utc:02d}:00 UTC) range fade setup",
+                                f"Tested lower boundary ({pre_london_low:.{prec}f}) with bullish rejection candle",
                                 f"RSI oversold ({rsi:.1f} < 42)",
                             ],
                             macro_regime,
@@ -592,7 +657,6 @@ class PlaybookScreener:
             # Archetype 4: New York Reversal / Morning Thrust
             elif "ny_reversal" in name_lower:
                 if hour_utc in (13, 14, 15, 16):
-                    # False break of prior extreme with immediate reversal bar
                     prior_high = max(highs[-5:-1]) if len(highs) >= 5 else current_high
                     prior_low = min(lows[-5:-1]) if len(lows) >= 5 else current_low
                     if (
@@ -660,9 +724,12 @@ class PlaybookScreener:
                             macro_regime,
                         )
 
-            # Archetype 6: 20-Period Donchian Channel Breakout
-            elif "donchian_breakout" in name_lower:
-                if current_close > donchian_high20 and current_close > current_open:
+            # Archetype 6: Donchian Channel Breakouts (Dynamic N-Period)
+            elif "donchian" in name_lower or "dch_" in name_lower:
+                m_dch = re.search(r"(?:dch|donchian)_(\d+)", name_lower)
+                dch_period = int(m_dch.group(1)) if m_dch else 20
+                dch_h, dch_l = _get_donchian(dch_period)
+                if current_close > dch_h and current_close > current_open:
                     signal = cls._create_signal(
                         spec,
                         "BUY",
@@ -670,12 +737,12 @@ class PlaybookScreener:
                         atr,
                         prec,
                         [
-                            f"20-bar Donchian High Breakout ({donchian_high20:.{prec}f})",
-                            f"Impulse close ({current_close:.{prec}f}) above 20-period highest high",
+                            f"{dch_period}-bar Donchian High Breakout ({dch_h:.{prec}f})",
+                            f"Impulse close ({current_close:.{prec}f}) above {dch_period}-period highest high",
                         ],
                         macro_regime,
                     )
-                elif current_close < donchian_low20 and current_close < current_open:
+                elif current_close < dch_l and current_close < current_open:
                     signal = cls._create_signal(
                         spec,
                         "SELL",
@@ -683,50 +750,82 @@ class PlaybookScreener:
                         atr,
                         prec,
                         [
-                            f"20-bar Donchian Low Breakdown ({donchian_low20:.{prec}f})",
-                            f"Impulse close ({current_close:.{prec}f}) below 20-period lowest low",
+                            f"{dch_period}-bar Donchian Low Breakdown ({dch_l:.{prec}f})",
+                            f"Impulse close ({current_close:.{prec}f}) below {dch_period}-period lowest low",
                         ],
                         macro_regime,
                     )
 
-            # Archetype 7: EMA Trend Retest & Cross
-            elif "ema9_21_cross" in name_lower or "ema_trend_retest" in name_lower:
-                if ema9 > ema21 and ema21 > ema50:
-                    # Bullish trend alignment: retest near EMA21
-                    if current_low <= ema21 + (0.15 * atr) and current_close > ema21:
-                        signal = cls._create_signal(
-                            spec,
-                            "BUY",
-                            current_close,
-                            atr,
-                            prec,
-                            [
-                                f"Structured EMA Trend Alignment: EMA9 ({ema9:.{prec}f}) > EMA21 ({ema21:.{prec}f}) > EMA50 ({ema50:.{prec}f})",
-                                f"Price pulled back to EMA21 support zone and held",
-                            ],
-                            macro_regime,
-                        )
-                elif ema9 < ema21 and ema21 < ema50:
-                    # Bearish trend alignment: retest near EMA21
-                    if current_high >= ema21 - (0.15 * atr) and current_close < ema21:
-                        signal = cls._create_signal(
-                            spec,
-                            "SELL",
-                            current_close,
-                            atr,
-                            prec,
-                            [
-                                f"Structured EMA Trend Alignment: EMA9 ({ema9:.{prec}f}) < EMA21 ({ema21:.{prec}f}) < EMA50 ({ema50:.{prec}f})",
-                                f"Price rallied to EMA21 resistance zone and rejected",
-                            ],
-                            macro_regime,
-                        )
+            # Archetype 7: EMA Bounces & Trend Retests (Dynamic Period P: 9, 20, 21, 34, 40, 50, 200)
+            elif "ema" in name_lower and (
+                "bounce" in name_lower
+                or "retest" in name_lower
+                or "touch" in name_lower
+                or "cross" in name_lower
+                or "ribbon" in name_lower
+                or "pullback" in name_lower
+            ):
+                m_ema = re.search(r"ema(\d+)", name_lower)
+                ema_p_num = int(m_ema.group(1)) if m_ema else 21
+                if ema_p_num == 9:
+                    ema_target = ema9
+                elif ema_p_num == 20:
+                    ema_target = ema20
+                elif ema_p_num == 21:
+                    ema_target = ema21
+                elif ema_p_num == 34:
+                    ema_target = ema34
+                elif ema_p_num == 40:
+                    ema_target = ema40
+                elif ema_p_num == 50:
+                    ema_target = ema50
+                elif ema_p_num == 200:
+                    ema_target = ema200
+                else:
+                    ema_target = cls.compute_ema(closes, ema_p_num)
 
-            # Archetype 8: Bollinger Band Mean Reversion
-            elif "bollinger_reversion" in name_lower:
-                std20 = math.sqrt(sum((c - ema21) ** 2 for c in closes[-20:]) / 20.0) if len(closes) >= 20 else atr
-                upper_bb = ema21 + (2.0 * std20)
-                lower_bb = ema21 - (2.0 * std20)
+                bullish_context = (ema9 > ema21) or (current_close > ema50)
+                bearish_context = (ema9 < ema21) or (current_close < ema50)
+
+                if bullish_context and current_low <= ema_target + (0.25 * atr) and current_close >= ema_target:
+                    signal = cls._create_signal(
+                        spec,
+                        "BUY",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"EMA{ema_p_num} ({ema_target:.{prec}f}) dynamic trend support bounce",
+                            f"Price held EMA{ema_p_num} buffer and closed bullish ({current_close:.{prec}f})",
+                        ],
+                        macro_regime,
+                    )
+                elif bearish_context and current_high >= ema_target - (0.25 * atr) and current_close <= ema_target:
+                    signal = cls._create_signal(
+                        spec,
+                        "SELL",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"EMA{ema_p_num} ({ema_target:.{prec}f}) dynamic trend resistance rejection",
+                            f"Price rejected EMA{ema_p_num} buffer and closed bearish ({current_close:.{prec}f})",
+                        ],
+                        macro_regime,
+                    )
+
+            # Archetype 8: Bollinger Band & Standard Deviation Fades (bb_15, bb_20, bb_25, dev10, dev13, etc.)
+            elif "bollinger" in name_lower or "bb" in name_lower or "dev" in name_lower:
+                m_bb = re.search(r"(?:bb_?|dev)(\d+)", name_lower)
+                if m_bb:
+                    raw_dev = int(m_bb.group(1))
+                    bb_mult = raw_dev / 10.0 if raw_dev >= 10 else float(raw_dev)
+                else:
+                    bb_mult = 2.0
+
+                upper_bb = ema21 + (bb_mult * std20)
+                lower_bb = ema21 - (bb_mult * std20)
+
                 if current_high >= upper_bb and current_close < upper_bb and current_close < current_open:
                     signal = cls._create_signal(
                         spec,
@@ -735,7 +834,7 @@ class PlaybookScreener:
                         atr,
                         prec,
                         [
-                            f"Price pierced 2.0-std Upper Bollinger Band ({upper_bb:.{prec}f})",
+                            f"Price pierced {bb_mult:.1f}-std Upper Band ({upper_bb:.{prec}f})",
                             f"Bearish mean-reversion candle closed back inside bands",
                         ],
                         macro_regime,
@@ -748,13 +847,265 @@ class PlaybookScreener:
                         atr,
                         prec,
                         [
-                            f"Price pierced 2.0-std Lower Bollinger Band ({lower_bb:.{prec}f})",
+                            f"Price pierced {bb_mult:.1f}-std Lower Band ({lower_bb:.{prec}f})",
                             f"Bullish mean-reversion candle closed back inside bands",
                         ],
                         macro_regime,
                     )
 
-            # Archetype 9: RSI Extreme Reversal
+            # Archetype 9: Stochastic Oscillator Crosses & Pullbacks (stoch8, stoch10, stoch14, stoch21)
+            elif "stoch" in name_lower:
+                m_st = re.search(r"stoch(\d+)", name_lower)
+                k_per = int(m_st.group(1)) if m_st else 14
+                k_val, d_val = (
+                    (stoch14_k, stoch14_d) if k_per == 14 else cls.compute_stoch(closes, highs, lows, k_per, 3)
+                )
+
+                if k_val < 35 and k_val > d_val and current_close > current_open:
+                    signal = cls._create_signal(
+                        spec,
+                        "BUY",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"Stochastic({k_per}) oversold bullish cross (%K={k_val:.1f} > %D={d_val:.1f})",
+                            f"Bullish close confirming upward momentum",
+                        ],
+                        macro_regime,
+                    )
+                elif k_val > 65 and k_val < d_val and current_close < current_open:
+                    signal = cls._create_signal(
+                        spec,
+                        "SELL",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"Stochastic({k_per}) overbought bearish cross (%K={k_val:.1f} < %D={d_val:.1f})",
+                            f"Bearish close confirming downward momentum",
+                        ],
+                        macro_regime,
+                    )
+                elif "trend" in name_lower or "confluence" in name_lower:
+                    if current_close > ema50 and k_val > d_val and k_val < 65 and current_close > current_open:
+                        signal = cls._create_signal(
+                            spec,
+                            "BUY",
+                            current_close,
+                            atr,
+                            prec,
+                            [
+                                f"Stochastic({k_per}) trend-pullback cross aligned > EMA50",
+                                f"K={k_val:.1f} crossed above D={d_val:.1f}",
+                            ],
+                            macro_regime,
+                        )
+                    elif current_close < ema50 and k_val < d_val and k_val > 35 and current_close < current_open:
+                        signal = cls._create_signal(
+                            spec,
+                            "SELL",
+                            current_close,
+                            atr,
+                            prec,
+                            [
+                                f"Stochastic({k_per}) trend-pullback cross aligned < EMA50",
+                                f"K={k_val:.1f} crossed below D={d_val:.1f}",
+                            ],
+                            macro_regime,
+                        )
+
+            # Archetype 10: Pinbar / Rejection Swings / Star Reversals / Sweep-Reenters
+            elif (
+                "pinbar" in name_lower
+                or "rejection_swing" in name_lower
+                or "star_reversal" in name_lower
+                or "sweep_reenter" in name_lower
+            ):
+                if (
+                    current_high >= swing_high12 - (0.15 * atr)
+                    and upper_wick >= 1.6 * max(candle_body, 0.08 * atr)
+                    and current_close < current_open
+                ):
+                    signal = cls._create_signal(
+                        spec,
+                        "SELL",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"Liquidity grab & rejection wick ({upper_wick:.{prec}f} >= 1.6x body) at swing high ({swing_high12:.{prec}f})",
+                            f"Bearish confirmation close below open",
+                        ],
+                        macro_regime,
+                    )
+                elif (
+                    current_low <= swing_low12 + (0.15 * atr)
+                    and lower_wick >= 1.6 * max(candle_body, 0.08 * atr)
+                    and current_close > current_open
+                ):
+                    signal = cls._create_signal(
+                        spec,
+                        "BUY",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"Liquidity grab & rejection wick ({lower_wick:.{prec}f} >= 1.6x body) at swing low ({swing_low12:.{prec}f})",
+                            f"Bullish confirmation close above open",
+                        ],
+                        macro_regime,
+                    )
+
+            # Archetype 11: Consecutive Candle Exhaustion / Fade / Multi-Bar Reversals
+            elif (
+                "consec" in name_lower
+                or "consecutive" in name_lower
+                or "two_bar" in name_lower
+                or "three_bar" in name_lower
+            ):
+                m_con = re.search(r"(\d+)bar", name_lower)
+                consec_target = int(m_con.group(1)) if m_con else 3
+                prior_bars = bars[-consec_target - 1 : -1] if len(bars) >= consec_target + 1 else []
+                all_prior_bull = len(prior_bars) >= consec_target and all(
+                    float(b.get("close", 0.0)) > float(b.get("open", 0.0)) for b in prior_bars
+                )
+                all_prior_bear = len(prior_bars) >= consec_target and all(
+                    float(b.get("close", 0.0)) < float(b.get("open", 0.0)) for b in prior_bars
+                )
+
+                if all_prior_bull and current_close < current_open:
+                    signal = cls._create_signal(
+                        spec,
+                        "SELL",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"{consec_target}-bar bullish streak exhaustion",
+                            f"Reversal candle confirmed ({current_close:.{prec}f} < {current_open:.{prec}f})",
+                        ],
+                        macro_regime,
+                    )
+                elif all_prior_bear and current_close > current_open:
+                    signal = cls._create_signal(
+                        spec,
+                        "BUY",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"{consec_target}-bar bearish streak exhaustion",
+                            f"Reversal candle confirmed ({current_close:.{prec}f} > {current_open:.{prec}f})",
+                        ],
+                        macro_regime,
+                    )
+
+            # Archetype 12: Fair Value Gap (FVG) Retests & Mitigation
+            elif "fvg" in name_lower:
+                has_bull_fvg = len(bars) >= 4 and float(bars[-2].get("low", 0.0)) > float(bars[-4].get("high", 0.0))
+                has_bear_fvg = len(bars) >= 4 and float(bars[-2].get("high", 0.0)) < float(bars[-4].get("low", 0.0))
+                if has_bull_fvg and current_low <= float(bars[-2].get("low", 0.0)) and current_close > current_open:
+                    signal = cls._create_signal(
+                        spec,
+                        "BUY",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"Bullish Fair Value Gap (FVG) retest & mitigation bounce",
+                            f"H1 close ({current_close:.{prec}f}) confirmed institutional demand",
+                        ],
+                        macro_regime,
+                    )
+                elif has_bear_fvg and current_high >= float(bars[-2].get("high", 0.0)) and current_close < current_open:
+                    signal = cls._create_signal(
+                        spec,
+                        "SELL",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"Bearish Fair Value Gap (FVG) retest & mitigation rejection",
+                            f"H1 close ({current_close:.{prec}f}) confirmed institutional supply",
+                        ],
+                        macro_regime,
+                    )
+
+            # Archetype 13: Average Daily Range (ADR) Extreme Fade & Exhaustion
+            elif "adr" in name_lower:
+                day_high = max(highs[-14:]) if len(highs) >= 14 else current_high
+                day_low = min(lows[-14:]) if len(lows) >= 14 else current_low
+                day_span = day_high - day_low
+                is_adr_exhausted = day_span >= 0.85 * (atr * 4.0)
+
+                if (
+                    is_adr_exhausted
+                    and current_high >= day_high - (0.1 * atr)
+                    and rsi >= 65
+                    and current_close < current_open
+                ):
+                    signal = cls._create_signal(
+                        spec,
+                        "SELL",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"Intraday Range Exhaustion ({day_span:.{prec}f} >= 85% expected ADR)",
+                            f"RSI overbought ({rsi:.1f}) with bearish reversal close",
+                        ],
+                        macro_regime,
+                    )
+                elif (
+                    is_adr_exhausted
+                    and current_low <= day_low + (0.1 * atr)
+                    and rsi <= 35
+                    and current_close > current_open
+                ):
+                    signal = cls._create_signal(
+                        spec,
+                        "BUY",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"Intraday Range Exhaustion ({day_span:.{prec}f} >= 85% expected ADR)",
+                            f"RSI oversold ({rsi:.1f}) with bullish reversal close",
+                        ],
+                        macro_regime,
+                    )
+
+            # Archetype 14: Supertrend Trend Bounce
+            elif "supertrend" in name_lower:
+                if current_close > ema50 and current_low <= ema50 + (0.25 * atr) and current_close > current_open:
+                    signal = cls._create_signal(
+                        spec,
+                        "BUY",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"Supertrend dynamic trendline support held above EMA50 ({ema50:.{prec}f})",
+                            f"Bullish continuation impulse close",
+                        ],
+                        macro_regime,
+                    )
+                elif current_close < ema50 and current_high >= ema50 - (0.25 * atr) and current_close < current_open:
+                    signal = cls._create_signal(
+                        spec,
+                        "SELL",
+                        current_close,
+                        atr,
+                        prec,
+                        [
+                            f"Supertrend dynamic trendline resistance held below EMA50 ({ema50:.{prec}f})",
+                            f"Bearish continuation impulse close",
+                        ],
+                        macro_regime,
+                    )
+
+            # Archetype 15: RSI Extreme Reversal
             elif "rsi_extreme_reversal" in name_lower or "rsi_trend_pullback" in name_lower:
                 if rsi >= 70 and current_close < current_open:
                     signal = cls._create_signal(
@@ -783,7 +1134,7 @@ class PlaybookScreener:
                         macro_regime,
                     )
 
-            # Archetype 10: ATR Volatility Impulse
+            # Archetype 16: ATR Volatility Impulse
             elif "atr_impulse" in name_lower:
                 bar_range = current_high - current_low
                 if bar_range >= 1.5 * atr and current_vol >= 1.2 * avg_vol20:
@@ -814,7 +1165,7 @@ class PlaybookScreener:
                             macro_regime,
                         )
 
-            # Archetype 11: General Trend / Breakout / Reversion Fallback Matching
+            # Archetype 17: General Trend / Breakout / Reversion Fallback Matching
             elif spec.regime == "breakout":
                 if current_close > donchian_high20 and current_close > current_open:
                     signal = cls._create_signal(

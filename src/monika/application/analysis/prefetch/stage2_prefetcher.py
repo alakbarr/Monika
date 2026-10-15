@@ -681,34 +681,35 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                     ps_engine = PatternSimilarityEngine(session=self.executor.session, settings=self.settings)
                     ps_result = await ps_engine.screen(symbol=symbol)
 
-                    if ps_result and (ps_result.has_significant_results() or ps_result.overall_bias != "neutral"):
+                    if ps_result:
                         lines.append(ps_result.format_for_prompt())
                         lines.append("")
                         data["pattern_similarity"] = ps_result
 
-                        cache_entry = PatternScreeningCache(
-                            symbol=symbol,
-                            screened_at=ps_result.screening_timestamp,
-                            overall_bias=ps_result.overall_bias,
-                            confidence=ps_result.confidence,
-                            consensus_bullish_pct=ps_result.consensus_bullish_pct,
-                            consensus_bearish_pct=ps_result.consensus_bearish_pct,
-                            has_timeframe_conflict=ps_result.has_timeframe_conflict,
-                            significant_timeframes_json=json.dumps(ps_result.significant_timeframes),
-                            per_timeframe_json=json.dumps(
-                                {
-                                    tf: {
-                                        "match_count": res.match_count,
-                                        "avg_similarity": res.avg_similarity,
-                                        "bias": res.statistics.directional_bias,
-                                        "p_value": res.statistics.p_value,
+                        if ps_result.has_significant_results() or ps_result.overall_bias != "neutral":
+                            cache_entry = PatternScreeningCache(
+                                symbol=symbol,
+                                screened_at=ps_result.screening_timestamp,
+                                overall_bias=ps_result.overall_bias,
+                                confidence=ps_result.confidence,
+                                consensus_bullish_pct=ps_result.consensus_bullish_pct,
+                                consensus_bearish_pct=ps_result.consensus_bearish_pct,
+                                has_timeframe_conflict=ps_result.has_timeframe_conflict,
+                                significant_timeframes_json=json.dumps(ps_result.significant_timeframes),
+                                per_timeframe_json=json.dumps(
+                                    {
+                                        tf: {
+                                            "match_count": res.match_count,
+                                            "avg_similarity": res.avg_similarity,
+                                            "bias": res.statistics.directional_bias,
+                                            "p_value": res.statistics.p_value,
+                                        }
+                                        for tf, res in ps_result.per_timeframe.items()
                                     }
-                                    for tf, res in ps_result.per_timeframe.items()
-                                }
-                            ),
-                        )
-                        self.executor.session.add(cache_entry)
-                        await self.executor.session.commit()
+                                ),
+                            )
+                            self.executor.session.add(cache_entry)
+                            await self.executor.session.commit()
             except Exception as e:
                 logger.debug(f"Failed to prefetch pattern similarity for {symbol}: {e}")
 

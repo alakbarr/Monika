@@ -183,6 +183,14 @@ class MultiTimeframeScreeningResult:
         """Format screening output as tight markdown for LLM prompt injection."""
         lines = ["### Historical Pattern Similarity (Multi-Timeframe)\n"]
 
+        if not self.per_timeframe:
+            lines.append(
+                f"Screened {self.symbol} across D1/H4/H1: Insufficient historical matches for pattern alignment."
+            )
+            lines.append("Directive: Rely on SMC structural order blocks and dynamic volume profile.")
+            lines.append("-> CONFLUENCE SCORECARD [F12_PATTERN_CONSENSUS]: UNQUALIFIED (0 points - Insufficient data)")
+            return "\n".join(lines).strip()
+
         for tf in ["D1", "H4", "H1"]:
             if tf not in self.per_timeframe:
                 continue
@@ -242,4 +250,23 @@ class MultiTimeframeScreeningResult:
             f"(Confidence: {self.confidence.upper()}, "
             f"Significant TFs: {', '.join(self.significant_timeframes) if self.significant_timeframes else 'None'})**"
         )
+
+        # Explicit F12 Confluence Scorecard qualification directive
+        is_f12_qualified = (
+            self.has_significant_results()
+            and self.overall_bias in ("bullish", "bearish")
+            and (
+                (self.overall_bias == "bullish" and self.consensus_bullish_pct >= 0.60)
+                or (self.overall_bias == "bearish" and self.consensus_bearish_pct >= 0.60)
+            )
+        )
+        if is_f12_qualified:
+            lines.append(
+                f"-> CONFLUENCE SCORECARD [F12_PATTERN_CONSENSUS]: QUALIFIED (+1 for {self.overall_bias.upper()})"
+            )
+        else:
+            lines.append(
+                "-> CONFLUENCE SCORECARD [F12_PATTERN_CONSENSUS]: UNQUALIFIED (0 points - No dominant fractal edge)"
+            )
+
         return "\n".join(lines).strip()

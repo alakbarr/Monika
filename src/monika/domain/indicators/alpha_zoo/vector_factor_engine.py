@@ -73,6 +73,12 @@ class VectorFactorResult:
         for f in self.top_factors:
             sig_str = f"{f.signal:+.2f}"
             lines.append(f"  * {f.name} ({f.category}): z-score={f.z_score:+.2f}, signal={sig_str} | {f.description}")
+        if sentiment in ("BULLISH", "BUY"):
+            lines.append("-> CONFLUENCE BONUS [QUANT_STRATEGY_EDGE]: QUALIFIED (+1 for BUY / Long setups)")
+        elif sentiment in ("BEARISH", "SELL"):
+            lines.append("-> CONFLUENCE BONUS [QUANT_STRATEGY_EDGE]: QUALIFIED (+1 for SELL / Short setups)")
+        else:
+            lines.append("-> CONFLUENCE BONUS [QUANT_STRATEGY_EDGE]: UNQUALIFIED (0 points - Composite alpha neutral)")
         lines.append("-------------------------------------------------------------")
         return "\n".join(lines)
 

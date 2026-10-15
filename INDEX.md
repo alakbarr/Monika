@@ -4073,6 +4073,7 @@
     - `compute_atr(bars: List[Dict[str, Any]], period: int) -> float` - *Compute Wilder's ATR over a list of OHLCV bars.*
     - `compute_ema(values: List[float], period: int) -> float` - *Compute Exponential Moving Average.*
     - `compute_rsi(closes: List[float], period: int) -> float` - *Compute Relative Strength Index.*
+    - `compute_stoch(closes: List[float], highs: List[float], lows: List[float], ...) -> Tuple[float, float]` - *Compute Fast/Slow Stochastic Oscillator (%K, %D).*
     - `screen(symbol: str, bars: List[Dict[str, Any]], indicators: Optional[Dict[str, Any]], ...) -> PlaybookScreeningReport` - *Screen the latest bars for symbol against all 15 empirical playbooks.*
 
 #### `session_info.py` - *Market session tracking and timing rules utility.*
