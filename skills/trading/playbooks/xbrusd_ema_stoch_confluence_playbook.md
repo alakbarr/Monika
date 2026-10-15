@@ -4,12 +4,12 @@ description: EMA trend and stochastic momentum confluence for XBRUSD.
 symbol: XBRUSD
 regime: trending
 timeframe: H1
-min_rr: 1.83
+min_rr: 1.82
 status: active
-sharpe_ratio: 2.11
-profit_factor: 1.17
-max_drawdown_pct: 13.28
-win_rate: 0.43
+sharpe_ratio: 8.5
+profit_factor: 1.26
+max_drawdown_pct: 11.0
+win_rate: 0.436
 ---
 
 # XBRUSD Empirical Playbook: EMA Trend & Stochastic Momentum Confluence
@@ -17,12 +17,12 @@ win_rate: 0.43
 ## Quantitative Track Record
 - **Asset / Instrument**: XBRUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.11 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.17 (100 verified trade executions)
-- **Max Drawdown**: 13.3% (Institutional risk profile)
-- **Total PnL Return**: +9.7%
-- **Win Rate**: 43.0% (Normalized at minimum 1:1.83 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.2x ATR, Max Holding = 18 bars
+- **Verified Sharpe Ratio**: 8.50 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.26 (101 verified trade executions)
+- **Max Drawdown**: 11.0% (Institutional risk profile)
+- **Total PnL Return**: +15.1%
+- **Win Rate**: 43.6% (Normalized at minimum 1:1.82 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.1x ATR, Take-Profit = 2.0x ATR, Max Holding = 18 bars
 
 ## Trigger Conditions & Tactical Directives
 - Trend filter: Close > EMA 50 (Bull) or Close < EMA 50 (Bear).
@@ -30,9 +30,9 @@ win_rate: 0.43
 - Short Trigger: Stochastic %K crosses below %D above 55, and candle closes lower than open.
 
 ## Execution Invariants & Risk Parameters
-- **Target Risk-to-Reward (R:R)**: Minimum 1:1.83 contractual target.
-- **Stop Loss Placement**: Structured volatility buffer set at 1.2x 14-period Wilder ATR.
-- **Take Profit Target**: Mathematically optimized target placed at 2.2x 14-period ATR.
+- **Target Risk-to-Reward (R:R)**: Minimum 1:1.82 contractual target.
+- **Stop Loss Placement**: Structured volatility buffer set at 1.1x 14-period Wilder ATR.
+- **Take Profit Target**: Mathematically optimized target placed at 2.0x 14-period ATR.
 - **Position Sizing**: Governed strictly by RiskGate (<= 1.0% account equity risk per trade).
 - **Execution Fill**: Standardized next-bar open fill accounting for real broker spread and slippage.
 

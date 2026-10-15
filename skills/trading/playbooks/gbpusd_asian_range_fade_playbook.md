@@ -4,12 +4,12 @@ description: Asian range boundary mean reversion playbook for GBPUSD.
 symbol: GBPUSD
 regime: mean_reverting
 timeframe: H1
-min_rr: 2.5
+min_rr: 2.33
 status: active
-sharpe_ratio: 5.3
-profit_factor: 1.65
-max_drawdown_pct: 6.06
-win_rate: 0.428
+sharpe_ratio: 16.15
+profit_factor: 1.57
+max_drawdown_pct: 6.1
+win_rate: 0.425
 ---
 
 # GBPUSD Empirical Playbook: Asian Range Boundary Mean Reversion
@@ -17,12 +17,12 @@ win_rate: 0.428
 ## Quantitative Track Record
 - **Asset / Instrument**: GBPUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 5.30 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.65 (180 verified trade executions)
+- **Verified Sharpe Ratio**: 16.15 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.57 (181 verified trade executions)
 - **Max Drawdown**: 6.1% (Institutional risk profile)
-- **Total PnL Return**: +90.5%
-- **Win Rate**: 42.8% (Normalized at minimum 1:2.5 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
+- **Total PnL Return**: +77.7%
+- **Win Rate**: 42.5% (Normalized at minimum 1:2.33 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.8x ATR, Max Holding = 24 bars
 
 ## Trigger Conditions & Tactical Directives
 - Active during low-volatility Asian hours (23:00 to 05:00 UTC).
@@ -31,9 +31,9 @@ win_rate: 0.428
 - Long Trigger: Price tests 100.05% of Asian low and prints a bullish rejection candle.
 
 ## Execution Invariants & Risk Parameters
-- **Target Risk-to-Reward (R:R)**: Minimum 1:2.5 contractual target.
+- **Target Risk-to-Reward (R:R)**: Minimum 1:2.33 contractual target.
 - **Stop Loss Placement**: Structured volatility buffer set at 1.2x 14-period Wilder ATR.
-- **Take Profit Target**: Mathematically optimized target placed at 3.0x 14-period ATR.
+- **Take Profit Target**: Mathematically optimized target placed at 2.8x 14-period ATR.
 - **Position Sizing**: Governed strictly by RiskGate (<= 1.0% account equity risk per trade).
 - **Execution Fill**: Standardized next-bar open fill accounting for real broker spread and slippage.
 

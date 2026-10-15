@@ -127,6 +127,8 @@ scripts/*
 !scripts/generate_openapi_types.py
 !scripts/generate_ast_docs.py
 !scripts/build_empirical_playbooks.py
+!scripts/empirical_alpha/
+!scripts/empirical_alpha/**
 contoh_pertanyaan.md
 prompt_benchmark.md
 

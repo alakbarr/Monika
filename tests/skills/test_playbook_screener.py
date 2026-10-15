@@ -54,6 +54,20 @@ class TestPlaybookScreener:
                 assert spec.tp_atr_mult > 0, f"{spec.name} TP ATR mult must be positive"
                 assert spec.max_hold_bars > 0, f"{spec.name} max hold must be positive"
 
+    def test_reserve_catalog_loader(self) -> None:
+        """Reserve catalog must provide accessible bench setups with full metrics."""
+        xau_reserves = PlaybookRegistry.load_reserve_playbooks("XAUUSD")
+        assert len(xau_reserves) >= 100, f"Expected >= 100 XAUUSD reserve setups, got {len(xau_reserves)}"
+        for r in xau_reserves:
+            assert r["symbol"] == "XAUUSD"
+            assert r["metrics"]["total_pnl_pct"] >= 15.0
+            assert r["metrics"]["win_rate_pct"] >= 40.0
+            assert r["metrics"]["profit_factor"] >= 1.15
+            assert r["status"] == "candidate"
+
+        all_reserves = PlaybookRegistry.load_reserve_playbooks()
+        assert len(all_reserves) >= 150
+
     def _generate_synthetic_bars(
         self,
         base_price: float = 2640.0,

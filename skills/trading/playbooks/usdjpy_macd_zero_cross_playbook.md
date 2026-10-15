@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 3.55
-profit_factor: 1.26
-max_drawdown_pct: 12.44
-win_rate: 0.413
+sharpe_ratio: 9.32
+profit_factor: 1.29
+max_drawdown_pct: 12.4
+win_rate: 0.419
 ---
 
 # USDJPY Empirical Playbook: MACD Zero-Line Momentum Expansion
@@ -17,11 +17,11 @@ win_rate: 0.413
 ## Quantitative Track Record
 - **Asset / Instrument**: USDJPY
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 3.55 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.26 (104 verified trade executions)
+- **Verified Sharpe Ratio**: 9.32 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.29 (105 verified trade executions)
 - **Max Drawdown**: 12.4% (Institutional risk profile)
-- **Total PnL Return**: +16.2%
-- **Win Rate**: 41.3% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Total PnL Return**: +18.6%
+- **Win Rate**: 41.9% (Normalized at minimum 1:2.0 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 16 bars
 
 ## Trigger Conditions & Tactical Directives

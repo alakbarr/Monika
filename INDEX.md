@@ -4068,6 +4068,7 @@
     - `get_playbooks_dir() -> Path` - *Resolve the playbooks directory path.*
     - `set_playbooks_dir(custom_dir: Path) -> None` - *Explicitly override directory for testing.*
     - `load_playbooks_for_symbol(symbol: str) -> List[PlaybookSpec]` - *Load and cache all playbook specifications for a given symbol.*
+    - `load_reserve_playbooks(symbol: Optional[str]) -> List[Dict[str, Any]]` - *Load quantitative reserve playbooks from reserve_catalog.json.*
   - `class PlaybookScreener`: Deterministic quantitative signal screener.
     - `compute_atr(bars: List[Dict[str, Any]], period: int) -> float` - *Compute Wilder's ATR over a list of OHLCV bars.*
     - `compute_ema(values: List[float], period: int) -> float` - *Compute Exponential Moving Average.*

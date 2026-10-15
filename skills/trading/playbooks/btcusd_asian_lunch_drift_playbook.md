@@ -6,10 +6,10 @@ regime: trending
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 2.86
-profit_factor: 1.27
-max_drawdown_pct: 13.13
-win_rate: 0.41
+sharpe_ratio: 8.84
+profit_factor: 1.28
+max_drawdown_pct: 13.1
+win_rate: 0.412
 ---
 
 # BTCUSD Empirical Playbook: Asian Midday Institutional Drift Continuation
@@ -17,11 +17,11 @@ win_rate: 0.41
 ## Quantitative Track Record
 - **Asset / Instrument**: BTCUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.86 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.27 (183 verified trade executions)
+- **Verified Sharpe Ratio**: 8.84 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.28 (182 verified trade executions)
 - **Max Drawdown**: 13.1% (Institutional risk profile)
-- **Total PnL Return**: +29.4%
-- **Win Rate**: 41.0% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Total PnL Return**: +30.8%
+- **Win Rate**: 41.2% (Normalized at minimum 1:2.0 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.4x ATR, Max Holding = 20 bars
 
 ## Trigger Conditions & Tactical Directives

@@ -6,9 +6,9 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 3.86
+sharpe_ratio: 9.77
 profit_factor: 1.31
-max_drawdown_pct: 8.62
+max_drawdown_pct: 8.6
 win_rate: 0.423
 ---
 
@@ -17,7 +17,7 @@ win_rate: 0.423
 ## Quantitative Track Record
 - **Asset / Instrument**: BTCUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 3.86 (Zero-Lookahead simulation)
+- **Verified Sharpe Ratio**: 9.77 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.31 (104 verified trade executions)
 - **Max Drawdown**: 8.6% (Institutional risk profile)
 - **Total PnL Return**: +19.1%

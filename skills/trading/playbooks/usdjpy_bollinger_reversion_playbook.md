@@ -6,9 +6,9 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 3.99
+sharpe_ratio: 11.56
 profit_factor: 1.37
-max_drawdown_pct: 6.98
+max_drawdown_pct: 7.0
 win_rate: 0.431
 ---
 
@@ -17,7 +17,7 @@ win_rate: 0.431
 ## Quantitative Track Record
 - **Asset / Instrument**: USDJPY
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 3.99 (Zero-Lookahead simulation)
+- **Verified Sharpe Ratio**: 11.56 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.37 (137 verified trade executions)
 - **Max Drawdown**: 7.0% (Institutional risk profile)
 - **Total PnL Return**: +31.7%

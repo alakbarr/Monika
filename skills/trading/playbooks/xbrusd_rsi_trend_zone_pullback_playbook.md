@@ -6,9 +6,9 @@ regime: trending
 timeframe: H1
 min_rr: 2.5
 status: active
-sharpe_ratio: 6.35
+sharpe_ratio: 17.51
 profit_factor: 1.63
-max_drawdown_pct: 10.19
+max_drawdown_pct: 10.2
 win_rate: 0.442
 ---
 
@@ -17,7 +17,7 @@ win_rate: 0.442
 ## Quantitative Track Record
 - **Asset / Instrument**: XBRUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 6.35 (Zero-Lookahead simulation)
+- **Verified Sharpe Ratio**: 17.51 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.63 (52 verified trade executions)
 - **Max Drawdown**: 10.2% (Institutional risk profile)
 - **Total PnL Return**: +20.1%

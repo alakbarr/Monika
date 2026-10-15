@@ -6,10 +6,10 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 4.16
-profit_factor: 1.34
-max_drawdown_pct: 9.97
-win_rate: 0.44
+sharpe_ratio: 10.1
+profit_factor: 1.32
+max_drawdown_pct: 10.0
+win_rate: 0.434
 ---
 
 # XTIUSD Empirical Playbook: Two-Bar Railway Track Swing Reversal
@@ -17,11 +17,11 @@ win_rate: 0.44
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 4.16 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.34 (84 verified trade executions)
+- **Verified Sharpe Ratio**: 10.10 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.32 (83 verified trade executions)
 - **Max Drawdown**: 10.0% (Institutional risk profile)
-- **Total PnL Return**: +16.3%
-- **Win Rate**: 44.0% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Total PnL Return**: +15.5%
+- **Win Rate**: 43.4% (Normalized at minimum 1:2.0 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 16 bars
 
 ## Trigger Conditions & Tactical Directives

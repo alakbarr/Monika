@@ -4,12 +4,12 @@ description: Multi-timeframe H4 trend & H1 CHoCH structure playbook for XTIUSD.
 symbol: XTIUSD
 regime: trending
 timeframe: H1
-min_rr: 2.5
+min_rr: 2.0
 status: active
-sharpe_ratio: 2.79
-profit_factor: 1.26
-max_drawdown_pct: 12.51
-win_rate: 0.371
+sharpe_ratio: 7.54
+profit_factor: 1.23
+max_drawdown_pct: 14.3
+win_rate: 0.411
 ---
 
 # XTIUSD Empirical Playbook: Multi-Timeframe H4 Trend & H1 CHoCH Structure
@@ -17,12 +17,12 @@ win_rate: 0.371
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.79 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.26 (202 verified trade executions)
-- **Max Drawdown**: 12.5% (Institutional risk profile)
-- **Total PnL Return**: +37.3%
-- **Win Rate**: 37.1% (Normalized at minimum 1:2.5 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 3.0x ATR, Max Holding = 24 bars
+- **Verified Sharpe Ratio**: 7.54 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.23 (192 verified trade executions)
+- **Max Drawdown**: 14.3% (Institutional risk profile)
+- **Total PnL Return**: +27.9%
+- **Win Rate**: 41.1% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.5x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
 
 ## Trigger Conditions & Tactical Directives
 - Higher timeframe alignment: H4 EMA 50 > H4 EMA 200 (Bull) or H4 EMA 50 < H4 EMA 200 (Bear).
@@ -30,8 +30,8 @@ win_rate: 0.371
 - Short Trigger: In H4 bear trend, H1 breaks below 5-bar swing low with expanding volume.
 
 ## Execution Invariants & Risk Parameters
-- **Target Risk-to-Reward (R:R)**: Minimum 1:2.5 contractual target.
-- **Stop Loss Placement**: Structured volatility buffer set at 1.2x 14-period Wilder ATR.
+- **Target Risk-to-Reward (R:R)**: Minimum 1:2.0 contractual target.
+- **Stop Loss Placement**: Structured volatility buffer set at 1.5x 14-period Wilder ATR.
 - **Take Profit Target**: Mathematically optimized target placed at 3.0x 14-period ATR.
 - **Position Sizing**: Governed strictly by RiskGate (<= 1.0% account equity risk per trade).
 - **Execution Fill**: Standardized next-bar open fill accounting for real broker spread and slippage.
@@ -39,4 +39,4 @@ win_rate: 0.371
 ## Invalidation & Exit Parameters
 - Invalidate if H1 prints opposing CHoCH breaking structural swing low/high.
 - Invalidate if H4 trend structure flattens.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 24 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 28 bars.

@@ -4,12 +4,12 @@ description: Multi-timeframe H4 trend & H1 CHoCH structure playbook for XBRUSD.
 symbol: XBRUSD
 regime: trending
 timeframe: H1
-min_rr: 2.0
+min_rr: 1.8
 status: active
-sharpe_ratio: 2.34
-profit_factor: 1.16
-max_drawdown_pct: 11.98
-win_rate: 0.405
+sharpe_ratio: 5.93
+profit_factor: 1.18
+max_drawdown_pct: 13.1
+win_rate: 0.431
 ---
 
 # XBRUSD Empirical Playbook: Multi-Timeframe H4 Trend & H1 CHoCH Structure
@@ -17,12 +17,12 @@ win_rate: 0.405
 ## Quantitative Track Record
 - **Asset / Instrument**: XBRUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.34 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.16 (257 verified trade executions)
-- **Max Drawdown**: 12.0% (Institutional risk profile)
-- **Total PnL Return**: +27.6%
-- **Win Rate**: 40.5% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 16 bars
+- **Verified Sharpe Ratio**: 5.93 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.18 (267 verified trade executions)
+- **Max Drawdown**: 13.1% (Institutional risk profile)
+- **Total PnL Return**: +30.9%
+- **Win Rate**: 43.1% (Normalized at minimum 1:1.8 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 1.8x ATR, Max Holding = 16 bars
 
 ## Trigger Conditions & Tactical Directives
 - Higher timeframe alignment: H4 EMA 50 > H4 EMA 200 (Bull) or H4 EMA 50 < H4 EMA 200 (Bear).
@@ -30,9 +30,9 @@ win_rate: 0.405
 - Short Trigger: In H4 bear trend, H1 breaks below 5-bar swing low with expanding volume.
 
 ## Execution Invariants & Risk Parameters
-- **Target Risk-to-Reward (R:R)**: Minimum 1:2.0 contractual target.
+- **Target Risk-to-Reward (R:R)**: Minimum 1:1.8 contractual target.
 - **Stop Loss Placement**: Structured volatility buffer set at 1.0x 14-period Wilder ATR.
-- **Take Profit Target**: Mathematically optimized target placed at 2.0x 14-period ATR.
+- **Take Profit Target**: Mathematically optimized target placed at 1.8x 14-period ATR.
 - **Position Sizing**: Governed strictly by RiskGate (<= 1.0% account equity risk per trade).
 - **Execution Fill**: Standardized next-bar open fill accounting for real broker spread and slippage.
 

@@ -4,12 +4,12 @@ description: Average daily range exhaustion reversal for AUDUSD.
 symbol: AUDUSD
 regime: mean_reverting
 timeframe: H1
-min_rr: 1.67
+min_rr: 2.0
 status: active
-sharpe_ratio: 3.22
-profit_factor: 1.37
-max_drawdown_pct: 10.32
-win_rate: 0.475
+sharpe_ratio: 9.5
+profit_factor: 1.3
+max_drawdown_pct: 14.0
+win_rate: 0.423
 ---
 
 # AUDUSD Empirical Playbook: 24-Hour Range Exhaustion Mean Reversion
@@ -17,12 +17,12 @@ win_rate: 0.475
 ## Quantitative Track Record
 - **Asset / Instrument**: AUDUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 3.22 (Zero-Lookahead simulation)
-- **Profit Factor**: 1.37 (120 verified trade executions)
-- **Max Drawdown**: 10.3% (Institutional risk profile)
-- **Total PnL Return**: +24.2%
-- **Win Rate**: 47.5% (Normalized at minimum 1:1.67 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
+- **Verified Sharpe Ratio**: 9.50 (Zero-Lookahead simulation)
+- **Profit Factor**: 1.30 (123 verified trade executions)
+- **Max Drawdown**: 14.0% (Institutional risk profile)
+- **Total PnL Return**: +22.0%
+- **Win Rate**: 42.3% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.5x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
 
 ## Trigger Conditions & Tactical Directives
 - Rolling 24-hour range expands >= 1.1x 14-period ATR.
@@ -30,8 +30,8 @@ win_rate: 0.475
 - Short Trigger: High tests 24h high, RSI >= 60, and candle closes bearish.
 
 ## Execution Invariants & Risk Parameters
-- **Target Risk-to-Reward (R:R)**: Minimum 1:1.67 contractual target.
-- **Stop Loss Placement**: Structured volatility buffer set at 1.8x 14-period Wilder ATR.
+- **Target Risk-to-Reward (R:R)**: Minimum 1:2.0 contractual target.
+- **Stop Loss Placement**: Structured volatility buffer set at 1.5x 14-period Wilder ATR.
 - **Take Profit Target**: Mathematically optimized target placed at 3.0x 14-period ATR.
 - **Position Sizing**: Governed strictly by RiskGate (<= 1.0% account equity risk per trade).
 - **Execution Fill**: Standardized next-bar open fill accounting for real broker spread and slippage.

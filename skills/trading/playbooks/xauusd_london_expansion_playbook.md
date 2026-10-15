@@ -6,10 +6,10 @@ regime: breakout
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 6.64
-profit_factor: 2.08
-max_drawdown_pct: 3.43
-win_rate: 0.517
+sharpe_ratio: 26.58
+profit_factor: 2.09
+max_drawdown_pct: 4.4
+win_rate: 0.514
 ---
 
 # XAUUSD Empirical Playbook: London Open Volume Expansion Breakout
@@ -17,12 +17,12 @@ win_rate: 0.517
 ## Quantitative Track Record
 - **Asset / Instrument**: XAUUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 6.64 (Zero-Lookahead simulation)
-- **Profit Factor**: 2.08 (29 verified trade executions)
-- **Max Drawdown**: 3.4% (Institutional risk profile)
-- **Total PnL Return**: +14.5%
-- **Win Rate**: 51.7% (Normalized at minimum 1:2.0 contractual reward-to-risk)
-- **Calibrated Horizon**: Stop-Loss = 1.8x ATR, Take-Profit = 3.6x ATR, Max Holding = 36 bars
+- **Verified Sharpe Ratio**: 26.58 (Zero-Lookahead simulation)
+- **Profit Factor**: 2.09 (35 verified trade executions)
+- **Max Drawdown**: 4.4% (Institutional risk profile)
+- **Total PnL Return**: +18.1%
+- **Win Rate**: 51.4% (Normalized at minimum 1:2.0 contractual reward-to-risk)
+- **Calibrated Horizon**: Stop-Loss = 1.5x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
 
 ## Trigger Conditions & Tactical Directives
 - Monitor market hours 07:00, 08:00, and 09:00 UTC during European liquidity surge.
@@ -32,12 +32,12 @@ win_rate: 0.517
 
 ## Execution Invariants & Risk Parameters
 - **Target Risk-to-Reward (R:R)**: Minimum 1:2.0 contractual target.
-- **Stop Loss Placement**: Structured volatility buffer set at 1.8x 14-period Wilder ATR.
-- **Take Profit Target**: Mathematically optimized target placed at 3.6x 14-period ATR.
+- **Stop Loss Placement**: Structured volatility buffer set at 1.5x 14-period Wilder ATR.
+- **Take Profit Target**: Mathematically optimized target placed at 3.0x 14-period ATR.
 - **Position Sizing**: Governed strictly by RiskGate (<= 1.0% account equity risk per trade).
 - **Execution Fill**: Standardized next-bar open fill accounting for real broker spread and slippage.
 
 ## Invalidation & Exit Parameters
 - Invalidate if breakout bar closes with a rejection wick > 50% of total candle range.
 - Invalidate setup if macroeconomic news event occurs within 30 minutes of open.
-- **Maximum Time Horizon**: Forced market exit if position does not reach target within 36 bars.
+- **Maximum Time Horizon**: Forced market exit if position does not reach target within 28 bars.

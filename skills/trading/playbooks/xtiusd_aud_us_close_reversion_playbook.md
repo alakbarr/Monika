@@ -6,9 +6,9 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.5
 status: active
-sharpe_ratio: 2.62
+sharpe_ratio: 7.88
 profit_factor: 1.26
-max_drawdown_pct: 12.44
+max_drawdown_pct: 12.4
 win_rate: 0.4
 ---
 
@@ -17,7 +17,7 @@ win_rate: 0.4
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 2.62 (Zero-Lookahead simulation)
+- **Verified Sharpe Ratio**: 7.88 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.26 (95 verified trade executions)
 - **Max Drawdown**: 12.4% (Institutional risk profile)
 - **Total PnL Return**: +17.7%

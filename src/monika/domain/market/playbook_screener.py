@@ -9,6 +9,7 @@ and provide grounded quantitative confluence signals to Stage 2 analysis.
 
 from __future__ import annotations
 
+import json
 import logging
 import math
 import re
@@ -205,6 +206,29 @@ class PlaybookRegistry:
         specs.sort(key=lambda s: s.profit_factor, reverse=True)
         cls._cached_specs[sym_clean] = specs
         return specs
+
+    @classmethod
+    def load_reserve_playbooks(cls, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Load quantitative reserve playbooks from reserve_catalog.json."""
+        pb_dir = cls.get_playbooks_dir()
+        catalog_path = pb_dir / "reserve_catalog.json"
+        if not catalog_path.exists():
+            return []
+        try:
+            with open(catalog_path, "r", encoding="utf-8") as f:
+                data: Dict[str, Any] = json.load(f)
+            if symbol:
+                sym_clean = symbol.strip().upper()
+                res = data.get(sym_clean, [])
+                return res if isinstance(res, list) else []
+            all_reserves: List[Dict[str, Any]] = []
+            for plist in data.values():
+                if isinstance(plist, list):
+                    all_reserves.extend(plist)
+            return all_reserves
+        except Exception as e:
+            logger.debug(f"Failed loading reserve catalog: {e}")
+            return []
 
     @classmethod
     def _parse_playbook_file(cls, path: Path, expected_symbol: str) -> Optional[PlaybookSpec]:

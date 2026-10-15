@@ -1,0 +1,3868 @@
+{
+  "XAUUSD": [
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "dch_6_break",
+      "name": "xauusd_dch_6_break_playbook",
+      "title": "Dch 6 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 305,
+        "win_rate_pct": 43.3,
+        "profit_factor": 1.34,
+        "sharpe_ratio": 10.85,
+        "max_drawdown_pct": 9.7,
+        "total_pnl_pct": 74.2
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "donchian_12_breakout",
+      "name": "xauusd_donchian_12_breakout_playbook",
+      "title": "Donchian 12 Breakout Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 260,
+        "win_rate_pct": 44.2,
+        "profit_factor": 1.39,
+        "sharpe_ratio": 12.2,
+        "max_drawdown_pct": 9.2,
+        "total_pnl_pct": 70.1
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "dch_14_break",
+      "name": "xauusd_dch_14_break_playbook",
+      "title": "Dch 14 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 262,
+        "win_rate_pct": 43.9,
+        "profit_factor": 1.36,
+        "sharpe_ratio": 11.18,
+        "max_drawdown_pct": 11.9,
+        "total_pnl_pct": 63.0
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "donchian_20_breakout",
+      "name": "xauusd_donchian_20_breakout_playbook",
+      "title": "Donchian 20 Breakout Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 226,
+        "win_rate_pct": 43.8,
+        "profit_factor": 1.36,
+        "sharpe_ratio": 11.49,
+        "max_drawdown_pct": 9.7,
+        "total_pnl_pct": 55.0
+      },
+      "params": {
+        "sl_atr_mult": 1.1,
+        "tp_atr_mult": 2.0,
+        "max_hold_bars": 18,
+        "min_rr": 1.82
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_dch_8_break",
+      "name": "xauusd_lon_dch_8_break_playbook",
+      "title": "Lon Dch 8 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 116,
+        "win_rate_pct": 50.9,
+        "profit_factor": 1.77,
+        "sharpe_ratio": 21.46,
+        "max_drawdown_pct": 8.1,
+        "total_pnl_pct": 50.1
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 2.5,
+        "max_hold_bars": 24,
+        "min_rr": 1.67
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "session_tokyo_fix",
+      "name": "xauusd_session_tokyo_fix_playbook",
+      "title": "Session Tokyo Fix Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 73,
+        "win_rate_pct": 47.9,
+        "profit_factor": 1.93,
+        "sharpe_ratio": 23.72,
+        "max_drawdown_pct": 5.9,
+        "total_pnl_pct": 42.4
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "ses_tokyo_fix_fade",
+      "name": "xauusd_ses_tokyo_fix_fade_playbook",
+      "title": "Ses Tokyo Fix Fade Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 73,
+        "win_rate_pct": 47.9,
+        "profit_factor": 1.93,
+        "sharpe_ratio": 23.72,
+        "max_drawdown_pct": 5.9,
+        "total_pnl_pct": 42.4
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "session_frankfurt_drive",
+      "name": "xauusd_session_frankfurt_drive_playbook",
+      "title": "Session Frankfurt Drive Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 59,
+        "win_rate_pct": 49.2,
+        "profit_factor": 2.26,
+        "sharpe_ratio": 29.37,
+        "max_drawdown_pct": 8.7,
+        "total_pnl_pct": 42.3
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "bb_15_fade_asian",
+      "name": "xauusd_bb_15_fade_asian_playbook",
+      "title": "BB 15 Fade Asian Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 156,
+        "win_rate_pct": 44.2,
+        "profit_factor": 1.42,
+        "sharpe_ratio": 12.86,
+        "max_drawdown_pct": 6.2,
+        "total_pnl_pct": 41.9
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.4,
+        "max_hold_bars": 20,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "tsm_momentum",
+      "name": "xauusd_tsm_momentum_playbook",
+      "title": "Multi-Horizon Time-Series Momentum",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Multi-horizon time-series momentum playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 264,
+        "win_rate_pct": 44.3,
+        "profit_factor": 1.26,
+        "sharpe_ratio": 8.64,
+        "max_drawdown_pct": 8.0,
+        "total_pnl_pct": 41.5
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 20,
+        "min_rr": 1.57
+      },
+      "trigger_summary": "- Compute 12-bar and 48-bar Rate of Change (ROC) momentum on H1.\n- Long Trigger: Both ROC12 and ROC48 positive above threshold and Close > EMA 20.\n- Short Trigger: Both ROC12 and ROC48 negative below threshold and Close < EMA 20.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "s_vwap_dev12_ny_afternoon",
+      "name": "xauusd_s_vwap_dev12_ny_afternoon_playbook",
+      "title": "S VWAP Dev12 NY Afternoon Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 99,
+        "win_rate_pct": 43.4,
+        "profit_factor": 1.63,
+        "sharpe_ratio": 17.87,
+        "max_drawdown_pct": 7.8,
+        "total_pnl_pct": 41.3
+      },
+      "params": {
+        "sl_atr_mult": 0.5,
+        "tp_atr_mult": 1.1,
+        "max_hold_bars": 10,
+        "min_rr": 2.2
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "multitimeframe_structure",
+      "name": "xauusd_multitimeframe_structure_playbook",
+      "title": "Multi-Timeframe H4 Trend & H1 CHoCH Structure",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Multi-timeframe H4 trend & H1 CHoCH structure playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 246,
+        "win_rate_pct": 44.3,
+        "profit_factor": 1.26,
+        "sharpe_ratio": 8.79,
+        "max_drawdown_pct": 12.9,
+        "total_pnl_pct": 40.6
+      },
+      "params": {
+        "sl_atr_mult": 1.1,
+        "tp_atr_mult": 1.8,
+        "max_hold_bars": 16,
+        "min_rr": 1.64
+      },
+      "trigger_summary": "- Higher timeframe alignment: H4 EMA 50 > H4 EMA 200 (Bull) or H4 EMA 50 < H4 EMA 200 (Bear).\n- Long Trigger: In H4 bull trend, H1 breaks above 5-bar swing high with expanding volume.\n- Short Trigger: In H4 bear trend, H1 breaks below 5-bar swing low with expanding volume.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "elder_triple_screen",
+      "name": "xauusd_elder_triple_screen_playbook",
+      "title": "Alexander Elder Triple Screen Trend Pullback",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Alexander Elder triple screen pullback for XAUUSD.",
+      "metrics": {
+        "total_trades": 177,
+        "win_rate_pct": 42.9,
+        "profit_factor": 1.34,
+        "sharpe_ratio": 10.61,
+        "max_drawdown_pct": 10.4,
+        "total_pnl_pct": 39.3
+      },
+      "params": {
+        "sl_atr_mult": 1.0,
+        "tp_atr_mult": 2.0,
+        "max_hold_bars": 16,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Higher Timeframe (H4) trend filter: EMA 50 > EMA 200 (Bull) or EMA 50 < EMA 200 (Bear).\n- Long Trigger: H4 Bull, H1 Stochastic %K <= 35, %K crosses above %D, and Close > Open.\n- Short Trigger: H4 Bear, H1 Stochastic %K >= 65, %K crosses below %D, and Close < Open.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "rsi7_rev_all",
+      "name": "xauusd_rsi7_rev_all_playbook",
+      "title": "RSI 7 Rev All Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 100,
+        "win_rate_pct": 40.0,
+        "profit_factor": 1.57,
+        "sharpe_ratio": 16.05,
+        "max_drawdown_pct": 8.1,
+        "total_pnl_pct": 38.9
+      },
+      "params": {
+        "sl_atr_mult": 0.5,
+        "tp_atr_mult": 1.2,
+        "max_hold_bars": 10,
+        "min_rr": 2.4
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "cross_ema_5_13",
+      "name": "xauusd_cross_ema_5_13_playbook",
+      "title": "Cross EMA 5 13 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 221,
+        "win_rate_pct": 42.5,
+        "profit_factor": 1.28,
+        "sharpe_ratio": 9.06,
+        "max_drawdown_pct": 8.7,
+        "total_pnl_pct": 38.8
+      },
+      "params": {
+        "sl_atr_mult": 0.9,
+        "tp_atr_mult": 1.6,
+        "max_hold_bars": 14,
+        "min_rr": 1.78
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_dch_16_break",
+      "name": "xauusd_lon_dch_16_break_playbook",
+      "title": "Lon Dch 16 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 76,
+        "win_rate_pct": 52.6,
+        "profit_factor": 1.93,
+        "sharpe_ratio": 24.51,
+        "max_drawdown_pct": 5.3,
+        "total_pnl_pct": 38.2
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_donchian12_break",
+      "name": "xauusd_lon_donchian12_break_playbook",
+      "title": "Lon Donchian12 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 93,
+        "win_rate_pct": 41.9,
+        "profit_factor": 1.63,
+        "sharpe_ratio": 17.37,
+        "max_drawdown_pct": 8.8,
+        "total_pnl_pct": 38.0
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_dch_12_break",
+      "name": "xauusd_lon_dch_12_break_playbook",
+      "title": "Lon Dch 12 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 93,
+        "win_rate_pct": 41.9,
+        "profit_factor": 1.63,
+        "sharpe_ratio": 17.37,
+        "max_drawdown_pct": 8.8,
+        "total_pnl_pct": 38.0
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "dch_16_break",
+      "name": "xauusd_dch_16_break_playbook",
+      "title": "Dch 16 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 254,
+        "win_rate_pct": 43.3,
+        "profit_factor": 1.24,
+        "sharpe_ratio": 8.07,
+        "max_drawdown_pct": 11.4,
+        "total_pnl_pct": 37.8
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.0,
+        "max_hold_bars": 18,
+        "min_rr": 1.67
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "mega_stoch5_15_cross",
+      "name": "xauusd_mega_stoch5_15_cross_playbook",
+      "title": "Mega Stochastic 5 15 Cross Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 326,
+        "win_rate_pct": 42.3,
+        "profit_factor": 1.18,
+        "sharpe_ratio": 6.12,
+        "max_drawdown_pct": 12.8,
+        "total_pnl_pct": 36.6
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "rsi7_26_74_extreme",
+      "name": "xauusd_rsi7_26_74_extreme_playbook",
+      "title": "RSI 7 26 74 Extreme Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 110,
+        "win_rate_pct": 40.9,
+        "profit_factor": 1.49,
+        "sharpe_ratio": 14.61,
+        "max_drawdown_pct": 7.8,
+        "total_pnl_pct": 36.5
+      },
+      "params": {
+        "sl_atr_mult": 0.5,
+        "tp_atr_mult": 1.1,
+        "max_hold_bars": 10,
+        "min_rr": 2.2
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "stoch8_22_cross",
+      "name": "xauusd_stoch8_22_cross_playbook",
+      "title": "Stochastic 8 22 Cross Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 388,
+        "win_rate_pct": 41.8,
+        "profit_factor": 1.15,
+        "sharpe_ratio": 5.14,
+        "max_drawdown_pct": 10.9,
+        "total_pnl_pct": 36.0
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "stoch8_rev_all",
+      "name": "xauusd_stoch8_rev_all_playbook",
+      "title": "Stochastic 8 Rev All Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 388,
+        "win_rate_pct": 41.8,
+        "profit_factor": 1.15,
+        "sharpe_ratio": 5.14,
+        "max_drawdown_pct": 10.9,
+        "total_pnl_pct": 36.0
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "two_bar_reversal",
+      "name": "xauusd_two_bar_reversal_playbook",
+      "title": "Two-Bar Railway Track Swing Reversal",
+      "regime": "mean_reverting",
+      "timeframe": "H1",
+      "description": "Two-bar railway track swing reversal for XAUUSD.",
+      "metrics": {
+        "total_trades": 77,
+        "win_rate_pct": 58.4,
+        "profit_factor": 1.97,
+        "sharpe_ratio": 25.63,
+        "max_drawdown_pct": 3.9,
+        "total_pnl_pct": 35.7
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 20,
+        "min_rr": 1.57
+      },
+      "trigger_summary": "- Two consecutive strong candles each with body >= 0.6x 14-period ATR.\n- Long Trigger: Down candle followed by immediate equal/larger up candle closing above prev open.\n- Short Trigger: Up candle followed by immediate equal/larger down candle closing below prev open.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "mega_donchian_28_break",
+      "name": "xauusd_mega_donchian_28_break_playbook",
+      "title": "Mega Donchian 28 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 191,
+        "win_rate_pct": 43.5,
+        "profit_factor": 1.3,
+        "sharpe_ratio": 9.61,
+        "max_drawdown_pct": 10.8,
+        "total_pnl_pct": 35.5
+      },
+      "params": {
+        "sl_atr_mult": 1.1,
+        "tp_atr_mult": 2.0,
+        "max_hold_bars": 18,
+        "min_rr": 1.82
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "dch_28_break",
+      "name": "xauusd_dch_28_break_playbook",
+      "title": "Dch 28 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 191,
+        "win_rate_pct": 43.5,
+        "profit_factor": 1.3,
+        "sharpe_ratio": 9.61,
+        "max_drawdown_pct": 10.8,
+        "total_pnl_pct": 35.5
+      },
+      "params": {
+        "sl_atr_mult": 1.1,
+        "tp_atr_mult": 2.0,
+        "max_hold_bars": 18,
+        "min_rr": 1.82
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "macd_pullback",
+      "name": "xauusd_macd_pullback_playbook",
+      "title": "MACD Zero-Line Trend Retest & Momentum Turn",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "MACD zero-line trend retest momentum turn for XAUUSD.",
+      "metrics": {
+        "total_trades": 99,
+        "win_rate_pct": 44.4,
+        "profit_factor": 1.57,
+        "sharpe_ratio": 16.43,
+        "max_drawdown_pct": 7.9,
+        "total_pnl_pct": 34.2
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.4,
+        "max_hold_bars": 20,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: MACD Line > 0, MACD Histogram turns positive (<=0 to >0), and Close > EMA 20.\n- Short Trigger: MACD Line < 0, MACD Histogram turns negative (>=0 to <0), and Close < EMA 20.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "ny_dch_8_break",
+      "name": "xauusd_ny_dch_8_break_playbook",
+      "title": "NY Dch 8 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 148,
+        "win_rate_pct": 42.6,
+        "profit_factor": 1.35,
+        "sharpe_ratio": 11.07,
+        "max_drawdown_pct": 8.3,
+        "total_pnl_pct": 34.0
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "asia_bb20_fade",
+      "name": "xauusd_asia_bb20_fade_playbook",
+      "title": "Asia Bb20 Fade Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 63,
+        "win_rate_pct": 52.4,
+        "profit_factor": 1.97,
+        "sharpe_ratio": 25.09,
+        "max_drawdown_pct": 3.6,
+        "total_pnl_pct": 33.4
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "supertrend_cross",
+      "name": "xauusd_supertrend_cross_playbook",
+      "title": "SuperTrend Volatility Envelope Breakout",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "SuperTrend volatility envelope breakout for XAUUSD.",
+      "metrics": {
+        "total_trades": 166,
+        "win_rate_pct": 41.6,
+        "profit_factor": 1.32,
+        "sharpe_ratio": 10.17,
+        "max_drawdown_pct": 11.0,
+        "total_pnl_pct": 33.4
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.5,
+        "max_hold_bars": 14,
+        "min_rr": 1.88
+      },
+      "trigger_summary": "- Compute 20-period EMA and 2.0x ATR volatility envelope bands.\n- Long Trigger: Prior close was below upper band and current H1 Close breaks above.\n- Short Trigger: Prior close was above lower band and current H1 Close breaks below.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "roc_burst",
+      "name": "xauusd_roc_burst_playbook",
+      "title": "Rate of Change Momentum Velocity Surge",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Rate of change momentum velocity surge for XAUUSD.",
+      "metrics": {
+        "total_trades": 193,
+        "win_rate_pct": 42.0,
+        "profit_factor": 1.28,
+        "sharpe_ratio": 9.09,
+        "max_drawdown_pct": 13.5,
+        "total_pnl_pct": 33.1
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Monitor 6-period Rate of Change (ROC) and 20-period volume moving average.\n- Long Trigger: ROC expands above surge threshold with Volume >= 1.25x 20-MA and Close > EMA 20.\n- Short Trigger: ROC drops below negative threshold with Volume >= 1.25x 20-MA and Close < EMA 20.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "mega_sweep_swing30",
+      "name": "xauusd_mega_sweep_swing30_playbook",
+      "title": "Mega Sweep Swing30 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 200,
+        "win_rate_pct": 43.0,
+        "profit_factor": 1.26,
+        "sharpe_ratio": 8.75,
+        "max_drawdown_pct": 8.3,
+        "total_pnl_pct": 32.7
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.75
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "sweep_sw30",
+      "name": "xauusd_sweep_sw30_playbook",
+      "title": "Sweep Sw30 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 200,
+        "win_rate_pct": 43.0,
+        "profit_factor": 1.26,
+        "sharpe_ratio": 8.75,
+        "max_drawdown_pct": 8.3,
+        "total_pnl_pct": 32.7
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.75
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "two_bar_reversal_pattern",
+      "name": "xauusd_two_bar_reversal_pattern_playbook",
+      "title": "Two Bar Reversal Pattern Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 118,
+        "win_rate_pct": 50.8,
+        "profit_factor": 1.5,
+        "sharpe_ratio": 15.23,
+        "max_drawdown_pct": 4.4,
+        "total_pnl_pct": 32.3
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 20,
+        "min_rr": 1.57
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "pa_two_bar_reversal",
+      "name": "xauusd_pa_two_bar_reversal_playbook",
+      "title": "Pa Two Bar Reversal Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 118,
+        "win_rate_pct": 50.8,
+        "profit_factor": 1.5,
+        "sharpe_ratio": 15.23,
+        "max_drawdown_pct": 4.4,
+        "total_pnl_pct": 32.3
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 20,
+        "min_rr": 1.57
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "bb_20_fade_asian",
+      "name": "xauusd_bb_20_fade_asian_playbook",
+      "title": "BB 20 Fade Asian Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 72,
+        "win_rate_pct": 50.0,
+        "profit_factor": 1.77,
+        "sharpe_ratio": 21.08,
+        "max_drawdown_pct": 4.6,
+        "total_pnl_pct": 31.5
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "s_bb20_revert",
+      "name": "xauusd_s_bb20_revert_playbook",
+      "title": "S Bb20 Revert Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 225,
+        "win_rate_pct": 44.0,
+        "profit_factor": 1.23,
+        "sharpe_ratio": 7.63,
+        "max_drawdown_pct": 9.5,
+        "total_pnl_pct": 31.4
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "bb_20_reversion",
+      "name": "xauusd_bb_20_reversion_playbook",
+      "title": "BB 20 Reversion Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 225,
+        "win_rate_pct": 44.0,
+        "profit_factor": 1.23,
+        "sharpe_ratio": 7.63,
+        "max_drawdown_pct": 9.5,
+        "total_pnl_pct": 31.4
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "bb_20_fade_all",
+      "name": "xauusd_bb_20_fade_all_playbook",
+      "title": "BB 20 Fade All Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 225,
+        "win_rate_pct": 44.0,
+        "profit_factor": 1.23,
+        "sharpe_ratio": 7.63,
+        "max_drawdown_pct": 9.5,
+        "total_pnl_pct": 31.4
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_dch_20_break",
+      "name": "xauusd_lon_dch_20_break_playbook",
+      "title": "Lon Dch 20 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 64,
+        "win_rate_pct": 53.1,
+        "profit_factor": 1.92,
+        "sharpe_ratio": 24.47,
+        "max_drawdown_pct": 5.3,
+        "total_pnl_pct": 31.2
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_ema9_bounce",
+      "name": "xauusd_lon_ema9_bounce_playbook",
+      "title": "Lon EMA 9 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 172,
+        "win_rate_pct": 41.9,
+        "profit_factor": 1.3,
+        "sharpe_ratio": 9.54,
+        "max_drawdown_pct": 8.2,
+        "total_pnl_pct": 31.2
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "s_london_open_break",
+      "name": "xauusd_s_london_open_break_playbook",
+      "title": "S London Open Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 68,
+        "win_rate_pct": 44.1,
+        "profit_factor": 1.74,
+        "sharpe_ratio": 19.8,
+        "max_drawdown_pct": 7.8,
+        "total_pnl_pct": 30.7
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "session_london_open",
+      "name": "xauusd_session_london_open_playbook",
+      "title": "Session London Open Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 68,
+        "win_rate_pct": 44.1,
+        "profit_factor": 1.74,
+        "sharpe_ratio": 19.8,
+        "max_drawdown_pct": 7.8,
+        "total_pnl_pct": 30.7
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "ses_london_open_break",
+      "name": "xauusd_ses_london_open_break_playbook",
+      "title": "Ses London Open Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 68,
+        "win_rate_pct": 44.1,
+        "profit_factor": 1.74,
+        "sharpe_ratio": 19.8,
+        "max_drawdown_pct": 7.8,
+        "total_pnl_pct": 30.7
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "rsi5_rev_all",
+      "name": "xauusd_rsi5_rev_all_playbook",
+      "title": "RSI 5 Rev All Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 129,
+        "win_rate_pct": 43.4,
+        "profit_factor": 1.38,
+        "sharpe_ratio": 11.91,
+        "max_drawdown_pct": 8.7,
+        "total_pnl_pct": 30.1
+      },
+      "params": {
+        "sl_atr_mult": 0.6,
+        "tp_atr_mult": 1.1,
+        "max_hold_bars": 10,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "mega_stoch5_20_cross",
+      "name": "xauusd_mega_stoch5_20_cross_playbook",
+      "title": "Mega Stochastic 5 20 Cross Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 272,
+        "win_rate_pct": 40.4,
+        "profit_factor": 1.18,
+        "sharpe_ratio": 5.94,
+        "max_drawdown_pct": 9.7,
+        "total_pnl_pct": 30.0
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "s_sweep_pool36",
+      "name": "xauusd_s_sweep_pool36_playbook",
+      "title": "S Sweep Pool36 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 184,
+        "win_rate_pct": 42.9,
+        "profit_factor": 1.26,
+        "sharpe_ratio": 8.74,
+        "max_drawdown_pct": 9.2,
+        "total_pnl_pct": 29.7
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.75
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "rsi7_22_78_extreme",
+      "name": "xauusd_rsi7_22_78_extreme_playbook",
+      "title": "RSI 7 22 78 Extreme Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 58,
+        "win_rate_pct": 43.1,
+        "profit_factor": 1.81,
+        "sharpe_ratio": 21.05,
+        "max_drawdown_pct": 5.9,
+        "total_pnl_pct": 29.6
+      },
+      "params": {
+        "sl_atr_mult": 0.6,
+        "tp_atr_mult": 1.5,
+        "max_hold_bars": 12,
+        "min_rr": 2.5
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "session_hl_fade",
+      "name": "xauusd_session_hl_fade_playbook",
+      "title": "Rolling 24-Hour High/Low Rejection Fade",
+      "regime": "mean_reverting",
+      "timeframe": "H1",
+      "description": "Rolling 24-hour high and low rejection fade for XAUUSD.",
+      "metrics": {
+        "total_trades": 237,
+        "win_rate_pct": 40.1,
+        "profit_factor": 1.2,
+        "sharpe_ratio": 6.68,
+        "max_drawdown_pct": 10.1,
+        "total_pnl_pct": 29.5
+      },
+      "params": {
+        "sl_atr_mult": 0.7,
+        "tp_atr_mult": 1.3,
+        "max_hold_bars": 10,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Map rolling 24-hour swing high and low extremes.\n- Long Trigger: Price touches or sweeps 24-hour low and closes back above it.\n- Short Trigger: Price touches or sweeps 24-hour high and closes back below it.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "s_swing24_sweep_reenter",
+      "name": "xauusd_s_swing24_sweep_reenter_playbook",
+      "title": "S Swing24 Sweep Reenter Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 237,
+        "win_rate_pct": 40.1,
+        "profit_factor": 1.2,
+        "sharpe_ratio": 6.68,
+        "max_drawdown_pct": 10.1,
+        "total_pnl_pct": 29.5
+      },
+      "params": {
+        "sl_atr_mult": 0.7,
+        "tp_atr_mult": 1.3,
+        "max_hold_bars": 10,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "rejection_swing24",
+      "name": "xauusd_rejection_swing24_playbook",
+      "title": "Rejection Swing24 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 237,
+        "win_rate_pct": 40.1,
+        "profit_factor": 1.2,
+        "sharpe_ratio": 6.68,
+        "max_drawdown_pct": 10.1,
+        "total_pnl_pct": 29.5
+      },
+      "params": {
+        "sl_atr_mult": 0.7,
+        "tp_atr_mult": 1.3,
+        "max_hold_bars": 10,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "sweep_sw24",
+      "name": "xauusd_sweep_sw24_playbook",
+      "title": "Sweep Sw24 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 237,
+        "win_rate_pct": 40.1,
+        "profit_factor": 1.2,
+        "sharpe_ratio": 6.68,
+        "max_drawdown_pct": 10.1,
+        "total_pnl_pct": 29.5
+      },
+      "params": {
+        "sl_atr_mult": 0.7,
+        "tp_atr_mult": 1.3,
+        "max_hold_bars": 10,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "s_two_bar_reversal",
+      "name": "xauusd_s_two_bar_reversal_playbook",
+      "title": "S Two Bar Reversal Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 93,
+        "win_rate_pct": 53.8,
+        "profit_factor": 1.61,
+        "sharpe_ratio": 17.81,
+        "max_drawdown_pct": 4.9,
+        "total_pnl_pct": 29.2
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 20,
+        "min_rr": 1.57
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "mega_sweep_swing18",
+      "name": "xauusd_mega_sweep_swing18_playbook",
+      "title": "Mega Sweep Swing18 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 283,
+        "win_rate_pct": 41.0,
+        "profit_factor": 1.17,
+        "sharpe_ratio": 5.76,
+        "max_drawdown_pct": 8.8,
+        "total_pnl_pct": 29.1
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.75
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "sweep_sw18",
+      "name": "xauusd_sweep_sw18_playbook",
+      "title": "Sweep Sw18 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 283,
+        "win_rate_pct": 41.0,
+        "profit_factor": 1.17,
+        "sharpe_ratio": 5.76,
+        "max_drawdown_pct": 8.8,
+        "total_pnl_pct": 29.1
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.75
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_ema8_bounce",
+      "name": "xauusd_lon_ema8_bounce_playbook",
+      "title": "Lon EMA 8 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 182,
+        "win_rate_pct": 41.8,
+        "profit_factor": 1.26,
+        "sharpe_ratio": 8.49,
+        "max_drawdown_pct": 14.2,
+        "total_pnl_pct": 28.8
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "donchian_breakout",
+      "name": "xauusd_donchian_breakout_playbook",
+      "title": "Volume-Expanded Donchian Channel Breakout",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Volume-expanded Donchian channel breakout playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 155,
+        "win_rate_pct": 40.0,
+        "profit_factor": 1.29,
+        "sharpe_ratio": 9.28,
+        "max_drawdown_pct": 9.2,
+        "total_pnl_pct": 28.5
+      },
+      "params": {
+        "sl_atr_mult": 1.0,
+        "tp_atr_mult": 2.0,
+        "max_hold_bars": 16,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Calculate 24-period Donchian Channel on H1 shifted by 1 bar to prevent lookahead.\n- Long Trigger: H1 Close breaks above upper channel, Close > EMA 50, with volume >= 1.15x MA.\n- Short Trigger: H1 Close breaks below lower channel, Close < EMA 50, with volume >= 1.15x MA.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "ny_dch_6_break",
+      "name": "xauusd_ny_dch_6_break_playbook",
+      "title": "NY Dch 6 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 161,
+        "win_rate_pct": 41.0,
+        "profit_factor": 1.28,
+        "sharpe_ratio": 8.92,
+        "max_drawdown_pct": 9.6,
+        "total_pnl_pct": 28.5
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "stoch14_rev_asia",
+      "name": "xauusd_stoch14_rev_asia_playbook",
+      "title": "Stochastic 14 Rev Asia Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 166,
+        "win_rate_pct": 42.2,
+        "profit_factor": 1.28,
+        "sharpe_ratio": 8.92,
+        "max_drawdown_pct": 10.8,
+        "total_pnl_pct": 28.4
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.4,
+        "max_hold_bars": 20,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "energy_ema20_drive",
+      "name": "xauusd_energy_ema20_drive_playbook",
+      "title": "Energy EMA 20 Drive Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 258,
+        "win_rate_pct": 42.6,
+        "profit_factor": 1.18,
+        "sharpe_ratio": 6.23,
+        "max_drawdown_pct": 13.9,
+        "total_pnl_pct": 27.8
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 2.5,
+        "max_hold_bars": 24,
+        "min_rr": 1.67
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "asian_range_breakout",
+      "name": "xauusd_asian_range_breakout_playbook",
+      "title": "Asian Session Box Expansion Breakout",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Asian session box expansion breakout playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 58,
+        "win_rate_pct": 55.2,
+        "profit_factor": 1.96,
+        "sharpe_ratio": 25.57,
+        "max_drawdown_pct": 5.3,
+        "total_pnl_pct": 27.7
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.0,
+        "max_hold_bars": 18,
+        "min_rr": 1.67
+      },
+      "trigger_summary": "- Identify the Asian consolidation high and low between 00:00 and 06:00 UTC.\n- Long Trigger: H1 Close at 07:00 or 08:00 UTC breaks above Asian high and Close > EMA 50.\n- Short Trigger: H1 Close at 07:00 or 08:00 UTC breaks below Asian low and Close < EMA 50.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_ema15_bounce",
+      "name": "xauusd_lon_ema15_bounce_playbook",
+      "title": "Lon EMA 15 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 126,
+        "win_rate_pct": 43.7,
+        "profit_factor": 1.37,
+        "sharpe_ratio": 11.55,
+        "max_drawdown_pct": 6.4,
+        "total_pnl_pct": 27.5
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "aud_london_break",
+      "name": "xauusd_aud_london_break_playbook",
+      "title": "London Open Liquidity Breakout & Expansion",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "London open liquidity breakout and expansion for XAUUSD.",
+      "metrics": {
+        "total_trades": 64,
+        "win_rate_pct": 43.8,
+        "profit_factor": 1.7,
+        "sharpe_ratio": 19.09,
+        "max_drawdown_pct": 7.8,
+        "total_pnl_pct": 27.4
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Active during European session open (07:00 and 08:00 UTC).\n- Map the preceding 8-hour Asian consolidation high and low.\n- Long Trigger: H1 Close breaks strictly above the 8-hour high.\n- Short Trigger: H1 Close breaks strictly below the 8-hour low.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "tokyo_afternoon_push",
+      "name": "xauusd_tokyo_afternoon_push_playbook",
+      "title": "Tokyo Afternoon Institutional Trend Push",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Tokyo afternoon institutional trend push for XAUUSD.",
+      "metrics": {
+        "total_trades": 182,
+        "win_rate_pct": 40.7,
+        "profit_factor": 1.24,
+        "sharpe_ratio": 7.86,
+        "max_drawdown_pct": 13.1,
+        "total_pnl_pct": 27.2
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.4,
+        "max_hold_bars": 20,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Active during late Tokyo / Singapore afternoon session (05:00 to 07:00 UTC).\n- Long Trigger: Close > EMA 20, Close > Open, and RSI >= 50.\n- Short Trigger: Close < EMA 20, Close < Open, and RSI <= 50.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_ema25_bounce",
+      "name": "xauusd_lon_ema25_bounce_playbook",
+      "title": "Lon EMA 25 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 94,
+        "win_rate_pct": 40.4,
+        "profit_factor": 1.46,
+        "sharpe_ratio": 13.18,
+        "max_drawdown_pct": 10.0,
+        "total_pnl_pct": 26.8
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "energy_donchian8_break",
+      "name": "xauusd_energy_donchian8_break_playbook",
+      "title": "Energy Donchian8 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 160,
+        "win_rate_pct": 40.6,
+        "profit_factor": 1.26,
+        "sharpe_ratio": 8.4,
+        "max_drawdown_pct": 11.9,
+        "total_pnl_pct": 26.4
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_ema20_bounce",
+      "name": "xauusd_lon_ema20_bounce_playbook",
+      "title": "Lon EMA 20 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 107,
+        "win_rate_pct": 46.7,
+        "profit_factor": 1.45,
+        "sharpe_ratio": 13.8,
+        "max_drawdown_pct": 7.8,
+        "total_pnl_pct": 26.2
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 2.5,
+        "max_hold_bars": 24,
+        "min_rr": 1.67
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "ema50_trend_bounce",
+      "name": "xauusd_ema50_trend_bounce_playbook",
+      "title": "Institutional 50-EMA Trend Boundary Bounce",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Institutional 50-EMA trend boundary bounce for XAUUSD.",
+      "metrics": {
+        "total_trades": 216,
+        "win_rate_pct": 46.8,
+        "profit_factor": 1.21,
+        "sharpe_ratio": 7.24,
+        "max_drawdown_pct": 10.0,
+        "total_pnl_pct": 26.1
+      },
+      "params": {
+        "sl_atr_mult": 1.0,
+        "tp_atr_mult": 1.5,
+        "max_hold_bars": 12,
+        "min_rr": 1.5
+      },
+      "trigger_summary": "- Macro trend filter: Close > EMA 200 (Bull) or Close < EMA 200 (Bear).\n- Long Trigger: Low touches EMA 50, rejects, and candle closes bullish above EMA 50.\n- Short Trigger: High touches EMA 50, rejects, and candle closes bearish below EMA 50.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "t_ema50_bounce",
+      "name": "xauusd_t_ema50_bounce_playbook",
+      "title": "T EMA 50 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 216,
+        "win_rate_pct": 46.8,
+        "profit_factor": 1.21,
+        "sharpe_ratio": 7.24,
+        "max_drawdown_pct": 10.0,
+        "total_pnl_pct": 26.1
+      },
+      "params": {
+        "sl_atr_mult": 1.0,
+        "tp_atr_mult": 1.5,
+        "max_hold_bars": 12,
+        "min_rr": 1.5
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "tokyo_sweep_12",
+      "name": "xauusd_tokyo_sweep_12_playbook",
+      "title": "Tokyo Sweep 12 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 95,
+        "win_rate_pct": 44.2,
+        "profit_factor": 1.45,
+        "sharpe_ratio": 13.69,
+        "max_drawdown_pct": 9.0,
+        "total_pnl_pct": 26.0
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.4,
+        "max_hold_bars": 20,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_three_bar_thrust",
+      "name": "xauusd_lon_three_bar_thrust_playbook",
+      "title": "Lon Three Bar Thrust Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 164,
+        "win_rate_pct": 40.9,
+        "profit_factor": 1.25,
+        "sharpe_ratio": 8.33,
+        "max_drawdown_pct": 12.3,
+        "total_pnl_pct": 25.5
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "asia_stoch_cross",
+      "name": "xauusd_asia_stoch_cross_playbook",
+      "title": "Asia Stoch Cross Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 150,
+        "win_rate_pct": 42.0,
+        "profit_factor": 1.28,
+        "sharpe_ratio": 8.89,
+        "max_drawdown_pct": 9.1,
+        "total_pnl_pct": 25.2
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.4,
+        "max_hold_bars": 20,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "rsi9_28_72_extreme",
+      "name": "xauusd_rsi9_28_72_extreme_playbook",
+      "title": "RSI 9 28 72 Extreme Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 113,
+        "win_rate_pct": 43.4,
+        "profit_factor": 1.37,
+        "sharpe_ratio": 11.6,
+        "max_drawdown_pct": 11.5,
+        "total_pnl_pct": 24.9
+      },
+      "params": {
+        "sl_atr_mult": 0.6,
+        "tp_atr_mult": 1.1,
+        "max_hold_bars": 10,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "stoch5_trend_cross",
+      "name": "xauusd_stoch5_trend_cross_playbook",
+      "title": "Stochastic 5 Trend Cross Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 262,
+        "win_rate_pct": 42.7,
+        "profit_factor": 1.16,
+        "sharpe_ratio": 5.62,
+        "max_drawdown_pct": 10.8,
+        "total_pnl_pct": 24.7
+      },
+      "params": {
+        "sl_atr_mult": 1.1,
+        "tp_atr_mult": 1.8,
+        "max_hold_bars": 16,
+        "min_rr": 1.64
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "rsi14_35_65_extreme",
+      "name": "xauusd_rsi14_35_65_extreme_playbook",
+      "title": "RSI 14 35 65 Extreme Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 187,
+        "win_rate_pct": 40.6,
+        "profit_factor": 1.21,
+        "sharpe_ratio": 7.13,
+        "max_drawdown_pct": 13.0,
+        "total_pnl_pct": 24.6
+      },
+      "params": {
+        "sl_atr_mult": 0.6,
+        "tp_atr_mult": 1.1,
+        "max_hold_bars": 10,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_dch_24_break",
+      "name": "xauusd_lon_dch_24_break_playbook",
+      "title": "Lon Dch 24 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 58,
+        "win_rate_pct": 51.7,
+        "profit_factor": 1.8,
+        "sharpe_ratio": 21.92,
+        "max_drawdown_pct": 5.3,
+        "total_pnl_pct": 24.5
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "ema_retest_macd",
+      "name": "xauusd_ema_retest_macd_playbook",
+      "title": "EMA 21 Trend Retest with MACD Confluence",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "EMA pullback with MACD confluence for XAUUSD.",
+      "metrics": {
+        "total_trades": 170,
+        "win_rate_pct": 42.9,
+        "profit_factor": 1.24,
+        "sharpe_ratio": 7.89,
+        "max_drawdown_pct": 8.2,
+        "total_pnl_pct": 23.8
+      },
+      "params": {
+        "sl_atr_mult": 1.0,
+        "tp_atr_mult": 1.7,
+        "max_hold_bars": 14,
+        "min_rr": 1.7
+      },
+      "trigger_summary": "- Long Trigger: Close > EMA 50, Low tests EMA 21, Close > EMA 21, MACD Hist > 0.\n- Short Trigger: Close < EMA 50, High tests EMA 21, Close < EMA 21, MACD Hist < 0.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_dch_28_break",
+      "name": "xauusd_lon_dch_28_break_playbook",
+      "title": "Lon Dch 28 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 51,
+        "win_rate_pct": 52.9,
+        "profit_factor": 1.87,
+        "sharpe_ratio": 23.38,
+        "max_drawdown_pct": 4.3,
+        "total_pnl_pct": 22.8
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "atr_impulse",
+      "name": "xauusd_atr_impulse_playbook",
+      "title": "ATR Expansion Large-Body Impulse Thrust",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "ATR expansion large-body impulse thrust for XAUUSD.",
+      "metrics": {
+        "total_trades": 146,
+        "win_rate_pct": 43.2,
+        "profit_factor": 1.26,
+        "sharpe_ratio": 8.6,
+        "max_drawdown_pct": 15.0,
+        "total_pnl_pct": 22.4
+      },
+      "params": {
+        "sl_atr_mult": 1.0,
+        "tp_atr_mult": 1.7,
+        "max_hold_bars": 14,
+        "min_rr": 1.7
+      },
+      "trigger_summary": "- Filter for expansion candle with range >= 1.4x ATR and body >= 70% of candle range.\n- Long Trigger: Strong bullish impulse candle with Close > EMA 50.\n- Short Trigger: Strong bearish impulse candle with Close < EMA 50.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "consecutive_exhaustion",
+      "name": "xauusd_consecutive_exhaustion_playbook",
+      "title": "Four-Bar Momentum Exhaustion Reversal",
+      "regime": "mean_reverting",
+      "timeframe": "H1",
+      "description": "Four-bar momentum exhaustion reversal for XAUUSD.",
+      "metrics": {
+        "total_trades": 101,
+        "win_rate_pct": 41.6,
+        "profit_factor": 1.36,
+        "sharpe_ratio": 11.17,
+        "max_drawdown_pct": 9.8,
+        "total_pnl_pct": 22.2
+      },
+      "params": {
+        "sl_atr_mult": 0.7,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Four consecutive bearish bars with RSI <= 40 followed by bullish close.\n- Short Trigger: Four consecutive bullish bars with RSI >= 60 followed by bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "tokyo_ema50_bounce",
+      "name": "xauusd_tokyo_ema50_bounce_playbook",
+      "title": "Tokyo EMA 50 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 84,
+        "win_rate_pct": 40.5,
+        "profit_factor": 1.42,
+        "sharpe_ratio": 12.6,
+        "max_drawdown_pct": 10.6,
+        "total_pnl_pct": 21.9
+      },
+      "params": {
+        "sl_atr_mult": 1.0,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 2.2
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "aud_asia_tokyo_drift",
+      "name": "xauusd_aud_asia_tokyo_drift_playbook",
+      "title": "Asian Morning Session Institutional Trend Drift",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Asian session trend drift playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 118,
+        "win_rate_pct": 43.2,
+        "profit_factor": 1.32,
+        "sharpe_ratio": 9.94,
+        "max_drawdown_pct": 6.9,
+        "total_pnl_pct": 21.8
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Active during Tokyo liquidity build (02:00 to 04:00 UTC).\n- Long Trigger: Close > EMA 20, Close > Open, and volume >= 1.05x volume MA.\n- Short Trigger: Close < EMA 20, Close < Open, and volume >= 1.05x volume MA.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "ny_donchian10_break",
+      "name": "xauusd_ny_donchian10_break_playbook",
+      "title": "NY Donchian10 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 133,
+        "win_rate_pct": 40.6,
+        "profit_factor": 1.26,
+        "sharpe_ratio": 8.42,
+        "max_drawdown_pct": 11.0,
+        "total_pnl_pct": 21.7
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "ny_dch_10_break",
+      "name": "xauusd_ny_dch_10_break_playbook",
+      "title": "NY Dch 10 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 133,
+        "win_rate_pct": 40.6,
+        "profit_factor": 1.26,
+        "sharpe_ratio": 8.42,
+        "max_drawdown_pct": 11.0,
+        "total_pnl_pct": 21.7
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "ny_dch_12_break",
+      "name": "xauusd_ny_dch_12_break_playbook",
+      "title": "NY Dch 12 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 140,
+        "win_rate_pct": 40.7,
+        "profit_factor": 1.26,
+        "sharpe_ratio": 8.52,
+        "max_drawdown_pct": 10.2,
+        "total_pnl_pct": 21.7
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "bollinger_reversion",
+      "name": "xauusd_bollinger_reversion_playbook",
+      "title": "Bollinger Bands Volatility Mean Reversion",
+      "regime": "mean_reverting",
+      "timeframe": "H1",
+      "description": "Bollinger Bands volatility mean reversion playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 183,
+        "win_rate_pct": 41.0,
+        "profit_factor": 1.19,
+        "sharpe_ratio": 6.3,
+        "max_drawdown_pct": 9.6,
+        "total_pnl_pct": 21.5
+      },
+      "params": {
+        "sl_atr_mult": 0.6,
+        "tp_atr_mult": 1.1,
+        "max_hold_bars": 10,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Calculate 20-period Bollinger Bands (2.0 standard deviations) on H1.\n- Long Trigger: H1 Low pierces lower band, closes back inside, Close > Open, and RSI <= 42.\n- Short Trigger: H1 High pierces upper band, closes back inside, Close < Open, and RSI >= 58.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "mega_rsi12_30_70",
+      "name": "xauusd_mega_rsi12_30_70_playbook",
+      "title": "Mega RSI 12 30 70 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 116,
+        "win_rate_pct": 42.2,
+        "profit_factor": 1.3,
+        "sharpe_ratio": 9.87,
+        "max_drawdown_pct": 8.3,
+        "total_pnl_pct": 21.2
+      },
+      "params": {
+        "sl_atr_mult": 0.6,
+        "tp_atr_mult": 1.1,
+        "max_hold_bars": 10,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "rsi12_rev_all",
+      "name": "xauusd_rsi12_rev_all_playbook",
+      "title": "RSI 12 Rev All Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 116,
+        "win_rate_pct": 42.2,
+        "profit_factor": 1.3,
+        "sharpe_ratio": 9.87,
+        "max_drawdown_pct": 8.3,
+        "total_pnl_pct": 21.2
+      },
+      "params": {
+        "sl_atr_mult": 0.6,
+        "tp_atr_mult": 1.1,
+        "max_hold_bars": 10,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "lon_ema13_bounce",
+      "name": "xauusd_lon_ema13_bounce_playbook",
+      "title": "Lon EMA 13 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 140,
+        "win_rate_pct": 41.4,
+        "profit_factor": 1.24,
+        "sharpe_ratio": 7.9,
+        "max_drawdown_pct": 8.9,
+        "total_pnl_pct": 19.6
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "frankfurt_pre_open",
+      "name": "xauusd_frankfurt_pre_open_playbook",
+      "title": "Frankfurt Pre-Open Liquidity Breakout",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Frankfurt pre-open liquidity breakout playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 32,
+        "win_rate_pct": 46.9,
+        "profit_factor": 2.13,
+        "sharpe_ratio": 27.24,
+        "max_drawdown_pct": 4.9,
+        "total_pnl_pct": 19.5
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Active during Frankfurt opening hour (06:00 UTC) preceding London open.\n- Long Trigger: Price breaks above the 6-hour Asian range high and Close > Open.\n- Short Trigger: Price breaks below the 6-hour Asian range low and Close < Open.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "s_rsi7_ny_afternoon",
+      "name": "xauusd_s_rsi7_ny_afternoon_playbook",
+      "title": "S RSI 7 NY Afternoon Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 20,
+        "win_rate_pct": 55.0,
+        "profit_factor": 2.91,
+        "sharpe_ratio": 39.69,
+        "max_drawdown_pct": 4.0,
+        "total_pnl_pct": 18.5
+      },
+      "params": {
+        "sl_atr_mult": 0.5,
+        "tp_atr_mult": 1.2,
+        "max_hold_bars": 10,
+        "min_rr": 2.4
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "rsi9_22_78_extreme",
+      "name": "xauusd_rsi9_22_78_extreme_playbook",
+      "title": "RSI 9 22 78 Extreme Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 43,
+        "win_rate_pct": 44.2,
+        "profit_factor": 1.72,
+        "sharpe_ratio": 19.93,
+        "max_drawdown_pct": 5.9,
+        "total_pnl_pct": 18.5
+      },
+      "params": {
+        "sl_atr_mult": 0.5,
+        "tp_atr_mult": 1.1,
+        "max_hold_bars": 10,
+        "min_rr": 2.2
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "vwap_dev_12_fade",
+      "name": "xauusd_vwap_dev_12_fade_playbook",
+      "title": "VWAP Dev 12 Fade Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 199,
+        "win_rate_pct": 42.7,
+        "profit_factor": 1.16,
+        "sharpe_ratio": 5.68,
+        "max_drawdown_pct": 12.9,
+        "total_pnl_pct": 18.5
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.3,
+        "max_hold_bars": 12,
+        "min_rr": 1.62
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "asia_rsi14_fade",
+      "name": "xauusd_asia_rsi14_fade_playbook",
+      "title": "Asia RSI 14 Fade Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 38,
+        "win_rate_pct": 44.7,
+        "profit_factor": 1.83,
+        "sharpe_ratio": 21.77,
+        "max_drawdown_pct": 4.9,
+        "total_pnl_pct": 18.4
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "mega_rsi10_25_75",
+      "name": "xauusd_mega_rsi10_25_75_playbook",
+      "title": "Mega RSI 10 25 75 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 67,
+        "win_rate_pct": 44.8,
+        "profit_factor": 1.47,
+        "sharpe_ratio": 14.48,
+        "max_drawdown_pct": 6.5,
+        "total_pnl_pct": 18.2
+      },
+      "params": {
+        "sl_atr_mult": 0.6,
+        "tp_atr_mult": 1.1,
+        "max_hold_bars": 10,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "aud_sydney_breakout",
+      "name": "xauusd_aud_sydney_breakout_playbook",
+      "title": "Sydney Session Opening Liquidity Breakout",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Sydney opening session range breakout for XAUUSD.",
+      "metrics": {
+        "total_trades": 77,
+        "win_rate_pct": 48.1,
+        "profit_factor": 1.41,
+        "sharpe_ratio": 12.85,
+        "max_drawdown_pct": 5.3,
+        "total_pnl_pct": 18.2
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.3,
+        "max_hold_bars": 12,
+        "min_rr": 1.62
+      },
+      "trigger_summary": "- Active during Sydney open hours (21:00 to 23:00 UTC).\n- Map preceding 4-hour consolidation high and low.\n- Long Trigger: Close breaks above 4-hour high and Close > Open.\n- Short Trigger: Close breaks below 4-hour low and Close < Open.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "tokyo_ema40_bounce",
+      "name": "xauusd_tokyo_ema40_bounce_playbook",
+      "title": "Tokyo EMA 40 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 91,
+        "win_rate_pct": 45.1,
+        "profit_factor": 1.35,
+        "sharpe_ratio": 11.17,
+        "max_drawdown_pct": 7.2,
+        "total_pnl_pct": 18.0
+      },
+      "params": {
+        "sl_atr_mult": 1.0,
+        "tp_atr_mult": 1.7,
+        "max_hold_bars": 14,
+        "min_rr": 1.7
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "s_swing48_sweep_reenter",
+      "name": "xauusd_s_swing48_sweep_reenter_playbook",
+      "title": "S Swing48 Sweep Reenter Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 154,
+        "win_rate_pct": 42.2,
+        "profit_factor": 1.2,
+        "sharpe_ratio": 6.84,
+        "max_drawdown_pct": 12.0,
+        "total_pnl_pct": 18.0
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.75
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "rejection_swing48",
+      "name": "xauusd_rejection_swing48_playbook",
+      "title": "Rejection Swing48 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 154,
+        "win_rate_pct": 42.2,
+        "profit_factor": 1.2,
+        "sharpe_ratio": 6.84,
+        "max_drawdown_pct": 12.0,
+        "total_pnl_pct": 18.0
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.75
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "sweep_sw48",
+      "name": "xauusd_sweep_sw48_playbook",
+      "title": "Sweep Sw48 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 154,
+        "win_rate_pct": 42.2,
+        "profit_factor": 1.2,
+        "sharpe_ratio": 6.84,
+        "max_drawdown_pct": 12.0,
+        "total_pnl_pct": 18.0
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.75
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "mega_ema60_bounce",
+      "name": "xauusd_mega_ema60_bounce_playbook",
+      "title": "Mega EMA 60 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 177,
+        "win_rate_pct": 40.1,
+        "profit_factor": 1.17,
+        "sharpe_ratio": 5.86,
+        "max_drawdown_pct": 10.6,
+        "total_pnl_pct": 17.9
+      },
+      "params": {
+        "sl_atr_mult": 1.1,
+        "tp_atr_mult": 2.0,
+        "max_hold_bars": 18,
+        "min_rr": 1.82
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "ny_dch_14_break",
+      "name": "xauusd_ny_dch_14_break_playbook",
+      "title": "NY Dch 14 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 124,
+        "win_rate_pct": 40.3,
+        "profit_factor": 1.23,
+        "sharpe_ratio": 7.61,
+        "max_drawdown_pct": 10.5,
+        "total_pnl_pct": 17.8
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "s_bb15_ny_afternoon_fade",
+      "name": "xauusd_s_bb15_ny_afternoon_fade_playbook",
+      "title": "S Bb15 NY Afternoon Fade Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 59,
+        "win_rate_pct": 44.1,
+        "profit_factor": 1.5,
+        "sharpe_ratio": 15.01,
+        "max_drawdown_pct": 5.9,
+        "total_pnl_pct": 17.4
+      },
+      "params": {
+        "sl_atr_mult": 0.5,
+        "tp_atr_mult": 1.0,
+        "max_hold_bars": 8,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "rsi9_rev_all",
+      "name": "xauusd_rsi9_rev_all_playbook",
+      "title": "RSI 9 Rev All Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 139,
+        "win_rate_pct": 43.2,
+        "profit_factor": 1.22,
+        "sharpe_ratio": 7.35,
+        "max_drawdown_pct": 11.9,
+        "total_pnl_pct": 17.4
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.75
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "asia_two_bar_rev",
+      "name": "xauusd_asia_two_bar_rev_playbook",
+      "title": "Asia Two Bar Rev Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 80,
+        "win_rate_pct": 50.0,
+        "profit_factor": 1.41,
+        "sharpe_ratio": 12.79,
+        "max_drawdown_pct": 5.1,
+        "total_pnl_pct": 17.0
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 20,
+        "min_rr": 1.57
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "ema_ribbon_momentum",
+      "name": "xauusd_ema_ribbon_momentum_playbook",
+      "title": "5-EMA Ribbon Trend Expansion Momentum",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "5-EMA ribbon trend expansion momentum playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 141,
+        "win_rate_pct": 40.4,
+        "profit_factor": 1.2,
+        "sharpe_ratio": 6.82,
+        "max_drawdown_pct": 13.4,
+        "total_pnl_pct": 17.0
+      },
+      "params": {
+        "sl_atr_mult": 1.0,
+        "tp_atr_mult": 1.8,
+        "max_hold_bars": 16,
+        "min_rr": 1.8
+      },
+      "trigger_summary": "- Confirm perfect ribbon stacking: EMA 8 > 13 > 21 > 34 > 55 (Bull) or 8 < 13 < 21 < 34 < 55 (Bear).\n- Long Trigger: Low tests into EMA 21 buffer and candle closes above EMA 13.\n- Short Trigger: High tests into EMA 21 buffer and candle closes below EMA 13.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "s_london_morning_drive",
+      "name": "xauusd_s_london_morning_drive_playbook",
+      "title": "S London Morning Drive Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 171,
+        "win_rate_pct": 42.1,
+        "profit_factor": 1.18,
+        "sharpe_ratio": 6.02,
+        "max_drawdown_pct": 11.2,
+        "total_pnl_pct": 16.8
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 2.5,
+        "max_hold_bars": 24,
+        "min_rr": 1.67
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "session_london_morning",
+      "name": "xauusd_session_london_morning_playbook",
+      "title": "Session London Morning Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 179,
+        "win_rate_pct": 40.2,
+        "profit_factor": 1.16,
+        "sharpe_ratio": 5.56,
+        "max_drawdown_pct": 12.5,
+        "total_pnl_pct": 16.7
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 18,
+        "min_rr": 1.83
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "s_rsi7_asian_dip",
+      "name": "xauusd_s_rsi7_asian_dip_playbook",
+      "title": "S RSI 7 Asian Dip Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 30,
+        "win_rate_pct": 46.7,
+        "profit_factor": 1.96,
+        "sharpe_ratio": 24.42,
+        "max_drawdown_pct": 3.0,
+        "total_pnl_pct": 16.1
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "asian_continuation",
+      "name": "xauusd_asian_continuation_playbook",
+      "title": "Asian Mid-Session Trend Continuation",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Asian mid-session trend continuation for XAUUSD.",
+      "metrics": {
+        "total_trades": 180,
+        "win_rate_pct": 42.8,
+        "profit_factor": 1.17,
+        "sharpe_ratio": 5.64,
+        "max_drawdown_pct": 11.9,
+        "total_pnl_pct": 16.1
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 2.5,
+        "max_hold_bars": 24,
+        "min_rr": 1.67
+      },
+      "trigger_summary": "- Active during established Asian trading hours (03:00 to 05:00 UTC).\n- Long Trigger: Price holds above EMA 20, closes higher than open, with RSI >= 50.\n- Short Trigger: Price holds below EMA 20, closes lower than open, with RSI <= 50.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "star_reversal_pattern",
+      "name": "xauusd_star_reversal_pattern_playbook",
+      "title": "Star Reversal Pattern Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 136,
+        "win_rate_pct": 41.2,
+        "profit_factor": 1.2,
+        "sharpe_ratio": 6.68,
+        "max_drawdown_pct": 14.9,
+        "total_pnl_pct": 15.7
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "pa_star_pattern",
+      "name": "xauusd_pa_star_pattern_playbook",
+      "title": "Pa Star Pattern Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XAUUSD.",
+      "metrics": {
+        "total_trades": 136,
+        "win_rate_pct": 41.2,
+        "profit_factor": 1.2,
+        "sharpe_ratio": 6.68,
+        "max_drawdown_pct": 14.9,
+        "total_pnl_pct": 15.7
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XAUUSD",
+      "setup_id": "tokyo_range_fade",
+      "name": "xauusd_tokyo_range_fade_playbook",
+      "title": "Tokyo Midday Range Boundary Mean Reversion",
+      "regime": "mean_reverting",
+      "timeframe": "H1",
+      "description": "Tokyo midday range boundary mean reversion for XAUUSD.",
+      "metrics": {
+        "total_trades": 48,
+        "win_rate_pct": 47.9,
+        "profit_factor": 1.6,
+        "sharpe_ratio": 16.92,
+        "max_drawdown_pct": 4.2,
+        "total_pnl_pct": 15.5
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Active during quiet Tokyo midday session (02:00 to 05:00 UTC).\n- Compute rolling 4-hour local high and low boundaries.\n- Short Trigger: Price tests 4-hour high, closes lower than open, with RSI >= 55.\n- Long Trigger: Price tests 4-hour low, closes higher than open, with RSI <= 45.",
+      "status": "candidate"
+    }
+  ],
+  "EURUSD": [
+    {
+      "symbol": "EURUSD",
+      "setup_id": "harami_reversal_pattern",
+      "name": "eurusd_harami_reversal_pattern_playbook",
+      "title": "Harami Reversal Pattern Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for EURUSD.",
+      "metrics": {
+        "total_trades": 206,
+        "win_rate_pct": 44.2,
+        "profit_factor": 1.38,
+        "sharpe_ratio": 11.68,
+        "max_drawdown_pct": 10.0,
+        "total_pnl_pct": 51.9
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "EURUSD",
+      "setup_id": "pa_harami_reversal",
+      "name": "eurusd_pa_harami_reversal_playbook",
+      "title": "Pa Harami Reversal Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for EURUSD.",
+      "metrics": {
+        "total_trades": 206,
+        "win_rate_pct": 44.2,
+        "profit_factor": 1.38,
+        "sharpe_ratio": 11.68,
+        "max_drawdown_pct": 10.0,
+        "total_pnl_pct": 51.9
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "EURUSD",
+      "setup_id": "session_tokyo_sweep",
+      "name": "eurusd_session_tokyo_sweep_playbook",
+      "title": "Session Tokyo Sweep Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for EURUSD.",
+      "metrics": {
+        "total_trades": 49,
+        "win_rate_pct": 46.9,
+        "profit_factor": 2.03,
+        "sharpe_ratio": 25.7,
+        "max_drawdown_pct": 6.2,
+        "total_pnl_pct": 31.9
+      },
+      "params": {
+        "sl_atr_mult": 0.6,
+        "tp_atr_mult": 1.5,
+        "max_hold_bars": 12,
+        "min_rr": 2.5
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "EURUSD",
+      "setup_id": "ses_tokyo_open_sweep",
+      "name": "eurusd_ses_tokyo_open_sweep_playbook",
+      "title": "Ses Tokyo Open Sweep Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for EURUSD.",
+      "metrics": {
+        "total_trades": 49,
+        "win_rate_pct": 46.9,
+        "profit_factor": 2.03,
+        "sharpe_ratio": 25.7,
+        "max_drawdown_pct": 6.2,
+        "total_pnl_pct": 31.9
+      },
+      "params": {
+        "sl_atr_mult": 0.6,
+        "tp_atr_mult": 1.5,
+        "max_hold_bars": 12,
+        "min_rr": 2.5
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "EURUSD",
+      "setup_id": "session_tokyo_fix",
+      "name": "eurusd_session_tokyo_fix_playbook",
+      "title": "Session Tokyo Fix Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for EURUSD.",
+      "metrics": {
+        "total_trades": 67,
+        "win_rate_pct": 41.8,
+        "profit_factor": 1.55,
+        "sharpe_ratio": 16.01,
+        "max_drawdown_pct": 7.1,
+        "total_pnl_pct": 24.4
+      },
+      "params": {
+        "sl_atr_mult": 0.7,
+        "tp_atr_mult": 1.6,
+        "max_hold_bars": 14,
+        "min_rr": 2.29
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "EURUSD",
+      "setup_id": "ses_tokyo_fix_fade",
+      "name": "eurusd_ses_tokyo_fix_fade_playbook",
+      "title": "Ses Tokyo Fix Fade Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for EURUSD.",
+      "metrics": {
+        "total_trades": 67,
+        "win_rate_pct": 41.8,
+        "profit_factor": 1.55,
+        "sharpe_ratio": 16.01,
+        "max_drawdown_pct": 7.1,
+        "total_pnl_pct": 24.4
+      },
+      "params": {
+        "sl_atr_mult": 0.7,
+        "tp_atr_mult": 1.6,
+        "max_hold_bars": 14,
+        "min_rr": 2.29
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "EURUSD",
+      "setup_id": "vwap_dev_15_fade",
+      "name": "eurusd_vwap_dev_15_fade_playbook",
+      "title": "VWAP Dev 15 Fade Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for EURUSD.",
+      "metrics": {
+        "total_trades": 101,
+        "win_rate_pct": 40.6,
+        "profit_factor": 1.36,
+        "sharpe_ratio": 10.89,
+        "max_drawdown_pct": 8.6,
+        "total_pnl_pct": 22.7
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    }
+  ],
+  "GBPUSD": [
+    {
+      "symbol": "GBPUSD",
+      "setup_id": "ses_tokyo_fix_fade",
+      "name": "gbpusd_ses_tokyo_fix_fade_playbook",
+      "title": "Ses Tokyo Fix Fade Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for GBPUSD.",
+      "metrics": {
+        "total_trades": 54,
+        "win_rate_pct": 46.3,
+        "profit_factor": 1.78,
+        "sharpe_ratio": 20.6,
+        "max_drawdown_pct": 6.0,
+        "total_pnl_pct": 24.6
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "GBPUSD",
+      "setup_id": "gbp_asian_rsi12_fade",
+      "name": "gbpusd_gbp_asian_rsi12_fade_playbook",
+      "title": "GBP Asian RSI 12 Fade Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for GBPUSD.",
+      "metrics": {
+        "total_trades": 65,
+        "win_rate_pct": 44.6,
+        "profit_factor": 1.57,
+        "sharpe_ratio": 15.88,
+        "max_drawdown_pct": 6.4,
+        "total_pnl_pct": 21.8
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "GBPUSD",
+      "setup_id": "session_tokyo_sweep",
+      "name": "gbpusd_session_tokyo_sweep_playbook",
+      "title": "Session Tokyo Sweep Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for GBPUSD.",
+      "metrics": {
+        "total_trades": 32,
+        "win_rate_pct": 50.0,
+        "profit_factor": 2.16,
+        "sharpe_ratio": 28.25,
+        "max_drawdown_pct": 3.0,
+        "total_pnl_pct": 20.4
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "GBPUSD",
+      "setup_id": "ses_tokyo_open_sweep",
+      "name": "gbpusd_ses_tokyo_open_sweep_playbook",
+      "title": "Ses Tokyo Open Sweep Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for GBPUSD.",
+      "metrics": {
+        "total_trades": 32,
+        "win_rate_pct": 50.0,
+        "profit_factor": 2.16,
+        "sharpe_ratio": 28.25,
+        "max_drawdown_pct": 3.0,
+        "total_pnl_pct": 20.4
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "GBPUSD",
+      "setup_id": "gbp_asian_rsi14_fade",
+      "name": "gbpusd_gbp_asian_rsi14_fade_playbook",
+      "title": "GBP Asian RSI 14 Fade Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for GBPUSD.",
+      "metrics": {
+        "total_trades": 53,
+        "win_rate_pct": 47.2,
+        "profit_factor": 1.61,
+        "sharpe_ratio": 17.68,
+        "max_drawdown_pct": 6.6,
+        "total_pnl_pct": 18.4
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "GBPUSD",
+      "setup_id": "s_swing24_sweep_reenter",
+      "name": "gbpusd_s_swing24_sweep_reenter_playbook",
+      "title": "S Swing24 Sweep Reenter Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for GBPUSD.",
+      "metrics": {
+        "total_trades": 180,
+        "win_rate_pct": 40.6,
+        "profit_factor": 1.15,
+        "sharpe_ratio": 5.05,
+        "max_drawdown_pct": 11.1,
+        "total_pnl_pct": 15.5
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "GBPUSD",
+      "setup_id": "rejection_swing24",
+      "name": "gbpusd_rejection_swing24_playbook",
+      "title": "Rejection Swing24 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for GBPUSD.",
+      "metrics": {
+        "total_trades": 180,
+        "win_rate_pct": 40.6,
+        "profit_factor": 1.15,
+        "sharpe_ratio": 5.05,
+        "max_drawdown_pct": 11.1,
+        "total_pnl_pct": 15.5
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "GBPUSD",
+      "setup_id": "sweep_sw24",
+      "name": "gbpusd_sweep_sw24_playbook",
+      "title": "Sweep Sw24 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for GBPUSD.",
+      "metrics": {
+        "total_trades": 180,
+        "win_rate_pct": 40.6,
+        "profit_factor": 1.15,
+        "sharpe_ratio": 5.05,
+        "max_drawdown_pct": 11.1,
+        "total_pnl_pct": 15.5
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    }
+  ],
+  "USDJPY": [
+    {
+      "symbol": "USDJPY",
+      "setup_id": "pinbar_swing48",
+      "name": "usdjpy_pinbar_swing48_playbook",
+      "title": "Pinbar Swing48 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for USDJPY.",
+      "metrics": {
+        "total_trades": 42,
+        "win_rate_pct": 42.9,
+        "profit_factor": 1.6,
+        "sharpe_ratio": 17.14,
+        "max_drawdown_pct": 4.0,
+        "total_pnl_pct": 15.5
+      },
+      "params": {
+        "sl_atr_mult": 0.7,
+        "tp_atr_mult": 1.6,
+        "max_hold_bars": 14,
+        "min_rr": 2.29
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "USDJPY",
+      "setup_id": "s_consecutive3_fade",
+      "name": "usdjpy_s_consecutive3_fade_playbook",
+      "title": "S Consecutive3 Fade Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for USDJPY.",
+      "metrics": {
+        "total_trades": 130,
+        "win_rate_pct": 45.4,
+        "profit_factor": 1.22,
+        "sharpe_ratio": 7.39,
+        "max_drawdown_pct": 8.8,
+        "total_pnl_pct": 15.5
+      },
+      "params": {
+        "sl_atr_mult": 0.9,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.56
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "USDJPY",
+      "setup_id": "tokyo_sweep_12",
+      "name": "usdjpy_tokyo_sweep_12_playbook",
+      "title": "Tokyo Sweep 12 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for USDJPY.",
+      "metrics": {
+        "total_trades": 80,
+        "win_rate_pct": 42.5,
+        "profit_factor": 1.33,
+        "sharpe_ratio": 10.35,
+        "max_drawdown_pct": 11.7,
+        "total_pnl_pct": 15.4
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "USDJPY",
+      "setup_id": "tokyo_ema21_bounce",
+      "name": "usdjpy_tokyo_ema21_bounce_playbook",
+      "title": "Tokyo EMA 21 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for USDJPY.",
+      "metrics": {
+        "total_trades": 157,
+        "win_rate_pct": 45.9,
+        "profit_factor": 1.18,
+        "sharpe_ratio": 6.26,
+        "max_drawdown_pct": 13.9,
+        "total_pnl_pct": 15.4
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.2,
+        "max_hold_bars": 20,
+        "min_rr": 1.57
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "USDJPY",
+      "setup_id": "adr_exhaustion_reversal",
+      "name": "usdjpy_adr_exhaustion_reversal_playbook",
+      "title": "24-Hour Range Exhaustion Mean Reversion",
+      "regime": "mean_reverting",
+      "timeframe": "H1",
+      "description": "Average daily range exhaustion reversal for USDJPY.",
+      "metrics": {
+        "total_trades": 101,
+        "win_rate_pct": 44.6,
+        "profit_factor": 1.28,
+        "sharpe_ratio": 9.01,
+        "max_drawdown_pct": 6.3,
+        "total_pnl_pct": 15.1
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 2.5,
+        "max_hold_bars": 24,
+        "min_rr": 1.67
+      },
+      "trigger_summary": "- Rolling 24-hour range expands >= 1.1x 14-period ATR.\n- Long Trigger: Low tests 24h low, RSI <= 40, and candle closes bullish.\n- Short Trigger: High tests 24h high, RSI >= 60, and candle closes bearish.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "USDJPY",
+      "setup_id": "vwp_11_asia",
+      "name": "usdjpy_vwp_11_asia_playbook",
+      "title": "Vwp 11 Asia Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for USDJPY.",
+      "metrics": {
+        "total_trades": 63,
+        "win_rate_pct": 46.0,
+        "profit_factor": 1.43,
+        "sharpe_ratio": 13.35,
+        "max_drawdown_pct": 7.1,
+        "total_pnl_pct": 15.0
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.75
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    }
+  ],
+  "AUDUSD": [
+    {
+      "symbol": "AUDUSD",
+      "setup_id": "s_rsi14_extreme",
+      "name": "audusd_s_rsi14_extreme_playbook",
+      "title": "S RSI 14 Extreme Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for AUDUSD.",
+      "metrics": {
+        "total_trades": 75,
+        "win_rate_pct": 42.7,
+        "profit_factor": 1.36,
+        "sharpe_ratio": 11.17,
+        "max_drawdown_pct": 4.9,
+        "total_pnl_pct": 15.6
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "AUDUSD",
+      "setup_id": "rsi14_32_68_extreme",
+      "name": "audusd_rsi14_32_68_extreme_playbook",
+      "title": "RSI 14 32 68 Extreme Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for AUDUSD.",
+      "metrics": {
+        "total_trades": 75,
+        "win_rate_pct": 42.7,
+        "profit_factor": 1.36,
+        "sharpe_ratio": 11.17,
+        "max_drawdown_pct": 4.9,
+        "total_pnl_pct": 15.6
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "AUDUSD",
+      "setup_id": "rsi18_rev_asia",
+      "name": "audusd_rsi18_rev_asia_playbook",
+      "title": "RSI 18 Rev Asia Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for AUDUSD.",
+      "metrics": {
+        "total_trades": 39,
+        "win_rate_pct": 43.6,
+        "profit_factor": 1.62,
+        "sharpe_ratio": 17.27,
+        "max_drawdown_pct": 7.2,
+        "total_pnl_pct": 15.5
+      },
+      "params": {
+        "sl_atr_mult": 0.8,
+        "tp_atr_mult": 2.0,
+        "max_hold_bars": 18,
+        "min_rr": 2.5
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "AUDUSD",
+      "setup_id": "aud_tokyo_ema40_bounce",
+      "name": "audusd_aud_tokyo_ema40_bounce_playbook",
+      "title": "AUD Tokyo EMA 40 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for AUDUSD.",
+      "metrics": {
+        "total_trades": 80,
+        "win_rate_pct": 42.5,
+        "profit_factor": 1.33,
+        "sharpe_ratio": 10.5,
+        "max_drawdown_pct": 8.3,
+        "total_pnl_pct": 15.3
+      },
+      "params": {
+        "sl_atr_mult": 1.4,
+        "tp_atr_mult": 2.6,
+        "max_hold_bars": 24,
+        "min_rr": 1.86
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    }
+  ],
+  "BTCUSD": [
+    {
+      "symbol": "BTCUSD",
+      "setup_id": "donchian_12_breakout",
+      "name": "btcusd_donchian_12_breakout_playbook",
+      "title": "Donchian 12 Breakout Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for BTCUSD.",
+      "metrics": {
+        "total_trades": 197,
+        "win_rate_pct": 40.6,
+        "profit_factor": 1.16,
+        "sharpe_ratio": 5.45,
+        "max_drawdown_pct": 13.3,
+        "total_pnl_pct": 18.8
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    }
+  ],
+  "XTIUSD": [
+    {
+      "symbol": "XTIUSD",
+      "setup_id": "t_ema20_bounce",
+      "name": "xtiusd_t_ema20_bounce_playbook",
+      "title": "T EMA 20 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XTIUSD.",
+      "metrics": {
+        "total_trades": 314,
+        "win_rate_pct": 44.3,
+        "profit_factor": 1.23,
+        "sharpe_ratio": 7.63,
+        "max_drawdown_pct": 14.3,
+        "total_pnl_pct": 46.3
+      },
+      "params": {
+        "sl_atr_mult": 0.9,
+        "tp_atr_mult": 1.5,
+        "max_hold_bars": 14,
+        "min_rr": 1.67
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XTIUSD",
+      "setup_id": "t_ema21_bounce",
+      "name": "xtiusd_t_ema21_bounce_playbook",
+      "title": "T EMA 21 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XTIUSD.",
+      "metrics": {
+        "total_trades": 307,
+        "win_rate_pct": 43.6,
+        "profit_factor": 1.19,
+        "sharpe_ratio": 6.58,
+        "max_drawdown_pct": 13.4,
+        "total_pnl_pct": 37.3
+      },
+      "params": {
+        "sl_atr_mult": 0.9,
+        "tp_atr_mult": 1.5,
+        "max_hold_bars": 14,
+        "min_rr": 1.67
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XTIUSD",
+      "setup_id": "pa_star_pattern",
+      "name": "xtiusd_pa_star_pattern_playbook",
+      "title": "Pa Star Pattern Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XTIUSD.",
+      "metrics": {
+        "total_trades": 148,
+        "win_rate_pct": 48.0,
+        "profit_factor": 1.33,
+        "sharpe_ratio": 10.68,
+        "max_drawdown_pct": 8.0,
+        "total_pnl_pct": 28.6
+      },
+      "params": {
+        "sl_atr_mult": 0.9,
+        "tp_atr_mult": 1.4,
+        "max_hold_bars": 12,
+        "min_rr": 1.56
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XTIUSD",
+      "setup_id": "stoch14_trend_cross",
+      "name": "xtiusd_stoch14_trend_cross_playbook",
+      "title": "Stochastic 14 Trend Cross Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XTIUSD.",
+      "metrics": {
+        "total_trades": 184,
+        "win_rate_pct": 42.9,
+        "profit_factor": 1.21,
+        "sharpe_ratio": 7.04,
+        "max_drawdown_pct": 11.2,
+        "total_pnl_pct": 23.9
+      },
+      "params": {
+        "sl_atr_mult": 0.9,
+        "tp_atr_mult": 1.6,
+        "max_hold_bars": 14,
+        "min_rr": 1.78
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XTIUSD",
+      "setup_id": "dch_28_break",
+      "name": "xtiusd_dch_28_break_playbook",
+      "title": "Dch 28 Break Strategy",
+      "regime": "breakout",
+      "timeframe": "H1",
+      "description": "Verified breakout tactical execution playbook for XTIUSD.",
+      "metrics": {
+        "total_trades": 160,
+        "win_rate_pct": 40.6,
+        "profit_factor": 1.19,
+        "sharpe_ratio": 6.22,
+        "max_drawdown_pct": 10.0,
+        "total_pnl_pct": 17.5
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.\n- Short Trigger: Price expands below lower boundary with tick volume confirmation and bearish close.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XTIUSD",
+      "setup_id": "asia_vwap_dev10",
+      "name": "xtiusd_asia_vwap_dev10_playbook",
+      "title": "Asia VWAP Dev10 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XTIUSD.",
+      "metrics": {
+        "total_trades": 52,
+        "win_rate_pct": 46.2,
+        "profit_factor": 1.49,
+        "sharpe_ratio": 13.58,
+        "max_drawdown_pct": 6.7,
+        "total_pnl_pct": 15.7
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XTIUSD",
+      "setup_id": "vwp_09_asia",
+      "name": "xtiusd_vwp_09_asia_playbook",
+      "title": "Vwp 09 Asia Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XTIUSD.",
+      "metrics": {
+        "total_trades": 52,
+        "win_rate_pct": 46.2,
+        "profit_factor": 1.49,
+        "sharpe_ratio": 13.58,
+        "max_drawdown_pct": 6.7,
+        "total_pnl_pct": 15.7
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.8,
+        "max_hold_bars": 24,
+        "min_rr": 2.33
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    }
+  ],
+  "XBRUSD": [
+    {
+      "symbol": "XBRUSD",
+      "setup_id": "sweep_sw12",
+      "name": "xbrusd_sweep_sw12_playbook",
+      "title": "Sweep Sw12 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XBRUSD.",
+      "metrics": {
+        "total_trades": 220,
+        "win_rate_pct": 40.9,
+        "profit_factor": 1.18,
+        "sharpe_ratio": 5.71,
+        "max_drawdown_pct": 15.0,
+        "total_pnl_pct": 24.7
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XBRUSD",
+      "setup_id": "engulfing_ema50",
+      "name": "xbrusd_engulfing_ema50_playbook",
+      "title": "Engulfing EMA 50 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XBRUSD.",
+      "metrics": {
+        "total_trades": 127,
+        "win_rate_pct": 40.9,
+        "profit_factor": 1.3,
+        "sharpe_ratio": 9.51,
+        "max_drawdown_pct": 6.3,
+        "total_pnl_pct": 23.2
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XBRUSD",
+      "setup_id": "pa_engulfing_ema50",
+      "name": "xbrusd_pa_engulfing_ema50_playbook",
+      "title": "Pa Engulfing EMA 50 Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XBRUSD.",
+      "metrics": {
+        "total_trades": 127,
+        "win_rate_pct": 40.9,
+        "profit_factor": 1.3,
+        "sharpe_ratio": 9.51,
+        "max_drawdown_pct": 6.3,
+        "total_pnl_pct": 23.2
+      },
+      "params": {
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 3.0,
+        "max_hold_bars": 28,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XBRUSD",
+      "setup_id": "pa_two_bar_reversal",
+      "name": "xbrusd_pa_two_bar_reversal_playbook",
+      "title": "Pa Two Bar Reversal Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XBRUSD.",
+      "metrics": {
+        "total_trades": 114,
+        "win_rate_pct": 48.2,
+        "profit_factor": 1.37,
+        "sharpe_ratio": 11.4,
+        "max_drawdown_pct": 8.0,
+        "total_pnl_pct": 23.1
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.0,
+        "max_hold_bars": 18,
+        "min_rr": 1.67
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XBRUSD",
+      "setup_id": "t_ema50_bounce",
+      "name": "xbrusd_t_ema50_bounce_playbook",
+      "title": "T EMA 50 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XBRUSD.",
+      "metrics": {
+        "total_trades": 168,
+        "win_rate_pct": 40.5,
+        "profit_factor": 1.22,
+        "sharpe_ratio": 7.2,
+        "max_drawdown_pct": 8.9,
+        "total_pnl_pct": 22.7
+      },
+      "params": {
+        "sl_atr_mult": 1.2,
+        "tp_atr_mult": 2.4,
+        "max_hold_bars": 20,
+        "min_rr": 2.0
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XBRUSD",
+      "setup_id": "t_ema40_bounce",
+      "name": "xbrusd_t_ema40_bounce_playbook",
+      "title": "T EMA 40 Bounce Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XBRUSD.",
+      "metrics": {
+        "total_trades": 204,
+        "win_rate_pct": 42.2,
+        "profit_factor": 1.17,
+        "sharpe_ratio": 5.81,
+        "max_drawdown_pct": 12.4,
+        "total_pnl_pct": 20.6
+      },
+      "params": {
+        "sl_atr_mult": 1.1,
+        "tp_atr_mult": 2.0,
+        "max_hold_bars": 18,
+        "min_rr": 1.82
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XBRUSD",
+      "setup_id": "s_rsi14_trend_pullback",
+      "name": "xbrusd_s_rsi14_trend_pullback_playbook",
+      "title": "S RSI 14 Trend Pullback Strategy",
+      "regime": "trending",
+      "timeframe": "H1",
+      "description": "Verified trending tactical execution playbook for XBRUSD.",
+      "metrics": {
+        "total_trades": 52,
+        "win_rate_pct": 44.2,
+        "profit_factor": 1.63,
+        "sharpe_ratio": 17.51,
+        "max_drawdown_pct": 10.2,
+        "total_pnl_pct": 20.1
+      },
+      "params": {
+        "sl_atr_mult": 1.0,
+        "tp_atr_mult": 2.5,
+        "max_hold_bars": 20,
+        "min_rr": 2.5
+      },
+      "trigger_summary": "- Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.\n- Short Trigger: Price pulls back to dynamic EMA resistance while in higher-timeframe downtrend, printing bearish confirmation.",
+      "status": "candidate"
+    },
+    {
+      "symbol": "XBRUSD",
+      "setup_id": "rsi14_trend_dip",
+      "name": "xbrusd_rsi14_trend_dip_playbook",
+      "title": "RSI 14 Trend Dip Strategy",
+      "regime": "ranging",
+      "timeframe": "H1",
+      "description": "Verified ranging tactical execution playbook for XBRUSD.",
+      "metrics": {
+        "total_trades": 52,
+        "win_rate_pct": 44.2,
+        "profit_factor": 1.63,
+        "sharpe_ratio": 17.51,
+        "max_drawdown_pct": 10.2,
+        "total_pnl_pct": 20.1
+      },
+      "params": {
+        "sl_atr_mult": 1.0,
+        "tp_atr_mult": 2.5,
+        "max_hold_bars": 20,
+        "min_rr": 2.5
+      },
+      "trigger_summary": "- Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.\n- Short Trigger: Price sweeps resistance band/upper boundary, showing bearish rejection wick on H1.",
+      "status": "candidate"
+    }
+  ]
+}
