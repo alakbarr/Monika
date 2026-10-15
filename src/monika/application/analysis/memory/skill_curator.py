@@ -136,6 +136,55 @@ class SkillCurator:
             "dedup_count": dedup_count,
         }
 
+    @staticmethod
+    def extract_playbook_spec(content: str, filename: str = "") -> Tuple[str, str, str]:
+        """
+        Extract (symbol, playbook_name, rule_text) from playbook content.
+        Isolates the actual trading logic and setup trigger conditions
+        from markdown template scaffolding and metadata boilerplate.
+        """
+        import re
+
+        # 1. Symbol extraction
+        symbol = ""
+        sym_match = re.search(r"^symbol:\s*([A-Za-z0-9_]+)", content, re.MULTILINE)
+        if sym_match:
+            symbol = sym_match.group(1).upper()
+        elif filename:
+            prefix = filename.split("_")[0].upper()
+            if prefix in ("EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "XTIUSD", "XBRUSD", "BTCUSD", "AUDUSD"):
+                symbol = prefix
+
+        # 2. Playbook name / identifier
+        name = ""
+        name_match = re.search(r"^name:\s*([^\n]+)", content, re.MULTILINE)
+        if name_match:
+            name = name_match.group(1).strip()
+
+        # 3. Rule / Condition text extraction
+        trig_match = re.search(
+            r"##\s*Trigger Conditions[^\n]*\n(.*?)(?=\n##|\Z)",
+            content,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if trig_match:
+            rule_text = trig_match.group(1).strip()
+        else:
+            lines = [
+                line.strip()
+                for line in content.splitlines()
+                if line.strip().startswith(("- Long Trigger", "- Short Trigger", "Condition:", "- Trigger", "Trigger:"))
+            ]
+            if lines:
+                rule_text = " ".join(lines)
+            else:
+                rule_text = re.sub(r"^---.*?---\s*", "", content, flags=re.DOTALL).strip()
+
+        if not rule_text:
+            rule_text = content
+
+        return symbol, name, rule_text
+
     def curate_files(self) -> dict:
         """Curate playbook markdown files in playbooks_dir."""
         now = clock.now()
@@ -165,7 +214,18 @@ class SkillCurator:
             mtime = datetime.fromtimestamp(os.path.getmtime(fpath), tz=timezone.utc)
             with open(fpath, "r", encoding="utf-8") as f:
                 content = f.read()
-            entries.append({"name": fname, "path": fpath, "mtime": mtime, "content": content})
+            symbol, pname, rule_text = self.extract_playbook_spec(content, fname)
+            entries.append(
+                {
+                    "name": fname,
+                    "path": fpath,
+                    "mtime": mtime,
+                    "content": content,
+                    "symbol": symbol,
+                    "pname": pname,
+                    "rule_text": rule_text,
+                }
+            )
 
         # Check stale and archiving
         for item in entries:
@@ -182,7 +242,7 @@ class SkillCurator:
                         f.write(updated)
                 stale_files.append(item["name"])
 
-        # Check deduplication (>85% similarity)
+        # Check deduplication (>85% similarity on rule text for matching symbol)
         remaining = [e for e in entries if e["name"] not in archived_files]
         seen = set()
         for i in range(len(remaining)):
@@ -193,7 +253,17 @@ class SkillCurator:
                 if j in seen:
                     continue
                 e2 = remaining[j]
-                sim = self.calculate_similarity(e1["content"], e2["content"])
+
+                # Deduplication invariant: Only compare rules belonging to the same symbol
+                if e1["symbol"] and e2["symbol"] and e1["symbol"] != e2["symbol"]:
+                    continue
+
+                # If both files have formal distinct playbook specifications with different names,
+                # they represent calibrated distinct strategies and must not be collapsed
+                if e1["pname"] and e2["pname"] and e1["pname"] != e2["pname"]:
+                    continue
+
+                sim = self.calculate_similarity(e1["rule_text"], e2["rule_text"])
                 if sim >= 0.85:
                     # Move duplicate e2 to archive
                     target_path = os.path.join(self.archive_dir, f"dedup_{e2['name']}")
@@ -213,8 +283,8 @@ class SkillCurator:
         }
 
     async def run_once(self, session: Optional[AsyncSession] = None) -> dict:
-        """Perform a single complete curation cycle on both DB and files."""
-        file_res = self.curate_files()
+        """Perform a single complete curation cycle on both DB and files asynchronously."""
+        file_res = await asyncio.to_thread(self.curate_files)
         db_res = {}
         if session:
             try:

@@ -6132,8 +6132,9 @@
     - `__init__(settings: Optional[dict], playbooks_dir: Optional[str])`
     - `calculate_similarity(text1: str, text2: str) -> float` - *Calculate normalized similarity ratio between two playbook condition texts.*
     - `async curate_db_rules(session: AsyncSession) -> dict` - *Curate playbook_rule_attributions stored in the database.*
+    - `extract_playbook_spec(content: str, filename: str) -> Tuple[str, str, str]` - *Extract (symbol, playbook_name, rule_text) from playbook content.*
     - `curate_files() -> dict` - *Curate playbook markdown files in playbooks_dir.*
-    - `async run_once(session: Optional[AsyncSession]) -> dict` - *Perform a single complete curation cycle on both DB and files.*
+    - `async run_once(session: Optional[AsyncSession]) -> dict` - *Perform a single complete curation cycle on both DB and files asynchronously.*
     - `async run_background_loop(interval_seconds: int, session_factory: Optional[Any])` - *Periodic background task (every 24 hours).*
 
 #### `skill_evolution.py`

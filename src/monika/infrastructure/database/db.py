@@ -366,7 +366,8 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
             if isinstance(e, asyncio.CancelledError):
                 logger.debug("Session cancelled, rolling back...")
             else:
-                logger.error(f"Session error: {e}", exc_info=True)
+                err_desc = str(e).strip() or repr(e)
+                logger.error(f"Session error [{type(e).__name__}]: {err_desc}", exc_info=True)
             try:
                 await asyncio.shield(session.rollback())
             except Exception as rb_err:

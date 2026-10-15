@@ -180,6 +180,12 @@ class AgentMonitorsMixin:
         curator = SkillCurator(self.settings)
         check_interval_seconds = 86400  # Run every 24 hours
         logger.info("Skill curator loop started (interval: 24h)")
+        # Allow daemon startup sequence and trading monitors to fully stabilize before first curation pass
+        try:
+            await asyncio.wait_for(self.shutdown_event.wait(), timeout=300)
+        except asyncio.TimeoutError:
+            pass
+
         while not self.shutdown_event.is_set():
             try:
                 async with get_session() as session:

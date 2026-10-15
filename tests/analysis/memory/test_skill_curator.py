@@ -84,6 +84,42 @@ def test_curate_files_deduplication():
         assert archived_files[0].startswith("dedup_")
 
 
+def test_curate_files_distinct_playbooks_not_deduplicated():
+    """Verify distinct symbols and distinct strategy names are never falsely deduplicated."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        curator = SkillCurator(playbooks_dir=temp_dir)
+
+        # 1. Two different strategies with similar phrasing
+        f1 = os.path.join(temp_dir, "audusd_asia_rsi14_fade_playbook.md")
+        f2 = os.path.join(temp_dir, "audusd_aud_asian_bb_15_fade_playbook.md")
+
+        content1 = (
+            "---\nname: audusd_asia_rsi14_fade_playbook\nsymbol: AUDUSD\n---\n"
+            "## Trigger Conditions\n- Long Trigger: sweeps support\n- Short Trigger: sweeps resistance"
+        )
+        content2 = (
+            "---\nname: audusd_aud_asian_bb_15_fade_playbook\nsymbol: AUDUSD\n---\n"
+            "## Trigger Conditions\n- Long Trigger: sweeps support\n- Short Trigger: sweeps resistance"
+        )
+
+        # 3. Different symbol entirely
+        f3 = os.path.join(temp_dir, "eurusd_asia_rsi14_fade_playbook.md")
+        content3 = (
+            "---\nname: eurusd_asia_rsi14_fade_playbook\nsymbol: EURUSD\n---\n"
+            "## Trigger Conditions\n- Long Trigger: sweeps support\n- Short Trigger: sweeps resistance"
+        )
+
+        for path, cont in [(f1, content1), (f2, content2), (f3, content3)]:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(cont)
+
+        res = curator.curate_files()
+
+        assert res["deduplicated"] == 0
+        remaining_files = [f for f in os.listdir(temp_dir) if f.endswith(".md")]
+        assert len(remaining_files) == 3
+
+
 @pytest.mark.asyncio
 async def test_curate_db_rules():
     curator = SkillCurator()

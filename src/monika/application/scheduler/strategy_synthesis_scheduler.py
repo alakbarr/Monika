@@ -453,6 +453,10 @@ class StrategySynthesisScheduler:
         # Auto-repair missing 'except' or 'finally' block from unclosed 'try:' statements
         code_str = cls._repair_unclosed_try_blocks(code_str)
 
+        # Map legacy imports from pre-refactor top-level 'analysis' module to 'monika.application.analysis'
+        code_str = re.sub(r"\bfrom\s+analysis\.", "from monika.application.analysis.", code_str)
+        code_str = re.sub(r"\bimport\s+analysis\.", "import monika.application.analysis.", code_str)
+
         return code_str
 
     @classmethod
@@ -739,6 +743,8 @@ class StrategySynthesisScheduler:
             root = name.split(".")[0].strip()
             if root and root not in self.ALLOWED_MODULE_ROOTS:
                 raise ImportError(f"Import of '{name}' is restricted in synthesized strategies.")
+            if name == "analysis" or name.startswith("analysis."):
+                name = "monika.application." + name
             return real_import(name, globals, locals, fromlist, level)
 
         safe_builtins["__import__"] = safe_import
