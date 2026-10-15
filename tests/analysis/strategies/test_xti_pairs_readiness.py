@@ -173,17 +173,20 @@ async def test_xti_pairs_rejects_non_stationary_trending_spread():
     }
 
     base_time = datetime(2026, 9, 10, 0, 0, tzinfo=timezone.utc)
-    # Generate 25 days of monotonically drifting / trending spread (random walk with drift: non-stationary)
+    # Generate 30 days of stochastic trending spread (random walk with drift: non-stationary & full rank)
+    import numpy as np
+
+    rng = np.random.RandomState(42)
+    noise = rng.normal(0.0, 0.5, 30)
     brent_data = []
     xti_data = []
-    for i in range(25):
+    for i in range(30):
         dt = base_time + timedelta(days=i)
-        # Brent drifts upward strongly while XTI stays flat -> spread strongly trending
-        brent_data.append((dt, 70.0 + (i * 0.8)))
+        brent_data.append((dt, 70.0 + (i * 0.4) + float(noise[i])))
         xti_data.append((dt, 70.0))
 
     # Latest bar triggers high Z-score
-    dt_latest = base_time + timedelta(days=25)
+    dt_latest = base_time + timedelta(days=30)
     brent_data.append((dt_latest, 100.0))
     xti_data.append((dt_latest, 70.0))
 

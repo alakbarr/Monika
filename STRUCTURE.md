@@ -2169,6 +2169,7 @@ Monika/
 │   │   ├── test_domain_handlers.py
 │   │   ├── test_economic_surprise.py
 │   │   ├── test_error_classifier.py
+│   │   ├── test_event_broadcaster.py
 │   │   ├── test_exact_decimal_math.py
 │   │   ├── test_fallback_restore.py
 │   │   ├── test_float_coercion.py
@@ -2207,6 +2208,7 @@ Monika/
 │   │   ├── test_pipeline_defensive_bias_fixes.py
 │   │   ├── test_pipeline_plugins.py
 │   │   ├── test_playbook_rule_attribution.py
+│   │   ├── test_portfolio_synthesis_key_safety.py
 │   │   ├── test_precommit_gate.py
 │   │   ├── test_preflight_gate.py
 │   │   ├── test_pricing_audit.py
@@ -2928,4 +2930,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 250 | **Total Tracked Files**: 2648
+**Total Tracked Directories**: 250 | **Total Tracked Files**: 2650

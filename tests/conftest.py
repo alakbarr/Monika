@@ -213,6 +213,13 @@ def protect_llm_provider_network_and_pools(monkeypatch):
         pass
 
     try:
+        from monika.infrastructure.providers.llm_factory import FallbackClientWrapper
+
+        FallbackClientWrapper._shared_role_slot_cooldowns.clear()
+    except Exception:
+        pass
+
+    try:
         from unittest.mock import MagicMock, AsyncMock
 
         def make_mock_async_openai(*args, **kwargs):
@@ -233,6 +240,13 @@ def protect_llm_provider_network_and_pools(monkeypatch):
         from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
 
         OpenRouterProvider._client_pool.clear()
+    except Exception:
+        pass
+
+    try:
+        from monika.infrastructure.providers.llm_factory import FallbackClientWrapper
+
+        FallbackClientWrapper._shared_role_slot_cooldowns.clear()
     except Exception:
         pass
 

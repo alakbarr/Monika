@@ -29,6 +29,7 @@ class TestTelegramBot:
     async def test_start(self, mock_builder):
         mock_app = AsyncMock()
         mock_app.add_handler = MagicMock()
+        mock_app.add_error_handler = MagicMock()
         mock_app.__aenter__ = AsyncMock(return_value=mock_app)
         mock_app.__aexit__ = AsyncMock(return_value=None)
         mock_app.start = AsyncMock()
