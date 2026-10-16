@@ -20,7 +20,7 @@ from .constants import (
     PRIORITY_STANDARD,
     logger,
 )
-from .primitives import _connect, _disconnect, _is_connected
+from .primitives import _connect, _disconnect, _get_account_info, _is_connected
 
 load_dotenv()
 
@@ -104,6 +104,7 @@ class MT5ConnectionMixin(MT5MixinBase):
 
         self.pending_action_manager = PendingActionManager()
         self.mt5_fail_count = 0
+        self._trade_mode: Optional[int] = None
 
     def get_current_gateway_params(self) -> tuple[str, int, str, str]:
         """Mengembalikan parameter koneksi untuk gateway yang sedang aktif."""
@@ -134,6 +135,13 @@ class MT5ConnectionMixin(MT5MixinBase):
             )
             self._connected = success
             if success:
+                try:
+                    from .primitives import _LAST_CONNECTED_TRADE_MODE
+
+                    if _LAST_CONNECTED_TRADE_MODE is not None:
+                        self._trade_mode = _LAST_CONNECTED_TRADE_MODE
+                except Exception:
+                    pass
                 try:
                     from monika.core.telemetry.metrics_exporter import metrics
 
@@ -201,6 +209,16 @@ class MT5ConnectionMixin(MT5MixinBase):
             await self.connect()
         return success
 
+    @property
+    def trade_mode(self) -> Optional[int]:
+        """MT5 account trade mode: 0=DEMO, 1=CONTEST, 2=REAL."""
+        return getattr(self, "_trade_mode", None)
+
+    @property
+    def is_demo_account(self) -> bool:
+        """True if MT5 account is verified to be a DEMO account (trade_mode == 0)."""
+        return getattr(self, "_trade_mode", None) == 0
+
     async def disconnect(self) -> None:
         """Tutup koneksi MT5."""
         self.stop_tick_poller()
@@ -210,6 +228,7 @@ class MT5ConnectionMixin(MT5MixinBase):
             pass
         finally:
             self._connected = False
+            self._trade_mode = None
             self._broker_utc_offset_seconds = None
             queue = self._priority_queue
             self._priority_queue = None

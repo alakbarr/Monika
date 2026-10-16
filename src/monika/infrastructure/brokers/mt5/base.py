@@ -41,6 +41,13 @@ class MT5MixinBase:
     _broker_utc_offset_seconds: Optional[int]
     pending_action_manager: Any
     mt5_fail_count: int
+    _trade_mode: Optional[int]
+
+    @property
+    def trade_mode(self) -> Optional[int]: ...
+
+    @property
+    def is_demo_account(self) -> bool: ...
 
     async def _run(
         self,

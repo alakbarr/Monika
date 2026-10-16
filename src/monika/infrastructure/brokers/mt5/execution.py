@@ -489,6 +489,42 @@ class MT5ExecutionMixin(MT5MixinBase):
                     db_pos.pnl = sum(getattr(d, "profit", 0.0) for d in deals)
                     setattr(db_pos, "_mt5_close_reason", getattr(close_deal, "reason", None))
                     setattr(db_pos, "_mt5_exit_price", getattr(close_deal, "price", None))
+                # Sync matching PaperTradeRecord to track demo performance statistics
+                if db_pos.analysis_id:
+                    try:
+                        from monika.infrastructure.database.models import PaperTradeRecord
+
+                        pt_record = (
+                            await session.execute(
+                                select(PaperTradeRecord).where(
+                                    PaperTradeRecord.analysis_id == db_pos.analysis_id,
+                                    PaperTradeRecord.status == "open",
+                                )
+                            )
+                        ).scalar_one_or_none()
+                        if pt_record:
+                            pt_record.status = "closed"
+                            pt_record.closed_at = db_pos.closed_at
+                            exit_px = getattr(db_pos, "_mt5_exit_price", None)
+                            if exit_px is not None:
+                                pt_record.exit_price = float(exit_px)
+                            reason_code = getattr(db_pos, "_mt5_close_reason", None)
+                            reason_str = (
+                                "tp_hit" if reason_code == 4 else ("sl_hit" if reason_code == 3 else "broker_close")
+                            )
+                            pt_record.exit_reason = reason_str
+                            if pt_record.exit_price and pt_record.entry_price and pt_record.entry_price > 0:
+                                if pt_record.direction == "buy":
+                                    pnl_ratio = (pt_record.exit_price - pt_record.entry_price) / pt_record.entry_price
+                                else:
+                                    pnl_ratio = (pt_record.entry_price - pt_record.exit_price) / pt_record.entry_price
+                                pt_record.pnl_pct = round(pnl_ratio * 100.0, 4)
+                            op_at = pt_record.opened_at
+                            cl_at = pt_record.closed_at
+                            if op_at is not None and cl_at is not None:
+                                pt_record.holding_hours = round((cl_at - op_at).total_seconds() / 3600.0, 2)
+                    except Exception as pt_err:
+                        logger.debug(f"Syncing PaperTradeRecord for position {db_pos.id} non-fatal: {pt_err}")
 
                 closed_positions.append(db_pos)
                 closed_in_db += 1

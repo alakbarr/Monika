@@ -187,7 +187,18 @@ class CycleScheduler:
                         )
                     ).scalar_one_or_none()
                     is_blocked = blocked_cfg and blocked_cfg.value == "true"
-                    if paper_trades < min_paper_trades:
+                    is_mt5_demo = bool(self._mt5 and getattr(self._mt5, "is_demo_account", False))
+
+                    if is_mt5_demo:
+                        logger.info(
+                            f"[PaperGate] MT5 Demo Account detected ({getattr(self._mt5, 'account', 'active')}). "
+                            f"Auto-execute allowed for live demo validation ({paper_trades}/{min_paper_trades} accumulated, WR: {paper_wr:.1f}%)."
+                        )
+                        if is_blocked and blocked_cfg:
+                            blocked_cfg.value = "false"
+                            await perf_session.commit()
+                        result["effective_auto_execute"] = self.settings.get("trading", {}).get("auto_execute", False)
+                    elif paper_trades < min_paper_trades:
                         logger.info(
                             f"[PaperGate] Accumulation phase: {paper_trades}/{min_paper_trades} trades. auto_execute allowed to accumulate paper trade data. Ensure --dry-run flag is active."
                         )
@@ -199,8 +210,9 @@ class CycleScheduler:
                         is_dry_run = "--dry-run" in sys.argv or getattr(self, "dry_run", False)
                         if not is_dry_run and self.settings.get("trading", {}).get("auto_execute", False):
                             logger.critical(
-                                f"[SAFETY WARNING] auto_execute=True and paper_trades={paper_trades} < {min_paper_trades}. No performance validation yet. Run with --dry-run until min trades are accumulated!"
+                                f"[SAFETY WARNING] auto_execute=True and paper_trades={paper_trades} < {min_paper_trades}. Real account requires {min_paper_trades} paper trades first! Suppressing live execution."
                             )
+                            result["effective_auto_execute"] = False
                     elif paper_trades >= min_paper_trades and paper_wr < min_paper_wr:
                         if not is_blocked:
                             if blocked_cfg:

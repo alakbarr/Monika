@@ -10413,6 +10413,8 @@
 - **Path**: [`src/monika/infrastructure/brokers/mt5/base.py`](src/monika/infrastructure/brokers/mt5/base.py)
 - **Classes**:
   - `class MT5MixinBase`: Type contract and shared base attributes for MT5Client mixins.
+    - `trade_mode() -> Optional[int]`
+    - `is_demo_account() -> bool`
     - `async ensure_connected() -> bool`
     - `async is_connected() -> bool`
     - `async connect(timeout: float) -> bool`

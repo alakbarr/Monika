@@ -666,11 +666,16 @@ class AnalysisSubmissionMixin(_ExecutionServiceMixinBase):
 
                         # Buka record paper trade untuk pelacakan (berlaku untuk dry-run & live)
                         try:
-                            from monika.core.analytics.paper_tracker import PaperTracker
-
                             paper_tracker = PaperTracker(self.settings)
                             eff_risk_pct = sizing.risk_percent
-                            await paper_tracker.open_paper_trade(session, analysis, risk_pct=eff_risk_pct)
+                            fill_px = mt5_result.get("price") or entry_price
+                            await paper_tracker.open_paper_trade(
+                                session,
+                                analysis,
+                                risk_pct=eff_risk_pct,
+                                entry_price=float(fill_px) if fill_px is not None else None,
+                                requested_lot=float(sizing.recommended_lots),
+                            )
                         except Exception as e:
                             logger.debug(f"Paper trade open failed (non-fatal): {e}")
                     else:

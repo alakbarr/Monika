@@ -103,7 +103,9 @@ class PaperTracker:
         spread *= multiplier
         return spread
 
-    async def open_paper_trade(self, session: AsyncSession, analysis: AssetAnalysis, risk_pct: float = 0.75) -> None:
+    async def open_paper_trade(
+        self, session: AsyncSession, analysis: AssetAnalysis, risk_pct: float = 0.75, **kwargs: Any
+    ) -> None:
         """Open a paper trade respecting the entry condition type."""
         import json
 
@@ -122,22 +124,39 @@ class PaperTracker:
         entry_type = entry_cond.get("type", "market")
         stated_price = entry_cond.get("price")
 
-        # Get current market price from last H4 bar
-        last_bar = (
-            await session.execute(
-                select(PriceOHLCV)
-                .where(PriceOHLCV.symbol == analysis.symbol)
-                .where(PriceOHLCV.timeframe == "H4")
-                .order_by(PriceOHLCV.timestamp.desc())
-                .limit(1)
-            )
-        ).scalar_one_or_none()
+        # Get current market price from kwargs, last H4 bar, or other bars
+        current_price = None
+        if "entry_price" in kwargs and kwargs["entry_price"] is not None and float(kwargs["entry_price"]) > 0:
+            current_price = float(kwargs["entry_price"])
+        else:
+            last_bar = (
+                await session.execute(
+                    select(PriceOHLCV)
+                    .where(PriceOHLCV.symbol == analysis.symbol)
+                    .where(PriceOHLCV.timeframe == "H4")
+                    .order_by(PriceOHLCV.timestamp.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if last_bar and last_bar.close:
+                current_price = float(last_bar.close)
+            elif stated_price:
+                current_price = float(stated_price)
+            else:
+                other_bar = (
+                    await session.execute(
+                        select(PriceOHLCV)
+                        .where(PriceOHLCV.symbol == analysis.symbol)
+                        .order_by(PriceOHLCV.timestamp.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+                if other_bar and other_bar.close:
+                    current_price = float(other_bar.close)
 
-        if not last_bar:
-            logger.warning(f"[PAPER] No H4 bar for {analysis.symbol}, cannot open paper trade")
+        if not current_price or current_price <= 0:
+            logger.warning(f"[PAPER] No valid price for {analysis.symbol}, cannot open paper trade")
             return
-
-        current_price = last_bar.close
 
         # Dynamic spread
         spread = self._get_realistic_spread(analysis.symbol)
@@ -168,6 +187,9 @@ class PaperTracker:
             actual_entry = current_price
             is_pending = False
 
+        req_lot = kwargs.get("requested_lot") or kwargs.get("lot_size")
+        req_lot_float = float(req_lot) if req_lot is not None else None
+
         trade = PaperTradeRecord(
             analysis_id=analysis.id,
             symbol=analysis.symbol,
@@ -181,6 +203,7 @@ class PaperTracker:
             entry_condition_type=entry_type,
             stated_entry_price=stated_price,
             is_pending_fill=is_pending,
+            requested_lot=req_lot_float,
             decision_source=getattr(analysis, "decision_source", None),
             was_debate_modified=bool(getattr(analysis, "was_debate_modified", False)),
         )

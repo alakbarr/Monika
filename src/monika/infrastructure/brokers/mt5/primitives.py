@@ -9,6 +9,8 @@ from typing import Any, Optional
 
 from .constants import MT5ProfileMismatchError, logger
 
+_LAST_CONNECTED_TRADE_MODE: Optional[int] = None
+
 
 def _market_book_add(symbol: str) -> bool:
     try:
@@ -95,6 +97,9 @@ def _connect(path: str, account: int, password: str, server: str, expected_trade
 
     bal = getattr(info, "balance", 0.0) if info else 0.0
     curr = getattr(info, "currency", "USD") if info else "USD"
+    global _LAST_CONNECTED_TRADE_MODE
+    _LAST_CONNECTED_TRADE_MODE = getattr(info, "trade_mode", 0) if info else None
+
     logger.info(
         f"MT5 connected: {server} | Account {account} | "
         f"Balance={bal:.2f} {curr} | TradeMode={getattr(info, 'trade_mode', 'N/A')}"
@@ -103,6 +108,8 @@ def _connect(path: str, account: int, password: str, server: str, expected_trade
 
 
 def _disconnect() -> None:
+    global _LAST_CONNECTED_TRADE_MODE
+    _LAST_CONNECTED_TRADE_MODE = None
     import MetaTrader5 as _mt5
 
     mt5: Any = _mt5

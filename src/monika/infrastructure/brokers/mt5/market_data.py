@@ -70,6 +70,8 @@ class MT5MarketDataMixin(MT5MixinBase):
             "margin_mode": margin_mode_str,
             "allow_hedging": (margin_mode_str == "hedging"),
             "server": info.server,
+            "trade_mode": getattr(info, "trade_mode", 0),
+            "is_demo": getattr(info, "trade_mode", 0) == 0,
             "is_cent_account": is_cent,
             "normalized_balance": float(info.balance) / norm_factor,
             "normalized_equity": float(info.equity) / norm_factor,
