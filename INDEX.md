@@ -109,6 +109,7 @@
 - [`src/monika/application/skills`](#folder-srcmonikaapplicationskills)
 - [`src/monika/infrastructure`](#folder-srcmonikainfrastructure)
 - [`src/monika/infrastructure/api`](#folder-srcmonikainfrastructureapi)
+- [`src/monika/infrastructure/auth`](#folder-srcmonikainfrastructureauth)
 - [`src/monika/infrastructure/brokers`](#folder-srcmonikainfrastructurebrokers)
 - [`src/monika/infrastructure/brokers/ea_bridge`](#folder-srcmonikainfrastructurebrokerseabridge)
 - [`src/monika/infrastructure/brokers/mt5`](#folder-srcmonikainfrastructurebrokersmt5)
@@ -10197,6 +10198,62 @@
 #### `streaming.py` - *Backward-compatibility facade for streaming.*
 - **Path**: [`src/monika/infrastructure/api/streaming.py`](src/monika/infrastructure/api/streaming.py)
 
+### Folder: `src/monika/infrastructure/auth` <a id="folder-srcmonikainfrastructureauth"></a>
+
+#### `__init__.py` - *OAuth and Subscription Credential Management for Monika Trading Agent.*
+- **Path**: [`src/monika/infrastructure/auth/__init__.py`](src/monika/infrastructure/auth/__init__.py)
+
+#### `antigravity_bridge.py` - *Antigravity Bridge & Native Google OAuth Manager for Gemini Subscriptions.*
+- **Path**: [`src/monika/infrastructure/auth/antigravity_bridge.py`](src/monika/infrastructure/auth/antigravity_bridge.py)
+- **Classes**:
+  - `class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler)`: Temporary local HTTP listener capturing Google OAuth callback redirect.
+    - `log_message(format: str) -> None`
+    - `do_GET() -> None`
+- **Top-Level Functions**:
+  - `get_antigravity_home() -> Path`: Return path to Google Antigravity CLI data directory (~/.gemini/antigravity-cli).
+  - `is_antigravity_installed() -> bool`: Check if Antigravity CLI data directory exists.
+  - `generate_antigravity_pkce() -> tuple[str, str]`: Generate PKCE code_verifier and code_challenge (S256).
+  - `get_antigravity_authorization_url(code_challenge: str, state: str, redirect_uri: str) -> str`: Build official Google OAuth 2.0 authorization URL for browser login.
+  - `exchange_antigravity_code(code: str, code_verifier: str, redirect_uri: str, ...) -> Optional[Dict[str, Any]]`: Exchange authorization code for access and refresh tokens at Google OAuth endpoint.
+  - `refresh_antigravity_token(refresh_token: str | Dict[str, Any], timeout: float) -> Optional[Dict[str, Any]]`: Exchange refresh token for fresh Antigravity access token.
+  - `resolve_antigravity_access_token() -> Optional[str]`: Retrieve and automatically refresh active Google Antigravity access token.
+  - `check_antigravity_bridge_health(proxy_url: Optional[str], timeout: float) -> Dict[str, Any]`: Probe the local Antigravity proxy server to verify it is responsive and authenticated.
+
+#### `claude_oauth.py` - *Claude (Anthropic) OAuth Integration & Credential Resolver.*
+- **Path**: [`src/monika/infrastructure/auth/claude_oauth.py`](src/monika/infrastructure/auth/claude_oauth.py)
+- **Top-Level Functions**:
+  - `get_claude_credentials_path() -> Path`: Return the path to Claude Code CLI credentials file.
+  - `read_claude_code_credentials_file() -> Optional[Dict[str, Any]]`: Read credentials written by Claude Code CLI (~/.claude/.credentials.json).
+  - `read_claude_code_keychain() -> Optional[Dict[str, Any]]`: Read macOS Keychain entry for Claude Code credentials if on Darwin.
+  - `read_claude_code_credentials() -> Optional[Dict[str, Any]]`: Read Claude Code credentials from file or Keychain.
+  - `refresh_claude_token(refresh_token: str | Dict[str, Any]) -> Optional[Dict[str, Any]]`: Exchange a refresh token for a fresh access token with Anthropic OAuth endpoint.
+  - `resolve_claude_access_token() -> Optional[str]`: Resolve active and valid Claude access token:
+  - `generate_pkce_pair() -> tuple[str, str]`: Generate PKCE (code_verifier, code_challenge) using S256.
+  - `get_claude_authorization_url(code_challenge: str, state: str) -> str`: Build Anthropic OAuth authorization URL for browser login.
+  - `exchange_code_for_token(code: str, code_verifier: str) -> Optional[Dict[str, Any]]`: Exchange authorization code for token pair.
+
+#### `codex_device_flow.py` - *OpenAI Codex Device Code OAuth Integration for ChatGPT Subscription.*
+- **Path**: [`src/monika/infrastructure/auth/codex_device_flow.py`](src/monika/infrastructure/auth/codex_device_flow.py)
+- **Top-Level Functions**:
+  - `get_codex_cli_auth_path() -> Path`: Return path to ~/.codex/auth.json.
+  - `read_codex_cli_credentials() -> Optional[Dict[str, Any]]`: Read tokens from OpenAI Codex CLI if available.
+  - `request_codex_device_code() -> Dict[str, Any]`: Step 1: Request user code and device auth ID from OpenAI.
+  - `poll_codex_authorization(device_auth_id: str, user_code: str, poll_interval: int, ...) -> Dict[str, Any]`: Step 2: Poll OpenAI until user authorizes the device in the browser.
+  - `exchange_codex_code(code_resp: Dict[str, Any]) -> Dict[str, Any]`: Step 3: Swap authorization code for OAuth tokens.
+  - `refresh_codex_token(refresh_token: str | Dict[str, Any]) -> Optional[Dict[str, Any]]`: Exchange refresh token for fresh Codex access token.
+  - `resolve_codex_access_token() -> Optional[str]`: Resolve active access token for OpenAI Codex.
+
+#### `oauth_store.py` - *Secure OAuth Token Store for Monika Trading Agent.*
+- **Path**: [`src/monika/infrastructure/auth/oauth_store.py`](src/monika/infrastructure/auth/oauth_store.py)
+- **Top-Level Functions**:
+  - `decode_jwt_claims(jwt_token: str) -> dict[str, Any]`: Safely decode unverified claims from a JWT payload without external dependencies.
+  - `save_oauth_tokens(provider: str, token_data: dict[str, Any]) -> bool`: Encrypt and store OAuth tokens for a specific provider in CredentialVault.
+  - `get_oauth_tokens(provider: str) -> Optional[dict[str, Any]]`: Retrieve and decrypt OAuth tokens for a specific provider from CredentialVault.
+  - `delete_oauth_tokens(provider: str) -> bool`: Delete OAuth tokens for a specific provider from CredentialVault.
+  - `list_authenticated_providers() -> list[str]`: Return list of provider names that currently have active tokens stored in vault.
+  - `get_token_expiry_timestamp(token_data: dict[str, Any]) -> Optional[float]`: Extract the expiration UNIX timestamp from token_data:
+  - `is_token_expiring(token_data: dict[str, Any], skew_seconds: int) -> bool`: Check if the token is already expired or expiring within `skew_seconds`.
+
 ### Folder: `src/monika/infrastructure/brokers` <a id="folder-srcmonikainfrastructurebrokers"></a>
 
 #### `__init__.py` - *Broker adapters, MT5 client, and execution transport layer.*
@@ -12225,6 +12282,15 @@
   - `resolve_stale_timeout_floor(model_name: Optional[str], default_timeout: float) -> float`: Enforces minimum timeout floors for reasoning models to prevent premature disconnects.
   - `clamp_reasoning_effort(model_name: str, requested_effort: str) -> str`: Maps requested reasoning effort ('high', 'medium', 'low') to the closest supported
 
+#### `codex_provider.py` - *OpenAI Codex Provider Client for Monika Trading Agent.*
+- **Path**: [`src/monika/infrastructure/providers/codex_provider.py`](src/monika/infrastructure/providers/codex_provider.py)
+- **Classes**:
+  - `class CodexProvider(OpenAIProvider)`: Provider for OpenAI Codex / ChatGPT Plus & Pro subscription.
+    - `__init__(model: str, max_tokens: int, api_key: Optional[str], ...)`
+    - `async generate(prompt: str, system: Optional[Any], temperature: Optional[float], ...) -> Optional[str]`
+    - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any) -> Any`
+
 #### `deepseek_provider.py`
 - **Path**: [`src/monika/infrastructure/providers/deepseek_provider.py`](src/monika/infrastructure/providers/deepseek_provider.py)
 - **Classes**:
@@ -12423,6 +12489,12 @@
     - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict` - *Jev does not support interactive chat loops.*
     - `async run_tool_agent(messages: list, tools: list, system_prompt: Any) -> Any` - *Jev does not support tool-calling agent loops.*
     - `async ping() -> bool` - *Pings TypeSafe Jev API with a minimal test evaluation.*
+
+#### `zai_provider.py` - *Z.AI / GLM Provider Client for Monika Trading Agent.*
+- **Path**: [`src/monika/infrastructure/providers/zai_provider.py`](src/monika/infrastructure/providers/zai_provider.py)
+- **Classes**:
+  - `class ZAIProvider(OpenAIProvider)`: Provider for Zhipu AI (GLM) models via Z.AI Coding Plan or PaaS API.
+    - `__init__(model: str, max_tokens: int, api_key: Optional[str], ...)`
 
 ### Folder: `src/monika/infrastructure/sandboxes` <a id="folder-srcmonikainfrastructuresandboxes"></a>
 
@@ -12771,6 +12843,14 @@
 
 #### `analysis_ctrl.py` - *Analysis, Backtesting, Stress Testing, and Backup Commands for Monika.*
 - **Path**: [`src/monika/interfaces/cli/commands/analysis_ctrl.py`](src/monika/interfaces/cli/commands/analysis_ctrl.py)
+
+#### `auth_ctrl.py` - *CLI Authentication Controller for Subscription & OAuth Providers.*
+- **Path**: [`src/monika/interfaces/cli/commands/auth_ctrl.py`](src/monika/interfaces/cli/commands/auth_ctrl.py)
+- **Top-Level Functions**:
+  - `handle_auth_command(args) -> int`: Entrypoint dispatcher for 'monika auth' subcommands.
+  - `show_auth_status() -> int`: Display comprehensive status table for all supported subscription & OAuth providers.
+  - `login_provider(provider: Optional[str]) -> int`: Authenticate with a specific subscription provider.
+  - `logout_provider(provider: Optional[str]) -> int`: Remove OAuth tokens for a specific provider.
 
 #### `benchmark_ctrl.py` - *Benchmark Suite and Model Evaluation Commands for Monika.*
 - **Path**: [`src/monika/interfaces/cli/commands/benchmark_ctrl.py`](src/monika/interfaces/cli/commands/benchmark_ctrl.py)

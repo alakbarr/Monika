@@ -11,13 +11,17 @@ and logout for Z.AI (GLM), Gemini (Antigravity), Claude, and ChatGPT (Codex).
 from __future__ import annotations
 
 import getpass
+import http.server
 import json
 import logging
+import secrets
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import webbrowser
 from typing import Optional
 
 from rich.console import Console
@@ -25,12 +29,18 @@ from rich.table import Table
 
 from monika.core.security.credential_vault import vault
 from monika.infrastructure.auth import (
+    CALLBACK_PATH,
     DEFAULT_ANTIGRAVITY_PROXY_URL,
+    DEFAULT_CALLBACK_PORT,
+    OAuthCallbackHandler,
     check_antigravity_bridge_health,
     delete_oauth_tokens,
+    exchange_antigravity_code,
     exchange_code_for_token,
     exchange_codex_code,
+    generate_antigravity_pkce,
     generate_pkce_pair,
+    get_antigravity_authorization_url,
     get_antigravity_home,
     get_claude_authorization_url,
     get_claude_credentials_path,
@@ -105,22 +115,31 @@ def show_auth_status() -> int:
         zai_detail = "Run 'monika auth login zai'"
     table.add_row("Z.AI (GLM)", "GLM Coding Plan / PaaS", zai_status, zai_expiry, zai_detail)
 
-    # 2. Gemini (Antigravity Bridge)
+    # 2. Gemini (Antigravity Bridge / Google OAuth)
+    agy_rec = get_oauth_tokens("antigravity")
     health = check_antigravity_bridge_health()
     installed = is_antigravity_installed()
-    if health.get("running") and health.get("authenticated"):
-        agy_status = f"[{GREEN}]ONLINE (Connected)[/]"
+    if agy_rec and agy_rec.get("access_token"):
+        exp_ts = get_token_expiry_timestamp(agy_rec)
+        if is_token_expiring(agy_rec):
+            agy_status = f"[{YELLOW}]EXPIRING / REFRESHABLE[/]"
+        else:
+            agy_status = f"[{GREEN}]ACTIVE (OAuth Token)[/]"
+        agy_expiry = _format_expiry(exp_ts)
+        agy_detail = f"Source: {agy_rec.get('source', 'google_antigravity_oauth')}"
+    elif health.get("running") and health.get("authenticated"):
+        agy_status = f"[{GREEN}]ONLINE (Proxy Connected)[/]"
         agy_expiry = f"[{MUTED}]Local Bridge Active[/]"
         agy_detail = f"[{GREEN}]{health.get('proxy_url')}[/]"
     elif installed:
-        agy_status = f"[{YELLOW}]STANDBY (CLI Detected)[/]"
-        agy_expiry = f"[{MUTED}]~/.gemini/antigravity-cli[/]"
-        agy_detail = "Run bridge or start proxy"
+        agy_status = f"[{YELLOW}]READY TO LOGIN[/]"
+        agy_expiry = f"[{MUTED}]CLI Detected[/]"
+        agy_detail = "Run 'monika auth login antigravity'"
     else:
-        agy_status = f"[{MUTED}]NOT DETECTED[/]"
+        agy_status = f"[{MUTED}]NOT CONFIGURED[/]"
         agy_expiry = "—"
-        agy_detail = "Antigravity CLI not found"
-    table.add_row("Gemini", "Antigravity Bridge / agy", agy_status, agy_expiry, agy_detail)
+        agy_detail = "Run 'monika auth login antigravity'"
+    table.add_row("Gemini", "Google Antigravity OAuth", agy_status, agy_expiry, agy_detail)
 
     # 3. Claude (Anthropic OAuth)
     claude_rec = get_oauth_tokens("anthropic")
@@ -348,38 +367,114 @@ def _login_codex() -> int:
 
 
 def _login_antigravity() -> int:
-    """Inspect and connect Google Antigravity Bridge."""
-    console.print(f"\n[bold {BRASS}]=== GOOGLE GEMINI ANTIGRAVITY BRIDGE SETUP ===[/]\n")
+    """Interactive Google Desktop OAuth login for Antigravity & Gemini subscriptions."""
+    console.print(f"\n[bold {BRASS}]=== GOOGLE GEMINI ANTIGRAVITY OAUTH SETUP ===[/]\n")
+
+    # Step 1: Check existing tokens
+    existing = get_oauth_tokens("antigravity")
+    if existing and existing.get("access_token"):
+        exp_ts = get_token_expiry_timestamp(existing)
+        console.print(f"  [{GREEN}]Found active Google Antigravity OAuth session.[/]")
+        console.print(f"  Status: {_format_expiry(exp_ts)}")
+        ans = input("  Do you want to re-authenticate with another account? [y/N]: ").strip().lower()
+        if ans not in ("y", "yes"):
+            console.print(f"{stamp_ok('ACTIVE')} Existing Antigravity session retained.\n")
+            return 0
 
     home = get_antigravity_home()
     if is_antigravity_installed():
         console.print(f"{stamp_ok('DETECTED')} Google Antigravity CLI installation found at:")
         console.print(f"  [{MUTED}]{home}[/]\n")
-    else:
-        console.print(f"{stamp_warn('NOTICE')} Antigravity CLI directory (~/.gemini/antigravity-cli) was not found.")
-        console.print("  To use Gemini without an API key, install and authenticate Google Antigravity (`agy`).\n")
 
-    console.print(
-        f"{stamp_info('PROBING')} Checking local Antigravity Bridge proxy at: {DEFAULT_ANTIGRAVITY_PROXY_URL}..."
-    )
-    health = check_antigravity_bridge_health()
-    if health.get("running") and health.get("authenticated"):
-        console.print(f"{stamp_ok('HEALTHY')} {health.get('message')}")
-        console.print("  Monika can now route Gemini requests through this bridge.\n")
+    # Step 2: Prepare PKCE & Google Auth URL
+    console.print(f"  [{MUTED}]Preparing Google Desktop OAuth 2.0 PKCE flow...[/]")
+    verifier, challenge = generate_antigravity_pkce()
+    state = f"monika_agy_{secrets.token_hex(8)}"
+    redirect_uri = f"http://127.0.0.1:{DEFAULT_CALLBACK_PORT}{CALLBACK_PATH}"
+    auth_url = get_antigravity_authorization_url(challenge, state, redirect_uri=redirect_uri)
+
+    # Step 3: Start temporary local callback listener
+    server: Optional[http.server.HTTPServer] = None
+    ready_event = threading.Event()
+    OAuthCallbackHandler.expected_state = state
+    OAuthCallbackHandler.captured_code = None
+    OAuthCallbackHandler.captured_error = None
+    OAuthCallbackHandler.ready = ready_event
+
+    try:
+        server = http.server.HTTPServer(("127.0.0.1", DEFAULT_CALLBACK_PORT), OAuthCallbackHandler)
+        server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        server_thread.start()
+        logger.debug("Started local OAuth callback server on port %d", DEFAULT_CALLBACK_PORT)
+    except OSError as exc:
+        logger.warning(
+            "Could not bind port %d: %s. Proceeding with manual paste fallback.",
+            DEFAULT_CALLBACK_PORT,
+            exc,
+        )
+        server = None
+
+    console.print("\n  [bold]Follow these steps to authenticate your Google Account:[/]")
+    console.print("  1. Opening browser for Google Sign-In...")
+    try:
+        webbrowser.open(auth_url)
+    except Exception:
+        pass
+    console.print("     If the browser did not open automatically, visit:")
+    console.print(f"     [bold {CYAN}]{auth_url}[/]\n")
+    console.print("  2. Select your Google account and grant permissions on Google consent screen.")
+    console.print(f"  3. After sign-in, Google will redirect to localhost:{DEFAULT_CALLBACK_PORT} automatically.\n")
+
+    code: Optional[str] = None
+    if server:
+        console.print(f"  [{MUTED}]Waiting for browser redirect callback... (Press Ctrl+C to enter code manually)[/]")
+        try:
+            signaled = ready_event.wait(timeout=120.0)
+            if signaled:
+                if OAuthCallbackHandler.captured_error:
+                    console.print(f"{stamp_err('OAUTH ERROR')} {OAuthCallbackHandler.captured_error}")
+                    return 1
+                code = OAuthCallbackHandler.captured_code
+            else:
+                console.print(f"{stamp_warn('TIMEOUT')} Browser callback not received within 120 seconds.")
+        except KeyboardInterrupt:
+            console.print(f"\n{stamp_info('INTERRUPT')} Switching to manual code entry.")
+        finally:
+            try:
+                server.shutdown()
+                server.server_close()
+            except Exception:
+                pass
+
+    if not code:
+        console.print(
+            f"\n  [{MUTED}]Paste the full redirect URL (http://127.0.0.1:8085/...) or the 'code' parameter below:[/]"
+        )
+        code_or_url = input("Paste code or redirect URL here: ").strip()
+        if not code_or_url:
+            console.print(f"{stamp_err('ABORTED')} No authorization code provided.")
+            return 1
+        code = code_or_url
+        if "code=" in code_or_url:
+            parsed = urllib.parse.urlparse(code_or_url)
+            params = urllib.parse.parse_qs(parsed.query)
+            code = params.get("code", [code_or_url])[0]
+
+    console.print(f"{stamp_info('EXCHANGING')} Exchanging authorization code with Google OAuth endpoint...")
+    token_record = exchange_antigravity_code(code, verifier, redirect_uri=redirect_uri)
+    if token_record and token_record.get("access_token"):
+        console.print(f"{stamp_ok('SUCCESS')} Successfully authenticated with Google Antigravity!")
+        console.print("  Token securely stored in Monika CredentialVault.\n")
         return 0
 
-    console.print(f"{stamp_warn('OFFLINE')} {health.get('message')}")
-    console.print("\n  [bold]How to activate the Antigravity Bridge:[/]")
-    console.print("  1. Launch the bridge proxy on your system:")
-    console.print(f"     [bold {CYAN}]python -m antigravity_proxy --port 8877[/]")
-    console.print("  2. Or configure a custom proxy URL in config/settings.yaml (llm.providers.antigravity.base_url)\n")
+    console.print(f"{stamp_err('FAILED')} Token exchange failed. Please verify and try again.\n")
     return 1
 
 
 def logout_provider(provider: Optional[str]) -> int:
     """Remove OAuth tokens for a specific provider."""
     if not provider:
-        console.print(f"{stamp_err('ERROR')} Please specify a provider to logout: zai, claude, codex")
+        console.print(f"{stamp_err('ERROR')} Please specify a provider to logout: zai, antigravity, claude, codex")
         return 1
 
     p = provider.strip().lower()
@@ -390,10 +485,15 @@ def logout_provider(provider: Optional[str]) -> int:
         "anthropic": "anthropic",
         "codex": "codex",
         "chatgpt": "codex",
+        "antigravity": "antigravity",
+        "gemini": "antigravity",
+        "agy": "antigravity",
     }
     target = mapping.get(p)
     if not target:
-        console.print(f"{stamp_err('ERROR')} Unknown provider '{provider}'.")
+        console.print(
+            f"{stamp_err('ERROR')} Unknown provider '{provider}'. Choose from: zai, antigravity, claude, codex"
+        )
         return 1
 
     # Delete from vault and oauth_store

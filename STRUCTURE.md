@@ -1512,6 +1512,12 @@ Monika/
 │       │   │   ├── http_retry.py
 │       │   │   ├── openrouter_rate_limiter.py
 │       │   │   └── streaming.py
+│       │   ├── auth/
+│       │   │   ├── __init__.py
+│       │   │   ├── antigravity_bridge.py
+│       │   │   ├── claude_oauth.py
+│       │   │   ├── codex_device_flow.py
+│       │   │   └── oauth_store.py
 │       │   ├── brokers/
 │       │   │   ├── ea_bridge/
 │       │   │   │   ├── __init__.py
@@ -1753,6 +1759,7 @@ Monika/
 │       │   │   ├── backend_identity.py
 │       │   │   ├── base_provider.py
 │       │   │   ├── capabilities.py
+│       │   │   ├── codex_provider.py
 │       │   │   ├── deepseek_provider.py
 │       │   │   ├── error_classifier.py
 │       │   │   ├── gemini_provider.py
@@ -1770,7 +1777,8 @@ Monika/
 │       │   │   ├── streaming_think_scrubber.py
 │       │   │   ├── structured_fallback.py
 │       │   │   ├── trajectory_compressor.py
-│       │   │   └── typesafe_provider.py
+│       │   │   ├── typesafe_provider.py
+│       │   │   └── zai_provider.py
 │       │   ├── sandboxes/
 │       │   │   ├── __init__.py
 │       │   │   ├── base.py
@@ -1796,6 +1804,7 @@ Monika/
 │       │   │   ├── commands/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── analysis_ctrl.py
+│       │   │   │   ├── auth_ctrl.py
 │       │   │   │   ├── benchmark_ctrl.py
 │       │   │   │   ├── config_ctrl.py
 │       │   │   │   ├── daemon_ctrl.py
@@ -2255,6 +2264,12 @@ Monika/
 │   │   ├── test_docs_parity.py
 │   │   ├── test_domain_ports_compliance.py
 │   │   └── test_layer_contracts.py
+│   ├── auth/
+│   │   ├── __init__.py
+│   │   ├── test_antigravity_bridge.py
+│   │   ├── test_claude_oauth.py
+│   │   ├── test_codex_device_flow.py
+│   │   └── test_oauth_store.py
 │   ├── backtest/
 │   │   ├── __init__.py
 │   │   ├── test_alpha_validation.py
@@ -2284,6 +2299,7 @@ Monika/
 │   ├── cli/
 │   │   ├── test_analysis_tree.py
 │   │   ├── test_approval_modal.py
+│   │   ├── test_auth_ctrl.py
 │   │   ├── test_busy_input.py
 │   │   ├── test_chat_suite.py
 │   │   ├── test_doctor_and_profile.py
@@ -2465,10 +2481,12 @@ Monika/
 │   │   └── test_prompt_eval.py
 │   ├── provider/
 │   │   ├── __init__.py
+│   │   ├── test_codex_provider.py
 │   │   ├── test_credential_pool.py
 │   │   ├── test_error_taxonomy.py
 │   │   ├── test_role_fallback_chain.py
-│   │   └── test_universal_provider.py
+│   │   ├── test_universal_provider.py
+│   │   └── test_zai_provider.py
 │   ├── risk/
 │   │   ├── __init__.py
 │   │   ├── test_approval_hub.py
@@ -2933,4 +2951,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 250 | **Total Tracked Files**: 2653
+**Total Tracked Directories**: 252 | **Total Tracked Files**: 2669
