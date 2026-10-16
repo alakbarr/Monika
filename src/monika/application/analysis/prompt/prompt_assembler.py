@@ -350,11 +350,25 @@ class PromptAssembler:
         tier2 = compose_ordered_prompt(tier2_sections, separator="\n\n")
 
         # Tier 3: Skills + Target metadata + Core Memory (Dynamic Micro-Agent Injection)
-        skill_names = get_dynamic_micro_skills(symbol, {"regime": detected_regime or ""})
-        if is_commodity and "commodity_analysis" not in skill_names:
-            skill_names.insert(1, "commodity_analysis")
-        elif is_crypto and "crypto_analysis" not in skill_names:
-            skill_names.insert(1, "crypto_analysis")
+        if include_target_in_system:
+            skill_names = get_dynamic_micro_skills(symbol, {"regime": detected_regime or ""})
+            if is_commodity and "commodity_analysis" not in skill_names:
+                skill_names.insert(1, "commodity_analysis")
+            elif is_crypto and "crypto_analysis" not in skill_names:
+                skill_names.insert(1, "crypto_analysis")
+        else:
+            # Canonical universal skills for 100% byte-for-byte static KV-cache hit across all universe symbols
+            skill_names = [
+                "adjudication_framework",
+                "smc_ict_playbook",
+                "market_dynamics_framework",
+                "commodity_analysis",
+                "crypto_analysis",
+                "liquidity_and_macro_edge",
+                "post_event_orderflow_absorption",
+                "risk_management_principles",
+                "session_timing_rules",
+            ]
 
         if self.settings.get("trading", {}).get("caveman_mode", False):
             skill_names.append("caveman_mode")
@@ -465,12 +479,18 @@ class PromptAssembler:
         tier1 = f"{anchor}\n\n---\n\n{soul_prefix}{STAGE2_TIER1}\n\n{MANDATORY_RULES}"
         tier2 = TIER2_TOOL_STUBS
 
-        # Tier 3: Dynamic Micro-Agent Injection
-        skill_names = get_dynamic_micro_skills(symbol, {"regime": detected_regime or ""})
-        if is_commodity and "commodity_analysis" not in skill_names:
-            skill_names.insert(1, "commodity_analysis")
-        elif is_crypto and "crypto_analysis" not in skill_names:
-            skill_names.insert(1, "crypto_analysis")
+        # Canonical universal skills for 100% byte-for-byte static KV-cache hit across all universe symbols
+        skill_names = [
+            "adjudication_framework",
+            "smc_ict_playbook",
+            "market_dynamics_framework",
+            "commodity_analysis",
+            "crypto_analysis",
+            "liquidity_and_macro_edge",
+            "post_event_orderflow_absorption",
+            "risk_management_principles",
+            "session_timing_rules",
+        ]
 
         if self.settings.get("trading", {}).get("caveman_mode", False):
             skill_names.append("caveman_mode")

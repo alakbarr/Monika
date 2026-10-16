@@ -72,12 +72,18 @@ def test_assemble_stage2_tiers_cache_invariance():
     t1_gbp, t2_gbp, t3_gbp = assembler.assemble_stage2_tiers(
         symbol="GBPUSD", model_name="gemini-3", include_target_in_system=False
     )
-    assert t1_eur == t1_gbp
-    assert t2_eur == t2_gbp
+    t1_xau, t2_xau, t3_xau = assembler.assemble_stage2_tiers(
+        symbol="XAUUSD", model_name="gemini-3", include_target_in_system=False, is_commodity=True
+    )
+    assert t1_eur == t1_gbp == t1_xau
+    assert t2_eur == t2_gbp == t2_xau
+    assert t3_eur == t3_gbp == t3_xau
     assert "Symbol: EURUSD" not in t3_eur
     assert "Symbol: GBPUSD" not in t3_gbp
-    # Tier 1 + Tier 2 invariant prefix (>= 4,096 tokens) guarantees cross-asset KV-cache hit
-    assert estimate_tokens(f"{t1_eur}\n\n{t2_eur}") >= 4096
+    assert "Symbol: XAUUSD" not in t3_xau
+    # Full static system prompt (>= 4,096 tokens) guarantees 100% cross-asset KV-cache hit
+    full_static_sys = f"{t1_eur}\n\n{t2_eur}\n\n{t3_eur}"
+    assert estimate_tokens(full_static_sys) >= 4096
 
 
 def test_canonical_prompt_section_ordering():

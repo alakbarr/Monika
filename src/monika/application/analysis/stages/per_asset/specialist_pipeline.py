@@ -685,16 +685,20 @@ class SpecialistPipelineMixin:
                 },
                 "required": ["agree", "disagreement_category", "reason"],
             }
+            from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
             min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3))
-            sys_prompt = (
+            base_sys = (
                 "You are a skeptical second-opinion risk reviewer. Independently sanity-check "
                 f"this trade using ONLY the structured facts given. disagree=true if: R:R < {min_rr:.1f}, "
                 "confluence_score seems unsupported by listed factors, priced_in_score >= 7 without "
                 "clear justification in rationale, or rationale contradicts SL/TP direction."
             )
+            anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
+            anchored_sys = f"{anchor}\n\n---\n\n{base_sys}"
             result = await secondary.classify_json(
                 prompt=f"Trade proposal:\n{json.dumps(structured_summary, indent=2)}",
-                system_prompt=sys_prompt,
+                system_prompt=anchored_sys,
                 schema=SECOND_OPINION_SCHEMA,
             )
             return result or {
