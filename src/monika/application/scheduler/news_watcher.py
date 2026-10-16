@@ -363,7 +363,7 @@ class NewsWatcher:
             except Exception:
                 pass
 
-            logger.warning(
+            logger.info(
                 f"BREAKING NEWS DETECTED ({len(actionable_high_items)} items): "
                 + " | ".join(n.title[:60] for n in actionable_high_items[:3])
             )

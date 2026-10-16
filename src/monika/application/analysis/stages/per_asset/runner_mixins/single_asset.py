@@ -448,8 +448,8 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         use_specialists = self.settings.get("agent_architecture", {}).get("specialist_decomposition", True)
         if use_specialists and not bundle_success:
             logger.warning(
-                f"[{symbol}] Specialist decomposition dilewati — pre-fetch data bundle gagal, "
-                f"laporan specialist akan berjalan tanpa konteks dan berpotensi menyesatkan adjudicator dengan sinyal 'NEUTRAL' palsu."
+                f"[{symbol}] Specialist decomposition skipped — pre-fetch data bundle failed; "
+                f"running specialists without context could mislead the adjudicator with false 'NEUTRAL' signals."
             )
             use_specialists = False
 

@@ -100,6 +100,10 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ className, style }
       let authParam = '';
       try {
         const ticketRes = await api.createWsTicket();
+        if (ticketRes?.role && ticketRes.role.toLowerCase() !== 'admin') {
+          term.writeln('\x1b[33m[RBAC] Terminal shell requires ADMIN role (configure DASHBOARD_API_KEY).\x1b[0m\r\n');
+          return;
+        }
         if (ticketRes?.ticket) {
           authParam = `?ticket=${encodeURIComponent(ticketRes.ticket)}`;
         }

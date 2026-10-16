@@ -1359,12 +1359,140 @@ class SubmitFundamentalBriefSchema(BaseModel):
             if not data.get("systemic_liquidity_trend"):
                 data["systemic_liquidity_trend"] = "neutral"
 
-            # Auto-heal per_asset_macro_matrix if missing or empty
+            # Normalize currency_bias if passed as JSON string or dict
+            cb = data.get("currency_bias")
+            if isinstance(cb, str):
+                try:
+                    cb = json.loads(cb)
+                except Exception:
+                    cb = {}
+            if not isinstance(cb, dict):
+                cb = {}
+            else:
+                cb = {str(k).upper().strip(): v for k, v in cb.items()}
+
+            # Map alias / pair keys in currency_bias
+            if "XAU" not in cb:
+                for k in ("GOLD", "XAUUSD"):
+                    if k in cb:
+                        cb["XAU"] = cb[k]
+                        break
+            if "OIL" not in cb:
+                for k in ("WTI", "CRUDE", "BRENT", "USOIL", "UKOIL", "XTIUSD", "XBRUSD"):
+                    if k in cb:
+                        cb["OIL"] = cb[k]
+                        break
+            if "BTC" not in cb:
+                for k in ("BITCOIN", "BTCUSD"):
+                    if k in cb:
+                        cb["BTC"] = cb[k]
+                        break
+            if "EUR" not in cb and "EURUSD" in cb:
+                cb["EUR"] = cb["EURUSD"]
+            if "GBP" not in cb and "GBPUSD" in cb:
+                cb["GBP"] = cb["GBPUSD"]
+            if "AUD" not in cb and "AUDUSD" in cb:
+                cb["AUD"] = cb["AUDUSD"]
+            if "USD" not in cb and "DXY" in cb:
+                cb["USD"] = cb["DXY"]
+            if "USDJPY" in cb:
+                uj_b = cb["USDJPY"]
+                _inv = {
+                    "strong_bullish": "strong_bearish",
+                    "bullish": "bearish",
+                    "bearish": "bullish",
+                    "strong_bearish": "strong_bullish",
+                    "neutral": "neutral",
+                }
+                if "JPY" not in cb:
+                    cb["JPY"] = _inv.get(str(uj_b).lower().strip(), "neutral")
+                if "USD" not in cb:
+                    cb["USD"] = uj_b
+
             matrix = data.get("per_asset_macro_matrix")
             if not isinstance(matrix, dict):
                 matrix = {}
-            cb = data.get("currency_bias")
-            if isinstance(cb, dict):
+
+            # Reverse auto-healing of currency_bias from per_asset_macro_matrix
+            if matrix:
+                _inv = {
+                    "strong_bullish": "strong_bearish",
+                    "bullish": "bearish",
+                    "bearish": "bullish",
+                    "strong_bearish": "strong_bullish",
+                    "neutral": "neutral",
+                }
+
+                def _extract_bias(ent: Any) -> Optional[str]:
+                    if isinstance(ent, dict):
+                        b_raw = ent.get("directional_bias") or ent.get("macro_bias") or ent.get("bias")
+                    elif hasattr(ent, "directional_bias"):
+                        b_raw = getattr(ent, "directional_bias", None)
+                    elif isinstance(ent, str):
+                        b_raw = ent
+                    else:
+                        b_raw = None
+                    if not b_raw or not isinstance(b_raw, str):
+                        return None
+                    clean = b_raw.lower().strip().replace("-", "_").replace(" ", "_")
+                    if clean in ["strong_bullish", "bullish", "bearish", "strong_bearish", "neutral"]:
+                        return clean
+                    if "bull" in clean:
+                        return "bullish"
+                    if "bear" in clean:
+                        return "bearish"
+                    return "neutral"
+
+                _BASE_CCY_MAP = {
+                    "EURUSD": "EUR",
+                    "GBPUSD": "GBP",
+                    "AUDUSD": "AUD",
+                    "XAUUSD": "XAU",
+                    "BTCUSD": "BTC",
+                    "XTIUSD": "OIL",
+                    "XBRUSD": "OIL",
+                }
+                for pair_sym, ccy in _BASE_CCY_MAP.items():
+                    if ccy not in cb and pair_sym in matrix:
+                        b = _extract_bias(matrix[pair_sym])
+                        if b:
+                            cb[ccy] = b
+
+                if "JPY" not in cb and "USDJPY" in matrix:
+                    uj_b = _extract_bias(matrix["USDJPY"])
+                    if uj_b:
+                        cb["JPY"] = _inv.get(uj_b, "neutral")
+
+                if "USD" not in cb:
+                    if "USDJPY" in matrix:
+                        uj_b = _extract_bias(matrix["USDJPY"])
+                        if uj_b:
+                            cb["USD"] = uj_b
+                    else:
+                        usd_votes = []
+                        for pair_sym in ("EURUSD", "GBPUSD", "AUDUSD", "XAUUSD", "BTCUSD", "XTIUSD", "XBRUSD"):
+                            if pair_sym in matrix:
+                                pb = _extract_bias(matrix[pair_sym])
+                                if pb in ("bullish", "strong_bullish"):
+                                    usd_votes.append("bearish")
+                                elif pb in ("bearish", "strong_bearish"):
+                                    usd_votes.append("bullish")
+                                elif pb == "neutral":
+                                    usd_votes.append("neutral")
+                        if usd_votes:
+                            bulls = usd_votes.count("bullish")
+                            bears = usd_votes.count("bearish")
+                            if bulls > bears:
+                                cb["USD"] = "bullish"
+                            elif bears > bulls:
+                                cb["USD"] = "bearish"
+                            else:
+                                cb["USD"] = "neutral"
+
+            data["currency_bias"] = cb
+
+            # Forward auto-heal per_asset_macro_matrix from currency_bias
+            if cb:
                 inv = data.get("invalidation_conditions", {})
                 conf_dict = data.get("currency_confidence", {})
 
@@ -1392,6 +1520,7 @@ class SubmitFundamentalBriefSchema(BaseModel):
                     "XAUUSD": ("XAU", "USD"),
                     "BTCUSD": ("BTC", "USD"),
                     "XTIUSD": ("OIL" if "OIL" in cb else "XTI", "USD"),
+                    "XBRUSD": ("OIL" if "OIL" in cb else "XBR", "USD"),
                 }
 
                 regime_str = str(data.get("macro_regime", "mixed")).replace("_", " ").title()
@@ -1412,7 +1541,9 @@ class SubmitFundamentalBriefSchema(BaseModel):
                             c_raw = data.get("confidence", 0.70)
                         c_float = coerce_float(c_raw, 0.70)
                         if c_float is not None:
-                            if c_float > 1.0 and c_float <= 100.0:
+                            if c_float > 1.0 and c_float <= 10.0:
+                                c_float = c_float / 10.0
+                            elif c_float > 10.0 and c_float <= 100.0:
                                 c_float = c_float / 100.0
                             c_float = max(0.0, min(1.0, c_float))
                         else:
@@ -1430,6 +1561,7 @@ class SubmitFundamentalBriefSchema(BaseModel):
 
             # Auto-heal asset_priced_in_scores if missing or not dict
             pi_scores = data.get("asset_priced_in_scores")
+            expected_pi_assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD", "BTCUSD", "XTIUSD", "XBRUSD"]
             if not isinstance(pi_scores, dict) or not pi_scores:
                 base_pi = 5
                 pi_data = data.get("priced_in_assessment")
@@ -1437,13 +1569,18 @@ class SubmitFundamentalBriefSchema(BaseModel):
                     base_pi = coerce_int(pi_data.get("priced_in_score"), 5) or 5
                 elif isinstance(pi_data, (int, float)):
                     base_pi = int(round(pi_data))
-                data["asset_priced_in_scores"] = {
-                    sym: base_pi for sym in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD", "BTCUSD", "XTIUSD"]
-                }
+                data["asset_priced_in_scores"] = {sym: base_pi for sym in expected_pi_assets}
             else:
-                data["asset_priced_in_scores"] = {
-                    str(k).upper(): coerce_int(v, 5) or 5 for k, v in pi_scores.items() if v is not None
-                }
+                norm_pi = {str(k).upper(): coerce_int(v, 5) or 5 for k, v in pi_scores.items() if v is not None}
+                for sym in expected_pi_assets:
+                    if sym not in norm_pi:
+                        if sym == "XBRUSD" and "XTIUSD" in norm_pi:
+                            norm_pi["XBRUSD"] = norm_pi["XTIUSD"]
+                        elif sym == "XTIUSD" and "XBRUSD" in norm_pi:
+                            norm_pi["XTIUSD"] = norm_pi["XBRUSD"]
+                        else:
+                            norm_pi[sym] = 5
+                data["asset_priced_in_scores"] = norm_pi
         return data
 
     @field_validator("macro_regime", mode="before")
@@ -1510,6 +1647,11 @@ class SubmitFundamentalBriefSchema(BaseModel):
     @field_validator("currency_bias", mode="before")
     @classmethod
     def validate_currency_bias_sfbs(cls, v):
+        if isinstance(v, str):
+            try:
+                v = json.loads(v)
+            except Exception:
+                return {}
         if not isinstance(v, dict):
             return {}
         res = {}
@@ -1518,15 +1660,84 @@ class SubmitFundamentalBriefSchema(BaseModel):
             if isinstance(bias, str):
                 b_clean = bias.lower().strip().replace("-", "_").replace(" ", "_")
                 if b_clean in ["strong_bullish", "bullish", "bearish", "strong_bearish", "neutral"]:
-                    res[ccy_up] = b_clean
+                    val = b_clean
                 elif "bull" in b_clean:
-                    res[ccy_up] = "bullish"
+                    val = "bullish"
                 elif "bear" in b_clean:
-                    res[ccy_up] = "bearish"
+                    val = "bearish"
                 else:
-                    res[ccy_up] = "neutral"
+                    val = "neutral"
             else:
-                res[ccy_up] = "neutral"
+                val = "neutral"
+            res[ccy_up] = val
+
+        # Map common alias/pair keys when direct single-currency keys are missing
+        if "XAU" not in res:
+            for k in ("GOLD", "XAUUSD"):
+                if k in res:
+                    res["XAU"] = res[k]
+                    break
+
+        if "OIL" not in res:
+            for k in ("WTI", "CRUDE", "BRENT", "USOIL", "UKOIL", "XTIUSD", "XBRUSD"):
+                if k in res:
+                    res["OIL"] = res[k]
+                    break
+
+        if "BTC" not in res:
+            for k in ("BITCOIN", "BTCUSD"):
+                if k in res:
+                    res["BTC"] = res[k]
+                    break
+
+        if "EUR" not in res and "EURUSD" in res:
+            res["EUR"] = res["EURUSD"]
+
+        if "GBP" not in res and "GBPUSD" in res:
+            res["GBP"] = res["GBPUSD"]
+
+        if "AUD" not in res and "AUDUSD" in res:
+            res["AUD"] = res["AUDUSD"]
+
+        if "USD" not in res and "DXY" in res:
+            res["USD"] = res["DXY"]
+
+        if "USDJPY" in res:
+            uj_bias = res["USDJPY"]
+            inv_map = {
+                "strong_bullish": "strong_bearish",
+                "bullish": "bearish",
+                "bearish": "bullish",
+                "strong_bearish": "strong_bullish",
+                "neutral": "neutral",
+            }
+            if "JPY" not in res:
+                res["JPY"] = inv_map.get(uj_bias, "neutral")
+            if "USD" not in res:
+                res["USD"] = uj_bias
+
+        return res
+
+    @field_validator("asset_priced_in_scores", mode="before")
+    @classmethod
+    def validate_asset_pi_scores(cls, v):
+        if isinstance(v, str):
+            try:
+                v = json.loads(v)
+            except Exception:
+                v = {}
+        if not isinstance(v, dict):
+            v = {}
+        res = {str(k).upper(): coerce_int(val, 5) or 5 for k, val in v.items() if val is not None}
+        expected_assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD", "BTCUSD", "XTIUSD", "XBRUSD"]
+        for asset in expected_assets:
+            if asset not in res:
+                if asset == "XBRUSD" and "XTIUSD" in res:
+                    res["XBRUSD"] = res["XTIUSD"]
+                elif asset == "XTIUSD" and "XBRUSD" in res:
+                    res["XTIUSD"] = res["XBRUSD"]
+                else:
+                    res[asset] = 5
         return res
 
     @field_validator("confidence", mode="before")
@@ -1534,7 +1745,9 @@ class SubmitFundamentalBriefSchema(BaseModel):
     def validate_confidence(cls, v):
         val = coerce_float(v, None)
         if val is not None:
-            if val > 1.0 and val <= 100.0:
+            if val > 1.0 and val <= 10.0:
+                val = val / 10.0
+            elif val > 10.0 and val <= 100.0:
                 val = val / 100.0
             return max(0.0, min(1.0, val))
         raise ValueError("Confidence must be an explicit numeric float between 0.0 and 1.0")
@@ -1548,7 +1761,9 @@ class SubmitFundamentalBriefSchema(BaseModel):
         for ccy, conf in v.items():
             val = coerce_float(conf, None)
             if val is not None:
-                if val > 1.0 and val <= 100.0:
+                if val > 1.0 and val <= 10.0:
+                    val = val / 10.0
+                elif val > 10.0 and val <= 100.0:
                     val = val / 100.0
                 res[str(ccy).upper()] = max(0.0, min(1.0, val))
             else:

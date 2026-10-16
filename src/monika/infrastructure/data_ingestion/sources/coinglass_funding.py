@@ -25,6 +25,7 @@ BINANCE_FUNDING_URL = "https://fapi.binance.com/fapi/v1/premiumIndex"
 BINANCE_DAPI_URL = "https://dapi.binance.com/dapi/v1/premiumIndex"
 BINANCE_OI_URL = "https://fapi.binance.com/fapi/v1/openInterest"
 BYBIT_TICKERS_URL = "https://api.bybit.com/v5/market/tickers"
+BYBIT_OI_URL = "https://api.bybit.com/v5/market/open-interest"
 OKX_FUNDING_URL = "https://www.okx.com/api/v5/public/funding-rate"
 COINGLASS_URL = "https://open-api.coinglass.com/public/v2/funding"
 
@@ -32,6 +33,24 @@ COINGLASS_URL = "https://open-api.coinglass.com/public/v2/funding"
 class CoinglasFundingFetcher:
     def __init__(self, session: Optional[AsyncSession] = None):
         self.session = session
+
+    async def _fetch_bybit_open_interest(self) -> Optional[float]:
+        """Fallback to fetch BTC Open Interest from Bybit linear futures."""
+        try:
+            bybit_oi = await fetch_with_retry(
+                BYBIT_OI_URL,
+                params={"category": "linear", "symbol": "BTCUSDT", "intervalTime": "5min", "limit": "1"},
+                timeout=10,
+            )
+            if bybit_oi and isinstance(bybit_oi, dict) and bybit_oi.get("retCode") == 0:
+                list_data = bybit_oi.get("result", {}).get("list", [])
+                if list_data and isinstance(list_data, list) and len(list_data) > 0:
+                    oi_str = list_data[0].get("openInterest")
+                    if oi_str is not None:
+                        return float(oi_str)
+        except Exception as bybit_oi_err:
+            logger.debug(f"Bybit open interest fetch non-fatal: {bybit_oi_err}")
+        return None
 
     async def fetch_open_interest_btc(self) -> dict:
         """Fetch BTC Open Interest data directly."""
@@ -47,6 +66,17 @@ class CoinglasFundingFetcher:
                 }
         except Exception as oi_err:
             logger.debug(f"Binance open interest fetch non-fatal: {oi_err}")
+
+        # Fallback to Bybit linear open interest
+        bybit_oi = await self._fetch_bybit_open_interest()
+        if bybit_oi is not None:
+            return {
+                "symbol": "BTCUSDT",
+                "open_interest_usd": bybit_oi,
+                "open_interest_coins": bybit_oi,
+                "status": "success",
+            }
+
         return {
             "symbol": "BTCUSDT",
             "open_interest_usd": 0.0,
@@ -62,13 +92,16 @@ class CoinglasFundingFetcher:
         rates = []
         open_interest_btc = None
 
-        # Fetch Open Interest from Binance Futures
+        # Fetch Open Interest from Binance Futures with Bybit fallback
         try:
             oi_data = await fetch_with_retry(BINANCE_OI_URL, params={"symbol": "BTCUSDT"}, timeout=10)
             if oi_data and isinstance(oi_data, dict) and "openInterest" in oi_data:
                 open_interest_btc = float(oi_data.get("openInterest", 0.0))
         except Exception as oi_err:
             logger.debug(f"Binance open interest fetch non-fatal: {oi_err}")
+
+        if open_interest_btc is None:
+            open_interest_btc = await self._fetch_bybit_open_interest()
 
         # 1. Primary Source: Binance Futures (USDT-M dengan fallback ke Coin-M, 100% free, high availability)
         try:

@@ -235,6 +235,8 @@ def _run_guardian_loop(
                         break
                 except Exception:
                     pass
+    except KeyboardInterrupt:
+        logger.info("[GuardianProcess] Interrupted by user (SIGINT/KeyboardInterrupt).")
     finally:
         server.shutdown()
         server.server_close()

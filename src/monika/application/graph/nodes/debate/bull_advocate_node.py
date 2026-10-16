@@ -55,7 +55,10 @@ async def bull_advocate_node(state: TradingState, config: Optional[RunnableConfi
     semaphore = asyncio.Semaphore(3)
 
     async def _process_single(sym: str, r: dict):
-        analysis_id = r["analysis_id"]
+        analysis_id = r.get("analysis_id")
+        if analysis_id is None:
+            logger.warning(f"[Debate:BullAdvocate] Missing analysis_id for {sym}, skipping debate advocacy.")
+            return sym, None
         async with semaphore:
             try:
                 async with get_session() as session:

@@ -257,7 +257,7 @@ class MT5ConnectionMixin(MT5MixinBase):
                     pass
             return True
 
-        logger.warning(f"MT5 ({self.active_gateway}) connection lost, attempting to reconnect...")
+        logger.info(f"MT5 ({self.active_gateway}) connection lost, attempting to reconnect...")
 
         max_attempts = 2 if self.paper_trading else 4
         delay = 2.0

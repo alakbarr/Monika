@@ -25,6 +25,17 @@ TimesFMForecast: Any = resolve_model("TimesFMForecast")
 logger = logging.getLogger("TradingAgent.RiskGate")
 
 
+def _fmt_quantile_price(val: float, ref_price: float) -> str:
+    """Format quantile price with appropriate decimal places based on reference price magnitude."""
+    abs_ref = abs(ref_price)
+    if abs_ref < 10.0:
+        return f"{val:.5f}"
+    elif abs_ref < 500.0:
+        return f"{val:.3f}"
+    else:
+        return f"{val:.2f}"
+
+
 class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
     """Model intelligence, forecast expectancy, and evidence gate validation mixin."""
 
@@ -86,26 +97,32 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
                     if tp > (q90 * 1.02):
                         return (
                             False,
-                            f"Proposed TP ({tp}) exceeds TimesFM Q90 ceiling ({q90:.2f}) by >2%. Mathematical expectancy negative.",
+                            f"Proposed TP ({tp}) exceeds TimesFM Q90 ceiling ({_fmt_quantile_price(q90, tp)}) by >2%. Mathematical expectancy negative.",
                         )
                 if "q30" in q and q["q30"] and "q10" in q and q["q10"]:
                     q30 = float(q["q30"][-1])
                     q10 = float(q["q10"][-1])
-                    if sl > q30 and (entry - sl) < (entry - q10) * 0.2:
-                        return False, f"Proposed SL ({sl}) is inside high-probability noise cone (> Q30 {q30:.2f})."
+                    if sl > q30 and (entry - sl) < max(0.0, entry - q10) * 0.2:
+                        return (
+                            False,
+                            f"Proposed SL ({sl}) is inside high-probability noise cone (> Q30 {_fmt_quantile_price(q30, sl)}).",
+                        )
             elif direction.lower() == "sell":
                 if "q10" in q and q["q10"]:
                     q10 = float(q["q10"][-1])
                     if tp < (q10 * 0.98):
                         return (
                             False,
-                            f"Proposed TP ({tp}) falls below TimesFM Q10 floor ({q10:.2f}) by >2%. Mathematical expectancy negative.",
+                            f"Proposed TP ({tp}) falls below TimesFM Q10 floor ({_fmt_quantile_price(q10, tp)}) by >2%. Mathematical expectancy negative.",
                         )
                 if "q70" in q and q["q70"] and "q90" in q and q["q90"]:
                     q70 = float(q["q70"][-1])
                     q90 = float(q["q90"][-1])
-                    if sl < q70 and (sl - entry) < (q90 - entry) * 0.2:
-                        return False, f"Proposed SL ({sl}) is inside high-probability noise cone (< Q70 {q70:.2f})."
+                    if sl < q70 and (sl - entry) < max(0.0, q90 - entry) * 0.2:
+                        return (
+                            False,
+                            f"Proposed SL ({sl}) is inside high-probability noise cone (< Q70 {_fmt_quantile_price(q70, sl)}).",
+                        )
 
             return True, "TimesFM expectancy passed (target within Q10-Q90 cone)"
         except Exception as e:
@@ -117,10 +134,15 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
         if analysis is None:
             return (False, "No analysis object provided")
 
-        if getattr(analysis, "decision_source", None) == "edge_registry":
-            if analysis.confidence is None or analysis.confidence < 0.3:
-                return False, f"edge_registry signal confidence too low ({analysis.confidence})"
-            return True, "edge_registry_quantitative_signal_passed"
+        decision_source = str(getattr(analysis, "decision_source", "") or "")
+        if (
+            decision_source == "edge_registry"
+            or decision_source.startswith("quant_")
+            or bool(getattr(analysis, "source_strategy_id", None))
+        ):
+            if analysis.confidence is None or float(analysis.confidence) < 0.3:
+                return False, f"{decision_source or 'quantitative'} signal confidence too low ({analysis.confidence})"
+            return True, f"{decision_source or 'quantitative'}_quantitative_signal_passed"
 
         if analysis.confluence_score is None:
             return (

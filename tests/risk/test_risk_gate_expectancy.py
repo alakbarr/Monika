@@ -77,3 +77,55 @@ async def test_risk_gate_timesfm_expectancy_rejection(db_session):
     ok_real, reason_real = await gate._check_timesfm_expectancy(db_session, "XAUUSD", "buy", realistic_sizing)
     assert ok_real is True
     assert "TimesFM expectancy passed" in reason_real
+
+
+@pytest.mark.asyncio
+async def test_risk_gate_timesfm_expectancy_rejection_forex_5_decimals(db_session):
+    """Verify 5-decimal formatting in timesfm_expectancy rejection message for AUDUSD at 0.69116."""
+    now = clock.now()
+    engine = TimesFMEngine()
+
+    tfm_fc = {
+        "symbol": "AUDUSD",
+        "timeframe": "H1",
+        "generated_at": now,
+        "horizon_steps": 24,
+        "quantiles": {
+            "q10": [0.68600] * 24,
+            "q30": [0.68850] * 24,
+            "q50": [0.69000] * 24,
+            "q70": [0.69100] * 24,
+            "q90": [0.69250] * 24,
+        },
+        "expected_range": 0.0065,
+        "quantile_skew": 0.0,
+        "volatility_expansion_ratio": 1.0,
+        "reachability_envelope": [],
+    }
+    await engine.save_forecast(db_session, tfm_fc)
+    await db_session.commit()
+
+    gate = RiskGate(settings={"timesfm": {"enabled": True, "expectancy_gate": {"enabled": True}}})
+
+    # Proposed TP 0.71000 exceeds Q90 0.69250
+    sizing_tp_rejection = SizingResult(
+        symbol="AUDUSD",
+        direction="buy",
+        entry_price=0.69116,
+        stop_loss=0.68800,
+        take_profit=0.71000,
+        account_equity=10000.0,
+        risk_percent=1.0,
+        risk_amount_usd=100.0,
+        sl_distance_price=0.00316,
+        sl_distance_pips=31.6,
+        pip_value_per_lot=10.0,
+        raw_lots=0.31,
+        recommended_lots=0.31,
+        rr_ratio=5.9,
+        is_valid=True,
+    )
+
+    ok, reason = await gate._check_timesfm_expectancy(db_session, "AUDUSD", "buy", sizing_tp_rejection)
+    assert ok is False
+    assert "TimesFM Q90 ceiling (0.69250)" in reason

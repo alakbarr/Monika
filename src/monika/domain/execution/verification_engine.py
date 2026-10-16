@@ -108,7 +108,11 @@ class EvidenceFirstVerifier:
 
         # 6. Confidence Score
         decision_source = str(signal.get("decision_source") or "").lower()
-        is_edge_signal = decision_source == "edge_registry" or bool(signal.get("source_strategy_id"))
+        is_edge_signal = (
+            decision_source == "edge_registry"
+            or decision_source.startswith("quant_")
+            or bool(signal.get("source_strategy_id"))
+        )
         min_confidence = 0.30 if is_edge_signal else 0.50
         if confidence < min_confidence:
             violations.append(

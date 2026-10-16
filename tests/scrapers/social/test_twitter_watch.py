@@ -136,3 +136,21 @@ class TestTwitterWatchScraper:
         assert tweets[0].content == "Hello world"
         assert tweets[0].media_urls == ["http://img.com/1.jpg"]
         assert tweets[0].url == "https://x.com/testuser/status/123456"
+
+    @patch("monika.infrastructure.data_ingestion.scrapers.social.twitter_watch.BaseScraper._initialize_browser")
+    def test_fetch_latest_tweets_exits_on_time_budget(self, mock_init):
+        mock_page = MagicMock()
+        mock_init.return_value = mock_page
+
+        scraper = TwitterWatchScraper()
+        scraper._pick_session = MagicMock(return_value="test_session.json")
+        scraper._load_cookies = MagicMock(return_value=[{"name": "test"}])
+
+        mock_page.url = "https://x.com/home"
+        mock_page.eles.return_value = []
+        mock_page.wait.ele_displayed.return_value = True
+
+        # Simulate time budget exceeded right at the loop start
+        with patch("time.monotonic", side_effect=[0.0, 70.0, 70.0]):
+            tweets = scraper.fetch_latest_tweets()
+            assert tweets == []

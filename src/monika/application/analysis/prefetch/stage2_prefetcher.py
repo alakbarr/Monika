@@ -208,14 +208,27 @@ class Stage2DataBundler:
         """Menarik seluruh dataset yang dibutuhkan dan memformatnya menjadi string konteks. Mengembalikan `("", {})` jika gagal total."""
 
         # NEW: Validate core shared data first (SSVP insight)
+        core_data_issues = []
+        core_is_valid = True
         try:
             from monika.application.analysis.validators.core_data_validator import CoreDataValidator
 
             validator = CoreDataValidator(self.executor.session, self.settings or self.executor.settings or {})
-            is_valid, core_data, issues = await validator.validate_and_fetch_core_data()
-            if not is_valid:
-                logger.error(f"[{symbol}] Core data invalid: {issues}. Fetch bundle aborted.")
-                return f"[PERINGATAN] CORE DATA INVALID: {'; '.join(issues)}\nPlease WAIT until data is resolved.", {}
+            core_is_valid, core_data, issues = await validator.validate_and_fetch_core_data()
+            if issues:
+                core_data_issues = issues
+            if not core_is_valid:
+                dxy_or_vix_fatal = any("implausible" in iss and ("DXY" in iss or "VIX" in iss) for iss in issues)
+                if dxy_or_vix_fatal:
+                    logger.error(f"[{symbol}] Core market data invalid: {issues}. Fetch bundle aborted.")
+                    return (
+                        f"[PERINGATAN] CORE DATA INVALID: {'; '.join(issues)}\nPlease WAIT until data is resolved.",
+                        {},
+                    )
+                else:
+                    logger.warning(
+                        f"[{symbol}] Core data validation issues: {issues}. Continuing bundle generation in degraded mode."
+                    )
         except Exception as e:
             logger.debug(f"CoreDataValidator failed (non-fatal): {e}")
 
@@ -235,6 +248,10 @@ class Stage2DataBundler:
             logger.debug(f"Data freshness check failed (non-fatal): {e}")
 
         data = {}
+        if core_data_issues:
+            data["core_data_warnings"] = core_data_issues
+            if not core_is_valid:
+                data["core_data_critical_warnings"] = core_data_issues
         if freshness_warnings:
             data["data_freshness_warnings"] = freshness_warnings
         fetch_errors = []
@@ -309,14 +326,14 @@ class Stage2DataBundler:
                 res2 = await self.executor.execute("get_funding_rate", {"symbol": "BTC"})
                 if "error" not in res2:
                     data["funding_rate"] = res2
-            elif symbol in ("EURUSD", "GBPUSD", "AUDUSD", "USDJPY"):
-                res = await self.executor.execute("get_retail_sentiment", {})
-                if "error" not in res:
-                    data["retail_sentiment"] = res
-            elif symbol == "XTIUSD":
-                res = await self.executor.execute("get_fxssi_sentiment", {})
+            elif symbol in ("XTIUSD", "XBRUSD"):
+                res = await self.executor.execute("get_fxssi_sentiment", {"symbol": symbol})
                 if "error" not in res:
                     data["fxssi_sentiment"] = res
+            elif symbol not in ("BTCUSD", "XTIUSD", "XBRUSD"):
+                res = await self.executor.execute("get_retail_sentiment", {"symbol": symbol})
+                if "error" not in res:
+                    data["retail_sentiment"] = res
         except Exception as e:
             fetch_errors.append(f"asset_sentiment: {str(e)[:40]}")
 

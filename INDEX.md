@@ -5241,6 +5241,10 @@
 - **Path**: [`src/monika/application/analysis/arbitration/signal_arbitrator.py`](src/monika/application/analysis/arbitration/signal_arbitrator.py)
 - **Classes**:
   - `class ArbitrationResult`
+    - `final_direction() -> str`
+    - `final_confidence() -> float`
+    - `reasoning() -> str`
+    - `conflict_detected() -> bool`
   - `class SignalArbitrator`: Arbitrator terpusat untuk menengahi proposal sinyal dari Quant Strategies
     - `__init__(settings: Optional[dict], arbitration_cfg: Optional[dict])`
     - `async arbitrate(session, symbol: str, quant_signal: Optional[Any], ...) -> ArbitrationResult`
@@ -6394,6 +6398,7 @@
     - `validate_systemic_liquidity_trend(v)`
     - `validate_risk_sentiment_sfbs(v)`
     - `validate_currency_bias_sfbs(v)`
+    - `validate_asset_pi_scores(v)`
     - `validate_confidence(v)`
     - `validate_currency_confidence(v)`
     - `validate_upcoming_risks(v)`
@@ -7216,6 +7221,7 @@
     - `async get_news_items(symbol: Optional[str], limit: int, session: Optional[AsyncSession]) -> Dict[str, Any]`
     - `async get_fear_greed(session: Optional[AsyncSession]) -> Dict[str, Any]`
     - `async get_retail_sentiment(symbol: Optional[str], session: Optional[AsyncSession]) -> Dict[str, Any]`
+    - `async get_fxssi_sentiment(symbol: Optional[str], session: Optional[AsyncSession]) -> Dict[str, Any]`
     - `async get_funding_rate(symbol: str, session: Optional[AsyncSession]) -> Dict[str, Any]`
     - `async get_news_digest(session: Optional[AsyncSession]) -> Dict[str, Any]`
 

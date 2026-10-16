@@ -10,12 +10,17 @@ import platform
 import signal
 import subprocess
 import tempfile
+import threading
 import time
 import uuid
 from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger("TradingAgent.Scraper")
+
+_PROFILE_LOCKS_GUARD = threading.Lock()
+_PROFILE_LOCKS: dict[str, threading.RLock] = {}
+_ACTIVE_BROWSER_PIDS: set[int] = set()
 
 
 def kill_process_tree(pid: Optional[int]) -> bool:
@@ -77,7 +82,25 @@ class BaseScraper:
         self._temp_profile_dir = None
         self.is_closed = False
         self.browser_pid: Optional[int] = None
-        self.page = self._initialize_browser(self.headless)
+        self._browser_pid: Optional[int] = None
+        self._profile_lock: Optional[threading.RLock] = None
+        self._acquired_profile_lock: bool = False
+
+        if self.profile_name:
+            with _PROFILE_LOCKS_GUARD:
+                if self.profile_name not in _PROFILE_LOCKS:
+                    _PROFILE_LOCKS[self.profile_name] = threading.RLock()
+                self._profile_lock = _PROFILE_LOCKS[self.profile_name]
+            self._profile_lock.acquire()
+            self._acquired_profile_lock = True
+
+        try:
+            self.page = self._initialize_browser(self.headless)
+        except Exception:
+            if self._acquired_profile_lock and self._profile_lock:
+                self._profile_lock.release()
+                self._acquired_profile_lock = False
+            raise
 
     def __del__(self):
         self.close()
@@ -110,15 +133,26 @@ class BaseScraper:
 
             target = str(profile_dir.resolve()).lower()
             current_pid = os.getpid()
-            for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            with _PROFILE_LOCKS_GUARD:
+                active_pids = set(_ACTIVE_BROWSER_PIDS)
+            for proc in psutil.process_iter(["pid", "name"]):
                 try:
-                    if proc.pid == current_pid:
+                    if proc.pid == current_pid or proc.pid in active_pids:
                         continue
-                    pname = (proc.info.get("name") or "").lower()
+                    pinfo = getattr(proc, "info", None) or {}
+                    pname = (pinfo.get("name") or "").lower()
                     if not any(b in pname for b in ("chrome", "edge", "msedge", "chromium")):
                         continue
-                    cmdline = proc.info.get("cmdline") or []
-                    cmd_str = " ".join(cmdline).lower()
+                    if active_pids:
+                        try:
+                            if proc.ppid() in active_pids:
+                                continue
+                        except Exception:
+                            pass
+                    cmdline = pinfo.get("cmdline")
+                    if cmdline is None:
+                        cmdline = proc.cmdline()
+                    cmd_str = " ".join(cmdline or []).lower()
                     if target in cmd_str or target.replace("\\", "/") in cmd_str:
                         logger.warning(
                             f"Found stale browser process (PID {proc.pid}) locking profile {profile_dir.name}. Terminating..."
@@ -176,8 +210,8 @@ class BaseScraper:
 
             base_dir = Path(os.getcwd())
             profile_dir = base_dir / "data" / "sessions" / "browser_profile" / self.profile_name
-            profile_dir.mkdir(parents=True, exist_ok=True)
             self._cleanup_stale_profile_locks(profile_dir)
+            profile_dir.mkdir(parents=True, exist_ok=True)
             options.set_user_data_path(str(profile_dir))
         else:
             # Profil sementara untuk menghindari cache kotor
@@ -244,16 +278,27 @@ class BaseScraper:
                 return None
 
         try:
-            self.browser_pid = getattr(page, "process_id", None)
-            if self.browser_pid is None and hasattr(page, "browser"):
-                self.browser_pid = getattr(page.browser, "process_id", None)
-            if self.browser_pid is None and hasattr(page, "_browser"):
-                self.browser_pid = getattr(page._browser, "process_id", None)
-            if self.browser_pid is None and hasattr(page, "_process_id"):
-                self.browser_pid = getattr(page, "_process_id", None)
+            pid = getattr(page, "process_id", None)
+            if pid is None and hasattr(page, "browser"):
+                pid = getattr(page.browser, "process_id", None)
+            if pid is None and hasattr(page, "_browser"):
+                pid = getattr(page._browser, "process_id", None)
+            if pid is None and hasattr(page, "_process_id"):
+                pid = getattr(page, "_process_id", None)
+            if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0:
+                self.browser_pid = pid
+                self._browser_pid = pid
+                with _PROFILE_LOCKS_GUARD:
+                    _ACTIVE_BROWSER_PIDS.add(pid)
+            else:
+                self.browser_pid = None
+                self._browser_pid = None
         except Exception:
             self.browser_pid = None
+            self._browser_pid = None
         return page
+
+    _init_browser = _initialize_browser
 
     def _is_cloudflare_challenge(self) -> bool:
         """Mendeteksi apakah halaman sedang menampilkan Cloudflare challenge / Turnstile."""
@@ -435,7 +480,7 @@ class BaseScraper:
 
     def close(self):
         self.is_closed = True
-        pid = getattr(self, "browser_pid", None)
+        pid = getattr(self, "browser_pid", None) or getattr(self, "_browser_pid", None)
         if pid is None and hasattr(self, "page") and self.page:
             try:
                 pid = getattr(self.page, "process_id", None)
@@ -445,6 +490,10 @@ class BaseScraper:
                     pid = getattr(self.page._browser, "process_id", None)
             except Exception:
                 pass
+
+        if isinstance(pid, int) and not isinstance(pid, bool):
+            with _PROFILE_LOCKS_GUARD:
+                _ACTIVE_BROWSER_PIDS.discard(pid)
 
         try:
             if hasattr(self, "page") and self.page:
@@ -458,7 +507,15 @@ class BaseScraper:
             if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0:
                 kill_process_tree(pid)
                 self.browser_pid = None
+                self._browser_pid = None
             self._cleanup_temp_dir()
+            profile_lock = getattr(self, "_profile_lock", None)
+            if getattr(self, "_acquired_profile_lock", False) and profile_lock is not None:
+                try:
+                    profile_lock.release()
+                except RuntimeError:
+                    pass
+                self._acquired_profile_lock = False
 
     def _cleanup_temp_dir(self):
         if hasattr(self, "_temp_profile_dir") and self._temp_profile_dir:

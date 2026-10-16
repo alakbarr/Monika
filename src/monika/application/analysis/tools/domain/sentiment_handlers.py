@@ -1,5 +1,6 @@
 """Sentiment domain tool handlers (News, Fear/Greed, Retail Sentiment, Funding Rates)."""
 
+import asyncio
 import logging
 from typing import Any, Dict, Optional
 
@@ -13,6 +14,75 @@ logger = logging.getLogger("TradingAgent.SentimentHandlers")
 @retryable(max_retries=2, base_delay=0.5)
 async def _fetch_with_retry(fetcher: Any) -> Any:
     return await fetcher.fetch()
+
+
+_MYFXBOOK_LOCK = asyncio.Lock()
+_FXSSI_LOCK = asyncio.Lock()
+
+
+def _extract_sentiment_from_cached_json(
+    cached_data: dict[str, Any], target_symbol: str, default_source: str = "retail_sentiment"
+) -> Optional[dict[str, Any]]:
+    ts_str = cached_data.get("timestamp") or cached_data.get("updated_at") or cached_data.get("fetched_at")
+    if not ts_str:
+        return None
+    try:
+        from datetime import datetime, timezone
+
+        import monika.core.primitives.clock as clock
+
+        dt = datetime.fromisoformat(str(ts_str))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        if (clock.now() - dt).total_seconds() >= 14400:  # 4h fresh
+            return None
+    except Exception:
+        return None
+
+    ratios_map = cached_data.get("ratios") if isinstance(cached_data.get("ratios"), dict) else cached_data
+    if target_symbol:
+        if isinstance(ratios_map, dict) and target_symbol in ratios_map:
+            entry = ratios_map[target_symbol]
+            if isinstance(entry, dict):
+                res = dict(entry)
+                res["cached"] = True
+                return res
+        elif cached_data.get("symbol") == target_symbol:
+            res = dict(cached_data)
+            res["cached"] = True
+            return res
+    else:
+        if isinstance(ratios_map, dict) and ratios_map:
+            return {
+                "status": "success",
+                "source": cached_data.get("source", default_source),
+                "ratios": ratios_map,
+                "fetched_at": ts_str,
+                "cached": True,
+            }
+    return None
+
+
+async def _read_sentiment_cache(
+    session: AsyncSession, cache_keys: list[str], target_symbol: str, default_source: str
+) -> Optional[dict[str, Any]]:
+    import json
+
+    from sqlalchemy import select
+
+    from monika.infrastructure.database.models import SystemConfig
+
+    for ck in cache_keys:
+        try:
+            cfg_row = (await session.execute(select(SystemConfig).where(SystemConfig.key == ck))).scalar_one_or_none()
+            if cfg_row and cfg_row.value:
+                cached_data = json.loads(cfg_row.value)
+                res = _extract_sentiment_from_cached_json(cached_data, target_symbol, default_source=default_source)
+                if res is not None:
+                    return res
+        except Exception:
+            pass
+    return None
 
 
 class SentimentToolHandlers:
@@ -75,46 +145,20 @@ class SentimentToolHandlers:
     async def get_retail_sentiment(
         self, symbol: Optional[str] = None, session: Optional[AsyncSession] = None, **kwargs
     ) -> Dict[str, Any]:
-        target_symbol = (symbol or kwargs.get("asset") or "EURUSD").upper()
+        target_symbol = ""
+        raw_sym = symbol if symbol is not None else kwargs.get("symbol", kwargs.get("asset"))
+        if raw_sym and isinstance(raw_sym, str):
+            target_symbol = raw_sym.strip().upper().replace("/", "")
+
         if session:
+            cache_keys = [f"sentiment_{target_symbol}"] if target_symbol else []
+            cache_keys.extend(["myfxbook_sentiment_latest", "fxssi_sentiment_latest"])
+
             # 1. Try fast cache read from SystemConfig (< 4 hours)
             try:
-                import json
-                from datetime import datetime, timezone
-
-                from sqlalchemy import select
-
-                import monika.core.primitives.clock as clock
-                from monika.infrastructure.database.models import SystemConfig
-
-                cache_keys = [
-                    f"sentiment_{target_symbol}",
-                    "myfxbook_sentiment_latest",
-                    "fxssi_sentiment_latest",
-                ]
-                for ck in cache_keys:
-                    cfg_row = (
-                        await session.execute(select(SystemConfig).where(SystemConfig.key == ck))
-                    ).scalar_one_or_none()
-                    if cfg_row and cfg_row.value:
-                        try:
-                            cached_data = json.loads(cfg_row.value)
-                            ts_str = cached_data.get("timestamp") or cached_data.get("updated_at")
-                            if ts_str:
-                                dt = datetime.fromisoformat(ts_str)
-                                if dt.tzinfo is None:
-                                    dt = dt.replace(tzinfo=timezone.utc)
-                                if (clock.now() - dt).total_seconds() < 14400:  # 4h fresh
-                                    if target_symbol in cached_data and isinstance(cached_data[target_symbol], dict):
-                                        res = dict(cached_data[target_symbol])
-                                        res["cached"] = True
-                                        return res
-                                    elif cached_data.get("symbol") == target_symbol:
-                                        res = dict(cached_data)
-                                        res["cached"] = True
-                                        return res
-                        except Exception:
-                            pass
+                cached_res = await _read_sentiment_cache(session, cache_keys, target_symbol, default_source="myfxbook")
+                if cached_res is not None:
+                    return cached_res
             except Exception as cache_err:
                 logger.debug(f"Sentiment cache check notice: {cache_err}")
 
@@ -128,24 +172,89 @@ class SentimentToolHandlers:
                     fetcher = BinanceSentimentFetcher(session)
                     return await _fetch_with_retry(fetcher)
                 else:
-                    from monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment import (
-                        MyFxBookSentimentFetcher,
-                    )
+                    async with _MYFXBOOK_LOCK:
+                        # Re-check cache before launching browser
+                        cached_res = await _read_sentiment_cache(
+                            session, cache_keys, target_symbol, default_source="myfxbook"
+                        )
+                        if cached_res is not None:
+                            return cached_res
 
-                    fetcher = MyFxBookSentimentFetcher(session)
-                    res = await _fetch_with_retry(fetcher)
-                    if isinstance(res, dict) and "error" not in res and bool(res):
-                        return res
+                        from monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment import (
+                            MyFxBookSentimentFetcher,
+                        )
+
+                        fetcher = MyFxBookSentimentFetcher(session)
+                        res = await _fetch_with_retry(fetcher)
+                        if isinstance(res, dict) and "error" not in res and bool(res):
+                            if target_symbol and isinstance(res.get("ratios"), dict) and target_symbol in res["ratios"]:
+                                return dict(res["ratios"][target_symbol])
+                            return res
+
                     # Graceful fallback to FXSSI if MyFxBook is blocked or unavailable
+                    async with _FXSSI_LOCK:
+                        # Re-check cache before launching browser
+                        cached_res = await _read_sentiment_cache(
+                            session, ["fxssi_sentiment_latest"], target_symbol, default_source="fxssi"
+                        )
+                        if cached_res is not None:
+                            return cached_res
+
+                        from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import (
+                            FXSSISentimentFetcher,
+                        )
+
+                        fxssi_fetcher = FXSSISentimentFetcher(session)
+                        res = await _fetch_with_retry(fxssi_fetcher)
+                        if isinstance(res, dict) and "error" not in res and bool(res):
+                            if target_symbol and isinstance(res.get("ratios"), dict) and target_symbol in res["ratios"]:
+                                return dict(res["ratios"][target_symbol])
+                            return res
+            except Exception as e:
+                logger.warning(f"Retail sentiment fetch failed: {e}")
+        return {"symbol": target_symbol, "status": "unavailable"} if target_symbol else {"status": "unavailable"}
+
+    async def get_fxssi_sentiment(
+        self, symbol: Optional[str] = None, session: Optional[AsyncSession] = None, **kwargs
+    ) -> Dict[str, Any]:
+        target_symbol = ""
+        raw_sym = symbol if symbol is not None else kwargs.get("symbol", kwargs.get("asset"))
+        if raw_sym and isinstance(raw_sym, str):
+            target_symbol = raw_sym.strip().upper().replace("/", "")
+
+        if session:
+            cache_keys = [f"fxssi_{target_symbol}"] if target_symbol else []
+            cache_keys.append("fxssi_sentiment_latest")
+
+            # 1. Try fast cache read from SystemConfig (< 4 hours)
+            try:
+                cached_res = await _read_sentiment_cache(session, cache_keys, target_symbol, default_source="fxssi")
+                if cached_res is not None:
+                    return cached_res
+            except Exception as cache_err:
+                logger.debug(f"FXSSI sentiment cache check notice: {cache_err}")
+
+            # 2. Live fetch fallback if cache missing/stale
+            try:
+                async with _FXSSI_LOCK:
+                    # Re-check cache before launching browser
+                    cached_res = await _read_sentiment_cache(session, cache_keys, target_symbol, default_source="fxssi")
+                    if cached_res is not None:
+                        return cached_res
+
                     from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import (
                         FXSSISentimentFetcher,
                     )
 
                     fxssi_fetcher = FXSSISentimentFetcher(session)
-                    return await _fetch_with_retry(fxssi_fetcher)
+                    res = await _fetch_with_retry(fxssi_fetcher)
+                    if isinstance(res, dict) and "error" not in res and bool(res):
+                        if target_symbol and isinstance(res.get("ratios"), dict) and target_symbol in res["ratios"]:
+                            return dict(res["ratios"][target_symbol])
+                        return res
             except Exception as e:
-                logger.warning(f"Retail sentiment fetch failed: {e}")
-        return {"symbol": target_symbol, "status": "unavailable"}
+                logger.warning(f"FXSSI sentiment fetch failed: {e}")
+        return {"symbol": target_symbol, "status": "unavailable"} if target_symbol else {"status": "unavailable"}
 
     async def get_funding_rate(
         self, symbol: str = "BTCUSD", session: Optional[AsyncSession] = None, **kwargs

@@ -180,7 +180,11 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
             required.append("BTC")
         missing_bias = [c for c in required if c not in bias]
         if missing_bias:
-            errors.append(f"MISSING_CURRENCY_BIAS: Missing explicit bias for {', '.join(missing_bias)}.")
+            errors.append(
+                f"MISSING_CURRENCY_BIAS: Parameter 'currency_bias' must be a JSON object with explicit "
+                f"'bullish', 'bearish', or 'neutral' values for all 8 single-code keys. "
+                f"Missing keys: {', '.join(missing_bias)}."
+            )
 
         non_neutral_currencies = [c for c, b in bias.items() if b != "neutral"]
         invalidation_map = inp.get("invalidation_conditions", {})
@@ -353,7 +357,7 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
         if not kdp:
             return ["MISSING_DATA_ANCHORS: key_data_points_used is required."]
         try:
-            real_dxy = await self.execute("get_dxy", {})
+            real_dxy = await self.execute("get_dxy", {"force_refresh": True})
             real_trend = str(real_dxy.get("trend_5d", "unknown")).lower()
             claimed_trend = str(kdp.get("dxy_trend_5d", "")).lower()
             if real_trend != "unknown":
@@ -382,7 +386,7 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
         except Exception:
             pass
         try:
-            real_vix = await self.execute("get_vix", {})
+            real_vix = await self.execute("get_vix", {"force_refresh": True})
             if not real_vix.get("error"):
                 real_close = (real_vix.get("latest") or {}).get("close")
                 claimed_close = kdp.get("vix_close")
@@ -401,7 +405,7 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
             pass
         try:
             if kdp.get("fedwatch_dominant_pct") is not None:
-                real_fw = await self.execute("get_fedwatch_probabilities", {})
+                real_fw = await self.execute("get_fedwatch_probabilities", {"force_refresh": True})
                 meetings = real_fw.get("meetings", [])
                 if meetings:
                     all_meeting_dominant_probs = []
@@ -438,7 +442,9 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
             pass
         try:
             if kdp.get("fedwatch_repricing_delta_pct") is not None:
-                real_fw_comp = await self.execute("get_fedwatch_probabilities", {"compare_hours_ago": 24})
+                real_fw_comp = await self.execute(
+                    "get_fedwatch_probabilities", {"compare_hours_ago": 24, "force_refresh": True}
+                )
                 comparisons = real_fw_comp.get("comparisons", [])
                 if comparisons:
                     all_deltas = []
@@ -459,7 +465,7 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                 self.settings.get("data_quality", {}).get("key_data_tolerance", {}).get("treasury_10y_yield_bp", 15.0)
             )
             if tol_yield_bp is not None and kdp.get("treasury_10y_yield_pct") is not None:
-                real_yields = await self.execute("get_treasury_yields", {})
+                real_yields = await self.execute("get_treasury_yields", {"force_refresh": True})
                 real_10y_list = real_yields.get("yields_by_tenor", {}).get("10Y", [])
                 if real_10y_list:
                     real_10y = real_10y_list[0].get("yield_pct")
@@ -515,7 +521,9 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
         from monika.application.analysis.calculators.stage1_priced_in import calculate_stage1_priced_in_baseline
 
         warnings = []
-        fedwatch_res = await self.execute("get_fedwatch_probabilities", {"compare_hours_ago": 24})
+        fedwatch_res = await self.execute(
+            "get_fedwatch_probabilities", {"compare_hours_ago": 24, "force_refresh": True}
+        )
         fedwatch_prob = None
         fedwatch_delta = None
         if isinstance(fedwatch_res, dict) and fedwatch_res.get("meetings"):
@@ -554,7 +562,10 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
             percentile = cot_row.leveraged_long / total * 100
             proxy_symbol = CURRENCY_PROXY_SYMBOL.get(ccy)
             mom_res = (
-                await self.execute("get_price_momentum", {"symbol": proxy_symbol, "timeframe": "H4", "period": 20})
+                await self.execute(
+                    "get_price_momentum",
+                    {"symbol": proxy_symbol, "timeframe": "H4", "period": 20, "force_refresh": True},
+                )
                 if proxy_symbol
                 else {}
             )
@@ -704,6 +715,13 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                 inp["confidence"] = min(float(inp.get("confidence", 0.5)), 0.35)
                 inp["_data_quality_degraded"] = True
                 inp["_degradation_reasons"] = completeness_errors
+                cb_degraded = inp.get("currency_bias")
+                if not isinstance(cb_degraded, dict):
+                    cb_degraded = {}
+                    inp["currency_bias"] = cb_degraded
+                for ccy in ("USD", "EUR", "GBP", "JPY", "AUD", "XAU", "OIL", "BTC"):
+                    if ccy not in cb_degraded:
+                        cb_degraded[ccy] = "neutral"
 
         from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
 

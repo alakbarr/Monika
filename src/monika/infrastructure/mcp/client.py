@@ -9,11 +9,13 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 import sys
+import threading
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import aiohttp
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +29,103 @@ from monika.application.analysis.tools.unified_registry import unified_tool_regi
 from monika.core.paths import get_repo_root
 
 logger = logging.getLogger("TradingAgent.MCP.Client")
+
+
+class _PopenStdin:
+    """Async-compatible stdin wrapper around subprocess.Popen stdin pipe."""
+
+    def __init__(self, pipe: Any, loop: asyncio.AbstractEventLoop):
+        self._pipe = pipe
+        self._loop = loop
+        self._buffer = bytearray()
+        self._lock = asyncio.Lock()
+
+    def write(self, data: bytes) -> None:
+        self._buffer.extend(data)
+
+    async def drain(self) -> None:
+        async with self._lock:
+            if not self._buffer:
+                return
+            data = bytes(self._buffer)
+            self._buffer.clear()
+
+            def _do_write() -> None:
+                self._pipe.write(data)
+                self._pipe.flush()
+
+            await asyncio.to_thread(_do_write)
+
+
+class _PopenStreamReader:
+    """Async-compatible stream reader wrapping a synchronous pipe using a background reader thread."""
+
+    def __init__(self, pipe: Any, loop: asyncio.AbstractEventLoop):
+        self._pipe = pipe
+        self._loop = loop
+        self._queue: asyncio.Queue[bytes] = asyncio.Queue()
+        self._eof = False
+        self._thread = threading.Thread(target=self._reader_thread, daemon=True)
+        self._thread.start()
+
+    def _reader_thread(self) -> None:
+        try:
+            while True:
+                line = self._pipe.readline()
+                if not line:
+                    self._loop.call_soon_threadsafe(self._queue.put_nowait, b"")
+                    break
+                self._loop.call_soon_threadsafe(self._queue.put_nowait, line)
+        except Exception:
+            self._loop.call_soon_threadsafe(self._queue.put_nowait, b"")
+
+    async def readline(self) -> bytes:
+        if self._eof:
+            return b""
+        item = await self._queue.get()
+        if not item:
+            self._eof = True
+        return item
+
+
+class _PopenStdioProcess:
+    """Cross-platform fallback process wrapping subprocess.Popen for WindowsSelectorEventLoopPolicy."""
+
+    def __init__(
+        self,
+        cmd: List[str],
+        env: Dict[str, str],
+        loop: asyncio.AbstractEventLoop,
+        cwd: Optional[str] = None,
+    ):
+        self._proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            cwd=cwd,
+        )
+        self.stdin = _PopenStdin(self._proc.stdin, loop)
+        self.stdout = _PopenStreamReader(self._proc.stdout, loop)
+        self.stderr = _PopenStreamReader(self._proc.stderr, loop)
+
+    @property
+    def pid(self) -> int:
+        return self._proc.pid
+
+    @property
+    def returncode(self) -> Optional[int]:
+        return self._proc.poll()
+
+    def terminate(self) -> None:
+        self._proc.terminate()
+
+    def kill(self) -> None:
+        self._proc.kill()
+
+    async def wait(self) -> int:
+        return await asyncio.to_thread(self._proc.wait)
 
 
 class McpServerProcess:
@@ -43,7 +142,7 @@ class McpServerProcess:
         self.proxy = config.get("proxy")
         self.env = {**os.environ, **config.get("env", {})}
         self.timeout = config.get("timeout_seconds", 15)
-        self.process: Optional[asyncio.subprocess.Process] = None
+        self.process: Optional[Union[asyncio.subprocess.Process, _PopenStdioProcess]] = None
         self._http_session: Optional[aiohttp.ClientSession] = None
         self._req_id = 0
         self._lock = asyncio.Lock()
@@ -157,14 +256,24 @@ class McpServerProcess:
                 if cur_pythonpath:
                     pythonpath_parts.append(cur_pythonpath)
                 env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
-                self.process = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdin=asyncio.subprocess.PIPE,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    env=env,
-                    cwd=base_dir,
-                )
+                try:
+                    self.process = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                        env=env,
+                        cwd=base_dir,
+                    )
+                except NotImplementedError:
+                    loop = asyncio.get_running_loop()
+                    self.process = await asyncio.to_thread(
+                        _PopenStdioProcess,
+                        cmd,
+                        env,
+                        loop,
+                        base_dir,
+                    )
                 if self.process and self.process.pid:
                     McpDeathSupervisor.register_process(self.process.pid)
                 self._listen_task = asyncio.create_task(self._read_responses())
@@ -189,7 +298,8 @@ class McpServerProcess:
             logger.info(f"Connected to MCP server '{self.name}' via {self.transport} ({conn_info})")
             return True
         except Exception as e:
-            logger.warning(f"Failed to start MCP server '{self.name}': {e}")
+            err_detail = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
+            logger.warning(f"Failed to start MCP server '{self.name}': {err_detail}")
             return False
 
     async def send_request(self, method: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
@@ -554,5 +664,6 @@ class McpClientManager:
         self.servers.clear()
 
 
-# Cross-compatibility alias
+# Cross-compatibility aliases
 MCPClientManager = McpClientManager
+MCPServerConnection = McpServerProcess

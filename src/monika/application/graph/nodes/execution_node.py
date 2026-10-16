@@ -105,7 +105,13 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
 
             exec_results = {}
             for sym, r in actionable:
-                analysis_id = r["analysis_id"]
+                analysis_id = r.get("analysis_id")
+                if analysis_id is None:
+                    logger.error(
+                        f"[ExecutionNode] Missing 'analysis_id' for actionable proposal {sym} — failing closed and skipping execution."
+                    )
+                    exec_results[sym] = "failed_closed_missing_analysis_id"
+                    continue
                 raw_conf = r.get("confidence", 0)
                 from monika.core.calibration.confidence_calibrator import get_calibrated_confidence
 

@@ -37,6 +37,8 @@ class CoreDataValidator:
             issues.append(brief_issue)
         else:
             core_data["fundamental_brief"] = brief_data
+            if brief_issue:
+                issues.append(brief_issue)
 
         # 2. Validate VIX
         vix_valid, vix_data, vix_issue = await self._validate_vix()
@@ -118,7 +120,12 @@ class CoreDataValidator:
         is_weekend = now.weekday() >= 5
         allowed_missing = 5 if is_weekend else 3
         if len(missing) > allowed_missing:  # Allow up to 3 missing (5 on weekend BTC-only mode)
-            return (False, {}, f"Brief missing currency biases: {missing}")
+            if structured.get("_data_quality_degraded"):
+                degraded_note = f"Brief is degraded with missing currency biases: {missing} — operating in graceful degradation mode."
+                issue_note = f"{issue_note}; {degraded_note}" if issue_note else degraded_note
+                logger.warning(f"CoreDataValidator: {degraded_note}")
+            else:
+                return (False, {}, f"Brief missing currency biases: {missing}")
 
         return (
             True,
@@ -183,9 +190,9 @@ class CoreDataValidator:
         trend = "neutral"
         if len(rows) >= 3:
             pct_change = (rows[0].close - rows[-1].close) / rows[-1].close if rows[-1].close > 0 else 0
-            if pct_change > 0.0005:  # > +0.05%
+            if pct_change > 0.0020:  # > +0.20%
                 trend = "strengthening"
-            elif pct_change < -0.0005:  # < -0.05%
+            elif pct_change < -0.0020:  # < -0.20%
                 trend = "weakening"
             else:
                 trend = "neutral"

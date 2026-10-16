@@ -110,3 +110,38 @@ async def test_validate_core_data_brief_age_custom_limit():
     is_valid_fail, _, issues_fail = await validator_fail.validate_and_fetch_core_data()
     assert is_valid_fail is False
     assert any("24.0h hard limit" in i for i in issues_fail)
+
+
+@pytest.mark.asyncio
+async def test_validate_core_data_degraded_brief_graceful_pass():
+    """Verify degraded brief with missing currency biases does NOT fail critical validation."""
+    session = create_mock_async_session()
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    mock_result_1 = MagicMock()
+    mock_brief = MagicMock()
+    mock_brief.generated_at = now
+    # Degraded brief with missing currency biases (e.g. only USD provided)
+    mock_brief.structured_json = '{"currency_bias": {"USD": "bullish"}, "_data_quality_degraded": true}'
+    mock_result_1.scalar_one_or_none.return_value = mock_brief
+
+    mock_result_2 = MagicMock()
+    mock_vix = MagicMock()
+    mock_vix.date = now.date()
+    mock_vix.close = 15.0
+    mock_result_2.scalar_one_or_none.return_value = mock_vix
+
+    mock_result_3 = MagicMock()
+    mock_dxy = MagicMock()
+    mock_dxy.date = now.date()
+    mock_dxy.close = 104.5
+    mock_result_3.scalars.return_value.all.return_value = [mock_dxy, mock_dxy, mock_dxy]
+
+    session.execute.side_effect = [mock_result_1, mock_result_2, mock_result_3]
+
+    validator = CoreDataValidator(session, {})
+    is_valid, core_data, issues = await validator.validate_and_fetch_core_data()
+
+    assert is_valid is True
+    assert "fundamental_brief" in core_data
+    assert any("graceful degradation mode" in iss for iss in issues)

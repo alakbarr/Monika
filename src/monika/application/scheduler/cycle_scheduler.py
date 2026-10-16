@@ -460,15 +460,15 @@ class CycleScheduler:
             f"{self.cycle_times_local} | Assets: {self.asset_universe}"
         )
         logger.info(
-            "Catatan: siklus TIDAK dijalankan langsung saat startup. Ini disengaja "
-            "agar restart selama development tidak memboroskan API budget. Gunakan "
-            "perintah Telegram /run untuk memicu siklus manual kapan saja."
+            "Note: analysis cycle is NOT run immediately on startup. This is intentional "
+            "so restarts during development do not waste API budget. Use the Telegram "
+            "/run command to trigger a manual cycle at any time."
         )
 
         if self.run_immediately_on_first_start:
-            logger.warning(
-                "trading.schedule.run_immediately_on_first_start=true — menjalankan "
-                "satu siklus analisis SEKARANG saat startup (ini AKAN memakan token API)."
+            logger.info(
+                "trading.schedule.run_immediately_on_first_start=true — "
+                "running one analysis cycle immediately on startup (will consume API tokens)."
             )
             await self._safe_run_once()
 
@@ -479,9 +479,7 @@ class CycleScheduler:
             )
             if not self._running:
                 break
-            logger.info(
-                f"Jadwal terjadwal tercapai ({target.strftime('%Y-%m-%d %H:%M UTC')}). Menjalankan siklus analisis..."
-            )
+            logger.info(f"Scheduled time reached ({target.strftime('%Y-%m-%d %H:%M UTC')}). Running analysis cycle...")
             await self._safe_run_once()
 
     async def run_scheduled_reports_loop(self) -> None:

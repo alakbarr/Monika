@@ -118,3 +118,44 @@ async def test_harness_context_call_mcp_integration():
     call_res = await ctx.call_mcp("quant_calc", "compute_metrics", {"symbol": "BTCUSD"})
     assert call_res["ok"] is True
     assert call_res["result"] == {"sharpe": 2.45}
+
+
+@pytest.mark.asyncio
+async def test_mcp_server_connection_start_fallback_on_not_implemented():
+    """Verify MCPServerConnection.start() falls back to _PopenStdioProcess when create_subprocess_exec raises NotImplementedError."""
+    from monika.infrastructure.mcp.client import MCPServerConnection, _PopenStdioProcess
+
+    server = MCPServerConnection(
+        "test_fallback",
+        {
+            "transport": "stdio",
+            "command": "python",
+            "args": ["-m", "dummy"],
+        },
+    )
+
+    mock_fallback_proc = MagicMock(spec=_PopenStdioProcess)
+    mock_fallback_proc.pid = 9999
+    mock_fallback_proc.returncode = None
+    mock_fallback_proc.stdin = MagicMock()
+    mock_fallback_proc.stdin.write = MagicMock()
+    mock_fallback_proc.stdin.drain = AsyncMock()
+    mock_fallback_proc.stdout = MagicMock()
+    mock_fallback_proc.stdout.readline = AsyncMock(return_value=b"")
+    mock_fallback_proc.stderr = MagicMock()
+    mock_fallback_proc.stderr.readline = AsyncMock(return_value=b"")
+    mock_fallback_proc.terminate = MagicMock()
+    mock_fallback_proc.kill = MagicMock()
+    mock_fallback_proc.wait = AsyncMock(return_value=0)
+
+    with patch("asyncio.create_subprocess_exec", side_effect=NotImplementedError()):
+        with patch("asyncio.to_thread", new=AsyncMock(return_value=mock_fallback_proc)) as mock_to_thread:
+            server.send_request = AsyncMock(return_value={"result": {"protocolVersion": "2024-11-05"}})
+            server.send_notification = AsyncMock()
+
+            started = await server.start()
+            assert started is True
+            assert server.process is mock_fallback_proc
+            assert mock_to_thread.awaited
+            assert mock_to_thread.call_args[0][0] is _PopenStdioProcess
+            await server.stop()

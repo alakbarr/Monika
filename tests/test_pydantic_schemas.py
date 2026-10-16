@@ -523,3 +523,144 @@ def test_submit_fundamental_brief_tool_schema_required_fields():
         "priced_in_assessment",
     ):
         assert field in req, f"Field '{field}' must be required in SUBMIT_FUNDAMENTAL_BRIEF schema"
+
+
+def test_fundamental_brief_reverse_auto_healing_and_aliases():
+    """Verify reverse auto-healing from per_asset_macro_matrix and pair/commodity alias resolution."""
+    from monika.application.analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
+
+    # 1. Reverse auto-healing when currency_bias is empty but matrix is provided
+    payload_matrix = {
+        "macro_narrative": "Global macro cross-currents with strong US growth exceptionalism and commodity strength.",
+        "per_asset_macro_matrix": {
+            "EURUSD": {
+                "directional_bias": "bearish",
+                "structural_driver": "ECB cut",
+                "tactical_catalyst": "PMI",
+                "invalidation_level": "1.1000",
+            },
+            "GBPUSD": {
+                "directional_bias": "bearish",
+                "structural_driver": "BOE dovish",
+                "tactical_catalyst": "CPI",
+                "invalidation_level": "1.3000",
+            },
+            "USDJPY": {
+                "directional_bias": "bullish",
+                "structural_driver": "Yield gap",
+                "tactical_catalyst": "BOJ",
+                "invalidation_level": "150.00",
+            },
+            "AUDUSD": {
+                "directional_bias": "neutral",
+                "structural_driver": "RBA pause",
+                "tactical_catalyst": "China",
+                "invalidation_level": "0.6500",
+            },
+            "XAUUSD": {
+                "directional_bias": "bullish",
+                "structural_driver": "Safe haven",
+                "tactical_catalyst": "Geopolitics",
+                "invalidation_level": "2400.00",
+            },
+            "BTCUSD": {
+                "directional_bias": "bullish",
+                "structural_driver": "ETF inflow",
+                "tactical_catalyst": "Halving",
+                "invalidation_level": "60000.00",
+            },
+            "XTIUSD": {
+                "directional_bias": "bearish",
+                "structural_driver": "OPEC quota",
+                "tactical_catalyst": "EIA",
+                "invalidation_level": "70.00",
+            },
+        },
+        "asset_priced_in_scores": {"XTIUSD": 8},
+        "confidence": 0.80,
+        "strongest_counter_thesis": "Counter thesis: If US growth abruptly stalls and Fed slashes rates by 100 bps immediately.",
+    }
+    brief = SubmitFundamentalBriefSchema.model_validate(payload_matrix)
+    cb = brief.currency_bias
+    assert cb["EUR"] == "bearish"
+    assert cb["GBP"] == "bearish"
+    assert cb["USD"] == "bullish"
+    assert cb["JPY"] == "bearish"  # Inverted from USDJPY bullish
+    assert cb["AUD"] == "neutral"
+    assert cb["XAU"] == "bullish"
+    assert cb["BTC"] == "bullish"
+    assert cb["OIL"] == "bearish"
+    assert "XBRUSD" in brief.per_asset_macro_matrix
+    assert brief.asset_priced_in_scores["XBRUSD"] == 8  # Copied from XTIUSD
+
+    # 2. Pair and commodity aliases in currency_bias
+    payload_aliases = {
+        "macro_narrative": "Macro overview using commodity and FX pair aliases instead of single currency codes.",
+        "currency_bias": {
+            "DXY": "bullish",
+            "EURUSD": "bearish",
+            "GBPUSD": "bearish",
+            "USDJPY": "bullish",
+            "GOLD": "bullish",
+            "WTI": "bearish",
+            "BITCOIN": "bullish",
+            "AUDUSD": "neutral",
+        },
+        "confidence": 0.75,
+        "strongest_counter_thesis": "Counter thesis: If geopolitical tensions collapse and global disinflation accelerates rapidly.",
+    }
+    brief_alias = SubmitFundamentalBriefSchema.model_validate(payload_aliases)
+    cb_alias = brief_alias.currency_bias
+    assert cb_alias["USD"] == "bullish"
+    assert cb_alias["EUR"] == "bearish"
+    assert cb_alias["GBP"] == "bearish"
+    assert cb_alias["JPY"] == "bearish"
+    assert cb_alias["XAU"] == "bullish"
+    assert cb_alias["OIL"] == "bearish"
+    assert cb_alias["BTC"] == "bullish"
+    assert cb_alias["AUD"] == "neutral"
+
+
+def test_fundamental_brief_validate_confidence_scales():
+    """Verify that validate_confidence correctly normalizes both 1-10 and 10-100 scales."""
+    from monika.application.analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
+
+    # 1-10 scale: confidence=5 -> 0.5, confidence=7.5 -> 0.75
+    payload_scale_10 = {
+        "macro_narrative": "Fundamental outlook test with 1-10 confidence scale inputs.",
+        "currency_bias": {
+            "USD": "neutral",
+            "EUR": "neutral",
+            "GBP": "neutral",
+            "JPY": "neutral",
+            "AUD": "neutral",
+            "XAU": "neutral",
+        },
+        "confidence": 5.0,
+        "currency_confidence": {"USD": 7.0, "EUR": 8.5},
+        "strongest_counter_thesis": "Counter thesis: If unanticipated macro shocks hit sovereign debt markets with high volatility.",
+    }
+    b10 = SubmitFundamentalBriefSchema.model_validate(payload_scale_10)
+    assert b10.confidence == 0.5
+    assert b10.currency_confidence["USD"] == 0.7
+    assert b10.currency_confidence["EUR"] == 0.85
+
+    # 10-100 scale: confidence=85 -> 0.85
+    payload_scale_100 = {
+        "macro_narrative": "Fundamental outlook test with percentage 10-100 confidence scale inputs.",
+        "currency_bias": {
+            "USD": "neutral",
+            "EUR": "neutral",
+            "GBP": "neutral",
+            "JPY": "neutral",
+            "AUD": "neutral",
+            "XAU": "neutral",
+        },
+        "confidence": 85.0,
+        "currency_confidence": {"USD": 90.0, "EUR": 65.0},
+        "strongest_counter_thesis": "Counter thesis: If unanticipated macro shocks hit sovereign debt markets with high volatility.",
+    }
+    b100 = SubmitFundamentalBriefSchema.model_validate(payload_scale_100)
+    assert b100.confidence == 0.85
+    assert b100.currency_confidence["USD"] == 0.90
+    assert b100.currency_confidence["EUR"] == 0.65

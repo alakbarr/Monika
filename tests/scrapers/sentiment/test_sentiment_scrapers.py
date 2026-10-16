@@ -2,7 +2,7 @@ from tests.conftest import create_mock_async_session
 
 """Unit tests for MyFxBook and FXSSI sentiment scrapers and FRED series integration."""
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
 from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
 from monika.infrastructure.data_ingestion.sources.fred_treasury_yield import (
@@ -161,3 +161,92 @@ def test_myfxbook_fetch_sync_error_resilience():
         res = fetcher.fetch_sync()
         assert "error" in res
         assert "127.0.0.1:16944" in res["error"]
+
+
+@pytest.mark.asyncio
+async def test_sentiment_handlers_cache_hit_with_ratios_and_fetched_at():
+    """Test SentimentToolHandlers cache hit with {"ratios": {"EURUSD": ...}, "fetched_at": ...}."""
+    import json
+    from datetime import datetime, timezone
+    from monika.application.analysis.tools.domain.sentiment_handlers import SentimentToolHandlers
+
+    mock_session = create_mock_async_session()
+    now_str = datetime.now(timezone.utc).isoformat()
+    cached_payload = json.dumps(
+        {
+            "source": "myfxbook",
+            "ratios": {
+                "EURUSD": {"long_percent": 65.0, "short_percent": 35.0, "long_short_ratio": 1.8571},
+                "GBPUSD": {"long_percent": 60.0, "short_percent": 40.0, "long_short_ratio": 1.5},
+            },
+            "fetched_at": now_str,
+        }
+    )
+
+    mock_cfg = MagicMock()
+    mock_cfg.value = cached_payload
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_cfg
+    mock_session.execute = AsyncMock(return_value=mock_result)
+
+    handlers = SentimentToolHandlers()
+
+    # 1. Query specific symbol EURUSD
+    res = await handlers.get_retail_sentiment("EURUSD", session=mock_session)
+    assert res.get("cached") is True
+    assert res.get("long_percent") == 65.0
+    assert res.get("short_percent") == 35.0
+
+    # 2. Query with empty symbol / arguments={} -> returns full ratios map
+    all_res = await handlers.get_retail_sentiment(symbol="", session=mock_session)
+    assert all_res.get("status") == "success"
+    assert all_res.get("source") == "myfxbook"
+    assert "EURUSD" in all_res.get("ratios", {})
+    assert all_res.get("cached") is True
+
+    # 3. Query get_fxssi_sentiment
+    fxssi_payload = json.dumps(
+        {
+            "source": "fxssi",
+            "ratios": {"XTIUSD": {"long_percent": 45.0, "short_percent": 55.0}},
+            "fetched_at": now_str,
+        }
+    )
+    mock_cfg.value = fxssi_payload
+    fxssi_res = await handlers.get_fxssi_sentiment("XTIUSD", session=mock_session)
+    assert fxssi_res.get("cached") is True
+    assert fxssi_res.get("long_percent") == 45.0
+
+
+@pytest.mark.asyncio
+async def test_coinglass_funding_bybit_open_interest_fallback():
+    """Verify CoinglasFundingFetcher falls back to Bybit when Binance openInterest fails."""
+    from monika.infrastructure.data_ingestion.sources.coinglass_funding import (
+        BINANCE_OI_URL,
+        BYBIT_OI_URL,
+        CoinglasFundingFetcher,
+    )
+
+    fetcher = CoinglasFundingFetcher()
+
+    async def mock_fetch(url, **kwargs):
+        if url == BINANCE_OI_URL:
+            return None  # Binance fails
+        elif url == BYBIT_OI_URL:
+            return {
+                "retCode": 0,
+                "result": {
+                    "category": "linear",
+                    "symbol": "BTCUSDT",
+                    "list": [{"openInterest": "58142.32"}],
+                },
+            }
+        return None
+
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.coinglass_funding.fetch_with_retry", side_effect=mock_fetch
+    ):
+        oi_res = await fetcher.fetch_open_interest_btc()
+        assert oi_res["status"] == "success"
+        assert oi_res["open_interest_usd"] == 58142.32

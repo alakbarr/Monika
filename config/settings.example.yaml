@@ -113,6 +113,13 @@ trading:
       BTCUSD: 3
       XTIUSD: 3
       XBRUSD: 3
+    max_spread_points:
+      BTCUSD: 3500.0
+      ETHUSD: 2500.0
+      XAUUSD: 150.0
+      XTIUSD: 150.0
+      XBRUSD: 150.0
+      default: 100.0
     flash_crash:
       enabled: true
       lookback_minutes: 15

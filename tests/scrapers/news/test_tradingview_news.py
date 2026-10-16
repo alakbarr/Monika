@@ -8,8 +8,31 @@ class TestTradingViewNewsScraper:
     def test_fetch_news_fail(self, mock_init):
         scraper = TradingViewNewsScraper()
         scraper.navigate_with_fallback = MagicMock(return_value=False)
+        scraper._fetch_via_http_api = MagicMock(return_value=[])
         news = scraper.fetch_news()
         assert news == []
+
+    @patch("monika.infrastructure.data_ingestion.scrapers.news.tradingview_news.BaseScraper._initialize_browser")
+    def test_fetch_news_fallback_http_api_success(self, mock_init):
+        scraper = TradingViewNewsScraper()
+        scraper.navigate_with_fallback = MagicMock(return_value=False)
+        scraper._fetch_via_http_api = MagicMock(
+            return_value=[
+                {
+                    "headline": "Fed Holds Rates Steady",
+                    "url": "https://www.tradingview.com/news/123",
+                    "source": "Reuters",
+                    "timestamp": "2026-10-16T00:00:00Z",
+                    "summary": "Fed decides to keep rates unchanged.",
+                }
+            ]
+        )
+        news = scraper.fetch_news(limit=5)
+        assert len(news) == 1
+        assert news[0].title == "Fed Holds Rates Steady"
+        assert news[0].source == "Reuters"
+        assert news[0].url == "https://www.tradingview.com/news/123"
+        assert news[0].summary == "Fed decides to keep rates unchanged."
 
     @patch("monika.infrastructure.data_ingestion.scrapers.news.tradingview_news.BaseScraper._initialize_browser")
     @patch("os.path.exists")

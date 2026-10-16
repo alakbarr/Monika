@@ -154,3 +154,50 @@ class TestBaseScraper:
 
         BaseScraper._cleanup_stale_profile_locks(tmp_path)
         mock_kill.assert_called_once_with(7777)
+
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.kill_process_tree")
+    @patch("psutil.process_iter")
+    def test_cleanup_stale_profile_processes_skips_active_pids(self, mock_proc_iter, mock_kill, tmp_path):
+        from monika.infrastructure.data_ingestion.scrapers.base_scraper import (
+            _ACTIVE_BROWSER_PIDS,
+            _PROFILE_LOCKS_GUARD,
+        )
+
+        # Active direct PID
+        fake_proc_active = MagicMock()
+        fake_proc_active.pid = 9991
+        fake_proc_active.ppid.return_value = 1
+        fake_proc_active.info = {"name": "chrome.exe", "cmdline": ["chrome.exe", f"--user-data-dir={tmp_path}"]}
+
+        # Active child whose parent is in active PIDs
+        fake_proc_child = MagicMock()
+        fake_proc_child.pid = 9992
+        fake_proc_child.ppid.return_value = 9991
+        fake_proc_child.info = {"name": "chrome.exe", "cmdline": ["chrome.exe", f"--user-data-dir={tmp_path}"]}
+
+        mock_proc_iter.return_value = [fake_proc_active, fake_proc_child]
+
+        with _PROFILE_LOCKS_GUARD:
+            _ACTIVE_BROWSER_PIDS.add(9991)
+
+        try:
+            BaseScraper._cleanup_stale_profile_locks(tmp_path)
+            mock_kill.assert_not_called()
+        finally:
+            with _PROFILE_LOCKS_GUARD:
+                _ACTIVE_BROWSER_PIDS.discard(9991)
+
+    @patch("pathlib.Path.mkdir")
+    @patch.object(BaseScraper, "_cleanup_stale_profile_locks")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumOptions")
+    def test_profile_lock_lifecycle(self, mock_options, mock_page, mock_cleanup, mock_mkdir):
+        scraper = BaseScraper(profile_name="sync_test_profile")
+        assert scraper._acquired_profile_lock is True
+        assert scraper._profile_lock is not None
+
+        scraper.close()
+        assert scraper._acquired_profile_lock is False
+        # Multiple close() is idempotent
+        scraper.close()
+        assert scraper._acquired_profile_lock is False

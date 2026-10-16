@@ -28,7 +28,7 @@ DEFAULT_SCRAPER_TIMEOUTS: dict[str, float] = {
     "fedwatch": 120.0,
     "tradingview": 90.0,
     "kitco": 90.0,
-    "twitter": 90.0,
+    "twitter": 120.0,
     "rss": 60.0,
 }
 
@@ -202,7 +202,8 @@ class ScraperRunner:
         except Exception as e:
             self._consecutive_failures[name] = self._consecutive_failures.get(name, 0) + 1
             count = self._consecutive_failures[name]
-            logger.error(f"Scraper '{name}' failed (consecutive: {count}): {e}")
+            log_fn = logger.error if count >= self.failure_alert_threshold else logger.warning
+            log_fn(f"Scraper '{name}' failed (consecutive: {count}): {e}")
 
             if count == self.failure_alert_threshold:
                 msg = (

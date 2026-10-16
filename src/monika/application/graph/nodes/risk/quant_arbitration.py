@@ -45,10 +45,31 @@ async def run_quant_arbitration(
 
     candidate_map: Dict[str, Tuple[Dict[str, Any], bool]] = {}
     for sym, r in actionable:
-        candidate_map[sym] = (dict(r) if isinstance(r, dict) else r, True)
-    for sym, r in asset_analyses.items():
-        if sym not in candidate_map and isinstance(r, dict):
-            candidate_map[sym] = (dict(r), False)
+        if not isinstance(r, dict):
+            continue
+        dec = str(r.get("decision", "")).lower()
+        if not r.get("success", True) or dec not in ("buy", "sell", "wait", "avoid"):
+            logger.warning(
+                f"[QuantArbitration] Skipping actionable {sym} due to invalid/errored Stage 2 state (decision={dec!r})."
+            )
+            continue
+        candidate_map[sym] = (dict(r), True)
+
+    analysis_items = (
+        asset_analyses.items()
+        if isinstance(asset_analyses, dict)
+        else [(x.get("symbol"), x) for x in asset_analyses if isinstance(x, dict)]
+    )
+    for sym, r in analysis_items:
+        if not sym or sym in candidate_map or not isinstance(r, dict):
+            continue
+        dec = str(r.get("decision", "")).lower()
+        if not r.get("success", True) or dec not in ("buy", "sell", "wait", "avoid"):
+            logger.warning(
+                f"[QuantArbitration] Skipping {sym} due to invalid/errored Stage 2 state (decision={dec!r})."
+            )
+            continue
+        candidate_map[sym] = (dict(r), False)
 
     async with get_session() as session:
         vix_val = 15.0
@@ -153,7 +174,7 @@ async def run_quant_arbitration(
                     r["decision_source"] = "concordant"
                     if active_quant_signal and getattr(active_quant_signal, "strategy_id", None):
                         r["source_strategy_id"] = active_quant_signal.strategy_id
-                elif arb_res.selected_source == "quant":
+                elif arb_res.selected_source in ("quant", "quant_conviction_precedence", "timesfm_tie_break_quant"):
                     r["decision"] = arb_res.decision
                     r["confidence"] = arb_res.confidence
                     if arb_res.entry_price:
@@ -162,7 +183,12 @@ async def run_quant_arbitration(
                         r["stop_loss"] = arb_res.stop_loss
                     if arb_res.take_profit:
                         r["take_profit"] = arb_res.take_profit
-                    r["decision_source"] = f"quant_{arb_res.meta.get('strategy_id', 'alpha')}"
+                    strat_id_meta = (
+                        arb_res.meta.get("strategy_id")
+                        or (getattr(active_quant_signal, "strategy_id", None) if active_quant_signal else None)
+                        or "alpha"
+                    )
+                    r["decision_source"] = f"quant_{strat_id_meta}"
                     if active_quant_signal and getattr(active_quant_signal, "strategy_id", None):
                         r["source_strategy_id"] = active_quant_signal.strategy_id
                     if not is_actionable_originally:
@@ -172,6 +198,37 @@ async def run_quant_arbitration(
 
                 analysis_id = r.get("analysis_id")
                 ana = await session.get(AssetAnalysis, analysis_id) if analysis_id else None
+
+                # When a WAIT symbol is legitimately promoted to BUY/SELL by a live-ready Quant strategy
+                # and has no analysis_id yet, create a new AssetAnalysis record in DB so execution_node won't fail.
+                if ana is None and analysis_id is None and str(r.get("decision", "")).lower() in ("buy", "sell"):
+                    brief_id = state.get("brief_id")
+                    strat_id = r.get("source_strategy_id") or arb_res.meta.get("strategy_id", "alpha")
+                    val_sl = r.get("stop_loss")
+                    val_tp = r.get("take_profit")
+                    val_ep = r.get("entry_price")
+                    ana = AssetAnalysis(
+                        symbol=sym,
+                        brief_id=brief_id,
+                        decision=str(r.get("decision", "wait")).lower(),
+                        confidence=float(r.get("confidence", 0.7) or 0.7),
+                        risk_multiplier=float(r.get("risk_multiplier", 1.0) or 1.0),
+                        stop_loss=float(val_sl) if val_sl is not None else None,
+                        take_profit=float(val_tp) if val_tp is not None else None,
+                        decision_source=r.get("decision_source", f"quant_{strat_id}"),
+                        source_strategy_id=r.get("source_strategy_id", strat_id),
+                        arbitration_reason=arb_res.arbitration_reason or r.get("arbitration_reason", ""),
+                        market_regime_at_analysis=regime_dict.get("regime")
+                        if isinstance(regime_dict, dict)
+                        else str(regime_dict or ""),
+                    )
+                    if val_ep is not None:
+                        ana.entry_price = float(val_ep)
+                    session.add(ana)
+                    await session.flush()
+                    if ana.id is None:
+                        ana.id = 1
+                    r["analysis_id"] = ana.id
 
                 # Single-pass level resolution and geometry repair
                 if str(r.get("decision", "")).upper() in ("BUY", "SELL"):
@@ -206,7 +263,25 @@ async def run_quant_arbitration(
                         f"[QuantArbitration] Persisted arbitrated trade {sym} ({ana.decision.upper()}) to AssetAnalysis #{ana.id}"
                     )
 
-                filtered_actionable.append((sym, r))
+                # Ensure promoted or existing actionable trades have valid analysis_id
+                if r.get("analysis_id") is not None and str(r.get("decision", "")).lower() in ("buy", "sell"):
+                    filtered_actionable.append((sym, r))
+                    if isinstance(actionable, list):
+                        has_tuple = any(isinstance(item, tuple) and item[0] == sym for item in actionable)
+                        has_dict = any(isinstance(item, dict) and item.get("symbol") == sym for item in actionable)
+                        if not (has_tuple or has_dict):
+                            actionable.append((sym, r))
+                else:
+                    if isinstance(actionable, list):
+                        actionable[:] = [
+                            item
+                            for item in actionable
+                            if not (
+                                (isinstance(item, tuple) and item[0] == sym)
+                                or (isinstance(item, dict) and item.get("symbol") == sym)
+                                or item is r
+                            )
+                        ]
                 if isinstance(state.get("asset_analyses"), dict) and sym in state["asset_analyses"]:
                     if isinstance(state["asset_analyses"][sym], dict):
                         state["asset_analyses"][sym].update(r)

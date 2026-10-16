@@ -417,3 +417,37 @@ class TestRiskGate:
         ok, reason = await gate._check_daily_drawdown(mock_session, 10000.0)
         assert not ok
         assert "Unrealized drawdown" in reason or "Daily PnL loss" in reason
+
+    @pytest.mark.asyncio
+    async def test_check_spread_symbol_aware_defaults(self, settings):
+        """Verify BTCUSD default max_spread_points allows 1965 pts while rejecting 4000 pts, and Forex defaults to 100.0 pts."""
+        gate = RiskGate(settings)
+        mock_session = create_mock_async_session()
+
+        mock_client = MagicMock()
+        mock_client.is_connected = AsyncMock(return_value=True)
+        gate._mt5 = mock_client
+
+        # 1. BTCUSD with 1965 pts -> Allowed under default 3500.0
+        mock_client.get_spread = AsyncMock(return_value={"spread_points": 1965})
+        ok, reason = await gate._check_max_spread(mock_session, "BTCUSD")
+        assert ok is True
+        assert reason == "ok"
+
+        # 2. BTCUSD with 4000 pts -> Rejected (> 3500.0)
+        mock_client.get_spread = AsyncMock(return_value={"spread_points": 4000})
+        ok, reason = await gate._check_max_spread(mock_session, "BTCUSD")
+        assert ok is False
+        assert "exceeds maximum allowed 3500.0 pts" in reason
+
+        # 3. EURUSD with 50 pts -> Allowed under default 100.0
+        mock_client.get_spread = AsyncMock(return_value={"spread_points": 50})
+        ok, reason = await gate._check_max_spread(mock_session, "EURUSD")
+        assert ok is True
+        assert reason == "ok"
+
+        # 4. EURUSD with 120 pts -> Rejected (> 100.0)
+        mock_client.get_spread = AsyncMock(return_value={"spread_points": 120})
+        ok, reason = await gate._check_max_spread(mock_session, "EURUSD")
+        assert ok is False
+        assert "exceeds maximum allowed 100.0 pts" in reason

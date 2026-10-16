@@ -317,43 +317,57 @@ class AgentRecoveryMixin:
                     except Exception as e:
                         logger.error(f"[Recovery] Friday protection check failed: {e}")
 
-                # Signal to position guards and schedulers (TriggerChecker, PositionExitReviewer,
+                # Signal to position guards (TriggerChecker, PositionExitReviewer,
                 # TrailingStopManager, OrderReconciler, PositionGuardian) that positions are reconciled.
                 self._recovery_complete.set()
                 logger.info("[Recovery] Position sync and order reconciliation complete: _recovery_complete event set.")
 
-                # 1c. Initial Market Data Synchronization & Indicator Warmup
-                if self.market_data_scheduler:
-                    warmup_timeout = float(
-                        self.settings.get("trading", {}).get("schedule", {}).get("warmup_timeout_seconds", 360.0)
-                    )
-                    try:
-                        logger.info("[Recovery] Running initial market data synchronization and indicator warmup...")
-                        await asyncio.wait_for(
-                            asyncio.shield(self.market_data_scheduler.sync_now()),
-                            timeout=warmup_timeout,
-                        )
-                        logger.info("[Recovery] Initial market data warmup complete.")
-                    except asyncio.TimeoutError:
-                        logger.warning(
-                            f"[Recovery] Initial market data warmup timed out ({int(warmup_timeout)}s, non-fatal) — proceeding in background."
-                        )
-                    except Exception as e:
-                        logger.warning(f"[Recovery] Initial market data sync failed (non-fatal): {e}")
-
-                # 1d. Restore Strategy Decay Monitor state from DB
+                # 1c & 1d. Market Data Synchronization, Indicator Warmup, and Strategy Decay loading
                 try:
-                    from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                    # 1c. Initial Market Data Synchronization & Indicator Warmup
+                    if self.market_data_scheduler:
+                        warmup_timeout = float(
+                            self.settings.get("trading", {}).get("schedule", {}).get("warmup_timeout_seconds", 360.0)
+                        )
+                        try:
+                            logger.info(
+                                "[Recovery] Running initial market data synchronization and indicator warmup..."
+                            )
+                            await asyncio.wait_for(
+                                asyncio.shield(self.market_data_scheduler.sync_now()),
+                                timeout=warmup_timeout,
+                            )
+                            logger.info("[Recovery] Initial market data warmup complete.")
+                        except asyncio.TimeoutError:
+                            logger.warning(
+                                f"[Recovery] Initial market data warmup timed out ({int(warmup_timeout)}s, non-fatal) — proceeding in background."
+                            )
+                        except Exception as e:
+                            logger.warning(f"[Recovery] Initial market data sync failed (non-fatal): {e}")
 
-                    async with get_session() as rec_session:
-                        await get_strategy_decay_monitor().load_from_db(rec_session)
-                    logger.info("[Recovery] StrategyDecayMonitor health state restored from DB")
-                except Exception as decay_err:
-                    logger.debug(f"[Recovery] Failed to restore StrategyDecayMonitor state: {decay_err}")
+                    # 1d. Restore Strategy Decay Monitor state from DB
+                    try:
+                        from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
 
-            # Ensure recovery complete flag is set (idempotent)
+                        async with get_session() as rec_session:
+                            await get_strategy_decay_monitor().load_from_db(rec_session)
+                        logger.info("[Recovery] StrategyDecayMonitor health state restored from DB")
+                    except Exception as decay_err:
+                        logger.debug(f"[Recovery] Failed to restore StrategyDecayMonitor state: {decay_err}")
+                finally:
+                    warmup_evt = getattr(self, "_warmup_complete", None)
+                    if warmup_evt is not None:
+                        warmup_evt.set()
+                    logger.info(
+                        "[Recovery] Market data warmup and decay state restoration complete: _warmup_complete event set."
+                    )
+
+            # Ensure recovery and warmup complete flags are set (idempotent)
             self._recovery_complete.set()
-            logger.info("[Recovery] Startup data warmup done: _recovery_complete event verified.")
+            warmup_evt = getattr(self, "_warmup_complete", None)
+            if warmup_evt is not None:
+                warmup_evt.set()
+            logger.info("[Recovery] Startup data warmup done: _recovery_complete and _warmup_complete events verified.")
 
             _recovery_cycle_dispatched = False
             from sqlalchemy import select
@@ -525,9 +539,12 @@ class AgentRecoveryMixin:
                     logger.debug(f"Recovery notification failed: {e}")
         finally:
             logger.info("[Recovery] Post-restart recovery complete")
-            # Signal to cycle scheduler that startup recovery is complete.
+            # Signal to position guards and cycle schedulers that startup recovery is complete.
             self._recovery_complete.set()
-            logger.info("[Recovery] _recovery_complete event set — cycle scheduler may now start.")
+            warmup_evt = getattr(self, "_warmup_complete", None)
+            if warmup_evt is not None:
+                warmup_evt.set()
+            logger.info("[Recovery] _recovery_complete and _warmup_complete events set — schedulers may now start.")
 
 
 __all__ = ["AgentRecoveryMixin"]

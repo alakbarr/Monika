@@ -30,6 +30,15 @@ Order: Any = resolve_model("Order")
 logger = logging.getLogger("TradingAgent.RiskGate")
 
 
+DEFAULT_SYMBOL_MAX_SPREAD_POINTS: dict[str, float] = {
+    "BTCUSD": 3500.0,
+    "ETHUSD": 2500.0,
+    "XAUUSD": 150.0,
+    "XTIUSD": 150.0,
+    "XBRUSD": 150.0,
+}
+
+
 class RiskExecutionChecksMixin(_RiskGateMixinBase):
     """Execution, order size, spread, duplicate, and loss streak validation mixin."""
 
@@ -308,8 +317,12 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
             if asyncio.iscoroutine(spread_info):
                 spread_info = await spread_info
             spread_pts = spread_info.get("spread_points", 0) if isinstance(spread_info, dict) else 0
+            default_spread = DEFAULT_SYMBOL_MAX_SPREAD_POINTS.get(symbol, 100.0)
             max_spread = float(
-                self.settings.get("trading", {}).get("risk", {}).get("max_spread_points", {}).get(symbol, 100.0)
+                self.settings.get("trading", {})
+                .get("risk", {})
+                .get("max_spread_points", {})
+                .get(symbol, default_spread)
             )
             if spread_pts > max_spread:
                 return False, f"Current spread {spread_pts} pts exceeds maximum allowed {max_spread} pts"

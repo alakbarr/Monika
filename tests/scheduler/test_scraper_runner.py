@@ -217,7 +217,35 @@ class TestScraperRunner:
 
         assert DEFAULT_SCRAPER_TIMEOUTS["calendar"] == 180.0
         assert DEFAULT_SCRAPER_TIMEOUTS["fedwatch"] == 120.0
+        assert DEFAULT_SCRAPER_TIMEOUTS["twitter"] == 120.0
         assert DEFAULT_SCRAPER_TIMEOUTS["rss"] == 60.0
+
+    @pytest.mark.asyncio
+    async def test_run_single_failure_logging_threshold(self, settings):
+        """Verify logger.warning is used when count < failure_alert_threshold and logger.error when >= threshold."""
+        runner = ScraperRunner(settings)
+        assert runner.failure_alert_threshold == 3
+
+        fail_fetch = AsyncMock(side_effect=Exception("Temporary connection glitch"))
+
+        with (
+            patch("monika.application.scheduler.scraper_runner.logger.warning") as mock_warn,
+            patch("monika.application.scheduler.scraper_runner.logger.error") as mock_err,
+        ):
+            # Attempt 1: count=1 < 3 -> should log warning, not error
+            await runner._run_single("tradingview", fail_fetch)
+            assert any("failed (consecutive: 1)" in str(c) for c in mock_warn.call_args_list)
+            assert not any("failed (consecutive: 1)" in str(c) for c in mock_err.call_args_list)
+
+            # Attempt 2: count=2 < 3 -> should log warning, not error
+            await runner._run_single("tradingview", fail_fetch)
+            assert any("failed (consecutive: 2)" in str(c) for c in mock_warn.call_args_list)
+            assert not any("failed (consecutive: 2)" in str(c) for c in mock_err.call_args_list)
+
+            # Attempt 3: count=3 == 3 -> should log error
+            with patch("monika.infrastructure.infra.notifier.AgentNotifier.send_warning", new_callable=AsyncMock):
+                await runner._run_single("tradingview", fail_fetch)
+            assert any("failed (consecutive: 3)" in str(c) for c in mock_err.call_args_list)
 
     @pytest.mark.asyncio
     async def test_run_all_aborts_when_stopped(self, settings):

@@ -136,3 +136,27 @@ async def test_pre_trade_assertions_edge_registry_low_confidence():
     assert passed is False
     assert any("ASSERT_6" in v for v in violations)
     assert not any("ASSERT_7" in v for v in violations)
+
+
+@pytest.mark.asyncio
+async def test_pre_trade_assertions_quant_alpha_exempt_assert_7():
+    verifier = EvidenceFirstVerifier()
+    quant_signal = {
+        "symbol": "BTCUSD",
+        "decision": "BUY",
+        "entry_price": 65000.0,
+        "stop_loss": 64000.0,
+        "take_profit": 68000.0,
+        "confidence": 0.45,
+        "confluence_score": 0,
+        "priced_in_score": 0,
+        "invalidation": "Strategy stop: donchian_channel_exit",
+        "key_evidence": ["Donchian breakout", "R:R 3.0"],
+        "quote_age_seconds": 10,
+        "decision_source": "quant_donchian_breakout",
+        "source_strategy_id": "donchian_breakout",
+    }
+    passed, violations = await verifier.pre_trade_assertions(quant_signal)
+    assert passed is True
+    assert len(violations) == 0
+    assert not any("ASSERT_7" in v for v in violations)

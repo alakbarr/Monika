@@ -216,3 +216,32 @@ class TestNewsWatcher:
         # Should NOT trigger emergency reanalysis
         assert not result["reanalysis_triggered"]
         watcher._trigger_reanalysis.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("monika.application.scheduler.news_watcher.get_session")
+    @patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor")
+    async def test_run_once_breaking_news_logs_info(self, mock_processor, mock_get_session, settings, caplog):
+        import logging
+
+        watcher = NewsWatcher(settings)
+        news_high = self._make_news("major geopolitical crisis breaks out", impact="HIGH")
+        watcher._fetch_new_news = AsyncMock(return_value=[news_high])
+        watcher._get_affected_symbols = MagicMock(return_value=["XAUUSD"])
+        watcher._trigger_reanalysis = AsyncMock()
+
+        mock_session = create_mock_async_session()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [news_high]
+        mock_session.execute.return_value = mock_result
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_session
+        mock_get_session.return_value = mock_ctx
+
+        processor_instance = mock_processor.return_value
+        processor_instance.classify_unscored_news = AsyncMock()
+
+        with caplog.at_level(logging.INFO):
+            result = await watcher.run_once()
+
+        assert result["reanalysis_triggered"] is True
+        assert any("BREAKING NEWS DETECTED" in rec.message and rec.levelno == logging.INFO for rec in caplog.records)

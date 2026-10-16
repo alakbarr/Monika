@@ -355,3 +355,26 @@ class TestCycleScheduler:
         compiled = str(stmt)
         assert "paper_trades.closed_at DESC" in compiled or "ORDER BY" in compiled.upper()
         assert "LIMIT" in compiled.upper()
+
+    @pytest.mark.asyncio
+    async def test_cycle_scheduler_start_logs_info_on_run_immediately(self, settings, caplog):
+        import logging
+        from monika.application.scheduler.cycle_scheduler import CycleScheduler
+
+        settings["trading"]["schedule"]["run_immediately_on_first_start"] = True
+        scheduler = CycleScheduler(settings)
+
+        async def fake_run_once():
+            scheduler._running = False
+
+        scheduler._safe_run_once = AsyncMock(side_effect=fake_run_once)
+
+        with caplog.at_level(logging.INFO):
+            await scheduler.start()
+
+        scheduler._safe_run_once.assert_awaited_once()
+        assert any(
+            "run_immediately_on_first_start=true — running one analysis cycle immediately on startup" in rec.message
+            and rec.levelno == logging.INFO
+            for rec in caplog.records
+        )

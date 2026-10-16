@@ -123,3 +123,24 @@ def test_guardian_supervisor_lifecycle(tmp_path: Path):
         supervisor.stop()
         assert not supervisor._running
         assert not hb_file.exists()
+
+
+def test_run_guardian_loop_catches_keyboard_interrupt():
+    """Verify that _run_guardian_loop catches KeyboardInterrupt cleanly without propagating it, and closes the server."""
+    from unittest.mock import MagicMock, patch
+    from monika.application.agent.monitors.process_guardian import _run_guardian_loop
+
+    mock_server = MagicMock()
+    mock_stop_event = MagicMock()
+    mock_stop_event.is_set.side_effect = [False, False]
+
+    with (
+        patch("http.server.ThreadingHTTPServer", return_value=mock_server),
+        patch("time.sleep", side_effect=KeyboardInterrupt()),
+    ):
+        # Must not raise KeyboardInterrupt
+        _run_guardian_loop(primary_pid=1234, port=9099, stop_event=mock_stop_event)
+
+        # Verify server was cleanly shut down and closed in finally
+        mock_server.shutdown.assert_called_once()
+        mock_server.server_close.assert_called_once()

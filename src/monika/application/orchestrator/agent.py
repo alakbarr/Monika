@@ -93,6 +93,7 @@ class TradingAgent(AgentBuilderMixin, AgentRecoveryMixin, AgentMonitorsMixin, Ag
     _mt5_degraded: bool
     _fallback_always_approved: bool
     _recovery_complete: asyncio.Event
+    _warmup_complete: asyncio.Event
     _activity_log: ActivityLogger
     _background_tasks: set[asyncio.Task[Any]]
     _tasks: list[asyncio.Task[Any]]
@@ -113,9 +114,10 @@ class TradingAgent(AgentBuilderMixin, AgentRecoveryMixin, AgentMonitorsMixin, Ag
             paper_enabled = False
         self.dry_run = dry_run or paper_enabled
         self.shutdown_event = asyncio.Event()
-        # Event to block the initial cycle until startup recovery completes.
-        # The cycle scheduler waits on this event before initiating the first cycle.
+        # Event to unblock position guards once startup position sync completes.
         self._recovery_complete = asyncio.Event()
+        # Event to block initial analysis cycles and quant strategies until market data warmup completes.
+        self._warmup_complete = asyncio.Event()
         self._activity_log = ActivityLogger()
         self._fallback_always_approved = False
         self._mt5_degraded = False

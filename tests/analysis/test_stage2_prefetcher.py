@@ -83,3 +83,46 @@ async def test_prefetch_asset_fetches_d1_history_for_all_symbols(symbol, mock_as
     assert "price_history_D1_recent" in res, f"D1 history not fetched for {symbol}"
     assert res["price_history_D1_recent"]["timeframe"] == "D1"
     assert any(t[0] == "get_price_history" and t[1] == "D1" and t[2] == symbol for t in executed_tools)
+
+
+@pytest.mark.asyncio
+async def test_prefetch_sentiment_tools_and_core_warnings(mock_async_session):
+    bundler = Stage2DataBundler(mock_async_session)
+
+    executed_calls = []
+
+    async def mock_execute(tool_name, inp):
+        executed_calls.append((tool_name, dict(inp)))
+        return {"data": "mock_val"}
+
+    bundler.executor.execute = AsyncMock(side_effect=mock_execute)
+
+    mock_issues = ["CORE DATA CONTRADICTION: DXY=strengthening but brief says USD='bearish'."]
+
+    with (
+        patch(
+            "monika.application.analysis.validators.core_data_validator.CoreDataValidator.validate_and_fetch_core_data",
+            new_callable=AsyncMock,
+        ) as mock_val,
+        patch("monika.core.validation.data_validator.validate_data_freshness", new_callable=AsyncMock) as mock_fresh,
+        patch("monika.core.validation.data_validator.check_data_coherence", new_callable=AsyncMock) as mock_coh,
+        patch(
+            "monika.infrastructure.ml.timesfm_engine.TimesFMEngine.get_latest_forecast", new_callable=AsyncMock
+        ) as mock_tfm,
+    ):
+        mock_val.return_value = (True, {}, mock_issues)
+        mock_fresh.return_value = {"ready": True, "errors": [], "warnings": []}
+        mock_coh.return_value = {"coherent": True, "issues": []}
+        mock_tfm.return_value = None
+
+        # 1. Test EURUSD: get_retail_sentiment receives {"symbol": "EURUSD"} and core_data_warnings is populated
+        bundle_eur, res_eur = await bundler.fetch_bundle("EURUSD")
+        assert "core_data_warnings" in res_eur
+        assert res_eur["core_data_warnings"] == mock_issues
+        assert any(call[0] == "get_retail_sentiment" and call[1] == {"symbol": "EURUSD"} for call in executed_calls)
+
+        # 2. Test XBRUSD: skips get_retail_sentiment, calls get_fxssi_sentiment with {"symbol": "XBRUSD"}
+        executed_calls.clear()
+        bundle_xbr, res_xbr = await bundler.fetch_bundle("XBRUSD")
+        assert not any(call[0] == "get_retail_sentiment" for call in executed_calls)
+        assert any(call[0] == "get_fxssi_sentiment" and call[1] == {"symbol": "XBRUSD"} for call in executed_calls)

@@ -188,11 +188,17 @@ class TwitterWatchScraper(BaseScraper):
         cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)
         collected_tweets = []
         scrolls = 0
-        max_scrolls = 15
+        max_scrolls = 8
         consecutive_old = 0
+        loop_deadline = time.monotonic() + 65.0
 
         while scrolls < max_scrolls:
             if getattr(self, "is_closed", False):
+                break
+            if time.monotonic() >= loop_deadline:
+                logger.info(
+                    f"Reached time budget (65s) in Twitter scroll loop with {len(collected_tweets)} tweets collected."
+                )
                 break
             articles = page_obj.eles("tag:article")
             for article in articles:

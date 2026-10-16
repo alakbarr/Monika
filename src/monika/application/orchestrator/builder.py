@@ -118,7 +118,8 @@ class AgentBuilderMixin:
         self.market_data_scheduler = MarketDataScheduler(
             self.settings, mt5_client=self.mt5_client, event_bus=self.event_bus
         )
-        self.macro_data_scheduler = MacroDataScheduler(self.settings, recovery_event=self._recovery_complete)
+        warmup_evt = getattr(self, "_warmup_complete", self._recovery_complete)
+        self.macro_data_scheduler = MacroDataScheduler(self.settings, recovery_event=warmup_evt)
 
         exec_cfg = self.settings.get("execution", {})
         adapter_type = exec_cfg.get("adapter_type", "live")
@@ -156,7 +157,7 @@ class AgentBuilderMixin:
             self.settings,
             execution_service=self.execution_service,
             market_data_scheduler=self.market_data_scheduler,
-            recovery_event=self._recovery_complete,
+            recovery_event=warmup_evt,
         )
 
         self.fundamental_stage = FundamentalStage(self.settings)
@@ -217,7 +218,7 @@ class AgentBuilderMixin:
             fundamental_stage=self.fundamental_stage,
             per_asset_stage=self.per_asset_stage,
             dry_run=self.dry_run,
-            recovery_event=self._recovery_complete,
+            recovery_event=warmup_evt,
             macro_data_scheduler=self.macro_data_scheduler,
             execution_service=self.execution_service,
         )

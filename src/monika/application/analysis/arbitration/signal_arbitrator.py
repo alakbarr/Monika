@@ -25,6 +25,22 @@ class ArbitrationResult:
     take_profit: Optional[float] = None
     meta: Dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def final_direction(self) -> str:
+        return self.decision
+
+    @property
+    def final_confidence(self) -> float:
+        return self.confidence
+
+    @property
+    def reasoning(self) -> str:
+        return self.arbitration_reason
+
+    @property
+    def conflict_detected(self) -> bool:
+        return bool(self.meta.get("conflict_detected", False))
+
 
 class SignalArbitrator:
     """
@@ -35,6 +51,24 @@ class SignalArbitrator:
     def __init__(self, settings: Optional[dict] = None, arbitration_cfg: Optional[dict] = None):
         self.settings = settings or {}
         self.arbitration_cfg = arbitration_cfg or self.settings.get("trading", {}).get("signal_arbitration", {})
+
+    async def _log_arbitration_telemetry(
+        self,
+        symbol: str,
+        quant_signal: Any,
+        llm_dir: str,
+        llm_conf: float,
+        regime: Any,
+        res: ArbitrationResult,
+    ) -> None:
+        """Helper for arbitration telemetry logging."""
+        q_dir = getattr(quant_signal, "direction", None) or (
+            quant_signal.get("direction") if isinstance(quant_signal, dict) else None
+        )
+        logger.info(
+            f"[{symbol}] Arbitration telemetry: source={res.selected_source}, decision={res.decision}, "
+            f"conf={res.confidence}, quant={q_dir}, llm={llm_dir} ({llm_conf}), regime={regime}"
+        )
 
     async def arbitrate(
         self,
@@ -230,6 +264,22 @@ class SignalArbitrator:
             conf = float(llm_decision.get("confidence", 0.7) or 0.7)
             risk_mult = float(llm_decision.get("risk_multiplier", 1.0) or 1.0)
 
+            if direction not in ("buy", "sell", "wait", "avoid"):
+                logger.warning(
+                    f"[{symbol}] Invalid or errored LLM state (LLM={direction.upper()}). Failing closed -> AVOID."
+                )
+                res = ArbitrationResult(
+                    symbol=symbol,
+                    decision="avoid",
+                    confidence=0.0,
+                    risk_multiplier=0.0,
+                    selected_source="fail_closed_llm_error",
+                    arbitration_reason=f"Fail-closed: LLM analysis returned '{direction}'.",
+                    meta={"conflict_detected": False, "llm_signal": direction},
+                )
+                await self._log_arbitration_telemetry(symbol, quant_signal, direction, conf, market_regime, res)
+                return res
+
             return ArbitrationResult(
                 symbol=symbol,
                 decision=direction,
@@ -250,6 +300,26 @@ class SignalArbitrator:
 
             q_conf = float(_get_q("confidence", 0.7) or 0.7)
             l_conf = float(llm_decision.get("confidence", 0.7) or 0.7)
+
+            if l_dir not in ("buy", "sell", "wait", "avoid"):
+                logger.warning(
+                    f"[{symbol}] Invalid or errored LLM state (LLM={l_dir.upper()} vs Quant={q_dir.upper()}). "
+                    f"Failing closed -> AVOID."
+                )
+                res = ArbitrationResult(
+                    symbol=symbol,
+                    decision="avoid",
+                    confidence=0.0,
+                    risk_multiplier=0.0,
+                    selected_source="fail_closed_llm_error",
+                    arbitration_reason=(
+                        f"Fail-closed: LLM analysis returned '{l_dir}', blocking unverified "
+                        f"Quant={q_dir.upper()} promotion."
+                    ),
+                    meta={"conflict_detected": True, "llm_signal": l_dir, "quant_signal": q_dir},
+                )
+                await self._log_arbitration_telemetry(symbol, quant_signal, l_dir, l_conf, market_regime, res)
+                return res
 
             boost_conf = float(
                 self.arbitration_cfg.get(

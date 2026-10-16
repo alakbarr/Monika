@@ -505,7 +505,7 @@ class GraphCycleScheduler(CycleScheduler):
 
         # IMP-8: Ensure only one cycle runs at a time
         if self._cycle_lock.locked():
-            logger.warning("Graph cycle already running — skipping concurrent invocation")
+            logger.info("Graph cycle already running — skipping concurrent invocation")
             return {"status": "skipped", "reason": "cycle_already_running"}
 
         async with self._cycle_lock:
