@@ -49,6 +49,9 @@ from monika.interfaces.cli.commands.inspect_ctrl import (
     _cmd_sessions,
     _cmd_setup,
 )
+from monika.interfaces.cli.commands.auth_ctrl import (
+    handle_auth_command,
+)
 from monika.interfaces.cli.commands.parser import (
     MonikaArgumentParser,
     parse_args,
@@ -57,6 +60,7 @@ from monika.interfaces.cli.commands.parser import (
 __all__ = [
     "MonikaArgumentParser",
     "parse_args",
+    "handle_auth_command",
     "_cmd_status",
     "_cmd_pause",
     "_cmd_resume",

@@ -322,6 +322,73 @@ def _register_builtins():
             **key_kwargs,
         )
 
+    def _create_zai(model_name, settings, role_config, task_role="default", **kwargs):
+        from monika.infrastructure.providers.zai_provider import ZAIProvider
+
+        max_tokens = role_config.get("max_tokens", 8192)
+        max_tool_turns = role_config.get("max_tool_turns", 15)
+        temperature = float(role_config.get("temperature", 0.0))
+        thinking_level = kwargs.get("thinking_level", "none")
+        provider_config = kwargs.get("provider_config", {})
+        base_url = provider_config.get("base_url") or kwargs.get("base_url")
+        key_kwargs = {"api_key": kwargs.get("api_key")} if kwargs.get("api_key") else {}
+        return ZAIProvider(
+            model=model_name,
+            max_tokens=max_tokens,
+            max_tool_turns=max_tool_turns,
+            thinking_level=thinking_level,
+            settings=settings,
+            temperature=temperature,
+            base_url=base_url,
+            role=task_role,
+            **key_kwargs,
+        )
+
+    def _create_codex(model_name, settings, role_config, task_role="default", **kwargs):
+        from monika.infrastructure.providers.codex_provider import CodexProvider
+
+        max_tokens = role_config.get("max_tokens", 8192)
+        max_tool_turns = role_config.get("max_tool_turns", 15)
+        temperature = float(role_config.get("temperature", 0.0))
+        thinking_level = kwargs.get("thinking_level", "none")
+        provider_config = kwargs.get("provider_config", {})
+        base_url = provider_config.get("base_url") or kwargs.get("base_url")
+        key_kwargs = {"api_key": kwargs.get("api_key")} if kwargs.get("api_key") else {}
+        return CodexProvider(
+            model=model_name,
+            max_tokens=max_tokens,
+            max_tool_turns=max_tool_turns,
+            thinking_level=thinking_level,
+            settings=settings,
+            temperature=temperature,
+            base_url=base_url,
+            role=task_role,
+            **key_kwargs,
+        )
+
+    def _create_antigravity(model_name, settings, role_config, task_role="default", **kwargs):
+        from monika.infrastructure.auth.antigravity_bridge import DEFAULT_ANTIGRAVITY_PROXY_URL
+        from monika.infrastructure.providers.openai_provider import OpenAIProvider
+
+        provider_config = kwargs.get("provider_config", {})
+        base_url = provider_config.get("base_url") or kwargs.get("base_url") or DEFAULT_ANTIGRAVITY_PROXY_URL
+        max_tokens = role_config.get("max_tokens", 8192)
+        max_tool_turns = role_config.get("max_tool_turns", 15)
+        temperature = float(role_config.get("temperature", 0.0))
+        thinking_level = kwargs.get("thinking_level", "none")
+        return OpenAIProvider(
+            model=model_name,
+            max_tokens=max_tokens,
+            max_tool_turns=max_tool_turns,
+            thinking_level=thinking_level,
+            settings=settings,
+            temperature=temperature,
+            role=task_role,
+            api_key="antigravity_local_token",
+            provider_name="antigravity",
+            base_url=base_url,
+        )
+
     ProviderRegistry.register("anthropic", _create_anthropic)
     ProviderRegistry.register("gemini", _create_gemini)
     ProviderRegistry.register("openai", _create_openai)
@@ -334,6 +401,12 @@ def _register_builtins():
     ProviderRegistry.register("9router", _create_9router)
     ProviderRegistry.register("ninerouter", _create_9router)
     ProviderRegistry.register("nine_router", _create_9router)
+    ProviderRegistry.register("zai", _create_zai)
+    ProviderRegistry.register("glm", _create_zai)
+    ProviderRegistry.register("z-ai", _create_zai)
+    ProviderRegistry.register("z.ai", _create_zai)
+    ProviderRegistry.register("codex", _create_codex)
+    ProviderRegistry.register("antigravity", _create_antigravity)
 
 
 _register_builtins()

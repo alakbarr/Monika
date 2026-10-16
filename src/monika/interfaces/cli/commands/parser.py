@@ -381,6 +381,27 @@ def parse_args(args_list: Optional[List[str]] = None) -> argparse.Namespace:
         "--force", action="store_true", default=False, help="Force backup even if disabled in config"
     )
 
+    # Command: auth
+    auth_parser = subparsers.add_parser(
+        "auth", help="Manage subscription and OAuth authentication (Z.AI, Antigravity, Claude, Codex)"
+    )
+    auth_sub = auth_parser.add_subparsers(dest="auth_action", help="Auth actions: status, login, logout")
+    auth_sub.add_parser("status", help="Show authentication status of all subscription providers")
+    login_p = auth_sub.add_parser("login", help="Authenticate with a subscription provider")
+    login_p.add_argument(
+        "provider",
+        nargs="?",
+        default=None,
+        choices=["zai", "glm", "claude", "anthropic", "codex", "chatgpt", "antigravity", "gemini"],
+        help="Provider name to login",
+    )
+    logout_p = auth_sub.add_parser("logout", help="Log out and clear stored tokens for a provider")
+    logout_p.add_argument(
+        "provider",
+        choices=["zai", "glm", "claude", "anthropic", "codex", "chatgpt"],
+        help="Provider name to logout",
+    )
+
     # Modular subcommands registry
     try:
         from monika.interfaces.cli.subcommands import AVAILABLE_SUBCOMMANDS

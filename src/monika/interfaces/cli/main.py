@@ -132,6 +132,7 @@ from monika.interfaces.cli.commands import (
     _cmd_stress_test,
     _cmd_tui,
     _cmd_unsuspend,
+    handle_auth_command,
     parse_args,
 )
 
@@ -195,6 +196,10 @@ async def _dispatch_cli(args: Any) -> None:
             await _cmd_stress_test(args)
         elif args.command == "backup":
             await _cmd_backup(args)
+        elif args.command == "auth":
+            code = handle_auth_command(args)
+            if code is not None and isinstance(code, int) and code != 0:
+                sys.exit(code)
         elif args.command in ("daemon", "simulation", "trading", "mcp", "runcard", "upgrade"):
             from monika.interfaces.cli.subcommands import AVAILABLE_SUBCOMMANDS
 

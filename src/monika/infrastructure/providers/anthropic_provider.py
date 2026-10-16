@@ -89,21 +89,40 @@ class AnthropicProvider(BaseLLMClient):
         from monika.core.security.credential_vault import vault
 
         api_key = kwargs.get("api_key") or vault.get_secret("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY", "")
+        auth_token = kwargs.get("auth_token")
+
+        if not api_key and not auth_token:
+            try:
+                from monika.infrastructure.auth.claude_oauth import resolve_claude_access_token
+
+                resolved_oauth = resolve_claude_access_token()
+                if resolved_oauth:
+                    auth_token = resolved_oauth
+                    logger.info("Using Claude Code OAuth token for AnthropicProvider.")
+            except Exception as e:
+                logger.debug("Failed to resolve Claude OAuth token: %s", e)
+
         if (
             not api_key
+            and not auth_token
             and hasattr(anthropic, "AsyncAnthropic")
             and "unittest.mock" in type(anthropic.AsyncAnthropic).__module__
         ):
             api_key = "mock_key"
 
-        if not api_key:
-            logger.error("ANTHROPIC_API_KEY not set. Claude will not function.")
+        if not api_key and not auth_token:
+            logger.error("Neither ANTHROPIC_API_KEY nor Claude OAuth token found. Claude will not function.")
             self.client = None
         else:
             provider_cfg = (settings or {}).get("llm", {}).get("providers", {}).get("anthropic", {})
             max_retries = provider_cfg.get("max_retries", 3)
             timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
-            self.client = anthropic.AsyncAnthropic(api_key=api_key, max_retries=max_retries, timeout=timeout_sec)
+            client_kwargs: dict[str, Any] = {"max_retries": max_retries, "timeout": timeout_sec}
+            if auth_token:
+                client_kwargs["auth_token"] = auth_token
+            else:
+                client_kwargs["api_key"] = api_key
+            self.client = anthropic.AsyncAnthropic(**client_kwargs)
 
     def set_thinking_budget(self, budget: int) -> None:
         """Sets thinking budget and resolves corresponding Anthropic thinking parameters."""
