@@ -433,6 +433,20 @@ class OpenRouterProvider(OpenAIProvider):
         require_params = bool(or_cfg.get("require_parameters", False))
         sort_pref = str(or_cfg.get("sort", "latency"))
         provider_order = or_cfg.get("order")
+
+        # Sticky cache routing: if order is not specified in config, resolve deterministic primary provider
+        # based on model family to prevent multi-host KV cache destruction across consecutive calls.
+        if not provider_order or not isinstance(provider_order, list):
+            model_lower = (self.model or "").lower()
+            if "deepseek" in model_lower:
+                provider_order = ["DeepSeek", "Together", "Fireworks", "DeepInfra"]
+            elif "anthropic" in model_lower or "claude" in model_lower:
+                provider_order = ["Anthropic"]
+            elif "qwen" in model_lower:
+                provider_order = ["Together", "Fireworks", "DeepInfra", "Novita"]
+            elif "meta-llama" in model_lower or "llama" in model_lower:
+                provider_order = ["Together", "Fireworks", "DeepInfra"]
+
         extra = kwargs.setdefault("extra_body", {})
         if isinstance(extra, dict) and "provider" not in extra:
             prov_dict: dict[str, Any] = {
@@ -456,6 +470,8 @@ class OpenRouterProvider(OpenAIProvider):
         if isinstance(headers, dict):
             if "X-Session-ID" not in headers:
                 headers["X-Session-ID"] = str(session_id)
+            if "x-session-id" not in headers:
+                headers["x-session-id"] = str(session_id)
             if "HTTP-Referer" not in headers:
                 headers["HTTP-Referer"] = "https://github.com/alakbarr/Monika"
             if "X-Title" not in headers:

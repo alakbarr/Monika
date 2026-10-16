@@ -800,6 +800,10 @@ class BaseLLMClient(LlmPort, ABC):
         """Save comprehensive token usage to DB. Shared implementation for all providers."""
         if input_tokens == 0 and output_tokens == 0:
             return
+
+        # Normalization: ensure input_tokens always represents total prompt tokens (input_tokens >= cached_tokens)
+        if cached_tokens > input_tokens:
+            input_tokens = input_tokens + cached_tokens
         try:
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.models import TokenUsageLog

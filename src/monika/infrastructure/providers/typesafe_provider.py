@@ -295,11 +295,16 @@ class TypeSafeProvider(BaseLLMClient):
                 latency_ms = int((time.perf_counter() - t0) * 1000)
                 input_tokens = getattr(response.usage, "input_tokens", 0)
                 output_tokens = getattr(response.usage, "output_tokens", 0)
+                cached_tokens = getattr(response.usage, "cached_tokens", 0) or 0
+                pt_details = getattr(response.usage, "prompt_tokens_details", None)
+                if not cached_tokens and pt_details is not None:
+                    cached_tokens = getattr(pt_details, "cached_tokens", 0) or 0
                 await self._save_token_usage(
                     model_name=self.model,
                     task_name=task_name,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
+                    cached_tokens=cached_tokens,
                     latency_ms=latency_ms,
                     session=kwargs.get("session"),
                 )
@@ -377,12 +382,17 @@ class TypeSafeProvider(BaseLLMClient):
             # 4. Token & Cost Logging
             input_tokens = getattr(response.usage, "input_tokens", 0)
             output_tokens = getattr(response.usage, "output_tokens", 0)
+            cached_tokens = getattr(response.usage, "cached_tokens", 0) or 0
+            pt_details = getattr(response.usage, "prompt_tokens_details", None)
+            if not cached_tokens and pt_details is not None:
+                cached_tokens = getattr(pt_details, "cached_tokens", 0) or 0
 
             await self._save_token_usage(
                 model_name=self.model,
                 task_name=task_name,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
+                cached_tokens=cached_tokens,
                 session=session,
                 task_role=self.role,
                 subsystem=self.subsystem,

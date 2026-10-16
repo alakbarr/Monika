@@ -96,9 +96,49 @@ async def test_token_auditor_summary_and_breakdowns(db_session):
         assert isinstance(cache_audit, dict)
         assert cache_audit["total_input_tokens"] == 1000
         assert cache_audit["cache_read_tokens"] == 100
+        assert cache_audit["uncached_input_tokens"] == 900
         assert cache_audit["global_cache_hit_rate_pct"] == 10.0
+        assert cache_audit["estimated_savings_usd"] == round(100 * 0.0000015, 6)
         assert len(cache_audit["model_cache_breakdown"]) == 1
         assert cache_audit["model_cache_breakdown"][0]["model_name"] == "claude-3-7-sonnet"
+
+
+@pytest.mark.asyncio
+async def test_token_auditor_cache_normalization_and_bounding(db_session):
+    """Verify TokenAuditor handles edge-cases where cached_tokens >= input_tokens gracefully."""
+    legacy_log = TokenUsageLog(
+        task_role="stage2_per_asset_primary",
+        provider="anthropic",
+        task_name="stage2",
+        subsystem="analysis",
+        symbol="EURUSD",
+        model_name="claude-3-7-sonnet",
+        input_tokens=100,  # Uncached only
+        output_tokens=50,
+        total_tokens=150,
+        cached_tokens=900,  # Cached read was 900
+        cost_estimate=0.005,
+        status="success",
+        timestamp=datetime.now(timezone.utc),
+    )
+    db_session.add(legacy_log)
+    await db_session.commit()
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield db_session
+
+    with patch("monika.core.analytics.token_auditor.get_session", side_effect=mock_get_session):
+        summary = await TokenAuditor.get_summary(hours=24)
+        assert summary["cache_hit_rate_pct"] <= 100.0
+        assert summary["cache_hit_rate_pct"] == 90.0  # 900 / 1000 * 100
+
+        cache_audit = await TokenAuditor.get_cache_performance_audit(hours=24)
+        assert cache_audit["total_input_tokens"] == 1000
+        assert cache_audit["cache_read_tokens"] == 900
+        assert cache_audit["uncached_input_tokens"] == 100
+        assert cache_audit["global_cache_hit_rate_pct"] == 90.0
+        assert cache_audit["estimated_savings_usd"] == round(900 * 0.0000015, 6)
 
 
 @pytest.mark.asyncio

@@ -242,12 +242,14 @@ class AnthropicProvider(BaseLLMClient):
                     response = await self.client.messages.create(**create_kwargs)
 
                 if hasattr(response, "usage") and response.usage:
-                    inp = getattr(response.usage, "input_tokens", 0)
+                    raw_inp = getattr(response.usage, "input_tokens", 0)
                     outp = getattr(response.usage, "output_tokens", 0)
                     cached_in = getattr(response.usage, "cache_read_input_tokens", 0) or 0
                     cache_create = getattr(response.usage, "cache_creation_input_tokens", 0) or 0
                     outp_details = getattr(response.usage, "output_tokens_details", None)
                     thinking = getattr(outp_details, "thinking_tokens", 0) or 0 if outp_details else 0
+                    # Normalize input_tokens to total prompt tokens (uncached + cached_read)
+                    inp = raw_inp + cached_in
                     await self._save_token_usage(
                         self.model,
                         "generate",
@@ -424,12 +426,14 @@ class AnthropicProvider(BaseLLMClient):
                 return None
 
             if hasattr(response, "usage") and response.usage:
-                inp = getattr(response.usage, "input_tokens", 0)
+                raw_inp = getattr(response.usage, "input_tokens", 0)
                 outp = getattr(response.usage, "output_tokens", 0)
                 cached_in = getattr(response.usage, "cache_read_input_tokens", 0) or 0
                 cache_create = getattr(response.usage, "cache_creation_input_tokens", 0) or 0
                 outp_details = getattr(response.usage, "output_tokens_details", None)
                 thinking = getattr(outp_details, "thinking_tokens", 0) or 0 if outp_details else 0
+                # Normalize input_tokens to total prompt tokens (uncached + cached_read)
+                inp = raw_inp + cached_in
                 await self._save_token_usage(
                     self.model,
                     "classify_json_structured",
@@ -630,9 +634,11 @@ class AnthropicProvider(BaseLLMClient):
                     return {"success": False, "reply": f"API error: {e}", "error": str(e)}
 
                 if hasattr(response, "usage") and response.usage:
-                    total_input += getattr(response.usage, "input_tokens", 0)
+                    raw_in = getattr(response.usage, "input_tokens", 0)
+                    cached_in = getattr(response.usage, "cache_read_input_tokens", 0) or 0
+                    total_input += raw_in + cached_in
                     total_output += getattr(response.usage, "output_tokens", 0)
-                    total_cache_read += getattr(response.usage, "cache_read_input_tokens", 0) or 0
+                    total_cache_read += cached_in
                     total_cache_create += getattr(response.usage, "cache_creation_input_tokens", 0) or 0
                     outp_details = getattr(response.usage, "output_tokens_details", None)
                     thinking = getattr(outp_details, "thinking_tokens", 0) or 0 if outp_details else 0

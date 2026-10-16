@@ -40,6 +40,7 @@ async def run_audit(args):
     if args.json:
         full_data = {
             "summary": summary,
+            "cache_audit": await TokenAuditor.get_cache_performance_audit(hours=hours),
             "by_role": await TokenAuditor.get_role_breakdown(hours=hours),
             "by_subsystem": await TokenAuditor.get_subsystem_breakdown(hours=hours),
             "by_symbol": await TokenAuditor.get_symbol_breakdown(hours=hours),
@@ -66,7 +67,27 @@ async def run_audit(args):
         print(f"Average API Latency    : {summary['avg_latency_ms']:.1f} ms")
     print("=" * 80)
 
-    if args.by_subsystem or not (args.by_role or args.by_symbol or args.by_provider or args.recent):
+    if args.cache:
+        print("\n PROMPT CACHE PERFORMANCE AUDIT:")
+        print("=" * 80)
+        cache_audit = await TokenAuditor.get_cache_performance_audit(hours=hours)
+        print(f"Total API Calls         : {cache_audit['total_calls']:,}")
+        print(f"Total Input Tokens      : {cache_audit['total_input_tokens']:,}")
+        print(f"Cache Read Tokens       : {cache_audit['cache_read_tokens']:,}")
+        print(f"Cache Creation Tokens   : {cache_audit['cache_creation_tokens']:,}")
+        print(f"Uncached Input Tokens   : {cache_audit['uncached_input_tokens']:,}")
+        print(f"Global Cache Hit Rate   : {cache_audit['global_cache_hit_rate_pct']:.2f}%")
+        print(f"Estimated Savings (USD) : ${cache_audit['estimated_savings_usd']:.6f}")
+        print("-" * 80)
+        print(f"{'Model Name':<35} | {'Calls':<6} | {'Input':<10} | {'Cached':<10} | {'Hit Rate %':<10}")
+        print("-" * 80)
+        for m in cache_audit["model_cache_breakdown"]:
+            print(
+                f"{m['model_name']:<35} | {m['calls']:<6} | {m['input_tokens']:<10,} | {m['cached_tokens']:<10,} | {m['cache_hit_rate_pct']:>9.2f}%"
+            )
+        print("=" * 80)
+
+    if args.by_subsystem or not (args.by_role or args.by_symbol or args.by_provider or args.recent or args.cache):
         print("\n BREAKDOWN PER SUBSYSTEM:")
         print(
             f"{'Subsystem':<15} | {'Calls':<8} | {'Total Tokens':<14} | {'Cached':<10} | {'Cost (USD)':<12} | {'% Cost':<8}"
@@ -78,7 +99,7 @@ async def run_audit(args):
                 f"{s['subsystem']:<15} | {s['calls']:<8} | {s['sum_total']:<14,} | {s['sum_cached']:<10,} | ${s['sum_cost_usd']:<11.4f} | {s['pct_cost']:>5.1f}%"
             )
 
-    if args.by_role or not (args.by_subsystem or args.by_symbol or args.by_provider or args.recent):
+    if args.by_role or not (args.by_subsystem or args.by_symbol or args.by_provider or args.recent or args.cache):
         print("\n[AI] BREAKDOWN PER TASK ROLE (32 Task Roles):")
         print(
             f"{'Task Role':<35} | {'Subsystem':<12} | {'Calls':<6} | {'Avg In':<9} | {'Avg Out':<8} | {'Avg Total':<10} | {'Cost (USD)':<10}"
@@ -128,6 +149,7 @@ def main():
     parser = argparse.ArgumentParser(description="Audit token consumption of AI Trading Agent.")
     parser.add_argument("--hours", type=int, default=24, help="Time window in hours (default: 24)")
     parser.add_argument("--days", type=int, default=None, help="Time window in days (overrides --hours)")
+    parser.add_argument("--cache", action="store_true", help="Show prompt cache performance audit")
     parser.add_argument("--by-role", action="store_true", help="Show breakdown per task role")
     parser.add_argument("--by-subsystem", action="store_true", help="Show breakdown per subsystem")
     parser.add_argument("--by-symbol", action="store_true", help="Show breakdown per currency/symbol")
