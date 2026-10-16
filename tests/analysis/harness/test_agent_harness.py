@@ -531,3 +531,96 @@ async def test_harness_anti_laziness_allows_wait_with_prefetch_satisfied_tools(d
     assert mock_executor.execute.call_count == 1
     call_args = mock_executor.execute.call_args[0]
     assert call_args[0] == "submit_asset_analysis"
+
+
+@pytest.mark.asyncio
+async def test_harness_anti_laziness_allows_wait_with_suffixed_prefetch_tools(dummy_client, mock_session):
+    """Verify that suffixed/prefixed prefetch keys satisfy anti-laziness on Turn 1."""
+    harness = AgentHarness(dummy_client, max_tool_turns=3)
+
+    mock_executor = AsyncMock()
+    mock_executor.execute = AsyncMock(return_value={"status": "submitted"})
+
+    resp1 = MockResponse(
+        content=[
+            MockBlock(
+                "tool_use",
+                name="submit_asset_analysis",
+                input={"symbol": "GBPUSD", "decision": "WAIT", "timeframe": "M15"},
+                id="c1",
+            )
+        ],
+        stop_reason="tool_use",
+        input_tokens=50,
+        output_tokens=20,
+    )
+    resp2 = MockResponse(
+        content=[MockBlock("text", text="Analysis complete")],
+        stop_reason="end_turn",
+        input_tokens=50,
+        output_tokens=20,
+    )
+    dummy_client.mock_run_tool_agent.side_effect = [resp1, resp2]
+
+    # Real keys produced by Stage2DataBundler
+    suffixed_prefetch = {
+        "get_smc_zones_H4",
+        "price_history_D1_recent",
+        "structure_breaks_D1",
+        "get_technical_indicators_D1",
+    }
+
+    result = await harness.run_agent_from_messages(
+        session=mock_session,
+        system_prompt="Analyze GBPUSD",
+        messages=[{"role": "user", "content": "Start"}],
+        tools=[{"name": "submit_asset_analysis"}],
+        stage_name="per_asset_GBPUSD",
+        prefetch_satisfied_tools=suffixed_prefetch,
+        tool_executor=mock_executor,
+    )
+
+    assert result["success"] is True
+    assert mock_executor.execute.call_count == 1
+    call_args = mock_executor.execute.call_args[0]
+    assert call_args[0] == "submit_asset_analysis"
+
+
+def test_harness_per_turn_timeout_setting_default(dummy_client):
+    """Verify AgentHarness initializes per_turn_timeout_seconds from settings or default 90.0."""
+    harness_default = AgentHarness(dummy_client)
+    assert harness_default.per_turn_timeout_seconds == 90.0
+
+    harness_custom = AgentHarness(dummy_client, settings={"llm": {"per_turn_timeout_seconds": 45.0}})
+    assert harness_custom.per_turn_timeout_seconds == 45.0
+
+
+@pytest.mark.asyncio
+async def test_harness_per_turn_timeout_abort(dummy_client, mock_session):
+    """Verify that a hanging run_tool_agent is aborted by turn_timeout and retried with clamp."""
+    import asyncio
+
+    harness = AgentHarness(dummy_client, max_tool_turns=3)
+
+    async def slow_call(*args, **kwargs):
+        await asyncio.sleep(0.5)
+        return MockResponse(
+            content=[MockBlock("text", text="Too late")],
+            stop_reason="end_turn",
+        )
+
+    dummy_client.mock_run_tool_agent.side_effect = slow_call
+
+    result = await harness.run_agent_from_messages(
+        session=mock_session,
+        system_prompt="Analyze GBPUSD",
+        messages=[{"role": "user", "content": "Start"}],
+        tools=[{"name": "submit_asset_analysis"}],
+        stage_name="per_asset_GBPUSD",
+        turn_timeout_seconds=0.05,
+    )
+
+    assert result["success"] is False
+    assert "timed out after 0s" in result["error"]
+    # Retried once: 2 attempts total (max_retry_attempts = 2 for timeout)
+    assert dummy_client.mock_run_tool_agent.call_count == 2

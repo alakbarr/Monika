@@ -5,6 +5,7 @@
 
 import asyncio
 import logging
+import re
 from datetime import timedelta
 from typing import Optional
 
@@ -486,17 +487,30 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         prefetch_satisfied_tools = set()
         if isinstance(raw_bundle_data, dict):
             for k, v in raw_bundle_data.items():
-                if k.startswith("get_"):
-                    is_valid = False
-                    if isinstance(v, dict):
-                        is_valid = bool(v) and not v.get("error")
-                    elif isinstance(v, list):
-                        is_valid = bool(v)
-                    elif v is not None:
-                        is_valid = True
+                is_valid = False
+                if isinstance(v, dict):
+                    is_valid = bool(v) and not v.get("error")
+                elif isinstance(v, list):
+                    is_valid = bool(v)
+                elif v is not None:
+                    is_valid = True
 
-                    if is_valid:
-                        prefetch_satisfied_tools.add(k)
+                if is_valid:
+                    prefetch_satisfied_tools.add(k)
+                    # Normalize to base tool name for inspection guards matching
+                    if k.startswith("get_"):
+                        base_k = re.sub(r"_(?:M15|M30|H1|H4|D1|W1|MN|recent)$", "", k)
+                        prefetch_satisfied_tools.add(base_k)
+                    elif k.startswith("price_history_"):
+                        prefetch_satisfied_tools.add("get_price_history")
+                    elif k.startswith("smc_zones_"):
+                        prefetch_satisfied_tools.add("get_smc_zones")
+                    elif k.startswith("structure_breaks_"):
+                        prefetch_satisfied_tools.add("get_structure_breaks")
+                    elif k.startswith("swing_points_"):
+                        prefetch_satisfied_tools.add("get_swing_points")
+                    elif k.startswith("technical_indicators_"):
+                        prefetch_satisfied_tools.add("get_technical_indicators")
 
         # Rate limiting
         try:
@@ -543,33 +557,15 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         except Exception as e:
             logger.debug(f"[{symbol}] Adaptive thinking budget allocation error (non-fatal): {e}")
 
-        stage_timeout = float((self.settings or {}).get("trading", {}).get("per_asset_timeout_seconds", 600.0))
-        try:
-            result = await asyncio.wait_for(
-                active_client.run_agent(
-                    session=session,
-                    system_prompt=system_prompt,
-                    user_message=user_message,
-                    tools=dynamic_tools,
-                    stage_name=f"per_asset_{symbol}",
-                    extra_context=extra_context_str if extra_context_str else None,
-                    prefetch_satisfied_tools=prefetch_satisfied_tools,
-                ),
-                timeout=stage_timeout,
-            )
-        except asyncio.TimeoutError:
-            msg = f"Per-asset analysis TIMEOUT for {symbol} (>{stage_timeout:.0f}s). Aborting."
-            logger.error(msg)
-            await self._log(session, msg, category="error")
-            elapsed = (_get_clock().now() - start_time).total_seconds()
-            return {
-                "success": False,
-                "symbol": symbol,
-                "decision": "error",
-                "error": f"Timeout exceeded ({stage_timeout:.0f}s)",
-                "elapsed_seconds": elapsed,
-            }
-
+        result = await active_client.run_agent(
+            session=session,
+            system_prompt=system_prompt,
+            user_message=user_message,
+            tools=dynamic_tools,
+            stage_name=f"per_asset_{symbol}",
+            extra_context=extra_context_str if extra_context_str else None,
+            prefetch_satisfied_tools=prefetch_satisfied_tools,
+        )
         elapsed = (_get_clock().now() - start_time).total_seconds()
 
         if not result["success"]:
@@ -602,8 +598,6 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         ).scalar_one_or_none()
 
         if analysis:
-            import re
-
             m = re.search(r"Market Regime:\s*([^\n]+)", extra_context or "")
             if m:
                 analysis.market_regime_at_analysis = m.group(1).strip()

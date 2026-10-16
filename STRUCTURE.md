@@ -2789,7 +2789,8 @@ Monika/
 │   │   ├── check_cme.py
 │   │   ├── check_news.py
 │   │   ├── check_sentiment.py
-│   │   └── check_twitter.py
+│   │   ├── check_twitter.py
+│   │   └── verify_all_scrapers.py
 │   ├── empirical_alpha/
 │   │   ├── __init__.py
 │   │   ├── asset_pool_signals.py
@@ -2930,4 +2931,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 250 | **Total Tracked Files**: 2650
+**Total Tracked Directories**: 250 | **Total Tracked Files**: 2651

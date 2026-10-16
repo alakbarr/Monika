@@ -83,6 +83,7 @@ class LLMConfig(SubscriptableConfig):
     providers: dict[str, Any] | None = None
     model_catalog: dict[str, Any] | None = None
     credential_pool: dict[str, Any] | None = None
+    per_turn_timeout_seconds: float | None = Field(default=90.0, ge=5.0, le=600.0)
 
 
 class SchedulerConfig(SubscriptableConfig):

@@ -100,6 +100,9 @@ class AgentHarness:
         self.max_tool_turns = max_tool_turns
         self.max_context_chars = max_context_chars
         self.db_session = db_session
+        self.per_turn_timeout_seconds = float(
+            (self.settings or {}).get("llm", {}).get("per_turn_timeout_seconds", 90.0)
+        )
         self.compactor = ContextCompactionEngine(self.settings)
         from monika.application.analysis.tools.tool_guardrails import ToolGuardrailController
 
@@ -744,6 +747,7 @@ class AgentHarness:
         session = session or getattr(self, "db_session", None)
         effective_max_turns = max_tool_turns or self.max_tool_turns
         stage_symbol = stage_name.replace("per_asset_", "") if stage_name.startswith("per_asset_") else None
+        turn_timeout = float(kwargs.get("turn_timeout_seconds") or getattr(self, "per_turn_timeout_seconds", 90.0))
 
         # Minify tool definitions to eliminate verbose schema bloat across multi-turn ReAct loop
         if tools:
@@ -1041,7 +1045,13 @@ class AgentHarness:
                                 else:
                                     send_messages.append({"role": "user", "content": snapshot_text})
 
-                        response = await self.llm_client.run_tool_agent(send_messages, tools, effective_sys)
+                        try:
+                            response = await asyncio.wait_for(
+                                self.llm_client.run_tool_agent(send_messages, tools, effective_sys),
+                                timeout=turn_timeout,
+                            )
+                        except (asyncio.TimeoutError, TimeoutError) as to_err:
+                            raise TimeoutError(f"Turn {turns} LLM call timed out after {turn_timeout:.0f}s") from to_err
                         break
                     except Exception as exc:
                         last_exc = exc
@@ -1098,14 +1108,16 @@ class AgentHarness:
                                 await asyncio.sleep(backoff)
                                 continue
 
+                        is_timeout_err = isinstance(exc, (TimeoutError, asyncio.TimeoutError))
+                        max_retry_attempts = 2 if is_timeout_err else max_attempts
                         if (
                             classified.recovery == RecoveryAction.RETRY_SAME or self._is_transient_error(exc)
-                        ) and attempt < max_attempts - 1:
+                        ) and attempt < max_retry_attempts - 1:
                             raw_backoff = classified.retry_delay if classified.retry_delay > 0 else (2.0 * (2**attempt))
                             backoff = raw_backoff * (1.0 - random.random() * 0.1)
                             logger.warning(
                                 f"[{stage_name}][AgentHarness] Retryable error on turn {turns} "
-                                f"(attempt {attempt + 1}/{max_attempts}): {exc}. Retrying in {backoff:.2f}s..."
+                                f"(attempt {attempt + 1}/{max_retry_attempts}): {exc}. Retrying in {backoff:.2f}s..."
                             )
                             await asyncio.sleep(backoff)
                             continue
@@ -1688,7 +1700,29 @@ class AgentHarness:
                             "get_atr",
                             "get_swing_points",
                         }
-                        all_inspected_tools = set(called_tools) | set(prefetch_satisfied_tools or [])
+
+                        def _normalize_inspection_name(t_name: str) -> str:
+                            name = re.sub(r"_(?:M15|M30|H1|H4|D1|W1|MN|recent)$", "", str(t_name))
+                            if name.startswith("price_history"):
+                                return "get_price_history"
+                            if name.startswith("smc_zones"):
+                                return "get_smc_zones"
+                            if name.startswith("structure_breaks"):
+                                return "get_structure_breaks"
+                            if name.startswith("indicator_snapshot") or name.startswith("technical_indicators"):
+                                return "get_indicator_snapshot"
+                            if name.startswith("swing_points"):
+                                return "get_swing_points"
+                            if name.startswith("atr"):
+                                return "get_atr"
+                            if name.startswith("mt5_bars") or name.startswith("multi_timeframe_candles"):
+                                return "get_mt5_bars"
+                            if not name.startswith("get_") and f"get_{name}" in inspection_tools:
+                                return f"get_{name}"
+                            return name
+
+                        raw_inspected = set(called_tools) | set(prefetch_satisfied_tools or [])
+                        all_inspected_tools = {_normalize_inspection_name(t) for t in raw_inspected} | raw_inspected
                         if not any(t in all_inspected_tools for t in inspection_tools):
                             logger.warning(
                                 f"[{stage_name}][AgentHarness] Anti-laziness: blocked premature WAIT on turn 1 without technical inspection."

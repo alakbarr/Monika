@@ -3,6 +3,7 @@ Monika Unified Error Taxonomy & Recovery Strategy Assignment.
 Synthesizes provider failover reasons, agent harness error categories, and MT5 trading domain constraints.
 """
 
+import asyncio
 import copy
 import logging
 import re
@@ -605,7 +606,9 @@ class ErrorClassifier:
             )
 
         # Transient network timeouts and resets
-        if any(m in err_str for m in ("timeout", "connection", "reset", "eof", "broken pipe", "timed out")):
+        if isinstance(exc, (TimeoutError, asyncio.TimeoutError)) or any(
+            m in err_str for m in ("timeout", "connection", "reset", "eof", "broken pipe", "timed out")
+        ):
             return ClassifiedError(
                 category=ErrorCategory.TRANSIENT_NETWORK,
                 recovery=RecoveryAction.RETRY_SAME,
