@@ -97,3 +97,38 @@ class TestTradingViewNewsScraper:
         with patch.dict(os.environ, {"TRADINGVIEW_WATCHLIST_ID": "777777"}):
             s3 = TradingViewNewsScraper()
             assert s3.target_url == "https://www.tradingview.com/news-flow/?watchlist=777777"
+
+    @patch("monika.infrastructure.data_ingestion.scrapers.news.tradingview_news.BaseScraper._initialize_browser")
+    def test_tradingview_empty_state_falls_back_to_public_flow(self, mock_init):
+        mock_page = MagicMock()
+        mock_init.return_value = mock_page
+
+        scraper = TradingViewNewsScraper(watchlist_id="12345")
+        scraper._prepare_session = MagicMock(return_value=True)
+        scraper.navigate_with_fallback = MagicMock(return_value=True)
+
+        empty_card = MagicMock()
+        mock_page.ele.side_effect = lambda sel, timeout=None: empty_card if "empty-state-cards" in sel else None
+
+        a1 = MagicMock()
+        parent_a = MagicMock()
+        parent_a.attr.return_value = "/news/public-1"
+        a1.parent.return_value = parent_a
+        title_ele = MagicMock()
+        title_ele.text = "This is a headline from public news flow"
+        time_ele = MagicMock()
+        time_ele.attr.return_value = "2026-10-16T00:00:00Z"
+        body_ele = MagicMock()
+        body_ele.text = "Body summary from public news flow"
+        a1.ele.side_effect = lambda sel, timeout=None: (
+            title_ele if "title" in sel else (time_ele if "time" in sel else body_ele)
+        )
+        mock_page.eles.side_effect = lambda sel, timeout=None: [a1] if "news-headline-card" in sel else []
+
+        news = scraper.fetch_news(limit=5)
+        # Verify it navigated to public news flow
+        assert any(
+            "https://www.tradingview.com/news-flow/" in str(c) for c in scraper.navigate_with_fallback.call_args_list
+        )
+        assert len(news) == 1
+        assert news[0].title == "This is a headline from public news flow"

@@ -20,7 +20,7 @@ class TradingViewNewsScraper(BaseScraper):
         watchlist_id: Optional[str] = None,
         settings: Optional[dict] = None,
     ):
-        super().__init__(headless, profile_name=profile_name)
+        super().__init__(headless, profile_name=profile_name, load_mode="eager", no_imgs=True)
         wl_id = watchlist_id
         if not wl_id and settings:
             wl_id = settings.get("scraping", {}).get("tradingview_watchlist_id") or settings.get("scrapers", {}).get(
@@ -38,24 +38,34 @@ class TradingViewNewsScraper(BaseScraper):
             self.target_url = "https://www.tradingview.com/news-flow/"
         self._cookies_injected = False
 
-    def _prepare_session(self):
+    def _prepare_session(self) -> None:
         """Injeksi cookie TradingView sebelum navigasi ke halaman watchlist."""
-        if self._cookies_injected or not self.page:
+        if self._cookies_injected:
+            return
+        if not self.page:
             return
         try:
             page_obj: Any = self.page
             import json
             import os
+            from pathlib import Path
 
-            session_path = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                "data",
-                "sessions",
-                "tv_session.json",
-            )
-            if os.path.exists(session_path):
+            from monika.infrastructure.infra.paths import DATA_DIR
+
+            candidate_paths = [
+                str(DATA_DIR / "sessions" / "tv_session.json"),
+                str(Path("data") / "sessions" / "tv_session.json"),
+                os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                    "data",
+                    "sessions",
+                    "tv_session.json",
+                ),
+            ]
+            session_file = next((p for p in candidate_paths if os.path.exists(p)), None)
+            if session_file is not None:
                 try:
-                    with open(session_path, "r", encoding="utf-8") as f:
+                    with open(session_file, "r", encoding="utf-8") as f:
                         cookies = json.load(f)
                     page_obj.get("https://www.tradingview.com/robots.txt")
                     page_obj.set.cookies(cookies)
@@ -178,17 +188,37 @@ class TradingViewNewsScraper(BaseScraper):
 
         news_list = []
         try:
+            # 1. Siapkan sesi cookie bila target berupa watchlist privat
+            if self.watchlist_id and "watchlist=" in self.target_url:
+                self._prepare_session()
+                if not self._cookies_injected:
+                    logger.info("No TradingView session cookies found; using public news-flow.")
+                    self.target_url = "https://www.tradingview.com/news-flow/"
+
             logger.info(f"Navigating to TradingView News: {self.target_url}")
-            wait_sel = (
-                'css:[data-qa-id="news-headline-card"], [data-name="news-headline-card"], a[href*="/news/"], article'
-            )
-            success = self.navigate_with_fallback(self.target_url, wait_sel, timeout=30)
+            wait_sel = 'css:[data-qa-id="news-headline-card"], [data-name="news-headline-card"], a[href*="/news/"], article, [data-qa-id="empty-state-cards"]'
+            success = self.navigate_with_fallback(self.target_url, wait_sel, timeout=15)
             if not success or not self.page:
                 logger.warning(
                     "Failed to load TradingView news page or locate headline cards (anti-bot challenge or slow CDN)."
                 )
             else:
                 page_obj: Any = self.page
+                # Deteksi jika watchlist kosong / unauthenticated (empty-state-cards)
+                if "watchlist=" in self.target_url:
+                    try:
+                        empty_state = page_obj.ele('css:[data-qa-id="empty-state-cards"]', timeout=0.5)
+                        if empty_state:
+                            logger.info(
+                                "Watchlist empty state rendered; falling back to public TradingView news flow..."
+                            )
+                            public_sel = 'css:[data-qa-id="news-headline-card"], [data-name="news-headline-card"], a[href*="/news/"], article'
+                            self.navigate_with_fallback(
+                                "https://www.tradingview.com/news-flow/", public_sel, timeout=12
+                            )
+                    except Exception:
+                        pass
+
                 # Kumpulkan link dan metadata terlebih dahulu
                 count = 0
                 articles = page_obj.eles(

@@ -317,21 +317,16 @@ class InvestingCalendarScraper(BaseScraper):
     def _fallback_forexfactory(self) -> List[CalendarEvent]:
         """Secondary seamless failover if Investing.com is unreachable or throttled."""
         try:
-            try:
-                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
-                    ForexFactoryCalendarScraper,
-                )
-            except ImportError:
-                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
-                    ForexFactoryCalendarScraper,
-                )
-            ff = ForexFactoryCalendarScraper(headless=True)
-            events = ff.fetch_feed_events()
+            from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
+                fetch_forexfactory_feed_direct,
+            )
+
+            events = fetch_forexfactory_feed_direct()
             if events:
                 logger.info(f"Failover successful: retrieved {len(events)} events from ForexFactory JSON backup feed.")
                 return events
         except Exception as e:
-            logger.error(f"Secondary ForexFactory calendar failover error: {e}")
+            logger.error(f"Secondary ForexFactory calendar direct failover error: {e}")
         return []
 
     def _parse_table_html(self, soup: BeautifulSoup, all_events_dict: dict) -> List[CalendarEvent]:

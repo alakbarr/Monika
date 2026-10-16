@@ -250,3 +250,77 @@ async def test_coinglass_funding_bybit_open_interest_fallback():
         oi_res = await fetcher.fetch_open_interest_btc()
         assert oi_res["status"] == "success"
         assert oi_res["open_interest_usd"] == 58142.32
+
+
+def test_fxssi_fetch_via_http_success():
+    """Verify FXSSISentimentFetcher._fetch_via_http parses SSR HTML directly."""
+    fetcher = FXSSISentimentFetcher(session=MagicMock())
+    sample_html = """
+    <html><body>
+        <div class="cur-rat-container">
+            <div class="cur-rat-cur-pair" data-filter="EURUSD">
+                <div class="cur-rat-broker" data-name="Average">
+                    <div class="ratio-bar-left">55%</div>
+                    <div class="ratio-bar-right">45%</div>
+                </div>
+            </div>
+            <div class="cur-rat-cur-pair" data-filter="GBPUSD">
+                <div class="cur-rat-broker" data-name="Average">
+                    <div class="ratio-bar-left">60%</div>
+                    <div class="ratio-bar-right">40%</div>
+                </div>
+            </div>
+            <div class="cur-rat-cur-pair" data-filter="USDJPY">
+                <div class="cur-rat-broker" data-name="Average">
+                    <div class="ratio-bar-left">30%</div>
+                    <div class="ratio-bar-right">70%</div>
+                </div>
+            </div>
+        </div>
+    </body></html>
+    """
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = sample_html.encode("utf-8")
+    mock_resp.__enter__.return_value = mock_resp
+    mock_resp.__exit__.return_value = None
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        res = fetcher.fetch_sync()
+        assert res.get("source") == "fxssi"
+        assert "EURUSD" in res.get("ratios", {})
+        assert res["ratios"]["EURUSD"]["long_percent"] == 55.0
+
+
+def test_fxssi_fetch_sync_falls_back_to_browser_on_http_failure():
+    """Verify FXSSISentimentFetcher falls back to browser if HTTP fails and parses page HTML."""
+    fetcher = FXSSISentimentFetcher(session=MagicMock())
+
+    # Mock HTTP failure
+    with patch.object(fetcher, "_fetch_via_http", side_effect=RuntimeError("Cloudflare blocked")):
+        mock_page = MagicMock()
+        mock_page.html = """
+        <html><body>
+            <div class="cur-rat-container">
+                <div class="cur-rat-cur-pair" data-filter="EURUSD">
+                    <div class="cur-rat-broker" data-name="Average">
+                        <div class="ratio-bar-left">52%</div>
+                        <div class="ratio-bar-right">48%</div>
+                    </div>
+                </div>
+            </div>
+        </body></html>
+        """
+        mock_scraper = MagicMock()
+        mock_scraper.page = mock_page
+        mock_scraper.navigate_with_fallback.return_value = False  # selector wait timed out
+
+        with patch(
+            "monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment.BaseScraper",
+            return_value=mock_scraper,
+        ):
+            res = fetcher.fetch_sync()
+            assert res.get("source") == "fxssi"
+            assert "EURUSD" in res.get("ratios", {})
+            assert res["ratios"]["EURUSD"]["long_percent"] == 52.0
+            mock_scraper.close.assert_called_once()

@@ -154,3 +154,31 @@ class TestTwitterWatchScraper:
         with patch("time.monotonic", side_effect=[0.0, 70.0, 70.0]):
             tweets = scraper.fetch_latest_tweets()
             assert tweets == []
+
+    @patch("monika.infrastructure.data_ingestion.scrapers.social.twitter_watch.BaseScraper._initialize_browser")
+    def test_fetch_latest_tweets_exits_on_time_budget_in_article_loop(self, mock_init):
+        mock_page = MagicMock()
+        mock_init.return_value = mock_page
+
+        scraper = TwitterWatchScraper()
+        scraper._pick_session = MagicMock(return_value="test_session.json")
+        scraper._load_cookies = MagicMock(return_value=[{"name": "test"}])
+
+        mock_page.url = "https://x.com/home"
+        mock_page.eles.return_value = []
+        mock_page.wait.ele_displayed.return_value = True
+
+        mock_article = MagicMock()
+        mock_article.html = '<article><a href="/user/status/1">Link</a></article>'
+        mock_page.eles.side_effect = [
+            [],  # login check
+            [mock_article, mock_article],  # articles
+        ]
+
+        # Call #1: start of method (0.0 -> deadline 65.0)
+        # Call #2: while loop check (10.0 < 65.0)
+        # Call #3: inside article loop (70.0 >= 65.0 -> break!)
+        with patch("time.monotonic", side_effect=[0.0, 10.0, 70.0, 70.0, 70.0]):
+            with patch("time.sleep"):
+                tweets = scraper.fetch_latest_tweets()
+                assert tweets == []

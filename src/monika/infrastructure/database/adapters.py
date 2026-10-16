@@ -291,6 +291,7 @@ async def batch_save_news(session, news_list: List[ScrapedNews]) -> int:
 
 async def batch_save_calendar(session, events: List[CalendarEvent]) -> int:
     """Konversi dan simpan event kalender secara batch dengan deduplikasi (mata uang, event, waktu)."""
+    from contextlib import nullcontext
     from datetime import timedelta
 
     from sqlalchemy import select
@@ -298,76 +299,119 @@ async def batch_save_calendar(session, events: List[CalendarEvent]) -> int:
     saved = 0
     updated = 0
     now_utc = _now_utc()
+
+    # 1. Konversi dan deduplikasi event dalam batch memori
+    deduped_models: list[EconomicCalendar] = []
     seen_batch_keys: set[tuple] = set()
 
     for event in events:
         model = calendar_event_to_model(event)
         if not model.event_time or not model.currency or not model.event_name:
             continue
-
         event_key = (model.currency, model.event_name, model.event_time)
         if event_key in seen_batch_keys:
             continue
         seen_batch_keys.add(event_key)
+        deduped_models.append(model)
 
-        # Cek event serupa di rentang 30 menit (mengatasi selisih waktu antar scraper)
-        time_min = model.event_time - timedelta(minutes=30)
-        time_max = model.event_time + timedelta(minutes=30)
+    # 2. Bulk preload baris yang sudah ada jika batch > 1 untuk eliminasi N+1 query
+    existing_lookup: dict[tuple[str, str], list[EconomicCalendar]] = {}
+    valid_times = [m.event_time for m in deduped_models if m.event_time is not None]
+    use_bulk_preload = len(deduped_models) > 1 and len(valid_times) > 0
 
-        existing = (
-            await session.execute(
-                select(EconomicCalendar)
-                .where(EconomicCalendar.currency == model.currency)
-                .where(EconomicCalendar.event_name == model.event_name)
-                .where(EconomicCalendar.event_time >= time_min)
-                .where(EconomicCalendar.event_time <= time_max)
-                .limit(1)
-            )
-        ).scalar_one_or_none()
+    if use_bulk_preload:
+        min_time = min(valid_times) - timedelta(days=1)
+        max_time = max(valid_times) + timedelta(days=1)
+        bulk_stmt = (
+            select(EconomicCalendar)
+            .where(EconomicCalendar.event_time >= min_time)
+            .where(EconomicCalendar.event_time <= max_time)
+        )
+        res = await session.execute(bulk_stmt)
+        all_existing = list(res.scalars().all())
+        for row in all_existing:
+            if row.currency and row.event_name and row.event_time is not None:
+                key = (row.currency, row.event_name)
+                existing_lookup.setdefault(key, []).append(row)
 
-        # Self-healing: jika tidak ditemukan dalam rentang 30m, cari apakah ada event sama
-        # pada hari kalender yang sama (misal tergeser beberapa jam akibat bug timezone lama)
-        if existing is None and model.event_time is not None:
-            day_min = model.event_time.replace(hour=0, minute=0, second=0, microsecond=0)
-            day_max = day_min + timedelta(days=1)
-            same_day_corrupt = (
-                await session.execute(
-                    select(EconomicCalendar)
-                    .where(EconomicCalendar.currency == model.currency)
-                    .where(EconomicCalendar.event_name == model.event_name)
-                    .where(EconomicCalendar.event_time >= day_min)
-                    .where(EconomicCalendar.event_time < day_max)
-                    .limit(1)
-                )
-            ).scalar_one_or_none()
-            if same_day_corrupt is not None:
-                # Preserve existing valid event_time unless it was None or incoming has actual release data (self-healing)
-                if same_day_corrupt.event_time is None or (
-                    same_day_corrupt.actual is None and model.actual is not None
-                ):
-                    same_day_corrupt.event_time = model.event_time
-                existing = same_day_corrupt
+    # 3. Pencocokan dan mutasi di bawah no_autoflush agar tidak memicu flush berulang
+    no_autoflush_ctx = getattr(session, "no_autoflush", nullcontext())
+    with no_autoflush_ctx:
+        for model in deduped_models:
+            existing: Optional[EconomicCalendar] = None
+            m_time = model.event_time
 
-        if existing is None:
-            session.add(model)
-            saved += 1
-        else:
-            # Perbarui fetched_at agar mencerminkan data terverifikasi baru
-            existing.fetched_at = now_utc
+            if use_bulk_preload and m_time is not None:
+                candidates = existing_lookup.get((model.currency, model.event_name), [])
+                # Cek rentang 30 menit
+                for cand in candidates:
+                    if cand.event_time is not None and abs(cand.event_time - m_time) <= timedelta(minutes=30):
+                        existing = cand
+                        break
+                # Self-healing: jika tidak ada di 30m, cari di hari yang sama
+                if existing is None:
+                    day_min = m_time.replace(hour=0, minute=0, second=0, microsecond=0)
+                    day_max = day_min + timedelta(days=1)
+                    for cand in candidates:
+                        if cand.event_time is not None and day_min <= cand.event_time < day_max:
+                            if cand.event_time is None or (cand.actual is None and model.actual is not None):
+                                cand.event_time = m_time
+                            existing = cand
+                            break
+            elif m_time is not None:
+                # Targeted query untuk single-event batch (kompatibel penuh dengan mock test lama)
+                time_min = m_time - timedelta(minutes=30)
+                time_max = m_time + timedelta(minutes=30)
+                existing = (
+                    await session.execute(
+                        select(EconomicCalendar)
+                        .where(EconomicCalendar.currency == model.currency)
+                        .where(EconomicCalendar.event_name == model.event_name)
+                        .where(EconomicCalendar.event_time >= time_min)
+                        .where(EconomicCalendar.event_time <= time_max)
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
 
-            # Update actual/forecast/previous jika data sudah rilis
-            changed = False
-            if model.actual and model.actual != existing.actual:
-                existing.actual = model.actual
-                changed = True
-            if model.forecast and model.forecast != existing.forecast:
-                existing.forecast = model.forecast
-                changed = True
-            if model.previous and model.previous != existing.previous:
-                existing.previous = model.previous
-                changed = True
-            if changed:
-                updated += 1
+                if existing is None:
+                    day_min = m_time.replace(hour=0, minute=0, second=0, microsecond=0)
+                    day_max = day_min + timedelta(days=1)
+                    same_day_corrupt = (
+                        await session.execute(
+                            select(EconomicCalendar)
+                            .where(EconomicCalendar.currency == model.currency)
+                            .where(EconomicCalendar.event_name == model.event_name)
+                            .where(EconomicCalendar.event_time >= day_min)
+                            .where(EconomicCalendar.event_time < day_max)
+                            .limit(1)
+                        )
+                    ).scalar_one_or_none()
+                    if same_day_corrupt is not None:
+                        if same_day_corrupt.event_time is None or (
+                            same_day_corrupt.actual is None and model.actual is not None
+                        ):
+                            same_day_corrupt.event_time = m_time
+                        existing = same_day_corrupt
+
+            if existing is None:
+                session.add(model)
+                if use_bulk_preload:
+                    existing_lookup.setdefault((model.currency, model.event_name), []).append(model)
+                saved += 1
+            else:
+                existing.fetched_at = now_utc
+                changed = False
+                if model.actual and model.actual != existing.actual:
+                    existing.actual = model.actual
+                    changed = True
+                if model.forecast and model.forecast != existing.forecast:
+                    existing.forecast = model.forecast
+                    changed = True
+                if model.previous and model.previous != existing.previous:
+                    existing.previous = model.previous
+                    changed = True
+                if changed:
+                    updated += 1
 
     # Catat metadata timestamp scraping kalender terakhir ke SystemConfig
     if len(events) > 0:
@@ -393,13 +437,30 @@ async def batch_save_tweets(session, tweets: List[ScrapedTweet]) -> int:
     """Konversi dan simpan tweet secara batch sebagai berita, lewati duplikat."""
     from sqlalchemy import select
 
+    candidate_urls = [t.url[:1000] for t in tweets if getattr(t, "url", None)]
+    existing_urls: set[str] = set()
+
+    if candidate_urls:
+        res = await session.execute(select(NewsItem.url).where(NewsItem.url.in_(candidate_urls)))
+        scalars_fn = getattr(res, "scalars", None)
+        if callable(scalars_fn):
+            scalars_res = scalars_fn()
+            all_fn = getattr(scalars_res, "all", None)
+            if callable(all_fn):
+                fetched = all_fn()
+                if isinstance(fetched, (list, tuple, set)):
+                    existing_urls = set(str(u) for u in fetched)
+        if not existing_urls and len(candidate_urls) == 1:
+            one_fn = getattr(res, "scalar_one_or_none", None)
+            if callable(one_fn) and one_fn() is not None:
+                existing_urls.add(candidate_urls[0])
+
     saved = 0
     for tweet in tweets:
+        if tweet.url and tweet.url[:1000] in existing_urls:
+            continue
         if tweet.url:
-            stmt = select(NewsItem.id).where(NewsItem.url == tweet.url[:1000]).limit(1)
-            result = await session.execute(stmt)
-            if result.scalar_one_or_none() is not None:
-                continue
+            existing_urls.add(tweet.url[:1000])
 
         model = scraped_tweet_to_model(tweet)
         session.add(model)

@@ -264,6 +264,8 @@ class ScraperRunner:
         except (asyncio.TimeoutError, Exception) as inv_err:
             inv_err_msg = type(inv_err).__name__ if not str(inv_err) else f"{type(inv_err).__name__}: {inv_err}"
             logger.warning(f"InvestingCalendarScraper failed or timed out: {inv_err_msg}")
+            if isinstance(inv_err, asyncio.TimeoutError):
+                self._cleanup_timed_out_scrapers()
             events = []
 
         # 2. Coba ForexFactory (Fallback Utama, timeout 45s)
@@ -271,6 +273,17 @@ class ScraperRunner:
             logger.warning("InvestingCalendarScraper returned 0 events — activating ForexFactory fallback")
 
             def _fetch_ff():
+                try:
+                    from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
+                        fetch_forexfactory_feed_direct,
+                    )
+
+                    direct_events = fetch_forexfactory_feed_direct()
+                    if direct_events:
+                        return direct_events
+                except Exception as direct_err:
+                    logger.debug(f"ForexFactory direct feed unviable ({direct_err}); attempting browser.")
+
                 from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
                     ForexFactoryCalendarScraper,
                 )
@@ -290,6 +303,8 @@ class ScraperRunner:
             except (asyncio.TimeoutError, Exception) as ff_err:
                 ff_err_msg = type(ff_err).__name__ if not str(ff_err) else f"{type(ff_err).__name__}: {ff_err}"
                 logger.error(f"ForexFactory fallback failed or timed out: {ff_err_msg}")
+                if isinstance(ff_err, asyncio.TimeoutError):
+                    self._cleanup_timed_out_scrapers()
                 events = []
 
         # 3. Coba Finnhub (Fallback Sekunder API, timeout 15s)

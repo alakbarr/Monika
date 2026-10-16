@@ -22,7 +22,7 @@ logger = logging.getLogger("TradingAgent.TwitterScraper")
 class TwitterWatchScraper(BaseScraper):
     def __init__(self, headless=True, list_url=None):
         # Gunakan profil sementara untuk memastikan kondisi bersih sebelum injeksi cookie
-        super().__init__(headless=headless, profile_name=None)
+        super().__init__(headless=headless, profile_name=None, load_mode="eager", no_imgs=True)
 
         from monika.infrastructure.infra.paths import DATA_DIR
 
@@ -142,6 +142,8 @@ class TwitterWatchScraper(BaseScraper):
         return hashlib.md5(url.encode("utf-8")).hexdigest()
 
     def fetch_latest_tweets(self, max_age_minutes: int = 1440) -> List[ScrapedTweet]:
+        loop_deadline = time.monotonic() + 65.0
+
         session_file = self._pick_session()
         if not session_file:
             return []
@@ -173,10 +175,9 @@ class TwitterWatchScraper(BaseScraper):
 
         logger.info(f"Navigating to {target_url}")
         page_obj.get(target_url)
-        page_obj.wait.load_start()
 
         # Periksa status login
-        if "login" in page_obj.url or page_obj.eles("text:Sign in to X", timeout=2):
+        if "login" in page_obj.url or page_obj.eles("text:Sign in to X", timeout=0.5):
             logger.error("Session expired/unauthorized. Quarantining...")
             self._mark_quarantined(session_file)
             return []
@@ -190,7 +191,6 @@ class TwitterWatchScraper(BaseScraper):
         scrolls = 0
         max_scrolls = 8
         consecutive_old = 0
-        loop_deadline = time.monotonic() + 65.0
 
         while scrolls < max_scrolls:
             if getattr(self, "is_closed", False):
@@ -203,6 +203,8 @@ class TwitterWatchScraper(BaseScraper):
             articles = page_obj.eles("tag:article")
             for article in articles:
                 if getattr(self, "is_closed", False):
+                    break
+                if time.monotonic() >= loop_deadline:
                     break
                 try:
                     html = article.html

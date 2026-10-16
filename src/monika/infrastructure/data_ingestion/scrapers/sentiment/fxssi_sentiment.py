@@ -114,37 +114,82 @@ class FXSSISentimentFetcher:
 
         return results
 
+    def _fetch_via_http(self) -> dict:
+        """Pengambilan cepat HTML SSR langsung via HTTP GET tanpa overhead browser."""
+        import urllib.request
+
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/131.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        req = urllib.request.Request(self.url, headers=headers)
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            status = getattr(resp, "status", getattr(resp, "code", 200))
+            if status != 200:
+                raise RuntimeError(f"HTTP GET returned status {status}")
+            html_text = resp.read().decode("utf-8", errors="replace")
+            return self._parse_html(html_text)
+
     def fetch_sync(self) -> dict:
-        scraper = BaseScraper(headless=self.headless, profile_name="fxssi")
-        result = {"error": "Failed to extract FXSSI data"}
-        ratios = {}
+        import time
 
+        # 1. Coba jalur cepat HTTP langsung (SSR HTML)
+        t0 = time.monotonic()
         try:
-            logger.info("Fetching FXSSI Sentiment via DrissionPage BaseScraper...")
+            ratios = self._fetch_via_http()
+            if ratios and len(ratios) >= 3:
+                elapsed = time.monotonic() - t0
+                logger.info(f"Fetched FXSSI Sentiment via direct HTTP in {elapsed:.2f}s ({len(ratios)} pairs).")
+                return {
+                    "source": "fxssi",
+                    "ratios": ratios,
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                }
+        except Exception as http_err:
+            logger.debug(f"Direct HTTP fetch for FXSSI unviable ({http_err}); falling back to browser.")
 
-            success = scraper.navigate_with_fallback(
-                self.url, wait_selector="css:.cur-rat-container, .sentiment-ratios, .cur-rat-pairs, #last-update"
+        # 2. Fallback browser DrissionPage dengan mode eager & no_imgs
+        scraper = None
+        try:
+            logger.info("Fetching FXSSI Sentiment via browser fallback (load_mode=eager)...")
+            scraper = BaseScraper(headless=self.headless, profile_name="fxssi", load_mode="eager", no_imgs=True)
+
+            scraper.navigate_with_fallback(
+                self.url,
+                wait_selector="css:.cur-rat-container, .sentiment-ratios, .cur-rat-pairs, #last-update",
+                timeout=20,
             )
-            if success and scraper.page:
-                # Tunggu data dimuat
+            ratios = {}
+            if scraper.page:
                 page_obj: Any = scraper.page
-                page_obj.wait(3)
-                html = page_obj.html
-                ratios = self._parse_html(html)
+                try:
+                    page_obj.wait(1.5)
+                except Exception:
+                    pass
+                html = getattr(page_obj, "html", "") or ""
+                if html:
+                    ratios = self._parse_html(html)
 
             if ratios:
-                result = {"source": "fxssi", "ratios": ratios, "fetched_at": datetime.now(timezone.utc).isoformat()}
+                return {
+                    "source": "fxssi",
+                    "ratios": ratios,
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                }
             else:
-                result = {"error": "FXSSI returned empty or failed to parse."}
                 logger.warning("FXSSI Sentiment returned empty or failed to parse.")
+                return {"error": "FXSSI returned empty or failed to parse."}
 
         except Exception as e:
             logger.warning(f"Error fetching FXSSI Sentiment: {e}")
-            result = {"error": str(e)}
+            return {"error": str(e)}
         finally:
-            scraper.close()
-
-        return result
+            if scraper is not None:
+                scraper.close()
 
     async def fetch(self) -> dict:
         # Jalankan proses scraping DrissionPage di thread terpisah

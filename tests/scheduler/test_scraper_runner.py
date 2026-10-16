@@ -290,3 +290,24 @@ class TestScraperRunner:
         assert len(runner._active_scrapers) == 0
         scraper.close.assert_called_once()
         mock_kill.assert_called_once_with(6666)
+
+    @pytest.mark.asyncio
+    @patch("monika.application.scheduler.scraper_runner.get_session")
+    @patch("monika.application.scheduler.scraper_runner.batch_save_calendar")
+    async def test_fetch_calendar_timeout_cleans_up_scrapers(self, mock_save_cal, mock_get_session, settings):
+        mock_session = create_mock_async_session()
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_session
+        mock_get_session.return_value = mock_ctx
+        mock_save_cal.return_value = 5
+
+        runner = ScraperRunner(settings)
+        runner._cleanup_timed_out_scrapers = MagicMock(return_value=1)
+
+        # Investing raises TimeoutError, ForexFactory fallback succeeds
+        runner._run_in_executor = AsyncMock(side_effect=[asyncio.TimeoutError(), [MagicMock()]])
+
+        res = await runner._fetch_calendar()
+        assert res["saved"] == 5
+        assert res["source"] == "forexfactory"
+        runner._cleanup_timed_out_scrapers.assert_called()
