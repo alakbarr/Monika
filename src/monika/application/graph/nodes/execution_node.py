@@ -62,8 +62,17 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
         if not is_active:
             logger.info(f"[Step 7b] auto_execute skipped: Outside active hours ({hour} UTC not in {start_hr}-{end_hr})")
             summary["execution"] = {"status": "skipped_outside_active_hours"}
+            try:
+                from monika.application.graph.nodes.risk.proposal_notifier import send_proposal_notifications
+
+                await send_proposal_notifications(
+                    actionable,
+                    banner_notice=f"Auto-execution bypassed: Outside active trading hours ({hour}:00 UTC not in {start_hr}:00-{end_hr}:00 UTC).",
+                )
+            except Exception as notify_err:
+                logger.error(f"Failed to dispatch fallback proposal: {notify_err}")
         else:
-            logger.info(f"[Step 7b] auto_execute=true — sending proposals, executing immediately...")
+            logger.info("[Step 7b] auto_execute=true — executing orders immediately...")
 
             exec_svc = getattr(scheduler, "execution_service", None)
             if exec_svc is None:
@@ -110,6 +119,15 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                         f"Execution for {sym} skipped: calibrated confidence {calibrated_conf:.2f} < {effective_min:.2f} (base: {min_confidence:.2f})"
                     )
                     exec_results[sym] = "skipped_low_confidence"
+                    try:
+                        from monika.application.graph.nodes.risk.proposal_notifier import send_proposal_notifications
+
+                        await send_proposal_notifications(
+                            [(sym, r)],
+                            banner_notice=f"Auto-execution bypassed: Calibrated confidence ({calibrated_conf:.0%}) below automated threshold ({effective_min:.0%}).",
+                        )
+                    except Exception as notify_err:
+                        logger.error(f"Failed to dispatch fallback proposal for {sym}: {notify_err}")
                     continue
 
                 async with get_session() as check_session:
@@ -231,36 +249,51 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                                 continue
 
                         cs = ana.confluence_score
-                        if cs is None:
-                            exec_results[sym] = "blocked_missing_confluence_score"
-                            await DecisionLogger.log_paper_whatif(
-                                session,
-                                analysis_id,
-                                sym,
-                                r.get("decision", "wait"),
-                                r.get("confidence", 0),
-                                None,
-                                "Missing confluence",
-                                "no_confluence",
-                                context_snapshot_id=ana.context_snapshot_id,
-                                ssvp_cds_score=ana.ssvp_cds_score_at_analysis,
-                            )
-                            continue
-                        if cs < min_confluence:
-                            exec_results[sym] = f"skipped_low_confluence_{cs}"
-                            await DecisionLogger.log_paper_whatif(
-                                session,
-                                analysis_id,
-                                sym,
-                                r.get("decision", "wait"),
-                                r.get("confidence", 0),
-                                cs,
-                                "Low confluence",
-                                "low_confluence",
-                                context_snapshot_id=ana.context_snapshot_id,
-                                ssvp_cds_score=ana.ssvp_cds_score_at_analysis,
-                            )
-                            continue
+                        is_edge_signal = getattr(ana, "decision_source", None) == "edge_registry" or bool(
+                            getattr(ana, "source_strategy_id", None)
+                        )
+                        if not is_edge_signal:
+                            if cs is None:
+                                exec_results[sym] = "blocked_missing_confluence_score"
+                                await DecisionLogger.log_paper_whatif(
+                                    session,
+                                    analysis_id,
+                                    sym,
+                                    r.get("decision", "wait"),
+                                    r.get("confidence", 0),
+                                    None,
+                                    "Missing confluence",
+                                    "no_confluence",
+                                    context_snapshot_id=ana.context_snapshot_id,
+                                    ssvp_cds_score=ana.ssvp_cds_score_at_analysis,
+                                )
+                                continue
+                            if cs < min_confluence:
+                                exec_results[sym] = f"skipped_low_confluence_{cs}"
+                                await DecisionLogger.log_paper_whatif(
+                                    session,
+                                    analysis_id,
+                                    sym,
+                                    r.get("decision", "wait"),
+                                    r.get("confidence", 0),
+                                    cs,
+                                    "Low confluence",
+                                    "low_confluence",
+                                    context_snapshot_id=ana.context_snapshot_id,
+                                    ssvp_cds_score=ana.ssvp_cds_score_at_analysis,
+                                )
+                                try:
+                                    from monika.application.graph.nodes.risk.proposal_notifier import (
+                                        send_proposal_notifications,
+                                    )
+
+                                    await send_proposal_notifications(
+                                        [(sym, r)],
+                                        banner_notice=f"Auto-execution bypassed: Confluence score ({cs}/14) below automated threshold ({min_confluence}).",
+                                    )
+                                except Exception as notify_err:
+                                    logger.error(f"Failed to dispatch fallback proposal for {sym}: {notify_err}")
+                                continue
 
                         ps = ana.priced_in_score
                         if ps is not None and ps >= 8:

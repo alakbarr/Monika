@@ -258,9 +258,19 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
     summary["portfolio_synthesis_approved"] = [sym for sym, r in actionable]
 
     # 6. Telegram Operator Proposal Notifications
+    auto_execute = False
+    if scheduler and hasattr(scheduler, "settings"):
+        auto_execute = bool(scheduler.settings.get("trading", {}).get("auto_execute", False))
+
     if actionable:
-        await send_proposal_notifications(actionable)
-        summary["execution"] = {"status": "pending_approval", "count": len(actionable)}
+        if not auto_execute:
+            await send_proposal_notifications(actionable)
+            summary["execution"] = {"status": "pending_approval", "count": len(actionable)}
+        else:
+            logger.info(
+                f"[RiskGateNode] auto_execute=true: Routing {len(actionable)} trade(s) directly to execution node."
+            )
+            summary["execution"] = {"status": "auto_execute_pending", "count": len(actionable)}
     else:
         logger.info("[Step 7b] No actionable buy/sell decisions this cycle.")
         summary["execution"] = {"status": "no_actionable_decisions"}

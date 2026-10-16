@@ -9167,10 +9167,11 @@
   - `async ai_portfolio_synthesis(actionable: List[Tuple[str, Dict[str, Any]]], session: Any, settings: Dict[str, Any], ...) -> Dict[str, Any]`: Executes AI portfolio-level synthesis when multiple trades are proposed simultaneously.
   - `async apply_portfolio_synthesis_reduction(actionable: List[Tuple[str, Dict[str, Any]]], scheduler: Any, state: Mapping[str, Any]) -> Tuple[List[Tuple[str, Dict[str, Any]]], List[Dict[str, Any]]]`: Invokes AI portfolio synthesis when >= 3 trades are proposed, applies size adjustments,
 
-#### `proposal_notifier.py` - *Formats and dispatches authentic trade proposal notifications to Telegram operators*
+#### `proposal_notifier.py` - *Formats and dispatches institutional trade cards to Telegram operators:*
 - **Path**: [`src/monika/application/graph/nodes/risk/proposal_notifier.py`](src/monika/application/graph/nodes/risk/proposal_notifier.py)
 - **Top-Level Functions**:
-  - `async send_proposal_notifications(actionable: List[Tuple[str, Dict[str, Any]]]) -> None`: Constructs top-down Telegram HTML cards with interactive inline buttons
+  - `async send_proposal_notifications(actionable: List[Tuple[str, Dict[str, Any]]], banner_notice: Optional[str]) -> None`: Constructs top-down Telegram HTML cards with interactive inline buttons
+  - `async send_execution_notification(ana: Any, execution_result: Any) -> None`: Constructs and dispatches an institutional execution card to Telegram operators
 
 #### `quant_arbitration.py` - *Evaluates algorithmic quant alphas from StrategyRegistry across candidate symbols*
 - **Path**: [`src/monika/application/graph/nodes/risk/quant_arbitration.py`](src/monika/application/graph/nodes/risk/quant_arbitration.py)

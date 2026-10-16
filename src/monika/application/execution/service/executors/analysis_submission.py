@@ -899,23 +899,30 @@ class AnalysisSubmissionMixin(_ExecutionServiceMixinBase):
         if result.executed:
             logger.info(f"TRADE PLACED: {result.summary()}")
             try:
-                notifier = AgentNotifier()
-                msg = (
-                    f"[OK] <b>TRADE EXECUTED — {result.symbol}</b>\n\n"
-                    f"Direction: {result.decision.upper()}\n"
-                    f"Lots: {result.executed_lots}\n"
-                    f"Entry: {result.executed_price}\n"
-                    f"<b>Ticket MT5: <code>{result.mt5_ticket}</code></b>\n\n"
-                    f"<i>(Use /close {result.mt5_ticket} to manual close)</i>"
-                )
-                await notifier.send_info(msg)
+                from monika.application.graph.nodes.risk.proposal_notifier import send_execution_notification
+
+                await send_execution_notification(analysis, result)
             except Exception as e:
-                logger.error(f"Failed to notify trade execution: {e}")
+                logger.error(f"Failed to dispatch institutional execution card: {e}", exc_info=True)
+                try:
+                    notifier = AgentNotifier()
+                    msg = (
+                        f"<b>[AUTO-EXECUTION] {result.symbol} — {result.decision.upper()}</b>\n\n"
+                        f"<b>Execution & Parameters:</b>\n"
+                        f"• <b>Action:</b> {result.decision.upper()}\n"
+                        f"• <b>Broker Status:</b> Filled on MT5 (Ticket: <code>{result.mt5_ticket}</code>)\n"
+                        f"• <b>Volume:</b> {result.executed_lots} lots\n"
+                        f"• <b>Entry:</b> <code>{result.executed_price}</code>\n\n"
+                        f"<i>Use <code>/close {result.mt5_ticket}</code> to terminate this position early.</i>"
+                    )
+                    await notifier.send_info(msg)
+                except Exception as fb_err:
+                    logger.debug(f"Fallback notification failed: {fb_err}")
         else:
             logger.error(f"TRADE FAILED: {result.summary()}")
             try:
                 notifier = AgentNotifier()
-                await notifier.send_warning(f"[GAGAL] <b>TRADE FAILED</b>\n{result.summary()}")
+                await notifier.send_warning(f"<b>[TRADE FAILED]</b>\n{result.summary()}")
             except Exception as e:
                 logger.error(f"Failed to notify trade failure: {e}")
         _prune_executed_analysis_ids()

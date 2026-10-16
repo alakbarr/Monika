@@ -285,8 +285,8 @@ class AgentNotifier(NotifierPort):
         return InlineKeyboardMarkup(
             [
                 [
-                    InlineKeyboardButton("✅ Setujui (Eksekusi)", callback_data=f"confirm:{analysis_id}"),
-                    InlineKeyboardButton("❌ Tolak (Lewati)", callback_data=f"reject:{analysis_id}"),
+                    InlineKeyboardButton("Approve (Execute)", callback_data=f"confirm:{analysis_id}"),
+                    InlineKeyboardButton("Reject (Skip)", callback_data=f"reject:{analysis_id}"),
                 ]
             ]
         )

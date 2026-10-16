@@ -17,7 +17,10 @@ from monika.application.graph.nodes.risk.portfolio_synthesis import (
     ai_portfolio_synthesis,
     apply_portfolio_synthesis_reduction,
 )
-from monika.application.graph.nodes.risk.proposal_notifier import send_proposal_notifications
+from monika.application.graph.nodes.risk.proposal_notifier import (
+    send_execution_notification,
+    send_proposal_notifications,
+)
 from monika.application.graph.nodes.risk.quant_arbitration import run_quant_arbitration
 from monika.application.graph.nodes.risk.rejection_auditor import audit_trade_rejection
 
@@ -27,6 +30,7 @@ __all__ = [
     "ai_portfolio_synthesis",
     "apply_portfolio_synthesis_reduction",
     "send_proposal_notifications",
+    "send_execution_notification",
     "run_quant_arbitration",
     "audit_trade_rejection",
 ]
