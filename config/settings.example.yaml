@@ -252,7 +252,7 @@ trading:
     session_trigger_enabled: false
     daily_report_time_local: 08:00
     weekly_report_weekday: 5
-    run_immediately_on_first_start: true
+    run_immediately_on_first_start: false
     catch_up_missed_cycles: true
     catch_up_overdue_multiplier: 1.5
   trigger_checker:

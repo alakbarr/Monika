@@ -471,18 +471,18 @@ class CycleScheduler:
             f"Cycle scheduler starting. Scheduled run times ({self.timezone_name}): "
             f"{self.cycle_times_local} | Assets: {self.asset_universe}"
         )
-        logger.info(
-            "Note: analysis cycle is NOT run immediately on startup. This is intentional "
-            "so restarts during development do not waste API budget. Use the Telegram "
-            "/run command to trigger a manual cycle at any time."
-        )
-
         if self.run_immediately_on_first_start:
             logger.info(
                 "trading.schedule.run_immediately_on_first_start=true — "
                 "running one analysis cycle immediately on startup (will consume API tokens)."
             )
             await self._safe_run_once()
+        else:
+            logger.info(
+                "Note: analysis cycle is NOT run immediately on startup. This is intentional "
+                "so restarts during development do not waste API budget. Use the Telegram "
+                "/run command to trigger a manual cycle at any time."
+            )
 
         while self._running:
             times = parse_time_list(self.cycle_times_local)

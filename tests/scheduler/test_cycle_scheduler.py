@@ -378,6 +378,35 @@ class TestCycleScheduler:
             and rec.levelno == logging.INFO
             for rec in caplog.records
         )
+        assert not any(
+            "Note: analysis cycle is NOT run immediately on startup" in rec.message for rec in caplog.records
+        )
+
+    @pytest.mark.asyncio
+    async def test_cycle_scheduler_start_logs_note_when_run_immediately_disabled(self, settings, caplog):
+        import logging
+        from datetime import datetime, timezone
+        from unittest.mock import AsyncMock, patch
+        from monika.application.scheduler.cycle_scheduler import CycleScheduler
+
+        settings["trading"]["schedule"]["run_immediately_on_first_start"] = False
+        scheduler = CycleScheduler(settings)
+        scheduler._safe_run_once = AsyncMock()
+
+        async def fake_sleep(*args, **kwargs):
+            scheduler._running = False
+            return datetime.now(timezone.utc)
+
+        with patch("monika.application.scheduler.wall_clock.sleep_until_next", side_effect=fake_sleep):
+            with caplog.at_level(logging.INFO):
+                await scheduler.start()
+
+        scheduler._safe_run_once.assert_not_awaited()
+        assert any(
+            "Note: analysis cycle is NOT run immediately on startup" in rec.message and rec.levelno == logging.INFO
+            for rec in caplog.records
+        )
+        assert not any("run_immediately_on_first_start=true" in rec.message for rec in caplog.records)
 
     @pytest.mark.asyncio
     async def test_should_run_session_trigger_disabled_by_config(self, settings):
