@@ -152,18 +152,25 @@ class CacheBreakpointManager:
         return True
 
     @classmethod
-    def pad_system_prompt_to_threshold(cls, system_prompt: str, model_name: str = "", provider_name: str = "") -> str:
-        """Pads system prompts with canonical invariant rules only when close to cache threshold."""
+    def pad_system_prompt_to_threshold(
+        cls, system_prompt: str, model_name: str = "", provider_name: str = "", force: bool = False
+    ) -> str:
+        """Pads system prompts with canonical invariant rules only when close to cache threshold (or force=True)."""
         raw = (system_prompt or "").strip()
         min_chars = cls.get_min_cacheable_chars(model_name)
 
-        # SOTA Cache Discipline:
-        # Only pad if prompt is within striking distance (>= 70% of min_chars threshold).
-        # Short prompts (< 70% of min_chars) are deliberately not padded to avoid burning tokens
-        # when the padding overhead would exceed the cache savings.
-        min_activation_chars = int(min_chars * 0.70)
-        if len(raw) < min_activation_chars:
+        if not cls.should_inject_anchor(
+            model_name=model_name, provider_name=provider_name, current_prompt_chars=len(raw)
+        ):
             return raw
+
+        # SOTA Cache Discipline:
+        # Only pad if prompt is within striking distance (>= 70% of min_chars threshold),
+        # unless forced (e.g. for high-frequency small classification tasks that require caching).
+        if not force:
+            min_activation_chars = int(min_chars * 0.70)
+            if len(raw) < min_activation_chars:
+                return raw
 
         if len(raw) < min_chars:
             rules = cls.CANONICAL_INVARIANT_RULES.strip()

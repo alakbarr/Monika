@@ -55,10 +55,19 @@ class OutputVerifier:
                     f"self-correcting attempt {attempt + 1}/{max_retries}"
                 )
                 correction_prompt = self._build_correction_prompt(symbol, output, failures)
-                static_verifier_sys = (
+                from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
+                prov_name = getattr(client, "provider_name", "") or getattr(client, "_get_provider_name", lambda: "")()
+                model_name = getattr(client, "model", "")
+
+                raw_verifier_sys = (
+                    "=== CLOSED-LOOP QUANTITATIVE RISK & VERIFICATION AUDITOR ===\n"
                     "You are a senior quantitative risk and trade auditor. "
                     "Review the trading decision, fix all detected verification failures, "
                     "and emit a strictly compliant JSON trading decision conforming to the schema."
+                )
+                static_verifier_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+                    raw_verifier_sys, model_name=model_name, provider_name=prov_name, force=True
                 )
                 error_context = f"[TARGET SYMBOL]: {symbol}\n[VERIFICATION FAILURES]:\n" + "\n".join(
                     f"- {f}" for f in failures

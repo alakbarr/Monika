@@ -301,3 +301,150 @@ async def test_openai_provider_openrouter_claude_4_breakpoints():
     # Total breakpoints across system (1) + tools (1) + messages (<=2) <= 4
     total_breakpoints = 1 + 1 + msg_cache_count
     assert total_breakpoints <= 4
+
+
+@pytest.mark.asyncio
+async def test_news_classification_system_prompt_elevation_and_prefix_invariance():
+    """Verify that NewsClassificationMixin pads system prompt above 4,096 tokens (>=16,500 chars)
+    and isolates volatile timestamps & news items strictly at the prompt tail.
+    """
+    from datetime import datetime, timezone, timedelta
+    from unittest.mock import AsyncMock, MagicMock
+    from monika.application.analysis.prefetch.news_digest.processor import NewsDigestProcessor
+    from monika.infrastructure.database.models import NewsItem
+
+    captured_calls = []
+
+    class MockClassifier(DummyProvider):
+        def __init__(self):
+            super().__init__(model="gemini-2.5-flash", provider_name="gemini")
+
+        async def classify_json(self, prompt, system_prompt=None, schema=None, **kwargs):
+            captured_calls.append({"prompt": prompt, "system_prompt": system_prompt})
+            return [
+                {
+                    "index": 1,
+                    "news_id": 100 + len(captured_calls),
+                    "impact": "HIGH",
+                    "confidence": 0.9,
+                    "currencies": ["USD"],
+                    "sentiments": ["BULLISH_USD"],
+                }
+            ]
+
+    mock_client = MockClassifier()
+    processor = NewsDigestProcessor(settings={"news_classification": {"batch_size": 1}})
+    processor._classifier = mock_client
+    processor._flash_lite = mock_client
+
+    now_base = datetime.now(timezone.utc)
+    mock_session = AsyncMock()
+    mock_session.add = MagicMock()
+
+    items = []
+    for i in range(5):
+        item = NewsItem(
+            id=101 + i,
+            title=f"Unique Headline {i}: US Treasury yields jump {10 + i} bps",
+            summary=f"Summary for item {i}",
+            fetched_at=now_base - timedelta(minutes=5 * (i + 1)),
+            published_at=now_base - timedelta(minutes=10 * (i + 1)),
+            impact=None,
+        )
+        items.append(item)
+
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = items
+    exec_res_mock = MagicMock()
+    exec_res_mock.scalars.return_value = scalars_mock
+    exec_res_mock.scalar_one_or_none.return_value = 0
+    mock_session.execute.return_value = exec_res_mock
+
+    # Mock helper methods to avoid DB hits during test
+    processor._get_recent_classified_titles = AsyncMock(return_value=[])
+    processor._build_5day_macro_context = AsyncMock(return_value="[5D Macro Regime: Moderate Risk-Off]")
+    processor._get_calendar_impact_priors = AsyncMock(return_value={})
+    processor._validate_classification_batch = AsyncMock(side_effect=lambda s, res, b, n, sb, g, c: res)
+
+    await processor.classify_unscored_news(mock_session, hours_back=6)
+
+    assert len(captured_calls) == 5
+
+    # 1. System prompt length >= 16,500 chars (~4,125 tokens) for Gemini 4,096 threshold
+    for call in captured_calls:
+        sys_p = call["system_prompt"]
+        assert sys_p is not None
+        assert len(sys_p) >= 16500, f"Expected system prompt >= 16500 chars, got {len(sys_p)}"
+        assert "=== MONIKA FINANCIAL TAXONOMY & NEWS IMPACT CLASSIFICATION ONTOLOGY ===" in sys_p
+
+    # 2. Characters 0..4000 of system prompt are 100% byte-identical across all 5 requests
+    base_sys_prefix = captured_calls[0]["system_prompt"][:4000]
+    for i in range(1, 5):
+        assert captured_calls[i]["system_prompt"][:4000] == base_sys_prefix
+
+    # 3. User prompt isolates volatile <runtime_item> at the tail
+    for call in captured_calls:
+        prompt = call["prompt"]
+        assert "<runtime_item current_time=" in prompt
+        assert prompt.endswith("</runtime_item>")
+
+
+@pytest.mark.asyncio
+async def test_news_digest_macro_overview_and_currency_elevation():
+    """Verify that create_news_digest pads system prompts and isolates headlines at tail."""
+    from datetime import datetime, timezone
+    from unittest.mock import AsyncMock, MagicMock
+    from monika.application.analysis.prefetch.news_digest.processor import NewsDigestProcessor
+    from monika.infrastructure.database.models import NewsItem
+
+    captured_gen_calls = []
+
+    class MockSynthClient(DummyProvider):
+        def __init__(self):
+            super().__init__(model="gemini-2.5-flash", provider_name="gemini")
+
+        async def generate(self, prompt, system=None, **kwargs):
+            captured_gen_calls.append({"prompt": prompt, "system": system})
+            return "Valid synthesized text for macro overview or currency."
+
+    mock_client = MockSynthClient()
+    processor = NewsDigestProcessor(settings={})
+    processor._macro_synth = mock_client
+    processor._digest_generator = mock_client
+
+    mock_session = AsyncMock()
+    mock_session.add = MagicMock()
+    processor._should_use_cache = AsyncMock(return_value=(False, None))
+    processor._cleanup_old_digests = AsyncMock()
+    processor._build_structured_metadata = AsyncMock(return_value="[Metadata]")
+    processor._build_structured_metadata_dict = AsyncMock(return_value={})
+    processor._build_currency_signals_summary = AsyncMock(return_value="[Signals]")
+    processor._build_5day_macro_context = AsyncMock(return_value="[5D Macro]")
+    processor._extract_prior_metadata = MagicMock(return_value={})
+    processor._build_structured_delta = MagicMock(return_value="[Delta]")
+
+    item = NewsItem(
+        id=201,
+        title="Fed signals rate pause as core PCE cools to 2.4%",
+        summary="Federal Reserve policymakers expressed confidence in disinflation path.",
+        impact="BREAKING",
+        currency_tags="USD",
+        fetched_at=datetime.now(timezone.utc),
+    )
+
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = [item]
+    exec_res_mock = MagicMock()
+    exec_res_mock.scalars.return_value = scalars_mock
+    exec_res_mock.scalar_one_or_none.return_value = None
+    mock_session.execute.return_value = exec_res_mock
+
+    await processor.create_news_digest(mock_session, hours_back=12)
+
+    assert len(captured_gen_calls) >= 1
+    macro_call = captured_gen_calls[0]
+    # Macro overview system prompt padded >= 16500 chars
+    assert len(macro_call["system"]) >= 16500
+    assert "=== MONIKA SENIOR MACRO ANALYSIS & SYNTHESIS DIRECTIVE ===" in macro_call["system"]
+    # News text is isolated at the tail
+    assert macro_call["prompt"].endswith("</runtime_news_data>")
