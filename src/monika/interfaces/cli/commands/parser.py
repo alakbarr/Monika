@@ -383,7 +383,8 @@ def parse_args(args_list: Optional[List[str]] = None) -> argparse.Namespace:
 
     # Command: auth
     auth_parser = subparsers.add_parser(
-        "auth", help="Manage subscription and OAuth authentication (Z.AI, Antigravity, Claude, Codex)"
+        "auth",
+        help="Manage subscription and OAuth authentication (Z.AI, OpenCode, Antigravity, Claude, Codex)",
     )
     auth_sub = auth_parser.add_subparsers(dest="auth_action", help="Auth actions: status, login, logout")
     auth_sub.add_parser("status", help="Show authentication status of all subscription providers")
@@ -392,13 +393,35 @@ def parse_args(args_list: Optional[List[str]] = None) -> argparse.Namespace:
         "provider",
         nargs="?",
         default=None,
-        choices=["zai", "glm", "claude", "anthropic", "codex", "chatgpt", "antigravity", "gemini"],
+        choices=[
+            "zai",
+            "glm",
+            "opencode",
+            "opencode_go",
+            "claude",
+            "anthropic",
+            "codex",
+            "chatgpt",
+            "antigravity",
+            "gemini",
+        ],
         help="Provider name to login",
     )
     logout_p = auth_sub.add_parser("logout", help="Log out and clear stored tokens for a provider")
     logout_p.add_argument(
         "provider",
-        choices=["zai", "glm", "claude", "anthropic", "codex", "chatgpt"],
+        choices=[
+            "zai",
+            "glm",
+            "opencode",
+            "opencode_go",
+            "claude",
+            "anthropic",
+            "codex",
+            "chatgpt",
+            "antigravity",
+            "gemini",
+        ],
         help="Provider name to logout",
     )
 

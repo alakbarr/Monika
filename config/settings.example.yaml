@@ -832,6 +832,20 @@ llm:
         tool_calling: true
         reasoning_effort: true
         json_schema: true
+    opencode:
+      enabled: false
+      api_style: openai_compatible
+      base_url: https://opencode.ai/inference/go/openai/v1
+      timeout_seconds: 180
+      streaming:
+        enabled: true
+        idle_timeout_seconds: 60
+        first_chunk_timeout_seconds: 120
+        safety_timeout_seconds: 600
+      features:
+        tool_calling: true
+        reasoning: true
+        json_schema: true
   model_catalog:
     # ── 9Router Free & Upstream Models ──
     kr/claude-sonnet-4.5:

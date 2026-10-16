@@ -121,3 +121,44 @@ def test_logout_provider_antigravity():
         code = logout_provider("gemini")
         assert code == 0
         mock_delete.assert_called_once_with("antigravity")
+
+
+def test_show_auth_status_with_opencode():
+    with patch(
+        "monika.interfaces.cli.commands.auth_ctrl.vault.get_secret",
+        side_effect=lambda k: "oc_sk_test" if k == "OPENCODE_API_KEY" else None,
+    ):
+        with patch("monika.interfaces.cli.commands.auth_ctrl.get_oauth_tokens", return_value=None):
+            with patch(
+                "monika.interfaces.cli.commands.auth_ctrl.check_antigravity_bridge_health",
+                return_value={"running": False},
+            ):
+                with patch("monika.interfaces.cli.commands.auth_ctrl.is_antigravity_installed", return_value=False):
+                    code = show_auth_status()
+                    assert code == 0
+
+
+def test_login_opencode_success():
+    from unittest.mock import MagicMock
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch("getpass.getpass", return_value="oc_sk_123456"):
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            with patch("monika.interfaces.cli.commands.auth_ctrl.vault.set_secret") as mock_set:
+                with patch("monika.interfaces.cli.commands.auth_ctrl.save_oauth_tokens") as mock_save:
+                    code = login_provider("opencode")
+                    assert code == 0
+                    mock_set.assert_called_once_with("OPENCODE_API_KEY", "oc_sk_123456")
+                    mock_save.assert_called_once()
+
+
+def test_logout_provider_opencode():
+    with patch("monika.interfaces.cli.commands.auth_ctrl.delete_oauth_tokens") as mock_delete:
+        with patch("monika.interfaces.cli.commands.auth_ctrl.vault.delete_secret") as mock_vault_del:
+            code = logout_provider("opencode")
+            assert code == 0
+            mock_delete.assert_called_once_with("opencode")
+            mock_vault_del.assert_called_once_with("OPENCODE_API_KEY")

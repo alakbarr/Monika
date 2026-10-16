@@ -389,6 +389,28 @@ def _register_builtins():
             base_url=base_url,
         )
 
+    def _create_opencode(model_name, settings, role_config, task_role="default", **kwargs):
+        from monika.infrastructure.providers.opencode_provider import OpenCodeProvider
+
+        max_tokens = role_config.get("max_tokens", 8192)
+        max_tool_turns = role_config.get("max_tool_turns", 15)
+        temperature = float(role_config.get("temperature", 0.0))
+        thinking_level = kwargs.get("thinking_level", "none")
+        provider_config = kwargs.get("provider_config", {})
+        base_url = provider_config.get("base_url") or kwargs.get("base_url")
+        key_kwargs = {"api_key": kwargs.get("api_key")} if kwargs.get("api_key") else {}
+        return OpenCodeProvider(
+            model=model_name,
+            max_tokens=max_tokens,
+            max_tool_turns=max_tool_turns,
+            thinking_level=thinking_level,
+            settings=settings,
+            temperature=temperature,
+            base_url=base_url,
+            role=task_role,
+            **key_kwargs,
+        )
+
     ProviderRegistry.register("anthropic", _create_anthropic)
     ProviderRegistry.register("gemini", _create_gemini)
     ProviderRegistry.register("openai", _create_openai)
@@ -407,6 +429,9 @@ def _register_builtins():
     ProviderRegistry.register("z.ai", _create_zai)
     ProviderRegistry.register("codex", _create_codex)
     ProviderRegistry.register("antigravity", _create_antigravity)
+    ProviderRegistry.register("opencode", _create_opencode)
+    ProviderRegistry.register("opencode_go", _create_opencode)
+    ProviderRegistry.register("opencode-go", _create_opencode)
 
 
 _register_builtins()

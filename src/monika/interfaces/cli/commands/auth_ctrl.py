@@ -14,6 +14,7 @@ import getpass
 import http.server
 import json
 import logging
+import os
 import secrets
 import sys
 import threading
@@ -115,6 +116,18 @@ def show_auth_status() -> int:
         zai_detail = "Run 'monika auth login zai'"
     table.add_row("Z.AI (GLM)", "GLM Coding Plan / PaaS", zai_status, zai_expiry, zai_detail)
 
+    # 2. OpenCode Go ($10/mo Multi-Model)
+    opencode_key = vault.get_secret("OPENCODE_API_KEY") or os.getenv("OPENCODE_API_KEY")
+    if opencode_key:
+        oc_status = f"[{GREEN}]ACTIVE (Configured)[/]"
+        oc_expiry = f"[{MUTED}]Subscription API Key[/]"
+        oc_detail = f"[{MUTED}]OpenCode Go / Zen API[/]"
+    else:
+        oc_status = f"[{YELLOW}]NOT CONFIGURED[/]"
+        oc_expiry = "—"
+        oc_detail = "Run 'monika auth login opencode'"
+    table.add_row("OpenCode Go", "OpenCode Go / Zen ($10)", oc_status, oc_expiry, oc_detail)
+
     # 2. Gemini (Antigravity Bridge / Google OAuth)
     agy_rec = get_oauth_tokens("antigravity")
     health = check_antigravity_bridge_health()
@@ -212,13 +225,15 @@ def _format_expiry(expiry_ts: Optional[float]) -> str:
 def login_provider(provider: Optional[str]) -> int:
     """Authenticate with a specific subscription provider."""
     if not provider:
-        console.print(f"{stamp_err('ERROR')} Please specify a provider: zai, antigravity, claude, codex")
+        console.print(f"{stamp_err('ERROR')} Please specify a provider: zai, opencode, antigravity, claude, codex")
         return 1
 
     p = provider.strip().lower()
 
     if p in ("zai", "glm", "z-ai", "z.ai"):
         return _login_zai()
+    elif p in ("opencode", "opencode_go", "opencode-go"):
+        return _login_opencode()
     elif p in ("claude", "anthropic"):
         return _login_claude()
     elif p in ("codex", "chatgpt", "openai"):
@@ -227,9 +242,60 @@ def login_provider(provider: Optional[str]) -> int:
         return _login_antigravity()
     else:
         console.print(
-            f"{stamp_err('ERROR')} Unknown provider '{provider}'. Choose from: zai, antigravity, claude, codex"
+            f"{stamp_err('ERROR')} Unknown provider '{provider}'. Choose from: zai, opencode, antigravity, claude, codex"
         )
         return 1
+
+
+def _login_opencode() -> int:
+    """Interactive login for OpenCode Go subscription ($10/mo multi-model)."""
+    console.print(f"\n[bold {BRASS}]=== OPENCODE GO / ZEN SUBSCRIPTION AUTHENTICATION ===[/]\n")
+    console.print(f"  [{MUTED}]Obtain your API Key from your OpenCode Console at https://opencode.ai[/]")
+    console.print(f"  [{MUTED}]Supported models: DeepSeek V3/R1, GLM-5/4, Qwen Coder, Kimi, Claude Haiku, etc.[/]\n")
+
+    key = getpass.getpass("Enter your OpenCode API Key (oc_sk_...): ").strip()
+    if not key:
+        console.print(f"{stamp_err('ABORTED')} No API key entered.")
+        return 1
+
+    # Validate against models endpoint
+    console.print(f"{stamp_info('VERIFYING')} Testing connection to OpenCode API...")
+    req = urllib.request.Request(
+        "https://opencode.ai/inference/go/openai/v1/models",
+        headers={
+            "Authorization": f"Bearer {key}",
+            "Accept": "application/json",
+            "User-Agent": "Monika-TradingAgent/1.0",
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 200:
+                vault.set_secret("OPENCODE_API_KEY", key)
+                save_oauth_tokens("opencode", {"api_key": key, "source": "opencode_go_subscription"})
+                console.print(f"{stamp_ok('SUCCESS')} OpenCode Go credentials saved and verified successfully!\n")
+                return 0
+    except urllib.error.HTTPError as err:
+        console.print(f"{stamp_err('VALIDATION FAILED')} OpenCode returned HTTP {err.code}: {err.reason}")
+        ans = input("Save key anyway without online verification? [y/N]: ").strip().lower()
+        if ans in ("y", "yes"):
+            vault.set_secret("OPENCODE_API_KEY", key)
+            save_oauth_tokens("opencode", {"api_key": key, "source": "opencode_go_subscription"})
+            console.print(f"{stamp_ok('SAVED')} Key saved to CredentialVault.\n")
+            return 0
+        return 1
+    except Exception as exc:
+        console.print(f"{stamp_err('CONNECTION FAILED')} Could not connect to OpenCode: {exc}")
+        ans = input("Save key anyway without online verification? [y/N]: ").strip().lower()
+        if ans in ("y", "yes"):
+            vault.set_secret("OPENCODE_API_KEY", key)
+            save_oauth_tokens("opencode", {"api_key": key, "source": "opencode_go_subscription"})
+            console.print(f"{stamp_ok('SAVED')} Key saved to CredentialVault.\n")
+            return 0
+        return 1
+
+    return 0
 
 
 def _login_zai() -> int:
@@ -474,13 +540,18 @@ def _login_antigravity() -> int:
 def logout_provider(provider: Optional[str]) -> int:
     """Remove OAuth tokens for a specific provider."""
     if not provider:
-        console.print(f"{stamp_err('ERROR')} Please specify a provider to logout: zai, antigravity, claude, codex")
+        console.print(
+            f"{stamp_err('ERROR')} Please specify a provider to logout: zai, opencode, antigravity, claude, codex"
+        )
         return 1
 
     p = provider.strip().lower()
     mapping = {
         "zai": "zai",
         "glm": "zai",
+        "opencode": "opencode",
+        "opencode_go": "opencode",
+        "opencode-go": "opencode",
         "claude": "anthropic",
         "anthropic": "anthropic",
         "codex": "codex",
@@ -492,7 +563,7 @@ def logout_provider(provider: Optional[str]) -> int:
     target = mapping.get(p)
     if not target:
         console.print(
-            f"{stamp_err('ERROR')} Unknown provider '{provider}'. Choose from: zai, antigravity, claude, codex"
+            f"{stamp_err('ERROR')} Unknown provider '{provider}'. Choose from: zai, opencode, antigravity, claude, codex"
         )
         return 1
 
@@ -500,6 +571,8 @@ def logout_provider(provider: Optional[str]) -> int:
     delete_oauth_tokens(target)
     if target == "zai":
         vault.delete_secret("ZAI_API_KEY")
+    elif target == "opencode":
+        vault.delete_secret("OPENCODE_API_KEY")
 
     console.print(f"{stamp_ok('SUCCESS')} Successfully logged out from {provider}. Credentials cleared from vault.\n")
     return 0
