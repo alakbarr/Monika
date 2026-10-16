@@ -134,6 +134,7 @@ def test_prune_before_execution_strips_heavy_data_from_trades():
                 "raw_indicators_df": "mock_df_dump",
                 "raw_mt5_ticks": [1, 2, 3],
                 "deep_analysis_dump": "dump",
+                "context_messages": [{"role": "user", "content": "giant prompt"}],
             },
             (
                 "GBPUSD",
@@ -143,6 +144,7 @@ def test_prune_before_execution_strips_heavy_data_from_trades():
                     "volume": 0.2,
                     "raw_chart_base64": "base64data",
                     "all_candles": [1.25, 1.26],
+                    "context_messages": [{"role": "assistant", "content": "giant response"}],
                 },
             ),
         ]
@@ -163,6 +165,7 @@ def test_prune_before_execution_strips_heavy_data_from_trades():
         "raw_indicators_df",
         "raw_mt5_ticks",
         "deep_analysis_dump",
+        "context_messages",
     ):
         assert heavy not in t1
 
@@ -172,6 +175,7 @@ def test_prune_before_execution_strips_heavy_data_from_trades():
     assert t2["symbol"] == "GBPUSD"
     assert "raw_chart_base64" not in t2
     assert "all_candles" not in t2
+    assert "context_messages" not in t2
 
 
 def test_workflow_has_prune_execution_node():

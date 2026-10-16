@@ -876,8 +876,15 @@ class NewsWatcher:
                 else []
             )
             if actionable:
+                trade_summary = ", ".join(
+                    f"{sym} {r.get('decision', '').upper()} @ {r.get('entry_price')} "
+                    f"(SL: {r.get('stop_loss')}, TP: {r.get('take_profit')}, ID: {r.get('analysis_id')})"
+                    if isinstance(r, dict)
+                    else str(sym)
+                    for sym, r in actionable
+                )
                 logger.info(
-                    f"[NewsWatcher] Found {len(actionable)} actionable trade(s) from news reanalysis: {actionable}"
+                    f"[NewsWatcher] Found {len(actionable)} actionable trade(s) from news reanalysis: [{trade_summary}]"
                 )
                 # LangGraph Reactive Entry Point (CRITICAL-01)
                 try:

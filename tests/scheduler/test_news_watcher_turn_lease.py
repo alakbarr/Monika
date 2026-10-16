@@ -99,3 +99,41 @@ async def test_news_watcher_targeted_reanalysis_acquires_and_releases_lease(sett
 
     # After targeted reanalysis, EURUSD lease is released
     assert not await lease_mgr.is_symbol_leased("EURUSD")
+
+
+@pytest.mark.asyncio
+async def test_news_watcher_targeted_reanalysis_logs_compact_summary(settings, caplog):
+    import logging
+
+    watcher = NewsWatcher(settings)
+
+    mock_per_asset = MagicMock()
+    mock_per_asset.run_all = AsyncMock(
+        return_value={
+            "XTIUSD": {
+                "decision": "buy",
+                "analysis_id": 2271,
+                "entry_price": 94.20,
+                "stop_loss": 92.70,
+                "take_profit": 96.72,
+                "context_messages": [{"role": "user", "content": "giant prompt message with thousands of tokens"}],
+            }
+        }
+    )
+    watcher._per_asset_stage = mock_per_asset
+
+    with patch("monika.application.graph.reactive_graph.get_reactive_graph") as mock_get_graph:
+        mock_graph = MagicMock()
+        mock_graph.ainvoke = AsyncMock()
+        mock_get_graph.return_value = mock_graph
+
+        with caplog.at_level(logging.INFO):
+            await watcher._run_targeted_reanalysis_and_route(["XTIUSD"], context="Crude oil news")
+
+    log_text = caplog.text
+    assert (
+        "Found 1 actionable trade(s) from news reanalysis: [XTIUSD BUY @ 94.2 (SL: 92.7, TP: 96.72, ID: 2271)]"
+        in log_text
+    )
+    assert "giant prompt message with thousands of tokens" not in log_text
+    assert "context_messages" not in log_text

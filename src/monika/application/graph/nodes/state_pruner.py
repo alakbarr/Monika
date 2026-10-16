@@ -136,6 +136,7 @@ def prune_before_execution(state: TradingState, *args, **kwargs) -> Dict[str, An
                 "raw_indicators_df",
                 "raw_mt5_ticks",
                 "deep_analysis_dump",
+                "context_messages",
             ):
                 cleaned.pop(heavy, None)
             clean_actionable.append(cleaned)
@@ -149,6 +150,7 @@ def prune_before_execution(state: TradingState, *args, **kwargs) -> Dict[str, An
                     "raw_indicators_df",
                     "raw_mt5_ticks",
                     "deep_analysis_dump",
+                    "context_messages",
                 ):
                     plan.pop(heavy, None)
                 clean_actionable.append((item[0], plan))
