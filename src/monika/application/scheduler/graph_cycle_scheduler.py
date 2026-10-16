@@ -330,6 +330,9 @@ class GraphCycleScheduler(CycleScheduler):
         return (-before_min * 60) <= delta_seconds <= (after_min * 60)
 
     async def _should_run_session_trigger(self) -> tuple[bool, str]:
+        if not self.settings.get("trading", {}).get("schedule", {}).get("session_trigger_enabled", True):
+            return False, "session_trigger_disabled_by_config"
+
         now = datetime.now(timezone.utc)
         weekday = now.weekday()
 

@@ -13,6 +13,7 @@ Menghasilkan FundamentalBrief yang digunakan oleh analisis Tahap 2.
 import asyncio
 import json
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, Optional
 
@@ -1606,3 +1607,202 @@ INSTRUCTIONS:
         except Exception as e:
             logger.error(f"Failed to generate deterministic fallback brief: {e}", exc_info=True)
             return None
+
+    async def patch_brief(
+        self,
+        session: AsyncSession,
+        catalyst_text: str,
+        catalyst_type: str = "breaking_news",
+        affected_currencies: Optional[list[str]] = None,
+    ) -> Optional[FundamentalBrief]:
+        """
+        Surgical Macro Delta Revision (Tier 2).
+        Merevisi FundamentalBrief yang sudah ada secara inkremental menggunakan model ringan (Flash),
+        menghemat ~85% token tanpa mengulang full debate dari nol.
+        """
+        logger.info(f"[MacroDeltaPatch] Memulai revisi delta makro (katalis={catalyst_type})...")
+        current_brief: Optional[FundamentalBrief] = None
+        try:
+            stmt = select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+            current_brief = (await session.execute(stmt)).scalar_one_or_none()
+            if not current_brief:
+                logger.warning("[MacroDeltaPatch] Tidak ada brief aktif untuk ditambal, fallback ke full run.")
+                await self.run(session, forced=True)
+                return (await session.execute(stmt)).scalar_one_or_none()
+
+            baseline_structured = {}
+            if current_brief.structured_json:
+                try:
+                    baseline_structured = json.loads(current_brief.structured_json)
+                except Exception:
+                    baseline_structured = {}
+
+            client = get_client_for_task("stage1_delta_revision", self.settings)
+
+            system_prompt = (
+                "You are Monika's Macro Delta Auditor. Your objective is to perform a surgical, "
+                "objective delta evaluation on an existing Fundamental Brief based on an incoming market catalyst.\n\n"
+                "CRITICAL ANTI-BIAS & OBJECTIVITY RULES:\n"
+                "1. DO NOT force a bias change or flip existing market regime if the catalyst does not justify it. "
+                "Financial markets frequently experience news that simply CONFIRMS, REINFORCES, or ALIGNS WITH the established trend.\n"
+                "2. If the incoming event/data aligns with or strengthens the current currency bias, you MUST maintain "
+                "the existing bias and explicitly declare it as REINFORCING the current thesis (catalyst_impact='REINFORCES_EXISTING_BIAS').\n"
+                "3. Evaluate if the catalyst was ALREADY PRICED-IN by the market before this event occurred. "
+                "If priced-in, do NOT create artificial sentiment shocks.\n"
+                "4. Only adjust directional currency bias or macro regime if the data objectively and significantly "
+                "CONTRADICTS or INVALIDATES the baseline (e.g. unexpected rate decision, severe geopolitical shock, major statistical surprise).\n"
+                "5. Return strictly a JSON object conforming to the required schema."
+            )
+
+            delta_schema = {
+                "type": "object",
+                "properties": {
+                    "has_thesis_changed": {
+                        "type": "boolean",
+                        "description": "True only if the core macro thesis or currency direction is fundamentally altered",
+                    },
+                    "catalyst_impact": {
+                        "type": "string",
+                        "enum": ["REINFORCES_EXISTING_BIAS", "INVALIDATES_BIAS", "MARKET_NOISE", "ALREADY_PRICED_IN"],
+                    },
+                    "revision_summary": {
+                        "type": "string",
+                        "description": "Concise 1-3 sentence summary explaining whether the catalyst changes or reinforces the macro picture",
+                    },
+                    "currency_bias_adjustments": {
+                        "type": "object",
+                        "description": "Key-value of currency (e.g. USD, EUR, GBP, XAU) to updated bias ('bullish', 'bearish', 'neutral'). Only include affected currencies.",
+                    },
+                    "macro_regime_adjustment": {
+                        "type": "string",
+                        "description": "Updated macro regime or null if unchanged",
+                    },
+                    "risk_sentiment_adjustment": {
+                        "type": "string",
+                        "enum": ["risk-on", "risk-off", "mixed"],
+                        "description": "Updated risk sentiment or null if unchanged",
+                    },
+                    "confidence_delta": {
+                        "type": "number",
+                        "description": "Confidence adjustment between -0.3 and +0.3 (positive if reinforced, negative if uncertain)",
+                    },
+                },
+                "required": ["has_thesis_changed", "catalyst_impact", "revision_summary", "currency_bias_adjustments"],
+            }
+
+            curr_regime = (
+                current_brief.macro_regime
+                if isinstance(getattr(current_brief, "macro_regime", None), str)
+                else baseline_structured.get("macro_regime", "mixed")
+            )
+            curr_sentiment = (
+                current_brief.risk_sentiment
+                if isinstance(getattr(current_brief, "risk_sentiment", None), str)
+                else baseline_structured.get("risk_sentiment", "mixed")
+            )
+            curr_bias = (
+                current_brief.currency_bias
+                if isinstance(getattr(current_brief, "currency_bias", None), dict)
+                else baseline_structured.get("currency_bias", {})
+            )
+            narrative_text = (current_brief.content_markdown or "")[:500]
+
+            now_utc = clock.now()
+            user_prompt = (
+                f"CURRENT TIME: {now_utc.strftime('%Y-%m-%d %H:%M UTC')}\n"
+                f"INCOMING CATALYST TYPE: {catalyst_type}\n"
+                f"AFFECTED CURRENCIES CANDIDATES: {affected_currencies or 'Global/All'}\n\n"
+                f"--- INCOMING MARKET CATALYST ---\n{catalyst_text.strip()}\n\n"
+                f"--- CURRENT BASELINE BRIEF (ID #{current_brief.id}, Generated {current_brief.generated_at}) ---\n"
+                f"Macro Regime: {curr_regime}\n"
+                f"Risk Sentiment: {curr_sentiment}\n"
+                f"Confidence: {current_brief.confidence}\n"
+                f"Current Currency Bias: {json.dumps(curr_bias)}\n"
+                f"Baseline Narrative: {narrative_text}\n\n"
+                "Task: Evaluate this catalyst against the baseline. Does it reinforce, contradict, or is it noise? Output valid JSON."
+            )
+
+            res = None
+            if hasattr(client, "classify_json"):
+                res = await client.classify_json(prompt=user_prompt, system_prompt=system_prompt, schema=delta_schema)
+            elif hasattr(client, "generate_json"):
+                res = await client.generate_json(prompt=user_prompt, system_prompt=system_prompt, schema=delta_schema)
+            elif hasattr(client, "generate"):
+                raw_text = await client.generate(prompt=f"{system_prompt}\n\n{user_prompt}")
+                try:
+                    clean = re.sub(r"^```json\s*|\s*```$", "", str(raw_text).strip(), flags=re.MULTILINE)
+                    res = json.loads(clean)
+                except Exception:
+                    res = None
+
+            if not isinstance(res, dict):
+                logger.warning(f"[MacroDeltaPatch] LLM response invalid ({res}), keeping existing brief intact.")
+                return current_brief
+
+            updated_structured = dict(baseline_structured)
+            current_biases = dict(updated_structured.get("currency_bias", {}))
+            bias_adjs = res.get("currency_bias_adjustments") or {}
+            if isinstance(bias_adjs, dict):
+                for curr, new_b in bias_adjs.items():
+                    if new_b and isinstance(new_b, str):
+                        clean_b = new_b.lower().strip()
+                        if clean_b in ("bullish", "strong_bullish", "bearish", "strong_bearish", "neutral"):
+                            current_biases[curr.upper()] = clean_b
+            updated_structured["currency_bias"] = current_biases
+
+            if res.get("macro_regime_adjustment"):
+                updated_structured["macro_regime"] = str(res["macro_regime_adjustment"]).lower()
+            if res.get("risk_sentiment_adjustment"):
+                updated_structured["risk_sentiment"] = str(res["risk_sentiment_adjustment"]).lower()
+
+            rev_summary = res.get("revision_summary", "Delta update applied.")
+            impact_tag = res.get("catalyst_impact", "REINFORCES_EXISTING_BIAS")
+            updated_structured["last_catalyst"] = {
+                "type": catalyst_type,
+                "impact": impact_tag,
+                "summary": rev_summary,
+                "timestamp": now_utc.isoformat(),
+            }
+
+            old_conf = float(current_brief.confidence or 0.7)
+            conf_delta = float(res.get("confidence_delta", 0.0) or 0.0)
+            new_conf = max(0.1, min(1.0, round(old_conf + conf_delta, 2)))
+            updated_structured["confidence"] = new_conf
+
+            new_markdown = (
+                f"{current_brief.content_markdown or ''}\n\n"
+                f"---\n"
+                f"**[MACRO DELTA REVISION - {now_utc.strftime('%Y-%m-%d %H:%M UTC')} | Catalyst: {catalyst_type.upper()}]**\n"
+                f"• Impact: **{impact_tag}**\n"
+                f"• Assessment: {rev_summary}\n"
+                f"• Thesis Shift: {'YES (Shift)' if res.get('has_thesis_changed') else 'NO (Reinforced / Noise)'}\n"
+            )
+
+            new_brief = FundamentalBrief(
+                generated_at=now_utc,
+                valid_until=current_brief.valid_until or (now_utc + timedelta(hours=8)),
+                content_markdown=new_markdown,
+                structured_json=json.dumps(updated_structured),
+                confidence=new_conf,
+                risk_sentiment=updated_structured.get("risk_sentiment", current_brief.risk_sentiment),
+                debate_bull_thesis=f"Delta catalyst: {rev_summary}",
+                debate_bear_thesis=f"Baseline regime: {current_brief.macro_regime}",
+                debate_winner="DELTA_REVISION" if res.get("has_thesis_changed") else "DELTA_REINFORCED",
+                debate_escalation_required=False,
+            )
+            session.add(new_brief)
+            await session.commit()
+            await session.refresh(new_brief)
+            logger.info(
+                f"[MacroDeltaPatch] Berhasil membuat FundamentalBrief Delta (id={new_brief.id}, "
+                f"impact={impact_tag}, changed={res.get('has_thesis_changed')})"
+            )
+            await self._log(
+                session,
+                f"Macro Delta Revision #{new_brief.id} applied ({impact_tag}): {rev_summary[:120]}",
+                category="analysis",
+            )
+            return new_brief
+        except Exception as e:
+            logger.error(f"[MacroDeltaPatch] Error in delta revision: {e}", exc_info=True)
+            return current_brief

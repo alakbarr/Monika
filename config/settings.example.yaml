@@ -248,6 +248,8 @@ trading:
       - 07:00
       - '15:00'
       - '20:00'
+      - '03:30'
+    session_trigger_enabled: false
     daily_report_time_local: 08:00
     weekly_report_weekday: 5
     run_immediately_on_first_start: true
@@ -1955,6 +1957,15 @@ llm:
       max_tool_turns: 15
       temperature: 0.0
       fallback_1: gpt-6.1-sol
+    stage1_delta_revision:
+      primary: deepseek-v4.1-flash
+      thinking:
+        primary: max
+        fallback_1: max
+      max_tokens: 4096
+      temperature: 0.0
+      fallback_1: glm-5.3-flash
+      fallback_2: gemini-3.8-flash
     stage2_per_asset_primary:
       primary: glm-5.3
       thinking:

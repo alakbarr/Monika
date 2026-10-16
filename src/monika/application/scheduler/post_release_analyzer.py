@@ -346,13 +346,34 @@ class PostReleaseAnalyzer:
             if is_tier1 and self._fundamental:
                 try:
                     logger.info(
-                        "[PostReleaseAnalyzer] Tier-1 catalyst detected. Refreshing Stage 1 FundamentalBrief before Stage 2..."
+                        "[PostReleaseAnalyzer] Tier-1 catalyst detected. Patching Stage 1 FundamentalBrief with delta revision before Stage 2..."
+                    )
+                    affected_ccys = list(
+                        {getattr(e, "currency", "") for e in (events or []) if getattr(e, "currency", "")}
+                        | {sym[:3] for sym in symbols}
+                        | {sym[3:6] for sym in symbols if len(sym) >= 6}
                     )
                     async with _gs() as f_session:
-                        await self._fundamental.run(f_session, forced=True)
-                    logger.info("[PostReleaseAnalyzer] Stage 1 refreshed successfully.")
+                        if hasattr(self._fundamental, "patch_brief"):
+                            patched = await self._fundamental.patch_brief(
+                                f_session,
+                                catalyst_text=context,
+                                catalyst_type="economic_release",
+                                affected_currencies=affected_ccys,
+                            )
+                            if patched:
+                                logger.info("[PostReleaseAnalyzer] Stage 1 patched successfully with delta revision.")
+                            else:
+                                logger.info(
+                                    "[PostReleaseAnalyzer] Stage 1 delta patch produced no revision, using current brief."
+                                )
+                        else:
+                            await self._fundamental.run(f_session, forced=True)
+                            logger.info("[PostReleaseAnalyzer] Stage 1 refreshed successfully.")
                 except Exception as fe:
-                    logger.warning(f"[PostReleaseAnalyzer] Stage 1 refresh failed, proceeding with current brief: {fe}")
+                    logger.warning(
+                        f"[PostReleaseAnalyzer] Stage 1 delta patch failed, proceeding with current brief: {fe}"
+                    )
 
             pa_results = await self._per_asset.run_all(
                 session_factory=_gs,

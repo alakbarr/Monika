@@ -293,3 +293,34 @@ async def _case_macro_analyst(session: Any, settings: dict[str, Any], ex: Any) -
         role_kwargs=dict(max_tokens=4096, thinking="high"),
         context_summary=anomaly_data[:4000],
     )
+
+
+async def _case_stage1_delta_revision(session: Any, settings: dict[str, Any], ex: Any) -> BenchmarkCase:
+    brief = get_synthetic_fundamental_brief()
+    user_msg = (
+        f"INCOMING MARKET CATALYST:\nUS Core CPI MoM came in at 0.4% vs 0.3% expected.\n\n"
+        f"CURRENT BASELINE BRIEF:\n"
+        f"Confidence: {brief.get('confidence', 0.75)}\n"
+        f"Macro Regime: {brief.get('macro_regime', 'mixed')}\n"
+        f"Currency Bias: {json.dumps(brief.get('currency_bias', {}))}\n\n"
+        "Task: Evaluate this catalyst against the baseline. Does it reinforce, contradict, or is it noise? Output valid JSON."
+    )
+    return BenchmarkCase(
+        "stage1_delta_revision",
+        "macro",
+        system_prompt="You are Monika's Macro Delta Auditor. Evaluate catalysts against baseline brief.",
+        user_prompt=user_msg,
+        schema={
+            "type": "object",
+            "properties": {
+                "has_thesis_changed": {"type": "boolean"},
+                "catalyst_impact": {"type": "string"},
+                "revision_summary": {"type": "string"},
+                "currency_bias_adjustments": {"type": "object"},
+                "confidence_delta": {"type": "number"},
+            },
+            "required": ["has_thesis_changed", "catalyst_impact", "revision_summary", "currency_bias_adjustments"],
+        },
+        stage_name="benchmark_stage1_delta_revision",
+        role_kwargs=dict(max_tokens=1500, max_tool_turns=1),
+    )

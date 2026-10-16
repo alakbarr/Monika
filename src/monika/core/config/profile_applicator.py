@@ -23,6 +23,7 @@ ALL_TASK_ROLES = [
     "stage1_shadow_check",
     "stage1_fundamental",
     "stage1_escalation",
+    "stage1_delta_revision",
     "stage2_per_asset_primary",
     "stage2_per_asset_secondary",
     "stage2_session_trigger",

@@ -252,6 +252,7 @@ class AgentBuilderMixin:
         )
         self.active_calendar_poller._news_watcher = self.news_watcher
         self.news_watcher._post_release_analyzer = self.post_release_analyzer
+        self.active_calendar_poller._post_release_analyzer = self.post_release_analyzer
 
         self.trigger_checker = TriggerChecker(
             self.settings,

@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -620,3 +621,147 @@ class TestFundamentalStage:
             assert res["success"] is True
             # Confidence stays 0.35 because data was degraded (_quality_flag is True)
             assert brief.confidence == 0.35
+
+    @pytest.mark.asyncio
+    async def test_patch_brief_reinforces_existing_bias(self):
+        """Verify patch_brief maintains existing biases when catalyst reinforces current thesis."""
+        settings = {"trading": {"stage1_self_consistency_enabled": False}}
+        stage = FundamentalStage(settings)
+        mock_session = self._create_mock_session()
+
+        existing_brief = MagicMock()
+        existing_brief.id = 501
+        existing_brief.summary = "Initial hawkish USD thesis."
+        existing_brief.confidence = 0.75
+        existing_brief.macro_regime = "risk_off"
+        existing_brief.gold_bias = "neutral"
+        existing_brief.oil_bias = "bearish"
+        existing_brief.currency_bias = {"USD": "bullish", "EUR": "bearish", "GBP": "neutral"}
+        existing_brief.content_markdown = "Initial hawkish USD narrative."
+        existing_brief.generated_at = datetime.now(timezone.utc)
+        existing_brief.currency_bias_json = json.dumps({"USD": "bullish", "EUR": "bearish", "GBP": "neutral"})
+        existing_brief.currency_confidence_json = json.dumps({"USD": 0.75, "EUR": 0.70, "GBP": 0.60})
+        existing_brief.structured_json = json.dumps({"theme": "Hawkish USD", "currency_bias": {"USD": "bullish"}})
+
+        mock_res = MagicMock()
+        mock_res.scalar_one_or_none.return_value = existing_brief
+        mock_session.execute = AsyncMock(return_value=mock_res)
+
+        delta_dict = {
+            "has_thesis_changed": False,
+            "catalyst_impact": "REINFORCES_EXISTING_BIAS",
+            "revision_summary": "Strong retail sales numbers reinforce current hawkish USD trajectory.",
+            "currency_bias_adjustments": {},
+            "confidence_delta": 0.05,
+            "macro_regime_adjustment": None,
+            "risk_sentiment_adjustment": None,
+        }
+
+        mock_client = MagicMock()
+        mock_client.classify_json = AsyncMock(return_value=delta_dict)
+        mock_client.generate = AsyncMock(return_value=json.dumps(delta_dict))
+
+        with patch(
+            "monika.application.analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_client
+        ):
+            patched = await stage.patch_brief(
+                mock_session,
+                catalyst_text="US Retail Sales MoM +0.8% vs +0.3% exp",
+                catalyst_type="economic_release",
+                affected_currencies=["USD"],
+            )
+
+        assert patched is not None
+        assert patched.confidence == 0.80  # 0.75 + 0.05
+        assert "Strong retail sales numbers" in (patched.content_markdown or "")
+        assert "MACRO DELTA REVISION" in (patched.content_markdown or "")
+        cur_bias = patched.currency_bias
+        assert cur_bias["USD"] == "bullish"  # Preserved
+
+    @pytest.mark.asyncio
+    async def test_patch_brief_contradictory_catalyst_updates_bias(self):
+        """Verify patch_brief updates currency bias and regime on contradictory shock."""
+        settings = {"trading": {"stage1_self_consistency_enabled": False}}
+        stage = FundamentalStage(settings)
+        mock_session = self._create_mock_session()
+
+        existing_brief = MagicMock()
+        existing_brief.id = 502
+        existing_brief.confidence = 0.80
+        existing_brief.macro_regime = "risk_on"
+        existing_brief.gold_bias = "bearish"
+        existing_brief.oil_bias = "neutral"
+        existing_brief.risk_sentiment = "risk-on"
+        existing_brief.currency_bias = {"USD": "bullish", "EUR": "neutral"}
+        existing_brief.content_markdown = "Baseline narrative."
+        existing_brief.generated_at = datetime.now(timezone.utc)
+        existing_brief.currency_bias_json = json.dumps({"USD": "bullish", "EUR": "neutral"})
+        existing_brief.currency_confidence_json = json.dumps({"USD": 0.80, "EUR": 0.65})
+        existing_brief.structured_json = json.dumps(
+            {"macro_regime": "risk_on", "risk_sentiment": "risk-on", "currency_bias": {"USD": "bullish"}}
+        )
+
+        mock_res = MagicMock()
+        mock_res.scalar_one_or_none.return_value = existing_brief
+        mock_session.execute = AsyncMock(return_value=mock_res)
+
+        delta_dict = {
+            "has_thesis_changed": True,
+            "catalyst_impact": "INVALIDATES_BIAS",
+            "revision_summary": "Emergency Fed dovish pivot shatters dollar bullish thesis.",
+            "currency_bias_adjustments": {"USD": "bearish"},
+            "confidence_delta": -0.10,
+            "macro_regime_adjustment": "risk_off",
+            "risk_sentiment_adjustment": "risk-off",
+        }
+
+        mock_client = MagicMock()
+        mock_client.classify_json = AsyncMock(return_value=delta_dict)
+        mock_client.generate = AsyncMock(return_value=json.dumps(delta_dict))
+
+        with patch(
+            "monika.application.analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_client
+        ):
+            patched = await stage.patch_brief(
+                mock_session,
+                catalyst_text="Emergency Fed rate cut 50 bps",
+                catalyst_type="breaking_news",
+                affected_currencies=["USD", "XAU"],
+            )
+
+        assert patched is not None
+        assert patched.confidence == 0.70  # 0.80 - 0.10
+        assert patched.macro_regime == "risk_off"
+        assert patched.risk_sentiment == "risk-off"
+        cur_bias = patched.currency_bias
+        assert cur_bias["USD"] == "bearish"  # Flipped by genuine contradiction
+
+    @pytest.mark.asyncio
+    async def test_patch_brief_llm_failure_falls_back_cleanly(self):
+        """Verify patch_brief recovers cleanly and returns current brief on LLM failure."""
+        settings = {"trading": {"stage1_self_consistency_enabled": False}}
+        stage = FundamentalStage(settings)
+        mock_session = self._create_mock_session()
+
+        existing_brief = MagicMock()
+        existing_brief.id = 503
+        existing_brief.confidence = 0.70
+
+        mock_res = MagicMock()
+        mock_res.scalar_one_or_none.return_value = existing_brief
+        mock_session.execute = AsyncMock(return_value=mock_res)
+
+        mock_client = AsyncMock()
+        mock_client.generate = AsyncMock(side_effect=RuntimeError("API quota exhausted"))
+
+        with patch(
+            "monika.application.analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_client
+        ):
+            patched = await stage.patch_brief(
+                mock_session,
+                catalyst_text="Random news",
+                catalyst_type="breaking_news",
+            )
+
+        assert patched == existing_brief
+        assert patched.confidence == 0.70

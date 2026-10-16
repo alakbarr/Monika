@@ -659,23 +659,35 @@ class NewsWatcher:
                     f"NewsWatcher: Daily trade limit reached ({today_trades}/{max_daily_trades}). "
                     f"Skipping Stage 2 reanalysis to save tokens — risk gate would block execution anyway."
                 )
-                # Still run Stage 1 for macro brief update if it's a major news event
+                # Still run Stage 1 delta revision to update macro brief if available
                 # but skip Stage 2 since it can't execute
-                if len(affected_symbols) >= 4 and self._fundamental_stage:
-                    logger.info("Running Stage 1 only (major event) to update macro brief.")
+                if self._fundamental_stage:
+                    logger.info(
+                        "NewsWatcher: Running Stage 1 delta revision only (trade limit reached) to update macro brief."
+                    )
+                    catalyst_summary = (
+                        f"{high_items[0].title}: {high_items[0].summary}" if high_items else "Major breaking news"
+                    )
+                    affected_ccys = list(
+                        {sym[:3] for sym in affected_symbols} | {sym[3:6] for sym in affected_symbols if len(sym) >= 6}
+                    )
                     async with get_session() as session:
-                        await self._fundamental_stage.run(session, forced=True)
+                        await self._fundamental_stage.patch_brief(
+                            session,
+                            catalyst_text=catalyst_summary,
+                            catalyst_type="breaking_news",
+                            affected_currencies=affected_ccys,
+                        )
                 return
         except Exception as e:
             logger.debug(f"NewsWatcher daily count check failed (non-fatal): {e}")
         # --- END NEW ---
         """
         Memicu re-analisis saat ada breaking news.
-        - Jika berdampak luas (>= 4 aset) -> Full Cycle.
-        - Jika parsial -> Stage 1 singkat + Stage 2 spesifik aset.
+        - Menggunakan Stage 1 patch_brief (Delta Revision dengan model ringan)
+        - Diikuti Stage 2 terarah HANYA untuk simbol yang terdampak.
         (Menerapkan batas harian rerun agar hemat budget)
         """
-        all_assets = {"XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD"}
         affected_set = set(affected_symbols)
 
         # Dedup: if all high items are from calendar_poller and PostReleaseAnalyzer is active,
@@ -731,12 +743,6 @@ class NewsWatcher:
         except Exception as lease_err:
             logger.debug(f"NewsWatcher: Event coalescence check non-fatal error: {lease_err}")
 
-        want_full_cycle = (affected_set >= all_assets or len(affected_symbols) >= 4) and not fallback_mode
-        if fallback_mode and (affected_set >= all_assets or len(affected_symbols) >= 4):
-            logger.warning(
-                "Fallback mode aktif — full-cycle rerun DITOLAK meski affected_symbols besar. Downgrade ke targeted rerun per-simbol saja."
-            )
-
         POST_EVENT_DELAY_MINUTES = 15
         now = datetime.now(timezone.utc)
         pub_time = None
@@ -747,32 +753,17 @@ class NewsWatcher:
         target_settle = (pub_time or now) + timedelta(minutes=POST_EVENT_DELAY_MINUTES)
         remaining_wait = max(0.0, (target_settle - now).total_seconds()) if isinstance(target_settle, datetime) else 0.0
 
-        if want_full_cycle and self._forced_reruns_today < self._max_forced_reruns:
-            # Full cycle re-run (within budget)
-            self._forced_reruns_today += 1
+        # Run emergency position check immediately before settling delay
+        if self._position_guardian:
+            logger.info("Breaking news: running emergency position check...")
+            await self._position_guardian.check_and_protect(emergency=True)
+        await self._tighten_sl_on_breaking_news(affected_symbols)
+        if remaining_wait > 0:
             logger.info(
-                f"Breaking news: triggering full analysis cycle "
-                f"({self._forced_reruns_today}/{self._max_forced_reruns} today). "
-                f"Settling window target: {target_settle.strftime('%H:%M:%S UTC')} (remaining: {remaining_wait / 60:.1f}min)..."
+                f"Breaking news settling window target: {target_settle.strftime('%H:%M:%S UTC')} "
+                f"(waiting {remaining_wait / 60:.1f}min)..."
             )
-            if self._position_guardian:
-                logger.info("Breaking news: running emergency position check...")
-                await self._position_guardian.check_and_protect(emergency=True)
-            await self._tighten_sl_on_breaking_news(affected_symbols)
-            if remaining_wait > 0:
-                await asyncio.sleep(remaining_wait)
-
-            if self._cycle_scheduler:
-                self._track_task(self._cycle_scheduler.run_once(forced=True))
-            return
-
-        if want_full_cycle and self._forced_reruns_today >= self._max_forced_reruns:
-            logger.warning(
-                f"Breaking news: full-cycle rerun budget exhausted "
-                f"({self._forced_reruns_today}/{self._max_forced_reruns}). "
-                f"Downgrading to targeted Stage-2 reruns for {affected_symbols}."
-            )
-            # Fall through to partial re-run below
+            await asyncio.sleep(remaining_wait)
 
         # For targeted Stage 2 reruns, apply per-symbol cooldown:
         now = datetime.now(timezone.utc)
@@ -794,8 +785,24 @@ class NewsWatcher:
                         f"({elapsed_minutes:.0f}min < {self._min_reanalysis_interval_minutes}min cooldown)"
                     )
 
+        catalyst_summary = f"{high_items[0].title}: {high_items[0].summary}" if high_items else "Breaking news"
+        affected_ccys = list(
+            {sym[:3] for sym in affected_symbols} | {sym[3:6] for sym in affected_symbols if len(sym) >= 6}
+        )
+
+        async def _do_stage1_patch() -> None:
+            if self._fundamental_stage:
+                async with get_session() as session:
+                    await self._fundamental_stage.patch_brief(
+                        session,
+                        catalyst_text=catalyst_summary,
+                        catalyst_type="breaking_news",
+                        affected_currencies=affected_ccys,
+                    )
+
         if not symbols_to_reanalyze:
-            logger.info("All affected symbols in cooldown period. No targeted reanalysis triggered.")
+            logger.info("All affected symbols in cooldown period. Patching Stage 1 macro brief only.")
+            await _do_stage1_patch()
             return
 
         if self._targeted_reruns_today >= self._max_targeted_reruns:
@@ -804,26 +811,20 @@ class NewsWatcher:
                 f"({self._targeted_reruns_today}/{self._max_targeted_reruns}). "
                 f"Skipping targeted Stage-2 reruns for {symbols_to_reanalyze} to preserve budget."
             )
+            await _do_stage1_patch()
             return
 
         self._targeted_reruns_today += 1
 
-        # Partial: Stage 1 (if not budget-capped full cycle) + targeted Stage 2
+        # Partial: Stage 1 delta revision + targeted Stage 2
         logger.info(
-            f"Breaking news: running Stage 1 + Stage 2 for {symbols_to_reanalyze}. "
-            f"Targeted rerun budget: {self._targeted_reruns_today}/{self._max_targeted_reruns}. "
-            f"Waiting {POST_EVENT_DELAY_MINUTES}min for market to settle..."
+            f"Breaking news: running Stage 1 delta revision + Stage 2 for {symbols_to_reanalyze}. "
+            f"Targeted rerun budget: {self._targeted_reruns_today}/{self._max_targeted_reruns}."
         )
-        if self._position_guardian:
-            logger.info("Breaking news: running emergency position check...")
-            await self._position_guardian.check_and_protect(emergency=True)
-        await self._tighten_sl_on_breaking_news(symbols_to_reanalyze)
-        if remaining_wait > 0:
-            await asyncio.sleep(remaining_wait)
 
         post_event_context = (
             f"\n\nPOST-EVENT CONTEXT: This analysis is triggered {POST_EVENT_DELAY_MINUTES} minutes "
-            f"after breaking news: {high_items[0].title[:100]}. "
+            f"after breaking news: {high_items[0].title[:100] if high_items else 'Unknown shock'}. "
             f"This is a POST-EVENT window — highest quality entry opportunity. "
             f"Look for: (1) Initial spike reversal, (2) Re-test of pre-news level, "
             f"(3) Structure reset with fresh FVG/OB created by the news spike."
@@ -832,19 +833,13 @@ class NewsWatcher:
         cycle_lock = getattr(self._cycle_scheduler, "_cycle_lock", None) if self._cycle_scheduler else None
         if cycle_lock:
             async with cycle_lock:
-                if self._fundamental_stage:
-                    async with get_session() as session:
-                        await self._fundamental_stage.run(session, forced=True)
-
+                await _do_stage1_patch()
                 if self._per_asset_stage and symbols_to_reanalyze:
                     await self._run_targeted_reanalysis_and_route(
                         symbols=symbols_to_reanalyze, context=post_event_context
                     )
         else:
-            if self._fundamental_stage:
-                async with get_session() as session:
-                    await self._fundamental_stage.run(session, forced=True)
-
+            await _do_stage1_patch()
             if self._per_asset_stage and symbols_to_reanalyze:
                 await self._run_targeted_reanalysis_and_route(symbols=symbols_to_reanalyze, context=post_event_context)
 

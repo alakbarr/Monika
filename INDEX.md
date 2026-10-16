@@ -6424,6 +6424,7 @@
   - `class FundamentalStage`: Eksekutor Tahap 1: Pembuatan Fundamental Brief.
     - `__init__(settings: dict)` - *Args:*
     - `async run(session: AsyncSession, forced: bool, weekend_btc_only_mode: bool, ...) -> Optional[dict]` - *Mengeksekusi analisis fundamental.*
+    - `async patch_brief(session: AsyncSession, catalyst_text: str, catalyst_type: str, ...) -> Optional[FundamentalBrief]` - *Surgical Macro Delta Revision (Tier 2).*
 
 #### `fundamental_stage_recovery.py` - *Tier-2 Heuristic Brief Recovery Engine for Stage 1 Fundamental Analysis.*
 - **Path**: [`src/monika/application/analysis/stages/fundamental_stage_recovery.py`](src/monika/application/analysis/stages/fundamental_stage_recovery.py)
@@ -10447,6 +10448,8 @@
     - `async connect(timeout: float) -> bool` - *Inisialisasi dan login ke MT5 (menggunakan gateway aktif). Mengembalikan True jika berhasil.*
     - `async failover_to_secondary() -> bool` - *Berpindah ke gateway MT5 sekunder saat gateway primer tidak dapat dihubungi.*
     - `async fallback_to_primary() -> bool` - *Kembali ke gateway MT5 primer saat sudah pulih.*
+    - `trade_mode() -> Optional[int]` - *MT5 account trade mode: 0=DEMO, 1=CONTEST, 2=REAL.*
+    - `is_demo_account() -> bool` - *True if MT5 account is verified to be a DEMO account (trade_mode == 0).*
     - `async disconnect() -> None` - *Tutup koneksi MT5.*
     - `async is_connected() -> bool` - *Periksa apakah terminal MT5 masih hidup.*
     - `async ensure_connected() -> bool` - *Cek koneksi dan lakukan reconnect dengan auto-failover ke gateway sekunder jika perlu.*

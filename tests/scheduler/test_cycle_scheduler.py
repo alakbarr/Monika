@@ -378,3 +378,15 @@ class TestCycleScheduler:
             and rec.levelno == logging.INFO
             for rec in caplog.records
         )
+
+    @pytest.mark.asyncio
+    async def test_should_run_session_trigger_disabled_by_config(self, settings):
+        """Verify session trigger is immediately skipped when session_trigger_enabled is false."""
+        from monika.application.scheduler.graph_cycle_scheduler import GraphCycleScheduler
+
+        settings["trading"]["schedule"]["session_trigger_enabled"] = False
+        scheduler = GraphCycleScheduler(settings)
+
+        should_run, reason = await scheduler._should_run_session_trigger()
+        assert should_run is False
+        assert reason == "session_trigger_disabled_by_config"

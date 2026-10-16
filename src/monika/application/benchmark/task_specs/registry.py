@@ -37,6 +37,7 @@ from .macro_cases import (
     _case_stage1_escalation,
     _case_stage1_fundamental,
     _case_stage1_shadow_check,
+    _case_stage1_delta_revision,
     _case_summarizer,
 )
 from .news_cases import (
@@ -88,6 +89,7 @@ TASKS: dict[str, TaskSpec] = {
     "stage1_fundamental": TaskSpec("stage1_fundamental", "macro", "agent", _case_stage1_fundamental),
     "stage1_escalation": TaskSpec("stage1_escalation", "macro", "agent", _case_stage1_escalation),
     "stage1_shadow_check": TaskSpec("stage1_shadow_check", "macro", "json", _case_stage1_shadow_check),
+    "stage1_delta_revision": TaskSpec("stage1_delta_revision", "macro", "json", _case_stage1_delta_revision),
     "fundamental_verifier": TaskSpec("fundamental_verifier", "macro", "json", _case_fundamental_verifier),
     "macro_analyst": TaskSpec("macro_analyst", "macro", "agent", _case_macro_analyst),
     "deep_research": TaskSpec("deep_research", "macro", "agent", _case_deep_research),

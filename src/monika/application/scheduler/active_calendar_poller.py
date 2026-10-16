@@ -25,6 +25,7 @@ class ActiveCalendarPoller:
         self.active_polling_tasks = set()
         self._background_tasks: set[asyncio.Task] = set()
         self._news_watcher: Optional[Any] = None
+        self._post_release_analyzer: Optional[Any] = None
 
     async def start(self):
         self.running = True
@@ -258,6 +259,9 @@ class ActiveCalendarPoller:
         if now_dt.tzinfo is None:
             now_dt = now_dt.replace(tzinfo=timezone.utc)
 
+        has_post_release_analyzer = getattr(self, "_post_release_analyzer", None) is not None
+        impact_level = "HIGH" if has_post_release_analyzer else "BREAKING"
+
         news = NewsItem(
             source="calendar_poller",
             title=combined_title,
@@ -266,15 +270,15 @@ class ActiveCalendarPoller:
             published_at=now_dt,
             currency_tags=tags,
             fetched_at=now_dt,
-            impact="BREAKING",  # Instant breaking news injection
+            impact=impact_level,
             sentiment=None,
         )
         session.add(news)
         await session.commit()
-        logger.warning(f"Injected pseudo-news for emergency trading: {combined_title}")
+        logger.info(f"[ActiveCalendarPoller] Recorded release data: {combined_title} (impact={impact_level})")
 
-        # FIX: Directly trigger NewsWatcher instead of waiting 5 min poll
-        if self._news_watcher is not None:
+        # Only trigger NewsWatcher directly if PostReleaseAnalyzer is not present to handle it
+        if not has_post_release_analyzer and self._news_watcher is not None:
             try:
                 logger.info("[ActiveCalendarPoller] Triggering immediate NewsWatcher run for pseudo-news")
                 nw_task = asyncio.create_task(self._news_watcher.run_once())

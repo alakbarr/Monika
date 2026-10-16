@@ -172,22 +172,28 @@ class TestNewsWatcher:
 
         mock_fundamental = MagicMock()
         mock_fundamental.run = AsyncMock()
+        mock_fundamental.patch_brief = AsyncMock()
 
         mock_per_asset = MagicMock()
-        mock_per_asset.run_all = AsyncMock()
+        mock_per_asset.run_all = AsyncMock(return_value={})
 
         watcher = NewsWatcher(settings, mock_cycle, mock_fundamental, mock_per_asset)
 
-        # Scenario 1: All assets -> Full cycle
+        # Scenario 1: All assets -> delta revision patch_brief + targeted per_asset (NO full cycle)
         await watcher._trigger_reanalysis([self._make_news("test")], ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD"])
-        assert mock_cycle.run_once.call_count == 1
-        # mock_cycle.run_once is awaited inside create_task, but we mock create_task itself
-
-        # Scenario 2: Partial assets -> fundamental + targeted per_asset
-        await watcher._trigger_reanalysis([self._make_news("test")], ["EURUSD"])
-
-        mock_fundamental.run.assert_awaited_once()
+        assert mock_cycle.run_once.call_count == 0
+        assert mock_fundamental.patch_brief.call_count == 1
         assert mock_per_asset.run_all.call_count == 1
+
+        # Reset per-symbol cooldown for scenario 2
+        watcher._last_reanalysis.clear()
+
+        # Scenario 2: Partial assets -> delta revision patch_brief + targeted per_asset
+        await watcher._trigger_reanalysis([self._make_news("test2")], ["EURUSD"])
+
+        assert mock_cycle.run_once.call_count == 0
+        assert mock_fundamental.patch_brief.call_count == 2
+        assert mock_per_asset.run_all.call_count == 2
 
     @pytest.mark.asyncio
     @patch("monika.application.scheduler.news_watcher.get_session")

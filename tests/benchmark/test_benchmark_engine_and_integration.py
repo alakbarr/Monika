@@ -432,7 +432,7 @@ async def test_all_53_roles_case_builder_with_fixtures():
         cfg = yaml.safe_load(f)
     expected_roles = list(cfg.get("llm", {}).get("task_roles", {}).keys())
 
-    assert len(expected_roles) == 54
+    assert len(expected_roles) == 55
     for role in expected_roles:
         assert role in TASKS, f"Role {role} missing from TASKS registry"
         spec = TASKS[role]
@@ -442,8 +442,8 @@ async def test_all_53_roles_case_builder_with_fixtures():
         has_content = bool(case.user_prompt or case.custom_fn or case.state or case.system_prompt)
         assert has_content, f"Role {role} has no content"
 
-    # Also verify all 57 tasks in registry (54 roles + 3 harness probes)
-    assert len(TASKS) == 57, f"Expected 57 tasks, got {len(TASKS)}"
+    # Also verify all 58 tasks in registry (55 roles + 3 harness probes)
+    assert len(TASKS) == 58, f"Expected 58 tasks, got {len(TASKS)}"
     for task_name, spec in TASKS.items():
         case = await spec.build_case(None, {"_use_fixtures": True}, None)
         assert case is not None, f"Failed building case for {task_name}"
