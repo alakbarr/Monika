@@ -227,7 +227,7 @@ class OpenAIProvider(BaseLLMClient):
             temperature=temperature,
             **kwargs,
         )
-        self.provider_name = "openai"
+        self.provider_name = kwargs.get("provider_name", getattr(self, "provider_name", "openai"))
         from monika.core.security.credential_vault import vault
 
         self.api_key = api_key or vault.get_secret("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
@@ -1317,13 +1317,14 @@ class OpenAIProvider(BaseLLMClient):
             dynamic_sys = getattr(system_prompt, "tier3_volatile", "")
 
         flat_sys = _flatten_system_prompt(static_sys)
+        provider_name = self._get_provider_name()
+        is_openrouter = (
+            provider_name in ("openrouter", "9router")
+            or "openrouter" in str(getattr(self.client, "base_url", "")).lower()
+        )
+        is_claude_or_qwen = any(k in self.model.lower() for k in ("claude", "anthropic", "qwen"))
+
         if flat_sys:
-            provider_name = self._get_provider_name()
-            is_openrouter = (
-                provider_name in ("openrouter", "9router")
-                or "openrouter" in str(getattr(self.client, "base_url", "")).lower()
-            )
-            is_claude_or_qwen = any(k in self.model.lower() for k in ("claude", "anthropic", "qwen"))
             if is_openrouter and is_claude_or_qwen:
                 req_messages.append(
                     {
@@ -1346,6 +1347,13 @@ class OpenAIProvider(BaseLLMClient):
                     last_user["content"].append(
                         {"type": "text", "text": f"\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"}
                     )
+
+        if is_openrouter and is_claude_or_qwen:
+            from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
+            cbm = CacheBreakpointManager()
+            max_msg_bp = 2 if tools else 3
+            norm_msgs = cbm.apply_to_messages(norm_msgs, max_message_breakpoints=max_msg_bp)
 
         req_messages.extend(norm_msgs)
         openai_tools = self._convert_tools(tools) if tools else None

@@ -119,3 +119,185 @@ async def test_harness_negative_prompt_cache_rollback_on_failure():
     # Input messages passed in initial_messages remain unmodified (clean checkpoint preserved)
     assert len(initial_messages) == 1
     assert initial_messages[0]["content"] == "Analyze USDJPY liquidity"
+
+
+@pytest.mark.asyncio
+async def test_multiturn_react_surface_node_0_byte_invariance():
+    """Verify that messages[0] with pre-fetched data remains 100% byte-identical across 5 ReAct turns."""
+    import hashlib
+    from monika.infrastructure.providers.base_provider import MockResponse, MockBlock
+
+    recorded_turns = []
+
+    class MultiTurnMockClient(BaseLLMClient):
+        def __init__(self):
+            super().__init__(model="deepseek-chat")
+            self.provider_name = "deepseek"
+
+        async def run_tool_agent(self, messages, tools, system_prompt):
+            from monika.infrastructure.providers.base_provider import MockBlock, MockResponse
+
+            recorded_turns.append([dict(m) for m in messages])
+            turn_no = len(recorded_turns)
+            if turn_no < 5:
+                # Issue a tool call with unique parameters to continue the loop
+                tool_block = MockBlock(
+                    "tool_use",
+                    id=f"tool_call_{turn_no}",
+                    name="get_market_data",
+                    input={"symbol": "EURUSD", "timeframe": f"M{turn_no}"},
+                )
+                return MockResponse(
+                    content=[tool_block],
+                    stop_reason="tool_use",
+                    input_tokens=1000,
+                    output_tokens=50,
+                )
+            # Final turn
+            return MockResponse(
+                content=[MockBlock("text", text="Analysis finalized.")],
+                stop_reason="end_turn",
+                input_tokens=1500,
+                output_tokens=100,
+            )
+
+        async def generate(self, *args, **kwargs):
+            return "Done"
+
+        async def classify_json(self, *args, **kwargs):
+            return {}
+
+        async def run_chat_loop(self, *args, **kwargs):
+            return {}
+
+    client = MultiTurnMockClient()
+    harness = AgentHarness(llm_client=client, max_tool_turns=5)
+
+    initial_content = (
+        "Analyze EURUSD orderflow.\n\n[PRE-FETCHED DATA]\n"
+        + ("candle_row_sample_data_point_close_1.0850\n" * 50)
+        + "regime: trending_bullish\natr: 0.0065"
+    )
+    initial_sha = hashlib.sha256(initial_content.encode("utf-8")).hexdigest()
+
+    mock_tool = {
+        "name": "get_market_data",
+        "description": "Fetch market data",
+        "parameters": {"type": "object", "properties": {"symbol": {"type": "string"}}},
+    }
+
+    class MockExecutor:
+        async def execute(self, name, args):
+            return {"status": "ok", "price": 1.0855, "volume": 1200}
+
+    res = await harness.run_agent(
+        session=None,
+        system_prompt=("System Strategy Invariant", "Volatile clock 10:00"),
+        user_message=initial_content,
+        tools=[mock_tool],
+        tool_executor=MockExecutor(),
+        max_tool_turns=5,
+    )
+
+    assert res["success"] is True
+    assert len(recorded_turns) >= 5
+
+    # Check Surface Node 0 invariant across every recorded LLM turn
+    for i, turn_msgs in enumerate(recorded_turns):
+        first_msg = turn_msgs[0]
+        assert first_msg["role"] == "user"
+        content = first_msg["content"]
+        # Verify content starts with exact initial content
+        assert content.startswith(initial_content)
+        # Verify prefetch distillation did not destroy raw prefetch bundle
+        assert "[PRE-FETCHED DATA DISTILLED]" not in content
+        assert "candle_row_sample_data_point_close_1.0850" in content
+
+    # Verify that turn 2..5 messages[0] is byte-for-byte identical to turn 1 messages[0]
+    turn1_msg0_sha = hashlib.sha256(str(recorded_turns[0][0]["content"]).encode("utf-8")).hexdigest()
+    for i in range(1, len(recorded_turns)):
+        current_sha = hashlib.sha256(str(recorded_turns[i][0]["content"]).encode("utf-8")).hexdigest()
+        assert current_sha == turn1_msg0_sha, f"Turn {i + 1} mutated messages[0]! Surface Node 0 broken."
+
+
+@pytest.mark.asyncio
+async def test_openai_provider_openrouter_claude_4_breakpoints():
+    """Verify that OpenAIProvider sets up to 4 cache_control breakpoints on OpenRouter for Claude."""
+    from unittest.mock import AsyncMock
+    from monika.infrastructure.providers.openai_provider import OpenAIProvider
+
+    captured_kwargs = {}
+
+    provider = OpenAIProvider(
+        model="anthropic/claude-3.5-sonnet",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        provider_name="openrouter",
+    )
+
+    class MockClient:
+        base_url = "https://openrouter.ai/api/v1"
+
+    provider.client = MockClient()
+
+    async def mock_create(kwargs):
+        captured_kwargs.update(kwargs)
+        from monika.infrastructure.providers.base_provider import MockResponse, MockBlock
+
+        return MockResponse(
+            content=[MockBlock("text", text="ok")],
+            stop_reason="end_turn",
+            input_tokens=10,
+            output_tokens=10,
+        )
+
+    provider._create_chat_completion = mock_create
+
+    tools = [
+        {"name": "fetch_news", "description": "Fetch news", "parameters": {"type": "object", "properties": {}}},
+        {"name": "calc_lot", "description": "Calc lots", "parameters": {"type": "object", "properties": {}}},
+    ]
+
+    messages = [
+        {"role": "user", "content": "Initial trade query"},
+        {
+            "role": "assistant",
+            "content": "I will check news",
+            "tool_calls": [{"id": "call_1", "function": {"name": "fetch_news", "arguments": "{}"}}],
+        },
+        {"role": "tool", "tool_call_id": "call_1", "content": "No major news"},
+        {
+            "role": "assistant",
+            "content": "Now checking size",
+            "tool_calls": [{"id": "call_2", "function": {"name": "calc_lot", "arguments": "{}"}}],
+        },
+        {"role": "tool", "tool_call_id": "call_2", "content": "Lot: 0.5"},
+    ]
+
+    await provider.run_tool_agent(messages=messages, tools=tools, system_prompt="System Directive")
+
+    req_messages = captured_kwargs["messages"]
+    req_tools = captured_kwargs["tools"]
+
+    # 1. System prompt has cache_control
+    sys_msg = req_messages[0]
+    assert sys_msg["role"] == "system"
+    assert sys_msg["content"][0]["cache_control"] == {"type": "ephemeral"}
+
+    # 2. Last tool has cache_control
+    assert "cache_control" not in req_tools[0]
+    assert req_tools[1]["cache_control"] == {"type": "ephemeral"}
+
+    # 3. Message turns have cache_control at completed endpoints
+    msg_cache_count = 0
+    for m in req_messages[1:]:
+        c = m.get("content")
+        if isinstance(c, list):
+            for part in c:
+                if isinstance(part, dict) and "cache_control" in part:
+                    msg_cache_count += 1
+
+    assert msg_cache_count >= 1
+    # Total breakpoints across system (1) + tools (1) + messages (<=2) <= 4
+    total_breakpoints = 1 + 1 + msg_cache_count
+    assert total_breakpoints <= 4

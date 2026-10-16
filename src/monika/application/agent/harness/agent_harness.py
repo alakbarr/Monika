@@ -885,22 +885,18 @@ class AgentHarness:
             # Offload heavy multimodal chart data from historical turns (>2 turns old)
             current_messages = offload_historical_charts(current_messages, retain_recent_turns=2)
 
-            # P0: Distill raw 50k prefetch bundle in messages[0] once Turn 1 has completed
-            try:
-                from monika.application.agent.harness.context_compressor import ContextCompressor
+            # Surface Node 0 Invariant: Preserve messages[0] prefix across turns to maximize provider KV-cache reuse.
+            # Prefetch distillation is an emergency fallback triggered ONLY if conversation approaches context limit (>70% capacity).
+            current_tokens = self.compactor.calculate_history_tokens(current_messages)
+            if current_tokens > (context_win * 0.70):
+                try:
+                    from monika.application.agent.harness.context_compressor import ContextCompressor
 
-                current_messages = ContextCompressor.distill_initial_bundle_after_turn_1(current_messages)
-            except Exception as dist_err:
-                logger.debug(f"Prefetch bundle distillation skipped: {dist_err}")
+                    current_messages = ContextCompressor.distill_initial_bundle_after_turn_1(current_messages)
+                except Exception as dist_err:
+                    logger.debug(f"Prefetch bundle distillation skipped: {dist_err}")
 
             current_messages = self.compactor.check_and_compact(current_messages, context_window=context_win)
-
-            # Progressive Tool Observation Condensation: Prune tool outputs older than 1 turn to concise decisive state
-            if turns > 2 and len(current_messages) > 4:
-                try:
-                    current_messages = self.compactor.mask_aged_observations(current_messages, keep_recent_turns=1)
-                except Exception as mask_err:
-                    logger.debug(f"Progressive observation masking non-fatal: {mask_err}")
 
             # 2. Context Compression (HIGH-4)
             if hasattr(self, "context_compressor") and self.context_compressor:
@@ -1015,7 +1011,8 @@ class AgentHarness:
                             self._last_injected_dynamic_overlay = dynamic_sys
                             snapshot_text = f"<volatile_overlay>\n{dynamic_sys}\n</volatile_overlay>"
                             if (
-                                send_messages
+                                turns == 1
+                                and send_messages
                                 and send_messages[0].get("role") == "user"
                                 and "<volatile_overlay>" not in str(send_messages[0].get("content", ""))
                             ):
@@ -1024,11 +1021,14 @@ class AgentHarness:
                                     send_messages[0]["content"] = f"{prev_c}\n\n{snapshot_text}"
                                 elif isinstance(prev_c, list):
                                     send_messages[0]["content"].append({"type": "text", "text": f"\n\n{snapshot_text}"})
+                                # Surface Node 0 invariant: keep current_messages[0] in sync so subsequent turns inherit identical prefix
+                                if current_messages and current_messages[0].get("role") == "user":
+                                    current_messages[0]["content"] = send_messages[0]["content"]
                             else:
                                 last_user_msg = next(
                                     (m for m in reversed(send_messages) if m.get("role") == "user"), None
                                 )
-                                if last_user_msg:
+                                if last_user_msg and (turns == 1 or last_user_msg is not send_messages[0]):
                                     prev_c = last_user_msg.get("content")
                                     if isinstance(prev_c, str) and "<volatile_overlay>" not in prev_c:
                                         last_user_msg["content"] = f"{prev_c}\n\n{snapshot_text}"
