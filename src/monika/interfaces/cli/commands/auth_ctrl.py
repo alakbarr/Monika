@@ -35,6 +35,8 @@ from monika.infrastructure.auth import (
     DEFAULT_CALLBACK_PORT,
     OAuthCallbackHandler,
     check_antigravity_bridge_health,
+    clear_oauth_accounts,
+    delete_oauth_account,
     delete_oauth_tokens,
     exchange_antigravity_code,
     exchange_code_for_token,
@@ -43,9 +45,11 @@ from monika.infrastructure.auth import (
     generate_pkce_pair,
     get_antigravity_authorization_url,
     get_antigravity_home,
+    get_antigravity_pool_summary,
     get_claude_authorization_url,
     get_claude_credentials_path,
     get_codex_cli_auth_path,
+    get_oauth_accounts,
     get_oauth_tokens,
     get_token_expiry_timestamp,
     is_antigravity_installed,
@@ -84,10 +88,13 @@ def handle_auth_command(args) -> int:
         return show_auth_status()
     if action == "login":
         provider = getattr(args, "provider", None)
-        return login_provider(provider)
+        tier = getattr(args, "tier", None)
+        return login_provider(provider, tier=tier)
     if action == "logout":
         provider = getattr(args, "provider", None)
-        return logout_provider(provider)
+        email = getattr(args, "email", None)
+        all_accounts = getattr(args, "all_accounts", False)
+        return logout_provider(provider, email=email, all_accounts=all_accounts)
 
     console.print(f"{stamp_err('ERROR')} Unknown auth action: {action}")
     return 1
@@ -128,11 +135,20 @@ def show_auth_status() -> int:
         oc_detail = "Run 'monika auth login opencode'"
     table.add_row("OpenCode Go", "OpenCode Go / Zen ($10)", oc_status, oc_expiry, oc_detail)
 
-    # 2. Gemini (Antigravity Bridge / Google OAuth)
+    # 3. Gemini (Antigravity Bridge / Google OAuth)
+    accounts = get_oauth_accounts("antigravity")
+    pool_summary = get_antigravity_pool_summary()
     agy_rec = get_oauth_tokens("antigravity")
     health = check_antigravity_bridge_health()
     installed = is_antigravity_installed()
-    if agy_rec and agy_rec.get("access_token"):
+    if accounts:
+        paid_count = pool_summary.get("paid_accounts", 0)
+        free_count = pool_summary.get("free_accounts", 0)
+        active_count = pool_summary.get("active_accounts", 0)
+        agy_status = f"[{GREEN}]ACTIVE ({len(accounts)} Accounts Pool)[/]"
+        agy_expiry = f"[{GREEN}]{active_count} ready / {len(accounts)} total[/]"
+        agy_detail = f"{paid_count} Paid, {free_count} Free (Round-Robin)"
+    elif agy_rec and agy_rec.get("access_token"):
         exp_ts = get_token_expiry_timestamp(agy_rec)
         if is_token_expiring(agy_rec):
             agy_status = f"[{YELLOW}]EXPIRING / REFRESHABLE[/]"
@@ -154,7 +170,7 @@ def show_auth_status() -> int:
         agy_detail = "Run 'monika auth login antigravity'"
     table.add_row("Gemini", "Google Antigravity OAuth", agy_status, agy_expiry, agy_detail)
 
-    # 3. Claude (Anthropic OAuth)
+    # 4. Claude (Anthropic OAuth)
     claude_rec = get_oauth_tokens("anthropic")
     cli_creds = read_claude_code_credentials()
     api_key = vault.get_secret("ANTHROPIC_API_KEY")
@@ -181,7 +197,7 @@ def show_auth_status() -> int:
         c_detail = "Run 'monika auth login claude'"
     table.add_row("Claude", "Claude Code OAuth / API", c_status, c_expiry, c_detail)
 
-    # 4. ChatGPT (OpenAI Codex)
+    # 5. ChatGPT (OpenAI Codex)
     codex_rec = get_oauth_tokens("codex")
     codex_cli = read_codex_cli_credentials()
     if codex_rec and codex_rec.get("access_token"):
@@ -203,6 +219,37 @@ def show_auth_status() -> int:
     table.add_row("ChatGPT", "OpenAI Codex OAuth", cx_status, cx_expiry, cx_detail)
 
     console.print(table)
+
+    if accounts:
+        console.print(f"\n[bold {CYAN}]--- Antigravity Multi-Account Pool ({len(accounts)} accounts) ---[/]")
+        pool_table = Table(show_header=True, header_style=f"bold {CYAN}", border_style="dim")
+        pool_table.add_column("Email / Account", width=28)
+        pool_table.add_column("Tier", width=12)
+        pool_table.add_column("Status", width=18)
+        pool_table.add_column("Expiry", width=24)
+        pool_table.add_column("Model Scope", width=28)
+
+        now = time.time()
+        for acc in accounts:
+            email = acc.get("email") or "primary"
+            tier = acc.get("tier", "free")
+            exp_ts = get_token_expiry_timestamp(acc)
+            cooldown_until = acc.get("cooldown_until", 0.0)
+
+            tier_str = f"[{GREEN}]PAID (Subs)[/]" if tier == "paid" else f"[{CYAN}]FREE TIER[/]"
+            scope_str = "Gemini 4 Argon & Pro" if tier == "paid" else "Gemini 3.8 & 3.5 Flash"
+
+            if cooldown_until > now:
+                remaining = int(cooldown_until - now)
+                status_str = f"[{YELLOW}]COOLDOWN ({remaining}s)[/]"
+            elif is_token_expiring(acc):
+                status_str = f"[{YELLOW}]EXPIRING / AUTO[/]"
+            else:
+                status_str = f"[{GREEN}]READY[/]"
+
+            pool_table.add_row(email, tier_str, status_str, _format_expiry(exp_ts), scope_str)
+        console.print(pool_table)
+
     console.print(f"\n[{MUTED}]Run 'python -m monika.interfaces.cli.main auth login <provider>' to authenticate.[/]\n")
     return 0
 
@@ -222,7 +269,7 @@ def _format_expiry(expiry_ts: Optional[float]) -> str:
     return f"[{GREEN}]Expires in {hours}h {minutes}m[/]"
 
 
-def login_provider(provider: Optional[str]) -> int:
+def login_provider(provider: Optional[str], tier: Optional[str] = None) -> int:
     """Authenticate with a specific subscription provider."""
     if not provider:
         console.print(f"{stamp_err('ERROR')} Please specify a provider: zai, opencode, antigravity, claude, codex")
@@ -239,7 +286,7 @@ def login_provider(provider: Optional[str]) -> int:
     elif p in ("codex", "chatgpt", "openai"):
         return _login_codex()
     elif p in ("antigravity", "gemini", "agy"):
-        return _login_antigravity()
+        return _login_antigravity(tier=tier)
     else:
         console.print(
             f"{stamp_err('ERROR')} Unknown provider '{provider}'. Choose from: zai, opencode, antigravity, claude, codex"
@@ -432,20 +479,45 @@ def _login_codex() -> int:
     return 1
 
 
-def _login_antigravity() -> int:
+def _login_antigravity(tier: Optional[str] = None) -> int:
     """Interactive Google Desktop OAuth login for Antigravity & Gemini subscriptions."""
     console.print(f"\n[bold {BRASS}]=== GOOGLE GEMINI ANTIGRAVITY OAUTH SETUP ===[/]\n")
 
-    # Step 1: Check existing tokens
+    # Step 1: Check existing accounts and tokens
+    accounts = get_oauth_accounts("antigravity")
     existing = get_oauth_tokens("antigravity")
-    if existing and existing.get("access_token"):
-        exp_ts = get_token_expiry_timestamp(existing)
-        console.print(f"  [{GREEN}]Found active Google Antigravity OAuth session.[/]")
-        console.print(f"  Status: {_format_expiry(exp_ts)}")
-        ans = input("  Do you want to re-authenticate with another account? [y/N]: ").strip().lower()
+    if accounts or (existing and existing.get("access_token")):
+        total = len(accounts) if accounts else 1
+        console.print(f"  [{GREEN}]Found active Google Antigravity OAuth session ({total} account(s)).[/]")
+        if accounts:
+            for acc in accounts:
+                t = acc.get("tier", "free")
+                e = acc.get("email") or "primary"
+                console.print(f"    • {e} ([{GREEN if t == 'paid' else CYAN}]{t.upper()}[/])")
+        elif existing and existing.get("access_token"):
+            exp_ts = get_token_expiry_timestamp(existing)
+            console.print(f"  Status: {_format_expiry(exp_ts)}")
+        try:
+            ans = input("  Do you want to add/re-authenticate another account? [y/N]: ").strip().lower()
+        except EOFError, KeyboardInterrupt, OSError:
+            ans = "n"
         if ans not in ("y", "yes"):
             console.print(f"{stamp_ok('ACTIVE')} Existing Antigravity session retained.\n")
             return 0
+
+    # Step 2: Determine Tier
+    if not tier or tier not in ("paid", "free"):
+        console.print("\n  [bold]Select Account Tier:[/]")
+        console.print("  [1] Paid / Subscription (Primary - Gemini 4 Argon & Gemini Pro)")
+        console.print("  [2] Free Tier (Rotated Round-Robin - Gemini 3.8 / 3.5 Flash)")
+        try:
+            choice = input("  Select tier [1=paid, 2=free] (default: 2): ").strip()
+            tier = "paid" if choice == "1" else "free"
+        except EOFError, KeyboardInterrupt, OSError:
+            tier = "free"
+
+    tier_label = "Paid Subscription" if tier == "paid" else "Free Tier"
+    console.print(f"  Target Tier: [bold {CYAN}]{tier_label}[/]\n")
 
     home = get_antigravity_home()
     if is_antigravity_installed():
@@ -516,7 +588,10 @@ def _login_antigravity() -> int:
         console.print(
             f"\n  [{MUTED}]Paste the full redirect URL (http://127.0.0.1:8085/...) or the 'code' parameter below:[/]"
         )
-        code_or_url = input("Paste code or redirect URL here: ").strip()
+        try:
+            code_or_url = input("Paste code or redirect URL here: ").strip()
+        except EOFError, KeyboardInterrupt, OSError:
+            code_or_url = ""
         if not code_or_url:
             console.print(f"{stamp_err('ABORTED')} No authorization code provided.")
             return 1
@@ -527,18 +602,24 @@ def _login_antigravity() -> int:
             code = params.get("code", [code_or_url])[0]
 
     console.print(f"{stamp_info('EXCHANGING')} Exchanging authorization code with Google OAuth endpoint...")
-    token_record = exchange_antigravity_code(code, verifier, redirect_uri=redirect_uri)
+    token_record = exchange_antigravity_code(code, verifier, redirect_uri=redirect_uri, tier=tier)
     if token_record and token_record.get("access_token"):
-        console.print(f"{stamp_ok('SUCCESS')} Successfully authenticated with Google Antigravity!")
-        console.print("  Token securely stored in Monika CredentialVault.\n")
+        account_email = token_record.get("email") or "primary"
+        console.print(
+            f"{stamp_ok('SUCCESS')} Successfully authenticated Google account: [bold {GREEN}]{account_email}[/]!"
+        )
+        console.print(f"  Tier assigned: [bold {CYAN}]{tier.upper()}[/]")
+
+        pool = get_oauth_accounts("antigravity")
+        console.print(f"  Account pool now has [bold {GREEN}]{len(pool)}[/] account(s) registered.\n")
         return 0
 
     console.print(f"{stamp_err('FAILED')} Token exchange failed. Please verify and try again.\n")
     return 1
 
 
-def logout_provider(provider: Optional[str]) -> int:
-    """Remove OAuth tokens for a specific provider."""
+def logout_provider(provider: Optional[str], email: Optional[str] = None, all_accounts: bool = False) -> int:
+    """Remove OAuth tokens or accounts for a specific provider."""
     if not provider:
         console.print(
             f"{stamp_err('ERROR')} Please specify a provider to logout: zai, opencode, antigravity, claude, codex"
@@ -567,7 +648,43 @@ def logout_provider(provider: Optional[str]) -> int:
         )
         return 1
 
-    # Delete from vault and oauth_store
+    if target == "antigravity":
+        if all_accounts:
+            clear_oauth_accounts("antigravity")
+            delete_oauth_tokens("antigravity")
+            console.print(f"{stamp_ok('SUCCESS')} Cleared all Antigravity accounts from pool and vault.\n")
+            return 0
+        elif email:
+            deleted = delete_oauth_account("antigravity", email)
+            if deleted:
+                console.print(f"{stamp_ok('SUCCESS')} Removed account '{email}' from Antigravity pool.\n")
+                return 0
+            else:
+                console.print(f"{stamp_err('NOT FOUND')} Account '{email}' was not found in Antigravity pool.\n")
+                return 1
+        else:
+            accounts = get_oauth_accounts("antigravity")
+            if not accounts:
+                delete_oauth_tokens("antigravity")
+                console.print(f"{stamp_ok('SUCCESS')} No active Antigravity accounts found.\n")
+                return 0
+            if len(accounts) == 1:
+                acc_email = accounts[0].get("email") or "primary"
+                delete_oauth_account("antigravity", acc_email)
+                delete_oauth_tokens("antigravity")
+                console.print(f"{stamp_ok('SUCCESS')} Removed account '{acc_email}' from Antigravity pool.\n")
+                return 0
+
+            console.print(f"{stamp_warn('MULTIPLE ACCOUNTS')} Antigravity pool has {len(accounts)} accounts:")
+            for acc in accounts:
+                console.print(f"  • {acc.get('email')} ({acc.get('tier', 'free')})")
+            console.print("\nSpecify which account to remove with:")
+            console.print("  python -m monika.interfaces.cli.main auth logout antigravity --email <email>")
+            console.print("Or remove all accounts with:")
+            console.print("  python -m monika.interfaces.cli.main auth logout antigravity --all\n")
+            return 1
+
+    # Delete from vault and oauth_store for other providers
     delete_oauth_tokens(target)
     if target == "zai":
         vault.delete_secret("ZAI_API_KEY")

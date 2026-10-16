@@ -407,6 +407,12 @@ def parse_args(args_list: Optional[List[str]] = None) -> argparse.Namespace:
         ],
         help="Provider name to login",
     )
+    login_p.add_argument(
+        "--tier",
+        choices=["paid", "free"],
+        default=None,
+        help="Subscription tier for this account: 'paid' (subs) or 'free' (default)",
+    )
     logout_p = auth_sub.add_parser("logout", help="Log out and clear stored tokens for a provider")
     logout_p.add_argument(
         "provider",
@@ -423,6 +429,17 @@ def parse_args(args_list: Optional[List[str]] = None) -> argparse.Namespace:
             "gemini",
         ],
         help="Provider name to logout",
+    )
+    logout_p.add_argument(
+        "--email",
+        default=None,
+        help="Specific account email to remove from account pool",
+    )
+    logout_p.add_argument(
+        "--all",
+        action="store_true",
+        dest="all_accounts",
+        help="Clear all accounts in the pool for this provider",
     )
 
     # Modular subcommands registry

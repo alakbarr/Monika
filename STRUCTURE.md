@@ -2485,6 +2485,7 @@ Monika/
 │   │   ├── test_codex_provider.py
 │   │   ├── test_credential_pool.py
 │   │   ├── test_error_taxonomy.py
+│   │   ├── test_multitier_subscription_routing.py
 │   │   ├── test_opencode_provider.py
 │   │   ├── test_role_fallback_chain.py
 │   │   ├── test_universal_provider.py
@@ -2953,4 +2954,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 252 | **Total Tracked Files**: 2671
+**Total Tracked Directories**: 252 | **Total Tracked Files**: 2672

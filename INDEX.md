@@ -10216,7 +10216,9 @@
   - `get_antigravity_authorization_url(code_challenge: str, state: str, redirect_uri: str) -> str`: Build official Google OAuth 2.0 authorization URL for browser login.
   - `exchange_antigravity_code(code: str, code_verifier: str, redirect_uri: str, ...) -> Optional[Dict[str, Any]]`: Exchange authorization code for access and refresh tokens at Google OAuth endpoint.
   - `refresh_antigravity_token(refresh_token: str | Dict[str, Any], timeout: float) -> Optional[Dict[str, Any]]`: Exchange refresh token for fresh Antigravity access token.
-  - `resolve_antigravity_access_token() -> Optional[str]`: Retrieve and automatically refresh active Google Antigravity access token.
+  - `mark_antigravity_account_cooldown(identifier: Optional[str], cooldown_seconds: float) -> None`: Mark an account (email or token) on cooldown after rate limit (HTTP 429) or transient error.
+  - `get_antigravity_pool_summary() -> dict[str, Any]`: Return summary statistics of active Antigravity account pool.
+  - `resolve_antigravity_access_token(tier: Optional[str], model: Optional[str]) -> Optional[str]`: Retrieve and automatically refresh active Google Antigravity access token from account pool.
   - `check_antigravity_bridge_health(proxy_url: Optional[str], timeout: float) -> Dict[str, Any]`: Probe the local Antigravity proxy server to verify it is responsive and authenticated.
 
 #### `claude_oauth.py` - *Claude (Anthropic) OAuth Integration & Credential Resolver.*
@@ -10250,6 +10252,10 @@
   - `save_oauth_tokens(provider: str, token_data: dict[str, Any]) -> bool`: Encrypt and store OAuth tokens for a specific provider in CredentialVault.
   - `get_oauth_tokens(provider: str) -> Optional[dict[str, Any]]`: Retrieve and decrypt OAuth tokens for a specific provider from CredentialVault.
   - `delete_oauth_tokens(provider: str) -> bool`: Delete OAuth tokens for a specific provider from CredentialVault.
+  - `save_oauth_account(provider: str, account_data: dict[str, Any], account_id: Optional[str]) -> bool`: Save or update an account record within a provider's multi-account OAuth pool.
+  - `get_oauth_accounts(provider: str) -> list[dict[str, Any]]`: Retrieve all accounts registered in a provider's OAuth pool.
+  - `delete_oauth_account(provider: str, identifier: str) -> bool`: Remove a specific account by email, account_id, or 1-based slot index.
+  - `clear_oauth_accounts(provider: str) -> bool`: Clear all accounts from the provider pool.
   - `list_authenticated_providers() -> list[str]`: Return list of provider names that currently have active tokens stored in vault.
   - `get_token_expiry_timestamp(token_data: dict[str, Any]) -> Optional[float]`: Extract the expiration UNIX timestamp from token_data:
   - `is_token_expiring(token_data: dict[str, Any], skew_seconds: int) -> bool`: Check if the token is already expired or expiring within `skew_seconds`.
@@ -12855,8 +12861,8 @@
 - **Top-Level Functions**:
   - `handle_auth_command(args) -> int`: Entrypoint dispatcher for 'monika auth' subcommands.
   - `show_auth_status() -> int`: Display comprehensive status table for all supported subscription & OAuth providers.
-  - `login_provider(provider: Optional[str]) -> int`: Authenticate with a specific subscription provider.
-  - `logout_provider(provider: Optional[str]) -> int`: Remove OAuth tokens for a specific provider.
+  - `login_provider(provider: Optional[str], tier: Optional[str]) -> int`: Authenticate with a specific subscription provider.
+  - `logout_provider(provider: Optional[str], email: Optional[str], all_accounts: bool) -> int`: Remove OAuth tokens or accounts for a specific provider.
 
 #### `benchmark_ctrl.py` - *Benchmark Suite and Model Evaluation Commands for Monika.*
 - **Path**: [`src/monika/interfaces/cli/commands/benchmark_ctrl.py`](src/monika/interfaces/cli/commands/benchmark_ctrl.py)

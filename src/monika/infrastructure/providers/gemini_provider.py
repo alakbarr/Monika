@@ -232,41 +232,39 @@ class GeminiProvider(BaseLLMClient):
         if self.api_key:
             return self.api_key
         if "pro" in self.model.lower() or "argon" in self.model.lower():
+            try:
+                from monika.infrastructure.auth.antigravity_bridge import resolve_antigravity_access_token
+
+                token = resolve_antigravity_access_token(tier="paid", model=self.model)
+                if token:
+                    self.paid_api_key = token
+                    return token
+            except Exception:
+                pass
             if self.paid_api_key:
-                if self.paid_api_key.startswith("ya29."):
-                    try:
-                        from monika.infrastructure.auth.antigravity_bridge import resolve_antigravity_access_token
-
-                        token = resolve_antigravity_access_token()
-                        if token:
-                            self.paid_api_key = token
-                    except Exception:
-                        pass
                 return self.paid_api_key
-            else:
-                try:
-                    from monika.infrastructure.auth.antigravity_bridge import resolve_antigravity_access_token
+            logger.warning(f"Model {self.model} called but GEMINI_PAID_API_KEY is empty. Fallback to free key.")
 
-                    token = resolve_antigravity_access_token()
-                    if token:
-                        self.paid_api_key = token
-                        return token
-                except Exception:
-                    pass
-                logger.warning(f"Model {self.model} called but GEMINI_PAID_API_KEY is empty. Fallback to free key.")
+        # 1. Rotate through static GEMINI_API_KEYS if present
+        if self.free_api_keys:
+            now = time.time()
+            for _ in range(len(self.free_api_keys)):
+                key = self.free_api_keys[GeminiProvider._key_index % len(self.free_api_keys)]
+                GeminiProvider._key_index += 1
+                if key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[key] <= now:
+                    return key
 
-        if not self.free_api_keys:
-            return self.paid_api_key if self.paid_api_key else None
+        # 2. Rotate through Antigravity Free Accounts Pool (9 free accounts)
+        try:
+            from monika.infrastructure.auth.antigravity_bridge import resolve_antigravity_access_token
 
-        now = time.time()
+            pool_token = resolve_antigravity_access_token(tier="free", model=self.model)
+            if pool_token:
+                return pool_token
+        except Exception:
+            pass
 
-        for _ in range(len(self.free_api_keys)):
-            key = self.free_api_keys[GeminiProvider._key_index % len(self.free_api_keys)]
-            GeminiProvider._key_index += 1
-            if key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[key] <= now:
-                return key
-
-        return None
+        return self.paid_api_key if self.paid_api_key else None
 
     @classmethod
     def _is_transient_error(cls, error: Any) -> bool:
@@ -325,6 +323,13 @@ class GeminiProvider(BaseLLMClient):
         )
         if is_rpd:
             cls._key_cooldowns[api_key] = time.time() + 86400
+            if api_key.startswith("ya29."):
+                try:
+                    from monika.infrastructure.auth.antigravity_bridge import mark_antigravity_account_cooldown
+
+                    mark_antigravity_account_cooldown(api_key, 86400.0)
+                except Exception:
+                    pass
             logger.error(f"Gemini key hit RPD quota in {method_name} ({api_key[:8]}...). Cooldown 24h.")
             return
 
@@ -361,6 +366,13 @@ class GeminiProvider(BaseLLMClient):
                 cooldown_sec = 65.0
 
         cls._key_cooldowns[api_key] = time.time() + cooldown_sec
+        if api_key.startswith("ya29."):
+            try:
+                from monika.infrastructure.auth.antigravity_bridge import mark_antigravity_account_cooldown
+
+                mark_antigravity_account_cooldown(api_key, cooldown_sec)
+            except Exception:
+                pass
 
         clean_detail = format_api_error_summary(status or (503 if is_overload else 429), body)
         if is_overload:

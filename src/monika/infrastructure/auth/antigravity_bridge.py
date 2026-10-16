@@ -29,8 +29,13 @@ import urllib.parse
 import urllib.request
 
 from monika.infrastructure.auth.oauth_store import (
+    clear_oauth_accounts,
+    decode_jwt_claims,
+    delete_oauth_account,
+    get_oauth_accounts,
     get_oauth_tokens,
     is_token_expiring,
+    save_oauth_account,
     save_oauth_tokens,
 )
 
@@ -111,6 +116,7 @@ def exchange_antigravity_code(
     code_verifier: str,
     redirect_uri: str = f"http://127.0.0.1:{DEFAULT_CALLBACK_PORT}{CALLBACK_PATH}",
     timeout: float = 15.0,
+    tier: str = "free",
 ) -> Optional[Dict[str, Any]]:
     """Exchange authorization code for access and refresh tokens at Google OAuth endpoint."""
     form_data = urllib.parse.urlencode(
@@ -135,15 +141,22 @@ def exchange_antigravity_code(
             data = json.loads(resp.read().decode("utf-8"))
             if isinstance(data, dict) and data.get("access_token"):
                 expires_in = data.get("expires_in", 3600)
+                # Decode id_token to extract account email
+                id_token = data.get("id_token", "")
+                claims = decode_jwt_claims(id_token) if id_token else {}
+                email = str(claims.get("email") or f"antigravity_user_{int(time.time())}@gmail.com").strip().lower()
+
                 token_record = {
+                    "email": email,
                     "access_token": str(data["access_token"]).strip(),
                     "refresh_token": str(data.get("refresh_token", "")).strip(),
                     "expires_at": time.time() + float(expires_in),
                     "token_type": data.get("token_type", "Bearer"),
                     "source": "google_antigravity_oauth",
+                    "tier": str(tier).lower().strip(),
                 }
                 save_oauth_tokens("antigravity", token_record)
-                logger.info("Successfully exchanged and saved Antigravity OAuth tokens.")
+                logger.info("Successfully exchanged and saved Antigravity OAuth tokens for %s (tier=%s).", email, tier)
                 return token_record
     except Exception as exc:
         logger.error("Antigravity OAuth code exchange failed: %s", exc)
@@ -153,8 +166,9 @@ def exchange_antigravity_code(
 
 def refresh_antigravity_token(refresh_token: str | Dict[str, Any], timeout: float = 15.0) -> Optional[Dict[str, Any]]:
     """Exchange refresh token for fresh Antigravity access token."""
+    account_meta = refresh_token if isinstance(refresh_token, dict) else {}
     token_str = (
-        refresh_token.get("refresh_token", "") if isinstance(refresh_token, dict) else str(refresh_token)
+        account_meta.get("refresh_token", "") if isinstance(refresh_token, dict) else str(refresh_token)
     ).strip()
     if not token_str:
         return None
@@ -179,15 +193,19 @@ def refresh_antigravity_token(refresh_token: str | Dict[str, Any], timeout: floa
             data = json.loads(resp.read().decode("utf-8"))
             if isinstance(data, dict) and data.get("access_token"):
                 expires_in = data.get("expires_in", 3600)
+                email = account_meta.get("email")
+                tier = account_meta.get("tier", "free")
                 token_record = {
+                    "email": email,
                     "access_token": str(data["access_token"]).strip(),
                     "refresh_token": str(data.get("refresh_token") or token_str).strip(),
                     "expires_at": time.time() + float(expires_in),
                     "token_type": data.get("token_type", "Bearer"),
                     "source": "google_antigravity_refresh",
+                    "tier": tier,
                 }
                 save_oauth_tokens("antigravity", token_record)
-                logger.info("Successfully refreshed Google Antigravity access token.")
+                logger.info("Successfully refreshed Google Antigravity access token for %s.", email or "primary")
                 return token_record
     except Exception as exc:
         logger.error("Google Antigravity token refresh failed: %s", exc)
@@ -195,20 +213,116 @@ def refresh_antigravity_token(refresh_token: str | Dict[str, Any], timeout: floa
     return None
 
 
-def resolve_antigravity_access_token() -> Optional[str]:
-    """Retrieve and automatically refresh active Google Antigravity access token."""
-    token_record = get_oauth_tokens("antigravity")
-    if not token_record or not token_record.get("access_token"):
+_antigravity_round_robin_idx: int = 0
+_antigravity_account_cooldowns: dict[str, float] = {}
+
+
+def mark_antigravity_account_cooldown(
+    identifier: Optional[str] = None,
+    cooldown_seconds: float = 300.0,
+    *,
+    account_id: Optional[str] = None,
+    duration_seconds: Optional[float] = None,
+) -> None:
+    """Mark an account (email or token) on cooldown after rate limit (HTTP 429) or transient error."""
+    target = account_id or identifier
+    duration = duration_seconds if duration_seconds is not None else cooldown_seconds
+    if target:
+        _antigravity_account_cooldowns[target.strip().lower()] = time.time() + duration
+
+
+def get_antigravity_pool_summary() -> dict[str, Any]:
+    """Return summary statistics of active Antigravity account pool."""
+    accounts = get_oauth_accounts("antigravity")
+    now = time.time()
+    paid_count = sum(1 for a in accounts if a.get("tier") == "paid")
+    free_count = sum(1 for a in accounts if a.get("tier") != "paid")
+    healthy_count = 0
+    for a in accounts:
+        email = (a.get("email") or "").strip().lower()
+        tok = (a.get("access_token") or "").strip()
+        cd_email = _antigravity_account_cooldowns.get(email, 0)
+        cd_tok = _antigravity_account_cooldowns.get(tok, 0)
+        if cd_email <= now and cd_tok <= now:
+            healthy_count += 1
+
+    return {
+        "total_accounts": len(accounts),
+        "paid_accounts": paid_count,
+        "free_accounts": free_count,
+        "active_accounts": healthy_count,
+        "healthy_accounts": healthy_count,
+        "cooldown_accounts": len(accounts) - healthy_count,
+        "accounts": accounts,
+    }
+
+
+def resolve_antigravity_access_token(
+    tier: Optional[str] = None,
+    model: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Retrieve and automatically refresh active Google Antigravity access token from account pool.
+    - If tier == 'paid' or model is 'gemini-4-argon' / 'pro': prefers paid/subscription account.
+    - If tier == 'free' or general/flash model: round-robins across free tier accounts.
+    - Automatically skips accounts currently in cooldown.
+    """
+    global _antigravity_round_robin_idx
+
+    accounts = get_oauth_accounts("antigravity")
+    if not accounts:
+        token_record = get_oauth_tokens("antigravity")
+        if token_record and token_record.get("access_token"):
+            accounts = [token_record]
+        else:
+            return None
+
+    now = time.time()
+    is_paid_request = tier == "paid" or (bool(model) and ("argon" in str(model).lower() or "pro" in str(model).lower()))
+
+    def is_healthy(acc: dict[str, Any]) -> bool:
+        email = (acc.get("email") or "").strip().lower()
+        tok = (acc.get("access_token") or "").strip()
+        cd_email = _antigravity_account_cooldowns.get(email, 0)
+        cd_tok = _antigravity_account_cooldowns.get(tok, 0)
+        return cd_email <= now and cd_tok <= now
+
+    paid_accs = [a for a in accounts if a.get("tier") == "paid"]
+    free_accs = [a for a in accounts if a.get("tier") != "paid"]
+
+    if is_paid_request:
+        healthy_paid = [a for a in paid_accs if is_healthy(a)]
+        if healthy_paid:
+            selected_pool = healthy_paid
+        elif not paid_accs:
+            # If no paid accounts configured at all, try healthy free accounts
+            selected_pool = [a for a in free_accs if is_healthy(a)]
+        else:
+            return None
+    else:
+        healthy_free = [a for a in free_accs if is_healthy(a)]
+        if healthy_free:
+            selected_pool = healthy_free
+        else:
+            # Fall back to healthy paid account if all free accounts are in cooldown
+            healthy_paid = [a for a in paid_accs if is_healthy(a)]
+            if healthy_paid:
+                selected_pool = healthy_paid
+            else:
+                return None
+
+    if not selected_pool:
         return None
 
-    if is_token_expiring(token_record, skew_seconds=180):
-        refresh_token = token_record.get("refresh_token")
-        if refresh_token:
-            refreshed = refresh_antigravity_token(refresh_token)
-            if refreshed and refreshed.get("access_token"):
-                return refreshed["access_token"]
+    target_acc = selected_pool[_antigravity_round_robin_idx % len(selected_pool)]
+    _antigravity_round_robin_idx += 1
 
-    return token_record.get("access_token") or None
+    if is_token_expiring(target_acc, skew_seconds=180):
+        refreshed = refresh_antigravity_token(target_acc)
+        if refreshed and refreshed.get("access_token"):
+            return refreshed["access_token"]
+
+    return target_acc.get("access_token") or None
 
 
 class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):

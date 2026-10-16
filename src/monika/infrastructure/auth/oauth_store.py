@@ -60,6 +60,25 @@ def save_oauth_tokens(provider: str, token_data: dict[str, Any]) -> bool:
         success = vault.set_secret(key, payload)
         if success:
             logger.info("Successfully persisted OAuth credentials for %s", provider)
+            email = token_data.get("email")
+            if email:
+                accounts = get_oauth_accounts(provider)
+                target_id = email.strip().lower()
+                updated = False
+                new_accounts: list[dict[str, Any]] = []
+                for acc in accounts:
+                    curr_id = (acc.get("email") or acc.get("account_id") or "").strip().lower()
+                    if target_id and curr_id == target_id:
+                        merged = dict(acc)
+                        merged.update(token_data)
+                        new_accounts.append(merged)
+                        updated = True
+                    else:
+                        new_accounts.append(acc)
+                if not updated:
+                    new_accounts.append(dict(token_data))
+                p_key = _accounts_key(provider)
+                vault.set_secret(p_key, json.dumps(new_accounts))
         return success
     except Exception as exc:
         logger.error("Failed to store OAuth credentials for %s: %s", provider, exc)
@@ -90,10 +109,127 @@ def delete_oauth_tokens(provider: str) -> bool:
     return vault.delete_secret(key)
 
 
+def _accounts_key(provider: str) -> str:
+    """Normalize provider name into an account pool vault key."""
+    return f"OAUTH_ACCOUNTS_{provider.strip().upper().replace('-', '_')}"
+
+
+def save_oauth_account(
+    provider: str,
+    account_data: dict[str, Any],
+    account_id: Optional[str] = None,
+) -> bool:
+    """
+    Save or update an account record within a provider's multi-account OAuth pool.
+    Matches accounts by email, account_id, or sub.
+    Maintains backward compatibility by also keeping the primary/paid account in OAUTH_TOKEN_<PROVIDER>.
+    """
+    if not provider or not isinstance(account_data, dict):
+        return False
+
+    accounts = get_oauth_accounts(provider)
+    target_id = (account_id or account_data.get("email") or account_data.get("account_id") or "").strip().lower()
+
+    updated = False
+    new_accounts: list[dict[str, Any]] = []
+    for acc in accounts:
+        curr_id = (acc.get("email") or acc.get("account_id") or "").strip().lower()
+        if target_id and curr_id == target_id:
+            merged = dict(acc)
+            merged.update(account_data)
+            new_accounts.append(merged)
+            updated = True
+        else:
+            new_accounts.append(acc)
+
+    if not updated:
+        new_record = dict(account_data)
+        if target_id and "email" not in new_record:
+            new_record["email"] = target_id
+        new_accounts.append(new_record)
+
+    key = _accounts_key(provider)
+    try:
+        payload = json.dumps(new_accounts)
+        success = vault.set_secret(key, payload)
+        if success:
+            logger.info("Successfully persisted OAuth account pool for %s (%d accounts)", provider, len(new_accounts))
+            # Also keep single token synced with paid or first account
+            paid_acc = next((a for a in new_accounts if a.get("tier") == "paid"), new_accounts[0])
+            save_oauth_tokens(provider, paid_acc)
+        return success
+    except Exception as exc:
+        logger.error("Failed to store OAuth account pool for %s: %s", provider, exc)
+        return False
+
+
+def get_oauth_accounts(provider: str) -> list[dict[str, Any]]:
+    """Retrieve all accounts registered in a provider's OAuth pool."""
+    if not provider:
+        return []
+    key = _accounts_key(provider)
+    raw = vault.get_secret(key)
+    if raw:
+        try:
+            data = json.loads(raw)
+            if isinstance(data, list):
+                return [a for a in data if isinstance(a, dict)]
+        except Exception as exc:
+            logger.warning("Failed to parse OAuth accounts pool for %s: %s", provider, exc)
+
+    # Legacy fallback: if single token exists, wrap it as single account
+    single = get_oauth_tokens(provider)
+    if single and isinstance(single, dict) and single.get("access_token"):
+        return [single]
+    return []
+
+
+def delete_oauth_account(provider: str, identifier: str) -> bool:
+    """Remove a specific account by email, account_id, or 1-based slot index."""
+    if not provider or not identifier:
+        return False
+    accounts = get_oauth_accounts(provider)
+    if not accounts:
+        return False
+
+    ident_clean = str(identifier).strip().lower()
+    filtered: list[dict[str, Any]] = []
+    for idx, acc in enumerate(accounts, start=1):
+        email = (acc.get("email") or "").strip().lower()
+        acc_id = (acc.get("account_id") or "").strip().lower()
+        if str(idx) == ident_clean or email == ident_clean or acc_id == ident_clean:
+            continue
+        filtered.append(acc)
+
+    key = _accounts_key(provider)
+    try:
+        if filtered:
+            payload = json.dumps(filtered)
+            vault.set_secret(key, payload)
+            paid_acc = next((a for a in filtered if a.get("tier") == "paid"), filtered[0])
+            save_oauth_tokens(provider, paid_acc)
+        else:
+            vault.delete_secret(key)
+            delete_oauth_tokens(provider)
+        return True
+    except Exception as exc:
+        logger.error("Failed to delete OAuth account %s for %s: %s", identifier, provider, exc)
+        return False
+
+
+def clear_oauth_accounts(provider: str) -> bool:
+    """Clear all accounts from the provider pool."""
+    if not provider:
+        return False
+    key = _accounts_key(provider)
+    vault.delete_secret(key)
+    return delete_oauth_tokens(provider)
+
+
 def list_authenticated_providers() -> list[str]:
     """Return list of provider names that currently have active tokens stored in vault."""
-    known = ["anthropic", "codex", "zai", "gemini"]
-    return [p for p in known if get_oauth_tokens(p) is not None]
+    known = ["anthropic", "codex", "zai", "gemini", "antigravity"]
+    return [p for p in known if get_oauth_tokens(p) is not None or get_oauth_accounts(p)]
 
 
 def get_token_expiry_timestamp(token_data: dict[str, Any]) -> Optional[float]:
