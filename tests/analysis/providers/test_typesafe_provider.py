@@ -799,3 +799,40 @@ async def test_fallback_wrapper_skips_typesafe_on_array_schema():
     # 2. Gemini should be invoked directly
     mock_gemini.classify_json.assert_awaited_once()
     assert result == [{"index": 1, "impact": "HIGH"}]
+
+
+@pytest.mark.asyncio
+async def test_openrouter_luna_decisions_provider():
+    """Test TypeSafeProvider initialization and execution for openai/gpt-6-luna-decisions."""
+    provider = TypeSafeProvider(model="luna-decision", api_key="sk-or-test")
+    assert provider.model == "openai/gpt-6-luna-decisions"
+    assert provider.is_openrouter is True
+
+    # Test direct system_one dispatch to _call_openrouter_decisions
+    mock_resp = SystemOneResponse(
+        model="openai/gpt-6-luna-decisions",
+        usage=Usage(input_tokens=150, output_tokens=0),
+        answers={"bias": ChoiceAnswer(choice="bullish", confidence=0.95, probabilities={"bullish": 0.95})},
+    )
+    with mock.patch.object(provider, "_call_openrouter_decisions", return_value=mock_resp) as mock_decide:
+        res = await provider.system_one(state="Gold market state", questions={"bias": {"type": "choice"}})
+        assert res.answers["bias"].choice == "bullish"
+        mock_decide.assert_awaited_once_with(
+            state="Gold market state", questions={"bias": {"type": "choice"}}, timeout=15.0
+        )
+
+    # Test classify_json dispatch
+    with (
+        mock.patch.object(provider, "_call_openrouter_decisions", return_value=mock_resp) as mock_decide,
+        mock.patch.object(provider, "_save_token_usage") as mock_save,
+    ):
+        res_json = await provider.classify_json(
+            prompt="Gold market state",
+            schema={"type": "object", "properties": {"bias": {"type": "string", "enum": ["bullish", "bearish"]}}},
+        )
+        assert res_json is not None
+        assert res_json["bias"] == "bullish"
+        assert res_json["_confidence"] == 0.95
+        assert res_json["_jev_model"] == "openai/gpt-6-luna-decisions"
+        mock_decide.assert_awaited_once()
+        mock_save.assert_awaited_once()

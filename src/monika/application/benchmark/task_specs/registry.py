@@ -30,6 +30,7 @@ from .debate_cases import (
 from .macro_cases import (
     _case_context_compaction,
     _case_deep_research,
+    _case_strategy_discovery,
     _case_fundamental_verifier,
     _case_macro_analyst,
     _case_report_synthesizer,
@@ -90,6 +91,7 @@ TASKS: dict[str, TaskSpec] = {
     "fundamental_verifier": TaskSpec("fundamental_verifier", "macro", "json", _case_fundamental_verifier),
     "macro_analyst": TaskSpec("macro_analyst", "macro", "agent", _case_macro_analyst),
     "deep_research": TaskSpec("deep_research", "macro", "agent", _case_deep_research),
+    "strategy_discovery": TaskSpec("strategy_discovery", "macro", "agent", _case_strategy_discovery),
     "report_synthesizer": TaskSpec("report_synthesizer", "macro", "text", _case_report_synthesizer),
     "context_compaction": TaskSpec("context_compaction", "macro", "text", _case_context_compaction),
     "summarizer": TaskSpec("summarizer", "macro", "text", _case_summarizer),

@@ -519,8 +519,11 @@ class FundamentalStage:
         await self._log(session, "Prefetching Stage 1 context data...")
         bundler = Stage1DataBundler(session, self.settings)
         prefetch_res = await bundler.prefetch_all_data()
+        bundled_raw_data = None
         if isinstance(prefetch_res, tuple) and len(prefetch_res) >= 2:
             prefetched_json, prefetch_satisfied_tools = prefetch_res[0], prefetch_res[1]
+            if len(prefetch_res) >= 3:
+                bundled_raw_data = prefetch_res[2]
         else:
             prefetched_json = prefetch_res
             prefetch_satisfied_tools = set()
@@ -1190,14 +1193,27 @@ INSTRUCTIONS:
                     },
                     "required": ["currency_bias", "confidence"],
                 }
+                terminal_dash = (
+                    bundled_raw_data.get("_tier1_executive_macro_terminal")
+                    if isinstance(bundled_raw_data, dict)
+                    else None
+                )
+                shadow_context = json.dumps(terminal_dash, indent=2) if terminal_dash else prefetched_json[:4000]
+                from monika.core.primitives.jev_primitives import build_macro_bias_questions
+
+                shadow_questions = build_macro_bias_questions()
                 shadow_prompt = (
                     f"Independently assess current USD/EUR/GBP/JPY/AUD/XAU directional bias (bullish/bearish/neutral) "
-                    f"using the data context below. Do NOT reference any prior brief — form your own view from raw data.\n\n"
-                    f"{prefetched_json}"
+                    f"using the executive data context below. Do NOT reference any prior brief — form your own view from raw data.\n\n"
+                    f"{shadow_context}"
                 )
                 try:
                     shadow_res = await shadow_client.classify_json(
-                        prompt=shadow_prompt, schema=shadow_schema, temperature=0.0
+                        prompt=shadow_prompt,
+                        schema=shadow_schema,
+                        jev_questions=shadow_questions,
+                        state=shadow_context,
+                        temperature=0.0,
                     )
                     if shadow_res and isinstance(shadow_res, dict):
                         s_bias = shadow_res.get("currency_bias", {})
@@ -1238,14 +1254,27 @@ INSTRUCTIONS:
                     },
                     "required": ["currency_bias"],
                 }
+                terminal_dash = (
+                    bundled_raw_data.get("_tier1_executive_macro_terminal")
+                    if isinstance(bundled_raw_data, dict)
+                    else None
+                )
+                shadow_context = json.dumps(terminal_dash, indent=2) if terminal_dash else prefetched_json[:4000]
+                from monika.core.primitives.jev_primitives import build_macro_bias_questions
+
+                shadow_questions = build_macro_bias_questions()
                 shadow_prompt = (
                     "Independently assess current USD/EUR/GBP/JPY/AUD/XAU directional bias "
-                    "(bullish/bearish/neutral) ONLY from the raw macroeconomic data below. "
+                    "(bullish/bearish/neutral) ONLY from the executive macroeconomic data below. "
                     "Do NOT reference any prior brief — form an unanchored, objective view strictly from raw data.\n\n"
-                    f"{prefetched_json}"
+                    f"{shadow_context}"
                 )
                 shadow_result = await cheap_check_client.classify_json(
-                    prompt=shadow_prompt, schema=shadow_schema, temperature=0.0
+                    prompt=shadow_prompt,
+                    schema=shadow_schema,
+                    jev_questions=shadow_questions,
+                    state=shadow_context,
+                    temperature=0.0,
                 )
                 if shadow_result and isinstance(shadow_result, dict):
                     s_bias = shadow_result.get("currency_bias", {})

@@ -1058,7 +1058,7 @@ class StrategySynthesisScheduler:
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
 
-            client = get_client_for_task("deep_research", self.settings)
+            client = get_client_for_task("strategy_discovery", self.settings)
             prompt = (
                 f"You are an elite institutional quantitative trading engineer. Write a Python EdgeStrategy subclass for trading on {symbol}.\n"
                 f"Class Name: {class_name}\n"

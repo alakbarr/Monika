@@ -244,8 +244,13 @@ def _register_builtins():
                 clean_model = "jaredpalmer/kev-4b"
             elif clean_model.lower() in ("liquid-d1", "lfm-7b-d1", "liquid/lfm-7b-d1"):
                 clean_model = "liquid/lfm-7b-d1"
-            elif clean_model.lower() in ("luna-decision", "luna/decision"):
-                clean_model = "luna/decision"
+            elif clean_model.lower() in (
+                "luna-decision",
+                "luna/decision",
+                "gpt-6-luna-decisions",
+                "openai/gpt-6-luna-decisions",
+            ):
+                clean_model = "openai/gpt-6-luna-decisions"
             elif clean_model.lower() in ("mercury-decide", "mercury/decide"):
                 clean_model = "mercury/decide"
         else:

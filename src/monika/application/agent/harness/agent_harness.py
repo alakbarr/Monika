@@ -1137,7 +1137,7 @@ class AgentHarness:
                                 session=session,
                                 cached_tokens=total_cached_tokens,
                                 thinking_tokens=total_thinking_tokens,
-                                is_direct_free_tier=not is_paid if is_paid is not None else None,
+                                is_direct_free_tier=False if is_paid else None,
                                 from_agent_harness=True,
                             )
                         except Exception:
@@ -1216,7 +1216,7 @@ class AgentHarness:
                                 session=session,
                                 cached_tokens=total_cached_tokens,
                                 thinking_tokens=total_thinking_tokens,
-                                is_direct_free_tier=not is_paid if is_paid is not None else None,
+                                is_direct_free_tier=False if is_paid else None,
                                 from_agent_harness=True,
                             )
                         except Exception:
@@ -1981,7 +1981,7 @@ class AgentHarness:
                     session=session,
                     cached_tokens=total_cached_tokens,
                     thinking_tokens=total_thinking_tokens,
-                    is_direct_free_tier=not is_paid if is_paid is not None else None,
+                    is_direct_free_tier=False if is_paid else None,
                     from_agent_harness=True,
                 )
             except Exception as e:

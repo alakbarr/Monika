@@ -208,6 +208,21 @@ async def _case_deep_research(session: Any, settings: dict[str, Any], ex: Any) -
     )
 
 
+async def _case_strategy_discovery(session: Any, settings: dict[str, Any], ex: Any) -> BenchmarkCase:
+    prompt = (
+        "Discover and synthesize quantitative trading strategy hypotheses for forex and gold "
+        "leveraging recent macroeconomic regime shifts, yield spreads, and volatility conditions."
+    )
+    return BenchmarkCase(
+        "strategy_discovery",
+        "macro",
+        system_prompt="You are a Quantitative Strategy Discovery specialist. Propose structured strategy hypotheses with edge thesis, entry triggers, and risk invalidation.",
+        user_prompt=prompt,
+        role_kwargs=dict(max_tokens=8192, thinking="none"),
+        context_summary=prompt,
+    )
+
+
 async def _case_report_synthesizer(session: Any, settings: dict[str, Any], ex: Any) -> BenchmarkCase:
     reports = get_synthetic_session_reports_payload()
     prompt = (

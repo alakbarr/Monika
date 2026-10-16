@@ -260,7 +260,36 @@ ITEMS:
 Respond JSON array of objects:
 [{{"index": 1, "target_impact": "MEDIUM", "reason": "Structural economic analysis without immediate catalyst"}}]"""
             try:
-                result = await self._classification_verifier.classify_json(prompt=prompt, schema=verify_schema)
+                is_typesafe = getattr(self._classification_verifier, "provider_name", None) == "typesafe"
+                if is_typesafe:
+                    from typesafe_sdk import Choice
+
+                    chunk_questions = {}
+                    for j, item in enumerate(chunk):
+                        chunk_questions[f"item_{j + 1}_impact"] = Choice(
+                            instructions=f"Assign target market impact (HIGH, MEDIUM, or LOW) for: {item.title[:100]}",
+                            criteria={
+                                "HIGH": "Direct, immediate market-moving catalyst",
+                                "MEDIUM": "Routine data, general commentary without immediate catalyst",
+                                "LOW": "Irrelevant noise, minor commentary without broader market relevance",
+                            },
+                        )
+                    chunk_res = await self._classification_verifier.classify_json(
+                        prompt="", state=text, jev_questions=chunk_questions
+                    )
+                    if chunk_res and isinstance(chunk_res, dict):
+                        result = [
+                            {
+                                "index": j + 1,
+                                "target_impact": str(chunk_res.get(f"item_{j + 1}_impact", chunk[j].impact)).upper(),
+                                "reason": f"System One classified as {chunk_res.get(f'item_{j + 1}_impact', chunk[j].impact)}",
+                            }
+                            for j in range(len(chunk))
+                        ]
+                    else:
+                        result = await self._classification_verifier.classify_json(prompt=prompt, schema=verify_schema)
+                else:
+                    result = await self._classification_verifier.classify_json(prompt=prompt, schema=verify_schema)
                 if not result:
                     continue
                 if isinstance(result, dict):

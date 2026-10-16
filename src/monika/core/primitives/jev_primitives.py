@@ -372,6 +372,33 @@ def build_shadow_check_questions() -> dict[str, Union[Noul, Score]]:
     }
 
 
+def build_macro_bias_questions() -> dict[str, Union[Choice, Score]]:
+    """
+    Directional bias snap judgment questions for currency and commodity baskets.
+    Used by stage1_shadow_check and quick consistency gates.
+    """
+    questions: dict[str, Union[Choice, Score]] = {}
+    for cur in ("USD", "EUR", "GBP", "JPY", "AUD", "XAU"):
+        questions[f"bias_{cur}"] = Choice(
+            instructions=f"Directional bias for {cur} based on current macroeconomic context:",
+            criteria={
+                "bullish": f"Bullish / Strengthening {cur}",
+                "bearish": f"Bearish / Weakening {cur}",
+                "neutral": f"Neutral / Ranging / Mixed {cur}",
+            },
+        )
+    questions["confidence"] = Score(
+        instructions="Rate confidence in these macroeconomic directional biases",
+        criteria=[
+            "Low confidence / high uncertainty",
+            "Moderate confidence / mixed signals",
+            "Clear directional conviction",
+            "Very high conviction backed by decisive macro data",
+        ],
+    )
+    return questions
+
+
 def build_adjudication_questions() -> dict[str, Union[Choice, Noul, Score]]:
     """
     Verification questions for Stage 2 specialist debate adjudication.

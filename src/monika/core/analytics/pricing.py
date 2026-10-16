@@ -129,6 +129,13 @@ PRICING: dict[str, Price] = {
     "jev-1.13.0": Price(0.042, 0.042, 0.0, "TypeSafe Jev 1.13 - output free"),
     "jev-1.13": Price(0.042, 0.042, 0.0, "TypeSafe Jev 1.13 - output free"),
     "jev-preview": Price(0.042, 0.042, 0.0, "TypeSafe Jev Preview - output free"),
+    "typesafe/jev-router": Price(0.042, 0.042, 0.0, "TypeSafe Jev System One - output free"),
+    "mercury-decide": Price(0.10, 0.01, 0.50),
+    "inception/mercury-2.5": Price(0.10, 0.01, 0.50),
+    "liquid-d1": Price(0.0, 0.0, 0.0, "Liquid LFM Free"),
+    "luna-decision": Price(0.10, 0.01, 0.50),
+    "openai/gpt-6-luna-decisions": Price(0.10, 0.01, 0.50),
+    "gpt-6-luna-decisions": Price(0.10, 0.01, 0.50),
     # --- OpenRouter Third-Party Paid Models ---
     "kimi-k3": Price(3.00, 0.30, 15.00),
     "qwen3.8-max": Price(1.60, 0.16, 6.40),
@@ -231,10 +238,19 @@ OPENROUTER_PRICING_MAP: dict[str, str] = {
     "minimax/minimax-m3": "minimax-m3",
     # Meta
     "meta-llama/muse-spark-1.2": "muse-spark-1.2",
+    "meta/muse-spark-1.3": "muse-spark-1.3",
+    "meta-llama/muse-spark-1.3": "muse-spark-1.3",
+    # System One Models on OpenRouter
+    "typesafe/jev-router": "typesafe/jev-router",
+    "inception/mercury-2.5": "mercury-decide",
+    "inception/mercury-2": "mercury-decide",
+    "liquid/lfm-2.5-2.6b:free": "liquid-d1",
 }
 
 # Daftar eksplisit model Free Tier ($0)
 FREE_TIER_MODELS = {
+    # System One Free Models
+    "liquid-d1",
     # Stealth
     "ox-alpha",
     "stealth/ox-alpha",
@@ -409,7 +425,7 @@ def is_free_tier(model_name: str, provider: str | None = None, is_direct_free_ti
     # 3. Provider Free Tiers
     if prov in ("groq", "ollama"):
         return True
-    if prov == "gemini" and not clean_name.startswith("vertex/"):
+    if prov == "gemini" and not clean_name.startswith(("vertex/", "google/")):
         return True
 
     return False

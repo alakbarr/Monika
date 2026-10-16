@@ -214,6 +214,21 @@ OPENROUTER_MODEL_ALIASES = {
     # OpenRouter Auto Router (Free)
     "openrouter/free": "openrouter/free",
     "openrouter-free": "openrouter/free",
+    # System One Decision Models on OpenRouter
+    "typesafe/jev-router": "typesafe/jev-router",
+    "jev-router": "typesafe/jev-router",
+    "jev-latest": "typesafe/jev-router",
+    "typesafe/jev-latest": "typesafe/jev-router",
+    "liquid-d1": "liquid/lfm-2.5-2.6b:free",
+    "lfm-7b-d1": "liquid/lfm-2.5-2.6b:free",
+    "liquid/lfm-7b-d1": "liquid/lfm-2.5-2.6b:free",
+    "luna-decision": "openai/gpt-6-luna-decisions",
+    "luna/decision": "openai/gpt-6-luna-decisions",
+    "gpt-6-luna-decisions": "openai/gpt-6-luna-decisions",
+    "openai/gpt-6-luna-decisions": "openai/gpt-6-luna-decisions",
+    "mercury-decide": "inception/mercury-2.5",
+    "mercury/decide": "inception/mercury-2.5",
+    "inception/mercury-2.5": "inception/mercury-2.5",
 }
 
 _openrouter_limiter = OpenRouterRateLimiter()

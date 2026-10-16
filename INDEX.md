@@ -666,6 +666,7 @@
   - `build_news_classification_questions() -> dict[str, Union[Choice, Score, Noul]]`: Speculative fan-out question set for financial news categorization & market impact.
   - `build_prescreen_questions(symbol: str) -> dict[str, Union[Noul, Score]]`: Fast prescreen check determining whether an asset setup warrants full Stage 2 analysis.
   - `build_shadow_check_questions() -> dict[str, Union[Noul, Score]]`: Shadow consistency and hallucination detection questions for Stage 1 fundamental briefs.
+  - `build_macro_bias_questions() -> dict[str, Union[Choice, Score]]`: Directional bias snap judgment questions for currency and commodity baskets.
   - `build_adjudication_questions() -> dict[str, Union[Choice, Noul, Score]]`: Verification questions for Stage 2 specialist debate adjudication.
   - `build_realtime_news_questions(open_positions: list[str] | None) -> dict[str, Union[Score, Noul]]`: Instant news evaluation questions for active PositionGuardian & NewsWatcher protection.
   - `build_fundamental_verifier_questions() -> dict[str, Union[Noul, Score, Choice]]`: Evaluates internal logical consistency of macro fundamental brief.
@@ -12404,8 +12405,8 @@
 - **Classes**:
   - `class TypeSafeProvider(BaseLLMClient)`: BaseLLMClient adapter for TypeSafe Jev System One model.
     - `__init__(model: str, max_tokens: int, max_tool_turns: int, ...)`
-    - `async system_one(state: Any, questions: dict, timeout: float) -> Any` - *Direct pass-through to underlying AsyncTypeSafeClient.system_one.*
-    - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]` - *Executes System One evaluation using Jev primitives.*
+    - `async system_one(state: Any, questions: dict, timeout: float) -> Any` - *Direct pass-through to underlying client or OpenRouter decisions / JSON translation.*
+    - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]` - *Executes System One evaluation using Jev primitives or OpenRouter completion.*
     - `async generate(prompt: str, system: str, temperature: Optional[float], ...) -> Optional[str]` - *Jev is a System One decision model and does not generate free text.*
     - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict` - *Jev does not support interactive chat loops.*
     - `async run_tool_agent(messages: list, tools: list, system_prompt: Any) -> Any` - *Jev does not support tool-calling agent loops.*

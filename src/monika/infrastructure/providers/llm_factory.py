@@ -441,7 +441,7 @@ class LLMFactory:
                 if cred_pool:
                     pooled_key = cred_pool.get_key("openrouter") or pooled_key
                 if not pooled_key:
-                    pooled_key = os.getenv("OPENROUTER_API_KEY")
+                    pooled_key = os.getenv("OPENROUTER_PAID_API_KEY") or os.getenv("OPENROUTER_API_KEY")
                 provider_config = dict(provider_config)
                 provider_config["base_url"] = provider_config.get("base_url") or "https://openrouter.ai/api"
                 provider_config["use_openrouter"] = True
@@ -451,8 +451,13 @@ class LLMFactory:
                     clean_model_name = "jaredpalmer/kev-4b"
                 elif clean_model_name.lower() in ("liquid-d1", "lfm-7b-d1", "liquid/lfm-7b-d1"):
                     clean_model_name = "liquid/lfm-7b-d1"
-                elif clean_model_name.lower() in ("luna-decision", "luna/decision"):
-                    clean_model_name = "luna/decision"
+                elif clean_model_name.lower() in (
+                    "luna-decision",
+                    "luna/decision",
+                    "gpt-6-luna-decisions",
+                    "openai/gpt-6-luna-decisions",
+                ):
+                    clean_model_name = "openai/gpt-6-luna-decisions"
                 elif clean_model_name.lower() in ("mercury-decide", "mercury/decide"):
                     clean_model_name = "mercury/decide"
 

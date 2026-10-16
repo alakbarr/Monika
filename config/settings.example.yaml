@@ -651,8 +651,8 @@ llm:
       timeout_seconds: 180
       streaming:
         enabled: true
-        idle_timeout_seconds: 60
-        first_chunk_timeout_seconds: 120
+        idle_timeout_seconds: 90
+        first_chunk_timeout_seconds: 180
         safety_timeout_seconds: 600
       api_key_rotation: true
       features:
@@ -987,8 +987,17 @@ llm:
       supports_tool_calling: true
       supports_caching: true
       cost_tier: medium
+    typesafe/jev-router:
+      provider: openrouter
+      context_window: 64000
+      supports_tool_calling: false
+      supports_caching: false
+      cost_tier: free
+      rate_limits:
+        rpm: 1200
+        tps: 250000
     jev-latest:
-      provider: typesafe
+      provider: openrouter
       context_window: 64000
       supports_tool_calling: false
       supports_caching: false
@@ -1021,7 +1030,7 @@ llm:
       supports_caching: false
       cost_tier: free
     openrouter/typesafe/jev-latest:
-      provider: typesafe
+      provider: openrouter
       context_window: 64000
       supports_tool_calling: false
       supports_caching: false
@@ -1030,7 +1039,7 @@ llm:
         rpm: 600
         tps: 150000
     liquid-d1:
-      provider: typesafe
+      provider: openrouter
       context_window: 64000
       supports_tool_calling: false
       supports_caching: false
@@ -1039,7 +1048,7 @@ llm:
         rpm: 1200
         tps: 250000
     luna-decision:
-      provider: typesafe
+      provider: openrouter
       context_window: 64000
       supports_tool_calling: false
       supports_caching: false
@@ -1048,7 +1057,7 @@ llm:
         rpm: 1200
         tps: 250000
     mercury-decide:
-      provider: typesafe
+      provider: openrouter
       context_window: 64000
       supports_tool_calling: false
       supports_caching: false
@@ -1900,6 +1909,7 @@ llm:
       fallback_4: openrouter/free
     stage1_fundamental:
       primary: muse-spark-1.3
+      per_model_timeout_seconds: 360.0
       thinking:
         primary: xhigh
         fallback_1: high
@@ -2375,49 +2385,19 @@ llm:
       fallback_1: glm-5.3-flash
     specialist_technical:
       primary: deepseek-v4.1-flash
-      thinking:
-        primary: max
-        fallback_1: max
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
+      thinking: none
       max_tokens: 4096
       temperature: 0.0
       fallback_1: glm-5.3-flash
     specialist_sentiment:
       primary: deepseek-v4.1-flash
-      thinking:
-        primary: max
-        fallback_1: max
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
+      thinking: none
       max_tokens: 4096
       temperature: 0.0
       fallback_1: glm-5.3-flash
     specialist_macro:
       primary: deepseek-v4.1-flash
-      thinking:
-        primary: max
-        fallback_1: max
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
+      thinking: none
       max_tokens: 4096
       temperature: 0.0
       fallback_1: glm-5.3-flash
@@ -2454,21 +2434,11 @@ llm:
       temperature: 0.0
       fallback_1: gemini-3.8-flash
     trade_reflection:
-      primary: glm-5.3
-      thinking:
-        primary: max
-        fallback_1: xhigh
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
+      primary: glm-5.3-flash
+      thinking: none
       max_tokens: 4096
       temperature: 0.0
-      fallback_1: muse-spark-1.3
+      fallback_1: deepseek-v4.1-flash
     chat_telegram:
       primary: glm-5.3-flash
       thinking:
@@ -2601,6 +2571,14 @@ llm:
       max_tool_turns: 15
       temperature: 0.1
       fallback_1: glm-5.3
+    strategy_discovery:
+      primary: gemini-3.5-flash-lite
+      provider: gemini
+      thinking: none
+      max_tokens: 8192
+      max_tool_turns: 10
+      temperature: 0.1
+      fallback_1: gemini-3.1-flash-lite
     context_compaction:
       primary: deepseek-v4.1-flash
       thinking:

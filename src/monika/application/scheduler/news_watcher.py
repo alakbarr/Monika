@@ -477,6 +477,12 @@ class NewsWatcher:
         if since is None:
             # First run: only look at last N minutes
             since = datetime.now(timezone.utc) - timedelta(minutes=self.check_interval_minutes)
+        else:
+            # Clamp lookback to maximum 2 hours to prevent stale news floods after downtime
+            max_lookback = datetime.now(timezone.utc) - timedelta(hours=2)
+            if since < max_lookback:
+                logger.info(f"NewsWatcher: Clamping lookback from {since} to {max_lookback} (max 2h)")
+                since = max_lookback
 
         result = await session.execute(
             select(NewsItem).where(NewsItem.fetched_at > since).order_by(NewsItem.fetched_at.asc())
