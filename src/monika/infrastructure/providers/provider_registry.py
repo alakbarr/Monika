@@ -367,7 +367,12 @@ def _register_builtins():
         )
 
     def _create_antigravity(model_name, settings, role_config, task_role="default", **kwargs):
-        from monika.infrastructure.auth.antigravity_bridge import DEFAULT_ANTIGRAVITY_PROXY_URL
+        from monika.infrastructure.auth.antigravity_bridge import (
+            DEFAULT_ANTIGRAVITY_PROXY_URL,
+            check_antigravity_bridge_health,
+            resolve_antigravity_access_token,
+        )
+        from monika.infrastructure.providers.gemini_provider import GeminiProvider
         from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
         provider_config = kwargs.get("provider_config", {})
@@ -376,6 +381,37 @@ def _register_builtins():
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
         thinking_level = kwargs.get("thinking_level", "none")
+
+        # 1. Custom base_url or healthy local proxy -> use OpenAIProvider
+        custom_base = provider_config.get("base_url") or kwargs.get("base_url")
+        if custom_base or check_antigravity_bridge_health(base_url).get("healthy"):
+            return OpenAIProvider(
+                model=model_name,
+                max_tokens=max_tokens,
+                max_tool_turns=max_tool_turns,
+                thinking_level=thinking_level,
+                settings=settings,
+                temperature=temperature,
+                role=task_role,
+                api_key="antigravity_local_token",
+                provider_name="antigravity",
+                base_url=base_url,
+            )
+
+        # 2. Native Google OAuth PKCE token available -> route directly to GeminiProvider without local proxy
+        oauth_token = resolve_antigravity_access_token()
+        if oauth_token:
+            return GeminiProvider(
+                model=model_name,
+                max_tokens=max_tokens,
+                max_tool_turns=max_tool_turns,
+                thinking_level=thinking_level,
+                settings=settings,
+                temperature=temperature,
+                api_key=oauth_token,
+            )
+
+        # 3. Fallback to default local proxy
         return OpenAIProvider(
             model=model_name,
             max_tokens=max_tokens,
@@ -429,6 +465,7 @@ def _register_builtins():
     ProviderRegistry.register("z.ai", _create_zai)
     ProviderRegistry.register("codex", _create_codex)
     ProviderRegistry.register("antigravity", _create_antigravity)
+    ProviderRegistry.register("agy", _create_antigravity)
     ProviderRegistry.register("opencode", _create_opencode)
     ProviderRegistry.register("opencode_go", _create_opencode)
     ProviderRegistry.register("opencode-go", _create_opencode)

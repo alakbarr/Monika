@@ -918,7 +918,9 @@ class StartupChecker:
                 model_name = role_cfg.get(slot)
                 if not model_name:
                     continue
-                if model_name not in self.settings.get("llm", {}).get("model_catalog", {}):
+                catalog = self.settings.get("llm", {}).get("model_catalog", {})
+                clean_name = model_name.split(":", 1)[1] if ":" in model_name else model_name
+                if model_name not in catalog and clean_name not in catalog:
                     logger.error(
                         f'[STARTUP CHECK FAIL] task_roles.{role}.{slot}="{model_name}" not found in llm.model_catalog'
                     )

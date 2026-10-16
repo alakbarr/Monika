@@ -192,8 +192,17 @@ class GeminiProvider(BaseLLMClient):
         paid_key = vault.get_secret("GEMINI_PAID_API_KEY") or os.getenv("GEMINI_PAID_API_KEY")
         if not paid_key:
             paid_key = vault.get_secret("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", cfg_api_key)
+        if not paid_key:
+            try:
+                from monika.infrastructure.auth.antigravity_bridge import resolve_antigravity_access_token
+
+                paid_key = resolve_antigravity_access_token()
+            except Exception:
+                pass
         self.paid_api_key = paid_key
         self.api_key: Optional[str] = kwargs.get("api_key") or cfg_api_key or None
+        if self.api_key and self.api_key.startswith("ya29."):
+            self.paid_api_key = self.api_key
 
         if not self.free_api_keys and not self.paid_api_key and not self.api_key:
             logger.warning("No Gemini API keys set — Gemini tasks will be skipped")
@@ -213,6 +222,8 @@ class GeminiProvider(BaseLLMClient):
         """Menentukan apakah API key yang digunakan adalah GEMINI_PAID_API_KEY (berbayar)."""
         if not api_key:
             return False
+        if api_key.startswith("ya29."):
+            return True
         if self.paid_api_key and api_key == self.paid_api_key:
             return api_key not in self.free_api_keys
         return False
@@ -220,10 +231,28 @@ class GeminiProvider(BaseLLMClient):
     def _get_api_key(self) -> Optional[str]:
         if self.api_key:
             return self.api_key
-        if "pro" in self.model.lower():
+        if "pro" in self.model.lower() or "argon" in self.model.lower():
             if self.paid_api_key:
+                if self.paid_api_key.startswith("ya29."):
+                    try:
+                        from monika.infrastructure.auth.antigravity_bridge import resolve_antigravity_access_token
+
+                        token = resolve_antigravity_access_token()
+                        if token:
+                            self.paid_api_key = token
+                    except Exception:
+                        pass
                 return self.paid_api_key
             else:
+                try:
+                    from monika.infrastructure.auth.antigravity_bridge import resolve_antigravity_access_token
+
+                    token = resolve_antigravity_access_token()
+                    if token:
+                        self.paid_api_key = token
+                        return token
+                except Exception:
+                    pass
                 logger.warning(f"Model {self.model} called but GEMINI_PAID_API_KEY is empty. Fallback to free key.")
 
         if not self.free_api_keys:
@@ -488,7 +517,10 @@ class GeminiProvider(BaseLLMClient):
                 logger.error("No Gemini API key available.")
                 return None
 
-            headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+            if api_key.startswith("ya29."):
+                headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            else:
+                headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
 
             try:
                 is_paid_attempt = self._is_paid_key(api_key)
@@ -935,7 +967,10 @@ class GeminiProvider(BaseLLMClient):
                 break
 
             try:
-                headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+                if api_key.startswith("ya29."):
+                    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+                else:
+                    headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
                 if use_streaming:
                     stream_res = await streaming_request(
                         url,

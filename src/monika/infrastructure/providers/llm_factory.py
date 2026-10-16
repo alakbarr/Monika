@@ -254,6 +254,13 @@ class LLMFactory:
                 "ollama",
                 "openai_compatible",
                 "vertex",
+                "opencode",
+                "opencode_go",
+                "opencode-go",
+                "antigravity",
+                "agy",
+                "zai",
+                "codex",
             ):
                 return prefix
 
@@ -393,9 +400,15 @@ class LLMFactory:
 
         thinking_level = self._resolve_thinking_level(model_name, role_config, provider_name, slot_name=slot_name)
 
+        cat_entry = self._catalog.get(model_name, {})
         clean_model_name = model_name
-        if ":" in model_name:
-            prefix, remainder = model_name.split(":", 1)
+        if isinstance(cat_entry, dict):
+            mapped_model = cat_entry.get("model_name") or cat_entry.get("model") or cat_entry.get("remote_model")
+            if mapped_model:
+                clean_model_name = str(mapped_model)
+
+        if ":" in clean_model_name:
+            prefix, remainder = clean_model_name.split(":", 1)
             if prefix.lower() in (
                 "gemini",
                 "anthropic",
@@ -410,6 +423,13 @@ class LLMFactory:
                 "ollama",
                 "openai_compatible",
                 "vertex",
+                "opencode",
+                "opencode_go",
+                "opencode-go",
+                "antigravity",
+                "agy",
+                "zai",
+                "codex",
             ):
                 clean_model_name = remainder
 

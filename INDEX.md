@@ -12387,6 +12387,12 @@
   - `sanitize_tool_parameters_schema(schema_dict: Any) -> Any`: Sanitize JSON Schema for OpenAI / OpenRouter function calling parameters.
   - `make_openai_strict_schema(schema_dict: dict) -> dict`: Transforms standard Pydantic JSON schema into OpenAI strict: true compliant schema.
 
+#### `opencode_provider.py` - *OpenCode Go / Zen Provider Client for Monika Trading Agent.*
+- **Path**: [`src/monika/infrastructure/providers/opencode_provider.py`](src/monika/infrastructure/providers/opencode_provider.py)
+- **Classes**:
+  - `class OpenCodeProvider(OpenAIProvider)`: Provider for models accessed through OpenCode Go / Zen subscription.
+    - `__init__(model: str, max_tokens: int, api_key: Optional[str], ...)`
+
 #### `openrouter_provider.py` - *OpenRouterProvider — Provider untuk model OpenRouter via OpenAI-compatible API.*
 - **Path**: [`src/monika/infrastructure/providers/openrouter_provider.py`](src/monika/infrastructure/providers/openrouter_provider.py)
 - **Classes**:

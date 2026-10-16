@@ -1768,6 +1768,7 @@ Monika/
 │       │   │   ├── nine_router_provider.py
 │       │   │   ├── ollama_provider.py
 │       │   │   ├── openai_provider.py
+│       │   │   ├── opencode_provider.py
 │       │   │   ├── openrouter_provider.py
 │       │   │   ├── pricing_catalog.py
 │       │   │   ├── provider_failover_classifier.py
@@ -2484,6 +2485,7 @@ Monika/
 │   │   ├── test_codex_provider.py
 │   │   ├── test_credential_pool.py
 │   │   ├── test_error_taxonomy.py
+│   │   ├── test_opencode_provider.py
 │   │   ├── test_role_fallback_chain.py
 │   │   ├── test_universal_provider.py
 │   │   └── test_zai_provider.py
@@ -2951,4 +2953,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 252 | **Total Tracked Files**: 2669
+**Total Tracked Directories**: 252 | **Total Tracked Files**: 2671

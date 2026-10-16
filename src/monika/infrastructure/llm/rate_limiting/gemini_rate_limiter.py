@@ -34,7 +34,7 @@ _CUSTOM_QUOTAS = {}
 
 def get_quota_for_model(model_name: str) -> dict:
     num_keys = _get_num_keys()
-    if "pro" in model_name.lower():
+    if "pro" in model_name.lower() or "argon" in model_name.lower():
         rpd = _CUSTOM_QUOTAS.get("pro_daily_quota", 10000)
         return {"rpd": rpd, "rpm": 360}
     if "lite" in model_name:
