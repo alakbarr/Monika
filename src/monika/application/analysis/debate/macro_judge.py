@@ -20,6 +20,10 @@ JUDGE_SCHEMA = {
             "maximum": 10,
             "description": "Objective score (1-10) for the Risk-Off / Dollar-Bull thesis based on empirical data quality.",
         },
+        "rationale": {
+            "type": "string",
+            "description": "Detailed explanation of why one thesis prevailed over the other based on macro data.",
+        },
         "winner": {
             "type": "string",
             "enum": ["RISK_ON_USD_BEAR", "RISK_OFF_USD_BULL", "US_EXCEPTIONALISM", "STAGFLATION", "TIE"],
@@ -35,10 +39,6 @@ JUDGE_SCHEMA = {
             "enum": ["BULLISH", "BEARISH", "NEUTRAL"],
             "description": "Directional bias for Risk Assets (equities, crypto, commodities, pro-cyclical FX). MANDATORY: If RISK_ON_USD_BEAR or US_EXCEPTIONALISM won, risk_asset_bias MUST be BULLISH. If RISK_OFF_USD_BULL or STAGFLATION won, risk_asset_bias MUST be BEARISH.",
         },
-        "rationale": {
-            "type": "string",
-            "description": "Detailed explanation of why one thesis prevailed over the other based on macro data.",
-        },
         "escalation_required": {
             "type": "boolean",
             "description": "True if score difference <= 1, high uncertainty, severe data contradiction, or TIE.",
@@ -47,10 +47,10 @@ JUDGE_SCHEMA = {
     "required": [
         "bull_arguments_score",
         "bear_arguments_score",
+        "rationale",
         "winner",
         "dxy_bias",
         "risk_asset_bias",
-        "rationale",
         "escalation_required",
     ],
 }

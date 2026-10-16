@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 
 from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import AssetAnalysis, Position, SystemConfig
+from monika.infrastructure.database.models import AssetAnalysis, Position, PriceOHLCV, SystemConfig
 
 logger = logging.getLogger("TradingAgent.PositionExitReviewer")
 
@@ -124,10 +124,27 @@ class PositionExitReviewer:
             jev_exit_client = get_client_for_task("jev_exit_prescreen", self.settings)
             if hasattr(jev_exit_client, "classify_json"):
                 exit_q = build_exit_review_prescreen(position.symbol, position.direction)
+                cur_price = getattr(position, "current_price", None)
+                if cur_price is None:
+                    try:
+                        async with get_session() as s_px:
+                            lb = (
+                                await s_px.execute(
+                                    select(PriceOHLCV)
+                                    .where(PriceOHLCV.symbol == position.symbol)
+                                    .order_by(PriceOHLCV.timestamp.desc())
+                                    .limit(1)
+                                )
+                            ).scalar_one_or_none()
+                            if lb and getattr(lb, "close", None) is not None:
+                                cur_price = float(lb.close)
+                    except Exception:
+                        cur_price = None
                 state = {
                     "symbol": position.symbol,
                     "direction": position.direction,
                     "entry_price": position.entry_price,
+                    "current_price": cur_price or position.entry_price,
                     "sl": position.sl,
                     "tp": position.tp,
                     "holding_hours": round(holding_hours_so_far, 1),

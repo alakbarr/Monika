@@ -75,7 +75,8 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
         logger.info(f"[DeepResearch] DynamicSubagentPool spawned {len(specs)} specialists: {roles_list}")
         await _notify_progress(f" Menjalankan riset paralel ({len(specs)} spesialis: {roles_list})...")
 
-        worker_client = self._client_research or self._client_deep
+        # Asymmetric Tiering: Fast subagent execution workers + Flagship Chief Synthesizer
+        worker_client = self._client_medium or self._client_lite or self._client_research
 
         results = await pool.run_parallel(
             specs=specs,
@@ -192,12 +193,12 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
     async def _run_tier_lite(
         self, system_prompt, history, message, tool_executor=None, image_bytes: Optional[bytes] = None
     ) -> dict:
-        """Lite tier path untuk query sederhana."""
+        """Lite tier path untuk query sederhana menggunakan lean prompt (~150 token)."""
         selected_tools = self._tool_router.route_tools_for_query(message)
-        sys_prompt, user_msg = self._prepare_cache_invariant_prompt(system_prompt, message)
-        payload = self._format_user_message_payload(user_msg, image_bytes)
+        lean_sys = self._build_lean_system_prompt()
+        payload = self._format_user_message_payload(message, image_bytes)
         response = await self._client_lite.run_chat_loop(
-            system_prompt=sys_prompt,
+            system_prompt=lean_sys,
             conversation_history=history,
             new_user_message=payload,
             tools=selected_tools,

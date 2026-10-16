@@ -143,11 +143,11 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
 
         if isinstance(system_prompt, tuple):
             static_prompt, dynamic_snapshot = system_prompt
-            if "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in static_prompt and not user_query:
+            if "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in static_prompt:
                 return system_prompt
             return (f"{static_prompt}{injected_block}", dynamic_snapshot)
 
-        if "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in system_prompt and not user_query:
+        if "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in system_prompt:
             return system_prompt
         return f"{system_prompt}{injected_block}"
 
@@ -459,3 +459,12 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
         static_prompt = "\n".join(lines)
         dynamic_snapshot = "\n".join(dynamic_lines) if dynamic_lines else ""
         return (static_prompt, dynamic_snapshot) if dynamic_snapshot else static_prompt
+
+    def _build_lean_system_prompt(self) -> str:
+        """Construct a lightweight, highly responsive prompt for quick data and status queries (~150 tokens)."""
+        return (
+            "You are Monika, an autonomous MT5 Trading Agent assistant.\n"
+            "Your role in this turn is to provide fast, direct, and accurate answers to operator queries.\n"
+            "Use the provided tools to retrieve real-time facts whenever needed. Keep answers concise, factual, and formatted with clean Markdown.\n"
+            "Answer in the user's language (Indonesian or English)."
+        )

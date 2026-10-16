@@ -37,7 +37,6 @@ class DigestSliceGenerator:
         self.settings = settings or {}
         self._digest_generator = get_client_for_task("news_digest", self.settings)
         self._macro_synth = get_client_for_task("news_digest_macro_overview", self.settings)
-        self._verifier = get_client_for_task("news_digest_verifier", self.settings)
 
     async def generate_slice(
         self,

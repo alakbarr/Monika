@@ -2455,11 +2455,21 @@ llm:
       temperature: 0.0
       fallback_1: gemini-3.8-flash
     trade_reflection:
-      primary: glm-5.3-flash
-      thinking: none
+      primary: deepseek-v4.1-flash
+      thinking:
+        primary: max
+        fallback_1: max
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: max
+        groq: high
+        openrouter: max
+        ollama: medium
+        openai_compatible: high
       max_tokens: 4096
-      temperature: 0.0
-      fallback_1: deepseek-v4.1-flash
+      temperature: 0.1
+      fallback_1: glm-5.3-flash
     chat_telegram:
       primary: glm-5.3-flash
       thinking:
@@ -2593,13 +2603,23 @@ llm:
       temperature: 0.1
       fallback_1: glm-5.3
     strategy_discovery:
-      primary: gemini-3.5-flash-lite
-      provider: gemini
-      thinking: none
+      primary: deepseek-v4.1-flash
+      provider: openrouter
+      thinking:
+        primary: high
+        fallback_1: high
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: medium
+        openai_compatible: high
       max_tokens: 8192
       max_tool_turns: 10
       temperature: 0.1
-      fallback_1: gemini-3.1-flash-lite
+      fallback_1: glm-5.3-flash
     context_compaction:
       primary: deepseek-v4.1-flash
       thinking:
@@ -2633,21 +2653,21 @@ llm:
       temperature: 0.0
       fallback_1: glm-5.3-flash
     report_synthesizer:
-      primary: glm-5.3
+      primary: glm-5.3-flash
       thinking:
-        primary: max
-        fallback_1: xhigh
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
-      max_tokens: 4096
+        primary: low
+        fallback_1: low
+        anthropic: low
+        gemini: low
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 2048
       temperature: 0.2
-      fallback_1: muse-spark-1.3
+      fallback_1: deepseek-v4.1-flash
     pattern_context_verifier:
       primary: jev-latest
       thinking:

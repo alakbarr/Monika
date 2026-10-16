@@ -53,22 +53,37 @@ class ChatAgent(
     Satu instance per user (disimpan di bot.py).
     """
 
-    def __init__(self, settings: dict, user_id: int | str, is_admin: bool = False):
+    def __init__(
+        self,
+        settings: dict,
+        user_id: int | str,
+        is_admin: bool = False,
+        interface: str = "telegram",
+    ):
         self.settings = settings
         self.user_id = user_id
         self.is_admin = is_admin
+        self.interface = interface
 
-        # Tier 1 (Lite): untuk query data cepat/sederhana
-        self._client_lite = get_client_for_task("chat_telegram", settings)
+        is_cli = interface in ("cli", "interactive") or (
+            isinstance(user_id, str) and (user_id.startswith("cli") or user_id == "api_client")
+        )
 
-        # Tier 2 (Medium): untuk query menengah/eksekusi
-        self._client_medium = get_client_for_task("chat_telegram_medium", settings)
+        # Tier 1 (Lite / Fast): untuk query data cepat/sederhana
+        role_lite = "chat_interactive_fast" if is_cli else "chat_telegram"
+        self._client_lite = get_client_for_task(role_lite, settings)
 
-        # Tier 3 (Deep): untuk analisis mendalam/kompleks
-        self._client_deep = get_client_for_task("chat_telegram_complex", settings)
+        # Tier 2 (Medium / Balanced): untuk query menengah/eksekusi
+        role_medium = "chat_interactive_balanced" if is_cli else "chat_telegram_medium"
+        self._client_medium = get_client_for_task(role_medium, settings)
 
-        # Tier 4 (Deep Research): untuk ad-hoc deep research dan market intelligence
-        self._client_research = get_client_for_task("deep_research", settings)
+        # Tier 3 (Deep / Reasoning): untuk analisis mendalam/kompleks
+        role_deep = "chat_interactive_reasoning" if is_cli else "chat_telegram_complex"
+        self._client_deep = get_client_for_task(role_deep, settings)
+
+        # Tier 4 (Deep Research / Pro): untuk ad-hoc deep research dan market intelligence
+        role_research = "chat_interactive_pro" if is_cli else "deep_research"
+        self._client_research = get_client_for_task(role_research, settings)
 
         # Client for quick intent tier routing (Jev System One sub-100ms)
         self._client_intent = get_client_for_task("jev_telegram_intent", settings)
@@ -467,7 +482,6 @@ class ChatAgent(
                 history = await self._load_history(session, session_id=session_id)
                 await self._save_message(session, "user", clean_message, session_id=session_id)
                 system_prompt = await self._build_system_prompt(session)
-                system_prompt = self._inject_macro_playbooks(system_prompt, user_query=clean_message)
                 executor = ToolExecutor(session, settings=self.settings)
                 executor.is_admin = getattr(self, "is_admin", False)
                 self._instrument_executor(executor)

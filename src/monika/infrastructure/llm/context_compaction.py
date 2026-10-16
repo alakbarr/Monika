@@ -866,12 +866,16 @@ class ContextCompactionEngine:
                     # Pass the exact prefix from the conversation so provider reuses cached KV state
                     compaction_instruction = (
                         "You are the context compaction engine for this trading agent. "
-                        "Condense the intermediate analysis and tool observations ABOVE into dense bullet points preserving:\n"
-                        "1. Active orders, tickets, entry/SL/TP levels\n"
-                        "2. SMC structure (BOS, ChoCH, unmitigated OBs, unfilled FVGs)\n"
-                        "3. Decisive indicator readings (ATR14, RSI, DXY, VIX)\n"
-                        "4. Rejected setups and lessons learned\n"
-                        "Output ONLY structured markdown in <compacted-summary>...</compacted-summary>.\n"
+                        "Condense the intermediate analysis and tool observations ABOVE into dense, structured XML sections preserving:\n"
+                        "1. <active_orders_levels>: Active orders, tickets, open positions, entry/SL/TP levels.\n"
+                        "2. <smc_structure>: Market structure (BOS, ChoCH, unmitigated order blocks, unfilled FVGs).\n"
+                        "3. <indicators_state>: Decisive indicator readings (ATR14, RSI, DXY, VIX, key support/resistance).\n"
+                        "4. <macro_news_catalysts>: High-impact economic releases, Fed/central bank sentiment, geopolitical catalysts.\n"
+                        "5. <specialist_consensus_dissents>: Divergence or consensus between technical, macro, sentiment, and quant analysts.\n"
+                        "6. <rejected_setups_lessons>: Invalidated setups, veto reasons, and lessons learned.\n"
+                        "7. <risk_gate_drawdown>: Risk gate status, daily drawdown consumption, portfolio exposure limits.\n"
+                        "8. <pending_triggers>: Active alerts and pending breakout/retest triggers.\n"
+                        "Output ONLY structured content enclosed in <compacted-summary>...</compacted-summary>.\n"
                         "If the conversation already contains a <compacted-summary> block, merge newer information into a single consolidated summary."
                     )
 

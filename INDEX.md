@@ -4926,7 +4926,7 @@
 - **Path**: [`src/monika/application/agent/chat/coordinator.py`](src/monika/application/agent/chat/coordinator.py)
 - **Classes**:
   - `class ChatAgent(ActionStateMixin, ActionExecutionMixin, PromptBuilderMixin, StreamingMixin, ExecutionTiersMixin, HistoryMixin)`: Mengelola sesi percakapan dengan AI untuk user Telegram tertentu.
-    - `__init__(settings: dict, user_id: int | str, is_admin: bool)`
+    - `__init__(settings: dict, user_id: int | str, is_admin: bool, ...)`
     - `is_busy() -> bool` - *Check if chat agent is currently processing a turn.*
     - `steer(guidance: str) -> str` - *Tier 1 Interruption: Injects guidance into current active turn without aborting.*
     - `redirect(new_task: str) -> bool` - *Tier 2 Interruption: Gracefully cancels the current ongoing turn and sets up redirect message.*

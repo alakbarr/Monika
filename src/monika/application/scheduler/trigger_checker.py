@@ -22,7 +22,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
 from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import ActivityLog, AssetAnalysis, TechnicalIndicator, TradeTrigger
+from monika.infrastructure.database.models import (
+    ActivityLog,
+    AssetAnalysis,
+    PriceOHLCV,
+    TechnicalIndicator,
+    TradeTrigger,
+)
 from monika.infrastructure.database.safe_ops import safe_commit
 
 logger = logging.getLogger("TradingAgent.TriggerChecker")
@@ -133,7 +139,26 @@ class TriggerChecker:
                         resolved_sym = getattr(getattr(trigger, "analysis", None), "symbol", None) or getattr(
                             trigger, "symbol", None
                         )
-                        jev_val = await self.validate_trigger_with_jev(trigger, symbol=resolved_sym)
+                        cur_px = None
+                        if resolved_sym:
+                            try:
+                                async with get_session() as s_px:
+                                    lb = (
+                                        await s_px.execute(
+                                            select(PriceOHLCV)
+                                            .where(PriceOHLCV.symbol == resolved_sym)
+                                            .order_by(PriceOHLCV.timestamp.desc())
+                                            .limit(1)
+                                        )
+                                    ).scalar_one_or_none()
+                                    if lb and getattr(lb, "close", None) is not None:
+                                        cur_px = float(lb.close)
+                            except Exception:
+                                pass
+                        macro_ctx = getattr(getattr(trigger, "analysis", None), "rationale", None) or ""
+                        jev_val = await self.validate_trigger_with_jev(
+                            trigger, symbol=resolved_sym, current_price=cur_px, macro_context=macro_ctx
+                        )
                         if (
                             jev_val
                             and jev_val.get("is_still_valid") is False

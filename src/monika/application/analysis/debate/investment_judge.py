@@ -185,15 +185,18 @@ Respond in valid JSON format conforming to the schema."""
     schema = {
         "type": "object",
         "properties": {
-            "final_decision": {"type": "string", "enum": ["buy", "sell", "avoid"]},
-            "reason": {"type": "string"},
+            "reason": {
+                "type": "string",
+                "description": "Dense analytical synthesis evaluating thesis vs dissent and factual evidence",
+            },
+            "regime_weights_used": {"type": "object"},
             "risk_multiplier": {"type": "number"},
             "adjusted_entry": {"type": ["number", "null"]},
             "adjusted_sl": {"type": ["number", "null"]},
             "adjusted_tp": {"type": ["number", "null"]},
-            "regime_weights_used": {"type": "object"},
+            "final_decision": {"type": "string", "enum": ["buy", "sell", "avoid"]},
         },
-        "required": ["final_decision", "reason", "risk_multiplier"],
+        "required": ["reason", "risk_multiplier", "final_decision"],
     }
 
     debate_payload = {

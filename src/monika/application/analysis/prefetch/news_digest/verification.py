@@ -34,6 +34,22 @@ from monika.application.analysis.prefetch.news_digest.helpers import (
     _resolve_item_index,
 )
 
+NEWS_ESCALATION_SYSTEM_PROMPT = """You are a senior institutional macro risk and news analyst conducting objective, unanchored news re-verification.
+Evaluate each news item against institutional economic criteria (C1-C5):
+- C1: Direct Central Bank rate decision, policy statement, or emergency liquidity facility.
+- C2: Tier-1 macroeconomic data surprise vs consensus (NFP, CPI, Core PCE, GDP, ISM/PMI).
+- C3: Major geopolitical shock, armed conflict escalation, energy embargo, or systemic shipping route disruption.
+- C4: Sovereign debt distress, currency peg break, or tier-1 financial institution insolvency.
+- C5: Routine commentary, retrospective market recap, or scheduled remarks reaffirming known policy.
+
+Classification hierarchy:
+- BREAKING: Fresh (<2h) unscheduled shock or extreme tier-1 data deviation with immediate systemic market disruption.
+- HIGH: Significant scheduled release with large surprise or material macro consequence altering asset pricing.
+- MEDIUM: Standard economic data in line with expectations, routine policy remarks, or localized development.
+- LOW / NONE: Market opinion, technical analysis, retrospective editorial, or single-stock/minor token noise.
+
+Evaluate purely on the factual evidence and 5-day macro context. Prioritize objective reasoning before deciding impact."""
+
 
 class NewsClassificationVerificationMixin(_NewsDigestMixinBase):
     """Mixin providing classification verification, boundary cross-checks, and metrics."""
@@ -83,18 +99,16 @@ class NewsClassificationVerificationMixin(_NewsDigestMixinBase):
             f_utc = ensure_utc(news_item.fetched_at) if news_item.fetched_at else None
             age_min = round((now_utc - f_utc).total_seconds() / 60) if f_utc else "?"
             lines.append(
-                f"{j + 1}. ORIGINAL_VERDICT={item_result.get('impact')} "
-                f"(confidence={item_result.get('confidence', 0):.2f})\n"
+                f"{j + 1}. [ID #{news_item.id}]\n"
                 f"   TITLE: {news_item.title[:200]}\n"
                 f"   FULL SUMMARY: {(news_item.summary or '')[:600]}\n"
                 f"   TIME-IN-SYSTEM: {age_min} min"
             )
         macro_5d_context = await self._build_5day_macro_context(session, now_utc)
         prompt = (
-            f"Re-evaluate each of the following items from SCRATCH, without bias toward the original verdict. "
-            f"The original verdict MIGHT be too high OR too low — your job is purely "
-            f"to assess objectively based on the 5-day market context and full content below, not to confirm "
-            f"or refute the prior verdict.\n\n"
+            f"Re-evaluate each of the following items from SCRATCH, without bias toward any prior verdict. "
+            f"Your job is purely to assess objectively based on the institutional criteria (C1-C5), "
+            f"the 5-day market context, and the full content below.\n\n"
             f"{macro_5d_context}\n\n"
             f"ITEMS:\n{chr(10).join(lines)}\n\n"
             f'Respond JSON array: [{{"index":1,"reasoning":"...","impact":"HIGH",'
@@ -103,7 +117,7 @@ class NewsClassificationVerificationMixin(_NewsDigestMixinBase):
         )
         try:
             result = await self._classification_escalation.classify_json(
-                prompt=prompt, schema=NEWS_CLASSIFICATION_SCHEMA
+                prompt=prompt, system_prompt=NEWS_ESCALATION_SYSTEM_PROMPT, schema=NEWS_CLASSIFICATION_SCHEMA
             )
         except Exception as e:
             logger.warning(f"[NewsClassification] Re-verification failed (non-fatal): {e}")
@@ -153,22 +167,22 @@ class NewsClassificationVerificationMixin(_NewsDigestMixinBase):
             f_utc = ensure_utc(news_item.fetched_at) if news_item.fetched_at else None
             age_min = round((now_utc - f_utc).total_seconds() / 60) if f_utc else "?"
             lines.append(
-                f"{j + 1}. [ID #{news_item.id}] ORIGINAL_VERDICT={item_result.get('impact')} (confidence={item_result.get('confidence', 0):.2f})\n"
+                f"{j + 1}. [ID #{news_item.id}]\n"
                 f"   TITLE: {news_item.title[:200]}\n"
                 f"   FULL SUMMARY: {(news_item.summary or '')[:600]}\n"
                 f"   TIME-IN-SYSTEM: {age_min} min"
             )
         prompt = (
-            "A fast classifier model marked the following items as HIGH/BREAKING but with low confidence (<0.6) "
-            "— the model was uncertain. Your job: RE-EVALUATE carefully using the FULL summary (untruncated). "
-            "Evaluate from scratch, DO NOT bias toward the original verdict.\n\n"
+            "A fast classifier model marked the following items as borderline or uncertain (<0.6 confidence). "
+            "Your job: RE-EVALUATE carefully using institutional criteria (C1-C5) and the FULL summary. "
+            "Evaluate from scratch objectively without prior assumptions.\n\n"
             f"ITEMS:\n{chr(10).join(lines)}\n\n"
             'Respond JSON array: [{"index":1,"news_id":123,"reasoning":"...","impact":"HIGH","confidence":0.8,'
             '"surprise_magnitude":"none","currencies":["USD"],"sentiments":[],"key_data_point":""}]'
         )
         try:
             result = await self._classification_escalation.classify_json(
-                prompt=prompt, schema=NEWS_CLASSIFICATION_SCHEMA
+                prompt=prompt, system_prompt=NEWS_ESCALATION_SYSTEM_PROMPT, schema=NEWS_CLASSIFICATION_SCHEMA
             )
         except Exception as e:
             logger.warning(f"[NewsClassification] Escalation re-verify failed (non-fatal, keeping original): {e}")

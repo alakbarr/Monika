@@ -229,8 +229,11 @@ class VoiceHandler:
                     pass
 
     async def _transcribe(self, audio: bytes, mime_type: str = "audio/ogg") -> str:
-        """Transcribe audio bytes using Gemini multimodal."""
-        prompt = "Transcribe this audio accurately. Return only the transcription text, nothing else."
+        """Transcribe audio bytes using Gemini multimodal or Whisper."""
+        prompt = (
+            "Transcribe this audio accurately. Financial trading domain: XAUUSD, EURUSD, GBPUSD, USDJPY, "
+            "BTCUSD, XTIUSD, NFP, CPI, FOMC, SL, TP, PnL, lot size, FVG, BOS. Return only the transcription text."
+        )
 
         # 1. Try via LLM provider factory
         try:
@@ -331,6 +334,11 @@ class VoiceHandler:
                             form = aiohttp.FormData()
                             form.add_field("file", audio, filename="audio.ogg", content_type=mime_type)
                             form.add_field("model", clean_model)
+                            form.add_field(
+                                "prompt",
+                                "Trading symbols: XAUUSD, EURUSD, GBPUSD, USDJPY, AUDUSD, XTIUSD, BTCUSD, "
+                                "NFP, CPI, FOMC, FVG, Order Block, BOS, CHoCH, Breakeven, Take Profit, Stop Loss, Lot Size, PnL, Drawdown.",
+                            )
                             headers = {"Authorization": f"Bearer {openrouter_key}"}
                             url = "https://openrouter.ai/api/v1/audio/transcriptions"
                             async with http_session.post(
@@ -357,6 +365,11 @@ class VoiceHandler:
                             form = aiohttp.FormData()
                             form.add_field("file", audio, filename="audio.ogg", content_type=mime_type)
                             form.add_field("model", model_name)
+                            form.add_field(
+                                "prompt",
+                                "Trading symbols: XAUUSD, EURUSD, GBPUSD, USDJPY, AUDUSD, XTIUSD, BTCUSD, "
+                                "NFP, CPI, FOMC, FVG, Order Block, BOS, CHoCH, Breakeven, Take Profit, Stop Loss, Lot Size, PnL, Drawdown.",
+                            )
                             headers = {"Authorization": f"Bearer {groq_key}"}
                             url = "https://api.groq.com/openai/v1/audio/transcriptions"
                             async with http_session.post(

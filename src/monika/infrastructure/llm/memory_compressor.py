@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import ActivityLog
@@ -14,16 +14,20 @@ logger = logging.getLogger("TradingAgent.MemoryCompressor")
 async def compress_agent_memory(session: AsyncSession, settings: Optional[dict] = None) -> None:
     """
     Compresses ActivityLog older than 7 days by categorizing and summarizing them.
-    Stores the compressed memory as a new log and deletes the raw logs.
+    Stores the compressed memory as a new log and archives raw logs to preserve audit trails.
     """
     try:
         now = datetime.now(timezone.utc)
         cutoff = now - timedelta(days=7)
 
-        # Get logs older than cutoff, ignore already compressed logs
+        # Get logs older than cutoff, ignore already compressed or archived logs
         query = (
             select(ActivityLog)
-            .where(ActivityLog.timestamp < cutoff, ActivityLog.category != "compressed_memory")
+            .where(
+                ActivityLog.timestamp < cutoff,
+                ActivityLog.category != "compressed_memory",
+                ActivityLog.category != "archived_activity_log",
+            )
             .order_by(ActivityLog.category)
         )
 
@@ -69,14 +73,30 @@ async def compress_agent_memory(session: AsyncSession, settings: Optional[dict] 
             )
             session.add(compressed_log)
 
-        # Delete old logs
-        delete_query = delete(ActivityLog).where(
-            ActivityLog.timestamp < cutoff, ActivityLog.category != "compressed_memory"
-        )
-        await session.execute(delete_query)
-        await session.commit()
+        # Archive old raw logs to retain audit trail per AGENTS.md §1 unless hard delete is explicitly requested
+        delete_raw = bool((settings or {}).get("memory", {}).get("delete_raw_logs", False))
+        if delete_raw:
+            delete_query = delete(ActivityLog).where(
+                ActivityLog.timestamp < cutoff,
+                ActivityLog.category != "compressed_memory",
+                ActivityLog.category != "archived_activity_log",
+            )
+            await session.execute(delete_query)
+            logger.info("Successfully compressed agent memory and purged raw logs.")
+        else:
+            archive_query = (
+                update(ActivityLog)
+                .where(
+                    ActivityLog.timestamp < cutoff,
+                    ActivityLog.category != "compressed_memory",
+                    ActivityLog.category != "archived_activity_log",
+                )
+                .values(category="archived_activity_log")
+            )
+            await session.execute(archive_query)
+            logger.info("Successfully compressed agent memory and archived raw logs.")
 
-        logger.info("Successfully compressed agent memory and deleted raw logs.")
+        await session.commit()
 
     except Exception as e:
         logger.error(f"Error compressing memory: {e}")

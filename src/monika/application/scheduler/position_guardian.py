@@ -149,6 +149,17 @@ class PositionGuardian:
 
             actions_taken = []
 
+            # Fast-path Jev Threat Assessment for active positions (sub-100ms)
+            for pos in open_positions:
+                try:
+                    threat = await self.evaluate_position_threat_with_jev(pos)
+                    if threat and (threat.get("sl_threat_level", 0) >= 3 or threat.get("adverse_momentum") is True):
+                        logger.warning(
+                            f"[PositionGuardian] Jev flagged elevated adverse threat on {pos.symbol} (ticket={pos.mt5_ticket}, threat_level={threat.get('sl_threat_level')})"
+                        )
+                except Exception as jev_threat_err:
+                    logger.debug(f"[PositionGuardian] Jev position threat check skipped: {jev_threat_err}")
+
             if upcoming_events:
                 # Check which positions are exposed to upcoming events
                 for pos in open_positions:

@@ -166,8 +166,10 @@ NEWS_CLASSIFICATION_SCHEMA = {
                 "type": "string",
                 "description": "Chain of thought explaining the impact, surprise magnitude, and sentiment classification.",
             },
-            "impact": {"type": "string", "enum": ["BREAKING", "HIGH", "MEDIUM", "LOW", "NONE"]},
-            "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0, "description": "Confidence score 0.0-1.0"},
+            "key_data_point": {
+                "type": "string",
+                "description": "For DATA RELEASES only: extract actual vs forecast figures verbatim from title/summary if available (e.g. 'CPI actual 3.8% vs forecast 3.1%'). Empty string for non-data releases.",
+            },
             "surprise_magnitude": {
                 "type": "string",
                 "enum": ["none", "small", "moderate", "large"],
@@ -181,20 +183,18 @@ NEWS_CLASSIFICATION_SCHEMA = {
                 "items": {"type": "string", "enum": ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "XTI", "BTC", "NON"]},
             },
             "sentiments": {"type": "array", "items": {"type": "string", "enum": SENTIMENT_TAXONOMY}},
-            "key_data_point": {
-                "type": "string",
-                "description": "For DATA RELEASES only: extract actual vs forecast figures verbatim from title/summary if available (e.g. 'CPI actual 3.8% vs forecast 3.1%'). Empty string for non-data releases.",
-            },
+            "impact": {"type": "string", "enum": ["BREAKING", "HIGH", "MEDIUM", "LOW", "NONE"]},
+            "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0, "description": "Confidence score 0.0-1.0"},
         },
         "required": [
             "index",
             "reasoning",
-            "impact",
-            "confidence",
+            "key_data_point",
             "surprise_magnitude",
             "currencies",
             "sentiments",
-            "key_data_point",
+            "impact",
+            "confidence",
         ],
     },
 }
@@ -202,7 +202,6 @@ NEWS_CLASSIFICATION_SCHEMA = {
 DIGEST_CONSISTENCY_SCHEMA = {
     "type": "object",
     "properties": {
-        "has_contradictions": {"type": "boolean"},
         "contradictions": {
             "type": "array",
             "items": {
@@ -217,8 +216,9 @@ DIGEST_CONSISTENCY_SCHEMA = {
                 "required": ["section_a", "section_b", "claim_a", "claim_b", "severity"],
             },
         },
+        "has_contradictions": {"type": "boolean"},
     },
-    "required": ["has_contradictions", "contradictions"],
+    "required": ["contradictions", "has_contradictions"],
 }
 
 CLASSIFICATION_FEW_SHOT_EXAMPLES = """

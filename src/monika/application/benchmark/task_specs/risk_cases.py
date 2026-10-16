@@ -202,15 +202,15 @@ async def _case_portfolio_synthesis(session: Any, settings: dict[str, Any], ex: 
 _ADVERSARIAL_SCHEMA = {
     "type": "object",
     "properties": {
-        "approve": {"type": "boolean"},
-        "overall_quality": {"type": "string", "enum": ["high", "medium", "low"]},
         "strongest_counter_argument": {"type": "string"},
         "hard_block": {"type": "boolean"},
         "hard_block_reason": {"type": "string"},
         "recommend_block": {"type": "boolean"},
         "block_reason": {"type": "string"},
+        "overall_quality": {"type": "string", "enum": ["high", "medium", "low"]},
+        "approve": {"type": "boolean"},
     },
-    "required": ["approve", "overall_quality", "strongest_counter_argument", "hard_block", "recommend_block"],
+    "required": ["strongest_counter_argument", "hard_block", "recommend_block", "overall_quality", "approve"],
 }
 
 
@@ -288,16 +288,24 @@ async def _case_risk_gate_task(session: Any, settings: dict[str, Any], ex: Any) 
     return BenchmarkCase(
         "risk_gate",
         "risk",
-        system_prompt="You are a Subagent Risk Gate Auditor.",
+        system_prompt=(
+            "You are a Subagent Risk Gate Auditor. Scrutinize the proposed order against portfolio risk rules: "
+            "maximum daily loss limits, free margin headroom, and risk-to-reward ratio. Reason through "
+            "risk_factor_breakdown first before rendering your final approved decision."
+        ),
         user_prompt=prompt,
         schema={
             "type": "object",
             "properties": {
-                "approved": {"type": "boolean"},
-                "veto_reason": {"type": "string"},
-                "multiplier": {"type": "number"},
+                "risk_factor_breakdown": {
+                    "type": "string",
+                    "description": "Analysis of equity, margin, drawdown, and proposed risk metrics",
+                },
+                "veto_reason": {"type": "string", "description": "Reason for veto or empty if approved"},
+                "multiplier": {"type": "number", "description": "Recommended sizing multiplier 0.0 to 1.0"},
+                "approved": {"type": "boolean", "description": "Final approval decision after risk breakdown"},
             },
-            "required": ["approved", "multiplier"],
+            "required": ["risk_factor_breakdown", "veto_reason", "multiplier", "approved"],
         },
         role_kwargs=dict(max_tokens=1024, thinking="medium"),
         context_summary=prompt,

@@ -14,8 +14,6 @@ logger = logging.getLogger("TradingAgent.AdversarialCheck")
 ADVERSARIAL_SCHEMA = {
     "type": "object",
     "properties": {
-        "approve": {"type": "boolean"},
-        "overall_quality": {"type": "string", "enum": ["high", "medium", "low"]},
         "strongest_counter_argument": {"type": "string"},
         "hard_block": {
             "type": "boolean",
@@ -27,8 +25,10 @@ ADVERSARIAL_SCHEMA = {
             "description": "true if quality is low/risk is high but not objectively disqualifying",
         },
         "block_reason": {"type": "string"},
+        "overall_quality": {"type": "string", "enum": ["high", "medium", "low"]},
+        "approve": {"type": "boolean"},
     },
-    "required": ["approve", "overall_quality", "strongest_counter_argument", "hard_block", "recommend_block"],
+    "required": ["strongest_counter_argument", "hard_block", "recommend_block", "overall_quality", "approve"],
 }
 
 
@@ -50,13 +50,13 @@ def _safe_parse(val: Any) -> dict:
 
 async def run_adversarial_check(session: AsyncSession, analysis: AssetAnalysis, settings: dict) -> dict:
     default_result = {
-        "approve": True,
-        "overall_quality": "medium",
         "strongest_counter_argument": "",
         "hard_block": False,
         "hard_block_reason": "",
         "recommend_block": False,
         "block_reason": "",
+        "overall_quality": "medium",
+        "approve": True,
     }
     prompt = ""
     try:
@@ -166,9 +166,10 @@ Full Rationale (verbatim, do not paraphrase):
 RAW FACT SHEET (ground truth from database — use to verify rationale claims):
 {fact_sheet_str if fact_sheet_str else "unavailable"}
 
-Find the STRONGEST argument against this specific trade. Prioritize addressing the deterministic red flags above before seeking other arguments. 
-hard_block=true ONLY for objective disqualifications (mathematical errors, direct self-contradiction, missing/unclear invalidation conditions, or priced_in_score >= 9 without override justification). 
+Find the STRONGEST argument against this specific trade. Prioritize addressing the deterministic red flags above before seeking other arguments.
+hard_block=true ONLY for objective disqualifications (mathematical errors, direct self-contradiction, missing/unclear invalidation conditions, or priced_in_score >= 9 without override justification).
 recommend_block=true for significant, non-fatal risk factors.
+Formulate strongest_counter_argument, hard_block, and recommend_block FIRST before deciding overall_quality and final approve.
 """
         import hashlib
 
@@ -292,20 +293,34 @@ recommend_block=true for significant, non-fatal risk factors.
                     f"Symbol: {analysis.symbol}\n"
                     f"Decision: {analysis.decision}\n"
                     f"Error: {e}\n\n"
-                    f"Trade is allowed through because preceding validation gates passed."
+                    f"Trade status: {'REJECTED (Fail-Closed)' if bool(settings.get('adversarial_check', {}).get('fail_closed', False)) else 'ALLOWED (Damped 0.75x)'}."
                 )
             )
         except Exception:
             pass
 
+        fail_closed = bool(settings.get("adversarial_check", {}).get("fail_closed", False))
+        if fail_closed:
+            return {
+                "strongest_counter_argument": f"Adversarial check unavailable (failing closed per AGENTS.md §1): {e}",
+                "hard_block": True,
+                "hard_block_reason": f"Adversarial verification failed: {e}",
+                "recommend_block": True,
+                "block_reason": f"System error in adversarial verification: {e}",
+                "overall_quality": "low",
+                "approve": False,
+                "safety_damping_required": True,
+                "risk_damping_multiplier": 0.0,
+            }
+
         return {
-            "approve": True,
-            "overall_quality": "medium",
             "strongest_counter_argument": f"Adversarial check unavailable: {e}",
             "hard_block": False,
             "hard_block_reason": "",
             "recommend_block": False,
             "block_reason": "",
+            "overall_quality": "medium",
+            "approve": True,
             "safety_damping_required": True,
             "risk_damping_multiplier": 0.75,
         }

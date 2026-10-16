@@ -279,6 +279,11 @@ async def test_an3_adversarial_check_prompt_initialization():
         assert res["approve"] is True
         assert "Adversarial check unavailable" in res["strongest_counter_argument"]
 
+        res_closed = await run_adversarial_check(mock_session, analysis, {"adversarial_check": {"fail_closed": True}})
+        assert res_closed["approve"] is False
+        assert res_closed["hard_block"] is True
+        assert "failing closed per AGENTS.md §1" in res_closed["strongest_counter_argument"]
+
 
 def test_an8_fundamental_brief_schema_harmonization():
     from monika.application.analysis.schemas.pydantic_schemas import FundamentalBriefSchema
