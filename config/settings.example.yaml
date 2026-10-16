@@ -59,7 +59,7 @@ trading:
     auto_close_friday_positions: false
   risk:
     max_risk_amount_usd: 1000.0
-    max_weekly_drawdown_percent: 6.0
+    max_weekly_drawdown_percent: 15.0
     daily_rollover_utc_hour: 21
     strategy_min_sample_size: 50
     min_verifiable_confluence: 4
