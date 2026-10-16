@@ -90,7 +90,64 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
             if not tp or not sl or entry <= 0:
                 return True, "Missing TP/SL levels for expectancy calculation"
 
-            # Check reachability in 24h horizon
+            # Determine dynamic evaluation step based on trade holding horizon
+            exp_gate_cfg = tfm_cfg.get("expectancy_gate", {})
+            noise_buffer_ratio = float(exp_gate_cfg.get("noise_cone_buffer_ratio", 0.2))
+
+            # Dynamically select step index corresponding to the trade's expected horizon
+            horizon_hours: float | None = None
+            if proposal is not None:
+                meta = getattr(proposal, "metadata", None)
+                if isinstance(meta, dict):
+                    horizon_hours = meta.get("horizon_hours") or meta.get("expected_holding_hours")
+                    if horizon_hours is None and meta.get("holding_period"):
+                        hp = str(meta["holding_period"]).lower()
+                        if "scalp" in hp:
+                            horizon_hours = 2.0
+                        elif "intraday" in hp or "day" in hp:
+                            horizon_hours = 6.0
+                        elif "swing" in hp:
+                            horizon_hours = 24.0
+
+                if horizon_hours is None:
+                    hp_attr = getattr(proposal, "holding_period", None)
+                    if hp_attr:
+                        hp_str = str(hp_attr).lower()
+                        if "scalp" in hp_str:
+                            horizon_hours = 2.0
+                        elif "intraday" in hp_str or "day" in hp_str:
+                            horizon_hours = 6.0
+                        elif "swing" in hp_str:
+                            horizon_hours = 24.0
+
+                if horizon_hours is None:
+                    reval = getattr(proposal, "reevaluation_trigger", None)
+                    if isinstance(reval, str) and reval.strip():
+                        try:
+                            import json
+
+                            reval_dict = json.loads(reval)
+                            if isinstance(reval_dict, dict) and "bars" in reval_dict:
+                                horizon_hours = float(reval_dict["bars"])
+                        except Exception:
+                            pass
+
+                if horizon_hours is None:
+                    adr_tp = getattr(proposal, "adr_tp_pct_used", None)
+                    if adr_tp is not None and 0.0 < float(adr_tp) <= 0.6:
+                        horizon_hours = 6.0
+
+            def _get_step_val(q_list: list[Any]) -> float:
+                if not q_list:
+                    return 0.0
+                if horizon_hours is not None:
+                    idx = max(0, min(int(round(horizon_hours)) - 1, len(q_list) - 1))
+                    return float(q_list[idx])
+                default_intraday = int(exp_gate_cfg.get("default_horizon_steps", 6))
+                idx = max(0, min(default_intraday - 1, len(q_list) - 1))
+                return float(q_list[idx])
+
+            # Check reachability in horizon envelope
             if direction.lower() == "buy":
                 if "q90" in q and q["q90"]:
                     q90 = float(q["q90"][-1])
@@ -100,9 +157,9 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
                             f"Proposed TP ({tp}) exceeds TimesFM Q90 ceiling ({_fmt_quantile_price(q90, tp)}) by >2%. Mathematical expectancy negative.",
                         )
                 if "q30" in q and q["q30"] and "q10" in q and q["q10"]:
-                    q30 = float(q["q30"][-1])
-                    q10 = float(q["q10"][-1])
-                    if sl > q30 and (entry - sl) < max(0.0, entry - q10) * 0.2:
+                    q30 = _get_step_val(q["q30"])
+                    q10 = _get_step_val(q["q10"])
+                    if sl > q30 and (entry - sl) < max(0.0, entry - q10) * noise_buffer_ratio:
                         return (
                             False,
                             f"Proposed SL ({sl}) is inside high-probability noise cone (> Q30 {_fmt_quantile_price(q30, sl)}).",
@@ -116,9 +173,9 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
                             f"Proposed TP ({tp}) falls below TimesFM Q10 floor ({_fmt_quantile_price(q10, tp)}) by >2%. Mathematical expectancy negative.",
                         )
                 if "q70" in q and q["q70"] and "q90" in q and q["q90"]:
-                    q70 = float(q["q70"][-1])
-                    q90 = float(q["q90"][-1])
-                    if sl < q70 and (sl - entry) < max(0.0, q90 - entry) * 0.2:
+                    q70 = _get_step_val(q["q70"])
+                    q90 = _get_step_val(q["q90"])
+                    if sl < q70 and (sl - entry) < max(0.0, q90 - entry) * noise_buffer_ratio:
                         return (
                             False,
                             f"Proposed SL ({sl}) is inside high-probability noise cone (< Q70 {_fmt_quantile_price(q70, sl)}).",

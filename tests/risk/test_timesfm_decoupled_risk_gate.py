@@ -101,3 +101,107 @@ async def test_timesfm_expectancy_disabled_gate():
     passed, reason = await gate._check_timesfm_expectancy(session, "EURUSD", "BUY", sizing)
     assert passed is True
     assert "TimesFM expectancy gate disabled" in reason
+
+
+@pytest.mark.asyncio
+async def test_timesfm_expectancy_adaptive_horizon_intraday_passes():
+    """Verify that an intraday setup evaluates against the early horizon step rather than 24h widened cone."""
+    settings = {
+        "timesfm": {
+            "enabled": True,
+            "expectancy_gate": {"enabled": True, "default_horizon_steps": 6, "noise_cone_buffer_ratio": 0.2},
+        }
+    }
+    gate = RiskGate(settings)
+    session = AsyncMock()
+
+    # Entry = 100.0, SL = 95.0 (distance 5.0)
+    # At step 6 (index 5): Q10 = 85.0, Q30 = 93.0
+    #   sl (95.0) > q30 (93.0), BUT (entry - sl) = 5.0, (entry - q10) * 0.2 = (100 - 85) * 0.2 = 3.0.
+    #   Since 5.0 is NOT < 3.0, it is outside the 6h noise cone -> PASSES.
+    # At step 24 (index 23): Q10 = 70.0, Q30 = 85.0
+    #   If evaluated at 24h: (entry - q10) * 0.2 = (100 - 70) * 0.2 = 6.0.
+    #   5.0 < 6.0 and 95 > 85 -> would REJECT if not adaptive!
+    q10_profile = [95.0, 93.0, 91.0, 89.0, 87.0, 85.0] + [80.0] * 17 + [70.0]
+    q30_profile = [97.0, 96.0, 95.0, 94.0, 93.5, 93.0] + [90.0] * 17 + [85.0]
+    q90_profile = [105.0] * 23 + [110.0]
+
+    sizing = _create_sizing(entry_price=100.0, stop_loss=95.0, take_profit=108.0)
+    proposal = MagicMock()
+    proposal.holding_period = "intraday"
+    proposal.metadata = {
+        "timesfm_quantiles": {
+            "q10": q10_profile,
+            "q30": q30_profile,
+            "q90": q90_profile,
+        }
+    }
+
+    passed, reason = await gate._check_timesfm_expectancy(session, "EURUSD", "BUY", sizing, proposal=proposal)
+    assert passed is True
+    assert "TimesFM expectancy passed" in reason
+
+
+@pytest.mark.asyncio
+async def test_timesfm_expectancy_adaptive_horizon_explicit_swing_rejects():
+    """Verify that a swing setup evaluates against the full 24h widened cone and rejects when SL is inside."""
+    settings = {
+        "timesfm": {
+            "enabled": True,
+            "expectancy_gate": {"enabled": True, "default_horizon_steps": 6, "noise_cone_buffer_ratio": 0.2},
+        }
+    }
+    gate = RiskGate(settings)
+    session = AsyncMock()
+
+    q10_profile = [95.0, 93.0, 91.0, 89.0, 87.0, 85.0] + [80.0] * 17 + [70.0]
+    q30_profile = [97.0, 96.0, 95.0, 94.0, 93.5, 93.0] + [90.0] * 17 + [85.0]
+    q90_profile = [105.0] * 23 + [110.0]
+
+    sizing = _create_sizing(entry_price=100.0, stop_loss=95.0, take_profit=108.0)
+    proposal = MagicMock()
+    proposal.holding_period = "swing"
+    proposal.metadata = {
+        "timesfm_quantiles": {
+            "q10": q10_profile,
+            "q30": q30_profile,
+            "q90": q90_profile,
+        }
+    }
+
+    passed, reason = await gate._check_timesfm_expectancy(session, "EURUSD", "BUY", sizing, proposal=proposal)
+    assert passed is False
+    assert "inside high-probability noise cone" in reason
+
+
+@pytest.mark.asyncio
+async def test_timesfm_expectancy_tight_noise_sl_rejected():
+    """Verify that an excessively tight noise SL is rejected even within a short 6h horizon."""
+    settings = {
+        "timesfm": {
+            "enabled": True,
+            "expectancy_gate": {"enabled": True, "default_horizon_steps": 6, "noise_cone_buffer_ratio": 0.2},
+        }
+    }
+    gate = RiskGate(settings)
+    session = AsyncMock()
+
+    # SL = 99.5 (distance 0.5), while 6h Q10 = 85.0 (20% of 15.0 = 3.0). Distance 0.5 < 3.0 -> noise!
+    q10_profile = [95.0, 93.0, 91.0, 89.0, 87.0, 85.0] + [80.0] * 17 + [70.0]
+    q30_profile = [97.0, 96.0, 95.0, 94.0, 93.5, 93.0] + [90.0] * 17 + [85.0]
+    q90_profile = [105.0] * 23 + [110.0]
+
+    sizing = _create_sizing(entry_price=100.0, stop_loss=99.5, take_profit=108.0)
+    proposal = MagicMock()
+    proposal.holding_period = "intraday"
+    proposal.metadata = {
+        "timesfm_quantiles": {
+            "q10": q10_profile,
+            "q30": q30_profile,
+            "q90": q90_profile,
+        }
+    }
+
+    passed, reason = await gate._check_timesfm_expectancy(session, "EURUSD", "BUY", sizing, proposal=proposal)
+    assert passed is False
+    assert "inside high-probability noise cone" in reason

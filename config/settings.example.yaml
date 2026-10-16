@@ -278,6 +278,8 @@ trading:
     expectancy_gate:
       enabled: true
       min_probabilistic_expectancy: 1.05
+      default_horizon_steps: 6
+      noise_cone_buffer_ratio: 0.2
     volatility_trailing_adjustment: true
     sizing_tail_risk_adjustment: true
     stat_arb_confirmation: true
