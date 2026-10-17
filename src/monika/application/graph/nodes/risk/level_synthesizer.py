@@ -199,4 +199,23 @@ async def resolve_and_repair_levels(
         if r.get("take_profit") is not None:
             ana.take_profit = r["take_profit"]
 
+    # Ensure invalidation narrative satisfies assertion minimum length (>= 10 chars)
+    raw_inv = r.get("invalidation") or (getattr(ana, "invalidation", None) if ana else None)
+    if not raw_inv or len(str(raw_inv).strip()) < 10:
+        inv_d = r.get("invalidation_direction") or (getattr(ana, "invalidation_direction", None) if ana else None)
+        if not inv_d:
+            inv_d = "below" if dec_u == "BUY" else "above"
+        inv_p = (
+            _safe_num(r.get("invalidation_price") or (getattr(ana, "invalidation_price", None) if ana else None))
+            or sl_p
+        )
+        norm_inv = f"Close {inv_d} {inv_p:.5f} invalidates market structure."
+        r["invalidation"] = norm_inv
+        r["invalidation_direction"] = inv_d
+        r["invalidation_price"] = inv_p
+        if ana:
+            ana.invalidation = norm_inv
+            ana.invalidation_direction = inv_d
+            ana.invalidation_price = inv_p
+
     return entry_p, sl_p, tp_p

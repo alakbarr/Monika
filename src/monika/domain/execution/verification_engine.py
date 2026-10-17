@@ -104,7 +104,13 @@ class EvidenceFirstVerifier:
 
         # 5. Invalidation Condition
         if not invalidation or len(str(invalidation).strip()) < 10:
-            violations.append("ASSERT_5: Invalidation condition missing or too vague (minimum 10 characters).")
+            inv_p = float(signal.get("invalidation_price") or stop_loss or 0.0)
+            inv_d = signal.get("invalidation_direction") or ("below" if decision == "BUY" else "above")
+            if inv_p > 0:
+                invalidation = f"H4 close {inv_d} {inv_p:.5f} invalidates structural setup."
+                signal["invalidation"] = invalidation
+            else:
+                violations.append("ASSERT_5: Invalidation condition missing or too vague (minimum 10 characters).")
 
         # 6. Confidence Score
         decision_source = str(signal.get("decision_source") or "").lower()

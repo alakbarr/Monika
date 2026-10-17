@@ -262,14 +262,26 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         ).scalar_one_or_none()
 
         stale_warning = ""
-        if calendar_age_hours > 8.0:
+        # Weekend crypto awareness: Macro economic calendars do not release scheduled news on weekends.
+        # If symbol is 24/7 crypto, it is the weekend (Sat/Sun UTC), and future coverage exists for the upcoming week,
+        # allow up to 60.0h calendar age.
+        is_crypto_weekend = False
+        weekend_cfg = self.settings.get("trading", {}).get("weekend_management", {})
+        exempted_symbols = weekend_cfg.get("exempted_symbols", ["BTCUSD", "ETHUSD"])
+        is_exempt = symbol in exempted_symbols or any(c in symbol.upper() for c in ("BTC", "ETH", "SOL", "CRYPTO"))
+        if is_exempt and now.weekday() in (5, 6) and future_coverage is not None:
+            is_crypto_weekend = True
+
+        stale_limit = 60.0 if is_crypto_weekend else 8.0
+
+        if calendar_age_hours > stale_limit:
             if not is_paper:
                 return (
                     False,
-                    f"Economic calendar data is {calendar_age_hours:.1f}h stale (>8.0h limit). Live trade blocked.",
+                    f"Economic calendar data is {calendar_age_hours:.1f}h stale (>{stale_limit:.1f}h limit). Live trade blocked.",
                 )
             logger.warning(
-                f"Economic calendar data is {calendar_age_hours:.1f}h old (threshold=8.0h). "
+                f"Economic calendar data is {calendar_age_hours:.1f}h old (threshold={stale_limit:.1f}h). "
                 f"Degraded mode: proceeding with warning instead of hard-block."
             )
             stale_warning = f" [WARNING: Calendar data is {calendar_age_hours:.1f}h old — degraded mode]"

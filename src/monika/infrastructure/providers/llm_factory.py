@@ -151,6 +151,18 @@ class EndpointBlackhole:
         cls._blackhole.clear()
 
 
+ROLE_ALIASES: dict[str, str] = {
+    "conservative_risk": "risk_gate_conservative",
+    "aggressive_risk": "risk_gate_aggressive",
+    "neutral_risk": "risk_gate_neutral",
+    "risk_gate_conservative": "conservative_risk",
+    "risk_gate_aggressive": "aggressive_risk",
+    "risk_gate_neutral": "neutral_risk",
+    "trade_reflection": "reflection",
+    "reflection": "trade_reflection",
+}
+
+
 class LLMFactory:
     """
     Factory terpusat. Resolves:
@@ -173,6 +185,10 @@ class LLMFactory:
         Buat client untuk task role tertentu.
         """
         role_config = self._task_roles.get(task_role)
+        if not role_config:
+            alias_role = ROLE_ALIASES.get(task_role)
+            if alias_role and alias_role in self._task_roles:
+                role_config = self._task_roles.get(alias_role)
         if not role_config:
             default_mod = (
                 self._llm_config.get("default_model")
@@ -1387,7 +1403,7 @@ class FallbackClientWrapper(BaseLLMClient):
 # Helper function for easy access
 def get_client_for_task(task_role: str, settings: Optional[dict] = None) -> BaseLLMClient:
     resolved_settings: dict
-    if settings is None:
+    if not settings:
         try:
             from monika.core.config.settings import load_settings
 

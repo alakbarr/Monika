@@ -496,3 +496,38 @@ async def test_all_models_cooldown_returns_descriptive_error():
     assert res["error"] is not None
     assert "All candidate models skipped" in res["error"]
     assert "None" != res["error"]
+
+
+def test_get_client_for_task_with_empty_settings_loads_default():
+    # Calling get_client_for_task with {} should resolve via load_settings, not empty dictionary
+    with patch("monika.core.config.settings.load_settings") as mock_load:
+        mock_load.return_value = {
+            "llm": {
+                "default_model": "test-default-model",
+                "default_provider": "gemini",
+                "task_roles": {"trade_reflection": {"primary": "test-reflection-model", "provider": "gemini"}},
+            }
+        }
+        with patch.object(LLMFactory, "_create_client_instance") as mock_create:
+            mock_create.return_value = MagicMock()
+            client = get_client_for_task("trade_reflection", {})
+            assert client is not None
+            mock_load.assert_called_once()
+
+
+def test_get_client_for_task_role_alias_resolution():
+    settings = {
+        "llm": {
+            "default_model": "test-default",
+            "task_roles": {
+                "risk_gate_conservative": {"primary": "conservative-model", "provider": "gemini"},
+            },
+        }
+    }
+    factory = LLMFactory(settings)
+    with patch.object(factory, "_create_client_instance") as mock_create:
+        mock_create.return_value = MagicMock()
+        # "conservative_risk" should map to alias "risk_gate_conservative"
+        client = factory.get_client_for_task("conservative_risk")
+        assert client is not None
+        assert client.model == "conservative-model"

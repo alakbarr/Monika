@@ -130,7 +130,15 @@ def _build_reasoning_section(ana: Any) -> str:
             if debate_verdict:
                 d_parts.append(f"• <b>Debate Consensus:</b> {debate_verdict}")
             if debate_dissent:
-                d_parts.append(f"• <b>Dissenting Argument:</b> {debate_dissent}")
+                clean_dissent = str(debate_dissent)
+                if isinstance(debate_dissent, str) and debate_dissent.strip().startswith("{"):
+                    try:
+                        d_dict = json.loads(debate_dissent)
+                        if isinstance(d_dict, dict) and "bear_dissent" in d_dict:
+                            clean_dissent = str(d_dict["bear_dissent"])
+                    except Exception:
+                        pass
+                d_parts.append(f"• <b>Dissenting Argument:</b> {clean_dissent}")
             debate_block = "\n" + "\n".join(d_parts)
 
         inval_str = ""
