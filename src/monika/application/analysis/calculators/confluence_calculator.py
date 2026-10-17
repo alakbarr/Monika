@@ -27,20 +27,15 @@ from typing import Optional
 
 import monika.core.primitives.clock as clock
 from monika.core.calibration.cot_thresholds import cot_extreme_score
+from monika.domain.market.instrument_identity import SYMBOL_TO_COT_MAP, get_cot_code_for_symbol
 
-SYMBOL_TO_COT_CODE = {
-    "EURUSD": "099741",
-    "GBPUSD": "096742",
-    "AUDUSD": "232741",
-    "USDJPY": "097741",
-    "XAUUSD": "088691",
-}
+SYMBOL_TO_COT_CODE = dict(SYMBOL_TO_COT_MAP)
 
 
 async def _get_cot_alignment_value(session, symbol: str, as_of: Optional[datetime] = None):
     """Return cot_extreme_score() result (-1 extreme_long, 0 normal, +1 extreme_short)
     if COT data is fresh (<=10 days), else None (unknown -> tidak dinilai, fail-neutral)."""
-    cot_code = SYMBOL_TO_COT_CODE.get(symbol)
+    cot_code = get_cot_code_for_symbol(symbol) or SYMBOL_TO_COT_CODE.get(symbol)
     if not cot_code:
         return None
     stmt = select(COTReport).where(COTReport.market_code == cot_code)
@@ -99,7 +94,7 @@ async def calculate_priced_in_subscores(session: AsyncSession, symbol: str, as_o
             logger.debug(f"Confluence fedwatch sub-calculation skipped: {e}")
 
     # 2. COT Extreme (0-3)
-    cot_code = SYMBOL_TO_COT_CODE.get(symbol)
+    cot_code = get_cot_code_for_symbol(symbol) or SYMBOL_TO_COT_CODE.get(symbol)
 
     if cot_code:
         cot_stmt = select(COTReport).where(COTReport.market_code == cot_code)

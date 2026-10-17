@@ -63,9 +63,9 @@ class UniversalLiquidityAnalyzer:
         comps = (await self.session.execute(stmt_comp)).scalars().all()
         comp_dict = {c.metric_type: c.value for c in comps}
 
-        walcl = comp_dict.get("FED_WALCL", 6980.5)
-        tga = comp_dict.get("FED_TGA", 785.2)
-        rrp = comp_dict.get("FED_ON_RRP", 235.4)
+        walcl = comp_dict.get("FED_WALCL")
+        tga = comp_dict.get("FED_TGA")
+        rrp = comp_dict.get("FED_ON_RRP")
 
         if regime == "EXPANSIONARY":
             market_implication = "Bullish for equities and risk assets; downward pressure on US Dollar (DXY)."
@@ -103,23 +103,35 @@ class UniversalLiquidityAnalyzer:
         )
         records = (await self.session.execute(stmt)).scalars().all()
 
+        if not records:
+            return {
+                "status": "unavailable",
+                "message": "No corporate credit spread or SOFR rate records found",
+            }
+
         hy_item = next((r for r in records if r.metric_type == "ICE_BOFA_HY_OAS"), None)
         sofr_item = next((r for r in records if r.metric_type == "SOFR_RATE"), None)
 
-        hy_oas = hy_item.value if hy_item else 320.0
-        sofr = sofr_item.value if sofr_item else 5.31
+        hy_oas = hy_item.value if hy_item else None
+        sofr = sofr_item.value if sofr_item else None
 
-        if hy_oas > 450.0:
-            stress_level = "CRITICAL_STRESS"
-            warning = (
-                "Corporate credit spreads blown out (>450 bps). High systemic liquidation risk across FX carry pairs."
-            )
-        elif hy_oas > 380.0:
-            stress_level = "ELEVATED_VULNERABILITY"
-            warning = "Credit spreads widening above baseline. Exercise tight stop losses on risk-sensitive currencies."
+        if hy_oas is not None:
+            if hy_oas > 450.0:
+                stress_level = "CRITICAL_STRESS"
+                warning = "Corporate credit spreads blown out (>450 bps). High systemic liquidation risk across FX carry pairs."
+            elif hy_oas > 380.0:
+                stress_level = "ELEVATED_VULNERABILITY"
+                warning = (
+                    "Credit spreads widening above baseline. Exercise tight stop losses on risk-sensitive currencies."
+                )
+            else:
+                stress_level = "BENIGN_STABLE"
+                warning = (
+                    "Credit conditions accommodative. Corporate default risk benign; carry trade environments stable."
+                )
         else:
-            stress_level = "BENIGN_STABLE"
-            warning = "Credit conditions accommodative. Corporate default risk benign; carry trade environments stable."
+            stress_level = "UNKNOWN"
+            warning = "Credit spread data unavailable."
 
         return {
             "hy_oas_bps": hy_oas,
@@ -151,21 +163,23 @@ class UniversalLiquidityAnalyzer:
         latest = records[0]
         meta = json.loads(latest.metadata_json) if latest.metadata_json else {}
 
-        tail_bps = meta.get("tail_bps", 0.0)
-        indirect_pct = meta.get("indirect_bidder_pct", 65.0)
-        btc = meta.get("bid_to_cover", 2.50)
+        tail_bps = meta.get("tail_bps")
+        indirect_pct = meta.get("indirect_bidder_pct")
+        btc = meta.get("bid_to_cover")
 
-        if tail_bps <= 0.0:
-            verdict = "EXCELLENT_TAILLESS_AUCTION"
-            summary = f"Strong auction with negative tail ({tail_bps:+.1f} bps) and {indirect_pct:.1f}% foreign participation."
-        elif tail_bps > 1.2:
-            verdict = "POOR_TAILING_AUCTION"
-            summary = (
-                f"Weak demand forcing dealer concession with a large {tail_bps:+.1f} bps tail. Bearish for Treasuries."
-            )
+        if tail_bps is not None:
+            if tail_bps <= 0.0:
+                verdict = "EXCELLENT_TAILLESS_AUCTION"
+                summary = f"Strong auction with negative tail ({tail_bps:+.1f} bps)."
+            elif tail_bps > 1.2:
+                verdict = "POOR_TAILING_AUCTION"
+                summary = f"Weak demand forcing dealer concession with a large {tail_bps:+.1f} bps tail. Bearish for Treasuries."
+            else:
+                verdict = "AVERAGE_AUCTION"
+                summary = f"Routine debt placement meeting average dealer absorption."
         else:
-            verdict = "AVERAGE_AUCTION"
-            summary = f"Routine debt placement meeting average dealer absorption ({btc:.2f}x bid-to-cover)."
+            verdict = "NORMAL"
+            summary = f"Treasury debt placement for {tenor_clean} at {latest.value:.3f}%."
 
         return {
             "tenor": tenor_clean,

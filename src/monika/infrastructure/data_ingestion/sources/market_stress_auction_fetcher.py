@@ -5,7 +5,7 @@
 """
 Market Stress, Treasury Auctions & Foreign Capital Flows Ingestion Engine (Async).
 Ingests US Treasury auction tails, Bid-to-Cover, foreign indirect bidding demand,
-ICE BofA US High Yield Option-Adjusted Spread (HY OAS), SOFR, and TIC flows.
+ICE BofA US High Yield Option-Adjusted Spread (HY OAS), and SOFR.
 Persists records to `macro_liquidity_credit_metrics` table.
 """
 
@@ -17,12 +17,11 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
 from monika.infrastructure.database.models import MacroLiquidityCreditMetric
-from monika.infrastructure.database.safe_ops import safe_commit
+from monika.infrastructure.database.safe_ops import safe_commit, safe_upsert
 
 logger = logging.getLogger("TradingAgent.MarketStressAuctionFetcher")
 
@@ -57,6 +56,7 @@ class MarketStressAuctionFetcher:
         """
         Fetches live Treasury auction results from TreasuryDirect API or stores provided results,
         including auction tail, bid-to-cover, and foreign indirect bidder demand.
+        Fails closed if auction yield is unavailable — never fabricates fallback yields.
         """
         tenor_clean = tenor.strip().upper()
         target_term = TENOR_TERM_MAP.get(tenor_clean, f"{tenor_clean}-Year")
@@ -113,21 +113,25 @@ class MarketStressAuctionFetcher:
                                         f"Live TreasuryDirect fetched for {tenor_clean} ({target_term}): Yield={h_yield}%, BTC={b_cover}, Indirect={ind_pct}%"
                                     )
             except Exception as e:
-                logger.warning(
-                    f"TreasuryDirect live fetch failed ({e}), falling back to calibrated institutional metrics"
-                )
+                logger.warning(f"TreasuryDirect live fetch failed: {e}")
 
-        # Calibrated fallbacks if live data unavailable
-        h_yield = h_yield if h_yield is not None else (4.683 if tenor_clean == "10Y" else 4.285)
-        wi_yield = wi_yield if wi_yield is not None else round(h_yield - 0.012, 3)
-        tail_bps = round((h_yield - wi_yield) * 100.0, 2)
-        b_cover = b_cover if b_cover is not None else 2.53
-        ind_pct = ind_pct if ind_pct is not None else 68.2
+        if h_yield is None:
+            logger.warning(f"Treasury auction data unavailable for {tenor_clean}. Failing closed.")
+            return {
+                "status": "unavailable",
+                "metric_type": f"TREASURY_AUCTION_{tenor_clean}",
+                "message": f"Auction yield unavailable for {tenor_clean}",
+            }
+
+        tail_bps = round((h_yield - wi_yield) * 100.0, 2) if wi_yield is not None else None
         dt_record = dt_record or clock.now()
 
-        regime = (
-            "STRONG_DEMAND" if tail_bps <= 0.0 and ind_pct >= 65.0 else ("WEAK_TAIL" if tail_bps > 1.0 else "NORMAL")
-        )
+        regime = "NORMAL"
+        if tail_bps is not None and ind_pct is not None:
+            if tail_bps <= 0.0 and ind_pct >= 65.0:
+                regime = "STRONG_DEMAND"
+            elif tail_bps > 1.0:
+                regime = "WEAK_TAIL"
 
         meta = {
             "tenor": tenor_clean,
@@ -135,42 +139,50 @@ class MarketStressAuctionFetcher:
             "tail_bps": tail_bps,
             "bid_to_cover": b_cover,
             "indirect_bidder_pct": ind_pct,
-            "dealer_pct": round(max(0.0, 100.0 - ind_pct - 15.0), 1),
+            "dealer_pct": round(max(0.0, 100.0 - ind_pct - 15.0), 1) if ind_pct is not None else None,
             "source": "TreasuryDirect_Live",
         }
 
         metric_key = f"TREASURY_AUCTION_{tenor_clean}"
+
+        stmt_prev = (
+            select(MacroLiquidityCreditMetric)
+            .where(
+                MacroLiquidityCreditMetric.metric_type == metric_key,
+                MacroLiquidityCreditMetric.country == "US",
+            )
+            .order_by(MacroLiquidityCreditMetric.record_date.desc())
+            .limit(1)
+        )
+        prev_record = (await self.session.execute(stmt_prev)).scalars().first()
+        prev_val = prev_record.value if prev_record else None
+        chg_val = round(h_yield - prev_val, 3) if prev_val is not None else None
+
         rec = {
             "metric_type": metric_key,
             "country": "US",
             "record_date": dt_record,
             "value": h_yield,
-            "previous_value": round(h_yield - 0.065, 3),
-            "change_value": 0.065,
+            "previous_value": prev_val,
+            "change_value": chg_val,
             "unit": "PERCENT",
             "regime": regime,
             "metadata_json": json.dumps(meta),
             "fetched_at": clock.now(),
         }
 
-        stmt = pg_insert(MacroLiquidityCreditMetric).values(rec)
-        stmt = stmt.on_conflict_do_update(
+        await safe_upsert(
+            session=self.session,
+            model=MacroLiquidityCreditMetric,
+            values=rec,
             index_elements=["metric_type", "country", "record_date"],
-            set_={
-                "value": stmt.excluded.value,
-                "previous_value": stmt.excluded.previous_value,
-                "change_value": stmt.excluded.change_value,
-                "regime": stmt.excluded.regime,
-                "metadata_json": stmt.excluded.metadata_json,
-                "fetched_at": clock.now(),
-            },
+            update_cols=["value", "previous_value", "change_value", "regime", "metadata_json", "fetched_at"],
         )
-        await self.session.execute(stmt)
         await safe_commit(self.session)
 
-        logger.info(
-            f"Ingested {metric_key} Auction: High Yield {h_yield:.3f}%, Tail {tail_bps:+.1f} bps, Indirects {ind_pct:.1f}%"
-        )
+        tail_str = f"{tail_bps:+.1f} bps" if tail_bps is not None else "N/A"
+        ind_str = f"{ind_pct:.1f}%" if ind_pct is not None else "N/A"
+        logger.info(f"Ingested {metric_key} Auction: High Yield {h_yield:.3f}%, Tail {tail_str}, Indirects {ind_str}")
         return rec
 
     async def fetch_and_store_credit_and_money_market(
@@ -181,7 +193,7 @@ class MarketStressAuctionFetcher:
     ) -> List[Dict[str, Any]]:
         """
         Stores ICE BofA High Yield OAS credit spreads and SOFR overnight rate.
-        Fetches live from FRED API if available.
+        Fetches live from FRED API if available. Fails closed if data is unavailable.
         """
         dt_record = record_date or clock.now()
         api_key = os.getenv("FRED_API_KEY", "")
@@ -201,8 +213,11 @@ class MarketStressAuctionFetcher:
                                 data = await resp.json()
                                 obs = data.get("observations", [])
                                 if obs and obs[0].get("value"):
-                                    hy_oas = round(float(obs[0]["value"]) * 100.0, 1)  # percent to bps
-                                    logger.info(f"Live FRED HY OAS fetched: {hy_oas} bps")
+                                    try:
+                                        hy_oas = round(float(obs[0]["value"]) * 100.0, 1)  # percent to bps
+                                        logger.info(f"Live FRED HY OAS fetched: {hy_oas} bps")
+                                    except ValueError, TypeError:
+                                        pass
 
                     if sofr is None:
                         url_sofr = f"https://api.stlouisfed.org/fred/series/observations?series_id=SOFR&api_key={api_key}&file_type=json&sort_order=desc&limit=2"
@@ -213,46 +228,70 @@ class MarketStressAuctionFetcher:
                                 data = await resp.json()
                                 obs = data.get("observations", [])
                                 if obs and obs[0].get("value"):
-                                    sofr = round(float(obs[0]["value"]), 2)
-                                    logger.info(f"Live FRED SOFR fetched: {sofr}%")
+                                    try:
+                                        sofr = round(float(obs[0]["value"]), 2)
+                                        logger.info(f"Live FRED SOFR fetched: {sofr}%")
+                                    except ValueError, TypeError:
+                                        pass
             except Exception as e:
-                logger.warning(f"FRED live credit fetch failed ({e}), using calibrated fallback")
+                logger.warning(f"FRED live credit fetch failed: {e}")
 
-        hy_oas = hy_oas if hy_oas is not None else 324.0  # in bps
-        sofr = sofr if sofr is not None else 3.87  # in percent
+        items = []
+        if hy_oas is not None:
+            # Query prior DB record
+            stmt_prev_hy = (
+                select(MacroLiquidityCreditMetric)
+                .where(
+                    MacroLiquidityCreditMetric.metric_type == "ICE_BOFA_HY_OAS",
+                    MacroLiquidityCreditMetric.country == "US",
+                )
+                .order_by(MacroLiquidityCreditMetric.record_date.desc())
+                .limit(1)
+            )
+            prev_hy_rec = (await self.session.execute(stmt_prev_hy)).scalars().first()
+            prev_hy_val = prev_hy_rec.value if prev_hy_rec else None
+            chg_hy = round(hy_oas - prev_hy_val, 1) if prev_hy_val is not None else None
+            credit_regime = "STRESS" if hy_oas > 450.0 else ("ELEVATED" if hy_oas > 380.0 else "BENIGN")
+            items.append(
+                (
+                    "ICE_BOFA_HY_OAS",
+                    hy_oas,
+                    prev_hy_val,
+                    chg_hy,
+                    "BPS",
+                    credit_regime,
+                    {"threshold_stress": 450.0, "source": "FRED_Live"},
+                )
+            )
 
-        # Credit regime: > 450 bps indicates severe stress
-        credit_regime = "STRESS" if hy_oas > 450.0 else ("ELEVATED" if hy_oas > 380.0 else "BENIGN")
+        if sofr is not None:
+            stmt_prev_sofr = (
+                select(MacroLiquidityCreditMetric)
+                .where(
+                    MacroLiquidityCreditMetric.metric_type == "SOFR_RATE",
+                    MacroLiquidityCreditMetric.country == "US",
+                )
+                .order_by(MacroLiquidityCreditMetric.record_date.desc())
+                .limit(1)
+            )
+            prev_sofr_rec = (await self.session.execute(stmt_prev_sofr)).scalars().first()
+            prev_sofr_val = prev_sofr_rec.value if prev_sofr_rec else None
+            chg_sofr = round(sofr - prev_sofr_val, 2) if prev_sofr_val is not None else None
+            items.append(
+                (
+                    "SOFR_RATE",
+                    sofr,
+                    prev_sofr_val,
+                    chg_sofr,
+                    "PERCENT",
+                    "BENIGN",
+                    {"desc": "Secured Overnight Financing Rate", "source": "FRED_Live"},
+                )
+            )
 
-        items = [
-            (
-                "ICE_BOFA_HY_OAS",
-                hy_oas,
-                round(hy_oas - 5.0, 1),
-                5.0,
-                "BPS",
-                credit_regime,
-                {"threshold_stress": 450.0, "source": "FRED_Live"},
-            ),
-            (
-                "SOFR_RATE",
-                sofr,
-                sofr,
-                0.0,
-                "PERCENT",
-                "BENIGN",
-                {"desc": "Secured Overnight Financing Rate", "source": "FRED_Live"},
-            ),
-            (
-                "TIC_FOREIGN_TREASURY_NET",
-                42.5,
-                38.0,
-                4.5,
-                "USD_BILLIONS",
-                "INFLOW",
-                {"desc": "Foreign net buying of US Treasuries", "source": "Treasury_TIC"},
-            ),
-        ]
+        if not items:
+            logger.info("No credit and money market metrics available. Failing closed.")
+            return []
 
         inserted = []
         for m_type, val, prev, chg, unit, reg, meta in items:
@@ -268,21 +307,15 @@ class MarketStressAuctionFetcher:
                 "metadata_json": json.dumps(meta),
                 "fetched_at": clock.now(),
             }
-            stmt = pg_insert(MacroLiquidityCreditMetric).values(rec)
-            stmt = stmt.on_conflict_do_update(
+            await safe_upsert(
+                session=self.session,
+                model=MacroLiquidityCreditMetric,
+                values=rec,
                 index_elements=["metric_type", "country", "record_date"],
-                set_={
-                    "value": stmt.excluded.value,
-                    "previous_value": stmt.excluded.previous_value,
-                    "change_value": stmt.excluded.change_value,
-                    "regime": stmt.excluded.regime,
-                    "metadata_json": stmt.excluded.metadata_json,
-                    "fetched_at": clock.now(),
-                },
+                update_cols=["value", "previous_value", "change_value", "regime", "metadata_json", "fetched_at"],
             )
-            await self.session.execute(stmt)
             inserted.append(rec)
 
         await safe_commit(self.session)
-        logger.info(f"Ingested Market Credit & Funding Metrics (HY OAS: {hy_oas} bps, SOFR: {sofr}%)")
+        logger.info(f"Ingested {len(inserted)} Market Credit & Funding Metrics")
         return inserted

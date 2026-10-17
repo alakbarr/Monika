@@ -12,9 +12,11 @@ with proper rollback on failure.
 import asyncio
 import inspect
 import logging
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Dict, List, Optional, TypeVar
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 
 logger = logging.getLogger("TradingAgent.SafeOps")
 T = TypeVar("T")
@@ -120,3 +122,53 @@ async def safe_commit(session: AsyncSession, label: str = "commit", max_retries:
     except Exception as rb_err:
         logger.error(f"safe_commit [{label}] rollback failed: {rb_err}")
     return False
+
+
+async def safe_upsert(
+    session: AsyncSession,
+    model: type,
+    values: Dict[str, Any],
+    index_elements: List[str],
+    update_cols: Optional[List[str]] = None,
+    extra_update_values: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Execute an upsert statement compatible with PostgreSQL and SQLite.
+
+    Uses native ON CONFLICT DO UPDATE when supported by dialect,
+    falling back to check-and-update when dialect is unknown or custom.
+    """
+    bind = getattr(session, "bind", None)
+    dialect_name = getattr(getattr(bind, "dialect", None), "name", None) or "postgresql"
+
+    cols_to_update = update_cols if update_cols is not None else [k for k in values.keys() if k not in index_elements]
+
+    if dialect_name == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        stmt = pg_insert(model).values(values)
+        set_dict: Dict[str, Any] = {col: getattr(stmt.excluded, col) for col in cols_to_update}
+        if extra_update_values:
+            set_dict.update(extra_update_values)
+        stmt = stmt.on_conflict_do_update(index_elements=index_elements, set_=set_dict)
+        await session.execute(stmt)
+    elif dialect_name == "sqlite":
+        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
+        stmt_sqlite = sqlite_insert(model).values(values)
+        set_dict = {col: getattr(stmt_sqlite.excluded, col) for col in cols_to_update}
+        if extra_update_values:
+            set_dict.update(extra_update_values)
+        stmt_sqlite = stmt_sqlite.on_conflict_do_update(index_elements=index_elements, set_=set_dict)
+        await session.execute(stmt_sqlite)
+    else:
+        filters = [getattr(model, col) == values[col] for col in index_elements]
+        existing = (await session.execute(select(model).where(*filters))).scalars().first()
+        if existing:
+            for col in cols_to_update:
+                if col in values:
+                    setattr(existing, col, values[col])
+            if extra_update_values:
+                for col, val in extra_update_values.items():
+                    setattr(existing, col, val)
+        else:
+            session.add(model(**values))

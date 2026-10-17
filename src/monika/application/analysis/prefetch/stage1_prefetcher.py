@@ -147,22 +147,30 @@ class Stage1DataBundler:
         async def _fetch_sovereign_spreads():
             from monika.infrastructure.data_ingestion.sources.sovereign_yield_spreads import SovereignYieldSpreads
 
-            return await SovereignYieldSpreads.get_spreads()
+            return await SovereignYieldSpreads.get_spreads(session=self.session)
 
         async def _fetch_gold_radar():
             from monika.infrastructure.data_ingestion.sources.gold_physical_radar import GoldPhysicalRadar
 
             radar = await GoldPhysicalRadar.fetch_radar()
             return {
+                "is_available": radar.is_available,
                 "flow_bias": radar.institutional_flow_bias,
                 "gld_change_pct": radar.gld_1d_change_pct,
                 "conviction": radar.xau_sentiment_conviction,
                 "summary": radar.summary,
             }
 
+        async def _fetch_brent_crude():
+            from monika.infrastructure.data_ingestion.sources.brent_yfinance import get_brent_price
+
+            price = await get_brent_price()
+            return {"brent_price": price, "is_available": price is not None}
+
         tasks["crypto_l2_depth"] = _fetch_crypto_depth()
         tasks["sovereign_yield_spreads"] = _fetch_sovereign_spreads()
         tasks["gold_physical_radar"] = _fetch_gold_radar()
+        tasks["brent_crude"] = _fetch_brent_crude()
 
         # Execute tasks sequentially to prevent AsyncSession concurrency issues
         bundled_data = {}
@@ -361,6 +369,39 @@ class Stage1DataBundler:
         except Exception as e:
             logger.debug(f"Real yield precomputation non-fatal error: {e}")
 
+        # Compute unified multi-source aggregated sentiment across traded symbols
+        try:
+            from monika.application.analysis.prefetch.sentiment_aggregator import SentimentAggregator
+
+            aggregator = SentimentAggregator(self.settings)
+            cot_signals = bundled_data.get("cot_signals", {})
+            vix_data = bundled_data.get("vix", {})
+            funding_data = bundled_data.get("funding_rate", {})
+
+            symbols_to_aggregate = (
+                self.settings.get("trading", {}).get("asset_universe")
+                or self.settings.get("trading", {}).get("symbols")
+                or ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XTIUSD", "BTCUSD", "XBRUSD"]
+            )
+            aggregated_sentiment_map = {}
+            for sym in symbols_to_aggregate:
+                try:
+                    sent_schema = aggregator.aggregate_sentiment(
+                        cot_data=cot_signals,
+                        retail_data={},
+                        risk_data=vix_data,
+                        symbol=sym,
+                        funding_data=funding_data if "BTC" in sym.upper() else None,
+                    )
+                    aggregated_sentiment_map[sym] = sent_schema.model_dump()
+                except Exception as agg_sym_err:
+                    logger.debug(f"Aggregated sentiment failure for {sym}: {agg_sym_err}")
+
+            if aggregated_sentiment_map:
+                bundled_data["aggregated_sentiment"] = aggregated_sentiment_map
+        except Exception as sent_err:
+            logger.debug(f"Aggregated sentiment computation non-fatal error: {sent_err}")
+
         # Validate macro & market data freshness
         try:
             from monika.core.validation.data_validator import validate_data_freshness
@@ -462,18 +503,30 @@ class Stage1DataBundler:
             terminal["fedwatch_shift"] = fw_comp.get("shift_summary")
 
         # 4. Central Bank Rates
-        cb_rates = data.get("central_bank_rates", {})
+        cb_rates = data.get("interest_rates", data.get("central_bank_rates", {}))
         if isinstance(cb_rates, dict) and "rates" in cb_rates:
-            terminal["central_bank_policy_rates"] = {
-                k: v.get("rate")
-                for k, v in cb_rates["rates"].items()
-                if isinstance(v, dict) and v.get("rate") is not None
-            }
+            rates_obj = cb_rates["rates"]
+            if isinstance(rates_obj, dict):
+                terminal["central_bank_policy_rates"] = {
+                    k: v.get("rate") or v.get("rate_pct")
+                    for k, v in rates_obj.items()
+                    if isinstance(v, dict) and (v.get("rate") is not None or v.get("rate_pct") is not None)
+                }
+            elif isinstance(rates_obj, list):
+                terminal["central_bank_policy_rates"] = {
+                    item.get("bank"): item.get("rate_pct") or item.get("rate")
+                    for item in rates_obj
+                    if isinstance(item, dict)
+                    and item.get("bank")
+                    and (item.get("rate_pct") is not None or item.get("rate") is not None)
+                }
 
         # 5. Crypto Funding Rate (if present)
         f_rate = data.get("funding_rate", {})
-        if isinstance(f_rate, dict) and "funding_rate" in f_rate:
-            terminal["crypto_perp_funding_rate"] = f"{f_rate.get('funding_rate')}%"
+        if isinstance(f_rate, dict):
+            fr_val = f_rate.get("funding_rate") or f_rate.get("average_funding_rate")
+            if fr_val is not None:
+                terminal["crypto_perp_funding_rate"] = f"{fr_val}%"
 
         return terminal
 

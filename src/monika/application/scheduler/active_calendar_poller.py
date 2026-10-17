@@ -288,16 +288,25 @@ class ActiveCalendarPoller:
                 logger.debug(f"Direct NewsWatcher trigger failed (non-fatal): {e}")
 
         # Hook MacroTriggerRouter to immediately ingest granular decomposition / statements
-        try:
-            from monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router import MacroTriggerRouter
+        for e in events:
+            ev_name = e.get("event_name") if isinstance(e, dict) else getattr(e, "event_name", "")
+            if ev_name:
 
-            router = MacroTriggerRouter(session)
-            for e in events:
-                ev_name = e.get("event_name") if isinstance(e, dict) else getattr(e, "event_name", "")
-                if ev_name:
-                    logger.info(f"[ActiveCalendarPoller] Routing calendar release '{ev_name}' to MacroTriggerRouter...")
-                    r_task = asyncio.create_task(router.on_calendar_event_released(ev_name))
-                    self._background_tasks.add(r_task)
-                    r_task.add_done_callback(self._background_tasks.discard)
-        except Exception as e:
-            logger.debug(f"[ActiveCalendarPoller] MacroTriggerRouter hook failed (non-fatal): {e}")
+                async def _run_macro_trigger(name: str):
+                    try:
+                        from monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router import (
+                            MacroTriggerRouter,
+                        )
+
+                        async with get_session() as bg_session:
+                            router = MacroTriggerRouter(bg_session)
+                            await router.on_calendar_event_released(name)
+                    except Exception as bg_err:
+                        logger.debug(
+                            f"[ActiveCalendarPoller] Background MacroTriggerRouter error for '{name}': {bg_err}"
+                        )
+
+                logger.info(f"[ActiveCalendarPoller] Routing calendar release '{ev_name}' to MacroTriggerRouter...")
+                r_task = asyncio.create_task(_run_macro_trigger(ev_name))
+                self._background_tasks.add(r_task)
+                r_task.add_done_callback(self._background_tasks.discard)

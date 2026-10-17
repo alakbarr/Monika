@@ -114,13 +114,39 @@ async def handle_get_interest_rates(args: dict, **ctx) -> dict:
                 nxt_str = latest_exp[b_up].get("meeting_date")
 
             exp_data = latest_exp.get(b_up)
+
+            # Jika data InterestRate usang (>180 hari) dan latest_exp memiliki rate terkini
+            rate_val = getattr(r, "rate_percent", None)
+            if exp_data and exp_data.get("current_rate_pct") is not None and eff_dt is not None:
+                eff_utc = eff_dt if getattr(eff_dt, "tzinfo", None) else eff_dt.replace(tzinfo=timezone.utc)
+                now_dt_check = clock.now()
+                if now_dt_check.tzinfo is None:
+                    now_dt_check = now_dt_check.replace(tzinfo=timezone.utc)
+                if (now_dt_check - eff_utc).days > 180:
+                    rate_val = exp_data.get("current_rate_pct")
+
             rates.append(
                 {
                     "bank": bank_name,
-                    "rate_pct": getattr(r, "rate_percent", None),
+                    "rate_pct": rate_val,
                     "effective_date": eff_str,
                     "next_meeting_date": nxt_str,
                     "market_expectations": exp_data,
+                }
+            )
+
+    # Lengkapi bank yang ada di latest_exp namun belum ada di tabel InterestRate (e.g. RBA)
+    for eb, exp_info in latest_exp.items():
+        if eb and eb not in seen_banks and exp_info.get("current_rate_pct") is not None:
+            seen_banks.add(eb)
+            now_str = clock.now().strftime("%Y-%m-%d")
+            rates.append(
+                {
+                    "bank": eb,
+                    "rate_pct": exp_info.get("current_rate_pct"),
+                    "effective_date": now_str,
+                    "next_meeting_date": exp_info.get("meeting_date"),
+                    "market_expectations": exp_info,
                 }
             )
 

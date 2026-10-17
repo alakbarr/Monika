@@ -40,16 +40,10 @@ except ImportError:
 
 logger = logging.getLogger("TradingAgent.PerAsset.ContextBuilder")
 
-# Mapping simbol trading ke kode pasar COT untuk injeksi konteks
-SYMBOL_TO_COT: dict[str, str] = {
-    "XAUUSD": "088691",
-    "EURUSD": "099741",
-    "GBPUSD": "096742",
-    "USDJPY": "097741",
-    "AUDUSD": "232741",
-    "XTIUSD": "067651",
-    # BTCUSD tidak ada data COT yang relevan
-}
+from monika.domain.market.instrument_identity import SYMBOL_TO_COT_MAP, get_cot_code_for_symbol
+
+# Mapping simbol trading ke kode pasar COT untuk injeksi konteks (canonical from instrument_identity)
+SYMBOL_TO_COT: dict[str, str] = dict(SYMBOL_TO_COT_MAP)
 
 
 from monika.core.primitives import _flatten_system_prompt
@@ -974,7 +968,7 @@ class ContextBuilderMixin:
 
             # Extract COT signals for this symbol's market code
             cot_data = data.get("cot_signals", {})
-            cot_code = SYMBOL_TO_COT.get(symbol)
+            cot_code = get_cot_code_for_symbol(symbol) or SYMBOL_TO_COT.get(symbol)
             if cot_code and cot_code in cot_data:
                 lines.append(f"COT Signal ({symbol}, code={cot_code}): {json.dumps(cot_data[cot_code])}")
             elif symbol in cot_data:
@@ -1115,7 +1109,7 @@ class ContextBuilderMixin:
         from monika.application.protocol.context_coherence import get_base_quote_tags
 
         currencies = get_base_quote_tags(symbol)
-        cot_code = SYMBOL_TO_COT.get(symbol, "")
+        cot_code = get_cot_code_for_symbol(symbol) or SYMBOL_TO_COT.get(symbol, "")
 
         # Special instructions untuk OIL dan BTC
         special_notes = ""

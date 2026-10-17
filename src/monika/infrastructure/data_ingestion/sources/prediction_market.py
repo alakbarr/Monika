@@ -51,16 +51,16 @@ class PredictionMarketClient:
     async def fetch_macro_events(
         self,
         tags: Optional[list[str]] = None,
-        limit: int = 20,
+        limit: int = 60,
     ) -> list[dict[str, Any]]:
         """
         Queries Polymarket Gamma API for active macro events.
         """
-        params = f"?limit={limit}&active=true&closed=false"
+        params = f"?limit={limit}&active=true&closed=false&order=volume24hr&ascending=false"
         url = f"{GAMMA_API_URL}{params}"
         data = await fetch_with_retry(url, timeout=self.timeout)
         if not data or not isinstance(data, list):
-            logger.warning("Gamma API returned no event data or unexpected format")
+            logger.info("Gamma API returned no event data or unexpected format")
             return []
 
         macro_events = []

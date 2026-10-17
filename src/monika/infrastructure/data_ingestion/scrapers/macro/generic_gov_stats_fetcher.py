@@ -12,16 +12,15 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
 from monika.infrastructure.database.models import EconomicReportDecomposition
-from monika.infrastructure.database.safe_ops import safe_commit
+from monika.infrastructure.database.safe_ops import safe_commit, safe_upsert
 
 logger = logging.getLogger("TradingAgent.GenericGovStatsFetcher")
 
@@ -237,6 +236,8 @@ class GenericGovStatsFetcher:
             val_actual, val_forecast, val_previous, mom, yoy, contrib = self._calculate_subcomponent_values(
                 rtype, comp["name"], comp["category"], comp.get("series_id"), live_series_data
             )
+            if val_actual is None:
+                continue
 
             source_tag = "FRED_Live" if comp.get("series_id") in live_series_data else "GovStatsEngine"
             record = {
@@ -259,26 +260,30 @@ class GenericGovStatsFetcher:
                 "fetched_at": dt_now,
             }
 
-            stmt = pg_insert(EconomicReportDecomposition).values(record)
-            stmt = stmt.on_conflict_do_update(
+            await safe_upsert(
+                session=self.session,
+                model=EconomicReportDecomposition,
+                values=record,
                 index_elements=["report_type", "country", "period", "component_name"],
-                set_={
-                    "value_actual": stmt.excluded.value_actual,
-                    "value_forecast": stmt.excluded.value_forecast,
-                    "value_previous": stmt.excluded.value_previous,
-                    "mom_change": stmt.excluded.mom_change,
-                    "yoy_change": stmt.excluded.yoy_change,
-                    "contribution_bps": stmt.excluded.contribution_bps,
-                    "is_noise": stmt.excluded.is_noise,
-                    "metadata_json": stmt.excluded.metadata_json,
-                    "fetched_at": dt_now,
-                },
+                update_cols=[
+                    "value_actual",
+                    "value_forecast",
+                    "value_previous",
+                    "mom_change",
+                    "yoy_change",
+                    "contribution_bps",
+                    "is_noise",
+                    "metadata_json",
+                    "fetched_at",
+                ],
             )
-            await self.session.execute(stmt)
             results.append(record)
 
-        await safe_commit(self.session)
-        logger.info(f"Ingested {len(results)} granular decomposition components for {rtype} ({rep_period})")
+        if results:
+            await safe_commit(self.session)
+            logger.info(f"Ingested {len(results)} authentic decomposition components for {rtype} ({rep_period})")
+        else:
+            logger.info(f"No live decomposition data available for {rtype} ({rep_period}). Failing closed.")
         return results
 
     async def _fetch_live_fred_series(self, components: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
@@ -327,10 +332,18 @@ class GenericGovStatsFetcher:
         category: str,
         series_id: Optional[str] = None,
         live_data: Optional[Dict[str, Dict[str, Any]]] = None,
-    ):
+    ) -> Tuple[
+        Optional[float],
+        Optional[float],
+        Optional[float],
+        Optional[float],
+        Optional[float],
+        Optional[float],
+    ]:
         """
         Determines consistent and realistic quantitative metrics for report breakdown,
         incorporating live FRED observations if available.
+        Fails closed with (None, ...) if live data is not available.
         """
         live_data = live_data or {}
         if series_id and series_id in live_data:
@@ -339,72 +352,31 @@ class GenericGovStatsFetcher:
             v1 = ld["prev_val"]
 
             if rtype == "CPI":
-                if "Headline" in comp_name or "Core" in comp_name:
-                    # Index to MoM %
+                if v1 != 0.0:
                     mom = round(((v0 - v1) / v1) * 100.0, 2)
-                    yoy = 2.9 if "Headline" in comp_name else 3.1
-                    forecast = round(mom - 0.05, 2)
-                    prev = round(mom - 0.02, 2)
-                    contrib = round(mom * 100.0, 1)
-                    return mom, forecast, prev, mom, yoy, contrib
+                else:
+                    mom = 0.0
+                weight = 100.0 if "Headline" in comp_name else 79.5
+                contrib = round(mom * weight / 100.0, 1)
+                return mom, None, None, mom, None, contrib
 
             elif rtype == "NFP":
                 if "Total Nonfarm" in comp_name or "Private" in comp_name:
-                    # Payroll level delta in thousands
                     change_k = round(v0 - v1, 1)
-                    forecast = round(change_k - 20.0, 1)
-                    prev = round(change_k - 15.0, 1)
-                    return change_k, forecast, prev, change_k, 1.4, change_k
+                    return change_k, None, None, change_k, None, change_k
                 elif "Unemployment Rate" in comp_name:
                     mom = round(v0 - v1, 2)
-                    return v0, v0, v1, mom, 0.0, -10.0
+                    return v0, None, v1, mom, None, None
 
-        # Calibrated robust fallbacks
-        if rtype == "CPI":
-            if "Headline" in comp_name:
-                return 0.3, 0.2, 0.2, 0.3, 2.9, 30.0
-            elif "Core" in comp_name and "Supercore" not in comp_name:
-                return 0.2, 0.2, 0.3, 0.2, 3.1, 16.0
-            elif "Shelter" in comp_name or "OER" in comp_name:
-                return 0.35, 0.30, 0.38, 0.35, 4.8, 12.5
-            elif "Energy" in comp_name:
-                return 1.4, 0.1, -0.8, 1.4, -1.2, 10.0  # Transitory spike
-            elif "Used Cars" in comp_name:
-                return -0.4, 0.2, 0.8, -0.4, -3.5, -2.0  # Volatile decline
-            elif "Supercore" in comp_name:
-                return 0.18, 0.22, 0.25, 0.18, 3.2, 4.5
-            else:
-                return 0.2, 0.2, 0.2, 0.2, 2.5, 3.0
+            elif rtype == "PCE":
+                if v1 != 0.0:
+                    mom = round(((v0 - v1) / v1) * 100.0, 2)
+                else:
+                    mom = 0.0
+                return mom, None, None, mom, None, None
 
-        elif rtype == "NFP":
-            if "Total Nonfarm" in comp_name:
-                return 185.0, 160.0, 142.0, 43.0, 1.4, 185.0
-            elif "Private" in comp_name:
-                return 145.0, 135.0, 120.0, 25.0, 1.2, 145.0
-            elif "Government" in comp_name:
-                return 40.0, 25.0, 22.0, 18.0, 2.1, 40.0
-            elif "2-Month" in comp_name:
-                return -32.0, 0.0, -15.0, -32.0, 0.0, -32.0  # Negative revision drag
-            elif "Average Hourly Earnings" in comp_name:
-                return 0.3, 0.3, 0.4, 0.3, 3.8, 30.0
-            elif "Unemployment Rate" in comp_name:
-                return 4.1, 4.2, 4.2, -0.1, 0.0, -10.0
-            else:
-                return 100.0, 100.0, 100.0, 0.0, 0.0, 0.0
+            elif rtype in ("PPI", "JOLTS"):
+                mom = round(v0 - v1, 2)
+                return v0, None, v1, mom, None, None
 
-        elif rtype == "PCE":
-            if "Core" in comp_name:
-                return 0.2, 0.2, 0.2, 0.2, 2.6, 16.0
-            return 0.2, 0.2, 0.1, 0.2, 2.4, 20.0
-
-        elif rtype == "PPI":
-            if "Core" in comp_name:
-                return 0.2, 0.2, 0.3, 0.2, 2.8, 15.0
-            return 0.3, 0.1, 0.0, 0.3, 2.2, 25.0
-
-        elif rtype == "JOLTS":
-            if "Quits" in comp_name:
-                return 2.0, 2.1, 2.1, -0.1, -0.3, -5.0
-            return 7650.0, 7700.0, 7800.0, -150.0, -4.5, -50.0
-
-        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        return None, None, None, None, None, None

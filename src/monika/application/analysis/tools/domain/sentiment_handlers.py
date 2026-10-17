@@ -274,27 +274,12 @@ class SentimentToolHandlers:
     async def get_funding_rate(
         self, symbol: str = "BTCUSD", session: Optional[AsyncSession] = None, **kwargs
     ) -> Dict[str, Any]:
-        from unittest.mock import Mock
-
-        from monika.infrastructure.api.http_retry import fetch_with_retry
-
-        if isinstance(fetch_with_retry, Mock):
-            data = await fetch_with_retry(
-                "https://fapi.binance.com/fapi/v1/fundingRate", params={"symbol": "BTCUSDT", "limit": 1}, timeout=10
-            )
-            if data and isinstance(data, list) and len(data) > 0:
-                latest = data[-1]
-                rate_val = float(latest.get("fundingRate", 0.0))
-                return {
-                    "symbol": symbol,
-                    "funding_rate": rate_val,
-                    "average_funding_rate": rate_val,
-                    "funding_time": latest.get("fundingTime"),
-                    "source": "binance_futures",
-                }
         from monika.application.analysis.tools.handlers.macro_tools import handle_get_funding_rate
 
-        return await handle_get_funding_rate({"symbol": symbol, **kwargs}, session=session, settings=self.settings)
+        res = await handle_get_funding_rate({"symbol": symbol, **kwargs}, session=session, settings=self.settings)
+        if isinstance(res, dict) and "average_funding_rate" in res and "funding_rate" not in res:
+            res["funding_rate"] = res["average_funding_rate"]
+        return res
 
     async def get_news_digest(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
         from monika.application.analysis.tools.handlers.news_tools import handle_get_news_digest

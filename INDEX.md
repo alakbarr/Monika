@@ -4062,6 +4062,8 @@
     - `to_dict() -> dict`
 - **Top-Level Functions**:
   - `resolve_instrument_identity(raw_symbol: str) -> InstrumentIdentity`: Deterministically resolves any ticker, symbol, or alias into an immutable InstrumentIdentity.
+  - `get_cot_code_for_symbol(symbol: str) -> Optional[str]`: Deterministically returns the CFTC COT code for any symbol or alias.
+  - `get_symbol_for_cot_code(cot_code: str) -> Optional[str]`: Deterministically returns the canonical symbol for a CFTC COT code.
 
 #### `news_impact_keywords.py` - *Sumber tunggal untuk taksonomi shock/high-impact keywords — dipakai oleh*
 - **Path**: [`src/monika/domain/market/news_impact_keywords.py`](src/monika/domain/market/news_impact_keywords.py)
@@ -11066,7 +11068,7 @@
 - **Classes**:
   - `class LeadingSurveyFetcher`: Fetcher for leading macroeconomic surveys and consumer inflation expectations.
     - `__init__(session: AsyncSession)`
-    - `async fetch_and_store_surveys(period: Optional[str], release_date: Optional[datetime]) -> List[Dict[str, Any]]` - *Ingests ISM and UMich survey breakdowns.*
+    - `async fetch_and_store_surveys(period: Optional[str], release_date: Optional[datetime], survey_metrics: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any]]` - *Ingests leading survey breakdowns.*
     - `async get_global_pmi_summary(period: Optional[str]) -> Dict[str, Any]` - *Retrieves and evaluates Global and regional manufacturing PMI trends.*
 
 #### `market_stress_auction_fetcher.py` - *Market Stress, Treasury Auctions & Foreign Capital Flows Ingestion Engine (Async).*
@@ -11091,8 +11093,8 @@
 - **Classes**:
   - `class YieldSpreadData`
   - `class SovereignYieldSpreads`: Calculates macro sovereign bond yield differentials for FX pairs.
-    - `get_spreads_sync() -> Dict[str, Any]` - *Calculates macro yield spreads across core currency pairs.*
-    - `async get_spreads() -> Dict[str, Any]`
+    - `get_spreads_sync() -> Dict[str, Any]` - *Synchronous fallback calculating macro yield spreads.*
+    - `async get_spreads(session: Optional[Any]) -> Dict[str, Any]` - *Asynchronously calculates macro yield spreads across core FX pairs.*
 
 #### `validators.py` - *Market Data & OHLCV Validation Engine.*
 - **Path**: [`src/monika/infrastructure/data_ingestion/sources/validators.py`](src/monika/infrastructure/data_ingestion/sources/validators.py)
@@ -11230,6 +11232,7 @@
 - **Top-Level Functions**:
   - `async safe_db_op(session: AsyncSession, operation: Callable) -> Any`: Execute a DB operation with automatic rollback on failure.
   - `async safe_commit(session: AsyncSession, label: str, max_retries: int) -> bool`: Commit an active transaction with automatic rollback on failure.
+  - `async safe_upsert(session: AsyncSession, model: type, values: Dict[str, Any], ...) -> None`: Execute an upsert statement compatible with PostgreSQL and SQLite.
 
 #### `session_db_wal.py` - *High-Performance SQLite WAL Session Database with Bounded Read Pool & Lock Guards.*
 - **Path**: [`src/monika/infrastructure/database/session_db_wal.py`](src/monika/infrastructure/database/session_db_wal.py)

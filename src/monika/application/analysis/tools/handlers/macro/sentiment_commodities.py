@@ -292,32 +292,34 @@ async def handle_get_vix(args: dict, **ctx) -> dict:
 
 async def handle_get_funding_rate(args: dict, **ctx) -> dict:
     session, _, _ = _get_macro_context(args, ctx)
-    if not session:
-        return {"error": "Database session required for funding rate"}
-
-    # 1. Cek cache SystemConfig
-    cfg_rows = (
-        (
-            await session.execute(
-                select(SystemConfig).where(SystemConfig.key.in_(["coinglass_funding_latest", "funding_rate_latest"]))
+    # 1. Cek cache SystemConfig jika session tersedia
+    if session:
+        cfg_rows = (
+            (
+                await session.execute(
+                    select(SystemConfig).where(
+                        SystemConfig.key.in_(["coinglass_funding_latest", "funding_rate_latest"])
+                    )
+                )
             )
+            .scalars()
+            .all()
         )
-        .scalars()
-        .all()
-    )
 
-    for cfg in cfg_rows:
-        if cfg and cfg.value:
-            try:
-                data = json.loads(cfg.value)
-                if (
-                    isinstance(data, dict)
-                    and not data.get("error")
-                    and ("average_funding_rate" in data or "rate" in data or "exchanges" in data)
-                ):
-                    return data
-            except Exception:
-                pass
+        for cfg in cfg_rows:
+            if cfg and cfg.value:
+                try:
+                    data = json.loads(cfg.value)
+                    if (
+                        isinstance(data, dict)
+                        and not data.get("error")
+                        and ("average_funding_rate" in data or "rate" in data or "exchanges" in data)
+                    ):
+                        if "average_funding_rate" in data and "funding_rate" not in data:
+                            data["funding_rate"] = data["average_funding_rate"]
+                        return data
+                except Exception:
+                    pass
 
     # 2. Live On-Demand Fallback via CoinglasFundingFetcher
     try:
@@ -326,6 +328,8 @@ async def handle_get_funding_rate(args: dict, **ctx) -> dict:
         fetcher = CoinglasFundingFetcher(session)
         live_data = await fetcher.fetch()
         if live_data and isinstance(live_data, dict) and not live_data.get("error"):
+            if "average_funding_rate" in live_data and "funding_rate" not in live_data:
+                live_data["funding_rate"] = live_data["average_funding_rate"]
             return live_data
     except Exception as fetch_err:
         logger.debug(f"Live funding rate on-demand fetch error: {fetch_err}")
@@ -334,6 +338,7 @@ async def handle_get_funding_rate(args: dict, **ctx) -> dict:
     return {
         "symbol": "BTCUSD",
         "average_funding_rate": 0.0001,
+        "funding_rate": 0.0001,
         "interpretation": "Neutral (baseline neutral rate fallback)",
         "source": "fallback_baseline",
         "warning": "Live funding rate feed currently initializing; returning baseline neutral rate 0.01% / 8h.",

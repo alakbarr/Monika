@@ -253,7 +253,7 @@ class Stage2DataBundler:
             from monika.domain.market.instrument_identity import KNOWN_INSTRUMENTS
 
             inst = KNOWN_INSTRUMENTS.get(symbol)
-            if inst and inst.cot_code:
+            if inst and inst.cot_code and inst.asset_class != "CRYPTO":
                 cot_code = inst.cot_code
 
         # NEW: Validate core shared data first (SSVP insight)

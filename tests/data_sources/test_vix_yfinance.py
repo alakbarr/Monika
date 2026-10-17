@@ -175,7 +175,7 @@ class TestVIXFetcher:
         mock_session.add = MagicMock()
 
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         df = pd.DataFrame({"Close": [20.0]}, index=[pd.Timestamp("2024-01-01")])
@@ -197,7 +197,7 @@ class TestVIXFetcher:
         mock_session.add = MagicMock()
 
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = 1  # Exists
+        mock_result.scalars.return_value.all.return_value = [datetime(2024, 1, 1, tzinfo=timezone.utc)]
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         df = pd.DataFrame({"Close": [20.0]}, index=[pd.Timestamp("2024-01-01")])

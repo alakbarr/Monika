@@ -50,3 +50,10 @@ async def test_stage1_data_bundler():
 
         # Verify compressor was called
         mock_compress.assert_called_once()
+
+        # Verify extra parallel feeds and aggregated sentiment
+        assert "brent_crude" in raw_data
+        assert "aggregated_sentiment" in raw_data
+        assert "XAUUSD" in raw_data["aggregated_sentiment"]
+        assert "EURUSD" in raw_data["aggregated_sentiment"]
+        assert "BTCUSD" in raw_data["aggregated_sentiment"]

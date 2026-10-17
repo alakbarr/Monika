@@ -344,7 +344,6 @@ class VIXFetcher:
             all_dates = [c[0] for c in candidates]
             existing_res = await self.session.execute(select(VIXData.date).where(VIXData.date.in_(all_dates)))
             existing_dates = set()
-            found_by_scalars = False
             try:
                 if hasattr(existing_res, "scalars"):
                     sc: Any = existing_res.scalars()
@@ -364,13 +363,6 @@ class VIXFetcher:
                                 for d in vals
                                 if d is not None
                             }
-                            found_by_scalars = True
-                if not found_by_scalars and hasattr(existing_res, "scalar_one_or_none"):
-                    son: Any = existing_res.scalar_one_or_none()
-                    if isawaitable(son):
-                        son = await son
-                    if son and type(son).__name__ not in ("MagicMock", "AsyncMock", "Mock"):
-                        existing_dates = set(all_dates)
             except Exception:
                 existing_dates = set()
 

@@ -156,7 +156,7 @@ KNOWN_INSTRUMENTS: Dict[str, InstrumentIdentity] = {
         quote_currency="USD",
         pip_size=1.0,
         point_size=0.01,
-        cot_code=None,
+        cot_code="133741",
         trading_sessions=("Global 24/7",),
         is_24_7=True,
     ),
@@ -169,7 +169,7 @@ KNOWN_INSTRUMENTS: Dict[str, InstrumentIdentity] = {
         quote_currency="USD",
         pip_size=0.01,
         point_size=0.01,
-        cot_code=None,
+        cot_code="067651",
         trading_sessions=("London", "New York"),
         is_24_7=False,
     ),
@@ -325,3 +325,31 @@ def resolve_instrument_identity(raw_symbol: str) -> InstrumentIdentity:
         point_size=0.00001,
         is_24_7=False,
     )
+
+
+# Canonical mappings between instruments and CFTC COT market codes
+SYMBOL_TO_COT_MAP: Dict[str, str] = {
+    ident.canonical_symbol: ident.cot_code for ident in KNOWN_INSTRUMENTS.values() if ident.cot_code is not None
+}
+
+COT_CODE_TO_SYMBOL_MAP: Dict[str, str] = {
+    ident.cot_code: ident.canonical_symbol for ident in KNOWN_INSTRUMENTS.values() if ident.cot_code is not None
+}
+# Precedence overrides for commodities with proxy contracts
+COT_CODE_TO_SYMBOL_MAP["067651"] = "XTIUSD"
+COT_CODE_TO_SYMBOL_MAP["088691"] = "XAUUSD"
+
+
+def get_cot_code_for_symbol(symbol: str) -> Optional[str]:
+    """Deterministically returns the CFTC COT code for any symbol or alias."""
+    if not symbol or not isinstance(symbol, str):
+        return None
+    identity = resolve_instrument_identity(symbol)
+    return identity.cot_code
+
+
+def get_symbol_for_cot_code(cot_code: str) -> Optional[str]:
+    """Deterministically returns the canonical symbol for a CFTC COT code."""
+    if not cot_code:
+        return None
+    return COT_CODE_TO_SYMBOL_MAP.get(str(cot_code).strip())

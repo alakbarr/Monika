@@ -157,24 +157,50 @@ class CentralBankWatchFetcher:
                     )
                     self.session.add(record)
 
-                # Update next_meeting_date pada InterestRate jika ada
+                # Upsert policy rate dan next_meeting_date pada InterestRate
+                parsed_dt = None
                 if m_date_str and m_date_str != "N/A":
                     try:
                         parsed_dt = date_parser.parse(m_date_str)
                         if parsed_dt.tzinfo is None:
                             parsed_dt = parsed_dt.replace(tzinfo=timezone.utc)
-
-                        latest_rate_res = await self.session.execute(
-                            select(InterestRate)
-                            .where(InterestRate.bank == bank_code)
-                            .order_by(InterestRate.effective_date.desc(), InterestRate.id.desc())
-                            .limit(1)
-                        )
-                        rate_row = latest_rate_res.scalar_one_or_none()
-                        if rate_row:
-                            rate_row.next_meeting_date = parsed_dt
                     except Exception as parse_err:
                         logger.debug(f"Gagal parse tanggal rapat {m_date_str} untuk {bank_code}: {parse_err}")
+
+                try:
+                    latest_rate_res = await self.session.execute(
+                        select(InterestRate)
+                        .where(InterestRate.bank == bank_code)
+                        .order_by(InterestRate.effective_date.desc(), InterestRate.id.desc())
+                        .limit(1)
+                    )
+                    rate_row = latest_rate_res.scalar_one_or_none()
+                    if rate_row is None:
+                        # Buat record baru jika bank belum ada di tabel InterestRate (e.g. RBA)
+                        if cur_rate > 0.0:
+                            new_rate = InterestRate(
+                                bank=bank_code,
+                                rate_percent=cur_rate,
+                                effective_date=now_utc,
+                                next_meeting_date=parsed_dt,
+                            )
+                            self.session.add(new_rate)
+                    else:
+                        if parsed_dt:
+                            rate_row.next_meeting_date = parsed_dt
+                        if cur_rate > 0.0 and abs(rate_row.rate_percent - cur_rate) > 1e-4:
+                            # Suku bunga berubah: insert baris baru untuk menjaga histori audit
+                            new_rate = InterestRate(
+                                bank=bank_code,
+                                rate_percent=cur_rate,
+                                effective_date=now_utc,
+                                next_meeting_date=parsed_dt,
+                            )
+                            self.session.add(new_rate)
+                        elif cur_rate > 0.0 and (now_utc - rate_row.effective_date).days >= 30:
+                            rate_row.effective_date = now_utc
+                except Exception as ir_err:
+                    logger.warning(f"Gagal sinkronisasi InterestRate untuk {bank_code}: {ir_err}")
 
             except Exception as bank_err:
                 logger.warning(f"Error parsing card {cls_key} ({bank_code}): {bank_err}")

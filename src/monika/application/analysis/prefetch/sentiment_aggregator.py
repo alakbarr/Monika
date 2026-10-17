@@ -1,7 +1,8 @@
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from monika.application.analysis.schemas.pydantic_schemas import ConfidenceLevel, SentimentAnalysisSchema, SentimentBand
+from monika.domain.market.instrument_identity import get_cot_code_for_symbol
 
 logger = logging.getLogger("TradingAgent.SentimentAggregator")
 
@@ -31,33 +32,41 @@ class SentimentAggregator:
         self.settings = settings
 
     def aggregate_sentiment(
-        self, cot_data: dict, retail_data: dict, risk_data: dict, symbol: str = ""
+        self,
+        cot_data: dict,
+        retail_data: dict,
+        risk_data: dict,
+        symbol: str = "",
+        funding_data: Optional[dict] = None,
     ) -> SentimentAnalysisSchema:
         """
         Weights:
-        - Institutional COT: 40% weight (trend-following)
-        - Retail (FXSSI/MyFxBook/Binance): 30% weight (CONTRARIAN)
-        - Risk appetite (VIX/FearGreed): 30% weight (market regime, aware of Safe-Haven assets)
+        - Non-crypto: Institutional COT (40%), Retail (30%), Risk appetite (30%)
+        - Crypto: Institutional COT (35%), Retail (25%), Risk appetite (20%), Perpetual Funding (20%)
         """
         score = 5.0  # Neutral base
         confidence = ConfidenceLevel.LOW
         narrative_parts = []
 
-        # 1. COT (Institutional) - 40% weight (0 to 4 points)
+        # 1. COT (Institutional) - 40% weight (or 35% for crypto)
         cot_score = 5.0
         if cot_data and not cot_data.get("error"):
             sym_clean = symbol.upper().replace("/", "").replace("-", "").strip() if symbol else ""
             actual_cot = None
             if isinstance(cot_data, dict):
-                if sym_clean and sym_clean in cot_data:
-                    actual_cot = cot_data[sym_clean]
-                elif sym_clean and sym_clean in SYMBOL_TO_CFTC_CODE and SYMBOL_TO_CFTC_CODE[sym_clean] in cot_data:
-                    actual_cot = cot_data[SYMBOL_TO_CFTC_CODE[sym_clean]]
+                # Unpack nested payload from handle_get_precomputed_cot_signals if wrapped
+                unwrapped_cot = cot_data["cot_signals"] if isinstance(cot_data.get("cot_signals"), dict) else cot_data
+                cftc_code = get_cot_code_for_symbol(sym_clean) or SYMBOL_TO_CFTC_CODE.get(sym_clean)
+                if sym_clean and sym_clean in unwrapped_cot:
+                    actual_cot = unwrapped_cot[sym_clean]
+                elif cftc_code and cftc_code in unwrapped_cot:
+                    actual_cot = unwrapped_cot[cftc_code]
                 elif "signal" in cot_data or "bias" in cot_data:
                     actual_cot = cot_data
+                elif "signal" in unwrapped_cot or "bias" in unwrapped_cot:
+                    actual_cot = unwrapped_cot
                 else:
-                    cftc_code = SYMBOL_TO_CFTC_CODE.get(sym_clean)
-                    actual_cot = cot_data.get(cftc_code, cot_data) if cftc_code else cot_data
+                    actual_cot = unwrapped_cot.get(cftc_code, unwrapped_cot) if cftc_code else unwrapped_cot
             else:
                 actual_cot = cot_data
 
@@ -96,7 +105,7 @@ class SentimentAggregator:
             else:
                 narrative_parts.append("Institutional positioning is neutral.")
 
-        # 2. Retail - 30% weight (0 to 3 points, CONTRARIAN)
+        # 2. Retail - 30% weight (or 25% for crypto, CONTRARIAN)
         retail_score = 5.0
         if retail_data and not retail_data.get("error"):
             long_pct = retail_data.get("long_pct", 50)
@@ -109,7 +118,7 @@ class SentimentAggregator:
             else:
                 narrative_parts.append("Retail positioning is balanced.")
 
-        # 3. Risk Appetite - 30% weight (0 to 3 points, Safe-Haven aware)
+        # 3. Risk Appetite - 30% weight (or 20% for crypto, Safe-Haven aware)
         risk_score = 5.0
         sym_upper = (symbol or "").upper()
         is_safe_haven_asset = any(s in sym_upper for s in ["XAU", "GOLD", "XAG"])
@@ -144,8 +153,36 @@ class SentimentAggregator:
             else:
                 narrative_parts.append("VIX indicates moderate risk environment.")
 
+        # 4. Crypto Perpetual Funding Rate (if crypto symbol and funding_data provided)
+        funding_score: Optional[float] = None
+        is_crypto = any(c in sym_upper for c in ["BTC", "ETH", "SOL", "CRYPTO"])
+        if is_crypto and funding_data and not funding_data.get("error"):
+            fr_raw = funding_data.get("funding_rate") or funding_data.get("average_funding_rate")
+            if fr_raw is not None:
+                try:
+                    fr_val = float(fr_raw)
+                    if fr_val > 0.0003:
+                        funding_score = 2.0  # Heavily long -> contrarian liquidation risk
+                        narrative_parts.append(
+                            f"Crypto funding rate ({fr_val:+.4f}) is crowded long (liquidation risk)."
+                        )
+                    elif fr_val < -0.0001:
+                        funding_score = 8.0  # Crowded short -> short squeeze potential
+                        narrative_parts.append(
+                            f"Crypto funding rate ({fr_val:+.4f}) is negative (short squeeze potential)."
+                        )
+                    else:
+                        funding_score = 5.0
+                        narrative_parts.append(f"Crypto funding rate ({fr_val:+.4f}) is neutral.")
+                except Exception:
+                    funding_score = None
+
         # Aggregate (Scale 0-10)
-        overall_score = (cot_score * 0.4) + (retail_score * 0.3) + (risk_score * 0.3)
+        if funding_score is not None:
+            overall_score = (cot_score * 0.35) + (retail_score * 0.25) + (risk_score * 0.20) + (funding_score * 0.20)
+        else:
+            overall_score = (cot_score * 0.4) + (retail_score * 0.3) + (risk_score * 0.3)
+
         overall_score = max(0.0, min(10.0, overall_score))
 
         # Determine Band
@@ -163,11 +200,17 @@ class SentimentAggregator:
             band = SentimentBand.BEARISH
 
         # Determine confidence based on data availability
-        sources_avail = sum([1 for d in [cot_data, retail_data, risk_data] if d and not d.get("error")])
-        if sources_avail == 3:
+        check_sources = [cot_data, retail_data, risk_data]
+        if funding_data is not None:
+            check_sources.append(funding_data)
+        sources_avail = sum([1 for d in check_sources if d and not d.get("error")])
+
+        if sources_avail >= 3:
             confidence = ConfidenceLevel.HIGH
         elif sources_avail == 2:
             confidence = ConfidenceLevel.MEDIUM
+        else:
+            confidence = ConfidenceLevel.LOW
 
         return SentimentAnalysisSchema(
             overall_band=band,

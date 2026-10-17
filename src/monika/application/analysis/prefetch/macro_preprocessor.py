@@ -23,20 +23,15 @@ import monika.core.primitives.clock as clock
 from monika.infrastructure.database.models import COTReport, EconomicCalendar, SystemConfig, TechnicalIndicator
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
+from monika.domain.market.instrument_identity import COT_CODE_TO_SYMBOL_MAP
+
 logger = logging.getLogger("TradingAgent.MacroPreprocessor")
 
 _PREPROCESSOR_CACHE = collections.OrderedDict()
 _GEMINI_CACHE = _PREPROCESSOR_CACHE  # Backward compatibility alias
 _MAX_CACHE_SIZE = 100
 
-MARKET_CODE_TO_SYMBOL = {
-    "088691": "XAUUSD",
-    "099741": "EURUSD",
-    "096742": "GBPUSD",
-    "097741": "USDJPY",
-    "232741": "AUDUSD",
-    "067651": "XTIUSD",
-}
+MARKET_CODE_TO_SYMBOL = dict(COT_CODE_TO_SYMBOL_MAP)
 
 SYMBOL_USD_DIRECTION = {
     "XAUUSD": {"bullish": "USD_WEAK", "bearish": "USD_STRONG"},
@@ -44,7 +39,11 @@ SYMBOL_USD_DIRECTION = {
     "GBPUSD": {"bullish": "USD_WEAK", "bearish": "USD_STRONG"},
     "USDJPY": {"bullish": "USD_STRONG", "bearish": "USD_WEAK"},
     "AUDUSD": {"bullish": "USD_WEAK", "bearish": "USD_STRONG"},
+    "USDCAD": {"bullish": "USD_STRONG", "bearish": "USD_WEAK"},
+    "USDCHF": {"bullish": "USD_STRONG", "bearish": "USD_WEAK"},
     "XTIUSD": {"bullish": "USD_WEAK", "bearish": "USD_STRONG"},
+    "XBRUSD": {"bullish": "USD_WEAK", "bearish": "USD_STRONG"},
+    "BTCUSD": {"bullish": "USD_WEAK", "bearish": "USD_STRONG"},
 }
 
 
@@ -198,7 +197,8 @@ class MacroPreprocessor:
 
         history_by_market = defaultdict(list)
         for r in reports:
-            if len(history_by_market[r.market_code]) < 4:
+            # Ambil hingga 52 minggu (1 tahun) data mingguan untuk rolling percentile standar institusional
+            if len(history_by_market[r.market_code]) < 52:
                 history_by_market[r.market_code].append(r)
 
         result = {}
@@ -215,13 +215,14 @@ class MacroPreprocessor:
             total_lev = latest.leveraged_long + latest.leveraged_short
             lev_long_pct = (latest.leveraged_long / total_lev * 100) if total_lev > 0 else 50.0
 
-            # 4wk avg
-            lev_nets = [r.leveraged_long - r.leveraged_short for r in reps]
-            lev_net_4wk_avg = sum(lev_nets) / len(lev_nets)
+            # 4wk avg (spesifik 4 minggu terakhir)
+            recent_4wk = reps[-4:]
+            lev_nets_4wk = [r.leveraged_long - r.leveraged_short for r in recent_4wk]
+            lev_net_4wk_avg = sum(lev_nets_4wk) / len(lev_nets_4wk)
 
-            # Trends
-            if len(lev_nets) >= 2:
-                recent_change = lev_nets[-1] - lev_nets[-2]
+            # Trends dari 2 minggu terakhir
+            if len(lev_nets_4wk) >= 2:
+                recent_change = lev_nets_4wk[-1] - lev_nets_4wk[-2]
                 if recent_change > 1000:
                     trend = "getting_more_bullish"
                 elif recent_change < -1000:
@@ -232,12 +233,11 @@ class MacroPreprocessor:
                 recent_change = 0
                 trend = "flat"
 
-            trend_strength = min(10, max(1, abs(recent_change) // 2000 + 1)) if len(lev_nets) >= 2 else 1
+            trend_strength = min(10, max(1, abs(recent_change) // 2000 + 1)) if len(lev_nets_4wk) >= 2 else 1
 
-            # Rolling Percentile Calculation if history is present
-            hist_rows = history_by_market.get(m_code, [])
+            # Rolling Percentile Calculation dihitung dari seluruh histori 52-minggu yang tersedia
             pctile = None
-            if len(hist_rows) >= 4:
+            if len(reps) >= 4:
                 try:
                     all_pcts = [
                         (
@@ -245,7 +245,7 @@ class MacroPreprocessor:
                             / (float(r.leveraged_long or 0) + float(r.leveraged_short or 0) or 1.0)
                             * 100.0
                         )
-                        for r in hist_rows
+                        for r in reps
                     ]
                     pctile = round(sum(1 for p in all_pcts if p <= lev_long_pct) / len(all_pcts) * 100.0, 1)
                 except Exception:

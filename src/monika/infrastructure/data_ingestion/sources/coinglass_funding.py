@@ -106,9 +106,18 @@ class CoinglasFundingFetcher:
         # 1. Primary Source: Binance Futures (USDT-M dengan fallback ke Coin-M, 100% free, high availability)
         try:
             binance_data = await fetch_with_retry(BINANCE_FUNDING_URL, params={"symbol": "BTCUSDT"}, timeout=15)
-            if binance_data and isinstance(binance_data, dict) and "lastFundingRate" in binance_data:
-                b_rate = float(binance_data.get("lastFundingRate", 0.0001))
-                rates.append({"exchange": "Binance", "rate": round(b_rate, 6), "next_rate": round(b_rate, 6)})
+            if binance_data:
+                if isinstance(binance_data, list) and len(binance_data) > 0 and isinstance(binance_data[-1], dict):
+                    b_item = binance_data[-1]
+                    rate_raw = b_item.get("lastFundingRate") or b_item.get("fundingRate", 0.0001)
+                    b_rate = float(rate_raw)
+                    rates.append({"exchange": "Binance", "rate": round(b_rate, 6), "next_rate": round(b_rate, 6)})
+                elif isinstance(binance_data, dict) and (
+                    "lastFundingRate" in binance_data or "fundingRate" in binance_data
+                ):
+                    rate_raw = binance_data.get("lastFundingRate") or binance_data.get("fundingRate", 0.0001)
+                    b_rate = float(rate_raw)
+                    rates.append({"exchange": "Binance", "rate": round(b_rate, 6), "next_rate": round(b_rate, 6)})
             elif not rates:
                 # In-line fallback: Binance Coin-Margined Futures (dapi)
                 dapi_data = await fetch_with_retry(BINANCE_DAPI_URL, params={"symbol": "BTCUSD_PERP"}, timeout=15)
@@ -202,6 +211,7 @@ class CoinglasFundingFetcher:
         result = {
             "symbol": "BTCUSD",
             "average_funding_rate": round(avg_rate, 6),
+            "funding_rate": round(avg_rate, 6),
             "open_interest_btc": open_interest_btc,
             "exchanges": rates,
             "interpretation": (

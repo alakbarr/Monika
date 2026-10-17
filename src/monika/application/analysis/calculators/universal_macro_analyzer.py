@@ -108,8 +108,11 @@ class UniversalMacroAnalyzer:
         top_downside_drivers.sort(key=lambda x: abs(x["contribution_bps"]), reverse=True)
 
         # Quantitative verdict: Is the headline surprise structural or transitory noise?
-        is_structural = total_sticky_bps > total_noise_bps
-        if total_noise_bps > total_sticky_bps * 1.5:
+        is_structural = (total_sticky_bps > total_noise_bps) if (total_sticky_bps > 0 or total_noise_bps > 0) else False
+        if total_noise_bps == 0.0 and total_sticky_bps == 0.0:
+            verdict = "DATA_INSUFFICIENT"
+            verdict_explanation = "Insufficient granular subcomponent contribution data to classify shock regime."
+        elif total_noise_bps > total_sticky_bps * 1.5:
             verdict = "TRANSITORY_NOISE_ONLY"
             verdict_explanation = (
                 f"Surprise primarily driven by volatile seasonal items ({', '.join([c['name'] for c in transitory_noise_components])}). "

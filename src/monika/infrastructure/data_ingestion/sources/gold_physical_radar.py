@@ -36,12 +36,13 @@ DEFAULT_USER_AGENT = "Monika-Quant-Agent/1.0 (institutional-research@monika-hedg
 @dataclass(frozen=True, slots=True)
 class GoldRadarSnapshot:
     timestamp: str
-    gld_market_price: float
-    gld_1d_change_pct: float
-    gld_volume: float
+    gld_market_price: Optional[float]
+    gld_1d_change_pct: Optional[float]
+    gld_volume: Optional[float]
     institutional_flow_bias: str  # "ACCUMULATION" | "DISTRIBUTION" | "NEUTRAL"
     xau_sentiment_conviction: float
     summary: str
+    is_available: bool = True
 
 
 class GoldPhysicalRadar:
@@ -80,12 +81,13 @@ class GoldPhysicalRadar:
         if not market_data:
             return GoldRadarSnapshot(
                 timestamp=now_iso,
-                gld_market_price=245.0,
-                gld_1d_change_pct=0.0,
-                gld_volume=0.0,
+                gld_market_price=None,
+                gld_1d_change_pct=None,
+                gld_volume=None,
                 institutional_flow_bias="NEUTRAL",
                 xau_sentiment_conviction=0.5,
-                summary="Physical Gold Radar: GLD live feed unavailable, defaulting to neutral bias.",
+                summary="Physical Gold Radar: GLD live feed unavailable.",
+                is_available=False,
             )
 
         price, prev_close, volume = market_data

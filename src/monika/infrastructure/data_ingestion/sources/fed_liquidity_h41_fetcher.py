@@ -12,17 +12,16 @@ Persists records to `macro_liquidity_credit_metrics` table.
 import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 import aiohttp
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
 from monika.infrastructure.database.models import MacroLiquidityCreditMetric
-from monika.infrastructure.database.safe_ops import safe_commit
+from monika.infrastructure.database.safe_ops import safe_commit, safe_upsert
 
 logger = logging.getLogger("TradingAgent.FedLiquidityH41Fetcher")
 
@@ -87,19 +86,52 @@ class FedLiquidityH41Fetcher:
                         rrp = round(fetched_vals["RRP"], 2)  # already Billions
                     logger.info(f"Live FRED H.4.1 Balance Sheet fetched: WALCL=${walcl}B, TGA=${tga}B, RRP=${rrp}B")
             except Exception as e:
-                logger.warning(f"FRED H.4.1 live fetch failed ({e}), using calibrated fallback")
+                logger.warning(f"FRED H.4.1 live fetch failed: {e}")
 
-        # Fallbacks if live unavailable
-        walcl = walcl if walcl is not None else 6743.0
-        tga = tga if tga is not None else 948.7
-        rrp = rrp if rrp is not None else 1.5
+        if walcl is None or tga is None or rrp is None:
+            logger.warning(
+                f"Fed H.4.1 balance sheet components incomplete (WALCL={walcl}, TGA={tga}, RRP={rrp}). Failing closed."
+            )
+            return {
+                "status": "unavailable",
+                "message": "Incomplete Federal Reserve H.4.1 balance sheet data",
+            }
 
         net_liquidity = round(walcl - tga - rrp, 2)
 
-        # Determine regime
-        prev_net = 5750.0
-        diff_net = round(net_liquidity - prev_net, 2)
-        regime = "EXPANSIONARY" if diff_net >= 0 else "CONTRACTIONARY"
+        # Query prior record for FED_NET_LIQUIDITY to compute empirical delta
+        stmt_prev_net = (
+            select(MacroLiquidityCreditMetric)
+            .where(
+                MacroLiquidityCreditMetric.metric_type == "FED_NET_LIQUIDITY",
+                MacroLiquidityCreditMetric.country == "US",
+            )
+            .order_by(MacroLiquidityCreditMetric.record_date.desc())
+            .limit(1)
+        )
+        prev_net_rec = (await self.session.execute(stmt_prev_net)).scalars().first()
+        prev_net = prev_net_rec.value if prev_net_rec else None
+        diff_net = round(net_liquidity - prev_net, 2) if prev_net is not None else None
+        regime = "EXPANSIONARY" if (diff_net is not None and diff_net >= 0) else "CONTRACTIONARY"
+
+        # Query prior records for individual components
+        components_to_process = [
+            (
+                "FED_WALCL",
+                walcl,
+                {"desc": "Fed Total Assets", "source": "FRED_Live"},
+            ),
+            (
+                "FED_TGA",
+                tga,
+                {"desc": "Treasury General Account", "source": "FRED_Live"},
+            ),
+            (
+                "FED_ON_RRP",
+                rrp,
+                {"desc": "Reverse Repo Facility", "source": "FRED_Live"},
+            ),
+        ]
 
         metrics = [
             (
@@ -110,31 +142,30 @@ class FedLiquidityH41Fetcher:
                 regime,
                 {"formula": "WALCL - TGA - RRP", "source": "FRED_H41_Live"},
             ),
-            (
-                "FED_WALCL",
-                walcl,
-                round(walcl + 15.0, 2),
-                -15.0,
-                "CONTRACTIONARY",
-                {"desc": "Fed Total Assets", "source": "FRED_Live"},
-            ),
-            (
-                "FED_TGA",
-                tga,
-                round(tga - 20.0, 2),
-                20.0,
-                "CONTRACTIONARY" if tga > 800 else "EXPANSIONARY",
-                {"desc": "Treasury General Account", "source": "FRED_Live"},
-            ),
-            (
-                "FED_ON_RRP",
-                rrp,
-                round(rrp + 0.5, 2),
-                -0.5,
-                "EXPANSIONARY" if rrp < 250 else "CONTRACTIONARY",
-                {"desc": "Reverse Repo Facility", "source": "FRED_Live"},
-            ),
         ]
+
+        for comp_key, comp_val, meta_dict in components_to_process:
+            stmt_comp_prev = (
+                select(MacroLiquidityCreditMetric)
+                .where(
+                    MacroLiquidityCreditMetric.metric_type == comp_key,
+                    MacroLiquidityCreditMetric.country == "US",
+                )
+                .order_by(MacroLiquidityCreditMetric.record_date.desc())
+                .limit(1)
+            )
+            prev_comp_rec = (await self.session.execute(stmt_comp_prev)).scalars().first()
+            p_val = prev_comp_rec.value if prev_comp_rec else None
+            c_val = round(comp_val - p_val, 2) if p_val is not None else None
+
+            if comp_key == "FED_WALCL":
+                c_regime = "EXPANSIONARY" if (c_val is not None and c_val >= 0) else "CONTRACTIONARY"
+            elif comp_key == "FED_TGA":
+                c_regime = "CONTRACTIONARY" if comp_val > 800 else "EXPANSIONARY"
+            else:  # FED_ON_RRP
+                c_regime = "EXPANSIONARY" if comp_val < 250 else "CONTRACTIONARY"
+
+            metrics.append((comp_key, comp_val, p_val, c_val, c_regime, meta_dict))
 
         inserted_records = []
         for m_type, val, prev, chg, reg, meta in metrics:
@@ -151,24 +182,20 @@ class FedLiquidityH41Fetcher:
                 "fetched_at": clock.now(),
             }
 
-            stmt = pg_insert(MacroLiquidityCreditMetric).values(rec)
-            stmt = stmt.on_conflict_do_update(
+            await safe_upsert(
+                session=self.session,
+                model=MacroLiquidityCreditMetric,
+                values=rec,
                 index_elements=["metric_type", "country", "record_date"],
-                set_={
-                    "value": stmt.excluded.value,
-                    "previous_value": stmt.excluded.previous_value,
-                    "change_value": stmt.excluded.change_value,
-                    "regime": stmt.excluded.regime,
-                    "metadata_json": stmt.excluded.metadata_json,
-                    "fetched_at": clock.now(),
-                },
+                update_cols=["value", "previous_value", "change_value", "regime", "metadata_json", "fetched_at"],
             )
-            await self.session.execute(stmt)
             inserted_records.append(rec)
 
         await safe_commit(self.session)
-        logger.info(f"Ingested Fed Net Liquidity: ${net_liquidity:,.1f}B (Regime: {regime}, Delta: {diff_net:+.1f}B)")
+        delta_str = f"{diff_net:+.1f}B" if diff_net is not None else "N/A"
+        logger.info(f"Ingested Fed Net Liquidity: ${net_liquidity:,.1f}B (Regime: {regime}, Delta: {delta_str})")
         return {
+            "status": "available",
             "net_liquidity_billions": net_liquidity,
             "regime": regime,
             "walcl_billions": walcl,

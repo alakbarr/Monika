@@ -520,8 +520,8 @@ data_sources:
       treasury_30y: DGS30
       fed_funds_rate: FEDFUNDS
       ecb_deposit_rate: ECBDFR
-      boe_base_rate: BOERUKM
-      boj_policy_rate: IRSTCB01JPM156N
+      # boe_base_rate (BOERUKM) and boj_policy_rate (IRSTCB01JPM156N) are discontinued by FRED/OECD.
+      # Live policy rates for BOE, BOJ, RBA, FED, and ECB are fetched via CentralBankWatch.
       fed_total_assets: WALCL
       reverse_repo_level: RRPONTSYD
       treasury_general_account: WTREGEN
@@ -542,6 +542,7 @@ data_sources:
       british_pound: 096742
       japanese_yen: 097741
       australian_dollar: '232741'
+      bitcoin: '133741'
     update_frequency: weekly
   vix:
     ticker: ^VIX

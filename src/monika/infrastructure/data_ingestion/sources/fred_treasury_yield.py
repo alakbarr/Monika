@@ -58,7 +58,7 @@ TENOR_SERIES = {
     "CLVMNACSCAB1GQEA19",
     "ECBASSETSW",
 }
-INTEREST_RATE_SERIES = {"FEDFUNDS", "ECBDFR", "BOERUKM", "IRSTCB01JPM156N", "IRSTCB01AUM156N"}
+INTEREST_RATE_SERIES = {"FEDFUNDS", "ECBDFR"}
 
 # Nama tenor yang mudah dibaca
 SERIES_TO_TENOR = {
@@ -83,13 +83,10 @@ SERIES_TO_TENOR = {
     "ECBASSETSW": "ECB_TOTAL_ASSETS",
 }
 
-# Label bank untuk suku bunga
+# Label bank untuk suku bunga (BOE, BOJ, RBA live rates are primary via CentralBankWatch)
 SERIES_TO_BANK = {
     "FEDFUNDS": "FED",
     "ECBDFR": "ECB",
-    "BOERUKM": "BOE",  # BOE Base Rate
-    "IRSTCB01JPM156N": "BOJ",  # BOJ Policy Rate (OECD series via FRED)
-    "IRSTCB01AUM156N": "RBA",  # RBA Cash Rate Target (OECD series via FRED)
 }
 
 

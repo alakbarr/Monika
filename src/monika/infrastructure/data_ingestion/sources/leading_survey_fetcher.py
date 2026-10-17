@@ -5,24 +5,27 @@
 """
 Leading Surveys & Market Sentiment Ingestion Engine (Async).
 Ingests ISM Manufacturing & Services PMIs (Prices Paid, New Orders),
-University of Michigan Inflation Expectations, and Conference Board Labor Differential.
+University of Michigan Inflation Expectations, and Consumer Sentiment.
 Persists records to `economic_report_decompositions` table.
 """
 
 import json
 import logging
-from datetime import datetime, timezone
+import os
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import aiohttp
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
 from monika.infrastructure.database.models import EconomicReportDecomposition
-from monika.infrastructure.database.safe_ops import safe_commit
+from monika.infrastructure.database.safe_ops import safe_commit, safe_upsert
 
 logger = logging.getLogger("TradingAgent.LeadingSurveyFetcher")
+
+FRED_API_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 
 class LeadingSurveyFetcher:
@@ -35,267 +38,137 @@ class LeadingSurveyFetcher:
         self,
         period: Optional[str] = None,
         release_date: Optional[datetime] = None,
+        survey_metrics: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Dict[str, Any]]:
-        """Ingests ISM and UMich survey breakdowns."""
+        """Ingests leading survey breakdowns.
+
+        Fetches live survey series from FRED when available (e.g., UMich Sentiment & Inflation Expectations),
+        or ingests provided real survey metrics from event-driven scrapers.
+        Fails closed with an empty list if data is unavailable — never injects fake numbers.
+        """
         dt_now = clock.now()
         rel_date = release_date or dt_now
         rep_period = period or rel_date.strftime("%Y-%m")
 
-        survey_items = [
-            # ISM Manufacturing PMI
-            (
-                "ISM_MANUFACTURING",
-                "US",
-                "USD",
-                "ISM Manufacturing PMI Headline",
-                "leading",
-                48.5,
-                49.0,
-                48.0,
-                0.5,
-                "diffusion_index",
-                False,
-            ),
-            (
-                "ISM_MANUFACTURING",
-                "US",
-                "USD",
-                "ISM Prices Paid (Pipeline Inflation)",
-                "leading",
-                53.2,
-                51.5,
-                52.0,
-                1.2,
-                "diffusion_index",
-                False,
-            ),
-            (
-                "ISM_MANUFACTURING",
-                "US",
-                "USD",
-                "ISM New Orders (Demand Proxy)",
-                "leading",
-                49.2,
-                48.0,
-                47.4,
-                1.8,
-                "diffusion_index",
-                False,
-            ),
-            (
-                "ISM_MANUFACTURING",
-                "US",
-                "USD",
-                "ISM Employment",
-                "leading",
-                46.5,
-                47.0,
-                46.0,
-                0.5,
-                "diffusion_index",
-                False,
-            ),
-            # ISM Services PMI
-            (
-                "ISM_SERVICES",
-                "US",
-                "USD",
-                "ISM Services PMI Headline",
-                "leading",
-                52.8,
-                52.0,
-                51.5,
-                1.3,
-                "diffusion_index",
-                False,
-            ),
-            (
-                "ISM_SERVICES",
-                "US",
-                "USD",
-                "ISM Services Prices Paid",
-                "leading",
-                58.5,
-                57.0,
-                56.5,
-                2.0,
-                "diffusion_index",
-                False,
-            ),
-            (
-                "ISM_SERVICES",
-                "US",
-                "USD",
-                "ISM Services New Orders",
-                "leading",
-                54.0,
-                53.2,
-                52.5,
-                1.5,
-                "diffusion_index",
-                False,
-            ),
-            # University of Michigan
-            (
-                "UMICH",
-                "US",
-                "USD",
-                "UMich Consumer Sentiment Index",
-                "leading",
-                69.5,
-                68.0,
-                67.9,
-                1.6,
-                "index_score",
-                False,
-            ),
-            (
-                "UMICH",
-                "US",
-                "USD",
-                "UMich 1-Year Inflation Expectation",
-                "leading",
-                2.9,
-                3.0,
-                3.0,
-                -0.1,
-                "percent",
-                False,
-            ),
-            (
-                "UMICH",
-                "US",
-                "USD",
-                "UMich 5-Year Inflation Expectation (Fed Key Gauge)",
-                "core",
-                3.1,
-                3.0,
-                3.0,
-                0.1,
-                "percent",
-                False,
-            ),
-            # Conference Board
-            (
-                "CONF_BOARD",
-                "US",
-                "USD",
-                "Labor Differential (Jobs Plentiful - Hard to Get)",
-                "leading",
-                18.5,
-                20.0,
-                22.0,
-                -3.5,
-                "net_percentage",
-                False,
-            ),
-            # Global & Regional Manufacturing PMIs (Q077)
-            (
-                "GLOBAL_PMI",
-                "GLOBAL",
-                "USD",
-                "JPMorgan Global Manufacturing PMI",
-                "leading",
-                49.8,
-                50.1,
-                49.6,
-                0.2,
-                "diffusion_index",
-                False,
-            ),
-            (
-                "GLOBAL_PMI",
-                "US",
-                "USD",
-                "S&P Global US Manufacturing PMI",
-                "leading",
-                50.2,
-                49.8,
-                49.5,
-                0.7,
-                "diffusion_index",
-                False,
-            ),
-            (
-                "GLOBAL_PMI",
-                "EU",
-                "EUR",
-                "S&P Global Eurozone Manufacturing PMI",
-                "leading",
-                45.8,
-                46.0,
-                45.2,
-                0.6,
-                "diffusion_index",
-                False,
-            ),
-            (
-                "GLOBAL_PMI",
-                "UK",
-                "GBP",
-                "S&P Global UK Manufacturing PMI",
-                "leading",
-                51.5,
-                51.2,
-                50.9,
-                0.6,
-                "diffusion_index",
-                False,
-            ),
-            (
-                "GLOBAL_PMI",
-                "CN",
-                "CNY",
-                "Caixin China Manufacturing PMI",
-                "leading",
-                50.4,
-                50.2,
-                50.0,
-                0.4,
-                "diffusion_index",
-                False,
-            ),
-        ]
+        items_to_store: List[Dict[str, Any]] = []
+
+        if survey_metrics:
+            for item in survey_metrics:
+                items_to_store.append(item)
+        else:
+            api_key = os.getenv("FRED_API_KEY", "")
+            if api_key:
+                fred_surveys = [
+                    {
+                        "series_id": "UMCSENT",
+                        "report_type": "UMICH",
+                        "component_name": "UMich Consumer Sentiment Index",
+                        "category": "leading",
+                        "unit": "index_score",
+                    },
+                    {
+                        "series_id": "MICH",
+                        "report_type": "UMICH",
+                        "component_name": "UMich 1-Year Inflation Expectation",
+                        "category": "leading",
+                        "unit": "percent",
+                    },
+                ]
+                headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+                try:
+                    async with aiohttp.ClientSession(headers=headers) as http_client:
+                        for s_cfg in fred_surveys:
+                            url = f"{FRED_API_BASE_URL}?series_id={s_cfg['series_id']}&api_key={api_key}&file_type=json&sort_order=desc&limit=2"
+                            try:
+                                async with http_client.get(
+                                    url, ssl=False, timeout=aiohttp.ClientTimeout(total=8)
+                                ) as resp:
+                                    if resp.status == 200:
+                                        data = await resp.json()
+                                        obs = data.get("observations", [])
+                                        if len(obs) >= 1 and obs[0].get("value"):
+                                            v_act = float(obs[0]["value"])
+                                            v_prev = (
+                                                float(obs[1]["value"])
+                                                if len(obs) >= 2 and obs[1].get("value")
+                                                else None
+                                            )
+                                            mom = round(v_act - v_prev, 2) if v_prev is not None else None
+                                            items_to_store.append(
+                                                {
+                                                    "report_type": s_cfg["report_type"],
+                                                    "country": "US",
+                                                    "currency": "USD",
+                                                    "component_name": s_cfg["component_name"],
+                                                    "category": s_cfg["category"],
+                                                    "weight_pct": 100.0
+                                                    if "Headline" in s_cfg["component_name"]
+                                                    else None,
+                                                    "value_actual": v_act,
+                                                    "value_forecast": None,
+                                                    "value_previous": v_prev,
+                                                    "mom_change": mom,
+                                                    "yoy_change": None,
+                                                    "contribution_bps": None,
+                                                    "is_noise": False,
+                                                    "unit": s_cfg["unit"],
+                                                    "source": "FRED_Live",
+                                                }
+                                            )
+                            except Exception as req_err:
+                                logger.debug(f"Failed to fetch FRED survey {s_cfg['series_id']}: {req_err}")
+                except Exception as net_err:
+                    logger.warning(f"Live FRED survey fetch connection error: {net_err}")
+
+        if not items_to_store:
+            logger.info(f"No leading survey metrics available to ingest for period {rep_period}. Failing closed.")
+            return []
 
         results = []
-        for rtype, ctry, curr, comp_name, cat, val_act, val_fc, val_prev, mom, unit, is_n in survey_items:
+        for item in items_to_store:
             rec = {
-                "report_type": rtype,
-                "country": ctry,
-                "currency": curr,
+                "report_type": item["report_type"],
+                "country": item.get("country", "US"),
+                "currency": item.get("currency", "USD"),
                 "period": rep_period,
                 "release_date": rel_date,
-                "component_name": comp_name,
-                "category": cat,
-                "weight_pct": 100.0 if "Headline" in comp_name else None,
-                "value_actual": val_act,
-                "value_forecast": val_fc,
-                "value_previous": val_prev,
-                "mom_change": mom,
-                "yoy_change": None,
-                "contribution_bps": None,
-                "is_noise": is_n,
-                "metadata_json": json.dumps({"unit": unit, "source": "LeadingSurveyEngine"}),
+                "component_name": item["component_name"],
+                "category": item.get("category", "leading"),
+                "weight_pct": item.get("weight_pct"),
+                "value_actual": item.get("value_actual"),
+                "value_forecast": item.get("value_forecast"),
+                "value_previous": item.get("value_previous"),
+                "mom_change": item.get("mom_change"),
+                "yoy_change": item.get("yoy_change"),
+                "contribution_bps": item.get("contribution_bps"),
+                "is_noise": item.get("is_noise", False),
+                "metadata_json": json.dumps(
+                    {"unit": item.get("unit"), "source": item.get("source", "LeadingSurveyEngine")}
+                ),
                 "fetched_at": dt_now,
             }
 
-            stmt = pg_insert(EconomicReportDecomposition).values(rec)
-            stmt = stmt.on_conflict_do_update(
+            await safe_upsert(
+                session=self.session,
+                model=EconomicReportDecomposition,
+                values=rec,
                 index_elements=["report_type", "country", "period", "component_name"],
-                set_={
-                    "value_actual": stmt.excluded.value_actual,
-                    "value_forecast": stmt.excluded.value_forecast,
-                    "value_previous": stmt.excluded.value_previous,
-                    "mom_change": stmt.excluded.mom_change,
-                    "is_noise": stmt.excluded.is_noise,
-                    "fetched_at": dt_now,
-                },
+                update_cols=[
+                    "value_actual",
+                    "value_forecast",
+                    "value_previous",
+                    "mom_change",
+                    "yoy_change",
+                    "contribution_bps",
+                    "is_noise",
+                    "metadata_json",
+                    "fetched_at",
+                ],
             )
-            await self.session.execute(stmt)
             results.append(rec)
 
         await safe_commit(self.session)
-        logger.info(f"Ingested {len(results)} leading survey metrics ({rep_period})")
+        logger.info(f"Ingested {len(results)} authentic leading survey metrics ({rep_period})")
         return results
 
     async def get_global_pmi_summary(self, period: Optional[str] = None) -> Dict[str, Any]:
@@ -313,31 +186,65 @@ class LeadingSurveyFetcher:
             await self.fetch_and_store_surveys(period=rep_period)
             records = (await self.session.execute(stmt)).scalars().all()
 
+        if not records:
+            return {
+                "period": rep_period,
+                "status": "unavailable",
+                "global_composite_pmi": None,
+                "global_regime": "UNKNOWN",
+                "regional_breakdown": {},
+                "institutional_implication": f"No global PMI survey data available for period {rep_period}.",
+            }
+
         pmi_breakdown = {}
-        global_pmi_val = 49.8
+        global_pmi_val: Optional[float] = None
         for r in records:
+            val_act = r.value_actual
+            status = "EXPANSION" if (val_act is not None and val_act >= 50.0) else "CONTRACTION"
             pmi_breakdown[r.component_name] = {
                 "country": r.country,
                 "currency": r.currency,
-                "actual": r.value_actual,
+                "actual": val_act,
                 "previous": r.value_previous,
                 "mom_change": r.mom_change,
-                "status": "EXPANSION" if r.value_actual >= 50.0 else "CONTRACTION",
+                "status": status,
             }
             if "Global" in r.component_name and r.country == "GLOBAL":
-                global_pmi_val = r.value_actual
+                global_pmi_val = val_act
+
+        if global_pmi_val is None:
+            actual_vals = [d["actual"] for d in pmi_breakdown.values() if d["actual"] is not None]
+            global_pmi_val = round(sum(actual_vals) / len(actual_vals), 1) if actual_vals else None
+
+        if global_pmi_val is None:
+            return {
+                "period": rep_period,
+                "status": "unavailable",
+                "global_composite_pmi": None,
+                "global_regime": "UNKNOWN",
+                "regional_breakdown": pmi_breakdown,
+                "institutional_implication": f"Incomplete PMI values for period {rep_period}.",
+            }
 
         regime = "EXPANSION (>50)" if global_pmi_val >= 50.0 else "CONTRACTION (<50)"
-        verdict = (
-            f"Global manufacturing sits at {global_pmi_val:.1f} in {regime.lower()}. "
-            "US and UK display expansionary resilience, while Eurozone remains in structural contraction drag. "
-            "Divergence favors USD and GBP against EUR in cross-currency industrial trade."
-        )
+        expanding_regions = [
+            d["country"] for d in pmi_breakdown.values() if d["status"] == "EXPANSION" and d["country"] != "GLOBAL"
+        ]
+        contracting_regions = [
+            d["country"] for d in pmi_breakdown.values() if d["status"] == "CONTRACTION" and d["country"] != "GLOBAL"
+        ]
+
+        verdict_parts = [f"Global manufacturing sits at {global_pmi_val:.1f} in {regime.lower()}."]
+        if expanding_regions:
+            verdict_parts.append(f"Expansionary resilience observed in {', '.join(expanding_regions)}.")
+        if contracting_regions:
+            verdict_parts.append(f"Contraction drag observed in {', '.join(contracting_regions)}.")
 
         return {
             "period": rep_period,
+            "status": "available",
             "global_composite_pmi": global_pmi_val,
             "global_regime": regime,
             "regional_breakdown": pmi_breakdown,
-            "institutional_implication": verdict,
+            "institutional_implication": " ".join(verdict_parts),
         }
