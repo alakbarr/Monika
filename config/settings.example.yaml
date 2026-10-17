@@ -3188,3 +3188,12 @@ benchmark:
       - "groq:groq-qwen3.8-27b"
       - "openrouter:qwen/qwen-2.5-72b-instruct"
       - "9router:qwen/qwen-2.5-72b-instruct"
+
+security:
+  quarantine_days: 30
+  prompt_injection_threshold: 0.85
+  ssrf_allowed_ports:
+    - 80
+    - 443
+  denial_breaker_threshold: 5
+  audit_logging: true

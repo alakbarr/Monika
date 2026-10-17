@@ -186,6 +186,27 @@ class BenchmarkConfig(SubscriptableConfig):
     router_matrix: dict[str, list[str]] | None = Field(default_factory=dict)
 
 
+class SecurityConfig(SubscriptableConfig):
+    quarantine_days: int | None = Field(default=30, ge=0, le=365)
+    prompt_injection_threshold: float | None = Field(default=0.85, ge=0.0, le=1.0)
+    ssrf_allowed_ports: list[int] | None = Field(default_factory=lambda: [80, 443])
+    denial_breaker_threshold: int | None = Field(default=5, ge=1, le=50)
+    audit_logging: bool | None = True
+
+
+class DatabaseConfig(SubscriptableConfig):
+    url: SecretStr | None = None
+    echo: bool | None = False
+    pool_size: int | None = Field(default=5, ge=1, le=100)
+    max_overflow: int | None = Field(default=10, ge=0, le=100)
+
+
+class TelegramConfig(SubscriptableConfig):
+    bot_token: SecretStr | None = None
+    chat_id: str | None = None
+    enabled: bool | None = False
+
+
 class TradingAgentConfig(SubscriptableConfig):
     installation_tier: str | None = Field(default="trial", pattern="^(trial|full|unconfigured)$")
     app_name: str | None = None
@@ -201,6 +222,9 @@ class TradingAgentConfig(SubscriptableConfig):
     harness: HarnessConfig | None = None
     evals: EvalsConfig | None = None
     benchmark: BenchmarkConfig | None = None
+    security: SecurityConfig | None = None
+    database: DatabaseConfig | None = None
+    telegram: TelegramConfig | None = None
     plugins: dict[str, Any] | None = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -226,4 +250,10 @@ class TradingAgentConfig(SubscriptableConfig):
             EvalsConfig.model_validate(self.evals)
         if self.benchmark:
             BenchmarkConfig.model_validate(self.benchmark)
+        if self.security:
+            SecurityConfig.model_validate(self.security)
+        if self.database:
+            DatabaseConfig.model_validate(self.database)
+        if self.telegram:
+            TelegramConfig.model_validate(self.telegram)
         return self

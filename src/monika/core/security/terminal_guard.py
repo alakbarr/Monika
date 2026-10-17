@@ -24,29 +24,46 @@ HARDLINE_BLOCKLIST_PATTERNS = [
         r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f*|-f*r[a-zA-Z]*)\s+(?:/|/etc|/usr|/bin|/var|~|\$HOME|\*)(?:/|\*|\s|$|;)",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"\b(?:Remove-Item|ri)\s+.*(?:-r|-recurse).*(?:-force)?.*(?:\/|\\|C:\\|C:\/|\*|env:|filesystem::)",
+        re.IGNORECASE,
+    ),
     re.compile(r"\b(del|erase|rd|rmdir)\s+.*(/s|/q).*(\\|C:\\|C:/)(?:\s|$|;)", re.IGNORECASE),
-    re.compile(r"\b(mkfs|format)\b", re.IGNORECASE),
+    re.compile(r"\b(mkfs|format|Format-Volume)\b", re.IGNORECASE),
     re.compile(r"\bdd\s+.*of=(/dev/|\\\\.\b)", re.IGNORECASE),
     # Forkbomb & Process Sabotage
     re.compile(r":\(\)\s*\{\s*:\|:&\s*\};:", re.IGNORECASE),
     re.compile(r"\bkill\s+-9\s+-1\b", re.IGNORECASE),
     re.compile(r"\b(shutdown|reboot|poweroff|halt)\b", re.IGNORECASE),
     re.compile(r"\b(Stop-Computer|Restart-Computer)\b", re.IGNORECASE),
-    re.compile(r"\btaskkill\s+.*(/f|/im\s+python\.exe|/im\s+terminal64\.exe)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:taskkill|Stop-Process|spps)\s+.*(?:/f|/im\s+python\.exe|/im\s+terminal64\.exe|-name\s+python|-name\s+terminal64|-processname\s+python|-processname\s+terminal64)\b",
+        re.IGNORECASE,
+    ),
     # Sudo stdin password injection
     re.compile(r"echo\s+.*\|\s*sudo\s+-S\b", re.IGNORECASE),
     # Direct access to shadow/credentials
-    re.compile(r"\b(cat|type|more|less|head|tail)\s+.*(/etc/shadow|/etc/passwd|\.ssh/id_|\.env)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(cat|type|more|less|head|tail|Get-Content|gc)\s+.*(/etc/shadow|/etc/passwd|\.ssh/id_|\.env)\b",
+        re.IGNORECASE,
+    ),
     # Cloud Instance Metadata Service (IMDS) SSRF Protection
     re.compile(
-        r"(?:169\.254\.169\.254|169\.254\.170\.2|metadata\.google\.internal|100\.100\.100\.200|fd00:ec2::254)",
+        r"(?:169\.254\.169\.254|169\.254\.170\.2|metadata\.google\.internal|100\.100\.100\.200|fd00:ec2::254|2852039166)",
         re.IGNORECASE,
     ),
     # Reverse shell & socket pipes
     re.compile(r"/dev/(?:tcp|udp)/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", re.IGNORECASE),
     re.compile(r"\bnc(?:\.traditional)?\s+-[a-zA-Z]*e\b|\bncat\s+.*--exec\b", re.IGNORECASE),
     re.compile(r"\b(?:base64\s+-d|openssl\s+enc\s+-d)\s*\|\s*(?:bash|sh|zsh|powershell|pwsh)\b", re.IGNORECASE),
-    re.compile(r"\b(?:Invoke-Expression|iex)\s*[\(\$].*(?:DownloadString|FromBase64String|webclient)", re.IGNORECASE),
+    re.compile(
+        r"\b(?:Invoke-Expression|iex)\s*[\(\$\s].*(?:DownloadString|FromBase64String|webclient|irm|Invoke-RestMethod|iwr)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:irm|Invoke-RestMethod|iwr|Invoke-WebRequest)\b.*\|\s*(?:iex|Invoke-Expression)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 # Sensitive file and directory names that agent is forbidden from writing or deleting
@@ -151,11 +168,9 @@ def is_hardline_blocked_command(cmd_line: str) -> tuple[bool, str]:
 
 
 def _resolve_repo_root() -> Path:
-    p = Path(__file__).resolve()
-    for parent in p.parents:
-        if (parent / "pyproject.toml").is_file():
-            return parent
-    return p.parents[4] if len(p.parents) > 4 else p.parents[-1]
+    from monika.core.paths import get_repo_root
+
+    return get_repo_root()
 
 
 def assert_safe_write_path(target_path: str, safe_root: str | None = None) -> str:

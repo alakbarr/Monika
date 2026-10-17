@@ -33,7 +33,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Set, Tuple
 
-logger = logging.getLogger("TradingAgent.Security.PromptInjectionScanner")
+logger = logging.getLogger("monika.core.security.prompt_injection_scanner")
 
 
 class PromptInjectionThreatDetected(ValueError):
@@ -229,9 +229,10 @@ class PromptInjectionScanner:
             )
 
         sanitized = normalized
-        if final_score > 0.0:
-            for pattern, _, _ in all_rules:
-                sanitized = pattern.sub("[REDACTED_PROMPT_INJECTION]", sanitized)
+        # Neutralize dangerous delimiter tokens if detected in sub-threshold text
+        for pattern, _, _ in cls.DELIMITER_PATTERNS:
+            if pattern.search(sanitized):
+                sanitized = pattern.sub("[REDACTED_DELIMITER]", sanitized)
 
         return InjectionScanResult(
             is_safe=True,

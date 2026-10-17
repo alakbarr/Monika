@@ -417,6 +417,26 @@ class ToolRegistry:
         except Exception as hook_err:
             logger.debug(f"[ToolDispatch] pre_tool_call notice: {hook_err}")
 
+        # 2. Centralized Security Interceptor Pipeline
+        try:
+            from monika.application.analysis.tools.unified_registry import run_security_interceptors
+
+            run_security_interceptors(canonical, arguments or {})
+        except Exception as sec_err:
+            threat_names = (
+                "PromptInjectionThreatDetected",
+                "SSRFViolationError",
+                "CommandSecurityViolationError",
+                "SecurityViolationError",
+            )
+            if any(t in type(sec_err).__name__ for t in threat_names):
+                logger.warning(f"[ToolSecurity] Tool '{canonical}' blocked by security guard: {sec_err}")
+                return {
+                    "error": f"Tool '{canonical}' execution blocked by security guard: {sec_err}",
+                    "is_error": True,
+                }
+            raise
+
         try:
             if tool:
                 if not tool.is_available():

@@ -34,6 +34,7 @@ CRITICAL_CORE_LIBRARIES: set[str] = {
     "pandas",
     "scipy",
     "sqlalchemy",
+    "sqlmodel",
     "asyncpg",
     "pydantic",
     "fastapi",
@@ -41,6 +42,10 @@ CRITICAL_CORE_LIBRARIES: set[str] = {
     "alembic",
     "pytest",
     "pyyaml",
+    "ruamel.yaml",
+    "cryptography",
+    "psutil",
+    "httpx",
     "requests",
     "aiohttp",
 }
@@ -158,7 +163,9 @@ class SupplyChainQuarantine:
             if rel_dt is not None:
                 if rel_dt.tzinfo is None:
                     rel_dt = rel_dt.replace(tzinfo=UTC)
-                now_dt = datetime.now(UTC)
+                from monika.core.primitives import clock
+
+                now_dt = clock.now()
                 age_delta = now_dt - rel_dt
                 age_days = max(0.0, age_delta.total_seconds() / 86400.0)
 

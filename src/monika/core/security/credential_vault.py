@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-logger = logging.getLogger("TradingAgent.Security.CredentialVault")
+logger = logging.getLogger("monika.core.security.credential_vault")
 
 # Immutable freeze flag evaluated at import time to prevent prompt injection manipulation
 _REDACT_ENABLED: bool = True
@@ -444,8 +444,9 @@ class CredentialVault:
 
         masked = str(text)
 
-        # 1. Mask exact registered secrets
-        for secret in list(self._registered_secrets) + list(_VAULT_REDACTION_VALUES):
+        # 1. Mask exact registered secrets (deduplicated & sorted by length descending)
+        all_secrets = sorted(set(self._registered_secrets) | set(_VAULT_REDACTION_VALUES), key=len, reverse=True)
+        for secret in all_secrets:
             if secret in masked:
                 if len(secret) > 8:
                     replacement = f"{secret[:2]}***[REDACTED]***{secret[-2:]}"

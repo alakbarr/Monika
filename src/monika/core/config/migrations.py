@@ -58,6 +58,49 @@ def require_parseable_config(path: Union[str, Path]) -> None:
         ) from exc
 
 
+# Unified bridge to config_migrations
+try:
+    from monika.core.config.config_migrations import DEFAULT_SUBSETS, migrate_settings
+except ImportError:
+    from .config_migrations import DEFAULT_SUBSETS, migrate_settings
+
+
+def _apply_v1_to_v2(cfg: dict[str, Any]) -> dict[str, Any]:
+    v2_subsets = ["token_budget", "execution", "paper_trading", "learning_loop"]
+    import copy
+
+    migrated = copy.deepcopy(cfg)
+    for section in v2_subsets:
+        default_vals = DEFAULT_SUBSETS.get(section, {})
+        if section not in migrated:
+            migrated[section] = copy.deepcopy(default_vals)
+        elif isinstance(default_vals, dict) and isinstance(migrated[section], dict):
+            for k, v in default_vals.items():
+                if k not in migrated[section]:
+                    migrated[section][k] = copy.deepcopy(v)
+    return migrated
+
+
+def _apply_v2_to_v3(cfg: dict[str, Any]) -> dict[str, Any]:
+    v3_subsets = ["harness", "evals", "benchmark", "security"]
+    import copy
+
+    migrated = copy.deepcopy(cfg)
+    for section in v3_subsets:
+        default_vals = DEFAULT_SUBSETS.get(section, {})
+        if section not in migrated:
+            migrated[section] = copy.deepcopy(default_vals)
+        elif isinstance(default_vals, dict) and isinstance(migrated[section], dict):
+            for k, v in default_vals.items():
+                if k not in migrated[section]:
+                    migrated[section][k] = copy.deepcopy(v)
+    return migrated
+
+
+MIGRATION_REGISTRY[2] = _apply_v1_to_v2
+MIGRATION_REGISTRY[3] = _apply_v2_to_v3
+
+
 def migrate_config(config: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     """
     Evaluates config schema version and applies sequential migrations up to CURRENT_CONFIG_VERSION.
@@ -68,10 +111,11 @@ def migrate_config(config: dict[str, Any]) -> tuple[dict[str, Any], bool]:
 
     current_ver = get_config_version(config)
 
-    # Baseline legacy config (no _config_version) -> assign current baseline version
+    # Baseline legacy config (no _config_version) -> assign current baseline version and backfill required defaults
     if current_ver == 0:
-        config["_config_version"] = CURRENT_CONFIG_VERSION
-        return config, True
+        migrated, _ = migrate_settings(config)
+        migrated["_config_version"] = CURRENT_CONFIG_VERSION
+        return migrated, True
 
     if current_ver < SUPPORT_FLOOR_VERSION:
         raise ValueError(
@@ -99,12 +143,6 @@ def migrate_config(config: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         was_migrated = True
     return migrated_cfg, was_migrated
 
-
-# Unified bridge to config_migrations
-try:
-    from monika.core.config.config_migrations import DEFAULT_SUBSETS, migrate_settings
-except ImportError:
-    from .config_migrations import DEFAULT_SUBSETS, migrate_settings
 
 __all__ = [
     "CURRENT_CONFIG_VERSION",

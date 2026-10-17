@@ -7,7 +7,28 @@ Prevents unauthorized modifications to critical system variables.
 from typing import FrozenSet
 
 BLOCKED_ENV_VARS: frozenset[str] = frozenset(
-    {"PATH", "PYTHONPATH", "LD_PRELOAD", "SHELL", "COMSPEC", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "DATABASE_URL"}
+    {
+        "PATH",
+        "PYTHONPATH",
+        "PYTHONHOME",
+        "PYTHONSTARTUP",
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "DYLD_LIBRARY_PATH",
+        "DYLD_INSERT_LIBRARIES",
+        "SHELL",
+        "COMSPEC",
+        "SYSTEMROOT",
+        "WINDIR",
+        "TEMP",
+        "TMP",
+        "DATABASE_URL",
+        "MONIKA_WRITE_SAFE_ROOT",
+        "MONIKA_VAULT_KEY",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+    }
 )
 
 

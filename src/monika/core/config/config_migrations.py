@@ -49,6 +49,13 @@ DEFAULT_SUBSETS: dict[str, Any] = {
     "benchmark": {
         "max_drift_pct": 15.0,
     },
+    "security": {
+        "quarantine_days": 30,
+        "prompt_injection_threshold": 0.85,
+        "ssrf_allowed_ports": [80, 443],
+        "denial_breaker_threshold": 5,
+        "audit_logging": True,
+    },
 }
 
 
@@ -83,7 +90,7 @@ def migrate_settings(raw_settings: dict[str, Any]) -> tuple[dict[str, Any], list
 
     if version < 3:
         # Migration from v2 to v3
-        v3_subsets = ["harness", "evals", "benchmark"]
+        v3_subsets = ["harness", "evals", "benchmark", "security"]
         for section in v3_subsets:
             default_vals = DEFAULT_SUBSETS.get(section, {})
             if section not in settings:

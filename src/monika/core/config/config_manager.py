@@ -115,6 +115,13 @@ class ConfigManager:
             self.publish("scraping", new_settings["scraping"])
 
         self.publish("all", new_settings)
+        try:
+            from monika.core.config.protocols import notify_config_listeners
+
+            notify_config_listeners(new_settings)
+        except Exception as notify_err:
+            logger.debug(f"Protocol listeners notification error: {notify_err}")
+
         return new_settings
 
     @property

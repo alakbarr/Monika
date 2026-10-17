@@ -49,8 +49,6 @@ SAFE_SYSTEM_KEYS = frozenset(
         "TMP",
         "LANG",
         "LC_ALL",
-        "PYTHONPATH",
-        "PYTHONHOME",
         "PYTHONUTF8",
         "PYTHONIOENCODING",
         "HOMEDRIVE",

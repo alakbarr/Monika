@@ -40,12 +40,9 @@ def is_dangerous_nt_namespace(path_input: Union[str, Path]) -> bool:
 
     if normalized.startswith("\\??\\"):
         return True
-    if normalized.startswith("\\\\.\\"):
+    # Block all UNC network shares (\\server\share, //server/share) and NT device namespaces (\\.\, \\?\)
+    if normalized.startswith("\\\\"):
         return True
-    if normalized.startswith("\\\\?\\"):
-        upper = normalized[4:].upper()
-        if upper.startswith("UNC\\") or upper.startswith("GLOBALROOT\\") or upper.startswith("GLOBAL??\\"):
-            return True
 
     return False
 

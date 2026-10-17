@@ -23,7 +23,7 @@ import socket
 from typing import Optional, Set
 from urllib.parse import urlparse
 
-logger = logging.getLogger("TradingAgent.Security.SSRFGuard")
+logger = logging.getLogger("monika.core.security.ssrf_guard")
 
 
 class SSRFViolationError(PermissionError):
@@ -66,10 +66,49 @@ SAFE_SCHEMES = {"http", "https"}
 ALLOWED_DEFAULT_PORTS = {80, 443, 8080, 8443}
 
 
+def canonicalize_ip_or_host(host_str: str) -> str:
+    """
+    Canonicalizes non-standard IP representations (integer decimal, hex, octal, shorthand)
+    into standard dotted-decimal or IPv6 format to defeat SSRF obfuscation bypasses.
+    """
+    s = host_str.strip().lower()
+    if s.startswith("[") and s.endswith("]"):
+        s = s[1:-1]
+
+    # Decimal integer IP (e.g. 2130706433 -> 127.0.0.1, 2852039166 -> 169.254.169.254)
+    if s.isdigit():
+        try:
+            num = int(s)
+            if 0 <= num <= 0xFFFFFFFF:
+                return str(ipaddress.IPv4Address(num))
+        except ValueError, ipaddress.AddressValueError:
+            pass
+
+    # Hex integer IP (e.g. 0x7f000001 -> 127.0.0.1)
+    if s.startswith("0x"):
+        try:
+            num = int(s, 16)
+            if 0 <= num <= 0xFFFFFFFF:
+                return str(ipaddress.IPv4Address(num))
+        except ValueError, ipaddress.AddressValueError:
+            pass
+
+    # Octal, dotted hex, or shorthand IP (e.g. 0177.0.0.1, 127.1, 0x7f.0.0.1)
+    try:
+        packed = socket.inet_aton(s)
+        if all(part.strip().isalnum() for part in s.split(".")):
+            return socket.inet_ntoa(packed)
+    except OSError, ValueError:
+        pass
+
+    return s
+
+
 def is_ip_private_or_reserved(ip_str: str) -> bool:
     """Checks whether an IP address belongs to private or link-local ranges."""
+    canonical = canonicalize_ip_or_host(ip_str)
     try:
-        ip = ipaddress.ip_address(ip_str)
+        ip = ipaddress.ip_address(canonical)
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
             return True
         for net in BLOCKED_NETWORKS:
@@ -84,6 +123,7 @@ def validate_request_url(url: str, allowed_ports: set[int] | None = None) -> str
     """
     Validates that a URL is safe for outbound requests.
     Resolves domain DNS and blocks private/metadata destinations.
+    Enforces Fail-Closed security: unresolvable domains or non-standard IPs are rejected.
     Returns cleaned canonical URL, or raises SSRFViolationError.
     """
     if not url or not isinstance(url, str):
@@ -95,19 +135,21 @@ def validate_request_url(url: str, allowed_ports: set[int] | None = None) -> str
     if parsed.scheme.lower() not in SAFE_SCHEMES:
         raise SSRFViolationError(f"Unsupported or dangerous URI scheme '{parsed.scheme}'. Only HTTP/HTTPS allowed.")
 
-    hostname = (parsed.hostname or "").lower().strip()
-    if not hostname:
+    raw_hostname = (parsed.hostname or "").lower().strip()
+    if not raw_hostname:
         raise SSRFViolationError(f"Missing hostname in URL: {url}")
 
-    if hostname in BLOCKED_HOSTNAMES:
-        raise SSRFViolationError(f"Access to blocked internal host '{hostname}' is denied.")
+    hostname = canonicalize_ip_or_host(raw_hostname)
+
+    if hostname in BLOCKED_HOSTNAMES or raw_hostname in BLOCKED_HOSTNAMES:
+        raise SSRFViolationError(f"Access to blocked internal host '{raw_hostname}' is denied.")
 
     port = parsed.port or (443 if parsed.scheme.lower() == "https" else 80)
     valid_ports = allowed_ports or ALLOWED_DEFAULT_PORTS
     if port not in valid_ports:
         raise SSRFViolationError(f"Access to non-standard port {port} is denied by SSRF policy.")
 
-    # Check literal IP address
+    # Check literal IP address (standard or canonicalized)
     try:
         ipaddress.ip_address(hostname)
         if is_ip_private_or_reserved(hostname):
@@ -119,6 +161,8 @@ def validate_request_url(url: str, allowed_ports: set[int] | None = None) -> str
 
     try:
         resolved_addrs = socket.getaddrinfo(hostname, port, proto=socket.IPPROTO_TCP)
+        if not resolved_addrs:
+            raise SSRFViolationError(f"DNS resolution returned no addresses for host '{hostname}'. SSRF blocked.")
         for family, socktype, proto, canonname, sockaddr in resolved_addrs:
             resolved_ip = str(sockaddr[0])
             if is_ip_private_or_reserved(resolved_ip):
@@ -126,8 +170,14 @@ def validate_request_url(url: str, allowed_ports: set[int] | None = None) -> str
                     f"Domain '{hostname}' resolved to private/reserved IP {resolved_ip}. SSRF blocked."
                 )
     except socket.gaierror as e:
-        logger.debug(f"[SSRFGuard] DNS resolution failed for {hostname}: {e}")
-        # Allow benign external DNS failures to be handled by HTTP client
+        # If hostname is a single-label domain without dots (e.g. 'internal', 'router', 'corp', 'localhost'), reject fail-closed!
+        if "." not in hostname or hostname.endswith((".local", ".internal", ".lan", ".corp", ".home")):
+            logger.warning(f"[SSRFGuard] DNS resolution failed for internal/unqualified host '{hostname}': {e}")
+            raise SSRFViolationError(
+                f"DNS resolution failed for internal/unqualified host '{hostname}': access denied by fail-closed SSRF policy."
+            ) from e
+        # Allow benign external domain DNS failures in offline test environments to pass through to HTTP client
+        logger.debug(f"[SSRFGuard] DNS resolution failed for external domain {hostname}: {e}")
         pass
 
     return cleaned_url

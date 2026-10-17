@@ -428,10 +428,15 @@
 
 ### Folder: `src/monika/core/config` <a id="folder-srcmonikacoreconfig"></a>
 
+#### `__init__.py` - *Monika Core Configuration Package.*
+- **Path**: [`src/monika/core/config/__init__.py`](src/monika/core/config/__init__.py)
+
 #### `atomic_writer.py` - *Atomic YAML configuration writer with comment preservation, fsync, and automatic backups.*
 - **Path**: [`src/monika/core/config/atomic_writer.py`](src/monika/core/config/atomic_writer.py)
 - **Classes**:
   - `class AtomicConfigWriter`: Safely updates or writes YAML configuration files atomically without destroying comments.
+    - `__init__(config_path: str)`
+    - `update_setting(dot_key: str, value: Any) -> bool` - *Instance method to update a single dotted key path atomically, preserving comments.*
     - `backup(path: Union[str, Path], max_backups: int) -> Path | None` - *Creates a timestamped backup of the target config file in a 'backups' subdirectory.*
     - `write(path: Union[str, Path], data: dict[str, Any]) -> Path` - *Atomically writes full data dict to YAML path using temporary file and atomic replace.*
     - `update_in_place(path: Union[str, Path], update_dict: dict[str, Any]) -> Path` - *Selectively merges update_dict into an existing YAML file while strictly preserving*
@@ -473,9 +478,6 @@
     - `check_and_reload() -> bool` - *Check if file was modified and reload parameters. Returns True if reloaded.*
     - `async watch_and_reload(shutdown_event: asyncio.Event | None)` - *Continuous background task watching config file.*
   - `class RiskParameterReloader(ConfigReloader)`: Backward-compatible alias for ConfigReloader focusing on RiskGate.
-  - `class AtomicConfigWriter`: Safely updates settings.yaml using atomic write (temp file + rename).
-    - `__init__(config_path: str)`
-    - `update_setting(dot_key: str, value: Any) -> bool`
 
 #### `key_validator.py` - *Fuzzy configuration key validation with 'did you mean' suggestions.*
 - **Path**: [`src/monika/core/config/key_validator.py`](src/monika/core/config/key_validator.py)
@@ -528,6 +530,9 @@
   - `class BenchmarkCandidateConfig(BaseModel)`
   - `class BenchmarkTierConfig(BaseModel)`
   - `class BenchmarkConfig(SubscriptableConfig)`
+  - `class SecurityConfig(SubscriptableConfig)`
+  - `class DatabaseConfig(SubscriptableConfig)`
+  - `class TelegramConfig(SubscriptableConfig)`
   - `class TradingAgentConfig(SubscriptableConfig)`
     - `validate_all_sections() -> TradingAgentConfig`
 
@@ -781,6 +786,7 @@
 - **Classes**:
   - `class SSRFViolationError(PermissionError)`: Raised when an outbound URL violates SSRF safety rules.
 - **Top-Level Functions**:
+  - `canonicalize_ip_or_host(host_str: str) -> str`: Canonicalizes non-standard IP representations (integer decimal, hex, octal, shorthand)
   - `is_ip_private_or_reserved(ip_str: str) -> bool`: Checks whether an IP address belongs to private or link-local ranges.
   - `validate_request_url(url: str, allowed_ports: set[int] | None) -> str`: Validates that a URL is safe for outbound requests.
   - `is_url_safe(url: str) -> bool`: Safe boolean checker that does not raise exceptions.
@@ -6999,6 +7005,8 @@
     - `async execute_tool(name: str, arguments: Dict[str, Any], context: Any, ...) -> Any` - *Execute tool natively, passing validated arguments and context as appropriate.*
     - `async dispatch(name: str, arguments: Dict[str, Any], context: Any) -> str` - *Validate input via Pydantic model, execute handler, and truncate/spill output.*
     - `async tool_call(name: str, arguments: Dict[str, Any]) -> str` - *Direct bridge method for agent loop tool calling.*
+- **Top-Level Functions**:
+  - `run_security_interceptors(name: str, arguments: Dict[str, Any]) -> None`: Centralized Security Interceptor Pipeline:
 
 ### Folder: `src/monika/application/analysis/tools/core` <a id="folder-srcmonikaapplicationanalysistoolscore"></a>
 

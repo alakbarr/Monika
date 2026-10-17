@@ -208,6 +208,71 @@ class ToolEntry:
             return False
 
 
+def run_security_interceptors(name: str, arguments: Dict[str, Any]) -> None:
+    """
+    Centralized Security Interceptor Pipeline:
+    1. PromptInjectionScanner: Evaluates prompt and user message inputs.
+    2. SSRFGuard: Validates outbound network URLs against private/metadata IPs.
+    3. TerminalGuard: Blocks prohibited host execution commands.
+    4. PathReadWriteGuard: Blocks unauthorized read/write access to secret credentials (.env*, *.key, *.pem).
+    """
+    if not isinstance(arguments, dict):
+        return
+
+    # Stage 1: Prompt Injection Scanner
+    try:
+        from monika.core.security.prompt_injection_scanner import PromptInjectionScanner
+
+        for k, v in arguments.items():
+            if isinstance(v, str) and len(v) > 20:
+                if k in ("prompt", "query", "text", "message", "instruction", "content", "news_text"):
+                    PromptInjectionScanner.assert_safe(v, threshold=0.85)
+    except Exception as pi_err:
+        if "PromptInjectionThreatDetected" in type(pi_err).__name__:
+            raise
+
+    # Stage 2: SSRF Guard
+    try:
+        from monika.core.security.ssrf_guard import validate_request_url
+
+        for k, v in arguments.items():
+            if isinstance(v, str) and (
+                k in ("url", "uri", "endpoint", "target_url") or v.startswith(("http://", "https://"))
+            ):
+                validate_request_url(v)
+    except Exception as ssrf_err:
+        if "SSRFViolationError" in type(ssrf_err).__name__:
+            raise
+
+    # Stage 3: Terminal Guard
+    try:
+        from monika.core.security.terminal_guard import CommandSecurityViolationError, is_hardline_blocked_command
+
+        for k, v in arguments.items():
+            if isinstance(v, str) and k in ("command", "cmd", "exec_cmd"):
+                is_blocked, reason = is_hardline_blocked_command(v)
+                if is_blocked:
+                    raise CommandSecurityViolationError(f"Prohibited terminal command: {reason}")
+    except Exception as term_err:
+        if "CommandSecurityViolationError" in type(term_err).__name__:
+            raise
+
+    # Stage 4: Path Read / Write Guard
+    try:
+        from monika.core.security.nt_guard import SecurityViolationError
+        from monika.core.security.terminal_guard import assert_safe_read_path, assert_safe_write_path
+
+        for k, v in arguments.items():
+            if isinstance(v, str) and k in ("path", "file_path", "filepath", "source_path", "target_path"):
+                if name in ("write_file", "patch", "delete_file", "append_file", "save_file"):
+                    assert_safe_write_path(v)
+                elif name in ("read_file", "view_file", "inspect_file", "get_file"):
+                    assert_safe_read_path(v)
+    except Exception as path_err:
+        if "SecurityViolationError" in type(path_err).__name__:
+            raise
+
+
 class UnifiedToolRegistry:
     """Central registry and dispatcher for all trading analysis and general-purpose tools."""
 
@@ -345,68 +410,8 @@ class UnifiedToolRegistry:
             return [t.get_openai_schema() for t in tools]
 
     def _run_security_interceptors(self, name: str, arguments: Dict[str, Any]) -> None:
-        """
-        Centralized Security Interceptor Pipeline:
-        1. PromptInjectionScanner: Evaluates prompt and user message inputs.
-        2. SSRFGuard: Validates outbound network URLs against private/metadata IPs.
-        3. TerminalGuard: Blocks prohibited host execution commands.
-        4. PathReadWriteGuard: Blocks unauthorized read/write access to secret credentials (.env*, *.key, *.pem).
-        """
-        if not isinstance(arguments, dict):
-            return
-
-        # Stage 1: Prompt Injection Scanner
-        try:
-            from monika.core.security.prompt_injection_scanner import PromptInjectionScanner
-
-            for k, v in arguments.items():
-                if isinstance(v, str) and len(v) > 20:
-                    if k in ("prompt", "query", "text", "message", "instruction", "content", "news_text"):
-                        PromptInjectionScanner.assert_safe(v, threshold=0.85)
-        except Exception as pi_err:
-            if "PromptInjectionThreatDetected" in type(pi_err).__name__:
-                raise
-
-        # Stage 2: SSRF Guard
-        try:
-            from monika.core.security.ssrf_guard import validate_request_url
-
-            for k, v in arguments.items():
-                if isinstance(v, str) and (
-                    k in ("url", "uri", "endpoint", "target_url") or v.startswith(("http://", "https://"))
-                ):
-                    validate_request_url(v)
-        except Exception as ssrf_err:
-            if "SSRFViolationError" in type(ssrf_err).__name__:
-                raise
-
-        # Stage 3: Terminal Guard
-        try:
-            from monika.core.security.terminal_guard import CommandSecurityViolationError, is_hardline_blocked_command
-
-            for k, v in arguments.items():
-                if isinstance(v, str) and k in ("command", "cmd", "exec_cmd"):
-                    is_blocked, reason = is_hardline_blocked_command(v)
-                    if is_blocked:
-                        raise CommandSecurityViolationError(f"Prohibited terminal command: {reason}")
-        except Exception as term_err:
-            if "CommandSecurityViolationError" in type(term_err).__name__:
-                raise
-
-        # Stage 4: Path Read / Write Guard
-        try:
-            from monika.core.security.nt_guard import SecurityViolationError
-            from monika.core.security.terminal_guard import assert_safe_read_path, assert_safe_write_path
-
-            for k, v in arguments.items():
-                if isinstance(v, str) and k in ("path", "file_path", "filepath", "source_path", "target_path"):
-                    if name in ("write_file", "patch", "delete_file", "append_file", "save_file"):
-                        assert_safe_write_path(v)
-                    elif name in ("read_file", "view_file", "inspect_file", "get_file"):
-                        assert_safe_read_path(v)
-        except Exception as path_err:
-            if "SecurityViolationError" in type(path_err).__name__:
-                raise
+        """Centralized Security Interceptor Pipeline delegator."""
+        run_security_interceptors(name, arguments)
 
     async def execute_tool(
         self,

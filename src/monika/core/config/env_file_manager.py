@@ -36,6 +36,11 @@ class EnvFileManager:
         Atomically updates or inserts key-value pairs into the target .env file.
         Preserves existing comments, blank lines, and line ordering.
         """
+        from monika.core.config.security import validate_env_mutation
+
+        for key in updates.keys():
+            validate_env_mutation(key)
+
         target_path = env_path or cls.get_default_env_path()
         target_dir = os.path.dirname(os.path.abspath(target_path))
         os.makedirs(target_dir, exist_ok=True)

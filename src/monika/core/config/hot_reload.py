@@ -122,52 +122,10 @@ class RiskParameterReloader(ConfigReloader):
     pass
 
 
-class AtomicConfigWriter:
-    """Safely updates settings.yaml using atomic write (temp file + rename)."""
+from monika.core.config.atomic_writer import AtomicConfigWriter
 
-    def __init__(self, config_path: str = "config/settings.yaml"):
-        self.config_path = config_path
-
-    def update_setting(self, dot_key: str, value: Any) -> bool:
-        import shutil
-        import tempfile
-
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        target_path = (
-            os.path.join(base_dir, self.config_path) if not os.path.isabs(self.config_path) else self.config_path
-        )
-
-        with open(target_path, encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-
-        parts = dot_key.split(".")
-        curr = cfg
-        for p in parts[:-1]:
-            if p not in curr or not isinstance(curr[p], dict):
-                curr[p] = {}
-            curr = curr[p]
-
-        val = value
-        if isinstance(val, str):
-            if val.lower() == "true":
-                val = True
-            elif val.lower() == "false":
-                val = False
-            else:
-                try:
-                    val = int(val)
-                except ValueError:
-                    try:
-                        val = float(val)
-                    except ValueError:
-                        pass
-        curr[parts[-1]] = val
-
-        dir_name = os.path.dirname(target_path)
-        with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, encoding="utf-8") as tf:
-            yaml.safe_dump(cfg, tf, default_flow_style=False, sort_keys=False)
-            temp_name = tf.name
-
-        shutil.move(temp_name, target_path)
-        logger.info(f"[AtomicConfigWriter] Atomically updated {dot_key} = {val} in {target_path}")
-        return True
+__all__ = [
+    "ConfigReloader",
+    "RiskParameterReloader",
+    "AtomicConfigWriter",
+]

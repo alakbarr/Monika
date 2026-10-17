@@ -421,7 +421,7 @@ async def handle_update_config_parameter(
                 pass
 
     try:
-        from monika.core.config.hot_reload import AtomicConfigWriter
+        from monika.core.config.atomic_writer import AtomicConfigWriter
 
         writer = AtomicConfigWriter()
         success = writer.update_setting(key, val)

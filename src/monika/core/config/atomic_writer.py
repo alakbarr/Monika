@@ -40,6 +40,43 @@ class AtomicConfigWriter:
 
     DEFAULT_MAX_BACKUPS = 10
 
+    def __init__(self, config_path: str = "config/settings.yaml"):
+        self.config_path = config_path
+
+    def update_setting(self, dot_key: str, value: Any) -> bool:
+        """Instance method to update a single dotted key path atomically, preserving comments."""
+        from monika.core.paths import get_repo_root
+
+        p = Path(self.config_path)
+        target_path = p if p.is_absolute() else (get_repo_root() / p)
+
+        parts = dot_key.split(".")
+        curr_delta: dict[str, Any] = {}
+        temp = curr_delta
+        for p_elem in parts[:-1]:
+            temp[p_elem] = {}
+            temp = temp[p_elem]
+
+        val = value
+        if isinstance(val, str):
+            if val.lower() == "true":
+                val = True
+            elif val.lower() == "false":
+                val = False
+            else:
+                try:
+                    val = int(val)
+                except ValueError:
+                    try:
+                        val = float(val)
+                    except ValueError:
+                        pass
+        temp[parts[-1]] = val
+
+        self.update_in_place(target_path, curr_delta, create_backup=True)
+        logger.info(f"[AtomicConfigWriter] Atomically updated {dot_key} = {val} in {target_path} (comments preserved)")
+        return True
+
     @classmethod
     def _sanitize_scalars(cls, data: Any) -> Any:
         """

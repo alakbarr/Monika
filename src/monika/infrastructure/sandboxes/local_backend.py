@@ -42,6 +42,13 @@ class LocalTerminalBackend(BaseTerminalBackend):
         timeout: float = 60.0,
         env: Optional[Dict[str, str]] = None,
     ) -> Tuple[str, str, int]:
+        from monika.core.security.terminal_guard import is_hardline_blocked_command
+
+        is_blocked, reason = is_hardline_blocked_command(cmd)
+        if is_blocked:
+            logger.warning(f"[LocalBackend] Security violation blocked: {cmd[:100]} ({reason})")
+            return "", f"Security Violation: {reason}", -1
+
         target_cwd = cwd or self.default_cwd
         sanitized_env = get_sanitized_environment()
         if env:
