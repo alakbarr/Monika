@@ -86,6 +86,46 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
     return merged
 
 
+def get_paper_trading_config(settings: dict[str, Any] | None) -> dict[str, Any]:
+    """
+    Extract and normalize paper_trading configuration safely whether specified
+    as a boolean (e.g. paper_trading: true) or a dictionary.
+    Guarantees that downstream callers can safely access keys via .get() or brackets.
+    """
+    defaults: dict[str, Any] = {
+        "enabled": True,
+        "initial_balance": 10000.0,
+        "streak_loss_policy": "warn_and_scale",
+        "streak_risk_scale_factor": 0.5,
+        "pause_system_on_daily_sl_limit": False,
+        "suspension_hours": 12,
+        "tp_detection_method": "close_price",
+        "realistic_sl_tp_conflict": "sl_wins",
+        "max_paper_trade_holding_hours": 48.0,
+        "spread_realistic_multiplier": 2.0,
+    }
+    if not isinstance(settings, dict):
+        return defaults
+
+    trading_cfg = settings.get("trading") if isinstance(settings.get("trading"), dict) else {}
+    trading_pt = trading_cfg.get("paper_trading") if isinstance(trading_cfg, dict) else None
+    root_pt = settings.get("paper_trading")
+
+    merged = dict(defaults)
+
+    if isinstance(root_pt, bool):
+        merged["enabled"] = root_pt
+    elif isinstance(root_pt, dict):
+        merged = _deep_merge(merged, root_pt)
+
+    if isinstance(trading_pt, bool):
+        merged["enabled"] = trading_pt
+    elif isinstance(trading_pt, dict):
+        merged = _deep_merge(merged, trading_pt)
+
+    return merged
+
+
 def validate_config(settings: dict[str, Any]) -> TradingAgentConfig:
     """Validate settings dict against TradingAgentConfig schema and return strongly-typed model."""
     try:
@@ -229,23 +269,15 @@ def load_settings(
     if isinstance(settings, dict):
         settings = _resolve_env_vars(settings)
 
-    if isinstance(settings, dict) and ("trading" in settings or "paper_trading" in settings):
+    if isinstance(settings, dict):
         trading_cfg = settings.get("trading")
-        root_pt = settings.get("paper_trading")
-        if (
-            isinstance(trading_cfg, dict)
-            and isinstance(trading_cfg.get("paper_trading"), dict)
-            and isinstance(root_pt, dict)
-        ):
-            pt_cfg = trading_cfg["paper_trading"]
-            if isinstance(pt_cfg, dict):
-                merged_pt = _deep_merge(root_pt, pt_cfg)
-                settings["paper_trading"] = merged_pt
-                trading_cfg["paper_trading"] = merged_pt
-        elif isinstance(trading_cfg, dict) and "paper_trading" in trading_cfg and root_pt is None:
-            settings["paper_trading"] = trading_cfg["paper_trading"]
-        elif isinstance(root_pt, dict) and isinstance(trading_cfg, dict) and "paper_trading" not in trading_cfg:
-            trading_cfg["paper_trading"] = root_pt
+        has_trading_pt = isinstance(trading_cfg, dict) and "paper_trading" in trading_cfg
+        has_root_pt = "paper_trading" in settings
+        if has_trading_pt or has_root_pt:
+            normalized_pt = get_paper_trading_config(settings)
+            settings["paper_trading"] = normalized_pt
+            if isinstance(trading_cfg, dict):
+                trading_cfg["paper_trading"] = normalized_pt
 
     if isinstance(settings, dict):
         # Sinkronisasi schedule cycle interval: trading.schedule.analysis_cycle_hours <-> scheduler.cycle_interval_hours

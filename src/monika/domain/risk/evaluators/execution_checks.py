@@ -49,10 +49,21 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
 
         from sqlalchemy import select
 
-        auto_execute = self.settings.get("trading", {}).get("auto_execute", False)
-        paper_cfg = self.settings.get("trading", {}).get("paper_trading", {})
-        streak_policy = paper_cfg.get("streak_loss_policy", "warn_and_scale")
-        risk_cfg = self.settings.get("trading", {}).get("risk", {})
+        trading_cfg = self.settings.get("trading", {}) if isinstance(self.settings.get("trading"), dict) else {}
+        auto_execute = trading_cfg.get("auto_execute", False)
+        paper_raw = trading_cfg.get("paper_trading", {})
+        if isinstance(paper_raw, dict):
+            paper_cfg = paper_raw
+        elif isinstance(self.settings.get("paper_trading"), dict):
+            paper_cfg = self.settings["paper_trading"]
+        elif isinstance(paper_raw, bool):
+            paper_cfg = {"enabled": paper_raw}
+        else:
+            paper_cfg = {}
+        streak_policy = (
+            paper_cfg.get("streak_loss_policy", "warn_and_scale") if isinstance(paper_cfg, dict) else "warn_and_scale"
+        )
+        risk_cfg = trading_cfg.get("risk", {}) if isinstance(trading_cfg.get("risk"), dict) else {}
         max_consecutive = risk_cfg.get("max_consecutive_losses_per_symbol", 3)
 
         # Check recent losses (limited to past 7 days lookback)
@@ -84,7 +95,7 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
             if streak_policy == "disabled":
                 return (True, f"consecutive_losses_paper_disabled(streak={consecutive_losses})")
             elif streak_policy == "warn_and_scale":
-                scale_factor = paper_cfg.get("streak_risk_scale_factor", 0.5)
+                scale_factor = paper_cfg.get("streak_risk_scale_factor", 0.5) if isinstance(paper_cfg, dict) else 0.5
                 if consecutive_losses >= max_consecutive:
                     return (
                         True,
@@ -209,7 +220,13 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
 
         # Pisahkan live vs paper (DB-14)
         if is_paper is None:
-            is_paper = bool(self.settings.get("paper_trading", {}).get("enabled", False))
+            pt_cfg = self.settings.get("paper_trading", {})
+            if isinstance(pt_cfg, dict):
+                is_paper = bool(pt_cfg.get("enabled", False))
+            elif isinstance(pt_cfg, bool):
+                is_paper = pt_cfg
+            else:
+                is_paper = False
 
         today_trades = paper_today if is_paper else live_today
         trade_label = "paper" if is_paper else "live"
@@ -283,9 +300,16 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
         """Validasi batas spread pasar tidak sedang melebar (FR-4.1)."""
         if is_backtest:
             return True, "backtest_spread_ok"
-        effective_paper = (
-            is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
-        )
+        if is_paper is not None:
+            effective_paper = is_paper
+        else:
+            pt_cfg = self.settings.get("paper_trading", {})
+            if isinstance(pt_cfg, dict):
+                effective_paper = bool(pt_cfg.get("enabled", True))
+            elif isinstance(pt_cfg, bool):
+                effective_paper = pt_cfg
+            else:
+                effective_paper = True
         try:
             client: Any = getattr(self, "_mt5", None)
             if client is None:

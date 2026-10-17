@@ -131,6 +131,12 @@ class ProposalOrderMixin(_ExecutionServiceMixinBase):
                 elapsed_ms=elapsed,
             )
 
+        meta = proposal.metadata if hasattr(proposal, "metadata") and isinstance(proposal.metadata, dict) else {}
+        ana_obj = getattr(proposal, "analysis", None)
+        analysis_id = meta.get("analysis_id") or getattr(ana_obj, "id", None)
+        priced_in_score = meta.get("priced_in_score") or getattr(ana_obj, "priced_in_score", None)
+        pair_group_id = meta.get("pair_group_id") or getattr(ana_obj, "pair_group_id", None)
+
         order_plan = {
             "symbol": proposal.symbol,
             "decision": proposal.direction.lower(),
@@ -139,8 +145,9 @@ class ProposalOrderMixin(_ExecutionServiceMixinBase):
             "take_profit": proposal.take_profit,
             "lot_size": proposal.lot_size,
             "confluence_score": int(proposal.confluence_score),
-            "analysis_id": proposal.metadata.get("analysis_id"),
-            "pair_group_id": proposal.metadata.get("pair_group_id"),
+            "priced_in_score": priced_in_score,
+            "analysis_id": analysis_id,
+            "pair_group_id": pair_group_id,
         }
 
         # Pre-order waterfall hook

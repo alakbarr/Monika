@@ -539,6 +539,7 @@
 #### `settings.py`
 - **Path**: [`src/monika/core/config/settings.py`](src/monika/core/config/settings.py)
 - **Top-Level Functions**:
+  - `get_paper_trading_config(settings: dict[str, Any] | None) -> dict[str, Any]`: Extract and normalize paper_trading configuration safely whether specified
   - `validate_config(settings: dict[str, Any]) -> TradingAgentConfig`: Validate settings dict against TradingAgentConfig schema and return strongly-typed model.
   - `load_settings(path: Union[str, dict[str, Any], None], validate: bool) -> TradingAgentConfig`
   - `load_settings(path: Union[str, dict[str, Any], None], validate: bool, return_model: Literal[False]) -> dict[str, Any]`

@@ -408,6 +408,9 @@ class PreplannedOrderMixin(_ExecutionServiceMixinBase):
             except Exception:
                 analysis_obj = None
 
+        priced_in_val = order_plan.get("priced_in_score")
+        eff_priced_in = int(priced_in_val) if priced_in_val is not None else 5
+
         analysis_for_gate = analysis_obj or AssetAnalysis(
             id=eff_analysis_id,
             symbol=symbol,
@@ -416,6 +419,7 @@ class PreplannedOrderMixin(_ExecutionServiceMixinBase):
             take_profit=tp_price,
             confidence=float(order_plan.get("confidence", 0.85)),
             confluence_score=int(order_plan.get("confluence_score", 8)),
+            priced_in_score=eff_priced_in,
         )
 
         verdict = await self.gate.check(

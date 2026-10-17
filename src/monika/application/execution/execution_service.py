@@ -74,11 +74,26 @@ class ExecutionService(OrderExecutorMixin, RiskEvaluatorMixin, PositionSynchroni
         self.sizer = PositionSizer(settings, mt5_client=self.mt5)
         self.gate = risk_gate if risk_gate is not None else RiskGate(settings, mt5_client=self.mt5)
         self.risk_gate = self.gate  # Backward-compatible alias
-        paper_cfg = self.settings.get("trading", {}).get("paper_trading", {})
-        if "enabled" in paper_cfg:
-            paper_enabled = bool(paper_cfg["enabled"])
+        paper_cfg = (
+            self.settings.get("trading", {}).get("paper_trading")
+            if isinstance(self.settings.get("trading"), dict)
+            else None
+        )
+        if paper_cfg is not None:
+            if isinstance(paper_cfg, dict):
+                paper_enabled = bool(paper_cfg.get("enabled", True))
+            elif isinstance(paper_cfg, bool):
+                paper_enabled = paper_cfg
+            else:
+                paper_enabled = False
         elif "paper_trading" in self.settings:
-            paper_enabled = bool(self.settings.get("paper_trading", {}).get("enabled", True))
+            root_pt = self.settings.get("paper_trading")
+            if isinstance(root_pt, dict):
+                paper_enabled = bool(root_pt.get("enabled", True))
+            elif isinstance(root_pt, bool):
+                paper_enabled = root_pt
+            else:
+                paper_enabled = False
         else:
             paper_enabled = False
         self.dry_run = dry_run or paper_enabled

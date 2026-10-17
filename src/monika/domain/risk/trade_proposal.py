@@ -143,6 +143,17 @@ class TradeProposal(BaseModel):
         dir_val: Literal["BUY", "SELL", "WAIT"] = (
             "BUY" if norm_dir == "BUY" else ("SELL" if norm_dir == "SELL" else "WAIT")
         )
+        meta = dict(metadata or {})
+        if analysis is not None:
+            if "analysis_id" not in meta and getattr(analysis, "id", None) is not None:
+                meta["analysis_id"] = analysis.id
+            if "priced_in_score" not in meta and getattr(analysis, "priced_in_score", None) is not None:
+                meta["priced_in_score"] = analysis.priced_in_score
+            if "confluence_score" not in meta and getattr(analysis, "confluence_score", None) is not None:
+                meta["confluence_score"] = analysis.confluence_score
+            if "pair_group_id" not in meta and getattr(analysis, "pair_group_id", None) is not None:
+                meta["pair_group_id"] = analysis.pair_group_id
+
         return cls(
             symbol=symbol,
             direction=dir_val,
@@ -157,7 +168,7 @@ class TradeProposal(BaseModel):
             account_equity=account_equity,
             free_margin=free_margin,
             spread_pips=spread_pips,
-            metadata=metadata or {},
+            metadata=meta,
             analysis=analysis,
         )
 

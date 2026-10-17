@@ -169,7 +169,15 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
             },
         )
 
-    is_paper_setting = bool(settings.get("trading", {}).get("paper_trading", {}).get("enabled", True))
+    pt_setting = (
+        settings.get("trading", {}).get("paper_trading", {}) if isinstance(settings.get("trading"), dict) else {}
+    )
+    if isinstance(pt_setting, dict):
+        is_paper_setting = bool(pt_setting.get("enabled", True))
+    elif isinstance(pt_setting, bool):
+        is_paper_setting = pt_setting
+    else:
+        is_paper_setting = True
     is_paper = payload.is_paper if payload.is_paper is not None else is_paper_setting
 
     dir_upper = direction.upper()

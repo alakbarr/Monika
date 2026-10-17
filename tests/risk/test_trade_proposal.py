@@ -273,3 +273,26 @@ async def test_risk_gate_evaluate_proposal_forwards_analysis():
     await gate.evaluate_proposal(mock_session, prop)
     gate.evaluate.assert_awaited_once()
     assert gate.evaluate.call_args.kwargs["analysis"] is ana
+
+
+def test_from_analysis_auto_propagates_metadata():
+    class MockAnalysis:
+        id = 2297
+        priced_in_score = 6
+        confluence_score = 8.0
+        pair_group_id = "EUR_USD_MAJOR"
+
+    ana = MockAnalysis()
+    prop = TradeProposal.from_analysis(
+        symbol="EURUSD",
+        decision="BUY",
+        entry_price=1.12384,
+        stop_loss=1.12100,
+        take_profit=1.12850,
+        lot_size=0.1,
+        analysis=ana,
+    )
+    assert prop.metadata["analysis_id"] == 2297
+    assert prop.metadata["priced_in_score"] == 6
+    assert prop.metadata["confluence_score"] == 8.0
+    assert prop.metadata["pair_group_id"] == "EUR_USD_MAJOR"
