@@ -26,6 +26,8 @@ def _extract_sentiment_from_cached_json(
     ts_str = cached_data.get("timestamp") or cached_data.get("updated_at") or cached_data.get("fetched_at")
     if not ts_str:
         return None
+    age_seconds = 0.0
+    is_stale = False
     try:
         from datetime import datetime, timezone
 
@@ -34,7 +36,10 @@ def _extract_sentiment_from_cached_json(
         dt = datetime.fromisoformat(str(ts_str))
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        if (clock.now() - dt).total_seconds() >= 14400:  # 4h fresh
+        age_seconds = (clock.now() - dt).total_seconds()
+        if age_seconds >= 14400:  # > 4h
+            is_stale = True
+        if age_seconds >= 86400 * 7:  # > 7 days dead
             return None
     except Exception:
         return None
@@ -46,20 +51,30 @@ def _extract_sentiment_from_cached_json(
             if isinstance(entry, dict):
                 res = dict(entry)
                 res["cached"] = True
+                if is_stale:
+                    res["stale"] = True
+                    res["stale_hours"] = round(age_seconds / 3600, 1)
                 return res
         elif cached_data.get("symbol") == target_symbol:
             res = dict(cached_data)
             res["cached"] = True
+            if is_stale:
+                res["stale"] = True
+                res["stale_hours"] = round(age_seconds / 3600, 1)
             return res
     else:
         if isinstance(ratios_map, dict) and ratios_map:
-            return {
+            res = {
                 "status": "success",
                 "source": cached_data.get("source", default_source),
                 "ratios": ratios_map,
                 "fetched_at": ts_str,
                 "cached": True,
             }
+            if is_stale:
+                res["stale"] = True
+                res["stale_hours"] = round(age_seconds / 3600, 1)
+            return res
     return None
 
 

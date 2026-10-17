@@ -645,10 +645,11 @@ class TechnicalIndicatorCalculator:
             return None
         return {"timestamp": row.timestamp, "value": json.loads(row.value_json)}
 
-    async def get_snapshot(self, symbol: str, timeframe: str) -> dict:
+    async def get_snapshot(self, symbol: str, timeframe: str, series_depth: int = 15) -> dict:
         """
-        Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta dan arah.
-        Berguna untuk ringkasan data yang diumpankan ke agent.
+        Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta, arah,
+        dan histori pergerakan N-bar (series_depth) untuk indikator kunci (RSI, MACD, Stoch, ADX, dsb).
+        Berguna untuk analisis trend, cross, dan divergence oleh specialist LLM.
         """
         from sqlalchemy import select
 
@@ -656,6 +657,7 @@ class TechnicalIndicatorCalculator:
         if not TechnicalIndicator:
             return {}
 
+        fetch_limit = max(2, min(series_depth, 30))
         recent_ts_result = await self.session.execute(
             select(TechnicalIndicator.timestamp)
             .where(TechnicalIndicator.symbol == symbol)
@@ -663,7 +665,7 @@ class TechnicalIndicatorCalculator:
             .where(TechnicalIndicator.timestamp <= clock.now())
             .group_by(TechnicalIndicator.timestamp)
             .order_by(TechnicalIndicator.timestamp.desc())
-            .limit(2)
+            .limit(fetch_limit)
         )
         recent_ts = recent_ts_result.scalars().all()
         if not recent_ts:
@@ -672,23 +674,43 @@ class TechnicalIndicatorCalculator:
         latest_ts = recent_ts[0]
         prev_ts = recent_ts[1] if len(recent_ts) > 1 else None
 
-        result_latest = await self.session.execute(
-            select(TechnicalIndicator)
-            .where(TechnicalIndicator.symbol == symbol)
-            .where(TechnicalIndicator.timeframe == timeframe)
-            .where(TechnicalIndicator.timestamp == latest_ts)
-        )
-        latest_rows = result_latest.scalars().all()
-
-        prev_map = {}
-        if prev_ts:
-            result_prev = await self.session.execute(
+        rows_by_indicator: dict[str, list[Any]] = {}
+        if len(recent_ts) <= 2:
+            result_latest = await self.session.execute(
                 select(TechnicalIndicator)
                 .where(TechnicalIndicator.symbol == symbol)
                 .where(TechnicalIndicator.timeframe == timeframe)
-                .where(TechnicalIndicator.timestamp == prev_ts)
+                .where(TechnicalIndicator.timestamp == latest_ts)
             )
-            prev_map = {r.indicator_name: json.loads(r.value_json) for r in result_prev.scalars().all()}
+            latest_rows = result_latest.scalars().all()
+
+            prev_map: dict[str, tuple[Any, Any]] = {}
+            if prev_ts:
+                result_prev = await self.session.execute(
+                    select(TechnicalIndicator)
+                    .where(TechnicalIndicator.symbol == symbol)
+                    .where(TechnicalIndicator.timeframe == timeframe)
+                    .where(TechnicalIndicator.timestamp == prev_ts)
+                )
+                prev_map = {r.indicator_name: (r, json.loads(r.value_json)) for r in result_prev.scalars().all()}
+
+            for r in latest_rows:
+                pair = [r]
+                if r.indicator_name in prev_map:
+                    pair.insert(0, prev_map[r.indicator_name][0])
+                rows_by_indicator[r.indicator_name] = pair
+        else:
+            # Fetch all indicator rows for these timestamps in chronological order
+            result_rows = await self.session.execute(
+                select(TechnicalIndicator)
+                .where(TechnicalIndicator.symbol == symbol)
+                .where(TechnicalIndicator.timeframe == timeframe)
+                .where(TechnicalIndicator.timestamp.in_(recent_ts))
+                .order_by(TechnicalIndicator.timestamp.asc())
+            )
+            all_rows = result_rows.scalars().all()
+            for r in all_rows:
+                rows_by_indicator.setdefault(r.indicator_name, []).append(r)
 
         def _extract_scalar(val: Any) -> Optional[float]:
             if isinstance(val, (int, float)):
@@ -699,10 +721,31 @@ class TechnicalIndicatorCalculator:
                         return float(val[k])
             return None
 
+        KEY_SERIES_INDICATORS = {
+            "RSI_14",
+            "MACD_12_26_9",
+            "MACD",
+            "STOCH_14_3",
+            "STOCH",
+            "ADX_14",
+            "ADX",
+            "EMA_20",
+            "EMA_50",
+            "EMA_200",
+            "SMA_20",
+            "SMA_50",
+            "BB_20_2",
+            "AC1_20",
+            "YANG_ZHANG_VOL_20",
+        }
+
         snapshot = {}
-        for row in latest_rows:
-            curr_val = json.loads(row.value_json)
-            prev_val = prev_map.get(row.indicator_name)
+        for ind_name, rows in rows_by_indicator.items():
+            latest_row = next((r for r in reversed(rows) if r.timestamp == latest_ts), rows[-1])
+            prev_row = next((r for r in reversed(rows) if prev_ts and r.timestamp == prev_ts), None)
+
+            curr_val = json.loads(latest_row.value_json)
+            prev_val = json.loads(prev_row.value_json) if prev_row else None
             curr_num = _extract_scalar(curr_val)
             prev_num = _extract_scalar(prev_val) if prev_val is not None else None
 
@@ -716,13 +759,37 @@ class TechnicalIndicatorCalculator:
                 elif delta < -threshold:
                     direction = "falling"
 
-            snapshot[row.indicator_name] = {
-                "timestamp": row.timestamp,
+            entry: dict[str, Any] = {
+                "timestamp": latest_row.timestamp,
                 "value": curr_val,
                 "prev": prev_val,
                 "delta": delta,
                 "direction": direction,
             }
+
+            if ind_name in KEY_SERIES_INDICATORS and len(rows) > 1:
+                series_vals = []
+                for r in rows:
+                    parsed = json.loads(r.value_json)
+                    if isinstance(parsed, dict) and "histogram" in parsed:
+                        series_vals.append(round(float(parsed.get("histogram", 0)), 5))
+                    elif isinstance(parsed, dict) and "k" in parsed and "d" in parsed:
+                        series_vals.append(
+                            {
+                                "k": round(float(parsed.get("k", 0)), 2),
+                                "d": round(float(parsed.get("d", 0)), 2),
+                            }
+                        )
+                    elif isinstance(parsed, dict) and "adx" in parsed:
+                        series_vals.append(round(float(parsed.get("adx", 0)), 2))
+                    else:
+                        num = _extract_scalar(parsed)
+                        if num is not None:
+                            series_vals.append(round(num, 4))
+                if series_vals:
+                    entry["series"] = series_vals
+
+            snapshot[ind_name] = entry
 
         return snapshot
 

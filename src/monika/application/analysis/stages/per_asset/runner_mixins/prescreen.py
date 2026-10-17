@@ -196,9 +196,9 @@ class PrescreenMixin(_RunnerMixinBase):
             logger.debug(f"Prescreen calibration extraction failed: {e}")
 
         bias_note_default = (
-            "\nDEFAULT BIAS: Biaya melewatkan setup bagus (false NO) jauh lebih "
-            "mahal daripada biaya analisis penuh yang ternyata tak perlu (false YES). "
-            "Saat benar-benar ragu antara YES/NO, pilih YES."
+            "\nEVALUATION MANDATE: Balance opportunity capture against pipeline computational cost. "
+            "Return YES if price is within 1.0x H4 ATR of an active structural level (OB/FVG/SR) or has active trend/momentum. "
+            "Return NO if market is in dead consolidation, far from structural levels, or lacks directional catalyst."
         )
         bias_note = bias_note if bias_note else bias_note_default
 
@@ -298,7 +298,7 @@ Rule:
             if resp and resp.get("decision") == "YES":
                 return True, resp.get("reason", "")[:80]
             elif resp and resp.get("decision") == "NO":
-                # --- NEW: BYPASS PRESCREEN IF HIGH CONFIDENCE OR BREAKING CATALYST ---
+                # --- NEW: BYPASS PRESCREEN ONLY IF FRESH BREAKING CATALYST OR EXPLICIT MACRO DRIVER ---
                 try:
                     from datetime import timedelta
 
@@ -307,25 +307,14 @@ Rule:
                     from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
                     from monika.infrastructure.database.models import FundamentalBrief, NewsItem
 
-                    brief = (
-                        await session.execute(
-                            select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
-                        )
-                    ).scalar_one_or_none()
-                    if brief and brief.confidence and brief.confidence >= 0.50:
-                        logger.info(
-                            f"[{symbol}] Prescreen returned NO, but bypassing due to solid FundamentalBrief confidence ({brief.confidence})"
-                        )
-                        return True, "forced_by_macro_override_high_conf"
-
                     pair_info = SYMBOL_CURRENCY_MAP.get(symbol, {})
                     base_c, quote_c = pair_info.get("base"), pair_info.get("quote")
                     if base_c and quote_c:
                         recent_breaking = (
                             await session.execute(
                                 select(NewsItem)
-                                .where(NewsItem.fetched_at >= _get_clock().now() - timedelta(hours=2))
-                                .where(NewsItem.impact == "BREAKING")
+                                .where(NewsItem.fetched_at >= _get_clock().now() - timedelta(minutes=60))
+                                .where(NewsItem.impact.in_(["BREAKING", "HIGH"]))
                                 .where(
                                     NewsItem.currency_tags.like(f"%{base_c}%")
                                     | NewsItem.currency_tags.like(f"%{quote_c}%")
@@ -335,9 +324,23 @@ Rule:
                         ).scalar_one_or_none()
                         if recent_breaking:
                             logger.info(
-                                f"[{symbol}] Prescreen returned NO, but bypassing due to BREAKING news catalyst"
+                                f"[{symbol}] Prescreen returned NO, but bypassing due to recent BREAKING news catalyst"
                             )
                             return True, "forced_by_macro_override_breaking_news"
+
+                    brief = (
+                        await session.execute(
+                            select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                        )
+                    ).scalar_one_or_none()
+                    if brief and brief.confidence and brief.confidence >= 0.85:
+                        matrix = getattr(brief, "per_asset_macro_matrix", {}) or {}
+                        sym_entry = matrix.get(symbol) or matrix.get(symbol.replace("/", ""))
+                        if sym_entry and sym_entry.get("tactical_catalyst"):
+                            logger.info(
+                                f"[{symbol}] Prescreen returned NO, but bypassing due to high conviction macro catalyst ({brief.confidence:.2f})"
+                            )
+                            return True, "forced_by_macro_override_tactical_catalyst"
                 except Exception as e:
                     logger.debug(f"[{symbol}] Override check failed: {e}")
                 # --- END NEW ---

@@ -34,7 +34,7 @@ STANDARD_FETCH_TASKS = [
     ("get_vix", {"days_back": 5}),
     ("get_open_positions", {}),
     ("get_risk_state", {}),
-    ("get_economic_calendar", {"impact_filter": "high", "hours_ahead": 24, "hours_behind": 6}),
+    ("get_economic_calendar", {"impact_filter": "high_and_medium", "hours_ahead": 168, "hours_behind": 24}),
 ]
 
 SYMBOL_FETCH_TASKS = [
@@ -89,24 +89,50 @@ class Stage2DataBundler:
         self.settings = settings or {}
         self.executor = ToolExecutor(session, self.settings)
 
-    def _compress_history(self, history: dict, symbol: Optional[str] = None) -> str:
+    def _compress_history(self, history: Any, symbol: Optional[str] = None) -> str:
         """Kompresi data OHLCV menjadi teks yang sangat ringkas dengan presisi dinamis."""
-        if not history or "bars" not in history:
+        if not history:
             return ""
 
-        bars = history["bars"]
-        if not bars:
+        bars: list = []
+        sym: str = symbol or ""
+        if isinstance(history, list):
+            bars = history
+        elif isinstance(history, dict):
+            bars = history.get("bars", [])
+            sym = symbol or history.get("symbol", "")
+        else:
             return ""
 
-        sym = symbol or history.get("symbol", "")
+        if not bars or not isinstance(bars, list):
+            return ""
+
         prec = self._PRICE_PRECISION.get(sym, 5 if "USD" in sym and sym not in ("XAUUSD", "BTCUSD") else 4)
 
         # Gunakan format CSV minimal: time,O,H,L,C,V
         lines = ["time,O,H,L,C,V"]
-        for b in bars[-30:]:  # Batasi 30 bar terakhir (5 hari kerja)
-            t = b["time"].split("T")[0][5:] + " " + b["time"].split("T")[1][:5]  # MM-DD HH:MM
-            v = int(b.get("tick_volume", b.get("volume", 0)))
-            lines.append(f"{t},{b['open']:.{prec}f},{b['high']:.{prec}f},{b['low']:.{prec}f},{b['close']:.{prec}f},{v}")
+        for b in bars[-30:]:  # Batasi 30 bar terakhir
+            if not isinstance(b, dict):
+                continue
+            raw_t = str(b.get("time", ""))
+            if "T" in raw_t:
+                parts = raw_t.split("T")
+                t = parts[0][5:] + " " + parts[1][:5]
+            elif " " in raw_t:
+                parts = raw_t.split(" ")
+                t = parts[0][5:] + " " + parts[1][:5]
+            else:
+                t = raw_t[-11:]
+
+            try:
+                o = float(b.get("open", 0.0))
+                h = float(b.get("high", 0.0))
+                l = float(b.get("low", 0.0))
+                c = float(b.get("close", 0.0))
+                v = int(b.get("tick_volume", b.get("volume", 0)))
+                lines.append(f"{t},{o:.{prec}f},{h:.{prec}f},{l:.{prec}f},{c:.{prec}f},{v}")
+            except Exception:
+                continue
 
         return "\n".join(lines)
 
@@ -135,17 +161,29 @@ class Stage2DataBundler:
             arrow = "▲" if direction == "rising" else "▼" if direction == "falling" else "→"
             dir_str = f" [{arrow} {direction}]" if direction else ""
 
+            series = item.get("series")
+            series_str = ""
+            if series and isinstance(series, list) and len(series) > 1:
+                if all(isinstance(s, (int, float)) for s in series):
+                    compact_s = [str(s) for s in series[-10:]]
+                    series_str = f" | {len(series)}-bar trend: [{', '.join(compact_s)}]"
+                elif all(isinstance(s, dict) for s in series):
+                    k0 = next(iter(series[0].keys()), "")
+                    if k0:
+                        compact_s = [f"{s.get(k0)}" for s in series[-10:]]
+                        series_str = f" | {len(series)}-bar {k0}: [{', '.join(compact_s)}]"
+
             if isinstance(val, dict):
                 parts = []
                 for k, v in val.items():
                     if v is not None:
                         parts.append(f"{k}={v}")
-                lines.append(f"• {name}: {', '.join(parts)}{dir_str}")
+                lines.append(f"• {name}: {', '.join(parts)}{dir_str}{series_str}")
             elif isinstance(val, (int, float)):
                 prev_str = f" (prev: {prev})" if prev is not None else ""
-                lines.append(f"• {name}: {val}{prev_str}{dir_str}")
+                lines.append(f"• {name}: {val}{prev_str}{dir_str}{series_str}")
             else:
-                lines.append(f"• {name}: {val}{dir_str}")
+                lines.append(f"• {name}: {val}{dir_str}{series_str}")
 
         return "\n".join(lines)
 
@@ -186,8 +224,13 @@ class Stage2DataBundler:
                 else (f"price_history_{check_tf}_recent" if f"price_history_{check_tf}_recent" in data else None)
             )
             if ohlcv_key and ohlcv_key in data:
-                bars = data[ohlcv_key].get("bars", [])
-                if bars:
+                raw_entry = data[ohlcv_key]
+                bars = (
+                    raw_entry.get("bars", [])
+                    if isinstance(raw_entry, dict)
+                    else (raw_entry if isinstance(raw_entry, list) else [])
+                )
+                if bars and isinstance(bars[-1], dict):
                     last_bar_time_str = bars[-1].get("time", "")
                     try:
                         last_bar_time = datetime.fromisoformat(last_bar_time_str.replace("Z", "+00:00"))
@@ -206,6 +249,12 @@ class Stage2DataBundler:
 
     async def fetch_bundle(self, symbol: str, cot_code: Optional[str] = None) -> tuple[str, dict]:
         """Menarik seluruh dataset yang dibutuhkan dan memformatnya menjadi string konteks. Mengembalikan `("", {})` jika gagal total."""
+        if not cot_code:
+            from monika.domain.market.instrument_identity import KNOWN_INSTRUMENTS
+
+            inst = KNOWN_INSTRUMENTS.get(symbol)
+            if inst and inst.cot_code:
+                cot_code = inst.cot_code
 
         # NEW: Validate core shared data first (SSVP insight)
         core_data_issues = []
@@ -287,35 +336,28 @@ class Stage2DataBundler:
         except Exception as e:
             fetch_errors.append(f"price_history_D1: {str(e)[:40]}")
 
-        # IMP-3: Market regime detection to prioritize relevant data
+        # IMP-3: Market regime detection
         try:
             regime_result = await self.executor.execute("get_market_regime", {"symbols": [symbol], "timeframe": "D1"})
             if "error" not in regime_result:
                 data["market_regime"] = regime_result
-
-                # Prioritize data based on detected regime
-                regime_str = str(regime_result).lower()
-                is_trending = any(x in regime_str for x in ["trending", "bullish", "bearish", "trend"])
-                is_ranging = any(x in regime_str for x in ["ranging", "consolidation", "sideways"])
-
-                if is_trending:
-                    # In trending markets: fetch deeper structure breaks and D1 data
-                    try:
-                        r = await self.executor.execute("get_structure_breaks", {"symbol": symbol, "timeframe": "D1"})
-                        if "error" not in r:
-                            data["structure_breaks_D1"] = r
-                    except Exception as e:
-                        logger.debug(f"[{symbol}] Failed to fetch structure_breaks_D1: {e}")
-                elif is_ranging:
-                    # In ranging markets: fetch FVG zones and support/resistance more carefully
-                    try:
-                        r = await self.executor.execute("get_smc_zones", {"symbol": symbol, "timeframe": "D1"})
-                        if "error" not in r:
-                            data["smc_zones_D1"] = r
-                    except Exception as e:
-                        logger.debug(f"[{symbol}] Failed to fetch smc_zones_D1: {e}")
         except Exception as e:
             fetch_errors.append(f"market_regime: {str(e)[:40]}")
+
+        # Always fetch both D1 structure breaks and SMC zones for macro structural context
+        try:
+            r_sb = await self.executor.execute("get_structure_breaks", {"symbol": symbol, "timeframe": "D1"})
+            if "error" not in r_sb:
+                data["structure_breaks_D1"] = r_sb
+        except Exception as e:
+            logger.debug(f"[{symbol}] Failed to fetch structure_breaks_D1: {e}")
+
+        try:
+            r_smc = await self.executor.execute("get_smc_zones", {"symbol": symbol, "timeframe": "D1"})
+            if "error" not in r_smc:
+                data["smc_zones_D1"] = r_smc
+        except Exception as e:
+            logger.debug(f"[{symbol}] Failed to fetch smc_zones_D1: {e}")
 
         # Task 2.2: Add asset-specific sentiment tools
         try:
@@ -326,10 +368,16 @@ class Stage2DataBundler:
                 res2 = await self.executor.execute("get_funding_rate", {"symbol": "BTC"})
                 if "error" not in res2:
                     data["funding_rate"] = res2
+                res3 = await self.executor.execute("get_retail_sentiment", {"symbol": "BTCUSD"})
+                if "error" not in res3:
+                    data["binance_sentiment"] = res3
             elif symbol in ("XTIUSD", "XBRUSD"):
                 res = await self.executor.execute("get_fxssi_sentiment", {"symbol": symbol})
                 if "error" not in res:
                     data["fxssi_sentiment"] = res
+                res_eia = await self.executor.execute("get_eia_oil_inventory", {})
+                if "error" not in res_eia:
+                    data["eia_oil_inventory"] = res_eia
             elif symbol not in ("BTCUSD", "XTIUSD", "XBRUSD"):
                 res = await self.executor.execute("get_retail_sentiment", {"symbol": symbol})
                 if "error" not in res:
@@ -591,23 +639,24 @@ class Stage2DataBundler:
 
         asset_sentiments = ""
         if symbol == "BTCUSD":
-            asset_sentiments = ", get_fear_greed_index, get_funding_rate"
-        elif symbol in ("EURUSD", "GBPUSD", "AUDUSD", "USDJPY"):
+            asset_sentiments = ", get_fear_greed_index, get_funding_rate, get_retail_sentiment"
+        elif symbol in ("EURUSD", "GBPUSD", "AUDUSD", "USDJPY", "XAUUSD"):
             asset_sentiments = ", get_retail_sentiment"
-        elif symbol == "XTIUSD":
-            asset_sentiments = ", get_fxssi_sentiment"
+        elif symbol in ("XTIUSD", "XBRUSD"):
+            asset_sentiments = ", get_fxssi_sentiment, get_eia_oil_inventory"
 
         cot_msg = ", get_cot_report" if cot_code and "cot_report" in data else ""
         # Build explicit allowed/blocked tool list
         always_allowed = ["get_news_items", "get_economic_calendar"]
         asset_specific_allowed = []
-        if symbol == "XTIUSD":
+        if symbol in ("XTIUSD", "XBRUSD") and "eia_oil_inventory" not in data:
             asset_specific_allowed.append("get_eia_oil_inventory (MANDATORY for oil analysis)")
 
         failed_tools_allowed = [e.split(":")[0].strip() for e in fetch_errors] if fetch_errors else []
 
         all_allowed = always_allowed + asset_specific_allowed + failed_tools_allowed
 
+        eia_blocked = ", get_eia_oil_inventory" if "eia_oil_inventory" in data else ""
         lines.append(f"""
 # EFFICIENCY PROTOCOL — READ BEFORE CALLING ANY TOOL
 
@@ -618,7 +667,7 @@ DO NOT CALL — DATA ALREADY LOADED ABOVE:
   - get_fundamental_brief, get_market_session, get_dxy, get_vix
   - get_open_positions, get_risk_state, get_technical_indicators
   - get_atr, get_price_history, get_smc_zones, get_structure_breaks
-  - get_swing_points, get_fibonacci_levels{f", get_cot_report" if cot_code and "cot_report" in data else ""}{f", get_fear_greed_index, get_funding_rate" if symbol == "BTCUSD" else ""}{f", get_retail_sentiment" if symbol in ("EURUSD", "GBPUSD", "AUDUSD", "USDJPY") else ""}{f", get_fxssi_sentiment" if symbol == "XTIUSD" else ""}
+  - get_swing_points, get_fibonacci_levels{cot_msg}{f", get_fear_greed_index, get_funding_rate, get_retail_sentiment" if symbol == "BTCUSD" else ""}{f", get_retail_sentiment" if symbol in ("EURUSD", "GBPUSD", "AUDUSD", "USDJPY", "XAUUSD") else ""}{f", get_fxssi_sentiment" if symbol in ("XTIUSD", "XBRUSD") else ""}{eia_blocked}
 
 Calling blocked tools wastes tokens on duplicate data and reduces analysis time budget.
 """)
@@ -819,9 +868,16 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
             from monika.domain.market.playbook_screener import PlaybookScreener
 
             h1_data = data.get("get_price_history_H1", {})
-            h1_bars = h1_data.get("bars", []) if isinstance(h1_data, dict) else []
-            if not h1_bars and isinstance(data.get("get_price_history_H4"), dict):
-                h1_bars = data.get("get_price_history_H4", {}).get("bars", [])
+            h1_bars = (
+                h1_data.get("bars", []) if isinstance(h1_data, dict) else (h1_data if isinstance(h1_data, list) else [])
+            )
+            if not h1_bars:
+                h4_data = data.get("get_price_history_H4", {})
+                h1_bars = (
+                    h4_data.get("bars", [])
+                    if isinstance(h4_data, dict)
+                    else (h4_data if isinstance(h4_data, list) else [])
+                )
 
             h1_tech = data.get("get_technical_indicators_H1", {})
             h1_indicators = h1_tech.get("indicators", h1_tech) if isinstance(h1_tech, dict) else {}
@@ -867,9 +923,9 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
         # Pengecekan ukuran memori (token limit protection):
         raw_bundle = "\n".join(lines)
 
-        max_bundle_chars = 40000
+        max_bundle_chars = 180000
         if hasattr(self, "executor") and hasattr(self.executor, "settings") and self.executor.settings:
-            max_bundle_chars = self.executor.settings.get("analysis", {}).get("stage2_max_bundle_chars", 40000)
+            max_bundle_chars = self.executor.settings.get("analysis", {}).get("stage2_max_bundle_chars", 180000)
 
         if len(raw_bundle) > max_bundle_chars:
             dropped_sections = []
@@ -981,8 +1037,8 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                     f"terkait secara manual sebelum submit.\n"
                 )
 
-            # NOTE: Hard warning only if bundle is extremely large (> 48000 chars)
-            if len(raw_bundle) > 48000:
+            # NOTE: Hard warning only if bundle is extremely large (> 200000 chars)
+            if len(raw_bundle) > 200000:
                 logger.warning(
                     f"[{symbol}] Bundle unusually large ({len(raw_bundle)} chars) after compression — proceeding anyway"
                 )
@@ -992,7 +1048,7 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
             from monika.infrastructure.llm.prompt_compressor import PromptBundleCompressor as ContextCompressor
 
             compressor = ContextCompressor(self.executor.settings if hasattr(self, "executor") else self.settings)
-            bundle = compressor.compress_stage2_bundle(bundle, symbol=symbol, max_tokens=8000)
+            bundle = compressor.compress_stage2_bundle(bundle, symbol=symbol, max_tokens=64000)
         except Exception:
             pass
         logger.info(f"[{symbol}] Stage2 bundle ready: {len(data)} datasets, {len(bundle)} chars")

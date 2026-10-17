@@ -5851,6 +5851,16 @@
     - `enqueue_for_review(trade_data: Dict[str, Any]) -> bool` - *Non-blocking submission of a closed trade for background review.*
     - `async evaluate_trade(trade_data: Dict[str, Any]) -> ForkReviewResult` - *Conduct deep post-mortem analysis of a trade.*
 
+#### `chronicle_curator.py` - *==============================================================================*
+- **Path**: [`src/monika/application/analysis/memory/chronicle_curator.py`](src/monika/application/analysis/memory/chronicle_curator.py)
+- **Classes**:
+  - `class ActionDecision(str, Enum)`
+  - `class CuratedMilestoneProposal(BaseModel)`
+  - `class WeeklyConsolidationOutput(BaseModel)`
+  - `class ChronicleCurator`: Agentic Curator for weekly macro memory consolidation.
+    - `__init__(settings: Optional[Dict[str, Any]])`
+    - `async consolidate_matured_tactical_events(session: AsyncSession, force: bool) -> Dict[str, Any]` - *Executes weekly cognitive consolidation on Monday mornings:*
+
 #### `chronicle_writer.py`
 - **Path**: [`src/monika/application/analysis/memory/chronicle_writer.py`](src/monika/application/analysis/memory/chronicle_writer.py)
 - **Classes**:

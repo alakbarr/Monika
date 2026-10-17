@@ -110,8 +110,21 @@ class MacroToolHandlers:
                     query = query.where(EconomicCalendar.impact.in_(["high", "medium"]))
 
                 if currency_filter:
-                    currencies = [c.strip() for c in currency_filter.split(",")]
-                    query = query.where(EconomicCalendar.currency.in_(currencies))
+                    raw_currs = [c.strip().upper() for c in currency_filter.split(",") if c.strip()]
+                    expanded_currs = set(raw_currs)
+                    if "AUD" in expanded_currs:
+                        expanded_currs.add("AU")
+                    if "AU" in expanded_currs:
+                        expanded_currs.add("AUD")
+                    if "GBP" in expanded_currs:
+                        expanded_currs.add("UK")
+                    if "UK" in expanded_currs:
+                        expanded_currs.add("GBP")
+                    if "JPY" in expanded_currs:
+                        expanded_currs.add("JP")
+                    if "EUR" in expanded_currs:
+                        expanded_currs.add("EU")
+                    query = query.where(EconomicCalendar.currency.in_(list(expanded_currs)))
 
                 rows = (await session.execute(query)).scalars().all()
                 if rows:

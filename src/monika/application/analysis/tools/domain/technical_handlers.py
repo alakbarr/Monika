@@ -25,7 +25,8 @@ class TechnicalToolHandlers:
         from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
-        return await client.get_rates(symbol=symbol, timeframe=timeframe, count=count)
+        effective_count = kwargs.get("limit") or count
+        return await client.get_rates(symbol=symbol, timeframe=timeframe, count=effective_count)
 
     async def get_technical_indicators(
         self, symbol: str, timeframe: str = "H4", session: Optional[AsyncSession] = None, **kwargs
@@ -44,7 +45,13 @@ class TechnicalToolHandlers:
 
             calc = TechnicalIndicatorCalculator(session, self.settings)
             snapshot = await calc.get_snapshot(symbol, timeframe)
-            atr_val = (snapshot.get("ATR", {}) or {}).get("value") if snapshot else None
+            atr_val = None
+            if snapshot:
+                target_key = f"ATR_{period}"
+                atr_dict = snapshot.get(target_key) or snapshot.get("ATR") or {}
+                atr_val = atr_dict.get("value") if isinstance(atr_dict, dict) else None
+                if atr_val is None and isinstance(atr_dict, dict):
+                    atr_val = atr_dict.get("atr")
             return {"symbol": symbol, "timeframe": timeframe, "period": period, "atr": atr_val}
         return {"symbol": symbol, "timeframe": timeframe, "period": period, "status": "no_session"}
 
@@ -139,7 +146,20 @@ class TechnicalToolHandlers:
                 .scalars()
                 .all()
             )
-            return {"symbol": symbol, "timeframe": timeframe, "breaks": [b.type for b in breaks]}
+            return {
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "breaks": [
+                    {
+                        "type": b.type,
+                        "direction": getattr(b, "direction", None),
+                        "price": getattr(b, "price", getattr(b, "broken_price", None)),
+                        "broken_price": getattr(b, "price", getattr(b, "broken_price", None)),
+                        "formed_at": b.formed_at.isoformat() if hasattr(b.formed_at, "isoformat") else str(b.formed_at),
+                    }
+                    for b in breaks
+                ],
+            }
         return {"symbol": symbol, "timeframe": timeframe, "status": "no_session"}
 
     async def get_fibonacci_levels(

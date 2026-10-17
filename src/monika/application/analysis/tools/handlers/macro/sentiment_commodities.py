@@ -49,6 +49,19 @@ async def handle_get_precomputed_cot_signals(args: dict, **ctx) -> dict:
     }
 
 
+COT_CODE_TO_NAME = {
+    "099741": "EUR (Euro FX)",
+    "097741": "JPY (Japanese Yen)",
+    "096742": "GBP (British Pound)",
+    "232741": "AUD (Australian Dollar)",
+    "090741": "CAD (Canadian Dollar)",
+    "092741": "CHF (Swiss Franc)",
+    "088691": "GOLD (Precious Metal)",
+    "067651": "WTI CRUDE OIL (Energy Commodity)",
+    "133741": "BITCOIN (CME Futures)",
+}
+
+
 async def handle_get_cot_report(args: dict, **ctx) -> dict:
     session, _, _ = _get_macro_context(args, ctx)
     if not session:
@@ -145,9 +158,11 @@ async def handle_get_cot_report(args: dict, **ctx) -> dict:
                 confluence_weight = 0.0
                 reliability_note = f"{days_old} days old — DO NOT use for confluence scoring"
 
+            market_name = COT_CODE_TO_NAME.get(r.market_code, getattr(r, "market_name", None) or r.market_code)
             reports.append(
                 {
                     "market_code": r.market_code,
+                    "market_name": market_name,
                     "report_date": r.report_date.strftime("%Y-%m-%d"),
                     "days_since_report": days_old,
                     "data_reliability": reliability,

@@ -182,6 +182,7 @@ Monika/
 │       │   │   │   ├── alpha_calculator.py
 │       │   │   │   ├── background_review.py
 │       │   │   │   ├── background_review_fork.py
+│       │   │   │   ├── chronicle_curator.py
 │       │   │   │   ├── chronicle_writer.py
 │       │   │   │   ├── context_engine.py
 │       │   │   │   ├── counterfactual_simulator.py
@@ -2159,6 +2160,7 @@ Monika/
 │   │   ├── test_audit_sota_enhancements.py
 │   │   ├── test_candidate_lessons_shadow_validation.py
 │   │   ├── test_central_bank_rates.py
+│   │   ├── test_chronicle_curator.py
 │   │   ├── test_chronicle_writer.py
 │   │   ├── test_closed_loop_memory.py
 │   │   ├── test_composite_tools.py
@@ -2955,4 +2957,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 252 | **Total Tracked Files**: 2673
+**Total Tracked Directories**: 252 | **Total Tracked Files**: 2675

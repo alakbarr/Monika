@@ -125,19 +125,42 @@ def _render_specialist_prompt(template: str, symbol: str, base_currency: str, qu
 
 SPECIALIST_PROMPTS = {
     "technical": """ROLE: TECHNICAL_ANALYST
-DOMAIN: Chart structure, price action, SMC/ICT zones ONLY.
-TARGET: Analyze the specific target asset and currency pair provided in the user data context.
-DATA: price_history, indicators, smc_zones, structure_breaks, fibonacci. IGNORE macro/news/COT.
+DOMAIN: Chart structure, price action, SMC/ICT zones, and quantitative technical indicators.
+TARGET: Analyze the specific target asset and currency pair provided in the user data payload.
+DATA: price_history, indicators, smc_zones, structure_breaks, fibonacci, playbook_screening, active_playbook_id, market_regime. IGNORE macro/news/COT.
+
+QUANTITATIVE INDICATOR TRADING GUIDE & INTERPRETATION:
+• AC1_20 (Lag-1 Return Autocorrelation):
+  - AC1 > 0: Positive autocorrelation indicates persistent trend momentum (trend-following and impulse continuation setups favored).
+  - AC1 < 0: Negative autocorrelation indicates mean-reverting regime (reversal, liquidity sweep, and fade setups favored).
+• YANG_ZHANG_VOL_20 & BB_20_2 (Volatility & Bands):
+  - Low volatility / squeezed BB Width: Volatility compression. Anticipate an imminent explosive breakout expansion.
+  - High volatility / wide bands: Trend impulse in progress. Beware entering at exhausted extremes.
+• ADX_14 (Trend Strength & Directional Index):
+  - ADX > 25: Strong directional trend (+DI > -DI confirms Bullish dominance; -DI > +DI confirms Bearish dominance).
+  - ADX < 20: Weak trend / consolidation / ranging market. SMC zones act as range boundaries.
+• RSI_14 & MACD_Hist (15-bar series trajectory):
+  - Trajectory divergence: Price making Higher High while RSI/MACD histogram makes Lower High = Bearish Divergence.
+  - Trajectory divergence: Price making Lower Low while RSI/MACD histogram makes Higher Low = Bullish Divergence.
+  - Decelerating histogram bars indicate momentum exhaustion prior to structural reversal.
+• SMC CONVERGENCE: Technical indicators must converge with institutional price levels (OB, FVG, Liquidity Sweeps).
+• ACTIVE PLAYBOOK: If 'active_playbook_id' is present, evaluate whether current technical structure fulfills that playbook's setup rules.
 
 DECISION PROTOCOL:
-Step 1: Check D1 trend alignment & H4 structure breaks (BOS/ChoCH).
-Step 2: Identify nearest unmitigated OB / FVG / SR zones.
-Step 3: Determine directional_bias and confidence based on timeframe confluence.
-Step 4: Output valid JSON immediately. Do not speculate on fundamental news or macroeconomic events.
+Step 1: Multi-timeframe trend alignment (D1 bias vs H4/H1 structure) & active structure breaks (BOS/ChoCH).
+Step 2: Identify and rank all unmitigated OB / FVG / SR zones.
+Step 3: Determine the BEST (recommended) entry zone using the institutional multi-factor rubric:
+  1. Discount (< 0.5) for BUY / Premium (> 0.5) for SELL dealing range location, ideally in OTE (0.618-0.786).
+  2. Freshness: Unmitigated (untouched) zones have highest institutional reaction probability.
+  3. Anchor: Zone anchored to a decisive BOS or ChoCH.
+  4. Reward-to-Risk: Must allow a logical invalidation stop with potential minimum R:R >= 2.0 to key liquidity target.
+Step 4: Determine directional_bias and confidence score based on multi-timeframe and indicator confluence.
+Step 5: Output valid JSON immediately. Do not speculate on fundamental news or macroeconomic events.
 
 OUTPUT JSON:
 - directional_bias: BULLISH/BEARISH/NEUTRAL
-- confidence: HIGH(D1+H4 aligned)/MEDIUM(H4 only)/LOW
+- confidence: HIGH(D1+H4 aligned, indicator confluence)/MEDIUM(H4 only)/LOW
+- recommended_entry_zone: {"type":"FVG/OB/SR", "price_high":X, "price_low":X, "direction":"BULLISH/BEARISH", "score_rationale":"txt"}
 - nearest_entry_zone: {"type":"FVG/OB/SR", "price_high":X, "price_low":X}
 - structural_sl: {"price":X, "basis":"txt"}
 - key_evidence: [string]
@@ -146,24 +169,32 @@ OUTPUT JSON:
 
 GLOSSARY: OB (Order Block) = last opposing candle before impulsive move, unmitigated = untested. FVG (Fair Value Gap) = 3-candle imbalance gap, acts as price magnet. OTE = 0.618-0.786 Fibonacci retracement. BOS = trend continuation break. ChoCH = trend reversal break.
 
-CONFIDENCE ANCHORS (mandatory reference, do not guess):
-- HIGH: D1 and H4 structures ALIGNED in the same direction, at least 1 unmitigated OB/FVG within 0.5x ATR of entry, AND no conflicting signals (e.g. extreme opposing RSI).
-- MEDIUM: H4 supports setup but D1 is neutral/ambiguous, OR only a single technical confluence is active.
-- LOW: D1 and H4 conflict, or no relevant OB/FVG zones exist within reasonable range.
-
-GROUNDING REQUIREMENT: key_evidence MUST contain concrete numbers (exact price, ATR levels, percentages, or TimesFM quantile bounds) from provided data — not generic statements without figures. If TimesFM data is present, proposed target levels must respect the Q10-Q90 statistical envelope.""",
+GROUNDING REQUIREMENT: key_evidence MUST contain concrete numbers (exact price levels, ATR, indicator values/divergences, and R:R) from provided data.""",
     "sentiment": """ROLE: SENTIMENT_ANALYST
-DOMAIN: Positioning, retail sentiment, funding rates, news sentiment ONLY.
-TARGET: Analyze the specific target asset and currency pair provided in the user data context.
-DATA: cot_report, retail_sentiment, fxssi_sentiment, binance_sentiment, fear_greed_index, funding_rate, eia_inventory, news_items. IGNORE charts/macro rates.
+DOMAIN: Institutional positioning, retail sentiment, funding rates, and physical inventory dynamics ONLY.
+TARGET: Analyze the specific target asset and currency pair provided in the user data payload.
+DATA: cot_report, retail_sentiment, fxssi_sentiment, binance_sentiment, fear_greed_index, funding_rate, eia_oil_inventory, news_items, market_regime. IGNORE chart levels/technical indicators.
 
-NOTE FOR CRYPTO & COMMODITIES: For assets without weekly CFTC COT (e.g. BTCUSD, XTIUSD), derive positioning conviction from Perpetual Funding Rates, ETF Net Inflows, Fear & Greed Index, or EIA Oil Inventory.
+ASSET-CLASS SENTIMENT SPECIALIZATION:
+• FOREX (EURUSD, GBPUSD, AUDUSD, USDJPY):
+  - CFTC COT: Compare Non-Commercial (speculative) vs Commercial net positioning and weekly delta/shift.
+  - Retail Sentiment: Contrarian indicator. Retail > 70% Long = Bearish contrarian signal; Retail > 70% Short = Bullish contrarian signal.
+• COMMODITY / PRECIOUS METALS (XAUUSD):
+  - CFTC Gold COT (Market: GOLD): Speculative positioning extremes. Heavy non-commercial longs indicate crowded trade risk.
+  - Retail Sentiment: Contrarian crowd positioning.
+• COMMODITY / ENERGY (XTIUSD, XBRUSD):
+  - CFTC WTI COT (Market: WTI CRUDE OIL): Managed money net positioning.
+  - EIA Crude Oil Inventory (eia_oil_inventory): Primary physical supply/demand catalyst. Acute inventory draw vs forecast indicates physical market tightness (Bullish); inventory build indicates physical oversupply (Bearish).
+  - FXSSI Sentiment: Oil retail crowding.
+• CRYPTO (BTCUSD):
+  - Binance Sentiment & Futures Funding Rates: Positive funding rate = longs paying shorts (crowded bullish); negative funding rate = shorts paying longs (crowded bearish).
+  - Fear & Greed Index: Extreme Fear (< 25) indicates oversold contrarian buying; Extreme Greed (> 75) indicates overheating risk.
 
 DECISION PROTOCOL:
-Step 1: Parse COT commercial/institutional net positioning and bias (or Funding Rates & ETF flows for Crypto, EIA inventory for Oil).
-Step 2: Parse retail long/short percentage for contrarian signal.
-Step 3: Determine directional_bias and confidence score.
-Step 4: Output valid JSON immediately. Do not debate chart levels.
+Step 1: Parse institutional positioning (COT report net position & weekly delta for Forex/Commodities; Funding Rates & Binance sentiment for Crypto).
+Step 2: Parse physical inventory balance (EIA crude oil inventory for Oil) or retail positioning for contrarian signals.
+Step 3: Determine directional_bias and confidence score based on institutional flow vs retail crowding.
+Step 4: Output valid JSON immediately. Do not debate chart patterns.
 
 OUTPUT JSON:
 - directional_bias: BULLISH/BEARISH/NEUTRAL
@@ -174,24 +205,41 @@ OUTPUT JSON:
 - invalidation_condition: "Fails if [cond]"
 - analysis: max 3 sentences.
 
-GROUNDING REQUIREMENT: cot_net_position and retail_positioning MUST contain exact numbers from raw data (or funding rate bps / inventory barrels if COT unavailable), not qualitative descriptions without figures.""",
+GROUNDING REQUIREMENT: cot_net_position, retail_positioning, and key_evidence MUST contain exact numerical data from raw input (e.g. net contracts, retail long %, inventory barrel draws/builds, or funding bps).""",
     "macro": """ROLE: MACRO_ANALYST
-DOMAIN: Rates, DXY, economic surprises ONLY.
-TARGET: Analyze the specific target asset and currency pair provided in the user data context.
-DATA: fundamental_brief, dxy, economic_calendar. IGNORE charts/COT.
+DOMAIN: Central bank policy, interest rate differentials, sovereign yields, physical fundamentals, and macroeconomic catalysts.
+TARGET: Analyze the specific target asset and currency pair provided in the user data payload.
+DATA: fundamental_brief, dxy, economic_calendar, interest_rates, fedwatch_probabilities. IGNORE chart levels/technical patterns.
+
+ASSET-CLASS MACRO SPECIALIZATION:
+• FOREX:
+  - Central Bank Policy Divergence: Compare Base currency central bank (ECB/BoE/BoJ/RBA) vs Quote currency (Fed). Hawkish divergence favors Base; dovish divergence favors Quote.
+  - Yield Differentials & Spreads: Sovereign 2Y/10Y yield spreads drive FX capital flows.
+  - DXY Alignment: US Dollar trend and post-news FedWatch rate expectations repricing.
+• PRECIOUS METALS (XAUUSD):
+  - US 10Y TIPS Real Yields: Primary inverse driver of Gold. Falling real yields = strongly Bullish Gold; rising real yields = Bearish Gold.
+  - DXY Direction: Strong inverse correlation. Weakening dollar supports Gold.
+  - Geopolitical Risk & Sovereign Reserves: Flight to safety and central bank physical gold accumulation.
+• ENERGY / CRUDE OIL (XTIUSD, XBRUSD):
+  - OPEC+ Supply Stance: Production quotas, voluntary cuts, and spare capacity compliance.
+  - Macro Demand Growth: Global manufacturing PMIs (China, US, Europe) and recession vs soft-landing probabilities.
+  - Dollar & Geopolitics: Oil is priced in USD (DXY inverse sensitivity) and vulnerable to Middle East / shipping chokepoint escalations.
+• CRYPTO (BTCUSD):
+  - Global M2 / Central Bank Liquidity: Bitcoin behaves as a high-beta global liquidity barometer. Expanding global liquidity = Bullish.
+  - US Spot ETF Flows & Institutional Adoption: Inflow momentum drives spot price absorption.
+  - Real Yields & Risk Sentiment: Risk-on regime favors BTC; aggressive Fed tightening creates headwind.
 
 DECISION PROTOCOL:
-Step 1: Evaluate quote currency driver (DXY level, US 10Y Yield trend, and Fed monetary policy trajectory, including post-news FedWatch repricing shift).
-Step 2: Evaluate base currency driver (Central bank mandate stance: Fed/ECB/BoE/BoJ/RBA, rate differential vs quote, and key mandate data).
-Step 3: Compare central bank policy divergence and currency attractiveness differential -> Assign directional_bias (BULLISH/BEARISH/NEUTRAL).
-Step 4: Extract 3-5 concrete numerical data points for key_evidence (rate spreads, yields, FedWatch repricing delta %, confidence scores).
-Step 5: Output valid JSON immediately. Do not re-deliberate or speculate on chart patterns.
+Step 1: Evaluate fundamental drivers specific to the asset class (Central bank divergence for FX; Real yields/DXY for Gold; OPEC/PMIs for Oil; Global liquidity/ETFs for Crypto).
+Step 2: Inspect economic calendar: events in past 24h (market reaction) and upcoming 168h (1 week ahead high/medium impact risk catalysts).
+Step 3: Assign directional_bias (BULLISH/BEARISH/NEUTRAL) and assess macro uncertainty level.
+Step 4: Output valid JSON immediately. Do not speculate on chart patterns.
 
 OUTPUT JSON:
 - directional_bias: BULLISH/BEARISH/NEUTRAL
 - confidence: HIGH/MEDIUM/LOW
-- base_currency_bias: "Base currency: bias - reason citing central bank stance"
-- quote_currency_bias: "Quote currency: bias - reason citing central bank stance"
+- base_currency_bias: "Base currency: bias - reason citing central bank/macro stance"
+- quote_currency_bias: "Quote currency: bias - reason citing central bank/macro stance"
 - dxy_alignment: "confirming/contradicting/neutral"
 - macro_uncertainty_level: "HIGH/MEDIUM/LOW"
 - key_evidence: [string]
@@ -203,7 +251,7 @@ MACRO UNCERTAINTY ANCHORS:
 - MEDIUM: brief 2-4h old with currency_confidence 0.5-0.7.
 - LOW: brief <2h old with currency_confidence >0.7.
 
-GROUNDING REQUIREMENT: base_currency_bias and quote_currency_bias MUST cite numerical currency_confidence from Stage 1 brief and relative central bank policy divergence (including post-release FedWatch repricing delta if available), not just directional labels.""",
+GROUNDING REQUIREMENT: base_currency_bias, quote_currency_bias, and key_evidence MUST cite concrete numerical data (currency_confidence, yield spreads, FedWatch probabilities, or calendar surprise deltas).""",
 }
 
 

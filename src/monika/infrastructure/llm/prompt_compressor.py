@@ -98,8 +98,6 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
                 if k.lower() not in PROTECTED_KEYS:
                     if isinstance(val, list):
                         pruned[k] = _prune_data_structure(val, target_char_budget // max(1, len(pruned)))
-                    elif isinstance(val, str) and estimate_tokens(val) > 150:
-                        pruned[k] = val[:400] + "... [summarized]"
             if len(json.dumps(pruned, default=str)) <= target_char_budget:
                 return pruned
 
@@ -523,7 +521,7 @@ class PromptBundleCompressor:
                 pruned_result = truncate_to_budget(pruned_result, max_tokens)
         return pruned_result
 
-    def compress_stage2_dict(self, data: Dict[str, Any], max_tokens: int = 8000) -> str:
+    def compress_stage2_dict(self, data: Dict[str, Any], max_tokens: int = 64000) -> str:
         """Kompres Stage 2 dictionary secara semantik berbasis dict/JSON-safe."""
         if not data:
             return "{}"
@@ -549,7 +547,7 @@ class PromptBundleCompressor:
         return json.dumps(pruned, default=str)
 
     def compress_stage2_bundle(
-        self, bundle: Union[str, Dict[str, Any]], symbol: str = "", max_tokens: int = 8000
+        self, bundle: Union[str, Dict[str, Any]], symbol: str = "", max_tokens: int = 64000
     ) -> str:
         """Kompres Stage 2 per-asset data bundle tanpa pernah memotong data mandatory (ADR, PI, Alpha Lessons)."""
         if not bundle:

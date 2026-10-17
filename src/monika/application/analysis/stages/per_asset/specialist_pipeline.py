@@ -55,6 +55,8 @@ class SpecialistPipelineMixin:
             "get_volume_profile_context",
             "get_volatility_regime_H4",
             "market_regime",
+            "active_playbook_id",
+            "playbook_screening",
             "structure_breaks_D1",
             "smc_zones_D1",
             "timesfm_forecast",
@@ -74,6 +76,7 @@ class SpecialistPipelineMixin:
             "crypto_funding_rates",
             "etf_flows",
             "eia_inventory",
+            "eia_oil_inventory",
             "oil_inventory",
             "recent_news",
             "market_chronicle",
@@ -229,6 +232,16 @@ class SpecialistPipelineMixin:
                 "properties": {
                     "directional_bias": {"type": "string", "enum": ["BULLISH", "BEARISH", "NEUTRAL"]},
                     "confidence": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW"]},
+                    "recommended_entry_zone": {
+                        "type": "object",
+                        "properties": {
+                            "type": {"type": "string"},
+                            "price_high": {"type": "number"},
+                            "price_low": {"type": "number"},
+                            "direction": {"type": "string"},
+                            "score_rationale": {"type": "string"},
+                        },
+                    },
                     "nearest_entry_zone": {
                         "type": "object",
                         "properties": {
@@ -267,6 +280,7 @@ class SpecialistPipelineMixin:
 
             async def run_specialist_with_schema(client, role_desc, data_view):
                 from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+                from monika.infrastructure.providers.base_provider import extract_and_parse_json
 
                 target_header = f"[TARGET ASSET]: {symbol} (Base: {base_currency}, Quote: {quote_currency})\n\n"
                 telegraphic_specialist_directive = (
@@ -283,7 +297,12 @@ class SpecialistPipelineMixin:
                     max_tokens=max(getattr(client, "max_tokens", 4096) or 4096, 4096),
                 )
                 try:
-                    result = json.loads(result_str) if isinstance(result_str, str) else result_str
+                    result = extract_and_parse_json(result_str) if isinstance(result_str, str) else result_str
+                    if not result and isinstance(result_str, str):
+                        try:
+                            result = json.loads(result_str)
+                        except Exception:
+                            result = None
                     return result or {
                         "directional_bias": "UNAVAILABLE",
                         "confidence": "LOW",
@@ -292,14 +311,14 @@ class SpecialistPipelineMixin:
                         "invalidation_condition": "N/A",
                         "analysis": "No analysis generated",
                     }
-                except Exception:
+                except Exception as e:
                     return {
                         "directional_bias": "UNAVAILABLE",
                         "confidence": "LOW",
                         "status": "FAILED",
                         "key_evidence": [],
                         "invalidation_condition": "N/A",
-                        "analysis": result_str or "",
+                        "analysis": f"JSON parse error: {e}",
                     }
 
             # ── H3: Isolated Subagent Execution ──
@@ -327,10 +346,18 @@ class SpecialistPipelineMixin:
                         "analysis": str(e),
                     }
 
+            tech_prompt = _render_specialist_prompt(
+                SPECIALIST_PROMPTS["technical"], symbol, base_currency, quote_currency
+            )
+            sent_prompt = _render_specialist_prompt(
+                SPECIALIST_PROMPTS["sentiment"], symbol, base_currency, quote_currency
+            )
+            macro_prompt = _render_specialist_prompt(SPECIALIST_PROMPTS["macro"], symbol, base_currency, quote_currency)
+
             tech_res, sent_res, macro_res = await asyncio.gather(
-                run_specialist_isolated("technical", tech_client, SPECIALIST_PROMPTS["technical"], tech_data_view),
-                run_specialist_isolated("sentiment", sent_client, SPECIALIST_PROMPTS["sentiment"], sent_data_view),
-                run_specialist_isolated("macro", macro_client, SPECIALIST_PROMPTS["macro"], macro_data_view),
+                run_specialist_isolated("technical", tech_client, tech_prompt, tech_data_view),
+                run_specialist_isolated("sentiment", sent_client, sent_prompt, sent_data_view),
+                run_specialist_isolated("macro", macro_client, macro_prompt, macro_data_view),
                 return_exceptions=True,
             )
 
@@ -353,6 +380,13 @@ class SpecialistPipelineMixin:
                 if not isinstance(macro_res, BaseException)
                 else {"directional_bias": "UNAVAILABLE", "confidence": "LOW", "status": "FAILED"}
             )
+
+            # Harmonize recommended_entry_zone and nearest_entry_zone
+            if isinstance(tech_res, dict):
+                if "recommended_entry_zone" in tech_res and "nearest_entry_zone" not in tech_res:
+                    tech_res["nearest_entry_zone"] = tech_res["recommended_entry_zone"]
+                elif "nearest_entry_zone" in tech_res and "recommended_entry_zone" not in tech_res:
+                    tech_res["recommended_entry_zone"] = tech_res["nearest_entry_zone"]
 
             for name, report in [("technical", tech_res), ("sentiment", sent_res), ("macro", macro_res)]:
                 if isinstance(report, dict) and "directional_bias" in report:
@@ -433,7 +467,7 @@ class SpecialistPipelineMixin:
                 distilled = {
                     "bias": rep.get("directional_bias", "NEUTRAL"),
                     "conf": rep.get("confidence", "LOW"),
-                    "zone": rep.get("nearest_entry_zone"),
+                    "zone": rep.get("recommended_entry_zone") or rep.get("nearest_entry_zone"),
                     "sl": rep.get("structural_sl"),
                     "signals": (rep.get("key_signals") or rep.get("signals") or rep.get("key_evidence") or [])[:3],
                     "summary": str(rep.get("analysis") or rep.get("summary") or rep.get("rationale") or "")[:200],
