@@ -266,6 +266,17 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
         except Exception as part_err:
             logger.debug(f"Partition cleanup skip: {part_err}")
 
+        # ---- Cognitive Macro Chronicle Consolidation & Lifecycle ----
+        try:
+            from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+
+            cw = ChronicleWriter(settings)
+            chronicle_res = await cw.maintain_chronicle_lifecycle(session)
+            if isinstance(chronicle_res, dict) and chronicle_res.get("status") == "success":
+                logger.info(f"MarketChronicle weekly consolidation successful: {chronicle_res.get('stats')}")
+        except Exception as chron_err:
+            logger.debug(f"MarketChronicle lifecycle maintenance skip: {chron_err}")
+
         await session.commit()
         if total_deleted > 0:
             logger.info(f"Database cleanup complete: {total_deleted} total records removed.")

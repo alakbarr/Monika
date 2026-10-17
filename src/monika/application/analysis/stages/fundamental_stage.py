@@ -544,12 +544,16 @@ class FundamentalStage:
         except Exception as e:
             logger.debug(f"Circuit breaker alert check non-fatal error: {e}")
 
-        # Pre-compute sticky currency biases (held >=4 distinct cycles) to alert the model upfront
+        # Pre-compute sticky currency biases (held >=4 distinct cycles within last 24h) to alert the model upfront
         try:
+            brief_recency_cutoff = clock.now() - timedelta(hours=24)
             raw_briefs = (
                 (
                     await session.execute(
-                        select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(20)
+                        select(FundamentalBrief)
+                        .where(FundamentalBrief.generated_at >= brief_recency_cutoff)
+                        .order_by(FundamentalBrief.generated_at.desc())
+                        .limit(20)
                     )
                 )
                 .scalars()

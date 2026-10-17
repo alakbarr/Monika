@@ -2268,6 +2268,7 @@ Monika/
 │   ├── auth/
 │   │   ├── __init__.py
 │   │   ├── test_antigravity_bridge.py
+│   │   ├── test_antigravity_pool.py
 │   │   ├── test_claude_oauth.py
 │   │   ├── test_codex_device_flow.py
 │   │   └── test_oauth_store.py
@@ -2954,4 +2955,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 252 | **Total Tracked Files**: 2672
+**Total Tracked Directories**: 252 | **Total Tracked Files**: 2673

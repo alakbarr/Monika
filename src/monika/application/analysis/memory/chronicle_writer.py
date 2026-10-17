@@ -20,7 +20,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -203,30 +203,32 @@ class ChronicleWriter:
 
         now = clock.now()
 
-        # 1. Auto-resolve ongoing events (Fix 5.12: data_shock 14d, policy_change 90d)
-        # Kategori 'geopolitical', 'institutional', dan 'regime_shift' TETAP ONGOING sampai ada resolusi eksplisit
+        # 1. Auto-resolve ongoing events (tactical news > 14d, policy > 30d)
+        # Structural verified regimes (without source_news_id) remain ongoing indefinitely.
         try:
             from sqlalchemy import update
 
-            data_shock_cutoff = now - timedelta(days=14)
-            policy_cutoff = now - timedelta(days=90)
+            tactical_cutoff = now - timedelta(days=14)
+            policy_cutoff = now - timedelta(days=30)
             await session.execute(
                 update(MarketChronicle)
                 .where(
                     MarketChronicle.is_ongoing == True,
-                    MarketChronicle.event_date < data_shock_cutoff,
-                    MarketChronicle.category == "data_shock",
+                    MarketChronicle.source_news_id.isnot(None),
+                    MarketChronicle.event_date < tactical_cutoff,
+                    MarketChronicle.category.in_(["geopolitical", "institutional", "data_shock"]),
                 )
-                .values(is_ongoing=False)
+                .values(is_ongoing=False, resolved_at=now)
             )
             await session.execute(
                 update(MarketChronicle)
                 .where(
                     MarketChronicle.is_ongoing == True,
+                    MarketChronicle.source_news_id.isnot(None),
                     MarketChronicle.event_date < policy_cutoff,
                     MarketChronicle.category == "policy_change",
                 )
-                .values(is_ongoing=False)
+                .values(is_ongoing=False, resolved_at=now)
             )
         except Exception as e:
             logger.debug(f"[ChronicleWriter] Auto-resolve ongoing error: {e}")
@@ -257,6 +259,21 @@ class ChronicleWriter:
             if recent_shift and getattr(recent_shift, "headline", None) == headline:
                 logger.debug(f"[ChronicleWriter] Skipping duplicate regime shift: {headline}")
                 return None
+
+            # Resolve any previous active regime shifts so old ones do not linger as ongoing
+            try:
+                from sqlalchemy import update
+
+                await session.execute(
+                    update(MarketChronicle)
+                    .where(
+                        MarketChronicle.category == "regime_shift",
+                        MarketChronicle.is_ongoing == True,
+                    )
+                    .values(is_ongoing=False, resolved_at=now)
+                )
+            except Exception as _res_err:
+                logger.debug(f"[ChronicleWriter] Error resolving old regime shifts: {_res_err}")
 
             entry = MarketChronicle(
                 event_date=brief.generated_at or now,
@@ -600,3 +617,52 @@ class ChronicleWriter:
             return " | ".join(tags)
         except Exception:
             return ""
+
+    async def maintain_weekly_chronicle_consolidation(
+        self, session: AsyncSession, force: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Executes cognitive memory consolidation (Monday morning schedule):
+        Processes tactical news events older than 30 days via task role 'macro_chronicle_curator'.
+        """
+        now = clock.now()
+        if not force and now.weekday() != 0:
+            return {"status": "skipped", "reason": "Weekly consolidation scheduled only for Monday morning."}
+
+        try:
+            from monika.application.analysis.memory.chronicle_curator import ChronicleCurator
+
+            curator = ChronicleCurator(self.settings)
+            return await curator.consolidate_matured_tactical_events(session, force=force)
+        except Exception as e:
+            logger.warning(f"[ChronicleWriter] Weekly consolidation error: {e}")
+            return {"status": "error", "error": str(e)}
+
+    async def maintain_chronicle_lifecycle(self, session: AsyncSession) -> Dict[str, Any]:
+        """
+        Routine maintenance lifecycle called by database cleanup (cleanup.py):
+        1. Executes weekly consolidation if it is Monday morning.
+        2. Auto-resolves tactical news events older than 14 days in the active buffer.
+        """
+        res = await self.maintain_weekly_chronicle_consolidation(session, force=False)
+
+        # Tactical auto-resolve for active buffer items older than 14 days
+        try:
+            from sqlalchemy import update
+
+            now = clock.now()
+            cutoff = now - timedelta(days=14)
+            await session.execute(
+                update(MarketChronicle)
+                .where(
+                    MarketChronicle.is_ongoing == True,
+                    MarketChronicle.source_news_id.isnot(None),
+                    MarketChronicle.event_date < cutoff,
+                )
+                .values(is_ongoing=False, resolved_at=now)
+            )
+            await session.commit()
+        except Exception as e:
+            logger.debug(f"[ChronicleWriter] Routine tactical auto-resolve non-fatal error: {e}")
+
+        return res

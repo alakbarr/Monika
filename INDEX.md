@@ -1498,7 +1498,7 @@
     - `async compute_and_save(symbol: str, timeframe: str) -> int` - *Menjalankan alur lengkap: load OHLCV -> hitung -> simpan.*
     - `async compute_all_symbols(symbols: list[str], timeframes: list[str]) -> dict[str, int]` - *Menjalankan komputasi untuk semua aset dan timeframe.*
     - `async get_latest(symbol: str, timeframe: str, indicator_name: str) -> Optional[dict]` - *Mengambil metrik indikator terbaru untuk suatu symbol/timeframe.*
-    - `async get_snapshot(symbol: str, timeframe: str) -> dict` - *Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta dan arah.*
+    - `async get_snapshot(symbol: str, timeframe: str, series_depth: int) -> dict` - *Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta, arah,*
 - **Top-Level Functions**:
   - `compute_yang_zhang_volatility(df: pd.DataFrame, window: int) -> pd.Series`: Yang-Zhang (2000) historical volatility estimator.
   - `compute_lag1_autocorrelation(close: pd.Series, window: int) -> pd.Series`: Rolling lag-1 return autocorrelation for statistical regime detection.
@@ -5865,6 +5865,8 @@
     - `async get_chronicle_for_symbol(session: AsyncSession, symbol: str, days_back: int, ...) -> str` - *Fetch ongoing and recent macro chronicles relevant to a specific currency pair/asset.*
     - `async get_condensed_chronicle_bullets(session: AsyncSession, symbol: Optional[str], days_back: int, ...) -> str` - *Fetch ultra-compact (~120 token) bullet points of active structural macro events.*
     - `async get_macro_state_summary(session: AsyncSession) -> str` - *Fetch ultra-compact 1-line tag of ongoing geopolitical & institutional macro states for Layer 1.*
+    - `async maintain_weekly_chronicle_consolidation(session: AsyncSession, force: bool) -> Dict[str, Any]` - *Executes cognitive memory consolidation (Monday morning schedule):*
+    - `async maintain_chronicle_lifecycle(session: AsyncSession) -> Dict[str, Any]` - *Routine maintenance lifecycle called by database cleanup (cleanup.py):*
 
 #### `context_engine.py` - *Adaptive Pluggable Context Engine.*
 - **Path**: [`src/monika/application/analysis/memory/context_engine.py`](src/monika/application/analysis/memory/context_engine.py)

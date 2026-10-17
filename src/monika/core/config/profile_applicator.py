@@ -58,6 +58,7 @@ ALL_TASK_ROLES = [
     "portfolio_synthesis",
     "stage2_adjudicator",
     "trade_reflection",
+    "macro_chronicle_curator",
     "chat_telegram",
     "chat_telegram_medium",
     "chat_telegram_complex",

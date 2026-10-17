@@ -214,5 +214,248 @@
     "currencies_affected": "USD,XAUUSD,EUR,JPY",
     "severity": "high",
     "is_ongoing": true
+  },
+  {
+    "event_date": "2024-11-19T14:00:00Z",
+    "category": "geopolitical",
+    "headline": "Russian Nuclear Doctrine Revision & Global Flight-to-Safety",
+    "narrative": "Kremlin updates nuclear deterrence thresholds amid Western long-range missile authorization, triggering acute safe-haven bids in US Treasuries and Gold.",
+    "currencies_affected": "USD,XAUUSD,EUR",
+    "severity": "critical",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2025-01-25T10:00:00Z",
+    "category": "geopolitical",
+    "headline": "Red Sea Commercial Maritime Impairment & Bab-el-Mandeb Rerouting",
+    "narrative": "Sustained Houthi maritime drone/missile campaign forces prolonged commercial vessel rerouting via Cape of Good Hope, baking persistent transit cost surcharges into European container freight.",
+    "currencies_affected": "EUR,GBP,XTIUSD",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2025-01-27T16:00:00Z",
+    "category": "policy_change",
+    "headline": "US Enacts Universal Reciprocal Tariff Executive Orders (Trump 2.0)",
+    "narrative": "Executive orders impose baseline reciprocal tariff levies on key trading partners, accelerating nearshoring capital flows and reinforcing structural US Dollar strength (DXY).",
+    "currencies_affected": "USD,EUR,GBP,AUD,MACRO",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-07-30T11:00:00Z",
+    "category": "policy_change",
+    "headline": "Bank of England Pauses Rate Cuts at 3.75% on Sticky Services Inflation",
+    "narrative": "BoE holds policy rate at 3.75% as UK headline inflation stabilizes near target but persistent wage pressure and services CPI keep monetary stance cautious.",
+    "currencies_affected": "GBP,USD,EUR",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2026-08-31T01:30:00Z",
+    "category": "data_shock",
+    "headline": "Global Manufacturing Divergence: US Resilience vs German Industrial Slump",
+    "narrative": "US Manufacturing PMI rebounds toward expansion while German industrial output contracts further under structural energy costs, driving EURUSD lower.",
+    "currencies_affected": "EUR,USD",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2026-08-31T10:00:00Z",
+    "category": "geopolitical",
+    "headline": "US-Iran Direct Clashes & Strait of Hormuz Navigation Shutdown Alert",
+    "narrative": "Direct naval and aerial incidents near Bandar Abbas escalate Strait of Hormuz closure risks (~20% global crude transit), establishing fundamental risk floor under WTI and Gold.",
+    "currencies_affected": "XTIUSD,XAUUSD,USD",
+    "severity": "critical",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-08-31T15:00:00Z",
+    "category": "institutional",
+    "headline": "Bitcoin Institutional ETF Inflows Clash with 5% Risk-Free Yield Hurdle",
+    "narrative": "Sustained weekly spot Bitcoin ETF inflows of ~$1B encounter liquidity friction as benchmark US Treasury yields near 5% attract capital to risk-free cash equivalents.",
+    "currencies_affected": "BTCUSD,USD",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-09-01T14:00:00Z",
+    "category": "data_shock",
+    "headline": "US ISM Manufacturing Prices Surge to 71.1 Confirming Input Cost Re-acceleration",
+    "narrative": "US ISM input prices index surges to 71.1, signalling pipeline inflation pressures driven by transportation friction and tariff pass-through.",
+    "currencies_affected": "USD,XAUUSD,MACRO",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2026-09-02T02:00:00Z",
+    "category": "policy_change",
+    "headline": "Reserve Bank of New Zealand Rate Pause at 2.75% Confirms Pacific Cycle Divergence",
+    "narrative": "RBNZ holds official cash rate at 2.75% as domestic disinflation moderates, signaling policy divergence against hawkish G10 central banks.",
+    "currencies_affected": "NZD,USD,AUD",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2026-09-07T08:00:00Z",
+    "category": "geopolitical",
+    "headline": "Persian Gulf Naval Escalation & Regional Energy Infrastructure Strikes",
+    "narrative": "Drone strikes near regional energy terminals and tanker alarms intensify maritime transit costs, pushing Brent crude higher and weighing on risk sentiment.",
+    "currencies_affected": "XTIUSD,USD,MACRO",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-09-14T08:00:00Z",
+    "category": "geopolitical",
+    "headline": "Saudi East-West Pipeline Attack Knocks Out Bypass; Brent Oil Crosses $107/bbl",
+    "narrative": "Coordinated strikes incapacitate Saudi East-West crude bypass pipeline for multi-week repairs, sending Brent crude past $107/bbl and creating global diesel supply squeeze.",
+    "currencies_affected": "XTIUSD,XAUUSD,EUR,GBP",
+    "severity": "critical",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-09-14T14:30:00Z",
+    "category": "data_shock",
+    "headline": "US 10-Year Benchmark Treasury Yield Breaches 5.0% Rubicon",
+    "narrative": "Benchmark 10-year Treasury yield crosses 5.0% for first time in cycle, driven by Kevin Warsh hawkish guidance, heavy Treasury coupon supply, and sticky inflation.",
+    "currencies_affected": "USD,XAUUSD,BTCUSD,MACRO",
+    "severity": "critical",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-09-16T06:00:00Z",
+    "category": "data_shock",
+    "headline": "US CPI Accelerates to 3.1% YoY Dashing Near-Term Fed Rate Cut Expectations",
+    "narrative": "Headline consumer prices re-accelerate to 3.1% YoY, locking FOMC voting members into restrictive posture and boosting US Dollar Index (DXY).",
+    "currencies_affected": "USD,EUR,JPY,GBP",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2026-09-24T12:30:00Z",
+    "category": "data_shock",
+    "headline": "US Labor Market Resilience (Initial Jobless Claims 197K) Refutes Hard-Landing",
+    "narrative": "Weekly jobless claims drop to 197K confirming labor market stability, giving the Federal Reserve ample runway to maintain terminal rates higher for longer.",
+    "currencies_affected": "USD,MACRO",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2026-09-24T15:30:00Z",
+    "category": "geopolitical",
+    "headline": "Houthis Launch Ballistic Missile Wave at Red Sea Tankers; US Crude Spikes $4",
+    "narrative": "Mass projectile launch against maritime commerce inflicts tanker damage, pushing marine insurance premiums to prohibitive levels.",
+    "currencies_affected": "XTIUSD,XAUUSD,USD",
+    "severity": "critical",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-09-25T10:00:00Z",
+    "category": "policy_change",
+    "headline": "US Regulatory Enforcement on Offshore Crypto Settlement Banking Infrastructure",
+    "narrative": "Federal authorities freeze settlement accounts of intermediaries serving offshore stablecoin issuers, temporarily depressing digital asset liquidity.",
+    "currencies_affected": "BTCUSD,USD",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2026-09-28T16:00:00Z",
+    "category": "data_shock",
+    "headline": "Gold Prices Suffer Unusual Flash Drop (-3.4%) as Real Yields Spike",
+    "narrative": "Precious metals face aggressive institutional liquidation as surge in real Treasury yields offsets safe-haven demand, creating temporary dislocation.",
+    "currencies_affected": "XAUUSD,USD",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2026-09-29T04:30:00Z",
+    "category": "policy_change",
+    "headline": "Reserve Bank of Australia Lifts Cash Rate to 4.60% to Quell Services Inflation",
+    "narrative": "RBA delivers 25 bps rate hike to 4.60%, diverging from global easing trend as Australian domestic cost pressures persist.",
+    "currencies_affected": "AUD,USD",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-09-30T04:00:00Z",
+    "category": "policy_change",
+    "headline": "PBoC Aggressively Defends USD/CNY Fixing at 6.7351 to Counter Dollar Surge",
+    "narrative": "People's Bank of China sets daily central midpoint significantly stronger than market estimates to anchor Yuan sentiment against broad USD strength.",
+    "currencies_affected": "AUD,USD,MACRO",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-10-01T04:00:00Z",
+    "category": "institutional",
+    "headline": "Bank of Japan Affirms Rate Hike Trajectory; Ueda Warns on Carry Trade Fragility",
+    "narrative": "BoJ Summary of Opinions indicates broad agreement to continue raising terminal rates amid 24% corporate profit growth, keeping Yen carry-trade unwind threat active.",
+    "currencies_affected": "JPY,USD,MACRO",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-10-02T16:00:00Z",
+    "category": "policy_change",
+    "headline": "G7 & IEA Coordinate 100 Million Barrel Strategic Petroleum Reserve Release",
+    "narrative": "Major consumer nations deploy emergency crude stockpiles to blunt fuel inflation, averting unilateral US fuel export embargoes.",
+    "currencies_affected": "XTIUSD,USD,MACRO",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-10-14T12:00:00Z",
+    "category": "geopolitical",
+    "headline": "Hormuz Projectile Attacks Sink Two Commercial Vessels; Saudi Aramco HQ Targeted",
+    "narrative": "Severe escalation sees two tankers sink in Strait of Hormuz approaches and projectile attacks target Aramco headquarters, cementing wartime risk premiums.",
+    "currencies_affected": "XTIUSD,XAUUSD,USD",
+    "severity": "critical",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-10-15T14:45:00Z",
+    "category": "institutional",
+    "headline": "Treasury Secretary Scott Bessent Calibrates T-Bill Mix to Anchor Bond Volatility",
+    "narrative": "US Treasury actively increases shorter-dated bill issuance to absorb debt issuance without blowing out 10-year and 30-year bond term premia.",
+    "currencies_affected": "USD,MACRO",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-10-15T16:00:00Z",
+    "category": "data_shock",
+    "headline": "US Commercial Crude Inventories Plunge by Historic -8.56 Million Barrels",
+    "narrative": "EIA reports massive -8.557M barrel inventory drawdown against expectations of +0.20M build, exposing severe domestic refined product tightness.",
+    "currencies_affected": "XTIUSD,USD",
+    "severity": "critical",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2026-10-15T18:00:00Z",
+    "category": "geopolitical",
+    "headline": "Ukraine Drone Wave Strikes Russian Refineries Amid Patriot Interceptor Shortage",
+    "narrative": "Ukrainian precision drones target Russian refining facilities in response to power grid strikes, as Western defense reports highlight critical Patriot missile shortages.",
+    "currencies_affected": "EUR,USD,XTIUSD,XAUUSD",
+    "severity": "critical",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-10-16T03:12:00Z",
+    "category": "policy_change",
+    "headline": "Bank of England Warns Global Energy Shock Delays 2% Inflation Target",
+    "narrative": "Governor Bailey warns persistent oil/gas supply friction delays UK disinflation, constraining MPC policy easing capacity and weighing on Sterling.",
+    "currencies_affected": "GBP,USD,EUR",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-10-16T03:50:00Z",
+    "category": "institutional",
+    "headline": "Fed Chair Kevin Warsh Designates Oct/Dec FOMC Meetings as Critical Pivots",
+    "narrative": "Fed Chair Kevin Warsh states central bank will not prejudge rest of 2026, positioning October and December meetings as decisive decision points.",
+    "currencies_affected": "USD,MACRO",
+    "severity": "high",
+    "is_ongoing": true
   }
 ]

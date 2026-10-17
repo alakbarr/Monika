@@ -2560,6 +2560,21 @@ llm:
       max_tokens: 4096
       temperature: 0.1
       fallback_1: glm-5.3-flash
+    macro_chronicle_curator:
+      primary: deepseek-v4.1-flash
+      per_model_timeout_seconds: 120.0
+      thinking:
+        primary: high
+        fallback_1: high
+        anthropic: high
+        gemini: high
+        openai: high
+      max_tokens: 8192
+      max_tool_turns: null
+      max_cost_per_call: 0.03
+      temperature: 0.1
+      fallback_1: glm-5.3-flash
+      fallback_2: openrouter/free
     chat_telegram:
       primary: glm-5.3-flash
       thinking:
