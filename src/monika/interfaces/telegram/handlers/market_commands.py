@@ -263,7 +263,10 @@ class TelegramMarketCommandsMixin(_TelegramBotMixinBase):
             rows = []
             async with get_session() as session:
                 stmt = (
-                    select(PriceOHLCV).where(PriceOHLCV.symbol == sym).order_by(PriceOHLCV.timestamp.desc()).limit(80)
+                    select(PriceOHLCV)
+                    .where(PriceOHLCV.symbol == sym, PriceOHLCV.timeframe == tf)
+                    .order_by(PriceOHLCV.timestamp.desc())
+                    .limit(80)
                 )
                 db_rows = (await session.execute(stmt)).scalars().all()
                 if db_rows:
@@ -330,21 +333,32 @@ class TelegramMarketCommandsMixin(_TelegramBotMixinBase):
             ob_list = []
             async with get_session() as session:
                 stmt = (
-                    select(PriceOHLCV).where(PriceOHLCV.symbol == sym).order_by(PriceOHLCV.timestamp.desc()).limit(80)
+                    select(PriceOHLCV)
+                    .where(PriceOHLCV.symbol == sym, PriceOHLCV.timeframe == tf)
+                    .order_by(PriceOHLCV.timestamp.desc())
+                    .limit(80)
                 )
                 db_rows = (await session.execute(stmt)).scalars().all()
                 if db_rows:
                     rows = list(reversed(db_rows))
 
-                # FVGs
-                fvg_stmt = select(FVGZone).where(FVGZone.symbol == sym).order_by(FVGZone.formed_at.desc()).limit(10)
+                # FVGs for requested timeframe
+                fvg_stmt = (
+                    select(FVGZone)
+                    .where(FVGZone.symbol == sym, FVGZone.timeframe == tf)
+                    .order_by(FVGZone.formed_at.desc())
+                    .limit(10)
+                )
                 fvg_rows = (await session.execute(fvg_stmt)).scalars().all()
                 for f in fvg_rows:
                     fvg_list.append({"top": float(f.gap_high), "bottom": float(f.gap_low), "type": f.direction})
 
-                # Order Blocks
+                # Order Blocks for requested timeframe
                 ob_stmt = (
-                    select(OrderBlock).where(OrderBlock.symbol == sym).order_by(OrderBlock.formed_at.desc()).limit(10)
+                    select(OrderBlock)
+                    .where(OrderBlock.symbol == sym, OrderBlock.timeframe == tf)
+                    .order_by(OrderBlock.formed_at.desc())
+                    .limit(10)
                 )
                 ob_rows = (await session.execute(ob_stmt)).scalars().all()
                 for o in ob_rows:

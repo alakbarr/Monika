@@ -450,15 +450,35 @@ async def calculate_confluence(
             if aligned:
                 score += 2
 
-        # FVG/OB Proximity
+        # FVG/OB Proximity (Directionally Aligned)
         if test_entry and atr_val > 0:
             proximity = atr_val * 0.5
             near_fvg = False
             for fvg in fvgs:
-                if test_direction == "buy" and fvg.gap_low <= test_entry <= fvg.gap_high + proximity:
+                fvg_dir = str(
+                    getattr(fvg, "direction", "")
+                    or (fvg.get("direction") if isinstance(fvg, dict) else "")
+                    or (fvg.get("type") if isinstance(fvg, dict) else "")
+                ).lower()
+                is_fvg_aligned = (test_direction == "buy" and "bull" in fvg_dir) or (
+                    test_direction == "sell" and "bear" in fvg_dir
+                )
+                if not is_fvg_aligned:
+                    continue
+                g_low = float(
+                    getattr(fvg, "gap_low", 0.0)
+                    or (fvg.get("gap_low", 0.0) if isinstance(fvg, dict) else 0.0)
+                    or (fvg.get("price_low", 0.0) if isinstance(fvg, dict) else 0.0)
+                )
+                g_high = float(
+                    getattr(fvg, "gap_high", 0.0)
+                    or (fvg.get("gap_high", 0.0) if isinstance(fvg, dict) else 0.0)
+                    or (fvg.get("price_high", 0.0) if isinstance(fvg, dict) else 0.0)
+                )
+                if test_direction == "buy" and g_low <= test_entry <= g_high + proximity:
                     near_fvg = True
                     break
-                if test_direction == "sell" and fvg.gap_low - proximity <= test_entry <= fvg.gap_high:
+                if test_direction == "sell" and g_low - proximity <= test_entry <= g_high:
                     near_fvg = True
                     break
             if near_fvg:
@@ -466,14 +486,30 @@ async def calculate_confluence(
 
             near_ob = False
             for ob in obs:
-                if ob.price_low - proximity <= test_entry <= ob.price_high + proximity:
+                ob_dir = str(
+                    getattr(ob, "direction", "")
+                    or (ob.get("direction") if isinstance(ob, dict) else "")
+                    or (ob.get("type") if isinstance(ob, dict) else "")
+                ).lower()
+                is_ob_aligned = (test_direction == "buy" and "bull" in ob_dir) or (
+                    test_direction == "sell" and "bear" in ob_dir
+                )
+                if not is_ob_aligned:
+                    continue
+                p_low = float(
+                    getattr(ob, "price_low", 0.0) or (ob.get("price_low", 0.0) if isinstance(ob, dict) else 0.0)
+                )
+                p_high = float(
+                    getattr(ob, "price_high", 0.0) or (ob.get("price_high", 0.0) if isinstance(ob, dict) else 0.0)
+                )
+                if p_low - proximity <= test_entry <= p_high + proximity:
                     near_ob = True
                     break
             if near_ob:
                 score += 2
 
             if not near_fvg and not near_ob:
-                logger.debug(f"Entry {test_entry} not near any H4 FVG or Order Block (optional confluence).")
+                logger.debug(f"Entry {test_entry} not near any aligned H4 FVG or Order Block (optional confluence).")
 
         # S/R Zone Bonus
         if test_entry and atr_val > 0:

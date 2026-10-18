@@ -1481,7 +1481,7 @@
   - `detect_judas_swing(df_m15: pd.DataFrame, asian_high: float, asian_low: float, ...) -> JudasSwingResult`: Detects false London Open expansion strictly during 08:00 - 09:30 UTC designed to hunt retail stops.
   - `detect_equal_highs_lows(data: Union[pd.DataFrame, List[Dict[str, Any]]], atr: float, tolerance_ratio: float, ...) -> List[EqualPoolResult]`: Clusters swing points or candles that have near-identical price levels (Equal Highs EQH / Equal Lows EQL).
   - `compute_ob_fvg_confluence() -> Any`: Computes precise spatial geometric overlap between Order Blocks and Fair Value Gaps.
-  - `find_wick_to_wick_fvg(df: pd.DataFrame, min_atr: float) -> List[Dict[str, Any]]`: Detects Implied / Wick-to-Wick Fair Value Gaps where candle wicks leave unmitigated gaps.
+  - `find_wick_to_wick_fvg(df: pd.DataFrame, min_atr: float, symbol: Optional[str]) -> List[Dict[str, Any]]`: Detects Implied / Wick-to-Wick Fair Value Gaps where candle wicks leave unmitigated gaps.
   - `detect_smt_divergence(asset1_df: pd.DataFrame, asset2_df: pd.DataFrame, asset1_name: str, ...) -> Dict[str, Any]`: Detects Smart Money Technique (SMT) Divergence between correlated or inversely correlated pairs.
 
 #### `structure.py` - *Market Structure Analyzer: Swing Points, S/R Zones, Liquidity Zones, FVG.*
@@ -1496,6 +1496,8 @@
     - `async analyze(symbol: str, timeframe: str) -> dict[str, int]` - *Menjalankan analisis struktur pasar (Swing, S/R, Liq, FVG, OB, BOS).*
     - `async analyze_all(symbols: list[str], timeframes: list[str]) -> dict[str, dict[str, int]]` - *Menjalankan analisis untuk kumpulan symbol dan timeframe.*
     - `async get_structure_snapshot(symbol: str, timeframe: str) -> dict` - *Snapshot ringkas struktur pasar (Swings, S/R, FVG, dll).*
+- **Top-Level Functions**:
+  - `get_fvg_max_distance(symbol: str) -> float`: Mengembalikan jarak toleransi maksimal FVG berdasarkan kelas aset.
 
 #### `technical.py` - *Kalkulator Indikator Teknikal (Async) berbasis library `ta`.*
 - **Path**: [`src/monika/domain/indicators/technical.py`](src/monika/domain/indicators/technical.py)
@@ -1572,6 +1574,7 @@
 - **Classes**:
   - `class RegistryError(Exception)`: Raised when factor registration, compilation, or execution violates invariants.
   - `class FactorRegistry`: Central registry and execution engine for quantitative alpha factors.
+    - `ensure_zoo_loaded() -> None` - *Lazily load all quantitative alpha factor definitions from the zoo directory.*
     - `register(meta: AlphaMeta)` - *Decorator to register a factor calculation function with its AlphaMeta.*
     - `register_manual(name: str, fn: FactorCallable, meta: AlphaMeta) -> None` - *Explicitly register a factor callable and its metadata.*
     - `get(name: str) -> Tuple[FactorCallable, AlphaMeta]`
@@ -4382,6 +4385,8 @@
   - `get_default_regime_classifier() -> Any`: Dynamically resolves default regime classifier function without static application coupling.
   - `register_timesfm_alpha_calculator(calc: Any) -> None`: Register TimesFM alpha calculator from application layer.
   - `get_default_timesfm_alpha_calculator() -> Any`: Dynamically resolves default TimesFM alpha calculator without static application coupling.
+  - `register_evt_tail_calculator(calc: Any) -> None`: Register EVT tail risk calculator from application layer.
+  - `get_default_evt_tail_calculator() -> Any`: Dynamically resolves default EVT tail calculator without static application coupling.
   - `register_risk_hook_emitter(emitter: Any) -> None`: Register risk lifecycle hook emitter from application layer.
   - `async emit_risk_hook(hook_name: str) -> None`: Safely emit a risk lifecycle hook without static application plugin coupling.
   - `register_adaptive_risk_policy_factory(factory: Any) -> None`: Register adaptive risk policy factory from application layer.
@@ -5262,6 +5267,9 @@
   - `async compute_empirical_arbitrator_weights(session, default_quant: float, default_llm: float, ...) -> tuple[float, float]`: Menghitung bobot empiris dinamis untuk Quant vs LLM berbasis inverse Brier Score (1 - Brier)
 
 ### Folder: `src/monika/application/analysis/calculators` <a id="folder-srcmonikaapplicationanalysiscalculators"></a>
+
+#### `__init__.py` - *Monika Enterprise Statistical & Econometric Calculators Package.*
+- **Path**: [`src/monika/application/analysis/calculators/__init__.py`](src/monika/application/analysis/calculators/__init__.py)
 
 #### `adaptive_policy.py`
 - **Path**: [`src/monika/application/analysis/calculators/adaptive_policy.py`](src/monika/application/analysis/calculators/adaptive_policy.py)

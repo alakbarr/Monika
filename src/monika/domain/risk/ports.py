@@ -208,6 +208,7 @@ class RiskPortRegistry:
     adaptive_risk_policy_factory: Any | None = None
     evidence_store_factory: Any | None = None
     copula_tail_risk_fitter: Any | None = None
+    evt_tail_calculator: Any | None = None
     strategy_factor_family_resolver: Any | None = None
     broker_client_factory: Any | None = None
 
@@ -221,6 +222,7 @@ class RiskPortRegistry:
         cls.adaptive_risk_policy_factory = None
         cls.evidence_store_factory = None
         cls.copula_tail_risk_fitter = None
+        cls.evt_tail_calculator = None
         cls.strategy_factor_family_resolver = None
         cls.broker_client_factory = None
 
@@ -282,6 +284,29 @@ def get_default_timesfm_alpha_calculator() -> Any:
 
         mod = importlib.import_module("monika.application.analysis.calculators.timesfm_alpha")
         return getattr(mod, "TimesFMAlphaCalculator", None)
+    except Exception:
+        return None
+
+
+def register_evt_tail_calculator(calc: Any) -> None:
+    """Register EVT tail risk calculator from application layer."""
+    RiskPortRegistry.evt_tail_calculator = calc
+
+
+def get_default_evt_tail_calculator() -> Any:
+    """Dynamically resolves default EVT tail calculator without static application coupling."""
+    if RiskPortRegistry.evt_tail_calculator is not None:
+        return RiskPortRegistry.evt_tail_calculator
+    try:
+        import sys
+
+        mod = sys.modules.get("monika.application.analysis.calculators.evt_tail_calculator")
+        if mod and hasattr(mod, "fit_evt_peaks_over_threshold"):
+            return mod.fit_evt_peaks_over_threshold
+        import importlib
+
+        mod = importlib.import_module("monika.application.analysis.calculators.evt_tail_calculator")
+        return getattr(mod, "fit_evt_peaks_over_threshold", None)
     except Exception:
         return None
 

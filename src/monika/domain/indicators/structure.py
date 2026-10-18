@@ -85,6 +85,22 @@ FVG_MAX_DISTANCE = {
 }
 
 
+def get_fvg_max_distance(symbol: str) -> float:
+    """Mengembalikan jarak toleransi maksimal FVG berdasarkan kelas aset."""
+    clean = symbol.upper().replace(".M", "").replace("/", "")
+    if clean in FVG_MAX_DISTANCE:
+        return FVG_MAX_DISTANCE[clean]
+    if any(k in clean for k in ("BTC", "ETH", "SOL")):
+        return 0.18
+    if any(k in clean for k in ("XAU", "GOLD")):
+        return 0.07
+    if any(k in clean for k in ("XTI", "XBR", "OIL", "USOIL", "UKOIL")):
+        return 0.10
+    if any(k in clean for k in ("US30", "NAS100", "SPX500", "GER40")):
+        return 0.05
+    return 0.035
+
+
 class MarketStructureAnalyzer:
     """
     Detects and persists market structure primitives from historical and real-time OHLCV.
@@ -999,7 +1015,7 @@ class MarketStructureAnalyzer:
 
         target_zones = bullish_zones + bearish_zones + filled_zones
 
-        cutoff_fvg = datetime.now(timezone.utc) - timedelta(days=30)
+        cutoff_fvg = datetime.now(timezone.utc) - timedelta(days=14)
         from sqlalchemy import delete, select
 
         FVGZone = resolve_model("FVGZone")
@@ -1026,8 +1042,7 @@ class MarketStructureAnalyzer:
         ).scalar_one_or_none()
         current_price = float(last_bar.close) if last_bar else None
 
-        DEFAULT_FVG_DISTANCE = 0.04
-        max_dist = FVG_MAX_DISTANCE.get(sym, DEFAULT_FVG_DISTANCE)
+        max_dist = get_fvg_max_distance(sym)
 
         MAX_FVG_AGE_BARS = {
             "H4": 100,  # ~16 hari
@@ -1039,14 +1054,14 @@ class MarketStructureAnalyzer:
         tf_hours = {"H1": 1, "H4": 4, "D1": 24}.get(tf, 4)
         max_age_hours = MAX_FVG_AGE_BARS.get(tf, 100) * tf_hours
 
-        # Load existing unfilled FVGs directly from DB
+        # Load existing active (unfilled) or recent filled FVGs to prevent duplicate inserts
         existing_records = (
             (
                 await self.session.execute(
                     select(FVGZone)
                     .where(FVGZone.symbol == sym)
                     .where(FVGZone.timeframe == tf)
-                    .where(FVGZone.filled_at.is_(None))
+                    .where((FVGZone.filled_at.is_(None)) | (FVGZone.formed_at >= cutoff_fvg))
                 )
             )
             .scalars()
@@ -1277,7 +1292,7 @@ class MarketStructureAnalyzer:
             select(FVGZone)
             .where(FVGZone.symbol == symbol)
             .where(FVGZone.timeframe == timeframe)
-            .where(FVGZone.filled_at == None)  # noqa: E711 — unfilled FVGs only
+            .where(FVGZone.filled_at.is_(None))
             .order_by(FVGZone.formed_at.desc())
             .limit(10)
         )
@@ -1285,7 +1300,7 @@ class MarketStructureAnalyzer:
             select(OrderBlock)
             .where(OrderBlock.symbol == symbol)
             .where(OrderBlock.timeframe == timeframe)
-            .where(OrderBlock.mitigated_at == None)  # noqa: E711
+            .where(OrderBlock.mitigated_at.is_(None))
             .order_by(OrderBlock.formed_at.desc())
             .limit(5)
         )

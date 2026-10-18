@@ -287,6 +287,36 @@ class PositionSizer:
         except Exception as tfm_err:
             logger.debug(f"[{symbol}] TimesFM sizing adjustment non-fatal: {tfm_err}")
 
+        # EVT Fat-Tail Risk Sizing Multiplier (Peaks-Over-Threshold GPD)
+        try:
+            from monika.domain.risk.ports import (
+                get_default_evt_tail_calculator,
+                get_default_risk_data_provider,
+            )
+
+            evt_calc_fn = get_default_evt_tail_calculator()
+            risk_provider = get_default_risk_data_provider(session=session)
+            if evt_calc_fn is not None and risk_provider is not None:
+                bars = await risk_provider.get_recent_price_bars(
+                    symbol=symbol, timeframe="H1", limit=100, session=session
+                )
+                if bars and len(bars) >= 30:
+                    import numpy as np
+
+                    # bars are returned chronological (oldest to newest) by get_recent_price_bars
+                    c_arr = np.array([float(b["close"]) for b in bars], dtype=float)
+                    rets = np.diff(c_arr) / np.maximum(c_arr[:-1], 1e-8)
+                    evt_res = evt_calc_fn(rets)
+                    evt_mult = float(evt_res.get("risk_sizing_multiplier", 1.0))
+                    if evt_mult < 1.0:
+                        risk_pct *= evt_mult
+                        logger.info(
+                            f"[{symbol}] EVT fat-tail risk reduction applied: {evt_mult:.2f}x "
+                            f"(regime={evt_res.get('tail_risk_regime')}, xi={evt_res.get('shape_xi')})"
+                        )
+        except Exception as evt_err:
+            logger.debug(f"[{symbol}] EVT tail risk adjustment non-fatal: {evt_err}")
+
         # Paper Trading Streak Loss Mitigation: scale down risk if losing streak >= 3 and policy == 'warn_and_scale'
         try:
             paper_cfg = (

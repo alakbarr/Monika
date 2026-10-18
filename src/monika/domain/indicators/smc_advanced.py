@@ -109,34 +109,54 @@ def detect_inducement(df: pd.DataFrame, swings: List[Dict[str, Any]], trend: str
     if len(recent_swings) < 2:
         return InducementResult()
 
+    ohlcv = df.copy()
+    if not isinstance(ohlcv.index, pd.DatetimeIndex) and "timestamp" in ohlcv.columns:
+        ohlcv = ohlcv.set_index("timestamp")
+
     if "bull" in trend_lower:
-        # Cari swing low pertama yang terbentuk setelah swing high tertinggi terakhir
         highs = [s for s in recent_swings if "high" in s.get("type", "")]
         lows = [s for s in recent_swings if "low" in s.get("type", "")]
         if not highs or not lows:
             return InducementResult()
 
         last_high = highs[-1]
-        lh_idx = last_high.get("index", 0)
-        # Lows that occurred after or just before the high as pullback
-        valid_idm_lows = [l for l in lows if l.get("index", 0) >= lh_idx - 5]
-        if not valid_idm_lows:
-            valid_idm_lows = lows[-2:] if len(lows) >= 2 else lows
-
+        valid_idm_lows = lows[-2:] if len(lows) >= 2 else lows
         idm_target = valid_idm_lows[-1]
         idm_price = float(idm_target.get("price", 0.0))
-        idm_time = str(idm_target.get("time", ""))
+        idm_time = str(idm_target.get("time") or idm_target.get("timestamp") or idm_target.get("formed_at", ""))
 
-        # Check if subsequent price dipped below idm_price
-        current_low = float(df["low"].iloc[-1])
-        recent_min = float(df["low"].iloc[-5:].min())
-        is_swept = bool(recent_min < idm_price)
+        sweep_time: Optional[str] = None
+        is_swept = False
+        valid_ob_low: Optional[float] = None
+        valid_ob_high: Optional[float] = float(last_high.get("price", 0.0))
+
+        if idm_time:
+            after_mask = ohlcv.index.astype(str) > idm_time
+            after_idm = ohlcv.loc[after_mask]
+            if len(after_idm) > 0:
+                low_vals = np.asarray(after_idm["low"], dtype=float)
+                sweep_indices = np.where(low_vals < idm_price)[0]
+                if len(sweep_indices) > 0:
+                    is_swept = True
+                    sweep_time = str(after_idm.index[sweep_indices[0]])
+                    valid_ob_low = float(np.nanmin(low_vals[sweep_indices]))
+
+        if not is_swept:
+            recent_lows = np.asarray(ohlcv["low"].iloc[-5:], dtype=float)
+            recent_min = float(np.nanmin(recent_lows))
+            is_swept = bool(recent_min < idm_price)
+            if is_swept:
+                sweep_time = str(ohlcv.index[-1])
+                valid_ob_low = recent_min
 
         return InducementResult(
             idm_detected=True,
             idm_price=round(idm_price, 5),
             idm_time=idm_time,
             is_swept=is_swept,
+            sweep_time=sweep_time,
+            valid_ob_low=round(valid_ob_low, 5) if valid_ob_low is not None else None,
+            valid_ob_high=round(valid_ob_high, 5) if valid_ob_high is not None else None,
             details={"trend": "bullish", "last_high": last_high.get("price")},
         )
     else:
@@ -147,23 +167,43 @@ def detect_inducement(df: pd.DataFrame, swings: List[Dict[str, Any]], trend: str
             return InducementResult()
 
         last_low = lows[-1]
-        ll_idx = last_low.get("index", 0)
-        valid_idm_highs = [h for h in highs if h.get("index", 0) >= ll_idx - 5]
-        if not valid_idm_highs:
-            valid_idm_highs = highs[-2:] if len(highs) >= 2 else highs
-
+        valid_idm_highs = highs[-2:] if len(highs) >= 2 else highs
         idm_target = valid_idm_highs[-1]
         idm_price = float(idm_target.get("price", 0.0))
-        idm_time = str(idm_target.get("time", ""))
+        idm_time = str(idm_target.get("time") or idm_target.get("timestamp") or idm_target.get("formed_at", ""))
 
-        recent_max = float(df["high"].iloc[-5:].max())
-        is_swept = bool(recent_max > idm_price)
+        sweep_time = None
+        is_swept = False
+        valid_ob_high = None
+        valid_ob_low = float(last_low.get("price", 0.0))
+
+        if idm_time:
+            after_mask = ohlcv.index.astype(str) > idm_time
+            after_idm = ohlcv.loc[after_mask]
+            if len(after_idm) > 0:
+                high_vals = np.asarray(after_idm["high"], dtype=float)
+                sweep_indices = np.where(high_vals > idm_price)[0]
+                if len(sweep_indices) > 0:
+                    is_swept = True
+                    sweep_time = str(after_idm.index[sweep_indices[0]])
+                    valid_ob_high = float(np.nanmax(high_vals[sweep_indices]))
+
+        if not is_swept:
+            recent_highs = np.asarray(ohlcv["high"].iloc[-5:], dtype=float)
+            recent_max = float(np.nanmax(recent_highs))
+            is_swept = bool(recent_max > idm_price)
+            if is_swept:
+                sweep_time = str(ohlcv.index[-1])
+                valid_ob_high = recent_max
 
         return InducementResult(
             idm_detected=True,
             idm_price=round(idm_price, 5),
             idm_time=idm_time,
             is_swept=is_swept,
+            sweep_time=sweep_time,
+            valid_ob_low=round(valid_ob_low, 5) if valid_ob_low is not None else None,
+            valid_ob_high=round(valid_ob_high, 5) if valid_ob_high is not None else None,
             details={"trend": "bearish", "last_low": last_low.get("price")},
         )
 
@@ -192,10 +232,25 @@ def detect_breaker_blocks(
                 swings.append({"type": "low", "price": float(df["low"].iloc[i]), "time": str(df.index[i])})
 
     for ob in order_blocks:
-        ob_type = str(getattr(ob, "type", "") or (ob.get("type") if isinstance(ob, dict) else "") or "")
-        price_low = getattr(ob, "price_low", 0.0) or (ob.get("price_low", 0.0) if isinstance(ob, dict) else 0.0)
-        price_high = getattr(ob, "price_high", 0.0) or (ob.get("price_high", 0.0) if isinstance(ob, dict) else 0.0)
-        ob_time = str(getattr(ob, "time", "") or (ob.get("time", "") if isinstance(ob, dict) else ""))
+        ob_type = str(
+            getattr(ob, "type", "")
+            or getattr(ob, "direction", "")
+            or (ob.get("type") or ob.get("direction") if isinstance(ob, dict) else "")
+            or ""
+        )
+        price_low = float(
+            getattr(ob, "price_low", 0.0) or (ob.get("price_low", 0.0) if isinstance(ob, dict) else 0.0) or 0.0
+        )
+        price_high = float(
+            getattr(ob, "price_high", 0.0) or (ob.get("price_high", 0.0) if isinstance(ob, dict) else 0.0) or 0.0
+        )
+        ob_time = str(
+            getattr(ob, "time", "")
+            or getattr(ob, "formed_at", "")
+            or getattr(ob, "timestamp", "")
+            or (ob.get("time") or ob.get("formed_at") or ob.get("timestamp", "") if isinstance(ob, dict) else "")
+            or ""
+        )
 
         if not price_low or not price_high:
             continue
@@ -277,10 +332,31 @@ def detect_inverted_fvg(df: pd.DataFrame, fvg_zones: List[Any]) -> List[Inverted
     last_close = float(df["close"].iloc[-1])
 
     for fvg in fvg_zones:
-        fvg_type = str(getattr(fvg, "type", "") or (fvg.get("type") if isinstance(fvg, dict) else "") or "")
-        price_low = getattr(fvg, "price_low", 0.0) or (fvg.get("price_low", 0.0) if isinstance(fvg, dict) else 0.0)
-        price_high = getattr(fvg, "price_high", 0.0) or (fvg.get("price_high", 0.0) if isinstance(fvg, dict) else 0.0)
-        fvg_time = str(getattr(fvg, "time", "") or (fvg.get("time", "") if isinstance(fvg, dict) else ""))
+        fvg_type = str(
+            getattr(fvg, "type", "")
+            or getattr(fvg, "direction", "")
+            or (fvg.get("type") or fvg.get("direction") if isinstance(fvg, dict) else "")
+            or ""
+        )
+        price_low = float(
+            getattr(fvg, "price_low", 0.0)
+            or getattr(fvg, "gap_low", 0.0)
+            or (fvg.get("price_low") or fvg.get("gap_low", 0.0) if isinstance(fvg, dict) else 0.0)
+            or 0.0
+        )
+        price_high = float(
+            getattr(fvg, "price_high", 0.0)
+            or getattr(fvg, "gap_high", 0.0)
+            or (fvg.get("price_high") or fvg.get("gap_high", 0.0) if isinstance(fvg, dict) else 0.0)
+            or 0.0
+        )
+        fvg_time = str(
+            getattr(fvg, "time", "")
+            or getattr(fvg, "formed_at", "")
+            or getattr(fvg, "timestamp", "")
+            or (fvg.get("time") or fvg.get("formed_at") or fvg.get("timestamp", "") if isinstance(fvg, dict) else "")
+            or ""
+        )
 
         if not price_low or not price_high or price_high <= price_low:
             continue
@@ -409,6 +485,7 @@ def detect_equal_highs_lows(
     tolerance_ratio: float = 0.12,
     tolerance_pips: float = 3.0,
     min_touches: int = 2,
+    symbol: Optional[str] = None,
 ) -> List[EqualPoolResult]:
     """
     Clusters swing points or candles that have near-identical price levels (Equal Highs EQH / Equal Lows EQL).
@@ -436,7 +513,19 @@ def detect_equal_highs_lows(
 
     highs = [s for s in swings if "high" in s.get("type", "")]
     lows = [s for s in swings if "low" in s.get("type", "")]
-    tol = (atr * tolerance_ratio) if atr > 0 else (tolerance_pips * 0.0001)
+
+    pip_size = 0.0001
+    if symbol:
+        clean = symbol.upper().replace(".M", "").replace("/", "")
+        if "JPY" in clean:
+            pip_size = 0.01
+        elif any(k in clean for k in ("XAU", "GOLD")):
+            pip_size = 0.1
+        elif any(k in clean for k in ("BTC", "ETH", "US30", "NAS100", "SPX500")):
+            pip_size = 1.0
+
+    tol = (atr * tolerance_ratio) if atr > 0 else (tolerance_pips * pip_size)
+    pip_factor = 1.0 / pip_size
 
     # Cluster Highs (EQH)
     used_h = [False] * len(highs)
@@ -456,7 +545,7 @@ def detect_equal_highs_lows(
                     pool_type="EQH",
                     price_level=round(avg_price, 5),
                     touch_count=len(cluster),
-                    tolerance_pips=round(tol * 10000, 2),
+                    tolerance_pips=round(tol * pip_factor, 2),
                     swing_times=[str(c.get("time", "")) for c in cluster],
                 )
             )
@@ -479,7 +568,7 @@ def detect_equal_highs_lows(
                     pool_type="EQL",
                     price_level=round(avg_price, 5),
                     touch_count=len(cluster),
-                    tolerance_pips=round(tol * 10000, 2),
+                    tolerance_pips=round(tol * pip_factor, 2),
                     swing_times=[str(c.get("time", "")) for c in cluster],
                 )
             )
@@ -547,13 +636,23 @@ def compute_ob_fvg_confluence(*args, **kwargs) -> Any:
     return obs
 
 
-def find_wick_to_wick_fvg(df: pd.DataFrame, min_atr: float = 0.0) -> List[Dict[str, Any]]:
+def find_wick_to_wick_fvg(df: pd.DataFrame, min_atr: float = 0.0, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Detects Implied / Wick-to-Wick Fair Value Gaps where candle wicks leave unmitigated gaps.
     """
     implied_fvgs = []
     if df is None or len(df) < 3:
         return implied_fvgs
+
+    pip_size = 0.0001
+    if symbol:
+        clean = symbol.upper().replace(".M", "").replace("/", "")
+        if "JPY" in clean:
+            pip_size = 0.01
+        elif any(k in clean for k in ("XAU", "GOLD")):
+            pip_size = 0.1
+        elif any(k in clean for k in ("BTC", "ETH", "US30", "NAS100", "SPX500")):
+            pip_size = 1.0
 
     for i in range(2, len(df)):
         c1 = df.iloc[i - 2]
@@ -570,7 +669,7 @@ def find_wick_to_wick_fvg(df: pd.DataFrame, min_atr: float = 0.0) -> List[Dict[s
                         "gap_high": round(float(c3["low"]), 5),
                         "midpoint": round(float(c1["high"] + c3["low"]) / 2.0, 5),
                         "time": str(df.index[i - 1]),
-                        "gap_size_pips": round(gap_size * 10000, 2),
+                        "gap_size_pips": round(gap_size / pip_size, 2),
                     }
                 )
 
@@ -585,7 +684,7 @@ def find_wick_to_wick_fvg(df: pd.DataFrame, min_atr: float = 0.0) -> List[Dict[s
                         "gap_high": round(float(c1["low"]), 5),
                         "midpoint": round(float(c1["low"] + c3["high"]) / 2.0, 5),
                         "time": str(df.index[i - 1]),
-                        "gap_size_pips": round(gap_size * 10000, 2),
+                        "gap_size_pips": round(gap_size / pip_size, 2),
                     }
                 )
 
@@ -618,19 +717,49 @@ def detect_smt_divergence(
             "details": "Insufficient candle data for SMT divergence analysis",
         }
 
-    sub1 = asset1_df.iloc[-lookback:]
-    sub2 = asset2_df.iloc[-lookback:]
+    # Timestamp alignment via inner join on DatetimeIndex
+    df1 = asset1_df.copy()
+    df2 = asset2_df.copy()
+    if not isinstance(df1.index, pd.DatetimeIndex) and "timestamp" in df1.columns:
+        df1 = df1.set_index("timestamp")
+    if not isinstance(df2.index, pd.DatetimeIndex) and "timestamp" in df2.columns:
+        df2 = df2.set_index("timestamp")
+
+    aligned = (
+        df1[["high", "low", "close"]]
+        .join(
+            df2[["high", "low", "close"]],
+            lsuffix="_a1",
+            rsuffix="_a2",
+            how="inner",
+        )
+        .sort_index()
+    )
 
     try:
-        h1_recent = float(sub1["high"].iloc[-10:].max())
-        h1_prior = float(sub1["high"].iloc[:-10].max())
-        l1_recent = float(sub1["low"].iloc[-10:].min())
-        l1_prior = float(sub1["low"].iloc[:-10].min())
+        if len(aligned) >= 10:
+            sub = aligned.iloc[-lookback:]
+            h1_recent = float(sub["high_a1"].iloc[-10:].max())
+            h1_prior = float(sub["high_a1"].iloc[:-10].max())
+            l1_recent = float(sub["low_a1"].iloc[-10:].min())
+            l1_prior = float(sub["low_a1"].iloc[:-10].min())
 
-        h2_recent = float(sub2["high"].iloc[-10:].max())
-        h2_prior = float(sub2["high"].iloc[:-10].max())
-        l2_recent = float(sub2["low"].iloc[-10:].min())
-        l2_prior = float(sub2["low"].iloc[:-10].min())
+            h2_recent = float(sub["high_a2"].iloc[-10:].max())
+            h2_prior = float(sub["high_a2"].iloc[:-10].max())
+            l2_recent = float(sub["low_a2"].iloc[-10:].min())
+            l2_prior = float(sub["low_a2"].iloc[:-10].min())
+        else:
+            sub1 = asset1_df.iloc[-lookback:]
+            sub2 = asset2_df.iloc[-lookback:]
+            h1_recent = float(sub1["high"].iloc[-10:].max())
+            h1_prior = float(sub1["high"].iloc[:-10].max())
+            l1_recent = float(sub1["low"].iloc[-10:].min())
+            l1_prior = float(sub1["low"].iloc[:-10].min())
+
+            h2_recent = float(sub2["high"].iloc[-10:].max())
+            h2_prior = float(sub2["high"].iloc[:-10].max())
+            l2_recent = float(sub2["low"].iloc[-10:].min())
+            l2_prior = float(sub2["low"].iloc[:-10].min())
 
         smt_detected = False
         div_type = "none"

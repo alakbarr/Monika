@@ -66,6 +66,14 @@ class FactorRegistry:
     """
 
     _FACTORS: Dict[str, Tuple[FactorCallable, AlphaMeta]] = {}
+    _ZOO_LOADED: bool = False
+
+    @classmethod
+    def ensure_zoo_loaded(cls) -> None:
+        """Lazily load all quantitative alpha factor definitions from the zoo directory."""
+        if not cls._ZOO_LOADED:
+            cls.load_zoo_factors()
+            cls._ZOO_LOADED = True
 
     @classmethod
     def register(cls, meta: AlphaMeta):
@@ -88,12 +96,19 @@ class FactorRegistry:
     @classmethod
     def get(cls, name: str) -> Tuple[FactorCallable, AlphaMeta]:
         if name not in cls._FACTORS:
+            cls.ensure_zoo_loaded()
+        if name not in cls._FACTORS:
             raise KeyError(f"Factor '{name}' is not registered in FactorRegistry")
         return cls._FACTORS[name]
 
     @classmethod
     def list_factors(cls, category: Optional[str] = None) -> List[AlphaMeta]:
-        factors = [meta for _, meta in cls._FACTORS.values()]
+        cls.ensure_zoo_loaded()
+        unique_metas: Dict[str, AlphaMeta] = {}
+        for _, meta in cls._FACTORS.values():
+            if meta.name not in unique_metas:
+                unique_metas[meta.name] = meta
+        factors = list(unique_metas.values())
         if category:
             factors = [m for m in factors if m.category == category]
         return sorted(factors, key=lambda m: m.name)

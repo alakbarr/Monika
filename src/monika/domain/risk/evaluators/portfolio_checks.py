@@ -581,33 +581,43 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
             cutoff = now - timedelta(days=60)
 
             c_stmt = (
-                select(PriceOHLCV.close)
+                select(PriceOHLCV.timestamp, PriceOHLCV.close)
                 .where(PriceOHLCV.symbol == symbol)
                 .where(PriceOHLCV.timeframe == "H1")
                 .where(PriceOHLCV.timestamp >= cutoff)
                 .order_by(PriceOHLCV.timestamp.asc())
             )
-            c_closes = np.array((await session.execute(c_stmt)).scalars().all(), dtype=float)
-            if len(c_closes) < 30:
+            c_rows = (await session.execute(c_stmt)).all()
+            if len(c_rows) < 30:
                 return True, "Insufficient candle history for copula tail risk"
 
-            c_returns = np.diff(c_closes) / c_closes[:-1]
+            c_dict = {row[0]: float(row[1]) for row in c_rows}
 
             for other_sym in active_symbols[:3]:
                 o_stmt = (
-                    select(PriceOHLCV.close)
+                    select(PriceOHLCV.timestamp, PriceOHLCV.close)
                     .where(PriceOHLCV.symbol == other_sym)
                     .where(PriceOHLCV.timeframe == "H1")
                     .where(PriceOHLCV.timestamp >= cutoff)
                     .order_by(PriceOHLCV.timestamp.asc())
                 )
-                o_closes = np.array((await session.execute(o_stmt)).scalars().all(), dtype=float)
-                if len(o_closes) < 30:
+                o_rows = (await session.execute(o_stmt)).all()
+                if len(o_rows) < 30:
                     continue
-                o_returns = np.diff(o_closes) / o_closes[:-1]
 
-                min_len = min(len(c_returns), len(o_returns))
-                fit_res = fit_clayton_copula(c_returns[-min_len:], o_returns[-min_len:])
+                # Inner join on synchronized timestamps to eliminate weekend/holiday shifts
+                common_ts = sorted(set(c_dict.keys()).intersection({r[0] for r in o_rows}))
+                if len(common_ts) < 30:
+                    continue
+
+                o_dict = {row[0]: float(row[1]) for row in o_rows}
+                c_synced = np.array([c_dict[t] for t in common_ts], dtype=float)
+                o_synced = np.array([o_dict[t] for t in common_ts], dtype=float)
+
+                c_returns = np.diff(c_synced) / c_synced[:-1]
+                o_returns = np.diff(o_synced) / o_synced[:-1]
+
+                fit_res = fit_clayton_copula(c_returns, o_returns)
                 lower_tail = float(fit_res.get("lower_tail_dependence", 0.0)) if isinstance(fit_res, dict) else 0.0
 
                 if lower_tail > 0.40:

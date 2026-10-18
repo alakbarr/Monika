@@ -743,8 +743,12 @@ class ContextBuilderMixin:
             from monika.domain.indicators.alpha_zoo.vector_factor_engine import VectorFactorEngine
             from monika.infrastructure.database.models import PriceOHLCV
 
+            factor_tf = "H1"
             p_stmt = (
-                select(PriceOHLCV).where(PriceOHLCV.symbol == symbol).order_by(PriceOHLCV.timestamp.desc()).limit(60)
+                select(PriceOHLCV)
+                .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == factor_tf)
+                .order_by(PriceOHLCV.timestamp.desc())
+                .limit(150)
             )
             price_rows = (await session.execute(p_stmt)).scalars().all()
             if len(price_rows) >= 15:

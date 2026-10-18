@@ -202,13 +202,42 @@ def get_microstructure_metrics(
     sym = symbol.upper()
     metrics: Dict[str, float] = {}
 
+    clean_sym = sym.replace(".M", "").replace("/", "")
+    is_non_fx = any(
+        k in clean_sym
+        for k in (
+            "BTC",
+            "ETH",
+            "SOL",
+            "XAU",
+            "XAG",
+            "XTI",
+            "XBR",
+            "OIL",
+            "USOIL",
+            "UKOIL",
+            "US30",
+            "NAS100",
+            "SPX500",
+            "GER40",
+        )
+    )
+
     # 1. VPIN for Crypto & Precious Metals
-    if sym in VPIN_SYMBOLS and trades_df is not None and len(trades_df) >= 10:
+    is_vpin = sym in VPIN_SYMBOLS or any(k in clean_sym for k in ("BTC", "ETH", "SOL", "XAU", "GOLD"))
+    if is_vpin and trades_df is not None and len(trades_df) >= 10:
         bucket_vol = float(trades_df["volume"].sum() / 50.0)
         metrics["vpin"] = round(compute_vpin(trades_df, bucket_volume=bucket_vol), 3)
 
     # 2. Kyle's Lambda for Forex pairs
-    if sym in KYLE_SYMBOLS and ohlcv_df is not None and len(ohlcv_df) >= 20:
+    is_kyle = not is_non_fx and (
+        sym in KYLE_SYMBOLS
+        or any(
+            clean_sym.startswith(fx) or clean_sym.endswith(fx)
+            for fx in ("EUR", "GBP", "USD", "JPY", "AUD", "CAD", "CHF", "NZD")
+        )
+    )
+    if is_kyle and ohlcv_df is not None and len(ohlcv_df) >= 20:
         close = pd.Series(ohlcv_df["close"], dtype=float)
         vol = pd.Series(ohlcv_df["volume"], dtype=float)
         price_chg = pd.Series(close.diff().fillna(0.0))
@@ -217,11 +246,21 @@ def get_microstructure_metrics(
         val_k = k_series.iloc[-1] if not k_series.empty else 0.0
         metrics["kyle_lambda"] = round(0.0 if pd.isna(val_k) else float(val_k), 6)
 
-    # 3. Amihud Illiquidity for Commodities (with MT5 contract size)
-    if sym in AMIHUD_SYMBOLS and ohlcv_df is not None and len(ohlcv_df) >= 20:
+    # 3. Amihud Illiquidity for Commodities (with dynamic contract size)
+    is_amihud = sym in AMIHUD_SYMBOLS or any(
+        c in clean_sym for c in ("XAU", "XTI", "XBR", "OIL", "USOIL", "UKOIL", "COPPER", "WHEAT")
+    )
+    if is_amihud and ohlcv_df is not None and len(ohlcv_df) >= 20:
         close = pd.Series(ohlcv_df["close"], dtype=float)
         vol = pd.Series(ohlcv_df["volume"], dtype=float)
-        contract_size = MT5_CONTRACT_SIZES.get(sym, 1.0)
+        try:
+            from monika.domain.risk.position_sizing import get_instrument_spec
+
+            spec = get_instrument_spec(sym)
+            contract_size = spec.contract_size if spec and spec.contract_size > 0 else MT5_CONTRACT_SIZES.get(sym, 1.0)
+        except Exception:
+            contract_size = MT5_CONTRACT_SIZES.get(sym, 1.0)
+
         rets = pd.Series(close.pct_change().fillna(0.0))
         dollar_vol = pd.Series(vol * contract_size * close)
         amihud_series = compute_amihud_illiquidity(rets, dollar_vol, window=20)
