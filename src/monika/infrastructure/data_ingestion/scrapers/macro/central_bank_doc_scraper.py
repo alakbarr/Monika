@@ -61,6 +61,15 @@ FED_CALENDAR_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.
 ECB_PRESS_URL = "https://www.ecb.europa.eu/press/press_conference/html/index.en.html"
 
 
+def _normalize_meeting_date(dt: Optional[datetime]) -> datetime:
+    """Normalizes meeting date to midnight UTC to ensure deterministic deduplication."""
+    if dt is None:
+        dt = clock.now()
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
 class CentralBankDocScraper:
     """Ingestion engine for full-text central bank documents."""
 
@@ -78,21 +87,32 @@ class CentralBankDocScraper:
     ) -> Dict[str, Any]:
         """
         Ingests, parses, splits into paragraphs, scores tone, and stores the document.
-        If raw_text is not provided, attempts live scraping with automatic fallback.
+        If raw_text is not provided, attempts live scraping.
+        Fails closed without persisting synthetic benchmark text if live scraping returns empty.
         """
         bank_clean = bank.strip().upper()
         doc_clean = doc_type.strip().upper()
-        dt_meeting = meeting_date or clock.now()
+        dt_meeting = _normalize_meeting_date(meeting_date)
 
-        # If neither raw_text nor explicit source_url is passed, try live fetch
+        # If raw_text is not passed, attempt live fetch
         if raw_text is None:
             live_doc = await self.fetch_live_document(bank_clean, doc_clean)
             if live_doc and live_doc.get("full_text"):
                 return live_doc
 
-        # If live scrape didn't return or raw_text was provided, process provided/benchmark text
-        text_content = raw_text or self._get_benchmark_document_text(bank_clean, doc_clean, dt_meeting)
-        paragraphs = self._extract_clean_paragraphs(text_content)
+            logger.warning(
+                f"Live scraping returned no content for {bank_clean} {doc_clean}. "
+                f"Failing closed without persisting synthetic benchmark text."
+            )
+            return {
+                "error": f"Live scraping returned no content for {bank_clean} {doc_clean}",
+                "status": "failed",
+                "bank": bank_clean,
+                "doc_type": doc_clean,
+            }
+
+        # Process provided raw text
+        paragraphs = self._extract_clean_paragraphs(raw_text)
         tone_score, key_phrases = self._analyze_tone_polarity(paragraphs)
 
         doc_title = title or f"{bank_clean} Monetary Policy {doc_clean.title()} ({dt_meeting.strftime('%B %Y')})"
@@ -111,6 +131,9 @@ class CentralBankDocScraper:
             tone_score=tone_score,
             key_phrases=key_phrases,
         )
+
+    # Backward-compatible alias for existing callers/tests
+    ingest_central_bank_document = fetch_and_store_document
 
     async def fetch_live_document(
         self,
@@ -196,10 +219,19 @@ class CentralBankDocScraper:
         tone_score, key_phrases = self._analyze_tone_polarity(paragraphs)
         logger.info(f"Live scraped FED {doc_type}: {len(paragraphs)} paragraphs from {target_link}")
 
+        doc_date = _normalize_meeting_date(None)
+        if target_link:
+            date_match = re.search(r"(\d{8})", target_link)
+            if date_match:
+                try:
+                    doc_date = datetime.strptime(date_match.group(1), "%Y%m%d").replace(tzinfo=timezone.utc)
+                except Exception:
+                    pass
+
         return await self._persist_document_record(
             bank="FED",
             doc_type=doc_type,
-            meeting_date=clock.now(),
+            meeting_date=doc_date,
             title=doc_title or f"Federal Reserve FOMC {doc_type.title()}",
             source_url=target_link,
             paragraphs=paragraphs,
@@ -261,10 +293,20 @@ class CentralBankDocScraper:
         tone_score, key_phrases = self._analyze_tone_polarity(paragraphs)
         logger.info(f"Live scraped ECB {doc_type}: {len(paragraphs)} paragraphs from {target_link}")
 
+        ecb_date = _normalize_meeting_date(None)
+        if target_link:
+            date_match = re.search(r"(\d{4}-\d{2}-\d{2})", target_link) or re.search(r"(\d{8})", target_link)
+            if date_match:
+                try:
+                    ds = date_match.group(1).replace("-", "")
+                    ecb_date = datetime.strptime(ds, "%Y%m%d").replace(tzinfo=timezone.utc)
+                except Exception:
+                    pass
+
         return await self._persist_document_record(
             bank="ECB",
             doc_type=doc_type,
-            meeting_date=clock.now(),
+            meeting_date=ecb_date,
             title=f"ECB Monetary Policy Statement (Governing Council)",
             source_url=target_link,
             paragraphs=paragraphs,
@@ -325,10 +367,25 @@ class CentralBankDocScraper:
                                     f"Live scraped BOJ {doc_type}: {len(paragraphs)} paragraphs from {target_link}"
                                 )
 
+                                boj_date = _normalize_meeting_date(None)
+                                if target_link:
+                                    date_match = re.search(r"(\d{8})", target_link) or re.search(
+                                        r"(\d{6})", target_link
+                                    )
+                                    if date_match:
+                                        try:
+                                            ds = date_match.group(1)
+                                            if len(ds) == 8:
+                                                boj_date = datetime.strptime(ds, "%Y%m%d").replace(tzinfo=timezone.utc)
+                                            elif len(ds) == 6:
+                                                boj_date = datetime.strptime(ds, "%y%m%d").replace(tzinfo=timezone.utc)
+                                        except Exception:
+                                            pass
+
                                 return await self._persist_document_record(
                                     bank="BOJ",
                                     doc_type=doc_type,
-                                    meeting_date=clock.now(),
+                                    meeting_date=boj_date,
                                     title=f"Bank of Japan Statement on Monetary Policy",
                                     source_url=target_link,
                                     paragraphs=paragraphs,
@@ -352,10 +409,11 @@ class CentralBankDocScraper:
         key_phrases: List[str],
     ) -> Dict[str, Any]:
         """Upserts document to database with conflict handling."""
+        norm_date = _normalize_meeting_date(meeting_date)
         record = {
             "bank": bank,
             "doc_type": doc_type,
-            "meeting_date": meeting_date,
+            "meeting_date": norm_date,
             "title": title,
             "source_url": source_url,
             "full_text": "\n\n".join(paragraphs),
@@ -406,7 +464,7 @@ class CentralBankDocScraper:
                     select(CentralBankDocument).where(
                         CentralBankDocument.bank == bank,
                         CentralBankDocument.doc_type == doc_type,
-                        CentralBankDocument.meeting_date == meeting_date,
+                        CentralBankDocument.meeting_date == norm_date,
                     )
                 )
             ).scalar_one_or_none()
@@ -463,6 +521,29 @@ class CentralBankDocScraper:
             score = round((hawk_count - dove_count) / float(total), 3)
 
         return score, matched_phrases
+
+    @classmethod
+    async def purge_synthetic_benchmark_documents(cls, session: AsyncSession) -> int:
+        """
+        Safely purges duplicate fake benchmark records that were historically generated
+        by fallback to static 2024 benchmark text.
+        """
+        from sqlalchemy import or_
+
+        stmt = select(CentralBankDocument).where(
+            or_(
+                CentralBankDocument.full_text.like("%5-1/4 to 5-1/2 percent%"),
+                CentralBankDocument.full_text.like("%5.25 to 5.50 percent%"),
+            )
+        )
+        fake_docs = (await session.execute(stmt)).scalars().all()
+        count = len(fake_docs)
+        if count > 0:
+            for doc in fake_docs:
+                await session.delete(doc)
+            await safe_commit(session, label="CentralBankDocScraper.purge_synthetic")
+            logger.info(f"Purged {count} synthetic benchmark documents from database.")
+        return count
 
     def _get_benchmark_document_text(self, bank: str, doc_type: str, dt: datetime) -> str:
         """Returns verified realistic Federal Reserve/ECB monetary document text."""

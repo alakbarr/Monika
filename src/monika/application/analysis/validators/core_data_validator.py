@@ -126,6 +126,12 @@ class CoreDataValidator:
                 logger.warning(f"CoreDataValidator: {degraded_note}")
             else:
                 return (False, {}, f"Brief missing currency biases: {missing}")
+        elif structured.get("_data_quality_degraded") and missing:
+            degraded_note = (
+                f"Brief is degraded with missing currency biases: {missing} — operating in graceful degradation mode."
+            )
+            issue_note = f"{issue_note}; {degraded_note}" if issue_note else degraded_note
+            logger.warning(f"CoreDataValidator: {degraded_note}")
 
         return (
             True,

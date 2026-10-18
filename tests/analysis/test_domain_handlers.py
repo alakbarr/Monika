@@ -164,3 +164,27 @@ def test_offline_signal_engine_atr():
 def test_decision_memory_init():
     mgr = DecisionMemoryManager(settings=None)
     assert mgr.settings is not None
+
+
+@pytest.mark.asyncio
+async def test_sentiment_tool_handlers_no_symbol_collision():
+    """Verify handle_get_retail_sentiment and handle_get_funding_rate do not raise TypeError when passed symbol in args."""
+    from monika.application.analysis.tools.handlers.sentiment_tools import (
+        handle_get_retail_sentiment,
+        handle_get_funding_rate,
+    )
+
+    mock_session = create_mock_async_session()
+
+    with patch(
+        "monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment.MyFxBookSentimentFetcher.fetch",
+        new_callable=AsyncMock,
+    ) as mock_myfx:
+        mock_myfx.return_value = {"symbol": "EURUSD", "long_pct": 40.0, "short_pct": 60.0}
+        ret_res = await handle_get_retail_sentiment({"symbol": "EURUSD"}, session=mock_session)
+        assert ret_res["long_pct"] == 40.0
+
+    with patch("monika.infrastructure.api.http_retry.fetch_with_retry", new_callable=AsyncMock) as mock_retry:
+        mock_retry.return_value = [{"fundingRate": "0.0001", "fundingTime": 1720000000}]
+        fund_res = await handle_get_funding_rate({"symbol": "BTCUSD"}, session=mock_session)
+        assert fund_res["funding_rate"] == 0.0001

@@ -216,7 +216,7 @@ class ChronicleWriter:
                     MarketChronicle.is_ongoing == True,
                     MarketChronicle.source_news_id.isnot(None),
                     MarketChronicle.event_date < tactical_cutoff,
-                    MarketChronicle.category.in_(["geopolitical", "institutional", "data_shock"]),
+                    MarketChronicle.category == "data_shock",
                 )
                 .values(is_ongoing=False, resolved_at=now)
             )
@@ -259,21 +259,6 @@ class ChronicleWriter:
             if recent_shift and getattr(recent_shift, "headline", None) == headline:
                 logger.debug(f"[ChronicleWriter] Skipping duplicate regime shift: {headline}")
                 return None
-
-            # Resolve any previous active regime shifts so old ones do not linger as ongoing
-            try:
-                from sqlalchemy import update
-
-                await session.execute(
-                    update(MarketChronicle)
-                    .where(
-                        MarketChronicle.category == "regime_shift",
-                        MarketChronicle.is_ongoing == True,
-                    )
-                    .values(is_ongoing=False, resolved_at=now)
-                )
-            except Exception as _res_err:
-                logger.debug(f"[ChronicleWriter] Error resolving old regime shifts: {_res_err}")
 
             entry = MarketChronicle(
                 event_date=brief.generated_at or now,
@@ -661,7 +646,6 @@ class ChronicleWriter:
                 )
                 .values(is_ongoing=False, resolved_at=now)
             )
-            await session.commit()
         except Exception as e:
             logger.debug(f"[ChronicleWriter] Routine tactical auto-resolve non-fatal error: {e}")
 

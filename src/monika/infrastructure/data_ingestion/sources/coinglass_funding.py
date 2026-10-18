@@ -16,10 +16,16 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.api.http_retry import fetch_with_retry
+import monika.infrastructure.api.http_retry as http_retry
 from monika.infrastructure.database.models import SystemConfig
+from monika.infrastructure.database.safe_ops import safe_commit
 
-logger = logging.getLogger("TradingAgent.CoinglasFunding")
+logger = logging.getLogger("TradingAgent.CoinglassFunding")
+
+
+async def fetch_with_retry(*args, **kwargs):
+    return await http_retry.fetch_with_retry(*args, **kwargs)
+
 
 BINANCE_FUNDING_URL = "https://fapi.binance.com/fapi/v1/premiumIndex"
 BINANCE_DAPI_URL = "https://dapi.binance.com/dapi/v1/premiumIndex"
@@ -30,7 +36,7 @@ OKX_FUNDING_URL = "https://www.okx.com/api/v5/public/funding-rate"
 COINGLASS_URL = "https://open-api.coinglass.com/public/v2/funding"
 
 
-class CoinglasFundingFetcher:
+class CoinglassFundingFetcher:
     def __init__(self, session: Optional[AsyncSession] = None):
         self.session = session
 
@@ -231,11 +237,18 @@ class CoinglasFundingFetcher:
 
         cfg_val = json.dumps(result)
         if self.session:
+            upserted = False
             for cfg_key in ("coinglass_funding_latest", "funding_rate_latest"):
                 try:
                     await SystemConfig.upsert(self.session, key=cfg_key, value=cfg_val)
-                    await self.session.commit()
+                    upserted = True
                 except Exception as e:
                     logger.debug(f"Funding rate SystemConfig.upsert error for {cfg_key}: {e}")
+            if upserted:
+                await safe_commit(self.session, label="CoinglassFunding.upsert")
 
         return result
+
+
+# Backward-compatible alias for historical typo in class name
+CoinglasFundingFetcher = CoinglassFundingFetcher

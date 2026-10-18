@@ -10749,6 +10749,7 @@
     - `__init__(session: AsyncSession)`
     - `async fetch_and_store_document(bank: str, doc_type: str, meeting_date: Optional[datetime], ...) -> Dict[str, Any]` - *Ingests, parses, splits into paragraphs, scores tone, and stores the document.*
     - `async fetch_live_document(bank: str, doc_type: str) -> Optional[Dict[str, Any]]` - *Attempts to scrape live central bank documents from official portals:*
+    - `async purge_synthetic_benchmark_documents(session: AsyncSession) -> int` - *Safely purges duplicate fake benchmark records that were historically generated*
 
 #### `cme_fedwatch.py`
 - **Path**: [`src/monika/infrastructure/data_ingestion/scrapers/macro/cme_fedwatch.py`](src/monika/infrastructure/data_ingestion/scrapers/macro/cme_fedwatch.py)
@@ -11006,10 +11007,12 @@
 #### `coinglass_funding.py` - *Fetcher Coinglass Funding Rate untuk Bitcoin.*
 - **Path**: [`src/monika/infrastructure/data_ingestion/sources/coinglass_funding.py`](src/monika/infrastructure/data_ingestion/sources/coinglass_funding.py)
 - **Classes**:
-  - `class CoinglasFundingFetcher`
+  - `class CoinglassFundingFetcher`
     - `__init__(session: Optional[AsyncSession])`
     - `async fetch_open_interest_btc() -> dict` - *Fetch BTC Open Interest data directly.*
     - `async fetch() -> dict` - *Mengambil data funding rate & open interest BTC saat ini secara resilient dari bursa-bursa utama.*
+- **Top-Level Functions**:
+  - `async fetch_with_retry()`
 
 #### `crypto_orderbook_depth.py` - *Level-2 Orderbook Depth & Microstructure Liquidity Ladder for Crypto Assets.*
 - **Path**: [`src/monika/infrastructure/data_ingestion/sources/crypto_orderbook_depth.py`](src/monika/infrastructure/data_ingestion/sources/crypto_orderbook_depth.py)

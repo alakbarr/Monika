@@ -132,100 +132,113 @@ class ActiveCalendarPoller:
             target_names = [name for _, name in event_targets]
             captured_data = []
 
-            scraper = None
+            scraper = InvestingCalendarScraper(headless=True)
             try:
-                scraper = InvestingCalendarScraper(headless=True)
+                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
+                    fetch_forexfactory_feed_direct,
+                )
+
                 while datetime.now(timezone.utc) < end_time and self.running:
+                    # 1. Tier 1: Fast direct HTTP feed (<300ms, zero browser overhead)
                     try:
-                        fresh_data = await asyncio.to_thread(scraper.fetch_events, True)  # True = fast_mode
+                        fresh_ff = await asyncio.to_thread(
+                            fetch_forexfactory_feed_direct, max_cache_age=10, ignore_cache=True
+                        )
+                        if fresh_ff:
+                            matched_ff = []
+                            for event_id, name in list(event_targets):
+                                if name in target_names:
+                                    for fresh in fresh_ff:
+                                        if (
+                                            fresh.event_name == name
+                                            or name.lower() in fresh.event_name.lower()
+                                            or fresh.event_name.lower() in name.lower()
+                                        ) and fresh.actual:
+                                            matched_ff.append(
+                                                (event_id, name, fresh.actual, fresh.forecast, fresh.previous)
+                                            )
+                                            target_names.remove(name)
+                                            break
 
-                        matched = []
-                        for event_id, name in event_targets:
-                            if name in target_names:
-                                for fresh in fresh_data:
-                                    if fresh.event_name == name and fresh.actual:
-                                        matched.append((event_id, name, fresh.actual, fresh.forecast, fresh.previous))
-                                        target_names.remove(name)
-                                        break
+                            if matched_ff:
+                                async with get_session() as session:
+                                    for event_id, name, act, fc, prev in matched_ff:
+                                        ev = (
+                                            await session.execute(
+                                                select(EconomicCalendar).where(EconomicCalendar.id == event_id)
+                                            )
+                                        ).scalar_one_or_none()
+                                        if ev:
+                                            ev.actual = act
+                                            ev.forecast = fc
+                                            ev.previous = prev
+                                            captured_data.append(
+                                                {
+                                                    "event_name": ev.event_name,
+                                                    "actual": act,
+                                                    "forecast": fc,
+                                                    "previous": prev,
+                                                    "currency": ev.currency,
+                                                    "impact": ev.impact,
+                                                }
+                                            )
+                                    await session.commit()
 
-                        if matched:
-                            async with get_session() as session:
-                                for event_id, name, act, fc, prev in matched:
-                                    ev = (
-                                        await session.execute(
-                                            select(EconomicCalendar).where(EconomicCalendar.id == event_id)
-                                        )
-                                    ).scalar_one_or_none()
-                                    if ev:
-                                        ev.actual = act
-                                        ev.forecast = fc
-                                        ev.previous = prev
-                                        captured_data.append(
-                                            {
-                                                "event_name": ev.event_name,
-                                                "actual": act,
-                                                "forecast": fc,
-                                                "previous": prev,
-                                                "currency": ev.currency,
-                                                "impact": ev.impact,
-                                            }
-                                        )
-                                await session.commit()
+                            if not target_names:
+                                break
+                    except Exception as ff_err:
+                        logger.debug(f"Direct feed check error: {ff_err}")
 
-                        # If we found all of them, exit the polling loop to publish!
-                        if not target_names:
-                            break
-
-                    except Exception as e:
-                        logger.error(f"Active Polling iteration error: {e}")
-                        # Fallback attempt via ForexFactory direct feed if investing scraper failed
+                    # 2. Tier 2: Fallback to Chromium Investing scraper only if direct feed didn't resolve targets
+                    if target_names and datetime.now(timezone.utc) < end_time and self.running:
                         try:
-                            from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
-                                fetch_forexfactory_feed_direct,
-                            )
-
-                            fresh_ff = await asyncio.to_thread(
-                                fetch_forexfactory_feed_direct, max_cache_age=15, ignore_cache=True
-                            )
-                            if fresh_ff:
+                            fresh_data = await asyncio.to_thread(scraper.fetch_events, True)
+                            if fresh_data:
+                                matched_inv = []
                                 for event_id, name in list(event_targets):
                                     if name in target_names:
-                                        for fresh in fresh_ff:
-                                            if (
-                                                fresh.event_name == name or name.lower() in fresh.event_name.lower()
-                                            ) and fresh.actual:
-                                                async with get_session() as session:
-                                                    ev = (
-                                                        await session.execute(
-                                                            select(EconomicCalendar).where(
-                                                                EconomicCalendar.id == event_id
-                                                            )
-                                                        )
-                                                    ).scalar_one_or_none()
-                                                    if ev:
-                                                        ev.actual = fresh.actual
-                                                        ev.forecast = fresh.forecast
-                                                        ev.previous = fresh.previous
-                                                        captured_data.append(
-                                                            {
-                                                                "event_name": ev.event_name,
-                                                                "actual": fresh.actual,
-                                                                "forecast": fresh.forecast,
-                                                                "previous": fresh.previous,
-                                                                "currency": ev.currency,
-                                                                "impact": ev.impact,
-                                                            }
-                                                        )
-                                                        await session.commit()
+                                        for fresh in fresh_data:
+                                            if fresh.event_name == name and fresh.actual:
+                                                matched_inv.append(
+                                                    (event_id, name, fresh.actual, fresh.forecast, fresh.previous)
+                                                )
                                                 target_names.remove(name)
                                                 break
-                        except Exception as ff_err:
-                            logger.debug(f"ForexFactory direct fallback error: {ff_err}")
+                                if matched_inv:
+                                    async with get_session() as session:
+                                        for event_id, name, act, fc, prev in matched_inv:
+                                            ev = (
+                                                await session.execute(
+                                                    select(EconomicCalendar).where(EconomicCalendar.id == event_id)
+                                                )
+                                            ).scalar_one_or_none()
+                                            if ev:
+                                                ev.actual = act
+                                                ev.forecast = fc
+                                                ev.previous = prev
+                                                captured_data.append(
+                                                    {
+                                                        "event_name": ev.event_name,
+                                                        "actual": act,
+                                                        "forecast": fc,
+                                                        "previous": prev,
+                                                        "currency": ev.currency,
+                                                        "impact": ev.impact,
+                                                    }
+                                                )
+                                        await session.commit()
+                                if not target_names:
+                                    break
+                        except Exception as inv_err:
+                            logger.debug(f"Investing fallback check error: {inv_err}")
 
                     await asyncio.sleep(self.poll_interval)
             finally:
                 if scraper:
-                    scraper.close()
+                    try:
+                        scraper.close()
+                    except Exception:
+                        pass
 
             # After loop ends (either by finding all, or timing out)
             if captured_data:

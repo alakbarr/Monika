@@ -485,7 +485,10 @@ class NewsWatcher:
                 since = max_lookback
 
         result = await session.execute(
-            select(NewsItem).where(NewsItem.fetched_at > since).order_by(NewsItem.fetched_at.asc())
+            select(NewsItem)
+            .where(NewsItem.fetched_at > since)
+            .where(NewsItem.source != "calendar_poller")
+            .order_by(NewsItem.fetched_at.asc())
         )
         return list(result.scalars().all())
 

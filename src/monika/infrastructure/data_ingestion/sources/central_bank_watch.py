@@ -197,8 +197,6 @@ class CentralBankWatchFetcher:
                                 next_meeting_date=parsed_dt,
                             )
                             self.session.add(new_rate)
-                        elif cur_rate > 0.0 and (now_utc - rate_row.effective_date).days >= 30:
-                            rate_row.effective_date = now_utc
                 except Exception as ir_err:
                     logger.warning(f"Gagal sinkronisasi InterestRate untuk {bank_code}: {ir_err}")
 

@@ -36,13 +36,15 @@ def _get_sentiment_context(
 async def handle_get_retail_sentiment(args: dict, **ctx) -> dict:
     session, symbol, handlers = _get_sentiment_context(args, ctx)
     sym = symbol or "EURUSD"
-    return await handlers.get_retail_sentiment(symbol=sym, session=session, **args)
+    call_args = {k: v for k, v in args.items() if k != "symbol"}
+    return await handlers.get_retail_sentiment(symbol=sym, session=session, **call_args)
 
 
 async def handle_get_funding_rate(args: dict, **ctx) -> dict:
     session, symbol, handlers = _get_sentiment_context(args, ctx)
     sym = symbol or "BTCUSD"
-    return await handlers.get_funding_rate(symbol=sym, session=session, **args)
+    call_args = {k: v for k, v in args.items() if k != "symbol"}
+    return await handlers.get_funding_rate(symbol=sym, session=session, **call_args)
 
 
 async def handle_get_fear_greed_index(args: dict, **ctx) -> dict:

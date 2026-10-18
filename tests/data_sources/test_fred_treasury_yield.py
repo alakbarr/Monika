@@ -142,3 +142,32 @@ class TestFREDDataFetcher:
         res = await fetcher._fetch_interest_rate("FEDFUNDS", "FED")
         assert res == 0
         mock_session.add.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_fetch_macro_metric_saves_to_macro_liquidity_credit_metric(self):
+        """Verify macroeconomic aggregates (e.g. WALCL) save to MacroLiquidityCreditMetric."""
+        from monika.infrastructure.database.models import MacroLiquidityCreditMetric
+
+        mock_session = create_mock_async_session()
+        mock_session.add = MagicMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        fetcher = FREDDataFetcher(mock_session, {}, api_key="test")
+        fetcher._call_fred = AsyncMock(
+            return_value=[
+                {"date": "2024-01-01", "value": "7500000.0"},
+            ]
+        )
+
+        spec = {"metric_type": "FED_TOTAL_ASSETS", "country": "US", "unit": "USD_MILLIONS"}
+        res = await fetcher._fetch_macro_metric("WALCL", spec)
+        assert res == 1
+        mock_session.add.assert_called_once()
+        args, _ = mock_session.add.call_args
+        assert isinstance(args[0], MacroLiquidityCreditMetric)
+        assert args[0].metric_type == "FED_TOTAL_ASSETS"
+        assert args[0].value == 7500000.0
+        assert args[0].unit == "USD_MILLIONS"
+        mock_session.commit.assert_awaited_once()

@@ -342,21 +342,23 @@ class Stage1DataBundler:
 
                             est_breakeven = round(float(statistics.median(recent_vals)), 2)
                         else:
-                            est_breakeven = 2.35
+                            est_breakeven = None
                             is_breakeven_fallback = True
                     except Exception:
-                        est_breakeven = 2.35
+                        est_breakeven = None
                         is_breakeven_fallback = True
 
                 if real_10y is not None:
                     real_10y = round(float(real_10y), 2)
-                else:
+                elif nom_10y is not None and est_breakeven is not None:
                     real_10y = round(nom_10y - est_breakeven, 2)
+                else:
+                    real_10y = None
 
                 gold_bias = (
                     "BEARISH_HEADWIND"
-                    if real_10y > 2.0
-                    else ("BULLISH_TAILWIND" if real_10y < 1.0 else "NEUTRAL_RANGE")
+                    if real_10y is not None and real_10y > 2.0
+                    else ("BULLISH_TAILWIND" if real_10y is not None and real_10y < 1.0 else "NEUTRAL_RANGE")
                 )
                 bundled_data["real_yield_context"] = {
                     "nominal_us10y_pct": nom_10y,
@@ -364,7 +366,11 @@ class Stage1DataBundler:
                     "real_us10y_yield_pct": real_10y,
                     "is_breakeven_fallback": is_breakeven_fallback,
                     "gold_macro_bias": gold_bias,
-                    "interpretation": f"Real 10Y Yield at {real_10y}%. Real yields > 2.0% create strong headwind for Gold (XAUUSD); < 1.0% provides fuel for Gold breakout.",
+                    "interpretation": (
+                        f"Real 10Y Yield at {real_10y}%. Real yields > 2.0% create strong headwind for Gold (XAUUSD); < 1.0% provides fuel for Gold breakout."
+                        if real_10y is not None
+                        else "Real 10Y Yield data currently unavailable."
+                    ),
                 }
         except Exception as e:
             logger.debug(f"Real yield precomputation non-fatal error: {e}")
@@ -372,11 +378,48 @@ class Stage1DataBundler:
         # Compute unified multi-source aggregated sentiment across traded symbols
         try:
             from monika.application.analysis.prefetch.sentiment_aggregator import SentimentAggregator
+            from monika.infrastructure.database.models import SystemConfig
 
             aggregator = SentimentAggregator(self.settings)
             cot_signals = bundled_data.get("cot_signals", {})
             vix_data = bundled_data.get("vix", {})
             funding_data = bundled_data.get("funding_rate", {})
+
+            # Extract latest retail positioning from SystemConfig
+            retail_sentiment_map = {}
+            try:
+                cfg_rows = (
+                    (
+                        await self.session.execute(
+                            select(SystemConfig).where(
+                                SystemConfig.key.in_(
+                                    [
+                                        "myfxbook_sentiment_latest",
+                                        "fxssi_sentiment_latest",
+                                        "binance_sentiment_latest",
+                                    ]
+                                )
+                            )
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                for row in cfg_rows:
+                    if row.value:
+                        try:
+                            val_dict = json.loads(row.value)
+                            if isinstance(val_dict, dict):
+                                ratios = val_dict.get("ratios") or val_dict.get("positions") or {}
+                                if isinstance(ratios, dict):
+                                    for s_key, r_info in ratios.items():
+                                        s_clean = s_key.upper().replace("/", "").strip()
+                                        if s_clean not in retail_sentiment_map and isinstance(r_info, dict):
+                                            retail_sentiment_map[s_clean] = r_info
+                        except Exception:
+                            pass
+            except Exception as ret_cfg_err:
+                logger.debug(f"Prefetch retail sentiment query non-fatal: {ret_cfg_err}")
 
             symbols_to_aggregate = (
                 self.settings.get("trading", {}).get("asset_universe")
@@ -388,7 +431,7 @@ class Stage1DataBundler:
                 try:
                     sent_schema = aggregator.aggregate_sentiment(
                         cot_data=cot_signals,
-                        retail_data={},
+                        retail_data=retail_sentiment_map.get(sym, {}),
                         risk_data=vix_data,
                         symbol=sym,
                         funding_data=funding_data if "BTC" in sym.upper() else None,

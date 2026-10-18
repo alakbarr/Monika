@@ -2336,6 +2336,7 @@ Monika/
 │   │   ├── test_circuit_breaker.py
 │   │   ├── test_dxy_yfinance.py
 │   │   ├── test_fred_treasury_yield.py
+│   │   ├── test_macro_fail_closed.py
 │   │   ├── test_prediction_market.py
 │   │   ├── test_validators.py
 │   │   ├── test_vix_yfinance.py
@@ -2958,4 +2959,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 252 | **Total Tracked Files**: 2676
+**Total Tracked Directories**: 252 | **Total Tracked Files**: 2677

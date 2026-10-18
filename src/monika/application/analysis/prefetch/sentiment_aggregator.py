@@ -108,7 +108,21 @@ class SentimentAggregator:
         # 2. Retail - 30% weight (or 25% for crypto, CONTRARIAN)
         retail_score = 5.0
         if retail_data and not retail_data.get("error"):
-            long_pct = retail_data.get("long_pct", 50)
+            raw_long = (
+                retail_data.get("long_pct")
+                if retail_data.get("long_pct") is not None
+                else retail_data.get("long_percent")
+                if retail_data.get("long_percent") is not None
+                else retail_data.get("long_percentage")
+            )
+            if raw_long is None:
+                long_pct = 50.0
+            else:
+                try:
+                    long_pct = float(raw_long)
+                except ValueError, TypeError:
+                    long_pct = 50.0
+
             if long_pct > 70:
                 retail_score = 2.0  # Contrarian: heavily long retail -> bearish signal
                 narrative_parts.append("Retail is extremely long (contrarian bearish).")

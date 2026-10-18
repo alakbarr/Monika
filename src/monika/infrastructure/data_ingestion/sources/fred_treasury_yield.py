@@ -30,37 +30,45 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.api.http_retry import fetch_with_retry
-from monika.infrastructure.database.models import InterestRate, TreasuryYield
+from monika.infrastructure.database.models import (
+    InterestRate,
+    MacroLiquidityCreditMetric,
+    TreasuryYield,
+)
 
 logger = logging.getLogger("TradingAgent.FRED")
 
 FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
-# Pemetaan FRED series ID ke tipe/label tenor
+# Pemetaan FRED series ID ke tipe/label tenor (hanya yield obligasi sejati)
 TENOR_SERIES = {
+    "DGS3MO",
     "DGS2",
     "DGS5",
     "DGS10",
     "DGS30",
     "DFII10",
     "T10YIE",
-    "WALCL",
-    "RRPONTSYD",
-    "WTREGEN",
-    "M2SL",
-    "GVZCLS",
-    "OVXCLS",
-    "DGS3MO",
     "THREEFYTP10",
     "ACMTP10",
     "CUSR0000SACL1E",
-    "A191RL1Q225SBEA",
-    "CLVMNACSCAB1GQEA19",
-    "ECBASSETSW",
 }
 INTEREST_RATE_SERIES = {"FEDFUNDS", "ECBDFR"}
 
-# Nama tenor yang mudah dibaca
+# Pemetaan FRED macro aggregate & liquidity series ke MacroLiquidityCreditMetric
+MACRO_METRIC_SERIES = {
+    "WALCL": {"metric_type": "FED_TOTAL_ASSETS", "country": "US", "unit": "USD_MILLIONS"},
+    "RRPONTSYD": {"metric_type": "ON_RRP", "country": "US", "unit": "USD_BILLIONS"},
+    "WTREGEN": {"metric_type": "TGA", "country": "US", "unit": "USD_MILLIONS"},
+    "M2SL": {"metric_type": "M2_MONEY_SUPPLY", "country": "US", "unit": "USD_BILLIONS"},
+    "A191RL1Q225SBEA": {"metric_type": "US_REAL_GDP", "country": "US", "unit": "PERCENT_CHANGE"},
+    "CLVMNACSCAB1GQEA19": {"metric_type": "EUROZONE_REAL_GDP", "country": "EU", "unit": "PERCENT_CHANGE"},
+    "ECBASSETSW": {"metric_type": "ECB_TOTAL_ASSETS", "country": "EU", "unit": "EUR_MILLIONS"},
+    "GVZCLS": {"metric_type": "GOLD_IV", "country": "US", "unit": "INDEX"},
+    "OVXCLS": {"metric_type": "OIL_IV", "country": "US", "unit": "INDEX"},
+}
+
+# Nama tenor yang mudah dibaca untuk yield obligasi
 SERIES_TO_TENOR = {
     "DGS2": "2Y",
     "DGS5": "5Y",
@@ -72,15 +80,6 @@ SERIES_TO_TENOR = {
     "CUSR0000SACL1E": "SUPERCORE_CPI",
     "DFII10": "10Y_REAL",
     "T10YIE": "10Y_INFLATION",
-    "WALCL": "FED_TOTAL_ASSETS",
-    "RRPONTSYD": "REVERSE_REPO",
-    "WTREGEN": "TGA_BALANCE",
-    "M2SL": "M2_MONEY_SUPPLY",
-    "GVZCLS": "GOLD_IV",
-    "OVXCLS": "OIL_IV",
-    "A191RL1Q225SBEA": "US_REAL_GDP",
-    "CLVMNACSCAB1GQEA19": "EUROZONE_REAL_GDP",
-    "ECBASSETSW": "ECB_TOTAL_ASSETS",
 }
 
 # Label bank untuk suku bunga (BOE, BOJ, RBA live rates are primary via CentralBankWatch)
@@ -128,10 +127,18 @@ class FREDDataFetcher:
 
         treasury_saved = 0
         rate_saved = 0
+        macro_saved = 0
 
         for label, series_id in self.series_map.items():
             try:
-                if (
+                if series_id in MACRO_METRIC_SERIES or label.startswith("macro_") or label.startswith("liquidity_"):
+                    spec = MACRO_METRIC_SERIES.get(
+                        series_id,
+                        {"metric_type": label.upper(), "country": "US", "unit": "USD_BILLIONS"},
+                    )
+                    n = await self._fetch_macro_metric(series_id, spec)
+                    macro_saved += n
+                elif (
                     series_id in TENOR_SERIES
                     or label.startswith("treasury_")
                     or label.startswith("real_yield_")
@@ -158,11 +165,20 @@ class FREDDataFetcher:
                 except Exception:
                     pass
 
-        logger.info(f"FRED fetch complete. Treasury: {treasury_saved} new, Interest rates: {rate_saved} new.")
+        logger.info(
+            f"FRED fetch complete. Treasury: {treasury_saved} new, Interest rates: {rate_saved} new, Macro metrics: {macro_saved} new."
+        )
         try:
             from monika.infrastructure.data_ingestion.sources.circuit_breaker import record_feed_heartbeat
 
-            record_feed_heartbeat("fred", metadata={"treasury_saved": treasury_saved, "rate_saved": rate_saved})
+            record_feed_heartbeat(
+                "fred",
+                metadata={
+                    "treasury_saved": treasury_saved,
+                    "rate_saved": rate_saved,
+                    "macro_saved": macro_saved,
+                },
+            )
         except Exception:
             pass
         return {"treasury": treasury_saved, "interest_rates": rate_saved}
@@ -263,6 +279,64 @@ class FREDDataFetcher:
         await self.session.commit()
         logger.info(f"Interest rate saved: {bank} = {rate_pct}% ({effective_date.date()})")
         return 1
+
+    # ------------------------------------------------------------------
+    # Internal — Macro Liquidity & Aggregate Metrics
+    # ------------------------------------------------------------------
+
+    async def _fetch_macro_metric(self, series_id: str, spec: dict) -> int:
+        """Mengambil data makro/likuiditas dan menyimpannya ke MacroLiquidityCreditMetric."""
+        observations = await self._call_fred(series_id, limit=10)
+        saved = 0
+        metric_type = spec["metric_type"]
+        country = spec.get("country", "US")
+        unit = spec.get("unit", "USD_BILLIONS")
+
+        with self.session.no_autoflush:
+            for obs in observations:
+                date_val = self._parse_date(obs.get("date", ""))
+                if not date_val:
+                    continue
+                value_str = obs.get("value", ".")
+                if not value_str or value_str in (".", "ND", "nd"):
+                    continue
+
+                try:
+                    val = float(value_str)
+                except ValueError, TypeError:
+                    logger.debug(f"Skipping non-numeric FRED macro value for {metric_type}: {value_str}")
+                    continue
+
+                record_dt = datetime(date_val.year, date_val.month, date_val.day, tzinfo=timezone.utc)
+                exists = await self.session.execute(
+                    select(MacroLiquidityCreditMetric.id)
+                    .where(
+                        MacroLiquidityCreditMetric.metric_type == metric_type,
+                        MacroLiquidityCreditMetric.country == country,
+                        MacroLiquidityCreditMetric.record_date == record_dt,
+                    )
+                    .limit(1)
+                )
+                if exists.scalar_one_or_none() is not None:
+                    continue
+
+                record = MacroLiquidityCreditMetric(
+                    metric_type=metric_type,
+                    country=country,
+                    record_date=record_dt,
+                    value=val,
+                    unit=unit,
+                )
+                self.session.add(record)
+                saved += 1
+
+        if saved:
+            await self.session.commit()
+            logger.info(f"Macro metric {metric_type} ({country}): saved {saved} new observations")
+        else:
+            await self.session.rollback()
+
+        return saved
 
     # ------------------------------------------------------------------
     # HTTP helper
