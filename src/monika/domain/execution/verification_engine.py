@@ -90,6 +90,20 @@ class EvidenceFirstVerifier:
             violations.append(f"ASSERT_3: BUY Stop Loss ({stop_loss}) must be below Entry ({entry_price}).")
         elif decision == "SELL" and stop_loss <= entry_price:
             violations.append(f"ASSERT_3: SELL Stop Loss ({stop_loss}) must be above Entry ({entry_price}).")
+        else:
+            # Enforce minimum SL distance in pips
+            from monika.domain.market.instrument_identity import resolve_instrument_identity
+
+            try:
+                pip_sz = float(resolve_instrument_identity(symbol).pip_size)
+            except Exception:
+                pip_sz = 0.0001
+            pip_sz = pip_sz if pip_sz > 0 else 0.0001
+            sl_dist_pips = abs(entry_price - stop_loss) / pip_sz
+            if sl_dist_pips < self.minimum_sl_pips:
+                violations.append(
+                    f"ASSERT_3: Stop Loss distance ({sl_dist_pips:.1f} pips) is below minimum ({self.minimum_sl_pips:.1f} pips)."
+                )
 
         # 4. Take Profit Validity & R:R
         if take_profit <= 0:
@@ -102,9 +116,10 @@ class EvidenceFirstVerifier:
                 if rr < self.min_rr_ratio:
                     violations.append(f"ASSERT_4: R:R ratio ({rr:.2f}) is below minimum ({self.min_rr_ratio}).")
 
-        # 5. Invalidation Condition
+        # 5. Invalidation Condition (Strict - Fail Closed)
         if not invalidation or len(str(invalidation).strip()) < 10:
-            inv_p = float(signal.get("invalidation_price") or stop_loss or 0.0)
+            # Only construct from explicit invalidation_price, never silently fabricate from stop_loss
+            inv_p = float(signal.get("invalidation_price") or 0.0)
             inv_d = signal.get("invalidation_direction") or ("below" if decision == "BUY" else "above")
             if inv_p > 0:
                 invalidation = f"H4 close {inv_d} {inv_p:.5f} invalidates structural setup."
@@ -189,16 +204,15 @@ class EvidenceFirstVerifier:
         # If live MT5 client is available, poll ticket
         if mt5_client:
             try:
-                positions = None
-                if hasattr(mt5_client, "get_position"):
-                    positions = await mt5_client.get_position(ticket)
-                elif hasattr(mt5_client, "get_open_positions"):
-                    positions = await mt5_client.get_open_positions()
-
                 import inspect
 
-                if inspect.iscoroutine(positions):
-                    positions = await positions
+                positions = None
+                if hasattr(mt5_client, "get_position"):
+                    res = mt5_client.get_position(ticket)
+                    positions = (await res) if inspect.isawaitable(res) else res
+                elif hasattr(mt5_client, "get_open_positions"):
+                    res = mt5_client.get_open_positions()
+                    positions = (await res) if inspect.isawaitable(res) else res
 
                 matched = None
                 if isinstance(positions, list):
@@ -225,13 +239,35 @@ class EvidenceFirstVerifier:
                     filled = float(matched.get("price_open", 0.0) or 0.0)
                     if requested > 0 and filled > 0:
                         report["slippage_points"] = abs(filled - requested)
+                        symbol = matched.get("symbol") or order_result.get("symbol") or ""
+                        if symbol:
+                            from monika.domain.market.instrument_identity import resolve_instrument_identity
+
+                            try:
+                                pip_sz = float(resolve_instrument_identity(symbol).pip_size)
+                            except Exception:
+                                pip_sz = 0.0001
+                            pip_sz = pip_sz if pip_sz > 0 else 0.0001
+                            slippage_pips = report["slippage_points"] / pip_sz
+                            if slippage_pips > self.max_slippage:
+                                report["issues"].append(
+                                    f"Ticket #{ticket} slippage ({slippage_pips:.1f} pips) exceeded max threshold ({self.max_slippage:.1f} pips)."
+                                )
 
             except Exception as e:
                 report["issues"].append(f"Broker state polling exception: {e}")
         else:
             # Paper trade or mock mode validation
-            report["verified"] = True
-            return report
+            status = str(order_result.get("status", "")).upper()
+            if status in ("REJECTED", "FAILED", "ERROR"):
+                report["issues"].append(f"Paper order #{ticket} execution returned failure status: {status}")
+            actual_sl = float(order_result.get("sl", 0.0) or order_result.get("stop_loss", 0.0) or 0.0)
+            if "sl" in order_result and actual_sl <= 0:
+                report["issues"].append(f"Paper order #{ticket} recorded with non-positive Stop Loss ({actual_sl}).")
+            requested = float(order_result.get("requested_price", 0.0) or 0.0)
+            filled = float(order_result.get("price_open", 0.0) or order_result.get("fill_price", 0.0) or 0.0)
+            if requested > 0 and filled > 0:
+                report["slippage_points"] = abs(filled - requested)
 
         report["verified"] = len(report["issues"]) == 0
         return report

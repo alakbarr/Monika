@@ -34,16 +34,29 @@ class AccountSnapshot(BaseModel):
     @property
     def floating_pnl(self) -> float:
         """Unrealized floating profit or loss."""
+        import math
+
+        if math.isnan(self.equity) or math.isnan(self.balance):
+            return 0.0
         return self.equity - self.balance
 
     @property
     def drawdown_pct(self) -> float:
         """Current equity drawdown percentage relative to balance."""
-        if self.balance <= 0.0 or self.equity <= 0.0:
+        import math
+
+        if (
+            math.isnan(self.balance)
+            or math.isnan(self.equity)
+            or math.isinf(self.balance)
+            or math.isinf(self.equity)
+            or self.balance <= 0.0
+        ):
             return 100.0
         if self.equity >= self.balance:
             return 0.0
-        return ((self.balance - self.equity) / self.balance) * 100.0
+        dd = ((self.balance - self.equity) / self.balance) * 100.0
+        return max(0.0, dd)
 
 
 class ActivePositionSnapshot(BaseModel):
@@ -105,8 +118,8 @@ class CalendarRiskEvents(BaseModel):
         else:
             now = now.astimezone(timezone.utc)
 
-        base_curr, quote_curr = get_symbol_currencies(symbol)
-        currencies = {base_curr.upper(), quote_curr.upper()} if base_curr and quote_curr else set()
+        currs = get_symbol_currencies(symbol)
+        currencies = {str(c).upper() for c in currs if c}
 
         for evt in self.events:
             if evt.currency.upper() in currencies and evt.impact.lower() in ("high", "critical"):

@@ -56,7 +56,8 @@ class OrderStatus(str, Enum):
             except ValueError:
                 return False
         if self == target:
-            return True
+            # Terminal states cannot reflexively transition to themselves
+            return not self.is_terminal
         return target in VALID_ORDER_TRANSITIONS.get(self, set())
 
 
@@ -106,6 +107,8 @@ VALID_ORDER_TRANSITIONS: Dict[OrderStatus, Set[OrderStatus]] = {
         OrderStatus.CANCELLED,
         OrderStatus.EXPIRED,
         OrderStatus.INTERRUPTED,
+        OrderStatus.ABORT_REQUESTED,
+        OrderStatus.REJECTED,
     },
     OrderStatus.ABORT_REQUESTED: {
         OrderStatus.ABORT_REQUESTED,

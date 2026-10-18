@@ -63,10 +63,11 @@ class PendingOrder:
     status: str = "pending"
 
 
-def evaluate_pending_order(order: Any, bar: Any) -> Optional[Dict[str, Any]]:
+def evaluate_pending_order(order: Any, bar: Any, spread: Optional[float] = None) -> Optional[Dict[str, Any]]:
     """
     Evaluasi apakah pending order terpicu oleh bar harga dengan gap slippage handling.
     Supports both dict and object representations for order and bar.
+    Evaluates BUY orders against Ask price (bid + spread) and SELL orders against Bid price.
     """
 
     def _val(obj: Any, key: str, default: Any = None) -> Any:
@@ -80,29 +81,41 @@ def evaluate_pending_order(order: Any, bar: Any) -> Optional[Dict[str, Any]]:
     bar_high = float(_val(bar, "high", bar_open) or bar_open)
     bar_low = float(_val(bar, "low", bar_open) or bar_open)
 
+    if spread is None:
+        spread = float(_val(bar, "spread", 0.0) or 0.0)
+
     if order_price <= 0.0 or bar_open <= 0.0:
         return None
 
+    # Buy orders execute at Ask (Bid + spread); Sell orders execute at Bid
+    ask_open = bar_open + spread
+    ask_high = bar_high + spread
+    ask_low = bar_low + spread
+
     triggered = False
+    fill_price = order_price
+
     if order_type == "buy_stop":
-        triggered = bar_high >= order_price
+        triggered = ask_high >= order_price
+        if triggered:
+            fill_price = ask_open if ask_open > order_price else order_price
     elif order_type == "sell_stop":
         triggered = bar_low <= order_price
+        if triggered:
+            fill_price = bar_open if bar_open < order_price else order_price
     elif order_type == "buy_limit":
-        triggered = bar_low <= order_price
+        triggered = ask_low <= order_price
+        if triggered:
+            # Positive slippage / gap improvement if opened below limit price
+            fill_price = ask_open if ask_open < order_price else order_price
     elif order_type == "sell_limit":
         triggered = bar_high >= order_price
+        if triggered:
+            # Positive slippage / gap improvement if opened above limit price
+            fill_price = bar_open if bar_open > order_price else order_price
 
     if not triggered:
         return None
-
-    # If price gaps past the trigger level, use the gap-adjusted price
-    if order_type == "buy_stop" and bar_open > order_price:
-        fill_price = bar_open  # slippage due to gap
-    elif order_type == "sell_stop" and bar_open < order_price:
-        fill_price = bar_open
-    else:
-        fill_price = order_price
 
     return {
         "triggered": True,
@@ -133,6 +146,9 @@ class ClientOrderEmulator:
         self.enabled = trail_cfg.get("enabled", True)
         self.breakeven_atr_multiple = float(trail_cfg.get("breakeven_atr_multiple", 1.0))
         self.trail_atr_multiple = float(trail_cfg.get("trail_atr_multiple", 1.5))
+        self.trailing_activation_atr_multiple = float(
+            trail_cfg.get("trailing_activation_atr_multiple", 2.0 * self.breakeven_atr_multiple)
+        )
         self.spread_buffer_atr = float(trail_cfg.get("spread_buffer_atr", 0.1))
         self.min_trail_step_atr = float(trail_cfg.get("min_trail_step_atr", 0.1))
 
@@ -387,7 +403,7 @@ class ClientOrderEmulator:
                     )
 
             # 2. Trailing stop condition
-            if profit_distance >= (2.0 * self.breakeven_atr_multiple * atr):
+            if profit_distance >= (self.trailing_activation_atr_multiple * atr):
                 trail_sl = pos.high_watermark - (self.trail_atr_multiple * atr)
                 if (trail_sl - current_sl) >= min_step and (new_sl is None or trail_sl > new_sl):
                     new_sl = trail_sl
@@ -406,12 +422,21 @@ class ClientOrderEmulator:
                     )
 
             # 2. Trailing stop condition
-            if profit_distance >= (2.0 * self.breakeven_atr_multiple * atr):
+            if profit_distance >= (self.trailing_activation_atr_multiple * atr):
                 trail_sl = pos.low_watermark + (self.trail_atr_multiple * atr)
                 if (current_sl - trail_sl) >= min_step and (new_sl is None or trail_sl < new_sl):
                     new_sl = trail_sl
                     reason = f"trailing_stop (profit={profit_distance:.5f}, trail={trail_sl:.5f})"
         if new_sl is not None:
+            # Check broker stops level distance to prevent MT5 invalid stops rejection
+            min_stop_distance = float(self.settings.get("stops_level", 0.0) or 0.0)
+            if min_stop_distance > 0 and abs(new_sl - current_price) < min_stop_distance:
+                logger.warning(
+                    f"[ClientOrderEmulator] New SL {new_sl} is within broker stops level ({min_stop_distance}) "
+                    f"of current price {current_price}. Modification skipped."
+                )
+                return None
+
             digits = getattr(pos, "digits", None)
             if digits is None:
                 digits = self.get_symbol_digits(pos.symbol)

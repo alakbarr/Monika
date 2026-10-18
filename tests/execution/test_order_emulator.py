@@ -319,3 +319,49 @@ def test_evaluate_pending_order_gap_slippage():
     assert res_sell_normal is not None
     assert res_sell_normal["fill_price"] == 1.0800  # order price
     assert res_sell_normal["gap_slippage"] is False
+
+    # 5. Buy limit with gap down (price improvement)
+    order_buy_limit = PendingOrder(ticket=3, symbol="EURUSD", type="buy_limit", price=1.0850)
+    bar_buy_limit_gap = SimpleNamespace(open=1.0830, high=1.0840, low=1.0820, close=1.0835)
+    res_bl = evaluate_pending_order(order_buy_limit, bar_buy_limit_gap)
+    assert res_bl is not None
+    assert res_bl["triggered"] is True
+    assert res_bl["fill_price"] == 1.0830  # filled at open (positive slippage)
+    assert res_bl["gap_slippage"] is True
+
+    # 6. Buy limit with spread: bar low is 1.0848, spread is 0.0005 -> Ask low is 1.0853 (> 1.0850 -> not triggered)
+    bar_bl_spread_miss = SimpleNamespace(open=1.0860, high=1.0870, low=1.0848, close=1.0855)
+    res_bl_spread_miss = evaluate_pending_order(order_buy_limit, bar_bl_spread_miss, spread=0.0005)
+    assert res_bl_spread_miss is None
+
+
+@pytest.mark.asyncio
+async def test_order_emulator_stops_level_protection():
+    """Verify broker stops_level protects against illegal close modifications."""
+    from types import SimpleNamespace
+
+    emulator = ClientOrderEmulator(
+        settings={
+            "stops_level": 0.0020,  # 20 pips minimum distance from price
+            "trailing_stop": {
+                "breakeven_atr_multiple": 1.0,
+                "spread_buffer_atr": 0.1,
+            },
+        }
+    )
+
+    pos = TrackedPosition(
+        ticket=999,
+        symbol="EURUSD",
+        direction="buy",
+        entry_price=1.1000,
+        current_sl=1.0950,
+        atr=0.0050,
+        high_watermark=1.1060,
+        low_watermark=1.1000,
+    )
+
+    # Price reached 1.1055 (profit >= 1.0 ATR). Breakeven SL = 1.1000 + 0.0005 = 1.1005.
+    # Distance from current_price (1.1015) to new_sl (1.1005) is 0.0010 (< stops_level 0.0020).
+    res = await emulator._evaluate_tick_for_position(pos, bid=1.1015, ask=1.1017, last=1.1015)
+    assert res is None  # Modification safely skipped!

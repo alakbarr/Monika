@@ -59,15 +59,25 @@ class OrderCreator:
         client_order_id: Optional[str] = None,
     ) -> Any:
         """Instantiates an Order record with PENDING_SUBMIT status."""
+        if not symbol or not symbol.strip():
+            raise ValueError("Cannot create order: symbol must be a non-empty string")
+        if requested_volume <= 0 or math.isnan(requested_volume) or math.isinf(requested_volume):
+            raise ValueError(f"Cannot create order: requested_volume ({requested_volume}) must be strictly positive")
+        if requested_price <= 0 or math.isnan(requested_price) or math.isinf(requested_price):
+            raise ValueError(f"Cannot create order: requested_price ({requested_price}) must be strictly positive")
+        dir_clean = (direction or "").strip().upper()
+        if dir_clean not in ("BUY", "SELL"):
+            raise ValueError(f"Cannot create order: direction must be BUY or SELL (got '{direction}')")
+
         c_id = client_order_id or f"ORD_{uuid.uuid4().hex[:12]}"
         order_cls = cls.get_order_class()
         return order_cls(
             id=str(uuid.uuid4()),
             client_order_id=c_id,
             analysis_id=analysis_id,
-            symbol=symbol,
-            order_type=order_type.upper(),
-            direction=direction.upper(),
+            symbol=symbol.strip().upper(),
+            order_type=order_type.strip().upper(),
+            direction=dir_clean,
             requested_price=float(requested_price),
             requested_volume=float(requested_volume),
             status=OrderStatus.PENDING_SUBMIT,
@@ -85,12 +95,16 @@ class OrderCreator:
     ) -> Tuple[bool, Optional[str]]:
         """
         Validates core parameters of an order:
+        - symbol is non-empty
         - direction is BUY or SELL
         - entry price is positive
         - SL is correctly positioned relative to entry (SL < entry for BUY, SL > entry for SELL)
         - SL and TP are strictly positive if provided
         """
-        dir_clean = direction.strip().upper()
+        if not symbol or not symbol.strip():
+            return False, "Invalid symbol: must be a non-empty string"
+
+        dir_clean = (direction or "").strip().upper()
         if dir_clean not in ("BUY", "SELL"):
             return False, f"Invalid direction '{direction}': must be BUY or SELL"
 

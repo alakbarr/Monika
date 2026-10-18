@@ -150,7 +150,11 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
                         exp_dt = datetime.fromisoformat(val_parts[1].strip())
                         if clock.now() >= exp_dt:
                             cfg.value = "false"
-                            await session.commit()
+                            if hasattr(session, "commit"):
+                                try:
+                                    await session.commit()
+                                except Exception as e:
+                                    logger.debug(f"Failed to commit auto-unpause config: {e}")
                             continue
                     except Exception:
                         pass
@@ -175,7 +179,11 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
                 ).scalar_one_or_none()
                 if cfg:
                     cfg.value = "false"
-                await session.commit()
+                if hasattr(session, "commit"):
+                    try:
+                        await session.commit()
+                    except Exception as e:
+                        logger.warning(f"Failed to commit auto-unpause state: {e}")
                 logger.info("Timed trading pause expired, automatically resumed.")
                 return True, "ok"
             return False, f"Trading is manually paused: {state.reason or 'no reason given'}"

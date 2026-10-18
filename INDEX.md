@@ -1279,7 +1279,7 @@
     - `async sync_positions(active_positions: Sequence[Any], atr_lookup: Optional[Dict[str, float]]) -> None` - *Sinkronkan daftar posisi dari DB/MT5 dengan posisi in-memory.*
     - `async on_tick(event: Any) -> List[Dict[str, Any]]` - *Handler event tick berkecepatan tinggi.*
 - **Top-Level Functions**:
-  - `evaluate_pending_order(order: Any, bar: Any) -> Optional[Dict[str, Any]]`: Evaluasi apakah pending order terpicu oleh bar harga dengan gap slippage handling.
+  - `evaluate_pending_order(order: Any, bar: Any, spread: Optional[float]) -> Optional[Dict[str, Any]]`: Evaluasi apakah pending order terpicu oleh bar harga dengan gap slippage handling.
 
 #### `sizing_calculator.py` - *Sizing calculation, slippage calculation, and price drift validation helpers.*
 - **Path**: [`src/monika/domain/execution/sizing_calculator.py`](src/monika/domain/execution/sizing_calculator.py)
@@ -4097,7 +4097,7 @@
     - `compute_stoch(closes: List[float], highs: List[float], lows: List[float], ...) -> Tuple[float, float]` - *Compute Fast/Slow Stochastic Oscillator (%K, %D).*
     - `screen(symbol: str, bars: List[Dict[str, Any]], indicators: Optional[Dict[str, Any]], ...) -> PlaybookScreeningReport` - *Screen the latest bars for symbol against all 15 empirical playbooks.*
 
-#### `session_info.py` - *Market session tracking and timing rules utility.*
+#### `session_info.py` - *Market session tracking and timing rules utility with DST and weekend awareness.*
 - **Path**: [`src/monika/domain/market/session_info.py`](src/monika/domain/market/session_info.py)
 - **Top-Level Functions**:
   - `get_current_market_session(dt: Optional[datetime]) -> Dict[str, Any]`: Mengembalikan sesi pasar yang sedang aktif, status overlap London-NY,

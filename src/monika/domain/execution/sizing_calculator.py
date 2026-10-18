@@ -47,10 +47,23 @@ class SizingCalculator:
         executed_price: float,
         pip_size: Optional[float] = None,
         point_size: Optional[float] = None,
+        symbol: Optional[str] = None,
     ) -> float:
         """Computes slippage in pips between expected entry and filled price."""
-        sz = pip_size if pip_size is not None else (point_size if point_size is not None else 0.0001)
-        if sz <= 0:
-            sz = 0.0001
+        sz = pip_size
+        if sz is None and symbol:
+            try:
+                from monika.domain.market.instrument_identity import resolve_instrument_identity
+
+                sz = resolve_instrument_identity(symbol).pip_size
+            except Exception:
+                sz = None
+        if sz is None and point_size is not None:
+            sz = point_size
+        if sz is None or sz <= 0:
+            raise ValueError(
+                f"Cannot compute slippage: valid pip_size, point_size, or symbol is required "
+                f"(got pip_size={pip_size}, point_size={point_size}, symbol={symbol})"
+            )
         diff = abs(executed_price - expected_price)
         return round(diff / sz, 2)

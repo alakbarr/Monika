@@ -22,6 +22,13 @@ def assert_risk_gate_invariants(
     Raises InvariantViolationError immediately on any breach.
     """
     # 1. Hard drawdown ceiling invariant
+    import math
+
+    if math.isnan(current_drawdown_pct) or math.isinf(current_drawdown_pct):
+        raise InvariantViolationError(
+            f"Drawdown ceiling breach: invalid drawdown value ({current_drawdown_pct}). Execution forbidden (fail-closed)."
+        )
+
     if current_drawdown_pct > max_drawdown_limit:
         raise InvariantViolationError(
             f"Drawdown ceiling breach: current drawdown ({current_drawdown_pct:.2f}%) "

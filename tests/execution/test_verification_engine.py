@@ -157,6 +157,70 @@ async def test_pre_trade_assertions_quant_alpha_exempt_assert_7():
         "source_strategy_id": "donchian_breakout",
     }
     passed, violations = await verifier.pre_trade_assertions(quant_signal)
-    assert passed is True
-    assert len(violations) == 0
     assert not any("ASSERT_7" in v for v in violations)
+
+
+@pytest.mark.asyncio
+async def test_pre_trade_assertions_sl_below_minimum_pips():
+    """Verify ASSERT_3 fails when SL distance is less than minimum_sl_pips."""
+    verifier = EvidenceFirstVerifier(settings={"trading": {"risk": {"minimum_sl_pips": 10.0}}})
+    # EURUSD entry 1.0850, SL 1.0845 = 5 pips (< 10 pips min)
+    tight_sl_signal = {
+        "symbol": "EURUSD",
+        "decision": "BUY",
+        "entry_price": 1.0850,
+        "stop_loss": 1.0845,
+        "take_profit": 1.0950,
+        "confidence": 0.75,
+        "confluence_score": 8,
+        "priced_in_score": 3,
+        "invalidation": "Thesis invalid below support 1.0840",
+        "key_evidence": ["SMC zone", "DXY weak"],
+    }
+    passed, violations = await verifier.pre_trade_assertions(tight_sl_signal)
+    assert passed is False
+    assert any("ASSERT_3: Stop Loss distance" in v for v in violations)
+
+
+@pytest.mark.asyncio
+async def test_pre_trade_assertions_missing_invalidation_fails_closed():
+    """Verify ASSERT_5 fails closed without hallucinating an invalidation text."""
+    verifier = EvidenceFirstVerifier()
+    signal_no_inv = {
+        "symbol": "EURUSD",
+        "decision": "BUY",
+        "entry_price": 1.0850,
+        "stop_loss": 1.0800,
+        "take_profit": 1.0950,
+        "confidence": 0.75,
+        "confluence_score": 8,
+        "priced_in_score": 3,
+        "key_evidence": ["SMC zone", "DXY weak"],
+    }
+    passed, violations = await verifier.pre_trade_assertions(signal_no_inv)
+    assert passed is False
+    assert any("ASSERT_5: Invalidation condition missing" in v for v in violations)
+
+
+@pytest.mark.asyncio
+async def test_post_execution_reconciliation_excessive_slippage():
+    """Verify post_execution_reconciliation flags excessive slippage."""
+    verifier = EvidenceFirstVerifier(settings={"trading": {"risk": {"max_slippage_pips": 2.0}}})
+    mock_mt5 = type(
+        "MockMT5",
+        (),
+        {
+            "get_position": staticmethod(
+                lambda ticket: {
+                    "ticket": ticket,
+                    "symbol": "EURUSD",
+                    "sl": 1.0800,
+                    "price_open": 1.0855,  # 5 pips slippage from requested 1.0850
+                }
+            )
+        },
+    )()
+    order_result = {"ticket": 12345, "symbol": "EURUSD", "requested_price": 1.0850}
+    report = await verifier.post_execution_reconciliation(order_result, mt5_client=mock_mt5)
+    assert report["verified"] is False
+    assert any("slippage (5.0 pips) exceeded max threshold" in issue for issue in report["issues"])

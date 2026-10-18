@@ -218,6 +218,7 @@ class PositionSizer:
             account_equity = account_equity / 100.0
 
         risk_pct = risk_percent_override if risk_percent_override is not None else self.risk_percent
+        base_risk_pct = risk_pct
 
         # Apply VIX dynamic risk adjustment using settings thresholds
         risk_cfg = getattr(self, "settings", {}).get("trading", {}).get("risk", {})
@@ -354,6 +355,17 @@ class PositionSizer:
         except Exception as turn_err:
             logger.debug(f"[{symbol}] Turnover churn check non-fatal: {turn_err}")
 
+        # Apply Global Risk Multiplier Floor (Default: 0.20x of base risk)
+        # Prevents excessive compounding from starving positions below minimum lot size
+        min_multiplier_floor = float(risk_cfg.get("min_risk_multiplier_floor", 0.20))
+        if base_risk_pct > 0 and (risk_pct / base_risk_pct) < min_multiplier_floor:
+            clamped_risk = base_risk_pct * min_multiplier_floor
+            logger.info(
+                f"[{symbol}] Combined risk multiplier ({risk_pct / base_risk_pct:.4f}x) "
+                f"clamped to global floor {min_multiplier_floor:.2f}x: {risk_pct:.3f}% -> {clamped_risk:.3f}%"
+            )
+            risk_pct = clamped_risk
+
         spec = await self._get_instrument_spec_dynamic(session, symbol)
         if spec is None:
             return self._invalid(
@@ -462,7 +474,7 @@ class PositionSizer:
             min_lot_risk_usd = spec.min_lot * sl_distance_pips * spec.pip_value_per_lot
             if is_cent:
                 min_lot_risk_usd /= 100.0
-            if min_lot_risk_usd <= risk_amount_usd * 1.05 and min_lot_risk_usd <= max_risk_cap:
+            if min_lot_risk_usd <= risk_amount_usd and min_lot_risk_usd <= max_risk_cap:
                 recommended_lots = spec.min_lot
                 logger.debug(
                     f"Lot size bumped from {raw_lots:.4f} to broker minimum {spec.min_lot} "
@@ -781,7 +793,7 @@ class PositionSizer:
             min_lot_risk_usd = spec.min_lot * sl_distance_pips * spec.pip_value_per_lot
             if is_cent:
                 min_lot_risk_usd /= 100.0
-            if min_lot_risk_usd <= risk_amount_usd * 1.05 and min_lot_risk_usd <= max_risk_cap:
+            if min_lot_risk_usd <= risk_amount_usd and min_lot_risk_usd <= max_risk_cap:
                 recommended_lots = spec.min_lot
                 logger.info(
                     f"[{symbol}] Lot size clamped from {raw_lots:.4f} to broker minimum {spec.min_lot} "
@@ -959,13 +971,17 @@ class PositionSizer:
 
             # Update USD-base pip value berdasarkan harga terkini dari DB
             if symbol in ("USDJPY", "USDCAD", "USDCHF"):
-                from monika.domain.risk.ports import get_default_risk_data_provider
+                try:
+                    from monika.domain.risk.ports import get_default_risk_data_provider
 
-                repo = get_default_risk_data_provider(session=session)
-                bars = await repo.get_recent_price_bars(symbol=symbol, timeframe="H4", limit=1, session=session)
-                if bars and bars[-1].get("close", 0) > 0:
-                    dynamic_pip_value = (spec.contract_size * spec.pip_size) / float(bars[-1]["close"])
-                    spec = dataclasses.replace(spec, pip_value_usd=round(dynamic_pip_value, 4))
+                    repo = get_default_risk_data_provider(session=session)
+                    if repo is not None:
+                        bars = await repo.get_recent_price_bars(symbol=symbol, timeframe="H4", limit=1, session=session)
+                        if bars and bars[-1].get("close", 0) > 0:
+                            dynamic_pip_value = (spec.contract_size * spec.pip_size) / float(bars[-1]["close"])
+                            spec = dataclasses.replace(spec, pip_value_usd=round(dynamic_pip_value, 4))
+                except Exception as dyn_err:
+                    logger.debug(f"[{symbol}] Failed to dynamically update pip value from DB: {dyn_err}")
 
             spec._source = "default"
             return spec
@@ -1070,9 +1086,11 @@ class PositionSizer:
         ):
             return 0.0
 
-        # Strict floor snapping using math.floor with 1e-9 epsilon to prevent float precision drift
-        steps = math.floor((float(raw) / float(step)) + 1e-9)
-        if steps <= 0:
+        # Strict Decimal floor snapping without float epsilon drift (AGENTS.md §5.5)
+        d_raw = Decimal(str(raw))
+        d_step = Decimal(str(step))
+        d_steps = (d_raw / d_step).to_integral_value(rounding=ROUND_FLOOR)
+        if d_steps <= 0:
             return 0.0
 
         # Determine number of decimals from step
@@ -1082,8 +1100,6 @@ class PositionSizer:
         elif step >= 1.0:
             decimals = 0
 
-        d_steps = Decimal(str(steps))
-        d_step = Decimal(str(step))
         rounded = (d_steps * d_step).quantize(Decimal(10) ** -decimals, rounding=ROUND_FLOOR)
         return float(rounded)
 
@@ -1110,8 +1126,14 @@ class PositionSizer:
                 lots = self._round_lots(risk_usd / denom, spec.lot_step)
                 if spec.max_lot > 0:
                     lots = min(spec.max_lot, lots)
-                return max(spec.min_lot, lots)
-        return spec.min_lot if spec else 0.01
+                if lots < spec.min_lot:
+                    logger.warning(
+                        f"[{symbol}] ATR calculated lot size {lots} is below minimum {spec.min_lot} "
+                        f"for risk budget ${risk_usd:.2f}. Rejected (0.0 lots)."
+                    )
+                    return 0.0
+                return lots
+        return 0.0
 
     @staticmethod
     def _invalid(symbol, direction, entry, sl, tp, equity, risk_pct, reasons) -> SizingResult:

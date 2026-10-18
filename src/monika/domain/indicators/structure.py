@@ -383,12 +383,27 @@ class MarketStructureAnalyzer:
             window_l = list(prices_low[i - n : i]) + list(prices_low[i + 1 : i + n + 1])
 
             if prices_high[i] > max(window_h):
-                highs_idx.append({"timestamp": timestamps[i], "price": float(prices_high[i])})
+                highs_idx.append(
+                    {
+                        "timestamp": timestamps[i],
+                        "price": float(prices_high[i]),
+                        "confirmed_at": timestamps[i + n],
+                        "confirmation_lag_bars": n,
+                    }
+                )
             if prices_low[i] < min(window_l):
-                lows_idx.append({"timestamp": timestamps[i], "price": float(prices_low[i])})
+                lows_idx.append(
+                    {
+                        "timestamp": timestamps[i],
+                        "price": float(prices_low[i]),
+                        "confirmed_at": timestamps[i + n],
+                        "confirmation_lag_bars": n,
+                    }
+                )
 
-        swing_highs = pd.DataFrame(highs_idx) if highs_idx else pd.DataFrame(columns=["timestamp", "price"])
-        swing_lows = pd.DataFrame(lows_idx) if lows_idx else pd.DataFrame(columns=["timestamp", "price"])
+        columns = ["timestamp", "price", "confirmed_at", "confirmation_lag_bars"]
+        swing_highs = pd.DataFrame(highs_idx) if highs_idx else pd.DataFrame(columns=columns)
+        swing_lows = pd.DataFrame(lows_idx) if lows_idx else pd.DataFrame(columns=columns)
 
         logger.debug(f"Found {len(swing_highs)} swing highs, {len(swing_lows)} swing lows")
         return swing_highs, swing_lows

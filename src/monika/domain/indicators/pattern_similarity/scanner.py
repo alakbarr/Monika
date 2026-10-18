@@ -54,10 +54,10 @@ class SimilarityScanner:
 
         # Vectorized Euclidean distance calculation (broadcasts curr_z)
         diff = windows_z - curr_z[np.newaxis, :]
-        distances = np.sqrt(np.sum(diff**2, axis=1)) / np.sqrt(window_size)
-
-        # Transform distance to similarity score in range (0.0, 1.0]
-        similarities = 1.0 / (1.0 + distances)
+        # Normalized Euclidean distance scaled to [0, 1] range: dist / (2 * sqrt(W))
+        # Matches engine.py invariant: identical = 1.0, orthogonal = ~0.293, inverted = 0.0
+        norm_dist = np.sqrt(np.sum(diff**2, axis=1)) / (2.0 * np.sqrt(window_size))
+        similarities = np.clip(1.0 - norm_dist, 0.0, 1.0)
 
         # -------------------------------------------------------------
         # Filters:

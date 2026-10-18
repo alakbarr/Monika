@@ -690,7 +690,12 @@ class PreplannedOrderMixin(_ExecutionServiceMixinBase):
                 if reported_slippage is not None:
                     slippage = float(reported_slippage)
                 elif exec_price is not None and planned_price:
-                    slippage = SizingCalculator.compute_slippage_pips(float(planned_price), float(exec_price))
+                    from monika.domain.market.instrument_identity import resolve_instrument_identity
+
+                    sym_id = resolve_instrument_identity(order.symbol or getattr(order, "symbol", ""))
+                    slippage = SizingCalculator.compute_slippage_pips(
+                        float(planned_price), float(exec_price), pip_size=sym_id.pip_size
+                    )
                 else:
                     slippage = 0.0
 

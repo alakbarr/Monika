@@ -40,14 +40,14 @@ def compute_yang_zhang_volatility(df: pd.DataFrame, window: int = 20) -> pd.Seri
     Yang-Zhang (2000) historical volatility estimator.
     Handles overnight jump risk and open-to-close drift, ~14x more efficient than close-to-close.
     """
-    if len(df) < window + 1:
-        return pd.Series(index=df.index, dtype=float)
+    if df is None or len(df) < window + 1:
+        return pd.Series(index=df.index if df is not None else [], dtype=float)
 
     n = max(2, window)
-    open_p = df["open"].astype(float)
-    high_p = df["high"].astype(float)
-    low_p = df["low"].astype(float)
-    close_p = df["close"].astype(float)
+    open_p = df["open"].astype(float).clip(lower=1e-6)
+    high_p = df["high"].astype(float).clip(lower=open_p)
+    low_p = df["low"].astype(float).clip(lower=1e-6)
+    close_p = df["close"].astype(float).clip(lower=1e-6)
 
     # Log components
     log_oc = pd.Series(np.log(close_p / (open_p + 1e-12)), index=df.index)
@@ -77,19 +77,13 @@ def compute_lag1_autocorrelation(close: pd.Series, window: int = 20) -> pd.Serie
     AC1 < 0: mean-reverting regime (reversals/sweeps favored).
     Vectorized implementation: 100x faster than rolling apply.
     """
-    if len(close) < window + 2:
-        return pd.Series(index=close.index, dtype=float)
+    if close is None or len(close) < window + 2:
+        return pd.Series(index=close.index if close is not None else [], dtype=float)
 
     returns = close.astype(float).pct_change()
-
-    def _calc_ac1(arr):
-        s = pd.Series(arr)
-        if len(s) < 3 or s.std() < 1e-12:
-            return 0.0
-        val = s.autocorr(lag=1)
-        return float(val) if pd.notna(val) else 0.0
-
-    return cast(pd.Series, returns.rolling(window).apply(_calc_ac1, raw=False))
+    r_lag = returns.shift(1)
+    ac1 = returns.rolling(window).corr(r_lag).fillna(0.0).clip(-1.0, 1.0)
+    return cast(pd.Series, ac1)
 
 
 class TechnicalIndicatorCalculator:
@@ -357,6 +351,13 @@ class TechnicalIndicatorCalculator:
         Returns:
             Dict mapping timestamp -> list of dict {name, value_json}.
         """
+        if df is None or len(df) == 0:
+            return {}
+
+        required_cols = ("open", "high", "low", "close", "volume")
+        if not all(col in df.columns for col in required_cols):
+            return {}
+
         if not is_final and len(df) > 1:
             df = df.iloc[:-1].copy()
 

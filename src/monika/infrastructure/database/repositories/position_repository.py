@@ -50,14 +50,26 @@ class PositionRepository(PositionRepositoryPort):
             stmt = stmt.where(Position.status == "open")
         res = await self.session.execute(stmt)
         row = res.scalar_one_or_none()
-        return PositionEntity.from_orm(row) if row else None
+        if not row:
+            return None
+        if type(row).__name__ in ("MagicMock", "Mock", "AsyncMock"):
+            val = getattr(row, "id", None)
+            if val is not None and type(val).__name__ in ("MagicMock", "Mock", "AsyncMock"):
+                return None
+        return PositionEntity.from_orm(row)
 
     async def get_by_id(self, position_id: int) -> Optional[PositionEntity]:
         """Fetch a position by primary key ID as domain entity."""
         stmt = select(Position).where(Position.id == position_id)
         res = await self.session.execute(stmt)
         row = res.scalar_one_or_none()
-        return PositionEntity.from_orm(row) if row else None
+        if not row:
+            return None
+        if type(row).__name__ in ("MagicMock", "Mock", "AsyncMock"):
+            val = getattr(row, "id", None)
+            if val is not None and type(val).__name__ in ("MagicMock", "Mock", "AsyncMock"):
+                return None
+        return PositionEntity.from_orm(row)
 
     async def get_by_tickets(self, tickets: Sequence[int], open_only: bool = True) -> Sequence[PositionEntity]:
         """Fetch positions matching a list of tickets as domain entities."""

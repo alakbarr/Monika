@@ -238,6 +238,32 @@ KNOWN_INSTRUMENTS: Dict[str, InstrumentIdentity] = {
         trading_sessions=("Tokyo", "London"),
         is_24_7=False,
     ),
+    "XAGUSD": InstrumentIdentity(
+        symbol="XAGUSD",
+        canonical_symbol="XAGUSD",
+        official_name="Silver / US Dollar",
+        asset_class="COMMODITY",
+        base_currency="XAG",
+        quote_currency="USD",
+        pip_size=0.01,
+        point_size=0.001,
+        cot_code="084691",
+        trading_sessions=("London", "New York"),
+        is_24_7=False,
+    ),
+    "NZDUSD": InstrumentIdentity(
+        symbol="NZDUSD",
+        canonical_symbol="NZDUSD",
+        official_name="New Zealand Dollar / US Dollar",
+        asset_class="FOREX",
+        base_currency="NZD",
+        quote_currency="USD",
+        pip_size=0.0001,
+        point_size=0.00001,
+        cot_code="112741",
+        trading_sessions=("Sydney", "Tokyo", "London", "New York"),
+        is_24_7=False,
+    ),
 }
 
 ALIAS_MAP: Dict[str, str] = {

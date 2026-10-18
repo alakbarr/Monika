@@ -91,14 +91,14 @@ DEFAULT_INSTRUMENTS: dict[str, InstrumentSpec] = {
     "USDCAD": InstrumentSpec(
         symbol="USDCAD",
         pip_size=0.0001,
-        pip_value_usd=10.0,
+        pip_value_usd=7.41,  # Based on ~1.35 CAD/USD exchange rate (dynamic update prioritized)
         contract_size=100_000,
         digits=5,
     ),
     "USDCHF": InstrumentSpec(
         symbol="USDCHF",
         pip_size=0.0001,
-        pip_value_usd=10.0,
+        pip_value_usd=11.36,  # Based on ~0.88 CHF/USD exchange rate (dynamic update prioritized)
         contract_size=100_000,
         digits=5,
     ),
