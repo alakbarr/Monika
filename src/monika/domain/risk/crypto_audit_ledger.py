@@ -119,6 +119,15 @@ class CryptographicAuditLedger:
         with self._lock:
             if self._load_error:
                 raise LedgerCorruptionError(f"Cannot append to corrupted audit ledger: {self._load_error}")
+
+            # Verify existing on-disk chain state if file exists and has size
+            if self.ledger_path.exists() and self.ledger_path.stat().st_size > 0:
+                try:
+                    self._init_or_load()
+                except LedgerCorruptionError as err:
+                    self._load_error = str(err)
+                    raise LedgerCorruptionError(f"Cannot append to corrupted audit ledger: {err}") from err
+
             seq = (self._last_record.seq + 1) if self._last_record is not None else 0
             prev_hash = self._last_record.record_hash if self._last_record is not None else GENESIS_PREV_HASH
             ts_utc = datetime.now(UTC).isoformat()

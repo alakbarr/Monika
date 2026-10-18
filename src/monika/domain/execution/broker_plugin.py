@@ -47,6 +47,30 @@ class InstrumentSpec:
     stops_level_pips: float = 0.0
     margin_rate: float = 1.0
 
+    def __post_init__(self) -> None:
+        if self.symbol and self.contract_size == 100000.0 and self.pip_size == 0.0001:
+            try:
+                from monika.domain.market.instrument_identity import resolve_instrument_identity
+
+                ident = resolve_instrument_identity(self.symbol)
+                if ident:
+                    if ident.pip_size:
+                        object.__setattr__(self, "pip_size", float(ident.pip_size))
+                    sym_u = self.symbol.upper()
+                    if ident.asset_class == "COMMODITY":
+                        if "XAU" in sym_u:
+                            object.__setattr__(self, "contract_size", 100.0)
+                        elif "XAG" in sym_u:
+                            object.__setattr__(self, "contract_size", 5000.0)
+                        elif "XTI" in sym_u or "XBR" in sym_u or "OIL" in sym_u:
+                            object.__setattr__(self, "contract_size", 1000.0)
+                    elif ident.asset_class == "CRYPTO":
+                        object.__setattr__(self, "contract_size", 1.0)
+                    elif ident.asset_class == "INDEX":
+                        object.__setattr__(self, "contract_size", 1.0)
+            except Exception:
+                pass
+
 
 @dataclass(frozen=True)
 class PositionData:

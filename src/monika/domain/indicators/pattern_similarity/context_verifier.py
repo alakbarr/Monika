@@ -271,8 +271,12 @@ INSTRUCTIONS:
                         is_ongoing=False,
                         created_at=datetime.now(timezone.utc),
                     )
-                    session.add(entry)
-                    await session.commit()
+                    try:
+                        session.add(entry)
+                        if hasattr(session, "commit") and not getattr(session, "is_readonly", False):
+                            await session.commit()
+                    except Exception as commit_err:
+                        logger.debug(f"Could not persist MarketChronicle cache: {commit_err}")
                 return joined
         except Exception as e:
             logger.debug(f"Web search chronicle fallback skipped: {e}")

@@ -111,9 +111,18 @@ class PortfolioOptimizer:
             )
 
         variances = np.diag(self.cov_matrix)
-        vols = np.sqrt(np.maximum(variances, 1e-8))
-        inv_vols = 1.0 / vols
-        weights = inv_vols / np.sum(inv_vols)
+        valid_mask = variances > 1e-8
+        inv_vols = np.zeros_like(variances, dtype=np.float64)
+        if np.any(valid_mask):
+            vols = np.sqrt(variances[valid_mask])
+            inv_vols[valid_mask] = 1.0 / vols
+            sum_inv = float(np.sum(inv_vols))
+            if sum_inv > 1e-9:
+                weights = inv_vols / sum_inv
+            else:
+                weights = np.ones(n, dtype=np.float64) / n
+        else:
+            weights = np.ones(n, dtype=np.float64) / n
 
         port_ret = float(np.dot(weights, self.expected_returns))
         port_vol = float(np.sqrt(weights @ self.cov_matrix @ weights))
