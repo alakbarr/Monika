@@ -9,6 +9,7 @@ Fungsi: Menarik data teknikal dasar (SMC, OHLCV, dll.) sebelum AI Stage 2 berjal
 Tujuan: Menghemat token & waktu dengan mengubah belasan panggilan tool menjadi satu teks ringkasan (bundle).
 """
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -88,6 +89,25 @@ class Stage2DataBundler:
     def __init__(self, session: AsyncSession, settings: Optional[dict] = None):
         self.settings = settings or {}
         self.executor = ToolExecutor(session, self.settings)
+        self._shared_global_cache: dict[str, Any] = {}
+
+    @classmethod
+    def get_symbol_precision(cls, symbol: str) -> int:
+        """Determines price precision dynamically using InstrumentSpec with fallback."""
+        if not symbol:
+            return 5
+        sym = symbol.upper().strip().replace("/", "")
+        try:
+            from monika.domain.risk.position_sizing import get_instrument_spec
+
+            spec = get_instrument_spec(sym)
+            if spec and hasattr(spec, "digits") and spec.digits is not None:
+                return int(spec.digits)
+        except Exception:
+            pass
+        return cls._PRICE_PRECISION.get(
+            sym, 5 if "USD" in sym and sym not in ("XAUUSD", "BTCUSD") else (3 if "JPY" in sym else 4)
+        )
 
     def _compress_history(self, history: Any, symbol: Optional[str] = None) -> str:
         """Kompresi data OHLCV menjadi teks yang sangat ringkas dengan presisi dinamis."""
@@ -107,7 +127,7 @@ class Stage2DataBundler:
         if not bars or not isinstance(bars, list):
             return ""
 
-        prec = self._PRICE_PRECISION.get(sym, 5 if "USD" in sym and sym not in ("XAUUSD", "BTCUSD") else 4)
+        prec = self.get_symbol_precision(sym)
 
         # Gunakan format CSV minimal: time,O,H,L,C,V
         lines = ["time,O,H,L,C,V"]
@@ -305,24 +325,33 @@ class Stage2DataBundler:
             data["data_freshness_warnings"] = freshness_warnings
         fetch_errors = []
 
-        # Task standar (tidak perlu spesifik simbol)
-        for tool_name, inp in STANDARD_FETCH_TASKS:
-            inp = dict(inp)
-            try:
-                result = await self.executor.execute(tool_name, inp)
-                if "error" not in result:
-                    data[tool_name] = result
-            except Exception as e:
-                fetch_errors.append(f"{tool_name}: {str(e)[:40]}")
+        # Task standar (tidak perlu spesifik simbol, di-cache pada instance bundler)
+        if not hasattr(self, "_shared_global_cache"):
+            self._shared_global_cache = {}
+
+        if self._shared_global_cache:
+            data.update(self._shared_global_cache)
+        else:
+            for tool_name, inp in STANDARD_FETCH_TASKS:
+                inp = dict(inp)
+                try:
+                    async with asyncio.timeout(10.0):
+                        result = await self.executor.execute(tool_name, inp)
+                        if "error" not in result:
+                            data[tool_name] = result
+                            self._shared_global_cache[tool_name] = result
+                except Exception as e:
+                    fetch_errors.append(f"{tool_name}: {str(e)[:40]}")
 
         for tool_name, extra_inp in SYMBOL_FETCH_TASKS:
             inp = {"symbol": symbol, **extra_inp}
             tf = extra_inp.get("timeframe")
             task_key = f"{tool_name}_{tf}" if tf else tool_name
             try:
-                result = await self.executor.execute(tool_name, inp)
-                if "error" not in result:
-                    data[task_key] = result
+                async with asyncio.timeout(10.0):
+                    result = await self.executor.execute(tool_name, inp)
+                    if "error" not in result:
+                        data[task_key] = result
             except Exception as e:
                 fetch_errors.append(f"{task_key}: {str(e)[:40]}")
 

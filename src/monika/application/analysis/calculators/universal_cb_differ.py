@@ -65,20 +65,36 @@ class UniversalCentralBankDiffer:
             }
 
         curr_doc = docs[0]
-        # If only 1 doc exists, create previous baseline for genuine redline comparison
         if len(docs) < 2:
-            prev_paras = self._generate_previous_baseline_paragraphs(curr_doc.paragraphs_json, bank_clean, doc_clean)
-            prev_title = f"{bank_clean} {doc_clean} (Previous Meeting)"
-            prev_date_str = (curr_doc.meeting_date - timedelta(days=45)).strftime("%Y-%m-%d")
-            prev_score = (curr_doc.hawkish_dovish_score or 0.0) + 0.25  # previous was slightly more hawkish
-        else:
-            prev_doc = docs[1]
-            prev_paras = (
-                json.loads(prev_doc.paragraphs_json) if prev_doc.paragraphs_json else prev_doc.full_text.split("\n\n")
-            )
-            prev_title = prev_doc.title
-            prev_date_str = prev_doc.meeting_date.strftime("%Y-%m-%d")
-            prev_score = prev_doc.hawkish_dovish_score or 0.0
+            return {
+                "status": "insufficient_history",
+                "bank": bank_clean,
+                "doc_type": doc_clean,
+                "message": f"Only 1 meeting document found for {bank_clean} {doc_clean}. At least 2 documents are required for genuine redline diffing.",
+                "current_meeting": {
+                    "title": curr_doc.title,
+                    "date": curr_doc.meeting_date.strftime("%Y-%m-%d"),
+                    "tone_score": curr_doc.hawkish_dovish_score or 0.0,
+                },
+                "monetary_tone_shift": {
+                    "delta_score": 0.0,
+                    "label": "NO_PREVIOUS_DOC",
+                    "summary": "Insufficient historical documents to compute redline sentence differences.",
+                },
+                "redline_modifications": {
+                    "key_additions": [],
+                    "key_deletions": [],
+                    "unchanged_count": 0,
+                },
+            }
+
+        prev_doc = docs[1]
+        prev_paras = (
+            json.loads(prev_doc.paragraphs_json) if prev_doc.paragraphs_json else prev_doc.full_text.split("\n\n")
+        )
+        prev_title = prev_doc.title
+        prev_date_str = prev_doc.meeting_date.strftime("%Y-%m-%d")
+        prev_score = prev_doc.hawkish_dovish_score or 0.0
 
         curr_paras = (
             json.loads(curr_doc.paragraphs_json) if curr_doc.paragraphs_json else curr_doc.full_text.split("\n\n")
@@ -156,13 +172,3 @@ class UniversalCentralBankDiffer:
                 if s_clean:
                     sentences.append(s_clean)
         return sentences
-
-    def _generate_previous_baseline_paragraphs(self, curr_json: Optional[str], bank: str, doc_type: str) -> List[str]:
-        """Provides historical baseline with slightly firmer language for genuine redline diffing."""
-        return [
-            "Financial conditions remained restrictive over the intermeeting period, supported by elevated Treasury yields and cautious credit standards.",
-            "The information reviewed at this meeting indicated that economic activity continued to expand at a robust pace, while job gains remained strong.",
-            "Inflation remained elevated above the Committee's 2 percent objective, with services inflation continuing to show upside risks.",
-            "Participants emphasized that any additional firming of monetary policy may be appropriate to bring inflation down to target over time.",
-            "The Committee noted that it is strongly committed to returning inflation to its 2 percent objective.",
-        ]

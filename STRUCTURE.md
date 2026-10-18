@@ -1641,6 +1641,7 @@ Monika/
 │       │   │   │   │   ├── 0005_sync_missing_indexes_and_constraints.py
 │       │   │   │   │   ├── 0006_consolidate_and_numeric.py
 │       │   │   │   │   ├── 0007_sync_queue_indexes_and_nullability.py
+│       │   │   │   │   ├── 0008_create_debate_transcripts.py
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   └── c83c5e451412_sync_schema_indexes_types_and_.py
 │       │   │   │   ├── __init__.py
@@ -2171,6 +2172,7 @@ Monika/
 │   │   ├── test_cross_timeframe_gate.py
 │   │   ├── test_daily_range_calculator.py
 │   │   ├── test_daily_range_timesfm.py
+│   │   ├── test_debate_orchestrator_and_transcript_persistence.py
 │   │   ├── test_debate_risk_and_pm.py
 │   │   ├── test_decay_monitor.py
 │   │   ├── test_deliberation_and_redaction.py
@@ -2959,4 +2961,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 251 | **Total Tracked Files**: 2678
+**Total Tracked Directories**: 251 | **Total Tracked Files**: 2680

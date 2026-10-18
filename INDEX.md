@@ -6274,6 +6274,7 @@
 - **Classes**:
   - `class Stage2DataBundler`: Engine penyusun (bundler) data teknikal untuk 1 simbol ke dalam format teks tunggal.
     - `__init__(session: AsyncSession, settings: Optional[dict])`
+    - `get_symbol_precision(symbol: str) -> int` - *Determines price precision dynamically using InstrumentSpec with fallback.*
     - `async fetch_bundle(symbol: str, cot_code: Optional[str]) -> tuple[str, dict]` - *Menarik seluruh dataset yang dibutuhkan dan memformatnya menjadi string konteks. Mengembalikan `("", {})` jika gagal total.*
 
 ### Folder: `src/monika/application/analysis/prefetch/news_digest` <a id="folder-srcmonikaapplicationanalysisprefetchnewsdigest"></a>
@@ -11494,6 +11495,12 @@
 - **Top-Level Functions**:
   - `upgrade() -> None`: Upgrade schema: sync queue tables column nullability and missing indexes.
   - `downgrade() -> None`: Downgrade schema: revert nullability constraints and drop added indexes.
+
+#### `0008_create_debate_transcripts.py` - *create_debate_transcripts*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0008_create_debate_transcripts.py`](src/monika/infrastructure/database/migrations/versions/0008_create_debate_transcripts.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Upgrade schema: Create debate_transcripts table mandated by PRD.md §237.
+  - `downgrade() -> None`: Downgrade schema: Drop debate_transcripts table.
 
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)

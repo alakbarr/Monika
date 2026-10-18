@@ -209,16 +209,25 @@ class UniversalLiquidityAnalyzer:
 
         peak_assets_eur_millions = 8830000.0  # Peak in mid-2022 (~8.83T EUR)
 
-        if records:
-            current_assets = records[0].yield_percent
-            prev_assets = records[-1].yield_percent if len(records) > 1 else current_assets
-            date_str = records[0].date.strftime("%Y-%m-%d")
-            delta_period_millions = current_assets - prev_assets
-        else:
-            # Institutional baseline if FRED feed is yet to populate
-            current_assets = 6450000.0  # ~6.45T EUR
-            delta_period_millions = -35000.0
-            date_str = clock.now().strftime("%Y-%m-%d")
+        if not records:
+            return {
+                "bank": "ECB",
+                "status": "data_unavailable",
+                "message": "ECB balance sheet records (ECB_TOTAL_ASSETS) are not available in database.",
+                "current_assets_eur_millions": 0.0,
+                "current_assets_eur_trillions": 0.0,
+                "peak_assets_eur_trillions": round(peak_assets_eur_millions / 1000000.0, 3),
+                "reduction_from_peak_pct": 0.0,
+                "lookback_change_eur_millions": 0.0,
+                "qt_regime": "UNKNOWN",
+                "programs": {},
+                "institutional_verdict": "ECB balance sheet records currently unavailable from FRED or local cache.",
+            }
+
+        current_assets = records[0].yield_percent
+        prev_assets = records[-1].yield_percent if len(records) > 1 else current_assets
+        date_str = records[0].date.strftime("%Y-%m-%d")
+        delta_period_millions = current_assets - prev_assets
 
         total_reduction_millions = peak_assets_eur_millions - current_assets
         reduction_from_peak_pct = round((total_reduction_millions / peak_assets_eur_millions) * 100.0, 2)
