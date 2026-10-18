@@ -53,7 +53,10 @@ class DailyReopenGapFade(EdgeStrategy):
         hours_diff = (now.hour - open_hour) % 24
         minutes_since_open = hours_diff * 60 + now.minute
         if not (0 <= minutes_since_open <= 60):
-            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="outside first-hour window")
+            # On Sunday, global market reopen is 21:00-23:00 UTC
+            is_sunday_reopen = now.weekday() == 6 and now.hour in (21, 22, 23)
+            if not is_sunday_reopen:
+                return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="outside first-hour window")
 
         # NEW: only genuine weekend reopens produce a real "gap" in a continuous market
         if now.weekday() not in (0, 6):

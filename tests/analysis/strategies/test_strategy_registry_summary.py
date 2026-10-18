@@ -115,3 +115,46 @@ async def test_load_dynamic_parameters_calls_log_summary():
             await StrategyRegistry.load_dynamic_parameters(mock_session)
 
             assert mock_summary.call_count == 1
+
+
+def test_strategy_registry_validate_dynamic_params():
+    """Verify StrategyRegistry._validate_dynamic_params filters invalid inputs."""
+    raw = {
+        "rsi_period": -5,  # Non-positive period: discarded
+        "atr_window": 0,  # Zero period: discarded
+        "bollinger_std": -1.5,  # Negative multiplier/std: discarded
+        "lookback_bars": 14,  # Valid: kept
+        "profit_target_mult": 2.0,  # Valid: kept
+        "invalid_nan": float("nan"),  # NaN: discarded
+        "invalid_inf": float("inf"),  # Inf: discarded
+        "strategy_tag": "active",  # String: kept
+    }
+    sanitized = StrategyRegistry._validate_dynamic_params(raw)
+    assert sanitized == {
+        "lookback_bars": 14,
+        "profit_target_mult": 2.0,
+        "strategy_tag": "active",
+    }
+
+
+def test_strategy_registry_apply_dynamic_params():
+    """Verify StrategyRegistry._apply_dynamic_params_to_strategy updates cfg, attributes, and calls hook."""
+
+    class StrategyWithHooks:
+        def __init__(self):
+            self.cfg = {"base_param": 10}
+            self.atr_period = 14
+            self.hook_called_with = None
+
+        def set_parameters(self, params):
+            self.hook_called_with = params
+
+    strat = StrategyWithHooks()
+    dyn = {"atr_period": 21, "custom_threshold": 0.75}
+    StrategyRegistry._apply_dynamic_params_to_strategy(strat, dyn)
+
+    assert strat.cfg["atr_period"] == 21
+    assert strat.cfg["custom_threshold"] == 0.75
+    assert strat.cfg["base_param"] == 10
+    assert strat.atr_period == 21
+    assert strat.hook_called_with == dyn

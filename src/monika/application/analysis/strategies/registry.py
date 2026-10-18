@@ -1,6 +1,7 @@
 import inspect
 import json
 import logging
+import math
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Type
@@ -75,15 +76,56 @@ class StrategyRegistry:
         return list(cls._registry.keys())
 
     @classmethod
+    def _validate_dynamic_params(cls, parameters: dict) -> dict:
+        """Validates parameter boundaries before dynamic override injection."""
+        valid: dict[str, Any] = {}
+        for k, v in parameters.items():
+            if isinstance(v, (int, float)):
+                if math.isnan(v) or math.isinf(v):
+                    logger.warning(f"[StrategyRegistry] Discarded invalid param '{k}'={v} (NaN/Inf)")
+                    continue
+                k_lower = str(k).lower()
+                if any(k_lower.endswith(s) for s in ("_period", "_window", "_lookback", "_length", "_bars")) and v <= 0:
+                    logger.warning(f"[StrategyRegistry] Discarded non-positive period '{k}'={v}")
+                    continue
+                if any(k_lower.endswith(s) for s in ("_mult", "_multiplier", "_threshold", "_std")) and v < 0:
+                    logger.warning(f"[StrategyRegistry] Discarded negative multiplier '{k}'={v}")
+                    continue
+            valid[k] = v
+        return valid
+
+    @classmethod
+    def _apply_dynamic_params_to_strategy(cls, strat: Any, dyn_params: dict) -> None:
+        """Applies dynamic parameter overrides to both strat.cfg and instance attributes."""
+        if not dyn_params:
+            return
+        strat.cfg = dict(getattr(strat, "cfg", {}))
+        strat.cfg.update(dyn_params)
+        for k, v in dyn_params.items():
+            if hasattr(strat, k):
+                try:
+                    setattr(strat, k, v)
+                except Exception as attr_err:
+                    logger.debug(f"[StrategyRegistry] Failed setting attribute {k} on strategy: {attr_err}")
+        if hasattr(strat, "set_parameters") and callable(getattr(strat, "set_parameters")):
+            try:
+                strat.set_parameters(dyn_params)
+            except Exception as set_err:
+                logger.debug(f"[StrategyRegistry] set_parameters hook failed: {set_err}")
+
+    @classmethod
     def hot_reload(cls, strategy_id: str, parameters: dict, symbol: Optional[str] = None) -> None:
         """Hot-reloads dynamic parameter overrides for a specific strategy into active memory."""
         if not isinstance(parameters, dict):
             return
+        sanitized = cls._validate_dynamic_params(parameters)
+        if not sanitized:
+            return
         if symbol:
-            cls._dynamic_symbol_params.setdefault((strategy_id, symbol.upper()), {}).update(parameters)
-        cls._dynamic_params.setdefault(strategy_id, {}).update(parameters)
+            cls._dynamic_symbol_params.setdefault((strategy_id, symbol.upper()), {}).update(sanitized)
+        cls._dynamic_params.setdefault(strategy_id, {}).update(sanitized)
         target = f"'{strategy_id}' on {symbol.upper()}" if symbol else f"'{strategy_id}'"
-        logger.info(f"[StrategyRegistry] Hot-reloaded dynamic parameters for {target}: {parameters}")
+        logger.info(f"[StrategyRegistry] Hot-reloaded dynamic parameters for {target}: {sanitized}")
 
     @classmethod
     async def load_dynamic_parameters(cls, session) -> dict[str, dict]:
@@ -345,15 +387,12 @@ class StrategyRegistry:
                 strat_id = getattr(strat, "strategy_id", None) or strat_name
 
                 # Apply dynamic parameter overrides from DB SystemConfig / hot-reload
-                if strat_id in cls._dynamic_params:
-                    strat.cfg = dict(getattr(strat, "cfg", {}))
-                    strat.cfg.update(cls._dynamic_params[strat_id])
-
-                # Symbol-specific dynamic parameters take precedence over global overrides
+                dyn_p = dict(cls._dynamic_params.get(strat_id, {}))
                 sym_key = (strat_id, symbol.upper())
                 if sym_key in cls._dynamic_symbol_params:
-                    strat.cfg = dict(getattr(strat, "cfg", {}))
-                    strat.cfg.update(cls._dynamic_symbol_params[sym_key])
+                    dyn_p.update(cls._dynamic_symbol_params[sym_key])
+                if dyn_p:
+                    cls._apply_dynamic_params_to_strategy(strat, dyn_p)
 
                 if not strat.is_enabled(symbol):
                     continue
@@ -438,11 +477,12 @@ class StrategyRegistry:
         if strat is None:
             return None
 
-        dyn_params = cls._dynamic_symbol_params.get((strategy_id, symbol.upper())) or cls._dynamic_params.get(
-            strategy_id
-        )
-        if dyn_params and hasattr(strat, "set_parameters"):
-            getattr(strat, "set_parameters")(dyn_params)
+        dyn_params = dict(cls._dynamic_params.get(strategy_id, {}))
+        sym_key = (strategy_id, symbol.upper())
+        if sym_key in cls._dynamic_symbol_params:
+            dyn_params.update(cls._dynamic_symbol_params[sym_key])
+        if dyn_params:
+            cls._apply_dynamic_params_to_strategy(strat, dyn_params)
 
         if current_regime and hasattr(strat, "is_regime_compatible"):
             if not strat.is_regime_compatible(current_regime):

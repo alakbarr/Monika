@@ -45,3 +45,10 @@ def test_stage_tools_lists():
 
     names_pre = [t["name"] for t in ASSET_PRESCREEN_TOOLS]
     assert "submit_asset_analysis" in names_pre
+
+
+def test_get_market_context_in_all_tools():
+    all_names = [t["name"] for t in ALL_TOOLS]
+    assert "get_market_context" in all_names
+    # Verify no duplicate tool definitions in ALL_TOOLS
+    assert len(all_names) == len(set(all_names))

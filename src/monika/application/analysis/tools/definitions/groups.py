@@ -563,6 +563,7 @@ ALL_TOOLS: list[dict] = list(
             GET_EQUAL_HIGHS_LOWS,
             GET_WICK_TO_WICK_FVG,
             GET_INVERTED_FVG,
+            GET_MARKET_CONTEXT,
         ]
     }.values()
 )
