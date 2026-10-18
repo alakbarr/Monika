@@ -488,9 +488,12 @@ def frank_copula_cdf(u: float, v: float, theta: float) -> float:
 def clayton_copula_cdf(u: float, v: float, theta: float) -> float:
     """Bivariate Clayton lower tail-dependence copula CDF."""
     if theta <= 0:
-        return u * v
-    term = (u ** (-theta)) + (v ** (-theta)) - 1.0
-    return float(max(term, 0.0) ** (-1.0 / theta))
+        return float(u * v)
+    from monika.application.analysis.calculators.copula_tail_risk import (
+        clayton_copula_cdf as _clayton_copula_cdf,
+    )
+
+    return float(_clayton_copula_cdf(u, v, theta))
 
 
 def gumbel_copula_cdf(u: float, v: float, theta: float) -> float:
@@ -498,11 +501,12 @@ def gumbel_copula_cdf(u: float, v: float, theta: float) -> float:
     if theta < 1.0:
         raise ValueError(f"Gumbel theta must be >= 1.0, got {theta}")
     if theta == 1.0:
-        return u * v
-    u_c = min(max(u, 1e-9), 1.0 - 1e-9)
-    v_c = min(max(v, 1e-9), 1.0 - 1e-9)
-    term = ((-math.log(u_c)) ** theta) + ((-math.log(v_c)) ** theta)
-    return float(math.exp(-(term ** (1.0 / theta))))
+        return float(u * v)
+    from monika.application.analysis.calculators.copula_tail_risk import (
+        gumbel_copula_cdf as _gumbel_copula_cdf,
+    )
+
+    return float(_gumbel_copula_cdf(u, v, theta))
 
 
 # ==============================================================================

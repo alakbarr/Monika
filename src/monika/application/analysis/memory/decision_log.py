@@ -43,6 +43,13 @@ class DecisionLogger:
             from monika.infrastructure.database.safe_ops import safe_commit
 
             await safe_commit(session, label="log_decision_real")
+            try:
+                from monika.application.analysis.memory.session_search import SessionSearchEngine
+
+                search_engine = SessionSearchEngine()
+                await search_engine.index_reflection(session, new_log.id)
+            except Exception as idx_err:
+                logger.debug(f"[DecisionLog] FTS indexing error for reflection #{new_log.id}: {idx_err}")
             return new_log.id
         except Exception as e:
             logger.error(f"Gagal log decision (Real): {e}")
@@ -86,6 +93,13 @@ class DecisionLogger:
             from monika.infrastructure.database.safe_ops import safe_commit
 
             await safe_commit(session, label="log_decision_whatif")
+            try:
+                from monika.application.analysis.memory.session_search import SessionSearchEngine
+
+                search_engine = SessionSearchEngine()
+                await search_engine.index_reflection(session, new_log.id)
+            except Exception as idx_err:
+                logger.debug(f"[DecisionLog] FTS indexing error for whatif #{new_log.id}: {idx_err}")
             return new_log.id
         except Exception as e:
             logger.error(f"Gagal log decision (What-If): {e}")

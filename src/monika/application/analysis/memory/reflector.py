@@ -459,6 +459,13 @@ class TradeReflector:
 
         await safe_commit(session, label="trade_reflector")
         try:
+            from monika.application.analysis.memory.session_search import SessionSearchEngine
+
+            search_engine = SessionSearchEngine()
+            await search_engine.index_reflection(session, reflection_id)
+        except Exception as idx_err:
+            logger.debug(f"[TradeReflector] FTS indexing error for reflection #{reflection_id}: {idx_err}")
+        try:
             from monika.infrastructure.database.event_store import TradingEventStore
 
             await TradingEventStore.emit(

@@ -9,6 +9,7 @@ Each specialist gets a dedicated AgentHarness instance with:
 """
 
 import asyncio
+import copy
 import json
 import logging
 import re
@@ -106,7 +107,7 @@ class IsolatedSubagentRunner:
                 isolated_harness.run_agent_from_messages(
                     session=session,
                     system_prompt=system_prompt,
-                    messages=list(messages),  # Copy — prevent cross-agent mutation
+                    messages=copy.deepcopy(messages),  # Deep copy — prevent cross-agent nested mutation
                     tools=tools,
                     stage_name=f"{stage_name}_{role_name}",
                     **kwargs,
@@ -133,7 +134,7 @@ class IsolatedSubagentRunner:
                         f"Target Schema:\n{json.dumps(output_schema, indent=2)}\n"
                         f"You MUST output ONLY a valid JSON object strictly conforming to this schema."
                     )
-                    correction_messages = list(messages) + [
+                    correction_messages = copy.deepcopy(messages) + [
                         {"role": "assistant", "content": [{"type": "text", "text": result.get("final_text", "")}]},
                         {"role": "user", "content": correction_nudge},
                     ]

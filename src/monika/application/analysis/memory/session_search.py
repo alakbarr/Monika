@@ -673,7 +673,9 @@ class SessionSearchEngine:
             else:
                 r.search_vector = combined_text
 
-            await session.commit()
+            from monika.infrastructure.database.safe_ops import safe_commit
+
+            await safe_commit(session, label="index_reflection")
             return True
         except Exception as e:
             logger.warning(f"[SessionSearch] index_reflection error for reflection {reflection_id}: {e}")
@@ -708,7 +710,9 @@ class SessionSearchEngine:
             else:
                 r.resolved_at = datetime.now(timezone.utc)
 
-            await session.commit()
+            from monika.infrastructure.database.safe_ops import safe_commit
+
+            await safe_commit(session, label="update_reflection_outcome")
             return await self.index_reflection(session, reflection_id)
         except Exception as e:
             logger.warning(f"[SessionSearch] update_reflection_outcome error for reflection {reflection_id}: {e}")

@@ -2223,6 +2223,7 @@ Monika/
 │   │   ├── test_playbook_rule_attribution.py
 │   │   ├── test_portfolio_synthesis_key_safety.py
 │   │   ├── test_precommit_gate.py
+│   │   ├── test_prefetch_and_anti_fabrication.py
 │   │   ├── test_preflight_gate.py
 │   │   ├── test_pricing_audit.py
 │   │   ├── test_progressive_tools.py
@@ -2961,4 +2962,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 251 | **Total Tracked Files**: 2680
+**Total Tracked Directories**: 251 | **Total Tracked Files**: 2681
