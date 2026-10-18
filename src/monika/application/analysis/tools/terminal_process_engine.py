@@ -166,6 +166,17 @@ class TerminalProcessEngine:
         background (immediately returning process session_id).
         """
         cwd = workdir or os.getcwd()
+        try:
+            from monika.core.security.terminal_guard import assert_safe_read_path
+
+            cwd = assert_safe_read_path(cwd)
+        except Exception as path_err:
+            return {
+                "session_id": "",
+                "status": "error",
+                "output": f"SecurityViolation: Invalid or disallowed workdir path '{cwd}': {path_err}",
+                "exit_code": 126,
+            }
         patterns: List[str] = []
         if isinstance(notify, list):
             patterns = notify

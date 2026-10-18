@@ -12,6 +12,13 @@ Detects when a model becomes stuck repeating identical sentence or paragraph fra
 import logging
 from typing import Optional, Tuple
 
+from monika.application.agent.repetition_guard import (  # noqa: F401
+    REPETITION_LOOP_INTERRUPTED,
+    is_repetition_dominated,
+    is_runaway_repetition,
+    sanitize_repetition_in_transcript,
+)
+
 logger = logging.getLogger("TradingAgent.Harness.RepetitionGuard")
 
 

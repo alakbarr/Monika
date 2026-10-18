@@ -27,10 +27,11 @@ ChatAgent.__module__ = "monika.application.agent.chat_agent"
 PendingAction.__module__ = "monika.application.agent.chat_agent"
 
 import sys
+import types
 from typing import Any
 
 
-class _ChatAgentFacadeModule(sys.modules[__name__].__class__):
+class _ChatAgentFacadeModule(types.ModuleType):
     def __setattr__(self, name: str, value: Any) -> None:
         super().__setattr__(name, value)
         if name in ("get_client_for_task", "get_session"):

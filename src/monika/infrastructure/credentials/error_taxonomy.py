@@ -398,8 +398,16 @@ class ClassifiedError:
         return self.recovery == RecoveryAction.ROTATE_CREDENTIAL
 
     @property
+    def should_rotate_credential(self) -> bool:
+        return self.should_rotate_cred
+
+    @property
     def should_fallback_model(self) -> bool:
         return self.recovery == RecoveryAction.FALLBACK_MODEL
+
+    @property
+    def should_fallback(self) -> bool:
+        return self.should_fallback_model
 
     @property
     def is_trading_domain(self) -> bool:

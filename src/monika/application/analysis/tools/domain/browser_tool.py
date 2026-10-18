@@ -96,7 +96,16 @@ def _run_browser_action_sync(params: BrowserActionInput) -> Dict[str, Any]:
         if action == "open":
             if not params.url:
                 return {"status": "error", "error": "Parameter 'url' is required for action 'open'."}
-            success = scraper.navigate_with_fallback(params.url, timeout=20)
+            try:
+                from monika.core.security.ssrf_guard import validate_request_url
+
+                safe_url = validate_request_url(params.url)
+            except Exception as ssrf_err:
+                return {
+                    "status": "error",
+                    "error": f"SSRFProtectionViolation: URL '{params.url}' is blocked: {ssrf_err}",
+                }
+            success = scraper.navigate_with_fallback(safe_url, timeout=20)
             if hasattr(page, "wait"):
                 page.wait(2)
             title = getattr(page, "title", "")

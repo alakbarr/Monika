@@ -10692,7 +10692,9 @@
     - `retryable() -> bool` - *Whether this error allows any retry attempt.*
     - `should_compress() -> bool`
     - `should_rotate_cred() -> bool`
+    - `should_rotate_credential() -> bool`
     - `should_fallback_model() -> bool`
+    - `should_fallback() -> bool`
     - `is_trading_domain() -> bool`
     - `cooldown_seconds() -> float`
   - `class ErrorClassifier`: Unified error classifier diagnosing LLM provider exceptions & trading domain anomalies.

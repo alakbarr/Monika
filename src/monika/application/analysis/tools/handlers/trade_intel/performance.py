@@ -36,19 +36,30 @@ async def handle_get_trade_history(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     effective_session = session or getattr(executor, "session", None)
-    limit = int(args.get("limit", 10))
+    try:
+        limit = max(1, min(int(args.get("limit", 10)), 100))
+    except ValueError, TypeError:
+        limit = 10
+
     status_filter = args.get("status")
     symbol = args.get("symbol")
+    days_back = args.get("days_back")
 
     if not effective_session:
         return {"trades": [], "count": 0, "status": "no_session"}
 
     query = select(PaperTradeRecord)
-    if status_filter:
-        query = query.where(PaperTradeRecord.status == status_filter)
+    if status_filter and status_filter.lower() != "all":
+        query = query.where(PaperTradeRecord.status == status_filter.lower())
     if symbol:
         clean_sym = symbol.strip().upper().replace("/", "")
         query = query.where(PaperTradeRecord.symbol == clean_sym)
+    if days_back is not None:
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=float(days_back))
+            query = query.where(PaperTradeRecord.opened_at >= cutoff)
+        except ValueError, TypeError:
+            pass
     query = query.order_by(desc(PaperTradeRecord.opened_at)).limit(limit)
 
     rows = (await effective_session.execute(query)).scalars().all()
@@ -78,11 +89,17 @@ async def handle_get_trade_history(
         from monika.infrastructure.database.models import Position
 
         pos_q = select(Position)
-        if status_filter:
-            pos_q = pos_q.where(Position.status == status_filter)
+        if status_filter and status_filter.lower() != "all":
+            pos_q = pos_q.where(Position.status == status_filter.lower())
         if symbol:
             clean_sym = symbol.strip().upper().replace("/", "")
             pos_q = pos_q.where(Position.symbol == clean_sym)
+        if days_back is not None:
+            try:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=float(days_back))
+                pos_q = pos_q.where(Position.opened_at >= cutoff)
+            except ValueError, TypeError:
+                pass
         pos_q = pos_q.order_by(desc(Position.opened_at)).limit(limit)
         pos_rows = (await effective_session.execute(pos_q)).scalars().all()
         for p in pos_rows:
