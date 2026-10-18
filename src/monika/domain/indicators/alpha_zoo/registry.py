@@ -286,6 +286,14 @@ class FactorRegistry:
                         parent_pkg = py_path.parent.name
                         if parent_pkg == "microsoft_qlib_158":
                             cls.register_manual(f"qlib_{py_path.stem}", fn, meta)
+                            if factor_id.startswith("qlib158_"):
+                                short_id = factor_id.replace("qlib158_", "")
+                                cls.register_manual(f"qlib_{short_id}", fn, meta)
+                        elif parent_pkg == "worldquant_101":
+                            if factor_id.startswith("alpha101_"):
+                                num = factor_id.replace("alpha101_", "")
+                                cls.register_manual(f"wq_alpha_{num}", fn, meta)
+                                cls.register_manual(f"alpha_{num}", fn, meta)
                         elif parent_pkg == "academic":
                             cls.register_manual(f"academic_{py_path.stem}", fn, meta)
                         elif parent_pkg == "guotai_junan_191":

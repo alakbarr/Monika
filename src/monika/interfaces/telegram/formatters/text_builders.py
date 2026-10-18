@@ -1056,7 +1056,7 @@ class TelegramFormatterMixin(_TelegramBotMixinBase):
                     await session.execute(
                         select(func.avg(CyclePerformance.api_cost_usd))
                         .where(CyclePerformance.cycle_at >= week_ago)
-                        .where(CyclePerformance.api_cost_usd != None)
+                        .where(CyclePerformance.api_cost_usd.is_not(None))
                     )
                 ).scalar_one_or_none()
 

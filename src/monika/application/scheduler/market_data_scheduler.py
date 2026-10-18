@@ -132,7 +132,7 @@ class MarketDataScheduler:
                         except Exception as tick_err:
                             logger.debug(f"[MarketDataSync] Failed to publish tick for {sym}: {tick_err}")
 
-                # 2. Compute Technical Indicators (H1, H4, D1)
+                # 2. Compute Technical Indicators (M15, H1, H4, D1)
                 try:
                     await sess.rollback()
                     from monika.infrastructure.database.safe_ops import _safe_expunge_all
@@ -140,7 +140,7 @@ class MarketDataScheduler:
                     await _safe_expunge_all(sess)
                 except Exception:
                     pass
-                indicator_timeframes = [tf for tf in self.timeframes if tf != "M15"]
+                indicator_timeframes = list(self.timeframes)
                 calc = TechnicalIndicatorCalculator(sess, self.settings.get("trading", {}))
                 ind_results = await calc.compute_all_symbols(target_symbols, indicator_timeframes)
                 summary["indicators"] = ind_results

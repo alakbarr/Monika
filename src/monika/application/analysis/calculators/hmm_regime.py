@@ -117,28 +117,49 @@ class HMMRegimeClassifier:
             except Exception as e:
                 logger.debug(f"[HMM] hmmlearn fit error, falling back: {e}")
 
-        # Statistical Gaussian Mixture / Heuristic Fallback (Zero external dependency)
-        recent_ret = np.mean(returns[-5:])
-        recent_vol = np.mean(ranges[-5:])
-        base_vol = np.mean(ranges)
+        # Deterministic 3-State Statistical Formulation (Zero external C-dependency)
+        mean_ret = float(np.mean(returns))
+        std_ret = max(1e-6, float(np.std(returns)))
+        z_ret = float(np.mean(returns[-5:]) - mean_ret) / std_ret
 
-        if recent_ret > 0.002 and recent_vol >= base_vol:
+        # Compute smooth softmax probabilities over Bull (z > 0), Bear (z < 0), Chop (|z| ~ 0)
+        energies = np.array([max(0.0, z_ret), max(0.0, -z_ret), max(0.1, 1.2 - abs(z_ret))])
+        exp_e = np.exp(energies - np.max(energies))
+        probs_arr = exp_e / np.sum(exp_e)
+        p_bull = float(round(probs_arr[0], 3))
+        p_bear = float(round(probs_arr[1], 3))
+        p_chop = float(round(probs_arr[2], 3))
+
+        if p_bull >= p_bear and p_bull >= p_chop:
             regime = "BULL_TREND"
-            probs = {"BULL": 0.65, "BEAR": 0.15, "CHOP": 0.20}
-        elif recent_ret < -0.002 and recent_vol >= base_vol:
+            conf = p_bull
+        elif p_bear >= p_bull and p_bear >= p_chop:
             regime = "BEAR_TREND"
-            probs = {"BULL": 0.15, "BEAR": 0.65, "CHOP": 0.20}
+            conf = p_bear
         else:
             regime = "CHOP_RANGING"
-            probs = {"BULL": 0.25, "BEAR": 0.25, "CHOP": 0.50}
+            conf = p_chop
+
+        p_stay = float(np.clip(max(p_bull, p_bear, p_chop), 0.5, 0.9))
+        p_switch = (1.0 - p_stay) / 2.0
+        transmat = [
+            [round(p_stay, 3), round(p_switch, 3), round(p_switch, 3)],
+            [round(p_switch, 3), round(p_stay, 3), round(p_switch, 3)],
+            [round(p_switch, 3), round(p_switch, 3), round(p_stay, 3)],
+        ]
+        exp_duration = round(1.0 / max(0.01, 1.0 - p_stay), 1)
 
         return {
             "current_regime": regime,
-            "confidence": round(probs[regime.split("_")[0]], 3),
-            "regime_probabilities": probs,
-            "transition_matrix": [[0.75, 0.10, 0.15], [0.10, 0.75, 0.15], [0.20, 0.20, 0.60]],
-            "expected_duration_bars": 4.0,
-            "method": "statistical_heuristic",
+            "confidence": round(conf, 3),
+            "regime_probabilities": {
+                "BULL": p_bull,
+                "BEAR": p_bear,
+                "CHOP": p_chop,
+            },
+            "transition_matrix": transmat,
+            "expected_duration_bars": exp_duration,
+            "method": "statistical_gaussian_mixture",
         }
 
     async def classify_from_ohlcv(

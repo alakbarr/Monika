@@ -797,7 +797,7 @@ class ContextBuilderMixin:
         stmt = (
             select(CandidateLesson)
             .where(CandidateLesson.status.in_(["promoted", "active"]))
-            .where(or_(CandidateLesson.symbol == symbol, CandidateLesson.symbol == None))
+            .where(or_(CandidateLesson.symbol == symbol, CandidateLesson.symbol.is_(None)))
             .order_by(desc(CandidateLesson.win_rate_delta), desc(CandidateLesson.promoted_at))
             .limit(3)
         )

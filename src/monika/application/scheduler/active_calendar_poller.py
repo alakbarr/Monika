@@ -60,7 +60,7 @@ class ActiveCalendarPoller:
                         .where(func.lower(EconomicCalendar.impact) == "high")
                         .where(EconomicCalendar.event_time <= target_time)
                         .where(EconomicCalendar.event_time >= max_time)
-                        .where(EconomicCalendar.actual == None)
+                        .where(EconomicCalendar.actual.is_(None))
                     )
                 )
                 .scalars()

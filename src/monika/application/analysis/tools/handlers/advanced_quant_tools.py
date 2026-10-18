@@ -236,14 +236,12 @@ async def handle_run_walk_forward_optimization(args: dict, **ctx) -> dict:
     except Exception as e:
         logger.debug(f"[WalkForward] Optimization engine error: {e}")
         return {
-            "status": "completed_with_fallback",
+            "status": "error",
             "strategy": strategy_name,
             "symbol": symbol,
             "folds_tested": n_folds,
-            "wfe_pct": 68.4,
-            "deflated_sharpe_ratio": 1.42,
-            "overfitting_risk": "LOW",
-            "note": f"Walk-forward engine executed across chronological folds. {e}",
+            "error": str(e),
+            "note": "Walk-forward optimization engine failed. Verify strategy registration and historical bar coverage.",
         }
 
 
@@ -260,6 +258,38 @@ async def handle_optimize_strategy_parameters(args: dict, **ctx) -> dict:
     max_val = float(args.get("max_val", 30.0))
     step = float(args.get("step", 5.0))
 
+    if not session:
+        return {"status": "error", "error": "Database session required for parameter optimization"}
+
+    bars = (
+        (
+            await session.execute(
+                select(PriceOHLCV)
+                .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == "H1")
+                .order_by(PriceOHLCV.timestamp.desc())
+                .limit(200)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    if not bars or len(bars) < 30:
+        return {
+            "status": "insufficient_data",
+            "strategy": strategy,
+            "symbol": symbol,
+            "error": f"Insufficient historical bars for {symbol} to run parameter optimization",
+        }
+
+    import numpy as np
+    import pandas as pd
+
+    bars_sorted = list(reversed(bars))
+    closes = np.array([float(b.close) for b in bars_sorted], dtype=np.float64)
+    highs = np.array([float(b.high) for b in bars_sorted], dtype=np.float64)
+    lows = np.array([float(b.low) for b in bars_sorted], dtype=np.float64)
+
     values = []
     curr = min_val
     while curr <= max_val + 1e-6:
@@ -271,22 +301,35 @@ async def handle_optimize_strategy_parameters(args: dict, **ctx) -> dict:
     best_sharpe = -999.0
 
     for val in values:
-        # Pseudo-evaluating parameter resilience
-        # In full backtest, each parameter runs isolated_strategy_harness
-        pseudo_pf = round(1.3 + (0.5 * (1.0 - abs(val - 14) / 30.0)), 2)
-        pseudo_sharpe = round(0.9 + (0.8 * (1.0 - abs(val - 14) / 30.0)), 2)
-        pseudo_wr = round(52.0 + (10.0 * (1.0 - abs(val - 14) / 30.0)), 1)
+        p = int(val)
+        if p >= len(closes):
+            continue
+        tr = np.maximum(
+            highs[1:] - lows[1:], np.maximum(np.abs(highs[1:] - closes[:-1]), np.abs(lows[1:] - closes[:-1]))
+        )
+        if len(tr) < p:
+            continue
+        atr_series = pd.Series(tr).rolling(p).mean().dropna().to_numpy()
+        returns = np.diff(closes)[-len(atr_series) :]
+        sig = returns / (atr_series + 1e-12)
+        mean_sig = float(np.mean(sig))
+        std_sig = float(np.std(sig))
+        sharpe = round(mean_sig / (std_sig + 1e-12) * np.sqrt(252 * 24), 2)
+        pos_rets = returns[returns > 0]
+        neg_rets = np.abs(returns[returns < 0])
+        pf = round(float(np.sum(pos_rets) / (np.sum(neg_rets) + 1e-12)), 2)
+        win_rate = round(float(len(pos_rets) / max(1, len(returns))) * 100.0, 1)
 
         leaderboard.append(
             {
                 param_name: val,
-                "profit_factor": pseudo_pf,
-                "sharpe_ratio": pseudo_sharpe,
-                "win_rate_pct": pseudo_wr,
+                "profit_factor": pf,
+                "sharpe_ratio": sharpe,
+                "win_rate_pct": win_rate,
             }
         )
-        if pseudo_sharpe > best_sharpe:
-            best_sharpe = pseudo_sharpe
+        if sharpe > best_sharpe:
+            best_sharpe = sharpe
             best_param = val
 
     leaderboard.sort(key=lambda x: x["sharpe_ratio"], reverse=True)
@@ -325,14 +368,10 @@ async def handle_run_model_benchmark(args: dict, **ctx) -> dict:
         }
     except Exception as e:
         return {
-            "status": "success",
+            "status": "error",
             "models_tested": models,
-            "elo_leaderboard": [
-                {"model": "claude-sonnet-5.5", "elo": 1542, "win_rate_pct": 58.2, "latency_ms": 680},
-                {"model": "gemini-3.8-flash", "elo": 1515, "win_rate_pct": 56.4, "latency_ms": 240},
-            ],
-            "recommendation": "claude-sonnet-5.5 excels in macro synthesis; gemini-3.8-flash provides ultra-low latency execution.",
-            "note": str(e),
+            "error": str(e),
+            "note": "AlphaArena tournament execution failed or benchmark data unavailable.",
         }
 
 
@@ -407,7 +446,7 @@ async def handle_scan_smc_setups(args: dict, **ctx) -> dict:
             (
                 await session.execute(
                     select(OrderBlock)
-                    .where(OrderBlock.symbol == sym, OrderBlock.mitigated_at == None)
+                    .where(OrderBlock.symbol == sym, OrderBlock.mitigated_at.is_(None))
                     .order_by(OrderBlock.formed_at.desc())
                     .limit(3)
                 )
@@ -421,7 +460,7 @@ async def handle_scan_smc_setups(args: dict, **ctx) -> dict:
             (
                 await session.execute(
                     select(FVGZone)
-                    .where(FVGZone.symbol == sym, FVGZone.filled_at == None)
+                    .where(FVGZone.symbol == sym, FVGZone.filled_at.is_(None))
                     .order_by(FVGZone.formed_at.desc())
                     .limit(3)
                 )
@@ -467,18 +506,38 @@ async def handle_scan_smc_setups(args: dict, **ctx) -> dict:
 # ==============================================================================
 async def handle_get_carry_trade_rankings(args: dict, **ctx) -> dict:
     """Calculates risk-adjusted carry trade attractiveness across currency pairs (Rate Differential / ATR Volatility)."""
+    session, _, _ = _get_context(args, ctx)
     min_spread = float(args.get("min_spread", 0.5))
 
-    # Benchmark central bank rates (%)
-    rates = {
-        "USD": 5.25,
-        "EUR": 3.65,
-        "GBP": 5.00,
-        "JPY": 0.25,
-        "AUD": 4.35,
-        "NZD": 4.75,
-        "CHF": 1.25,
-    }
+    rates: dict[str, float] = {}
+    if session:
+        from monika.infrastructure.database.models import CentralBankRateExpectation
+
+        stmt = select(CentralBankRateExpectation).order_by(
+            CentralBankRateExpectation.fetched_at.desc(),
+            CentralBankRateExpectation.id.desc(),
+        )
+        rows = (await session.execute(stmt)).scalars().all()
+        bank_to_currency = {
+            "FED": "USD",
+            "ECB": "EUR",
+            "BOE": "GBP",
+            "BOJ": "JPY",
+            "RBA": "AUD",
+            "RBNZ": "NZD",
+            "SNB": "CHF",
+            "BOC": "CAD",
+        }
+        for r in rows:
+            curr = bank_to_currency.get(r.bank.upper())
+            if curr and curr not in rates:
+                rates[curr] = float(r.current_rate)
+
+    if not rates:
+        return {
+            "status": "insufficient_data",
+            "error": "No central bank rate records available in database to calculate carry trade rankings.",
+        }
 
     pairs = [
         ("USDJPY", "USD", "JPY"),
@@ -493,6 +552,8 @@ async def handle_get_carry_trade_rankings(args: dict, **ctx) -> dict:
 
     rankings = []
     for pair, base, quote in pairs:
+        if base not in rates or quote not in rates:
+            continue
         spread = rates[base] - rates[quote]
         # Approximate daily realized volatility %
         vol = 0.65 if "JPY" in pair else 0.45
@@ -532,8 +593,8 @@ async def handle_get_commodity_spread(args: dict, **ctx) -> dict:
     primary = str(args.get("primary_symbol", "XBRUSD")).upper()
     secondary = str(args.get("secondary_symbol", "XTIUSD")).upper()
 
-    p1 = 78.50
-    p2 = 74.20
+    p1: Optional[float] = None
+    p2: Optional[float] = None
 
     if client and await client.ensure_connected():
         try:
@@ -543,12 +604,61 @@ async def handle_get_commodity_spread(args: dict, **ctx) -> dict:
                 p1 = float(t1["bid"])
             if t2 and t2.get("bid"):
                 p2 = float(t2["bid"])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[CommoditySpread] MT5 quote error: {e}")
+
+    # Fallback to recent bars from DB if quote unavailable
+    if session and (p1 is None or p2 is None):
+        stmt1 = (
+            select(PriceOHLCV.close).where(PriceOHLCV.symbol == primary).order_by(PriceOHLCV.timestamp.desc()).limit(1)
+        )
+        stmt2 = (
+            select(PriceOHLCV.close)
+            .where(PriceOHLCV.symbol == secondary)
+            .order_by(PriceOHLCV.timestamp.desc())
+            .limit(1)
+        )
+        c1 = (await session.execute(stmt1)).scalar_one_or_none()
+        c2 = (await session.execute(stmt2)).scalar_one_or_none()
+        if p1 is None and c1 is not None:
+            p1 = float(c1)
+        if p2 is None and c2 is not None:
+            p2 = float(c2)
+
+    if p1 is None or p2 is None:
+        return {
+            "status": "insufficient_data",
+            "error": f"Live quotes and database bars unavailable for {primary} or {secondary}.",
+        }
 
     spread = round(p1 - p2, 2)
-    hist_mean = 4.10
-    hist_std = 0.85
+
+    # Compute rolling 20-day spread distribution from DB
+    hist_mean = spread
+    hist_std = 1.0
+    if session:
+        import numpy as np
+
+        b1_stmt = (
+            select(PriceOHLCV.timestamp, PriceOHLCV.close)
+            .where(PriceOHLCV.symbol == primary, PriceOHLCV.timeframe == "D1")
+            .order_by(PriceOHLCV.timestamp.desc())
+            .limit(30)
+        )
+        b2_stmt = (
+            select(PriceOHLCV.timestamp, PriceOHLCV.close)
+            .where(PriceOHLCV.symbol == secondary, PriceOHLCV.timeframe == "D1")
+            .order_by(PriceOHLCV.timestamp.desc())
+            .limit(30)
+        )
+        rows1 = {r[0]: float(r[1]) for r in (await session.execute(b1_stmt)).all()}
+        rows2 = {r[0]: float(r[1]) for r in (await session.execute(b2_stmt)).all()}
+        common_dates = set(rows1.keys()) & set(rows2.keys())
+        if len(common_dates) >= 5:
+            spreads = [float(rows1[d]) - float(rows2[d]) for d in common_dates]
+            hist_mean = round(float(np.mean(spreads)), 2)
+            hist_std = max(0.01, round(float(np.std(spreads)), 2))
+
     z_score = round((spread - hist_mean) / hist_std, 2)
 
     regime = "NORMAL"
@@ -574,6 +684,104 @@ async def handle_get_commodity_spread(args: dict, **ctx) -> dict:
             if z_score < -2.0
             else "Spread within normal historical band."
         ),
+    }
+
+
+# ==============================================================================
+# 10. Get GARCH Volatility (Q148)
+# ==============================================================================
+async def handle_get_garch_volatility(args: dict, **ctx) -> dict:
+    """Calculates conditional volatility, forecast volatility, persistence, and regime via GARCH(1,1)."""
+    session, settings, _ = _get_context(args, ctx)
+    symbol = str(args.get("symbol", "XAUUSD")).upper()
+    timeframe = str(args.get("timeframe", "H1")).upper()
+    if not session:
+        return {"status": "error", "error": "Database session required for GARCH volatility"}
+
+    bars = (
+        (
+            await session.execute(
+                select(PriceOHLCV.close)
+                .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == timeframe)
+                .order_by(PriceOHLCV.timestamp.desc())
+                .limit(100)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not bars or len(bars) < 30:
+        return {
+            "status": "insufficient_data",
+            "error": f"Insufficient bars ({len(bars) if bars else 0}) for {symbol}/{timeframe} GARCH calculation",
+        }
+
+    from monika.application.analysis.calculators.garch_volatility import GarchVolatilityEngine
+
+    prices = [float(c) for c in reversed(bars)]
+    res = GarchVolatilityEngine.estimate_garch11(prices, is_returns=False)
+    return {
+        "status": "success",
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "current_volatility": res.current_volatility,
+        "forecasted_volatility_1step": res.forecasted_volatility_1step,
+        "annualized_current_vol_pct": res.annualized_current_vol,
+        "annualized_forecast_vol_pct": res.annualized_forecast_vol,
+        "persistence": res.persistence,
+        "half_life_bars": res.half_life_bars,
+        "volatility_regime": res.volatility_regime,
+        "parameters": res.parameters,
+    }
+
+
+# ==============================================================================
+# 11. Get Copula Tail Risk (Q149)
+# ==============================================================================
+async def handle_get_copula_tail_risk(args: dict, **ctx) -> dict:
+    """Evaluates joint crash probability and tail dependence between two assets via Archimedean Copula."""
+    session, _, _ = _get_context(args, ctx)
+    asset1 = str(args.get("asset1", "EURUSD")).upper()
+    asset2 = str(args.get("asset2", "GBPUSD")).upper()
+    timeframe = str(args.get("timeframe", "H1")).upper()
+    tail_quantile = float(args.get("tail_quantile", 0.05))
+
+    if not session:
+        return {"status": "error", "error": "Database session required for Copula tail risk calculation"}
+
+    b1_stmt = (
+        select(PriceOHLCV.timestamp, PriceOHLCV.close)
+        .where(PriceOHLCV.symbol == asset1, PriceOHLCV.timeframe == timeframe)
+        .order_by(PriceOHLCV.timestamp.desc())
+        .limit(100)
+    )
+    b2_stmt = (
+        select(PriceOHLCV.timestamp, PriceOHLCV.close)
+        .where(PriceOHLCV.symbol == asset2, PriceOHLCV.timeframe == timeframe)
+        .order_by(PriceOHLCV.timestamp.desc())
+        .limit(100)
+    )
+    rows1 = {r[0]: float(r[1]) for r in (await session.execute(b1_stmt)).all()}
+    rows2 = {r[0]: float(r[1]) for r in (await session.execute(b2_stmt)).all()}
+    common_dates = sorted(set(rows1.keys()) & set(rows2.keys()))
+    if len(common_dates) < 20:
+        return {"status": "insufficient_data", "error": f"Insufficient matching bars between {asset1} and {asset2}"}
+
+    import pandas as pd
+    from monika.application.analysis.calculators.copula_tail_risk import evaluate_joint_tail_risk
+
+    p1 = pd.Series([float(rows1[d]) for d in common_dates])
+    p2 = pd.Series([float(rows2[d]) for d in common_dates])
+    r1 = p1.pct_change().dropna()
+    r2 = p2.pct_change().dropna()
+
+    report = evaluate_joint_tail_risk(r1, r2, tail_quantile=tail_quantile)
+    return {
+        "status": "success",
+        "asset1": asset1,
+        "asset2": asset2,
+        "timeframe": timeframe,
+        "tail_risk_report": report,
     }
 
 
@@ -687,6 +895,33 @@ def register_advanced_quant_tools(registry=None):
             handler=handle_get_commodity_spread,
             toolset="macro",
             requires_db=False,
+        ),
+        ToolDefinition(
+            name="get_garch_volatility",
+            description="Calculate forward conditional volatility and volatility clustering regime via GARCH(1,1) (Q148).",
+            parameters={
+                "type": "object",
+                "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}},
+            },
+            handler=handle_get_garch_volatility,
+            toolset="quant",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_copula_tail_risk",
+            description="Evaluate joint crash risk and tail dependence between two assets via Archimedean Copulas (Q149).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "asset1": {"type": "string"},
+                    "asset2": {"type": "string"},
+                    "timeframe": {"type": "string"},
+                    "tail_quantile": {"type": "number"},
+                },
+            },
+            handler=handle_get_copula_tail_risk,
+            toolset="quant",
+            requires_db=True,
         ),
     ]
     for t in tools:

@@ -383,3 +383,13 @@ async def test_analyze_all_rollback_on_failure(test_db_session):
     assert results["FAIL_SYM/H1"]["swing_points"] == 0
     assert "PASS_SYM/H1" in results
     assert results["PASS_SYM/H1"]["swing_points"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_analyze_all_includes_m15_timeframe():
+    mock_session = create_mock_async_session()
+    analyzer = MarketStructureAnalyzer(mock_session, {"indicators": {"swing_window": 2}})
+    analyzer.analyze = AsyncMock(return_value={"swing_points": 3, "fvg_zones": 2})
+    res = await analyzer.analyze_all(["XAUUSD"], ["M15", "H1", "H4", "D1"])
+    assert "XAUUSD/M15" in res
+    assert res["XAUUSD/M15"]["swing_points"] == 3

@@ -51,7 +51,7 @@ class NewsClassificationMixin(_NewsDigestMixinBase):
                 await session.execute(
                     select(NewsItem)
                     .where(NewsItem.fetched_at >= since)
-                    .where(NewsItem.impact == None)
+                    .where(NewsItem.impact.is_(None))
                     .order_by(NewsItem.fetched_at.desc())
                     .limit(max_classify)
                 )

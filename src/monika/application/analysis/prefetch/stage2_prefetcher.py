@@ -836,7 +836,7 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                 .where(
                     DecisionReflection.symbol == symbol,
                     DecisionReflection.status == "resolved",
-                    DecisionReflection.alpha_lesson != None,
+                    DecisionReflection.alpha_lesson.is_not(None),
                     DecisionReflection.alpha_lesson != "",
                 )
                 .order_by(desc(DecisionReflection.resolved_at))

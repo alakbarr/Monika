@@ -118,7 +118,7 @@ async def handle_get_economic_surprise(args: dict, **ctx) -> dict:
         select(EconomicCalendar)
         .where(EconomicCalendar.currency == currency.upper())
         .where(EconomicCalendar.event_time >= since)
-        .where(EconomicCalendar.surprise_score != None)
+        .where(EconomicCalendar.surprise_score.is_not(None))
         .order_by(EconomicCalendar.event_time.desc())
     )
     rows = (await session.execute(query)).scalars().all()

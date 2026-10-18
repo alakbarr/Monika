@@ -413,7 +413,12 @@ class LayeredMemoryManager:
                 (
                     await session.execute(
                         select(DecisionReflection)
-                        .where(or_(DecisionReflection.alpha_lesson != None, DecisionReflection.specific_lesson != None))
+                        .where(
+                            or_(
+                                DecisionReflection.alpha_lesson.is_not(None),
+                                DecisionReflection.specific_lesson.is_not(None),
+                            )
+                        )
                         .order_by(desc(DecisionReflection.resolved_at))
                         .limit(n * 3)
                     )

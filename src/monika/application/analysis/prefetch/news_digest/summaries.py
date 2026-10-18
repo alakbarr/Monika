@@ -136,7 +136,7 @@ async def get_classification_health_report(session) -> dict:
 
     classified = (
         await session.execute(
-            select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since).where(NewsItem.impact != None)
+            select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since).where(NewsItem.impact.is_not(None))
         )
     ).scalar_one_or_none() or 0
 

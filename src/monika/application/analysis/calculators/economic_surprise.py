@@ -61,9 +61,9 @@ async def compute_surprise_scores(session: AsyncSession) -> int:
         (
             await session.execute(
                 select(EconomicCalendar)
-                .where(EconomicCalendar.actual != None)
-                .where(EconomicCalendar.forecast != None)
-                .where(EconomicCalendar.surprise_score == None)
+                .where(EconomicCalendar.actual.is_not(None))
+                .where(EconomicCalendar.forecast.is_not(None))
+                .where(EconomicCalendar.surprise_score.is_(None))
             )
         )
         .scalars()
@@ -155,7 +155,7 @@ async def compute_cesi_index(
             await session.execute(
                 select(EconomicCalendar)
                 .where(EconomicCalendar.currency == curr)
-                .where(EconomicCalendar.surprise_score != None)
+                .where(EconomicCalendar.surprise_score.is_not(None))
                 .where(EconomicCalendar.event_time >= cutoff)
                 .order_by(EconomicCalendar.event_time.asc())
             )

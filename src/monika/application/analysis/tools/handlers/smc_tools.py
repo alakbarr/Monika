@@ -47,7 +47,7 @@ async def handle_get_order_blocks(args: dict, **ctx) -> dict:
         select(OrderBlock)
         .where(OrderBlock.symbol == symbol)
         .where(OrderBlock.timeframe == timeframe)
-        .where(OrderBlock.mitigated_at == None)
+        .where(OrderBlock.mitigated_at.is_(None))
     )
     if days > 0:
         from datetime import timedelta
@@ -93,7 +93,7 @@ async def handle_get_fvg_zones(args: dict, **ctx) -> dict:
         .limit(30)
     )
     if not include_filled:
-        query = query.where(FVGZone.filled_at == None)
+        query = query.where(FVGZone.filled_at.is_(None))
 
     rows = (await session.execute(query)).scalars().all()
     return {
@@ -738,13 +738,6 @@ async def handle_get_smt_divergence(
 
         df1 = await _fetch_df(symbol)
         df2 = await _fetch_df(compared_symbol)
-
-        if df2 is None and compared_symbol in ("DXY", "USDX") and df1 is not None:
-            df2 = df1.copy()
-            df2["high"] = 1.0 / df1["low"]
-            df2["low"] = 1.0 / df1["high"]
-            df2["open"] = 1.0 / df1["close"]
-            df2["close"] = 1.0 / df1["open"]
 
         if df1 is None or df2 is None:
             return {

@@ -51,7 +51,7 @@ async def _collect_zones(session: AsyncSession, symbol: str) -> list[dict]:
         (
             await session.execute(
                 select(OrderBlock).where(
-                    OrderBlock.symbol == symbol, OrderBlock.timeframe == "H4", OrderBlock.mitigated_at == None
+                    OrderBlock.symbol == symbol, OrderBlock.timeframe == "H4", OrderBlock.mitigated_at.is_(None)
                 )
             )
         )
@@ -72,7 +72,7 @@ async def _collect_zones(session: AsyncSession, symbol: str) -> list[dict]:
     fvgs = (
         (
             await session.execute(
-                select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe == "H4", FVGZone.filled_at == None)
+                select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe == "H4", FVGZone.filled_at.is_(None))
             )
         )
         .scalars()

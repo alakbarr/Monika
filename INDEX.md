@@ -7417,6 +7417,8 @@
   - `async handle_scan_smc_setups(args: dict) -> dict`: Scans all asset universe pairs in parallel for live unmitigated Order Blocks, FVGs, and Liquidity Sweeps.
   - `async handle_get_carry_trade_rankings(args: dict) -> dict`: Calculates risk-adjusted carry trade attractiveness across currency pairs (Rate Differential / ATR Volatility).
   - `async handle_get_commodity_spread(args: dict) -> dict`: Calculates live Brent vs WTI crude oil spread, 20-day rolling mean, and z-score.
+  - `async handle_get_garch_volatility(args: dict) -> dict`: Calculates conditional volatility, forecast volatility, persistence, and regime via GARCH(1,1).
+  - `async handle_get_copula_tail_risk(args: dict) -> dict`: Evaluates joint crash probability and tail dependence between two assets via Archimedean Copula.
   - `register_advanced_quant_tools(registry)`
 
 #### `analysis_submit.py`

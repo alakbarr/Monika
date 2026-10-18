@@ -308,7 +308,7 @@ class MacroPreprocessor:
         now_dt = clock.now()
 
         q = select(EconomicCalendar).where(
-            EconomicCalendar.event_time >= two_weeks_ago, EconomicCalendar.surprise_score != None
+            EconomicCalendar.event_time >= two_weeks_ago, EconomicCalendar.surprise_score.is_not(None)
         )
         events = (await session.execute(q)).scalars().all()
 
